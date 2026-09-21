@@ -1,28 +1,33 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.model.PowerWindow
 
 object ActionPowers {
-  private def played = Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayed))
-  object Dazzle extends ReviewedPower("denizen.dazzle", None, played)
+  private def played = Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayedFaceup))
+  private def playedDone = Vector(ReviewedHandler.automatic(
+    PowerWindow.ActionCardPlayedFaceup, implemented = true))
+  object Dazzle extends ReviewedPower("denizen.dazzle", None,
+    Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayedFaceup,
+      implemented = true)))
   object Revelation extends ReviewedPower("denizen.revelation", None, played)
   object ThreateningRoar extends ReviewedPower("denizen.threatening-roar", None, played)
   object AnimalHost extends ReviewedPower("denizen.animal-host", None, played)
-  object ASmallFavor extends ReviewedPower("denizen.a-small-favor", None, played)
+  object ASmallFavor extends ReviewedPower("denizen.a-small-favor", None, playedDone)
   object KeyToTheCity extends ReviewedPower("denizen.key-to-the-city", None, played)
   object Charlatan extends ReviewedPower("denizen.charlatan", None, played)
   object Blackmail extends ReviewedPower("denizen.blackmail", None, played)
   object Dissent extends ReviewedPower("denizen.dissent", None, played)
   object FalseProphet extends ReviewedPower("denizen.false-prophet", None, played)
-  object FamilyHeirloom extends ReviewedPower("denizen.family-heirloom", None, played)
+  object FamilyHeirloom extends ReviewedPower("denizen.family-heirloom", None, playedDone)
   object FabledFeast extends ReviewedPower("denizen.fabled-feast", None, played)
   object SaladDays extends ReviewedPower("denizen.salad-days", None, played)
   object TheGathering extends ReviewedPower("denizen.the-gathering", None, played)
-  object FaithfulFriend extends ReviewedPower("denizen.faithful-friend", None, played)
+  object FaithfulFriend extends ReviewedPower("denizen.faithful-friend", None, playedDone)
   object GreatHerd extends ReviewedPower("denizen.great-herd", None, played)
   object Pilgrimage extends ReviewedPower("denizen.pilgrimage", None, played)
   object TwinBrother extends ReviewedPower("denizen.twin-brother", None, played)
-  object Garrison extends ReviewedPower("denizen.garrison", None, played)
+  object Garrison extends ReviewedPower("denizen.garrison", None, playedDone)
   object RoyalTax extends ReviewedPower("denizen.royal-tax", None, played)
   object Bewitch extends ReviewedPower("denizen.bewitch", None, played)
   object WizardsConclave extends ReviewedPower("denizen.wizard-s-conclave", None, played)

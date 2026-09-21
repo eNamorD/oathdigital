@@ -23,7 +23,7 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
   test("identity migration is idempotent and survives close and reopen") {
     val path = databasePath("migration")
     val first = open(path)
-    assertEquals(first.schemaVersion, Right(3))
+    assertEquals(first.schemaVersion, Right(4))
     assertEquals(first.initializeSchema(), Right(()))
     assertEquals(first.createUser(owner, "Owner", 10L), Right(()))
     assertEquals(first.createGame("game-1", owner, 11L), Right(()))
@@ -31,7 +31,7 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
 
     val reopened = open(path)
     try {
-      assertEquals(reopened.schemaVersion, Right(3))
+      assertEquals(reopened.schemaVersion, Right(4))
       assertEquals(
         reopened.findMembership("game-1", owner),
         Right(Some(GameMembership("game-1", owner, Owner, None)))
@@ -40,11 +40,11 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
     } finally reopened.close()
   }
 
-  test("schema upgrades contiguously from v1 and v2 and revokes old sessions") {
+  test("schema upgrades contiguously from v1, v2, and v3 and revokes old sessions") {
     val v1Path = databasePath("upgrade-v1")
     seedVersionLedger(v1Path, 1)
     val upgradedV1 = open(v1Path)
-    assertEquals(upgradedV1.schemaVersion, Right(3))
+    assertEquals(upgradedV1.schemaVersion, Right(4))
     upgradedV1.close()
 
     val v2Path = databasePath("upgrade-v2")
@@ -53,7 +53,7 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
     seedVersion2(v2Path, oldDigest)
     val upgradedV2 = open(v2Path)
     try {
-      assertEquals(upgradedV2.schemaVersion, Right(3))
+      assertEquals(upgradedV2.schemaVersion, Right(4))
       assertEquals(
         upgradedV2.resolveSession(oldDigest, 150L),
         Left(SessionRevoked)
@@ -61,6 +61,107 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       assertEquals(upgradedV2.initializeSchema(), Right(()))
     } finally upgradedV2.close()
 
+    val v3Path = databasePath("upgrade-v3")
+    seedVersion3(v3Path)
+    val upgradedV3 = open(v3Path)
+    try assertEquals(upgradedV3.schemaVersion, Right(4))
+    finally upgradedV3.close()
+
+  }
+
+  test("trusted seats atomically create a resource and resolve digests after reopen") {
+    val path = databasePath("trusted-seats")
+    val first = open(path)
+    val seats = Vector(seatDigest(1) -> "p1", seatDigest(2) -> "p2")
+    try {
+      assertEquals(first.createTrustedSeats("game-seats", seats, 50L), Right(()))
+      assertEquals(
+        first.resolveTrustedSeat(seatDigest(1)),
+        Right(TrustedSeat("game-seats", "p1"))
+      )
+      assertEquals(first.listMemberships("game-seats"), Right(Vector.empty))
+    } finally first.close()
+
+    val reopened = open(path)
+    try assertEquals(
+      reopened.resolveTrustedSeat(seatDigest(2)),
+      Right(TrustedSeat("game-seats", "p2"))
+    ) finally reopened.close()
+  }
+
+  test("trusted seat creation rejects invalid input and rolls back duplicate digests") {
+    val repository = open(databasePath("trusted-seat-rollback"))
+    val repeated = seatDigest(3)
+    try {
+      assert(repository.createTrustedSeats("empty", Vector.empty, 0L)
+        .left.toOption.get.isInstanceOf[InvalidTrustedSeat])
+      assert(repository.createTrustedSeats(
+        "blank", Vector(seatDigest(4) -> " "), 0L
+      ).left.toOption.get.isInstanceOf[InvalidTrustedSeat])
+      assert(repository.createTrustedSeats(
+        "same-player", Vector(seatDigest(5) -> "p1", seatDigest(6) -> "p1"), 0L
+      ).left.toOption.get.isInstanceOf[InvalidTrustedSeat])
+      assertEquals(
+        repository.createTrustedSeats(
+          "same-player", Vector(seatDigest(5) -> "p1"), 0L
+        ),
+        Right(())
+      )
+      assertEquals(
+        repository.createTrustedSeats(
+          "duplicate-digest", Vector(repeated -> "p1", repeated -> "p2"), 0L
+        ),
+        Left(DuplicateTrustedSeat)
+      )
+      assertEquals(
+        repository.createTrustedSeats(
+          "duplicate-digest", Vector(seatDigest(7) -> "p1"), 0L
+        ),
+        Right(())
+      )
+    } finally repository.close()
+  }
+
+  test("trusted seat creation rejects a null player ID before transaction") {
+    val repository = open(databasePath("trusted-seat-null-player"))
+    try {
+      assertEquals(
+        repository.createTrustedSeats(
+          "null-player", Vector(seatDigest(8) -> null), 0L
+        ),
+        Left(InvalidTrustedSeat("trusted seat requires playerId"))
+      )
+      assertEquals(
+        repository.createTrustedSeats(
+          "null-player", Vector(seatDigest(8) -> "p1"), 0L
+        ),
+        Right(())
+      )
+    } finally repository.close()
+  }
+
+  test("deleting a game resource cascades to its trusted seats") {
+    val path = databasePath("trusted-seat-cascade")
+    val digest = seatDigest(8)
+    val repository = open(path)
+    try assertEquals(
+      repository.createTrustedSeats("game-cascade", Vector(digest -> "p1"), 0L),
+      Right(())
+    ) finally repository.close()
+
+    val connection = DriverManager.getConnection(
+      s"jdbc:hsqldb:file:${path.toAbsolutePath}", "SA", "")
+    try {
+      val statement = connection.createStatement()
+      try {
+        statement.executeUpdate("DELETE FROM game_resources WHERE game_id = 'game-cascade'")
+        statement.execute("SHUTDOWN")
+      } finally statement.close()
+    } finally connection.close()
+
+    val reopened = open(path)
+    try assertEquals(reopened.resolveTrustedSeat(digest), Left(TrustedSeatNotFound))
+    finally reopened.close()
   }
 
   test("external identities are provider-subject unique and reference users") {
@@ -265,8 +366,21 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
     } finally repository.close()
   }
 
+  test("trusted seat schema contains only the digest and never a raw code column") {
+    val path = databasePath("trusted-digest-only")
+    val repository = open(path)
+    try {
+      val columns = repository.trustedSeatColumnNames.toOption.get
+      assert(columns.contains("token_digest"))
+      assert(!columns.exists(name => name == "token" || name.contains("code")))
+    } finally repository.close()
+  }
+
   private def csrfDigest(value: Byte): CsrfTokenDigest =
     CsrfTokenDigest.fromBytes(Vector.fill(32)(value)).toOption.get
+
+  private def seatDigest(value: Byte): SeatCodeDigest =
+    SeatCodeDigest.fromBytes(Vector.fill(32)(value)).toOption.get
 
   private def seedVersionLedger(path: Path, version: Int): Unit = {
     val connection = DriverManager.getConnection(
@@ -309,6 +423,10 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
             |idle_expires_at_millis BIGINT NOT NULL,
             |absolute_expires_at_millis BIGINT NOT NULL,
             |revoked_at_millis BIGINT)""".stripMargin)
+        statement.execute(
+          """CREATE TABLE game_resources (
+            |game_id VARCHAR(255) PRIMARY KEY,
+            |created_at_millis BIGINT NOT NULL)""".stripMargin)
         statement.execute("INSERT INTO users VALUES ('old-user', 'Old', 0)")
       } finally statement.close()
       val insert = connection.prepareStatement(
@@ -319,6 +437,23 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       } finally insert.close()
       val shutdown = connection.createStatement()
       try shutdown.execute("SHUTDOWN") finally shutdown.close()
+    } finally connection.close()
+  }
+
+  private def seedVersion3(path: Path): Unit = {
+    seedVersion2(path, SessionTokenDigest.fromBytes(Vector.fill(32)(9.toByte))
+      .toOption.get)
+    val connection = DriverManager.getConnection(
+      s"jdbc:hsqldb:file:${path.toAbsolutePath}", "SA", "")
+    try {
+      val statement = connection.createStatement()
+      try {
+        statement.execute(
+          "ALTER TABLE sessions ADD COLUMN csrf_token_digest BINARY(32)"
+        )
+        statement.execute("INSERT INTO schema_versions VALUES (3, 0)")
+        statement.execute("SHUTDOWN")
+      } finally statement.close()
     } finally connection.close()
   }
 }

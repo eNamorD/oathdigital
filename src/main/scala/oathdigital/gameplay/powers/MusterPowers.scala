@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.model.PowerWindow
 
 object MusterPowers {
   private def economy = Vector(

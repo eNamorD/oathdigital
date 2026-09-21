@@ -1,8 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
-  FirstGameSupportState, PlayerColor}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -10,7 +8,6 @@ class OperationValidatorSuite extends munit.FunSuite {
   private val blueId = PlayerId("player-blue")
   private val blueLineage = LineageId("blue")
   private val redForce = ForceKind.Exile(lineageId)
-  private val blueForce = ForceKind.Exile(blueLineage)
   private val extraDenizen = DenizenId("D5")
 
   private val bluePlayer = PlayerState(
@@ -35,18 +32,7 @@ class OperationValidatorSuite extends munit.FunSuite {
       LineageState(blueLineage, Some(blueId), Role.Exile,
         Vector.empty, Vector.empty)
     ))
-    ReadyGame(
-      game.copy(campaign = campaign, current = current),
-      Map(playerId -> PlayerColor("red"), blueId -> PlayerColor("blue")),
-      FirstGameSupportState(
-        FirstGameFoundationProfile.FixedUnaltered,
-        playerId
-      ),
-      MaterialBankState(
-        Suit.all.map(_ -> 5).toMap,
-        Map(redForce -> 14, blueForce -> 14, ForceKind.Bandit -> 24)
-      )
-    )
+    ReadyGames.of(game.copy(campaign = campaign, current = current))
   }
 
   private val codes = (values: Vector[OperationReason]) =>
@@ -58,14 +44,14 @@ class OperationValidatorSuite extends munit.FunSuite {
 
     assertEquals(reasons.map(_.code), Vector("insufficient-pieces"))
     assertEquals(reasons.head.detail, "favor bank contains 5 of requested favor")
+    assertEquals(reasons.head.kind, OperationReasonKind.Impossible)
     assertEquals(OperationShape.first(ready, operation).map(_.code),
       Some("insufficient-pieces"))
   }
 
   test("wrong requested stack source position is an invalid-stack-position") {
-    val source = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(commonCards = ready.game.current.commonCards.copy(
-        worldDeck = Vector(worldDenizen, extraDenizen)))))
+    val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
+        worldDeck = Vector(worldDenizen, extraDenizen))))
     val operation = Move(
       Piece.Card(extraDenizen),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
@@ -76,6 +62,7 @@ class OperationValidatorSuite extends munit.FunSuite {
     assertEquals(reasons.map(_.code), Vector("invalid-stack-position"))
     assertEquals(reasons.head.detail,
       "card does not match requested stack position")
+    assertEquals(reasons.head.kind, OperationReasonKind.Invalid)
   }
 
   test("one operation moving the same card twice is a conflicting-deltas") {
@@ -90,9 +77,8 @@ class OperationValidatorSuite extends munit.FunSuite {
 
   test("orienting an edifice into a site is an unsupported-orientation") {
     val edifice = EdificeId("E2")
-    val source = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(commonCards = ready.game.current.commonCards.copy(
-        edificeDeck = Vector(edifice)))))
+    val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
+        edificeDeck = Vector(edifice))))
     val operation = Move(
       Piece.Card(edifice),
       PositionedLocation(Location.Deck(CardDeck.Edifice), StackPosition.Top),
@@ -116,10 +102,19 @@ class OperationValidatorSuite extends munit.FunSuite {
       Some("unknown-warband-supply"))
   }
 
+  test("counted move into an incompatible destination is invalid") {
+    val operation = Move(Piece.Favor(7),
+      PositionedLocation(Location.FavorBank(Suit.Order)),
+      PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top))
+    val reasons = OperationShape.validate(ready, operation)
+    assert(reasons.exists(_.kind == OperationReasonKind.Impossible))
+    assert(reasons.exists(_.kind == OperationReasonKind.Invalid))
+  }
+
   test("a supply spend beyond the track is an insufficient-supply") {
     assertEquals(codes(OperationShape.validate(ready,
-      AdjustSupply(playerId, -8))), Vector("insufficient-supply"))
-    assertEquals(OperationShape.first(ready, AdjustSupply(playerId, -8))
+      SpendSupply(playerId, 8))), Vector("insufficient-supply"))
+    assertEquals(OperationShape.first(ready, SpendSupply(playerId, 8))
       .map(_.code), Some("insufficient-supply"))
   }
 
@@ -165,7 +160,7 @@ class OperationValidatorSuite extends munit.FunSuite {
     val corpus = Vector[CoreOperation](
       Gain.Favor(playerId, Suit.Order, 7),          // insufficient-pieces
       Gain.Favor(playerId, Suit.Order, 1),          // valid
-      AdjustSupply(playerId, -8),                   // insufficient-supply
+      SpendSupply(playerId, 8),                   // insufficient-supply
       Move(Piece.Pawn(playerId),
         PositionedLocation(Location.Site(sites(2))),
         PositionedLocation(Location.Site(sites(3)))) // missing-piece
@@ -177,10 +172,15 @@ class OperationValidatorSuite extends munit.FunSuite {
         OperationPolicy.Permissive)(Right(_))
       (reasons.headOption, pipeline) match {
         case (None, Right(after)) =>
-          assertEquals(after.game, raw.execute(ready, operation).toOption.get.game)
+          assertEquals(after.state.game,
+            raw.execute(ready, operation).toOption.get.game)
+        case (Some(reason), Right(after))
+            if reason.kind == OperationReasonKind.Impossible &&
+              !operation.required =>
+          assert(after.executed.nonEmpty || after.skipped.nonEmpty)
         case (Some(reason), Left(violation)) =>
           val code = violation match {
-            case oathdigital.gameplay.OathViolation
+            case oathdigital.model.OathViolation
                 .CoreOperationRejected(code, _) => code
             case other => fail(s"unexpected violation $other")
           }
@@ -204,24 +204,24 @@ class OperationValidatorSuite extends munit.FunSuite {
     val pipeline = OperationPipeline.run(ready, Vector(operation),
       OperationPolicy.exact(Vector.empty, "test batch not permitted"))(Right(_))
     val code = pipeline.left.toOption.get match {
-      case oathdigital.gameplay.OathViolation.CoreOperationRejected(code, _) =>
+      case oathdigital.model.OathViolation.CoreOperationRejected(code, _) =>
         code
       case other => fail(s"unexpected violation $other")
     }
     assertEquals(code, "restricted-operation")
   }
 
-  test("restriction registry is held but inert this phase") {
+  test("restriction registry is checked for each operation") {
     val blocking = new OperationRestriction {
       override def reason(ready: ReadyGame, operation: CoreOperation) =
-        Some(OperationReason("power-blocked", "Phase 5 predicate"))
+        Some(OperationReason("power-blocked", "test predicate",
+          OperationReasonKind.Impossible))
     }
     val validator = new OperationValidator(
       OperationPolicy.Permissive, Vector(blocking))
     val operation = Gain.Favor(playerId, Suit.Order, 1)
-    // Shape and allowlist pass; the registered restriction is not yet folded
-    // into validateOne (registry becomes live in Phase 5).
-    assertEquals(validator.validateOne(ready, operation), Vector.empty)
+    assertEquals(validator.validateOne(ready, operation).map(_.code),
+      Vector("power-blocked"))
   }
 
   test("report aggregates whole-batch reasons with allowlist precedence") {

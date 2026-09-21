@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay._
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{PlayerId, PowerId}
+import oathdigital.model.{MajorActionType, PlayerId, PowerId, PowerWindow, ReadyGame, RuleSourceRef}
 
 final case class ReviewedPowerFacts(
     catalog: oathdigital.catalog.ExecutableCatalog,
@@ -23,29 +23,9 @@ private[gameplay] object ReviewedPowerInspector {
     }
 
   private def accessible(window: PowerWindow, ref: RuleSourceRef,
-      source: IndexedRuleSource, facts: ReviewedPowerFacts): Boolean = {
-    val player = facts.ready.game.current.players.find(_.player == facts.actor)
-    val pawn = player.flatMap(_.pawnSite)
-    ref match {
-      case RuleSourceRef.Site(id) => pawn.contains(id)
-      case RuleSourceRef.SiteCard(id, _) =>
-        pawn.contains(id) && source.face == RuleSourceFace.FaceUp
-      case RuleSourceRef.SiteRelic(id, _) =>
-        pawn.contains(id) && source.face == RuleSourceFace.FaceUp
-      case RuleSourceRef.Edifice(id, _) =>
-        pawn.contains(id) && source.face == RuleSourceFace.Intact
-      case RuleSourceRef.Adviser(owner, _) => owner == facts.actor &&
-        (source.face == RuleSourceFace.FaceUp ||
-          (window == PowerWindow.ActionCardPlayed &&
-            source.face == RuleSourceFace.FaceDown))
-      case RuleSourceRef.Relic(owner, _) =>
-        owner == facts.actor && source.face == RuleSourceFace.FaceUp
-      case RuleSourceRef.Banner(_) | RuleSourceRef.Foundation(_) => true
-      case RuleSourceRef.Legacy(lineage, _) =>
-        player.exists(_.lineage == lineage) && source.face == RuleSourceFace.Active
-      case _ => false
-    }
-  }
+      source: IndexedRuleSource, facts: ReviewedPowerFacts): Boolean =
+    RuleSourceAccess.accessible(ref, source.face, facts.ready, facts.actor,
+      window == PowerWindow.ActionCardPlayedFaceup)
 }
 
 private[powers] abstract class ReviewedPower(

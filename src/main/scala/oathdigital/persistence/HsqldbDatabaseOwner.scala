@@ -18,9 +18,10 @@ import oathdigital.application._
 /** Owns the sole datasource, schema lifecycle, and HSQLDB shutdown. */
 final class HsqldbDatabaseOwner private (
     database: Database,
-    source: HikariDataSource
+    source: HikariDataSource,
+    nowMillis: () => Long
 ) extends AutoCloseable {
-  private val schema = new EventJournalSchema
+  private val schema = new EventJournalSchema(nowMillis)
   private val closed = new AtomicBoolean(false)
   private val shutdowns = new AtomicInteger(0)
 
@@ -28,6 +29,8 @@ final class HsqldbDatabaseOwner private (
     new HsqldbEventStreamRepository(database)
   val identities: HsqldbIdentityRepository =
     new HsqldbIdentityRepository(database)
+  val trustedGames: HsqldbTrustedGameStore =
+    new HsqldbTrustedGameStore(database)
 
   def initializeSchema(): Either[RepositoryFailure, Unit] =
     run("initialize schema")(schema.initialize)
@@ -74,11 +77,14 @@ object HsqldbDatabaseOwner {
       error: RepositoryFailure
   ) extends OpenAttemptFailure
 
-  def open(path: Path): Either[RepositoryFailure, HsqldbDatabaseOwner] =
+  def open(
+      path: Path,
+      nowMillis: () => Long = () => System.currentTimeMillis()
+  ): Either[RepositoryFailure, HsqldbDatabaseOwner] =
     validatePath(path).flatMap { validated =>
       val deadline = System.nanoTime() + ReopenDeadlineNanos
       retryTransientLock(
-        () => openAttempt(validated),
+        () => openAttempt(validated, nowMillis),
         ReopenAttempts,
         deadline,
         System.nanoTime _,
@@ -103,7 +109,8 @@ object HsqldbDatabaseOwner {
   }
 
   private def openAttempt(
-      path: Path
+      path: Path,
+      nowMillis: () => Long
   ): Either[OpenAttemptFailure, HsqldbDatabaseOwner] = {
     val source = new HikariDataSource()
     try {
@@ -122,7 +129,8 @@ object HsqldbDatabaseOwner {
       probe.close()
       val owner = new HsqldbDatabaseOwner(
         Database.forDataSource(source, Some(4)),
-        source
+        source,
+        nowMillis
       )
       owner.initializeSchema() match {
         case Right(_) => Right(owner)
@@ -223,6 +231,13 @@ final class OwnedHsqldbIdentityRepository private (
     adapter.revokeSession(digest, now)
   override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long) =
     adapter.touchSession(digest, seen, idle)
+  override def createTrustedSeats(
+      gameId: String,
+      seats: Vector[(SeatCodeDigest, String)],
+      now: Long
+  ) = adapter.createTrustedSeats(gameId, seats, now)
+  override def resolveTrustedSeat(digest: SeatCodeDigest) =
+    adapter.resolveTrustedSeat(digest)
   private[persistence] def createGameWithBeforeOwnerMembership(
       gameId: String,
       ownerId: UserId,
@@ -230,6 +245,7 @@ final class OwnedHsqldbIdentityRepository private (
   )(before: java.sql.Connection => Either[IdentityFailure, Unit]) =
     adapter.createGameWithBeforeOwnerMembership(gameId, ownerId, now)(before)
   private[persistence] def sessionColumnNames = adapter.sessionColumnNames
+  private[persistence] def trustedSeatColumnNames = adapter.trustedSeatColumnNames
   def initializeSchema(): Either[IdentityFailure, Unit] =
     owner.initializeSchema().left.map(failure =>
       IdentityFailure.StorageFailure(failure.toString))

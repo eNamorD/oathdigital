@@ -3,23 +3,15 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameFoundationProfile
-import oathdigital.gameplay.powers.SearchPowers
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathContinue.ActActionSelection
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.operations.{CoreOperation, Location,
-  OperationPipeline, OperationPolicy, Piece, PositionedLocation,
-  Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}
+import oathdigital.model.OathContinue.ActActionSelection
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.model.{Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}
 
 sealed trait MinorActionCommand extends Product with Serializable
 object MinorActionCommand {
-  final case class DiscardFacedownAdviser(player: PlayerId, adviser: WorldCardId)
-      extends MinorActionCommand
-  final case class PlayFacedownAdviser(player: PlayerId, adviser: WorldCardId,
-      placement: SearchPlacement) extends MinorActionCommand
   final case class PeekSiteRelics(player: PlayerId) extends MinorActionCommand
   final case class RevealOwnedRelic(player: PlayerId, relic: RelicId)
       extends MinorActionCommand
@@ -31,39 +23,9 @@ object MinorActions {
   private val operationAllowlist: OperationPolicy =
     MinorActionOperationPolicy
 
-  def legalAdviserPlacements(catalog: ExecutableCatalog, ready: ReadyGame,
-      player: PlayerId, adviser: WorldCardId): Vector[SearchPlacement] = {
-    val replacements = ready.game.current.players.find(_.player == player)
-      .flatMap(_.pawnSite).flatMap(ready.game.current.map.sites.get)
-      .toVector.flatMap(_.denizens.map(card => Some(card.id)))
-    (Vector(SearchPlacement.Adviser(Orientation.FaceUp, None),
-      SearchPlacement.Site(None)) ++ replacements.map(SearchPlacement.Site))
-      .distinct.filter(placement => SearchPowers.validateModifierSelection(
-        catalog, ready, player).isRight &&
-        CardPlay.resolve(catalog, ready, player, adviser, placement,
-          CardPlay.Origin.FacedownAdviser).isRight)
-  }
-
   def handle(catalog: ExecutableCatalog, state: OathState,
       command: MinorActionCommand): Either[OathViolation, OathTransition] = {
     val event = command match {
-      case MinorActionCommand.DiscardFacedownAdviser(player, adviser) => for {
-        ready <- validateAct(catalog, state, player)
-        _ <- CardPlay.resolve(catalog, ready, player, adviser,
-          SearchPlacement.Discard, CardPlay.Origin.FacedownAdviser)
-        actor <- actorAtSite(ready, player).map(_._1)
-        region <- actor.pawnSite.flatMap(ready.game.current.map.regionOf)
-          .toRight(PawnSiteMissing(player))
-      } yield FacedownAdviserDiscarded(player, adviser, nextRegion(region))
-
-      case MinorActionCommand.PlayFacedownAdviser(player, adviser, placement) => for {
-        ready <- validateAct(catalog, state, player)
-        _ <- SearchPowers.validateModifierSelection(catalog, ready, player)
-        result <- CardPlay.resolve(catalog, ready, player, adviser, placement,
-          CardPlay.Origin.FacedownAdviser)
-      } yield FacedownAdviserPlayed(player, adviser, placement, result.favorGained,
-        result.discardedWorld, result.discardedEdifices)
-
       case MinorActionCommand.PeekSiteRelics(player) => for {
         ready <- validateAct(catalog, state, player)
         at <- actorAtSite(ready, player)
@@ -112,28 +74,6 @@ object MinorActions {
 
   def evolve(catalog: ExecutableCatalog, state: OathState,
       event: OathEvent): Either[OathViolation, OathState] = event match {
-    case e: FacedownAdviserDiscarded => for {
-      ready <- validateAct(catalog, state, e.playerId)
-      actor <- ready.game.current.players.find(_.player == e.playerId)
-        .toRight(MinorActionUnavailable("actor is not in the game"))
-      region <- actor.pawnSite.flatMap(ready.game.current.map.regionOf)
-        .toRight(PawnSiteMissing(e.playerId))
-      _ <- Either.cond(e.destination == nextRegion(region), (),
-        MinorActionOutcomeMismatch("recorded adviser discard region is invalid"))
-      outcome <- CardPlay.resolve(catalog, ready, e.playerId, e.adviserId,
-        SearchPlacement.Discard, CardPlay.Origin.FacedownAdviser)
-    } yield Ready(outcome.ready)
-
-    case e: FacedownAdviserPlayed => for {
-      ready <- validateAct(catalog, state, e.playerId)
-      _ <- SearchPowers.validateModifierSelection(catalog, ready, e.playerId)
-      expected <- CardPlay.resolve(catalog, ready, e.playerId, e.adviserId,
-        e.placement, CardPlay.Origin.FacedownAdviser)
-      _ <- Either.cond((e.favorGained, e.discardedWorld, e.discardedEdifices) ==
-        (expected.favorGained, expected.discardedWorld, expected.discardedEdifices), (),
-        MinorActionOutcomeMismatch("recorded adviser placement facts are invalid"))
-    } yield Ready(expected.ready)
-
     case e: SiteRelicsPeeked => for {
       ready <- validateAct(catalog, state, e.playerId)
       at <- actorAtSite(ready, e.playerId)
@@ -227,12 +167,8 @@ object MinorActions {
       operations: Vector[CoreOperation]
   ): Either[OathViolation, ReadyGame] =
     OperationPipeline.run(ready, operations, operationAllowlist)(Right(_))
-
-  private def nextRegion(region: Region): Region = region match {
-    case Region.Cradle => Region.Provinces
-    case Region.Provinces => Region.Hinterland
-    case Region.Hinterland => Region.Cradle
-  }
+      .flatMap(_.expectEffects(operations,
+        "Minor action effect differs from recorded outcome"))
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
       event: OathEvent): Either[OathViolation, OathTransition] =
@@ -240,8 +176,6 @@ object MinorActions {
       ActActionSelection(playerId(event))))
 
   private def playerId(event: OathEvent): PlayerId = event match {
-    case value: FacedownAdviserDiscarded => value.playerId
-    case value: FacedownAdviserPlayed => value.playerId
     case value: SiteRelicsPeeked => value.playerId
     case value: OwnedRelicRevealed => value.playerId
     case value: WarbandsMoved => value.playerId

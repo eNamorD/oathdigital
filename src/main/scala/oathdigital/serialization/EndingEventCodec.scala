@@ -1,8 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathEvent._
+import oathdigital.model.OathEvent._
 
 private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
   import GameEventWire._
@@ -12,10 +11,6 @@ private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
       case _: RoundEnded => RoundEndedType
       case _: WarExhaustionResolved => WarExhaustionResolvedType
       case _: BanditsRefilled => BanditsRefilledType
-      case _: OathkeeperChanged => OathkeeperChangedType
-      case _: OathkeeperRecipientChoiceStarted =>
-        OathkeeperRecipientChoiceStartedType
-      case _: OathkeeperRecipientChosen => OathkeeperRecipientChosenType
       case _: UsurperFlipped => UsurperFlippedType
       case _: UsurperVictory => UsurperVictoryType
       case _: VisionVictory => VisionVictoryType
@@ -34,17 +29,6 @@ private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
         sites.map { case (site, count) =>
           ujson.Obj("siteId" -> site.value, "count" -> count)
         }))
-      case OathkeeperChanged(holder) => ujson.Obj(
-        "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p => ujson.Str(p.value)))
-      case OathkeeperRecipientChoiceStarted(actor, decision, candidates) =>
-        ujson.Obj("actorPlayerId" -> actor.value,
-          "decisionId" -> decision.value,
-          "candidatePlayerIds" -> ujson.Arr.from(
-            candidates.map(p => ujson.Str(p.value))))
-      case OathkeeperRecipientChosen(actor, decision, recipient) =>
-        ujson.Obj("actorPlayerId" -> actor.value,
-          "decisionId" -> decision.value,
-          "recipientPlayerId" -> recipient.value)
       case UsurperFlipped(player) => ujson.Obj("playerId" -> player.value)
       case UsurperVictory(player) => ujson.Obj("playerId" -> player.value)
       case VisionVictory(player, vision) => ujson.Obj(
@@ -80,22 +64,6 @@ private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
             count <- safeIntField(value.obj, "count", s"$path.sites")
           } yield SiteId(value("siteId").str) -> count }
         } yield BanditsRefilled(sites)
-        case OathkeeperChangedType =>
-          payload("holderPlayerId") match {
-            case ujson.Null => Right(OathkeeperChanged(None))
-            case value => Right(OathkeeperChanged(Some(PlayerId(value.str))))
-          }
-        case OathkeeperRecipientChoiceStartedType =>
-          Right(OathkeeperRecipientChoiceStarted(
-            PlayerId(payload("actorPlayerId").str),
-            DecisionId(payload("decisionId").str),
-            payload("candidatePlayerIds").arr.toVector.map(value =>
-              PlayerId(value.str))))
-        case OathkeeperRecipientChosenType =>
-          Right(OathkeeperRecipientChosen(
-            PlayerId(payload("actorPlayerId").str),
-            DecisionId(payload("decisionId").str),
-            PlayerId(payload("recipientPlayerId").str)))
         case UsurperFlippedType =>
           Right(UsurperFlipped(PlayerId(payload("playerId").str)))
         case UsurperVictoryType =>

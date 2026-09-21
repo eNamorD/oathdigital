@@ -4,11 +4,10 @@ import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
 
 import oathdigital.catalog.CatalogHandlerInventory
-import oathdigital.gameplay.actions.CampaignRules
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.{ReviewedPowerCatalog, ReviewedPowerFacts,
   ReviewedPowerInspector}
-import oathdigital.gameplay.setup.{FirstGameSetupRules, FirstGameSetupFixture}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -27,8 +26,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("factual source index enumerates every source category deterministically") {
-    val OathState.Ready(ready) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val ready = FirstGameSetupFixture.initialReady
     val facts = RuleSourceIndex.enumerate(catalog, ready)
     val printed = facts.collectFirst {
       case value @ IndexedRuleSource(RuleSourceRef.Site(id), _, _, _)
@@ -44,8 +42,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("site relics retain site identity, orientation, and declared handlers") {
-    val OathState.Ready(ready) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val ready = FirstGameSetupFixture.initialReady
     val (siteId, relic) = ready.game.current.map.inPlay.iterator.flatMap(id =>
       ready.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
     val indexed = RuleSourceIndex.enumerate(catalog, ready).find(
@@ -64,8 +61,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("resolver treats a faceup relic at the actor pawn site as accessible") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val base = FirstGameSetupFixture.initialReady
     val actor = base.game.current.turn.activePlayer
     val (siteId, relic) = base.game.current.map.inPlay.iterator.flatMap(id =>
       base.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
@@ -73,10 +69,10 @@ class BackendArchitectureSuite extends munit.FunSuite {
       if (player.player == actor) player.copy(pawnSite = Some(siteId)) else player)
     val site = base.game.current.map.sites(siteId)
     val faceup = relic.copy(orientation = Orientation.FaceUp)
-    val changed = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val changed = base.updateCurrent(_.copy(
       players = players, map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(siteId, site.copy(relics =
-          faceup +: site.relics.tail))))))
+          faceup +: site.relics.tail)))))
     val source = RuleSourceRef.SiteRelic(siteId, relic.id)
     val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
       RuleSourceFace.FaceUp)
@@ -98,13 +94,11 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("both banners expose faces, holdings, and exact synthetic handlers") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
-    val current = base.game.current
-    val changed = base.copy(game = base.game.copy(current = current.copy(banners =
+    val base = FirstGameSetupFixture.initialReady
+    val changed = base.updateCurrent(_.copy(banners =
       BannersState(
         PeoplesFavorState(PeoplesFavorFace.GrandCouncil, Some(PlayerId("p1")), 3),
-        DarkestSecretState(DarkestSecretFace.Festival, Some(PlayerId("p2")), 2)))))
+        DarkestSecretState(DarkestSecretFace.Festival, Some(PlayerId("p2")), 2))))
     val banners = RuleSourceIndex.enumerate(catalog, changed).filter(
       _.source.isInstanceOf[RuleSourceRef.Banner])
     assertEquals(banners.map(_.source.stableKey),
@@ -120,12 +114,10 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("all six Foundations expose ordered identities, faces, and state") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
-    val altered = base.copy(game = base.game.copy(campaign =
-      base.game.campaign.copy(foundations = base.game.campaign.foundations.updated(
+    val base = FirstGameSetupFixture.initialReady
+    val altered = base.updateCampaign(_.copy(foundations = base.game.campaign.foundations.updated(
         FoundationNumber.III, FoundationState(FoundationFace.Altered,
-          Set(LegacyId("L23"), LegacyId("L01")))))))
+          Set(LegacyId("L23"), LegacyId("L01"))))))
     val foundations = RuleSourceIndex.enumerate(catalog, altered).filter(
       _.source.isInstanceOf[RuleSourceRef.Foundation])
     assertEquals(foundations.map(_.source.stableKey),
@@ -143,15 +135,13 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("legacy inventory remains declared and lineage-qualified") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val base = FirstGameSetupFixture.initialReady
     val lineageId = base.game.campaign.lineages.keys.toVector.sortBy(_.value).head
     val legacyDefinition = catalog.legacies.head
     val legacy = LegacyState(LegacyId(legacyDefinition.id.value), active = false)
     val lineage = base.game.campaign.lineages(lineageId)
-    val changed = base.copy(game = base.game.copy(campaign =
-      base.game.campaign.copy(lineages = base.game.campaign.lineages.updated(
-        lineageId, lineage.copy(legacies = Vector(legacy))))))
+    val changed = base.updateCampaign(_.copy(lineages = base.game.campaign.lineages.updated(
+        lineageId, lineage.copy(legacies = Vector(legacy)))))
     val indexed = RuleSourceIndex.enumerate(catalog, changed).find(
       _.source == RuleSourceRef.Legacy(lineageId, legacy.id)).get
     assertEquals(indexed.source.stableKey,
@@ -170,14 +160,10 @@ class BackendArchitectureSuite extends munit.FunSuite {
       "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2")
   }
 
-  test("Recover registry and Campaign relevance use exact power-ID data") {
+  test("Recover registry uses exact power-ID data") {
     val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
     assert(registry.lookup(PowerId("edifice.e17.intact")).nonEmpty)
     assert(registry.lookup(PowerId("denizen.future-recover-text")).isEmpty)
-    assert(CampaignRules.classify("relic.bag-of-siegeworks", catalog)
-      .isInstanceOf[CampaignRules.HandlerSupport.Blocked])
-    assertEquals(CampaignRules.classify("denizen.extra-provisions", catalog),
-      CampaignRules.HandlerSupport.IrrelevantToBanditConquest)
   }
 
   test("gameplay production sources never infer mechanics from rulesText") {
@@ -199,28 +185,176 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("Catacombs mechanics remain owned by Recover powers") {
+    // Post-cutover (Task 9b): the legacy `Recover.scala`/
+    // `RecoverPowerIntegration.scala` are gone, so this guard now asserts
+    // the property they used to stand in for directly -- the application
+    // layer, the rules-dispatch layer, and the Recover action module itself
+    // route every Recover command generically and never learn Catacombs'
+    // name -- while the walker's typed contribution is the one place that
+    // does.
+    val contribution = Paths.get("src/main/scala/oathdigital/gameplay/" +
+      "powers/recover/CatacombsContribution.scala")
+    assert(Files.exists(contribution), s"$contribution must exist")
     Vector(
-      Paths.get("src/main/scala/oathdigital/gameplay/actions/Recover.scala"),
-      Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala")
+      Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala"),
+      Paths.get("src/main/scala/oathdigital/gameplay/OathRules.scala"),
+      Paths.get("src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala")
     ).foreach { path =>
       assert(!Files.readString(path).toLowerCase.contains("catacombs"),
         s"$path must use the typed Recover power boundary")
     }
   }
 
+  test("a walker power imports no engine, and the engine never learns its " +
+      "name") {
+    // Two architectural boundaries keep the walker generic: a power sees only
+    // the `Operation`/contribution vocabulary (`gameplay.operations`,
+    // `gameplay.powerresolver`), never `gameplay.walker` itself; and
+    // symmetrically the engine (`gameplay/walker`, `gameplay/operations`)
+    // never names a specific power. Both are hard properties -- violating
+    // either means the engine and its powers have grown a direct dependency,
+    // which is the failure this whole seam exists to prevent.
+    //
+    // The spec's ≤50-line power-authoring bar is NOT asserted here. It is a
+    // design guideline, not a specification: a power that needs 55 lines to
+    // state its rule honestly should be allowed to, and the reviewer is a
+    // better judge of that than a line count. It was enforced mechanically
+    // until 2026-09-09, and the enforcement cost roughly a hundred lines of
+    // hand-rolled brace matching that had to know about comments, string
+    // literals and nesting -- machinery that silently missed a power declared
+    // inside a family object, and with it the engine-name check that actually
+    // matters. Deleting the size assertion removes the need to parse Scala
+    // here at all.
+    //
+    // Power names therefore come from a backward search: for each
+    // `extends ContributingPower` or `PhasePower`, the nearest preceding declaration
+    // identifier, with a trailing `Contribution` stripped. That works at any
+    // nesting depth without tracking braces. Limits: it reads text, so an
+    // `extends ContributingPower` inside a comment counts (the count
+    // assertion below turns that into a loud failure, not a silent miss); a
+    // trailing `Power` is deliberately NOT stripped, since a `TravelPower`
+    // class would strip to `Travel`, a word the engine says constantly, and a
+    // guard that fires falsely gets deleted rather than fixed; and the engine
+    // scan is a lowercase substring match, so rename a power that collides
+    // with unrelated engine text rather than loosening the scan.
+    val powersRoot = Paths.get("src/main/scala/oathdigital/gameplay/powers")
+    val declaresPower = "(?:extends|with)\\s+(?:ContributingPower|PhasePower)\\b".r
+    val declaration = "(?:class|object|trait)\\s+([A-Za-z0-9_]+)".r
+    val contributionStream = Files.walk(powersRoot)
+    val contributions =
+      try contributionStream.iterator.asScala.filter(path =>
+        path.toString.endsWith(".scala") &&
+          declaresPower.findFirstIn(Files.readString(path)).isDefined)
+        .toVector
+      finally contributionStream.close()
+    assert(contributions.nonEmpty,
+      s"expected at least one ContributingPower under $powersRoot")
+
+    val engineImporting = contributions.filter(path =>
+      Files.readString(path).contains("import oathdigital.gameplay.walker"))
+      .map(_.toString).sorted
+    assertEquals(engineImporting, Vector.empty,
+      "a power must import no part of the walker engine")
+
+    // One name per `extends ContributingPower`, or the file fails: a power
+    // whose name cannot be read is a power the engine scan below would skip.
+    val powerNames = contributions.flatMap { path =>
+      val source = Files.readString(path)
+      val declared = declaresPower.findAllMatchIn(source).toVector
+      val named = declared.flatMap(hit =>
+        declaration.findAllMatchIn(source.substring(0, hit.start)).toVector
+          .lastOption.map(_.group(1)))
+      assertEquals(named.size, declared.size, s"$path declares " +
+        s"${declared.size} ContributingPower(s) but only ${named.size} could " +
+        "be traced back to a declaration name; the engine-name scan would " +
+        "skip the rest")
+      named.map(_.stripSuffix("Contribution"))
+    }.distinct
+    assert(powerNames.forall(_.length >= 4), "a power name is too short to " +
+      s"scan for safely; rename the power. Names were $powerNames")
+
+    val engineRoots = Vector(
+      Paths.get("src/main/scala/oathdigital/gameplay/walker"),
+      Paths.get("src/main/scala/oathdigital/gameplay/operations"))
+    val offenders = engineRoots.flatMap { root =>
+      val stream = Files.walk(root)
+      try stream.iterator.asScala.filter(path =>
+        path.toString.endsWith(".scala")).flatMap { path =>
+        val source = Files.readString(path).toLowerCase
+        powerNames.filter(name => source.contains(name.toLowerCase))
+          .map(name => s"$path names power $name")
+      }.toVector
+      finally stream.close()
+    }.sorted
+    assertEquals(offenders, Vector.empty)
+  }
+
+  test("wire decoders read strings through the validating helpers") {
+    // Untrusted client JSON reaches the engine through `protocol`'s decoders,
+    // and the id types it feeds (`SiteId`, `DecisionId`, `RelicId`, ...)
+    // validate with a THROWING `require(value.trim.nonEmpty)`. Nothing today
+    // can trip that, because every decoded string goes through
+    // `CommandJsonSupport.string`/`strings`, which reject a blank with a
+    // typed `InvalidValue` first -- so the constructors' `require` is
+    // unreachable rather than merely unexercised.
+    //
+    // That safety is a property of the decoders, not of the id types, and it
+    // is one `value("id").str` away from being lost: the raw accessor throws
+    // on a non-string and yields "" for a blank without complaint, handing
+    // the mapper a value the constructor then rejects with an exception
+    // escaping as a 500 instead of a typed 400. This guard pins the property
+    // for all ~48 id constructions in `GameIntentMapper` at once, and for
+    // every one added later, rather than defensively parsing at each site.
+    //
+    // Limits worth knowing: it catches the raw accessor, which is the
+    // reachable footgun, not every conceivable bypass -- an inline
+    // `case ujson.Str(v) =>` without a blank guard would still slip past.
+    // And it says nothing about validation STRICTER than non-blank: `PowerId`
+    // carries a regex, so a well-formed non-blank string can still fail it,
+    // which is why that type ships a `fromValue` safe parse. Any future id
+    // validating beyond non-blank needs the same.
+    //
+    // Like this suite's other file-content guards, it scans text, so a `.str`
+    // written inside a comment trips it too -- reword the comment rather than
+    // loosening the pattern.
+    val protocolRoot = Paths.get("shared/src/main/scala/oathdigital/protocol")
+    val stream = Files.walk(protocolRoot)
+    val sources =
+      try stream.iterator.asScala
+        .filter(_.toString.endsWith(".scala")).toVector
+      finally stream.close()
+    assert(sources.nonEmpty, s"expected decoder sources under $protocolRoot")
+
+    val rawAccessor = """\.str\b""".r
+    val offenders = sources.filter(path =>
+      rawAccessor.findFirstIn(Files.readString(path)).isDefined)
+      .map(_.toString).sorted
+    assertEquals(offenders, Vector.empty,
+      "decode wire strings with CommandJsonSupport.string/strings, which " +
+        "reject blanks with a typed error, not the raw .str accessor")
+  }
+
   test("generic power operations are not independently replayable events") {
     val protocol = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/gameplay/model/GameEventProtocol.scala"))
+      "src/main/scala/oathdigital/model/GameEventProtocol.scala"))
     val aggregate = Files.readString(Paths.get(
       "src/main/scala/oathdigital/gameplay/OathRules.scala"))
     val codec = Files.readString(Paths.get(
       "src/main/scala/oathdigital/serialization/ActionEventCodec.scala"))
+    val walkerEvents = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala"))
     Vector("CostsPaid", "RelicPlacedAtSite").foreach { name =>
       assert(!protocol.contains(s"case class $name"))
       assert(!aggregate.contains(s"case event: $name"))
       assert(!codec.contains(s"case _: $name"))
+      assert(!walkerEvents.contains(s"case class $name"))
     }
-    assert(protocol.contains("case class CatacombsResolved"))
+    // Post-cutover (Task 9b): Catacombs no longer has its own
+    // `CatacombsResolved` case class in `GameEventProtocol.scala` -- it
+    // records through the walker's own aggregate event instead. The
+    // property this test guards (granular operations never become their own
+    // replayable event) now rests on `WalkerStepRecorded`.
+    assert(walkerEvents.contains("case class WalkerStepRecorded"))
   }
 
   test("individual power definitions use factories instead of handler subclasses") {
@@ -244,18 +378,33 @@ class BackendArchitectureSuite extends munit.FunSuite {
       assert(!source.contains(forbidden),
         s"RestPowers must leave '$forbidden' to typed handlers/integration")
     }
-    assert(Files.exists(Paths.get(
-      "src/main/scala/oathdigital/gameplay/powers/rest/RestPowerIntegration.scala")))
   }
 
   test("procedure power inventories use named Power objects, not raw ID tables") {
+    // Aimed at the legacy `Power` inventories (`ActionPowers`, `SearchPowers`,
+    // ...), where a collection literal meant an id table standing in for named
+    // power objects. A `ContributingPower` is not one of those: it declares
+    // `contributions: Map[PowerWindow, Vector[Contribution]]`, so the scan
+    // read an ordinary field of the walker seam as the smell it hunts. That
+    // misfire was already being paid for -- `TravelSitePowers.scala` spells
+    // its contribution map `Map.empty.updated(...)` for no reason but this
+    // guard -- and batch-1 Task 6 would have paid it again. Contribution
+    // files are therefore skipped by what they declare, not by filename.
     val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
-    val offenders = Files.walk(root).iterator.asScala.filter(path =>
-      path.getFileName.toString.endsWith("Powers.scala") && {
-        val text = Files.readString(path)
-        text.contains("Set(") || text.contains("Map(") ||
-          text.contains("handlerId match")
-      }).map(_.toString).toVector
+    val declaresContribution = "(?:extends|with)\\s+ContributingPower\\b".r
+    val scanned = Files.walk(root).iterator.asScala.filter(path =>
+      path.getFileName.toString.endsWith("Powers.scala") &&
+        declaresContribution.findFirstIn(Files.readString(path)).isEmpty)
+      .toVector
+    // The exemption narrows the guard; it must not empty it. A refactor that
+    // left nothing scanned would pass this test while checking nothing.
+    assert(scanned.size >= 5,
+      s"the inventory scan covers too few files to be meaningful: $scanned")
+    val offenders = scanned.filter { path =>
+      val text = Files.readString(path)
+      text.contains("Set(") || text.contains("Map(") ||
+        text.contains("handlerId match")
+    }.map(_.toString)
     assertEquals(offenders, Vector.empty)
   }
 

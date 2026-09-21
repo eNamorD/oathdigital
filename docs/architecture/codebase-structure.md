@@ -13,19 +13,22 @@ one JVM/Scala.js repository, not deployment units.
 ```text
 frontend -> shared protocol
 server -> application + shared protocol
-persistence/serialization -> application-owned ports + gameplay/model
+persistence/serialization -> application-owned ports + model
 application -> gameplay + catalog + model + shared projection DTOs
 gameplay -> catalog + model + engine
 catalog -> model
 model/engine -> no outer adapter packages
 ```
 
-- `oathdigital.model` owns immutable domain values and structural invariants.
+- `oathdigital.model` owns immutable domain values and structural invariants:
+  identities, cards, world and campaign state, first-game setup data,
+  `ReadyGame`/`OathState`, the `OathEvent` and `OathViolation` vocabularies,
+  the operation algebra (`CoreOperation`, `Location`, `Piece`), power windows,
+  and rule-source identities. It holds data only, never rules.
 - `oathdigital.catalog` owns typed, source-verified component definitions.
 - `oathdigital.engine` owns generic event evolution and replay machinery.
-- `oathdigital.gameplay` owns legality, procedures, events, and deterministic
-  evolution. `actions`, `phases`, `setup`, and `gameplay/model` group
-  cohesive behavior.
+- `oathdigital.gameplay` owns legality, procedures, and deterministic
+  evolution over the model's events and operations. `actions`, `phases`, and `setup` group cohesive behavior.
 - `oathdigital.application` owns orchestration and ports. It loads/replays,
   obtains server-owned random outcomes, appends events, authorizes scopes, maps
   intents, and builds redacted projections.
@@ -110,14 +113,14 @@ gameplay.
 
 Add shared DTO/codec fields only when the wire contract truly changes. Assemble
 world/board/card presentation in `GamePresentationProjector`, legal targets in
-`LegalActionProjector`, and pending procedures in
-`PendingProcedureProjector`. Keep one scope/redaction decision in
+`LegalActionProjector`, and the walker decision, its waiting notice and the phase
+in `PendingProjector`. Keep one scope/redaction decision in
 `GameProjector`. Update JVM and Scala.js round-trip tests together.
 
 ### Event
 
-Add the domain event in `gameplay/model`, evolution in its owning module, and
+Add the domain event in `model` (`GameEventProtocol.scala`), evolution in its owning module, and
 one explicit discriminator/payload case in the appropriate split event codec
-(`LifecycleEventCodec`, `ActionEventCodec`, `CampaignEventCodec`, or
+(`LifecycleEventCodec`, `ActionEventCodec`, or
 `EndingEventCodec`). `GameEventWire` owns the single current envelope.
 Update replay and malformed-wire tests; do not serialize Scala class names.

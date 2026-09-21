@@ -1,40 +1,80 @@
 package oathdigital.application
 
 import oathdigital.protocol.projection.{BoardTargetRefProjection,
-  SiteForcesProjection}
+  DecisionSectionProjection, SiteForcesProjection}
 
 import java.nio.file.Files
 
 import oathdigital.model._
-import oathdigital.gameplay.actions.{CampaignRules, RecoverRules, SearchRules}
+import oathdigital.gameplay.actions.RecoverRules
+import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, ModifyDicePool,
-  Move, Piece, PositionedLocation, Location}
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionPayload.{RecoverChoice,
-  RecoverChoicePayload, RecoverRelicPayload}
+import oathdigital.gameplay.actions.negotiation.NegotiationDeal
+import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer, ChooseManyAnswer, ChooseOneAnswer, PartitionAnswer, ProposeTerms}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent.{
+import oathdigital.application.ForgeWalkerFixture.{blankCampaignDice,
+  forgeReadyGame, mixedForgeCostCatalog}
+import oathdigital.model.OathEvent.{
   GamePawnPlaced,
   FirstGameStarted
 }
-import oathdigital.gameplay.OathViolation.{CatalogMismatch, WrongPlayer}
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.WakeResource
-import oathdigital.gameplay.ReadyGame
-import oathdigital.gameplay.{MajorActionKind, OathContinue, OathRules,
-  OrderedRuleInvocation, RuleSourceRef}
+import oathdigital.model.OathViolation.{CatalogMismatch, WrongPlayer}
+import oathdigital.model.OathState.Ready
+import oathdigital.gameplay.OathRules
 
 class GameApplicationServiceSuite extends munit.FunSuite {
   private val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
     _.id.value == "denizen.catacombs")).get.id.value)
+
+  test("withWorldDeckTop preserves two absent requested denizens of one suit") {
+    val (suit, absent) = catalog.denizens.groupBy(_.suit).iterator
+      .map { case (suit, definitions) => suit -> definitions
+        .map(definition => DenizenId(definition.id.value))
+        .filterNot(plan.denizenOrder.contains) }
+      .find(_._2.size >= 2).get
+    val (otherSuits, sameSuit) = plan.denizenOrder.partition(id =>
+      catalog.denizens.find(_.id.value == id.value).forall(_.suit != suit))
+    val base = plan.copy(denizenOrder = otherSuits ++ sameSuit)
+    val requested = absent.take(2).toVector
+    val changed = ParkedServiceFixture.withWorldDeckTop(base, requested)
+    val dealt = 6 + changed.participants.size * 3
+
+    assertEquals(changed.denizenOrder.slice(dealt, dealt + 2), requested)
+    assertEquals(changed.denizenOrder.distinct.size, changed.denizenOrder.size)
+    assert(requested.forall(changed.denizenOrder.contains))
+  }
+
+  test("beginRest through the service parks the off-turn League Treaty ruler " +
+      "and survives reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val (parked, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
+      service, repository, "game-league-treaty")
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load("game-league-treaty").toOption.flatten.get
+    assertEquals(reloaded.state, parked.state)
+    val OathContinue.AwaitingRestDecision(_, decision) = parked.continue: @unchecked
+    val decline = GameCommand.ResolveWalker(_: PlayerId, TreeDecision(
+      decision.value, ChooseOneAnswer(DecisionOptionRef.Button("decline"))))
+    assert(service.handle("game-league-treaty", parked.nextSequence,
+      decline(active)).isLeft)
+    val finished = service.handle("game-league-treaty", parked.nextSequence,
+      decline(ruler)).toOption.get
+    val Ready(after) = finished.state: @unchecked
+    assertEquals(after.game.current.turn.phase, Phase.Wake)
+    assertNotEquals(after.game.current.turn.activePlayer, active)
+  }
 
   private def catacombsPlan = {
     val recoverSite = catalog.sites.find(site => site.recoverDifficulty.nonEmpty &&
@@ -76,7 +116,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     }
   }
 
-  test("walker Recover persists every park and replays to legacy-equivalent state") {
+  test("walker Recover persists every park and replays to the same final state") {
     val recoverSite = catalog.sites.find(site =>
       site.recoverDifficulty.exists(difficulty => difficulty > 0 && difficulty <= 4) &&
         site.relicSlots > 0 &&
@@ -84,8 +124,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val recoverPlan = plan.copy(orderedSites = recoverSite +:
       plan.orderedSites.filterNot(_ == recoverSite))
     val actor = recoverPlan.firstPlayer
-    val faces: Vector[DieFace] = Vector(DefenseDieFace.TwoShields,
-      DefenseDieFace.Doubler)
 
     val walkerRepository = new InMemoryEventStreamRepository
     val walkerDice = new CountingRecoverDice
@@ -100,15 +138,15 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
     val Ready(atRoll) = started.state: @unchecked
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(atRoll.game.current.walkerAction, Some(ActionRef.Recover))
+    assertEquals(atRoll.game.current.walkerProcedure, Some(ActionRef.Recover))
     assert(atRoll.game.current.walkerPending.nonEmpty)
     assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.rollDecisionId)))
 
     walkerService.handle("walker-recover", started.nextSequence,
-      GameCommand.Travel(actor, recoverPlan.orderedSites(1))) match {
+      GameCommand.PeekSiteRelics(actor)) match {
       case Left(GameApplicationError.CommandRejected(
-          _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => ()
+          _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
       case other => fail(s"legacy command should be blocked by walker park: $other")
     }
     assertEquals(walkerService.load("walker-recover").toOption.flatten.get
@@ -119,7 +157,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(reloadedAtRoll.state, started.state)
     val rolled = walkerService.handle("walker-recover",
       reloadedAtRoll.nextSequence,
-      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     assertEquals(walkerDice.calls, 1)
     val Ready(atRelic) = rolled.state: @unchecked
     assert(rolled.events.last.isInstanceOf[WalkerParked])
@@ -128,39 +166,28 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val relic = atRelic.game.current.map.sites(recoverSite).relics.head.id
 
     val finished = walkerService.handle("walker-recover", rolled.nextSequence,
-        GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic)))).toOption.get
+        GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic))))).toOption.get
     val Ready(afterWalker) = finished.state: @unchecked
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
     assert(afterWalker.game.current.walkerPending.isEmpty)
-    assert(afterWalker.game.current.walkerAction.isEmpty)
+    assert(afterWalker.game.current.walkerProcedure.isEmpty)
     assertEquals(afterWalker.game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
     assertEquals(afterWalker.game.current.rollOutcomes,
       Map.empty[PoolKey, RollOutcome])
 
-    val legacyRepository = new InMemoryEventStreamRepository
-    val legacyService = new GameApplicationService(catalog, legacyRepository,
-      defenseDicePort = new DefenseDicePort {
-        def rollTwo(): Vector[DefenseDieFace] = faces.collect {
-          case face: DefenseDieFace => face
-        }
-      })
-    val legacySetup = execute(legacyService, "legacy-recover",
-      recoverPlan.orderedSites, recoverPlan)
-    val legacyAct = legacyService.handle("legacy-recover",
-      legacySetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
-    val legacyRolled = legacyService.handle("legacy-recover",
-      legacyAct.nextSequence, GameCommand.BeginRecover(actor)).toOption.get
-    val Ready(legacyAtRelic) = legacyRolled.state: @unchecked
-    val legacyPending = legacyAtRelic.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Recover]
-    val legacyFinished = legacyService.handle("legacy-recover",
-      legacyRolled.nextSequence, GameCommand.ResolveCardDecision(actor,
-        legacyPending.decision,
-        CardDecisionResolution.TakeFacedownRelic(relic))).toOption.get
-    assertEquals(finished.state, legacyFinished.state)
+    // The walker is now the only Recover path, so the final state is
+    // asserted directly rather than against a legacy run: the relic moves
+    // facedown into the actor's play area and off the site.
+    val actorState = afterWalker.game.current.players.find(
+      _.player == actor).get
+    assertEquals(actorState.relics.map(r => r.id -> r.orientation),
+      Vector(relic -> Orientation.FaceDown))
+    assertEquals(afterWalker.game.current.map.sites(recoverSite).relics.map(_.id),
+      atRelic.game.current.map.sites(recoverSite).relics.map(_.id)
+        .filterNot(_ == relic))
 
     val replayed = walkerService.load("walker-recover").toOption.flatten.get
     assertEquals(replayed.state, finished.state)
@@ -169,18 +196,63 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val recordedOps = (started.events ++ rolled.events ++ finished.events)
       .collect { case step: WalkerStepRecorded => step.ops }.flatten
     assertEquals(recordedOps, Vector[CoreOperation](
-      ModifyDicePool(RecoverProcedure.recoverPool, 2),
-      AdjustSupply(actor, -1),
+      ModifyDicePool(RecoverProcedure.recoverPool, 2,
+        window = Some(PowerWindow.RecoverBeforeFirstRoll)),
+      SpendSupply(actor, 1),
       Move(Piece.Card(relic),
         PositionedLocation(Location.Site(recoverSite)),
         PositionedLocation(Location.PlayArea(actor)),
         resultingOrientation = Some(Orientation.FaceDown))))
     assertEquals((started.events ++ rolled.events ++ finished.events).collect {
-      case WalkerStepRecorded(_, _, DeltaRecorded(semantic), _) => semantic
+      case WalkerStepRecorded(_, DeltaRecorded(semantic), _, _) => semantic
     }, Vector(
       DicePoolModified(RecoverProcedure.recoverPool, 2),
       SupplySpent(actor, 1),
       RelicAcquired(actor, relic, recoverSite)))
+  }
+
+  test("StartWalker rejects an unknown power id in modifiers, appending no " +
+      "events, while empty modifiers still starts Recover exactly as today") {
+    val recoverSite = catalog.sites.find(site =>
+      site.recoverDifficulty.exists(difficulty => difficulty > 0 &&
+        difficulty <= 4) && site.relicSlots > 0 &&
+        !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val recoverPlan = plan.copy(orderedSites = recoverSite +:
+      plan.orderedSites.filterNot(_ == recoverSite))
+    val actor = recoverPlan.firstPlayer
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      defenseDicePort = new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
+        DefenseDieFace.Doubler)))
+    val setup = execute(service, "walker-unknown-modifier",
+      recoverPlan.orderedSites, recoverPlan)
+    val act = service.handle("walker-unknown-modifier", setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+
+    // No `ContributingPower` is registered yet (Task 5 ports the first one),
+    // so any non-empty `modifiers` names an id the catalog cannot recognize:
+    // rejected before the walk ever starts, with nothing appended.
+    service.handle("walker-unknown-modifier", act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor,
+        Vector(PowerId("power.does-not-exist"))))) match {
+      case Left(GameApplicationError.CommandRejected(
+          _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
+      case other => fail(s"expected an InvalidEventOrder rejection, got $other")
+    }
+    assertEquals(service.load("walker-unknown-modifier").toOption.flatten.get
+      .nextSequence, act.nextSequence,
+      "the rejected StartWalker must append no events")
+
+    // The exact same command with an empty `modifiers` (every walker Recover
+    // before this task) starts and parks exactly as the suite's other walker
+    // tests already pin.
+    val started = service.handle("walker-unknown-modifier", act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
+      .toOption.get
+    assert(started.events.nonEmpty)
+    assert(started.events.last.isInstanceOf[WalkerParked])
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
   }
 
   test("walker Continue answer and repeated Roll park survive reload") {
@@ -204,7 +276,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.rollDecisionId)))
     val failed = service.handle("walker-continue", started.nextSequence,
-      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     // A failed roll parks the Continue/Stop Decide, not the Roll itself: same
     // AwaitingRecoverRoll continuation shape as the Roll park above, but a
     // different decision id — proving the mapping dispatches on the parked
@@ -212,23 +284,24 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(failed.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.choiceDecisionId)))
     val continued = service.handle("walker-continue", failed.nextSequence,
-      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Continue)))).toOption.get
+      GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.choiceDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Button("continue"))))).toOption.get
     assertEquals(continued.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.rollDecisionId)))
     val Ready(ready) = continued.state: @unchecked
     assertEquals(ready.game.current.walkerPending.toVector.flatMap(_.answered),
       Vector(Answered(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Continue))))
-    assertEquals(ready.game.current.walkerAction, Some(ActionRef.Recover))
+        ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)))
+    assertEquals(ready.game.current.walkerProcedure, Some(ActionRef.Recover))
     assertEquals(new GameApplicationService(catalog, repository)
       .load("walker-continue").toOption.flatten.get.state, continued.state)
     assert(repository.load("walker-continue").toOption.flatten.get.records
-      .exists(record => record.contains("\"action\":\"recover\"") &&
+      .exists(record => record.contains(
+        "\"procedure\":{\"family\":\"action\",\"key\":\"recover\"}") &&
         record.contains("\"answered\"")))
 
     val failedAgain = service.handle("walker-continue", continued.nextSequence,
-      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     assertEquals(dice.calls, 2)
     assertEquals(failedAgain.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.choiceDecisionId)))
@@ -243,18 +316,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val rules = new OathRules(catalog)
     Vector(Vector("not-a-node"), Vector("999999999999999999999")).foreach {
       path =>
-        val malformed = ready.copy(game = ready.game.copy(current =
-          ready.game.current.copy(walkerPending = ready.game.current.walkerPending
-            .map(_.copy(at = path)))))
-        val rejected = rules.rollWalkerPrepared(Ready(malformed),
+        val malformed = ready.updateCurrent(_.copy(walkerPending = ready.game.current.walkerPending
+            .map(_.copy(at = path))))
+        val rejected = rules.rollWalkerPrepared(Ready(malformed), actor,
           RecoverProcedure.recoverPool)(_ => Right(
             Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))
         assert(rejected.left.toOption.exists(
-          _.isInstanceOf[oathdigital.gameplay.OathViolation.InvalidEventOrder]))
+          _.isInstanceOf[oathdigital.model.OathViolation.InvalidEventOrder]))
     }
   }
 
-  test("walker Recover matches legacy and reload when a later Doubler " +
+  test("walker Recover accumulates and reloads when a later Doubler " +
       "multiplies shields from an earlier roll") {
     val saltFlats = SiteId("site:salt-flats")
     assertEquals(RecoverRules.difficulty(catalog, saltFlats), Some(2))
@@ -283,7 +355,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .toOption.get
     val walkerFirst = walkerService.handle("walker-cross-roll-doubler",
       walkerStarted.nextSequence,
-      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     val Ready(walkerAfterFirst) = walkerFirst.state: @unchecked
     assertEquals(walkerAfterFirst.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 1)
@@ -298,11 +370,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
 
     val walkerContinued = walkerService.handle("walker-cross-roll-doubler",
       walkerFirstReloaded.nextSequence,
-      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Continue)))).toOption.get
+      GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.choiceDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Button("continue"))))).toOption.get
     val walkerSecond = walkerService.handle("walker-cross-roll-doubler",
       walkerContinued.nextSequence,
-      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     val Ready(walkerAfterSecond) = walkerSecond.state: @unchecked
     assertEquals(walkerAfterSecond.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 2)
@@ -315,58 +387,23 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(walkerAfterSecondReload.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 2)
 
-    val legacyRepository = new InMemoryEventStreamRepository
-    val legacyDice = new ScriptedRecoverDice(rolls)
-    val legacyService = new GameApplicationService(catalog, legacyRepository,
-      defenseDicePort = legacyDice)
-    val legacySetup = execute(legacyService, "legacy-cross-roll-doubler",
-      recoverPlan.orderedSites, recoverPlan)
-    val legacyAct = legacyService.handle("legacy-cross-roll-doubler",
-      legacySetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
-    val legacyFirst = legacyService.handle("legacy-cross-roll-doubler",
-      legacyAct.nextSequence, GameCommand.BeginRecover(actor)).toOption.get
-    val Ready(legacyAfterFirst) = legacyFirst.state: @unchecked
-    val legacyFirstPending = legacyAfterFirst.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Recover]
-    assertEquals(RecoverRules.score(legacyFirstPending.rolls.flatten), 1)
-    assertEquals(legacyFirstPending.successful, false)
-    assertEquals(legacyFirst.continue, OathContinue.AwaitingRecoverRoll(actor,
-      legacyFirstPending.decision))
-    val legacyFirstReloaded = new GameApplicationService(catalog,
-      legacyRepository).load("legacy-cross-roll-doubler").toOption.flatten.get
-    assertEquals(legacyFirstReloaded.state, legacyFirst.state)
-
-    val legacySecond = legacyService.handle("legacy-cross-roll-doubler",
-      legacyFirstReloaded.nextSequence,
-      GameCommand.AddRecoverDice(actor, legacyFirstPending.decision))
-      .toOption.get
-    val Ready(legacyAfterSecond) = legacySecond.state: @unchecked
-    val legacySecondPending = legacyAfterSecond.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Recover]
-    assertEquals(RecoverRules.score(legacySecondPending.rolls.flatten), 2)
-    assertEquals(legacySecondPending.successful, true)
-    assertEquals(legacySecond.continue, OathContinue.AwaitingRecoverRelic(actor,
-      legacySecondPending.decision))
-    val legacySecondReloaded = new GameApplicationService(catalog,
-      legacyRepository).load("legacy-cross-roll-doubler").toOption.flatten.get
-    assertEquals(legacySecondReloaded.state, legacySecond.state)
-
+    // The walker is now the only Recover path: finish the walk and assert
+    // its own final state directly rather than against a legacy run.
     val walkerRelic = walkerAfterSecond.game.current.map.sites(saltFlats)
       .relics.head.id
-    val legacyRelic = legacyAfterSecond.game.current.map.sites(saltFlats)
-      .relics.head.id
-    assertEquals(walkerRelic, legacyRelic)
     val walkerFinished = walkerService.handle("walker-cross-roll-doubler",
       walkerSecondReloaded.nextSequence,
-      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.relicDecisionId,
-        RecoverRelicPayload(walkerRelic)))).toOption.get
-    val legacyFinished = legacyService.handle("legacy-cross-roll-doubler",
-      legacySecondReloaded.nextSequence,
-      GameCommand.ResolveCardDecision(actor, legacySecondPending.decision,
-        CardDecisionResolution.TakeFacedownRelic(legacyRelic))).toOption.get
-    assertEquals(walkerFinished.state, legacyFinished.state)
+      GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Relic(walkerRelic))))).toOption.get
+    val Ready(walkerFinal) = walkerFinished.state: @unchecked
+    val actorState = walkerFinal.game.current.players.find(
+      _.player == actor).get
+    assertEquals(actorState.relics.map(r => r.id -> r.orientation),
+      Vector(walkerRelic -> Orientation.FaceDown))
+    assertEquals(walkerFinal.game.current.map.sites(saltFlats).relics.map(_.id),
+      walkerAfterSecond.game.current.map.sites(saltFlats).relics.map(_.id)
+        .filterNot(_ == walkerRelic))
     assertEquals(walkerDice.calls, 2)
-    assertEquals(legacyDice.calls, 2)
   }
 
   test("RollWalker with a pool key that does not match the parked pool " +
@@ -396,100 +433,168 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .toOption.get
 
     val rejected = service.handle("walker-pool-mismatch", started.nextSequence,
-      GameCommand.RollWalker(PoolKey("not-the-parked-pool")))
+      GameCommand.RollWalker(actor, PoolKey("not-the-parked-pool")))
     assert(rejected match {
       case Left(GameApplicationError.CommandRejected(
-          _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => true
+          _: oathdigital.model.OathViolation.InvalidEventOrder)) => true
       case _ => false
     }, s"expected InvalidEventOrder, got $rejected")
     assertEquals(dice.calls, 0)
   }
 
   private def prepareCatacombs(service: GameApplicationService, gameId: String,
-      setupPlan: oathdigital.gameplay.setup.FirstGameSetupPlan)
+      setupPlan: oathdigital.model.FirstGameSetupPlan)
       : (GameAccepted, PlayerId, OrderedRuleInvocation) = {
     val setup = execute(service, gameId, setupPlan.orderedSites.take(3), setupPlan)
     val Ready(ready) = setup.state: @unchecked
     val actor = ready.game.current.turn.activePlayer
     val act = service.handle(gameId, setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
-    val recovered = service.handle(gameId, act.nextSequence,
-      GameCommand.BeginRecover(actor)).toOption.get
-    val Ready(recoverReady) = recovered.state: @unchecked
-    val pending = recoverReady.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Recover]
-    val relic = recoverReady.game.current.map.sites(pending.site).relics.head.id
-    val emptied = service.handle(gameId, recovered.nextSequence,
-      GameCommand.ResolveCardDecision(actor, pending.decision,
-        CardDecisionResolution.TakeFacedownRelic(relic))).toOption.get
-    val played = service.handle(gameId, emptied.nextSequence,
-      GameCommand.ResolveFacedownAdviser(actor, catacombsId,
-        Some(SearchPlacement.Site(None)))).toOption.get
+    // Runs one full Recover through the walker -- the only path left -- to
+    // put a relic in `actor`'s hand, purely as setup for playing Catacombs
+    // as a facedown adviser below; the specific relic recovered is
+    // irrelevant to what this helper hands back.
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
+      .toOption.get
+    val rolled = service.handle(gameId, started.nextSequence,
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
+    val Ready(atRelic) = rolled.state: @unchecked
+    val siteId = atRelic.game.current.players.find(_.player == actor).get
+      .pawnSite.get
+    val relic = atRelic.game.current.map.sites(siteId).relics.head.id
+    val emptied = service.handle(gameId, rolled.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Relic(relic))))).toOption.get
+    val selecting = service.handle(gameId, emptied.nextSequence,
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty,
+          Vector(DecisionOptionRef.Denizen(catacombsId))))).toOption.get
+    val played = service.handle(gameId, selecting.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.denizen.${catacombsId.value}",
+        ChooseOneAnswer(DecisionOptionRef.Button("site"))))).toOption.get
     val Ready(atCatacombs) = played.state: @unchecked
     val site = atCatacombs.game.current.players.find(_.player == actor).get.pawnSite.get
     (played, actor, OrderedRuleInvocation(
       RuleSourceRef.SiteCard(site, catacombsId), "denizen.catacombs"))
   }
 
-  test("Catacombs preview revalidates and starts ordinary Recover authoritatively") {
+  test("StartWalker drives Catacombs through the full persisted path: its " +
+      "recorded ops encode, append and replay (Task 9b prerequisite)") {
+    // The only end-to-end way to use Catacombs once Task 9b deletes the
+    // legacy object. `service.handle` is the whole path -- rules, event
+    // encoding, append, replay -- so it is the layer that pins the gap the
+    // rules-only assertion above cannot see: Catacombs records a `Move` out
+    // of `Location.Deck(CardDeck.Relic)` and a `PayCost` at
+    // `Location.OnCard`, none of which the walker codec used to encode.
     val repository = new InMemoryEventStreamRepository
     val dice = new CountingRecoverDice
-    var relicPrepares = 0
-    val relics = new RelicDrawPort {
-      def prepare(ready: ReadyGame) = {
-        relicPrepares += 1
-        ready.game.current.commonCards.relicDeck.headOption.toRight(
-          oathdigital.gameplay.OathViolation.RecoverUnavailable("empty relic deck"))
-      }
-    }
     val service = new GameApplicationService(catalog, repository,
-      relicDrawPort = relics, defenseDicePort = dice)
-    val gameId = "catacombs-application"
-    val (prepared, actor, invocation) = prepareCatacombs(service, gameId,
-      catacombsPlan)
-    val before = repository.load(gameId).toOption.flatten.get.records
-    val preview = service.preview(gameId, prepared.nextSequence, actor,
-      MajorActionKind.Recover, Vector.empty).toOption.get
-    assertEquals(preview.options, Vector(invocation))
-    assert(service.preview(gameId, prepared.nextSequence - 1, actor,
-      MajorActionKind.Recover, Vector.empty).isLeft)
-    assert(service.handle(gameId, prepared.nextSequence - 1,
-      GameCommand.WithModifiers(GameCommand.BeginRecover(actor),
-        Vector(invocation))).isLeft)
-    val forged = invocation.copy(source = RuleSourceRef.SiteCard(
-      invocation.source.asInstanceOf[RuleSourceRef.SiteCard].siteId,
-      DenizenId("forged")))
-    assert(service.handle(gameId, prepared.nextSequence,
-      GameCommand.WithModifiers(GameCommand.BeginRecover(actor), Vector(forged))).isLeft)
-    assertEquals(repository.load(gameId).toOption.flatten.get.records, before)
-    assertEquals(dice.calls, 1)
-    assertEquals(relicPrepares, 0)
+      defenseDicePort = dice)
+    val gameId = "catacombs-walker-persisted"
+    val (prepared, actor, _) = prepareCatacombs(service, gameId, catacombsPlan)
+    val Ready(before) = prepared.state: @unchecked
+    val beforePlayer = before.game.current.players.find(_.player == actor).get
+    val siteId = beforePlayer.pawnSite.get
+    val topRelic = before.game.current.commonCards.relicDeck.head
 
-    val Ready(prior) = prepared.state: @unchecked
-    val priorPlayer = prior.game.current.players.find(_.player == actor).get
-    val top = prior.game.current.commonCards.relicDeck.head
     val started = service.handle(gameId, prepared.nextSequence,
-      GameCommand.WithModifiers(GameCommand.BeginRecover(actor), Vector(invocation)))
-      .toOption.get
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor,
+        Vector(PowerId("denizen.catacombs"))))) match {
+      case Right(accepted) => accepted
+      case Left(error) =>
+        fail(s"StartWalker with Catacombs must persist, got $error")
+    }
+
+    // Catacombs' own batch, verbatim, survived encoding: the relic move off
+    // the top of the relic deck and the 1-secret payment onto the card.
+    assertEquals(started.events.collect {
+      case step: WalkerStepRecorded => step
+    }.flatMap(_.ops).take(2), Vector[CoreOperation](
+      Move(Piece.Card(topRelic),
+        PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+        PositionedLocation(Location.Site(siteId)),
+        resultingOrientation = Some(Orientation.FaceDown)),
+      PayCost(actor, Location.OnCard(catacombsId), Cost(secret = 1),
+        matchingBank = catalog.suitOf(catacombsId))))
+    assert(started.events.collect { case step: WalkerStepRecorded =>
+      step.contributions }.contains(Vector(PowerId("denizen.catacombs"))),
+      "the recorded step must name the contribution that produced it")
+
     val Ready(after) = started.state: @unchecked
-    assertEquals(started.events.take(2).map(_.getClass.getSimpleName),
-      Vector("CatacombsResolved", "RecoverRolled"))
-    val siteId = invocation.source.asInstanceOf[RuleSourceRef.SiteCard].siteId
-    val player = after.game.current.players.find(_.player == actor).get
-    assertEquals(player.board.faceUpSecrets, priorPlayer.board.faceUpSecrets - 1)
-    assertEquals(player.board.supply.supply, priorPlayer.board.supply.supply - 1)
+    val afterPlayer = after.game.current.players.find(_.player == actor).get
     assertEquals(after.game.current.commonCards.relicDeck,
-      prior.game.current.commonCards.relicDeck.tail)
-    assertEquals(after.game.current.map.sites(siteId).relics.map(r =>
-      r.id -> r.orientation), Vector(top -> Orientation.FaceDown))
-    assert(after.game.current.pending.exists(_.isInstanceOf[PendingProcedure.Recover]))
-    assertEquals(dice.calls, 2)
-    assertEquals(relicPrepares, 1)
+      before.game.current.commonCards.relicDeck.tail)
+    assertEquals(after.game.current.map.sites(siteId).relics.map(relic =>
+      relic.id -> relic.orientation), Vector(topRelic -> Orientation.FaceDown))
+    assertEquals(afterPlayer.board.faceUpSecrets,
+      beforePlayer.board.faceUpSecrets - 1)
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
+
+    // Replay from the journal alone reproduces the same state: the ops did
+    // not merely encode, they decode back to the operations that built it.
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(reloaded.state, started.state)
+    assertEquals(reloaded.nextSequence, started.nextSequence)
+
+    // And the walk still finishes on the reloaded stream.
+    val rolled = service.handle(gameId, reloaded.nextSequence,
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
+    val Ready(atRelic) = rolled.state: @unchecked
+    val recovered = atRelic.game.current.map.sites(siteId).relics.head.id
+    val finished = service.handle(gameId, rolled.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Relic(recovered))))).toOption.get
+    assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    assertEquals(new GameApplicationService(catalog, repository).load(gameId)
+      .toOption.flatten.get.state, finished.state)
   }
+
+  test("preview offers the walker Catacombs contribution, and " +
+      "OathRules.startWalker accepts exactly the offered id (Task 9a)") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      defenseDicePort = new CountingRecoverDice)
+    val gameId = "catacombs-walker-preview"
+    val (prepared, actor, _) = prepareCatacombs(service, gameId, catacombsPlan)
+    val preview = service.preview(gameId, prepared.nextSequence, actor,
+      ActionKind.Recover, Vector.empty).toOption.get
+    val offeredIds = preview.options.map(v => PowerId(v.handlerId))
+    assertEquals(offeredIds, Vector(PowerId("denizen.catacombs")))
+
+    // The property that matters: the id the preview just offered is exactly
+    // the id `OathRules.startWalker` will accept -- not merely "some id
+    // that happens to work". A defect here (offered-but-rejected, or
+    // accepted-but-never-offered) is precisely what Task 9a exists to
+    // prevent. Asserted directly against `OathRules` because that is the
+    // layer owning `validateModifiers`, the accepting predicate; the
+    // persisted path the preview actually feeds is covered separately by
+    // "StartWalker drives Catacombs through the full persisted path" above.
+    // (That test exists because this rules-only assertion once hid a real
+    // defect: `WalkerEventCodec` could not encode the `Location.Deck` in
+    // Catacombs' relic move, so `StartWalker` passed here and failed at
+    // append. The codec is now total over `Location`.)
+    val rules = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    val started = rules.startWalker(prepared.state, ActionRef.Recover, actor,
+      offeredIds)
+    assert(started.isRight,
+      s"expected StartWalker to accept the previewed id, got $started")
+
+    // A legacy action's preview is untouched: still resolved through
+    // `PowerRuntime`, not the walker catalog.
+    val travelPreview = service.preview(gameId, prepared.nextSequence, actor,
+      ActionKind.Travel, Vector.empty)
+    assert(travelPreview.isRight)
+  }
+
   test("all-Exile powered game persists and replays through round-eight victory") {
     val repository = new InMemoryEventStreamRepository
     val whenPlayedPower = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.dazzle")).get.id.value)
+      _.handlers.contains("denizen.revelation")).get.id.value)
     def place(order: Vector[DenizenId], index: Int, id: DenizenId) = {
       val current = order.indexWhere(_.value == id.value)
       if (current < 0) order.updated(index, id)
@@ -505,7 +610,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val poweredPlan = plan.copy(denizenOrder = poweredOrder,
       worldDeckOrder = poweredWorldDeck)
     var service = new GameApplicationService(catalog, repository,
-      warExhaustionRandomPort = new oathdigital.gameplay.phases.WarExhaustionRandomPort {
+      warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
         def choose(candidates: Vector[PlayerId]) = candidates.head
       })
     var accepted = execute(service, "powered-playability", setupPlan = poweredPlan)
@@ -526,16 +631,22 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         val adviser = act.game.current.players.find(_.player == actor).get.advisers.head.id
           .asInstanceOf[WorldCardId]
         accepted = service.handle("powered-playability", accepted.nextSequence,
-          GameCommand.ResolveFacedownAdviser(actor, adviser,
-            Some(SearchPlacement.Adviser(Orientation.FaceUp, None)))).toOption.get
+          GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+            StartPayload(actor, Vector.empty, Vector(adviser match {
+              case id: DenizenId => DecisionOptionRef.Denizen(id)
+              case id: VisionId => DecisionOptionRef.Vision(id)
+            })))).toOption.get
+        accepted = service.handle("powered-playability", accepted.nextSequence,
+          GameCommand.ResolveWalker(actor, TreeDecision(
+            s"cardplay.place.${adviser.kind}.${adviser.value}",
+            ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup")))))
+          .toOption.get
         played += actor
       }
       accepted = service.handle("powered-playability", accepted.nextSequence,
         GameCommand.BeginRest(actor)).toOption.get
-      accepted = service.handle("powered-playability", accepted.nextSequence,
-        GameCommand.FinishRest(actor)).toOption.get
       service = new GameApplicationService(catalog, repository,
-        warExhaustionRandomPort = new oathdigital.gameplay.phases.WarExhaustionRandomPort {
+        warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
           def choose(candidates: Vector[PlayerId]) = candidates.head
         })
       val reopened = service.load("powered-playability").toOption.flatten.get
@@ -552,7 +663,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       assertEquals(view.phase, "game-over")
       assertEquals(view.legalControls, Vector.empty)
       assert(!view.actionSelectionOpen)
-      assert(!view.negotiationWaiting)
       assertEquals(view.oathkeeper.flatMap(_.winnerPlayerId),
         finished.game.current.result.map(_.winner.value))
       assert(view.world.flatMap(_.sites).nonEmpty)
@@ -571,24 +681,27 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.EndWake(actor)).toOption.get
     val before = repository.load("game-preview").toOption.flatten.get.records
     val preview = service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.gameplay.MajorActionKind.Travel, Vector.empty).toOption.get
+      oathdigital.model.ActionKind.Travel, Vector.empty).toOption.get
     assertEquals(preview.loaded.nextSequence, act.nextSequence)
     assertEquals(repository.load("game-preview").toOption.flatten.get.records, before)
     assert(service.preview("game-preview", act.nextSequence - 1, actor,
-      oathdigital.gameplay.MajorActionKind.Travel, Vector.empty).left.toOption
+      oathdigital.model.ActionKind.Travel, Vector.empty).left.toOption
       .exists(_.isInstanceOf[GameApplicationError.StaleClientPosition]))
-    val forged = oathdigital.gameplay.OrderedRuleInvocation(
-      oathdigital.gameplay.RuleSourceRef.GameRule("forged"), "unknown")
+    val forged = oathdigital.model.OrderedRuleInvocation(
+      oathdigital.model.RuleSourceRef.GameRule("forged"), "unknown")
     assert(service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.gameplay.MajorActionKind.Travel, Vector(forged)).isLeft)
+      oathdigital.model.ActionKind.Travel, Vector(forged)).isLeft)
     val adviser = ready.game.current.players.find(_.player == actor).get.advisers.head.id
       .asInstanceOf[WorldCardId]
     assert(service.handle("game-preview", act.nextSequence,
-      GameCommand.WithModifiers(GameCommand.ResolveFacedownAdviser(actor, adviser,
-        Some(SearchPlacement.Adviser(Orientation.FaceUp, None))),
-        Vector(forged))).isLeft)
+      GameCommand.WithModifiers(GameCommand.StartWalker(
+        ActionRef.PlayFacedownAdviser, StartPayload(actor, Vector.empty,
+          Vector(adviser match {
+            case id: DenizenId => DecisionOptionRef.Denizen(id)
+            case id: VisionId => DecisionOptionRef.Vision(id)
+          }))), Vector(forged))).isLeft)
     val challenge = service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.gameplay.MajorActionKind.Challenge, Vector.empty).toOption.get
+      oathdigital.model.ActionKind.Challenge, Vector.empty).toOption.get
     assertEquals(challenge.options, Vector.empty)
     assertEquals(challenge.ignored, Vector.empty)
   }
@@ -602,11 +715,23 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .asInstanceOf[WorldCardId]
     val act = service.handle("game-minor-replay", setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
-    val discarded = service.handle("game-minor-replay", act.nextSequence,
-      GameCommand.ResolveFacedownAdviser(actor, adviser, None)).toOption.get
+    val started = service.handle("game-minor-replay", act.nextSequence,
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty, Vector(adviser match {
+          case id: DenizenId => DecisionOptionRef.Denizen(id)
+          case id: VisionId => DecisionOptionRef.Vision(id)
+        })))).toOption.get
+    val discarded = service.handle("game-minor-replay", started.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.${adviser.kind}.${adviser.value}",
+        ChooseOneAnswer(DecisionOptionRef.Button("discard"))))).toOption.get
     val beforeRetry = repository.load("game-minor-replay").toOption.flatten.get.records
     assert(service.handle("game-minor-replay", discarded.nextSequence,
-      GameCommand.ResolveFacedownAdviser(actor, adviser, None)).isLeft)
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty, Vector(adviser match {
+          case id: DenizenId => DecisionOptionRef.Denizen(id)
+          case id: VisionId => DecisionOptionRef.Vision(id)
+        })))).isLeft)
     assertEquals(repository.load("game-minor-replay").toOption.flatten.get.records,
       beforeRetry)
     val reloaded = new GameApplicationService(catalog, repository)
@@ -615,7 +740,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(reloaded.nextSequence, discarded.nextSequence)
   }
 
-  test("Challenge persists owner-only pending state and reloads deterministic Mob completion") {
+  test("Challenge persists its walker park and reloads deterministic Mob completion") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val gameId = "game-challenge-persistence"
@@ -635,26 +760,32 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val Ready(setupReady) = accepted.state: @unchecked
     val actor = setupReady.game.current.turn.activePlayer
     accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.TakeWealth(actor, WakeResource.Favor)).toOption.get
+      GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Button("favor"))))).toOption.get
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginChallenge(actor, Banner.PeoplesFavor)).toOption.get
+      GameCommand.StartWalker(ActionRef.Challenge, StartPayload(actor)))
+      .toOption.get
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision("challenge.banner",
+        ChooseOneAnswer(DecisionOptionRef.Banner(Banner.PeoplesFavor)))))
+      .toOption.get
     val reloaded = new GameApplicationService(catalog, repository)
       .load(gameId).toOption.flatten.get
     assertEquals(reloaded.state, accepted.state)
     val Ready(pendingReady) = reloaded.state: @unchecked
-    val pending = pendingReady.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Challenge]
-    assertEquals(pending.remainingRibbonResources, 0)
+    assertEquals(pendingReady.game.current.walkerProcedure,
+      Some(ActionRef.Challenge))
     val other = pendingReady.game.current.players.find(_.player != actor).get.player
     val projector = new GameProjector(catalog)
     assertEquals(projector.project(gameId, reloaded, actor).legalControls,
-      Vector("completeChallenge"))
-    assertEquals(projector.project(gameId, reloaded, other).challenge, None)
+      Vector("resolveWalkerDecision"))
+    assertEquals(projector.project(gameId, reloaded, other).legalControls,
+      Vector.empty)
     val completed = new GameApplicationService(catalog, repository).handle(gameId,
-      reloaded.nextSequence, GameCommand.CompleteChallenge(actor,
-        pending.decision, 2)).toOption.get
+      reloaded.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
+        "challenge.amount", ChooseAmountAnswer(2)))).toOption.get
     val Ready(after) = completed.state: @unchecked
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 2)
@@ -666,349 +797,226 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       Vector("peoples-favor" -> 2))
   }
 
-  test("Forge persists private pending and completed state and prepares relic once") {
-    val repository = new InMemoryEventStreamRepository
-    var prepared = 0
-    val relicPort = new RelicDrawPort {
-      def prepare(ready: ReadyGame) = {
-        prepared += 1
-        ready.game.current.commonCards.relicDeck.headOption
-          .toRight(oathdigital.gameplay.OathViolation.ForgeUnavailable("empty"))
-      }
-    }
-    val dice = new CampaignDicePort {
-      def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
-      def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
-    }
-    val forgeSite = catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
-      !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val sitePlayable = plan.worldDeckOrder.collect { case id: DenizenId
-        if catalog.denizens.find(_.id.value == id.value).exists(definition =>
-          definition.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted ||
-          definition.restrictions == oathdigital.catalog.CardRestrictions.SiteOnly) => id
-    }.take(6)
-    val forgePlan = plan.copy(orderedSites = forgeSite +:
-      plan.orderedSites.filterNot(_ == forgeSite),
-      worldDeckOrder = sitePlayable ++ plan.worldDeckOrder.filterNot(sitePlayable.contains))
-    val service = new GameApplicationService(catalog, repository,
-      relicDrawPort = relicPort, campaignDicePort = dice)
-    val gameId = "game-forge-persistence"
-    var accepted = service.handle(gameId, 0L, GameCommand.Begin(forgePlan)).toOption.get
-    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
-    order.zipWithIndex.foreach { case (playerId, index) =>
-      val destination = if (index == 0) forgeSite else forgePlan.orderedSites(index)
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.PlacePawn(playerId, destination)).toOption.get
-      val participantIndex = forgePlan.participants.indexWhere(_.playerId == playerId)
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ChooseAdviser(playerId,
-          forgePlan.denizenOrder(6 + participantIndex * 3))).toOption.get
-    }
-    val actor = PlayerId("p2")
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
-    val campaignDecision = DecisionId(s"campaign-${accepted.nextSequence}")
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginCampaignConquest(actor, forgeSite, 3)).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.FinishCampaignPlans(actor, campaignDecision)).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.ChooseCampaignSacrifice(actor, campaignDecision, 2)).toOption.get
-    val Ready(won) = accepted.state: @unchecked
-    won.game.current.pending.collect { case c: PendingProcedure.Campaign => c }
-      .foreach { campaign =>
-        accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.PlaceCampaignForce(actor, campaignDecision,
-            Vector(CampaignForceAllocation(forgeSite,
-              campaign.force - campaign.skullLosses -
-                campaign.sacrificed.getOrElse(0))))).toOption.get
-      }
+  // ---------------------------------------------------------------------------
+  // Forge runs end to end on the generic walker, through
+  // `StartWalker`/`ResolveWalker` alone, and its journal replays to the same
+  // state. The replay is what proves the answer codec: a `PartitionAnswer`
+  // rides both a `WalkerStepRecorded` ChoicePayload and the `WalkerParked`
+  // fact, so the encoder is reached on append and the decoder on every
+  // reload -- the in-memory run alone would not necessarily touch either.
+  // ---------------------------------------------------------------------------
 
-    def searchOne(): Unit = {
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.BeginSearch(actor, SearchSource.WorldDeck))
-        .fold(error => fail(s"Search fixture rejected: $error"), identity)
-      val Ready(pendingReady) = accepted.state: @unchecked
-      val pending = pendingReady.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Search]
-      val drawn = pendingReady.game.current.temporaryHands(actor)
-      val kept = drawn.find(card => SearchRules.legalPlacements(
-        catalog, pendingReady, pending, card).contains(SearchPlacement.Site(None)))
-        .getOrElse(fail(s"no site-playable card in prepared draw $drawn"))
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.CompleteSearch(actor, pending.decision, kept,
-          drawn.filterNot(_ == kept), SearchPlacement.Site(None))).toOption.get
-    }
-    searchOne(); searchOne()
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginRest(actor)).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.FinishRest(actor)).toOption.get
-    Vector(PlayerId("p3"), PlayerId("p1")).foreach { player =>
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.EndWake(player)).toOption.get
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.BeginRest(player)).toOption.get
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.FinishRest(player)).toOption.get
-    }
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
-    searchOne()
-    val begun = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginForge(actor)).fold(error => fail(error.toString), identity)
-    val reloadedService = new GameApplicationService(catalog, repository,
-      relicDrawPort = relicPort, campaignDicePort = dice)
-    val pendingLoaded = reloadedService.load(gameId).toOption.flatten.get
-    assertEquals(pendingLoaded.state, begun.state)
-    val Ready(forgeReady) = pendingLoaded.state: @unchecked
-    val pending = forgeReady.game.current.pending.get.asInstanceOf[PendingProcedure.Forge]
-    val other = forgeReady.game.current.players.find(_.player != actor).get.player
-    val projector = new GameProjector(catalog)
-    assert(projector.project(gameId, pendingLoaded, actor).forge.nonEmpty)
-    assertEquals(projector.project(gameId, pendingLoaded, other).forge, None)
-    assertEquals(projector.projectPublic(gameId, pendingLoaded).forge, None)
-    val resources = Vector.fill(pending.cost.favor)(ForgeResource.Favor) ++
-      Vector.fill(pending.cost.secrets)(ForgeResource.Secret)
-    val assignments = pending.eligibleTargets.zip(resources).map {
-      case (target, resource) => ForgeResourceAssignment(target, resource) }
+  test("walker Forge completes through StartWalker/ResolveWalker alone and " +
+      "replays to the same final state") {
+    val repository = new InMemoryEventStreamRepository
+    // The only non-homeland forgeable site prints three favor, which is a
+    // forced split the engine resolves without prompting (the next test
+    // covers that). Overriding just that site's printed cost is what gives
+    // the PARKED flow a real end-to-end run: the site, its denizens and
+    // every other rule stay exactly as shipped.
+    val forgeCatalog = mixedForgeCostCatalog
+    val service = new GameApplicationService(forgeCatalog, repository,
+      campaignDicePort = blankCampaignDice)
+    val gameId = "game-walker-forge"
+    val (ready, actor, forgeSite) = forgeReadyGame(service, gameId,
+      forgeCatalog)
+    val Ready(beforeStart) = ready.state: @unchecked
+    val supplyBefore = beforeStart.game.current.players
+      .find(_.player == actor).get.board.supply.supply
+    val relic = beforeStart.game.current.commonCards.relicDeck.head
+    val banksBefore = beforeStart.banks.favor
+    val actorBefore = beforeStart.game.current.players
+      .find(_.player == actor).get
+    val favorBefore = actorBefore.board.favor
+    val secretsBefore = actorBefore.board.faceUpSecrets
+
+    val started = service.handle(gameId, ready.nextSequence,
+      GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
+      .fold(error => fail(s"walker Forge start rejected: $error"), identity)
+    assert(started.events.last.isInstanceOf[WalkerParked])
+    assertEquals(started.continue, OathContinue.AwaitingForgeAssignment(actor,
+      DecisionId(ForgeProcedure.assignmentDecisionId)))
+    val Ready(parked) = started.state: @unchecked
+    assertEquals(parked.game.current.walkerProcedure, Some(ActionRef.Forge))
+    assertEquals(parked.game.current.players.find(_.player == actor).get
+      .board.supply.supply, supplyBefore - 1)
+
+    // The prompt the client actually answers from, reloaded through the
+    // codec rather than read off the in-memory transition.
+    val parkedLoaded = service.load(gameId).toOption.flatten.get
+    assertEquals(parkedLoaded.state, started.state)
+    val projector = new GameProjector(forgeCatalog)
+    val owner = projector.project(gameId, parkedLoaded, actor)
+    val other = parked.game.current.players.find(_.player != actor).get.player
+    // Task 4: the prompt IS the projected query. There is no Forge-shaped
+    // projection any more -- two declared sections carrying the printed
+    // minima, and one denizen option per live eligible target, described
+    // from the same `Decide` the walker is parked on.
+    val decision = owner.walkerDecision.getOrElse(
+      fail("the parked actor must be offered the Forge assignment prompt"))
+    assertEquals(decision.decisionId, ForgeProcedure.assignmentDecisionId)
+    val prompt = decision.query.getOrElse(
+      fail("a parked Forge decision must project its query"))
+    assertEquals(prompt.form, "partition")
+    val printed = forgeCatalog.sites.find(_.id == forgeSite).get
+      .forgeRequirements.get
+    assertEquals(prompt.sections, Vector(
+      DecisionSectionProjection(ForgeProcedure.favorSectionKey, "Pay Favor",
+        printed.favor),
+      DecisionSectionProjection(ForgeProcedure.secretSectionKey, "Pay Secret",
+        printed.secrets)))
+    assertEquals(prompt.options.size, 3)
+    assertEquals(prompt.options.map(_.kind).distinct, Vector("denizen"))
+    // The options are the live eligible targets at the Forge site, with
+    // their presentation card details -- never a set the projector derived
+    // by consulting `ForgeProcedure` a second time.
+    assertEquals(prompt.options.map(_.id).toSet,
+      ForgeProcedure.eligibleTargets(parked, actor)
+        .map(_.denizenId.value).toSet)
+    assert(prompt.options.forall(_.card.nonEmpty))
+    val favorMinimum = printed.favor
+    val secretMinimum = printed.secrets
+    assertEquals(favorMinimum + secretMinimum, 3)
+    assertEquals(owner.phase, "forge-walker-decision")
+    assertEquals(owner.legalControls, Vector("resolveWalkerDecision"))
+    // Forge has no dice, and its parked decision says so. (This is a
+    // client-facing fact, not R18's proof: no site in the catalog carries
+    // both a printed Forge cost and a Recover difficulty, so `rollOutcome`
+    // is `None` here for want of a difficulty either way. R18's projector
+    // call site is proven in `WalkerDecisionProjectorSuite`.)
+    assertEquals(owner.walkerDecision.flatMap(_.rollOutcome), None)
+    assertEquals(projector.project(gameId, parkedLoaded, other)
+      .walkerDecision, None)
+    assertEquals(projector.projectPublic(gameId, parkedLoaded)
+      .walkerDecision, None)
+
+    // The answer is built from the projected prompt, exactly as the UI
+    // builds it: the offered targets, in order, taking the offered counts.
+    val sections = Vector.fill(favorMinimum)(ForgeProcedure.favorSectionKey) ++
+      Vector.fill(secretMinimum)(ForgeProcedure.secretSectionKey)
+    val placements = prompt.options.zip(sections).map { case (option, section) =>
+      DecisionPlacement(DecisionOptionRef.Denizen(DenizenId(option.id)),
+        section) }
+
     val beforeRejected = repository.load(gameId).toOption.flatten.get.records
     Vector[GameCommand](
-      GameCommand.CompleteForge(actor, DecisionId("stale"), assignments),
-      GameCommand.CompleteForge(other, pending.decision, assignments),
-      GameCommand.CompleteForge(actor, pending.decision,
-        assignments.updated(1, assignments.head)),
-      GameCommand.CompleteForge(actor, pending.decision,
-        assignments.map(_.copy(resource = ForgeResource.Secret)))
-    ).foreach(command => assert(reloadedService.handle(gameId,
-      begun.nextSequence, command).isLeft))
-    assertEquals(prepared, 0)
-    assertEquals(repository.load(gameId).toOption.flatten.get.records, beforeRejected)
-    val relic = forgeReady.game.current.commonCards.relicDeck.head
-    val completed = reloadedService.handle(gameId, begun.nextSequence,
-      GameCommand.CompleteForge(actor, pending.decision, assignments)).toOption.get
-    assertEquals(prepared, 1)
-    val completedLoaded = new GameApplicationService(catalog, repository)
+      GameCommand.ResolveWalker(actor, TreeDecision("forge.stale",
+        PartitionAnswer(placements))),
+      GameCommand.ResolveWalker(other, TreeDecision(
+        ForgeProcedure.assignmentDecisionId,
+        PartitionAnswer(placements))),
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        ForgeProcedure.assignmentDecisionId,
+        PartitionAnswer(placements.updated(1, placements.head)))),
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        ForgeProcedure.assignmentDecisionId, PartitionAnswer(
+          placements.map(_.copy(sectionKey = ForgeProcedure.secretSectionKey))))),
+      GameCommand.BeginRest(actor)
+    ).foreach(command => assert(service.handle(gameId, started.nextSequence,
+      command).isLeft, s"$command must be rejected while Forge is parked"))
+    assertEquals(repository.load(gameId).toOption.flatten.get.records,
+      beforeRejected, "a rejected command must append nothing")
+
+    val finished = service.handle(gameId, started.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        ForgeProcedure.assignmentDecisionId,
+        PartitionAnswer(placements))))
+      .fold(error => fail(s"walker Forge answer rejected: $error"), identity)
+    assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    val Ready(after) = finished.state: @unchecked
+
+    // The same final state the deleted legacy path produced: three
+    // denizens each carrying exactly one resource, the relic facedown in the
+    // actor's play area, the deck advanced by one, one Supply spent in total,
+    // and nothing pending on either mechanism.
+    assertEquals(after.game.current.map.sites(forgeSite).denizens.collect {
+      case d: DenizenState => d.tokens.favor + d.tokens.secrets }, Vector(1, 1, 1))
+    assertEquals(after.game.current.players.find(_.player == actor).get.relics.last,
+      RelicState(relic, Orientation.FaceDown, Tokens.empty))
+    assertEquals(after.game.current.commonCards.relicDeck,
+      beforeStart.game.current.commonCards.relicDeck.drop(1))
+    assertEquals(after.game.current.players.find(_.player == actor).get
+      .board.supply.supply, supplyBefore - 1)
+    assert(after.game.current.walkerPending.isEmpty)
+    assert(after.game.current.walkerProcedure.isEmpty)
+
+    // The actor funded the whole printed cost out of their own play area,
+    // and no suit bank moved at all. This reverses the pre-walker behaviour
+    // of drawing each favor from the target denizen's own suit bank.
+    assertEquals(after.banks.favor, banksBefore)
+    val actorAfter = after.game.current.players.find(_.player == actor).get
+    assertEquals(actorAfter.board.favor, favorBefore - favorMinimum)
+    assertEquals(actorAfter.board.faceUpSecrets,
+      secretsBefore - secretMinimum)
+
+    // P2: reconstructing purely from the journal reproduces that state.
+    val replayed = new GameApplicationService(forgeCatalog, repository)
       .load(gameId).toOption.flatten.get
-    assertEquals(completedLoaded.state, completed.state)
+    assertEquals(replayed.state, finished.state)
+
+    // The forged relic stays private to its owner.
     val otherJson = GameHttpWire.encodeProjection(
-      projector.project(gameId, completedLoaded, other))
-    val publicJson = GameHttpWire.encodeProjection(
-      projector.projectPublic(gameId, completedLoaded))
+      projector.project(gameId, replayed, other))
     assert(!otherJson.contains(relic.value))
-    assert(!publicJson.contains(relic.value))
-  }
-  private def safeCampaignSite: SiteId = catalog.sites.find(site =>
-    site.handlers.forall(h => !h.endsWith(".mountain") &&
-      !h.endsWith(".plains") && !h.contains(".homeland-"))).get.id
-
-  private val blankCampaignDice = new CampaignDicePort {
-    def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
-    def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
+    assert(!GameHttpWire.encodeProjection(
+      projector.projectPublic(gameId, replayed)).contains(relic.value))
   }
 
-  private def beginServiceRaid(service: GameApplicationService, gameId: String)
-      : (GameAccepted, PlayerId, PlayerId, DecisionId, SiteId, Int) = {
-    val shared = safeCampaignSite
-    val otherSite = sites.find(_ != shared).get
-    val setup = execute(service, gameId, Vector(shared, shared, otherSite))
-    val Ready(ready) = setup.state: @unchecked
-    val attacker = ready.game.current.turn.activePlayer
-    val defender = ready.game.current.players.find(p => p.player != attacker &&
-      p.pawnSite.contains(shared)).get.player
-    val force = ready.game.current.players.find(_.player == attacker).get.board.warbands
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(attacker)).toOption.get
-    val targets = Vector[CampaignRaidTarget](CampaignRaidTarget.Pawn(defender))
-    val started = service.handle(gameId, act.nextSequence,
-      GameCommand.BeginCampaignRaid(attacker, targets, force)).toOption.get
-    (started, attacker, defender, DecisionId(s"campaign-${act.nextSequence}"),
-      shared, force)
-  }
-
-  test("Raid service owns randomness and rejects stale or spoofed decisions") {
-    val repository = new InMemoryEventStreamRepository
-    var attackRolls = Vector.empty[Int]
-    var defenseRolls = Vector.empty[Int]
-    val dice = new CampaignDicePort {
-      def rollAttack(count: Int) = {
-        attackRolls :+= count
-        Vector.fill(count)(AttackDieFace.OneSword)
-      }
-      def rollDefense(count: Int) = {
-        defenseRolls :+= count
-        Vector.fill(count)(DefenseDieFace.Blank)
-      }
-    }
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = dice)
-    val (started, attacker, defender, decision, origin, force) =
-      beginServiceRaid(service, "raid-service")
-    val before = repository.load("raid-service").toOption.flatten.get.records
-    assert(service.handle("raid-service", started.nextSequence,
-      GameCommand.FinishCampaignPlans(attacker, DecisionId("stale"))).isLeft)
-    assert(service.handle("raid-service", started.nextSequence,
-      GameCommand.FinishCampaignPlans(defender, decision)).isLeft)
-    assertEquals(attackRolls, Vector.empty)
-    assertEquals(repository.load("raid-service").toOption.flatten.get.records, before)
-
-    val attackerDone = service.handle("raid-service", started.nextSequence,
-      GameCommand.FinishCampaignPlans(attacker, decision)).toOption.get
-    assertEquals(attackRolls, Vector.empty)
-    val rolled = service.handle("raid-service", attackerDone.nextSequence,
-      GameCommand.FinishCampaignPlans(defender, decision)).toOption.get
-    assertEquals(attackRolls, Vector(force))
-    val Ready(rolledReady) = rolled.state: @unchecked
-    val pending = rolledReady.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Campaign]
-    val minimumSacrifice = math.max(0,
-      CampaignRules.defenderForce(rolledReady, pending) + 1 - pending.attack)
-    val won = service.handle("raid-service", rolled.nextSequence,
-      GameCommand.ChooseCampaignSacrifice(attacker, decision, minimumSacrifice))
-      .toOption.get
-    assertEquals(defenseRolls, Vector(2))
-    val destination = rolledReady.game.current.map.inPlay.find(_ != origin).get
-    val completed = service.handle("raid-service", won.nextSequence,
-      GameCommand.RelocateCampaignRaidPawn(attacker, decision, destination))
-      .toOption.get
-    val Ready(after) = completed.state: @unchecked
-    assertEquals(after.game.current.players.find(_.player == defender).get.pawnSite,
-      Some(destination))
-    assertEquals(after.game.current.pending, None)
-    assertEquals(new GameApplicationService(catalog, repository,
-      campaignDicePort = dice).load("raid-service").toOption.flatten.get.state,
-      completed.state)
-  }
-
-  test("Raid pending projection gives controls only to the current owner") {
+  test("a Forge whose printed cost is three of one resource completes in " +
+      "the command that starts it, with no decision to answer") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository,
       campaignDicePort = blankCampaignDice)
-    val (started, attacker, defender, decision, _, _) =
-      beginServiceRaid(service, "raid-redaction")
-    val Ready(ready) = started.state: @unchecked
-    val observer = ready.game.current.players.map(_.player)
-      .find(id => id != attacker && id != defender).get
-    val projector = new GameProjector(catalog)
-    val loaded = LoadedGame(started.state, started.nextSequence)
-    val owner = projector.project("raid-redaction", loaded, attacker)
-    val other = projector.project("raid-redaction", loaded, observer)
-    val public = projector.projectPublic("raid-redaction", loaded)
-    assertEquals(owner.campaign.map(_.decisionId), Some(decision.value))
-    assert(owner.legalControls.contains("finishCampaignPlans"))
-    assertEquals(other.phase, "campaign-waiting")
-    assertEquals(other.campaign, None)
-    assertEquals(other.campaignRaidRelocation, None)
-    assertEquals(other.legalControls, Vector.empty)
-    assertEquals(public.campaign, None)
-    val defenderAdviserIds = ready.game.current.players.find(_.player == defender).get
-      .advisers.map(_.id.value)
-    val otherJson = GameHttpWire.encodeProjection(other)
-    defenderAdviserIds.foreach(id => assert(!otherJson.contains(id)))
-  }
-  test("invalid Campaign plan requests consume no attack randomness") {
-    val repository = new InMemoryEventStreamRepository
-    var attackRolls = Vector.empty[Int]
-    val dice = new CampaignDicePort {
-      def rollAttack(count: Int) = {
-        attackRolls = attackRolls :+ count
-        Vector.fill(count)(AttackDieFace.OneSword)
-      }
-      def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
-    }
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = dice)
-    val safe = catalog.sites.find(site => site.handlers.forall(h =>
-      !h.endsWith(".mountain") && !h.endsWith(".plains") &&
-        !h.contains(".homeland-"))).get.id
-    val setup = execute(service, "campaign-rng-validation",
-      Vector(sites(0), sites(1), safe))
-    val Ready(ready) = setup.state: @unchecked
-    val active = ready.game.current.turn.activePlayer
-    val other = ready.game.current.players.find(_.player != active).get.player
-    val act = service.handle("campaign-rng-validation", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
-    val target = new GameProjector(catalog).project("campaign-rng-validation",
-      LoadedGame(act.state, act.nextSequence), active).boardTargetActions
-      .find(_.actionKind == "campaign-conquest").get.candidates.head.target
-      .asInstanceOf[BoardTargetRefProjection.Site].siteId
-    val beforeInvalid = repository.load("campaign-rng-validation").toOption.flatten.get
-      .records
-    assert(service.handle("campaign-rng-validation", act.nextSequence,
-      GameCommand.BeginCampaignConquest(active, SiteId(target), 999)).isLeft)
-    assert(service.handle("campaign-rng-validation", act.nextSequence - 1,
-      GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).isLeft)
-    assertEquals(repository.load("campaign-rng-validation").toOption.flatten.get.records,
-      beforeInvalid)
-    assertEquals(attackRolls, Vector.empty)
-    val declared = service.handle("campaign-rng-validation", act.nextSequence,
-      GameCommand.BeginCampaignConquest(active, SiteId(target), 2)).toOption.get
-    val decision = DecisionId(s"campaign-${act.nextSequence}")
-    val invalid = PendingProcedure.CampaignPlanSource.Adviser(active,
-      DenizenId("not-outriders"))
+    val gameId = "game-walker-forge-forced"
+    val (ready, actor, forgeSite) = forgeReadyGame(service, gameId)
+    val Ready(beforeStart) = ready.state: @unchecked
+    val cost = catalog.sites.find(_.id == forgeSite).get.forgeRequirements.get
+    assert(cost.favor == 0 || cost.secrets == 0,
+      s"this test needs a single-resource printed cost, got $cost")
+    val relic = beforeStart.game.current.commonCards.relicDeck.head
+    val actorBefore = beforeStart.game.current.players
+      .find(_.player == actor).get
+    val banksBefore = beforeStart.banks.favor
 
-    assert(service.handle("campaign-rng-validation", declared.nextSequence,
-      GameCommand.FinishCampaignPlans(other, decision)).isLeft)
-    assert(service.handle("campaign-rng-validation", declared.nextSequence,
-      GameCommand.FinishCampaignPlans(active, DecisionId("stale"))).isLeft)
-    assert(service.handle("campaign-rng-validation", declared.nextSequence,
-      GameCommand.ChooseCampaignPlan(active, decision, invalid)).isLeft)
-    assertEquals(attackRolls, Vector.empty)
+    val finished = service.handle(gameId, ready.nextSequence,
+      GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
+      .fold(error => fail(s"walker Forge start rejected: $error"), identity)
 
-    val chosen = service.handle("campaign-rng-validation", declared.nextSequence,
-      GameCommand.FinishCampaignPlans(active, decision)).toOption.get
-    assertEquals(attackRolls, Vector(2))
-    assert(service.handle("campaign-rng-validation", chosen.nextSequence,
-      GameCommand.FinishCampaignPlans(active, decision)).isLeft)
-    assertEquals(attackRolls, Vector(2))
-  }
+    // One command: the action completes, nothing parks, and the client is
+    // never asked to confirm a split it could not have got wrong.
+    assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    assert(!finished.events.exists(_.isInstanceOf[WalkerParked]))
+    assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
+    val Ready(after) = finished.state: @unchecked
+    assert(after.game.current.walkerPending.isEmpty)
+    assert(after.game.current.walkerProcedure.isEmpty)
+    assertEquals(new GameProjector(catalog).project(gameId,
+      LoadedGame(finished.state, finished.nextSequence), actor)
+      .walkerDecision, None)
 
-  test("Campaign dice persist and reload without client randomness") {
-    val repository = new InMemoryEventStreamRepository
-    val dice = new CampaignDicePort {
-      def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
-      def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
-    }
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = dice)
-    val safe = catalog.sites.find(site =>
-      site.handlers.forall(h => !h.endsWith(".mountain") &&
-        !h.endsWith(".plains") && !h.contains(".homeland-"))).get.id
-    val setup = execute(service, "campaign-persist", Vector(sites(0), sites(1), safe))
-    val Ready(ready) = setup.state: @unchecked
-    val active = ready.game.current.turn.activePlayer
-    val act = service.handle("campaign-persist", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
-    val projected = new GameProjector(catalog).project("campaign-persist",
-      LoadedGame(act.state, act.nextSequence), active)
-    val target = projected.boardTargetActions.find(_.actionKind == "campaign-conquest")
-      .get.candidates.head.target.asInstanceOf[BoardTargetRefProjection.Site].siteId
-    val started = service.handle("campaign-persist", act.nextSequence,
-      GameCommand.BeginCampaignConquest(active, SiteId(target), 0)).toOption.get
-    val startEvent = started.events.head.asInstanceOf[
-      oathdigital.gameplay.OathEvent.CampaignStarted]
-    assertEquals(startEvent.force, 0)
-    val Ready(afterPartial) = started.state: @unchecked
-    assertEquals(afterPartial.game.current.players.find(_.player == active).get
-      .board.warbands,
-      ready.game.current.players.find(_.player == active).get.board.warbands)
-    val chosen = service.handle("campaign-persist", started.nextSequence,
-      GameCommand.FinishCampaignPlans(active,
-        DecisionId(s"campaign-${act.nextSequence}"))).toOption.get
-    assertEquals(chosen.events.head.asInstanceOf[
-      oathdigital.gameplay.OathEvent.CampaignPlansFinished].attackDice, Vector.empty)
-    assert(chosen.events.head.isInstanceOf[oathdigital.gameplay.OathEvent.CampaignPlansFinished])
-    val reloaded = new GameApplicationService(catalog, repository,
-      campaignDicePort = dice).load("campaign-persist").toOption.flatten.get
-    assertEquals(reloaded.state, chosen.state)
-    assertEquals(reloaded.nextSequence, chosen.nextSequence)
+    // And the determined split really was applied, out of the actor's own
+    // play area.
+    assertEquals(after.game.current.map.sites(forgeSite).denizens.collect {
+      case d: DenizenState => d.tokens.favor + d.tokens.secrets }, Vector(1, 1, 1))
+    assertEquals(after.banks.favor, banksBefore)
+    val actorAfter = after.game.current.players.find(_.player == actor).get
+    assertEquals(actorAfter.board.favor, actorBefore.board.favor - cost.favor)
+    assertEquals(actorAfter.board.faceUpSecrets,
+      actorBefore.board.faceUpSecrets - cost.secrets)
+    assertEquals(actorAfter.relics.last,
+      RelicState(relic, Orientation.FaceDown, Tokens.empty))
+
+    // The journal replays to the same state even though it carries a
+    // completion that was never preceded by a park.
+    assertEquals(new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get.state, finished.state)
   }
 
   private def execute(
       service: GameApplicationService,
       gameId: String,
       placementSites: Vector[oathdigital.model.SiteId] = sites,
-      setupPlan: oathdigital.gameplay.setup.FirstGameSetupPlan = plan
+      setupPlan: oathdigital.model.FirstGameSetupPlan = plan
   ): GameAccepted = {
     var accepted =
       service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
@@ -1032,6 +1040,20 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       ).toOption.get
     }
     accepted
+  }
+
+  test("a walker Campaign persists every command and replays to the same state") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = blankCampaignDice)
+    val (accepted, _, _) = forgeReadyGame(service, "walker-campaign")
+    val reloaded = new GameApplicationService(catalog, repository,
+      campaignDicePort = blankCampaignDice).load("walker-campaign")
+      .toOption.flatten.get
+    assertEquals(reloaded.state, accepted.state)
+    assertEquals(reloaded.nextSequence, accepted.nextSequence)
+    val Ready(after) = reloaded.state: @unchecked
+    assert(after.game.current.lastCampaignResult.exists(_.attackerWins))
   }
 
   test("create advance and reload replay the complete persisted v2 stream") {
@@ -1080,19 +1102,24 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val siteId = ready.game.current.players.find(_.player == active)
       .flatMap(_.pawnSite).get
     val site = ready.game.current.map.sites(siteId)
-    val resource =
-      if (site.tokens.favor > 0) WakeResource.Favor else WakeResource.Secret
+    val resource = if (site.tokens.favor > 0) "favor" else "secret"
 
-    val wealth = service.handle(
-      "game-wake",
-      setup.nextSequence,
-      GameCommand.TakeWealth(active, resource)
-    ).toOption.get
-    assertEquals(wealth.nextSequence, 9L)
+    val wealth = service.handle("game-wake", setup.nextSequence,
+      GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Button(resource))))).toOption.get
+    // Take Wealth is one atomic walker command (batch-1 Task 7): the single
+    // legacy event became the walker's three -- the resource move, the use
+    // record, and the completion -- so the next free position moves by three.
+    assertEquals(wealth.nextSequence, 11L)
     assertEquals(
       service.handle("game-wake", 8L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(8L, 9L))
+      Left(GameApplicationError.StaleClientPosition(8L, 11L))
     )
+    val Ready(afterTake) = wealth.state: @unchecked
+    // The phase did not end with the action: a completed Wake action returns
+    // its player to Wake, and the limit it recorded survives the reload below.
+    assertEquals(afterTake.game.current.turn.phase, Phase.Wake)
+    assertEquals(wealth.continue, OathContinue.AwaitingWakeAction(active))
     val ended = service.handle(
       "game-wake",
       wealth.nextSequence,
@@ -1104,17 +1131,24 @@ class GameApplicationServiceSuite extends munit.FunSuite {
 
     assertEquals(reloaded.state, ended.state)
     assertEquals(after.game.current.turn.phase, Phase.Act)
+    assert(after.game.current.turn.usedPowers.contains(
+      oathdigital.gameplay.powers.wake.TakeWealthLimit.useRef(siteId)),
+      "the replayed journal must restore the use limit it recorded")
     val records = repository.load("game-wake").toOption.flatten.get.records
     assertEquals(records.take(8).map(record =>
       ujson.read(record)("formatVersion").num.toInt).distinct, Vector(1))
     assertEquals(records.drop(8).map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1))
+      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1, 1))
+    // Ending Wake is a walker procedure too now (batch-1 Task 7), so the
+    // Wake phase journals nothing of its own: the last two records are its
+    // phase-change step and its completion, not a `gameplay.wake-ended`.
     assertEquals(records.drop(8).map(record =>
       ujson.read(record)("eventType").str),
-      Vector("gameplay.take-wealth", "gameplay.wake-ended"))
+      Vector("walker.step-recorded", "walker.step-recorded",
+        "walker.completed", "walker.step-recorded", "walker.completed"))
   }
 
-  test("Travel appends one v3 event and reloads pawn Supply and Act") {
+  test("Travel is one atomic walker command and reloads pawn Supply and Act") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-travel")
@@ -1128,81 +1162,122 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       !before.pawnSite.contains(_)).getOrElse(
         inAct.game.current.map.provinces.head)
     val traveled = service.handle("game-travel", ended.nextSequence,
-      GameCommand.Travel(active, destination)).toOption.get
+      GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Site(destination))))
+      ).toOption.get
     val loaded = new GameApplicationService(catalog, repository)
       .load("game-travel").toOption.flatten.get
     val Ready(after) = loaded.state: @unchecked
     val moved = after.game.current.players.find(_.player == active).get
 
     assertEquals(loaded.state, traveled.state)
-    assertEquals(loaded.nextSequence, ended.nextSequence + 1)
     assertEquals(moved.pawnSite, Some(destination))
     assert(moved.board.supply.supply < before.board.supply.supply)
     assertEquals(after.game.current.turn.phase, Phase.Act)
-    val last = ujson.read(repository.load("game-travel").toOption.flatten.get
-      .records.last)
-    assertEquals(last("formatVersion").num.toInt, 1)
-    assertEquals(last("eventType").str, "gameplay.traveled")
+    // The single legacy travel event became the walker's own three: the pay
+    // node, the pawn move, and the completion boundary. That is the whole
+    // observable shape change of the port -- the state each side reaches is
+    // identical, which is what the assertions above pin.
+    assertEquals(loaded.nextSequence, ended.nextSequence + 3)
+    assertEquals(traveled.events.map(_.productPrefix),
+      Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
+    // Nothing parked: a flat tree finishes inside the command that started it.
+    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(after.game.current.walkerProcedure, None)
+    val types = repository.load("game-travel").toOption.flatten.get.records
+      .takeRight(3).map(ujson.read(_)("eventType").str)
+    assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",
+      "walker.completed"))
   }
 
-  test("ruined edifice Economy target persists and replays with its kind") {
+  /** Item 10 of the final fix brief: an off-turn Oathkeeper tie, arranged and
+    * resolved entirely through `GameApplicationService`, survives reload on
+    * both sides of the park.
+    *
+    * `FirstGameSetup` places no initial site forces, so every player starts
+    * ruling zero sites; a single synthetic `WalkerStepRecorded` delta step --
+    * seeded as one more record on the same stream the setup commands already
+    * wrote, via the same `GameEventWire.encodeEvent`/`repository.append`
+    * seam the malformed/historical-envelope tests above use to inject
+    * hand-picked records -- gives a title holder and two OTHER players one
+    * ruled site apiece. `WalkerReplay`'s delta branch applies the carried
+    * `SetOathkeeper`/`Move` operations through the same `OperationExecutor`
+    * real gameplay uses, with no pending-walker precondition, so this is a
+    * legitimate use of production machinery rather than a bypass of it. With
+    * exactly three players, the active player is automatically one of the
+    * two tied leaders and the holder is automatically off-turn: no further
+    * arrangement is needed to reach `OathkeeperRules.outcome`'s `Choose`.
+    */
+  test("an off-turn Oathkeeper tie parks through the application service " +
+      "and survives reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-oathkeeper-tie"
+    val (parked, active, holder, leaderB) =
+      ParkedServiceFixture.oathkeeperTiePark(service, repository, gameId)
+    assertEquals(
+      repository.load(gameId).toOption.flatten.get.records.size.toLong,
+      parked.nextSequence)
+
+    val reloadedParked = service.load(gameId).toOption.flatten.get
+    assertEquals(reloadedParked.state, parked.state)
+    assertEquals(reloadedParked.nextSequence, parked.nextSequence)
+
+    // The application gate rejects the active player's answer: only the
+    // holder may resolve the recipient decision.
+    assertEquals(
+      service.handle(gameId, parked.nextSequence, GameCommand.ResolveWalker(
+        active, TreeDecision(OathkeeperProcedure.recipientDecisionId,
+          ChooseOneAnswer(DecisionOptionRef.Player(leaderB))))),
+      Left(GameApplicationError.CommandRejected(
+        WrongPlayer(holder, active))))
+
+    val resolved = service.handle(gameId, parked.nextSequence,
+      GameCommand.ResolveWalker(holder, TreeDecision(
+        OathkeeperProcedure.recipientDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Player(leaderB))))).toOption.get
+    assert(resolved.events.exists {
+      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _, _) => by == holder
+      case _ => false
+    }, "the recorded choice must be answered by the holder")
+    assertEquals(resolved.continue, OathContinue.ActActionSelection(active))
+    val Ready(afterResolved) = resolved.state: @unchecked
+    assertEquals(afterResolved.game.current.title,
+      OathkeeperState(Some(leaderB), TitleSide.Oathkeeper))
+
+    val reloadedResolved = service.load(gameId).toOption.flatten.get
+    assertEquals(reloadedResolved.state, resolved.state)
+    assertEquals(reloadedResolved.nextSequence, resolved.nextSequence)
+  }
+
+  test("a walker Muster on an edifice persists, reloads and replays with its kind") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val (siteId, edificeId) = plan.homelandEdifices.head
     val placements = siteId +: sites.filterNot(_ == siteId).take(2)
-    val setup = execute(service, "game-economy-edifice", placements)
+    val setup = execute(service, "game-walker-economy", placements)
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
-    val ended = service.handle("game-economy-edifice", setup.nextSequence,
+    val ended = service.handle("game-walker-economy", setup.nextSequence,
       GameCommand.EndWake(active)).toOption.get
-    val target = EconomyTargetRef.Edifice(edificeId)
-    val mustered = service.handle("game-economy-edifice", ended.nextSequence,
-      GameCommand.Muster(active, target)).toOption.get
+    val started = service.handle("game-walker-economy", ended.nextSequence,
+      GameCommand.StartWalker(ActionRef.Muster, StartPayload(active))).toOption.get
+    assertEquals(started.continue, OathContinue.AwaitingEconomyDecision(active,
+      DecisionId(MusterProcedure.decisionId)))
+    val mustered = service.handle("game-walker-economy", started.nextSequence,
+      GameCommand.ResolveWalker(active, TreeDecision(MusterProcedure.decisionId,
+        ChooseOneAnswer(DecisionOptionRef.Edifice(edificeId))))).toOption.get
     val loaded = new GameApplicationService(catalog, repository)
-      .load("game-economy-edifice").toOption.flatten.get
+      .load("game-walker-economy").toOption.flatten.get
     assertEquals(loaded.state, mustered.state)
     val Ready(after) = loaded.state: @unchecked
     assertEquals(after.game.current.map.sites(siteId).denizens.collectFirst {
       case value: EdificeState if value.id == edificeId => value.tokens
     }, Some(Tokens(1, 0)))
-    val record = ujson.read(repository.load("game-economy-edifice")
-      .toOption.flatten.get.records.last)
-    assertEquals(record("formatVersion").num.toInt, 1)
-    assertEquals(record("payload")("target")("kind").str, "edifice")
-    assertEquals(record("payload")("target")("id").str, edificeId.value)
-  }
-
-  test("Search persists and reloads pending private decision then completes in v4") {
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val setup = execute(service, "game-search")
-    val Ready(ready) = setup.state: @unchecked
-    val active = ready.game.current.turn.activePlayer
-    val ended = service.handle("game-search", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
-    val started = service.handle("game-search", ended.nextSequence,
-      GameCommand.BeginSearch(active, SearchSource.WorldDeck)).toOption.get
-    val reloadedPending = new GameApplicationService(catalog, repository)
-      .load("game-search").toOption.flatten.get
-    assertEquals(reloadedPending.state, started.state)
-    val Ready(pendingReady) = reloadedPending.state: @unchecked
-    val pending = pendingReady.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Search]
-    val drawn = pendingReady.game.current.temporaryHands(active)
-    assertEquals(service.handle("game-search", ended.nextSequence,
-      GameCommand.BeginSearch(active, SearchSource.WorldDeck)),
-      Left(GameApplicationError.StaleClientPosition(
-        ended.nextSequence, started.nextSequence)))
-    val completed = service.handle("game-search", started.nextSequence,
-      GameCommand.CompleteSearch(active, pending.decision,
-        drawn.head, drawn.tail, SearchPlacement.Discard))
-      .toOption.get
-    val loaded = new GameApplicationService(catalog, repository)
-      .load("game-search").toOption.flatten.get
-    assertEquals(loaded.state, completed.state)
-    val versions = repository.load("game-search").toOption.flatten.get.records
-      .takeRight(2).map(record => ujson.read(record)("formatVersion").num.toInt)
-    assertEquals(versions, Vector(1, 1))
+    val records = repository.load("game-walker-economy").toOption.flatten.get.records
+    assert(records.exists(record => record.contains("edifice") &&
+      record.contains(edificeId.value)),
+      "the journalled answer must spell the edifice kind and id")
   }
 
   test("Search draw port cannot inject card identities inconsistent with state") {
@@ -1218,10 +1293,78 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val ended = service.handle("game-search-tamper", setup.nextSequence,
       GameCommand.EndWake(active)).toOption.get
     assert(service.handle("game-search-tamper", ended.nextSequence,
-      GameCommand.BeginSearch(active, SearchSource.WorldDeck))
+      GameCommand.StartWalker(ActionRef.Search, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
       .left.toOption.get.isInstanceOf[GameApplicationError.CommandRejected])
     assertEquals(repository.load("game-search-tamper").toOption.flatten.get
       .nextSequence, ended.nextSequence)
+  }
+
+  test("walker Search persists its card choice and completes after reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-walker-search"
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
+      .toOption.get
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(reloaded.state, started.state)
+    val Ready(afterDraw) = reloaded.state: @unchecked
+    val drawn = afterDraw.game.current.temporaryHands(actor)
+    val chosen = if (drawn.size == 1) started else {
+      def ref(card: WorldCardId): DecisionOptionRef = card match {
+        case id: DenizenId => DecisionOptionRef.Denizen(id)
+        case id: VisionId => DecisionOptionRef.Vision(id)
+      }
+      val assignments = Vector(DecisionPlacement(ref(drawn.head), "keep")) ++
+        drawn.tail.map(card => DecisionPlacement(ref(card), "discard"))
+      service.handle(gameId, reloaded.nextSequence,
+        GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
+          DecisionAnswer.PartitionAnswer(assignments)))).toOption.get
+    }
+    val completed = service.handle(gameId, chosen.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.${drawn.head.kind}.${drawn.head.value}",
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))))
+      .toOption.get
+    assertEquals(new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get.state, completed.state)
+  }
+
+  test("facedown adviser plays through the shared walker after reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-walker-facedown-adviser"
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val adviser = ready.game.current.players.find(_.player == actor).get
+      .advisers.collectFirst {
+        case DenizenState(id, Orientation.FaceDown, _) => id
+      }.get
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty,
+          Vector(DecisionOptionRef.Denizen(adviser))))).toOption.get
+    val loaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(loaded.state, started.state)
+    val result = service.handle(gameId, loaded.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.${adviser.kind}.${adviser.value}",
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))))
+      .toOption.get
+    assertEquals(new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get.state, result.state)
   }
 
   test("Wake projection is actor-private and Act boundary is informational") {
@@ -1253,7 +1396,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     )
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
-    assertEquals(act.legalControls, Vector("beginRest", "facedownAdviserMinorAction"))
+    assertEquals(act.legalControls, Vector("beginRest", "beginCampaign", "facedownAdviserMinorAction"))
     assertEquals(act.actionFamilies.size, 9)
     assert(act.boardTargetActions.exists(_.actionKind == "travel"))
     val travel = act.boardTargetActions.find(_.actionKind == "travel").get
@@ -1262,12 +1405,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(travel.candidates.forall(_.target.isInstanceOf[
       BoardTargetRefProjection.Site]))
     assert(travel.candidates.forall(_.details.exists(_.endsWith("Supply"))))
+    assertEquals(
+      travel.candidates.map(candidate => candidate.target -> candidate.details),
+      act.legalTravelDestinations.map(destination =>
+        BoardTargetRefProjection.Site(destination.siteId) ->
+          Vector(s"${destination.supplyCost} Supply")))
     assertEquals(projector.projectPublic("game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence)).boardTargetActions,
       Vector.empty)
   }
 
-  test("Rest v5 commands persist reload and project the next player's Wake") {
+  test("Begin Rest finishes Rest, persists and reloads to the next player's Wake") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-rest")
@@ -1277,12 +1425,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.EndWake(active)).toOption.get
     val begun = service.handle("game-rest", act.nextSequence,
       GameCommand.BeginRest(active)).toOption.get
-    val restProjection = new GameProjector(catalog).project("game-rest",
-      LoadedGame(begun.state, begun.nextSequence), active)
-    assertEquals(restProjection.phase, "rest")
-    assertEquals(restProjection.legalControls, Vector("finishRest"))
-    val finished = service.handle("game-rest", begun.nextSequence,
-      GameCommand.FinishRest(active)).toOption.get
+    val finished = begun
     val loaded = new GameApplicationService(catalog, repository)
       .load("game-rest").toOption.flatten.get
     val Ready(after) = loaded.state: @unchecked
@@ -1681,44 +1824,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     } finally reopened.close()
   }
 
-  test("HSQL reopen preserves Catacombs Recover and owner-only relic identity") {
-    val path = Files.createTempDirectory("oathdigital-catacombs-reopen-")
-      .resolve("journal")
-    val gameId = "game-hsql-catacombs"
-    val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    val started = try {
-      val service = new GameApplicationService(catalog, first,
-        defenseDicePort = new CountingRecoverDice)
-      val (prepared, actor, invocation) = prepareCatacombs(service, gameId,
-        catacombsPlan)
-      service.handle(gameId, prepared.nextSequence,
-        GameCommand.WithModifiers(GameCommand.BeginRecover(actor),
-          Vector(invocation))).toOption.get
-    } finally first.close()
-
-    val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    try {
-      val loaded = new GameApplicationService(catalog, reopened)
-        .load(gameId).toOption.flatten.get
-      assertEquals(loaded.state, started.state)
-      assertEquals(loaded.nextSequence, started.nextSequence)
-      val Ready(ready) = loaded.state: @unchecked
-      val pending = ready.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Recover]
-      val actor = pending.actor
-      val other = ready.game.current.players.find(_.player != actor).get.player
-      val projector = new GameProjector(catalog)
-      val owner = projector.project(gameId, loaded, actor)
-      val hidden = projector.project(gameId, loaded, other)
-      assertEquals(owner.pendingCardDecision.map(_.cards.map(_.cardId)),
-        Some(ready.game.current.map.sites(pending.site).relics.map(_.id.value)))
-      assertEquals(hidden.pendingCardDecision, None)
-      assertEquals(hidden.recover, None)
-      assertEquals(hidden.world.flatMap(_.sites).find(_.siteId == pending.site.value)
-        .get.relics.knownRelics, Vector.empty)
-    } finally reopened.close()
-  }
-
   test("HSQL reopen preserves completed Rest cleanup and secret summary") {
     val path = Files.createTempDirectory("oathdigital-rest-reopen-").resolve("journal")
     val gameId = "game-hsql-rest-cleanup"
@@ -1732,8 +1837,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         GameCommand.EndWake(actor)).toOption.get
       val begun = service.handle(gameId, act.nextSequence,
         GameCommand.BeginRest(actor)).toOption.get
-      service.handle(gameId, begun.nextSequence,
-        GameCommand.FinishRest(actor)).toOption.get
+      begun
     } finally first.close()
     val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     try {
@@ -1787,40 +1891,86 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     } finally reopened.close()
   }
 
+  private def negotiationOpened(service: GameApplicationService, gameId: String)
+      : (GameAccepted, PlayerId, PlayerId, WorldCardId) = {
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val other = ready.game.current.players.find(_.player != actor).get
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val traveled = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Travel, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Site(other.pawnSite.get)))))
+      .toOption.get
+    val adviser = ready.game.current.players.find(_.player == actor).get
+      .advisers.head.id.asInstanceOf[WorldCardId]
+    val started = service.handle(gameId, traveled.nextSequence,
+      GameCommand.StartWalker(ActionRef.Negotiation, StartPayload(actor)))
+      .fold(error => fail(s"Negotiation must start: $error"), identity)
+    val Ready(afterTravel) = traveled.state: @unchecked
+    val opened =
+      if (NegotiationDeal.eligible(afterTravel, actor).size < 2) started
+      else service.handle(gameId, started.nextSequence,
+        GameCommand.ResolveWalker(actor, TreeDecision(
+          NegotiationDeal.negotiatorsDecisionId, ChooseManyAnswer(
+            Vector(DecisionOptionRef.Player(other.player))))))
+        .fold(error => fail(s"negotiators must be accepted: $error"), identity)
+    (opened, actor, other.player, adviser)
+  }
+
+  private def say(service: GameApplicationService, gameId: String,
+      from: GameAccepted, by: PlayerId, answer: DecisionAnswer) =
+    service.handle(gameId, from.nextSequence, GameCommand.ResolveWalker(by,
+      TreeDecision(NegotiationDeal.dealDecisionId, answer)))
+
+  test("HSQL reopen preserves a parked Negotiation deal") {
+    val path = Files.createTempDirectory("oathdigital-negotiation-parked-")
+      .resolve("journal")
+    val gameId = "game-hsql-negotiation-parked"
+    val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val (parked, actor, other, adviser) = try {
+      val service = new GameApplicationService(catalog, first)
+      val (opened, actor, other, adviser) = negotiationOpened(service, gameId)
+      val terms = NegotiationTerms(disclosures = Vector(NegotiationDisclosure(
+        other, NegotiationDisclosureRef.Adviser(actor, adviser))))
+      (say(service, gameId, opened, actor, ProposeTerms(terms))
+        .fold(error => fail(s"terms must persist: $error"), identity),
+        actor, other, adviser)
+    } finally first.close()
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
+      error => fail(s"failed to reopen Negotiation repository: $error"), identity)
+    try {
+      val loaded = new GameApplicationService(catalog, reopened)
+        .load(gameId).toOption.flatten.get
+      assertEquals(loaded.state, parked.state)
+      val seen = new GameProjector(catalog).project(gameId, loaded, other)
+        .walkerDecision.flatMap(_.query).flatMap(_.deal).get
+      assertEquals(seen.disclosures.map(d => (d.authorPlayerId, d.card)),
+        Vector((actor.value, None)))
+    } finally reopened.close()
+  }
+
   test("HSQL reopen preserves completed Negotiation disclosure knowledge") {
-    val path = Files.createTempDirectory("oathdigital-negotiation-reopen-").resolve("journal")
+    val path = Files.createTempDirectory("oathdigital-negotiation-reopen-")
+      .resolve("journal")
     val gameId = "game-hsql-negotiation"
     val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     val (completed, actor, other, adviser) = try {
       val service = new GameApplicationService(catalog, first)
-      val setup = execute(service, gameId)
-      val Ready(ready) = setup.state: @unchecked
-      val actor = ready.game.current.turn.activePlayer
-      val other = ready.game.current.players.find(_.player != actor).get
-      val act = service.handle(gameId, setup.nextSequence,
-        GameCommand.EndWake(actor)).toOption.get
-      val traveled = service.handle(gameId, act.nextSequence,
-        GameCommand.Travel(actor, other.pawnSite.get)).toOption.get
-      val started = service.handle(gameId, traveled.nextSequence,
-        GameCommand.BeginNegotiation(actor, Vector(other.player))).toOption.get
-      val decision = started.state.asInstanceOf[Ready].value.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Negotiation].decision
-      val adviser = ready.game.current.players.find(_.player == actor).get
-        .advisers.head.id.asInstanceOf[WorldCardId]
+      val (opened, actor, other, adviser) = negotiationOpened(service, gameId)
       val terms = NegotiationTerms(disclosures = Vector(NegotiationDisclosure(
-        other.player, NegotiationDisclosureRef.Adviser(actor, adviser))))
-      val changed = service.handle(gameId, started.nextSequence,
-        GameCommand.ReplaceNegotiationTerms(actor, decision, terms)).fold(
-          error => fail(s"failed to persist Negotiation terms: $error"), identity)
-      assertEquals(service.handle(gameId, started.nextSequence,
-        GameCommand.AcceptNegotiation(actor, decision)).left.toOption,
+        other, NegotiationDisclosureRef.Adviser(actor, adviser))))
+      val changed = say(service, gameId, opened, actor, ProposeTerms(terms))
+        .fold(error => fail(s"failed to persist Negotiation terms: $error"), identity)
+      assertEquals(say(service, gameId, opened, actor, AcceptDeal).left.toOption,
         Some(GameApplicationError.StaleClientPosition(
-          started.nextSequence, changed.nextSequence)))
-      val actorAccepted = service.handle(gameId, changed.nextSequence,
-        GameCommand.AcceptNegotiation(actor, decision)).toOption.get
-      val completed = service.handle(gameId, actorAccepted.nextSequence,
-        GameCommand.AcceptNegotiation(other.player, decision)).toOption.get
-      (completed, actor, other.player, adviser)
+          opened.nextSequence, changed.nextSequence)))
+      val actorAccepted = say(service, gameId, changed, actor, AcceptDeal)
+        .toOption.get
+      val completed = say(service, gameId, actorAccepted, other, AcceptDeal)
+        .toOption.get
+      (completed, actor, other, adviser)
     } finally first.close()
     val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
       error => fail(s"failed to reopen Negotiation repository: $error"), identity)
@@ -1829,68 +1979,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         .load(gameId).toOption.flatten.get
       assertEquals(loaded.state, completed.state)
       val projector = new GameProjector(catalog)
-      assertEquals(projector.project(gameId, loaded, actor).negotiation, None)
+      assertEquals(projector.project(gameId, loaded, actor).walkerDecision, None)
       val recipientBoard = projector.project(gameId, loaded, other).playerBoards
         .find(_.playerId == actor.value).get
-      assert(recipientBoard.advisers.exists(card => card.cardId == adviser.value && !card.hidden))
+      assert(recipientBoard.advisers.exists(card =>
+        card.cardId == adviser.value && !card.hidden))
       val publicBoard = projector.projectPublic(gameId, loaded).playerBoards
         .find(_.playerId == actor.value).get
-      assert(publicBoard.advisers.forall(card => card.cardId != adviser.value || card.hidden))
-      assertEquals(projector.projectPublic(gameId, loaded).negotiation, None)
+      assert(publicBoard.advisers.forall(card =>
+        card.cardId != adviser.value || card.hidden))
+      assertEquals(projector.projectPublic(gameId, loaded).walkerWaiting, None)
     } finally reopened.close()
   }
 
-
-  test("HSQL reopen preserves Raid pending and completed replay") {
-    val path = Files.createTempDirectory("oathdigital-raid-reopen-").resolve("journal")
-    val gameId = "game-hsql-raid"
-    val firstRepository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    val (started, attacker, defender, decision, origin, force) = try {
-      beginServiceRaid(new GameApplicationService(catalog, firstRepository,
-        campaignDicePort = blankCampaignDice), gameId)
-    } finally firstRepository.close()
-
-    val secondRepository = OwnedHsqldbEventStreamRepository.open(path).fold(
-      error => fail(s"failed to reopen pending Raid repository: $error"),
-      identity
-    )
-    val completed = try {
-      val service = new GameApplicationService(catalog, secondRepository,
-        campaignDicePort = blankCampaignDice)
-      assertEquals(service.load(gameId).toOption.flatten.get.state, started.state)
-      val attackerDone = service.handle(gameId, started.nextSequence,
-        GameCommand.FinishCampaignPlans(attacker, decision)).toOption.get
-      val rolled = service.handle(gameId, attackerDone.nextSequence,
-        GameCommand.FinishCampaignPlans(defender, decision)).toOption.get
-      val Ready(rolledReady) = rolled.state: @unchecked
-      val pending = rolledReady.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Campaign]
-      val sacrifice = math.max(0,
-        CampaignRules.defenderForce(rolledReady, pending) + 1 - pending.attack)
-      val won = service.handle(gameId, rolled.nextSequence,
-        GameCommand.ChooseCampaignSacrifice(attacker, decision, sacrifice))
-        .toOption.get
-      val destination = rolledReady.game.current.map.inPlay.find(_ != origin).get
-      service.handle(gameId, won.nextSequence,
-        GameCommand.RelocateCampaignRaidPawn(attacker, decision, destination))
-        .toOption.get
-    } finally secondRepository.close()
-
-    val thirdRepository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    try {
-      val loaded = new GameApplicationService(catalog, thirdRepository,
-        campaignDicePort = blankCampaignDice).load(gameId).toOption.flatten.get
-      assertEquals(loaded.state, completed.state)
-      assertEquals(loaded.nextSequence, completed.nextSequence)
-      val Ready(after) = loaded.state: @unchecked
-      assertEquals(after.game.current.pending, None)
-      assertEquals(after.game.current.players.find(_.player == defender).get.pawnSite,
-        completed.state match {
-          case Ready(value) => value.game.current.players
-            .find(_.player == defender).get.pawnSite
-          case _ => fail("completed Raid must remain ready")
-        })
-      assert(force >= 0)
-    } finally thirdRepository.close()
-  }
 }

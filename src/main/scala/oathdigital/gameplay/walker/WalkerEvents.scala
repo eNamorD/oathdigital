@@ -1,9 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.WalkerEvent
-import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.{ActionRef, Answered, DecisionPayload, DieFace,
-  PlayerId, PoolKey, RelicId, SiteId}
+import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, ProcedureRef, RelicId, SiteId, WalkerEvent}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -38,8 +35,11 @@ object WalkerStepPayload {
   * stay empty: appending the answer to `pending.answered` is a state write
   * (the walker rebuilds `answered` from these events at replay), not an
   * operation batch.
+  *
+  * @param by who answered.
   */
-final case class ChoicePayload(decisionId: String, payload: DecisionPayload)
+final case class ChoicePayload(decisionId: String, answer: DecisionAnswer,
+    by: PlayerId)
     extends WalkerStepPayload
 
 /** Faces the acting player rolled for `pool`, recorded when a `Roll` park is
@@ -47,9 +47,11 @@ final case class ChoicePayload(decisionId: String, payload: DecisionPayload)
   * empty: the outcome is a state write (a `RollOutcome` into
   * `CurrentGameState.rollOutcomes`), not an operation batch, so replay must
   * re-derive the outcome from this payload rather than applying ops.
+  * `automatic` is true when the walker rolled the faces itself from its dice
+  * source; replay then needs no durable park at the node.
   */
-final case class RollPayload(pool: PoolKey, faces: Vector[DieFace])
-    extends WalkerStepPayload
+final case class RollPayload(pool: PoolKey, faces: Vector[DieFace],
+    automatic: Boolean = false) extends WalkerStepPayload
 
 /** Container event: recorded once per delta, resolved choice, or submitted
   * roll the walker executes.
@@ -58,28 +60,46 @@ final case class RollPayload(pool: PoolKey, faces: Vector[DieFace])
   * `CoreOperation`s), so replay applies exactly the deltas that produced this
   * step; `nodeId` is the leaf's child-index path joined with `"."` (repeat
   * passes of one body leaf repeat the same `nodeId` — events stay ordered in
-  * the journal).
+  * the journal). `contributions` is the deterministic order of powers whose
+  * gather produced this step's `ops` (spec decision 10f) — an AUDIT fact
+  * (who influenced this node), never a replay input: `ops` alone is the
+  * replay authority (spec decision 5), so `ProcedureWalker.applyRecorded`
+  * reads `ops` and ignores this field entirely. `Vector.empty` for a node
+  * with no window (no explicit default: every construction site must state
+  * what it recorded).
   */
 final case class WalkerStepRecorded(
-    actor: PlayerId,
     nodeId: String,
     payload: WalkerStepPayload,
-    ops: Vector[CoreOperation]
+    ops: Vector[CoreOperation],
+    contributions: Vector[PowerId]
 ) extends WalkerEvent
 
 /** Durable state fact written whenever walking stops at a Decide or Roll.
-  * `action` is stored beside pointer-only PendingTree on replay so generic
-  * resume commands can rebuild the correct tree after reload.
+  * `procedure` is stored beside pointer-only PendingTree on replay so generic
+  * resume commands can rebuild the correct tree after reload -- one of the
+  * three [[ProcedureRef]] families (Task 4), tagged with its family on the
+  * wire so a decoder rejects a reference read back under the wrong one.
+  * `modifiers` (fix-round ruling I) is the player-selected power ids chosen
+  * when the walker procedure started, carried on every park of this
+  * procedure so replay restores `CurrentGameState.walkerModifiers` from this
+  * fact alone, without re-running the walker or re-deriving anything.
+  * `startArgs` (batch-1 Task 5) is carried on every park for exactly the
+  * same reason: a procedure whose tree needs what the player selected at the
+  * start cannot rebuild that tree without it, and a selection -- unlike the
+  * actor's pawn site -- is a choice, not a state read. Empty for the
+  * procedures that select nothing, which is every one that parks today.
   */
 final case class WalkerParked(
-    actor: PlayerId,
-    action: ActionRef,
+    procedure: ProcedureRef,
     at: Vector[String],
-    answered: Vector[Answered]
+    answered: Vector[Answered],
+    modifiers: Vector[PowerId],
+    startArgs: Vector[DecisionOptionRef]
 ) extends WalkerEvent
 
 /** Durable action-boundary fact. Replay clears every walker-owned scratch
   * field without deriving or running the operation tree.
   */
-final case class WalkerCompleted(actor: PlayerId, action: ActionRef)
+final case class WalkerCompleted(procedure: ProcedureRef)
     extends WalkerEvent

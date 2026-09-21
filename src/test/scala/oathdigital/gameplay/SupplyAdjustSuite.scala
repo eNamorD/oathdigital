@@ -1,16 +1,12 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
-  FirstGameSupportState, PlayerColor}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
 class SupplyAdjustSuite extends munit.FunSuite {
   private val blueId = PlayerId("player-blue")
   private val blueLineage = LineageId("blue")
-  private val redForce = ForceKind.Exile(lineageId)
-  private val blueForce = ForceKind.Exile(blueLineage)
 
   private val bluePlayer = PlayerState(
     blueId, blueLineage, Some(sites(1)),
@@ -28,13 +24,7 @@ class SupplyAdjustSuite extends munit.FunSuite {
       blueLineage,
       LineageState(blueLineage, Some(blueId), Role.Exile,
         Vector.empty, Vector.empty)))
-    ReadyGame(
-      game.copy(campaign = campaign, current = current),
-      Map(playerId -> PlayerColor("red"), blueId -> PlayerColor("blue")),
-      FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered, playerId),
-      MaterialBankState(
-        Suit.all.map(_ -> 5).toMap,
-        Map(redForce -> 14, blueForce -> 14, ForceKind.Bandit -> 24)))
+    ReadyGames.of(game.copy(campaign = campaign, current = current))
   }
 
   private val executor = new OperationExecutor()
@@ -47,21 +37,20 @@ class SupplyAdjustSuite extends munit.FunSuite {
       if (existing.player != player) existing
       else existing.copy(board = existing.board.copy(
         supply = SupplyTrack(value))))
-    ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = fixed)))
+    ready.updateCurrent(_.copy(players = fixed))
   }
 
   test("an exact spend reduces supply") {
     val actor = ready.game.current.players.find(_.player == playerId).get
     val result = executor.execute(ready,
-      AdjustSupply(playerId, -2)).toOption.get
+      SpendSupply(playerId, 2)).toOption.get
     assertEquals(supply(result, playerId), supply(ready, playerId) - 2)
     assert(actor.board.supply.supply > 2)
   }
 
   test("an unaffordable spend is rejected") {
     val source = withSupply(playerId, 1)
-    val result = executor.execute(source, AdjustSupply(playerId, -2))
+    val result = executor.execute(source, SpendSupply(playerId, 2))
     assert(result.left.toOption.get
       .isInstanceOf[OperationError.InsufficientSupply])
   }
@@ -69,15 +58,15 @@ class SupplyAdjustSuite extends munit.FunSuite {
   test("a positive adjustment caps at the track maximum") {
     val source = withSupply(playerId, 6)
     val result = executor.execute(source,
-      AdjustSupply(playerId, 5)).toOption.get
+      GainSupply(playerId, 5)).toOption.get
     assertEquals(supply(result, playerId), SupplyTrack.Maximum)
   }
 
   test("staged adjustments apply in order") {
     val first = executor.execute(ready,
-      AdjustSupply(playerId, -2)).toOption.get
+      SpendSupply(playerId, 2)).toOption.get
     val second = executor.execute(first,
-      AdjustSupply(playerId, -2)).toOption.get
+      SpendSupply(playerId, 2)).toOption.get
     assertEquals(supply(second, playerId), supply(ready, playerId) - 4)
   }
 }

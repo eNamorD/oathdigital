@@ -1,30 +1,16 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
-  FirstGameSupportState, PlayerColor}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
 class OperationStateAdapterSuite extends munit.FunSuite {
   private val exile = ForceKind.Exile(lineageId)
-  private val ready = ReadyGame(
-    game,
-    Map(playerId -> PlayerColor("red")),
-    FirstGameSupportState(
-      FirstGameFoundationProfile.FixedUnaltered,
-      playerId
-    ),
-    MaterialBankState(
-      Suit.all.map(_ -> 5).toMap,
-      Map(exile -> 14, ForceKind.Bandit -> 24)
-    ),
-    CardKnowledge(
+  private val ready = ReadyGames.of(game).copy(knowledge = CardKnowledge(
       siteRelics = Map(playerId -> Map(sites(1) -> Vector(siteRelic.id))),
       advisers = Map(playerId -> Vector(adviser.id)),
       heldRelics = Map(playerId -> Vector(reliquaryRelic))
-    )
-  )
+    ))
 
   test("card lookup maps precise containers to semantic locations") {
     assert(OperationStateAdapter.card(ready, worldDenizen,
@@ -45,10 +31,9 @@ class OperationStateAdapterSuite extends munit.FunSuite {
   }
 
   test("temporary hands are not part of a player's play area") {
-    val inHand = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(
+    val inHand = ready.updateCurrent(_.copy(
         commonCards = ready.game.current.commonCards.copy(worldDeck = Vector.empty),
-        temporaryHands = Map(playerId -> Vector(worldDenizen)))))
+        temporaryHands = Map(playerId -> Vector(worldDenizen))))
 
     assert(OperationStateAdapter.card(inHand, worldDenizen,
       Location.Hand(playerId)).isRight)

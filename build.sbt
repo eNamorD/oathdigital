@@ -1,6 +1,8 @@
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / organization := "dev.oathdigital"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := ReleaseVersion.resolve(sys.env.get("OATH_RELEASE_VERSION"))
+
+lazy val verifyReleaseVersion = taskKey[Unit]("Check release version validation")
 
 lazy val verifyPackageMappings = taskKey[Unit](
   "Verify that every distribution contains its launchers and runtime files"
@@ -45,7 +47,8 @@ lazy val root = (project in file("."))
       "com.typesafe.akka" %% "akka-stream" % "2.8.5",
       "com.typesafe.akka" %% "akka-http" % "10.5.3",
       "ch.qos.logback" % "logback-classic" % "1.5.18",
-      "org.scalameta" %% "munit" % "1.0.4" % Test
+      "org.scalameta" %% "munit" % "1.0.4" % Test,
+      "org.scalameta" %% "munit-scalacheck" % "1.0.0" % Test
     ),
     scalacOptions ++= Seq(
       "-deprecation",
@@ -53,15 +56,34 @@ lazy val root = (project in file("."))
       "-unchecked",
       "-Xlint"
     ),
-    Universal / packageName := "oathdigital",
+    // Ratchet: pinned at the baseline measured when scoverage was adopted
+    // (stmt 84.11%). Raise it as coverage improves; the goal is 100% with
+    // justified $COVERAGE-OFF$ exemptions. Enforced by `coverageReport`.
+    coverageMinimumStmtTotal := 84.0,
+    coverageFailOnMinimum := true,
+    Universal / packageName := s"oathdigital-${version.value}",
+    verifyReleaseVersion := {
+      assert(ReleaseVersion.resolve(None) == "0.1.0-SNAPSHOT")
+      Seq("0.1.0-alpha.1", "1.2.3-beta.0", "10.20.30-rc.12").foreach { value =>
+        assert(ReleaseVersion.resolve(Some(value)) == value)
+      }
+      Seq("", "1.2.3", "v1.2.3-alpha.1", "01.2.3-alpha.1",
+        "1.2.3-alpha.01", "1.2.3-SNAPSHOT", "1.2.3-alpha.1\n",
+        "1.2.3-alpha.1+build", "../alpha").foreach { value =>
+        assert(scala.util.Try(ReleaseVersion.resolve(Some(value))).isFailure,
+          s"accepted invalid release version: $value")
+      }
+    },
     executableScriptName := "oathdigital",
-    Universal / mappings ++= Seq(
-      baseDirectory.value /
+    Universal / mappings ++= {
+      val operations = ((baseDirectory.value / "docs/operations") ** "*.md")
+        .get
+        .map(file => file -> s"share/oathdigital/${file.getName}")
+      (baseDirectory.value /
         "docs/catalog/new-foundations-component-catalog.json" ->
-        "share/oathdigital/new-foundations-component-catalog.json",
-      baseDirectory.value / "docs/operations/configuration.md" ->
-        "share/oathdigital/configuration.md"
-    ),
+        "share/oathdigital/new-foundations-component-catalog.json") +:
+        operations
+    },
     Universal / javaOptions += "-Dfile.encoding=UTF-8",
     bashScriptExtraDefines ++= Seq(
       """if [ -z "${OATH_MODE+x}" ]; then OATH_MODE=trusted-alpha; fi""",
@@ -95,7 +117,14 @@ lazy val root = (project in file("."))
         "bin/oathdigital",
         "bin/oathdigital.bat",
         "share/oathdigital/new-foundations-component-catalog.json",
-        "share/oathdigital/configuration.md"
+        "share/oathdigital/configuration.md",
+        "share/oathdigital/packaged-smoke-test.md",
+        "share/oathdigital/phase-5-follow-ups.md",
+        "share/oathdigital/quick-start.md",
+        "share/oathdigital/data-policy.md",
+        "share/oathdigital/network-and-browser.md",
+        "share/oathdigital/alpha-acceptance.md",
+        "share/oathdigital/releases.md"
       )
       val missingFiles = requiredFiles.filterNot(destinations.contains)
       val serverJarMapped = packageMappings.exists { case (source, path) =>
@@ -169,22 +198,10 @@ lazy val root = (project in file("."))
       if (failures.nonEmpty)
         sys.error("Invalid package mappings: " + failures.mkString(", "))
     },
-    Universal / packageBin := {
-      val archive = (Universal / packageBin)
-        .dependsOn(verifyPackageMappings).value
-      val versioned = archive.getParentFile /
-        s"${(Universal / packageName).value}-${version.value}.zip"
-      IO.move(archive, versioned)
-      versioned
-    },
-    Universal / packageZipTarball := {
-      val archive = (Universal / packageZipTarball)
-        .dependsOn(verifyPackageMappings).value
-      val versioned = archive.getParentFile /
-        s"${(Universal / packageName).value}-${version.value}.tgz"
-      IO.move(archive, versioned)
-      versioned
-    },
+    Universal / packageBin := (Universal / packageBin)
+      .dependsOn(verifyPackageMappings).value,
+    Universal / packageZipTarball := (Universal / packageZipTarball)
+      .dependsOn(verifyPackageMappings).value,
     Docker / stage := (Docker / stage)
       .dependsOn(verifyPackageMappings).value
   )
@@ -193,6 +210,9 @@ lazy val frontend = (project in file("frontend"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
     name := "oathdigital-frontend",
+    // scoverage instruments JVM code only; `coverage` would otherwise switch
+    // it on for this Scala.js project too.
+    coverageEnabled := false,
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("oathdigital.frontend.Main"),
     Compile / unmanagedSources ++= {
@@ -213,6 +233,15 @@ lazy val frontend = (project in file("frontend"))
       "com.lihaoyi" %%% "ujson" % "4.4.3",
       "org.scalameta" %%% "munit" % "1.0.4" % Test
     ),
+    // Frontend tests run in jsdom, not bare Node, so a renderer suite can
+    // drive the DOM the panels actually build: create the controls, click an
+    // accessible move button, read a confirm button's disabled state, and
+    // capture the command a click submits. `dom.document` is a val captured
+    // when scalajs-dom's package object initializes, so the document has to
+    // be real before any test touches it -- a hand-rolled double would
+    // depend on suite ordering. The `jsdom` package is pinned in the repo
+    // root's `package.json`; CI runs `npm ci` before `frontend/test`.
+    Test / jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",

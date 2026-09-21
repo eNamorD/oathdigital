@@ -5,8 +5,8 @@ import java.sql.Connection
 import slick.dbio.DBIO
 import slick.jdbc.HsqldbProfile.api._
 
-private[persistence] final class EventJournalSchema {
-  val TargetVersion: Int = 3
+private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
+  val TargetVersion: Int = 4
 
   val initialize: DBIO[Unit] =
     SimpleDBIO[Unit] { context =>
@@ -33,7 +33,8 @@ private[persistence] final class EventJournalSchema {
     Vector(
       1 -> createEventJournal _,
       2 -> createIdentityFoundation _,
-      3 -> addSessionCsrfDigest _
+      3 -> addSessionCsrfDigest _,
+      4 -> createTrustedSeats _
     )
 
   private def createVersionLedger(connection: Connection): Unit = {
@@ -89,7 +90,7 @@ private[persistence] final class EventJournalSchema {
     )
     try {
       statement.setInt(1, version)
-      statement.setLong(2, System.currentTimeMillis())
+      statement.setLong(2, nowMillis())
       statement.executeUpdate()
       ()
     } finally statement.close()
@@ -201,6 +202,23 @@ private[persistence] final class EventJournalSchema {
       statement.execute(
         """UPDATE sessions SET revoked_at_millis = created_at_millis
           |WHERE revoked_at_millis IS NULL""".stripMargin
+      )
+    } finally statement.close()
+  }
+
+  private def createTrustedSeats(connection: Connection): Unit = {
+    val statement = connection.createStatement()
+    try {
+      statement.execute(
+        """CREATE TABLE trusted_seats (
+          |  token_digest BINARY(32) PRIMARY KEY,
+          |  game_id VARCHAR(255),
+          |  player_id VARCHAR(128),
+          |  created_at_millis BIGINT,
+          |  CONSTRAINT trusted_seats_game_player_unique UNIQUE (game_id, player_id),
+          |  CONSTRAINT trusted_seats_game_fk FOREIGN KEY (game_id)
+          |    REFERENCES game_resources(game_id) ON DELETE CASCADE
+          |)""".stripMargin
       )
     } finally statement.close()
   }

@@ -3,8 +3,16 @@ set -eu
 
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 tooling="$project_dir/.tooling"
-java_home="$tooling/jdk-17.0.19+10/Contents/Home"
-sbt="$tooling/sbt/bin/sbt"
+java_home=${JAVA_HOME:-"$tooling/jdk-17.0.19+10/Contents/Home"}
+if [ -x "$tooling/sbt/bin/sbt" ]; then
+  sbt="$tooling/sbt/bin/sbt"
+else
+  sbt=$(command -v sbt) || { echo "Install sbt or provide .tooling/sbt" >&2; exit 1; }
+fi
+if [ ! -x "$java_home/bin/java" ]; then
+  echo "Set JAVA_HOME to a JDK (Java 21 for release verification)" >&2
+  exit 1
+fi
 cache="$tooling/cache"
 
 exec "$sbt" \

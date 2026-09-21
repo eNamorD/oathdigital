@@ -1,0 +1,443 @@
+# Declarative Walker Decisions — Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Make the transformed `Decide` operation the only source of both command legality and decision projection. Today the answers a player may submit live in per-action `validate` closures on the tree, while the choices the UI offers live in separate expressions inside `WalkerDecisionProjector` and `PendingProcedureProjector`. They agree only because both call the same helper by convention. Replace both with one declarative `DecisionQuery` the walker validates generically and the projector projects verbatim, so a power that transforms a decision changes what is legal and what is offered in the same edit.
+
+**Architecture:** `Decide` carries `decisionId`, a concrete `PlayerId` owner, and a `DecisionQuery`. `ChooseOne` exposes independently selectable options; `Partition` declares sections with minimum counts and the options to spread across them. Every option has a stable `DecisionOptionRef`, and both answers are generic over refs: `ChooseOneAnswer(selected)` and `PartitionAnswer(placements)`. The walker rebuilds and power-transforms the tree, confirms the owner is the pending actor, validates the submitted answer against the query with one generic validator, and records it. `WalkerDecisionProjector` projects the same transformed query. After this change no engine, projector, wire or renderer type names a Recover or Forge answer shape.
+
+**Tech Stack:** Scala 2.13, sbt multi-project (root engine + `shared` protocol + `frontend` Scala.js), munit, ujson. Full gate: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`.
+
+**Spec:** `docs/superpowers/specs/2026-09-10-declarative-walker-decisions-design.md` (approved, revised twice — generic answers over option references, then the removal of legacy answer-tag translation). This plan implements all of it.
+
+**Relationship to walker batch 1:** `docs/superpowers/plans/2026-09-09-walker-batch-1-forge-travel-wake.md` is mid-flight — Tasks 1, 1b, 2, 3 and 4 have landed, Task 5 (Travel cutover) has not. That plan's Task 2 was amended after Forge shipped and now describes Forge's decision in this spec's vocabulary, so the committed `ForgeProcedure` no longer matches its own plan text. This plan is what closes that gap. It is written to land **before** batch 1's Task 5: Travel is the next action to declare a tree, and it should declare a declarative decision rather than a validation closure that would have to be rewritten a task later.
+
+Two neighbouring batch-1 amendments are deliberately **not** in scope here, because they are rules changes rather than decision-contract changes: dropping the `relicDeck.nonEmpty` start gate so an exhausted relic deck is a legal Forge outcome (commit `829135b`), and the Travel powered-candidate simulation (commit `44fb0e0`). Leave both to batch 1.
+
+---
+
+## Rulings to confirm at review
+
+The revised spec and the review settled the two layering questions the previous draft had to work around. Both are restated here as they now stand, because the *reasons* changed even where the answers did not.
+
+**R1 — the whole vocabulary lives in one model file** *(settled at review)*. Queries, options, references, sections, placements and both answers go together in `oathdigital.model`, in one file. Splitting `DecisionOption` into a persisted `DecisionOptionRef` and a display-carrying `DecisionOption` removed the constraint that would have forced a split, so there is no longer a reason to scatter the contract across two packages: a reader opens one file and sees both what may be asked and what may be answered.
+
+The tradeoff, stated plainly rather than argued: the model now holds a button's label and a section's label. That is prompt copy in a layer that otherwise holds none. It buys a single home for the contract, and it costs nothing structurally — `Decide` references these types exactly as it already references `PlayerId` and `PoolKey`, and gameplay is free to import the model in a way the reverse never is.
+
+Two things are **not** in that file. The validator returns typed `OathViolation`s, which the model may not name, so it stays in gameplay (R3). And `DecisionOptionRef.Deck` needs `CardDeck` to be model-safe, which is R2.
+
+On the apparent contradiction between the spec carrying labels on the query and its non-goal "moving presentation labels into gameplay/model code": those are different labels. Declarative prompt copy for a button or a section is authored by the action and travels on the query. Game-object names — a relic's name, a denizen's title — never enter gameplay and are still resolved by `GamePresentationProjector` at projection time from the option's ref. A `Denizen` option carries a ref and nothing else.
+
+**R2 — `CardDeck` moves to the model, and all seven ref variants are declared.** `DecisionOptionRef.Deck(id: CardDeck)` is persisted, so `CardDeck` cannot stay in `gameplay/operations/CoreOperations.scala`. The move is nearly free and that is worth knowing before it is planned as a risk: `CardDeck` is a closed four-case enum, and of the ten production files that reference it, nine already wildcard-import `oathdigital.model._`, so they keep compiling untouched. Only `gameplay/actions/Search.scala` names it in an explicit `gameplay.operations` import. No case object, no JSON tag and no wire string changes — the type declaration moves packages and nothing else.
+
+**R3 — the generic validator lives in gameplay, not in `ProcedureWalker`** *(tentatively approved)*. It returns typed `OathViolation`s, which the model may not name, so it cannot sit in the model beside the data it validates. And `ProcedureWalker.scala` is at 790 of the 800-line cap, so it cannot sit there either. It goes in a `DecisionQueries` object beside `DecisionQuery`, and the walker's `answerDecide` shrinks to an owner comparison plus one call. The thing to check at review is the boundary this draws: `DecisionQueries` never reads `ReadyGame`, so it cannot express state-dependent legality even by accident. Staleness is handled structurally instead, because the tree carrying the query is rebuilt against authoritative state on every command and an option that no longer exists is simply absent from the query. Adding a state parameter here would reintroduce the per-decision legality closure this change exists to delete.
+
+**R4 — panel copy joins button and section copy on the query** *(added at Task 5b, widening R1)*. R1 admitted a button's label and a section's label into the model and named that cost plainly. Task 5b adds two more optional strings of the same kind: the heading a panel shows above a question and the label on the control that submits a partition. The reason is the one R1 already gave — the action authoring the decision is the only place that knows what to call it — and Task 5 supplied the evidence, because the alternative was a frontend helper branching on `action == "forge"` to title a panel whose interaction had just stopped being Forge-specific.
+
+The boundary R1 drew does not move. Game-object names still never enter a query: a relic's name and a denizen's title are resolved by `GamePresentationProjector` from an option's reference at projection time. What travels on a query is copy the action wrote, and nothing a projector could have looked up. And copy still never affects legality — `DecisionQueries.accepts` reads options and sections, never labels, which is what lets a prompt be rewritten without invalidating a single recorded answer.
+
+---
+
+## Global Constraints
+
+- Do not break any other action. Full gate green at every commit (root + shared + frontend).
+- **Three production files this change touches are within ten lines of the 800-line cap**: `ProcedureWalker.scala` (790), `serialization/WalkerEventCodec.scala` (795) and `frontend/ServerUiSupport.scala` (795). `ActionDecisionRenderer.scala` (774) is close behind. Every task that adds to one of these must budget an extraction in the same commit, not discover the cap at the gate. Tasks 3 and 4 name the extractions they expect.
+- Engine code contains no action-specific or power-specific logic. After Task 4 no projector may name a `decisionId` or an `ActionRef` to decide what to offer; `BackendArchitectureSuite`'s "a walker power imports no engine, and the engine never learns its name" must stay green without being weakened.
+- **No journal compatibility.** The alpha holds no recorded games worth preserving, so the `"recover-choice"`, `"recover-relic"` and `"forge-assignment"` answer tags are deleted from both sides of the event codec rather than kept as a decode-only translation, and journal fixtures asserting them are rewritten to the generic `"choose-one"` and `"partition"` tags in the same commit. This is what the spec now says and the constraint batch 1 already works under.
+- Presentation copy never affects legality, per R1. A query carries prompt copy for buttons and sections; game-object names are resolved at projection time by `GamePresentationProjector` from an option's reference, and never enter a query, an answer or a validator.
+- Owner-private projection is unchanged: `WalkerDecisionProjector.project` already gates on `context.viewer.contains(pending.actor)` and every new field inherits that.
+- Per-task gate: `./sbtw "test"` green plus `python3 scripts/check-architecture.py`. Tasks touching `shared/` or `frontend/` additionally run `./sbtw "frontend/test" "frontend/fastLinkJS"`, which since Task 5's Step 7 needs `npm ci` to have installed jsdom. Task 6 runs the full gate.
+- Commit per task with the exact message shown. Work on branch `feat/walker-declarative-decisions` cut from `feat/engine-redesign`.
+
+---
+
+### Task 1: `DecisionPayload` becomes `DecisionAnswer`
+
+**Files:**
+- Rename: `src/main/scala/oathdigital/model/DecisionPayload.scala` → `Decisions.scala`
+- Modify: `model/PendingTree.scala`, `gameplay/operations/CoreOperations.scala`, `gameplay/walker/WalkerEvents.scala`, `gameplay/actions/recover/RecoverProcedure.scala`, `gameplay/actions/forge/ForgeProcedure.scala`, `serialization/WalkerEventCodec.scala`, `application/GameCommands.scala`, `application/GameIntentMapper.scala`, `shared/.../protocol/CommandIntents.scala`, `shared/.../protocol/CommandNestedCodecs.scala`, `shared/.../protocol/CommandIntentDecoders.scala`, `frontend/.../ServerUiSupport.scala`, `frontend/.../ForgeAssignmentState.scala`
+- Test: every suite naming the old family (`ProcedureWalkerSuite`, `WalkerStateSuite`, `RecoverProcedureSuite`, `ForgeProcedureSuite`, `GameEventWireSuite`, `GameHttpWireSuite`, `WalkerReplayDriftSuite`, `OathRulesWalkerPowerSuite`, `GameApplicationServiceSuite`, `WalkerDecisionProjectionSuite`, `HttpGameClientSuite`, `ServerModeUiSuite`, `ProtocolTestCommands`)
+
+A pure rename, landed alone so that the substantive tasks read as design changes rather than as a diff dominated by churn. `DecisionPayload` → `DecisionAnswer`; `Answered.payload` → `Answered.answer`; `TreeDecision.payload` → `TreeDecision.answer`; `DecisionPayloadWire` → `DecisionAnswerWire`.
+
+The file takes the neutral name `Decisions.scala` rather than `DecisionAnswer.scala`, because Task 2 adds the query half of the vocabulary to the same file (R1). Naming it for the answer family now would mean renaming it again one commit later.
+
+Rename the three concrete cases along with the family — `RecoverChoiceAnswer`, `RecoverRelicAnswer`, `ForgeAssignmentAnswer` — rather than leaving a half-renamed family standing for two commits. All three are **deleted** in Task 3 when generic answers replace them, so spend no thought on their names beyond consistency.
+
+Two things deliberately do **not** change. `WalkerStepPayload.ChoicePayload` keeps its name: it is a recorded *step* kind, not a member of the answer family, and `RollPayload` sits beside it under the same parent. Rename only its `payload` field to `answer`. And `RestPowerDecisionPayload` is a different family belonging to the legacy pending-procedure path; leave it entirely alone.
+
+No wire or persisted string moves in this task. `encodeDecisionAnswer` still emits `"kind" -> "recover-choice"` and journal fixtures are untouched; the encoding changes in Task 3. If a recorded-journal assertion changes here, the rename went too far.
+
+- [x] **Step 1: rename** the family, its three cases and the two field names across all four source roots. Compile-driven; there is no new behaviour to test.
+- [x] **Step 2: verify nothing persisted moved.** `git diff` must show no change to any string literal inside `WalkerEventCodec`'s encode/decode bodies or to any journal fixture. `grep -rn "DecisionPayload" src shared frontend --include=*.scala` returns only `RestPowerDecisionPayload` hits.
+- [x] **Step 3:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
+- [x] **Step 4: commit** `refactor(walker): rename decision payloads to decision answers`.
+
+---
+
+### Task 2: the declarative decision vocabulary lands, unused
+
+**Files:**
+- Create: `src/main/scala/oathdigital/model/CardDeck.scala`, `src/main/scala/oathdigital/gameplay/walker/DecisionQueries.scala`
+- Modify: `src/main/scala/oathdigital/model/Decisions.scala` (the whole vocabulary lands here), `gameplay/operations/CoreOperations.scala` (remove `CardDeck`), `gameplay/actions/Search.scala` (its one explicit import)
+- Test: `src/test/scala/oathdigital/gameplay/walker/DecisionQuerySuite.scala` (new); mechanical import fixes in any suite naming `CardDeck` through `gameplay.operations`
+
+Additive only apart from the `CardDeck` package move, so this commit changes no behaviour and the gate stays green by construction. Landing the contract and its validator alone is what makes Task 3 reviewable — by then the only open question is whether Recover and Forge state their rules correctly, not whether the rules engine is right.
+
+All of it in `model/Decisions.scala`, beside the `DecisionAnswer` family Task 1 renamed (R1) — the question half and the answer half in one place:
+
+```scala
+sealed trait DecisionOptionRef              // Button(key) / Player / Site / Denizen / Relic / Vision / Deck
+sealed trait DecisionOption { def ref: DecisionOptionRef }   // Button carries a label; the rest carry only a ref
+final case class DecisionSection(key: String, label: String, minRequired: Int)
+
+sealed trait DecisionQuery
+object DecisionQuery {
+  final case class ChooseOne(options: Vector[DecisionOption]) extends DecisionQuery
+  final case class Partition(sections: Vector[DecisionSection],
+      options: Vector[DecisionOption]) extends DecisionQuery
+}
+
+final case class DecisionPlacement(option: DecisionOptionRef, sectionKey: String)
+final case class ChooseOneAnswer(selected: DecisionOptionRef) extends DecisionAnswer
+final case class PartitionAnswer(placements: Vector[DecisionPlacement]) extends DecisionAnswer
+```
+
+Keep the file's existing header comment accurate: it currently explains why answers must be model-safe, and it now also has to say that queries live here by choice rather than by constraint, so a later reader does not "restore" the split.
+
+`CardDeck` moves from `CoreOperations.scala` into its own model file so that `DecisionOptionRef.Deck` can name it (R2). Move the declaration only — same four case objects, same names, no JSON or wire change.
+
+`DecisionQueries`, in `gameplay/walker/` (R3), holds the whole generic contract as two functions (R3). Both take the `decisionId` as their first argument, because every violation they return names the decision. `wellFormed(decisionId, query)` is the structural check a malformed *tree* fails, and it enforces two properties that are different in kind.
+
+The first is that the query can be answered at all: a query with no options is invalid on a parked decision; `ChooseOne` option refs must be unique; `Partition` section keys must be unique with non-negative minima, its option refs must be unique, and its minima must not together demand more placements than there are options — two sections each requiring two of three options rejects every possible answer.
+
+The second, added at review, is that the query is worth asking. An action must not park and prompt for an answer that is already determined, so a `Partition` needs at least two sections and no single section may demand every option. Those two rules are exactly the forced shapes rather than a heuristic: given satisfiable minima and two or more sections, a partition has one legal answer if and only if some section's minimum equals the option count. A single-option `ChooseOne` is deliberately still well-formed — a lone button is a consent step rather than a choice, and the node is also where a power window hangs.
+
+`accepts(decisionId, query, answer)` is the check a bad *submission* fails: `ChooseOne` requires a `ChooseOneAnswer` whose ref is one of the declared option refs; `Partition` requires a `PartitionAnswer` that places every declared option ref exactly once, names only declared sections, and meets every section's minimum. Both return `Either[OathViolation, Unit]` and never throw — a malformed query and a mismatched answer are both `InvalidEventOrder` naming the decision, and neither is an action-specific violation case.
+
+Both functions compare refs and nothing else. A label never affects legality, which is what lets a power restate a prompt without touching what is submittable.
+
+- [x] **Step 1: failing tests** in `DecisionQuerySuite`, against hand-built queries with fixture answers and no game state: (a) `ChooseOne` accepts each declared ref and rejects an undeclared one; (b) duplicate option refs and an empty `ChooseOne` fail `wellFormed`; (c) two options differing only in label are rejected as duplicates, proving legality is ref-keyed; (d) `Partition` accepts a complete legal placement; (e) it rejects an unplaced option, a twice-placed option, an undeclared option, an unknown section key, and a section left under its minimum, each with a distinguishable message; (f) duplicate section keys, a negative minimum, duplicate options, an empty `Partition`, a `Partition` with fewer than two sections, minima that together exceed the option count, and a section demanding every option all fail `wellFormed`, while a single-option `ChooseOne` and a partition whose minima merely fix each section's size both pass; (g) each query shape rejects the other's answer type rather than matching loosely. Expected FAIL: nothing exists.
+- [x] **Step 2: implement** the vocabulary in `model/Decisions.scala`, the `CardDeck` move with `Search.scala`'s import, and `DecisionQueries` in `gameplay/walker/`. Leave `WalkerModel.scala` alone; it holds only `OwnerQuery` and `WalkerCtx` now, and Task 3 deletes the file.
+- [x] **Step 3:** re-run the focused suite; expected PASS.
+- [x] **Step 4:** `./sbtw "test"`, `python3 scripts/check-architecture.py`. The architecture check is what proves the vocabulary is genuinely model-safe: any field reaching a gameplay type fails here, not three tasks later. `CardDeck` is the one that would have.
+- [x] **Step 5: commit** `feat(walker): declare the decision query vocabulary`.
+
+---
+
+### Task 3: `Decide` becomes declarative, and both actions declare queries
+
+**Files:**
+- Modify: `gameplay/operations/CoreOperations.scala`, `gameplay/walker/ProcedureWalker.scala`, `gameplay/actions/recover/RecoverProcedure.scala`, `gameplay/actions/forge/ForgeProcedure.scala`, `gameplay/actions/ForgeRules.scala`, `gameplay/model/GameViolation.scala`, `serialization/WalkerEventCodec.scala`, `application/GameIntentMapper.scala`, `shared/.../protocol/CommandIntents.scala`, `shared/.../protocol/CommandNestedCodecs.scala`, `frontend/.../ServerUiSupport.scala`, `frontend/.../ForgeAssignmentState.scala`
+- Create: a decision-answer codec file extracted from `WalkerEventCodec.scala`
+- Delete: `gameplay/walker/WalkerModel.scala` entirely; `Decide.payload` and `Decide.validate`; `RecoverProcedure.validateChoice`/`validateRelic`; `ForgeProcedure.validateAssignment`/`favorBySuit`/`suitOf`/`assignmentOperations`; `DecisionAnswer.RecoverChoiceAnswer`/`RecoverRelicAnswer`/`ForgeAssignmentAnswer` and the `RecoverChoice` enum; `OathViolation.ForgeOutcomeMismatch`; `DecisionAnswerWire`'s three legacy cases, and the three legacy answer tags from both the command codec and the event codec
+- Test: `ProcedureWalkerSuite`, `WalkerStateSuite`, `RecoverProcedureSuite`, `ForgeProcedureSuite`, `ForgeRulesSuite`, `GameEventWireSuite`, `WalkerReplayDriftSuite`, `CommandProtocolSuite`, `GameApplicationServiceSuite`, `HttpGameClientSuite`, `ServerModeUiSuite`
+
+This is the one commit that cannot be split further. Changing `Decide`'s constructor breaks both declared trees at once, and deleting `validate` means each tree's legality must already be in its query — so Recover and Forge migrate together or not at all. Because both actions' answers become generic in the same stroke, both wire cases and both frontend command constructors move with them.
+
+```scala
+final case class Decide(decisionId: String, owner: PlayerId,
+    query: DecisionQuery,
+    override val window: Option[PowerWindow] = None)
+    extends PrimitiveOperation
+```
+
+`ProcedureWalker.answerDecide` becomes: confirm `decide.owner == ctx.actor` (a mismatch is `WrongPlayer`, exactly as today, but with no `None` case to handle because the owner is concrete), then `DecisionQueries.wellFormed` and `DecisionQueries.accepts`, then record the answer unchanged. `OwnerQuery` and `WalkerCtx` lose their last users and go — and since the vocabulary they used to sit beside now lives in the model, `WalkerModel.scala` has nothing left in it and the file goes too. Neither type has any other reference in production.
+
+**Recover** declares two `ChooseOne` queries. The continue/stop decision declares `Button(Button("continue"), "Continue")` and `Button(Button("stop"), "Stop")`; the relic decision declares one `Relic(Relic(relicId))` option per live facedown site relic, built where the surrounding `Branch` already calls `actorFacedownRelics`. Its answers become `ChooseOneAnswer(Button("continue"))` and `ChooseOneAnswer(Relic(relicId))`, so two things inside the tree change with them: the `Repeat` guard's `stopped` predicate now matches the stop button's key rather than a `RecoverChoice.Stop` case, and the trailing `moveRelic` `BuildOps` reads the relic id out of the recorded ref. Both read the same fact through the generic vocabulary; neither is a semantic change.
+
+Deleting `validateChoice` looks like a lost check and is not. Its whole body rejected a continue-or-stop answer when the recovery had already succeeded — and the `Branch` that carries the node already omits it in exactly that case, so on a rebuilt tree a stale choice answer finds no matching `Decide` and rejects before the query is consulted. Prove that with a test rather than asserting it. `validateRelic` likewise collapses into the option list, since both it and the projector already read the same `actorFacedownRelics`.
+
+**Forge** becomes a `DecisionQuery.Partition`: sections `"pay-favor"` and `"pay-secret"` labelled “Pay Favor” and “Pay Secret”, minima taken from `printedCost`, and one `Denizen` option per live eligible target. Its trailing `BuildOps` maps each placement to `PayCost(actor, Location.OnCard(denizen), Cost(favor = 1))` or the `Cost(secret = 1)` equivalent, so `OperationPipeline` validates the payments generically and applies them atomically.
+
+**Forge must not park at a single-resource site.** Task 2's forced-decision rule makes this a hard constraint rather than a nicety. Four of the seven forgeable sites print a cost of three of one resource — Ancient City and Golden Valley at three favor, Standing Stones and Steppe at three secrets — and at those sites one section demands all three denizens, so the query is forced and `wellFormed` rejects it. Forge therefore declares the `Decide` node only when both minima are non-zero, and otherwise applies the determined split directly in the trailing `BuildOps`. That is a behaviour change in this commit: today Forge parks and prompts at those four sites for an answer the player cannot get wrong.
+
+That is a **rules change**, not just a restatement: Forge currently moves favor out of the target denizen's own suit bank and secrets out of the shared bank. Under the spec the actor funds the payment from their own play area and suit banks are never consulted. Two consequences follow and both belong in this commit. `suitOf`, `favorBySuit` and the suit-bank sufficiency check in `validateAssignment` are deleted along with their `ForgeOutcomeMismatch` uses — which removes that violation's last producer, so the case goes too (`RecoverOutcomeMismatch` keeps a producer in `PowerOperations` and stays). And `ForgeRules.validate` must gain an affordability gate on the actor's own favor and secrets, via `Costs.plan`, because a Forge that starts with the player unable to pay spends Supply, parks, and can never be answered — the same stranding failure `ForgeProcedure.rebuild`'s doc comment already exists to prevent. The existing `relicDeck.nonEmpty` gate stays; changing it is batch 1's business.
+
+**Wire.** `DecisionAnswerWire` becomes two generic cases: `ChooseOneWire(optionKind, optionId)` and `PartitionWire(placements)`, each placement carrying an option kind, its id, and its section key. The three legacy cases and their codec branches are deleted — the command wire has no backward-compatibility obligation. `GameIntentMapper` maps kind-plus-id to a `DecisionOptionRef` through one total function over the seven declared variants; this is generic mapping and must name neither Recover nor Forge.
+
+**Event codec.** Both sides carry the generic tags only: `"choose-one"` and `"partition"`. The three legacy tags are deleted from encode and decode together, and the journal fixtures in `GameEventWireSuite` that assert them are rewritten to the new shapes in this commit — no translation layer, no decode-only survivors. Both answers encode a `DecisionOptionRef` as kind plus id, so write that encoder once and use it from both.
+
+**Extract the answer codec anyway.** `WalkerEventCodec.scala` sits at 795 of 800 lines. Deleting three legacy branches while adding a ref codec and two generic ones roughly breaks even, which leaves the file exactly as close to the cap as it is today and makes the next decision variant someone adds a cap failure. Move the decision-answer codec into its own file in this commit for the headroom, not for the volume. While there, settle the question batch-1 Task 3 flagged and deferred: `encodeDecisionAnswer` still *throws* on an unknown answer while its decode counterpart returns a typed `Left`. With both concrete answers now generic the family is far closer to closed than it was, so decide deliberately whether it should be sealed and the match exhaustive, and record the reasoning in the ledger.
+
+**Frontend, minimally.** Recover's two command constructors build `ChooseOneWire` from the button key and the relic id — the frontend already speaks `"continue"`/`"stop"` strings, so this is a small change. `ForgeAssignmentState.command` emits `PartitionWire`, mapping its per-target favor/secret choice to a placement in the matching section. Both keep their current renderers and their current `relicCandidates`/`ForgeProjection` inputs here; Task 4 re-sources those from the projected query and Task 5 replaces Forge's interaction. Do **not** add a translation shim that keeps a legacy command-wire case alive for a task.
+
+- [x] **Step 1: failing tests.** In `ProcedureWalkerSuite`/`WalkerStateSuite`: a generic `Decide` accepts exactly its declared options, rejects an undeclared ref, rejects a malformed and an empty query, and rejects an owner who is not the pending actor with `WrongPlayer`. In `RecoverProcedureSuite`: the choice decision declares exactly the two buttons; the relic decision declares one option per live facedown relic; a relic answer naming a relic that has since left the site rejects on the rebuilt tree; a continue answer submitted after the roll succeeded rejects because the node is gone; the `Repeat` guard still stops on the stop button; empty-site Recover still finishes without parking. In `ForgeProcedureSuite`: the query declares the three live denizens and the printed minima and consults no suit bank; a three-favor or three-secret site declares no `Decide` node at all and resolves its forced split without parking; a legal placement resolves to exactly three player-funded `PayCost`s; an incomplete, duplicated, or minimum-violating placement rejects; a Forge started with insufficient player favor or secrets is rejected by `ForgeRules.validate` before any Supply is spent. In `GameEventWireSuite`/`WalkerReplayDriftSuite`: generic answers round-trip and replay unchanged, the rewritten journal fixtures assert the generic tags, and an event carrying one of the three deleted tags is rejected with a typed decode failure rather than silently ignored. Expected FAIL: `Decide` has no `query`.
+- [x] **Step 2: implement** the `Decide` shape change, the walker's generic resolution, and the `OwnerQuery`/`WalkerCtx` deletion.
+- [x] **Step 3: implement** Recover's two `ChooseOne` queries, its guard and relic-move reads, and delete both closures with the `RecoverChoice` enum and its two answer cases.
+- [x] **Step 4: implement** Forge's `Partition`, its single-resource no-park path, its `PayCost` translation, the `ForgeRules` affordability gate, and the suit-bank deletions with `ForgeOutcomeMismatch`.
+- [x] **Step 5: implement** the wire and mapper changes, then the event codec: the extracted file, the generic encoders, the legacy-tag deletion with its fixture rewrites, and the throw-versus-typed-error decision.
+- [x] **Step 6:** re-run the suites; expected PASS. Two sweeps, and both must return nothing. The deleted symbols, word-bounded so they do not match live camel-case identifiers that merely contain them:
+
+  ```bash
+  grep -rnE '\b(OwnerQuery|WalkerCtx|RecoverChoice|RecoverChoiceAnswer|RecoverRelicAnswer|ForgeAssignmentAnswer|RecoverChoiceWire|RecoverRelicWire|ForgeAssignmentWire|ForgeOutcomeMismatch|ForgeAssignment)\b' src shared frontend/src
+  ```
+
+  And the three deleted wire tags, as complete quoted literals, in **production sources only**:
+
+  ```bash
+  grep -rn '"recover-choice"\|"recover-relic"\|"forge-assignment"' src/main shared/src/main frontend/src/main
+  ```
+
+  Both narrowings are load-bearing rather than convenient, so do not widen them back. The tag sweep excludes tests because Step 1 **requires** negative tests that name all three deleted tags and assert each is now a typed decode failure — a sweep over tests would contradict the step that demands them. It excludes unquoted matches because `ServerUiSupport` styles its relic button with the CSS class `recover-relic-choice`, which is presentation naming that shares a prefix with a wire tag and is not one. The symbol sweep is word-bounded because the frontend keeps `resolveRecoverChoiceCommand`, a live method whose name contains `RecoverChoice` and which has nothing to do with the deleted enum. A hit in either sweep is a real survivor; expect zero and investigate anything else.
+- [x] **Step 7:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
+- [x] **Step 8: commit** `feat(walker): make decisions declarative and migrate Recover and Forge`.
+
+**Report before Task 4.** This is the task that proves the contract carries two differently-shaped real decisions. If either action needed something the query could not state — a legality fact that is genuinely not an option set, a minimum that is not a count — say so plainly in the ledger before the projection work starts, because Tasks 4 and 5 assume the query is complete enough to project verbatim.
+
+---
+
+### Task 4: projection reads the transformed query
+
+**Files:**
+- Modify: `shared/.../protocol/projection/ActionProjectionDtos.scala`, `shared/.../protocol/projection/GameProjectionCodec.scala`, `shared/.../protocol/projection/GameProjectionDto.scala`, `application/WalkerDecisionProjector.scala`, `application/PendingProcedureProjector.scala`, `application/ScopedProjectionContext.scala`, `frontend/.../package.scala`, `frontend/.../ServerUiSupport.scala`, `frontend/.../ActionDecisionRenderer.scala`, `frontend/.../ForgeAssignmentState.scala`
+- Delete: `WalkerDecisionProjection.relicCandidates` and `WalkerDecisionProjector.relicCandidates`; `PendingProcedureProjector.forgeProjection`; `ForgeProjection`; `ForgeAssignmentTargetProjection`; `GameProjectionDto.forge`
+- Test: `WalkerDecisionProjectionSuite`, `ProjectionProtocolSuite`, `ServerModeUiSuite`, `GameApplicationServiceSuite`, and a new synthetic-power suite
+
+The projector stops discovering candidates and starts describing the query it already has. `WalkerDecisionProjection` loses `relicCandidates` and gains an optional projected query:
+
+```scala
+final case class DecisionQueryProjection(form: String,          // "choose-one" | "partition"
+    options: Vector[DecisionOptionProjection],
+    sections: Vector[DecisionSectionProjection] = Vector.empty)
+final case class DecisionOptionProjection(kind: String, id: String, label: String,
+    card: Option[CardDetailsProjection] = None)
+final case class DecisionSectionProjection(key: String, label: String, minRequired: Int)
+```
+
+An option projects its stable reference as `kind` plus `id`, its display text, and for card-shaped options the existing `GamePresentationProjector.cardDetails` output, so disclosure rules are unchanged and no naming logic enters gameplay. A `Button`'s label is the query's own declarative copy; a card or board object's label comes from presentation.
+
+There is deliberately **no** wire answer on a projected option. The client already holds everything an answer needs — a generic `ChooseOneWire(kind, id)` or a `PartitionWire` of placements is built from the same kind-and-id pair the option carries — so embedding a prebuilt answer would duplicate the identity and couple the projection DTOs to the command protocol for nothing.
+
+`WalkerDecisionProjector.parked` loses its `if (decide.decisionId == RecoverProcedure.relicDecisionId)` branch entirely and projects `decide.query`. When an option's identity cannot be presented — an id absent from authoritative state — omit the whole decision projection rather than emit a half-described option; that is the spec's failure rule and it must be a test, not a comment. `rollOutcome` and the roll-only `pool`/`count` fields are unchanged; they are roll feedback, not option discovery.
+
+`forgeProjection` and its two DTOs go. Forge's frontend state is re-sourced from `walkerDecision.query` — the sections give it labels and minima, the options give it the three denizens — while keeping its current dropdown interaction for one more task. Recover's `recoverWalkerStep` keeps its per-step renderers but takes its relic list and its two button refs from the projected options. Its supply-aware Continue label and disabled state may stay: interpreting a known option for a richer interaction is explicitly permitted, independently computing who is eligible is not.
+
+`ServerUiSupport.scala` is at 795 lines and this task edits it. Extract before you add.
+
+The synthetic-power test is the whole point of the change and deserves its own suite: a fixture `ContributingPower` whose `Transform` adds one option to a parked decision, and another that removes one, asserting that the projected options and the answers the walker accepts move together in both directions. A mutation that transforms the tree for walking but not for projection must fail it.
+
+- [x] **Step 1: failing tests.** (a) Recover's relic decision projects one option per live facedown relic with card details, and no `relicCandidates` field exists; (b) Recover's choice decision projects two button options with their declared labels; (c) Forge projects two sections with printed minima and three denizen options; (d) an option whose id is absent from authoritative state suppresses the entire decision projection; (e) the projection round-trips through `GameProjectionCodec`; (f) the new synthetic-power suite's add and remove cases. Expected FAIL: the DTO has no query.
+- [x] **Step 2: implement** the DTOs, their codec, and the projector rewrite; delete `relicCandidates` and `forgeProjection` with their types.
+- [x] **Step 3: implement** the frontend re-sourcing for Recover and Forge, with the `ServerUiSupport` extraction.
+- [x] **Step 4:** re-run; expected PASS. `grep -rnE '\b(relicCandidates|ForgeProjection|ForgeAssignmentTargetProjection)\b' src shared frontend/src` returns nothing. (Scope `frontend/src`, never `frontend`, whose `target/` holds linked JS carrying every symbol you just deleted; and quote any `--include` glob, which zsh expands before grep sees it.)
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(walker): project decisions from the transformed query`.
+
+---
+
+### Task 5: the generic two-section partition interaction
+
+**Files:**
+- Create: `frontend/src/main/scala/oathdigital/frontend/PartitionDecisionState.scala`
+- Modify: `frontend/.../CardDecisionState.scala`, `frontend/.../ActionDecisionRenderer.scala`, `shared/.../protocol/CommandIntents.scala`
+- Delete: `frontend/.../ForgeAssignmentState.scala`; `ForgeAssignment` wire row and its decoder; `model/PendingProcedures.scala`'s `ForgeResource` and `ForgeResourceAssignment`
+- Test: `frontend/.../CardDecisionStateSuite.scala`, a new `PartitionDecisionStateSuite`, `ServerModeUiSuite`, `CommandProtocolSuite`
+
+Forge's dropdown-per-denizen is the last place a Forge answer is assembled by Forge-specific code. Replace it by extracting the two-zone move/drag interaction that Keep/Discard already implements into a `PartitionDecisionState` both callers adapt into: a generic pair of named sections, items that may be moved between them by drag or by an accessible move button, and a confirmation predicate driven by declared minima.
+
+Keep the extraction honest in both directions. Search and starting-adviser keep their exact current semantics — the two-stage `Arrange`/`Resolve` flow, their existing labels, and discard ordering — so `CardDecisionState` adapts its projected data into the shared state and keeps its own resolution stage on top. Forge supplies “Pay Favor” and “Pay Secret”, its projected minima, and no ordering requirement. Do not route Forge through `PendingCardDecisionProjection`, and do not let the shared state learn any Search or setup concept; the direction of reuse is Forge borrowing an interaction, never a walker query depending on the card-decision pipeline.
+
+Confirmation is enabled only when every option is placed and every projected minimum is met, computed from the projection rather than from any local knowledge of Forge's cost. Submitting produces the generic `PartitionWire`.
+
+With Forge's UI generic, the last consumers of the old Forge answer vocabulary go: the `ForgeAssignment` protocol row and the model's `ForgeResource`/`ForgeResourceAssignment`. `SiteDenizenTarget` stays — `ForgeRules` and `LeagueTreatyPower` still use it.
+
+- [x] **Step 1: failing tests** in `PartitionDecisionStateSuite`: moving an item between sections, a minimum not yet met blocking confirmation, every-option-placed enforced, and the submitted answer naming each option ref exactly once in its section. Plus `CardDecisionStateSuite` regressions proving Search and starting-adviser keep their arrangement rules, ordering, and stage behaviour through the shared state. Plus a `ServerModeUiSuite` case driving Forge end to end through the generic interaction. Expected FAIL: the shared state does not exist.
+- [x] **Step 2: implement** the extraction, adapt both callers, and delete `ForgeAssignmentState`.
+- [x] **Step 3: delete** the `ForgeAssignment` wire row with its decoder and the two model types, in this commit. The wire row and its decoder were already gone (Task 3 removed them when `DecisionAnswerWire` became generic); only `ForgeResource` and `ForgeResourceAssignment` remained, and neither had a reader left.
+- [x] **Step 4:** re-run; expected PASS. `grep -rnE '\b(ForgeAssignment|ForgeResource)\b' src shared frontend/src` returns nothing.
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(ui): reuse one partition interaction for Forge and card decisions`.
+- [x] **Step 7: the end-to-end case at the DOM.** Review found Step 1's `ServerModeUiSuite` case drove `WalkerPartitionDraft` directly and never rendered a control, so renderer wiring could break while it stayed green. The frontend project had no DOM at all — no `jsEnv`, so every suite ran on bare Node where `dom.document` is undefined, which is why no renderer had ever been tested. The build now runs frontend tests in jsdom (`scalajs-env-jsdom-nodejs` on the build classpath, `Test / jsEnv` in `build.sbt`, `jsdom` pinned in the repo root's `package.json`; `npm ci` before `frontend/test`). A hand-rolled document double was rejected: scalajs-dom captures `dom.document` in a val when its package object initializes, so a fake would depend on suite ordering. `PartitionPanelRenderSuite` then drives the real panel — zones and options read out of the rendered tree, moves made through the accessible button and through a real drop event, the confirm button's disabled state read off the element, and the submitted answer captured from a click. Three mutations confirm it bites: dropping the minima gate on confirm, unwiring the drop handler, and dropping the submission each fail it. Commit `test(ui): drive the partition panel through the DOM under jsdom`.
+
+---
+
+### Task 5b: a decision authors its own panel copy
+
+**Files:**
+- Modify: `model/Decisions.scala`, `gameplay/actions/forge/ForgeProcedure.scala`, `gameplay/actions/recover/RecoverProcedure.scala`, `application/WalkerDecisionProjector.scala`, `shared/.../protocol/projection/ActionProjectionDtos.scala`, `shared/.../protocol/projection/ActionProjectionCodec.scala`, `frontend/.../WalkerPanelSupport.scala`
+- Test: `DecisionQuerySuite`, `WalkerDecisionProjectionSuite`, `WalkerDecisionQueryPowerSuite`, `ProjectionProtocolSuite`, `ServerModeUiSuite`
+
+Task 5 made the partition interaction generic and left exactly one thing behind: `WalkerPanelSupport.partitionHeading` and `partitionConfirmLabel` still branch on `action == "forge"` to produce "Forge a relic" and "Complete Forge". They were written that way because a query declares copy for its buttons and its sections but not for the frame around them, so the panel had nowhere else to read a title from. That is the last action-shaped string in a panel whose interaction no longer has any, and the fix is the one R1 already settled for buttons and sections: the action authors the copy, the query carries it, the projector passes it through (R4).
+
+`DecisionQuery` gains optional copy, defaulted to absent so no existing authoring site changes:
+
+```scala
+sealed trait DecisionQuery extends Product with Serializable {
+  def heading: Option[String]
+}
+object DecisionQuery {
+  final case class ChooseOne(options: Vector[DecisionOption],
+      heading: Option[String] = None) extends DecisionQuery
+  final case class Partition(sections: Vector[DecisionSection],
+      options: Vector[DecisionOption], heading: Option[String] = None,
+      confirmLabel: Option[String] = None) extends DecisionQuery
+}
+```
+
+`heading` is on the trait because every shape has a frame to title. `confirmLabel` is on `Partition` alone, and the asymmetry is the point rather than an oversight: a choose-one answer submits the moment an option is clicked, so there is no confirm step to name, and putting the field on both shapes would add a field that means nothing for one of them.
+
+**This is two optional strings, not the start of a form language.** No layout, no conditionals, no per-option copy beyond the button label `DecisionOption.Button` already carries. The non-goal above still stands, and a third piece of panel copy is a reason to ask what the panel is really missing, not to add a third field by reflex.
+
+Two facts that keep this cheaper than it looks. **Queries are not persisted** — only answers are, per the non-goal — so `WalkerEventCodec` does not change and no journal fixture moves. And **copy never affects legality**: `DecisionQueries.accepts` must not read either field, which Step 1 makes a test rather than a comment, because the whole reason an answer records references and not options is that a relabelled prompt leaves every recorded answer valid.
+
+`DecisionQueryProjection` gains `heading` and `confirmLabel` as trailing optional fields, so every existing construction of it keeps compiling, and `WalkerDecisionProjector` passes both through from the transformed query exactly as it passes the options. The frontend's two helpers then take the projected query rather than the action name, falling back to generic copy for a query that declares none:
+
+```scala
+def partitionHeading(query: DecisionQueryState): String =
+  query.heading.getOrElse("Resolve decision")
+def partitionConfirmLabel(query: DecisionQueryState): String =
+  query.confirmLabel.getOrElse("Confirm")
+```
+
+Forge declares "Forge a relic" and "Complete Forge" beside the sections it already declares. Recover declares "Recover" on its continue/stop decision and "Take a relic" on its relic decision, and `renderRecoverPanel` reads them the same way.
+
+**Where this stops, and why.** Recover's roll park is a `Roll` node with a synthetic decision id and no `Decide` behind it, so it has no query and its "Recover" heading stays a frontend literal. Say so in the code rather than inventing a query for a node that asks nothing. And `recoverWalkerStep` keeps matching on `decisionId`: that comparison chooses which interaction to render, not what to call it, and this task removes copy from the frontend, not dispatch.
+
+- [x] **Step 1: failing tests.** (a) `DecisionQuerySuite`: the same answer is accepted against a query whose heading and confirm label differ, proving `accepts` reads neither; (b) `WalkerDecisionProjectionSuite`: Forge projects its declared heading and confirm label, Recover's two decide parks project theirs, and a query declaring neither projects both as absent; (c) `WalkerDecisionQueryPowerSuite`: a power that rewrites a parked decision's heading changes what is projected, in the same edit that moves its options; (d) `ProjectionProtocolSuite`: the projection round-trips with both fields present and with both absent; (e) `ServerModeUiSuite`: the panel shows the declared copy, and a partition query declaring none falls back to the generic strings. Expected FAIL: the query has no copy.
+- [x] **Step 2: implement** the model fields, the validator's indifference to them, the projection DTO and its codec, and the projector pass-through.
+- [x] **Step 3: implement** the two declarations (Forge, Recover) and the frontend re-sourcing, deleting the `action == "forge"` branches.
+- [x] **Step 4:** re-run; expected PASS. `grep -n '"forge"' frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala` returns nothing: no panel names an action to decide what to call itself.
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(walker): let a decision author its own panel copy`.
+
+---
+
+### Task 6: close-out
+
+**Files:** whatever the sweep finds; `docs/superpowers/plans/2026-09-09-walker-batch-1-forge-travel-wake.md`
+
+- [x] **Step 1: walk the spec's eleven testing obligations** one at a time against the suites that now exist, and name the test that discharges each. An obligation with no test is a gap to close here, not a line to tick. All eleven are discharged; the mapping is in the close-out ledger below.
+- [x] **Step 2: sweep for survivors.** `grep -rnE '\b(OwnerQuery|WalkerCtx|DecisionPayload|relicCandidates|ForgeProjection|ForgeAssignment|ForgeResource|RecoverChoice)\b' src shared frontend/src` returns nothing, and `grep -rn '"recover-choice"\|"recover-relic"\|"forge-assignment"' src/main shared/src/main frontend/src/main` returns exactly one benign CSS class. Both are word-bounded and production-scoped for the reasons Task 3's Step 6 records; the legacy tags survive on purpose in the negative decode tests. No projector names a `decisionId` or an `ActionRef` to decide what to offer. Two corrections to this step's own expectations are recorded in the ledger.
+- [x] **Step 3: check the caps.** `python3 scripts/check-architecture.py` plus a line-count read of the four files this plan flagged, so the next plan inherits an accurate picture rather than four files silently at 799. Counts are in the ledger.
+- [x] **Step 4: update batch 1.** Its Task 2 text already describes the declarative contract; note in that plan that the contract now exists. This step's own premise about Travel was wrong and is corrected in the ledger: batch 1's Task 5 gives Travel a flat tree with no `Decide` at all, so the contract binds the next action that parks, not Travel.
+- [x] **Step 5: full gate** `./sbtw "test" "frontend/test" "frontend/fastLinkJS"` and `python3 scripts/check-architecture.py`. Both green. Task 6 changed no production code, so this is the same tree Task 5b's gate passed.
+- [x] **Step 6: ledger.** Record how the open judgement calls were settled: whether `DecisionAnswer` ended up sealed and `encodeDecisionAnswer` exhaustive rather than throwing; and whether any migrated decision needed legality the query could not state. Then commit `docs(plan): close out declarative walker decisions`.
+
+---
+
+## Close-out ledger
+
+Written at Task 6. Everything below describes the tree at `d012696` plus this
+commit; Task 6 changed no production code.
+
+### The eleven testing obligations
+
+Each spec obligation and the test that discharges it. No obligation was left
+without one, so nothing was added here.
+
+| # | Obligation | Discharged by |
+|---|---|---|
+| 1 | Generic `Decide` accepts exactly the answers its query declares | `DecisionQuerySuite` "accepts every option it declares" / "rejects a reference it does not declare"; `ProcedureWalkerSuite` "a Decide accepts exactly its declared options" |
+| 2 | Duplicate answers and malformed or empty queries reject deterministically | `DecisionQuerySuite`, eleven malformed-query cases plus the two duplicate-placement cases; `ProcedureWalkerSuite` "a malformed query is rejected as a contract failure" |
+| 3 | Concrete owner enforcement replaces `OwnerQuery` behaviour | `ProcedureWalkerSuite` "a Decide answered by anyone but the pending actor is rejected"; `ForgeProcedureSuite` P4 "an answer from a player who is not the parked actor is rejected" |
+| 4 | A synthetic power that adds or removes an option changes projection and resolution identically | `WalkerDecisionQueryPowerSuite`, all five tests — including the negative one where a transform applied to the walk but not the projection makes the two disagree |
+| 5 | Recover projects and accepts Continue, Stop and live relic options solely from its transformed `Decide` | `RecoverProcedureSuite` "the continue/stop decision declares exactly two labelled buttons" and "the relic decision declares one option per live facedown relic, and nothing else at the site"; `WalkerDecisionProjectionSuite` |
+| 6 | Empty-site Recover finishes without parking | `RecoverProcedureSuite` "a successful Recover with no facedown relic finishes without a relic decision" |
+| 7 | Forge declares options and printed-cost minima without consulting suit banks or enumerating arrangements, and resolves placements as player-funded `PayCost` | `ForgeProcedureSuite` P3 "parks at forge.assignment, owned by the actor, declaring both sections with their printed minima", P6 "a legal answer finishes the walk with three player-funded" payments, and P6 "the section a target is placed in decides which resource it" costs |
+| 8 | Forge UI reuses the generic partition interaction, derives confirmation from projected minima, submits a generic partition answer | `PartitionPanelRenderSuite` "confirmation is refused until every projected minimum is met" and "clicking confirm submits every option in the zone it was left in"; `PartitionDecisionStateSuite` "a draft below a projected minimum refuses to answer at all"; `ServerModeUiSuite` "Forge is answered by moving projected options between projected" zones |
+| 9 | Stale Recover and Forge options reject after authoritative state changes | `RecoverProcedureSuite` "resolving the relic decision with a relic not facedown at the site is rejected" and "a continue answer submitted after the roll already succeeded is rejected"; `ForgeProcedureSuite` P4 "rejects stale, duplicate, incomplete" answers and P4/R14 "the decision reads its eligible targets live" |
+| 10 | Event codec and replay preserve selected answers unchanged | `GameEventWireSuite` "both generic walker decision answers round trip" and "every option reference kind round trips through a recorded answer"; `WalkerReplayDriftSuite` (four Recover walks); `GameApplicationServiceSuite` "walker Recover persists every park and replays to the same final state" and "walker Forge completes through StartWalker/ResolveWalker alone and replays to the same final state" |
+| 11 | Backend, frontend runtime, Scala.js link and architecture checks pass | `./sbtw "test" "frontend/test" "frontend/fastLinkJS"` and `python3 scripts/check-architecture.py`, both green |
+
+**The one asymmetry worth naming, since it is not a gap.** Obligation 10 is
+carried for Recover by an independent ops re-derivation (`WalkerReplayDriftSuite`
+replays recorded events, rebuilds a fresh tree from replayed state, re-walks it
+and diffs the operations) and for Forge only by final-state equality after an
+app-service replay. That is the coverage the drift suite claims for itself — it
+is scoped to the Recover corpus by its own doc comment — and the partition
+answer's codec round trip is proven separately. A Forge drift check is a
+reasonable thing for a later batch to add, not a hole this plan opened.
+
+### Sweep results, and two corrections to Step 2's own expectations
+
+The word-bounded symbol sweep returns nothing at all. Step 2 predicted it would
+return `RestPowerDecisionPayload`; it cannot, because `\bDecisionPayload\b`
+does not match inside that identifier — the preceding `r` is a word character.
+The expectation was wrong, not the result.
+
+The legacy-tag sweep returns exactly one production hit, and it is a false
+positive left in place deliberately:
+`frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala:145`
+uses `"recover-choice"` as the **CSS class** on the fallback button a Recover
+choice option gets when it is neither Continue nor Stop. It is not a JSON
+answer tag, no stylesheet or test reads it, and the three deleted tags survive
+nowhere else in production. Recorded rather than renamed: a later plan
+inheriting this sweep should expect the one hit and check what it is, not
+assume the grep is clean.
+
+No projector names a `decisionId` or an `ActionRef` to decide what to offer.
+`WalkerDecisionProjector` passes an `ActionRef` through to rebuild the tree and
+to key the projection, and matches on neither.
+
+### Line counts at close-out
+
+The four files this plan flagged, measured rather than assumed:
+
+| File | Planned as | Now |
+|---|---|---|
+| `gameplay/walker/ProcedureWalker.scala` | 790 | 794 |
+| `serialization/WalkerEventCodec.scala` | 795 | 731 |
+| `frontend/ServerUiSupport.scala` | 795 | 685 |
+| `frontend/ActionDecisionRenderer.scala` | 774 | 746 |
+
+Task 3's codec extraction and Task 5's frontend work bought real headroom in
+three of the four. `ProcedureWalker.scala` went the other way: R3 predicted
+`answerDecide` would shrink to an owner comparison plus one call, and the file
+still grew by four lines, leaving six of headroom. No extraction was spent
+here, because Task 6 adds no engine lines and widening a close-out task into a
+refactor would need its own review. The next plan that touches the walker
+should budget one first.
+
+Also for the next plan, though outside this one's scope:
+`gameplay/actions/Campaign.scala` sits at exactly 800.
+
+### How the open judgement calls were settled
+
+**`DecisionAnswer` is sealed and its encoder is exhaustive.** Task 3's
+extraction moved the answer codec into
+`serialization/DecisionAnswerCodec.scala`, and `encode` now matches both
+concrete cases and throws on nothing. This settles the question batch-1's Task
+3 flagged and deferred, and it settles it the way the batch-1 SDD ledger argued
+for: `encodePayloadSafe` used to swallow the throw, so a missing branch made an
+action silently unplayable *after* its cost was spent. With both answers
+generic over `DecisionOptionRef`, the family is closed by construction — a new
+query shape reuses the two answers rather than adding a third.
+
+**No migrated decision needed legality the query could not state.** Neither
+`RecoverProcedure` nor `ForgeProcedure` retains a `validate` closure on a
+`Decide` node. Every staleness case that used to need one is handled
+structurally, exactly as R3 predicted: Recover's stale Continue is rejected
+because the rebuilt `Branch` no longer declares that node once the roll has
+succeeded, and Recover's relic options and Forge's denizen options are read
+live from authoritative state at rebuild, so an option that no longer exists is
+simply absent from the query.
+
+One boundary is worth stating precisely, because it looks like a counterexample
+and is not. Recover's "Spend 1 Supply for two dice" button is gated on the
+player actually holding supply, and the query cannot say that — `DecisionQueries`
+never reads `ReadyGame`. That gate is not decision legality. The frontend
+disables the control as a courtesy, and the authority is `OperationPipeline`,
+which rejects the `AdjustSupply` at execution (`RecoverProcedureSuite`
+"OperationPipeline rejects an unpaid next roll and a supply-zero" continue). A
+query states which options exist; an operation states whether the chosen one
+can be paid for. Keeping those separate is what R3 was protecting.
+
+### Divergence from the plan's own setup
+
+The work landed on branch `feat/walker-batch-1` in the
+`.claude/worktrees/walker-batch-1` worktree, not on the
+`feat/walker-declarative-decisions` branch the Global Constraints name. The
+commits are contiguous from `88ad015` to this one and the ordering relative to
+batch 1's Task 5 is unchanged, so this is a bookkeeping difference only.
+
+---
+
+## Non-goals
+
+- A universal form or workflow description language. Two query shapes, added to when a real decision needs a third.
+- Persisting decision options or queries in game state or events. Only answers persist, and an answer carries refs, never labels.
+- Moving game-object presentation into gameplay or model code. Prompt copy on a query is the one admitted exception, per R1 and R4 — and it stays two optional strings for the panel plus the button and section labels, never a form or layout language.
+- Off-turn walker decision ownership. `Decide.owner` is concrete and equals the pending actor; supporting anything else needs its own redesign of pending-state ownership, authorization, continuation and viewer scoping.
+- Generalizing Recover's roll feedback, which is not decision-option discovery.
+- Batch 1's neighbouring amendments: the exhausted-relic-deck Forge outcome and Travel's powered-candidate simulation.

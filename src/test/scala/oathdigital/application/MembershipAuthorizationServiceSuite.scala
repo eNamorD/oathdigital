@@ -92,10 +92,6 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
         GameCommand.ChooseAdviser(PlayerId("p1"), DenizenId("9"))
       )
       assertEquals(
-        actor.travel(SiteId("site-2")),
-        GameCommand.Travel(PlayerId("p1"), SiteId("site-2"))
-      )
-      assertEquals(
         service.authorizeCommand("game-1", AuthenticatedUser(ownerUser)),
         Left(Forbidden("command"))
       )
@@ -167,5 +163,11 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
     override def revokeSession(digest: SessionTokenDigest, now: Long) = unused
     override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long) =
       unused
+    override def createTrustedSeats(
+        gameId: String,
+        seats: Vector[(SeatCodeDigest, String)],
+        now: Long
+    ) = unused
+    override def resolveTrustedSeat(digest: SeatCodeDigest) = unused
   }
 }

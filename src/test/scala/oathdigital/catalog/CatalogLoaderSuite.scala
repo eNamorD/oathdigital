@@ -13,7 +13,7 @@ import oathdigital.catalog.CatalogLoadError.{
   UnsupportedSchemaVersion,
   WrongType
 }
-import oathdigital.model.{CatalogRef, PowerId, SiteId, Tokens}
+import oathdigital.model.{CatalogRef, PowerId, SiteId, Suit, Tokens}
 
 class CatalogLoaderSuite extends munit.FunSuite {
   private val fixturePath =
@@ -95,6 +95,14 @@ class CatalogLoaderSuite extends munit.FunSuite {
           first == "$.denizens[0].powers[0].id"
       case _ => false
     })
+  }
+
+  test("an unknown suit is rejected with the offending path") {
+    val value = ujson.read(fixture)
+    value("denizens")(0)("suit") = "sun"
+    val errors = CatalogLoader.load(value.render()).left.toOption.get
+    assert(errors.contains(
+      InvalidValue("$.denizens[0].suit", "unsupported suit sun")), errors)
   }
 
   test("power rules text must contain a non-whitespace character") {

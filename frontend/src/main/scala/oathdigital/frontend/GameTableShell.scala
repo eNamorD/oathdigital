@@ -4,7 +4,7 @@ import org.scalajs.dom
 import ServerUiSupport._
 
 /** Stable player-facing layout; renderer refreshes replace only panel contents. */
-private[frontend] final class GameTableShell(mount: dom.Element) {
+private[frontend] final class GameTableShell(mount: dom.Element, developmentTools: Boolean = true) {
   private val table = element("div", "game-table")
   while (mount.firstChild != null) mount.removeChild(mount.firstChild)
   mount.appendChild(table)
@@ -51,7 +51,7 @@ private[frontend] final class GameTableShell(mount: dom.Element) {
   private val devToggle = button("Dev tools", "dev-toggle")
   devToggle.setAttribute("aria-controls", "development-panel")
   devToggle.setAttribute("aria-expanded", "false")
-  players.header.appendChild(devToggle)
+  if (developmentTools) players.header.appendChild(devToggle)
   private val dev = element("aside", "development-panel").asInstanceOf[dom.html.Element]
   dev.id = "development-panel"
   dev.setAttribute("hidden", "")

@@ -62,7 +62,6 @@ final class SameOriginJsonTransport(timeoutMillis: Int = 10000)
   }
 }
 
-final case class EconomyTarget(kind: String, id: String)
 final case class NegotiationTransferInput(recipientPlayerId: String,
     favor: Int, relicIds: Vector[String])
 final case class NegotiationDisclosureInput(recipientPlayerId: String,
@@ -197,33 +196,61 @@ final class HttpGameClient(transport: JsonTransport)
     }(scala.scalajs.concurrent.JSExecutionContext.queue)
 
   private def send(method: String, url: String, body: Option[String]) =
-    transport.request(method, url, body).map(_.flatMap { response =>
-      if (response.status >= 200 && response.status < 300)
-        GameJson.decodeProjection(response.body)
-      else
-        GameJson.decodeError(response.body).fold(
-          _ => Left(GameClientFailure.HttpFailure(
-            response.status,
-            "invalid-error-response",
-            response.body
-          )),
-          error =>
-            if (response.status == 409)
-              Left(GameClientFailure.StalePosition(error._2))
-            else
-              Left(GameClientFailure.HttpFailure(
-                response.status,
-                error._1,
-                error._2
-              ))
-        )
-    })(scala.scalajs.concurrent.JSExecutionContext.queue)
+    transport.request(method, url, body).map(_.flatMap(GameJson.projectionResponse))(
+      scala.scalajs.concurrent.JSExecutionContext.queue)
 
   private def encode(value: String): String =
     js.URIUtils.encodeURIComponent(value)
 }
 
+/** Browser-managed, path-scoped cookies are the only seat credential. */
+final class TrustedHttpGameClient(transport: JsonTransport) extends GameClient {
+  private def api(gameId: String): String =
+    s"/games/${js.URIUtils.encodeURIComponent(gameId)}/api"
+
+  override def bootstrap(gameId: String, selectedPlayerId: String,
+      config: FirstGameBootstrapRequest) = Future.successful(Left(
+    GameClientFailure.HttpFailure(403, "seat-only", "Open your assigned seat link.")))
+
+  override def load(gameId: String, selectedPlayerId: String) =
+    send("GET", api(gameId), None)
+
+  override def submit(gameId: String, selectedPlayerId: String,
+      expectedNextSequence: Long, command: GameCommand,
+      orderedModifiers: Vector[ModifierInvocation]) =
+    send("POST", api(gameId) + "/commands",
+      Some(GameJson.encodeCommand(expectedNextSequence, command, orderedModifiers)))
+
+  override def preview(gameId: String, selectedPlayerId: String,
+      request: MajorActionPreviewRequest) =
+    transport.request("POST", api(gameId) + "/preview",
+      Some(MajorActionPreviewCodec.encodeRequest(request))).map(_.flatMap { response =>
+        if (response.status >= 200 && response.status < 300)
+          MajorActionPreviewCodec.decodeResponse(response.body).left.map(error =>
+            GameClientFailure.DecodeFailure(error.path, error.message))
+        else Left(GameJson.responseFailure(response))
+      })(scala.scalajs.concurrent.JSExecutionContext.queue)
+
+  private def send(method: String, url: String, body: Option[String]) =
+    transport.request(method, url, body).map(_.flatMap(GameJson.projectionResponse))(
+      scala.scalajs.concurrent.JSExecutionContext.queue)
+}
+
 object GameJson {
+  def projectionResponse(response: TransportResponse)
+      : Either[GameClientFailure, GameProjection] =
+    if (response.status >= 200 && response.status < 300)
+      decodeProjection(response.body)
+    else Left(responseFailure(response))
+
+  def responseFailure(response: TransportResponse): GameClientFailure =
+    decodeError(response.body).fold(
+      _ => GameClientFailure.HttpFailure(response.status,
+        "invalid-error-response", response.body),
+      error => if (response.status == 409) GameClientFailure.StalePosition(error._2)
+        else GameClientFailure.HttpFailure(response.status, error._1, error._2)
+    )
+
   def encodeBootstrap(request: FirstGameBootstrapRequest): String =
     FirstGameBootstrapCodec.encode(request)
 

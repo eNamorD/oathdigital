@@ -202,7 +202,26 @@ The engine-side `ActionRef` wire key is already `"recover"` (`model/ActionRef.sc
 
 ---
 
-### Task 7: Recover UI drives the walker
+### Task 7a: Project the parked walker decision to the wire
+
+**Split from the original Task 7 after its implementer reported NEEDS_CONTEXT.** The task assumed the projection already carried what the UI needs; it does not. `WalkerDecisionProjection` is `private[application]` and never reaches the wire `GameProjection` DTO, and `PendingProcedureProjector`/`LegalActionProjector` collapse every parked decision into indistinguishable strings — `phase = "recover-walker-decision"` and control `"resolveWalkerDecision"` for both `recover.choice` and `recover.relic`. There is also no relic-candidate list on the walker path at all: the legacy `pendingCardDecision`/`recover` fields that carry relic identity are populated only from `PendingProcedure.Recover`, which the walker never sets. So a client can tell a walker decision is parked but not which one, and cannot offer relics to pick.
+
+**Files:**
+- Modify: `shared/src/main/scala/oathdigital/protocol/projection/GameProjectionDto.scala`
+- Modify: its codec
+- Modify: `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala`, `ScopedProjectionContext.scala`, `GameProjection.scala`
+- Test: `src/test/scala/oathdigital/application/WalkerDecisionProjectionSuite.scala`
+
+**Interfaces:**
+- Produces: a wire projection of the parked walker decision carrying its `decisionId`, its kind, the pool and count for a roll park, and for the relic park the candidate relics the actor may take.
+- Owner privacy is binding: relic identity reaches the acting player only. Other viewers see that a decision is parked and nothing more — match how the legacy Recover and Forge projections redact.
+- The relic decision's payload is a placeholder marker id, not a chosen relic; the concrete relic rides the answer. The projection must not present the marker as a preselected choice.
+
+- [ ] **Step 1: failing test** in `WalkerDecisionProjectionSuite`: each of the three parks (roll, choice, relic) projects a distinguishable wire decision with its own `decisionId`; the relic park lists the site's facedown relics for the actor and none for another viewer.
+- [ ] **Step 2-4: TDD implement; gate** root suite plus `frontend/test` and `frontend/fastLinkJS`, since `shared/` compiles into the frontend.
+- [ ] **Step 5: commit** `feat(projection): wire the parked walker decision`.
+
+### Task 7b: Recover UI drives the walker
 
 **Files:**
 - Modify: `frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala`
@@ -210,7 +229,7 @@ The engine-side `ActionRef` wire key is already `"recover"` (`model/ActionRef.sc
 - Test: the frontend suite covering `ActionDecisionRenderer`
 
 **Interfaces:**
-- Consumes: Task 6's intents; the projection fields `LegalActionProjector` already emits (`"rollWalker"`, `"resolveWalkerDecision"`) and the phase labels Task 8 generalizes.
+- Consumes: Task 6's intents and Task 7a's wire projection.
 - Produces: the Recover controls send walker intents. Specifically: the Act-phase "Recover" button sends `Intent.StartWalker("recover", modifiers)` where `modifiers` carries the ids the existing modifier workflow collected; the in-progress panel's roll control sends `Intent.RollWalker(pool)`; Continue/Stop send `Intent.ResolveWalker(RecoverProcedure.choiceDecisionId, RecoverChoiceWire(...))`; the relic pick sends `Intent.ResolveWalker(RecoverProcedure.relicDecisionId, RecoverRelicWire(relicId))` in place of today's generic `ResolveCardDecision`/`TakeFacedownRelic` route.
 
 Delete the legacy Recover control wiring in the same task — the `beginRecover` / `addRecoverDice` / `stopRecover` blocks — so no dead path is left rendering. The generic card-decision UI stays: Search and other actions still use it.
@@ -243,7 +262,27 @@ This is the debt the Recover slice's own status note flags as blocking reuse; it
 
 ---
 
-### Task 9: Delete the legacy Recover path
+### Task 9a: Offer walker contributions in the modifier preview
+
+**Split out of Task 9 after the controller traced the preview path.** Before a player starts Recover, the client asks the server which modifiers are available (`GameApplicationService.preview`), and that resolves options through `PowerRuntime.options(catalog, ready, actor, action)` — the **legacy** `Power`/`PowerHandler` machinery. Catacombs is offerable today only because its legacy object still exists. Task 9b deletes that object, so unless the preview learns to offer `ContributingPower`s first, deleting the legacy path makes the ported Catacombs unreachable: Recover would still start, but never with its power.
+
+Note the coupling in `MajorActionPreviewCodec.encodeRequest` is separate and cosmetic — it names `GameIntent.BeginRecover` only to borrow `ActorlessCommandCodec`'s envelope encoder for `orderedModifiers`; the real action rides a `String` field. That line needs a different vehicle once the intent is deleted, but it carries no Recover semantics.
+
+**Files:**
+- Modify: `src/main/scala/oathdigital/application/GameApplicationService.scala` (`preview`)
+- Modify: whatever resolves preview options for a walker action
+- Test: the preview coverage in `GameApplicationServiceSuite`, plus a walker-specific case
+
+**Interfaces:**
+- Produces: for an action on the walker, the preview offers the applicable `ContributingPower`s whose `resolution` is player-selected, in the same `PreviewModifier` shape the client already renders — so `ModifierWorkflow` needs no change.
+- The ids the preview offers must be exactly the ids `OathRules.validateModifiers` will accept on the subsequent `StartWalker`; a modifier that previews but is then rejected is a defect.
+- Legacy actions keep resolving through `PowerRuntime` unchanged.
+
+- [ ] **Step 1: failing test**: previewing Recover for an actor on a Catacombs site offers the Catacombs contribution, and starting with the offered id succeeds; previewing a legacy action is unchanged.
+- [ ] **Step 2-4: TDD implement; gate** root suite plus the frontend gate.
+- [ ] **Step 5: commit** `feat(powers): offer walker contributions in the modifier preview`.
+
+### Task 9b: Delete the legacy Recover path
 
 **Files:**
 - Delete: `src/main/scala/oathdigital/gameplay/actions/Recover.scala`, `src/main/scala/oathdigital/gameplay/powers/recover/RecoverPowerIntegration.scala`, `src/test/scala/oathdigital/gameplay/RecoverSuite.scala`

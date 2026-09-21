@@ -1,23 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
-
-/** One shape violation against an operation, mirroring the code/detail of the
-  * [[OperationError]] the mutation pipeline would reject with.
-  */
-final case class OperationReason(code: String, detail: String)
-
-/** Extension seam for per-query contextual restrictions beyond the static
-  * allowlist. The registry is empty for this phase; [[OperationValidator]]
-  * holds the vector so later phases can fold it into `validateOne`.
-  */
-trait OperationRestriction {
-  def reason(
-      ready: ReadyGame,
-      operation: CoreOperation
-  ): Option[OperationReason]
-}
 
 /** Aggregated validator owned by [[OperationPipeline]] for one run:
   * `validateBatch` reports the whole batch against the initial state
@@ -39,7 +22,8 @@ final class OperationValidator(
       operations: Vector[CoreOperation]
   ): Vector[OperationReason] =
     allowlistReasons(ready, operations) ++
-      OperationShape.validateBatch(ready, operations)
+      OperationShape.validateBatch(ready, operations) ++
+      operations.flatMap(restrictionReasons(ready, _))
 
   /** Allowlist reasons first: the retired executor ran the per-action policy
     * before any shape/mutation check, so a both-fail operation rejects with
@@ -50,7 +34,19 @@ final class OperationValidator(
       operation: CoreOperation
   ): Vector[OperationReason] =
     allowlistReasons(ready, Vector(operation)) ++
-      OperationShape.validate(ready, operation)
+      validateResolvedOne(ready, operation)
+
+  /** Revalidation after a permitted operation shrinks must not re-run an
+    * exact allowlist against a different amount.
+    */
+  def validateResolvedOne(ready: ReadyGame,
+      operation: CoreOperation): Vector[OperationReason] =
+    OperationShape.validate(ready, operation) ++
+      restrictionReasons(ready, operation)
+
+  private def restrictionReasons(ready: ReadyGame,
+      operation: CoreOperation): Vector[OperationReason] =
+    restrictions.flatMap(_.reason(ready, operation))
 
   private def allowlistReasons(
       ready: ReadyGame,
@@ -85,8 +81,7 @@ object OperationShape {
       ready: ReadyGame,
       operation: CoreOperation
   ): Vector[OperationReason] =
-    violations(ready, operation).map(error => OperationReason(error.code,
-      error.detail))
+    violations(ready, operation).map(reason(_, operation))
 
   /** All shape violations for a whole batch against the INITIAL state, plus
     * cross-operation violations (e.g. the same card moved by two operations).
@@ -95,7 +90,8 @@ object OperationShape {
       ready: ReadyGame,
       operations: Vector[CoreOperation]
   ): Vector[OperationReason] = {
-    val perOperation = operations.flatMap(violations(ready, _))
+    val perOperation = operations.flatMap(operation =>
+      violations(ready, operation).map(reason(_, operation)))
     val movedById = operations.map(operation =>
       Operation.flatten(operation).iterator.collect {
         case Move(piece: Piece.Card, _, _, _) => piece.id
@@ -107,8 +103,23 @@ object OperationShape {
       if movedById(left).intersect(movedById(right)).nonEmpty
     } yield ConflictingDeltas(
       "operation batch moves the same card more than once"): OperationError
-    (perOperation ++ crossOperation).map(error => OperationReason(error.code,
-      error.detail))
+    perOperation ++
+      crossOperation.map(error => OperationReason(error.code, error.detail))
+  }
+
+  private def reason(error: OperationError,
+      operation: CoreOperation): OperationReason = {
+    val impossible = error match {
+      case _: InsufficientSupply => true
+      case InsufficientPieces(piece, _, _) => operation match {
+        case _: Discard | _: PayCost => false
+        case _ => piece.isInstanceOf[Piece.Counted]
+      }
+      case _ => false
+    }
+    OperationReason(error.code, error.detail,
+      if (impossible) OperationReasonKind.Impossible
+      else OperationReasonKind.Invalid)
   }
 
   /** First violation as an [[OperationError]]-compatible rejection, if any. */
@@ -137,11 +148,41 @@ object OperationShape {
     val accumulated = Vector.newBuilder[OperationError]
     accumulated ++= positionViolations(leaves)
     accumulated ++= cardViolations(ready, leaves)
+    accumulated ++= resourceDescriptionViolations(ready, operation)
+    accumulated ++= PayCostRules.violations(ready, operation)
     accumulated ++= countedSourceViolations(
       ready, favorMoves, warbandMoves, secretReasons)
+    accumulated ++= countedDestinationViolations(ready, leaves)
     accumulated ++= pawnAndBannerViolations(ready, leaves)
     accumulated ++= nonMoveViolations(ready, leaves, plannedSecrets)
     accumulated.result()
+  }
+
+  private def resourceDescriptionViolations(ready: ReadyGame,
+      operation: CoreOperation): Vector[OperationError] = {
+    val described: Option[(CardId, Option[Int], Int)] = operation match {
+      case value: Discard.Denizen =>
+        Some((value.card, Some(value.favor), value.secrets))
+      case value: Discard.RuinedEdifice =>
+        Some((value.card, Some(value.favor), value.secrets))
+      case value: Discard.Relic => Some((value.card, None, value.secrets))
+      case _ => None
+    }
+    described.toVector.flatMap { case (cardId, favor, secrets) =>
+      val at = Location.OnCard(cardId)
+      val counts = for {
+        actualFavor <- quantity(ready, Piece.Favor(1), at)
+        actualSecrets <- quantity(ready, Piece.Secrets(1), at)
+      } yield (actualFavor, actualSecrets)
+      counts match {
+        case Right((AvailableQuantity.Finite(actualFavor),
+            AvailableQuantity.Finite(actualSecrets)))
+            if favor.exists(_ != actualFavor) || actualSecrets != secrets =>
+          Vector(InvalidDescription(
+            s"discard resources on ${cardId.value} do not match the card"))
+        case _ => Vector.empty
+      }
+    }
   }
 
   // ------------------------------------------------------------------
@@ -309,6 +350,10 @@ object OperationShape {
           statefulMaterializationViolation(located, transfer)
         case _ => Some(InvalidDestination(transfer.piece, destination))
       }
+      case Location.SharedBank => id match {
+        case _: VisionId => None
+        case _ => Some(InvalidDestination(transfer.piece, destination))
+      }
       case Location.Atlas => Some(AmbiguousLocation(
         Location.Atlas,
         "Atlas destination requires a stored-site identity"
@@ -342,13 +387,13 @@ object OperationShape {
       ready: ReadyGame,
       container: CardContainer
   ): Option[Vector[CardId]] = container match {
-    case CardContainer.Deck(DeckKind.World) =>
+    case CardContainer.Deck(CardDeck.World) =>
       Some(ready.game.current.commonCards.worldDeck)
-    case CardContainer.Deck(DeckKind.Relic) =>
+    case CardContainer.Deck(CardDeck.Relic) =>
       Some(ready.game.current.commonCards.relicDeck)
-    case CardContainer.Deck(DeckKind.Edifice) =>
+    case CardContainer.Deck(CardDeck.Edifice) =>
       Some(ready.game.current.commonCards.edificeDeck)
-    case CardContainer.Deck(DeckKind.Legacy) =>
+    case CardContainer.Deck(CardDeck.Legacy) =>
       Some(ready.game.current.commonCards.legacyDeck)
     case CardContainer.RegionalDiscard(region) =>
       Some(ready.game.current.commonCards.discard(region).reverse)
@@ -378,6 +423,17 @@ object OperationShape {
     favorSourceViolations(ready, favorMoves) ++
       secretReasons ++
       warbandSourceViolations(ready, warbandMoves)
+
+  private def countedDestinationViolations(ready: ReadyGame,
+      leaves: Vector[Operation]): Vector[OperationError] =
+    leaves.flatMap {
+      case Move(piece: Piece.Counted, _, to, _)
+          if piece.isInstanceOf[Piece.Favor] &&
+            to.location == Location.SharedBank => Vector.empty
+      case Move(piece: Piece.Counted, _, to, _) =>
+        quantity(ready, piece, to.location).left.toOption.toVector
+      case _ => Vector.empty
+    }
 
   private def favorSourceViolations(
       ready: ReadyGame,
@@ -584,18 +640,25 @@ object OperationShape {
     val initial = RunningBoards.initial(ready, plannedSecrets)
     val (reasons, _) = leaves.foldLeft[(Vector[OperationError],
       RunningBoards)]((Vector.empty, initial)) {
-      case ((result, state), Flip(id, at, _)) =>
-        (result ++ flipViolation(ready, id, at), state)
+      case ((result, state), Flip(id, at, orientation)) =>
+        (result ++ flipViolation(ready, id, at, orientation), state)
       case ((result, state), FlipSecrets(player, amount, from, to)) =>
         val (violations, updated) =
           flipSecretsViolation(ready, player, amount, from, to, state)
         (result ++ violations, updated)
       case ((result, state), Peek(viewer, id, at)) =>
         (result ++ peekViolation(ready, viewer, id, at), state)
-      case ((result, state), AdjustSupply(player, amount)) =>
+      case ((result, state), SpendSupply(player, amount, _)) =>
+        val (violations, updated) =
+          adjustSupplyViolation(ready, player, -amount, state)
+        (result ++ violations, updated)
+      case ((result, state), GainSupply(player, amount)) =>
         val (violations, updated) =
           adjustSupplyViolation(ready, player, amount, state)
         (result ++ violations, updated)
+      case ((result, state), AdvanceVisionsDrawn) =>
+        (result ++ Option.when(ready.game.current.tracks.visionsDrawn ==
+          Int.MaxValue)(OperationError.VisionsDrawnOverflow), state)
       case ((result, state), _) => (result, state)
     }
     reasons
@@ -604,12 +667,17 @@ object OperationShape {
   private def flipViolation(
       ready: ReadyGame,
       id: CardId,
-      at: Location
+      at: Location,
+      orientation: Orientation
   ): Vector[OperationError] = card(ready, id, at) match {
     case Left(error) => Vector(error)
     case Right(located) => located.state match {
       case Some(_: DenizenState) | Some(_: VisionState) |
           Some(_: RelicState) => Vector.empty
+      // Looking at a discarded card: it has no orientation state (a discard is
+      // always facedown), so revealing it changes nothing.
+      case None if OperationStateAdapter.isDiscardLook(at, orientation) =>
+        Vector.empty
       case _ => Vector(UnsupportedOrientation(id, at))
     }
   }

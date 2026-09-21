@@ -2,14 +2,16 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations._
+import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ProcedureWalker,
-  WalkerCompleted, WalkerOutcome, WalkerParked, WalkerStepRecorded}
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
-  RecoverRelicPayload}
+  WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
+  WalkerStepRecorded}
+import oathdigital.model.OathState.Ready
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model._
 
 /** Task 8 step 3: the replay-drift check.
@@ -62,17 +64,38 @@ import oathdigital.model._
   * (already the sole replay mechanism) — it never wires a second, walker-
   * rerunning replay path into the application.
   *
-  * Corpus: the three scripted walks below cover every scenario shape
-  * `RecoverProcedureSuite` covers EXCEPT its two rejection-only scenarios
-  * (insufficient supply on Continue, and resolving the relic decision with a
-  * relic that isn't facedown at the site). Both of those end in
-  * `Left(violation)` with no `WalkerOutcome` and no journal at all, so
+  * Corpus: the three unpowered scripted walks below cover every scenario
+  * shape `RecoverProcedureSuite` covers EXCEPT its two rejection-only
+  * scenarios (insufficient supply on Continue, and resolving the relic
+  * decision with a relic that isn't facedown at the site). Both of those end
+  * in `Left(violation)` with no `WalkerOutcome` and no journal at all, so
   * there is nothing to fold into a "live" track or replay through
   * `applyRecorded` — a drift comparison needs two independently
   * reconstructed op sequences to diff, and a rejected command produces
   * neither.
+  *
+  * A fourth walk (Task 10 step 3) adds Catacombs: the first drift case where
+  * a POWER changed the tree. `CatacombsContributionSuite` already pins that
+  * one live walk's recorded ops/state against hand-written expectations, the
+  * same relationship `RecoverProcedureSuite` has to the unpowered corpus
+  * above; this suite's job is not to re-pin those values but to prove that
+  * independently re-deriving them from replayed state -- with the fold
+  * re-run by a freshly rebuilt tree -- reproduces exactly what the live walk
+  * recorded. If `CatacombsContribution`'s `Transform` (or the gather/fold
+  * machinery it runs through) ever depended on anything beyond the pure
+  * `(PowerCtx, ops)` it is handed -- e.g. mutable state, iteration order that
+  * isn't reconstructed by a pure replay -- the second fold would insert its
+  * placement-and-cost step at a different node, with different operations,
+  * or not at all, and this comparison (unlike the unpowered ones) would be
+  * the first thing in the suite to catch it.
+  *
+  * A fifth walk (walker-ownership Task 7) is the first that is not Recover:
+  * an Oathkeeper tie, the triggered procedure parking a recipient decision
+  * owned by the title holder rather than the active player, then resolving.
+  * `assertNoDrift` takes that walk's procedure and tree builder as
+  * parameters; every Recover walk above keeps the Recover defaults.
   */
-/** One command in a scripted Recover walk (top-level so pattern matches on it
+/** One command in a scripted walk (top-level so pattern matches on it
   * carry no per-instance outer reference).
   */
 private sealed trait Resume
@@ -83,6 +106,30 @@ private final case class AnswerResume(answer: Answered) extends Resume
 class WalkerReplayDriftSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer {
   private val setup = new FirstGameSetupRules(catalog)
+
+  /** The power source BOTH tracks walk with. It is a named value rather than
+    * a default on the walker's entry points precisely so this suite cannot
+    * drift into checking an unpowered walk while production walks with
+    * powers: when a power registers on this slice (Task 5), it is added here
+    * and both the live track and the re-derivation see it.
+    */
+  private val walkerPowers: WalkerPowers = WalkerPowers.empty
+
+  /** Task 10 step 3: the same production selection `OathRules.startWalker`
+    * performs (`WalkerPowers.selected` over the real `WalkerPowerCatalog`),
+    * pinned to Catacombs being player-selected for this walk. Both tracks in
+    * `assertNoDrift` receive this SAME value (never re-selected per track),
+    * matching the invariant the suite-level doc states: "the powered walk
+    * must gather the same contributions on both tracks, or you are testing
+    * your test harness rather than the engine."
+    */
+  private val catacombsPowers: WalkerPowers = {
+    val selected = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+      Vector(CatacombsContribution.id))
+    assert(selected.powers.nonEmpty,
+      "fixture catalog must declare the Catacombs card for this drift case")
+    selected
+  }
 
   private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) = {
     val Ready(base) = execute(setup)._1: @unchecked
@@ -97,15 +144,14 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       Orientation.FaceDown, Tokens.empty)
     val site = base.game.current.map.sites(siteId).copy(relics = Vector(relic))
     val moved = active.copy(pawnSite = Some(siteId))
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
         turn = base.game.current.turn.copy(phase = Phase.Act),
         commonCards = base.game.current.commonCards.copy(
           relicDeck = base.game.current.commonCards.relicDeck.tail),
         players = base.game.current.players.map(p =>
           if (p.player == active.player) moved else p),
         map = base.game.current.map.copy(sites =
-          base.game.current.map.sites.updated(siteId, site)))))
+          base.game.current.map.sites.updated(siteId, site))))
     (ready, active.player, siteId, relic)
   }
 
@@ -115,14 +161,15 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields)
 
   private def runResume(resume: Resume, state: ReadyGame, tree: Operation,
-      pending: Option[PendingTree]): WalkerOutcome = {
+      pending: Option[PendingTree], powers: WalkerPowers): WalkerOutcome = {
     val result = resume match {
-      case StartWalk => ProcedureWalker.advance(state, tree, None)
+      case StartWalk => ProcedureWalker.advance(state, tree, None, powers)
       case RollResume(faces) => ProcedureWalker.roll(state, tree,
-        pending.getOrElse(fail("roll() resume requires a pending park")), faces)
+        pending.getOrElse(fail("roll() resume requires a pending park")), faces,
+        powers)
       case AnswerResume(answer) => ProcedureWalker.resolve(state, tree,
         pending.getOrElse(fail("resolve() resume requires a pending park")),
-        answer)
+        answer, powers)
     }
     result.fold(violation => fail(s"walker step $resume failed: $violation"),
       identity)
@@ -159,17 +206,18 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     * `OathRules.evolve` uses for these event types in production. The walker
     * itself is never invoked here.
     */
-  private def replayCommand(state: OathState, actor: PlayerId,
-      outcome: WalkerOutcome): OathState = {
+  private def replayCommand(state: OathState,
+      outcome: WalkerOutcome, procedure: ProcedureRef): OathState = {
     val stepEvents = (outcome match {
       case WalkerOutcome.Parked(_, evs) => evs
       case WalkerOutcome.Finished(_, evs) => evs
     }).map(_.asInstanceOf[WalkerEvent])
     val fact: WalkerEvent = outcome match {
       case WalkerOutcome.Parked(pending, _) =>
-        WalkerParked(actor, ActionRef.Recover, pending.at, pending.answered)
+        WalkerParked(procedure, pending.at, pending.answered,
+          Vector.empty, Vector.empty)
       case WalkerOutcome.Finished(_, _) =>
-        WalkerCompleted(actor, ActionRef.Recover)
+        WalkerCompleted(procedure)
     }
     (stepEvents :+ fact).foldLeft(state) { (current, event) =>
       ProcedureWalker.applyRecorded(current, event) match {
@@ -187,33 +235,34 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     * recorded for that same command. Returns the live walk's final outcome
     * for the caller's own state assertions.
     */
-  private def assertNoDrift(ready: ReadyGame, actor: PlayerId,
-      script: Vector[Resume]): WalkerOutcome = {
+  private def assertNoDrift(ready: ReadyGame,
+      script: Vector[Resume], powers: WalkerPowers,
+      procedure: ProcedureRef = ActionRef.Recover,
+      tree: (ReadyGame, Boolean) => Operation = (state, starting) =>
+        if (starting) RecoverProcedure.build(catalog, state,
+          state.game.current.turn.activePlayer).toOption.get
+        else RecoverProcedure.rebuild(catalog, state,
+          state.game.current.turn.activePlayer).toOption.get): WalkerOutcome = {
     def go(remaining: Vector[Resume], liveState: ReadyGame,
         livePending: Option[PendingTree], replayState: OathState,
         starting: Boolean): WalkerOutcome = {
       val resume = remaining.head
 
-      val liveTree =
-        if (starting) RecoverProcedure.build(catalog, liveState, actor)
-          .toOption.get
-        else RecoverProcedure.rebuild(catalog, liveState, actor).toOption.get
-      val liveOutcome = runResume(resume, liveState, liveTree, livePending)
+      val liveTree = tree(liveState, starting)
+      val liveOutcome = runResume(resume, liveState, liveTree, livePending,
+        powers)
 
       val Ready(replayReady) = replayState: @unchecked
-      val replayTree =
-        if (starting) RecoverProcedure.build(catalog, replayReady, actor)
-          .toOption.get
-        else RecoverProcedure.rebuild(catalog, replayReady, actor).toOption.get
+      val replayTree = tree(replayReady, starting)
       val replayPending = replayReady.game.current.walkerPending
       val replayOutcome = runResume(resume, replayReady, replayTree,
-        replayPending)
+        replayPending, powers)
 
       assertEquals(opsOf(replayOutcome), opsOf(liveOutcome),
         "walker-derived ops (fresh tree over replay-reconstructed state) " +
           s"drifted from the recorded journal at command $resume")
 
-      val nextReplayState = replayCommand(replayState, actor, liveOutcome)
+      val nextReplayState = replayCommand(replayState, liveOutcome, procedure)
 
       (liveOutcome, remaining.tail) match {
         case (WalkerOutcome.Finished(_, _), _) => liveOutcome
@@ -229,10 +278,11 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
   test("drift check: single-roll success (advance -> roll -> resolve)") {
     val (ready, actor, siteId, relic) = recoverable
-    val finished = assertNoDrift(ready, actor,
+    val finished = assertNoDrift(ready,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic.id)))))
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
+      walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(siteId).relics,
@@ -246,14 +296,14 @@ class WalkerReplayDriftSuite extends munit.FunSuite
   test("drift check: multi-roll success (fail parks Continue/Stop, Continue " +
       "rolls again to a cumulative success)") {
     val (ready, actor, _, relic) = recoverable
-    val finished = assertNoDrift(ready, actor,
+    val finished = assertNoDrift(ready,
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          RecoverChoicePayload(
-            RecoverChoice.Continue))),
+          ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)),
         RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic.id)))))
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
+      walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -264,11 +314,11 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
   test("drift check: stop after a failed roll ends the walk with no relic") {
     val (ready, actor, siteId, relic) = recoverable
-    val finished = assertNoDrift(ready, actor,
+    val finished = assertNoDrift(ready,
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          RecoverChoicePayload(
-            RecoverChoice.Stop)))))
+          ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))),
+      walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -276,6 +326,48 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         assertEquals(treeless.game.current.map.sites(siteId).relics,
           Vector(relic))
       case other => fail(s"expected a Finished outcome, got $other")
+    }
+  }
+
+  test("drift check: Catacombs-modified Recover (advance -> roll -> resolve) " +
+      "-- the first corpus entry where a power changed the tree") {
+    val fixture = CatacombsContributionSuite.reliclessSite(setup)
+    val finished = assertNoDrift(fixture.ready,
+      Vector(StartWalk, RollResume(highRoll),
+        AnswerResume(Answered(RecoverProcedure.relicDecisionId,
+          ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic)),
+          fixture.actor))), catacombsPowers)
+    finished match {
+      case WalkerOutcome.Finished(treeless, _) =>
+        assertEquals(treeless.game.current.map.sites(fixture.site).relics,
+          Vector.empty)
+        assertEquals(treeless.game.current.players.find(
+          _.player == fixture.actor).get.relics.map(_.id),
+          Vector(fixture.topRelic))
+      case other => fail(s"expected a Finished outcome, got $other")
+    }
+  }
+
+  test("drift check: an Oathkeeper tie parks for the holder and resolves") {
+    val active = OathkeeperFixture.base.game.current.turn.activePlayer
+    val holder = OathkeeperFixture.players.find(_ != active).get
+    val leaders = OathkeeperFixture.players.filterNot(_ == holder).take(2)
+    val ready = OathkeeperFixture.inPhase(OathkeeperFixture.ruled(
+      OathkeeperFixture.base, leaders.map(Some(_)), holder = Some(holder)),
+      Phase.Act)
+    val oathkeeperTree: (ReadyGame, Boolean) => Operation = (state, _) =>
+      OathkeeperProcedure.build(catalog, state,
+        state.game.current.turn.activePlayer, Vector.empty).toOption.get
+    val finished = assertNoDrift(ready,
+      Vector(StartWalk, AnswerResume(Answered(
+        OathkeeperProcedure.recipientDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Player(leaders(1))), holder))),
+      walkerPowers, TriggeredProcedureRef.Oathkeeper, oathkeeperTree)
+    finished match {
+      case WalkerOutcome.Finished(treeless, _) =>
+        assertEquals(treeless.game.current.title,
+          OathkeeperState(Some(leaders(1)), TitleSide.Oathkeeper))
+      case other => fail(s"expected the tie to finish, got $other")
     }
   }
 }

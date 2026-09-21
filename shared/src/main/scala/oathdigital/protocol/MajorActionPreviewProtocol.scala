@@ -20,8 +20,17 @@ object MajorActionPreviewCodec {
   import ProtocolDecodeFailure._
 
   def encodeRequest(value: MajorActionPreviewRequest): String = {
+    // `EndWake` is used only as an arbitrary carrier intent to reuse the
+    // shared envelope's ordered-modifiers encode/decode machinery, which
+    // attaches to any `GameIntent` -- this preview covers every major
+    // action, and the carrier is deliberately not one of them (see `action`
+    // below, encoded separately). It was `BeginForge` until Forge moved
+    // onto the walker and that intent was deleted. Ending Wake moved onto
+    // the walker too (batch-1 Task 7), but its intent stayed as the client's
+    // spelling for the new procedure, so this carrier survived that move and
+    // does not depend on ending Wake staying a hand-written command.
     val envelope = ActorlessCommandRequest(value.expectedNextSequence,
-      GameIntent.BeginRecover, value.orderedModifiers)
+      GameIntent.EndWake, value.orderedModifiers)
     val encodedModifiers = ujson.read(ActorlessCommandCodec.encode(envelope))
       .obj.value.get("orderedModifiers").getOrElse(ujson.Arr())
     ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(
@@ -56,7 +65,7 @@ object MajorActionPreviewCodec {
           case None => Right(Vector.empty)
           case Some(value) => ActorlessCommandCodec.decodeValue(ujson.Obj(
             "expectedNextSequence" -> ujson.Num(sequence.toDouble),
-            "intent" -> ujson.Obj("type" -> "beginRecover"),
+            "intent" -> ujson.Obj("type" -> "endWake"),
             "orderedModifiers" -> value)).map(_.orderedModifiers)
         }
       } yield MajorActionPreviewRequest(sequence, action, parameters, modifiers)

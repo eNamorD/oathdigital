@@ -1,6 +1,5 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 /** Internal immutable mutation planner for counted pieces and primitive effects. */
@@ -296,12 +295,71 @@ private[operations] object OperationStateMutation {
         result.flatMap(flipPlayerSecrets(_, player, amount, from, to))
       case (result, Peek(viewer, id, at)) =>
         result.flatMap(peek(_, viewer, id, at))
-      case (result, AdjustSupply(player, amount)) =>
+      case (result, SpendSupply(player, amount, _)) =>
+        result.flatMap(adjustSupply(_, player, -amount))
+      case (result, GainSupply(player, amount)) =>
         result.flatMap(adjustSupply(_, player, amount))
-      case (result, ModifyDicePool(pool, delta)) =>
+      case (result, AdvanceVisionsDrawn) =>
+        result.flatMap { state =>
+          val current = state.game.current
+          if (current.tracks.visionsDrawn == Int.MaxValue)
+            Left(OperationError.VisionsDrawnOverflow)
+          else Right(state.copy(game = state.game.copy(current = current.copy(
+            tracks = current.tracks.copy(
+              visionsDrawn = current.tracks.visionsDrawn + 1)))))
+        }
+      case (result, ModifyDicePool(pool, delta, _)) =>
         result.flatMap(adjustDicePool(_, pool, delta))
+      case (result, ModifyRollOutcome(pool, skulls, score)) =>
+        result.map(modifyRollOutcome(_, pool, skulls, score))
+      case (result, RecordPowerUse(power)) =>
+        result.map(recordPowerUse(_, power))
+      case (result, EnterPhase(phase)) =>
+        result.flatMap(enterPhase(_, phase))
+      case (result, SetOathkeeper(holder)) =>
+        result.flatMap(setOathkeeper(_, holder))
+      case (result, RecordCampaignResult(fact)) =>
+        result.map(_.updateCurrent(_.copy(lastCampaignResult = Some(fact))))
+      case (result, BeginTurn(player, phase)) =>
+        result.flatMap(beginTurn(_, player, phase))
       case (result, _) => result
     }
+
+  /** A set add, so recording a use the turn already holds changes nothing.
+    * The turn's used-power set is cleared wholesale when the turn advances,
+    * which is why nothing here has to expire anything.
+    */
+  private def recordPowerUse(ready: ReadyGame, power: PowerUseRef): ReadyGame =
+    ready.updateCurrent(current => current.copy(turn = current.turn.copy(
+      usedPowers = current.turn.usedPowers + power)))
+
+  /** A write, not an advance: which phase may follow which belongs to the
+    * procedure that declared the operation, and is deliberately not restated
+    * here. The one thing this does reject is a transition to the phase the
+    * turn is already in, which is a corrupt or doubled journal rather than a
+    * rule about order.
+    */
+  private def enterPhase(ready: ReadyGame,
+      phase: Phase): Either[OperationError, ReadyGame] =
+    Either.cond(ready.game.current.turn.phase != phase, ready.updateCurrent(
+      current => current.copy(turn = current.turn.copy(phase = phase))),
+      PhaseAlreadyEntered(phase))
+
+  private def setOathkeeper(ready: ReadyGame,
+      holder: Option[PlayerId]): Either[OperationError, ReadyGame] =
+    Either.cond(ready.game.current.title.holder != holder,
+      ready.updateCurrent(current => current.copy(
+        title = OathkeeperState(holder, TitleSide.Oathkeeper))),
+      OathkeeperUnchanged(holder))
+
+  private def beginTurn(ready: ReadyGame, player: PlayerId,
+      phase: Phase): Either[OperationError, ReadyGame] =
+    if (!ready.game.current.players.exists(_.player == player))
+      Left(UnknownPlayer(player))
+    else if (phase != Phase.Wake && phase != Phase.RoundEnd)
+      Left(InvalidTurnPhase(phase))
+    else Right(ready.updateCurrent(current =>
+      current.copy(turn = TurnState(player, phase, Set.empty))))
 
   private def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =
@@ -325,6 +383,19 @@ private[operations] object OperationStateMutation {
     * defensive guard below is a mutation-time floor — shape-level dice-pool
     * validation belongs to a later task that defines underflow semantics).
     */
+  /** An upsert: a pool that never rolled starts from an empty outcome, so a
+    * step that has no roll (a pool of zero dice is never rolled) can still
+    * record a result. Fields left `None` are unchanged.
+    */
+  private def modifyRollOutcome(ready: ReadyGame, pool: PoolKey,
+      skulls: Option[Int], score: Option[Int]): ReadyGame = {
+    val outcomes = ready.game.current.rollOutcomes
+    val base = outcomes.getOrElse(pool, RollOutcome(pool, 0, Vector.empty, 0, 0))
+    ready.updateCurrent(current => current.copy(rollOutcomes = outcomes.updated(
+      pool, base.copy(skulls = skulls.getOrElse(base.skulls),
+        score = score.getOrElse(base.score)))))
+  }
+
   private def adjustDicePool(ready: ReadyGame, pool: PoolKey,
       delta: Int): Either[OperationError, ReadyGame] = {
     val pools = ready.game.current.rollPools
@@ -332,7 +403,7 @@ private[operations] object OperationStateMutation {
     val next = current + delta
     require(next >= 0,
       s"dice pool '${pool.value}' count must not go below zero")
-    Right(updateCurrent(ready)(state => state.copy(
+    Right(ready.updateCurrent(state => state.copy(
       rollPools = pools.updated(pool, DicePoolState(next)))))
   }
 
@@ -347,6 +418,7 @@ private[operations] object OperationStateMutation {
           case value: RelicState => value.copy(orientation = orientation)
           case value => value
         }
+      case None if isDiscardLook(at, orientation) => Right(ready)
       case _ => Left(UnsupportedOrientation(id, at))
     }
   } yield updated
@@ -412,25 +484,21 @@ private[operations] object OperationStateMutation {
         appendDistinct(sites.getOrElse(site, Vector.empty), relic)))))
   }
 
-  private[operations] def updateCurrent(ready: ReadyGame)(
-      f: CurrentGameState => CurrentGameState): ReadyGame =
-    ready.copy(game = ready.game.copy(current = f(ready.game.current)))
-
   private[operations] def updateCommonCards(ready: ReadyGame)(
       f: CardZones => CardZones): Either[OperationError, ReadyGame] =
-    Right(updateCurrent(ready)(current =>
+    Right(ready.updateCurrent(current =>
       current.copy(commonCards = f(current.commonCards))))
 
   private[operations] def updatePlayer(ready: ReadyGame, player: PlayerId)(
       f: PlayerState => PlayerState): Either[OperationError, ReadyGame] =
-    playerState(ready, player).map { _ => updateCurrent(ready) { current =>
+    playerState(ready, player).map { _ => ready.updateCurrent { current =>
       current.copy(players = current.players.map(value =>
         if (value.player == player) f(value) else value))
     }}
 
   private[operations] def updateSite(ready: ReadyGame, site: SiteId)(
       f: SiteState => SiteState): Either[OperationError, ReadyGame] =
-    siteState(ready, site).map { state => updateCurrent(ready) { current =>
+    siteState(ready, site).map { state => ready.updateCurrent { current =>
       current.copy(map = current.map.copy(sites =
         current.map.sites.updated(site, f(state))))
     }}
@@ -521,12 +589,7 @@ private[operations] object OperationStateMutation {
   }
 
   private[operations] def semanticLocation(container: CardContainer): Location = container match {
-    case CardContainer.Deck(kind) => Location.Deck(kind match {
-      case DeckKind.World => CardDeck.World
-      case DeckKind.Relic => CardDeck.Relic
-      case DeckKind.Edifice => CardDeck.Edifice
-      case DeckKind.Legacy => CardDeck.Legacy
-    })
+    case CardContainer.Deck(deck) => Location.Deck(deck)
     case CardContainer.RegionalDiscard(region) => Location.RegionalDiscard(region)
     case CardContainer.Player(player, PlayerCardArea.Hand) => Location.Hand(player)
     case CardContainer.Player(player, _) => Location.PlayArea(player)

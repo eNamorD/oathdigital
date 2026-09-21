@@ -34,31 +34,31 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
         case other => self.fail(s"expected a WalkerStepRecorded, got $other")
       }
       step.payload match {
-        case RollPayload(pool, faces) =>
-          val outcome = RollOutcome(pool, faces.size, faces, skulls = 0,
-            score = DefenseDieFace.score(faces.collect {
-              case face: DefenseDieFace => face
-            }))
+        case RollPayload(pool, faces, _) =>
+          def derive(all: Vector[DieFace]): (Int, Int) = {
+            val attack = all.collect { case face: AttackDieFace => face }
+            if (attack.nonEmpty)
+              (AttackDieFace.skulls(attack), AttackDieFace.score(attack))
+            else (0, DefenseDieFace.score(all.collect {
+              case face: DefenseDieFace => face }))
+          }
+          val (skulls, score) = derive(faces)
+          val outcome = RollOutcome(pool, faces.size, faces, skulls, score)
           val accumulated =
             current.game.current.rollOutcomes.get(pool).fold(outcome) {
               previous =>
                 val accumulatedFaces = previous.faces ++ outcome.faces
-                RollOutcome(pool,
-                  previous.count + outcome.count,
-                  accumulatedFaces,
-                  previous.skulls + outcome.skulls,
-                  DefenseDieFace.score(accumulatedFaces.collect {
-                    case face: DefenseDieFace => face
-                  }))
+                RollOutcome(pool, previous.count + outcome.count,
+                  accumulatedFaces, previous.skulls + outcome.skulls,
+                  derive(accumulatedFaces)._2)
             }
-          current.copy(game = current.game.copy(current =
-            current.game.current.copy(rollOutcomes =
-              current.game.current.rollOutcomes.updated(pool, accumulated))))
+          current.updateCurrent(_.copy(rollOutcomes =
+              current.game.current.rollOutcomes.updated(pool, accumulated)))
         case _ if step.ops.isEmpty => current
         case _ =>
           OperationPipeline.run(current, step.ops,
             OperationPolicy.Permissive)(Right(_)) match {
-            case Right(updated) => updated
+            case Right(updated) => updated.state
             case Left(violation) =>
               self.fail(s"$failureContext: $violation")
           }

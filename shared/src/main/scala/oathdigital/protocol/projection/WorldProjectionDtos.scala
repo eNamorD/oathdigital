@@ -80,9 +80,3 @@ final case class GameTracksProjection(round: Int, visionsDrawn: Int,
     usurperLimited: Boolean, limiterRound: Int, firstPlayerId: String)
 final case class LegalTravelDestinationProjection(siteId: String, supplyCost: Int)
 final case class LegalSearchSourceProjection(kind: String, region: Option[String], supplyCost: Int)
-final case class LegalMusterProjection(
-    targetKind: String, targetId: String, label: String, suit: String,
-    supplyCost: Int, warbandsGained: Int)
-final case class LegalTradeProjection(
-    targetKind: String, targetId: String, label: String, suit: String,
-    resource: String, supplyCost: Int, gained: Int)

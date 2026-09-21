@@ -20,11 +20,6 @@ oathdigital/gameplay/
   StateBasedEvaluation.scala
   RuleSourceIndex.scala
   RuleResolution.scala
-  model/
-    GameStateProtocol.scala
-    GameProcedureProtocol.scala
-    GameEventProtocol.scala
-    GameViolation.scala
   setup/
     FirstGameSetup.scala
   phases/
@@ -38,13 +33,15 @@ oathdigital/gameplay/
     Recover.scala
     Forge.scala
     Challenge.scala
-    Campaign*.scala
+    campaign/              (CampaignProcedure, CampaignSetup, CampaignPlans,
+                            CampaignPlanSteps, CampaignBattle, CampaignConquest,
+                            CampaignRaid, CampaignOutcome)
     MinorActions.scala
-    Negotiation.scala
+    negotiation/           (NegotiationDeal, NegotiationProcedure)
     Visions.scala
   operations/
-    CoreOperations.scala
-    PowerOperations.scala
+    OperationExecutor.scala, OperationPipeline.scala, OperationValidator.scala,
+    OperationStateMutation.scala, PowerOperations.scala, ...
 ```
 
 `OathRules` is the small aggregate router. Common lifecycle checks belong in
@@ -54,9 +51,10 @@ facts.
 
 Wake and Rest bookend turns and remain phase modules. Act actions own their base
 legality, costs, decisions, and evolution. Economy keeps Muster and Trade
-together because they share target and yield mechanics. Campaign is split by
-cohesion: orchestration, legality/source classification, plan registration, and
-resolution. Small handlers are grouped by action or timing, never one file per
+together because they share target and yield mechanics. Campaign runs on the
+walker and is split by cohesion under `actions/campaign/`: the tree and its
+gates, the answers and who may be chosen, plan registration and the plan window
+steps, the battle arithmetic, and the Conquest and Raid resolutions. Small handlers are grouped by action or timing, never one file per
 card.
 
 ## Rule sources and handlers
@@ -72,11 +70,11 @@ exact-ID classifications then map relevant handlers to typed Scala behavior.
 Unknown relevant handlers fail with stable source/handler identity. Gameplay
 never reads `rulesText`.
 
-`RuleResolution` supplies shared source, activation, ordering, query, and
-outcome vocabulary. Specialized registries such as Campaign plans remain in
+`RuleResolution` supplies the handler registry and deterministic ordering over
+the shared source, activation, query, and outcome vocabulary in
+`model/RuleSources.scala`. Specialized registries such as Campaign plans remain in
 their owning module when their windows/effects are action-specific.
-`RuntimeRuleRegistry` is an empty stub kept for Negotiation's blocking
-boundary; the terrain travel path lives on TravelCost window powers under
+The terrain travel path lives on TravelCost window powers under
 `powers/travel/` (see `docs/architecture/rule-resolution.md`).
 
 ## One legality path
@@ -89,13 +87,12 @@ candidates.
 Application projection is split by responsibility: `GameProjector` chooses one
 player/public scope and assembles the DTO; `GamePresentationProjector` owns
 world, site, card, and player-board presentation; `LegalActionProjector` maps
-gameplay legality and targets; and `PendingProcedureProjector` maps forced
-decisions. Scala.js composes `ActionDecisionRenderer`, `WorldBoardRenderer`,
+gameplay legality and targets; and `PendingProjector` maps forced decisions. Scala.js composes `ActionDecisionRenderer`, `WorldBoardRenderer`,
 and `DevelopmentRenderer` through the small `ServerModeUi` controller. These
 outer groups consume shared actorless intent and projection DTOs; none owns
 rules.
 
-Multi-step actions use typed `PendingProcedure` state. Application-owned ports
+Multi-step actions park on the walker's pending position. Application-owned ports
 prepare random draws, dice, or fallback winners; events record those facts.
 Replay revalidates them against prior state without drawing again. Private
 pending data is exposed only by player-scoped application projections.

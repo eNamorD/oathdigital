@@ -1,198 +1,191 @@
-> **Note (2026-09-05): implementation form superseded.** Rules content here stays
-> authoritative; the code it describes (bespoke action procedures, power seams,
-> typed-fact vocabularies) is being replaced by the procedure-walker design:
-> `docs/superpowers/specs/2026-09-05-procedure-walker-design.md`.
+> **Note (2026-09-19): ported to the procedure walker.** Campaign, Conquest and
+> Raid, now runs as `ActionRef.Campaign` on the generic walker. The legacy
+> `PendingProcedure` path, its seven commands, its seven events and the legacy
+> `pending` slot are deleted. Design:
+> `docs/superpowers/specs/2026-09-19-campaign-walker-design.md`. The file name is
+> kept so inbound links hold.
 
-# Bounded Campaign design
+# Campaign
 
-This design began as the smallest coherent first-game Campaign procedure and
-now includes authoritative multi-site target declaration for Conquest against
-bandits, with fixed unaltered Foundations and a typed boundary for relevant
-Campaign powers. Multi-site loss and placement allocation are complete for
-bandit and player Conquest defenders, and the base Raid procedure is complete
-for player defenders.
+Campaign implements the Combined Rulebook and New Foundations procedure for
+Conquest against bandits or a player, and Raid against a co-located player. It
+costs 2 Supply and is started by the active player with `StartWalker("campaign")`.
+Every later choice is a parked walker decision answered with `ResolveWalker`.
 
-## Typed rule pipeline and inventory
+## Procedure
 
-Campaign rule discovery is exact-ID based and ordered by handler priority,
-stable source identity, and handler ID. It checks all actor advisers, faceup
-held relics, the target, and every actor-ruled site. Facedown advisers remain
-discoverable for conservative classification, but their passive powers are not
-active and are not treated as revealable before Campaign begins. The resolver
-models the printed windows explicitly: target
-and force formation; attacker battle plans; attack roll and skull losses;
-attacker sacrifice; defender battle plans and roll; outcome; conquest
-placement or Raid resolution and pawn relocation; and remaining end, victory,
-and defeat effects. The terminal windows are explicit even though their
-additional printed handlers remain deferred.
+`CampaignProcedure` (`gameplay/actions/campaign/`) builds one tree in rulebook
+order. Its root window is `CampaignActionEligibility`.
 
-The source-verified inventory for this boundary is:
+```
+Sequence(
+  Sequence(CampaignCost, SpendSupply(actor, 2))
+  Sequence(CampaignBeforeTargets,
+    Decide(campaign.kind)                 -- omitted when one kind is legal
+    Decide(campaign.defender)             -- Raid only, omitted with one enemy pawn
+    Decide(campaign.targets))             -- optional additions, omitted when none
+  Decide(campaign.force)                  -- always asked, 0 to the board's warbands
+  Sequence(CampaignGatherPools, BuildOps(both dice pools))
+  attacker battle plans                   -- CampaignAttackerBattlePlans
+  defender battle plans                   -- CampaignDefenderBattlePlans
+  Roll(campaign.attack, Automatic)        -- CampaignAttackRoll
+  CampaignAttackResult                    -- capped attack written as a roll outcome
+  Decide(campaign.sacrifice)              -- omitted when nothing survives the skulls
+  Roll(campaign.defense, Automatic)       -- CampaignDefenseRoll
+  CampaignDefenseResult                   -- dice score plus the defender's force
+  Sequence(CampaignAfterOutcome, RecordCampaignResult)
+  Branch(lastCampaignResult):
+    CampaignLosses
+    victory: Conquest placement, or Raid transfer and relocation)
+```
 
-- safely executable now: the mandatory `denizen.vow-of-peace` Campaign block
-  at target and force formation, and optional attacker plan
-  `denizen.outriders` (“Ignore all skulls you roll”) and the paid
-  `relic.brass-army.campaign` (`[secret] +4 [attack-die]`) at the attacker battle-plan
-  window; the title defender plan (+1 die, or +2 on its Usurper side); and
-  cost-free, choice-free bandit `denizen.watchdog` where applicable;
-- blocked by missing decisions or data: every other optional attacker battle plan;
-  rerolls, costs, directional `±` choices, conditional pools, discard/bury,
-  favor-bank rewards, and remaining victory/defeat/end effects;
-- irrelevant to the implemented result: Imperial effects. Unsupported
-  Raid-specific and other player-defender powers are discovered and block until their handlers
-  are implemented. Bag of Siegeworks,
-  Weeping Banner, and Peace Envoy are not in this class: each can change this
-  boundary and therefore rejects pending typed resolution.
+- **Start.** A start is refused unless the actor is in Act, `PowerRuntime.requireAudited`
+  passes and at least one kind is legal. Conquest is legal when the actor's pawn
+  site is ruled by Bandits or by another player. Raid is legal when another
+  player's pawn stands at the actor's site. Supply is not a gate: `SpendSupply`
+  owns it, so a start with too little Supply fails at the first step before
+  anything is persisted. The start control (`beginCampaign`) is offered exactly
+  when a dry run of that first walk accepts.
+- **Targets.** Only the mandatory piece is fixed: the Conquest pawn site or the
+  Raid enemy pawn. `campaign.targets` answers the optional additions: other sites
+  ruled by the same defender, in map order, for a Conquest; the defender's faceup
+  relics and held banners, in stable order, for a Raid. The full set is the
+  mandatory piece plus the answer, canonicalised.
+- **Force.** `ChooseAmount(0, board warbands)`. A zero-force Campaign is legal
+  (the Empty Attack Pool rule). Nothing moves for the force: committed warbands
+  stay on the board until they die or are placed.
+- **Pools.** Both pools are gathered once, after the force answer, because nothing
+  on the board changes before the terminal steps. The attack pool holds the
+  committed force. The defense pool holds the targets' printed defense: for a
+  Raid, two for the pawn, each targeted relic's printed defense and three per
+  banner. A pool of zero dice is not created and is never rolled.
+- **Battle plans.** Each side's window is a `Repeat` of `CampaignPlanChoice` passes. The node is an
+  `OfferHost`: its window gathers the `Offer` contributions of the powers in play, and each pass asks
+  the user to choose one plan they can pay for, or Finish, and applies it as a
+  `CampaignPlanApplication` (window `CampaignPlanApplication`). Each plan is therefore paid and
+  applied the moment it is chosen, and the next options see the result. A plan is usable only by the
+  ruler of its source: the holder of an adviser or of a faceup relic, or the ruler of the site a card
+  or edifice stands at. Whether the user can pay is found by dry-running the plan's application
+  through the same windows, so a power that adds to a cost changes what is offered, and each option
+  carries the price the dry run found. A source may be chosen once. A pass with nothing to offer does
+  nothing, and the loop ends. A player defender owns the defender window. A bandit defender applies
+  every cost-free plan of a site Bandits rule that no power makes unpayable, without choosing, and
+  records each in a pool marker so a later window can read it. A facedown adviser is revealed when
+  it is used. The plans are `BattlePlan` powers registered through `BattlePlans`: `TitleDefensePlan`
+  (one defense die for an Oathkeeper, two for a Usurper), `Outriders` (ignore all skulls),
+  `BrassArmy` (a secret for four attack dice) and `Watchdog` (one defense die at a Cradle target).
+- **Attack.** The roll is automatic. A skull removes one force warband and its two
+  swords count only when that loss can be paid. Skulls beyond the force add
+  nothing. Hollow swords score one per pair. Outriders, once chosen, scores the attack
+  again without the cap.
+  The capped result is written over the rolled outcome. Brass Army's dice do not
+  raise the physical force or any loss, sacrifice or placement limit.
+- **Sacrifice.** `ChooseAmount(0, force - skulls)` warbands for one attack each.
+  Its heading states the attack faces, the attack after plans and skulls, and the
+  surviving force.
+- **Defense and the victor.** The defense roll is automatic. The recorded defense
+  is the dice score plus the defender's force (the warbands at every target, or a
+  Raid defender's board), written before any warband dies, so the victor is read
+  from recorded outcomes only. Attack after the sacrifice must strictly exceed
+  defense.
+- **Result.** `RecordCampaignResult` writes the public `CampaignResult`. It is the
+  only thing the steps after the losses read, because the losses change the board.
+  `attackerWins` is true when the attacker prevailed and false when the defender
+  did, whichever side a battle plan's user is on.
 
-The attacker receives an authoritative, ordered multi-plan decision containing
-each unused accessible registered source plus an explicit finish control. Each distinct
-source may be selected once. Selecting a plan records and applies its cost or
-reveal without rolling, keeps the decision open, and removes that source from
-the unused choices. Events record the complete selected source order and typed
-cost/effect vectors. Replay re-resolves every handler and rejects duplicate,
-substituted, stale, or reordered sources. Choices and selected order
-are projected only to the current decision owner, while public and other-player projections show
-only that Campaign is waiting. Blocked rules report exact handler and stable
-source identity.
-Mountain/Plains Campaign effects also remain blocked. Site access is derived through `SiteRule`; corrupt
-lineage-to-ruler mappings reject instead of being treated as harmless.
+## Losses and resolution
 
-## Authoritative procedure
+Nothing leaves the board before `CampaignLosses`. The attacker loses the skull and
+sacrifice losses, plus half the survivors, rounded down, on a defeat. On a
+victory every warband at every target dies. A player defender keeps half the
+killed force, rounded up, returned from the supply to their board. Losses are
+plain operations in a named window, not a policy registry.
 
-Campaign costs 2 Supply. The active Exile must be in Act, have a pawn at a site
-with a legal Conquest ruler or a co-located enemy pawn for Raid, and may gather
-from zero up to all warbands on their board.
-The authoritative engine and HTTP contracts accept that non-negative count as
-the force. The Empty Attack Pool rule therefore permits a zero-force Campaign.
-The private action projection
-publishes the current legal force minimum and maximum, available board warbands,
-and Supply cost alongside the mandatory target. After target selection, the
-browser holds a local formation draft and presents labelled decrement,
-increment, and direct-value buttons. It reports committed force, remaining board
-warbands, attack dice before plans, and cost. Only the explicit Confirm Campaign
-control submits; Back and Cancel produce no authoritative state change.
-Formation drafts are keyed to game, viewer, sequence, action, candidate, and
-projected formation facts, and are discarded on any change, conflict, cancel,
-or submission. These bounds improve the interaction only: command handling and
-replay still revalidate actor, phase, target, Supply, pending state, current
-warbands, and submitted force.
-The pawn site is mandatory and is persisted first. The player may toggle any
-number of additional sites ruled by the same bandit defender. Candidates are
-projected in map order, the mandatory site cannot be deselected, and the final
-distinct target vector must retain canonical map order. The server rejects
-missing, duplicate, reordered, stale, differently ruled, and Pass-blocked
-targets. The complete target set is carried by the command, pending procedure,
-event, projection, and replay path. The player confirms those typed site targets
-through the reusable board-target protocol. The application service
-supplies recorded attack and defense dice; clients never supply randomness.
-Declaration first commits force and Supply and creates the pending attacker-plan
-decision. A player defender receives an independently authorized plan window
-after the attacker finishes. Attack dice are prepared only after both windows
-finish and the server revalidates all choices. Finishing with no selections is skip.
-Brass Army is offered only when held faceup, empty, unused, and payable with one faceup
-secret. Selection places that secret on the relic and rolls exactly four extra
-attack dice when the actor finishes. Those dice do not increase physical force or later loss,
-sacrifice, survival, or placement limits.
-When Outriders was also selected, all skull losses are ignored and every skull
-die retains its swords. Without Outriders, skull dice beyond the physical force
-cannot kill a warband and contribute no swords.
+**Conquest placement.** `campaign.placement` is a `ChooseAmount` for one target
+and a `Distribute` with `minTotal = 0` and `maxTotal = survivors` for several. Placed
+survivors move from the board onto the targets. Unplaced survivors stay on the
+board. The decision is omitted when nothing survives.
 
-Raid instead persists a typed kind and a canonical pawn-first target vector.
-The co-located enemy pawn is mandatory; zero or more of that defender's faceup
-relics and held banners follow in stable relic/banner order. Declaration and
-replay reject missing pawn, duplicate, reordered, stale, facedown, foreign, or
-no-longer-held targets. Raid never targets the pawn's site.
+**Raid resolution.** In the printed order, as one recorded batch: targeted faceup
+relics and banners transfer; People's Favor returns one unit at a time to the
+least-filled, leftmost-on-tie favor bank; the exact number of Darkest Secret
+resources burns; ordinary facedown advisers append to the Raid site's next-region
+discard, facedown; the Conspiracy returns to the box; facedown relics are set aside
+for the Chronicle; half the defender's favor, rounded down, burns. Half the
+defender's board warbands, rounded down, died in the losses. The attacker then
+answers `campaign.relocation`, a choice of every other in-play site, and the
+defender's pawn moves. This relocation is not Travel.
 
-Defender dice equal the targeted sites' printed defense plus resolved defender
-plan effects; bandit or player forces at all targets likewise contribute to
-defense. For Raid, the pawn contributes two dice, every targeted relic adds its
-printed defense, each targeted banner adds three dice, and the defender's board
-warbands are their force. The title is an optional registered defender battle plan: Oathkeeper
-adds one die and Usurper adds two. Bandits automatically use every applicable
-registered plan only when it is cost-free and choice-free; Watchdog is the
-first such handler. Other relevant bandit plans block conservatively.
-Attack faces record hollow
-swords, swords, and the skull-plus-two-swords face. Hollow swords score one per
-pair. A skull removes one force warband, and its two swords count only when that
-loss can be paid. Defense faces use the existing blank/shield/doubler
-vocabulary. Before the defense roll, the actor explicitly chooses how many
-surviving force warbands to sacrifice for one attack each. Attack must strictly
-exceed defense.
+After the action, the aggregate boundary refills every empty positive-capacity
+site with its printed Bandit force once, then runs the bounded Supremacy
+evaluation once. If that displaces the Oathkeeper into a tie, the former holder
+receives the durable recipient decision before normal Act controls resume.
 
-On victory, all warbands at every targeted site are removed and
-the actor allocates zero or more surviving force warbands across the complete
-ordered target set. Every target appears exactly once in the submitted
-allocation, including zero allocations; the total cannot exceed the surviving
-force, and unplaced force returns to the board. The browser keeps this draft
-local, reports allocated and remaining totals, and submits one atomic command.
-On defeat, the default registered policy kills half the attacker's surviving
-force rounded down and returns the remainder to its board; the
-bandits remain. Supply and committed pieces are validated against the preceding
-state during replay. Zero forces are represented as
-`SiteForces.Empty`, never as an occupied zero-count force.
+## Powers
 
-On a successful Raid, the registered loss policy kills half the defender's
-board force rounded down and returns the remainder to that board. A durable
-Raid event then records and replay-validates the printed order: targeted faceup
-relics and banners transfer; People's Favor resources return one at a time to
-the least-filled, leftmost-on-tie favor bank and the exact number of Darkest
-Secret resources burned is durable; ordinary facedown advisers append in board
-order to the Raid site's next-region discard pile, the Conspiracy returns to
-the box, facedown relics enter the Chronicle reliquary, and half the defender's
-favor, rounded down, burns. The attacker then receives a typed owner-scoped pending
-procedure containing canonical legal destinations and relocates the defender's
-pawn to another site. This relocation is not Travel. Other viewers receive no
-hidden discarded identities or relocation controls.
+- **Vow of Peace** is a root `Restriction` at `CampaignActionEligibility`. A faceup
+  copy held as an adviser blocks its holder's Campaign with
+  `CampaignUnavailable`. The second printed sentence (attackers cannot sacrifice
+  against a holder) is not modelled.
+- **Narrow Pass** gains an `OptionRestriction` at `CampaignTargetSelection`, beside
+  its Travel restriction. It removes another site in the Pass's region from the
+  targets when the actor's pawn is outside that region and the actor does not rule
+  the Pass. The check is per candidate site, the Pass itself stays targetable, and
+  only site options are considered. "Consent of the Pass's ruler" is approximated
+  as ruling the Pass. Real consent, separate from Negotiation, is deferred.
+- `OptionRestriction` is the general channel for a power that forbids a choice. The
+  walker removes the forbidden options in the window fold, so the projector, the
+  answer check and simulation all see the filtered set. An optional decision left
+  empty is dropped. A required decision left empty rejects the start with the
+  restriction's own violation.
+- Battle plans are `BattlePlan` powers (see Battle plans above): an `Offer` at a plan window
+  and, for what a used plan does later, a hook at a later window that reads the picks from
+  `PowerCtx.answered`.
 
-Defender loss is resolved through a registered, stable-ID policy seam. The
-default policy emits and applies ordered `Remove` effects at every target.
-Bandits lose them all. A player defender loses half the aggregate targeted
-force, rounded down, and the policy records returning every survivor to that
-player's board before attacker placement. Replay resolves the recorded policy again and verifies
-its complete effect vector before applying it. The effect vocabulary also
-represents preservation, relocation, and replacement; placement cannot
-overwrite a force that the selected policy leaves at a target. These dormant
-forms provide the mechanical boundary for future powers, but no such printed
-power is inferred or activated by this slice.
+## Unsupported Campaign rules
 
-Attacker defeat uses the same stable-ID policy/result path. Its committed-force
-effects use a kind-aware, validated Campaign origin: the mandatory first site
-for Conquest and the co-located pawn site for Raid. Shared loss code does not
-index Conquest targets for Raid procedures.
-Effects explicitly record killed, returned, preserved, or site-relocated pieces;
-replay resolves the selected policy and validates complete disposition before
-changing the board. Thus alternate loss rules do not require rewriting the
-terminal Campaign evolution.
+Unsupported handlers are ignored, not blocking: Bag of Siegeworks, Weeping Banner,
+Peace Envoy, the Mountain and Plains Campaign effects, and the unsupported Raid and
+player-defender powers no longer stop a Campaign. `StartWalker` records what the
+reviewed power catalog lists at the Campaign modifier window through
+`IgnoredRulesRecorded` under `ActionKind.Campaign`. Today that list is empty:
+Bag of Siegeworks is a player-selected plan at the battle-plan window, and the
+resolver reports only unimplemented automatic handlers. The engine does not infer
+mechanics from rules text.
 
-The mandatory pawn-site ruler is the typed Campaign defender. Every optional
-site must have that same ruler. Powers across a player defender's advisers,
-relics, and ruled sites are classified in defender context: known attacker-only
-handlers do not block merely because the defender rules them, while unknown or
-defender-relevant effects reject conservatively. Projection and command
-handling share these checks. During the defender window, the defender receives
-owner-only controls while the active attacker receives a waiting state.
+## Visibility
 
-Typed staged events record the ordered target set, force, cost, both dice vectors, sacrifice,
-losses, outcome, and placement. Replay recalculates every field and rejects
-tampering without rerolling. After terminal evolution, the aggregate action
-completion boundary refills every empty positive-capacity site with its printed
-Bandit force once after the entire placement, then runs the existing bounded
-Supremacy evaluation once. If this displaces the current Oathkeeper into a tie,
-the former holder receives a durable, owner-authorized recipient decision;
-selection is replay-validated before normal Act controls resume.
+The defender's plan decision is shown only to the defender. The attacker and every
+other viewer see the generic waiting notice. Dice are public, so the last Campaign's
+result is public: both dice sets, both totals, the victor and the targets, drawn for
+every viewer. A Raid's targets are a pawn, faceup relics and banners. Hidden
+discarded identities and the relocation controls are never projected to anyone but
+the deciding player. The panels are the generic walker panels for `ChooseOne`,
+`ChooseMany`, `ChooseAmount` and `Distribute`.
 
-## Boundaries
+## Journal
 
-Legality and projection share Campaign rule queries. HTTP and Scala.js accept
-only the decision owner's selected target set and choices; authenticated routes derive the
-actor and never accept dice. Pending state and controls are viewer-scoped to
-that owner. Finite Exile warbands are preserved by moving existing pieces only.
-No migration layer, Forge, Imperial
-Campaign, Vision, Chronicle, or general power interpreter is introduced.
+Each answer is a `WalkerStepRecorded` carrying a `ChoicePayload`. Each automatic roll
+is a `RollPayload` with `automatic = true`, which replay applies without asking the
+dice source. The recorded result carries the key `attackerWins`, so a journal recorded
+before that name cannot be read. Every other step is a recorded operation batch, including
+`RecordCampaignResult`. A plan's payment is recorded as the requested `PayCost`, and replay
+settles it again when its payer is not the active player. The seven legacy Campaign events
+no longer exist, and journals are forward-only.
 
-## Deferred work
+## Rule changes from the legacy Campaign
 
-- further optional attacker, defender, and deterministic bandit plan families;
-- non-deterministic sacrifice/loss choices where multiple legal assignments
-  matter;
-- additional Raid, victory, defeat, and `At End` card-power handlers; the timing
-  windows exist structurally, but no behavior is inferred for them;
+The first-game gates (exile-only roles, unaltered Foundations, inactive legacies) do
+not exist here; the audit of the rules they stood for is deferred. There is no
+cancel after the start. An unsupported handler no longer blocks. A plan window
+finishes by itself when no plan is left.
+
+## Deferred
+
+- All rolls become automatic (Recover still parks on its roll).
+- Real consent for the Pass, and a consent system in general.
+- The first-game rule audit behind the dropped gates.
+- Further optional attacker, defender and deterministic bandit plan families,
+  non-deterministic loss choices, and the additional Raid, victory, defeat and
+  `At End` handlers. The timing windows exist and no behavior is inferred for them.
+- An action-history feed. The durable `lastCampaignResult` is the interim.

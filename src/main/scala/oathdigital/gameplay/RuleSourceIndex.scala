@@ -22,6 +22,36 @@ object RuleSourceFace {
   case object Altered extends RuleSourceFace
 }
 
+/** Which rule sources a player can use: a site, site card or site relic at
+  * their pawn site, an intact edifice there, their own faceup advisers and
+  * relics, banners, Foundations and their lineage's active legacies.
+  */
+private[gameplay] object RuleSourceAccess {
+  def accessible(ref: RuleSourceRef, face: RuleSourceFace, ready: ReadyGame,
+      actor: PlayerId, facedownAdviser: Boolean): Boolean = {
+    val player = ready.game.current.players.find(_.player == actor)
+    val pawn = player.flatMap(_.pawnSite)
+    ref match {
+      case RuleSourceRef.Site(id) => pawn.contains(id)
+      case RuleSourceRef.SiteCard(id, _) =>
+        pawn.contains(id) && face == RuleSourceFace.FaceUp
+      case RuleSourceRef.SiteRelic(id, _) =>
+        pawn.contains(id) && face == RuleSourceFace.FaceUp
+      case RuleSourceRef.Edifice(id, _) =>
+        pawn.contains(id) && face == RuleSourceFace.Intact
+      case RuleSourceRef.Adviser(owner, _) => owner == actor &&
+        (face == RuleSourceFace.FaceUp ||
+          (facedownAdviser && face == RuleSourceFace.FaceDown))
+      case RuleSourceRef.Relic(owner, _) =>
+        owner == actor && face == RuleSourceFace.FaceUp
+      case RuleSourceRef.Banner(_) | RuleSourceRef.Foundation(_) => true
+      case RuleSourceRef.Legacy(lineage, _) =>
+        player.exists(_.lineage == lineage) && face == RuleSourceFace.Active
+      case _ => false
+    }
+  }
+}
+
 /** Mutable facts carried by sources that are not catalog cards. */
 sealed trait RuleSourceState extends Product with Serializable
 object RuleSourceState {
@@ -110,7 +140,7 @@ object RuleSourceIndex {
       IndexedRuleSource(
         RuleSourceRef.Banner(Banner.PeoplesFavor.key),
         current.banners.peoplesFavor.active match {
-          case PeoplesFavorFace.Mob => Vector.empty
+          case PeoplesFavorFace.Mob => ids(Vector("banner.peoples-favor.mob"))
           case PeoplesFavorFace.GrandCouncil =>
             ids(Vector("banner.peoples-favor.grand-council"))
         },
@@ -123,7 +153,9 @@ object RuleSourceIndex {
       IndexedRuleSource(
         RuleSourceRef.Banner(Banner.DarkestSecret.key),
         current.banners.darkestSecret.active match {
-          case DarkestSecretFace.WanderingFlame => Vector.empty
+          case DarkestSecretFace.WanderingFlame => ids(Vector(
+            "banner.darkest-secret.wandering-flame.move",
+            "banner.darkest-secret.wandering-flame.place"))
           case DarkestSecretFace.Festival =>
             ids(Vector("banner.darkest-secret.festival"))
         },

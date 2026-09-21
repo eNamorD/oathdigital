@@ -31,13 +31,19 @@ Use the project-local wrapper; a normal verification run does not require
 `clean`:
 
 ```sh
+npm ci
 ./sbtw compile
 ./sbtw test
 ./sbtw frontend/test
 ./sbtw frontend/fullOptJS
 ```
 
-Scala.js tests need Node on `PATH`. In Codex desktop, the bundled runtime can
+Scala.js tests need Node on `PATH`, and the frontend suites run in jsdom so a
+renderer test can drive the DOM the panels build. `npm ci` installs that one
+dependency from the pinned `package.json`/`package-lock.json`; run it once
+after cloning and again whenever the lockfile changes. Nothing from
+`node_modules` ships: the production bundle is linked by sbt and served from
+the JVM. In Codex desktop, the bundled runtime can
 be selected explicitly:
 
 ```sh
@@ -87,3 +93,17 @@ with `./sbtw Docker/publishLocal`. Packaged launchers default to
 environment, then default precedence. See
 [runtime configuration](docs/operations/configuration.md) for every option and
 archive/container examples.
+
+## Trusted-alpha operations
+
+Operators should read these guides before inviting players:
+
+- [host and player quick start](docs/operations/quick-start.md)
+- [runtime configuration](docs/operations/configuration.md)
+- [backup, restore, reset, and upgrade policy](docs/operations/data-policy.md)
+- [LAN, HTTPS proxy, logging, and browser guidance](docs/operations/network-and-browser.md)
+- [per-build manual acceptance record](docs/operations/alpha-acceptance.md)
+- [packaged artifact smoke tests](docs/operations/packaged-smoke-test.md)
+
+Seat links grant full control of their seats and are intended only for trusted
+alpha groups. The guides do not add accounts or remote administration.

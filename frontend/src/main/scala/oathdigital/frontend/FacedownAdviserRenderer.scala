@@ -21,20 +21,10 @@ private[frontend] object FacedownAdviserRenderer {
     }
     draft.selected.foreach { adviser =>
       panel.appendChild(cardDetailsPopover(adviser.card))
-      adviser.placements.foreach { placement =>
-        val label = placement.kind match {
-          case "discard" => "Discard adviser"
-          case "play-adviser" => "Play faceup as adviser"
-          case "play-site" if placement.replacement.nonEmpty =>
-            s"Play faceup at site; replace ${placement.replacement.get.name}"
-          case "play-site" => "Play faceup at site"
-          case other => actionLabel(other)
-        }
-        val resolve = button(label, s"facedown-adviser-resolution ${placement.kind}")
-        resolve.disabled = !canControl
-        resolve.onclick = _ => draft.command(placement).foreach(submitTargetCommand)
-        panel.appendChild(resolve)
-      }
+      val start = button("Choose placement", "facedown-adviser-start")
+      start.disabled = !canControl
+      start.onclick = _ => draft.command.foreach(submitTargetCommand)
+      panel.appendChild(start)
     }
     val cancel = button("Cancel action", "modifier-cancel")
     cancel.onclick = _ => cancelTargetAction(); panel.appendChild(cancel)

@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
+import oathdigital.model.{PowerResolution, PowerWindow}
+
 /** Total inspection function used by concise handler declarations. */
 final class PowerInspector private (
     private val run: PowerContext => PowerInspection

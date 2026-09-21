@@ -18,8 +18,16 @@ final case class DecisionId(value: String) {
 }
 
 final case class PowerId(value: String) {
-  require(value.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"),
-    s"invalid stable power ID $value")
+  require(value.matches(PowerId.pattern), s"invalid stable power ID $value")
+}
+
+object PowerId {
+  private val pattern = "[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"
+
+  /** Safe parse for untrusted (e.g. wire) input: `None` rather than throwing
+   * when `value` does not satisfy the stable power ID shape. */
+  def fromValue(value: String): Option[PowerId] =
+    if (value.matches(pattern)) Some(PowerId(value)) else None
 }
 
 final case class CatalogRef(ruleset: String, version: String) {
@@ -48,6 +56,13 @@ final case class VisionId(value: String) extends WorldCardId {
 final case class RelicId(value: String) extends CardId {
   IdentityValidation.nonBlank("relic ID", value)
   override val kind: String = "relic"
+}
+
+object RelicId {
+  /** Safe parse for untrusted (e.g. wire) input: `None` rather than throwing
+   * when `value` is blank. Mirrors `PowerId.fromValue`. */
+  def fromValue(value: String): Option[RelicId] =
+    if (value.trim.nonEmpty) Some(RelicId(value)) else None
 }
 
 final case class EdificeId(value: String) extends CardId {

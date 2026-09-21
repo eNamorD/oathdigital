@@ -5,9 +5,72 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  GameIntent, MajorActionPreviewRequest, ModifierInvocation}
+  DecisionAnswerWire, DecisionPlacementWire, GameIntent, MajorActionPreviewRequest,
+  ModifierInvocation}
 
 class HttpGameClientSuite extends FunSuite {
+  test("trusted colon game uses the encoded canonical cookie path") {
+    val transport = new StubTransport(Vector(Right(TransportResponse(200, projectionJson(1)))))
+    new TrustedHttpGameClient(transport).load("alpha:one", "ignored").map { result =>
+      assert(result.isRight)
+      assertEquals(transport.requests.map(_._2).toVector, Vector("/games/alpha%3Aone/api"))
+    }
+  }
+
+  test("trusted viewer identity round trips while old projections omit it") {
+    val old = GameJson.decodeProjection(projectionJson(1)).toOption.get
+    assertEquals(old.viewerPlayerId, None)
+    val json = oathdigital.protocol.projection.GameProjectionCodec.encode(
+      old.copy(viewerPlayerId = Some("blue-exile")))
+    assertEquals(GameJson.decodeProjection(json).toOption.get.viewerPlayerId,
+      Some("blue-exile"))
+    assert(!oathdigital.protocol.projection.GameProjectionCodec.encode(old)
+      .contains("viewerPlayerId"))
+  }
+  test("trusted client uses canonical cookie APIs and actorless bodies") {
+    val transport = new StubTransport(Vector(
+      Right(TransportResponse(200, projectionJson(7))),
+      Right(TransportResponse(200, """{"nextSequence":7,"action":"trade","modifiers":[],"ignoredRules":[],"targets":[]}""")),
+      Right(TransportResponse(200, projectionJson(8)))))
+    val client = new TrustedHttpGameClient(transport)
+    client.load("game /?", "seat-must-not-travel").flatMap { loaded =>
+      assertEquals(loaded.toOption.get.nextSequence, 7L)
+      client.preview("game /?", "seat-must-not-travel",
+        MajorActionPreviewRequest(7, "trade", Map("resource" -> "favor")))
+    }.flatMap { preview =>
+      assertEquals(preview.toOption.get.nextSequence, 7L)
+      client.submit("game /?", "seat-must-not-travel", 7, GameIntent.PlacePawn("site:a"))
+    }.map { submitted =>
+      assertEquals(submitted.toOption.get.nextSequence, 8L)
+      assertEquals(transport.requests.map(r => r._1 -> r._2).toVector, Vector(
+        "GET" -> "/games/game%20%2F%3F/api",
+        "POST" -> "/games/game%20%2F%3F/api/preview",
+        "POST" -> "/games/game%20%2F%3F/api/commands"))
+      assertEquals(transport.requests.head._3, None)
+      assertEquals(ActorlessCommandCodec.decode(transport.requests.last._3.get),
+        Right(ActorlessCommandRequest(7, GameIntent.PlacePawn("site:a"))))
+      assert(!transport.requests.toString.contains("seat-must-not-travel"))
+    }
+  }
+
+  test("trusted conflict allows one reload without retry and bootstrap never sends") {
+    val transport = new StubTransport(Vector(
+      Right(TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}""")),
+      Right(TransportResponse(200, projectionJson(8)))))
+    val client = new TrustedHttpGameClient(transport)
+    client.submit("game-1", "red-exile", 7, GameIntent.PlacePawn("site:a")).flatMap {
+      case Left(_: GameClientFailure.StalePosition) => client.load("game-1", "red-exile")
+      case other => fail(s"expected conflict: $other")
+    }.flatMap { loaded =>
+      assertEquals(loaded.toOption.get.nextSequence, 8L)
+      client.bootstrap("game-1", "red-exile",
+        oathdigital.protocol.FirstGameBootstrapRequest(0, Vector.empty, "red-exile"))
+    }.map { result =>
+      assert(result.isLeft)
+      assertEquals(transport.requests.map(_._1).toVector, Vector("POST", "GET"))
+    }
+  }
+
   test("production client previews and submits the same ordered modifiers") {
     val previewJson = """{"nextSequence":7,"action":"trade","modifiers":[{"sourceKey":"adviser:red-exile:denizen:35","handlerId":"h.one","description":"First"},{"sourceKey":"site-card:site:a:denizen:36","handlerId":"h.two","description":"Second"}],"ignoredRules":[],"targets":[]}"""
     val transport = new StubTransport(Vector(
@@ -20,7 +83,7 @@ class HttpGameClientSuite extends FunSuite {
       Map("resource" -> "favor"))).flatMap { result =>
       assertEquals(result.toOption.get.modifiers.map(_.handlerId), Vector("h.one", "h.two"))
       client.submit("game-1", "red-exile", 7,
-        GameIntent.Trade(oathdigital.protocol.EconomyTarget("denizen", "10"), "favor"),
+        GameIntent.PeekSiteRelics,
         ordered)
     }.map { _ =>
       assert(transport.requests.head._2.endsWith("/preview?playerId=red-exile"))
@@ -29,56 +92,27 @@ class HttpGameClientSuite extends FunSuite {
     }
   }
 
-  test("Vision and Conspiracy controls preserve opaque targets and pending decisions") {
-    val actions = """[{"actionKind":"play-conspiracy","decisionId":"conspiracy-12","prompt":"Choose an enemy asset for Conspiracy","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[],"formation":null,"candidates":[{"target":{"kind":"player-relic","playerId":"blue-exile","relicId":"0"},"label":"Blue facedown relic","details":[]}]}]"""
-    val json = projectionJson(sequence = 13, phase = "conspiracy-target",
-      ready = true, completed = false, choices = false)
-      .replace("\"boardTargetActions\":[]", s"\"boardTargetActions\":$actions")
-    val action = GameJson.decodeProjection(json).toOption.get.boardTargetActions.head
-    assertEquals(action.decisionId, Some("conspiracy-12"))
-    assertEquals(action.candidates.map(_.target), Vector(
-      BoardTargetRef.PlayerRelic("blue-exile", "0")))
-
-    val reveal = GameJson.encodeCommand(13,
-      GameCommand.RevealVision("red-exile", "vision-faith"))
-    assert(reveal.contains("\"type\":\"revealVision\""))
-    assert(reveal.contains("\"visionId\":\"vision-faith\""))
-    val relic = GameJson.encodeCommand(13, GameCommand.PlayConspiracy(
-      "red-exile", Some(ConspiracyTarget.RelicSlot("blue-exile", 1))))
-    assert(relic.contains("\"kind\":\"relic-slot\""))
-    assert(relic.contains("\"slot\":1"))
-    assert(!relic.contains("relicId"))
-    val banner = GameJson.encodeCommand(13, GameCommand.PlayConspiracy(
-      "red-exile", Some(ConspiracyTarget.Banner(
-        "blue-exile", "darkest-secret"))))
-    assert(banner.contains("\"banner\":\"darkest-secret\""))
-    val noTarget = GameJson.encodeCommand(13,
-      GameCommand.PlayConspiracy("red-exile", None))
-    assert(noTarget.contains("\"target\":null"))
-  }
-
-  test("Negotiation projection decodes redacted ledger and encodes authored terms") {
+  test("a projected deal decodes for a spectator and a proposal encodes") {
     val card = """{"cardId":"R1","cardKind":"relic","name":"Old Crown","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":2,"defense":1,"hidden":false}"""
-    val deal = s"""{"decisionId":"negotiation-50","actorPlayerId":"red-exile","siteId":"site:a","participantPlayerIds":["red-exile","blue-exile"],"acceptedPlayerIds":["blue-exile"],"transfers":[{"authorPlayerId":"red-exile","recipientPlayerId":"blue-exile","favor":2,"relicCount":1,"relics":[$card]}],"disclosures":[{"authorPlayerId":"blue-exile","recipientPlayerId":"red-exile","kind":"adviser","card":null}],"editableFavor":4,"editableRelics":[$card],"editableAdvisers":[],"editableSiteRelics":[]}"""
+    val deal = s"""{"participantPlayerIds":["red-exile","blue-exile"],"acceptedPlayerIds":["blue-exile"],"transfers":[{"authorPlayerId":"red-exile","recipientPlayerId":"blue-exile","favor":2,"relicCount":1,"relics":[$card]}],"disclosures":[{"authorPlayerId":"blue-exile","recipientPlayerId":"red-exile","kind":"adviser","card":null}],"editing":null}"""
+    val waiting = s"""{"playerId":"red-exile","heading":"Negotiation","coOwnerPlayerIds":["blue-exile"],"deal":$deal}"""
     val json = projectionJson(sequence = 51, phase = "act-action-selection",
       ready = true, completed = false, choices = false).replace(
       "\"pendingCardDecision\":null",
-      s"\"pendingCardDecision\":null,\"negotiation\":$deal")
-    val decoded = GameJson.decodeProjection(json).toOption.get.negotiation.get
-    assertEquals(decoded.acceptedPlayerIds, Vector("blue-exile"))
-    assertEquals(decoded.disclosures.head.card, None)
+      s"\"pendingCardDecision\":null,\"walkerWaiting\":$waiting")
+    val decoded = GameJson.decodeProjection(json).toOption.get.walkerWaiting.get
+    assertEquals(decoded.coOwnerPlayerIds, Vector("blue-exile"))
+    val seen = decoded.deal.get
+    assertEquals(seen.acceptedPlayerIds, Vector("blue-exile"))
+    assertEquals(seen.disclosures.head.card, None)
+    assertEquals(seen.editing, None)
     val terms = NegotiationTermsInput(Vector(NegotiationTransferInput(
       "blue-exile", 2, Vector("R1"))), Vector.empty)
-    val encoded = GameJson.encodeCommand(51, GameCommand.ReplaceNegotiationTerms(
-      "red-exile", decoded.decisionId, terms))
-    assert(encoded.contains("replaceNegotiationTerms"))
+    val encoded = GameJson.encodeCommand(51, GameIntent.ResolveWalker(
+      "negotiation.deal", DecisionAnswerWire.ProposeTermsWire(
+        ServerUiSupport.protocolNegotiationTerms(terms))))
+    assert(encoded.contains("propose-terms"))
     assert(encoded.contains("\"relicIds\":[\"R1\"]"))
-    val waiting = projectionJson(sequence = 51, phase = "act-action-selection",
-      ready = true, completed = false, choices = false).replace(
-      "\"pendingCardDecision\":null",
-      "\"pendingCardDecision\":null,\"negotiationWaiting\":true")
-    assert(GameJson.decodeProjection(waiting).toOption.get.negotiationWaiting)
-    assertEquals(GameJson.decodeProjection(waiting).toOption.get.negotiation, None)
   }
   test("minor actions decode private state and encode typed controls") {
     val card = """{"cardId":"42","cardKind":"denizen","name":"Scout","suit":"nomad","restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":null,"defense":null,"hidden":false}"""
@@ -92,42 +126,26 @@ class HttpGameClientSuite extends FunSuite {
     assertEquals(decoded.minorActions.map(_.maxSiteToBoard), Some(2))
     val adviser = decoded.minorActions.get.advisers.head.card
     assert(GameJson.encodeCommand(40,
-      oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
-        oathdigital.protocol.WorldCard(adviser.cardKind, adviser.cardId), None))
-      .contains("resolveFacedownAdviser"))
-    assert(GameJson.encodeCommand(40,
-      oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
-        oathdigital.protocol.WorldCard(adviser.cardKind, adviser.cardId),
-        Some(oathdigital.protocol.Placement("adviser-face-up", None))))
-      .contains("adviser-face-up"))
+      oathdigital.protocol.GameIntent.StartWalker("play-facedown-adviser",
+        Vector.empty, Vector(oathdigital.protocol.WalkerStartArgWire(
+          adviser.cardKind, adviser.cardId))))
+      .contains("play-facedown-adviser"))
     assert(GameJson.encodeCommand(40, GameCommand.PeekSiteRelics(
       "red-exile")).contains("peekSiteRelics"))
     assert(GameJson.encodeCommand(40, GameCommand.MoveWarbands(
       "red-exile", toSite = false, 2)).contains("\"amount\":2"))
   }
 
-  test("Challenge projection decodes owner choices and commands omit PF tie controls") {
-    val json = projectionJson(sequence = 21, phase = "challenge-decision",
+  test("an unclaimed banner projection decodes") {
+    val json = projectionJson(sequence = 21, phase = "act-action-selection",
       ready = true, completed = true, choices = false).replace(
       "\"pendingCardDecision\":null",
       "\"pendingCardDecision\":null,\"banners\":[{" +
         "\"banner\":\"peoples-favor\",\"face\":\"mob\"," +
-        "\"holderPlayerId\":null,\"resources\":2}],\"challenge\":{" +
-        "\"decisionId\":\"challenge-20\",\"actorPlayerId\":\"red-exile\"," +
-        "\"banner\":\"peoples-favor\",\"priorHolderPlayerId\":null," +
-        "\"priorResources\":2,\"legalSecretSiteIds\":[]," +
-        "\"minimumPlacement\":3,\"maximumPlacement\":5}")
+        "\"holderPlayerId\":null,\"resources\":2}]")
     val decoded = GameJson.decodeProjection(json).toOption.get
     assertEquals(decoded.banners.head,
       BannerState("peoples-favor", "mob", None, 2))
-    assertEquals(decoded.challenge, Some(ChallengeState("challenge-20",
-      "red-exile", "peoples-favor", None, 2, Vector.empty, 3, 5)))
-    assert(GameJson.encodeCommand(20, GameCommand.BeginChallenge(
-      "red-exile", "peoples-favor")).contains("\"type\":\"beginChallenge\""))
-    assert(GameJson.encodeCommand(21, GameCommand.CompleteChallenge(
-      "red-exile", "challenge-20", 3)).contains("\"amount\":3"))
-    assert(!GameJson.encodeCommand(21, GameCommand.CompleteChallenge(
-      "red-exile", "challenge-20", 3)).contains("FavorBank"))
   }
 
   test("projection decodes scoped Oathkeeper and Usurper victory status") {
@@ -143,41 +161,39 @@ class HttpGameClientSuite extends FunSuite {
       Some("red-exile"), "usurper", usurperLimited = false,
       Some("red-exile"), Some("usurper"))))
   }
-  test("scoped Oathkeeper recipient decision decodes and encodes its choice") {
-    val json = projectionJson(sequence = 31, phase = "oathkeeper-recipient",
-      ready = true, choices = false).replace(
-      "\"pendingCardDecision\":null",
-      "\"pendingCardDecision\":null,\"oathkeeperRecipient\":{" +
-        "\"decisionId\":\"oath-31\",\"actorPlayerId\":\"red-exile\"," +
-        "\"candidatePlayerIds\":[\"blue-exile\",\"yellow-exile\"]}")
-    assertEquals(GameJson.decodeProjection(json).toOption.get.oathkeeperRecipient,
-      Some(OathkeeperRecipientDecision("oath-31", "red-exile",
-        Vector("blue-exile", "yellow-exile"))))
-    val encoded = GameJson.encodeCommand(31,
-      GameCommand.ChooseOathkeeperRecipient("red-exile", "oath-31",
-        "blue-exile"))
-    assert(encoded.contains("\"type\":\"chooseOathkeeperRecipient\""))
-    assert(encoded.contains("\"recipientPlayerId\":\"blue-exile\""))
-  }
-  test("Recover commands encode decisions and private relic resolution") {
-    assert(GameJson.encodeCommand(20, GameCommand.BeginRecover("red"))
-      .contains("\"type\":\"beginRecover\""))
-    assert(GameJson.encodeCommand(21, GameCommand.AddRecoverDice("red", "recover-20"))
-      .contains("\"decisionId\":\"recover-20\""))
-    assert(GameJson.encodeCommand(21, GameCommand.StopRecover("red", "recover-20"))
-      .contains("\"type\":\"stopRecover\""))
-    val take = GameJson.encodeCommand(22, GameCommand.ResolveCardDecision(
-      "red", "recover-20", DecisionResolution.TakeFacedownRelic("relic:R1")))
-    assert(take.contains("\"kind\":\"take-facedown-relic\""))
-    assert(take.contains("\"relicId\":\"relic:R1\""))
+  test("Recover walker commands encode decisions and private relic resolution") {
+    assert(GameJson.encodeCommand(20, GameCommand.StartWalker("red", "recover"))
+      .contains("\"type\":\"startWalker\""))
+    assert(GameJson.encodeCommand(21, GameCommand.RollWalker("red", "recover"))
+      .contains("\"type\":\"rollWalker\""))
+    val choice = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
+      "red", "recover.choice",
+      DecisionAnswerWire.ChooseOneWire("button", "stop")))
+    assert(choice.contains("\"decisionId\":\"recover.choice\""))
+    assert(choice.contains("\"kind\":\"choose-one\""))
+    assert(choice.contains("\"optionKind\":\"button\""))
+    assert(choice.contains("\"optionId\":\"stop\""))
+    val take = GameJson.encodeCommand(22, GameCommand.ResolveWalker(
+      "red", "recover.relic",
+      DecisionAnswerWire.ChooseOneWire("relic", "relic:R1")))
+    assert(take.contains("\"kind\":\"choose-one\""))
+    assert(take.contains("\"optionId\":\"relic:R1\""))
   }
   test("Forge commands encode stable assignment targets without relic identity") {
-    val target = ForgeTarget("site:a", "denizen:1", "One")
-    assert(GameJson.encodeCommand(20, GameCommand.BeginForge("red"))
-      .contains("\"type\":\"beginForge\""))
-    val completed = GameJson.encodeCommand(21, GameCommand.CompleteForge(
-      "red", "forge-20", Vector(target -> "favor")))
-    assert(completed.contains("\"denizenId\":\"denizen:1\""))
+    // Forge is a walker action (batch-1 Task 3): the start is a
+    // `StartWalker` and the assignment answer a `ResolveWalker`, so the same
+    // two guarantees this test always made -- the denizen target rides the
+    // wire, the forged relic never does -- are asserted on those.
+    val target = DecisionOptionState("denizen", "denizen:1", "One")
+    assert(GameJson.encodeCommand(20,
+      GameCommand.StartWalker("red", "forge")).contains("\"action\":\"forge\""))
+    val completed = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
+      "red", "forge.assignment", DecisionAnswerWire.PartitionWire(
+        Vector(DecisionPlacementWire(target.kind, target.id,
+          "pay-favor")))))
+    assert(completed.contains("\"kind\":\"partition\""))
+    assert(completed.contains("\"optionId\":\"denizen:1\""))
+    assert(completed.contains("\"sectionKey\":\"pay-favor\""))
     assert(!completed.contains("relicId"))
   }
   test("Rest commands encode current sequence without an actor") {
@@ -188,15 +204,6 @@ class HttpGameClientSuite extends FunSuite {
     assert(finish.contains("\"type\":\"finishRest\""))
     assert(!finish.contains("\"playerId\""))
     assert(finish.contains("\"intent\""))
-    val resolve = GameJson.encodeCommand(14L, GameCommand.ResolveRestPower(
-      "blue-exile", "rest-13", Vector(oathdigital.protocol.RestFavorAllocation(
-        oathdigital.protocol.RestFavorSource("relic-slot", "site:a", "0"), 2)),
-      "hearth"))
-    assert(resolve.contains("\"type\":\"resolveRestPower\""))
-    assert(resolve.contains("\"sourceId\":\"0\""))
-    assert(!resolve.contains("blue-exile"))
-    assert(GameJson.encodeCommand(15L, GameCommand.DeclineRestPower(
-      "blue-exile", "rest-13")).contains("\"type\":\"declineRestPower\""))
   }
   private val bootstrap = oathdigital.protocol.FirstGameBootstrapRequest(
     0,
@@ -300,8 +307,12 @@ class HttpGameClientSuite extends FunSuite {
       9L,
       GameCommand.EndWake("red-exile")
     )
-    assert(wealth.contains("\"type\":\"takeWealth\""))
-    assert(wealth.contains("\"resource\":\"favor\""))
+    // Take Wealth is a walker start with the resource as its selection
+    // (batch-1 Task 7); the wire says only that it is a button called favor.
+    assert(wealth.contains("\"type\":\"startWalker\""))
+    assert(wealth.contains("\"action\":\"take-wealth\""))
+    assert(wealth.contains("\"optionKind\":\"button\""))
+    assert(wealth.contains("\"optionId\":\"favor\""))
     assert(end.contains("\"type\":\"endWake\""))
 
     val json = projectionJson(
@@ -331,8 +342,10 @@ class HttpGameClientSuite extends FunSuite {
   test("Travel encodes destination and decodes authoritative legal costs") {
     val command = GameJson.encodeCommand(10L,
       GameCommand.Travel("red-exile", "site:b"))
-    assert(command.contains("\"type\":\"travel\""))
-    assert(command.contains("\"destinationSiteId\":\"site:b\""))
+    assert(command.contains("\"type\":\"startWalker\""))
+    assert(command.contains("\"action\":\"travel\""))
+    assert(command.contains("\"optionKind\":\"site\""))
+    assert(command.contains("\"optionId\":\"site:b\""))
     val json = projectionJson(sequence = 10, choices = false).replace(
       "\"pendingCardDecision\":null",
       "\"pendingCardDecision\":null,\"legalTravelDestinations\":[" +
@@ -343,232 +356,44 @@ class HttpGameClientSuite extends FunSuite {
       Vector(LegalTravelDestination("site:b", 2)))
   }
 
-  test("Campaign encodes and decodes the authoritative target set") {
-    val encoded = GameJson.encodeCommand(17,
-      GameCommand.CampaignConquest("red-exile", "site:b", 3))
-    assert(encoded.contains("\"expectedNextSequence\":17"))
-    assert(encoded.contains("\"type\":\"beginCampaignConquest\""))
-    assert(!ujson.read(encoded)("intent").obj.contains("playerId"))
-    assert(encoded.contains("\"targetSiteIds\":[\"site:b\"]"))
-    assert(encoded.contains("\"attackDiceCount\":3"))
-    assert(!encoded.contains("\"attackDice\":"))
-    assert(!encoded.contains("defenseDice"))
-
-    val action = """[{"actionKind":"campaign-conquest","prompt":"Conquer Site B","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[{"kind":"site","siteId":"site:b"}],"formation":{"minimumForce":0,"maximumForce":3,"availableWarbands":3,"supplyCost":2},"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply","Choose 0 to 3 board warbands"]}]}]"""
-    val projected = projectionJson(sequence = 17, choices = false)
-      .replace("\"boardTargetActions\":[]",
-        s"\"boardTargetActions\":$action")
-    val projectionResult = GameJson.decodeProjection(projected)
-    assert(projectionResult.isRight, projectionResult.left.toOption.toString)
-    val decoded = projectionResult.toOption.get.boardTargetActions.head
-    assertEquals(decoded.actionKind, "campaign-conquest")
-    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 1)
-    assertEquals(decoded.candidates.map(_.target),
-      Vector(BoardTargetRef.Site("site:b")))
-    assertEquals(decoded.formation, Some(BoardTargetFormation(0, 3, 3, 2)))
-
-    val pending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"defenderKind":"player","defenderPlayerId":"blue-exile","defenderForce":3,"defenseDiceCount":2,"placementTargets":[{"siteId":"site:b","label":"Site B"}],"force":3,"plansFinished":true,"planChoices":[],"selectedPlans":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
-    val pendingJson = projectionJson(sequence = 18, choices = false)
-      .replace("\"pendingCardDecision\":null",
-        s"\"pendingCardDecision\":null,\"campaign\":$pending")
-    val pendingResult = GameJson.decodeProjection(pendingJson)
-    assert(pendingResult.isRight, pendingResult.left.toOption.toString)
-    assertEquals(pendingResult.toOption.get.campaign,
-      Some(CampaignState("campaign-17", "site:b", 3,
-        plansFinished = true, Vector.empty, Vector.empty,
-        Vector("two-swords", "skull"), 2, 1, 2, None, Vector.empty,
-        None, None, 0).copy(placementTargets =
-          Vector(CampaignPlacementTarget("site:b", "Site B")),
-          defenderKind = "player", defenderPlayerId = Some("blue-exile"),
-          defenderForce = 3, defenseDiceCount = 2)))
-
-    val sacrifice = GameJson.encodeCommand(18,
-      GameCommand.ChooseCampaignSacrifice("red-exile", "campaign-17", 1))
-    assert(sacrifice.contains("\"type\":\"chooseCampaignSacrifice\""))
-    assert(sacrifice.contains("\"decisionId\":\"campaign-17\""))
-    assert(sacrifice.contains("\"count\":1"))
-    val placement = GameJson.encodeCommand(20,
-      GameCommand.PlaceCampaignForce("red-exile", "campaign-17",
-        Vector(CampaignPlacement("site:a", 0))))
-    assert(placement.contains("\"type\":\"placeCampaignForce\""))
-    assert(placement.contains("\"count\":0"))
-
-    val planPending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"placementTargets":[{"siteId":"site:b","label":"Site B"}],"force":3,"plansFinished":false,"planChoices":[{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}],"selectedPlans":[],"attackDice":[],"attack":0,"skullLosses":0,"maxSacrifice":3,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":3}"""
-    val planResult = GameJson.decodeProjection(projectionJson(sequence = 18,
-      choices = false).replace("\"pendingCardDecision\":null",
-        s"\"pendingCardDecision\":null,\"campaign\":$planPending"))
-    assert(planResult.isRight, planResult.left.toOption.toString)
-    val planState = planResult.toOption.get.campaign.get
-    assertEquals(planState.planChoices.map(_.kind), Vector("adviser"))
-    val adviserJson = """{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}"""
-    val duplicateSelected = planPending.replace("\"selectedPlans\":[]",
-      s"\"selectedPlans\":[$adviserJson,$adviserJson]")
-    assert(GameJson.decodeProjection(projectionJson(sequence = 18,
-      choices = false).replace("\"pendingCardDecision\":null",
-        s"\"pendingCardDecision\":null,\"campaign\":$duplicateSelected")).isLeft)
-    val selectedAndAvailable = planPending.replace("\"selectedPlans\":[]",
-      s"\"selectedPlans\":[$adviserJson]")
-    assert(GameJson.decodeProjection(projectionJson(sequence = 18,
-      choices = false).replace("\"pendingCardDecision\":null",
-        s"\"pendingCardDecision\":null,\"campaign\":$selectedAndAvailable")).isLeft)
-    val choosePlan = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
-      "red-exile", "campaign-17", planState.planChoices.head))
-    assert(choosePlan.contains("\"type\":\"chooseCampaignPlan\""))
-    assert(choosePlan.contains("\"kind\":\"adviser\""))
-    assert(choosePlan.contains("\"cardId\":\"143\""))
-    assert(!choosePlan.contains("denizen.outriders"))
-    val finishPlans = GameJson.encodeCommand(18, GameCommand.FinishCampaignPlans(
-      "red-exile", "campaign-17"))
-    assert(finishPlans.contains("\"type\":\"finishCampaignPlans\""))
-    def projectionWithPlan(value: String) = projectionJson(sequence = 18,
-      choices = false).replace("\"pendingCardDecision\":null",
-        s"\"pendingCardDecision\":null,\"campaign\":$value")
-    val brassPending = planPending.replace(
-      "{\"kind\":\"adviser\",\"sourceKey\":\"adviser:red-exile:denizen:143\",\"playerId\":\"red-exile\",\"siteId\":null,\"cardId\":\"143\",\"label\":\"Outriders\",\"handlerId\":\"denizen.outriders\",\"favorCost\":0,\"secretCost\":0,\"mechanicalResult\":\"Ignore all attack-roll skull losses\"}",
-      "{\"kind\":\"relic\",\"sourceKey\":\"relic:red-exile:R25\",\"playerId\":\"red-exile\",\"siteId\":null,\"cardId\":\"R25\",\"label\":\"Brass Army\",\"handlerId\":\"relic.brass-army.campaign\",\"favorCost\":0,\"secretCost\":1,\"mechanicalResult\":\"Add 4 attack dice\"}")
-    val brassChoice = GameJson.decodeProjection(projectionWithPlan(brassPending))
-      .toOption.get.campaign.get.planChoices.head
-    val brassCommand = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
-      "red-exile", "campaign-17", brassChoice))
-    assert(brassCommand.contains("\"kind\":\"relic\""))
-    assert(brassCommand.contains("\"cardId\":\"R25\""))
-    assert(!brassCommand.contains("relic.brass-army.campaign"))
-    val titlePending = planPending
-      .replace("\"force\":3", "\"force\":3,\"planSide\":\"defender\",\"decisionOwnerPlayerId\":\"blue-exile\"")
-      .replace(adviserJson,
-        """{"kind":"title","sourceKey":"title:blue-exile","playerId":"blue-exile","siteId":null,"cardId":null,"label":"Oathkeeper","handlerId":"title.oathkeeper-defense","favorCost":0,"secretCost":0,"mechanicalResult":"Add 1 defense die"}""")
-    val titleState = GameJson.decodeProjection(projectionWithPlan(titlePending))
-      .toOption.get.campaign.get
-    assertEquals(titleState.planSide -> titleState.decisionOwnerPlayerId,
-      "defender" -> Some("blue-exile"))
-    val titleCommand = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
-      "blue-exile", "campaign-17", titleState.planChoices.head))
-    assert(titleCommand.contains("\"kind\":\"title\""))
-    assert(!titleCommand.contains("title.oathkeeper-defense"))
-
-    val unknownKind = planPending.replace("\"kind\":\"adviser\"",
-      "\"kind\":\"future-plan\"")
-    assert(GameJson.decodeProjection(projectionWithPlan(unknownKind))
-      .left.toOption.get.isInstanceOf[GameClientFailure.DecodeFailure])
-    val missingAdviserCard = planPending.replace(
-      "\"cardId\":\"143\"", "\"cardId\":null")
-    assert(GameJson.decodeProjection(projectionWithPlan(missingAdviserCard))
-      .left.toOption.get.isInstanceOf[GameClientFailure.DecodeFailure])
-  }
-
-  test("Raid targets and owner relocation use typed wire shapes") {
-    val targets = Vector[BoardTargetRef](BoardTargetRef.PlayerPawn("blue-exile"),
-      BoardTargetRef.PlayerRelic("blue-exile", "R03"),
-      BoardTargetRef.PlayerBanner("blue-exile", "peoples-favor"))
-    val encoded = GameJson.encodeCommand(24,
-      GameCommand.CampaignRaid("red-exile", targets, 2))
-    assert(encoded.contains("\"type\":\"beginCampaignRaid\""))
-    assert(encoded.contains("\"kind\":\"pawn\""))
-    assert(encoded.contains("\"kind\":\"relic\""))
-    assert(encoded.contains("\"relicId\":\"R03\""))
-    assert(encoded.contains("\"kind\":\"peoples-favor\""))
-    assert(encoded.contains("\"attackDiceCount\":2"))
-
-    val relocation = GameJson.encodeCommand(25,
-      GameCommand.RelocateCampaignRaidPawn("red-exile", "raid-24", "site:c"))
-    assert(relocation.contains("\"type\":\"relocateCampaignRaidPawn\""))
-    assert(relocation.contains("\"decisionId\":\"raid-24\""))
-    assert(relocation.contains("\"destinationSiteId\":\"site:c\""))
-
-    val action = """[{"actionKind":"campaign-raid","prompt":"Raid Blue","minimum":1,"maximum":3,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[{"kind":"player-pawn","playerId":"blue-exile"}],"formation":{"minimumForce":0,"maximumForce":2,"availableWarbands":2,"supplyCost":2},"candidates":[{"target":{"kind":"player-pawn","playerId":"blue-exile"},"label":"Blue pawn","details":[]},{"target":{"kind":"player-relic","playerId":"blue-exile","relicId":"R03"},"label":"Relic","details":[]},{"target":{"kind":"player-banner","playerId":"blue-exile","banner":"peoples-favor"},"label":"People's Favor","details":[]}]}]"""
-    val relocationProjection = """{"decisionId":"raid-24","actorPlayerId":"red-exile","defenderPlayerId":"blue-exile","originSiteId":"site:b","legalSiteIds":["site:a","site:c"]}"""
-    val json = projectionJson(sequence = 24, choices = false)
-      .replace("\"boardTargetActions\":[]", s"\"boardTargetActions\":$action")
-      .replace("\"pendingCardDecision\":null",
-        s"\"pendingCardDecision\":null,\"campaignRaidRelocation\":$relocationProjection")
-    val decoded = GameJson.decodeProjection(json)
-    assert(decoded.isRight, decoded.left.toOption.toString)
-    assertEquals(decoded.toOption.get.boardTargetActions.head.candidates.map(_.target),
-      targets)
-    assertEquals(decoded.toOption.get.campaignRaidRelocation,
-      Some(CampaignRaidRelocation("raid-24", "red-exile", "blue-exile",
-        "site:b", Vector("site:a", "site:c"))))
-
-    val hidden = GameJson.decodeProjection(projectionJson(sequence = 24,
-      choices = false)).toOption.get
-    assertEquals(hidden.campaignRaidRelocation, None)
-  }
-
-  test("typed board-target actions decode sites cards advisers relics and reject malformed refs") {
-    val actions = """[{"actionKind":"campaign-hooks","prompt":"Choose targets","minimum":1,"maximum":4,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[],"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site-card","siteId":"site:b","cardKind":"edifice","cardId":"E26"},"label":"Spring","details":["+2 warbands"]},{"target":{"kind":"player-adviser","playerId":"red-exile","cardId":"D1"},"label":"Adviser","details":[]},{"target":{"kind":"player-relic","playerId":"red-exile","relicId":"R1"},"label":"Relic","details":[]}]}]"""
+  test("typed board-target actions decode sites and reject malformed refs") {
+    val actions = """[{"actionKind":"travel","prompt":"Choose a destination","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site","siteId":"site:c"},"label":"Site C","details":[]}]}]"""
     val json = projectionJson(sequence = 10, choices = false)
       .replace("\"boardTargetActions\":[]",
         s"\"boardTargetActions\":$actions")
     val decoded = GameJson.decodeProjection(json).toOption.get
       .boardTargetActions.head
-    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 4)
+    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 1)
     assertEquals(decoded.candidates.map(_.target), Vector(
-      BoardTargetRef.Site("site:b"),
-      BoardTargetRef.SiteCard("site:b", "edifice", "E26"),
-      BoardTargetRef.PlayerAdviser("red-exile", "D1"),
-      BoardTargetRef.PlayerRelic("red-exile", "R1")))
-    assert(GameJson.decodeProjection(json.replace("player-relic", "unknown")).isLeft)
-    assert(GameJson.decodeProjection(json.replace("\"maximum\":4", "\"maximum\":5")).isLeft)
-    assert(GameJson.decodeProjection(json.replace("\"cardKind\":\"edifice\"",
-      "\"cardKind\":\"relic\"")).isLeft)
+      BoardTargetRef.Site("site:b"), BoardTargetRef.Site("site:c")))
+    assert(GameJson.decodeProjection(json.replace("\"kind\":\"site\"",
+      "\"kind\":\"site-card\"")).isLeft)
+    assert(GameJson.decodeProjection(json.replace("\"maximum\":1", "\"maximum\":2")).isLeft)
+    assert(GameJson.decodeProjection(json.replace("\"autoActivate\":false,",
+      "\"autoActivate\":false,\"requiredTargets\":[],")).isLeft)
   }
 
-  test("Search encodes only source and decisions and decodes private controls") {
+  test("Search start uses walker arguments and decodes legal sources") {
     val begin = GameJson.encodeCommand(10L,
       GameCommand.BeginSearch("red-exile", "world", None))
-    assert(begin.contains("\"type\":\"beginSearch\""))
+    assert(begin.contains("\"type\":\"startWalker\""))
+    assert(begin.contains("search:world"))
     assert(!begin.contains("drawn"))
     val json = projectionJson(sequence = 11, choices = false).replace(
       "\"pendingCardDecision\":null",
-      "\"pendingCardDecision\":{" +
-        "\"decisionId\":\"search-10\",\"kind\":\"search\"," +
-        "\"actorPlayerId\":\"red-exile\",\"prompt\":\"Resolve Search\"," +
-        "\"instructions\":[],\"cards\":[" + cardJson("denizen:a", "denizen", "A") + "]," +
-        "\"keepMinimum\":1,\"keepMaximum\":1,\"orderingRequired\":true," +
-        "\"resolutionsByCard\":{\"denizen:a\":[{\"kind\":\"discard\"," +
-        "\"orientation\":null,\"replacementRequired\":false," +
-        "\"replacementTargets\":[]}]}} ," +
+      "\"pendingCardDecision\":null," +
         "\"legalSearchSources\":[{\"kind\":\"world\",\"region\":null," +
-        "\"supplyCost\":2}]" )
+        "\"supplyCost\":2}]")
     val projection = GameJson.decodeProjection(json).toOption.get
     assertEquals(projection.legalSearchSources,
       Vector(LegalSearchSource("world", None, 2)))
-    assertEquals(projection.pendingCardDecision.map(_.cards.map(_.cardId)),
-      Some(Vector("denizen:a")))
-    assertEquals(projection.pendingCardDecision.get
-      .resolutionsByCard("denizen:a").head.replacementRequired, false)
+    assertEquals(projection.pendingCardDecision, None)
     val complete = GameJson.encodeCommand(11L,
-      GameCommand.ResolveCardDecision("red-exile", "search-10",
-        DecisionResolution.Search(CardDetails("denizen:a", "denizen", "A"),
-          Vector.empty, "discard", None, None)))
-    assert(complete.contains("\"decisionId\":\"search-10\""))
-  }
-
-  test("Economy encodes typed intents and decodes authoritative yields") {
-    val muster = GameJson.encodeCommand(12L,
-      GameCommand.Muster("red-exile", EconomyTarget("edifice", "E26")))
-    val trade = GameJson.encodeCommand(13L,
-      GameCommand.Trade("red-exile", EconomyTarget("edifice", "E26"), "secret"))
-    assert(muster.contains("\"type\":\"muster\""))
-    assert(muster.contains("\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}"))
-    assert(trade.contains("\"resource\":\"secret\""))
-    val json = projectionJson(sequence = 12, choices = false).replace(
-      "\"pendingCardDecision\":null",
-      "\"pendingCardDecision\":null," +
-        "\"legalMusters\":[{\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}," +
-        "\"label\":\"Ruined Hallowed Spring\",\"suit\":\"order\",\"supplyCost\":1,\"warbandsGained\":2}]," +
-        "\"legalTrades\":[{\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}," +
-        "\"label\":\"Ruined Hallowed Spring\",\"suit\":\"order\",\"resource\":\"secret\"," +
-        "\"supplyCost\":1,\"gained\":1}]"
-    )
-    val projection = GameJson.decodeProjection(json).toOption.get
-    assertEquals(projection.legalMusters.head.warbandsGained, 2)
-    assertEquals(projection.legalMusters.head.label, "Ruined Hallowed Spring")
-    assertEquals(projection.legalTrades.head,
-      LegalTrade(EconomyTarget("edifice", "E26"), "Ruined Hallowed Spring",
-        "order", "secret", 1, 1))
-    val invalid = json.replace("\"kind\":\"edifice\"", "\"kind\":\"relic\"")
-    assert(GameJson.decodeProjection(invalid).isLeft)
+      GameCommand.ResolveWalker("red-exile", "search.cards",
+        oathdigital.protocol.DecisionAnswerWire.PartitionWire(Vector(
+          oathdigital.protocol.DecisionPlacementWire("denizen", "denizen:a",
+            "keep")))))
+    assert(complete.contains("\"decisionId\":\"search.cards\""))
   }
 
   test("site detail decoder preserves populated and empty site projections") {

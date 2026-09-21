@@ -17,24 +17,38 @@ object ServerModeUi {
     "red-exile"
   )
 
-  def start(mount: dom.Element): Unit = {
-    val client = new HttpGameClient(new SameOriginJsonTransport)
+  def start(mount: dom.Element,
+      client: GameClient = new HttpGameClient(new SameOriginJsonTransport),
+      trustedGameId: Option[String] = None): Unit = {
+    val fixedSeat = trustedGameId.nonEmpty
     var projection = Option.empty[GameProjection]
     var failure = Option.empty[GameClientFailure]
-    var selectedPlayer = queryParameter("playerId").getOrElse("red-exile")
-    var gameId = queryParameter("gameId").getOrElse(freshGameId())
+    var selectedPlayer = if (fixedSeat) "" else queryParameter("playerId").getOrElse("red-exile")
+    var gameId = trustedGameId.getOrElse(queryParameter("gameId").getOrElse(freshGameId()))
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
     var boardSelectionState = Option.empty[BoardTargetSelectionState]
-    var boardFormationState = Option.empty[BoardTargetFormationState]
-    var campaignPlacementState = Option.empty[CampaignPlacementState]
-    var forgeAssignmentState = Option.empty[ForgeAssignmentState]
+    var walkerPartitionDraft = Option.empty[WalkerPartitionDraft]
+    var walkerDistributeDraft = Option.empty[WalkerDistributeDraft]
+    var walkerSelectionDraft = Option.empty[WalkerSelectionDraft]
     var cardDecisionState = Option.empty[CardDecisionState]
     var modifierWorkflow = Option.empty[ModifierWorkflow]
     var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
-    val shell = new GameTableShell(mount)
+    val shell = new GameTableShell(mount, !fixedSeat)
+
+    def updateSessionUrl(): Unit = if (!fixedSeat) updateUrl(gameId, selectedPlayer)
+
+    def recovery(error: GameClientFailure): Boolean = error match {
+      case GameClientFailure.HttpFailure(401 | 403, _, _) if fixedSeat => true
+      case _ => false
+    }
+
+    def invalidTrustedViewer(value: GameProjection): Boolean =
+      fixedSeat && !value.viewerPlayerId.exists(player =>
+        value.players.exists(_.playerId == player) &&
+          (selectedPlayer.isEmpty || selectedPlayer == player))
 
     def render(): Unit = {
       val actionContent = element("div", "action-content")
@@ -58,10 +72,14 @@ object ServerModeUi {
         case _ => ()
       }
       failure.foreach { error =>
-        val notice = text("div", "status error", error.message)
+        val notice = text("div", "status error", if (recovery(error))
+          "Open your assigned seat link to restore access to this game." else error.message)
         notice.setAttribute("role", "alert")
         actionContent.appendChild(notice)
       }
+      if (fixedSeat && selectedPlayer.nonEmpty)
+        actionContent.appendChild(text("p", "seat-identity", "Your seat: " +
+          projection.fold(selectedPlayer)(playerDisplayName(_, selectedPlayer))))
       val (players, world, decision) = projection match {
         case None if failure.isEmpty =>
           actionContent.appendChild(text("div", "status", "Loading game…"))
@@ -76,24 +94,20 @@ object ServerModeUi {
           val prompt = Option(actionContent.querySelector(
             "#card-decision-title,.selection-instruction,.modifier-confirm,.resolution-choice"))
             .map(_.textContent).getOrElse("")
-          val pendingIds = Vector(value.recover.map(_.decisionId),
-            value.forge.map(_.decisionId), value.campaign.map(_.decisionId),
-            value.campaignRaidRelocation.map(_.decisionId),
-            value.oathkeeperRecipient.map(_.decisionId), value.challenge.map(_.decisionId),
-            value.negotiation.map(_.decisionId), value.restPower.map(_.decisionId)).flatten
           val decisionKey = Vector(selectedPlayer, value.phase,
             value.activeParticipantId.getOrElse(""),
             value.pendingCardDecision.map(_.decisionId).getOrElse(""),
-            pendingIds.mkString(","), boardFormationState.isDefined.toString,
-            campaignPlacementState.isDefined.toString,
+            value.walkerDecision.map(_.decisionId).getOrElse(""),
             boardSelectionState.flatMap(_.activeActionKind).getOrElse(""),
             modifierWorkflow.map(_.stage.toString).getOrElse(""), prompt).mkString("|")
           (WorldBoardRenderer.players(value, ui),
             WorldBoardRenderer.world(value, presentation, ui), decisionKey)
       }
       val development = element("div", "development-content")
-      development.appendChild(DevelopmentRenderer.controls(ui))
-      if (projection.nonEmpty) development.appendChild(DevelopmentRenderer.rawEventLog(rawEvents))
+      if (!fixedSeat) {
+        development.appendChild(DevelopmentRenderer.controls(ui))
+        if (projection.nonEmpty) development.appendChild(DevelopmentRenderer.rawEventLog(rawEvents))
+      }
       val attention = s"$decision|${coordinator.connectionState}|${failure.map(_.message)}"
       shell.update(gameId, attention, players, world, actionContent, development)
     }
@@ -102,8 +116,26 @@ object ServerModeUi {
         request: ServerRequestIdentity,
         value: GameProjection,
         notice: Option[GameClientFailure]
-    ): Unit =
-      coordinator.route(request, value, notice).foreach {
+    ): Unit = {
+      val routed = if (!fixedSeat) coordinator.route(request, value, notice)
+      else value.viewerPlayerId match {
+        case Some(player) if !invalidTrustedViewer(value) =>
+          if (selectedPlayer.isEmpty) {
+            selectedPlayer = player
+            coordinator.switchSession(gameId, selectedPlayer)
+          }
+          coordinator.recordSnapshotSuccess(coordinator.capture)
+          Some(ProjectionRoute.Display(value, notice))
+        case _ =>
+          polling.foreach(_.stop())
+          coordinator.switchSession(gameId, selectedPlayer)
+          projection = None
+          failure = Some(GameClientFailure.HttpFailure(403, "seat-changed",
+            "Open your assigned seat link."))
+          render()
+          None
+      }
+      routed.foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
           modifierWorkflow = ModifierWorkflow.reconcile(modifierWorkflow,
             gameId, selectedPlayer, displayed.nextSequence)
@@ -114,18 +146,18 @@ object ServerModeUi {
             boardSelectionState,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
             displayed.boardTargetActions))
-          boardFormationState = BoardTargetFormationState.reconcile(
-            boardFormationState,
-            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
-            displayed.boardTargetActions)
-          campaignPlacementState = CampaignPlacementState.reconcile(
-            campaignPlacementState,
+          walkerPartitionDraft = WalkerPartitionDraft.reconcile(
+            walkerPartitionDraft,
             BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.campaign)
-          forgeAssignmentState = ForgeAssignmentState.reconcile(
-            forgeAssignmentState,
+              displayed.nextSequence), displayed.walkerDecision)
+          walkerDistributeDraft = WalkerDistributeDraft.reconcile(
+            walkerDistributeDraft,
             BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.forge)
+              displayed.nextSequence), displayed.walkerDecision)
+          walkerSelectionDraft = WalkerSelectionDraft.reconcile(
+            walkerSelectionDraft,
+            BoardSelectionContext(gameId, selectedPlayer,
+              displayed.nextSequence), displayed.walkerDecision)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))
@@ -134,11 +166,14 @@ object ServerModeUi {
           failure = retainedNotice
           render()
           polling.foreach(_.resume(coordinator.capture))
-          if (!rawHistorySequence.contains(displayed.nextSequence)) {
+          if (!fixedSeat && !rawHistorySequence.contains(displayed.nextSequence)) {
             rawHistorySequence = Some(displayed.nextSequence)
-            client.loadRawEventHistory(gameId).foreach {
-              case Right(events) => rawEvents = events; render()
-              case Left(_) => ()
+            client match {
+              case development: HttpGameClient => development.loadRawEventHistory(gameId).foreach {
+                case Right(events) => rawEvents = events; render()
+                case Left(_) => ()
+              }
+              case _ => ()
             }
           }
         case ProjectionRoute.ReloadForActivePlayer(
@@ -147,8 +182,6 @@ object ServerModeUi {
               retainedNotice
             ) =>
           boardSelectionState = None
-          boardFormationState = None
-          campaignPlacementState = None
           cardDecisionState = None
           modifierWorkflow = None
           facedownAdviserDraft = None
@@ -156,12 +189,13 @@ object ServerModeUi {
           projection = Some(displayed)
           failure = retainedNotice
           selectedPlayer = nextRequest.playerId
-          updateUrl(gameId, selectedPlayer)
+          updateSessionUrl()
           render()
           client.load(gameId, selectedPlayer).foreach { result =>
             accept(nextRequest, result, retainedNotice)
           }
       }
+    }
 
     def accept(
         request: ServerRequestIdentity,
@@ -172,19 +206,22 @@ object ServerModeUi {
         case Right(value) => store(request, value, notice)
         case Left(error) =>
           coordinator.recordFailure(request, error)
-          if (GameClientFailure.isTransient(error))
+          if (GameClientFailure.isTransient(error) || recovery(error))
             polling.foreach(_.stop())
+          if (recovery(error)) {
+            coordinator.switchSession(gameId, selectedPlayer)
+            projection = None
+          }
           failure = Some(error)
           render()
       }
 
     def loadExisting(id: String, playerId: String): Unit = {
+      if (fixedSeat) return
       polling.foreach(_.stop())
       gameId = id.trim
       projection = None
       boardSelectionState = None
-      boardFormationState = None
-      campaignPlacementState = None
       cardDecisionState = None
       modifierWorkflow = None
       rawEvents = Vector.empty
@@ -195,26 +232,25 @@ object ServerModeUi {
         case value => value
       }
       val request = coordinator.switchSession(gameId, selectedPlayer)
-      updateUrl(gameId, selectedPlayer)
+      updateSessionUrl()
       render()
       client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
 
     def newGame(): Unit = {
+      if (fixedSeat) return
       polling.foreach(_.stop())
       gameId = freshGameId()
       selectedPlayer = bootstrap.firstPlayer
       projection = None
       boardSelectionState = None
-      boardFormationState = None
-      campaignPlacementState = None
       cardDecisionState = None
       modifierWorkflow = None
       rawEvents = Vector.empty
       rawHistorySequence = None
       failure = None
       val request = coordinator.switchSession(gameId, selectedPlayer)
-      updateUrl(gameId, selectedPlayer)
+      updateSessionUrl()
       render()
       client.bootstrap(gameId, selectedPlayer, bootstrap)
         .foreach(accept(request, _))
@@ -224,13 +260,16 @@ object ServerModeUi {
       polling.foreach(_.stop())
       failure = None
       val request = coordinator.reconnect()
-      updateUrl(gameId, selectedPlayer)
+      updateSessionUrl()
       render()
       client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
 
     def poll(request: ServerRequestIdentity): Unit =
       client.load(request.gameId, request.playerId).foreach {
+        case Right(snapshot) if invalidTrustedViewer(snapshot) =>
+          val accepted = polling.exists(_.complete(request, continuePolling = false))
+          if (accepted) accept(request, Right(snapshot))
         case Right(snapshot) =>
           val advances = projection.forall(current =>
             coordinator.snapshotAdvances(
@@ -268,8 +307,6 @@ object ServerModeUi {
             case Left(stale: GameClientFailure.StalePosition)
                 if coordinator.accepts(request) =>
               boardSelectionState = None
-              boardFormationState = None
-              campaignPlacementState = None
               modifierWorkflow = None
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
@@ -318,7 +355,6 @@ object ServerModeUi {
         boardSelectionState = Some(BoardTargetSelectionState.reconcile(None,
           context, Vector(action)).activate(actionKind))
       }
-      boardFormationState = None
       modifierWorkflow = Some(workflow.showTargets(response))
       render()
     }
@@ -330,7 +366,6 @@ object ServerModeUi {
       modifierWorkflow = None
       facedownAdviserDraft = None
       boardSelectionState = boardSelectionState.map(_.cancel)
-      boardFormationState = None
       val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
       client.preview(gameId, selectedPlayer, request).foreach {
         case Right(response) =>
@@ -357,7 +392,9 @@ object ServerModeUi {
         case Right(response) => workflow.command match {
           case Some(command) =>
             modifierWorkflow = None
-            submitTransport(command, workflow.selection.invocations)
+            val (submitted, modifiers) = ModifierWorkflow.submission(command,
+              workflow.selection.invocations)
+            submitTransport(submitted, modifiers)
           case None => activatePreviewTargets(workflow, response)
         }
         case Left(error) =>
@@ -374,8 +411,9 @@ object ServerModeUi {
           modifierWorkflow = None
           facedownAdviserDraft = None
           boardSelectionState = None
-          boardFormationState = None
-          submitTransport(command, workflow.selection.invocations)
+          val (submitted, modifiers) = ModifierWorkflow.submission(command,
+            workflow.selection.invocations)
+          submitTransport(submitted, modifiers)
         case None => submit(command)
       }
 
@@ -391,14 +429,9 @@ object ServerModeUi {
         boardSelectionState = Some(state)
         render()
       case BoardSelectionResult.Submit(action, targets) =>
-        val force = projection.toVector.flatMap(_.playerBoards)
-          .find(_.playerId == selectedPlayer).map(_.warbands).getOrElse(0)
-        commandForSelection(action, targets, selectedPlayer, force).foreach { command =>
+        commandForSelection(action, targets, selectedPlayer).foreach { command =>
           completeTargetCommand(command)
         }
-      case BoardSelectionResult.Form(state) =>
-        boardFormationState = Some(state)
-        render()
     }
 
     lazy val ui: ServerUiView = new ServerUiView {
@@ -408,12 +441,12 @@ object ServerModeUi {
       def sessionCoordinator = coordinator
       def currentBoardSelection = boardSelectionState
       def currentBoardSelection_=(value: Option[BoardTargetSelectionState]) = boardSelectionState = value
-      def currentBoardFormation = boardFormationState
-      def currentBoardFormation_=(value: Option[BoardTargetFormationState]) = boardFormationState = value
-      def currentCampaignPlacement = campaignPlacementState
-      def currentCampaignPlacement_=(value: Option[CampaignPlacementState]) = campaignPlacementState = value
-      def currentForgeAssignment = forgeAssignmentState
-      def currentForgeAssignment_=(value: Option[ForgeAssignmentState]) = forgeAssignmentState = value
+      def currentWalkerPartition = walkerPartitionDraft
+      def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]) = walkerPartitionDraft = value
+      def currentWalkerDistribution = walkerDistributeDraft
+      def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
+      def currentWalkerSelection = walkerSelectionDraft
+      def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]) = walkerSelectionDraft = value
       def currentCardDecision = cardDecisionState
       def currentCardDecision_=(value: Option[CardDecisionState]) = cardDecisionState = value
       def currentModifierWorkflow = modifierWorkflow
@@ -436,7 +469,6 @@ object ServerModeUi {
         modifierWorkflow = None
         facedownAdviserDraft = None
         restoreBoardTargetActions()
-        boardFormationState = None
         render()
       }
       def beginTargetedMajorAction(actionKind: String) =
@@ -444,7 +476,6 @@ object ServerModeUi {
       def backFromTargets() = modifierWorkflow.foreach { workflow =>
         facedownAdviserDraft = None
         boardSelectionState = None
-        boardFormationState = None
         modifierWorkflow = workflow.backFromTargets
         render()
       }
@@ -452,7 +483,6 @@ object ServerModeUi {
         modifierWorkflow = modifierWorkflow.flatMap(_.cancel)
         facedownAdviserDraft = None
         restoreBoardTargetActions()
-        boardFormationState = None
         render()
       }
       def submitTargetCommand(command: GameCommand) =
@@ -478,7 +508,8 @@ object ServerModeUi {
     polling.foreach(_.visibilityChanged(dom.document.hidden))
 
     render()
-    queryParameter("gameId") match {
+    if (fixedSeat) client.load(gameId, selectedPlayer).foreach(accept(coordinator.capture, _))
+    else queryParameter("gameId") match {
       case Some(existing) => loadExisting(existing, selectedPlayer)
       case None => newGame()
     }

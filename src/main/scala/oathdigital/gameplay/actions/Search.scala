@@ -1,171 +1,15 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.PowerRuntime
 import oathdigital.model._
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathContinue._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
 
-import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
-import GameStateUpdates.updateCurrent
-import oathdigital.gameplay.operations.{AdjustSupply, CardDeck,
-  CoreOperation, Draw,
-  Location, OperationPipeline, OperationPolicy}
-
-sealed trait SearchCommand extends Product with Serializable
-object SearchCommand {
-  /** Trusted, server-prepared outcome. HTTP clients never construct this. */
-  final case class Start(
-      playerId: PlayerId,
-      decision: DecisionId,
-      source: SearchSource,
-      drawn: Vector[WorldCardId]
-  ) extends SearchCommand
-  final case class Complete(
-      playerId: PlayerId,
-      decision: DecisionId,
-      kept: WorldCardId,
-      discardedInOrder: Vector[WorldCardId],
-      placement: SearchPlacement
-  ) extends SearchCommand
-}
-
-
-object Search {
-  def handle(
-      catalog: ExecutableCatalog,
-      state: OathState,
-      command: SearchCommand
-  ): Either[OathViolation, OathTransition] = command match {
-    case SearchCommand.Start(playerId, decision, source, drawn) =>
-      OathLifecycle.validateAct(state, playerId).flatMap { ready =>
-        val player = ready.game.current.players.find(_.player == playerId).get
-        for {
-          origin <- player.pawnSite.flatMap(ready.game.current.map.regionOf)
-            .toRight(PawnSiteMissing(playerId))
-          cost <- SearchRules.cost(ready, source, origin)
-          _ <- SearchRules.validateSupportedState(catalog, ready)
-          expected <- SearchRules.draw(ready, source, origin)
-          _ <- if (drawn == expected) Right(()) else
-            Left(SearchDrawMismatch("prepared draw does not match authoritative source order"))
-          _ <- if (drawn.nonEmpty) Right(()) else Left(SearchSourceUnavailable(source))
-          _ <- if (player.board.supply.supply >= cost) Right(()) else
-            Left(InsufficientSupply(cost, player.board.supply.supply))
-          result <- transition(catalog, state, Vector(SearchStarted(
-            playerId, decision, source, origin, cost, drawn)),
-            AwaitingSearchDecision(playerId, decision))
-        } yield result
-      }
-    case SearchCommand.Complete(playerId, decision, kept, discarded, placement) =>
-      OathLifecycle.validateSearchDecision(state, playerId, decision).flatMap { ready =>
-        val pending = ready.game.current.pending.get
-          .asInstanceOf[PendingProcedure.Search]
-        SearchRules.prepareComplete(catalog, ready, pending, playerId, decision,
-          kept, discarded, placement).flatMap { outcome =>
-          transition(catalog, state, Vector(SearchCompleted(playerId, decision,
-            kept, discarded, placement, outcome.favorGained,
-            outcome.discardedWorld, outcome.discardedEdifices)),
-            ActActionSelection(playerId))
-        }
-      }
-  }
-
-  private def evolveSearchStarted(
-      state: OathState,
-      event: SearchStarted
-  ): Either[OathViolation, OathState] =
-    OathLifecycle.validateAct(state, event.playerId).flatMap { ready =>
-      val current = ready.game.current
-      val player = current.players.find(_.player == event.playerId).get
-      for {
-        _ <- Either.cond(current.temporaryHands.valuesIterator.forall(_.isEmpty),
-          (), SearchDrawMismatch("a temporary card hand already exists"))
-        origin <- player.pawnSite.flatMap(current.map.regionOf)
-          .toRight(PawnSiteMissing(event.playerId))
-        _ <- if (origin == event.origin) Right(()) else
-          Left(SearchDrawMismatch("recorded Search origin is not the pawn region"))
-        cost <- SearchRules.cost(ready, event.source, origin)
-        _ <- if (cost == event.supplySpent) Right(()) else
-          Left(SearchCostMismatch(cost, event.supplySpent))
-        drawn <- SearchRules.draw(ready, event.source, origin)
-        _ <- if (drawn == event.drawn && drawn.nonEmpty) Right(()) else
-          Left(SearchDrawMismatch("recorded cards do not match source order"))
-        _ <- if (player.board.supply.supply >= cost) Right(()) else
-          Left(InsufficientSupply(cost, player.board.supply.supply))
-        operation = drawOperation(event)
-        operations = Vector[CoreOperation](operation,
-          AdjustSupply(event.playerId, -cost))
-        execution <- OperationPipeline.run(
-          ready, operations, OperationPolicy.exact(
-            operations, "Search semantic root is not permitted")
-        ) { evolved =>
-          val visions = if (event.source == SearchSource.WorldDeck &&
-            event.drawn.exists(_.isInstanceOf[VisionId])) 1 else 0
-          Right(updateCurrent(evolved) { existing =>
-            existing.copy(
-              tracks = existing.tracks.copy(
-                visionsDrawn = existing.tracks.visionsDrawn + visions),
-              pending = Some(PendingProcedure.Search(
-                event.decision, event.playerId, event.source, origin, cost))
-            )
-          })
-        }
-      } yield Ready(execution)
-    }
-
-  /** Draws the recorded cards top-first from the authoritative source into the
-    * actor's temporary hand. Supply is spent by an AdjustSupply operation in
-    * the Search batch; Visions Drawn and the pending Search procedure remain
-    * direct updates.
-    */
-  private def drawOperation(event: SearchStarted): CoreOperation = Draw(
-    event.playerId,
-    event.drawn,
-    event.source match {
-      case SearchSource.WorldDeck => Location.Deck(CardDeck.World)
-      case SearchSource.RegionalDiscard(region) => Location.RegionalDiscard(region)
-    },
-    Location.Hand(event.playerId))
-
-  private def evolveSearchCompleted(
-      catalog: ExecutableCatalog,
-      state: OathState,
-      event: SearchCompleted
-  ): Either[OathViolation, OathState] =
-    OathLifecycle.validateSearchDecision(state, event.playerId, event.decision).flatMap { ready =>
-      val pending = ready.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Search]
-      SearchRules.complete(catalog, ready, pending, event).map(Ready(_))
-    }
-
-  def evolve(
-      catalog: ExecutableCatalog,
-      state: OathState,
-      event: OathEvent
-  ): Either[OathViolation, OathState] = event match {
-    case started: SearchStarted => evolveSearchStarted(state, started)
-    case completed: SearchCompleted => evolveSearchCompleted(catalog, state, completed)
-    case _ => Left(InvalidEventOrder("Search received a non-Search event"))
-  }
-
-  private def transition(
-      catalog: ExecutableCatalog,
-      state: OathState,
-      events: Vector[OathEvent],
-      continue: OathContinue
-  ): Either[OathViolation, OathTransition] =
-    GameplayTransition(state, events, continue)(evolve(catalog, _, _))
-}
-
+/** Pure Search source and cost rules shared by the walker and projections. */
 object SearchRules {
   import OathViolation._
 
-  def validateSupportedState(
-      catalog: ExecutableCatalog,
-      ready: ReadyGame
-  ): Either[OathViolation, Unit] = {
+  def validateSupportedState(catalog: ExecutableCatalog,
+      ready: ReadyGame): Either[OathViolation, Unit] = {
     val game = ready.game
     val reason =
       if (game.campaign.lineages.values.exists(_.role != Role.Exile))
@@ -179,11 +23,8 @@ object SearchRules {
       value => Left(UnsupportedSearchState(value)))
   }
 
-  def cost(
-      ready: ReadyGame,
-      source: SearchSource,
-      origin: Region
-  ): Either[OathViolation, Int] = source match {
+  def cost(ready: ReadyGame, source: SearchSource,
+      origin: Region): Either[OathViolation, Int] = source match {
     case SearchSource.WorldDeck =>
       Right(ready.game.current.tracks.visionsDrawn match {
         case 0 => 2
@@ -194,93 +35,22 @@ object SearchRules {
     case SearchSource.RegionalDiscard(_) => Left(SearchSourceUnavailable(source))
   }
 
-  /** World decks use head-as-top; discard piles use last-as-top. */
-  def draw(
-      ready: ReadyGame,
-      source: SearchSource,
-      origin: Region
-  ): Either[OathViolation, Vector[WorldCardId]] =
+  /** How many cards a Search draws before any power changes it. */
+  val DrawSize: Int = 3
+
+  /** World decks use head-as-top; discard piles use last-as-top. `extra` is the
+    * number of cards a power adds to the printed draw.
+    */
+  def draw(ready: ReadyGame, source: SearchSource, origin: Region,
+      extra: Int = 0): Either[OathViolation, Vector[WorldCardId]] =
     cost(ready, source, origin).map { _ => source match {
       case SearchSource.WorldDeck =>
-        ready.game.current.commonCards.worldDeck.take(3)
+        ready.game.current.commonCards.worldDeck.take(DrawSize + extra)
           .takeThrough(_.isInstanceOf[VisionId])
       case SearchSource.RegionalDiscard(region) =>
-        ready.game.current.commonCards.discard(region).reverse.take(3)
+        ready.game.current.commonCards.discard(region).reverse
+          .take(DrawSize + extra)
     }}
-
-  def complete(
-      catalog: ExecutableCatalog,
-      ready: ReadyGame,
-      pending: PendingProcedure.Search,
-      event: SearchCompleted
-  ): Either[OathViolation, ReadyGame] = {
-    prepareComplete(catalog, ready, pending, event.playerId, event.decision,
-      event.kept, event.discardedInOrder, event.placement).flatMap { outcome =>
-      val recorded = (event.favorGained, event.discardedWorld,
-        event.discardedEdifices)
-      val expected = (outcome.favorGained, outcome.discardedWorld,
-        outcome.discardedEdifices)
-      // Every drawn card has left the hand through the placement operations, so
-      // the actor's temporary-hand key remains with an empty vector; nothing
-      // removes a hand key. A Conspiracy kept from the Search stays in the hand
-      // until ConspiracyCompleted boxes it (Visions.applyCompletion).
-      Either.cond(recorded == expected, outcome.ready,
-        SearchChoiceMismatch("recorded card-play effects do not match placement"))
-    }
-  }
-
-  def prepareComplete(
-      catalog: ExecutableCatalog,
-      ready: ReadyGame,
-      pending: PendingProcedure.Search,
-      playerId: PlayerId,
-      decision: DecisionId,
-      kept: WorldCardId,
-      discardedInOrder: Vector[WorldCardId],
-      placement: SearchPlacement
-  ): Either[OathViolation, CardPlay.Outcome] = {
-    val drawn = ready.game.current.temporaryHands
-      .getOrElse(pending.actor, Vector.empty)
-    val expectedDiscards = drawn.filterNot(_ == kept)
-    for {
-      _ <- if (drawn.count(_ == kept) == 1) Right(()) else
-        Left(SearchChoiceMismatch("kept card must be one of the drawn cards"))
-      _ <- if (discardedInOrder.size == expectedDiscards.size &&
-          discardedInOrder.toSet == expectedDiscards.toSet) Right(()) else
-        Left(SearchChoiceMismatch(
-          "discard order must contain every non-kept drawn card exactly once"))
-      outcome <- CardPlay.resolve(catalog, ready, playerId, kept, placement,
-        CardPlay.Origin.Search(decision), discardedInOrder)
-    } yield outcome
-  }
-
-  /**
-   * Enumerates UI outcomes by running the same completion validator used by
-   * command handling and replay. No presentation-only legality is maintained.
-   */
-  def legalPlacements(
-      catalog: ExecutableCatalog,
-      ready: ReadyGame,
-      pending: PendingProcedure.Search,
-      kept: WorldCardId
-  ): Vector[SearchPlacement] = {
-    val player = ready.game.current.players.find(_.player == pending.actor).get
-    val siteCards = player.pawnSite.toVector
-      .flatMap(ready.game.current.map.sites.get).flatMap(_.denizens.map(_.id))
-    val adviserCards = player.advisers.map(_.id)
-    val candidates = Vector[SearchPlacement](SearchPlacement.Discard) ++
-      (Vector(None) ++ siteCards.map(Some(_))).map(SearchPlacement.Site) ++
-      Vector(Orientation.FaceDown, Orientation.FaceUp).flatMap { orientation =>
-        (Vector(None) ++ adviserCards.map(Some(_))).map(
-          SearchPlacement.Adviser(orientation, _))
-      }
-    val discarded = ready.game.current.temporaryHands
-      .getOrElse(pending.actor, Vector.empty).filterNot(_ == kept)
-    candidates.distinct.filter { placement =>
-      prepareComplete(catalog, ready, pending, pending.actor, pending.decision,
-        kept, discarded, placement).isRight
-    }
-  }
 
   private implicit final class TakeThrough[A](private val values: Vector[A])
       extends AnyVal {

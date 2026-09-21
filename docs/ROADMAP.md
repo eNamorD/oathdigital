@@ -1,124 +1,65 @@
 # Oath Digital Roadmap
 
-This is the project-level source of truth for planned work. The Main Thread
-maintains priorities and status. Implementation work runs in separate Codex
-tasks, and an item moves to Done only after being reviewed. After review, changes
-are cleaned up and committed to Git. 
+This is the forward-looking project-level source of truth for planned work.
+When a task is done, it should be deleted from this file. Past work can be
+identified by looking through specs and plans in `docs/superpowers/`.
+
+Refrain from labeling phases with numbers, as the roadmap items may shift
+in priority. (Some items may still be labeled as such, for consistency with specs)
 
 ## Now
 
-**Phase 3 — Powers and battle plans** is active. The precise window-driven
-resolver and reviewed pre-alpha fallback are complete. Add actual powers incrementally
-through those typed source, invocation, timing, decision, event, and replay
-boundaries; keep unknown relevant handlers explicit. Catacombs is the first
-complete slice: its selected Recover modifier pays and places a facedown relic,
-records one replay-validated procedure outcome, then delegates entirely to the
-matching ordinary Recover roll and choice.
-League Treaty is the first executable Rest hook: its current site ruler owns
-the optional choice even during another player's Rest, moves bounded favor from
-regional cards to one bank, and then resumes the ordinary Rest procedure.
-Power handlers now use compact immutable function bundles and typed procedure
-adapters. This keeps HRF's concise registration ergonomics without adopting its
-mutable expansion dispatcher or weakening event replay validation.
-
-## Engine Redesign — SUPERSEDED BY DESIGN
-
-> **Direction changed 2026-09-05.** The phased engine redesign (phases 1-4
-> below, executed and recorded) is superseded by the procedure-walker design:
-> `docs/superpowers/specs/2026-09-05-procedure-walker-design.md`. Actions become
-> Operation trees, one walker executes them, powers are contributors
-> (Transform/Restriction), replay applies recorded ops. Phases 1-4 entries are
-> historical records of completed work. Plan new engine work from the spec, not
-> this section.
-
-## Engine Redesign (history; see `docs/superpowers/plans/2026-09-04-engine-redesign.md`)
-
-**Phase 1 — Receipts removal: DONE** on branch `feat/engine-redesign`. Executor
-returns `ReadyGame`; `OperationReceipt`/`OperationExecution` deleted. No
-behavior change; full JVM + Scala.js suites green, 168-event live store replay
-clean, fresh bootstrap + command append verified over HTTP. Commits:
-`4c6d30b` (executor retype), `4689882` (drop `.map(_.ready)`), `db47e21` (drop
-field derefs), `fde3837` (test suites). Next phases get their own plan docs at
-phase start.
-
-**Phase 2 — Cost & supply vocabulary: DONE** on `feat/engine-redesign`. No cap
-flags: supply-capped effects clamp at plan time (`LimitedResource.clamp`).
-`Cost(favor, secret, favorBurnt, secretBurnt)` + `PayCost(player, placedAt,
-cost)` (zero-cost `Cost.free` allowed) replace the disposition cost machinery
-across powers (Catacombs) and Economy Muster/Trade; old `Payment`/`PayCosts`/
-`ResourceCost` API deleted. `AdjustSupply` op standardizes supply spending in
-executor-backed ops (Travel/Search/Economy); procedural supply writes stay
-module-authoritative. Commits: `99fedae` (clamp helper), `950a70a`
-(Cost/PayCost), `300e002` (Catacombs), `8bd5391` (AdjustSupply),
-`f8a8bb5` (Economy), `1947860` (docs), `9f10da8` (LimitedResource rename).
-Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-2.md`.
-
-**Phase 3 — Validator/executor/pipeline split: DONE** on `feat/engine-redesign`.
-`OperationValidator` owns all pre-execution shape checks (per-op staged +
-whole-batch surfaces, aggregated `OperationReason`s); `OperationExecutor` is
-parameterless raw mutation (no policy/invariant); `OperationPipeline` is the
-sole orchestrator — it assembles the validator per run from the action's
-`OperationPolicy` allowlist + per-query restrictions (registry empty until
-Phase 5), folds staged per-op validation + raw execution, then the module
-`update` and `OperationStateInvariant`; `OperationTransaction` deleted.
-Executed behavior byte-identical (staged per-op fold preserves trajectory
-semantics; whole-batch aggregation stays available via `report`). Commits:
-`9fe5bba` (shape extraction), `d9c410c` (pipeline + migration). Plan:
-`docs/superpowers/plans/2026-09-04-engine-redesign-phase-3.md`.
-
-**Phase 4 — Terrain migration: DONE** on `feat/engine-redesign`. Travel cost
-runs on TravelCost window powers under `gameplay/powers/travel/`: terrain site
-powers carry typed cost facts (`TravelCostTerrainPower` sub-trait, no new
-handler method); the powers-owned `TravelCostWindow` fold computes the route
-(coast route replaces to 1, Island/Mountain add at the destination) and consults
-a generic `SuppressionRegistry` for "Coast ignores Island/Mountain/Pass". Narrow
-Pass is a power holding a restriction body; `TravelRules.cost` is pure cost and
-a separate Travel legality evaluates the pass restriction against a simulated
-pawn move, decoding to the single `TravelPassBlocked` violation
-(`TravelConsentUnsupported` deleted). `RuntimeRuleRegistry` travel machinery and
-travel-only typed-rule types deleted; `RuntimeRuleRegistry` is an empty stub for
-Negotiation; `TakeWealthRules` moved to the Wake phase module. Commits:
-`83e5f2c` (contributions + suppression registry), `33fea9b` (terrain powers +
-fold + pass legality), `9a39b71` (delete travel machinery, stub, TakeWealth
-move). Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-4.md`.
+**Phase 3 — Powers and battle plans** is active. The first batch (30 denizens,
+12 edifice faces, 15 relics, the Wandering Flame phase power and the Mob card
+play modifier) is designed in the
+[powers design](superpowers/specs/2026-09-20-powers-design.md), and its
+per-power rulings are in the
+[powers rulings](superpowers/specs/2026-09-20-powers-rulings.md). It is built
+in five slices: verify and extend the shared engine pieces (slice 0), When
+Played, ACTION and WAKE powers (1), modifiers, persistent rules and card-play
+triggers (2), battle plans (3), and the banner faces (4). Each slice gets its own
+plan under `docs/superpowers/plans/` before any code is written.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
 
-### Phase 1 - Complete base actions
-
-1. [x] Complete Campaign Raid without expanding the battle-plan catalog: targets,
-   defense, losses, transfers, private-card disposal, favor burn, pawn
-   relocation, and terminal windows.
-2. [x] Implement Forge.
-3. [x] Implement banners and Challenge, including base banner resource movement.
-4. [x] Implement the core minor actions: play/discard a facedown adviser,
-   reveal/peek at relics, withdraw warbands from the pawn's site while leaving
-   one, and deploy board warbands to that site when the player rules it.
-5. [x] Implement ordinary all-Exile Negotiation as an atomic, consented
-   favor/relic exchange. Citizenship remains deferred with the Empire.
-
-### Phase 2 - Complete all-Exile goals and endings
-
-1. [x] Generalize Oathkeeper qualification beyond Supremacy.
-2. [x] Implement Vision reveal, qualification, victory, and Conspiracy.
-3. [x] Implement all-Exile round endings and War Exhaustion.
-4. [x] Complete suspended-decision and action-boundary processing needed by
-   these procedures.
-
 ### Phase 3 - Powers and battle plans
 
-Implement powers after their base procedures are stable, grouped by mechanics
+Powers are declared as contributions to walker procedures, grouped by mechanics
 and timing rather than one file per card: legality and cost modifiers, resource
 and card movement, roll transforms, losing-force replacement, nested actions,
-phase/victory triggers, and then the remaining attacker, defender, and bandit
-battle plans. Add Foundation, Legacy, relic, edifice, banner, site, and Vision
-handlers through the same typed boundaries. Unknown relevant handlers continue
-to reject explicitly until implemented.
+phase and victory triggers, and battle plans. The base procedures are ported, so
+the remaining work is the catalog itself: the first batch above, then the rest
+of the denizens, relics, edifices, Foundation, Legacy, banner, site and Vision
+powers through the same contribution boundaries. The engine never infers
+mechanics from rules text; unimplemented handlers stay explicit.
 
-### Phase 4 - Player-facing action history
+### Phase 5 - All-Exile alpha readiness
+
+The distribution and runtime foundation, trusted-alpha seat access, and the
+alpha data policy are built and covered by automated route and packaged-archive
+smokes. What remains is manual and remote evidence. The per-build
+[acceptance record](operations/alpha-acceptance.md) and the
+[Phase 5 follow-ups](operations/phase-5-follow-ups.md) track it.
+
+1. [ ] Verify two or more browsers on separate machines can create/join,
+   reconnect, reload persisted games, and complete representative multi-player
+   turns over a LAN. Automated archive evidence at `5b817f6` does not replace
+   this gate: two LAN machines, browser/version observations, and the completed
+   per-build LAN/TLS record are still needed.
+2. [ ] Complete release operations: publish multi-architecture Linux OCI images
+   for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
+   browser support and firewall/reverse-proxy/TLS requirements, and publish a
+   short host/player quick-start. Guidance and a gated workflow are committed,
+   but the `linux/amd64` and `linux/arm64` Buildx smokes, GitHub Actions run,
+   GHCR manifest publication, and GitHub prerelease remain unexecuted, as does
+   the container smoke of the trusted-seat flow (no Docker daemon on
+   2026-09-09). Rerun the complete verification and packaged smoke gates before
+   each alpha build.
+
+### Phase - Player-facing action history
 
 Add a human-readable action log similar to HRF's log, but derive it from
 authoritative event batches through a typed semantic formatter. Group related
@@ -128,37 +69,104 @@ resource changes, rolls, and victory checks. Produce public and player-scoped
 projections so hidden draws, facedown identities, and private choices are never
 leaked. Keep the raw loopback development event log separate.
 
-### Phase 5 - All-Exile alpha readiness
+### Powers-related deferred items
 
-1. [x] Complete the distribution and runtime foundation: versioned Universal
-   ZIP/TGZ archives, an OCI build definition, the optimized frontend, typed
-   runtime configuration, health/startup diagnostics, and bounded graceful
-   shutdown. A clean-output Universal package smoke test covers readiness,
-   frontend assets, database close, and shutdown without sbt or Node, then
-   reopens the same database directory in a second process so persistence is
-   proved by a successful restart rather than by file existence. The OCI
-   process smoke remains an environment-dependent release gate; it was not run
-   on the verification host because Docker was unavailable. Multi-architecture
-   OCI publication is deferred to item 5. See
-   the [implementation plan](superpowers/plans/2026-09-07-phase-5-distribution-runtime.md)
-   and [alpha-readiness design](superpowers/specs/2026-09-07-phase-5-alpha-readiness-design.md).
-   Deferred review findings and the outstanding container release gate are
-   recorded in [Phase 5 follow-ups](operations/phase-5-follow-ups.md).
-2. [ ] Replace development identity assumptions with a minimal safe alpha
-   access flow for hosts and invited seats; do not expose the loopback
-   development shim on a network.
-3. [ ] Verify two or more browsers on separate machines can create/join,
-   reconnect, reload persisted games, and complete representative multi-player
-   turns over a LAN.
-4. [ ] Add backup and restore guidance plus a clear alpha data reset and upgrade
-   policy.
-5. [ ] Complete release operations: publish multi-architecture Linux OCI images
-   for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
-   browser support and firewall/reverse-proxy/TLS requirements, and publish a
-   short host/player quick-start. Rerun the complete verification and packaged
-   smoke gates before each alpha build.
+- [ ] **Deferred: walker follow-ups.** Make the Recover roll automatic like the
+  others, and add real consent (for Narrow Pass and beyond) as its own system
+  separate from Negotiation. Audit the first-game rules the walker actions
+  dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
+  Add the remaining attacker, defender and bandit battle plan families,
+  non-deterministic loss choices, and the additional Raid, victory, defeat and
+  At End handlers that the Campaign timing windows already expose.
+- [ ] **Deferred: walker-native card play through card slots.** Card play still
+  runs through the legacy `CardPlay.legalChoices` and `plannedOperations` helpers
+  rather than through Operations, so a power cannot change the placement
+  procedure. Powers that need to (People's Favor: Mob may discard a site
+  denizen first, even at a full site) can today reach only the adviser limits
+  exposed by `CardPlayProcedure.PlacementTree`. The redesign plays a card to a
+  card slot instead of to a site. By default the options are the empty slots
+  at the actor's site and the actor's empty adviser slots. When no adviser slot
+  is empty, slots holding discardable advisers also become options. Site-card
+  discards, Homeland replacement, the revealed-Vision replacement and the
+  Silver Tongue limit all become contributions to the slot options. It touches
+  Search, facedown-adviser play, Conspiracy, the projections and the frontend,
+  so it needs its own spec. Until then Mob uses a single `PlacementRules` value
+  on `PlacementTree` that carries the adviser limits and a
+  "may discard a site card first" permission.
+- [ ] **Deferred: an adviser-slot decision option.** `DecisionOptionRef` names a
+  card by identity, and `WalkerDecisionProjector` drops any decision that names
+  a card its viewer may not identify, so a decision cannot offer another
+  player's facedown adviser. Relics have an identity-free `RelicSlot`
+  reference, and advisers have none. Ivory Eye works around it with `Button`
+  options keyed by owner and adviser position, which show a label and no card.
+  An `AdviserSlot(owner, slot)` reference, like `RelicSlot`, would let the
+  panel present the slot as a facedown card. It touches the model, the answer
+  codec, the projector and the frontend, and any future power that targets a
+  facedown adviser would use it.
 
-### Phase 6 - Empire and campaign continuity
+- [ ] **Deferred: a public view of a revealed temporary hand.** The Truthful Harp
+  reveals the cards it draws by recording a `Peek` for every other player. No
+  operation reveals a card in a temporary hand and the hand is projected to its
+  owner only, so no view shows the reveal to the other players yet.
+
+- [ ] **Deferred: a board slot for distributions and Sticky Fire without a choice.**
+  Warning Signals names the defender's board by a player option in its distribution, which
+  the panel shows as a player name, and Sticky Fire asks its question even when a yes
+  changes nothing (against bandits it only costs the favor). A board option, and skipping a
+  question whose answers are the same, need a small change to the option vocabulary.
+
+- [ ] **Deferred: offer a nested Campaign only when it would be accepted.**
+  Knights Errant runs a Campaign inside a Muster and offers it whenever a
+  Campaign is legal. A restriction on the whole Campaign (Vow of Peace, the
+  Fortress start refusal) rejects the player's "campaign" answer, so a Vow of
+  Peace holder is offered a Campaign that is then refused, and can only decline.
+  Offering it only when it would be accepted needs the power to ask the walker
+  whether the answer would pass its restrictions, which `PowerCtx` cannot do
+  today. It is accepted until then.
+
+- [ ] **Deferred: locked cards as a generic operation restriction.** Locking is
+  enforced today by `DiscardRestrictions` (a faceup locked adviser, an intact
+  edifice, a modifier selected for the running action, and the Hall of
+  Ministers). Each path that discards a card in play attaches it, and a coverage
+  test fails when a new discarding file forgets to. The intended design is a
+  `Locked` `OperationRestriction` that any locked card mixes in. It is
+  registered once with the validator when powers and restrictions are scanned,
+  and it refuses any `Move`, `Flip` or `Swap` of that particular card (a discard
+  is a `Move`), and skips `Bury`, which ignores locked. Restrictions are a
+  per-call argument of `OperationPipeline.run` today, supplied only by a
+  `BuildOps` node. Walker steps all run through `ProcedureWalker.recordBatch`,
+  so registration is a `restrictions` field on `WalkerPowers` merged there and
+  built by `OathRules` from the catalog and the state. `MinorActions` and
+  `StateBasedEvaluation` call the pipeline directly and need it too. It would
+  retire `DiscardRestrictions`' locked rules, `CardPlay`'s locked-adviser check
+  and Horned Mask's filter, and needs an audit of every step that legitimately
+  moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
+  lines, with regression risk in the Negotiation and Campaign suites.
+
+- [ ] **Deferred: the Grand Council and Festival banner faces.** They are listed
+  as synthetic ids in the reviewed catalog and have no behaviour.
+
+- [ ] **Deferred: Mercenaries' player-chosen sign.** Mercenaries adds attack dice
+  when its user attacks and removes defense dice from the attacker when it
+  defends. The card lets the player choose the sign, and the plan fixes it by side.
+  Choosing it needs a decision inside the plan and a preview that shows both.
+
+- [ ] **Deferred: plan-restricting powers, Bag of Siegeworks and Empire defenders.**
+  Peace Envoy and other powers that restrict which plans a side may choose have
+  no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
+  in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
+  catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
+  3b and go with the reviewed catalog.
+
+- [ ] **Deferred: record a bandit's applied battle plan as an event.** A player's
+  plan is a recorded answer that later windows read. A bandit defender applies its
+  cost-free plans without asking, so `CampaignPlanApplication` records the use as
+  a `ModifyDicePool` marker under `campaign.plan-applied.<kind>.<id>`. The marker
+  shows in the journal as a dice-pool change and suites that count a Campaign's
+  `ModifyDicePool` operations see it. A dedicated recorded operation would say
+  what happened.
+
+### Phase - Empire and campaign continuity
 
 After the all-Exile alpha, implement Chancellor/Citizen roles, Imperial forces,
 Grand Scepter and Reliquary behavior, Citizenship through Negotiation,
@@ -170,7 +178,7 @@ setup, Atlas transitions, Chronicle tasks, world reconstruction, Reliquary
 changes, Foundation mutation, Legacy activation/scoring, Oathkeeper goal
 changes, era scoring, saved-campaign continuation, and campaign browsing.
 
-### Phase 7 - Gameplay completeness gate
+### Phase - Gameplay completeness gate
 
 Audit every rulebook procedure and every runtime component handler against the
 traceability matrix; close remaining hidden-information, simultaneous-ordering,
@@ -180,9 +188,6 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 ## Later
 
 - [ ] **X6 — Complete production authentication and deployment**
-  - [x] Provider-neutral users, OIDC identity links, memberships, digest-only
-    sessions, shared HSQL lifecycle, membership authorization, authenticated
-    projections/commands/bootstrap, and session-cookie/CSRF validation.
   - [ ] Add OIDC Authorization Code + PKCE, session issuance/rotation/logout,
     secure cookie-setting responses, and frontend login/session-expiry UX.
   - [ ] Add membership-management UX, rate limiting, audit logging, and the
@@ -199,322 +204,11 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     deltas, long polling, SSE, or another push transport when scale or latency
     justifies the added server lifecycle complexity.
 
-## Done
+## Standing rules
 
-- [x] **Gameplay table, selection, and victory correctness.** One pure
-  materializer now drives projected and completed first-game setup, including
-  the fully populated printed table and private adviser/discard continuity.
-  Exact projections carry banks, tracks, relic-deck count, banners, and private
-  previews. The Scala.js table renders direct accessible targets without
-  duplicate candidate controls, compact card-decision arrows, claimed banners,
-  printed Vision text, and an inspectable all-viewer winner state. Wake and War
-  Exhaustion share one true-Vision eligibility function and printed priority.
-
-- [x] **Phase 3 - Window-driven power resolver.** Travel, Search,
-  Campaign, Muster, Trade, Forge, Recover, and Challenge now share stateless actorless
-  preview, ordered final modifier transport, and authoritative stale
-  revalidation while retaining their base procedures. Wake, Rest, When Played,
-  and action boundaries use a catalog-fingerprint-pinned fallback: optional
-  unimplemented rules are absent from choices, reached mandatory triggers emit
-  replay-validated diagnostics, and unaudited vocabulary rejects. Diagnostics
-  stay in durable history and loopback development responses, not ordinary
-  projections. Economy selection explicitly confirms, stale modifier drafts
-  clear, Campaign battle-plan timing and Travel topology remain separate, and
-  a powered all-Exile game persists/reopens through round-eight victory. This
-  Procedure-owned, individually named `Power` objects route solely by precise
-  `PowerWindow`; every window handler owns its resolution mode, applicability,
-  and executable status, while modifier metadata remains descriptive. There is
-  no universal effect DSL. Catacombs is the first executable example: its
-  Recover-owned handler composes typed cost payment, top-relic draw validation,
-  and facedown site placement operations before the ordinary Recover roll. The
-  ordinary Search and Search-derived facedown-adviser paths now share one typed
-  authoritative card-play procedure and source-scoped When Played dispatch. The
-  Rest procedure now opens ordered resolver hooks before cleanup; League Treaty
-  dynamically assigns its off-turn decision to the Treaty site's current ruler,
-  revalidates regional card favor and the destination bank, preserves facedown
-  relic identity through slot references, records concrete events, and resumes
-  normal Rest after resolution or decline. The
-  legacy central classification switch is removed; stable request and diagnostic
-  compatibility labels live in a neutral protocol file.
-
-- [x] **Pre-Phase 3 architecture gate.** Removed obsolete setup, action-authority,
-  and browser-memory implementations; normalized gameplay ownership and factual
-  rule-source discovery; unified actorless shared transport contracts and the
-  pre-release event format; split the application projection, frontend client,
-  and UI monoliths; and added current architecture documentation and automated
-  dependency guardrails.
-
-- [x] **Phase 2 - Suspended decisions and action boundaries.** Setup, Search,
-  Recover, Forge, Challenge, Campaign and Raid, Negotiation, Conspiracy,
-  Oathkeeper ties, Rest, and round ending now share verified suspension and
-  completion semantics. Successful Raid relocation reaches the action boundary;
-  Search-to-Conspiracy reconnect restores the correct owner-only choice; a
-  terminal result suppresses later derived evaluation; and round-eight replay
-  requires the recorded round-end transition before War Exhaustion. Obsolete
-  Chronicle placeholders were removed. Stale and unauthorized decisions append
-  nothing, while authorized non-active participants retain their controls.
-
-- [x] **Phase 2 - All-Exile round endings and War Exhaustion.** Final Rest now
-  enters an explicit authoritative round-end phase. Rounds 1–7 advance without
-  an end die, the Usurper Limiter leaves after round 3, and round 8 resolves
-  Usurper, then a goal-qualified Visionary after at least three Visions drawn,
-  then Oathkeeper, then a server-selected random player. Current events record
-  round advancement, victory cause, Vision, and the canonical random domain for
-  deterministic replay and tamper rejection. Persistence, public projection,
-  and the Scala.js victory display preserve the terminal outcome. Rest-related
-  handlers use an exact cross-family inventory audit; Empire endings, altered
-  banners/Foundations, remaining Rest powers, and Chronicle remain deferred.
-
-- [x] **Phase 2 - Visions and Conspiracy.** Exiles can reveal any of the four
-  true Visions through one authoritative direct/Search legality path, replace
-  an existing revealed Vision, and win at Wake after the Usurper step when at
-  least three Visions have been drawn and their printed goal is uniquely met.
-  Conspiracy takes a co-located player's opaque relic slot or banner, applies
-  banner ribbons through replay-validated decisions, and returns to the box.
-  Commands, current pre-release events, persistence, scoped projection,
-  authenticated transport, and accessible Scala.js controls preserve hidden
-  identities. Relevant Vision
-  restrictions and triggers are catalog-wide inventory-audited and reject with
-  stable source identities until their powers are implemented; altered
-  Foundations and multi-Vision storage remain deferred.
-
-- [x] **Phase 2 - Generalized Oathkeeper qualification.** The fixed,
-  unaltered all-Exile game evaluates all four printed goals at authoritative
-  post-action boundaries: ruled sites for Supremacy, held relics for
-  Protection, and the current banner holders for The People and Devotion.
-  Qualification preserves minimum holdings, holder-retained ties,
-  displaced-holder recipient decisions, title clearing, and the existing
-  Oathkeeper-to-Usurper Wake flow. The selected goal is durable setup-event
-  state and survives wire encoding, replay, persistence/reopen, and public
-  projection. Goal-changing powers remain deferred to typed action handlers.
-
-- [x] **Phase 1 - All-Exile Negotiation.** Co-located Exiles can create
-  persistent bilateral or multi-party deals, author only their own outgoing
-  favor, relic, and binding disclosure terms, and accept the current deal
-  unanimously. Any edit clears consent; the last acceptance atomically applies
-  transfers and durable scoped knowledge, while decline applies nothing and
-  still completes the action boundary. Projection redacts hidden identities,
-  derives acceptance legality from authoritative state, and supports
-  non-active participants through authenticated transport and the accessible
-  Scala.js editor. Relevant component families are inventory-audited and
-  unimplemented Negotiation powers reject explicitly; Citizenship, additional
-  asset types, remote deals, and printed powers remain deferred.
-
-- [x] **Phase 1 - Core minor actions.** During Act, players can play or discard
-  a facedown adviser as if searched, privately inspect relics at their site,
-  reveal a held facedown relic, and move legal quantities of their warbands to
-  or from their pawn's site for 0 Supply. Commands and replay enforce card
-  restrictions, Homeland replacement, site-play favor, regional discards,
-  private relic knowledge, site rule, and the final-warband limit. Conspiracy
-  and relevant printed modifiers reject through an audited transitional power
-  registry until Phase 3. Authenticated transport, owner redaction, persistence
-  and reopen, action-boundary evaluation, and accessible Scala.js controls are
-  covered. The UI now exposes one Search-derived adviser workflow with a single
-  authoritative final resolution, and known site relics reveal temporarily for
-  inspection while remaining facedown at rest.
-
-- [x] **Phase 1 - Bounded banners and Challenge.** The fixed Mob and Wandering
-  Flame faces now support typed public holder/resource state, the common
-  zero-Supply action for adding faceup favor or secrets, and a 1-Supply
-  Challenge with strict eligibility, co-location, atomic transfer, and
-  authoritative replay. People's Favor distributes deterministically to the
-  least-stocked bank with leftmost ties; Wandering Flame exposes only its
-  genuine least-site tie choices to the challenger. Projection, authenticated
-  transport, persistence/reopen, and Scala.js controls preserve decision
-  ownership. Altered banner faces and their additional powers remain deferred
-  to the powers phase.
-
-- [x] **Phase 1 - Bounded Forge.** A ruling Exile at a printed Forge site can
-  spend 1 Supply, assign the exact printed favor/secret multiset one apiece to
-  three empty denizens, and take the authoritative relic-deck top facedown.
-  Stable typed assignments, finite favor banks, owner-only projection,
-  pre-port command validation, durable replay facts, authenticated/development
-  transport, persistence/reload, and accessible stale-safe Scala.js controls
-  are tested. The audited current component vocabulary has no base Forge
-  modifier; changed or unknown active handler vocabularies block explicitly.
-
-- [x] **Phase 1 - Complete base Campaign Raid.** Raid has typed canonical pawn,
-  relic, and banner targets; player-owned plan windows; recorded dice, losses,
-  and ordered resolution; exact People’s Favor returns and Darkest Secret
-  burns; owner-redacted facedown adviser/relic disposal with Conspiracy boxed;
-  and attacker-owned non-Travel pawn relocation. Lost-Raid force effects use a
-  validated co-location origin. Commands, replay, transport, persistence,
-  projection, and Scala.js controls reject stale or tampered facts while
-  additional powers and battle plans remain deferred.
-
-- [x] **Campaign plan architecture and defender stage.** Campaign now
-  orchestrates attacker and defender plan windows through registered handlers
-  with stable source identity, typed costs/effects, generic projection, and
-  replay validation. Outriders, Brass Army, the Oathkeeper/Usurper defense
-  bonus, and deterministic Watchdog use that boundary without component IDs in
-  Campaign or projection. Player defenders act during their own scoped window;
-  their procedure view is redacted again once that window closes. Reserved
-  extension effects reject explicitly until a matching executor exists.
-
-- [x] **Campaign expansion — player-defender Conquest baseline.** The mandatory
-  target's ruler is recorded as a typed player defender and every optional
-  target must share that ruler. Defense aggregates public target forces;
-  victory removes the complete defending force, kills half rounded down,
-  returns survivors to the defender board, and reuses atomic attacker
-  placement. Both attacker and defender losses use registered, replay-validated
-  disposition policies. Titled defenders and unknown defender-relevant powers
-  block until their decision windows exist, while known attacker-only powers do
-  not block defense. Projection and command legality share the complete check;
-  no facedown information or defender controls are exposed.
-
-- [x] **Campaign expansion — complete multi-site bandit Conquest.** The pawn
-  site is mandatory and any legal same-ruler sites may be selected in canonical
-  order, subject to Pass. One battle aggregates their defense and bandit force;
-  victory resolves every target atomically and distributes surviving attackers
-  through a replay-validated per-site allocation. A registered stable-ID loss
-  policy emits applied remove/preserve/relocate/replace effects, prevents
-  placement over uncleared forces, and provides the extension seam for powers
-  that modify or replace losing-force behavior. Refill and Supremacy run once
-  after complete placement; a displaced Oathkeeper chooses among tied leaders
-  through a durable owner-scoped decision.
-
-- [x] **Campaign expansion — partial-force formation UI.** Selecting the
-  mandatory pawn-site target now opens a local, projection-backed formation
-  step with server-authored force bounds, available warbands, Supply cost, and
-  pre-plan dice. Accessible direct/decrement/increment controls require an
-  explicit confirmation; Back and Cancel remain local. Stale context clears
-  formation, inactive viewers receive none, and unaffordable Campaigns project
-  no action. A player with no board warbands receives the legal `0..0` empty-pool
-  formation. Command validation and replay retain authority.
-
-- [x] **Campaign expansion — ordered plans and Brass Army.** The attacker may
-  use distinct accessible plans once each in an authoritative chosen order,
-  then explicitly finish the plan window before the server rolls exactly once.
-  Outriders composes with paid Brass Army; the latter places one secret on an
-  empty faceup held relic and adds four attack dice without increasing physical
-  force. Events, replay, private projection, HTTP, persistence, and UI preserve
-  plan order, costs, reveals, modifiers, dice, and excess-skull scoring while
-  rejecting duplicates, tampering, stale choices, and pre-validation RNG use.
-
-- [x] **Campaign expansion — first optional attacker battle plan.** Campaign
-  now pauses before attack randomness for an actor-private choice between an
-  explicit skip and each accessible Outriders source. Selecting Outriders may
-  reveal a facedown card and records its stable source, exact handler, costs,
-  mechanical result, and physical dice; replay recalculates the attack and
-  ignored skull losses. Rejected commands consume no randomness, malformed
-  client choice shapes fail decoding, and every other relevant plan remains
-  conservatively blocked.
-
-- [x] **Campaign expansion prerequisite — typed power boundary.** All eight
-  Campaign timing windows are explicit, accessible powers are discovered and
-  ordered by stable source and exact handler ID, and faceup `Vow of Peace` is
-  the sole safely executable mandatory handler. Facedown passive text is
-  inactive. Optional plans and relevant unimplemented effects reject with
-  their source identity until a choice, cost, and recorded-resolution contract
-  exists; no printed option is inferred or auto-selected.
-
-- [x] **Bounded Campaign — single-site bandit Conquest.** Fixed unaltered,
-  all-Exile games can spend 2 Supply to attack the mandatory pawn-site bandits
-  through typed target selection. Server-recorded physical attack/defense dice,
-  explicit sacrifice and conquest-placement decisions, finite force movement,
-  replay validation, scoped HTTP/Scala.js controls, persistence/reload, and the
-  shared bandit-refill-then-Supremacy boundary are tested. Relevant unsupported
-  Campaign/battle-plan powers across the actor's full access reject explicitly.
-  The browser exposes the authoritative `0..available` force range and requires
-  explicit formation confirmation. Player defenders,
-  additional targets, Raid, and executable battle plans remain deferred; see
-  `docs/architecture/bounded-campaign.md`.
-
-- [x] **Bounded first-game Oathkeeper/Usurper ending.** The fixed unaltered,
-  all-Exile profile now evaluates Supremacy through one state-based path at
-  completed action boundaries, retains a tied current holder without inventing
-  a general F7 resolver, honors the no-Empire limiter, flips Oathkeeper to
-  Usurper on Wake, and records a retained-Usurper Wake victory. Replay-validated
-  events in the current pre-release format, HSQL reload, HTTP/client projection,
-  and image-independent UI status are covered. The displaced-holder
-  tied-recipient choice remains attached to future Campaign decision work; no
-  Campaign, Vision, Empire ending, or Chronicle behavior was added.
-
-- [x] **Campaign prerequisite 2 — reusable board target selection.** A typed,
-  server-authorized selection protocol now represents sites, site cards with
-  denizen/edifice identity, player advisers, and player relics independently
-  from private card decisions. Setup placement auto-activates; Travel, Muster,
-  and separate favor/secret Trade modes use action-first selection with
-  projected costs/yields, accessible candidate controls, stable selected state,
-  cardinality-gated multi-select support, and stale-context clearing. Adviser,
-  relic, and multi-site hooks are prepared but no Campaign mechanics activate
-  them.
-
-- [x] **Campaign prerequisite — authoritative site rule and force
-  presentation.** `SiteForces` remains the sole stored source and directly
-  derives unruled, Bandit, shared Empire, or current-player rule. Shared
-  player/same-ruler/enemy checks now support Economy access and Pass consent;
-  public typed projections, strict HTTP/Scala.js decoding, accessible labels,
-  and stable player/Empire/Bandit colors expose every site's physical force.
-  Corrupt lineage mappings fail explicitly. Bandit refill remains deferred to
-  Campaign because no general action-completion seam exists.
-
-- [x] **L6e — Bounded Recover action slice.** Exile-only,
-  unaltered-Foundation Recover spends Supply for recorded pairs of typed defense
-  dice, accumulates shields and doublers across rolls, permits an unsuccessful
-  stop, and privately takes exactly one facedown site relic on success. Typed
-  pending procedure state, replay-validated current events, injected server
-  randomness, authenticated intents, viewer-relative projections, and inline
-  Scala.js controls preserve deterministic replay and hidden information.
-
-- [x] **Gameplay UI information and generic card decisions.** Starting-adviser
-  and Search choices share one private typed decision protocol and accessible
-  inline Actions panel; Search has local keep/discard ordering and explicit authoritative
-  placement/replacement resolution. Typed pile displays expose public card-back
-  types for the World Deck and regional discards while card fronts remain hidden; detailed sites,
-  viewer-relative redacted player boards, bottom development controls, player
-  selectors, and a loopback-only raw event log are projected and rendered
-  without new assets.
-
-- [x] **L6d — Bounded Economy action slice.** Exile-only, unaltered-Foundation
-  Muster and Trade share authoritative denizen access, suit/adviser matching,
-  typed rule resolution, limited resource movement, replay-validated current events,
-  persisted commands, scoped projections, HTTP intents, and Scala.js controls.
-
-- [x] **L6c — Rest and turn advancement.** Act lifecycle validation is
-  action-neutral. Bounded exile Rest now uses one replay-validated cleanup plan
-  to return adviser, relic, pawn-site, and deduplicated ruled-site resources,
-  reveals secrets, refreshes Supply, clears only scoped card tokens, advances the
-  player/round, and enters the next Wake through replay-validated current
-  events, persisted commands, scoped projections, HTTP routes, and Scala.js
-  controls. Derived available/facedown/committed secret totals drive the
-  player-facing `Secrets available/total` display without replacing physical
-  token locations.
-
-- [x] Establish the Scala/Scala.js build, HRF reference baseline, core domain
-  model, source-cited rules layer, and complete reviewed component catalog.
-- [x] Implement authoritative versioned events, deterministic replay,
-  optimistic application services, and the HSQLDB event/identity
-  store with concurrency, restart, and malformed-history hardening.
-- [x] Deliver the exile-only introductory setup and responsive image-independent
-  server UI, including player-scoped controls, reconnect/polling, restart, and
-  authenticated membership/session/CSRF foundations.
-- [x] Implement bounded Wake, Travel, and Search through the current pre-release
-  event stream,
-  including typed Travel modifiers, server-prepared Search draws, private
-  pending decisions, replay validation, and Scala.js controls.
-- [x] Modularize gameplay into `OathRules`, phase/action modules, typed rule
-  resolution, and consistently named runtime application, wire, server, and
-  frontend boundaries while retaining then-current replay behavior.
-
-The maintained verification gate includes the complete JVM and Scala.js suites,
-the optimized Scala.js linker, runtime-catalog validation and equality,
-architecture and documentation-link checks, and diff validation. Earlier
-persisted multiplayer browser acceptance remains covered by the completed
-gameplay milestones.
-
-## Coordination rules
-
-- The Main Thread owns this file and prioritization.
-- Each implementation item gets a separate Codex task with explicit file
-  ownership and acceptance criteria.
-- Parallel tasks must avoid editing the same files or packages.
-- Tasks run focused checks while parallel work is active. They must not run
-  `clean` against shared build outputs.
-- After parallel tasks finish, the Main Thread reviews the combined diff and
-  runs the complete build, catalog validation, and test suite once.
-- Completion reports must include changed files, verification commands, test
-  counts, unresolved risks, and the resulting commit.
+- The verification gate is the complete JVM and Scala.js suites, the optimized
+  Scala.js linker, runtime-catalog validation and equality, the architecture and
+  documentation-link checks, and diff validation.
 - Before the first public release, event formats and fixtures may change in
   place; backward compatibility, migrations, and version bumps are not required.
   Update the current writer, reader, replay tests, fixtures, and development

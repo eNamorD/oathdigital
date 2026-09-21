@@ -4,7 +4,6 @@ import scala.util.control.NonFatal
 
 import oathdigital.engine.RecordedEvent
 import oathdigital.model._
-import oathdigital.gameplay._
 
 final case class GameEventEnvelope(
     formatVersion: Int,
@@ -19,7 +18,7 @@ final case class GameEventEnvelope(
  * Explicit current game-event vocabulary, including first-game setup.
  */
 object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
-    with ActionEventCodec with CampaignEventCodec with EndingEventCodec
+    with ActionEventCodec with EndingEventCodec
     with WalkerEventCodec {
   import WireError._
 
@@ -30,58 +29,13 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val PawnPlacedType = "setup.first-game-pawn-placed"
   val AdviserChosenType = "setup.starting-adviser-chosen"
   val FirstGameCompletedType = "setup.first-game-completed"
-  val TakeWealthType = "gameplay.take-wealth"
-  val WakeEndedType = "gameplay.wake-ended"
   val IgnoredRulesRecordedType = "diagnostic.ignored-rules-recorded"
-  val TraveledType = "gameplay.traveled"
-  val MusteredType = "gameplay.mustered"
-  val TradedType = "gameplay.traded"
-  val SearchStartedType = "gameplay.search-started"
-  val SearchCompletedType = "gameplay.search-completed"
-  val RestStartedType = "gameplay.rest-started"
-  val LeagueTreatyDecisionStartedType =
-    "gameplay.league-treaty-decision-started"
-  val LeagueTreatyResolvedType = "gameplay.league-treaty-resolved"
-  val LeagueTreatyDeclinedType = "gameplay.league-treaty-declined"
-  val RestCompletedType = "gameplay.rest-completed"
-  val RecoverRolledType = "gameplay.recover-rolled"
-  val CatacombsResolvedType = "gameplay.catacombs-resolved"
-  val RecoverStoppedType = "gameplay.recover-stopped"
-  val RelicRecoveredType = "gameplay.relic-recovered"
-  val ForgeStartedType = "gameplay.forge-started"
-  val ForgeCompletedType = "gameplay.forge-completed"
-  val BannerChallengeStartedType = "gameplay.banner-challenge-started"
-  val BannerRibbonChoiceMadeType = "gameplay.banner-ribbon-choice-made"
-  val BannerChallengeCompletedType = "gameplay.banner-challenge-completed"
-  val BannerResourcePlacedType = "gameplay.banner-resource-placed"
-  val FacedownAdviserDiscardedType = "gameplay.facedown-adviser-discarded"
-  val FacedownAdviserPlayedType = "gameplay.facedown-adviser-played"
   val SiteRelicsPeekedType = "gameplay.site-relics-peeked"
   val OwnedRelicRevealedType = "gameplay.owned-relic-revealed"
   val WarbandsMovedType = "gameplay.warbands-moved"
-  val NegotiationStartedType = "gameplay.negotiation-started"
-  val NegotiationTermsReplacedType = "gameplay.negotiation-terms-replaced"
-  val NegotiationAcceptedType = "gameplay.negotiation-accepted"
-  val NegotiationDeclinedType = "gameplay.negotiation-declined"
-  val NegotiationCompletedType = "gameplay.negotiation-completed"
-  val CampaignStartedType = "gameplay.campaign-started"
-  val CampaignPlanChosenType = "gameplay.campaign-plan-chosen"
-  val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
-  val CampaignSacrificedType = "gameplay.campaign-sacrificed"
-  val CampaignConqueredType = "gameplay.campaign-conquered"
-  val CampaignRaidedType = "gameplay.campaign-raided"
-  val CampaignRaidPawnRelocatedType = "gameplay.campaign-raid-pawn-relocated"
   val BanditsRefilledType = "gameplay.bandits-refilled"
-  val OathkeeperChangedType = "gameplay.oathkeeper-changed"
-  val OathkeeperRecipientChoiceStartedType =
-    "gameplay.oathkeeper-recipient-choice-started"
-  val OathkeeperRecipientChosenType =
-    "gameplay.oathkeeper-recipient-chosen"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"
-  val VisionRevealedType = "gameplay.vision-revealed"
-  val ConspiracyStartedType = "gameplay.conspiracy-started"
-  val ConspiracyCompletedType = "gameplay.conspiracy-completed"
   val VisionVictoryType = "gameplay.vision-victory"
   val RoundEndedType = "gameplay.round-ended"
   val WarExhaustionResolvedType = "gameplay.war-exhaustion-resolved"
@@ -124,17 +78,23 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     }
 
   /** Encoders in this vocabulary are total for every event this build knows
-    * how to construct, but `WalkerStepPayload`/`DeltaMeaning`/`CoreOperation`
-    * are open (or bounded to a slice's current variants), so an unencodable
-    * value reaching this append path must surface as a typed [[WireError]]
-    * rather than escape as a raw exception (matches the decode side's
-    * `NonFatal` boundary in `decodePayload`).
+    * how to construct (I8: `WalkerEventCodec.encodeOperation`/`encodePiece`
+    * are now total over `CoreOperation`/`Piece` too, matching
+    * `encodeLocation`), so an unencodable value reaching this append path
+    * must surface as a typed [[WireError]] rather than escape as a raw
+    * exception (matches the decode side's `NonFatal` boundary in
+    * `decodePayload`). `UnencodableOperation` is special-cased ahead of the
+    * generic `NonFatal` fallback so the FEW genuinely-impractical shapes
+    * (a walker tree-control node closing over a function value) surface
+    * their specific, already-typed `WireError` instead of the generic
+    * "$.payload" / stringified-message fallback below.
     */
   private def encodePayloadSafe(
       event: OathEvent
   ): Either[WireError, ujson.Value] =
     try Right(encodePayload(event))
     catch {
+      case UnencodableOperation(error) => Left(error)
       case NonFatal(error) =>
         Left(
           InvalidValue(
@@ -305,11 +265,11 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     } yield ()
 
   private val discriminatorDispatch = lifecycleDiscriminator
-    .orElse(actionDiscriminator).orElse(campaignDiscriminator)
+    .orElse(actionDiscriminator)
     .orElse(endingDiscriminator).orElse(walkerDiscriminator)
 
   private val encoderDispatch = lifecycleEncoder.orElse(actionEncoder)
-    .orElse(campaignEncoder).orElse(endingEncoder).orElse(walkerEncoder)
+    .orElse(endingEncoder).orElse(walkerEncoder)
 
   private def discriminator(event: OathEvent): String =
     discriminatorDispatch(event)
@@ -326,7 +286,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     try {
       lifecycleDecode(eventType, payload, path, envelopeCatalog)
         .orElse(actionDecode(eventType, payload, path, envelopeCatalog))
-        .orElse(campaignDecode(eventType, payload, path, envelopeCatalog))
         .orElse(endingDecode(eventType, payload, path, envelopeCatalog))
         .orElse(walkerDecode(eventType, payload, path, envelopeCatalog))
         .getOrElse(Left(UnknownEventType(s"$path.eventType", eventType)))

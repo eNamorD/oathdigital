@@ -1,13 +1,5 @@
 package oathdigital.model
 
-sealed trait DeckKind extends Product with Serializable
-object DeckKind {
-  case object World extends DeckKind
-  case object Relic extends DeckKind
-  case object Edifice extends DeckKind
-  case object Legacy extends DeckKind
-}
-
 sealed trait SiteCardArea extends Product with Serializable
 object SiteCardArea {
   case object Denizens extends SiteCardArea
@@ -30,7 +22,7 @@ object LineageCardArea {
 
 sealed trait CardContainer extends Product with Serializable
 object CardContainer {
-  final case class Deck(kind: DeckKind) extends CardContainer
+  final case class Deck(deck: CardDeck) extends CardContainer
   final case class RegionalDiscard(region: Region) extends CardContainer
   final case class Site(site: SiteId, area: SiteCardArea)
       extends CardContainer
@@ -127,10 +119,10 @@ object CardIndex {
       }
 
     val common = game.current.commonCards
-    addIds(common.worldDeck, CardContainer.Deck(DeckKind.World))
-    addIds(common.relicDeck, CardContainer.Deck(DeckKind.Relic))
-    addIds(common.edificeDeck, CardContainer.Deck(DeckKind.Edifice))
-    addIds(common.legacyDeck, CardContainer.Deck(DeckKind.Legacy))
+    addIds(common.worldDeck, CardContainer.Deck(CardDeck.World))
+    addIds(common.relicDeck, CardContainer.Deck(CardDeck.Relic))
+    addIds(common.edificeDeck, CardContainer.Deck(CardDeck.Edifice))
+    addIds(common.legacyDeck, CardContainer.Deck(CardDeck.Legacy))
 
     Region.all.foreach { region =>
       addIds(

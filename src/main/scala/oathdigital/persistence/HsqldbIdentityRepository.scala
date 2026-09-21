@@ -338,11 +338,62 @@ final class HsqldbIdentityRepository private[persistence] (
       }
     }
 
+  override def createTrustedSeats(
+      gameId: String,
+      seats: Vector[(SeatCodeDigest, String)],
+      nowMillis: Long
+  ): Either[IdentityFailure, Unit] =
+    validateTrustedSeats(seats).flatMap { _ =>
+      runExpected("create trusted seats") { connection =>
+        if (exists(connection, "game_resources", "game_id", gameId))
+          Left(DuplicateGame(gameId))
+        else {
+          try {
+            insertGame(connection, gameId, nowMillis)
+            seats.foreach { case (digest, playerId) =>
+              insertTrustedSeat(connection, digest, gameId, playerId, nowMillis)
+            }
+            Right(())
+          } catch {
+            case error: SQLException if constraintViolation(error) =>
+              Left(DuplicateTrustedSeat)
+          }
+        }
+      }
+    }
+
+  override def resolveTrustedSeat(
+      digest: SeatCodeDigest
+  ): Either[IdentityFailure, TrustedSeat] =
+    runExpected("resolve trusted seat") { connection =>
+      val statement = connection.prepareStatement(
+        "SELECT game_id, player_id FROM trusted_seats WHERE token_digest = ?"
+      )
+      try {
+        statement.setBytes(1, digest.bytes.toArray)
+        val row = statement.executeQuery()
+        if (row.next()) Right(TrustedSeat(row.getString(1), row.getString(2)))
+        else Left(TrustedSeatNotFound)
+      } finally statement.close()
+    }
+
   private[persistence] def sessionColumnNames
       : Either[IdentityFailure, Vector[String]] =
     runExpected("inspect session schema") { connection =>
       val columns = connection.getMetaData
         .getColumns(null, null, "SESSIONS", null)
+      try {
+        val names = Vector.newBuilder[String]
+        while (columns.next()) names += columns.getString("COLUMN_NAME")
+        Right(names.result().map(_.toLowerCase))
+      } finally columns.close()
+    }
+
+  private[persistence] def trustedSeatColumnNames
+      : Either[IdentityFailure, Vector[String]] =
+    runExpected("inspect trusted seat schema") { connection =>
+      val columns = connection.getMetaData
+        .getColumns(null, null, "TRUSTED_SEATS", null)
       try {
         val names = Vector.newBuilder[String]
         while (columns.next()) names += columns.getString("COLUMN_NAME")
@@ -391,6 +442,17 @@ final class HsqldbIdentityRepository private[persistence] (
       Left(InvalidSession("CSRF token digest is required"))
     else Right(())
 
+  private def validateTrustedSeats(seats: Vector[(SeatCodeDigest, String)]) =
+    if (seats.isEmpty)
+      Left(InvalidTrustedSeat("at least one trusted seat is required"))
+    else if (seats.exists { case (_, playerId) =>
+        playerId == null || playerId.trim.isEmpty
+      })
+      Left(InvalidTrustedSeat("trusted seat requires playerId"))
+    else if (seats.map(_._2).distinct.size != seats.size)
+      Left(InvalidTrustedSeat("trusted seat player IDs must be unique"))
+    else Right(())
+
   private def insertGame(connection: Connection, gameId: String, now: Long): Unit = {
     val statement = connection.prepareStatement(
       "INSERT INTO game_resources (game_id, created_at_millis) VALUES (?, ?)"
@@ -419,6 +481,27 @@ final class HsqldbIdentityRepository private[persistence] (
       membership.playerId.fold(statement.setNull(4, java.sql.Types.VARCHAR))(
         statement.setString(4, _))
       statement.setLong(5, now)
+      statement.executeUpdate()
+    } finally statement.close()
+  }
+
+  private def insertTrustedSeat(
+      connection: Connection,
+      digest: SeatCodeDigest,
+      gameId: String,
+      playerId: String,
+      nowMillis: Long
+  ): Unit = {
+    val statement = connection.prepareStatement(
+      """INSERT INTO trusted_seats
+        |(token_digest, game_id, player_id, created_at_millis)
+        |VALUES (?, ?, ?, ?)""".stripMargin
+    )
+    try {
+      statement.setBytes(1, digest.bytes.toArray)
+      statement.setString(2, gameId)
+      statement.setString(3, playerId)
+      statement.setLong(4, nowMillis)
       statement.executeUpdate()
     } finally statement.close()
   }

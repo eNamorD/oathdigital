@@ -33,3 +33,23 @@ object WireError {
       s"expected contiguous sequence position $expected but found $actual"
   }
 }
+
+/** Carries a fully-typed [[WireError]] out of an encoder that genuinely
+  * cannot express its input as data (I8) -- thrown only by
+  * `WalkerEventCodec.encodeOperation`'s tree-control arms (`Decide`/
+  * `BuildOps`/`Repeat`/`Branch`/`Sequence`: three close over a Scala
+  * function value, and none can ever legally appear as an
+  * ALREADY-APPLIED recorded operation -- see that method's doc). Every
+  * other `CoreOperation`/`Piece` case is genuinely total: real data,
+  * encoded and decoded exactly.
+  *
+  * `GameEventWire.encodePayloadSafe`'s `NonFatal` boundary special-cases
+  * this exception and unwraps its carried `WireError` directly, instead of
+  * falling through to the generic "$.payload" / stringified-message
+  * fallback every OTHER encoder throw still gets -- so a genuinely
+  * unencodable operation surfaces the same typed, specific error an
+  * ordinary decode failure would, rather than an opaque append-time
+  * exception message.
+  */
+private[serialization] final case class UnencodableOperation(error: WireError)
+    extends RuntimeException(error.message)

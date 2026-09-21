@@ -1,8 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 import oathdigital.model._
 
 final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,
@@ -10,7 +9,8 @@ final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,
 
 object Costs {
   def affordable(ready: ReadyGame, actor: PlayerId, placedAt: Location,
-      cost: Cost): Boolean = plan(ready, actor, placedAt, cost).isRight
+      cost: Cost, intoOccupied: Boolean = false): Boolean =
+    plan(ready, actor, placedAt, cost, intoOccupied).isRight
 
   /** Pre-flight affordability + placement validation owned by the caller's
     * power or action path. Rejects unaffordable costs early with a typed
@@ -19,7 +19,8 @@ object Costs {
     * destination check.
     */
   def plan(ready: ReadyGame, actor: PlayerId, placedAt: Location,
-      cost: Cost): Either[OathViolation, PayCost] =
+      cost: Cost, intoOccupied: Boolean = false)
+      : Either[OathViolation, PayCost] =
     if (cost == Cost.free) Right(PayCost(actor, placedAt, cost))
     else
       for {
@@ -31,15 +32,25 @@ object Costs {
           InsufficientFavor(favor, player.board.favor))
         _ <- Either.cond(player.board.faceUpSecrets >= secrets, (),
           InsufficientSecrets(secrets, player.board.faceUpSecrets))
-        _ <- validatePlaced(ready, placedAt, cost)
-      } yield PayCost(actor, placedAt, cost)
+        _ <- validatePlaced(ready, placedAt, cost, intoOccupied)
+      } yield PayCost(actor, placedAt, cost, intoOccupied)
+
+  /** The placement every card-sourced cost uses: onto the card, with the
+    * card's suit as its off-turn settlement bank. Relics have no suit.
+    */
+  def onCard(actor: PlayerId, card: CardId, cost: Cost,
+      catalog: ExecutableCatalog, intoOccupied: Boolean = false): PayCost =
+    PayCost(actor, Location.OnCard(card), cost, intoOccupied,
+      catalog.suitOf(card))
 
   private def validatePlaced(ready: ReadyGame, placedAt: Location,
-      cost: Cost): Either[OathViolation, Unit] =
+      cost: Cost, intoOccupied: Boolean): Either[OathViolation, Unit] =
     if (cost.favor + cost.secret == 0) Right(())
     else
       placedAt match {
-        case Location.OnCard(id) if statefulCard(ready, id) => Right(())
+        case Location.OnCard(id) if statefulCard(ready, id) =>
+          Either.cond(intoOccupied || PayCostRules.isEmpty(ready, id), (),
+            EconomyCardNotEmpty(id))
         case _ => Left(InvalidEventOrder(
           "placed cost portions require an existing token-bearing card"))
       }

@@ -8,7 +8,7 @@ class CardIndexSuite extends munit.FunSuite {
 
     assertEquals(
       index.locationOf(worldDenizen),
-      Some(CardLocation(CardContainer.Deck(DeckKind.World), 0))
+      Some(CardLocation(CardContainer.Deck(CardDeck.World), 0))
     )
     assertEquals(index.stateOf(worldDenizen), None)
     assertEquals(

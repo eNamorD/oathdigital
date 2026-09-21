@@ -50,6 +50,9 @@ class ServerRoutesSuite extends munit.FunSuite {
           "/api/authenticated/first-games/game").statusCode(), 404)
         assertEquals(get(client, absent,
           "/api/dev/first-games/test-game/events?limit=101").statusCode(), 400)
+        assertEquals(get(client, absent, "/s/AAAAAAAAAAAAAAAAAAAAAA").statusCode(), 404)
+        assertEquals(get(client, absent, "/games/game/api").statusCode(), 404)
+        assertEquals(get(client, absent, "/games/game").statusCode(), 404)
       } finally Await.result(absent.terminate(5.seconds), 10.seconds)
 
       val configuration = AuthenticatedRouteMountConfiguration(
@@ -99,6 +102,8 @@ class ServerRoutesSuite extends munit.FunSuite {
 
     try {
       assertEquals(get(client, binding, "/").statusCode(), 200)
+      assertEquals(get(client, binding, "/games/test-game").statusCode(), 403)
+      assertEquals(get(client, binding, "/games/test-game/api").statusCode(), 403)
       assertEquals(get(client, binding,
         "/api/dev/first-games/test-game?playerId=p1").statusCode(), 404)
       assertEquals(get(client, binding,

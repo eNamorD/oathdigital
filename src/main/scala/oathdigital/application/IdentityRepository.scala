@@ -21,6 +21,17 @@ object CsrfTokenDigest {
     else Left(s"CSRF token digest must contain exactly $Length bytes")
 }
 
+final case class SeatCodeDigest private (bytes: Vector[Byte])
+object SeatCodeDigest {
+  val Length: Int = 32
+
+  def fromBytes(bytes: Vector[Byte]): Either[String, SeatCodeDigest] =
+    if (bytes.size == Length) Right(new SeatCodeDigest(bytes))
+    else Left(s"seat code digest must contain exactly $Length bytes")
+}
+
+final case class TrustedSeat(gameId: String, playerId: String)
+
 final case class StoredSession(
     digest: SessionTokenDigest,
     userId: UserId,
@@ -64,6 +75,9 @@ object IdentityFailure {
   case object SessionNotFound extends IdentityFailure
   case object SessionExpired extends IdentityFailure
   case object SessionRevoked extends IdentityFailure
+  case object DuplicateTrustedSeat extends IdentityFailure
+  case object TrustedSeatNotFound extends IdentityFailure
+  final case class InvalidTrustedSeat(message: String) extends IdentityFailure
   final case class StorageFailure(message: String) extends IdentityFailure
 }
 
@@ -104,4 +118,12 @@ trait IdentityRepository {
       lastSeenAtMillis: Long,
       idleExpiresAtMillis: Long
   ): Either[IdentityFailure, Unit]
+  def createTrustedSeats(
+      gameId: String,
+      seats: Vector[(SeatCodeDigest, String)],
+      nowMillis: Long
+  ): Either[IdentityFailure, Unit]
+  def resolveTrustedSeat(
+      digest: SeatCodeDigest
+  ): Either[IdentityFailure, TrustedSeat]
 }

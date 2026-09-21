@@ -1,0 +1,4 @@
+- Enable the installed `caveman` skill in `full` mode for every new task.
+- Keep Caveman active for the task unless the user says `stop caveman`, `normal mode`, or selects another Caveman level.
+- Follow the Caveman skill's accuracy, auto-clarity, and persisted-output boundaries.
+- When spawning subagents, do not use a higher model or effort level than the main agent.

@@ -1,54 +1,9 @@
 package oathdigital.gameplay.setup
 
-import oathdigital.catalog.{ExecutableCatalog, Suit => CatalogSuit}
+import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.GameplayTransition
-import oathdigital.gameplay._
 import oathdigital.model._
-
-final case class PlayerColor(value: String) {
-  require(value.trim.nonEmpty, "player color must not be blank")
-}
-
-final case class FirstGameParticipant(
-    playerId: PlayerId,
-    lineageId: LineageId,
-    color: PlayerColor
-)
-
-final case class PawnPlacement(playerId: PlayerId, siteId: SiteId)
-
-final case class FirstGameSetupPlan(
-    catalog: CatalogRef,
-    participants: Vector[FirstGameParticipant],
-    firstPlayer: PlayerId,
-    orderedSites: Vector[SiteId],
-    denizenOrder: Vector[DenizenId],
-    worldDeckOrder: Vector[WorldCardId],
-    relicOrder: Vector[RelicId],
-    homelandEdifices: Vector[(SiteId, EdificeId)],
-    oathkeeperGoal: OathkeeperGoal = OathkeeperGoal.Supremacy
-)
-
-sealed trait FirstGameFoundationProfile extends Product with Serializable
-object FirstGameFoundationProfile {
-  case object FixedUnaltered extends FirstGameFoundationProfile
-}
-
-final case class FirstGameSupportState(
-    foundationProfile: FirstGameFoundationProfile,
-    firstPlayer: PlayerId
-)
-
-sealed trait FirstGameSetupCommand extends Product with Serializable
-object FirstGameSetupCommand {
-  final case class Begin(plan: FirstGameSetupPlan)
-      extends FirstGameSetupCommand
-  final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
-      extends FirstGameSetupCommand
-  final case class PlacePawn(playerId: PlayerId, siteId: SiteId)
-      extends FirstGameSetupCommand
-}
 
 object FirstGameRulesData {
   val visions: Vector[VisionId] = Vector(
@@ -241,32 +196,10 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case NoGame => Left(GameNotStarted)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
-      case _: Traveled =>
-        Left(InvalidEventOrder("Travel requires the gameplay evolution"))
-      case _: Mustered | _: Traded =>
-        Left(InvalidEventOrder("Economy requires the gameplay evolution"))
-      case _: WealthTaken | _: WakeEnded =>
-        Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
-      case _: SearchStarted | _: SearchCompleted =>
-        Left(InvalidEventOrder("Search requires the gameplay evolution"))
-      case _: RestStarted | _: RestPowerEvent | _: RestCompleted =>
-        Left(InvalidEventOrder("Rest requires the gameplay evolution"))
-      case _: RecoverPowerEvent | _: RecoverRolled |
-          _: RecoverStopped | _: RelicRecovered |
-          _: ForgeStarted | _: ForgeCompleted |
-          _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
-          _: BannerChallengeCompleted | _: BannerResourcePlaced |
-          _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
-          _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
-          _: NegotiationStarted | _: NegotiationTermsReplaced |
-          _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted |
-          _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
-          _: CampaignRaided | _: CampaignRaidPawnRelocated |
+      case _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
           _: BanditsRefilled =>
-        Left(InvalidEventOrder("Recover requires the gameplay evolution"))
-      case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |
-          _: OathkeeperRecipientChosen | _: UsurperFlipped |
-          _: UsurperVictory =>
+        Left(InvalidEventOrder("gameplay events require the gameplay evolution"))
+      case _: UsurperFlipped | _: UsurperVictory =>
         Left(InvalidEventOrder("state-based checks require gameplay evolution"))
     }
 
@@ -323,14 +256,14 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
   private def validateSuitCounts(
       plan: FirstGameSetupPlan
   ): Either[OathViolation, Unit] =
-    CatalogSuit.values.toVector.sorted
+    Suit.all
       .collectFirst {
         case suit
             if plan.denizenOrder.count(
-              id => denizensById(id).suit.value == suit
+              id => denizensById(id).suit == suit
             ) != 10 =>
           val actual = plan.denizenOrder.count(
-            id => denizensById(id).suit.value == suit
+            id => denizensById(id).suit == suit
           )
           WrongDenizenSuitCount(suit, actual)
       }
@@ -406,16 +339,16 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         case (site, edificeId) if !edificesById.contains(edificeId) =>
           InvalidHomelandEdifice(site, s"unknown edifice ${edificeId.value}")
         case (site, edificeId)
-            if edificesById(edificeId).suit.value != homelandSuit(site).get =>
+            if !homelandSuit(site).contains(edificesById(edificeId).suit) =>
           InvalidHomelandEdifice(site, "edifice suit does not match Homeland")
       }.toLeft(())
   }
 
-  private def homelandSuit(siteId: SiteId): Option[String] =
+  private def homelandSuit(siteId: SiteId): Option[Suit] =
     sitesById(siteId).handlers.collectFirst {
       case handler if handler.contains(".homeland-") =>
         handler.substring(handler.indexOf(".homeland-") + 10)
-    }
+    }.flatMap(Suit.fromKey)
 
   private def turnOrder(
       plan: FirstGameSetupPlan
@@ -487,7 +420,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         TurnState(plan.firstPlayer, Phase.Wake, Set.empty),
         material.tracks,
         None,
-        None,
         // Every player always holds a temporary-hand key; an empty vector
         // means no cards await a private choice. Nothing ever removes a key.
         temporaryHands = plan.participants.map(_.playerId -> Vector.empty).toMap
@@ -497,20 +429,11 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
     if (problems.nonEmpty) Left(InvalidAggregate(problems))
     else
       Right(
-        ReadyGame(
+        ReadyGame.start(
           game,
           plan.participants.map(p => p.playerId -> p.color).toMap,
-          FirstGameSupportState(
-            FirstGameFoundationProfile.FixedUnaltered,
-            plan.firstPlayer
-          ),
-          MaterialBankState(
-            material.favorBanks,
-            Map[ForceKind, Int](ForceKind.Bandit -> 24) ++
-              plan.participants.map { participant =>
-                ForceKind.Exile(participant.lineageId) -> 14
-              }
-          )
+          plan.firstPlayer,
+          material.favorBanks
         )
       )
   }

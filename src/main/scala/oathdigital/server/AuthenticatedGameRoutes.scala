@@ -86,7 +86,7 @@ final class AuthenticatedGameGateway(
       : Either[AuthenticatedGameFailure, MajorActionPreviewResponse] =
     authorization.authorizeCommand(gameId, principal).left.map(Authorization)
       .flatMap { actor => for {
-        action <- oathdigital.gameplay.MajorActionKind.fromKey(request.action).toRight(
+        action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
           InvalidIntent(GameIntentMappingFailure("$.action", "unknown major action")))
         selected <- GameIntentMapper.bindModifiers(actor.access.playerId,
           request.orderedModifiers).left.map(InvalidIntent)
@@ -95,13 +95,14 @@ final class AuthenticatedGameGateway(
         projection = projector.project(gameId, accepted.loaded, actor.access.playerId)
         _ <- Either.cond(projection.actionSelectionOpen, (), Application(
           GameApplicationError.CommandRejected(
-            oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+            oathdigital.model.OathViolation.InvalidModifierInvocation(
               "major-action preview is unavailable in this phase"))))
         _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application)
       } yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
         request.action, accepted.options.map(v => PreviewModifier(
           v.source.stableKey, v.handlerId, v.handlerId)),
-        Vector.empty, MajorActionPreviewTargets.from(projection, request)) }
+        Vector.empty, MajorActionPreviewTargets.from(projection, request,
+          accepted.targets)) }
 
   def bootstrap(
       gameId: String,

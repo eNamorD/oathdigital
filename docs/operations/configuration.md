@@ -10,6 +10,11 @@ Universal archives require Java 21 on the host. They do not require sbt or
 Node. The OCI image bundles a Java 21 runtime and runs as the non-root
 `oathdigital` user (UID 10001).
 
+Start with the [trusted-alpha quick start](quick-start.md). Before operating on
+persistent files, read the [data and upgrade policy](data-policy.md). LAN,
+firewall, HTTPS proxy, and provisional browser guidance is in
+[network and browser guidance](network-and-browser.md).
+
 ## Options
 
 | Command-line option | Environment variable | Default |
@@ -38,33 +43,44 @@ OATH_MODE=trusted-alpha \
 OATH_HOST=0.0.0.0 \
 OATH_PORT=8080 \
 OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
-OATH_DATABASE_PATH=/var/lib/oathdigital/database \
-OATH_CATALOG_PATH=/opt/oathdigital/catalog/new-foundations-component-catalog.json \
+OATH_DATABASE_PATH=/home/alex/oathdigital-data/alpha-1/database \
 bin/oathdigital
 ```
 
-For a catalog bundled in the archive, omit `OATH_CATALOG_PATH`. For loopback
+The example data directory must exist and be writable by the process. For the
+catalog bundled in the archive, omit `OATH_CATALOG_PATH` as shown. For loopback
 use, omit `OATH_HOST` and `OATH_PUBLIC_BASE_URL`. Windows users can set the
-same environment variables and run `bin\oathdigital.bat`.
+same environment variables and run `bin\oathdigital.bat`; complete commands
+for all three host operating systems are in the quick start.
 
 ## OCI image
 
 The image sets `OATH_HOST=0.0.0.0` and
 `OATH_DATABASE_PATH=/var/lib/oathdigital/database` itself and declares
 `/var/lib/oathdigital` as a volume, so only the browser-visible origin has to
-be supplied. After `./sbtw Docker/publishLocal`, publish the service on all
-host interfaces for trusted LAN access:
+be supplied. Set `OATH_IMAGE_REFERENCE` to the exact published, versioned image
+reference supplied by the release operator. The placeholder must be replaced
+before use:
 
 ```sh
-docker run --rm --name oathdigital \
+export OATH_IMAGE_REFERENCE='ghcr.io/<owner>/<repository>:v0.1.0-alpha.1'
+docker pull "$OATH_IMAGE_REFERENCE"
+docker volume create oathdigital-data
+docker run --detach --name oathdigital \
   --publish 8080:8080 \
   --env OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
   --volume oathdigital-data:/var/lib/oathdigital \
-  oathdigital:0.1.0-SNAPSHOT
+  "$OATH_IMAGE_REFERENCE"
+docker logs --follow oathdigital
 ```
 
 Name a volume as shown to keep the database across container replacements; the
 declared volume otherwise becomes an anonymous one.
+
+Stop the container with `docker stop --time 15 oathdigital`, wait for the
+database-close log, and remove only the stopped container with
+`docker rm oathdigital`. The named volume remains. Follow the data policy for
+stopped-volume backup and matching-release restore.
 
 For host-local access only, replace `--publish 8080:8080` with
 `--publish 127.0.0.1:8080:8080` and use a loopback public base URL such as
@@ -75,12 +91,15 @@ path. Add `--env OATH_MODE=...` or `--env OATH_CATALOG_PATH=...` to override
 them. Command-line options placed after the image name override environment
 values.
 
-This branch's OCI definition is single-architecture: `Docker/publishLocal`
-produces an image for the build host's own architecture only. Multi-architecture
-build and publication for `linux/amd64` and `linux/arm64` is delivered by the
-`phase-5-release-operations` follow-up plan.
+End users run the published image and need neither sbt nor Node. For developers,
+`Docker/publishLocal` produces an image for the build host's own architecture.
+The manual [alpha release workflow](releases.md) builds, loads, and smokes both
+`linux/amd64` and `linux/arm64` before its optional publication job can run.
+Publication is disabled by default; workflow implementation does not establish
+that any registry image has been published.
 
-Internet exposure requires HTTPS at a trusted reverse proxy. Detailed TLS,
-multi-machine, backup/restore, and release acceptance belongs to the
-`phase-5-release-operations` follow-up plan and is not established by this
-packaging contract.
+Internet exposure requires HTTPS at a trusted reverse proxy. Use the concrete
+proxy and log-redaction requirements in the network guidance, then record
+separate-machine LAN and TLS results in the
+[per-build alpha acceptance record](alpha-acceptance.md). An unexecuted record
+is a template, not acceptance evidence.

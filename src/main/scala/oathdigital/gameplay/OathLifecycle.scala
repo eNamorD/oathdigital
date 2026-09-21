@@ -1,8 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
 import oathdigital.model._
 
 private[gameplay] object OathLifecycle {
@@ -36,33 +35,10 @@ private[gameplay] object OathLifecycle {
         Left(WrongPhase(Phase.Act, current.turn.phase))
       else if (current.walkerPending.nonEmpty)
         Left(InvalidEventOrder(
-          "a walker action is pending; legacy actions are blocked"))
-      else current.pending match {
-        case Some(value) => Left(PendingProcedureBlocksAction(value.decision))
-        case None => Right(ready)
-      }
+          "a walker procedure is pending; legacy actions are blocked"))
+      else Right(ready)
   }
 
-  def validateSearchDecision(
-      state: OathState,
-      playerId: PlayerId,
-      decision: DecisionId
-  ): Either[OathViolation, ReadyGame] = state match {
-    case Ready(ready) if ready.game.current.turn.activePlayer != playerId =>
-      Left(WrongPlayer(ready.game.current.turn.activePlayer, playerId))
-    case Ready(ready) if ready.game.current.turn.phase != Phase.Act =>
-      Left(WrongPhase(Phase.Act, ready.game.current.turn.phase))
-    case Ready(ready) => ready.game.current.pending match {
-      case Some(value: PendingProcedure.Search) if value.actor != playerId =>
-        Left(WrongPlayer(value.actor, playerId))
-      case Some(value: PendingProcedure.Search) if value.decision != decision =>
-        Left(SearchDecisionMismatch(value.decision, decision))
-      case Some(_: PendingProcedure.Search) => Right(ready)
-      case Some(other) => Left(PendingProcedureBlocksAction(other.decision))
-      case None => Left(InvalidEventOrder("no Search decision is pending"))
-    }
-    case _ => Left(GameNotStarted)
-  }
 }
 
 private[gameplay] object GameplayTransition {
