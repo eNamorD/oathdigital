@@ -11,6 +11,7 @@
 - **Usability.** The only gate is that the cost is payable. Choosing an empty target, or a bank with no stock, is allowed and does nothing.
 - **Secrets.** The shared bank has unlimited secrets.
 - **Movement.** A pawn relocation is a plain `Move`. No component restricts a pawn's `Move`. Relocations that are not Travel run no Travel windows and trigger no Travel powers.
+- **Active modifiers.** Active modifiers cannot be discarded. A modifier cannot be discarded during the major action it is modifying.
 - **Bury.** Bury ignores the locked restriction. Denizens and Visions go to the bottom of the world deck, edifices to the edifice deck, relics to the bottom of the relic deck. Resources on a buried card return as for a discard: favor to the suit bank, secrets to the acting player, facedown.
 - **Giving to bandits** equals burning.
 - **Dice.** Non-battle rolls are automatic. Defense dice score with `DefenseDieFace.score` (a Doubler multiplies the total). Attack dice score with `AttackDieFace.score` (hollow swords one per pair, a skull face counts two swords) and a skull is any skull face.
@@ -142,6 +143,10 @@ For both Fortress faces, a Raid removes the protected player from the defender d
 | 189 Wild Cry | Selected modifier. When you play a beast denizen faceup (to a site or as a faceup adviser), gain 1 Supply and 2 warbands. Facedown plays do not trigger it. A card does not trigger on its own play. |
 | 50 Welcoming Party | Selected modifier. When you play a denizen that is not a facedown adviser, gain 1 favor from the Hearth bank with `Gain.Favor`. A card does not trigger on its own play. |
 | 99 Gossip | Persistent, faceup, adviser-only. When any other player places an adviser facedown, a denizen or a Vision, the holder gains 1 favor from the Discord bank with `Gain.Favor`. |
+
+### Slice 2 implementation notes
+
+- **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. Generic discard rules (product decisions): a faceup locked adviser, an intact edifice and a card that prints a power selected for the running action cannot be discarded by any path, and `DiscardRestrictions` is where that is enforced. A Homeland replacement discards an edifice and no longer buries it. An intact edifice is refused by the generic rule for Mob's discard too. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
 
 ## Slice 3: Campaign battle plans
 
