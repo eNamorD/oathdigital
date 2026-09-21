@@ -53,7 +53,7 @@ These facts are read from the code, or established by compiling and running the 
 
 1. **E3 and E6 are enough.** `PhasePowerSuite` already shows a banner is a phase-power source for its holder only (`PowerAccess.accessible` checks the holder) using a synthetic power on the Grand Council face. `PhasePower.cost` defaults to free, and `PhasePowerProcedure.payable` refuses a costed banner power on purpose (banners have no costs), which suits both Wandering Flame powers. `PlacementTree.adjust` and `PlacementRules.withSiteDiscardFirst` are what `SiteDiscardFirstSuite` exercises with a test double.
 2. **The first game is staged for these powers, and it needs clearing.** Both banners start unheld, on the Mob and Wandering Flame faces. The actor (p2) stands at ancient-city, p1 at buried-giant and p3 at broken-peaks. But broken-peaks starts with two secrets on the site (a site's starting resources) and fair-isle with three favor, so a test that counts sites with a secret first clears them (`BannerFixture.withoutSiteSecrets`).
-3. **A `Move` of a secret onto a site moves faceup secrets only.** `OperationSecretPlanner` treats every destination other than a play area as faceup-only, so "move 1 secret from your board onto the site" can only mean a faceup secret, which also matches the cost rules (a secret placed on a card rests faceup). A player with only facedown secrets has nothing to place, so the power guards on `board.faceUpSecrets` and does nothing rather than rely on the operation to skip.
+3. **A `Move` of a secret onto a site moves faceup secrets only.** `OperationSecretPlanner` treats every destination other than a play area as faceup-only, so "move 1 secret from your board onto the site" can only mean a faceup secret, which also matches the cost rules (a secret placed on a card rests faceup). A player with only facedown secrets has nothing to place. The product owner ruled that the power is then not usable (the button is hidden), so `usable` reads `board.faceUpSecrets`, and the effect guards on it again because it is derived afresh on every command. A facedown secret is never flipped or moved.
 4. **`PaidAction` with `Cost.free` is the right kit.** Slice 1's `PaidAction` states an ACTION power gated only by its cost, and a free power is its degenerate case. Act powers are not tracked in `usedPowers`, so both powers are unlimited without any code. The banner resource action (`PlaceBannerResource`) is a walker procedure, not a phase power, and is unaffected.
 5. **`PawnMoves` (slice 1d) already holds what the move power needs**: `pawnSite`, `sitesOtherThan`, `siteChoice`, `relocate` and `chosenSite`. The decision is the live-`Branch` shape of Brass Horse, asked only when several sites qualify. Nothing runs between the park and the answer, so the resume derives the same choice.
 6. **Both powers are found through the source index, so the face gates them.** `PhasePowerProcedure.sources` keeps a source whose listed power ids contain the power, and `PowerAccess.accessible` keeps it only for the holder. The powers therefore need no face check of their own, and the tests prove both gates: the Festival face lists neither, and a non-holder finds neither.
@@ -94,7 +94,7 @@ All paths are under `src/main/scala/oathdigital/` (production) or `src/test/scal
 | Power | Ruling |
 | --- | --- |
 | Move | Place your pawn at any other site with a secret on the site itself (`SiteState.tokens.secrets`), not on its cards. A plain `Move`, not Travel. The decision is asked only when more than one site qualifies. Usable only when a site qualifies. |
-| Place a secret | Move 1 secret from your board onto the site your pawn is at. Only a faceup secret can rest on a site, so with none the use does nothing. |
+| Place a secret | Move 1 secret from your board onto the site your pawn is at. Only a faceup secret can rest on a site, so the power is usable only while the holder has a faceup secret on their board (product ruling: it is hidden otherwise). A facedown secret is never flipped or moved. |
 
 
 - [ ] **Step 1: Write the tests**
@@ -350,16 +350,18 @@ class WanderingFlamePlaceSuite extends munit.FunSuite {
     assertEquals(end.game.current.turn.usedPowers, Set.empty[PowerUseRef])
   }
 
-  test("with no faceup secret the use is a no-op, and a facedown secret is " +
-      "never moved") {
+  test("with no faceup secret it is not usable, and a facedown secret is " +
+      "never flipped or moved") {
     Vector(staged(faceUp = 0), staged(faceUp = 0, faceDown = 2)).foreach { start =>
-      assert(usable(start, power.id))
-      val done = use(start, power, darkestSecret).toOption.get
-      assert(backToActing(done))
-      assertEquals(after(done).game.current.map, start.game.current.map)
-      assertEquals(player(after(done)).board, player(start).board)
-      assertEquals(ops(done.events), Vector.empty)
+      assert(!usable(start, power.id))
+      assert(use(start, power, darkestSecret).isLeft)
     }
+    assert(usable(staged(faceUp = 1), power.id))
+    val end = after(use(staged(faceUp = 1, faceDown = 2), power, darkestSecret)
+      .toOption.get)
+    assertEquals(player(end).board.faceUpSecrets, 0)
+    assertEquals(player(end).board.faceDownSecrets, 2)
+    assert(!usable(end, power.id), "only facedown secrets are left")
   }
 
   test("it is unusable without the banner, on the Festival face or outside " +
@@ -438,7 +440,7 @@ Create `src/test/scala/oathdigital/application/BannerFaceProjectionSuite.scala`:
 ```scala
 package oathdigital.application
 
-import oathdigital.gameplay.powers.PowerFixture
+import oathdigital.gameplay.powers.{PowerFixture, TargetsFixture}
 import oathdigital.gameplay.powers.banner.{BannerFixture, WanderingFlameMove, WanderingFlamePlace}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model.OathState.Ready
@@ -457,8 +459,9 @@ class BannerFaceProjectionSuite extends munit.FunSuite {
   private val move = WanderingFlameMove.id.value
   private val place = WanderingFlamePlace.id.value
 
-  private def holding: ReadyGame = inPhase(withSiteSecrets(
-    holdingFlame(base), brokenPeaks, 1), Phase.Act)
+  /** The holder has a faceup secret, and another site holds one. */
+  private def holding: ReadyGame = inPhase(TargetsFixture.withSecrets(
+    withSiteSecrets(holdingFlame(base), brokenPeaks, 1), actor, 1, 0), Phase.Act)
 
   test("the holder is shown both Wandering Flame powers, named, with a text") {
     val projected = projector.project("flame", LoadedGame(Ready(holding), 30L),
@@ -473,11 +476,18 @@ class BannerFaceProjectionSuite extends munit.FunSuite {
   }
 
   test("a power with nothing to do is not projected: Move needs a secret-" +
-      "bearing site, and the place power stays") {
-    val bare = inPhase(withoutSiteSecrets(holdingFlame(base)), Phase.Act)
-    val projected = projector.project("flame", LoadedGame(Ready(bare), 30L),
-      actor)
-    assertEquals(projected.phasePowers.map(_.powerId), Vector(place))
+      "bearing site, and the place power needs a faceup secret") {
+    def shown(ready: ReadyGame) = projector.project("flame",
+      LoadedGame(Ready(ready), 30L), actor)
+    val noSite = inPhase(TargetsFixture.withSecrets(
+      withoutSiteSecrets(holdingFlame(base)), actor, 1, 0), Phase.Act)
+    assertEquals(shown(noSite).phasePowers.map(_.powerId), Vector(place))
+    val noSecret = TargetsFixture.withSecrets(holding, actor, 0, 2)
+    assertEquals(shown(noSecret).phasePowers.map(_.powerId), Vector(move))
+    val neither = inPhase(TargetsFixture.withSecrets(
+      withoutSiteSecrets(holdingFlame(base)), actor, 0, 2), Phase.Act)
+    assertEquals(shown(neither).phasePowers, Vector.empty)
+    assert(!shown(neither).legalControls.exists(_.startsWith("usePower:")))
   }
 
   test("another player, and the Festival face, are shown neither") {
@@ -585,23 +595,28 @@ import oathdigital.model._
   * Wandering Flame face), ACTION: move one secret from your board onto the
   * site your pawn is at. It costs nothing and has no once-per-turn limit.
   *
-  * A secret placed on a site rests faceup, so only a faceup secret can go, and
-  * a player with none does nothing (a facedown secret is never turned over to
-  * be placed). The engine finds the banner as the source, for its holder and
-  * on the Wandering Flame face only.
+  * A secret placed on a site rests faceup, so only a faceup secret can go. The
+  * power is usable only while the holder has one (a facedown secret is never
+  * flipped or moved). The engine finds the banner as the source, for its holder
+  * and on the Wandering Flame face only.
   */
 case object WanderingFlamePlace extends PaidAction(
     "banner.darkest-secret.wandering-flame.place", Cost.free) {
+  override def usable(ready: ReadyGame, player: PlayerId,
+      source: DecisionOptionRef): Boolean = faceUpSecrets(ready, player) > 0
+
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =
     Right(BuildOps((state, _) => place(state, player)))
 
+  private def faceUpSecrets(ready: ReadyGame, player: PlayerId): Int =
+    ready.game.current.players.find(_.player == player)
+      .fold(0)(_.board.faceUpSecrets)
+
   private def place(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     PawnMoves.pawnSite(ready, player).map { here =>
-      val faceUp = ready.game.current.players.find(_.player == player)
-        .fold(0)(_.board.faceUpSecrets)
-      if (faceUp == 0) Vector.empty
+      if (faceUpSecrets(ready, player) == 0) Vector.empty
       else Vector(Move(Piece.Secrets(1),
         PositionedLocation(Location.PlayArea(player)),
         PositionedLocation(Location.Site(here))))
@@ -819,7 +834,7 @@ In `docs/superpowers/specs/2026-09-20-powers-rulings.md`, replace:
 with:
 
 ```markdown
-| Darkest Secret: Wandering Flame, place a secret | A second `PhasePower` with its own id, holder only, no cost, unlimited. Move 1 secret from your board onto the site your pawn is at. No secret is a no-op. Implemented (slice 4a). |
+| Darkest Secret: Wandering Flame, place a secret | A second `PhasePower` with its own id, holder only, no cost, unlimited. Move 1 secret from your board onto the site your pawn is at. Not usable without a faceup secret on your board: the button is hidden, and a facedown secret is never flipped or moved (product ruling). Implemented (slice 4a). |
 ```
 
 In `docs/superpowers/specs/2026-09-20-powers-rulings.md`, replace:
@@ -833,7 +848,7 @@ with:
 ```markdown
 ### Slice 4 implementation notes
 
-- **4a:** the two Wandering Flame powers are `PaidAction`s with no cost, in `gameplay/powers/banner`, registered through `BannerFacePowers` in `PhasePowerCatalog`. `RuleSourceIndex` lists them on the Wandering Flame face and the reviewed catalog audits their ids, so the engine finds the banner as a source for its holder only while that face is up. `PhasePowerProjector` names them from `BannerFacePowers`, because a banner face has no catalog entry. Move is usable only when another site holds a secret on the site itself. It asks which site only when several qualify, and relocates by a plain `Move`, so no Travel window runs. Place moves one faceup secret from the board onto the pawn's site and does nothing without one, because a secret on a site rests faceup and a facedown secret is never turned over to be placed. Neither power is limited, because Act powers record no use. A secret placed on a site can later be taken with Take Wealth, like any resource on a site. The suites clear the secrets the first game starts on some sites.
+- **4a:** the two Wandering Flame powers are `PaidAction`s with no cost, in `gameplay/powers/banner`, registered through `BannerFacePowers` in `PhasePowerCatalog`. `RuleSourceIndex` lists them on the Wandering Flame face and the reviewed catalog audits their ids, so the engine finds the banner as a source for its holder only while that face is up. `PhasePowerProjector` names them from `BannerFacePowers`, because a banner face has no catalog entry. Move is usable only when another site holds a secret on the site itself. It asks which site only when several qualify, and relocates by a plain `Move`, so no Travel window runs. Place moves one faceup secret from the board onto the pawn's site and is usable only while the holder has a faceup secret, because a secret on a site rests faceup and a facedown secret is never flipped or moved. Neither power is limited, because Act powers record no use. A secret placed on a site can later be taken with Take Wealth, like any resource on a site. The suites clear the secrets the first game starts on some sites.
 
 ## Deferred and parked
 ```
@@ -1315,13 +1330,13 @@ with:
 In `docs/superpowers/specs/2026-09-20-powers-rulings.md`, replace:
 
 ```markdown
-- **4a:** the two Wandering Flame powers are `PaidAction`s with no cost, in `gameplay/powers/banner`, registered through `BannerFacePowers` in `PhasePowerCatalog`. `RuleSourceIndex` lists them on the Wandering Flame face and the reviewed catalog audits their ids, so the engine finds the banner as a source for its holder only while that face is up. `PhasePowerProjector` names them from `BannerFacePowers`, because a banner face has no catalog entry. Move is usable only when another site holds a secret on the site itself. It asks which site only when several qualify, and relocates by a plain `Move`, so no Travel window runs. Place moves one faceup secret from the board onto the pawn's site and does nothing without one, because a secret on a site rests faceup and a facedown secret is never turned over to be placed. Neither power is limited, because Act powers record no use. A secret placed on a site can later be taken with Take Wealth, like any resource on a site. The suites clear the secrets the first game starts on some sites.
+- **4a:** the two Wandering Flame powers are `PaidAction`s with no cost, in `gameplay/powers/banner`, registered through `BannerFacePowers` in `PhasePowerCatalog`. `RuleSourceIndex` lists them on the Wandering Flame face and the reviewed catalog audits their ids, so the engine finds the banner as a source for its holder only while that face is up. `PhasePowerProjector` names them from `BannerFacePowers`, because a banner face has no catalog entry. Move is usable only when another site holds a secret on the site itself. It asks which site only when several qualify, and relocates by a plain `Move`, so no Travel window runs. Place moves one faceup secret from the board onto the pawn's site and is usable only while the holder has a faceup secret, because a secret on a site rests faceup and a facedown secret is never flipped or moved. Neither power is limited, because Act powers record no use. A secret placed on a site can later be taken with Take Wealth, like any resource on a site. The suites clear the secrets the first game starts on some sites.
 ```
 
 with:
 
 ```markdown
-- **4a:** the two Wandering Flame powers are `PaidAction`s with no cost, in `gameplay/powers/banner`, registered through `BannerFacePowers` in `PhasePowerCatalog`. `RuleSourceIndex` lists them on the Wandering Flame face and the reviewed catalog audits their ids, so the engine finds the banner as a source for its holder only while that face is up. `PhasePowerProjector` names them from `BannerFacePowers`, because a banner face has no catalog entry. Move is usable only when another site holds a secret on the site itself. It asks which site only when several qualify, and relocates by a plain `Move`, so no Travel window runs. Place moves one faceup secret from the board onto the pawn's site and does nothing without one, because a secret on a site rests faceup and a facedown secret is never turned over to be placed. Neither power is limited, because Act powers record no use. A secret placed on a site can later be taken with Take Wealth, like any resource on a site. The suites clear the secrets the first game starts on some sites.
+- **4a:** the two Wandering Flame powers are `PaidAction`s with no cost, in `gameplay/powers/banner`, registered through `BannerFacePowers` in `PhasePowerCatalog`. `RuleSourceIndex` lists them on the Wandering Flame face and the reviewed catalog audits their ids, so the engine finds the banner as a source for its holder only while that face is up. `PhasePowerProjector` names them from `BannerFacePowers`, because a banner face has no catalog entry. Move is usable only when another site holds a secret on the site itself. It asks which site only when several qualify, and relocates by a plain `Move`, so no Travel window runs. Place moves one faceup secret from the board onto the pawn's site and is usable only while the holder has a faceup secret, because a secret on a site rests faceup and a facedown secret is never flipped or moved. Neither power is limited, because Act powers record no use. A secret placed on a site can later be taken with Take Wealth, like any resource on a site. The suites clear the secrets the first game starts on some sites.
 - **4b:** Mob is `PeoplesFavorMob`, a contribution registered through `BannerFacePowers` in `WalkerPowerCatalog`. It is a `Transform` at `SearchPlayAdviser` that sets `PlacementRules.siteDiscardFirst`, applicable while the playing player holds the People's Favor banner on the Mob face, and `RuleSourceIndex` lists it on that face. It reaches a Search play and a facedown-adviser play alike and composes with Silver Tongue's limit. With room the player is offered "Discard nothing" beside the cards. At a full site the play is legal only with a discard. Nothing is asked at an empty site, or where no card may be discarded. The generic discard rules decide the cards: a locked card, an intact edifice and a card that prints a selected power are never offered, and a ruined edifice goes back to the edifice deck. No engine change was needed.
 ```
 
@@ -1349,9 +1364,9 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 Each has a recommended default. The plan builds the default, and each is a small change if the answer differs.
 
-1. **Wandering Flame, move, when no other site holds a secret on the site itself.** Built: the power is not usable, so the client shows no button and a command that names it is refused, because there is nothing to choose. The general rule "an effect with nothing to do is a no-op" and the place power's ruling (a use with no secret is a no-op) point the other way. Recommended: keep as built, since a free unlimited button that can never do anything is noise. If a usable no-op is wanted, drop the `usable` override in `WanderingFlameMove`.
-2. **Wandering Flame, place a secret, with no faceup secret.** Built as ruled: usable, and a no-op. The holder therefore always sees the button, even with nothing to place. Recommended: keep as ruled. If the button is noisy in play, hide it with a `usable` override that reads `board.faceUpSecrets`, which is one line.
-3. **Which secret the place power moves.** Only a faceup secret can go, because a secret resting on a site is faceup (the engine moves faceup secrets only onto a site) and a facedown secret is never turned over to be placed. A player with only facedown secrets does nothing. Recommended: as built, in line with the cost rules and with CR p. 26, where facedown secrets do not count for the banner. The alternative is to flip a facedown secret faceup first and place it.
+1. **Wandering Flame, move, when no other site holds a secret on the site itself.** Built: the power is not usable, so the client shows no button and a command that names it is refused, because there is nothing to choose. The general rule "an effect with nothing to do is a no-op" points the other way. The product owner's answer to question 2 applies the same reading to the place power, so both powers are hidden when they have nothing to do. Recommended: keep as built. If a usable no-op is wanted, drop the `usable` override in `WanderingFlameMove`.
+2. **Answered: Wandering Flame, place a secret, with no faceup secret.** The product owner: hide the button. The power is not usable when the holder has no faceup secret on their board, and the projector shows no button. The rulings row said "No secret is a no-op", and the row now says not usable. The move power stays not usable when no other site holds a secret on the site itself.
+3. **Answered: which secret the place power moves.** The product owner: "Banner should only have faceup secrets". Read as: only a faceup secret is moved onto the site, a facedown secret is never flipped or moved, and site secrets are always faceup. A player with only facedown secrets cannot use the power (question 2). Another reading is possible, that the Banner of the Darkest Secret itself counts only faceup secrets, which is CR p. 26 and how the engine already counts it (`BannerRules.playerResources`). It does not conflict with this reading, and no code follows from it in this slice.
 4. **A single candidate site.** Built: with exactly one other site holding a secret, the pawn goes there and no question is asked (Brass Horse's precedent). Whistle and Magic Carpet always ask. Recommended: as built, one click fewer. The alternative is to always ask, so the player can see where the flame leads.
 5. **Which secrets make a site a destination.** As ruled, a secret on the site itself. A secret resting on a card at the site, on a relic, or on a banner does not count, and the pawn's own site is never a destination even when it holds one (the ruling says "any other site"). Recommended: as ruled. Example: the holder places a secret on their own site with the place power, which makes the site a destination for other holders of the banner (there is one banner) but never for the holder.
 6. **Take Wealth and a secret placed on a site.** Take Wealth takes a favor or secret from the site's tokens whatever put it there, so a secret the holder places is available to anyone at that site who could Take Wealth there (no enemy pawn present), once per turn each. Recommended: accept, since the engine treats site tokens uniformly and the printed Wandering Flame text gives no exception. The alternative is a separate token that Take Wealth ignores, which needs a new resource location.
