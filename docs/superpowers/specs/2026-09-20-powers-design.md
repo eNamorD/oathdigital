@@ -4,6 +4,8 @@
 
 > Slice 3 (battle plans) is planned in four sub-slices: see its [plan](../plans/2026-09-20-powers-slice-3-battle-plans.md). Implemented so far: 3a to 3d, so slice 3 is complete.
 
+> Slice 4 (banner faces) is planned in two sub-slices, 4a Wandering Flame and 4b Mob: see its [plan](../plans/2026-09-20-powers-slice-4-banner-faces.md). Implemented so far: 4a.
+
 ## Goal and scope
 
 Implement a limited, first batch of powers on the procedure walker, each declared solely as a `ContributingPower` (or, for ACTION, WAKE and REST powers, a `PhasePower`) that returns existing Operations. Where that was not possible, the gap is an engine change listed here.
@@ -115,11 +117,13 @@ Approach: foundations first, then vertical slices by mechanism. Alternatives rej
 | 1d. Movement (implemented) | Whistle, Brass Horse, Magic Carpet | none beyond accepting `Reveal` at a regional discard |
 | 2. Modifiers, restrictions, triggers | Augury, Truthful Harp, Tents, Forest Paths, Cup of Plenty, Rowdy Pub, Dragonskin Drum, Relic Worship, Knights Errant; Toll Roads, Grasping Vines, Circlet, Oaken and Rotting Fortress; Wild Cry, Welcoming Party, Gossip | E6 (`CardPlayed` split), E7, E9 |
 | 3. Battle plans (implemented) | Mercenaries, Wrestlers, Warning Signals, Towering and Cracked Rampart, Fearsome Shield, Battle Honors, Sticky Fire; Gleaming Armor | E8 |
-| 4. Banner faces | Wandering Flame (move, place a secret), Mob | E3's banner source, E6's `PlacementRules` |
+| 4. Banner faces (4a implemented) | Wandering Flame (move, place a secret), Mob | E3's banner source, E6's `PlacementRules`; the source index lists the faces' powers |
 
 Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). Slice 1b is planned: see its [plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md). Slice 1c is planned: see its [plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md). Slice 1d is planned: see its [plan](../plans/2026-09-20-powers-slice-1d-movement.md). Slice 2 is planned in six sub-slices: see its [plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md). The order above is the recommended one.
 
 Slice 3 is planned in four sub-slices: 3a the rename of `CampaignResult.victorious`, 3b the plan window (E8) with the four plans already in the code, 3c the plans that change the dice or pay after the Campaign, and 3d Warning Signals, Sticky Fire and Gleaming Armor. See its [plan](../plans/2026-09-20-powers-slice-3-battle-plans.md).
+
+Slice 4 is planned in two sub-slices: 4a Wandering Flame, which also lets the source index and the projector see banner faces, and 4b Mob. See its [plan](../plans/2026-09-20-powers-slice-4-banner-faces.md).
 
 ## Walker shapes for powers
 

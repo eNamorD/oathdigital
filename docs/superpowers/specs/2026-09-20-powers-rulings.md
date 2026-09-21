@@ -187,9 +187,13 @@ Off-turn settlement for a defender's plan payment: favor moves directly to the m
 
 | Power | Ruling |
 | --- | --- |
-| Darkest Secret: Wandering Flame, move | An Act `PhasePower` sourced from the banner, usable by the holder only, no cost, unlimited. Place your pawn at any other site with a secret on the site itself (`SiteState.tokens.secrets`), not on its cards. A plain `Move`, not Travel. |
-| Darkest Secret: Wandering Flame, place a secret | A second `PhasePower` with its own id, holder only, no cost, unlimited. Move 1 secret from your board onto the site your pawn is at. No secret is a no-op. |
+| Darkest Secret: Wandering Flame, move | An Act `PhasePower` sourced from the banner, usable by the holder only, no cost, unlimited. Place your pawn at any other site with a secret on the site itself (`SiteState.tokens.secrets`), not on its cards. A plain `Move`, not Travel. Implemented (slice 4a). |
+| Darkest Secret: Wandering Flame, place a secret | A second `PhasePower` with its own id, holder only, no cost, unlimited. Move 1 secret from your board onto the site your pawn is at. Not usable without a faceup secret on your board: the button is hidden, and a facedown secret is never flipped or moved (product ruling). Implemented (slice 4a). |
 | People's Favor: Mob | Holder only. When you play a card to a site you may first discard a card from the site's card list. It is enabled through `PlacementRules.siteDiscardFirst`. At a full site, where a play is normally impossible, it makes the play legal. The card goes through the standard discard: facedown to the next region's discard, favor to the suit bank, secrets to you facedown. `DiscardRestrictions` decide what is discardable, so an intact edifice is refused as locked. |
+
+### Slice 4 implementation notes
+
+- **4a:** the two Wandering Flame powers are `PaidAction`s with no cost, in `gameplay/powers/banner`, registered through `BannerFacePowers` in `PhasePowerCatalog`. `RuleSourceIndex` lists them on the Wandering Flame face and the reviewed catalog audits their ids, so the engine finds the banner as a source for its holder only while that face is up. `PhasePowerProjector` names them from `BannerFacePowers`, because a banner face has no catalog entry. Move is usable only when another site holds a secret on the site itself. It asks which site only when several qualify, and relocates by a plain `Move`, so no Travel window runs. Place moves one faceup secret from the board onto the pawn's site and is usable only while the holder has a faceup secret, because a secret on a site rests faceup and a facedown secret is never flipped or moved. Neither power is limited, because Act powers record no use. A secret placed on a site can later be taken with Take Wealth, like any resource on a site. The suites clear the secrets the first game starts on some sites.
 
 ## Deferred and parked
 

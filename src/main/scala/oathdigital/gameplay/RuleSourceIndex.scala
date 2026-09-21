@@ -153,7 +153,9 @@ object RuleSourceIndex {
       IndexedRuleSource(
         RuleSourceRef.Banner(Banner.DarkestSecret.key),
         current.banners.darkestSecret.active match {
-          case DarkestSecretFace.WanderingFlame => Vector.empty
+          case DarkestSecretFace.WanderingFlame => ids(Vector(
+            "banner.darkest-secret.wandering-flame.move",
+            "banner.darkest-secret.wandering-flame.place"))
           case DarkestSecretFace.Festival =>
             ids(Vector("banner.darkest-secret.festival"))
         },

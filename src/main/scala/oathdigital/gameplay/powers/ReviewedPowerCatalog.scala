@@ -12,6 +12,8 @@ object ReviewedPowerCatalog {
   private val syntheticIds = Set(
     PowerId("banner.peoples-favor.grand-council"),
     PowerId("banner.darkest-secret.festival"),
+    PowerId("banner.darkest-secret.wandering-flame.move"),
+    PowerId("banner.darkest-secret.wandering-flame.place"),
     PowerId("foundation.altered"))
 
   val powers: Vector[Power] =

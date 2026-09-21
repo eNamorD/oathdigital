@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.PhasePowerCatalog
+import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.model._
 import oathdigital.protocol.projection.PhasePowerProjection
 
@@ -50,6 +51,10 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
       catalog.edifices.find(_.id.value == id.value).flatMap(e =>
         Vector(e.intact, e.ruined).flatMap(face =>
           face.powers.find(_.id == power).map(face.name -> _)).headOption)
-    case _ => None // Banner faces get their labels with the slice that uses them.
+    case PowerSourceRef.Banner(_) => BannerFacePowers.printed(power).map {
+      case (name, text) =>
+        name -> oathdigital.catalog.CatalogPower(power, persistent = false, text)
+    }
+    case _ => None
   }
 }
