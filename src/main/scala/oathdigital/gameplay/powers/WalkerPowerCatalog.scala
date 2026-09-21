@@ -43,6 +43,7 @@ object WalkerPowerCatalog {
       FaithfulFriend.forCatalog(catalog).toVector ++
       Garrison.forCatalog(catalog).toVector ++
       FamilyHeirloom.forCatalog(catalog).toVector ++
+      ActionModifiers.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
       Dazzle.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
 }

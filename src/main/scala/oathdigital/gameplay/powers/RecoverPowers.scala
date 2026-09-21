@@ -15,7 +15,8 @@ object RecoverPowers {
   private val modifier = Some(MajorActionType.Recover)
 
   object RelicWorship extends ReviewedPower("denizen.relic-worship", modifier,
-    Vector(ReviewedHandler.automatic(PowerWindow.RecoverBeforeFirstRoll)))
+    Vector(ReviewedHandler.selected(PowerWindow.RecoverBeforeFirstRoll,
+      implemented = true)))
   object E13Ruined extends ReviewedPower("edifice.e13.ruined", modifier,
     Vector(ReviewedHandler.automatic(PowerWindow.RecoverBeforeFirstRoll)))
   object E17Intact extends ReviewedPower("edifice.e17.intact", modifier,
