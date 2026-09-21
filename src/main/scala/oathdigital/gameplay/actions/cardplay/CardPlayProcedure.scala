@@ -19,6 +19,13 @@ object CardPlayProcedure {
   private val adviserFaceUp = DecisionOptionRef.Button("adviser-faceup")
   private val adviserFaceDown = DecisionOptionRef.Button("adviser-facedown")
 
+  /** The option that plays to a site without discarding a site card first,
+    * offered only when `PlacementRules.siteDiscardFirst` makes the discard
+    * optional.
+    */
+  val noReplacement: DecisionOption = DecisionOption.Button(
+    DecisionOptionRef.Button("replace:none"), "Discard nothing")
+
   private def label(ref: DecisionOptionRef.Button): String = ref match {
     case `discard` => "Discard"
     case `site` => "Play at site"
@@ -118,9 +125,10 @@ object CardPlayProcedure {
           case SearchPlacement.Adviser(Orientation.FaceDown, _) => adviserFaceDown
         }
         (ref, choice.placement,
-          choice.replacements.map(id => replacementOption(id) -> id))
+          choice.replacements.map(id => replacementOption(id) -> id),
+          choice.replacementOptional)
       }
-      val options = candidates.map { case (ref, _, _) =>
+      val options = candidates.map { case (ref, _, _, _) =>
         DecisionOption.Button(ref, label(ref))
       }
       val decisionId = s"cardplay.place.${card.kind}.${card.value}"
@@ -132,25 +140,31 @@ object CardPlayProcedure {
             value
         }
         candidates.find(pair => ref.contains(pair._1)).toVector.flatMap {
-          case (_, placement, replacements) =>
+          case (_, placement, replacements, optional) =>
             val replacementId = s"cardplay.replace.${card.kind}.${card.value}"
             val choice = if (replacements.isEmpty) Vector.empty else Vector(
               Decide(replacementId, actor, DecisionQuery.ChooseOne(
-                replacements.map(_._1),
+                (if (optional) Vector(noReplacement) else Vector.empty) ++
+                  replacements.map(_._1),
                 heading = Some("Choose a card to discard"))))
             val apply = BuildOps((state, pending) => {
               val chosen = if (replacements.isEmpty) Right(placement)
               else pending.answered.collectFirst {
                 case Answered(`replacementId`,
                     DecisionAnswer.ChooseOneAnswer(value), _) => value
-              }.flatMap(value => replacements.find(_._1.ref == value)
-                .map(_._2)).toRight(OathViolation.InvalidSearchPlacement(
-                  "replacement was not selected")).map { id => placement match {
-                    case _: SearchPlacement.Site => SearchPlacement.Site(Some(id))
-                    case value: SearchPlacement.Adviser =>
-                      value.copy(replace = Some(id))
-                    case SearchPlacement.Discard => SearchPlacement.Discard
-                  }}
+              }.toRight(OathViolation.InvalidSearchPlacement(
+                "replacement was not selected")).flatMap { value =>
+                if (optional && value == noReplacement.ref) Right(placement)
+                else replacements.find(_._1.ref == value).map(_._2)
+                  .toRight(OathViolation.InvalidSearchPlacement(
+                    "replacement was not selected")).map { id => placement match {
+                      case _: SearchPlacement.Site =>
+                        SearchPlacement.Site(Some(id))
+                      case value: SearchPlacement.Adviser =>
+                        value.copy(replace = Some(id))
+                      case SearchPlacement.Discard => SearchPlacement.Discard
+                    }}
+              }
               chosen.flatMap(CardPlay.plannedOperations(catalog, state, actor,
                 card, _, legacyOrigin, rules))
             }, restrictions = (_, _) => Vector(

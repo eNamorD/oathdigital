@@ -17,8 +17,13 @@ object CardPlay {
     case object TemporaryHand extends Origin
   }
 
+  /** One legal placement. `replacements` are the cards the play may discard
+    * first. They are required when the placement is otherwise impossible, and
+    * `replacementOptional` says the play is also legal with no discard (a
+    * site with room, under `PlacementRules.siteDiscardFirst`).
+    */
   final case class Choice(placement: SearchPlacement,
-      replacements: Vector[CardId])
+      replacements: Vector[CardId], replacementOptional: Boolean = false)
 
   def legalChoices(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
@@ -48,7 +53,11 @@ object CardPlay {
             value.id == card).map(_.id)
         case SearchPlacement.Discard => Vector.empty
       }
-      val replacements = if (direct) Vector.empty else candidateIds.filter { id =>
+      // A play to a site may be preceded by a discard even where it has room.
+      val optional = direct && rules.siteDiscardFirst &&
+        placement.isInstanceOf[SearchPlacement.Site]
+      val replacements = if (direct && !optional) Vector.empty
+      else candidateIds.filter { id =>
         val selected = placement match {
           case _: SearchPlacement.Site => SearchPlacement.Site(Some(id))
           case value: SearchPlacement.Adviser => value.copy(replace = Some(id))
@@ -57,7 +66,8 @@ object CardPlay {
         plannedOperations(catalog, ready, actor, card, selected,
           origin, rules).exists(permitted)
       }
-      Option.when(direct || replacements.nonEmpty)(Choice(placement, replacements))
+      Option.when(direct || replacements.nonEmpty)(Choice(placement,
+        replacements, replacementOptional = optional && replacements.nonEmpty))
     }
   }
 
@@ -134,7 +144,7 @@ object CardPlay {
         site <- ready.game.current.map.sites.get(siteId)
           .toRight(InvalidSearchPlacement("pawn site is not in play"))
         replacement <- validateSiteReplacement(catalog, siteId, site,
-          definition.suit, replace)
+          definition.suit, replace, rules)
         sitePlan <- sitePlan(catalog, ready, origin, player, id, siteId,
           definition.suit, replacement)
       } yield sitePlan
@@ -363,11 +373,24 @@ object CardPlay {
   }
 
   private def validateSiteReplacement(catalog: ExecutableCatalog, siteId: SiteId,
-      site: SiteState, suit: Suit, replace: Option[CardId])
+      site: SiteState, suit: Suit, replace: Option[CardId],
+      rules: PlacementRules)
       : Either[OathViolation, Option[SiteDenizenState]] = {
     val capacity = catalog.sites.find(_.id == siteId).map(_.capacity).getOrElse(0)
     val full = site.denizens.size >= capacity
-    if (!full && replace.isEmpty) Right(None)
+    if (rules.siteDiscardFirst) replace match {
+      // Any site, at any capacity: the discard is optional with room and
+      // required without, and it may name any card of the site's card list.
+      // `DiscardRestrictions` decide what may actually be discarded: a locked
+      // card, an intact edifice and an active modifier may not.
+      case None if full => Left(InvalidSearchPlacement(
+        "a full site requires a site-card discard"))
+      case None => Right(None)
+      case Some(id) => site.denizens.find(_.id == id).toRight(
+        InvalidSearchPlacement("replacement card is not at the site"))
+        .map(Some(_))
+    }
+    else if (!full && replace.isEmpty) Right(None)
     else if (!full) Left(InvalidSearchPlacement(
       "site replacement is allowed only at a full Homeland"))
     else {
