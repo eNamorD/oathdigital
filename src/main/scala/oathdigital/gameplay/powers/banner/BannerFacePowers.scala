@@ -8,7 +8,9 @@ import oathdigital.model.PowerId
   * [[oathdigital.gameplay.powers.action.MovementPowers]] and the other groups.
   *
   * A banner face has no catalog entry, so the name and text a player sees for
-  * each of its phase powers are declared here.
+  * each of its phase powers are declared here. The texts are the printed ones.
+  * The place power covers the printed "on your site" half; the "on the banner"
+  * half is the generic Place Banner Resource action.
   */
 object BannerFacePowers {
   val phasePowers: Vector[PhasePower] =
@@ -20,9 +22,10 @@ object BannerFacePowers {
 
   private val texts: Vector[(PowerId, String, String)] = Vector(
     (WanderingFlameMove.id, "Wandering Flame: move",
-      "ACTION: Place your pawn at any other site with a secret on it."),
-    (WanderingFlamePlace.id, "Wandering Flame: place a secret",
-      "ACTION: Move a secret from your board to the site your pawn is at."))
+      "ACTION: Place your pawn at a site with a secret on it. You may do this " +
+        "multiple times per turn."),
+    (WanderingFlamePlace.id, "Wandering Flame: place a secret on your site",
+      "ACTION: Place a secret on the banner or on your site."))
 
   /** The name and the text of a banner face's phase power. */
   def printed(id: PowerId): Option[(String, String)] =

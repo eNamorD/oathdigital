@@ -143,6 +143,40 @@ leaked. Keep the raw loopback development event log separate.
   moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
   lines, with regression risk in the Negotiation and Campaign suites.
 
+- [ ] **Deferred: Wandering Flame as one Place Banner Resource action.** The face
+  prints one action, "Place a secret on the banner or on your site". It is two
+  today: the generic Place Banner Resource action puts secrets on the banner, and
+  the `banner.darkest-secret.wandering-flame.place` power puts one faceup secret
+  on the pawn's site. Folding the site into the banner action's destination would
+  make it one action with a destination decision and an amount, as printed. The
+  Grand Council and Festival faces still have synthetic ids and no behaviour.
+
+- [ ] **Deferred: Mercenaries' player-chosen sign.** Mercenaries adds attack dice
+  when its user attacks and removes defense dice from the attacker when it
+  defends. The card lets the player choose the sign, and the plan fixes it by side.
+  Choosing it needs a decision inside the plan and a preview that shows both.
+
+- [ ] **Deferred: plan-restricting powers, Bag of Siegeworks and Empire defenders.**
+  Peace Envoy and other powers that restrict which plans a side may choose have
+  no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
+  in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
+  catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
+  3b and go with the reviewed catalog.
+
+- [ ] **Deferred: defender-side activation of non-plan modifiers.** A modifier
+  is selected at the start of the player's own major action, so a defender cannot
+  use one during a Campaign. Battle plans cover the card texts in scope (a plan is
+  chosen inside the Campaign), and Battle Honors already works for a defender for
+  that reason.
+
+- [ ] **Deferred: record a bandit's applied battle plan as an event.** A player's
+  plan is a recorded answer that later windows read. A bandit defender applies its
+  cost-free plans without asking, so `CampaignPlanApplication` records the use as
+  a `ModifyDicePool` marker under `campaign.plan-applied.<kind>.<id>`. The marker
+  shows in the journal as a dice-pool change and suites that count a Campaign's
+  `ModifyDicePool` operations see it. A dedicated recorded operation would say
+  what happened.
+
 ### Phase - Empire and campaign continuity
 
 After the all-Exile alpha, implement Chancellor/Citizen roles, Imperial forces,

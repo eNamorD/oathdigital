@@ -29,7 +29,7 @@ class BannerFaceProjectionSuite extends munit.FunSuite {
     assertEquals(projected.phasePowers.map(p =>
       (p.powerId, p.source.kind, p.source.id, p.name)), Vector(
       (move, "banner", "darkest-secret", "Wandering Flame: move"),
-      (place, "banner", "darkest-secret", "Wandering Flame: place a secret")))
+      (place, "banner", "darkest-secret", "Wandering Flame: place a secret on your site")))
     assert(projected.phasePowers.forall(_.rulesText.trim.nonEmpty))
     assert(projected.legalControls.contains(s"usePower:$move:darkest-secret"))
     assert(projected.legalControls.contains(s"usePower:$place:darkest-secret"))

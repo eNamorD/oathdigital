@@ -115,22 +115,18 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
     assertEquals(site.replacements, Vector[CardId](kept))
   }
 
-  test("a ruined edifice may be discarded, and it goes back to the edifice deck") {
+  test("a ruined edifice is not a denizen, so it is not offered either") {
     val Vector(card, kept) = plain(initialReady).take(2)
     val hall = EdificeId("E16")
-    val ruined = DecisionOptionRef.Button("replace:edifice:E16")
     val (built, actor, siteId) = staged(card, Vector(denizen(kept),
       EdificeState(hall, EdificeSide.Ruined, Tokens.empty)))
     val ready = ruledByActor(built, siteId)
+    val site = choices(ready, actor, card,
+      PlacementRules.default.withSiteDiscardFirst).get
+    assertEquals(site.replacements, Vector[CardId](kept))
     val (tree, asked) = toDiscardDecision(ready, actor, card)
     assertEquals(options(ready, tree, asked, powers).toSet,
-      Set[DecisionOptionRef](noReplacement, DecisionOptionRef.Denizen(kept),
-        ruined))
-    val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
-      ruined, actor).asInstanceOf[WalkerOutcome.Finished].treeless
-    assertEquals(done.game.current.map.sites(siteId).denizens.map(_.id),
-      Vector[CardId](kept, card))
-    assertEquals(done.game.current.commonCards.edificeDeck.last, hall)
+      Set[DecisionOptionRef](noReplacement, DecisionOptionRef.Denizen(kept)))
   }
 
   test("the permission composes with an adviser limit through the walker") {

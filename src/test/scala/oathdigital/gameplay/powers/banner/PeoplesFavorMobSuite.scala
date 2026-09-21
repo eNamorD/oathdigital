@@ -164,6 +164,20 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
     assertEquals(choice.replacements, Vector[CardId](kept))
   }
 
+  test("a ruined edifice is not offered either: Mob discards a denizen") {
+    val kept = denizensOf(Suit.Hearth).head
+    val hall = EdificeId("E16")
+    val (built, who, site) = PlacementFixture.staged(played,
+      Vector(PlacementFixture.denizen(kept),
+        EdificeState(hall, EdificeSide.Ruined, Tokens.empty)))
+    val ready = PlacementFixture.ruledByActor(built, site)
+    val choice = CardPlay.legalChoices(catalog, holdingFavor(ready), who,
+      played, CardPlay.Origin.TemporaryHand,
+      oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
+      .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
+    assertEquals(choice.replacements, Vector[CardId](kept))
+  }
+
   test("it applies to a facedown adviser played to a site as well") {
     val kept = denizensOf(Suit.Hearth).head
     val ready = asAdviser(staged(Vector(kept)), played, Orientation.FaceDown)
