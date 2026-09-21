@@ -19,7 +19,8 @@ import oathdigital.model._
   */
 class TravelProcedureSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
-  private val powers: WalkerPowers = WalkerPowerCatalog.default(catalog)
+  private val powers: WalkerPowers = WalkerPowers.selected(
+    WalkerPowerCatalog.default(catalog), Vector.empty)
 
   private def site(power: String): SiteId = catalog.sites.find(
     _.handlers.exists(_.endsWith(s".$power"))).get.id

@@ -97,6 +97,12 @@ trait ContributingPower {
     * its `PowerId`.
     */
   def shouldIgnore(other: ContributingPower): Boolean = false
+  /** As `shouldIgnore`, decided with the context this power is gathered in,
+    * so it can ignore `other` for the node at hand and not for another.
+    * The collector calls this one.
+    */
+  def ignores(ctx: PowerCtx, other: ContributingPower): Boolean =
+    shouldIgnore(other)
   def resolution: PowerResolution = PowerResolution.Automatic
 }
 

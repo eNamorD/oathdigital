@@ -114,16 +114,18 @@ object TravelProcedure {
         build(catalog, state, activePlayer,
           Vector(DecisionOptionRef.Site(destination)))
           .flatMap(WalkerSimulation.run(_, state, powers))
-          .toOption.flatMap(supplySpent(_, activePlayer)).map(destination -> _)
+          .toOption.map(operations =>
+            destination -> supplySpent(operations, activePlayer))
       }
     }
 
   /** The Supply a completed Travel actually spent, read off the operations the
     * walk recorded rather than recomputed: after the fold, the pay node is
-    * whatever the surviving transforms left it as.
+    * whatever the surviving transforms left it as. A Travel a power made free
+    * has no payment left, and spent none.
     */
   private def supplySpent(operations: Vector[CoreOperation], actor: PlayerId)
-      : Option[Int] = operations.collect {
+      : Int = operations.collect {
     case SpendSupply(player, amount, _) if player == actor => amount
-  }.lastOption
+  }.lastOption.getOrElse(0)
 }
