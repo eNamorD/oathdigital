@@ -1,6 +1,6 @@
 # Powers Batch 1: Engine Changes and Slicing
 
-> Status: design approved 2026-09-20. Slice 0 (E1 to E5), slice 1a, slice 1b, slice 1c, slice 1d and slice 2a are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md), the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), the [slice 1b plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md) the [slice 1c plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md) the [slice 1d plan](../plans/2026-09-20-powers-slice-1d-movement.md) and the [slice 2 plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md) (sub-slice 2a). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
+> Status: design approved 2026-09-20. Slice 0 (E1 to E5), slice 1a, slice 1b, slice 1c, slice 1d, slice 2a and slice 2b are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md), the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), the [slice 1b plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md) the [slice 1c plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md) the [slice 1d plan](../plans/2026-09-20-powers-slice-1d-movement.md) and the [slice 2 plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md) (sub-slices 2a and 2b). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
 
 ## Goal and scope
 
@@ -92,7 +92,7 @@ Campaign plans move from the handler-id registry in `CampaignPlans.plan` into co
 
 ### E9. Enclosing action on `PowerCtx`
 
-Knights Errant nests a Campaign inside Muster and needs a hook on `CampaignCost` that applies only to that nested Campaign. `PowerCtx` does not expose answered decisions. If `nodePath` does not identify the enclosing action, `PowerCtx` gains the enclosing action's `ProcedureRef`. This is checked at plan time.
+Knights Errant nests a Campaign inside Muster and needs a hook on `CampaignCost` that applies only to that nested Campaign. `PowerCtx` does not expose answered decisions. `nodePath` does not identify the enclosing action, so `PowerCtx` gains the enclosing action's `ProcedureRef`. It was needed for Welcoming Party's origin and Knights Errant.
 
 ## Slicing
 
@@ -140,5 +140,5 @@ These are unverified assumptions. Each plan checks its own:
 - Whether any structural fingerprint covers window keys (E6). No: fingerprints cover catalog handler ids and structure only.
 - Where Muster and Trade enforce the empty-denizen rule today.
 - Whether `Discard.Relic`'s `SetAsideRelics` is the discarded relic pile the rules mean, and how `ensureEmptyTokens` treats a relic still holding secrets.
-- The format of `PowerCtx.nodePath` (E9).
+- The format of `PowerCtx.nodePath` (E9). `nodePath` is a vector of child indices and names no action, and a walk's state has no procedure; `PowerCtx.procedure` names it (E9).
 - Fae Merchant's taken relic is facedown, in line with Dowsing Sticks and Family Heirloom. The product owner confirmed this for slice 1b.

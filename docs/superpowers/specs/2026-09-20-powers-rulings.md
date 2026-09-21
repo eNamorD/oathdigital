@@ -110,7 +110,7 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 
 ## Slice 2: modifiers
 
-All are selected at the start of the major action, and once selected they apply for free.
+All are selected at the start of the major action. A modifier's cost is paid at the very start of the action, whether or not the modifier then has an effect, and the costs of all selected modifiers must be payable together (refused at selection otherwise). Once selected they apply for free.
 
 | Card | Ruling |
 | --- | --- |
@@ -140,13 +140,14 @@ For both Fortress faces, a Raid removes the protected player from the defender d
 
 | Card | Ruling |
 | --- | --- |
-| 189 Wild Cry | Selected modifier. When you play a beast denizen faceup (to a site or as a faceup adviser), gain 1 Supply and 2 warbands. Facedown plays do not trigger it. A card does not trigger on its own play. |
-| 50 Welcoming Party | Selected modifier. When you play a denizen that is not a facedown adviser, gain 1 favor from the Hearth bank with `Gain.Favor`. A card does not trigger on its own play. |
-| 99 Gossip | Persistent, faceup, adviser-only. When any other player places an adviser facedown, a denizen or a Vision, the holder gains 1 favor from the Discord bank with `Gain.Favor`. |
+| 189 Wild Cry | Implemented (slice 2b). Selected modifier. When you play a beast denizen faceup (to a site or as a faceup adviser), gain 1 Supply and 2 warbands. Facedown plays do not trigger it. A card does not trigger on its own play. |
+| 50 Welcoming Party | Implemented (slice 2b). Selected modifier. If you play a denizen face up when first drawn, gain 1 favor from the Hearth bank with `Gain.Favor`. A card does not trigger on its own play. |
+| 99 Gossip | Implemented (slice 2b). Persistent, faceup, adviser-only. When any other player places an adviser facedown, a denizen or a Vision, the holder gains 1 favor from the Discord bank with `Gain.Favor`. |
 
 ### Slice 2 implementation notes
 
 - **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. Generic discard rules (product decisions): a faceup locked adviser, an intact edifice and a card that prints a power selected for the running action cannot be discarded by any path, and `DiscardRestrictions` is where that is enforced. A Homeland replacement discards an edifice and no longer buries it. An intact edifice is refused by the generic rule for Mob's discard too. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
+- **2b:** every selected modifier's cost is paid at the start of its action and all are validated together at selection (`ContributingPower.selectionPayments`); Catacombs states its secret. `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party is a denizen played faceup straight from the Search's draw, to a site or as a faceup adviser; a facedown placement and a card that was already a facedown adviser do not trigger it. Wild Cry cannot be discarded while selected. `PowerCtx.procedure` exists (E9).
 
 ## Slice 3: Campaign battle plans
 
