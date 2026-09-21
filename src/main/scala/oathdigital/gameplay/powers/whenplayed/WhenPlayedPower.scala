@@ -21,12 +21,12 @@ trait WhenPlayedPower extends ContributingPower {
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   final override def applicable(ctx: PowerCtx): Boolean = ctx.operation match {
-    case CardPlayed(card, _) => card == cardId
+    case CardPlayedFaceup(card, _) => card == cardId
     case _ => false
   }
 
   final def contributions: Map[PowerWindow, Vector[Contribution]] =
-    Map(PowerWindow.ActionCardPlayed -> Vector(Transform((ctx, children) =>
+    Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
       children ++ effect(ctx))))
 }
 

@@ -199,9 +199,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       case _: Sequence => throw UnencodableOperation(InvalidValue(
         "$.payload.ops", "a Sequence node is a tree-control composite over " +
           "the non-sealed Operation type, never a recorded delta"))
-      case _: CardPlayed => throw UnencodableOperation(InvalidValue(
-        "$.payload.ops", "a CardPlayed hook is a tree-control composite, " +
-          "never a recorded delta"))
+      case _: CardPlayedFaceup | _: CardPlayedFacedown =>
+        throw UnencodableOperation(InvalidValue(
+          "$.payload.ops", "a CardPlayed hook is a tree-control composite, " +
+            "never a recorded delta"))
     }
 
   private def encodePowerTiming(timing: PowerTiming): String = timing match {

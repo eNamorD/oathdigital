@@ -15,12 +15,12 @@ final case class Dazzle private (cardId: DenizenId,
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   override def applicable(ctx: PowerCtx): Boolean = ctx.operation match {
-    case CardPlayed(card, _) => card == cardId
+    case CardPlayedFaceup(card, _) => card == cardId
     case _ => false
   }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
-    Map(PowerWindow.ActionCardPlayed -> Vector(Transform((ctx, children) =>
+    Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
       children :+ BuildOps((ready, _) => effects(ready, ctx.activePlayer),
         restrictions = (_, _) => Vector(
         new DiscardRestrictions(catalog, ctx.activePlayer))))))

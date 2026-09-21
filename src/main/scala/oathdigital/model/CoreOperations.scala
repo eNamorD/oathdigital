@@ -689,10 +689,22 @@ final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
 final case class Sequence(override val children: Vector[Operation],
     override val window: Option[PowerWindow] = None) extends CoreOperation
 
-/** Semantic played-card window. Powers supply its children; no hook is a delta. */
-final case class CardPlayed(card: WorldCardId, resultingSource: RuleSourceRef)
+/** Semantic window for a card played faceup, to a site or as a faceup
+  * adviser. Powers supply its children; no hook is a delta.
+  */
+final case class CardPlayedFaceup(card: WorldCardId, resultingSource: RuleSourceRef)
     extends CoreOperation {
-  override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayed)
+  override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayedFaceup)
+  override val children: Vector[Operation] = Vector.empty
+}
+
+/** Semantic window for a card (a denizen or a Vision) placed facedown as an
+  * adviser by `player`. A discard emits neither hook. Powers supply its
+  * children; no hook is a delta.
+  */
+final case class CardPlayedFacedown(card: WorldCardId, player: PlayerId)
+    extends CoreOperation {
+  override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayedFacedown)
   override val children: Vector[Operation] = Vector.empty
 }
 

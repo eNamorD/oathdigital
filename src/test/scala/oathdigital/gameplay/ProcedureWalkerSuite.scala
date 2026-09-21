@@ -721,11 +721,11 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   private val otherWindow: PowerWindow = PowerWindow.RecoverBeforeFirstRoll
 
   test("CardPlayed visits existing played-card window without recording hook") {
-    val hook = CardPlayed(adviser.id,
+    val hook = CardPlayedFaceup(adviser.id,
       RuleSourceRef.Adviser(actor, adviser.id))
     assertEquals(hook.children, Vector.empty[Operation])
-    assertEquals(hook.window, Some(PowerWindow.ActionCardPlayed))
-    val power = transformPower("test.played", PowerWindow.ActionCardPlayed)(
+    assertEquals(hook.window, Some(PowerWindow.ActionCardPlayedFaceup))
+    val power = transformPower("test.played", PowerWindow.ActionCardPlayedFaceup)(
       (_, ops) => SpendSupply(actor, 1) +: ops)
     val (state, steps) = finishedSteps(ProcedureWalker.advance(ready,
       Sequence(hook), None, WalkerPowers(Vector(power))))

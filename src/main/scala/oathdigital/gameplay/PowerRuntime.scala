@@ -56,7 +56,7 @@ object PowerRuntime {
     case ActionKind.Recover => PowerWindow.RecoverBeforeFirstRoll
     case ActionKind.Challenge => PowerWindow.ChallengeModifierSelection
     case ActionKind.Rest => PowerWindow.RestStart
-    case ActionKind.WhenPlayed => PowerWindow.ActionCardPlayed
+    case ActionKind.WhenPlayed => PowerWindow.ActionCardPlayedFaceup
     case ActionKind.Wake => PowerWindow.WakeBoundary
     case ActionKind.ActionBoundary => PowerWindow.ActionAfterMajorAction
     case ActionKind.Negotiation => PowerWindow.NegotiationOffer
@@ -71,7 +71,8 @@ object PowerRuntime {
     case PowerWindow.CampaignAttackerBattlePlans |
         PowerWindow.CampaignDefenderBattlePlans => RuleTiming.BattlePlan
     case PowerWindow.TravelCost => RuleTiming.Inherent
-    case PowerWindow.RestStart | PowerWindow.ActionCardPlayed |
+    case PowerWindow.RestStart | PowerWindow.ActionCardPlayedFaceup |
+        PowerWindow.ActionCardPlayedFacedown |
         PowerWindow.WakeBoundary | PowerWindow.ActionAfterMajorAction =>
       RuleTiming.Trigger
     case _ => RuleTiming.Start

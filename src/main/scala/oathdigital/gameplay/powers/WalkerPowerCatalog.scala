@@ -26,7 +26,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * `SearchPlayAdviser`.
   * Conspiracy's power carries no catalog id (a Vision has no catalog powers),
   * so like Take Wealth's limit it is always present and inert until a card
-  * play runs `ActionCardPlayed` for Conspiracy.
+  * play runs `ActionCardPlayedFaceup` for Conspiracy.
   * Vow of Peace's restriction is inert until Campaign walks
   * `CampaignActionEligibility`.
   */

@@ -35,7 +35,7 @@ class DazzleSuite extends munit.FunSuite {
           case (id, index) => DenizenState(id, Orientation.FaceUp,
             if (index == 0) Tokens(1, 0) else Tokens.empty)
         }))))))
-    val hook = CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle))
+    val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
     val power = Dazzle.forCatalog(catalog).get
     val finished = ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(power))).toOption.get
@@ -92,7 +92,7 @@ class DazzleSuite extends munit.FunSuite {
       map = current.map.copy(sites = current.map.sites
         .updated(actorSite, friendly).updated(enemySite, hostile))))
     val finished = ProcedureWalker.advance(prepared,
-      CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle)), None,
+      CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle)), None,
       WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
       .asInstanceOf[WalkerOutcome.Finished]
     val after = finished.treeless.game.current
@@ -118,7 +118,7 @@ class DazzleSuite extends munit.FunSuite {
     val dazzle = Dazzle.forCatalog(catalog).get
     val dazzleId = catalog.denizens.find(_.powers.exists(_.id == Dazzle.id))
       .map(d => DenizenId(d.id.value)).get
-    val hook = CardPlayed(dazzleId, RuleSourceRef.Adviser(actor, dazzleId))
+    val hook = CardPlayedFaceup(dazzleId, RuleSourceRef.Adviser(actor, dazzleId))
     assert(ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(dazzle))).isLeft)
   }
@@ -149,7 +149,7 @@ class DazzleSuite extends munit.FunSuite {
           EdificeState(ruinedHearth, EdificeSide.Ruined, Tokens.empty),
           EdificeState(intactHearth, EdificeSide.Intact, Tokens.empty),
           EdificeState(ruinedBeast, EdificeSide.Ruined, Tokens.empty)))))))
-    val hook = CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle))
+    val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
     val finished = ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
       .asInstanceOf[WalkerOutcome.Finished]
@@ -193,7 +193,7 @@ class DazzleSuite extends munit.FunSuite {
             Orientation.FaceUp, Tokens.empty))))
       add(add(add(cleared, home, beast), home, near), away, faraway)
     }
-    val hook = CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle))
+    val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
     val finished = ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
       .asInstanceOf[WalkerOutcome.Finished]

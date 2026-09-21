@@ -25,7 +25,7 @@ private[gameplay] object ReviewedPowerInspector {
   private def accessible(window: PowerWindow, ref: RuleSourceRef,
       source: IndexedRuleSource, facts: ReviewedPowerFacts): Boolean =
     RuleSourceAccess.accessible(ref, source.face, facts.ready, facts.actor,
-      window == PowerWindow.ActionCardPlayed)
+      window == PowerWindow.ActionCardPlayedFaceup)
 }
 
 private[powers] abstract class ReviewedPower(

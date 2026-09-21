@@ -140,8 +140,12 @@ object CardPlayProcedure {
                 card, _, legacyOrigin, adviserLimit))
             }, restrictions = (_, _) => Vector(
               new DiscardRestrictions(catalog, actor)))
-            val hook = CardPlay.playedSource(ready, actor, card, placement)
-              .map(CardPlayed(card, _)).toVector
+            val hook: Vector[Operation] = placement match {
+              case SearchPlacement.Adviser(Orientation.FaceDown, _) =>
+                Vector(CardPlayedFacedown(card, actor))
+              case _ => CardPlay.playedSource(ready, actor, card, placement)
+                .map(CardPlayedFaceup(card, _)).toVector
+            }
             choice ++ Vector(apply) ++ hook
         }
       })

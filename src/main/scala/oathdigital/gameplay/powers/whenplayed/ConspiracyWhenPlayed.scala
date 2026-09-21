@@ -28,12 +28,12 @@ case object ConspiracyWhenPlayed extends ContributingPower {
   val decisionId: String = "cardplay.conspiracy.target"
 
   override def applicable(ctx: PowerCtx): Boolean = ctx.operation match {
-    case CardPlayed(card, _) => card == VisionRules.Conspiracy
+    case CardPlayedFaceup(card, _) => card == VisionRules.Conspiracy
     case _ => false
   }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
-    Map(PowerWindow.ActionCardPlayed -> Vector(Transform((ctx, children) =>
+    Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
       (children ++ targetDecision(ctx.state, ctx.activePlayer)) :+
         BuildOps((ready, pending) =>
           effects(ready, ctx.activePlayer, pending)))))

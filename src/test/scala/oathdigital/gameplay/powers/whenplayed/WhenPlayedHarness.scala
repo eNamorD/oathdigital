@@ -11,8 +11,8 @@ import oathdigital.model._
   * Dazzle and Conspiracy suites do.
   */
 object WhenPlayedHarness {
-  def hook(card: DenizenId): CardPlayed =
-    CardPlayed(card, RuleSourceRef.Adviser(actor, card))
+  def hook(card: DenizenId): CardPlayedFaceup =
+    CardPlayedFaceup(card, RuleSourceRef.Adviser(actor, card))
 
   def powers(power: ContributingPower): WalkerPowers =
     WalkerPowers(Vector(power))
