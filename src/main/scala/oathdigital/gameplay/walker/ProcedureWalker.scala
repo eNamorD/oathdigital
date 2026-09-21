@@ -193,8 +193,10 @@ object ProcedureWalker {
     * traversal (split out to keep this file under the project's line bound).
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
-      state: ReadyGame, activePlayer: PlayerId): Vector[OathViolation] =
-    WalkerPowerGather.restrictionViolations(tree, powers, state, activePlayer)
+      state: ReadyGame, activePlayer: PlayerId,
+      answered: Vector[oathdigital.model.Answered] = Vector.empty)
+      : Vector[OathViolation] = WalkerPowerGather.restrictionViolations(tree,
+    powers, state, activePlayer, answered)
 
   /** When `pending` parks on a `Roll` node of `action`, reports the node's
     * `pool` and the face count that node requires (read from

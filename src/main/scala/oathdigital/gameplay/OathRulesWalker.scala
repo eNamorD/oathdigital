@@ -237,8 +237,9 @@ private[gameplay] trait OathRulesWalker {
     * `withFallback`/`for`-comprehension short-circuit here.
     */
   private def checkRestrictions(tree: Operation, powers: WalkerPowers,
-      ready: ReadyGame, actor: PlayerId): Either[OathViolation, Unit] =
-    ProcedureWalker.restrictionViolations(tree, powers, ready, actor)
+      ready: ReadyGame, actor: PlayerId,
+      answered: Vector[Answered] = Vector.empty): Either[OathViolation, Unit] =
+    ProcedureWalker.restrictionViolations(tree, powers, ready, actor, answered)
       .headOption.toLeft(())
 
   /** Resolves the current parked Decide. Procedure identity is reconstructed
@@ -252,10 +253,13 @@ private[gameplay] trait OathRulesWalker {
       : Either[OathViolation, OathTransition] =
     resumeWalker(state) {
       case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
-        walkerCall(ProcedureWalker.resolve(ready, tree, pending,
-          Answered(decisionId, answer, by = requester),
-          powers, walkerDice)).flatMap(walkerTransition(state, procedure, tree, _,
-            powers, modifiers, startArgs))
+        val recorded = Answered(decisionId, answer, by = requester)
+        walkerCall(ProcedureWalker.resolve(ready, tree, pending, recorded,
+          powers, walkerDice)).flatMap(outcome => checkRestrictions(tree,
+          powers, ready, ready.game.current.turn.activePlayer,
+          pending.answered :+ recorded).map(_ => outcome))
+          .flatMap(walkerTransition(state, procedure, tree, _, powers,
+            modifiers, startArgs))
     }
 
   /** Validates and derives the action tree once, then asks the application for
@@ -333,7 +337,8 @@ private[gameplay] trait OathRulesWalker {
         starting = false)
       modifiers = ready.game.current.walkerModifiers
       powers = walkerPowers(ready, activePlayer, modifiers)
-      _ <- checkRestrictions(tree, powers, ready, activePlayer)
+      _ <- checkRestrictions(tree, powers, ready, activePlayer,
+        pending.answered)
     } yield (ready, procedure, tree, pending, powers, modifiers, startArgs)
     case _ => Left(GameNotStarted)
   }

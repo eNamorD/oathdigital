@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OptionRestriction, PowerCtx}
-import oathdigital.model.{Branch, Decide, DecisionOptionRef, DecisionQuery, OathViolation, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ReadyGame}
+import oathdigital.model.{Answered, Branch, Decide, DecisionOptionRef, DecisionQuery, OathViolation, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -124,7 +124,8 @@ private[walker] object WalkerPowerGather {
     * decision could never be answered.
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
-      state: ReadyGame, activePlayer: PlayerId): Vector[OathViolation] = {
+      state: ReadyGame, activePlayer: PlayerId,
+      answered: Vector[Answered] = Vector.empty): Vector[OathViolation] = {
     val byId: Map[PowerId, ContributingPower] =
       powers.powers.map(power => power.id -> power).toMap
     def ctxFor(window: PowerWindow, path: Vector[String], operation: Operation)
@@ -142,9 +143,13 @@ private[walker] object WalkerPowerGather {
         // self-reference, see `Operation.scala`); descending into it would
         // recurse forever, so leaves never contribute nested windows.
         case _: PrimitiveOperation => Vector.empty
-        case branch: Branch => descend(branch.select(state,
-          PendingTree(at = path, answered = Vector.empty)))
-        case _ => descend(node.children)
+        case branch: Branch => descend(applyWindow(branch.window, branch,
+          state, activePlayer, powers, path, branch.select(state,
+            PendingTree(at = path, answered = answered)),
+          state.game.current.walkerProcedure)._1)
+        case _ => descend(applyWindow(node.window, node, state,
+          activePlayer, powers, path, node.children,
+          state.game.current.walkerProcedure)._1)
       }
       own ++ nested
     }
