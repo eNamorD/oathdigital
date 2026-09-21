@@ -116,11 +116,11 @@ All are selected at the start of the major action. A modifier's cost is paid at 
 | --- | --- |
 | 56 Augury | Search from the world deck or a regional discard draws one more card. The draw still stops after a Vision. |
 | R04 Truthful Harp | Search draws 2 more cards. Every drawn card is revealed while in your hand. Harp and Augury stack. |
-| 29 Tents | Cost 1 favor placed. If the destination is in the region of your pawn's current site, Travel costs no Supply. |
-| 43 Forest Paths | Cost 1 favor placed. If the destination holds a beast-suit denizen or edifice, Travel costs no Supply, and the powers of sites are ignored for that Travel (`shouldIgnore` on site-sourced Travel powers). |
+| 29 Tents | Implemented (slice 2c). Cost 1 favor placed. If the destination is in the region of your pawn's current site, Travel costs no Supply. |
+| 43 Forest Paths | Implemented (slice 2c). Cost 1 favor placed. If the destination holds a beast-suit denizen or edifice, Travel costs no Supply, and the powers of sites are ignored for that Travel (`shouldIgnore` on site-sourced Travel powers). |
 | R07 Cup of Plenty | Non-persistent, so a Trade modifier. Trading with a card whose suit differs from every faceup adviser you hold costs no Supply. Facedown advisers do not count. |
 | 144 Rowdy Pub | Muster from Rowdy Pub as the source gains one more warband, on top of the matching-adviser bonus. The source is read from the answered `muster.source` decision through a `BuildOps`. |
-| R20 Dragonskin Drum | After Travel, gain one warband, appended after the Move. |
+| R20 Dragonskin Drum | Implemented (slice 2c). After Travel, gain one warband, appended after the Move. |
 | 173 Relic Worship | Non-persistent after the catalog fix. `applicable` requires a secret and an empty card. After the relic is taken (`RecoverAfterRelic`), pay 1 secret placed with a required `PayCost` and gain 2 Supply. Limitation: another selected modifier spending your only secret first makes the payment fail late. |
 | 120 Knights Errant | After Muster you may Campaign for no Supply. An appended `Decide` is offered only if a Campaign is legal, and a `Branch` builds the Campaign tree at walk time from live state, so its force sees Muster's warbands. A hook on `CampaignCost` drops the `SpendSupply` for the nested Campaign only. One action boundary runs after Muster. |
 
@@ -128,8 +128,8 @@ All are selected at the start of the major action. A modifier's cost is paid at 
 
 | Card | Ruling |
 | --- | --- |
-| 118 Toll Roads | Enemies (every player except the ruler) cannot travel to a site ruled by Toll Roads' ruler unless they pay 1 favor. This covers all the ruler's sites, including Toll Roads' own. The payment is a `Give` with `required = true` to a player ruler, and a required `PayCost` with a burnt favor for a bandit ruler. A traveller who cannot pay does not get that destination. Empire rulers are unsupported. |
-| 178 Grasping Vines | An enemy traveling from a site ruled by the Vines' ruler kills one warband on their own board if able. The ruler is exempt. It is an unconditional, non-required `Kill(1)` inserted before the Move, so stacked kills resolve against live state. |
+| 118 Toll Roads | Implemented (slice 2c). Enemies (every player except the ruler) cannot travel to a site ruled by Toll Roads' ruler unless they pay 1 favor. This covers all the ruler's sites, including Toll Roads' own. The payment is a `Give` with `required = true` to a player ruler, and a required `PayCost` with a burnt favor for a bandit ruler. A traveller who cannot pay does not get that destination. Empire rulers are unsupported. |
+| 178 Grasping Vines | Implemented (slice 2c). An enemy traveling from a site ruled by the Vines' ruler kills one warband on their own board if able. The ruler is exempt. It is an unconditional, non-required `Kill(1)` inserted before the Move, so stacked kills resolve against live state. |
 | R15 Circlet of Command | Faceup. Players other than the holder cannot target the holder's banners or their relics other than the Circlet. It restricts Raid target options, Challenge banner selection and Conspiracy's target list. |
 | E28 Oaken Fortress (intact) | While its ruler is at this site, they cannot be targeted by a Challenge or a Raid. The Empire clause is unsupported. |
 | E28 Rotting Fortress (ruined) | Players at this site cannot be targeted by a Challenge or a Raid unless the targeting player has a faceup beast adviser. |
@@ -148,6 +148,7 @@ For both Fortress faces, a Raid removes the protected player from the defender d
 
 - **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. Generic discard rules (product decisions): a faceup locked adviser, an intact edifice and a card that prints a power selected for the running action cannot be discarded by any path, and `DiscardRestrictions` is where that is enforced. A Homeland replacement discards an edifice and no longer buries it. An intact edifice is refused by the generic rule for Mob's discard too. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
 - **2b:** every selected modifier's cost is paid at the start of its action and all are validated together at selection (`ContributingPower.selectionPayments`); Catacombs states its secret. `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party is a denizen played faceup straight from the Search's draw, to a site or as a faceup adviser; a facedown placement and a card that was already a facedown adviser do not trigger it. Wild Cry cannot be discarded while selected. `PowerCtx.procedure` exists (E9).
+- **2c:** a selected modifier's cost is paid at the start of every Travel, whatever the route (permissive, product decision); the Supply saving and Forest Paths' ignore apply only when the condition holds. A free Travel is still a destination candidate, with cost 0. Toll Roads and Grasping Vines find their ruler as the ruler of the site the card stands at and ignore a facedown copy.
 
 ## Slice 3: Campaign battle plans
 
