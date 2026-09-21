@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.PhasePower
+import oathdigital.gameplay.powers.wake.HornedMask
 
 /** The phase powers of slice 1c, registered by
   * [[oathdigital.gameplay.powers.PhasePowerCatalog]] through this one object,
@@ -11,5 +12,5 @@ import oathdigital.gameplay.powerresolver.PhasePower
 object TargetPowers {
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Wolves, Alchemist, SleightOfHand,
-      CrystalVial(catalog), IvoryEye)
+      CrystalVial(catalog), IvoryEye, HornedMask(catalog))
 }
