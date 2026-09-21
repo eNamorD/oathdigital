@@ -138,6 +138,21 @@ object CampaignFixture {
     p.copy(relics = p.relics :+ RelicState(RelicId(relic), Orientation.FaceUp,
       Tokens.empty)))
 
+  /** `player` holds a faceup relic. */
+  def withRelicFor(b: Board, player: PlayerId, relic: String): Board =
+    replacePlayer(b.copy(ready = scrub(b.ready, relic)), player)(p =>
+      p.copy(relics = p.relics :+ RelicState(RelicId(relic), Orientation.FaceUp,
+        Tokens.empty)))
+
+  /** An edifice stands at `site`, on the given face. */
+  def withEdifice(b: Board, site: SiteId, edifice: String, side: EdificeSide)
+      : Board = b.copy(ready = b.ready.updateCurrent(current => current.copy(
+    commonCards = current.commonCards.copy(edificeDeck =
+      current.commonCards.edificeDeck.filterNot(_.value == edifice)),
+    map = current.map.copy(sites = current.map.sites.updated(site,
+      current.map.sites(site).copy(denizens = current.map.sites(site).denizens
+        :+ EdificeState(EdificeId(edifice), side, Tokens.empty)))))))
+
   def withSecrets(b: Board, faceUp: Int): Board = replacePlayer(b, b.actor)(p =>
     p.copy(board = p.board.copy(faceUpSecrets = faceUp)))
 
