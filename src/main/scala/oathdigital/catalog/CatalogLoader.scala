@@ -6,7 +6,7 @@ import java.nio.file.{Files, Path}
 import scala.util.control.NonFatal
 
 import oathdigital.catalog.CatalogLoadError._
-import oathdigital.model.{CatalogRef, PowerId, SiteId, Tokens}
+import oathdigital.model.{CatalogRef, PowerId, SiteId, Suit, Tokens}
 import ujson.{Arr, Bool, Null, Obj, Str, Value}
 
 object CatalogLoader {
@@ -343,7 +343,9 @@ object CatalogLoader {
 
   private def decodeSuit(obj: Obj, path: String): Result[Suit] =
     requiredString(obj, "suit", path).flatMap(value =>
-      construct(s"$path.suit", Suit(value))
+      Suit.fromKey(value).toRight(
+        Vector(InvalidValue(s"$path.suit", s"unsupported suit $value"))
+      )
     )
 
   private def decodeHandlers(

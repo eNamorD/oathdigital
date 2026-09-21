@@ -1,29 +1,80 @@
 package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
-import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
-  RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
-  WealthTaken, CatacombsResolved, RecoverRolled, RecoverStopped,
-  RelicRecovered}
-import oathdigital.gameplay.operations.{AdjustSupply, Cost, Location,
-  ModifyDicePool, Move, Piece, PositionedLocation, RelicPlacement}
-import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload,
-  WalkerStepRecorded}
-import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
-  UsurperVictory, OathkeeperRecipientChoiceStarted,
-  OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
+import oathdigital.model.OathEvent.FirstGameCompleted
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, RollPayload,
+  WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,
+  RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
+  PartitionAnswer}
 
 class GameEventWireSuite extends munit.FunSuite {
+  test("recorded Visions Drawn advancement round trips without an amount") {
+    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
+      DeltaMeaning.OperationApplied("vision")), Vector(AdvanceVisionsDrawn),
+      Vector.empty)
+    val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    assertEquals(ujson.read(encoded)("payload")("ops")(0),
+      ujson.Obj("kind" -> "advance-visions-drawn"))
+    val decoded = GameEventWire.decode(encoded).toOption.get.event
+      .asInstanceOf[WalkerStepRecorded]
+    val base = TestGameFixtures.ready
+    val replayed = OperationPipeline.run(base, decoded.ops,
+      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+    assertEquals(replayed.game.current.tracks.visionsDrawn,
+      base.game.current.tracks.visionsDrawn + 1)
+  }
+  test("reduced optional spend is canonical in memory and on the wire") {
+    import oathdigital.model.TestGameFixtures.{playerId, ready => base}
+    val one = base.updateCurrent(_.copy(players = base.game.current.players.map { player =>
+        player.copy(board = player.board.copy(supply = SupplyTrack(1)))
+      }))
+    val run = OperationPipeline.run(one,
+      Vector(SpendSupply(playerId, 3, required = false)),
+      OperationPolicy.Permissive)(Right(_)).toOption.get
+    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
+      DeltaMeaning.SupplySpent(playerId, 1)), run.executed, Vector.empty)
+    val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    assert(!ujson.read(encoded)("payload")("ops")(0).obj.contains("required"))
+  }
+
+  test("a recorded move of a Vision to the shared bank round trips and replays") {
+    val base = initialReady
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val card = VisionId("vision:conspiracy")
+    val prepared = base.updateCurrent(_.copy(
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(_ == card)),
+      temporaryHands = current.temporaryHands.updated(actor, Vector(card))))
+    val box = Move(Piece.Card(card), PositionedLocation(Location.Hand(actor)),
+      PositionedLocation(Location.SharedBank))
+    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
+      DeltaMeaning.OperationApplied("box")), Vector(box), Vector.empty)
+    val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    val decoded = GameEventWire.decode(encoded).toOption.get.event
+      .asInstanceOf[WalkerStepRecorded]
+    val replayed = OperationPipeline.run(prepared, decoded.ops,
+      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+    assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
+  }
+
   test("ignored-rule diagnostics round trip durable source timing and reason") {
     val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
-      MajorActionKind.Rest, Vector(IgnoredRuleDiagnostic(
+      ActionKind.Rest, Vector(IgnoredRuleDiagnostic(
         RuleSourceRef.Adviser(PlayerId("red"), DenizenId("insomnia")),
-        "denizen.insomnia", MajorActionKind.Rest, RuleTiming.Trigger,
+        "denizen.insomnia", ActionKind.Rest, RuleTiming.Trigger,
         "reviewed-unimplemented-pre-alpha-fallback")))
     val encoded = GameEventWire.encodeEvent("g", catalog.ref, 0, event).toOption.get
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
@@ -44,64 +95,17 @@ class GameEventWireSuite extends munit.FunSuite {
   }
   private val rules = new FirstGameSetupRules(catalog)
 
-  test("v12 Vision and Conspiracy events preserve hidden choices exactly") {
-    val red = PlayerId("red")
-    val conspiracy = VisionId("vision:conspiracy")
-    val decision = DecisionId("conspiracy-12")
-    val target = ConspiracyTarget.Relic(PlayerId("blue"), RelicId("R12"))
-    val events = Vector[OathEvent](
-      OathEvent.VisionRevealed(red, VisionId("vision:vision-of-faith"),
-        Some(VisionId("vision:vision-of-conquest")), Region.Provinces),
-      OathEvent.ConspiracyStarted(red, decision, conspiracy, Some(target),
-        Vector(Suit.Order)),
-      OathEvent.ConspiracyCompleted(red, decision, conspiracy, Some(target),
-        Vector(Suit.Order, Suit.Beast)),
-      OathEvent.VisionVictory(red, VisionId("vision:vision-of-faith")))
+  test("a Vision victory event round trips") {
+    val events = Vector[OathEvent](OathEvent.VisionVictory(PlayerId("red"),
+      VisionId("vision:vision-of-faith")))
     val encoded = GameEventWire.encodeStream("visions", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
-    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
-      Vector.fill(events.size)(1))
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-
-    val banner = OathEvent.ConspiracyStarted(red, decision, conspiracy,
-      Some(ConspiracyTarget.Banner(PlayerId("blue"), Banner.DarkestSecret)),
-      Vector.empty)
-    val bannerJson = GameEventWire.encodeEvent("visions", catalogRef, 20, banner)
-      .toOption.get
-    assertEquals(GameEventWire.decode(bannerJson).toOption.get.event, banner)
-    bannerJson("payload")("target")("banner") = "unknown"
-    assert(GameEventWire.decode(bannerJson).isLeft)
-  }
-
-  test("v11 Negotiation events preserve authored terms and disclosures") {
-    val red = PlayerId("red"); val blue = PlayerId("blue")
-    val terms = NegotiationTerms(Vector(NegotiationTransfer(blue, 2,
-      Vector(RelicId("R1")))), Vector(NegotiationDisclosure(blue,
-      NegotiationDisclosureRef.Adviser(red, VisionId("vision:test")))))
-    val participants = Vector(red, blue)
-    val events = Vector[OathEvent](
-      OathEvent.NegotiationStarted(red, DecisionId("deal"), SiteId("site:a"), participants),
-      OathEvent.NegotiationTermsReplaced(red, DecisionId("deal"), terms),
-      OathEvent.NegotiationAccepted(red, DecisionId("deal")),
-      OathEvent.NegotiationAccepted(blue, DecisionId("deal")),
-      OathEvent.NegotiationCompleted(red, DecisionId("deal"), participants,
-        Map(red -> terms, blue -> NegotiationTerms())))
-    val encoded = GameEventWire.encodeStream("negotiation", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
-      Vector.fill(events.size)(1))
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
   test("v10 minor actions preserve private identities and prior force facts") {
     val events = Vector[OathEvent](
-      OathEvent.FacedownAdviserDiscarded(PlayerId("red"), DenizenId("42"),
-        Region.Provinces),
-      OathEvent.FacedownAdviserPlayed(PlayerId("red"), DenizenId("43"),
-        SearchPlacement.Site(Some(DenizenId("44"))), 1,
-        Vector(DenizenId("44")), Vector.empty),
       OathEvent.SiteRelicsPeeked(PlayerId("red"), SiteId("site:a"),
         Vector(RelicId("R1"), RelicId("R2"))),
       OathEvent.OwnedRelicRevealed(PlayerId("red"), RelicId("R3")),
@@ -115,180 +119,164 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
-  test("v9 banner events preserve ordered ribbon and replacement facts") {
-    val events = Vector[OathEvent](
-      OathEvent.BannerChallengeStarted(PlayerId("red"), DecisionId("challenge-9"),
-        Banner.PeoplesFavor, Some(PlayerId("blue")), 3, 1,
-        Vector(Suit.Order), Vector.empty),
-      OathEvent.BannerRibbonChoiceMade(PlayerId("red"), DecisionId("challenge-9"),
-        Banner.DarkestSecret, SiteId("site:one"), Vector(SiteId("site:two"))),
-      OathEvent.BannerChallengeCompleted(PlayerId("red"), DecisionId("challenge-9"),
-        Banner.PeoplesFavor, Some(PlayerId("blue")), 3, 4,
-        Vector(Suit.Order, Suit.Beast, Suit.Arcane), Vector.empty, 0),
-      OathEvent.BannerResourcePlaced(PlayerId("red"), Banner.PeoplesFavor, 2))
-    val encoded = GameEventWire.encodeStream("banners", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
-      Vector.fill(4)(1))
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
-
-  test("v8 Forge events round trip exact targets resources and relic top") {
-    val site = SiteId("site:forge")
-    val targets = Vector("1", "2", "3").map(id =>
-      SiteDenizenTarget(site, DenizenId(s"denizen:$id")))
-    val assignments = targets.zip(Vector(ForgeResource.Favor,
-      ForgeResource.Secret, ForgeResource.Favor)).map {
-        case (target, resource) => ForgeResourceAssignment(target, resource) }
-    val events = Vector[OathEvent](
-      OathEvent.ForgeStarted(PlayerId("red"), DecisionId("forge-8"), site,
-        targets, Tokens(2, 1), 1),
-      OathEvent.ForgeCompleted(PlayerId("red"), DecisionId("forge-8"), site,
-        assignments, RelicId("relic:top")))
+  test("a choose-many answer round trips through the journal") {
+    val player = PlayerId("red")
+    val answer = DecisionAnswer.ChooseManyAnswer(Vector(
+      DecisionOptionRef.Site(SiteId("a")), DecisionOptionRef.Site(SiteId("c"))))
+    val events = Vector[OathEvent](WalkerStepRecorded("1",
+      ChoicePayload("challenge.ribbon-site", answer, player), Vector.empty,
+      Vector.empty))
     val encoded = GameEventWire.encodeStream("forge", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
-    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
-      Vector(1, 1))
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
-  test("Campaign Raid targets have stable canonical keys and round trip") {
-    val defender = PlayerId("blue")
-    val targets = Vector[CampaignRaidTarget](
-      CampaignRaidTarget.Pawn(defender),
-      CampaignRaidTarget.Relic(defender, RelicId("R03")),
-      CampaignRaidTarget.Relic(defender, RelicId("R12")),
-      CampaignRaidTarget.Banner(defender, CampaignBanner.PeoplesFavor),
-      CampaignRaidTarget.Banner(defender, CampaignBanner.DarkestSecret))
-    assertEquals(targets.map(_.stableKey), Vector(
-      "pawn:blue", "relic:blue:R03", "relic:blue:R12",
-      "banner:blue:peoples-favor", "banner:blue:darkest-secret"))
-    assertEquals(CampaignRaidTarget.canonical(targets.reverse), targets)
-
-    val event = OathEvent.CampaignStarted(PlayerId("red"),
-      DecisionId("raid-1"), Vector.empty, CampaignDefender.Player(defender),
-      supplySpent = 2, force = 3, CampaignKind.Raid, targets)
-    val encoded = GameEventWire.encodeStream("raid", catalogRef,
-      Vector(RecordedEvent(0, event))).toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.event), Vector(event))
-
-    val wrongOrder = ujson.read(encoded).arr
-    wrongOrder.head("payload")("raidTargets") = ujson.Arr.from(
-      wrongOrder.head("payload")("raidTargets").arr.reverse)
-    assert(GameEventWire.decodeStream(ujson.write(wrongOrder)).isLeft)
-
-    val unknownBanner = ujson.read(encoded).arr
-    unknownBanner.head("payload")("raidTargets")(3)("banner") = "unknown"
-    assert(GameEventWire.decodeStream(ujson.write(unknownBanner)).isLeft)
-  }
-
-  test("Raid resolution and relocation round trip hidden disposals exactly") {
-    val events = Vector[OathEvent](
-      OathEvent.CampaignRaided(PlayerId("red"), DecisionId("raid-1"),
-        CampaignLosingForceResolver.default.id,
-        CampaignRaidBoardLoss(PlayerId("blue"), 2, 3),
-        Vector(RelicId("R1")), Vector(CampaignBanner.PeoplesFavor),
-        Vector(DenizenId("D1"), VisionId("V1")), Region.Provinces,
-        Some(CampaignRules.Conspiracy), Vector(RelicId("R2")),
-        favorBurned = 2, bannerFavorReturned = Map(Suit.Order -> 2),
-        darkestSecretBurned = 3),
-      OathEvent.CampaignRaidPawnRelocated(PlayerId("red"), DecisionId("raid-1"),
-        PlayerId("blue"), SiteId("S1"), SiteId("S2")))
-    val encoded = GameEventWire.encodeStream("raid", catalogRef,
-      events.zipWithIndex.map { case (event, i) => RecordedEvent(i.toLong, event) })
+  test("a choose-amount answer round trips through the journal") {
+    val player = PlayerId("red")
+    val events = Vector[OathEvent](WalkerStepRecorded("2",
+      ChoicePayload("challenge.amount", DecisionAnswer.ChooseAmountAnswer(4),
+        player), Vector.empty, Vector.empty))
+    val encoded = GameEventWire.encodeStream("forge", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-    val tampered = ujson.read(encoded).arr
-    tampered.head("payload")("takenBanners")(0) = "unknown"
-    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
-
-    val negativeBurn = ujson.read(encoded).arr
-    negativeBurn.head("payload")("darkestSecretBurned") = -1
-    assert(GameEventWire.decodeStream(ujson.write(negativeBurn)).isLeft)
-
-    val fractionalBurn = ujson.read(encoded).arr
-    fractionalBurn.head("payload")("darkestSecretBurned") = 1.5
-    assert(GameEventWire.decodeStream(ujson.write(fractionalBurn)).isLeft)
   }
 
-  test("current pre-release Campaign events round-trip exact dice and choices") {
-    val events = Vector[OathEvent](
-      OathEvent.CampaignStarted(PlayerId("red"), DecisionId("campaign-1"),
-        SiteId("site"), 2, 2),
-      OathEvent.CampaignPlanChosen(PlayerId("red"), DecisionId("campaign-1"),
-        PendingProcedure.CampaignPlanSource.Relic(PlayerId("red"),
-          RelicId("R25")), "relic.brass-army.campaign",
-        PendingProcedure.CampaignPlanSide.Attacker,
-        Vector(PendingProcedure.CampaignPlanCost.Secret(1)),
-        Vector(PendingProcedure.CampaignPlanEffect.AddAttackDice(4))),
-      OathEvent.CampaignPlansFinished(PlayerId("red"), DecisionId("campaign-1"),
-        PendingProcedure.CampaignPlanSide.Attacker,
-        Vector(PendingProcedure.CampaignPlanSource.Relic(PlayerId("red"),
-          RelicId("R25"))), Vector("relic.brass-army.campaign"),
-        Vector(PendingProcedure.CampaignPlanEffect.AddAttackDice(4)),
-        Vector.fill(6)(AttackDieFace.OneSword), attack = 6, skullLosses = 0),
-      OathEvent.CampaignPlanChosen(PlayerId("blue"), DecisionId("campaign-1"),
-        PendingProcedure.CampaignPlanSource.Title(PlayerId("blue")),
-        "title.oathkeeper-defense", PendingProcedure.CampaignPlanSide.Defender,
-        Vector.empty, Vector(PendingProcedure.CampaignPlanEffect.AddDefenseDice(1))),
-      OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
-        1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
-      OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
-        CampaignLosingForceResolver.removeAllBandits.id,
-        Vector(CampaignLosingForceEffect.Remove(SiteId("site"),
-          ForceKind.Bandit, 2)),
-        Vector(CampaignForceAllocation(SiteId("site"), 1))),
-      OathEvent.BanditsRefilled(Vector(SiteId("empty") -> 2)))
-    val encoded = GameEventWire.encodeStream("campaign", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
+  test("walker choice steps round trip the negotiation answers") {
+    val red = PlayerId("red"); val blue = PlayerId("blue")
+    val terms = NegotiationTerms(
+      Vector(NegotiationTransfer(blue, 2, Vector(RelicId("r1")))),
+      Vector(
+        NegotiationDisclosure(blue,
+          NegotiationDisclosureRef.Adviser(red, VisionId("v1"))),
+        NegotiationDisclosure(blue,
+          NegotiationDisclosureRef.HeldRelic(red, RelicId("r2"))),
+        NegotiationDisclosure(blue,
+          NegotiationDisclosureRef.SiteRelic(SiteId("s1"), RelicId("r3")))))
+    val events = Vector[DecisionAnswer](DecisionAnswer.ProposeTerms(terms),
+      DecisionAnswer.AcceptDeal, DecisionAnswer.DeclineDeal).map(answer =>
+      WalkerStepRecorded("0.0.0", ChoicePayload("negotiation.deal", answer,
+        red), Vector.empty, Vector.empty): OathEvent)
+    val encoded = GameEventWire.encodeStream("forge", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
-    assertEquals(decoded.map(_.event), events)
-    val tampered = ujson.read(encoded).arr
-    tampered(2)("payload")("attackDice")(0) = "unknown-face"
-    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
-    val duplicate = ujson.read(encoded).arr
-    val source = duplicate(2)("payload")("orderedSources")(0)
-    duplicate(2)("payload")("orderedSources") = ujson.Arr(source, source)
-    assert(GameEventWire.decodeStream(ujson.write(duplicate)).isLeft)
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
-  test("current Recover and operation events round-trip exact typed data") {
+  test("every generic walker decision answer round trips on the step and on " +
+      "the park") {
+    // The answer fact rides a walker `ChoicePayload` and the parked
+    // `answered` vector, so both directions of `DecisionAnswerCodec` are
+    // reached by any journalled walker procedure.
+    val player = PlayerId("red")
+    val partition = PartitionAnswer(Vector("1", "2", "3")
+      .map(id => DecisionOptionRef.Denizen(DenizenId(s"denizen:$id")))
+      .zip(Vector("pay-favor", "pay-secret", "pay-favor"))
+      .map { case (option, section) => DecisionPlacement(option, section) })
+    val chooseOne = ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("R01")))
+    val distribute = DistributeAnswer(Vector(
+      DistributeAmount(DecisionOptionRef.FavorBank(Suit.Arcane), 0),
+      DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))
+    val answered = Vector(Answered("forge.assignment", partition, player),
+      Answered("recover.relic", chooseOne, player),
+      Answered("league-treaty.distribute", distribute, player))
     val events = Vector[OathEvent](
-      CatacombsResolved(PlayerId("red"), DecisionId("recover-1"),
-        PowerId("denizen.catacombs"), RuleSourceRef.SiteCard(SiteId("site"),
-          DenizenId("201")), Cost(secret = 1),
-        RelicPlacement(PlayerId("red"), RelicId("relic"), SiteId("site"),
-          Orientation.FaceDown)),
-      RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
-        Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler)),
-      RecoverStopped(PlayerId("red"), DecisionId("recover-1")),
-      RelicRecovered(PlayerId("red"), DecisionId("recover-2"), SiteId("site"),
-        RelicId("relic")))
-    val encoded = GameEventWire.encodeStream("recover", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
+      WalkerStepRecorded("1",
+        ChoicePayload("forge.assignment", partition, player), Vector.empty,
+        Vector.empty),
+      WalkerStepRecorded("2",
+        ChoicePayload("recover.relic", chooseOne, player), Vector.empty,
+        Vector.empty),
+      WalkerStepRecorded("3",
+        ChoicePayload("league-treaty.distribute", distribute, player),
+        Vector.empty, Vector.empty),
+      WalkerParked(ActionRef.Forge, Vector("2"), answered,
+        Vector.empty, Vector.empty),
+      // Batch-1 Task 5: the only action that makes a start selection does not
+      // park, so this park is synthetic -- it exists to round-trip the field,
+      // which no production journal exercises yet.
+      WalkerParked(ActionRef.Travel, Vector("0"), Vector.empty,
+        Vector.empty, Vector(DecisionOptionRef.Site(SiteId("site:dest")))))
+    val encoded = GameEventWire.encodeStream("forge", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
-    assertEquals(decoded.map(_.event), events)
-    val tampered = ujson.read(encoded).arr
-    tampered(1)("payload")("dice")(0) = "opaque-integer"
-    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
-    val malformedCost = ujson.read(encoded).arr
-    malformedCost(0)("payload")("cost")("secret") = -1
-    assert(GameEventWire.decodeStream(ujson.write(malformedCost)).isLeft)
-    val malformedBurn = ujson.read(encoded).arr
-    malformedBurn(0)("payload")("cost")("favorBurnt") = "lose"
-    assert(GameEventWire.decodeStream(ujson.write(malformedBurn)).isLeft)
-    Vector("gameplay.costs-paid", "gameplay.relic-placed-at-site").foreach {
-      eventType =>
-        val injected = ujson.read(encoded).arr
-        injected(0)("eventType") = eventType
-        assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft)
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+  }
+
+  test("a procedure reference round-trips with its family, and a reference " +
+      "under the wrong family or an unknown family is rejected") {
+    val events = Vector[OathEvent](
+      WalkerParked(PhaseTransitionRef.EndWake, Vector("0"), Vector.empty,
+        Vector.empty, Vector.empty),
+      WalkerCompleted(ActionRef.Travel),
+      // The triggered family (item 10 of the final fix brief): no
+      // production journal exercised it here before, so this is the only
+      // place the Oathkeeper procedure's wire spelling is pinned.
+      WalkerParked(TriggeredProcedureRef.Oathkeeper, Vector("0"),
+        Vector.empty, Vector.empty, Vector.empty),
+      WalkerCompleted(TriggeredProcedureRef.Oathkeeper),
+      WalkerCompleted(ActionRef.UsePower(PowerId("denizen.silver-tongue"))))
+    val encoded = GameEventWire.encodeStream("families", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index, event) }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assert(ujson.read(encoded).arr.head.toString.contains(
+      "\"family\":\"phase-transition\""))
+    assert(ujson.read(encoded).arr(2).toString.contains(
+      "\"family\":\"triggered\""))
+
+    Vector("action", "made-up").foreach { family =>
+      // `encodeStream` writes with `indent = 2` (a space after the colon),
+      // unlike the compact re-serialization the assertion above checks --
+      // the tamper has to match the string actually on the wire here.
+      val tampered = encoded.replace("\"family\": \"phase-transition\"",
+        s"""\"family\": \"$family\"""")
+      assert(GameEventWire.decodeStream(tampered).isLeft,
+        s"end-wake under family '$family' must not decode")
+    }
+  }
+
+  test("every option reference kind round trips through a recorded answer") {
+    val player = PlayerId("red")
+    val refs = Vector[DecisionOptionRef](
+      DecisionOptionRef.Button("continue"),
+      DecisionOptionRef.Player(PlayerId("blue")),
+      DecisionOptionRef.Site(SiteId("site:s1")),
+      DecisionOptionRef.Denizen(DenizenId("denizen:d1")),
+      DecisionOptionRef.Relic(RelicId("R01")),
+      DecisionOptionRef.Vision(VisionId("vision:v1")),
+      DecisionOptionRef.Edifice(EdificeId("E16")),
+      DecisionOptionRef.Deck(CardDeck.Relic),
+      DecisionOptionRef.FavorBank(Suit.Hearth),
+      DecisionOptionRef.RelicSlot(PlayerId("blue"), 0),
+      DecisionOptionRef.Banner(Banner.PeoplesFavor))
+    val events = refs.zipWithIndex.map { case (ref, index) =>
+      WalkerStepRecorded(index.toString,
+        ChoicePayload("d", ChooseOneAnswer(ref), player), Vector.empty,
+        Vector.empty): OathEvent }
+    val encoded = GameEventWire.encodeStream("refs", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
+      .toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+  }
+
+  test("a journalled answer carrying a deleted legacy tag is rejected with a " +
+      "typed decode failure") {
+    val player = PlayerId("red")
+    val event: OathEvent = WalkerStepRecorded("1",
+      ChoicePayload("recover.choice",
+        ChooseOneAnswer(DecisionOptionRef.Button("continue")), player),
+      Vector.empty, Vector.empty)
+    val encoded = GameEventWire.encodeStream("legacy", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
+      val mutated = ujson.read(encoded).arr
+      mutated.head("payload")("step")("payload")("kind") = tag
+      assert(GameEventWire.decodeStream(ujson.write(mutated)).isLeft,
+        s"a '$tag' answer must not decode")
     }
   }
 
@@ -302,14 +290,15 @@ class GameEventWireSuite extends munit.FunSuite {
       PositionedLocation(Location.PlayArea(player)),
       resultingOrientation = Some(Orientation.FaceDown))
     val events = Vector[OathEvent](
-      WalkerStepRecorded(player, "0", WalkerStepPayload.DeltaRecorded(
+      WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.DicePoolModified(pool, 2)),
-        Vector(ModifyDicePool(pool, 2))),
-      WalkerStepRecorded(player, "1.0.1", WalkerStepPayload.DeltaRecorded(
+        Vector(ModifyDicePool(pool, 2)), Vector.empty),
+      WalkerStepRecorded("1.0.1", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.SupplySpent(player, 1)),
-        Vector(AdjustSupply(player, -1))),
-      WalkerStepRecorded(player, "2.1", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move)))
+        Vector(SpendSupply(player, 1)), Vector.empty),
+      WalkerStepRecorded("2.1", WalkerStepPayload.DeltaRecorded(
+        DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move),
+        Vector.empty))
 
     val encoded = GameEventWire.encodeStream("walker", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
@@ -322,6 +311,139 @@ class GameEventWireSuite extends munit.FunSuite {
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
   }
 
+  test("a journalled phase change round-trips the phase it names") {
+    // `EnterPhase` is only ever declared with `Act` today (End Wake is its
+    // one caller), so a codec that ignored the value and decoded `Act`
+    // unconditionally would pass every other test in the tree. Rest is used
+    // here for exactly that reason.
+    val event: OathEvent = WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
+        "enter-phase")), Vector(EnterPhase(Phase.Rest)), Vector.empty)
+    val encoded = GameEventWire.encodeEvent("phase", catalogRef, 0L, event)
+      .toOption.get
+    assertEquals(encoded("payload")("ops")(0)("phase").str, "rest")
+    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
+  }
+
+  test("Catacombs' recorded batch round-trips: a relic move off the top of " +
+      "the relic deck and a cost placed on a card") {
+    // The exact op vector `CatacombsContribution` builds. Encoding it used to
+    // throw on `Location.Deck` and again on `PayCost`, which the append path
+    // turned into a codec failure -- so `StartWalker` + Catacombs, the only
+    // end-to-end route to this power once the legacy object goes, could never
+    // be persisted.
+    val player = PlayerId("red")
+    val relic = RelicId("R1")
+    val site = SiteId("site")
+    val denizen = DenizenId("catacombs")
+    val event: OathEvent = WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
+        "catacombs.place")),
+      Vector(
+        Move(Piece.Card(relic),
+          PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+          PositionedLocation(Location.Site(site)),
+          resultingOrientation = Some(Orientation.FaceDown)),
+        PayCost(player, Location.OnCard(denizen), Cost(secret = 1))),
+      Vector(PowerId("denizen.catacombs")))
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      Vector(event))
+    val ops = ujson.read(encoded).arr.head("payload")("ops").arr
+    assertEquals(ops.map(_("kind").str).toVector, Vector("move", "pay-cost"))
+    assertEquals(ops(0)("from")("location")("deck").str, "relic")
+    assertEquals(ops(0)("from")("position").str, "top")
+    assertEquals(ops(1)("placedAt")("card")("id").str, "catacombs")
+    assertEquals(ops(1)("cost")("secret").num, 1d)
+  }
+
+  test("every Location variant round-trips through the walker codec") {
+    // `encodeLocation` is total over the sealed hierarchy, so this list is
+    // the whole of it. Keeping the list exhaustive is what makes the
+    // compiler's totality check meaningful on the decode side too: a new
+    // variant fails to compile in the encoder and fails this test in the
+    // decoder.
+    val player = PlayerId("red")
+    val locations = Vector[Location](
+      Location.Hand(player),
+      // Not `player`'s own play area: `PayCost`'s children move the favor out
+      // of the payer's play area, and a move to the same location is illegal.
+      Location.PlayArea(PlayerId("blue")),
+      Location.Site(SiteId("site")),
+      Location.OnCard(DenizenId("catacombs")),
+      Location.OnBanner(Banner.DarkestSecret),
+      Location.FavorBank(Suit.Arcane),
+      Location.WarbandBank(ForceKind.Exile(LineageId("lineage"))),
+      Location.WarbandBank(ForceKind.Imperial),
+      Location.Deck(CardDeck.World),
+      Location.Deck(CardDeck.Relic),
+      Location.Deck(CardDeck.Edifice),
+      Location.Deck(CardDeck.Legacy),
+      Location.RegionalDiscard(Region.Cradle),
+      Location.SharedBank,
+      Location.SetAsideRelics,
+      Location.Reliquary,
+      Location.Atlas,
+      Location.Dispossessed)
+    // `PayCost` carries a bare `Location`, so it exercises each variant
+    // without the stack-position wrapper or `Move`'s from/to constraints.
+    val events = locations.map(location => WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
+      Vector(PayCost(player, location, Cost(favor = 1))),
+      Vector.empty): OathEvent)
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
+      locations.map(_.getClass.getSimpleName).distinct.size)
+  }
+
+  test("an unknown walker location kind, deck or negative cost decodes to a " +
+      "typed WireError") {
+    val player = PlayerId("red")
+    val event: OathEvent = WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
+      Vector(PayCost(player, Location.Deck(CardDeck.Relic), Cost(secret = 1))),
+      Vector.empty)
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assert(GameEventWire.decodeStream(encoded).isRight)
+
+    Vector[ujson.Value => Unit](
+      _("payload")("ops")(0)("placedAt")("kind") = "not-a-location",
+      _("payload")("ops")(0)("placedAt")("deck") = "not-a-deck",
+      _("payload")("ops")(0)("cost")("secret") = -1,
+      _("payload")("ops")(0)("kind") = "not-an-operation"
+    ).foreach { corrupt =>
+      val injected = ujson.read(encoded).arr
+      corrupt(injected(0))
+      assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft,
+        s"expected a typed WireError for ${ujson.write(injected)}")
+    }
+  }
+
+  test("a WalkerStepRecorded carrying two contribution ids round-trips") {
+    val pool = PoolKey("recover")
+    val event: OathEvent = WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.DicePoolModified(pool, 2)),
+      Vector(ModifyDicePool(pool, 2)),
+      Vector(PowerId("power.one"), PowerId("power.two")))
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      Vector(event))
+    assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
+      .map(_.str).toVector, Vector("power.one", "power.two"))
+  }
+
   test("an unencodable walker step payload returns a typed WireError, " +
       "not a thrown exception") {
     // WalkerStepPayload is intentionally open (WalkerEvents.scala) so a
@@ -329,111 +451,195 @@ class GameEventWireSuite extends munit.FunSuite {
     // A shape this codec doesn't know must fail the append path as a
     // WireError, exactly like an unrecognized value on the decode side.
     case object UnknownStepPayload extends WalkerStepPayload
-    val event = WalkerStepRecorded(PlayerId("red"), "0", UnknownStepPayload,
-      Vector.empty)
+    val event = WalkerStepRecorded("0", UnknownStepPayload,
+      Vector.empty, Vector.empty)
     GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
       case Left(_) => ()
       case Right(value) => fail(s"expected a WireError, got $value")
     }
   }
 
-  test("v6 Economy events round-trip source cost yield and NF resource mode") {
-    val denizen = DenizenId(catalog.denizens.head.id.value)
-    val edifice = EdificeId(catalog.edifices.head.id.value)
-    val site = catalog.sites.head.id
-    val events = Vector[OathEvent](
-      Mustered(PlayerId("red"), site, EconomyTargetRef.Denizen(denizen),
-        Suit.Order, 1, 3),
-      Traded(PlayerId("red"), site, EconomyTargetRef.Edifice(edifice),
-        Suit.Hearth, TradeResource.Secret, 1, 2))
-    val encoded = GameEventWire.encodeStream("economy", catalogRef,
-      events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).fold(error => fail(error.toString), identity)
-    val decoded = GameEventWire.decodeStream(encoded)
-      .fold(error => fail(error.toString), identity)
-    assertEquals(decoded.map(_.formatVersion), Vector(1, 1))
-    assertEquals(decoded.map(_.event), events)
-    val invalid = ujson.read(encoded).arr
-    invalid.head("payload")("target")("kind") = "relic"
-    assert(GameEventWire.decodeStream(ujson.write(invalid)).isLeft)
-  }
+  test("every CoreOperation variant round-trips through the walker codec") {
+    // `encodeOperation`/`encodePiece` are total over the sealed hierarchy
+    // (I8), exactly like `encodeLocation` above -- this list is every
+    // `CoreOperation` case EXCEPT the five walker tree-control nodes
+    // (`Decide`/`BuildOps`/`Repeat`/`Branch`/`Sequence`), which can never be
+    // a recorded, already-applied operation and are covered by the
+    // "surfaces a typed WireError" test below instead.
+    val player = PlayerId("red")
+    val other = PlayerId("blue")
+    val site = SiteId("site")
+    val denizen = DenizenId("denizen")
+    val vision = VisionId("vision")
+    val relic = RelicId("relic")
+    val edifice = EdificeId("edifice")
+    val legacy = LegacyId("legacy")
+    val lineage = LineageId("lineage")
+    val operations: Vector[CoreOperation] = Vector(
+      GainSupply(player, 2),
+      SpendSupply(player, 1),
+      ModifyDicePool(PoolKey("recover"), 2),
+      RecordPowerUse(PowerUseRef(PowerTiming.Wake,
+        PowerSourceRef.Site(site), PowerId("site.take-wealth"))),
+      RecordPowerUse(PowerUseRef(PowerTiming.Rest,
+        PowerSourceRef.Card(denizen), PowerId("denizen.silver-tongue"))),
+      RecordPowerUse(PowerUseRef(PowerTiming.Act,
+        PowerSourceRef.Card(relic), PowerId("relic.test-power"))),
+      RecordPowerUse(PowerUseRef(PowerTiming.Act,
+        PowerSourceRef.Card(legacy), PowerId("legacy.test-power"))),
+      EnterPhase(Phase.Act),
+      BeginTurn(player, Phase.Wake),
+      BeginTurn(other, Phase.RoundEnd),
+      Move(Piece.Card(relic),
+        PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+        PositionedLocation(Location.Site(site)), Some(Orientation.FaceDown)),
+      PayCost(player, Location.OnCard(denizen), Cost(favor = 1)),
+      Peek(player, denizen, Location.Site(site)),
+      Flip(denizen, Location.Site(site), Orientation.FaceUp),
+      FlipSecrets(player, 2, SecretSide.FaceUp, SecretSide.FaceDown),
+      Burn.favor(3, PositionedLocation(Location.PlayArea(player))),
+      Bury(BuryableCard.Relic(relic), PositionedLocation(Location.PlayArea(player))),
+      Discard.Denizen(denizen, PositionedLocation(Location.Site(site)),
+        Region.Cradle, Suit.Arcane, favor = 1, secrets = 1,
+        actingPlayer = player),
+      Discard.Vision(vision, PositionedLocation(Location.Hand(player)),
+        Region.Provinces),
+      Discard.RuinedEdifice(edifice, PositionedLocation(Location.Site(site)),
+        Suit.Order, favor = 0, secrets = 0, actingPlayer = player),
+      Discard.Relic(relic, PositionedLocation(Location.PlayArea(player)),
+        secrets = 2, actingPlayer = player),
+      Draw(player, Vector(relic), Location.Deck(CardDeck.Relic),
+        Location.PlayArea(player)),
+      Exchange(
+        Give(Piece.Favor(1), player, Location.PlayArea(player),
+          Location.PlayArea(other)),
+        Give(Piece.Secrets(1), other, Location.PlayArea(other),
+          Location.PlayArea(player))),
+      Gain.Favor(player, Suit.Beast, 2),
+      Gain.Secrets(player, 3),
+      Gain.Warbands(player, ForceKind.Imperial, 4),
+      Give(Piece.Secrets(2), player, Location.PlayArea(player),
+        Location.PlayArea(other)),
+      Kill(Piece.Warbands(ForceKind.Imperial, 3),
+        PositionedLocation(Location.Site(site))),
+      Play(denizen, PositionedLocation(Location.Hand(player)),
+        Location.Site(site), Orientation.FaceUp),
+      Replace(Piece.Warbands(ForceKind.Imperial, 2),
+        Piece.Warbands(ForceKind.Exile(lineage), 2),
+        PositionedLocation(Location.Site(site))),
+      Reveal(denizen, Location.Site(site)),
+      Sacrifice(player, Piece.Warbands(ForceKind.Exile(lineage), 1),
+        PositionedLocation(Location.Site(site))),
+      Swap(denizen, PositionedLocation(Location.Hand(player)),
+        vision, PositionedLocation(Location.PlayArea(player))),
+      Take(Piece.Secrets(1), player, Location.SharedBank,
+        Location.PlayArea(player)),
+      Roll(PoolKey("recover"), DiceSpec(DiceKind.Defense)),
+      ModifyRollOutcome(PoolKey("recover"), Some(1), Some(2)),
+      ClearDicePool(PoolKey("recover")),
+      RecordCampaignResult(CampaignResult(player, CampaignKind.Conquest,
+        CampaignDefender.Bandits, Vector(site), Vector.empty, force = 2,
+        attackFaces = Vector(AttackDieFace.OneSword), attackScore = 1,
+        skullLosses = 0, sacrificed = 0,
+        defenseFaces = Vector(DefenseDieFace.Blank), defenseScore = 2,
+        victorious = false)),
+      SetOathkeeper(Some(PlayerId("red"))),
+      SetOathkeeper(None))
 
-  test("v5 Rest events round-trip all authoritative transition facts") {
-    val events = Vector[OathEvent](
-      RestStarted(PlayerId("red")),
-      RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2, Suit.Order -> 1),
-        returnedSecrets = 3, refreshedSupply = 6, PlayerId("blue"), 2,
-        usurperLimited = true)
-    )
-    val encoded = GameEventWire.encodeStream("rest", catalogRef,
+    val events = operations.map(operation => WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("op")),
+      Vector(operation), Vector.empty): OathEvent)
+
+    val encoded = GameEventWire.encodeStream("walker-ops", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
         RecordedEvent(index.toLong, event)
       }).toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-
-    assertEquals(decoded.map(_.formatVersion), Vector(1, 1))
-    assertEquals(decoded.map(_.event), events)
-    assertEquals(decoded.map(_.eventType), Vector(
-      GameEventWire.RestStartedType, GameEventWire.RestCompletedType))
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("ops")(0)("kind").str).toVector.distinct.size,
+      operations.map(_.getClass.getSimpleName).distinct.size)
   }
 
-  test("League Treaty events round-trip typed sources allocations and ownership") {
-    val actor = PlayerId("red")
-    val owner = PlayerId("blue")
-    val decision = DecisionId("rest-league")
-    val power = PowerId("denizen.league-treaty")
-    val source = SiteDenizenTarget(SiteId("site-a"), DenizenId("237"))
-    val favorSources = Vector[SiteFavorSource](
-      SiteFavorSource.Denizen(SiteId("site-a"), DenizenId("237")),
-      SiteFavorSource.Edifice(SiteId("site-b"), EdificeId("E1")),
-      SiteFavorSource.Relic(SiteId("site-b"), 0))
-    val remaining = Vector(RestPowerInvocationRef(
-      PowerId("banner.darkest-secret.festival"),
-      RestPowerSourceRef.Banner(Banner.DarkestSecret), owner))
+  test("a walker roll payload round-trips attack and defense faces") {
     val events = Vector[OathEvent](
-      OathEvent.LeagueTreatyDecisionStarted(actor, decision, power, source,
-        owner, remaining, favorSources, Suit.all),
-      OathEvent.LeagueTreatyResolved(actor, decision, power, source, owner,
-        Vector(FavorAllocation(favorSources.head, 1),
-          FavorAllocation(favorSources.last, 2)), Suit.Hearth),
-      OathEvent.LeagueTreatyDeclined(actor, decision, power, source, owner))
-    events.zipWithIndex.foreach { case (event, index) =>
-      val encoded = GameEventWire.encodeEvent("rest-power", catalogRef,
-        index.toLong, event).toOption.get
-      assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-    }
+      WalkerStepRecorded("1", RollPayload(PoolKey("campaign.attack"),
+        Vector(AttackDieFace.HollowSword, AttackDieFace.OneSword,
+          AttackDieFace.TwoSwordsSkull)), Vector.empty, Vector.empty),
+      WalkerStepRecorded("2", RollPayload(PoolKey("campaign.defense"),
+        Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank),
+        automatic = true), Vector.empty, Vector.empty))
+    val encoded = GameEventWire.encodeStream("walker-rolls", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event) }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    // `automatic` is written only when set, so a parked roll's wire form is
+    // unchanged.
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("step").obj.contains("automatic")).toVector,
+      Vector(false, true))
   }
 
-  test("v5 Rest numeric facts require exact non-negative Int values") {
-    def restValue(): ujson.Obj = GameEventWire.encodeEvent(
-      "rest", catalogRef, 0L,
-      RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2), 3, 6,
-        PlayerId("blue"), 2, usurperLimited = true)).toOption.get.obj
-    def reject(field: String, value: Double, expected: WireError): Unit = {
-      val encoded = restValue()
-      encoded("payload")(field) = ujson.Num(value)
-      assertEquals(GameEventWire.decode(encoded), Left(expected))
+  test("every Piece variant round-trips through the walker codec") {
+    // `encodePiece` is fully total (I8): unlike `encodeOperation`, it has no
+    // throwing arm at all, so this list is the whole of `Piece`. `Take`
+    // carries a bare `Piece`, so it exercises each variant the same way
+    // `PayCost` exercises `Location` above.
+    val player = PlayerId("red")
+    val relic = RelicId("relic")
+    val lineage = LineageId("lineage")
+    val pieces: Vector[Piece] = Vector(
+      Piece.Card(relic),
+      Piece.Banner(Banner.PeoplesFavor),
+      Piece.Pawn(player),
+      Piece.Favor(1),
+      Piece.Secrets(2),
+      Piece.Warbands(ForceKind.Exile(lineage), 3))
+    val events = pieces.map(piece => WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("take")),
+      Vector(Take(piece, player, Location.SharedBank,
+        Location.PlayArea(player))), Vector.empty): OathEvent)
+
+    val encoded = GameEventWire.encodeStream("walker-pieces", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("ops")(0)("piece")("kind").str).toVector.distinct.size,
+      pieces.map(_.getClass.getSimpleName).distinct.size)
+  }
+
+  test("a walker tree-control node can never be recorded, and surfaces a " +
+      "typed WireError instead of an opaque exception") {
+    // Decide/BuildOps/Repeat/Branch/Sequence are `encodeOperation`'s five
+    // documented exceptions to totality (I8): three close over a Scala
+    // function value with no data representation, and none can legally
+    // reach this codec (ProcedureWalker only ever records an
+    // ALREADY-APPLIED delta batch, never one of its own control nodes). If
+    // one somehow did, this proves the failure is `UnencodableOperation`
+    // unwrapped into a typed `WireError` -- not an exception escaping the
+    // append path.
+    val player = PlayerId("red")
+    val nodes: Vector[CoreOperation] = Vector(
+      Decide("recover.relic", player, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Relic(DecisionOptionRef.Relic(RelicId("r")))))),
+      BuildOps((_, _) => Right(Vector.empty)),
+      Repeat((_, _) => false, SpendSupply(player, 1)),
+      Branch((_, _) => Vector.empty),
+      Sequence(Vector(SpendSupply(player, 1))))
+    nodes.foreach { node =>
+      val event: OathEvent = WalkerStepRecorded("0",
+        WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("bad")),
+        Vector(node), Vector.empty)
+      GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
+        case Left(_: WireError) => ()
+        case Right(value) => fail(s"expected a typed WireError for $node, " +
+          s"got $value")
+      }
     }
-    val safeRange = s"must be between 0 and ${GameEventWire.MaxSafeSequence} inclusive"
-    val intRange = s"must be between 0 and ${Int.MaxValue} inclusive"
-
-    reject("returnedSecrets", 1.5,
-      WireError.WrongType("$.payload.returnedSecrets", "expected an integer"))
-    reject("refreshedSupply", -1,
-      WireError.InvalidValue("$.payload.refreshedSupply", safeRange))
-    reject("completedRound", Double.PositiveInfinity,
-      WireError.WrongType("$.payload.completedRound", "expected an integer"))
-    reject("returnedSecrets", GameEventWire.MaxSafeSequence.toDouble + 1,
-      WireError.InvalidValue("$.payload.returnedSecrets", safeRange))
-    reject("completedRound", Int.MaxValue.toDouble + 1,
-      WireError.InvalidValue("$.payload.completedRound", intRange))
-
-    val favor = restValue()
-    favor("payload")("returnedFavor")("beast") =
-      ujson.Num(Int.MaxValue.toDouble + 1)
-    assertEquals(GameEventWire.decode(favor), Left(WireError.InvalidValue(
-      "$.payload.returnedFavor.beast", intRange)))
   }
 
   test("v2 serialized replay equals command state and preserves ordering") {
@@ -565,34 +771,14 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(decoded.map(_.event), events)
   }
 
-  test("Campaign losing-force policy effects round-trip without narrowing") {
-    val effects = Vector[CampaignLosingForceEffect](
-      CampaignLosingForceEffect.Preserve(SiteId("a"), ForceKind.Bandit, 2),
-      CampaignLosingForceEffect.Relocate(SiteId("b"), SiteId("c"),
-        ForceKind.Exile(LineageId("red")), 3),
-      CampaignLosingForceEffect.Replace(SiteId("d"), ForceKind.Imperial, 1,
-        Some(ForceKind.Bandit), 2),
-      CampaignLosingForceEffect.ReturnToBoard(SiteId("d"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1),
-      CampaignLosingForceEffect.KillCommitted(SiteId("a"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1),
-      CampaignLosingForceEffect.PreserveCommitted(SiteId("a"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1),
-      CampaignLosingForceEffect.RelocateCommitted(SiteId("c"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1))
-    val event = OathEvent.CampaignConquered(PlayerId("red"),
-      DecisionId("campaign-effects"), "campaign.loss.synthetic", effects,
-      Vector(CampaignForceAllocation(SiteId("a"), 0)))
-    val encoded = GameEventWire.encodeEvent("campaign", catalogRef, 0, event)
-      .toOption.get
-    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
-  }
-
   test("mixed contiguous v2 setup and v3 gameplay records round trip") {
     val setupEvents = execute(rules)._2
+    // Any two v3 gameplay events serve. They used to be the Wake phase's
+    // own; the Wake phase no longer has any, since both taking wealth and
+    // ending Wake are journalled as walker steps (Task 7).
     val gameplay = Vector(
-      WealthTaken(PlayerId("p2"), sites.head, WakeResource.Favor),
-      WakeEnded(PlayerId("p2"))
+      UsurperFlipped(PlayerId("p2")),
+      UsurperVictory(PlayerId("p2"))
     )
     val events = setupEvents ++ gameplay
     val records = events.zipWithIndex.map { case (event, index) =>
@@ -604,7 +790,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
     assertEquals(decoded.map(_.eventType).takeRight(2),
-      Vector("gameplay.take-wealth", "gameplay.wake-ended"))
+      Vector("gameplay.usurper-flipped", "gameplay.usurper-victory"))
     assertEquals(decoded.map(_.event), events)
 
     val wrongVersion = GameEventWire.encodeEvent(
@@ -613,54 +799,17 @@ class GameEventWireSuite extends munit.FunSuite {
     assert(GameEventWire.decode(wrongVersion).isLeft)
   }
 
-  test("v3 traveled has exact discriminator payload and mixed compatibility") {
-    val event = Traveled(
-      PlayerId("p2"), SiteId("source"), SiteId("destination"), 3)
-    val encoded = GameEventWire.encodeEvent(
-      "travel", catalogRef, 10L, event).toOption.get
-    assertEquals(encoded("formatVersion").num.toInt, 1)
-    assertEquals(encoded("eventType").str, "gameplay.traveled")
-    assertEquals(encoded("payload")("sourceSiteId").str, "source")
-    assertEquals(encoded("payload")("destinationSiteId").str, "destination")
-    assertEquals(encoded("payload")("supplySpent").num.toInt, 3)
-    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
-
-    val events = execute(rules)._2 ++ Vector(
-      WakeEnded(PlayerId("p2")), event)
-    val records = events.zipWithIndex.map { case (value, index) =>
-      RecordedEvent(index.toLong, value)
-    }
-    val decoded = GameEventWire.decodeStream(
-      GameEventWire.encodeStream("travel", catalogRef, records)
-        .toOption.get).toOption.get
-    assertEquals(decoded.map(_.formatVersion).takeRight(2), Vector(1, 1))
-    assertEquals(decoded.map(_.eventType).takeRight(2),
-      Vector("gameplay.wake-ended", "gameplay.traveled"))
-
-    encoded("payload")("supplySpent") = -1
-    assert(GameEventWire.decode(encoded).isLeft)
-  }
-
-  test("current state-based Oathkeeper and Usurper events round trip") {
+  test("current state-based Usurper events round trip") {
     val events = Vector[OathEvent](
-      OathkeeperChanged(Some(PlayerId("p2"))),
       UsurperFlipped(PlayerId("p2")),
-      UsurperVictory(PlayerId("p2")),
-      OathkeeperRecipientChoiceStarted(PlayerId("p3"), DecisionId("oath-1"),
-        Vector(PlayerId("p1"), PlayerId("p2"))),
-      OathkeeperRecipientChosen(PlayerId("p3"), DecisionId("oath-1"),
-        PlayerId("p2")))
+      UsurperVictory(PlayerId("p2")))
     val encoded = events.zipWithIndex.map { case (event, index) =>
       GameEventWire.encodeEvent("oath", catalogRef, 20L + index, event)
         .toOption.get
     }
-    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector.fill(5)(1))
+    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector.fill(2)(1))
     assertEquals(encoded.map(value => GameEventWire.decode(value).toOption.get.event),
       events)
-    val noHolder = GameEventWire.encodeEvent("oath", catalogRef, 23L,
-      OathkeeperChanged(None)).toOption.get
-    assertEquals(GameEventWire.decode(noHolder).toOption.get.event,
-      OathkeeperChanged(None))
   }
 
   test("setup history preserves every Oathkeeper goal") {
@@ -678,32 +827,6 @@ class GameEventWireSuite extends munit.FunSuite {
       case WireError.InvalidValue(path, _) => path.endsWith(".oathkeeperGoal")
       case _ => false
     })
-  }
-
-  test("v4 Search events round trip exact hidden outcome and player choices") {
-    val drawn = Vector[WorldCardId](DenizenId("denizen:a"), VisionId("vision:b"))
-    val started = SearchStarted(PlayerId("p2"), DecisionId("search-9"),
-      SearchSource.WorldDeck, Region.Cradle, 3, drawn)
-    val completed = SearchCompleted(PlayerId("p2"), DecisionId("search-9"),
-      drawn.head, Vector(drawn(1)),
-      SearchPlacement.Adviser(Orientation.FaceDown, None))
-    val encoded = Vector(started, completed).zipWithIndex.map {
-      case (event, index) => GameEventWire.encodeEvent(
-        "search", catalogRef, 9L + index, event).toOption.get
-    }
-    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector(1, 1))
-    assertEquals(encoded.map(_("eventType").str),
-      Vector("gameplay.search-started", "gameplay.search-completed"))
-    assertEquals(encoded.map(value => GameEventWire.decode(value)
-      .toOption.get.event), Vector(started, completed))
-    val fixture = scala.io.Source.fromResource(
-      "serialization/search-event-stream-v4.json").mkString.trim
-    assertEquals(ujson.read(fixture), ujson.Arr.from(encoded))
-
-    encoded.head("payload")("drawn")(0)("id") = "denizen:tampered"
-    assert(GameEventWire.decode(encoded.head).isRight)
-    // Wire decoding preserves the recorded outcome; authoritative replay is
-    // responsible for rejecting disagreement with the deck.
   }
 
   test("format version and sequence reject fractional and nonfinite numbers") {

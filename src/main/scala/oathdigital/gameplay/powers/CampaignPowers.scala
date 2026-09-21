@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.model.{MajorActionType, PowerWindow}
 
 object CampaignPowers {
   private val modifier = Some(MajorActionType.Campaign)

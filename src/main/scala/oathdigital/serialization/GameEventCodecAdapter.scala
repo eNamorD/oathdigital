@@ -1,8 +1,8 @@
 package oathdigital.serialization
 
 import oathdigital.application.{DecodedGameEvent, EventCodecFailure, GameEventCodec}
-import oathdigital.gameplay.OathEvent
 import oathdigital.model.CatalogRef
+import oathdigital.model.OathEvent
 
 final class GameEventCodecAdapter extends GameEventCodec {
   def decodeStream(json: String) = GameEventWire.decodeStream(json)

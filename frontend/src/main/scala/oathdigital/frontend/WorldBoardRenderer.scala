@@ -10,9 +10,7 @@ private[frontend] object WorldBoardRenderer {
    val list = element("ul", "participants")
    value.players.foreach { player =>
      val item = dom.document.createElement("li")
-     val reference = targetable(playerReference(value, player.playerId),
-       BoardTargetRef.Player(player.playerId), ui)
-     item.appendChild(reference)
+     item.appendChild(playerReference(value, player.playerId))
      item.appendChild(dom.document.createTextNode(s" · role: ${player.role}"))
      value.pawnLocations.find(_.playerId == player.playerId).foreach(pawn =>
        item.appendChild(dom.document.createTextNode(
@@ -45,24 +43,23 @@ private[frontend] object WorldBoardRenderer {
      val advisers = element("div", "board-cards advisers")
      advisers.appendChild(text("strong", "", "Advisers"))
      board.advisers.foreach { card =>
-       advisers.appendChild(boardCardTarget(card,
-         BoardTargetRef.PlayerAdviser(board.playerId, card.cardId), ui))
+       val shell = element("span", "site-card-target")
+       shell.appendChild(cardDetailsPopover(card))
+       advisers.appendChild(shell)
      }
      section.appendChild(advisers)
      val relics = element("div", "board-cards relics")
      relics.appendChild(text("strong", "", "Relics"))
      board.relics.foreach { card =>
-       relics.appendChild(boardCardTarget(card,
-         BoardTargetRef.PlayerRelic(board.playerId, card.cardId), ui))
+       val shell = element("span", "site-card-target")
+       shell.appendChild(cardDetailsPopover(card))
+       relics.appendChild(shell)
      }
      section.appendChild(relics)
      board.banners.foreach { banner =>
-       val target = BoardTargetRef.PlayerBanner(board.playerId, banner.key)
-       val row = targetable(text("p", s"player-banner banner-${banner.key}",
+       section.appendChild(text("p", s"player-banner banner-${banner.key}",
          s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-           s"resources ${banner.resources}"),
-         target, ui)
-       section.appendChild(row)
+           s"resources ${banner.resources}"))
      }
      board.revealedVision.foreach(card => {
        section.appendChild(text("strong", "", "Revealed Vision"))
@@ -71,30 +68,6 @@ private[frontend] object WorldBoardRenderer {
      panel.appendChild(section)
    }
    panel
- }
-
- def boardCardTarget(card: CardDetails, target: BoardTargetRef,
-     ui: ServerUiView): dom.Element = {
-   import ui._
-   val candidate = currentBoardSelection.flatMap(_.activeAction.flatMap(
-     _.candidates.find(_.target == target)))
-   val shell = element("span", cardTargetClasses(candidate.nonEmpty,
-     currentBoardSelection.exists(_.selected(target))))
-   shell.setAttribute("data-target-ref", target.stableKey)
-   val name = cardDetailsPopover(card)
-   candidate.foreach { value =>
-     name.classList.add("board-target")
-     name.setAttribute("title", candidateButtonLabel(value))
-     name.setAttribute("aria-pressed",
-       currentBoardSelection.exists(_.selected(target)).toString)
-     name.addEventListener("click", (event: dom.Event) => {
-       event.stopPropagation()
-       currentBoardSelection.foreach(state => handleSelection(state.choose(target)))
-     })
-   }
-   shell.appendChild(name)
-   candidate.flatMap(candidateDetailBadge).foreach(shell.appendChild)
-   shell
  }
 
  def world(
@@ -159,14 +132,11 @@ private[frontend] object WorldBoardRenderer {
        value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
          val marker = element("span", "pawn")
          marker.appendChild(dom.document.createTextNode("● "))
-         marker.appendChild(targetable(playerReference(value, pawn.playerId),
-           BoardTargetRef.PlayerPawn(pawn.playerId), ui))
+         marker.appendChild(playerReference(value, pawn.playerId))
          pawns.appendChild(marker)
        }
        if (pawns.childNodes.length > 0) control.appendChild(pawns)
-       control.appendChild(siteDetails(site, currentBoardSelection,
-         target => currentBoardSelection.foreach(state =>
-           handleSelection(state.choose(target)))))
+       control.appendChild(siteDetails(site))
        sites.appendChild(control)
      }
      section.appendChild(sites)
@@ -255,39 +225,10 @@ private[frontend] object WorldBoardRenderer {
    section.appendChild(text("h3", "", "Shared Bank"))
    section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
    value.banners.foreach { banner =>
-     val target = BoardTargetRef.PlayerBanner("shared-bank", banner.key)
-     section.appendChild(targetable(text("p", s"shared-banner banner-${banner.key}",
+     section.appendChild(text("p", s"shared-banner banner-${banner.key}",
        s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-         s"resources ${banner.resources}"), target, ui))
+         s"resources ${banner.resources}"))
    }
    section
- }
-
- private def targetable(node: dom.Element, target: BoardTargetRef,
-     ui: ServerUiView): dom.Element = {
-   import ui._
-   candidateForTarget(currentBoardSelection, target).foreach { candidate =>
-     node.classList.add("board-target")
-     node.setAttribute("role", "button")
-     node.setAttribute("tabindex", "0")
-     node.setAttribute("data-target-ref", target.stableKey)
-     node.setAttribute("title", candidateButtonLabel(candidate))
-     node.setAttribute("aria-pressed",
-       currentBoardSelection.exists(_.selected(target)).toString)
-     node.addEventListener("click", (event: dom.Event) => {
-       event.stopPropagation()
-       currentBoardSelection.foreach(state => handleSelection(state.choose(target)))
-     })
-     node.addEventListener("keydown", (event: dom.Event) => {
-       val key = event.asInstanceOf[dom.KeyboardEvent].key
-       if (key == "Enter" || key == " ") {
-         event.preventDefault(); event.stopPropagation()
-         currentBoardSelection.foreach(state => handleSelection(state.choose(target)))
-       }
-     })
-     candidateDetailBadgeTexts(candidate).foreach(value =>
-       node.appendChild(text("span", "target-detail-badge", value)))
-   }
-   node
  }
 }

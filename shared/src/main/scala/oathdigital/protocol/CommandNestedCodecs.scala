@@ -26,11 +26,6 @@ private[protocol] object CommandNestedCodecs {
 
   def encodeDecision(value: DecisionResolution): ujson.Obj = value match {
     case DecisionResolution.StartingAdviser(id) => ujson.Obj("kind" -> "starting-adviser", "adviserId" -> id)
-    case DecisionResolution.Search(kept, discarded, placement) => ujson.Obj(
-      "kind" -> "search", "kept" -> world(kept),
-      "discardedInOrder" -> ujson.Arr.from(discarded.map(world)),
-      "placement" -> encodePlacement(placement))
-    case DecisionResolution.TakeFacedownRelic(id) => ujson.Obj("kind" -> "take-facedown-relic", "relicId" -> id)
   }
 
   def decodeDecision(value: ujson.Value, path: String)
@@ -38,18 +33,131 @@ private[protocol] object CommandNestedCodecs {
     string(root, "kind", path).flatMap {
       case "starting-adviser" => exact(root, Set("kind", "adviserId"), path)
         .flatMap(_ => string(root, "adviserId", path)).map(DecisionResolution.StartingAdviser)
-      case "search" => for {
-        _ <- exact(root, Set("kind", "kept", "discardedInOrder", "placement"), path)
-        kept <- field(root, "kept", path).flatMap(decodeWorld(_, s"$path.kept"))
-        raw <- field(root, "discardedInOrder", path).flatMap(array(_, s"$path.discardedInOrder"))
-        discarded <- traverse(raw.zipWithIndex) { case (v, i) => decodeWorld(v, s"$path.discardedInOrder[$i]") }
-        _ <- noDuplicates((kept +: discarded).map(v => s"${v.kind}/${v.id}"), s"$path.discardedInOrder")
-        placement <- field(root, "placement", path).flatMap(decodePlacement(_, s"$path.placement"))
-      } yield DecisionResolution.Search(kept, discarded, placement)
-      case "take-facedown-relic" => exact(root, Set("kind", "relicId"), path)
-        .flatMap(_ => string(root, "relicId", path)).map(DecisionResolution.TakeFacedownRelic)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision resolution '$kind'"))
     }}
+
+  /** Mirrors the journal's generic decision-answer tags (`"choose-one"` /
+    * `"partition"`) and its kind/id option spelling, so a client's answer and
+    * the engine's recording of it read alike. An unknown tag fails with the
+    * same typed `InvalidValue` every other discriminator here does, never an
+    * exception.
+    */
+  /** The same `optionKind`/`optionId` pair a decision answer travels as, so a
+    * start selection and an answer naming the same site are spelled the same
+    * way on the wire.
+    */
+  def encodeStartArgWire(value: WalkerStartArgWire): ujson.Obj = ujson.Obj(
+    "optionKind" -> value.optionKind, "optionId" -> value.optionId)
+
+  def decodeStartArgsWire(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, Vector[WalkerStartArgWire]] =
+    array(value, path).flatMap(values => traverse(values.zipWithIndex) {
+      case (entry, index) =>
+        val entryPath = s"$path[$index]"
+        obj(entry, entryPath).flatMap { root => for {
+          _ <- exact(root, Set("optionKind", "optionId"), entryPath)
+          kind <- string(root, "optionKind", entryPath)
+          id <- string(root, "optionId", entryPath)
+        } yield WalkerStartArgWire(kind, id) }
+    })
+
+  def encodeDecisionAnswerWire(value: DecisionAnswerWire): ujson.Obj = value match {
+    case DecisionAnswerWire.ChooseOneWire(kind, id) =>
+      ujson.Obj("kind" -> "choose-one", "optionKind" -> kind, "optionId" -> id)
+    case DecisionAnswerWire.PartitionWire(placements) =>
+      ujson.Obj("kind" -> "partition",
+        "placements" -> ujson.Arr.from(placements.map(row => ujson.Obj(
+          "optionKind" -> row.optionKind, "optionId" -> row.optionId,
+          "sectionKey" -> row.sectionKey))))
+    case DecisionAnswerWire.DistributeWire(amounts) => ujson.Obj(
+      "kind" -> "distribute",
+      "amounts" -> ujson.Arr.from(amounts.map(row => ujson.Obj(
+        "optionKind" -> row.optionKind, "optionId" -> row.optionId,
+        "amount" -> row.amount))))
+    case DecisionAnswerWire.ChooseManyWire(options) => ujson.Obj(
+      "kind" -> "choose-many",
+      "options" -> ujson.Arr.from(options.map(row => ujson.Obj(
+        "optionKind" -> row.optionKind, "optionId" -> row.optionId))))
+    case DecisionAnswerWire.ChooseAmountWire(amount) =>
+      ujson.Obj("kind" -> "choose-amount", "amount" -> amount)
+    case DecisionAnswerWire.ProposeTermsWire(terms) =>
+      ujson.Obj("kind" -> "propose-terms", "terms" -> encodeNegotiation(terms))
+    case DecisionAnswerWire.AcceptDealWire => ujson.Obj("kind" -> "accept-deal")
+    case DecisionAnswerWire.DeclineDealWire => ujson.Obj("kind" -> "decline-deal")
+  }
+
+  def decodeDecisionAnswerWire(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DecisionAnswerWire] = obj(value, path).flatMap { root =>
+    string(root, "kind", path).flatMap {
+      case "choose-one" => for {
+        _ <- exact(root, Set("kind", "optionKind", "optionId"), path)
+        optionKind <- string(root, "optionKind", path)
+        optionId <- string(root, "optionId", path)
+      } yield DecisionAnswerWire.ChooseOneWire(optionKind, optionId)
+      case "partition" => for {
+        _ <- exact(root, Set("kind", "placements"), path)
+        raw <- field(root, "placements", path).flatMap(array(_, s"$path.placements"))
+        rows <- traverse(raw.zipWithIndex) { case (v, i) =>
+          decodeDecisionPlacement(v, s"$path.placements[$i]") }
+        _ <- noDuplicates(rows.map(row => s"${row.optionKind}/${row.optionId}"),
+          s"$path.placements")
+      } yield DecisionAnswerWire.PartitionWire(rows)
+      case "distribute" => for {
+        _ <- exact(root, Set("kind", "amounts"), path)
+        raw <- field(root, "amounts", path).flatMap(array(_, s"$path.amounts"))
+        rows <- traverse(raw.zipWithIndex) { case (v, i) =>
+          decodeDistributeAmount(v, s"$path.amounts[$i]") }
+        _ <- noDuplicates(rows.map(row => s"${row.optionKind}/${row.optionId}"),
+          s"$path.amounts")
+      } yield DecisionAnswerWire.DistributeWire(rows)
+      case "choose-many" => for {
+        _ <- exact(root, Set("kind", "options"), path)
+        raw <- field(root, "options", path).flatMap(array(_, s"$path.options"))
+        rows <- traverse(raw.zipWithIndex) { case (v, i) =>
+          decodeDecisionOption(v, s"$path.options[$i]") }
+        _ <- noDuplicates(rows.map(row => s"${row.optionKind}/${row.optionId}"),
+          s"$path.options")
+      } yield DecisionAnswerWire.ChooseManyWire(rows)
+      case "choose-amount" => for {
+        _ <- exact(root, Set("kind", "amount"), path)
+        amount <- field(root, "amount", path).flatMap(integer(_, s"$path.amount"))
+      } yield DecisionAnswerWire.ChooseAmountWire(amount)
+      case "propose-terms" => for {
+        _ <- exact(root, Set("kind", "terms"), path)
+        raw <- field(root, "terms", path)
+        terms <- decodeNegotiation(raw, s"$path.terms")
+      } yield DecisionAnswerWire.ProposeTermsWire(terms)
+      case "accept-deal" => exact(root, Set("kind"), path)
+        .map(_ => DecisionAnswerWire.AcceptDealWire)
+      case "decline-deal" => exact(root, Set("kind"), path)
+        .map(_ => DecisionAnswerWire.DeclineDealWire)
+      case kind => Left(InvalidValue(s"$path.kind", s"unknown decision answer '$kind'"))
+    }}
+
+  private def decodeDecisionPlacement(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DecisionPlacementWire] = obj(value, path).flatMap { row => for {
+    _ <- exact(row, Set("optionKind", "optionId", "sectionKey"), path)
+    optionKind <- string(row, "optionKind", path)
+    optionId <- string(row, "optionId", path)
+    sectionKey <- string(row, "sectionKey", path)
+  } yield DecisionPlacementWire(optionKind, optionId, sectionKey) }
+
+  private def decodeDecisionOption(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DecisionOptionWire] =
+    obj(value, path).flatMap { row => for {
+      _ <- exact(row, Set("optionKind", "optionId"), path)
+      optionKind <- string(row, "optionKind", path)
+      optionId <- string(row, "optionId", path)
+    } yield DecisionOptionWire(optionKind, optionId) }
+
+  private def decodeDistributeAmount(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DistributeAmountWire] =
+    obj(value, path).flatMap { row => for {
+      _ <- exact(row, Set("optionKind", "optionId", "amount"), path)
+      optionKind <- string(row, "optionKind", path)
+      optionId <- string(row, "optionId", path)
+      amount <- field(row, "amount", path).flatMap(integer(_, s"$path.amount"))
+    } yield DistributeAmountWire(optionKind, optionId, amount) }
 
   private def encodeInformation(value: NegotiationInformation): ujson.Obj = value match {
     case NegotiationInformation.Adviser(owner, card) => ujson.Obj("kind" -> "adviser", "ownerPlayerId" -> owner, "card" -> world(card))
@@ -78,15 +186,4 @@ private[protocol] object CommandNestedCodecs {
   private def decodeWorld(value: ujson.Value, path: String) = obj(value, path).flatMap { row => for {
     _ <- exact(row, Set("kind", "id"), path); kind <- string(row, "kind", path); id <- string(row, "id", path)
   } yield WorldCard(kind, id) }
-  private def encodePlacement(value: Placement) = ujson.Obj("kind" -> value.kind,
-    "replace" -> value.replace.map(v => ujson.Obj("kind" -> v.kind, "id" -> v.id)).getOrElse(ujson.Null))
-  private def decodePlacement(value: ujson.Value, path: String) = obj(value, path).flatMap { row => for {
-    _ <- exact(row, Set("kind", "replace"), path); kind <- string(row, "kind", path)
-    replacement <- field(row, "replace", path).flatMap {
-      case ujson.Null => Right(None)
-      case v => obj(v, s"$path.replace").flatMap { card => for {
-        _ <- exact(card, Set("kind", "id"), s"$path.replace"); k <- string(card, "kind", s"$path.replace"); id <- string(card, "id", s"$path.replace")
-      } yield Some(CardRef(k, id)) }
-    }
-  } yield Placement(kind, replacement) }
 }

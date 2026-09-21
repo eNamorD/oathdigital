@@ -39,7 +39,7 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
   def preview(gameId: String, seat: TrustedSeat, request: MajorActionPreviewRequest)
       : Either[TrustedSeatFailure, MajorActionPreviewResponse] = for {
     player <- actor(gameId, seat)
-    action <- oathdigital.gameplay.MajorActionKind.fromKey(request.action).toRight(InvalidIntent)
+    action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(InvalidIntent)
     selected <- GameIntentMapper.bindModifiers(player, request.orderedModifiers)
       .left.map(_ => InvalidIntent)
     accepted <- service.preview(gameId, request.expectedNextSequence, player, action, selected)
@@ -47,10 +47,12 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
     projection = projector.project(gameId, accepted.loaded, player)
     _ <- Either.cond(projection.activeParticipantId.contains(player.value) &&
       projection.actionSelectionOpen, (), Application(GameApplicationError.CommandRejected(
-        oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+        oathdigital.model.OathViolation.InvalidModifierInvocation(
           "major-action preview is unavailable for this actor or phase"))))
     _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application)
   } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
     accepted.options.map(v => PreviewModifier(v.source.stableKey, v.handlerId, v.handlerId)),
-    Vector.empty, MajorActionPreviewTargets.from(projection, request))
+    accepted.ignored.map(v => PreviewIgnoredRule(
+      v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
+    MajorActionPreviewTargets.from(projection, request, accepted.targets))
 }

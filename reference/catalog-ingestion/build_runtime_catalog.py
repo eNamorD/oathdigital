@@ -36,7 +36,6 @@ REVIEWED_RUNTIME_POWERS = (
 )
 PERSISTENT_POWER_IDS = {
     "denizen.vow-of-peace",
-    "denizen.relic-worship",
     "edifice.e13.ruined",
     "edifice.e17.intact",
     "edifice.e17.ruined",

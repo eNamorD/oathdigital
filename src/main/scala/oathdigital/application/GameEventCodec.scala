@@ -1,7 +1,7 @@
 package oathdigital.application
 
-import oathdigital.gameplay.OathEvent
 import oathdigital.model.CatalogRef
+import oathdigital.model.OathEvent
 
 final case class EventCodecFailure(code: String, path: String, message: String)
     extends Product with Serializable

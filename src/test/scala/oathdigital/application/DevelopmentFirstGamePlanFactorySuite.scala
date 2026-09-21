@@ -3,8 +3,7 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.catalog.RelicRole
-import oathdigital.model.{EdificeId, EdificeSide, EdificeState, PlayerId, RelicId,
-  Tokens, VisionId}
+import oathdigital.model.{EdificeId, EdificeSide, EdificeState, FirstGameSetupCommand, OathState, PlayerId, RelicId, Tokens, VisionId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.protocol.{
   BootstrapParticipantRequest,
@@ -12,21 +11,12 @@ import oathdigital.protocol.{
 }
 import oathdigital.protocol.projection.BoardTargetRefProjection
 import oathdigital.server.{GameHttpWire, GameServerGateway}
-import oathdigital.gameplay.setup.{
-  FirstGameSetupCommand,
-  FirstGameSetupRules
-}
-import oathdigital.gameplay.OathState
+import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
   private val config = FirstGameBootstrapConfig(
-    participants.map(participant =>
-      BootstrapParticipant(
-        participant.playerId,
-        participant.lineageId,
-        participant.color
-      )),
+    participants,
     PlayerId("p2")
   )
 
@@ -40,10 +30,10 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
       FirstGameSetupCommand.Begin(derived)
     ).isRight)
     assertEquals(derived.orderedSites.size, 8)
-    oathdigital.catalog.Suit.values.foreach { suit =>
+    oathdigital.model.Suit.all.foreach { suit =>
       assertEquals(
         derived.denizenOrder.count(id =>
-          catalog.denizens.find(_.id.value == id.value).get.suit.value == suit),
+          catalog.denizens.find(_.id.value == id.value).get.suit == suit),
         10
       )
     }

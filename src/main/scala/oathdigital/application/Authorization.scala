@@ -64,106 +64,29 @@ final case class AuthorizedPlayer private (
   def chooseAdviser(adviserId: DenizenId): GameCommand =
     GameCommand.ChooseAdviser(access.playerId, adviserId)
 
-  def takeWealth(resource: oathdigital.gameplay.WakeResource): GameCommand =
-    GameCommand.TakeWealth(access.playerId, resource)
-
   def endWake: GameCommand =
     GameCommand.EndWake(access.playerId)
 
   def beginRest: GameCommand = GameCommand.BeginRest(access.playerId)
   def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
-  def resolveRestPower(decision: DecisionId,
-      allocations: Vector[FavorAllocation], destinationBank: Suit): GameCommand =
-    GameCommand.ResolveRestPower(access.playerId, decision, allocations,
-      destinationBank)
-  def declineRestPower(decision: DecisionId): GameCommand =
-    GameCommand.DeclineRestPower(access.playerId, decision)
-
-  def travel(destination: SiteId): GameCommand =
-    GameCommand.Travel(access.playerId, destination)
-
-  def muster(target: EconomyTargetRef): GameCommand =
-    GameCommand.Muster(access.playerId, target)
-
-  def trade(target: EconomyTargetRef, resource: oathdigital.gameplay.TradeResource): GameCommand =
-    GameCommand.Trade(access.playerId, target, resource)
-
-  def beginSearch(source: SearchSource): GameCommand =
-    GameCommand.BeginSearch(access.playerId, source)
-
-  def beginRecover: GameCommand = GameCommand.BeginRecover(access.playerId)
-  def beginForge: GameCommand = GameCommand.BeginForge(access.playerId)
-  def completeForge(decision: DecisionId,
-      assignments: Vector[ForgeResourceAssignment]): GameCommand =
-    GameCommand.CompleteForge(access.playerId, decision, assignments)
-  def beginChallenge(banner: Banner): GameCommand =
-    GameCommand.BeginChallenge(access.playerId, banner)
-  def chooseChallengeSecretSite(decision: DecisionId, site: SiteId): GameCommand =
-    GameCommand.ChooseChallengeSecretSite(access.playerId, decision, site)
-  def completeChallenge(decision: DecisionId, amount: Int): GameCommand =
-    GameCommand.CompleteChallenge(access.playerId, decision, amount)
-  def placeBannerResource(banner: Banner, amount: Int): GameCommand =
-    GameCommand.PlaceBannerResource(access.playerId, banner, amount)
-  def resolveFacedownAdviser(adviser: WorldCardId,
-      placement: Option[SearchPlacement]): GameCommand =
-    GameCommand.ResolveFacedownAdviser(access.playerId, adviser, placement)
-  def revealVision(vision: VisionId): GameCommand =
-    GameCommand.RevealVision(access.playerId, vision)
-  def playConspiracy(target: Option[ConspiracyTargetRef]): GameCommand =
-    GameCommand.PlayConspiracy(access.playerId, target)
+  def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =
+    GameCommand.UsePower(access.playerId, power, source)
   def peekSiteRelics: GameCommand = GameCommand.PeekSiteRelics(access.playerId)
   def revealOwnedRelic(relic: RelicId): GameCommand =
     GameCommand.RevealOwnedRelic(access.playerId, relic)
   def moveWarbands(toSite: Boolean, amount: Int): GameCommand =
     GameCommand.MoveWarbands(access.playerId, toSite, amount)
-  def beginNegotiation(participants: Vector[PlayerId]): GameCommand =
-    GameCommand.BeginNegotiation(access.playerId, participants)
-  def replaceNegotiationTerms(decision: DecisionId,
-      terms: NegotiationTerms): GameCommand =
-    GameCommand.ReplaceNegotiationTerms(access.playerId, decision, terms)
-  def acceptNegotiation(decision: DecisionId): GameCommand =
-    GameCommand.AcceptNegotiation(access.playerId, decision)
-  def declineNegotiation(decision: DecisionId): GameCommand =
-    GameCommand.DeclineNegotiation(access.playerId, decision)
-  def addRecoverDice(decision: DecisionId): GameCommand =
-    GameCommand.AddRecoverDice(access.playerId, decision)
-  def stopRecover(decision: DecisionId): GameCommand =
-    GameCommand.StopRecover(access.playerId, decision)
-
-  def beginCampaignConquest(targetSiteIds: Vector[SiteId],
-      attackDiceCount: Int): GameCommand =
-    GameCommand.BeginCampaignConquest(
-      access.playerId, targetSiteIds, attackDiceCount)
-  def beginCampaignRaid(targets: Vector[CampaignRaidTarget],
-      attackDiceCount: Int): GameCommand =
-    GameCommand.BeginCampaignRaid(access.playerId, targets, attackDiceCount)
-  def chooseCampaignSacrifice(decision: DecisionId, count: Int): GameCommand =
-    GameCommand.ChooseCampaignSacrifice(access.playerId, decision, count)
-  def chooseCampaignPlan(decision: DecisionId,
-      source: PendingProcedure.CampaignPlanSource): GameCommand =
-    GameCommand.ChooseCampaignPlan(access.playerId, decision, source)
-  def finishCampaignPlans(decision: DecisionId): GameCommand =
-    GameCommand.FinishCampaignPlans(access.playerId, decision)
-  def placeCampaignForce(decision: DecisionId,
-      allocations: Vector[CampaignForceAllocation]): GameCommand =
-    GameCommand.PlaceCampaignForce(access.playerId, decision, allocations)
-  def relocateCampaignRaidPawn(decision: DecisionId,
-      destination: SiteId): GameCommand =
-    GameCommand.RelocateCampaignRaidPawn(access.playerId, decision, destination)
-  def chooseOathkeeperRecipient(decision: DecisionId,
-      recipient: PlayerId): GameCommand =
-    GameCommand.ChooseOathkeeperRecipient(access.playerId, decision, recipient)
-
-  def completeSearch(decision: DecisionId, kept: WorldCardId,
-      discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =
-    GameCommand.CompleteSearch(
-      access.playerId, decision, kept, discarded, placement)
-
   def resolveCardDecision(
       decision: DecisionId,
       resolution: CardDecisionResolution
   ): GameCommand = GameCommand.ResolveCardDecision(
     access.playerId, decision, resolution)
+
+  def rollWalker(pool: PoolKey): GameCommand =
+    GameCommand.RollWalker(access.playerId, pool)
+
+  def resolveWalker(treeDecision: TreeDecision): GameCommand =
+    GameCommand.ResolveWalker(access.playerId, treeDecision)
 }
 
 sealed trait AuthorizationFailure extends Product with Serializable

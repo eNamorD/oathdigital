@@ -44,10 +44,10 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
   test("trusted preview binds resolved actor and rejects a different game") {
     val repository = new InMemoryEventStreamRepository
     val (state, events) = execute(new oathdigital.gameplay.setup.FirstGameSetupRules(catalog))
-    val oathdigital.gameplay.OathState.Ready(ready) = state: @unchecked
+    val oathdigital.model.OathState.Ready(ready) = state: @unchecked
     val actor = ready.game.current.turn.activePlayer
-    val act = new oathdigital.gameplay.OathRules(catalog).handle(state,
-      oathdigital.gameplay.phases.WakeCommand.EndWake(actor)).toOption.get
+    val act = new oathdigital.gameplay.OathRules(catalog).startWalker(state,
+      oathdigital.model.PhaseTransitionRef.EndWake, actor).toOption.get
     repository.seed("preview", (events ++ act.events).zipWithIndex.map { case (event, index) =>
       ujson.write(oathdigital.serialization.GameEventWire.encodeEvent("preview", catalog.ref,
         index.toLong, event).toOption.get)

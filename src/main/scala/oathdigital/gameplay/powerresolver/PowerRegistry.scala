@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
 import oathdigital.model.PowerId
+import oathdigital.model.PowerWindow
 
 final class PowerRegistry private (
     private val auditedIds: Set[PowerId],

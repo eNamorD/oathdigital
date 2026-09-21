@@ -1,6 +1,5 @@
 package oathdigital.gameplay.actions
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 

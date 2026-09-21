@@ -249,6 +249,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-card { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
 .decision-card button, .decision-confirm, .decision-back, .resolution-choice,
 .player-selector { min-height: 44px; margin: 5px; }
+.decision-zones.partition-zones {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.decision-option { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
+.decision-option + .decision-option { margin-top: 8px; }
+.decision-option button, .partition-confirm { min-height: 44px; margin: 5px; }
+.partition-instruction { color: #a99f8c; font-size: 0.9rem; }
 .card-detail { position: relative; min-height: 36px; border: 1px solid #675a43;
   border-radius: 6px; background: #17140f; color: #f5ecd7; }
 .card-popover { display: none; position: absolute; z-index: 3; left: 0; top: 100%;

@@ -1,11 +1,18 @@
 package oathdigital.application
 
-import oathdigital.gameplay.OathViolation
 import oathdigital.gameplay.actions.SearchRules
+import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 
 
+/** `diceCount` (I4) is the number of dice `rollTwo` produces -- named here
+  * as the port's own declared capacity so a caller validating a parked
+  * pool's requested count (e.g. `GameApplicationService`'s `RollWalker`
+  * handling) checks against this instead of a bare literal `2` scattered at
+  * the call site.
+  */
 trait DefenseDicePort {
+  val diceCount: Int = 2
   def rollTwo(): Vector[DefenseDieFace]
 }
 object DefenseDicePort {
@@ -14,7 +21,7 @@ object DefenseDicePort {
     private val faces = Vector(DefenseDieFace.Blank, DefenseDieFace.Blank,
       DefenseDieFace.OneShield, DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
-    def rollTwo(): Vector[DefenseDieFace] = Vector.fill(2)(faces(rng.nextInt(6)))
+    def rollTwo(): Vector[DefenseDieFace] = Vector.fill(diceCount)(faces(rng.nextInt(6)))
   }
 }
 
@@ -35,6 +42,15 @@ object CampaignDicePort {
     def rollAttack(count: Int) = Vector.fill(count)(attack(rng.nextInt(6)))
     def rollDefense(count: Int) = Vector.fill(count)(defense(rng.nextInt(6)))
   }
+
+  /** The walker's dice source, backed by `port`: the same faces a legacy
+    * Campaign rolled, now drawn by an automatic `Roll` node.
+    */
+  def walkerDice(port: CampaignDicePort): WalkerDice = (kind, count) =>
+    Right(kind match {
+      case DiceKind.Attack => port.rollAttack(count)
+      case DiceKind.Defense => port.rollDefense(count)
+    })
 }
 
 object CardDecisionIds {
@@ -45,25 +61,15 @@ object CardDecisionIds {
 
 trait SearchDrawPort {
   def prepare(
-      ready: oathdigital.gameplay.ReadyGame,
+      ready: oathdigital.model.ReadyGame,
       source: SearchSource,
       origin: Region
   ): Either[OathViolation, Vector[WorldCardId]]
 }
 
-trait RelicDrawPort {
-  def prepare(ready: oathdigital.gameplay.ReadyGame): Either[OathViolation, RelicId]
-}
-object RelicDrawPort {
-  val authoritative: RelicDrawPort = new RelicDrawPort {
-    def prepare(ready: oathdigital.gameplay.ReadyGame) =
-      ready.game.current.commonCards.relicDeck.headOption
-        .toRight(OathViolation.ForgeUnavailable("relic deck is empty"))
-  }
-}
 object SearchDrawPort {
   val authoritative: SearchDrawPort = new SearchDrawPort {
-    def prepare(ready: oathdigital.gameplay.ReadyGame, source: SearchSource,
+    def prepare(ready: oathdigital.model.ReadyGame, source: SearchSource,
         origin: Region) = SearchRules.draw(ready, source, origin)
   }
 }

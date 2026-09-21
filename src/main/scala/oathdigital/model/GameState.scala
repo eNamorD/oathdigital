@@ -57,13 +57,27 @@ final case class CampaignState(
     era: EraState
 )
 
-sealed trait Phase extends Product with Serializable
+/** `key` is the phase's wire spelling, carried here rather than in a codec
+  * because the phase is now a journalled value: `EnterPhase` records a phase
+  * change as a walker operation, so replay has to read one back. Following
+  * [[OathkeeperGoal]]'s shape keeps the spelling next to the case that owns
+  * it instead of in a match a new phase could be added without touching.
+  */
+sealed trait Phase extends Product with Serializable { def key: String }
 object Phase {
-  case object Wake extends Phase
-  case object Act extends Phase
-  case object Rest extends Phase
-  private[oathdigital] case object RoundEnd extends Phase
-  private[oathdigital] case object WarExhaustion extends Phase
+  case object Wake extends Phase { val key = "wake" }
+  case object Act extends Phase { val key = "act" }
+  case object Rest extends Phase { val key = "rest" }
+  private[oathdigital] case object RoundEnd extends Phase {
+    val key = "round-end"
+  }
+  private[oathdigital] case object WarExhaustion extends Phase {
+    val key = "war-exhaustion"
+  }
+
+  val all: Vector[Phase] = Vector(Wake, Act, Rest, RoundEnd, WarExhaustion)
+
+  def fromKey(key: String): Option[Phase] = all.find(_.key == key)
 }
 
 final case class TurnState(
@@ -82,6 +96,16 @@ object PowerTiming {
 sealed trait PowerSourceRef extends Product with Serializable
 object PowerSourceRef {
   final case class Site(id: SiteId) extends PowerSourceRef
+
+  /** A globally named card whose printed power was used. This includes
+    * denizens, relics, edifices, visions, and legacies. Where the card sat
+    * when it was used is not part of the use's identity, just as a decision
+    * option names a card without its location.
+    */
+  final case class Card(id: CardId) extends PowerSourceRef
+
+  /** A banner whose printed face power was used. */
+  final case class Banner(banner: oathdigital.model.Banner) extends PowerSourceRef
 }
 
 /** A stable identity for one use-limited power instance this turn. */
@@ -120,19 +144,40 @@ final case class CurrentGameState(
     title: OathkeeperState,
     turn: TurnState,
     tracks: GameTracks,
-    pending: Option[PendingProcedure],
     result: Option[GameResult],
     temporaryHands: Map[PlayerId, Vector[WorldCardId]] = Map.empty,
     setAsideRelics: Vector[RelicId] = Vector.empty,
-    // Walker (procedure-walker) pending state. Legacy `pending` stays
-    // alongside for actions still on the legacy evolve path this slice (dual
-    // pending); walker actions read/write only `walkerPending`.
+    // Walker (procedure-walker) pending state: the only pending procedure
+    // position. Walker procedures read and write `walkerPending`.
     walkerPending: Option[PendingTree] = None,
     rollPools: Map[PoolKey, DicePoolState] = Map.empty,
     rollOutcomes: Map[PoolKey, RollOutcome] = Map.empty,
     // Stored beside, not inside, pointer-only PendingTree. Rebuilds the
     // command-local operation tree after reload.
-    walkerAction: Option[ActionRef] = None
+    walkerProcedure: Option[ProcedureRef] = None,
+    // The player-selected power ids chosen when the walker procedure started
+    // (fix-round ruling I). Stored beside, not inside, pointer-only
+    // PendingTree for the same reason as `walkerProcedure`: replay restores
+    // it from the durable `WalkerParked` fact rather than re-deriving it, and
+    // `WalkerCompleted` clears it alongside `walkerPending`/`walkerProcedure`.
+    walkerModifiers: Vector[PowerId] = Vector.empty,
+    // What the player selected when the walker procedure started, for an action
+    // whose tree cannot be built without it (batch-1 Task 5) -- Travel's
+    // destination is the only one today. They are `DecisionOptionRef`s, the
+    // same game-object vocabulary a decision option names, so nothing outside
+    // the action that declared them learns what they mean: empty is "this
+    // action declares none", and the action itself rejects a shape it did not
+    // ask for.
+    //
+    // Durable for exactly the reason `walkerModifiers` is: a resumed command
+    // rebuilds the tree the start built, and a selection -- unlike a pawn
+    // site -- cannot be re-derived from state. Restored by replay from the
+    // `WalkerParked` fact and cleared by `WalkerCompleted` alongside the other
+    // walker-owned scratch fields.
+    walkerStartArgs: Vector[DecisionOptionRef] = Vector.empty,
+    // The public result of the last Campaign fought. Not walker scratch:
+    // `WalkerCompleted` leaves it, and the next Campaign replaces it.
+    lastCampaignResult: Option[CampaignResult] = None
 )
 
 final case class OathGame(

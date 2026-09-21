@@ -28,9 +28,9 @@ object ServerModeUi {
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
     var boardSelectionState = Option.empty[BoardTargetSelectionState]
-    var boardFormationState = Option.empty[BoardTargetFormationState]
-    var campaignPlacementState = Option.empty[CampaignPlacementState]
-    var forgeAssignmentState = Option.empty[ForgeAssignmentState]
+    var walkerPartitionDraft = Option.empty[WalkerPartitionDraft]
+    var walkerDistributeDraft = Option.empty[WalkerDistributeDraft]
+    var walkerSelectionDraft = Option.empty[WalkerSelectionDraft]
     var cardDecisionState = Option.empty[CardDecisionState]
     var modifierWorkflow = Option.empty[ModifierWorkflow]
     var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
@@ -133,18 +133,18 @@ object ServerModeUi {
             boardSelectionState,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
             displayed.boardTargetActions))
-          boardFormationState = BoardTargetFormationState.reconcile(
-            boardFormationState,
-            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
-            displayed.boardTargetActions)
-          campaignPlacementState = CampaignPlacementState.reconcile(
-            campaignPlacementState,
+          walkerPartitionDraft = WalkerPartitionDraft.reconcile(
+            walkerPartitionDraft,
             BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.campaign)
-          forgeAssignmentState = ForgeAssignmentState.reconcile(
-            forgeAssignmentState,
+              displayed.nextSequence), displayed.walkerDecision)
+          walkerDistributeDraft = WalkerDistributeDraft.reconcile(
+            walkerDistributeDraft,
             BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.forge)
+              displayed.nextSequence), displayed.walkerDecision)
+          walkerSelectionDraft = WalkerSelectionDraft.reconcile(
+            walkerSelectionDraft,
+            BoardSelectionContext(gameId, selectedPlayer,
+              displayed.nextSequence), displayed.walkerDecision)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))
@@ -169,8 +169,6 @@ object ServerModeUi {
               retainedNotice
             ) =>
           boardSelectionState = None
-          boardFormationState = None
-          campaignPlacementState = None
           cardDecisionState = None
           modifierWorkflow = None
           facedownAdviserDraft = None
@@ -211,8 +209,6 @@ object ServerModeUi {
       gameId = id.trim
       projection = None
       boardSelectionState = None
-      boardFormationState = None
-      campaignPlacementState = None
       cardDecisionState = None
       modifierWorkflow = None
       rawEvents = Vector.empty
@@ -235,8 +231,6 @@ object ServerModeUi {
       selectedPlayer = bootstrap.firstPlayer
       projection = None
       boardSelectionState = None
-      boardFormationState = None
-      campaignPlacementState = None
       cardDecisionState = None
       modifierWorkflow = None
       rawEvents = Vector.empty
@@ -300,8 +294,6 @@ object ServerModeUi {
             case Left(stale: GameClientFailure.StalePosition)
                 if coordinator.accepts(request) =>
               boardSelectionState = None
-              boardFormationState = None
-              campaignPlacementState = None
               modifierWorkflow = None
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
@@ -350,7 +342,6 @@ object ServerModeUi {
         boardSelectionState = Some(BoardTargetSelectionState.reconcile(None,
           context, Vector(action)).activate(actionKind))
       }
-      boardFormationState = None
       modifierWorkflow = Some(workflow.showTargets(response))
       render()
     }
@@ -362,7 +353,6 @@ object ServerModeUi {
       modifierWorkflow = None
       facedownAdviserDraft = None
       boardSelectionState = boardSelectionState.map(_.cancel)
-      boardFormationState = None
       val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
       client.preview(gameId, selectedPlayer, request).foreach {
         case Right(response) =>
@@ -389,7 +379,9 @@ object ServerModeUi {
         case Right(response) => workflow.command match {
           case Some(command) =>
             modifierWorkflow = None
-            submitTransport(command, workflow.selection.invocations)
+            val (submitted, modifiers) = ModifierWorkflow.submission(command,
+              workflow.selection.invocations)
+            submitTransport(submitted, modifiers)
           case None => activatePreviewTargets(workflow, response)
         }
         case Left(error) =>
@@ -406,8 +398,9 @@ object ServerModeUi {
           modifierWorkflow = None
           facedownAdviserDraft = None
           boardSelectionState = None
-          boardFormationState = None
-          submitTransport(command, workflow.selection.invocations)
+          val (submitted, modifiers) = ModifierWorkflow.submission(command,
+            workflow.selection.invocations)
+          submitTransport(submitted, modifiers)
         case None => submit(command)
       }
 
@@ -423,14 +416,9 @@ object ServerModeUi {
         boardSelectionState = Some(state)
         render()
       case BoardSelectionResult.Submit(action, targets) =>
-        val force = projection.toVector.flatMap(_.playerBoards)
-          .find(_.playerId == selectedPlayer).map(_.warbands).getOrElse(0)
-        commandForSelection(action, targets, selectedPlayer, force).foreach { command =>
+        commandForSelection(action, targets, selectedPlayer).foreach { command =>
           completeTargetCommand(command)
         }
-      case BoardSelectionResult.Form(state) =>
-        boardFormationState = Some(state)
-        render()
     }
 
     lazy val ui: ServerUiView = new ServerUiView {
@@ -440,12 +428,12 @@ object ServerModeUi {
       def sessionCoordinator = coordinator
       def currentBoardSelection = boardSelectionState
       def currentBoardSelection_=(value: Option[BoardTargetSelectionState]) = boardSelectionState = value
-      def currentBoardFormation = boardFormationState
-      def currentBoardFormation_=(value: Option[BoardTargetFormationState]) = boardFormationState = value
-      def currentCampaignPlacement = campaignPlacementState
-      def currentCampaignPlacement_=(value: Option[CampaignPlacementState]) = campaignPlacementState = value
-      def currentForgeAssignment = forgeAssignmentState
-      def currentForgeAssignment_=(value: Option[ForgeAssignmentState]) = forgeAssignmentState = value
+      def currentWalkerPartition = walkerPartitionDraft
+      def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]) = walkerPartitionDraft = value
+      def currentWalkerDistribution = walkerDistributeDraft
+      def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
+      def currentWalkerSelection = walkerSelectionDraft
+      def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]) = walkerSelectionDraft = value
       def currentCardDecision = cardDecisionState
       def currentCardDecision_=(value: Option[CardDecisionState]) = cardDecisionState = value
       def currentModifierWorkflow = modifierWorkflow
@@ -468,7 +456,6 @@ object ServerModeUi {
         modifierWorkflow = None
         facedownAdviserDraft = None
         restoreBoardTargetActions()
-        boardFormationState = None
         render()
       }
       def beginTargetedMajorAction(actionKind: String) =
@@ -476,7 +463,6 @@ object ServerModeUi {
       def backFromTargets() = modifierWorkflow.foreach { workflow =>
         facedownAdviserDraft = None
         boardSelectionState = None
-        boardFormationState = None
         modifierWorkflow = workflow.backFromTargets
         render()
       }
@@ -484,7 +470,6 @@ object ServerModeUi {
         modifierWorkflow = modifierWorkflow.flatMap(_.cancel)
         facedownAdviserDraft = None
         restoreBoardTargetActions()
-        boardFormationState = None
         render()
       }
       def submitTargetCommand(command: GameCommand) =

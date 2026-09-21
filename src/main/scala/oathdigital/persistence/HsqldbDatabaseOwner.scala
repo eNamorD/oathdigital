@@ -18,9 +18,10 @@ import oathdigital.application._
 /** Owns the sole datasource, schema lifecycle, and HSQLDB shutdown. */
 final class HsqldbDatabaseOwner private (
     database: Database,
-    source: HikariDataSource
+    source: HikariDataSource,
+    nowMillis: () => Long
 ) extends AutoCloseable {
-  private val schema = new EventJournalSchema
+  private val schema = new EventJournalSchema(nowMillis)
   private val closed = new AtomicBoolean(false)
   private val shutdowns = new AtomicInteger(0)
 
@@ -76,11 +77,14 @@ object HsqldbDatabaseOwner {
       error: RepositoryFailure
   ) extends OpenAttemptFailure
 
-  def open(path: Path): Either[RepositoryFailure, HsqldbDatabaseOwner] =
+  def open(
+      path: Path,
+      nowMillis: () => Long = () => System.currentTimeMillis()
+  ): Either[RepositoryFailure, HsqldbDatabaseOwner] =
     validatePath(path).flatMap { validated =>
       val deadline = System.nanoTime() + ReopenDeadlineNanos
       retryTransientLock(
-        () => openAttempt(validated),
+        () => openAttempt(validated, nowMillis),
         ReopenAttempts,
         deadline,
         System.nanoTime _,
@@ -105,7 +109,8 @@ object HsqldbDatabaseOwner {
   }
 
   private def openAttempt(
-      path: Path
+      path: Path,
+      nowMillis: () => Long
   ): Either[OpenAttemptFailure, HsqldbDatabaseOwner] = {
     val source = new HikariDataSource()
     try {
@@ -124,7 +129,8 @@ object HsqldbDatabaseOwner {
       probe.close()
       val owner = new HsqldbDatabaseOwner(
         Database.forDataSource(source, Some(4)),
-        source
+        source,
+        nowMillis
       )
       owner.initializeSchema() match {
         case Right(_) => Right(owner)

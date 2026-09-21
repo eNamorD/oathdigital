@@ -51,25 +51,6 @@ final case class RelicState(
 
 final case class LegacyState(id: LegacyId, active: Boolean) extends CardState
 
-sealed trait EconomyTargetRef extends Product with Serializable {
-  def id: CardId
-  def kind: String
-}
-object EconomyTargetRef {
-  final case class Denizen(id: DenizenId) extends EconomyTargetRef {
-    val kind = "denizen"
-  }
-  final case class Edifice(id: EdificeId) extends EconomyTargetRef {
-    val kind = "edifice"
-  }
-
-  def fromCard(id: CardId): Option[EconomyTargetRef] = id match {
-    case value: DenizenId => Some(Denizen(value))
-    case value: EdificeId => Some(Edifice(value))
-    case _ => None
-  }
-}
-
 sealed trait Region extends Product with Serializable {
   def key: String
 }
@@ -87,33 +68,6 @@ object Region {
   val all: Vector[Region] = Vector(Cradle, Provinces, Hinterland)
 }
 
-sealed trait Suit extends Product with Serializable {
-  def key: String
-}
-object Suit {
-  case object Discord extends Suit {
-    override val key: String = "discord"
-  }
-  case object Arcane extends Suit {
-    override val key: String = "arcane"
-  }
-  case object Order extends Suit {
-    override val key: String = "order"
-  }
-  case object Hearth extends Suit {
-    override val key: String = "hearth"
-  }
-  case object Beast extends Suit {
-    override val key: String = "beast"
-  }
-  case object Nomad extends Suit {
-    override val key: String = "nomad"
-  }
-
-  val all: Vector[Suit] =
-    Vector(Discord, Arcane, Order, Hearth, Beast, Nomad)
-}
-
 final case class CardZones(
     worldDeck: Vector[WorldCardId],
     relicDeck: Vector[RelicId],
@@ -123,4 +77,9 @@ final case class CardZones(
 ) {
   def discard(region: Region): Vector[WorldCardId] =
     regionalDiscards.getOrElse(region, Vector.empty)
+}
+
+/** Stable, container-qualified target for a denizen printed at a site. */
+final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId) {
+  def stableKey: String = s"site:${siteId.value}:denizen:${denizenId.value}"
 }

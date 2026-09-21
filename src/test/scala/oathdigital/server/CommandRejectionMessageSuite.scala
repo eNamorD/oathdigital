@@ -1,7 +1,7 @@
 package oathdigital.server
 
 import munit.FunSuite
-import oathdigital.gameplay.OathViolation
+import oathdigital.model.OathViolation
 
 class CommandRejectionMessageSuite extends FunSuite {
   test("negotiation rejections surface their authoritative detail") {

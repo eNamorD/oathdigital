@@ -1,22 +1,27 @@
 package oathdigital.model
 
-/** One recorded answer to a parked walker decision (Task 5 ruling 5.2).
+/** One recorded answer to a parked walker decision.
   *
   * `answered` grows per resolution (a `Repeat` re-parks the same decision id
   * on every fresh pass and each answer is recorded — duplicates accumulate,
-  * and pass guards must key on the LATEST payload, not on `answered.size`).
+  * and pass guards must key on the LATEST answer, not on `answered.size`).
   *
   * @param decisionId the id of the `Decide` node that parked.
-  * @param payload the model-safe choice the player made.
+  * @param answer the model-safe choice the player made.
+  * @param by the player who submitted it: the authorized requester: the
+  *   parked `Decide`'s owner or one of its co-owners. Journalled so log lines can name who
+  *   chose from the payload alone; replay does not re-derive the owner.
   */
-final case class Answered(decisionId: String, payload: DecisionPayload)
+final case class Answered(decisionId: String, answer: DecisionAnswer,
+    by: PlayerId)
 
 /** Parked walker position recorded in game state while an action awaits a
   * decision or roll (spec decision S1).
   *
   * Pending stores ONLY a pointer into the action: the stable node-id chain
-  * `at`, the decisions already `answered`, and the `actor`. The action tree
-  * itself is derived per command and never stored in state, and the walker
+  * `at` and the decisions already `answered`. The player the procedure
+  * belongs to is always `turn.activePlayer`; nothing a walk does changes it.
+  * The action tree is derived per command and never stored in state. The walker
   * context is rebuilt from state at each command — so this type stays a pure
   * model value with no dependency on the gameplay operation ADT (see the
   * `inner production packages do not import outer adapters` guard in
@@ -24,13 +29,11 @@ final case class Answered(decisionId: String, payload: DecisionPayload)
   *
   * @param at stable node-id chain naming the node the walker resumes at.
   * @param answered decisions already recorded during this action, in answer
-  *   order (each carries its model-safe [[DecisionPayload]]).
-  * @param actor the player whose action this is.
+  *   order (each carries its model-safe [[DecisionAnswer]]).
   */
 final case class PendingTree(
     at: Vector[String],
-    answered: Vector[Answered],
-    actor: PlayerId
+    answered: Vector[Answered]
 )
 
 /** Stable name of a dice pool (e.g. "recover", "campaign.attack").

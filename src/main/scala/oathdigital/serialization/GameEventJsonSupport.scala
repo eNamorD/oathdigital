@@ -2,9 +2,7 @@ package oathdigital.serialization
 
 import scala.util.control.NonFatal
 import oathdigital.model._
-import oathdigital.gameplay._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.OathEvent._
+import oathdigital.model.OathEvent._
 
 /** Shared primitive and nested-model JSON vocabulary for v1 event families. */
 private[serialization] trait GameEventJsonSupport {
@@ -12,51 +10,6 @@ private[serialization] trait GameEventJsonSupport {
 
   protected final def decodeBanner(value: String, path: String): Either[WireError, Banner] =
     Banner.fromKey(value).toRight(InvalidValue(path, s"unknown banner '$value'"))
-
-  protected final def encodeNegotiationTerms(terms: NegotiationTerms): ujson.Value = ujson.Obj(
-    "transfers" -> ujson.Arr.from(terms.transfers.map(transfer => ujson.Obj(
-      "recipientPlayerId" -> transfer.recipient.value, "favor" -> transfer.favor,
-      "relicIds" -> stringArray(transfer.relics.map(_.value))))),
-    "disclosures" -> ujson.Arr.from(terms.disclosures.map { disclosure =>
-      val information = disclosure.information match {
-        case NegotiationDisclosureRef.Adviser(owner, card) => ujson.Obj(
-          "kind" -> "adviser", "ownerPlayerId" -> owner.value,
-          "card" -> encodeWorldCard(card))
-        case NegotiationDisclosureRef.HeldRelic(owner, relic) => ujson.Obj(
-          "kind" -> "held-relic", "ownerPlayerId" -> owner.value,
-          "relicId" -> relic.value)
-        case NegotiationDisclosureRef.SiteRelic(site, relic) => ujson.Obj(
-          "kind" -> "site-relic", "siteId" -> site.value, "relicId" -> relic.value)
-      }
-      ujson.Obj("recipientPlayerId" -> disclosure.recipient.value,
-        "information" -> information)
-    }))
-
-  protected final def decodeNegotiationTerms(value: ujson.Value,
-      path: String): Either[WireError, NegotiationTerms] = try {
-    for {
-      transfers <- traverse(value("transfers").arr.toVector) { row => for {
-        favor <- safeIntField(row.obj, "favor", s"$path.transfers")
-      } yield NegotiationTransfer(PlayerId(row("recipientPlayerId").str), favor,
-        row("relicIds").arr.toVector.map(v => RelicId(v.str))) }
-      disclosures <- traverse(value("disclosures").arr.toVector) { row =>
-        val info = row("information")
-        val decoded: Either[WireError, NegotiationDisclosureRef] = info("kind").str match {
-          case "adviser" => decodeWorldCard(info("card"), s"$path.disclosures.card")
-            .map(card => NegotiationDisclosureRef.Adviser(
-              PlayerId(info("ownerPlayerId").str), card))
-          case "held-relic" => Right(NegotiationDisclosureRef.HeldRelic(
-            PlayerId(info("ownerPlayerId").str), RelicId(info("relicId").str)))
-          case "site-relic" => Right(NegotiationDisclosureRef.SiteRelic(
-            SiteId(info("siteId").str), RelicId(info("relicId").str)))
-          case other => Left(InvalidValue(s"$path.disclosures.kind",
-            s"unknown disclosure kind '$other'"))
-        }
-        decoded.map(NegotiationDisclosure(PlayerId(row("recipientPlayerId").str), _))
-      }
-    } yield NegotiationTerms(transfers, disclosures)
-  } catch { case NonFatal(error) => Left(InvalidValue(path,
-    Option(error.getMessage).getOrElse("invalid Negotiation terms"))) }
 
   protected final def encodePlan(plan: FirstGameSetupPlan): ujson.Value =
     ujson.Obj(
@@ -279,31 +232,6 @@ private[serialization] trait GameEventJsonSupport {
   protected final def stringArray(values: Vector[String]): ujson.Value =
     ujson.Arr.from(values.map(ujson.Str(_)))
 
-  protected final def encodeConspiracyTarget(target: ConspiracyTarget): ujson.Value =
-    target match {
-      case ConspiracyTarget.Relic(owner, relic) => ujson.Obj(
-        "kind" -> "relic", "ownerPlayerId" -> owner.value,
-        "relicId" -> relic.value)
-      case ConspiracyTarget.Banner(owner, banner) => ujson.Obj(
-        "kind" -> "banner", "ownerPlayerId" -> owner.value,
-        "banner" -> banner.key)
-    }
-
-  protected final def decodeOptionalConspiracyTarget(value: ujson.Value, path: String)
-      : Either[WireError, Option[ConspiracyTarget]] = value match {
-    case ujson.Null => Right(None)
-    case other => try other("kind").str match {
-      case "relic" => Right(Some(ConspiracyTarget.Relic(
-        PlayerId(other("ownerPlayerId").str), RelicId(other("relicId").str))))
-      case "banner" => decodeBanner(other("banner").str, s"$path.banner").map(
-        banner => Some(ConspiracyTarget.Banner(
-          PlayerId(other("ownerPlayerId").str), banner)))
-      case kind => Left(InvalidValue(s"$path.kind",
-        s"unknown Conspiracy target '$kind'"))
-    } catch { case NonFatal(error) => Left(InvalidValue(path,
-      Option(error.getMessage).getOrElse("invalid Conspiracy target"))) }
-  }
-
   protected final def encodeForceKind(force: ForceKind): ujson.Value = force match {
     case ForceKind.Bandit => ujson.Obj("kind" -> "bandit")
     case ForceKind.Imperial => ujson.Obj("kind" -> "imperial")
@@ -320,108 +248,6 @@ private[serialization] trait GameEventJsonSupport {
       s"unknown force kind '$other'"))
   } catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid force kind"))) }
-
-  protected final def encodeLosingForceEffect(
-      effect: CampaignLosingForceEffect): ujson.Value = {
-    val base = ujson.Obj(
-      "siteId" -> effect.site.value,
-      "force" -> encodeForceKind(effect match {
-        case CampaignLosingForceEffect.Remove(_, force, _) => force
-        case CampaignLosingForceEffect.Preserve(_, force, _) => force
-        case CampaignLosingForceEffect.Relocate(_, _, force, _) => force
-        case CampaignLosingForceEffect.Replace(_, force, _, _, _) => force
-        case CampaignLosingForceEffect.ReturnToBoard(_, _, force, _) => force
-        case CampaignLosingForceEffect.KillCommitted(_, _, force, _) => force
-        case CampaignLosingForceEffect.RelocateCommitted(_, _, force, _) => force
-        case CampaignLosingForceEffect.PreserveCommitted(_, _, force, _) => force
-      }),
-      "count" -> (effect match {
-        case CampaignLosingForceEffect.Remove(_, _, count) => count
-        case CampaignLosingForceEffect.Preserve(_, _, count) => count
-        case CampaignLosingForceEffect.Relocate(_, _, _, count) => count
-        case CampaignLosingForceEffect.Replace(_, _, count, _, _) => count
-        case CampaignLosingForceEffect.ReturnToBoard(_, _, _, count) => count
-        case CampaignLosingForceEffect.KillCommitted(_, _, _, count) => count
-        case CampaignLosingForceEffect.RelocateCommitted(_, _, _, count) => count
-        case CampaignLosingForceEffect.PreserveCommitted(_, _, _, count) => count
-      }))
-    effect match {
-      case _: CampaignLosingForceEffect.Remove => base("kind") = "remove"
-      case _: CampaignLosingForceEffect.Preserve => base("kind") = "preserve"
-      case CampaignLosingForceEffect.Relocate(_, destination, _, _) =>
-        base("kind") = "relocate"
-        base("destinationSiteId") = destination.value
-      case CampaignLosingForceEffect.Replace(_, _, _, replacement, count) =>
-        base("kind") = "replace"
-        base("replacementForce") = replacement.map(encodeForceKind)
-          .getOrElse(ujson.Null)
-        base("replacementCount") = count
-      case CampaignLosingForceEffect.ReturnToBoard(_, player, _, _) =>
-        base("kind") = "return-to-board"
-        base("playerId") = player.value
-      case CampaignLosingForceEffect.KillCommitted(_, player, _, _) =>
-        base("kind") = "kill-committed"
-        base("playerId") = player.value
-      case CampaignLosingForceEffect.RelocateCommitted(_, player, _, _) =>
-        base("kind") = "relocate-committed"
-        base("playerId") = player.value
-      case CampaignLosingForceEffect.PreserveCommitted(_, player, _, _) =>
-        base("kind") = "preserve-committed"
-        base("playerId") = player.value
-    }
-    base
-  }
-
-  protected final def decodeLosingForceEffect(value: ujson.Value, path: String)
-      : Either[WireError, CampaignLosingForceEffect] = try {
-    val obj = value.obj
-    for {
-      kind <- stringField(obj, "kind", path)
-      site <- stringField(obj, "siteId", path).map(SiteId(_))
-      forceValue <- requiredField(obj, "force", path)
-      force <- decodeForceKind(forceValue, s"$path.force")
-      count <- safeIntField(obj, "count", path)
-      _ <- Either.cond(count > 0, (), InvalidValue(
-        s"$path.count", "expected a positive integer"))
-      effect <- kind match {
-        case "remove" => Right(CampaignLosingForceEffect.Remove(site, force, count))
-        case "preserve" => Right(CampaignLosingForceEffect.Preserve(site, force, count))
-        case "relocate" => stringField(obj, "destinationSiteId", path).flatMap {
-          destination => Either.cond(destination != site.value,
-            CampaignLosingForceEffect.Relocate(site, SiteId(destination), force, count),
-            InvalidValue(s"$path.destinationSiteId",
-              "relocation requires a different site"))
-        }
-        case "replace" => for {
-          replacementCount <- safeIntField(obj, "replacementCount", path)
-          replacementValue <- requiredField(obj, "replacementForce", path)
-          replacement <- replacementValue match {
-            case ujson.Null => Right(None)
-            case other => decodeForceKind(other, s"$path.replacementForce").map(Some(_))
-          }
-          _ <- Either.cond(replacement.nonEmpty == (replacementCount > 0), (),
-            InvalidValue(s"$path.replacementForce",
-              "replacement force and count must agree"))
-        } yield CampaignLosingForceEffect.Replace(site, force, count,
-          replacement, replacementCount)
-        case "return-to-board" => stringField(obj, "playerId", path).map(
-          player => CampaignLosingForceEffect.ReturnToBoard(site,
-            PlayerId(player), force, count))
-        case "kill-committed" => stringField(obj, "playerId", path).map(
-          player => CampaignLosingForceEffect.KillCommitted(site,
-            PlayerId(player), force, count))
-        case "relocate-committed" => stringField(obj, "playerId", path).map(
-          player => CampaignLosingForceEffect.RelocateCommitted(site,
-            PlayerId(player), force, count))
-        case "preserve-committed" => stringField(obj, "playerId", path).map(
-          player => CampaignLosingForceEffect.PreserveCommitted(site,
-            PlayerId(player), force, count))
-        case other => Left(InvalidValue(s"$path.kind",
-          s"unknown losing-force effect '$other'"))
-      }
-    } yield effect
-  } catch { case NonFatal(error) => Left(InvalidValue(path,
-    Option(error.getMessage).getOrElse("invalid losing-force effect"))) }
 
   protected final def encodeDefenseFace(face: DefenseDieFace): String = face match {
     case DefenseDieFace.Blank => "blank"
@@ -481,85 +307,12 @@ private[serialization] trait GameEventJsonSupport {
       PlayerId(value("playerId").str)))
     case "relic" => Right(CampaignRaidTarget.Relic(
       PlayerId(value("playerId").str), RelicId(value("relicId").str)))
-    case "banner" => value("banner").str match {
-      case "peoples-favor" => Right(CampaignRaidTarget.Banner(
-        PlayerId(value("playerId").str), CampaignBanner.PeoplesFavor))
-      case "darkest-secret" => Right(CampaignRaidTarget.Banner(
-        PlayerId(value("playerId").str), CampaignBanner.DarkestSecret))
-      case other => Left(InvalidValue(s"$path.banner",
-        s"unknown Campaign banner '$other'"))
-    }
+    case "banner" => decodeBanner(value("banner").str, s"$path.banner")
+      .map(CampaignRaidTarget.Banner(PlayerId(value("playerId").str), _))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown Campaign Raid target '$other'"))
   } catch { case error: Exception => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid Campaign Raid target"))) }
-
-  protected final def encodeCampaignPlanSource(
-      source: PendingProcedure.CampaignPlanSource): ujson.Value = source match {
-    case PendingProcedure.CampaignPlanSource.Adviser(player, id) => ujson.Obj(
-      "kind" -> "adviser", "playerId" -> player.value, "cardId" -> id.value)
-    case PendingProcedure.CampaignPlanSource.SiteCard(site, id) => ujson.Obj(
-      "kind" -> "site-card", "siteId" -> site.value, "cardId" -> id.value)
-    case PendingProcedure.CampaignPlanSource.Relic(player, id) => ujson.Obj(
-      "kind" -> "relic", "playerId" -> player.value, "cardId" -> id.value)
-    case PendingProcedure.CampaignPlanSource.Title(player) => ujson.Obj(
-      "kind" -> "title", "playerId" -> player.value)
-  }
-
-  protected final def decodeCampaignPlanSource(value: ujson.Value, path: String)
-      : Either[WireError, PendingProcedure.CampaignPlanSource] =
-    try value("kind").str match {
-      case "adviser" => Right(PendingProcedure.CampaignPlanSource.Adviser(
-        PlayerId(value("playerId").str), DenizenId(value("cardId").str)))
-      case "site-card" => Right(PendingProcedure.CampaignPlanSource.SiteCard(
-        SiteId(value("siteId").str), DenizenId(value("cardId").str)))
-      case "relic" => Right(PendingProcedure.CampaignPlanSource.Relic(
-        PlayerId(value("playerId").str), RelicId(value("cardId").str)))
-      case "title" => Right(PendingProcedure.CampaignPlanSource.Title(
-        PlayerId(value("playerId").str)))
-      case other => Left(InvalidValue(s"$path.kind",
-        s"unknown Campaign plan source '$other'"))
-    } catch { case NonFatal(error) => Left(InvalidValue(path,
-      Option(error.getMessage).getOrElse("invalid Campaign plan source"))) }
-
-  protected final def encodeCampaignPlanSide(side: PendingProcedure.CampaignPlanSide) =
-    ujson.Str(side match {
-      case PendingProcedure.CampaignPlanSide.Attacker => "attacker"
-      case PendingProcedure.CampaignPlanSide.Defender => "defender"
-    })
-  protected final def decodeCampaignPlanSide(value: ujson.Value, path: String) = value.str match {
-    case "attacker" => Right(PendingProcedure.CampaignPlanSide.Attacker)
-    case "defender" => Right(PendingProcedure.CampaignPlanSide.Defender)
-    case other => Left(InvalidValue(path, s"unknown Campaign plan side '$other'"))
-  }
-  protected final def encodeCampaignPlanCost(cost: PendingProcedure.CampaignPlanCost) = cost match {
-    case PendingProcedure.CampaignPlanCost.Favor(n) => ujson.Obj("kind" -> "favor", "count" -> n)
-    case PendingProcedure.CampaignPlanCost.Secret(n) => ujson.Obj("kind" -> "secret", "count" -> n)
-  }
-  protected final def decodeCampaignPlanCost(value: ujson.Value, path: String) = value("kind").str match {
-    case "favor" => Right(PendingProcedure.CampaignPlanCost.Favor(value("count").num.toInt))
-    case "secret" => Right(PendingProcedure.CampaignPlanCost.Secret(value("count").num.toInt))
-    case other => Left(InvalidValue(path, s"unknown Campaign plan cost '$other'"))
-  }
-  protected final def encodeCampaignPlanEffect(effect: PendingProcedure.CampaignPlanEffect) = effect match {
-    case PendingProcedure.CampaignPlanEffect.AddAttackDice(n) => ujson.Obj("kind" -> "add-attack-dice", "count" -> n)
-    case PendingProcedure.CampaignPlanEffect.AddDefenseDice(n) => ujson.Obj("kind" -> "add-defense-dice", "count" -> n)
-    case PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls => ujson.Obj("kind" -> "ignore-attack-skulls")
-    case PendingProcedure.CampaignPlanEffect.RevealSource => ujson.Obj("kind" -> "reveal-source")
-    case PendingProcedure.CampaignPlanEffect.TransformAttackResult(id) => ujson.Obj("kind" -> "transform-attack-result", "handlerId" -> id)
-    case PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy(id) => ujson.Obj("kind" -> "replace-losing-force-policy", "policyId" -> id)
-    case PendingProcedure.CampaignPlanEffect.Suspend(kind) => ujson.Obj("kind" -> "suspend", "decisionKind" -> kind)
-  }
-  protected final def decodeCampaignPlanEffect(value: ujson.Value, path: String) = value("kind").str match {
-    case "add-attack-dice" => Right(PendingProcedure.CampaignPlanEffect.AddAttackDice(value("count").num.toInt))
-    case "add-defense-dice" => Right(PendingProcedure.CampaignPlanEffect.AddDefenseDice(value("count").num.toInt))
-    case "ignore-attack-skulls" => Right(PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls)
-    case "reveal-source" => Right(PendingProcedure.CampaignPlanEffect.RevealSource)
-    case "transform-attack-result" => Right(PendingProcedure.CampaignPlanEffect.TransformAttackResult(value("handlerId").str))
-    case "replace-losing-force-policy" => Right(PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy(value("policyId").str))
-    case "suspend" => Right(PendingProcedure.CampaignPlanEffect.Suspend(value("decisionKind").str))
-    case other => Left(InvalidValue(path, s"unknown Campaign plan effect '$other'"))
-  }
 
   protected final def decodeWorldCard(value: ujson.Value, path: String)
       : Either[WireError, WorldCardId] = try value("kind").str match {
@@ -588,7 +341,7 @@ private[serialization] trait GameEventJsonSupport {
     Region.all.find(_.key == value).toRight(InvalidValue(path, s"unknown region '$value'"))
 
   protected final def decodeSuit(value: String, path: String): Either[WireError, Suit] =
-    Suit.all.find(_.key == value).toRight(InvalidValue(path, s"unknown suit '$value'"))
+    Suit.fromKey(value).toRight(InvalidValue(path, s"unknown suit '$value'"))
 
   protected final def encodeCardRef(id: CardId): ujson.Value = id match {
     case value: DenizenId => encodeWorldCard(value)
@@ -608,13 +361,6 @@ private[serialization] trait GameEventJsonSupport {
       case other => Left(InvalidValue(s"$path.kind", s"unknown card kind '$other'"))
     } catch { case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid card reference"))) }
-
-  protected final def decodeEconomyTarget(value: ujson.Value, path: String)
-      : Either[WireError, EconomyTargetRef] =
-    decodeCardRef(value, path).flatMap { id =>
-      EconomyTargetRef.fromCard(id).toRight(InvalidValue(path,
-        "Economy target must be a denizen or edifice"))
-    }
 
   protected final def encodeSearchPlacement(value: SearchPlacement): ujson.Value = value match {
     case SearchPlacement.Discard => ujson.Obj("kind" -> "discard")

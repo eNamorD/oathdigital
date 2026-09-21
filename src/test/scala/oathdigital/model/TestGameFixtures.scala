@@ -116,7 +116,6 @@ object TestGameFixtures {
     title = OathkeeperState(None, TitleSide.Oathkeeper),
     turn = TurnState(playerId, Phase.Wake, Set.empty),
     tracks = GameTracks(round = 1, visionsDrawn = 0, usurperLimited = true),
-    pending = None,
     result = None
   )
 
@@ -125,4 +124,7 @@ object TestGameFixtures {
     campaign,
     current
   )
+
+  /** `game` seated at the table: see [[ReadyGames.of]]. */
+  val ready: ReadyGame = ReadyGames.of(game)
 }

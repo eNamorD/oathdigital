@@ -11,12 +11,12 @@ private[frontend] trait ServerUiView {
   def sessionCoordinator: ServerSessionCoordinator
   def currentBoardSelection: Option[BoardTargetSelectionState]
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit
-  def currentBoardFormation: Option[BoardTargetFormationState]
-  def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit
-  def currentCampaignPlacement: Option[CampaignPlacementState]
-  def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit
-  def currentForgeAssignment: Option[ForgeAssignmentState]
-  def currentForgeAssignment_=(value: Option[ForgeAssignmentState]): Unit
+  def currentWalkerPartition: Option[WalkerPartitionDraft]
+  def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit
+  def currentWalkerDistribution: Option[WalkerDistributeDraft]
+  def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]): Unit
+  def currentWalkerSelection: Option[WalkerSelectionDraft]
+  def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]): Unit
   def currentCardDecision: Option[CardDecisionState]
   def currentCardDecision_=(value: Option[CardDecisionState]): Unit
   def currentModifierWorkflow: Option[ModifierWorkflow]
@@ -48,41 +48,7 @@ private[frontend] object ServerUiSupport {
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
 
-  private[frontend] def negotiationRelicChecked(deal: NegotiationState,
-      author: String, recipient: String, relicId: String): Boolean =
-    deal.transfers.exists(t => t.authorPlayerId == author &&
-      t.recipientPlayerId == recipient && t.relics.exists(_.cardId == relicId))
-
-  private[frontend] def negotiationDisclosureChecked(deal: NegotiationState,
-      author: String, recipient: String, kind: String, cardId: String): Boolean =
-    deal.disclosures.exists(d => d.authorPlayerId == author &&
-      d.recipientPlayerId == recipient && d.kind == kind &&
-      d.card.exists(_.cardId == cardId))
-
-  private[frontend] def negotiationRelicCompetes(currentRecipient: String,
-      currentRelic: String, selectedRecipient: String, selectedRelic: String): Boolean =
-    currentRecipient != selectedRecipient && currentRelic == selectedRelic
-
-  private[frontend] final case class NegotiationDisclosureOffer(
-      kind: String,
-      card: CardDetails,
-      siteId: Option[String])
-
-  /** Disclosure options the engine can accept: only information the author can
-    * currently inspect (facedown advisers/relics, known site relics with the
-    * site that holds them). */
-  private[frontend] def negotiationDisclosureOffers(
-      deal: NegotiationState): Vector[NegotiationDisclosureOffer] =
-    deal.editableAdvisers.map(card =>
-      NegotiationDisclosureOffer("adviser", card, None)) ++
-      deal.editableRelics.filter(_.orientation.contains("face-down"))
-        .map(card => NegotiationDisclosureOffer("held-relic", card, None)) ++
-      deal.editableSiteRelics.map(entry => NegotiationDisclosureOffer(
-        "site-relic", entry.card, Some(entry.siteId)))
-
-  private[frontend] def siteDetails(site: GameSite,
-      selection: Option[BoardTargetSelectionState] = None,
-      chooseTarget: BoardTargetRef => Unit = _ => ()): dom.Element = {
+  private[frontend] def siteDetails(site: GameSite): dom.Element = {
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
     val properties = element("dl", "site-properties")
@@ -116,34 +82,12 @@ private[frontend] object ServerUiSupport {
     if (site.denizens.isEmpty)
       denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
     else site.denizens.foreach { denizen =>
-      val target = BoardTargetRef.SiteCard(site.siteId,
-        denizen.details.fold("denizen")(_.cardKind), denizen.denizenId)
-      val candidate = selection.flatMap(_.activeAction.flatMap(
-        _.candidates.find(_.target == target)))
-      val shell = element("span", cardTargetClasses(candidate.nonEmpty,
-        selection.exists(_.selected(target))))
-      shell.setAttribute("data-target-ref", target.stableKey)
+      val shell = element("span", "site-card-target")
       val card = denizen.details.fold[dom.Element](VisualDomRenderer.render(
         presentation.denizenVisuals.find(_._1 == denizen.denizenId).get._2,
         "site-card"))(cardDetailsPopover)
       card.setAttribute("data-denizen-id", denizen.denizenId)
-      candidate.foreach { value =>
-        card.classList.add("board-target")
-        card.setAttribute("aria-pressed",
-          selection.exists(_.selected(target)).toString)
-        card.setAttribute("title", candidateButtonLabel(value))
-        card.addEventListener("click", (event: dom.Event) => {
-          event.stopPropagation(); chooseTarget(target)
-        })
-        card.addEventListener("keydown", (event: dom.Event) => {
-          val key = event.asInstanceOf[dom.KeyboardEvent].key
-          if (key == "Enter" || key == " ") {
-            event.preventDefault(); event.stopPropagation(); chooseTarget(target)
-          }
-        })
-      }
       shell.appendChild(card)
-      candidate.flatMap(candidateDetailBadge).foreach(shell.appendChild)
       denizens.appendChild(shell)
     }
     (site.denizens.size until site.denizenCapacity).foreach { _ =>
@@ -185,30 +129,15 @@ private[frontend] object ServerUiSupport {
       state: CardDecisionState,
       cardId: String
   ): CardDecisionState =
-    if (state.keep.exists(_.cardId == cardId)) state.moveToDiscard(cardId)
-    else state.arrangeDrop(cardId, None)
-
-  private[frontend] def dropBeforeDiscard(
-      state: CardDecisionState,
-      cardId: String,
-      beforeCardId: String
-  ): CardDecisionState = {
-    val inDiscard = if (state.keep.exists(_.cardId == cardId))
-      state.moveToDiscard(cardId) else state
-    inDiscard.arrangeDrop(cardId, Some(beforeCardId))
-  }
+    state.moveToDiscard(cardId)
 
   private[frontend] final case class CardDecisionZoneHelpers(
       keep: String, discard: String)
 
   private[frontend] def cardDecisionZoneHelpers(
       decision: PendingCardDecision): CardDecisionZoneHelpers =
-    if (decision.kind == "starting-adviser") CardDecisionZoneHelpers(
-      "Move exactly one adviser to Keep.",
+    CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
       "The remaining candidates are discarded in order.")
-    else CardDecisionZoneHelpers(
-      "Move the card you want to resolve to Keep.",
-      "The remaining cards are discarded in order.")
 
   private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {
     val node = element("button", "card-detail")
@@ -284,7 +213,7 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] final case class TakeWealthAction(
       label: String,
-      command: GameCommand.TakeWealth
+      command: GameCommand
   )
 
   private[frontend] final case class ViewerPresentation(
@@ -301,24 +230,22 @@ private[frontend] object ServerUiSupport {
     if (value.oathkeeper.exists(_.winnerPlayerId.nonEmpty))
       return ViewerPresentation(showGameplayControls = false,
         waitingForPlayerId = None, waitingForDisplayName = None)
-    if (value.restPower.exists(_.decisionOwnerPlayerId == playerId))
+    // Task 5 fix: a parked walker `Decide`'s owner is projected `walkerDecision`
+    // regardless of whose turn it is, and everyone else is projected
+    // `walkerWaiting` naming that owner (see WalkerDecisionProjector.project/
+    // waiting). Reading `activeParticipantId` below instead of these two
+    // fields would leave an off-turn owner with no panel -- and the active
+    // player waiting on them right back -- since neither side is the other's
+    // active participant.
+    if (value.walkerDecision.nonEmpty)
       return ViewerPresentation(showGameplayControls = true,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Choose whether to use the Rest power."))
-    if (value.restPowerWaiting)
+        waitingForPlayerId = None, waitingForDisplayName = None)
+    if (value.walkerWaiting.nonEmpty)
       return ViewerPresentation(showGameplayControls = false,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Waiting for a Rest power decision."))
-    if (value.negotiation.exists(_.participantPlayerIds.contains(playerId)))
-      return ViewerPresentation(showGameplayControls = true,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Negotiation in progress."))
-    if (value.negotiationWaiting)
-      return ViewerPresentation(showGameplayControls = false,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Waiting for the negotiation to finish."))
-    val controllingPlayer = value.campaign.filter(!_.plansFinished)
-      .flatMap(_.decisionOwnerPlayerId).orElse(value.activeParticipantId)
+        waitingForPlayerId = value.walkerWaiting.map(_.playerId),
+        waitingForDisplayName = value.walkerWaiting.map(w =>
+          playerDisplayName(value, w.playerId)))
+    val controllingPlayer = value.activeParticipantId
     controllingPlayer match {
       case Some(activePlayerId) if activePlayerId != playerId =>
         ViewerPresentation(
@@ -334,11 +261,6 @@ private[frontend] object ServerUiSupport {
     }
   }
 
-  private[frontend] def showNegotiationControls(
-      value: GameProjection,
-      presentation: ViewerPresentation
-  ): Boolean = value.negotiation.nonEmpty && presentation.showGameplayControls
-
   private[frontend] def showActActionControls(
       value: GameProjection,
       presentation: ViewerPresentation
@@ -346,24 +268,17 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def actionLabel(kind: String): String = kind match {
     case "travel" => "Travel"
-    case "campaign-conquest" => "Campaign"
-    case "campaign-raid" => "Raid"
     case "challenge" => "Challenge"
     case "peoples-favor" => "People's Favor"
     case "darkest-secret" => "Darkest Secret"
-    case "muster" => "Muster"
-    case "trade-favor" => "Trade for favor"
-    case "trade-secret" => "Trade for secrets"
-    case "reveal-vision" => "Reveal Vision"
-    case "play-conspiracy" => "Play Conspiracy"
     case other => other
   }
 
   private[frontend] def actionCategory(kind: String): String = kind match {
-    case "search" | "travel" | "campaign-conquest" | "campaign-raid" |
+    case "search" | "travel" |
         "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
-        "challenge" => "major"
-    case "negotiation" | "reveal-vision" | "play-conspiracy" |
+        "challenge" | "campaign" => "major"
+    case "negotiation" |
         "place-banner-resource" | "facedown-adviser" | "peek-site-relics" |
         "reveal-owned-relic" | "move-warbands" => "minor"
     case _ => "powers"
@@ -373,7 +288,6 @@ private[frontend] object ServerUiSupport {
     "search", "travel", "campaign", "muster", "trade", "forge", "recover", "challenge")
 
   private[frontend] def actionFamily(kind: String): String = kind match {
-    case "campaign-conquest" | "campaign-raid" => "campaign"
     case "trade-favor" | "trade-secret" => "trade"
     case other => other
   }
@@ -401,8 +315,8 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
     if (action.maximum == 0) "No target is available; confirm to play this action."
-    else if (action.maximum == 1) "Choose one target. Selection submits immediately."
-    else s"Choose ${action.minimum} to ${action.maximum} targets, then confirm."
+    else if (action.explicitConfirm) "Choose one target, then confirm."
+    else "Choose one target. Selection submits immediately."
 
   private[frontend] def candidateButtonLabel(candidate: BoardTargetCandidate): String =
     (candidate.label +: candidate.details).mkString(" · ")
@@ -410,15 +324,6 @@ private[frontend] object ServerUiSupport {
   private[frontend] def candidateDetailText(
       candidate: BoardTargetCandidate): Option[String] =
     Option.when(candidate.details.nonEmpty)(candidate.details.mkString(" · "))
-
-  private[frontend] def candidateDetailBadgeTexts(
-      candidate: BoardTargetCandidate): Vector[String] =
-    candidateDetailText(candidate).toVector
-
-  private[frontend] def candidateForTarget(
-      selection: Option[BoardTargetSelectionState],
-      target: BoardTargetRef): Option[BoardTargetCandidate] =
-    selection.flatMap(_.activeAction.flatMap(_.candidates.find(_.target == target)))
 
   private[frontend] def candidateDetailBadge(
       candidate: BoardTargetCandidate): Option[dom.Element] =
@@ -438,127 +343,31 @@ private[frontend] object ServerUiSupport {
     banner
   }
 
-  private[frontend] def campaignPlanButtonLabel(choice: CampaignPlanChoice): String = {
-    val cost = Vector(
-      Option.when(choice.favorCost > 0)(s"${choice.favorCost} Favor"),
-      Option.when(choice.secretCost > 0)(s"Place ${choice.secretCost} Secret")
-    ).flatten.mkString(", ")
-    if (cost.isEmpty) choice.label else s"${choice.label} ($cost)"
-  }
-
-  private[frontend] def campaignSelectedPlansLabel(
-      plans: Vector[CampaignPlanChoice]): String =
-    plans.zipWithIndex.map { case (plan, index) =>
-      s"${index + 1}. ${plan.label}"
-    }.mkString("Selected: ", " · ", "")
-
-  private[frontend] def campaignFormationSummary(
-      formation: BoardTargetFormationState): String =
-    s"Committed force: ${formation.force}. Board warbands remaining: " +
-      s"${formation.remainingWarbands}. Attack dice before plans: " +
-      s"${formation.attackDiceBeforePlans}. Cost: ${formation.supplyCost} Supply."
-
-  private[frontend] def campaignForceChoiceLabel(force: Int): String =
-    s"Commit $force warbands"
-
-  private[frontend] def campaignForceAdjustmentLabel(increase: Boolean): String =
-    if (increase) "Increase committed force" else "Decrease committed force"
-
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =
     Vector("site", if (candidate) "board-target" else "site-readonly",
       if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
 
-  private[frontend] def cardTargetClasses(candidate: Boolean,
-      selected: Boolean): String =
-    Vector("site-card-target", if (candidate) "board-target" else "",
-      if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
-
   private[frontend] def commandForSelection(action: BoardTargetAction,
-      targets: Vector[BoardTargetRef], playerId: String,
-      attackDiceCount: Int = 0): Option[GameCommand] =
+      targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
     (action.actionKind, targets) match {
       case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.PlacePawn(site))
+      // Travel moved onto the generic walker (batch-1 Task 5), so the
+      // destination the player just picked rides `StartWalker`'s start
+      // selection instead of a `Travel` intent of its own -- as a plain site
+      // reference, which is all the wire says about it. Modifiers are folded
+      // into this same intent by `ModifierWorkflow.submission`, which is why
+      // they are empty here.
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
-        Some(GameCommand.Travel(site))
-      case ("campaign-conquest", sites) if sites.nonEmpty &&
-          sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
-        Some(GameCommand.BeginCampaignConquest(sites.collect {
-          case BoardTargetRef.Site(site) => site
-        }, attackDiceCount))
-      case ("campaign-raid", targets) if targets.nonEmpty &&
-          targets.head.isInstanceOf[BoardTargetRef.PlayerPawn] &&
-          targets.forall {
-            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
-                _: BoardTargetRef.PlayerBanner => true
-            case _ => false
-          } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), attackDiceCount))
-      case ("challenge", Vector(BoardTargetRef.PlayerBanner(_, banner))) =>
-        Some(GameCommand.BeginChallenge(banner))
-      case ("negotiation", players) if players.nonEmpty &&
-          players.forall(_.isInstanceOf[BoardTargetRef.Player]) =>
-        Some(GameCommand.BeginNegotiation(players.collect {
-          case BoardTargetRef.Player(id) => id
-        }))
-      case ("reveal-vision", Vector(BoardTargetRef.PlayerAdviser(owner, vision)))
-          if owner == playerId =>
-        Some(GameCommand.RevealVision(vision))
-      case ("play-conspiracy", Vector(BoardTargetRef.PlayerRelic(owner, relic))) =>
-        relic.toIntOption.map(slot => GameCommand.PlayConspiracy(
-          Some(ConspiracyTarget.RelicSlot(owner, slot))))
-      case ("play-conspiracy", Vector(BoardTargetRef.PlayerBanner(owner, banner))) =>
-        Some(GameCommand.PlayConspiracy(
-          Some(ConspiracyTarget.Banner(owner, banner))))
-      case ("play-conspiracy", Vector()) if action.minimum == 0 &&
-          action.maximum == 0 =>
-        Some(GameCommand.PlayConspiracy(None))
-      case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Muster(oathdigital.protocol.EconomyTarget(kind, id)))
-      case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Trade(oathdigital.protocol.EconomyTarget(kind, id), "favor"))
-      case ("trade-secret", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Trade(oathdigital.protocol.EconomyTarget(kind, id), "secret"))
+        Some(GameCommand.StartWalker("travel", Vector.empty,
+          Vector(oathdigital.protocol.WalkerStartArgWire("site", site))))
       case _ => None
     }
 
-  private[frontend] def commandForFormation(formation: BoardTargetFormationState,
-      playerId: String): Option[GameCommand] =
-    (formation.action.actionKind, formation.targets) match {
-      case ("campaign-conquest", sites) if sites.nonEmpty &&
-          sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
-        Some(GameCommand.BeginCampaignConquest(sites.collect {
-          case BoardTargetRef.Site(site) => site
-        }, formation.force))
-      case ("campaign-raid", targets) if targets.nonEmpty &&
-          targets.head.isInstanceOf[BoardTargetRef.PlayerPawn] &&
-          targets.forall {
-            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
-                _: BoardTargetRef.PlayerBanner => true
-            case _ => false
-          } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), formation.force))
-      case _ => None
-    }
-
-  private[frontend] def raidRelocationCommands(
-      decision: CampaignRaidRelocation,
-      playerId: String): Vector[GameCommand.RelocateCampaignRaidPawn] =
-    if (decision.actorPlayerId != playerId) Vector.empty
-    else decision.legalSiteIds.map(site => GameCommand.RelocateCampaignRaidPawn(
-      decision.decisionId, site))
-
-  private[frontend] def challengeSiteCommands(decision: ChallengeState,
-      playerId: String): Vector[GameCommand.ChooseChallengeSecretSite] =
-    if (decision.actorPlayerId != playerId) Vector.empty
-    else decision.legalSecretSiteIds.map(site =>
-      GameCommand.ChooseChallengeSecretSite(decision.decisionId, site))
-
-  private[frontend] def completeChallengeCommand(decision: ChallengeState,
-      playerId: String, amount: Int): Option[GameCommand.CompleteChallenge] =
-    Option.when(decision.actorPlayerId == playerId &&
-      decision.legalSecretSiteIds.isEmpty && amount >= decision.minimumPlacement &&
-      amount <= decision.maximumPlacement)(GameCommand.CompleteChallenge(
-        decision.decisionId, amount))
+  private def takeWealth(resource: String): GameCommand =
+    GameCommand.StartWalker("take-wealth", Vector.empty,
+      Vector(WalkerStartArgWire("button", resource)))
 
   private[frontend] def takeWealthActions(
       value: GameProjection,
@@ -566,15 +375,16 @@ private[frontend] object ServerUiSupport {
   ): Vector[TakeWealthAction] =
     if (value.phase != "wake" ||
         !viewerPresentation(value, playerId).showGameplayControls) Vector.empty
+    // Take Wealth moved onto the generic walker (batch-1 Task 7), so the
+    // resource the player picks rides `StartWalker`'s start selection as the
+    // button it is -- a choice with no game object behind it -- instead of a
+    // `TakeWealth` intent of its own. The legal-control keys are unchanged:
+    // the server still decides which of the two it offers.
     else Vector(
       "takeFavor" -> TakeWealthAction(
-        "Take Wealth: 1 favor",
-        GameCommand.TakeWealth("favor")
-      ),
+        "Take Wealth: 1 favor", takeWealth("favor")),
       "takeSecret" -> TakeWealthAction(
-        "Take Wealth: 1 secret",
-        GameCommand.TakeWealth("secret")
-      )
+        "Take Wealth: 1 secret", takeWealth("secret"))
     ).collect {
       case (legalControl, action)
           if value.legalControls.contains(legalControl) => action
@@ -596,27 +406,7 @@ private[frontend] object ServerUiSupport {
   }
 
   private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
-    if (minor.advisers.exists(_.placements.nonEmpty)) 1 else 0
-
-  private[frontend] def protocolWorldCard(card: CardDetails): WorldCard =
-    WorldCard(card.cardKind, card.cardId)
-
-  private[frontend] def protocolRaidTarget(target: BoardTargetRef): CampaignRaidTarget = target match {
-    case BoardTargetRef.PlayerPawn(player) => CampaignRaidTarget.Pawn(player)
-    case BoardTargetRef.PlayerRelic(player, relic) => CampaignRaidTarget.Relic(player, relic)
-    case BoardTargetRef.PlayerBanner(player, banner) => CampaignRaidTarget.Banner(player, banner)
-    case other => throw new IllegalArgumentException(
-      s"unsupported Campaign Raid target ${other.stableKey}")
-  }
-
-  private[frontend] def protocolCampaignPlan(choice: CampaignPlanChoice): CampaignPlanSource =
-    choice.kind match {
-      case "adviser" => CampaignPlanSource.Adviser(choice.playerId.get, choice.cardId.get)
-      case "site-card" => CampaignPlanSource.SiteCard(choice.siteId.get, choice.cardId.get)
-      case "relic" => CampaignPlanSource.Relic(choice.playerId.get, choice.cardId.get)
-      case "title" => CampaignPlanSource.Title(choice.playerId.get)
-      case other => throw new IllegalArgumentException(s"unknown Campaign plan '$other'")
-    }
+    if (minor.advisers.nonEmpty) 1 else 0
 
   private[frontend] def protocolNegotiationTerms(value: NegotiationTermsInput): NegotiationTerms =
     NegotiationTerms(

@@ -62,7 +62,6 @@ final class SameOriginJsonTransport(timeoutMillis: Int = 10000)
   }
 }
 
-final case class EconomyTarget(kind: String, id: String)
 final case class NegotiationTransferInput(recipientPlayerId: String,
     favor: Int, relicIds: Vector[String])
 final case class NegotiationDisclosureInput(recipientPlayerId: String,

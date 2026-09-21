@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.model.PowerWindow
 
 object NegotiationPowers {
   private def handler = Vector(ReviewedHandler.automatic(PowerWindow.NegotiationOffer))

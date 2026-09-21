@@ -1,19 +1,28 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathState.{InProgress, NoGame, Ready}
+import oathdigital.model.OathState.{InProgress, NoGame, Ready}
 import oathdigital.gameplay.PlayerSecretSummary
-import oathdigital.gameplay.setup.{FirstGameParticipant, FirstGameSetupMaterializer}
+import oathdigital.gameplay.powerresolver.PhasePowers
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.setup.FirstGameSetupMaterializer
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
 /** Assembles a player-scoped projection from authoritative state. */
-final class GameProjector(catalog: ExecutableCatalog) {
+final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) {
+  def this(catalog: ExecutableCatalog) =
+    this(catalog, PhasePowerCatalog.default(catalog))
+
   private val presentation = new GamePresentationProjector(catalog)
-  private val walkerDecisions = new WalkerDecisionProjector(catalog)
+  private val walkerDecisions = new WalkerDecisionProjector(catalog,
+    presentation, WalkerPowerCatalog.default(catalog),
+    WalkerDecisionProjector.declaredTree, phasePowers)
+  private val phasePowerProjector = new PhasePowerProjector(catalog,
+    walkerDecisions, phasePowers)
   private val legalActions = new LegalActionProjector(catalog, presentation,
-    walkerDecisions)
-  private val pendingProcedures = new PendingProcedureProjector(catalog,
+    walkerDecisions, phasePowerProjector)
+  private val pendingProjector = new PendingProjector(catalog,
     presentation, walkerDecisions)
   private val setupMaterializer = new FirstGameSetupMaterializer(catalog)
 
@@ -93,8 +102,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
       context: ScopedProjectionContext): GameProjection = {
     val current = context.current
     val active = context.active
-    val legal = legalActions.project(context)
-    val pending = pendingProcedures.project(context)
+    val projectedPhasePowers = phasePowerProjector.project(context)
+    val legal = legalActions.project(context, projectedPhasePowers)
+    val pending = pendingProjector.project(context)
     val site = context.activeSite
 
     GameProjection(
@@ -117,21 +127,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
         CurrentSiteResourcesProjection(siteId.value, state.tokens.favor,
           state.tokens.secrets))),
       actionSelectionOpen = current.result.isEmpty &&
-        current.turn.phase == Phase.Act && current.pending.isEmpty &&
-        current.walkerPending.isEmpty,
+        current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
       actionFamilies = if (current.result.isEmpty && current.turn.phase == Phase.Act &&
         current.walkerPending.isEmpty)
         Vector("Search", "Travel", "Campaign", "Muster", "Trade", "Forge",
           "Recover", "Challenge", "Minor Actions") else Vector.empty,
       legalTravelDestinations = legal.travel,
       legalSearchSources = legal.search,
-      legalMusters = legal.musters,
-      legalTrades = legal.trades,
       boardTargetActions = legal.boardTargets,
       pendingCardDecision = pending.cardDecision,
-      recover = pending.recover,
-      forge = pending.forge,
-      campaign = pending.campaign,
       worldDeckCount = current.commonCards.worldDeck.size,
       worldDeckTopCardKind = current.commonCards.worldDeck.headOption
         .map(presentation.cardKind),
@@ -143,21 +147,18 @@ final class GameProjector(catalog: ExecutableCatalog) {
           case TitleSide.Usurper => "usurper"
         }, current.tracks.usurperLimited, current.result.map(_.winner.value),
         current.result.map(_.kind.key))),
-      oathkeeperRecipient = pending.oathkeeperRecipient,
-      campaignRaidRelocation = pending.campaignRaidRelocation,
       banners = presentation.banners(context.ready).filter(_.holderPlayerId.isEmpty),
-      challenge = pending.challenge,
       minorActions = legal.minorActions,
-      negotiation = pending.negotiation,
-      negotiationWaiting = current.result.isEmpty && pending.negotiationWaiting,
       favorBanks = Suit.all.map(suit => FavorBankProjection(suit.key,
         context.ready.banks.favor.getOrElse(suit, 0))),
       tracks = Some(GameTracksProjection(current.tracks.round,
         current.tracks.visionsDrawn, current.tracks.usurperLimited, 4,
         context.ready.setup.firstPlayer.value)),
       relicDeckCount = current.commonCards.relicDeck.size)
-      .copy(restPower = pending.restPower,
-        restPowerWaiting = current.result.isEmpty && pending.restPowerWaiting)
+      .copy(walkerDecision = pending.walkerDecision,
+        walkerWaiting = pending.walkerWaiting,
+        phasePowers = projectedPhasePowers,
+        lastCampaign = CampaignResultProjector.project(context.ready))
   }
 
   private def turnOrder(participants: Vector[FirstGameParticipant],

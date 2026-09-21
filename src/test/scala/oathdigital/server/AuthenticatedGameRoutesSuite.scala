@@ -15,13 +15,11 @@ import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.TravelCommand
-import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.setup.FirstGameSetupRules
-import oathdigital.gameplay.OathState
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.model.OathState
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite {
   test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders") {
@@ -39,9 +37,12 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val actor = ready.game.current.turn.activePlayer
     val other = ready.game.current.players.find(_.player != actor).get
     val rules = new OathRules(catalog)
-    val act = rules.handle(setupState, WakeCommand.EndWake(actor)).toOption.get
-    val traveled = rules.handle(act.state, TravelCommand.Travel(
-      actor, other.pawnSite.get)).toOption.get
+    val act = rules.startWalker(setupState,
+      oathdigital.model.PhaseTransitionRef.EndWake, actor).toOption.get
+    val traveled = rules.startWalker(act.state,
+      oathdigital.model.ActionRef.Travel, actor, Vector.empty,
+      Vector(oathdigital.model.DecisionOptionRef.Site(
+        other.pawnSite.get))).toOption.get
     val allEvents = setupEvents ++ act.events ++ traveled.events
     repository.seed(gameId, allEvents.zipWithIndex.map { case (event, index) =>
       ujson.write(GameEventWire.encodeEvent(gameId, catalog.ref, index.toLong, event)
@@ -78,33 +79,41 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       s"/api/authenticated/first-games/$gameId"
     val client = HttpClient.newHttpClient()
     try {
+      def sequenceOf(response: java.net.http.HttpResponse[String]): Long =
+        ujson.read(response.body())("nextSequence").num.toLong
       var sequence = allEvents.size.toLong
-      val begin = post(client, base + "/commands", actorUser.value, ujson.write(
-        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
-          "type" -> "beginNegotiation", "participantPlayerIds" ->
-            ujson.Arr(other.player.value)))))
-      assertEquals(begin.statusCode(), 200, begin.body()); sequence += 1
-      val decision = ujson.read(begin.body())("negotiation")("decisionId").str
-      val outsiderAttempt = post(client, base + "/commands", outsider.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" ->
-          ujson.Obj("type" -> "declineNegotiation", "decisionId" -> decision))))
+      def send(user: UserId, intent: ujson.Obj) = post(client, base + "/commands",
+        user.value, ujson.write(ujson.Obj("expectedNextSequence" ->
+          ujson.Num(sequence.toDouble), "intent" -> intent)))
+      def answer(decision: String, payload: ujson.Obj) = ujson.Obj(
+        "type" -> "resolveWalker", "decisionId" -> decision, "payload" -> payload)
+      val begin = send(actorUser, ujson.Obj("type" -> "startWalker",
+        "action" -> "negotiation", "modifiers" -> ujson.Arr(),
+        "startArgs" -> ujson.Arr()))
+      assertEquals(begin.statusCode(), 200, begin.body()); sequence = sequenceOf(begin)
+      if (ujson.read(begin.body())("walkerDecision")("decisionId").str ==
+          "negotiation.negotiators") {
+        val chosen = send(actorUser, answer("negotiation.negotiators",
+          ujson.Obj("kind" -> "choose-many", "options" -> ujson.Arr(ujson.Obj(
+            "optionKind" -> "player", "optionId" -> other.player.value)))))
+        assertEquals(chosen.statusCode(), 200, chosen.body()); sequence = sequenceOf(chosen)
+      }
+      val outsiderAttempt = send(outsider, answer("negotiation.deal",
+        ujson.Obj("kind" -> "decline-deal")))
       assertEquals(outsiderAttempt.statusCode(), 403)
-      val replace = post(client, base + "/commands", otherUser.value, ujson.write(
-        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
-          "type" -> "replaceNegotiationTerms", "decisionId" -> decision,
-          "terms" -> ujson.Obj("transfers" -> ujson.Arr(ujson.Obj(
-            "recipientPlayerId" -> actor.value, "favor" -> 1,
-            "relicIds" -> ujson.Arr())), "disclosures" -> ujson.Arr())))))
-      assertEquals(replace.statusCode(), 200, replace.body()); sequence += 1
-      val accept = post(client, base + "/commands", otherUser.value, ujson.write(
-        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
-          "type" -> "acceptNegotiation", "decisionId" -> decision))))
-      assertEquals(accept.statusCode(), 200, accept.body()); sequence += 1
-      val decline = post(client, base + "/commands", otherUser.value, ujson.write(
-        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
-          "type" -> "declineNegotiation", "decisionId" -> decision))))
+      val replace = send(otherUser, answer("negotiation.deal", ujson.Obj(
+        "kind" -> "propose-terms", "terms" -> ujson.Obj("transfers" ->
+          ujson.Arr(ujson.Obj("recipientPlayerId" -> actor.value, "favor" -> 1,
+            "relicIds" -> ujson.Arr())), "disclosures" -> ujson.Arr()))))
+      assertEquals(replace.statusCode(), 200, replace.body()); sequence = sequenceOf(replace)
+      val accept = send(otherUser, answer("negotiation.deal",
+        ujson.Obj("kind" -> "accept-deal")))
+      assertEquals(accept.statusCode(), 200, accept.body()); sequence = sequenceOf(accept)
+      val decline = send(otherUser, answer("negotiation.deal",
+        ujson.Obj("kind" -> "decline-deal")))
       assertEquals(decline.statusCode(), 200, decline.body())
-      assert(ujson.read(decline.body())("negotiation").isNull)
+      assert(ujson.read(decline.body())("walkerDecision").isNull)
+    
     } finally {
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate(); Await.result(system.whenTerminated, 10.seconds)
@@ -180,31 +189,30 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       assertEquals(get(client, base + "?playerId=p2", Some(p2User.value))
         .statusCode(), 400)
 
+      // Forge is a walker action (batch-1 Task 3), so the three guarantees
+      // this block always made are asserted on `startWalker`/`resolveWalker`
+      // instead of the deleted `beginForge`/`completeForge` intents: the
+      // actor is derived from the session and never carried on the wire, a
+      // spoofed one is rejected outright, and no unknown field rides an
+      // assignment payload.
       val actorDerivedForge = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "beginForge"))))
+          "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
+            "modifiers" -> ujson.Arr()))))
       assertEquals(actorDerivedForge.statusCode(), 422, actorDerivedForge.body())
       val spoofedForgeActor = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "beginForge", "playerId" -> "p3"))))
+          "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
+            "modifiers" -> ujson.Arr(), "playerId" -> "p3"))))
       assertEquals(spoofedForgeActor.statusCode(), 400)
       val spoofedRelic = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "completeForge",
-            "decisionId" -> "forge-1", "assignments" -> ujson.Arr(),
-            "relicId" -> "relic:spoofed"))))
-      assertEquals(spoofedRelic.statusCode(), 400)
-      val actorDerivedChallenge = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "beginChallenge",
-            "banner" -> "peoples-favor"))))
-      assertEquals(actorDerivedChallenge.statusCode(), 422,
-        actorDerivedChallenge.body())
-      val spoofedChallengeActor = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "beginChallenge",
-            "banner" -> "peoples-favor", "playerId" -> "p3"))))
-      assertEquals(spoofedChallengeActor.statusCode(), 400)
+          "intent" -> ujson.Obj("type" -> "resolveWalker",
+            "decisionId" -> "forge.assignment",
+            "payload" -> ujson.Obj("kind" -> "partition",
+              "placements" -> ujson.Arr(),
+              "relicId" -> "relic:spoofed")))))
+      assertEquals(spoofedRelic.statusCode(), 400, spoofedRelic.body())
       val actorDerivedMinor = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
           "intent" -> ujson.Obj("type" -> "peekSiteRelics"))))

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.catalog.{CatalogHandlerInventory, ExecutableCatalog}
 import oathdigital.gameplay._
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{PlayerId, PowerId}
+import oathdigital.model.{OathViolation, PlayerId, PowerId, ReadyGame, RuleSourceRef}
 
 object ReviewedPowerCatalog {
   val AuditedCatalogFingerprint: String =
@@ -15,7 +15,7 @@ object ReviewedPowerCatalog {
     PowerId("foundation.altered"))
 
   val powers: Vector[Power] =
-    ActionPowers.powers ++ WakePowers.powers ++ SearchPowers.powers ++
+    ActionPowers.powers ++ WakePowers.powers ++
       TravelPowers.powers ++ CampaignPowers.powers ++ MusterPowers.powers ++
       TradePowers.powers ++ ForgePowers.powers ++ RecoverPowers.powers ++
       RestPowers.powers ++ NegotiationPowers.powers

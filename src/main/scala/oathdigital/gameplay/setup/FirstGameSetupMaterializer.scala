@@ -3,16 +3,6 @@ package oathdigital.gameplay.setup
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 
-/** Pure CR pp. 6-7 table setup shared by setup projection and completion. */
-final case class FirstGameSetupMaterial(
-    players: Vector[PlayerState],
-    map: MapState,
-    commonCards: CardZones,
-    banners: BannersState,
-    tracks: GameTracks,
-    favorBanks: Map[Suit, Int]
-)
-
 final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
   private val sitesById = catalog.sites.map(site => site.id -> site).toMap
   private val edificesById = catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap
@@ -103,7 +93,7 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
   private def favorBanks(plan: FirstGameSetupPlan): Map[Suit, Int] = {
     val bonus = if (plan.participants.size >= 5) 1 else 0
     val edificeSuits = plan.homelandEdifices.map { case (_, id) =>
-      Suit.all.find(_.key == edificesById(id).suit.value).get
+      edificesById(id).suit
     }
     Suit.all.map(suit => suit -> (3 + bonus + edificeSuits.count(_ == suit))).toMap
   }

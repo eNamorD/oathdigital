@@ -1,26 +1,10 @@
 package oathdigital.catalog
 
-import oathdigital.model.{CatalogRef, PowerId, SiteId, SupplyRules, Tokens, VisionId}
+import oathdigital.model.{CardId, CatalogRef, PowerId, SiteId, Suit, SupplyRules,
+  Tokens, VisionId}
 
 final case class DefinitionId(value: String) {
   require(value.trim.nonEmpty, "catalog definition ID must not be blank")
-}
-
-final case class Suit(value: String) {
-  require(Suit.values.contains(value), s"unsupported suit $value")
-}
-
-object Suit {
-  val values: Set[String] =
-    Set("arcane", "beast", "discord", "hearth", "nomad", "order")
-
-  val Arcane: Suit = Suit("arcane")
-  val Beast: Suit = Suit("beast")
-  val Discord: Suit = Suit("discord")
-  val Hearth: Suit = Suit("hearth")
-  val Nomad: Suit = Suit("nomad")
-  val Order: Suit = Suit("order")
-
 }
 
 final case class CatalogPower(id: PowerId, persistent: Boolean, rulesText: String) {
@@ -117,7 +101,12 @@ final case class ExecutableCatalog(
     setupCards: Vector[SetupCardDefinition] = Vector.empty,
     supplyBoards: Vector[SupplyBoardDefinition] = Vector.empty,
     visions: Vector[VisionDefinition] = Vector.empty
-)
+) {
+  /** Suit of a denizen or edifice; other card kinds have none. */
+  def suitOf(id: CardId): Option[Suit] =
+    denizens.find(_.id.value == id.value).map(_.suit)
+      .orElse(edifices.find(_.id.value == id.value).map(_.suit))
+}
 
 /**
  * Compatibility request shape. Runtime catalogs are now loaded atomically,

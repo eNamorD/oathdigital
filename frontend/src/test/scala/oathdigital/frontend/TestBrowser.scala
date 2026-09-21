@@ -5,53 +5,51 @@ import scala.concurrent.Future
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-/** Minimal DOM boundary for exercising our renderer and event handlers in Node. */
+/** Real jsdom mount with observable browser boundaries.
+  *
+  * jsdom's `window` and `document` cannot be replaced, so the seams the trusted
+  * UI touches (history, timers, clipboard, credential storage) are overridden in
+  * place and restored by `close()`.
+  */
 private[frontend] final class TestBrowser(search: String = "") {
-  private val browser = js.eval("""(() => {
-    const saved = { document: globalThis.document, window: globalThis.window };
-    function node(tag) {
-      const n = { tagName: tag, childNodes: [], attributes: {}, className: '',
-        value: '', disabled: false, style: {}, ownText: '',
-        appendChild(c) { this.childNodes.push(c); return c; },
-        removeChild(c) { this.childNodes.splice(this.childNodes.indexOf(c), 1); return c; },
-        setAttribute(k,v) { this.attributes[k] = String(v); if (k === 'class') this.className = String(v); },
-        getAttribute(k) { return this.attributes[k] || null; },
-        addEventListener() {}, focus() {}, select() {}, blur() {} };
-      n.classList = { add(...xs) { n.className += ' ' + xs.join(' '); } };
-      Object.defineProperty(n, 'lastChild', { get() { return this.childNodes.at(-1) || null; } });
-      Object.defineProperty(n, 'textContent', {
-        get() { return this.ownText + this.childNodes.map(c => c.textContent).join(''); },
-        set(v) { this.ownText = v; this.childNodes = []; } });
-      return n;
-    }
-    const urls = [], timers = [], copied = [], mount = node('main');
-    globalThis.document = { hidden: false, createElement: node,
-      createElementNS: (_, tag) => node(tag),
-      createTextNode(t) { const n = node('#text'); n.textContent = t; return n; },
-      addEventListener() {} };
-    globalThis.window = { location: { search: '', pathname: '/' },
-      navigator: { clipboard: { writeText(t) { copied.push(t); return Promise.resolve(); } } },
-      history: { replaceState(_, title, url) { urls.push(url); } },
-      setTimeout(f) { timers.push(f); return timers.length; },
-      clearTimeout(id) { timers[id - 1] = null; } };
+  private val browser: js.Dynamic = new js.Function("search", """return (() => {
+    const urls = [], timers = [], copied = [];
+    const saved = { href: window.location.href, setTimeout: window.setTimeout,
+      clearTimeout: window.clearTimeout };
+    const mount = document.createElement('main');
+    document.body.appendChild(mount);
+    window.history.replaceState(null, '', search === '' ? window.location.pathname : search);
+    window.history.replaceState = function (_, title, url) { urls.push(url); };
+    window.setTimeout = function (f) { timers.push(f); return timers.length; };
+    window.clearTimeout = function (id) { timers[id - 1] = null; };
+    const define = (target, key, descriptor) =>
+      Object.defineProperty(target, key, Object.assign({ configurable: true }, descriptor));
+    define(window.navigator, 'clipboard', { value: {
+      writeText(t) { copied.push(t); return Promise.resolve(); } } });
     for (const key of ['localStorage', 'sessionStorage'])
-      Object.defineProperty(globalThis.window, key, { get() { throw Error('Unexpected credential storage'); } });
-    Object.defineProperty(globalThis.document, 'cookie', { get() { throw Error('Unexpected cookie access'); } });
+      define(window, key, { get() { throw Error('Unexpected credential storage'); } });
+    define(document, 'cookie', { get() { throw Error('Unexpected cookie access'); } });
     return { mount, urls, copied,
-      all() { const result = []; function walk(n) { result.push(n); n.childNodes.forEach(walk); }
-        walk(mount); return result; },
+      all() { return [mount, ...mount.querySelectorAll('*')]; },
       tick() { const f = timers.find(f => f); const i = timers.indexOf(f);
         if (f) { timers[i] = null; f(); } },
-      close() { globalThis.document = saved.document; globalThis.window = saved.window; }
+      close() {
+        delete window.history.replaceState;
+        window.setTimeout = saved.setTimeout;
+        window.clearTimeout = saved.clearTimeout;
+        delete window.navigator.clipboard;
+        delete window.localStorage; delete window.sessionStorage;
+        delete document.cookie;
+        window.history.replaceState(null, '', saved.href);
+        mount.remove();
+      }
     };
-  })()""").asInstanceOf[js.Dynamic]
-  js.Dynamic.global.window.location.search = search
+  })()""").asInstanceOf[js.Function1[String, js.Dynamic]](search)
   val mount: dom.Element = browser.mount.asInstanceOf[dom.Element]
   def text: String = mount.textContent
   def nodes: Vector[dom.Element] = browser.all().asInstanceOf[js.Array[dom.Element]].toVector
   def byClass(name: String): Vector[dom.Element] =
-    nodes.filter(_.asInstanceOf[js.Dynamic].className.asInstanceOf[String]
-      .split(" ").contains(name))
+    nodes.filter(node => Option(node.getAttribute("class")).exists(_.split(" ").contains(name)))
   def input(label: String): dom.html.Input =
     nodes.find(_.getAttribute("aria-label") == label).get.asInstanceOf[dom.html.Input]
   def click(name: String): Unit =

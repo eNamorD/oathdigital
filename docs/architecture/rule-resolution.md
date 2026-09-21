@@ -29,17 +29,18 @@ typed unsupported violation with handler and source identity.
 
 ## Registries and ordering
 
-`RuleResolution.scala` defines shared source/activation/query/outcome vocabulary
-and deterministic ordering. Small generic modifiers use explicit registries such
-as `RuntimeRuleRegistry`. Action-specific systems may own narrower registries:
+`model/RuleSources.scala` defines the shared source/activation/query/outcome
+vocabulary, and `gameplay/RuleResolution.scala` holds the registry and
+deterministic ordering. Small generic modifiers use explicit registries.
+Action-specific systems may own narrower registries:
 Campaign plans author side/window-scoped options in
-`gameplay/actions/CampaignPlans.scala`; other bounded actions use exact-ID
+`gameplay/actions/campaign/CampaignPlans.scala`; other bounded actions use exact-ID
 classifications beside their rule modules.
 
 Order is explicit: priority, stable source key, then handler ID unless the
 owning procedure defines a stricter printed order.
 
-Terrain travel no longer runs through `RuntimeRuleRegistry` (Phase 4): the
+Terrain travel no longer runs through a rule registry (Phase 4): the
 travel path was cost-only with zero core-operation coupling, so it migrated
 onto power windows. Terrain site powers under
 `gameplay/powers/travel/TravelCostWindow.scala` declare their typed terrain
@@ -51,9 +52,8 @@ windows: coast powers register "on a coast route I ignore Island/Mountain/Pass",
 wiring tests exercise it with real ids, and today's one-terrain-power-per-site
 fold already implements the ignore in its coast-route branch. Narrow Pass is a
 power holding a restriction body evaluated by Travel legality against a
-simulated pawn move; `RuntimeRuleRegistry` is now an empty stub retained only
-for Negotiation's explicit blocking boundary, and Wake take-wealth rules live
-under `gameplay/phases/TakeWealthRules.scala`.
+simulated pawn move; the old registry is deleted, and Wake take-wealth rules
+live under `gameplay/phases/TakeWealthRules.scala`.
 
 Typed outcomes may allow or block, or report an unsupported relevant handler.
 They are not generic scripts; reserved effect forms reject until both a
@@ -72,7 +72,20 @@ runs the registry.
 
 Campaign defender decisions can belong to a non-active player. Bandit choices
 use a deterministic policy only for cost-free, choice-free registered options;
-paid, ambiguous, or unsupported relevant behavior blocks.
+other relevant handlers are ignored rather than blocking (see
+`docs/architecture/bounded-campaign.md`).
+
+A power can forbid a choice as well as a whole action. `OptionRestriction` is the
+third contribution kind beside `Transform` and `Restriction`: hooked at a `Decide`
+window, it is applied once in the window fold, so the projector, the answer check
+and simulation all see the filtered options. Narrow Pass uses it at
+`CampaignTargetSelection`. Campaign adds the windows `CampaignCost`,
+`CampaignKindSelection`, `CampaignDefenderSelection`, `CampaignTargetSelection`,
+`CampaignForceSelection`, `CampaignGatherPools`, `CampaignAttackRoll`,
+`CampaignAttackResult`, `CampaignSacrificeSelection`, `CampaignDefenseRoll`,
+`CampaignDefenseResult`, `CampaignLosses`, `CampaignPlacement`,
+`CampaignRaidTransfer` and `CampaignRaidRelocation`, all audited vocabulary that
+only Vow of Peace and Narrow Pass use so far.
 
 ## Window-driven power runtime
 
@@ -94,12 +107,13 @@ selection model nevertheless preserves click order, keyboard reordering, and
 clears stale drafts when context, candidates, or preview identity changes.
 
 The runtime is connected to Search, Campaign, Muster, Trade, Forge,
-Recover, and Challenge plus Wake, Rest, card-play, and post-action windows; reviewed
-Negotiation definitions are indexed for its existing explicit blocking boundary.
-It does not
+Recover, and Challenge plus Wake, Rest, card-play, and post-action windows;
+reviewed Negotiation definitions are indexed at the `NegotiationOffer` window,
+so an unsupported `When Negotiating` handler is recorded as ignored rather than
+blocking the action. It does not
 replace action ownership: Travel cost resolves through the TravelCost window
-fold (typed terrain facts + suppression), Campaign retains its later
-attacker/defender/bandit battle-plan windows, and Economy target choice remains
+fold (typed terrain facts + suppression), Campaign runs its battle-plan
+windows on the walker with the plan registry as the option source, and Economy target choice remains
 an explicit confirm.
 `PowerRuntime` translates precise resolver results into the current command and
 durable-event shapes. The legacy central classification switch has been removed;

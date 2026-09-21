@@ -1,6 +1,5 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 sealed trait AvailableQuantity extends Product with Serializable
@@ -21,6 +20,16 @@ final case class SecretInventory(faceUp: Int, faceDown: Int) {
 object OperationStateAdapter {
   import AvailableQuantity._
   import OperationError._
+
+  /** A `Reveal` of a card in a regional discard. A discarded card has no
+    * orientation state, because a discard is always facedown, so looking at it
+    * is accepted and changes nothing. A facedown flip of such a card stays
+    * unsupported.
+    */
+  private[operations] def isDiscardLook(at: Location,
+      orientation: Orientation): Boolean =
+    at.isInstanceOf[Location.RegionalDiscard] &&
+      orientation == Orientation.FaceUp
 
   def card(
       ready: ReadyGame,
@@ -166,10 +175,7 @@ object OperationStateAdapter {
   private def playerForceKind(
       ready: ReadyGame,
       player: PlayerState
-  ): Option[ForceKind] = ready.game.campaign.lineages.get(player.lineage).map {
-    case lineage if lineage.role.isImperial => ForceKind.Imperial
-    case _ => ForceKind.Exile(player.lineage)
-  }
+  ): Option[ForceKind] = PlayerForceKind.of(ready, player)
 
   private[operations] def bannerHolder(ready: ReadyGame, banner: Banner): Option[PlayerId] =
     banner match {
@@ -179,8 +185,8 @@ object OperationStateAdapter {
 
   private def matches(container: CardContainer, location: Location): Boolean =
     (container, location) match {
-      case (CardContainer.Deck(kind), Location.Deck(deck)) =>
-        deckKind(deck) == kind
+      case (CardContainer.Deck(left), Location.Deck(right)) =>
+        left == right
       case (CardContainer.RegionalDiscard(left), Location.RegionalDiscard(right)) =>
         left == right
       case (CardContainer.Player(left, PlayerCardArea.Hand), Location.Hand(right)) =>
@@ -194,11 +200,4 @@ object OperationStateAdapter {
       case (_: CardContainer.AtlasSite, Location.Atlas) => true
       case _ => false
     }
-
-  private def deckKind(deck: CardDeck): DeckKind = deck match {
-    case CardDeck.World => DeckKind.World
-    case CardDeck.Relic => DeckKind.Relic
-    case CardDeck.Edifice => DeckKind.Edifice
-    case CardDeck.Legacy => DeckKind.Legacy
-  }
 }

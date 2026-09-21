@@ -1,7 +1,7 @@
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{InPlayCardResources, PlayerResourceSources, ReadyGame}
+import oathdigital.gameplay.{InPlayCardResources, PlayerResourceSources}
 import oathdigital.model._
 
 /** One in-play card's planned Rest return. Denizens and edifices return both
@@ -33,7 +33,7 @@ object RestCleanupPlan {
         case (result, card) => result.flatMap { accumulated =>
           if (card.tokens.favor == 0) Right(accumulated :+ RestCleanupCard(
             card.id, None, 0, card.tokens.secrets))
-          else suitOf(catalog, card.id).toRight(
+          else catalog.suitOf(card.id).toRight(
             s"cannot attribute favor on ${card.id.value} to a suit").map { suit =>
             accumulated :+ RestCleanupCard(card.id, Some(suit),
               card.tokens.favor, card.tokens.secrets)
@@ -55,11 +55,5 @@ object RestCleanupPlan {
           cards.iterator.map(_.secrets).sum)
       }
     }
-  }
-
-  private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit] = {
-    val key = catalog.denizens.find(_.id.value == id.value).map(_.suit.value)
-      .orElse(catalog.edifices.find(_.id.value == id.value).map(_.suit.value))
-    key.flatMap(value => Suit.all.find(_.key == value))
   }
 }

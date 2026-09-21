@@ -1,0 +1,8 @@
+{
+  "name": "oathdigital-frontend-tests",
+  "private": true,
+  "description": "Node dependencies for the Scala.js frontend test run only. jsdom supplies the DOM the renderer suites drive; nothing here ships to production, which is linked by sbt and served from the JVM.",
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

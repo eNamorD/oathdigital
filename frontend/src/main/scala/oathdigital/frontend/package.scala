@@ -1,6 +1,8 @@
 package oathdigital
 
 package object frontend {
+  type CampaignResultState = protocol.projection.CampaignResultProjection
+  val CampaignResultState = protocol.projection.CampaignResultProjection
   type GameProjection = protocol.projection.GameProjection
   val GameProjection = protocol.projection.GameProjection
   type GamePlayer = protocol.projection.SetupPlayerProjection
@@ -42,26 +44,10 @@ package object frontend {
   val LegalTravelDestination = protocol.projection.LegalTravelDestinationProjection
   type LegalSearchSource = protocol.projection.LegalSearchSourceProjection
   val LegalSearchSource = protocol.projection.LegalSearchSourceProjection
-  type LegalMuster = protocol.projection.LegalMusterProjection
-  object LegalMuster {
-    def apply(target: EconomyTarget, label: String, suit: String,
-        supplyCost: Int, warbandsGained: Int): LegalMuster =
-      protocol.projection.LegalMusterProjection(target.kind, target.id, label,
-        suit, supplyCost, warbandsGained)
-  }
-  type LegalTrade = protocol.projection.LegalTradeProjection
-  object LegalTrade {
-    def apply(target: EconomyTarget, label: String, suit: String,
-        resource: String, supplyCost: Int, gained: Int): LegalTrade =
-      protocol.projection.LegalTradeProjection(target.kind, target.id, label,
-        suit, resource, supplyCost, gained)
-  }
   type BoardTargetRef = protocol.projection.BoardTargetRefProjection
   val BoardTargetRef = protocol.projection.BoardTargetRefProjection
   type BoardTargetCandidate = protocol.projection.BoardTargetCandidateProjection
   val BoardTargetCandidate = protocol.projection.BoardTargetCandidateProjection
-  type BoardTargetFormation = protocol.projection.BoardTargetFormationProjection
-  val BoardTargetFormation = protocol.projection.BoardTargetFormationProjection
   type BoardTargetAction = protocol.projection.BoardTargetActionProjection
   val BoardTargetAction = protocol.projection.BoardTargetActionProjection
   type CardResolution = protocol.projection.CardResolutionProjection
@@ -75,48 +61,18 @@ package object frontend {
   }
   type PendingCardDecision = protocol.projection.PendingCardDecisionProjection
   val PendingCardDecision = protocol.projection.PendingCardDecisionProjection
-  type RecoverState = protocol.projection.RecoverProjection
-  val RecoverState = protocol.projection.RecoverProjection
-  type ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
-  val ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
-  type ForgeState = protocol.projection.ForgeProjection
-  val ForgeState = protocol.projection.ForgeProjection
-  type CampaignState = protocol.projection.CampaignProjection
-  object CampaignState {
-    def apply(decisionId: String, targetSiteIds: Vector[String], force: Int,
-        plansFinished: Boolean, planChoices: Vector[CampaignPlanChoice],
-        selectedPlans: Vector[CampaignPlanChoice], attackDice: Vector[String],
-        attack: Int, skullLosses: Int, maxSacrifice: Int,
-        sacrificed: Option[Int], defenseDice: Vector[String],
-        defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
-        placementTargets: Vector[CampaignPlacementTarget]): CampaignState =
-      protocol.projection.CampaignProjection(decisionId, targetSiteIds, force,
-        plansFinished, planChoices, selectedPlans, attackDice, attack,
-        skullLosses, maxSacrifice, sacrificed, defenseDice, defense, victorious,
-        maxPlacement, placementTargets)
-
-    def apply(decisionId: String, siteId: String, force: Int,
-        plansFinished: Boolean, planChoices: Vector[CampaignPlanChoice],
-        selectedPlans: Vector[CampaignPlanChoice], attackDice: Vector[String],
-        attack: Int, skullLosses: Int, maxSacrifice: Int,
-        sacrificed: Option[Int], defenseDice: Vector[String],
-        defense: Option[Int], victorious: Option[Boolean],
-        maxPlacement: Int): CampaignState =
-      protocol.projection.CampaignProjection(decisionId, Vector(siteId), force,
-        plansFinished, planChoices, selectedPlans, attackDice, attack,
-        skullLosses, maxSacrifice, sacrificed, defenseDice, defense, victorious,
-        maxPlacement, Vector(CampaignPlacementTarget(siteId, siteId)))
-  }
-  type CampaignRaidRelocation = protocol.projection.CampaignRaidRelocationProjection
-  val CampaignRaidRelocation = protocol.projection.CampaignRaidRelocationProjection
-  type CampaignPlacementTarget = protocol.projection.CampaignPlacementTargetProjection
-  val CampaignPlacementTarget = protocol.projection.CampaignPlacementTargetProjection
-  type CampaignPlanChoice = protocol.projection.CampaignPlanChoiceProjection
-  val CampaignPlanChoice = protocol.projection.CampaignPlanChoiceProjection
+  type DecisionQueryState = protocol.projection.DecisionQueryProjection
+  val DecisionQueryState = protocol.projection.DecisionQueryProjection
+  type DecisionOptionState = protocol.projection.DecisionOptionProjection
+  val DecisionOptionState = protocol.projection.DecisionOptionProjection
+  type PhasePowerState = protocol.projection.PhasePowerProjection
+  val PhasePowerState = protocol.projection.PhasePowerProjection
+  type DecisionSectionState = protocol.projection.DecisionSectionProjection
+  val DecisionSectionState = protocol.projection.DecisionSectionProjection
+  type DecisionSlotState = protocol.projection.DecisionSlotProjection
+  val DecisionSlotState = protocol.projection.DecisionSlotProjection
   type BannerState = protocol.projection.BannerProjection
   val BannerState = protocol.projection.BannerProjection
-  type ChallengeState = protocol.projection.ChallengeProjection
-  val ChallengeState = protocol.projection.ChallengeProjection
   type MinorAdviser = protocol.projection.MinorAdviserProjection
   val MinorAdviser = protocol.projection.MinorAdviserProjection
   type MinorActionsState = protocol.projection.MinorActionsProjection
@@ -127,18 +83,18 @@ package object frontend {
   val NegotiationDisclosureState = protocol.projection.NegotiationDisclosureProjection
   type NegotiationSiteRelicState = protocol.projection.NegotiationSiteRelicProjection
   val NegotiationSiteRelicState = protocol.projection.NegotiationSiteRelicProjection
-  type NegotiationState = protocol.projection.NegotiationProjection
-  val NegotiationState = protocol.projection.NegotiationProjection
-  type RestFavorSourceState = protocol.projection.RestFavorSourceProjection
-  val RestFavorSourceState = protocol.projection.RestFavorSourceProjection
-  type LeagueTreatyState = protocol.projection.LeagueTreatyProjection
-  val LeagueTreatyState = protocol.projection.LeagueTreatyProjection
-  type RestPowerState = protocol.projection.RestPowerProjection
-  val RestPowerState = protocol.projection.RestPowerProjection
+  type NegotiationEditingState = protocol.projection.NegotiationEditingProjection
+  val NegotiationEditingState = protocol.projection.NegotiationEditingProjection
+  type NegotiationDealState = protocol.projection.NegotiationDealProjection
+  val NegotiationDealState = protocol.projection.NegotiationDealProjection
   type PlayerBoard = protocol.projection.PlayerBoardProjection
   val PlayerBoard = protocol.projection.PlayerBoardProjection
   type OathkeeperStatus = protocol.projection.OathkeeperProjection
   val OathkeeperStatus = protocol.projection.OathkeeperProjection
-  type OathkeeperRecipientDecision = protocol.projection.OathkeeperRecipientProjection
-  val OathkeeperRecipientDecision = protocol.projection.OathkeeperRecipientProjection
+  type WalkerDecisionState = protocol.projection.WalkerDecisionProjection
+  val WalkerDecisionState = protocol.projection.WalkerDecisionProjection
+  type WalkerRollOutcomeState = protocol.projection.WalkerRollOutcomeProjection
+  val WalkerRollOutcomeState = protocol.projection.WalkerRollOutcomeProjection
+  type WalkerWaitingState = protocol.projection.WalkerWaitingProjection
+  val WalkerWaitingState = protocol.projection.WalkerWaitingProjection
 }

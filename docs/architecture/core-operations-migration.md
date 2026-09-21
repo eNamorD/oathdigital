@@ -25,7 +25,8 @@ game logic outside the operation algebra.
 
 ## Current state
 
-`CoreOperations.scala` defines typed locations, pieces, primitive operations,
+`model/CoreOperations.scala` (data only; execution lives in
+`gameplay/operations`) defines typed locations, pieces, primitive operations,
 and glossary composites. Composite operations retain their semantic identity
 and expose primitive mutations. For example, Swap contains two reciprocal
 Moves, Draw contains ordered Takes, Exchange contains two Gives, and Sacrifice
@@ -318,7 +319,13 @@ Supply-capped "as much as possible" effects are resolved at plan time with
 Payments are typed with `Cost(favor, secret, favorBurnt, secretBurnt)` and
 applied by the single `PayCost(player, placedAt, cost)` root (zero-cost
 `Cost.free` is an inert no-op); `Costs.plan` is the pre-flight
-affordability/placement validator. Supply spending in executor-backed
+affordability/placement validator. A placed cost goes onto an empty card only
+(`PayCostRules`, enforced by the validator), unless `intoOccupied` is set, as
+battle plans do. `matchingBank` names the paying card's suit bank. When the
+payer is not the active player the pipeline settles the payment at once
+(`PayCostSettlement`): placed favor goes to `matchingBank` and secrets flip
+facedown, so nothing rests on the card. The recorded operation stays the
+requested one, so replay derives the same settlement. Supply spending in executor-backed
 operations is an `AdjustSupply(player, amount)` operation enforced exactly
 against the track; procedural phase/module supply writes (Challenge, Forge,
 Recover, Campaign, and Rest's refresh-to-value) remain module-authoritative
@@ -445,9 +452,11 @@ Completed within this phase:
 - only faceup secrets can be burned: a burnt secret returns to the untracked
   limitless SharedBank sink, and burning a facedown secret fails as if the
   source held no secrets at all;
-- `NegotiationCompleted` executes its deal through operations: favor and relic
+- Negotiation settlement executes its deal through operations: favor and relic
   transfers as `Give`, disclosure knowledge as `Peek` (before any transfer
-  relocates a disclosed card), with `pending = None` as the direct update;
+  relocates a disclosed card). This was the `NegotiationCompleted` event until
+  Negotiation moved onto the walker (2026-09-19), where the same operations are
+  the settle step of the deal tree;
 - Conspiracy resolution executes through operations: the played Conspiracy card
   leaves the game entirely (removed after the batch validates, since the
   executor conserves card inventory), an enemy relic is taken by `Give`,
@@ -484,7 +493,10 @@ Completed within this phase:
   a single favor/secret `Move` from the holder's play area onto the banner.
   `BannerChallengeStarted` and `BannerRibbonChoiceMade` stay direct (Supply
   spend and pending-procedure state only).
-- Campaign conquests and raids execute through operations. The committed
+- Campaign conquests and raids execute through operations. *(Superseded
+  2026-09-19: Campaign now runs on the procedure walker and the seven events
+  named below no longer exist. See `docs/architecture/bounded-campaign.md`. The
+  text is kept as history.)* The committed
   attacker force stays in the attacker's play area through the battle and
   leaves only at terminal events (it dies under a `Kill`, or the placed
   allocation moves under a `Move`), so a winning attacker keeps its board count

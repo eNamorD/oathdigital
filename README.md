@@ -31,13 +31,19 @@ Use the project-local wrapper; a normal verification run does not require
 `clean`:
 
 ```sh
+npm ci
 ./sbtw compile
 ./sbtw test
 ./sbtw frontend/test
 ./sbtw frontend/fullOptJS
 ```
 
-Scala.js tests need Node on `PATH`. In Codex desktop, the bundled runtime can
+Scala.js tests need Node on `PATH`, and the frontend suites run in jsdom so a
+renderer test can drive the DOM the panels build. `npm ci` installs that one
+dependency from the pinned `package.json`/`package-lock.json`; run it once
+after cloning and again whenever the lockfile changes. Nothing from
+`node_modules` ships: the production bundle is linked by sbt and served from
+the JVM. In Codex desktop, the bundled runtime can
 be selected explicitly:
 
 ```sh
