@@ -83,6 +83,8 @@ Sequence(
   defense.
 - **Result.** `RecordCampaignResult` writes the public `CampaignResult`. It is the
   only thing the steps after the losses read, because the losses change the board.
+  `attackerWins` is true when the attacker prevailed and false when the defender
+  did, whichever side a battle plan's user is on.
 
 ## Losses and resolution
 
@@ -157,7 +159,8 @@ the deciding player. The panels are the generic walker panels for `ChooseOne`,
 
 Each answer is a `WalkerStepRecorded` carrying a `ChoicePayload`. Each automatic roll
 is a `RollPayload` with `automatic = true`, which replay applies without asking the
-dice source. Every other step is a recorded operation batch, including
+dice source. The recorded result carries the key `attackerWins`, so a journal recorded
+before that name cannot be read. Every other step is a recorded operation batch, including
 `RecordCampaignResult`. The seven legacy Campaign events no longer exist, and
 journals are forward-only.
 

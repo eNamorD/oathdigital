@@ -176,6 +176,10 @@ Persistent modifier, not a plan:
 
 Off-turn settlement for a defender's plan payment: favor moves directly to the matching suit bank, and a secret becomes a `FlipSecrets(FaceUp, FaceDown)`. Nothing rests on the card.
 
+### Slice 3 implementation notes
+
+- **3a:** `CampaignResult.victorious` is now `attackerWins` in the model, the journal codec, the shared DTO and its codec, the result panel and the suites. It is true when the attacker prevailed and false when the defender did. The wire key changes with it, and journals are forward-only, so a game whose journal holds a recorded Campaign result cannot be read after this change.
+
 ## Slice 4: banner faces
 
 | Power | Ruling |
