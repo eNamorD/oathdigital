@@ -32,7 +32,7 @@ private[serialization] trait CampaignResultCodec {
       "defenseFaces" -> ujson.Arr.from(result.defenseFaces.map(face =>
         ujson.Str(encodeDefenseFace(face)))),
       "defenseScore" -> result.defenseScore,
-      "victorious" -> result.victorious)
+      "attackerWins" -> result.attackerWins)
 
   protected final def decodeCampaignResult(value: ujson.Value, path: String)
       : Either[WireError, CampaignResult] = try {
@@ -62,7 +62,7 @@ private[serialization] trait CampaignResultCodec {
       raidTargets, value("force").num.toInt, attackFaces,
       value("attackScore").num.toInt, value("skullLosses").num.toInt,
       value("sacrificed").num.toInt, defenseFaces,
-      value("defenseScore").num.toInt, value("victorious").bool)
+      value("defenseScore").num.toInt, value("attackerWins").bool)
   } catch {
     case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid Campaign result")))

@@ -111,7 +111,9 @@ final case class CampaignPlanResolution(
   *
   * `attackScore` is the attack after the skull cap and any Outriders, before
   * the sacrifice; `defenseScore` is the defense dice score plus the defender's
-  * board force. The attacker prevails when `attackTotal > defenseScore`.
+  * board force. The attacker prevails when `attackTotal > defenseScore`, and
+  * `attackerWins` records that fact: it is true for an attacker victory and
+  * false for a defender victory, whichever side a battle plan's user is on.
   */
 final case class CampaignResult(
     attacker: PlayerId,
@@ -126,7 +128,7 @@ final case class CampaignResult(
     sacrificed: Int,
     defenseFaces: Vector[DefenseDieFace],
     defenseScore: Int,
-    victorious: Boolean
+    attackerWins: Boolean
 ) {
   def attackTotal: Int = attackScore + sacrificed
 }

@@ -141,11 +141,11 @@ object CampaignBattle {
       .map { attacker =>
         val survivors = result.force - result.skullLosses - result.sacrificed
         val deaths = result.skullLosses + result.sacrificed +
-          (if (result.victorious) 0 else survivors / 2)
+          (if (result.attackerWins) 0 else survivors / 2)
         val own: Vector[CoreOperation] = Option.when(deaths > 0)(Kill(
           Piece.Warbands(ForceKind.Exile(attacker.lineage), deaths),
           PositionedLocation(Location.PlayArea(result.attacker)))).toVector
-        own ++ (if (!result.victorious) Vector.empty
+        own ++ (if (!result.attackerWins) Vector.empty
           else result.kind match {
             case CampaignKind.Conquest => conquestLosses(ready, result)
             case CampaignKind.Raid => raidBoardLosses(ready, result)

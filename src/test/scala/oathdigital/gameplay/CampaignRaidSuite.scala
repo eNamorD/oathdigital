@@ -44,7 +44,7 @@ class CampaignRaidSuite extends munit.FunSuite {
       CampaignRaidTarget.Pawn(b.other), CampaignRaidTarget.Relic(b.other, relic),
       CampaignRaidTarget.Banner(b.other, Banner.PeoplesFavor)))
     assertEquals(result.defenseScore, 3)
-    assertEquals(result.victorious, true)
+    assertEquals(result.attackerWins, true)
   }
 
   test("a Raid victory transfers in the printed order and then asks where the pawn goes") {

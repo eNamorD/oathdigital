@@ -344,7 +344,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
       CampaignKind.Conquest, CampaignDefender.Bandits, Vector(b.origin),
       Vector.empty, force = 4, attackFaces = sword(4), attackScore = 4,
       skullLosses = 0, sacrificed = 0, defenseFaces = blanks(b), defenseScore = 2,
-      victorious = true))
+      attackerWins = true))
     // The board is untouched until the losses: the bandits are gone, the
     // committed force is still on the board, and nothing is placed yet.
     assertEquals(boardWarbands(sacrificed.state, b.actor), 5)
@@ -386,7 +386,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val start = committed(game, b, 2)
     val done = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
       ChooseAmountAnswer(0)).toOption.get
-    assertEquals(result(done.state).victorious, false)
+    assertEquals(result(done.state).attackerWins, false)
     assertEquals(boardWarbands(done.state, b.actor), 4)
     assertEquals(site(done.state, b.origin), SiteForces.Occupied(ForceKind.Bandit, 2))
     assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
@@ -399,7 +399,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val won = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
       ChooseAmountAnswer(1)).toOption.get
     assertEquals(result(won.state).sacrificed, 1)
-    assertEquals(result(won.state).victorious, true)
+    assertEquals(result(won.state).attackerWins, true)
     assertEquals(won.continue, OathContinue.AwaitingCampaignDecision(b.actor,
       DecisionId(CampaignIds.placement)))
   }
@@ -419,7 +419,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val done = committed(game, b, 0)
     assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
     assertEquals(result(done.state).force, 0)
-    assertEquals(result(done.state).victorious, false)
+    assertEquals(result(done.state).attackerWins, false)
     assertEquals(boardWarbands(done.state, b.actor), 0)
   }
 
