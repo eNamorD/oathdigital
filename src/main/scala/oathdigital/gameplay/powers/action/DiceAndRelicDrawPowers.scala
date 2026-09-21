@@ -9,5 +9,5 @@ import oathdigital.gameplay.powerresolver.PhasePower
   */
 object DiceAndRelicDrawPowers {
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
-    Vector[PhasePower](GamblingHall)
+    Vector[PhasePower](GamblingHall, BoneDice)
 }
