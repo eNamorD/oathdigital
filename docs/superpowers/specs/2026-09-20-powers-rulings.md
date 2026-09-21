@@ -130,9 +130,9 @@ All are selected at the start of the major action. A modifier's cost is paid at 
 | --- | --- |
 | 118 Toll Roads | Implemented (slice 2c). Enemies (every player except the ruler) cannot travel to a site ruled by Toll Roads' ruler unless they pay 1 favor. This covers all the ruler's sites, including Toll Roads' own. The payment is a `Give` with `required = true` to a player ruler, and a required `PayCost` with a burnt favor for a bandit ruler. A traveller who cannot pay does not get that destination. Empire rulers are unsupported. |
 | 178 Grasping Vines | Implemented (slice 2c). An enemy traveling from a site ruled by the Vines' ruler kills one warband on their own board if able. The ruler is exempt. It is an unconditional, non-required `Kill(1)` inserted before the Move, so stacked kills resolve against live state. |
-| R15 Circlet of Command | Faceup. Players other than the holder cannot target the holder's banners or their relics other than the Circlet. It restricts Raid target options, Challenge banner selection and Conspiracy's target list. |
-| E28 Oaken Fortress (intact) | While its ruler is at this site, they cannot be targeted by a Challenge or a Raid. The Empire clause is unsupported. |
-| E28 Rotting Fortress (ruined) | Players at this site cannot be targeted by a Challenge or a Raid unless the targeting player has a faceup beast adviser. |
+| R15 Circlet of Command | Implemented (slice 2e). Faceup. Players other than the holder cannot target the holder's banners or their relics other than the Circlet. It restricts Raid target options, Challenge banner selection and Conspiracy's target list. |
+| E28 Oaken Fortress (intact) | Implemented (slice 2e). While its ruler is at this site, they cannot be targeted by a Challenge or a Raid. The Empire clause is unsupported. |
+| E28 Rotting Fortress (ruined) | Implemented (slice 2e). Players at this site cannot be targeted by a Challenge or a Raid unless the targeting player has a faceup beast adviser. |
 
 For both Fortress faces, a Raid removes the protected player from the defender decision, and a Challenge removes the banner they hold from banner selection. Conquest is unaffected.
 
@@ -150,6 +150,7 @@ For both Fortress faces, a Raid removes the protected player from the defender d
 - **2b:** every selected modifier's cost is paid at the start of its action and all are validated together at selection (`ContributingPower.selectionPayments`); Catacombs states its secret. `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party is a denizen played faceup straight from the Search's draw, to a site or as a faceup adviser; a facedown placement and a card that was already a facedown adviser do not trigger it. Wild Cry cannot be discarded while selected. `PowerCtx.procedure` exists (E9).
 - **2c:** a selected modifier's cost is paid at the start of every Travel, whatever the route (permissive, product decision); the Supply saving and Forest Paths' ignore apply only when the condition holds. A free Travel is still a destination candidate, with cost 0. Toll Roads and Grasping Vines find their ruler as the ruler of the site the card stands at and ignore a facedown copy.
 - **2d:** the Truthful Harp reveals by recording a `Peek` for every other player and restricts nothing; the hand itself stays private in projections, and the other players remember a revealed card played facedown. Augury and the Harp stack. Relic Worship pays its secret at the start of the Recover and gains its 2 Supply after the relic is taken; Catacombs plus Relic Worship with one faceup secret is refused at selection. The Cup of Plenty is free for a player with no faceup adviser. The reviewed entry for Relic Worship is now a selected, implemented handler.
+- **2e:** Conspiracy's target decision has a window and is dropped when a power removes every option. The Fortress start refusal applies until the Campaign has answered one of its decisions. Circlet's protection covers Raid targets, Challenge banners and Conspiracy targets and never the Circlet itself.
 
 ## Slice 3: Campaign battle plans
 
