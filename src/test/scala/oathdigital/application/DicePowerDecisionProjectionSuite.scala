@@ -1,7 +1,8 @@
 package oathdigital.application
 
 import oathdigital.gameplay.powers.PowerFixture._
-import oathdigital.gameplay.powers.action.{GamblingHall, PaidActionHarness}
+import oathdigital.gameplay.powers.action.{FaeMerchant, GamblingHall,
+  PaidActionHarness}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -35,6 +36,22 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite {
     assertEquals(projection.query.get.options.map(_.kind).distinct,
       Vector("favor-bank"))
     assertEquals(projection.query.get.options.size, Suit.all.size)
+    assertEquals(other(parked), None)
+  }
+
+  test("Fae Merchant names both eligible relics to its owner, including the facedown one just taken") {
+    val fae = DenizenId("180")
+    val held = RelicId("R08")
+    val ready0 = act(withBoard(withRelic(atHome(base, fae), held))(
+      _.copy(faceUpSecrets = 2)))
+    val top = ready0.game.current.commonCards.relicDeck.head
+    val parked = ready(use(rules(), ready0, FaeMerchant.id,
+      DecisionOptionRef.Denizen(fae)).toOption.get.state)
+    val projection = owner(parked).get
+    assertEquals(projection.decisionId, FaeMerchant.decisionId)
+    assertEquals(projection.query.get.options.map(_.id), Vector(held.value,
+      top.value))
+    assert(projection.query.get.options.forall(_.card.exists(!_.hidden)))
     assertEquals(other(parked), None)
   }
 }
