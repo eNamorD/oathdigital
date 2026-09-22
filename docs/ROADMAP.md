@@ -9,32 +9,26 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase 3 — Powers and battle plans** is active. The first batch (30 denizens,
-12 edifice faces, 15 relics, the Wandering Flame phase power and the Mob card
-play modifier) is designed in the
-[powers design](superpowers/specs/2026-09-20-powers-design.md), and its
-per-power rulings are in the
-[powers rulings](superpowers/specs/2026-09-20-powers-rulings.md). It is built
-in five slices: verify and extend the shared engine pieces (slice 0), When
-Played, ACTION and WAKE powers (1), modifiers, persistent rules and card-play
-triggers (2), battle plans (3), and the banner faces (4). Each slice gets its own
-plan under `docs/superpowers/plans/` before any code is written.
+**Phase — Randomized setup for alpha** is active. Phase 3's first batch (30
+denizens, 12 edifice faces, 15 relics, the Wandering Flame phase power and the
+Mob card play modifier) is complete and merged: designed in the
+[powers design](superpowers/specs/2026-09-20-powers-design.md), with per-power
+rulings in the [powers rulings](superpowers/specs/2026-09-20-powers-rulings.md).
+All five slices (0 foundations, 1a-1d When Played/ACTION/WAKE powers, 2
+modifiers/restrictions/triggers, 3 battle plans, 4 banner faces) are
+implemented. The rest of the denizen/relic/edifice catalog is not needed for
+the alpha and stays future work (tracked generally under **L6** below).
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
 
-### Phase 3 - Powers and battle plans
+### Phase - Randomized setup for alpha
 
-Powers are declared as contributions to walker procedures, grouped by mechanics
-and timing rather than one file per card: legality and cost modifiers, resource
-and card movement, roll transforms, losing-force replacement, nested actions,
-phase and victory triggers, and battle plans. The base procedures are ported, so
-the remaining work is the catalog itself: the first batch above, then the rest
-of the denizens, relics, edifices, Foundation, Legacy, banner, site and Vision
-powers through the same contribution boundaries. The engine never infers
-mechanics from rules text; unimplemented handlers stay explicit.
+Every game starts with sites randomized. Each Homeland is seeded with the
+matching edifice card which has been implemented. The top 30 cards of the
+world deck are randomized, and consist of implemented denizens (and visions, as usual).
 
 ### Phase 5 - All-Exile alpha readiness
 
