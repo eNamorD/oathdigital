@@ -35,7 +35,7 @@ object GameStartRules {
           stored.items.collectFirst { case id: EdificeId => id })))
       game = OathGame(catalog.ref,
         CampaignState(atlas, foundations, lineages, chronicle.reliquary,
-          chronicle.dispossessed, Map.empty, OathkeeperGoal.Supremacy,
+          chronicle.dispossessed, Map.empty, plan.oathkeeperGoal,
           EraState(20, lineages.keys.map(_ -> 0).toMap)),
         CurrentGameState(material.players, material.map, material.commonCards,
           material.banners, OathkeeperState(None, TitleSide.Oathkeeper),

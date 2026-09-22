@@ -775,8 +775,8 @@ class ServerModeUiSuite extends FunSuite {
 
   test("inactive setup viewer waits without pawn or private adviser controls") {
     val value = projection(
-      Set("placePawn", "chooseAdviser"),
-      phase = "awaiting-adviser",
+      Set.empty,
+      phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
       ready = false
     )
@@ -799,8 +799,8 @@ class ServerModeUiSuite extends FunSuite {
     )
 
     val setup = projection(
-      Set("chooseAdviser"),
-      phase = "awaiting-adviser",
+      Set.empty,
+      phase = "setup-walker-decision",
       ready = false
     )
     assert(ServerUiSupport.viewerPresentation(

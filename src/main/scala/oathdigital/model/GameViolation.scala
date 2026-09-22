@@ -11,9 +11,6 @@ object OathViolation {
   final case class InvalidModifierInvocation(message: String) extends OathViolation
   case object GameAlreadyExists extends OathViolation
   case object GameNotStarted extends OathViolation
-  case object GameAlreadyReady extends OathViolation
-  final case class CatalogMismatch(expected: CatalogRef, actual: CatalogRef)
-      extends OathViolation
   case object GameEnded extends OathViolation
   final case class WrongPhase(expected: Phase, actual: Phase)
       extends OathViolation
@@ -103,28 +100,10 @@ object OathViolation {
       extends OathViolation
   final case class UnknownFirstPlayer(id: PlayerId)
       extends OathViolation
-  final case class WrongCount(field: String, expected: Int, actual: Int)
-      extends OathViolation
-  final case class DuplicateComponent(field: String, id: String)
-      extends OathViolation
-  final case class UnknownComponent(field: String, id: String)
-      extends OathViolation
-  final case class WrongDenizenSuitCount(suit: Suit, actual: Int)
-      extends OathViolation
-  final case class InvalidWorldDeck(detail: String)
-      extends OathViolation
-  final case class InvalidRelicOrder(detail: String)
-      extends OathViolation
-  final case class InvalidHomelandEdifice(siteId: SiteId, detail: String)
-      extends OathViolation
   final case class WrongPlayer(expected: PlayerId, actual: PlayerId)
       extends OathViolation
   final case class SiteNotInPlay(siteId: SiteId)
       extends OathViolation
-  final case class AdviserNotInHand(
-      playerId: PlayerId,
-      adviserId: DenizenId
-  ) extends OathViolation
   final case class InvalidEventOrder(detail: String)
       extends OathViolation
   final case class InvalidAggregate(problems: Vector[DomainProblem])

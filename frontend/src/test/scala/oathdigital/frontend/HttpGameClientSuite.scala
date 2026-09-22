@@ -634,7 +634,7 @@ class HttpGameClientSuite extends FunSuite {
 
   private def projectionJson(
       sequence: Long,
-      phase: String = "awaiting-pawn",
+      phase: String = "act-action-selection",
       siteId: String = "site:001",
       adviserId: String = "denizen:0612",
       ready: Boolean = false,
@@ -643,7 +643,7 @@ class HttpGameClientSuite extends FunSuite {
   ): String = {
     val pendingDecision =
       if (choices)
-        s"""{"decisionId":"setup-adviser-0-red-exile","kind":"starting-adviser","actorPlayerId":"red-exile","prompt":"Choose adviser","instructions":[],"cards":[${cardJson(adviserId, "denizen", "Printed Adviser")}],"keepMinimum":1,"keepMaximum":1,"orderingRequired":false,"resolutionsByCard":{"$adviserId":[{"kind":"starting-adviser","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}}"""
+        s"""{"decisionId":"search-draw-0-red-exile","kind":"search","actorPlayerId":"red-exile","prompt":"Choose adviser","instructions":[],"cards":[${cardJson(adviserId, "denizen", "Printed Adviser")}],"keepMinimum":1,"keepMaximum":1,"orderingRequired":false,"resolutionsByCard":{"$adviserId":[{"kind":"search","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}}"""
       else "null"
     s"""{
        |"gameId":"game-1",
@@ -661,7 +661,7 @@ class HttpGameClientSuite extends FunSuite {
        |{"regionId":"hinterland","sites":[${siteJson("site:006", "Sixth")},${siteJson("site:007", "Seventh")},${siteJson("site:008", "Eighth")}]}
        |],
        |"pawnLocations":[],
-       |"legalControls":["placePawn","chooseAdviser"],
+       |"legalControls":[],
        |"ready":$ready,
        |"completed":$completed,
        |"boardTargetActions":[],
