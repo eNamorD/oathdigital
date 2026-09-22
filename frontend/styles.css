@@ -257,11 +257,15 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
 .card-detail { position: relative; min-height: 36px; border: 1px solid #675a43;
   border-radius: 6px; background: #17140f; color: #f5ecd7; }
+.card-detail-unimplemented { border-style: dashed; border-color: #a15c4a; }
 .card-popover { display: none; position: absolute; z-index: 3; left: 0; top: 100%;
   min-width: 240px; padding: 9px; border: 1px solid #d2a85e; background: #17140f; }
 .card-detail:hover .card-popover, .card-detail:focus .card-popover,
 .card-detail:focus-within .card-popover { display: block; }
 .card-property { display: block; }
+.card-unimplemented-badge { display: block; margin-top: 2px; padding: 1px 5px;
+  border-radius: 4px; background: #a15c4a; color: #f5ecd7; font-size: 0.7rem;
+  text-transform: uppercase; letter-spacing: 0.03em; }
 .pile-display { display: flex; align-items: center; gap: 6px; margin: 7px 0; }
 .pile-display > .pile-card { display: inline-flex; box-sizing: border-box;
   flex: 0 0 1.65rem; width: 1.65rem; min-width: 1.65rem; height: 2.3rem;

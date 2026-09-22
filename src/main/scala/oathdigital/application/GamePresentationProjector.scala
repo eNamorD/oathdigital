@@ -1,13 +1,36 @@
 package oathdigital.application
 
-import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.catalog.{CardRestrictions, CatalogPoweredDefinition, ExecutableCatalog}
 import oathdigital.gameplay.PlayerSecretSummary
+import oathdigital.gameplay.powers.{PhasePowerCatalog, ReviewedPowerCatalog, WalkerPowerCatalog}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
 private[application] final class GamePresentationProjector(
     catalog: ExecutableCatalog
 ) {
+  // A power id counts as implemented once any one of the three power
+  // catalogs claims it: `ReviewedPowerCatalog` says so explicitly per
+  // handler, while `WalkerPowerCatalog`/`PhasePowerCatalog` carry no such
+  // flag -- for them, being wired in at all means the power runs. A card is
+  // implemented only once every power it declares clears one of the three;
+  // a card with no declared power has nothing to fall back on, so it reads
+  // as not yet implemented rather than trivially done.
+  private val reviewedHandlersById = ReviewedPowerCatalog.powers
+    .map(power => power.id -> power.handlers).toMap
+  private val walkerImplementedIds =
+    WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
+  private val phaseImplementedIds =
+    PhasePowerCatalog.default(catalog).powers.map(_.id).toSet
+
+  private def powerImplemented(id: PowerId): Boolean =
+    walkerImplementedIds.contains(id) || phaseImplementedIds.contains(id) ||
+      reviewedHandlersById.get(id).exists(_.forall(_.implemented))
+
+  private def cardImplemented(definition: CatalogPoweredDefinition): Boolean =
+    definition.powers.nonEmpty && definition.powers.forall(power =>
+      powerImplemented(power.id))
+
   private val siteNames = catalog.sites.map(site => site.id -> site.name).toMap
   private val denizenNames = catalog.denizens.map(d =>
     DenizenId(d.id.value) -> d.name).toMap
@@ -44,7 +67,8 @@ private[application] final class GamePresentationProjector(
       side = Some(value.side match {
         case EdificeSide.Intact => "intact"
         case EdificeSide.Ruined => "ruined"
-      }), favor = value.tokens.favor, secrets = value.tokens.secrets)
+      }), favor = value.tokens.favor, secrets = value.tokens.secrets,
+      implemented = face.exists(cardImplemented))
   }
 
   def setupPlayers(participants: Vector[FirstGameParticipant]) =
@@ -313,7 +337,8 @@ private[application] final class GamePresentationProjector(
         orientation = orientation.map(orientationName), hidden = hidden)) { d =>
       CardDetailsProjection(value.value, "denizen", d.name, Some(d.suit.key),
         Some(restrictionName(d.restrictions)), Some(d.rulesText),
-        orientation.map(orientationName), hidden = hidden)
+        orientation.map(orientationName), hidden = hidden,
+        implemented = cardImplemented(d))
     }
     case value: VisionId => VisionCardPresentation.byId.get(value.value).fold(
       CardDetailsProjection(value.value, "vision", safeLabel(value.value),
@@ -327,7 +352,7 @@ private[application] final class GamePresentationProjector(
         orientation = orientation.map(orientationName), hidden = hidden)) { r =>
       CardDetailsProjection(value.value, "relic", r.name, rulesText = Some(r.rulesText),
         orientation = orientation.map(orientationName), relicValue = Some(r.value),
-        defense = Some(r.defense), hidden = hidden)
+        defense = Some(r.defense), hidden = hidden, implemented = cardImplemented(r))
     }
     case other => CardDetailsProjection(other.value, other.getClass.getSimpleName,
       safeLabel(other.value), orientation = orientation.map(orientationName), hidden = hidden)
