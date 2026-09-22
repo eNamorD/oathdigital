@@ -15,7 +15,7 @@ Universal smoke. Exact command, artifact checksums, and smoke scope are in the
 Task 3 made no code or package changes, so it reuses that exact evidence rather
 than rerunning broad suites. On 2026-09-10, read-only
 `docker info --format '{{.ServerVersion}} {{.Architecture}}'` could not connect
-to `/Users/roman/.docker/run/docker.sock`: socket does not exist. Therefore no
+to `/Users/alex/.docker/run/docker.sock`: socket does not exist. Therefore no
 live local container build, load, or smoke was run for this evidence update.
 The earlier Docker 29.7.2 arm64 snapshot smoke below remains useful process
 evidence, but is not a release-build or two-architecture release gate.

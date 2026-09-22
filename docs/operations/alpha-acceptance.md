@@ -15,7 +15,7 @@ following locally on macOS arm64 with Temurin Java `21.0.12.1+1-LTS`, Node
 
 ```sh
 export JAVA_HOME='/tmp/oath-release-java21.xc372r/jdk-21.0.12.1+1/Contents/Home'
-export PATH="$JAVA_HOME/bin:/Users/roman/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
+export PATH="$JAVA_HOME/bin:/Users/alex/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
 export OATH_RELEASE_VERSION=0.1.0-alpha.1
 ./sbtw verifyReleaseVersion test frontend/test verifyPackageMappings Universal/packageBin Universal/packageZipTarball Docker/stage
 ```
