@@ -14,6 +14,14 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.protocol._
 
 class TrustedSeatRoutesSuite extends munit.FunSuite {
+  /**
+   * Generated games shuffle seating and make the first seat the first player.
+   * Reversing the two requested seats makes p2 the deterministic first player.
+   */
+  private val reversing: ChronicleRandomPort = new ChronicleRandomPort {
+    def shuffle[A](values: Vector[A]): Vector[A] = values.reverse
+  }
+
   test("trusted gateway projects only the seat and binds command identity") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
@@ -254,7 +262,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     val client = HttpClient.newHttpClient()
 
     def openServer(): (ServerRuntime, akka.http.scaladsl.Http.ServerBinding, String) = {
-      val runtime = ServerRuntime.open(database, catalogPath).toOption.get
+      val runtime = ServerRuntime.open(database, catalogPath, reversing).toOption.get
       val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
         ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
       (runtime, binding, s"http://127.0.0.1:${binding.localAddress.getPort}")
@@ -375,7 +383,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     val blocking = system.dispatchers.lookup(DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val database = Files.createTempDirectory("trusted-seat-routes-").resolve("database")
     val catalogPath = Paths.get("docs/catalog/new-foundations-component-catalog.json")
-    val runtime = ServerRuntime.open(database, catalogPath).toOption.get
+    val runtime = ServerRuntime.open(database, catalogPath, reversing).toOption.get
     val config = ServerConfig("127.0.0.1", 8080, origin.map(URI.create), database, catalogPath,
       ServerMode.TrustedAlpha, None, "test")
     val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(

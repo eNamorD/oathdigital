@@ -3,6 +3,7 @@ package oathdigital.server
 import java.nio.file.Path
 
 import oathdigital.application.{
+  ChronicleRandomPort,
   IdentityRepository,
   MembershipAuthorizationService
 }
@@ -27,7 +28,8 @@ final class ServerRuntime private (
 object ServerRuntime {
   def open(
       databasePath: Path,
-      catalogPath: Path
+      catalogPath: Path,
+      random: ChronicleRandomPort = ChronicleRandomPort.random
   ): Either[String, ServerRuntime] =
     HsqldbDatabaseOwner.open(databasePath).left.map {
       case oathdigital.application.RepositoryFailure.StorageFailure(message) =>
@@ -66,7 +68,8 @@ object ServerRuntime {
             )
           val generatedPlanFactory =
             new oathdigital.application.GeneratedFirstGamePlanFactory(
-              catalog
+              catalog,
+              random
             )
           val authorization =
             new MembershipAuthorizationService(database.identities)
