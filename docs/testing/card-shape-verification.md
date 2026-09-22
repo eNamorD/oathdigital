@@ -130,6 +130,51 @@ colour gave no way to tell the dice apart from each other. `skull`,
 `shield`, `sword` and `hollow-sword` were left on the shared neutral colour
 since nobody asked for those to change.
 
+## Iconography pass (commit `086c085`)
+
+A later slice moved the suit onto the card header as a glyph and gave the
+site box its own corners. Re-verified in the same way, on a fresh game at
+`1440x900`, `1024x768`, `768x1024` and `390x844`.
+
+**No-reflow invariant holds.** Face-up card, face-down card, empty slot and
+the whole site box each produced a `(0, 0)` width/height delta across hover
+and `.focus()`, at every viewport above. The site box is inside the
+fixed-width map surface, so its own width (234px) does not track the
+viewport; the map's transform scale does.
+
+**Card header.** A face-up `Fallen Spire` draws its arcane glyph left of
+the name in both the small face and the overlay, coloured
+`--suit-arcane`; the suit word is gone from both. The overlay printed
+`Suit` and `Side` and no `Restrictions` row, which is the unrestricted
+case landing correctly.
+
+**Site corners.** `Mines` drew three favor glyphs' worth as a gold glyph
+and the count `3` left of its name, `Broken Peaks` two secrets, and both
+drew their defense as dice on the right. An undefended site (`Steppe`)
+shows `0` rather than an empty corner, so a missing die never has to mean
+two things. Footers paired the power text on the left with `Recover 5` or
+a glyph-priced `Forge` on the right; a site with neither requirement omits
+the corner.
+
+**One row per site, and one defect found by measuring it.** Every site's
+denizens, empty denizen slots and relics shared a single line at all four
+viewports. The first measurement showed two distinct top edges per row:
+the wrapper `span.site-card-target` around a placed denizen carried a
+border, padding and a right margin that the empty slot beside it did not,
+so a carded slot sat three pixels low. Nothing read that wrapper, so it
+was removed (commit `086c085`) and the row now measures one top edge and
+even gaps.
+
+**Map degradation.** At 52% the face keeps its header -- glyph and name
+both computed `display` visible -- while tokens, stats and restriction
+stay hidden, which is the intended trade at map scale.
+
+**Open, not fixed:** a site whose relic slots are empty draws nothing for
+them, while an empty *denizen* slot does draw. So a site with one denizen
+slot and two relic slots shows one box, not three. This is the behaviour
+from before this slice, kept deliberately rather than changed without
+asking.
+
 ## Outcome
 
 No defects found in the no-reflow invariant, the map degradation, or the
