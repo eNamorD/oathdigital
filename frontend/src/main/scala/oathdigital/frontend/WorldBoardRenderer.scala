@@ -8,6 +8,18 @@ private[frontend] object WorldBoardRenderer {
    playerBoards(value, ui)
  }
 
+ /** A resource as its glyph and its count, with the sentence the words used
+   * to carry kept as the accessible name.
+   */
+ private def counted(token: String, value: String,
+     accessible: String): dom.Element = {
+   val node = element("span", "resource")
+   node.setAttribute("aria-label", accessible)
+   node.appendChild(RulesTextRenderer.glyph(token))
+   node.appendChild(dom.document.createTextNode(value))
+   node
+ }
+
  def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element = {
    val panel = element("section", "panel player-boards")
    value.players.foreach { player =>
@@ -17,38 +29,39 @@ private[frontend] object WorldBoardRenderer {
        section.classList.add("player-board-active")
        section.setAttribute("aria-label", s"${player.displayName}, active player")
      }
-     val heading = element("h3", "")
-     heading.appendChild(playerReference(value, player.playerId))
-     section.appendChild(heading)
-     section.appendChild(text("p", "player-role", player.role))
-     value.pawnLocations.find(_.playerId == player.playerId).foreach(pawn =>
-       section.appendChild(text("p", "player-location", siteLabel(value, pawn.siteId))))
+     // One line for who and what they hold: the pane is a strip across the
+     // top of the table, so every line it spends is a line of card.
+     val identity = element("h3", "player-identity")
+     identity.appendChild(playerReference(value, player.playerId))
+     identity.appendChild(text("span", "player-role", player.role))
+     section.appendChild(identity)
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
-     val resources = text("p", "resources",
-       s"Warbands ${board.warbands} · Favor ${board.favor} · Secrets " +
-         s"${board.faceUpSecrets}/${board.totalSecrets} · Supply ${board.supply}")
-     resources.setAttribute("title", secretSummaryLabel(board.faceUpSecrets,
+     val resources = element("span", "resources")
+     resources.appendChild(text("span", "resource", s"Warbands ${board.warbands}"))
+     resources.appendChild(counted("favor", board.favor.toString, s"Favor ${board.favor}"))
+     val secrets = counted("secret", s"${board.faceUpSecrets}/${board.totalSecrets}",
+       s"Secrets ${board.faceUpSecrets}/${board.totalSecrets}. " +
+         secretSummaryLabel(board.faceUpSecrets, board.totalSecrets,
+           board.faceDownSecrets, board.committedSecrets))
+     secrets.setAttribute("title", secretSummaryLabel(board.faceUpSecrets,
        board.totalSecrets, board.faceDownSecrets, board.committedSecrets))
-     resources.setAttribute("aria-label", resources.textContent + ". " +
-       resources.getAttribute("title"))
-     section.appendChild(resources)
-     val advisers = element("div", "board-cards advisers")
-     advisers.appendChild(text("strong", "", "Advisers"))
-     board.advisers.foreach(card => advisers.appendChild(CardFace.render(card)))
-     section.appendChild(advisers)
-     val relics = element("div", "board-cards relics")
-     relics.appendChild(text("strong", "", "Relics"))
-     board.relics.foreach(card => relics.appendChild(CardFace.render(card)))
-     section.appendChild(relics)
+     resources.appendChild(secrets)
+     resources.appendChild(text("span", "resource", s"Supply ${board.supply}"))
+     identity.appendChild(resources)
+     // One row, no headings: two labelled rows cost more height than the pane
+     // has, and a relic's square box already says which card is which.
+     val cards = element("div", "board-cards")
+     cards.setAttribute("aria-label", "Cards in play")
+     board.advisers.foreach(card => cards.appendChild(CardFace.render(card)))
+     board.relics.foreach(card => cards.appendChild(CardFace.render(card)))
+     board.revealedVision.foreach(card =>
+       cards.appendChild(CardFace.render(card)))
+     section.appendChild(cards)
      board.banners.foreach { banner =>
        section.appendChild(text("p", s"player-banner banner-${banner.key}",
          s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
            s"resources ${banner.resources}"))
      }
-     board.revealedVision.foreach(card => {
-       section.appendChild(text("strong", "", "Revealed Vision"))
-       section.appendChild(CardFace.render(card))
-     })
      }
      panel.appendChild(section)
    }

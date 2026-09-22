@@ -190,6 +190,21 @@ chain unused, so `VisualDomRenderer` and `VisualRenderPlan` went with it;
 `oathdigital.presentation` itself is untouched and still has its own
 tests.
 
+**Players pane and partitions, fourth revision.** A player board is now one
+identity line (name, role and resources, with favor and secrets as glyphs)
+and one unlabelled card row holding advisers, relics and any revealed
+vision. Measured with five cards cloned into a board: at `1440x900` the
+board is 134px in a 191px pane, and at `1024x768` 134px in 145px of usable
+pane — no scroll at either, where two labelled rows could not have fitted
+at any legible card size. The players row grew from 23% to 26% of the
+table to buy that margin, which comes out of the map.
+
+A partition zone now lays its options out like a hand rather than stacking
+them. Measured by building a zone of four options in the docked actions
+pane at `1024x768`: zone 356px, option 95px, three across with the fourth
+wrapping. Below roughly 300px of zone width it drops to two, which is the
+honest limit rather than a failure.
+
 **Suit colours, second revision** (commit `ef3df0f`): the first attempt
 brightened Beast, which the product owner rejected. Beast returns to the
 sampled `#8c371e`; Discord moves to a fire-engine `#ce2029` and Hearth to

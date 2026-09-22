@@ -312,6 +312,17 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-option { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
 .decision-option + .decision-option { margin-top: 8px; }
 .decision-option button, .partition-confirm { min-height: 44px; margin: 5px; }
+/* A partition is read as a row of cards, so the zone lays its options out
+   like a hand. Three fit across a docked pane at this size. */
+.partition-zone { display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 6px; }
+.partition-zone > h3, .partition-zone > .decision-zone-helper {
+  flex: 0 0 100%; margin-bottom: 0; }
+.partition-zone .decision-option { display: flex; flex-direction: column;
+  align-items: center; gap: 4px; margin: 0; padding: 5px;
+  font-size: 0.74em; }
+.partition-zone .move-option { min-height: 36px; width: 100%; margin: 0;
+  padding: 2px 6px; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
 /* One box per card type, in ex so a pane's font size scales every card in it
    together. Never overridden per pane: per-context size is font size alone. */
@@ -420,7 +431,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 #app { width: 100%; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; }
 .game-table { width: 100%; height: 100%; display: grid; gap: 4px; padding: 4px;
   background: #0f0e0c; grid-template-columns: minmax(0, 2.4fr) minmax(300px, 1fr);
-  grid-template-rows: minmax(140px, 23%) minmax(88px, 16%) minmax(0, 1fr);
+  grid-template-rows: minmax(150px, 26%) minmax(88px, 16%) minmax(0, 1fr);
   grid-template-areas: "players players" "world log" "world actions"; }
 .game-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column;
   background: #211f1b; border: 1px solid #40382b; overflow: hidden; }
@@ -443,15 +454,29 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   min-height: 100%; }
 .pane-players > .pane-content { padding: 6px; }
 .game-table .player-board { flex: 1 0 225px; min-width: 225px; margin: 0;
-  padding: 10px 12px; border: 0; border-right: 1px solid #4a4032;
+  padding: 6px 12px; border: 0; border-right: 1px solid #4a4032;
   border-radius: 0; font-size: .82rem; }
 .game-table .player-board-active { outline: 1px dashed #c8b48b; outline-offset: -2px;
   background: #29251d; }
 .player-board h3 { font-size: 1rem; margin: 0 0 4px; }
 .player-board p { margin: 5px 0; }
-.player-role { color: #c0b398; text-transform: capitalize; }
-.player-location { color: #c0b398; }
-.player-board .board-cards { margin: 6px 0; align-items: center; }
+.player-identity { display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 0 0.45em; font-size: 0.95rem; font-weight: 750; }
+/* The separator is drawn rather than written so no part of the line has to
+   carry a dot that a screen reader would read out. */
+.player-identity > * + *::before { content: "·"; margin-right: 0.45em;
+  color: #6f6455; font-weight: 400; }
+.player-role { color: #c0b398; font-weight: 400; text-transform: capitalize; }
+.resources { display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 0 0.45em; color: #d9cdb5; font-weight: 400; }
+.resources > * + *::before { content: "·"; margin-right: 0.45em;
+  color: #6f6455; }
+.resource { display: inline-flex; align-items: baseline; gap: 0.15em;
+  white-space: nowrap; }
+/* Cards on a board are read at a glance, not studied; the overlay is where
+   a card is studied. Font size is the only handle, so the box follows. */
+.player-board .board-cards { margin: 3px 0 0; align-items: flex-start;
+  font-size: 0.78em; }
 .game-table button, .development-panel button { cursor: pointer; }
 .map-controls { display: flex; align-items: center; gap: 5px; }
 .map-control, .dev-toggle, .dev-close { color: #e8d9bb; background: #302a20;
@@ -502,7 +527,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .game-table [tabindex]:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }
 @media (max-aspect-ratio: 4/3), (max-width: 1050px) {
   .game-table { grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
-    grid-template-rows: minmax(130px, 23%) minmax(0, 1fr) minmax(80px, 14%);
+    grid-template-rows: minmax(150px, 26%) minmax(0, 1fr) minmax(80px, 14%);
     grid-template-areas: "players players" "world actions" "world log"; }
 }
 @media (max-aspect-ratio: 4/5), (max-width: 620px) {
