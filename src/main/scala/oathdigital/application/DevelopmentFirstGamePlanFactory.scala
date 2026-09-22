@@ -10,17 +10,28 @@ final case class FirstGameBootstrapConfig(
 
 final case class BootstrapPlanFailure(message: String)
 
+/** A generated Chronicle plus the config it was actually dealt against --
+  * `GeneratedFirstGamePlanFactory` shuffles seating and picks a new first
+  * player before generating, so the config a caller passed in is stale the
+  * moment `build` returns; `resolvedConfig` is the one to deal `SetupOrders`
+  * from (2026-09-21 Chronicle design, slice 2).
+  */
+final case class FirstGamePlan(
+    chronicle: Chronicle,
+    resolvedConfig: FirstGameBootstrapConfig
+)
+
 trait FirstGamePlanFactory {
   def build(
       config: FirstGameBootstrapConfig
-  ): Either[BootstrapPlanFailure, FirstGameSetupPlan]
+  ): Either[BootstrapPlanFailure, FirstGamePlan]
 }
 
 /**
- * Development-only deterministic plan derivation: assembles a fixed dev
- * Chronicle (first 8 sites, first 10 denizens per suit, lowest-id edifice
- * per suit, all ordinary relics by printed value) and bridges it through
- * `ChronicleFirstGamePlan` (2026-09-21 Chronicle design, slice 1).
+ * Development-only deterministic Chronicle derivation: assembles a fixed
+ * dev Chronicle (first 8 sites, first 10 denizens per suit, lowest-id
+ * edifice per suit, all ordinary relics by printed value) (2026-09-21
+ * Chronicle design, slice 2).
  *
  * This is reproducible fixture construction, not production randomness.
  */
@@ -28,12 +39,8 @@ final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog)
     extends FirstGamePlanFactory {
   override def build(
       config: FirstGameBootstrapConfig
-  ): Either[BootstrapPlanFailure, FirstGameSetupPlan] =
-    for {
-      chronicle <- devChronicle
-      plan <- ChronicleFirstGamePlan.build(catalog, chronicle, config)
-        .left.map(failure => BootstrapPlanFailure(failure.toString))
-    } yield plan
+  ): Either[BootstrapPlanFailure, FirstGamePlan] =
+    devChronicle.map(FirstGamePlan(_, config))
 
   private def devChronicle: Either[BootstrapPlanFailure, Chronicle] =
     for {

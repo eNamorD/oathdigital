@@ -14,6 +14,7 @@ import akka.http.scaladsl.server.{Directives, Route}
 import org.slf4j.LoggerFactory
 
 import oathdigital.application.{
+  ChronicleFirstGamePlan,
   GameApplicationError,
   GameCommand,
   FirstGameBootstrapMapper,
@@ -73,8 +74,9 @@ final class GameServerGateway(
       gameId: String,
       requestingPlayer: PlayerId,
       request: FirstGameBootstrapRequest
-  ): Either[GameApplicationError, GameProjection] =
-    planFactory.build(FirstGameBootstrapMapper.map(request))
+  ): Either[GameApplicationError, GameProjection] = {
+    val config = FirstGameBootstrapMapper.map(request)
+    planFactory.build(config)
       .left.map(failure =>
         GameApplicationError.BootstrapFailure(failure.message))
       .flatMap(plan =>
@@ -82,8 +84,10 @@ final class GameServerGateway(
           gameId,
           requestingPlayer,
           request.expectedNextSequence,
-          GameCommand.Begin(plan)
+          GameCommand.Begin(plan.chronicle,
+            ChronicleFirstGamePlan.dealOrder(plan.chronicle, plan.resolvedConfig))
         ))
+  }
 
   def submit(
       gameId: String,

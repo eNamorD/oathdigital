@@ -3,15 +3,15 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.catalog.RelicRole
-import oathdigital.model.{EdificeId, EdificeSide, EdificeState, FirstGameSetupCommand, OathState, PlayerId, RelicId, Tokens, VisionId}
+import oathdigital.gameplay.setup.{GameStartRules, SetupProcedure}
+import oathdigital.model.{EdificeId, EdificeSide, EdificeState,
+  OathState, PlayerId, RelicId, Tokens, VisionId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.protocol.{
   BootstrapParticipantRequest,
   FirstGameBootstrapRequest
 }
-import oathdigital.protocol.projection.BoardTargetRefProjection
 import oathdigital.server.{GameHttpWire, GameServerGateway}
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
@@ -20,19 +20,16 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     PlayerId("p2")
   )
 
-  test("derived production-catalog plan passes first-game validation") {
+  test("derived production-catalog Chronicle passes first-game validation") {
     val factory = new DevelopmentFirstGamePlanFactory(catalog)
-    val derived = factory.build(config).toOption.get
-    val rules = new FirstGameSetupRules(catalog)
+    val derived = factory.build(config).toOption.get.chronicle
+    val orders = ChronicleFirstGamePlan.dealOrder(derived, config)
 
-    assert(rules.handle(
-      OathState.NoGame,
-      FirstGameSetupCommand.Begin(derived)
-    ).isRight)
-    assertEquals(derived.orderedSites.size, 8)
+    assert(GameStartRules.evolve(catalog, derived, orders).isRight)
+    assertEquals(derived.atlasBox.size, 8)
     oathdigital.model.Suit.all.foreach { suit =>
       assertEquals(
-        derived.denizenOrder.count(id =>
+        derived.worldDeck.count(id =>
           catalog.denizens.find(_.id.value == id.value).get.suit == suit),
         10
       )
@@ -41,13 +38,13 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
 
   test("ordinary relic order uses printed IDs and numeric catalog values") {
     val derived =
-      new DevelopmentFirstGamePlanFactory(catalog).build(config).toOption.get
+      new DevelopmentFirstGamePlanFactory(catalog).build(config).toOption.get.chronicle
     val expectedDefinitions = catalog.relics
       .filter(_.role == RelicRole.Ordinary)
       .sortBy(relic => relic.value -> relic.id.value)
 
     assertEquals(
-      derived.relicOrder,
+      derived.relicDeck,
       expectedDefinitions.map(relic => RelicId(relic.id.value))
     )
     assert(expectedDefinitions.forall(_.id.value.matches("R[0-9]+")))
@@ -85,8 +82,8 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     }
   }
 
-  test("bootstrap persists normal v2 history and returns redacted projection") {
-    val derived = new DevelopmentFirstGamePlanFactory(catalog).build(config).toOption.get
+  test("bootstrap persists normal v2 history and parks the walker on the first player's pawn placement") {
+    val derived = new DevelopmentFirstGamePlanFactory(catalog).build(config).toOption.get.chronicle
     val path = Files.createTempDirectory("oathdigital-bootstrap-")
       .resolve("journal")
     val repository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
@@ -108,9 +105,11 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
       finally repository.close()
     val json = GameHttpWire.encodeProjection(projection)
 
-    assertEquals(projection.nextSequence, 1L)
-    assertEquals(projection.phase, "awaiting-pawn")
-    assertEquals(projection.privateAdviserPreview.size, 3)
+    // GameStarted plus the WalkerParked fact from Setup's immediate first
+    // park (2026-09-21 Chronicle design, slice 2): two records for one
+    // bootstrap command.
+    assertEquals(projection.nextSequence, 2L)
+    assertEquals(projection.phase, "setup-walker-decision")
     assertEquals(projection.playerBoards.size, config.participants.size)
     assert(projection.world.flatMap(_.sites).exists(_.looseFavor > 0))
     assert(projection.world.flatMap(_.sites).exists(_.relics.facedownCount > 0))
@@ -134,20 +133,19 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
         track.firstPlayerId)), Some((1, 0, true, 4, "p2")))
     assertEquals(projection.relicDeckCount +
       projection.world.flatMap(_.sites).map(_.relics.facedownCount).sum,
-      derived.relicOrder.size)
-    val placement = projection.boardTargetActions.head
-    assertEquals(placement.actionKind, "place-pawn")
-    assert(placement.autoActivate)
-    assertEquals(placement.minimum -> placement.maximum, 1 -> 1)
-    assertEquals(placement.candidates.map(_.target).toSet,
-      projection.world.flatMap(_.sites).map(site =>
-        oathdigital.model.SiteId(site.siteId)).map(site =>
-        (BoardTargetRefProjection.Site(site.value): BoardTargetRefProjection)).toSet)
-    val targetWire = ujson.read(json)("boardTargetActions")(0)
-    assertEquals(targetWire("actionKind").str, "place-pawn")
-    assertEquals(targetWire("minimum").num.toInt ->
-      targetWire("maximum").num.toInt, 1 -> 1)
-    assertEquals(targetWire("candidates")(0)("target")("kind").str, "site")
+      derived.relicDeck.size)
+    // The generic walker decision panel renders Setup's first pawn placement
+    // with no bespoke code (2026-09-21 Chronicle design, slice 2): no
+    // separate `boardTargetActions` entry, just the parked `Decide`.
+    assert(projection.boardTargetActions.isEmpty)
+    val decision = projection.walkerDecision.get
+    assertEquals(decision.action, "setup")
+    assertEquals(decision.decisionId, SetupProcedure.pawnDecisionId(PlayerId("p2")))
+    assertEquals(decision.kind, "decide")
+    assertEquals(decision.query.get.form, "choose-one")
+    val siteOptions = decision.query.get.options
+    assertEquals(siteOptions.size, 8)
+    assert(siteOptions.forall(_.kind == "site"))
     assert(!json.contains("relicOrder"))
     assert(!json.contains("worldDeckOrder"))
     assert(!json.contains("denizenOrder"))
@@ -158,13 +156,15 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     try {
       val loaded = new GameApplicationService(catalog, reopened)
         .load("bootstrap-game").toOption.flatten.get
-      assertEquals(loaded.nextSequence, 1L)
-      assert(loaded.state.isInstanceOf[OathState.InProgress])
+      assertEquals(loaded.nextSequence, 2L)
+      assert(loaded.state.isInstanceOf[OathState.Ready])
       val publicProjection = new GameProjector(catalog).projectPublic(
         "bootstrap-game", loaded)
-      assertEquals(publicProjection.privateAdviserPreview, Vector.empty)
-      projection.privateAdviserPreview.foreach(card =>
-        assert(!GameHttpWire.encodeProjection(publicProjection).contains(card.cardId)))
+      // Nobody but the awaited player sees the parked decision's owner-private
+      // projection (WalkerDecisionProjector.project); the public view instead
+      // sees who it is waiting on.
+      assert(publicProjection.walkerDecision.isEmpty)
+      assertEquals(publicProjection.walkerWaiting.map(_.playerId), Some("p2"))
     } finally reopened.close()
   }
 }

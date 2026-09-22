@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
+import oathdigital.gameplay.setup.{FirstGameSetupFixture, GameStartRules}
 import oathdigital.model._
 
 class GeneratedFirstGamePlanFactorySuite extends munit.FunSuite {
@@ -9,19 +9,22 @@ class GeneratedFirstGamePlanFactorySuite extends munit.FunSuite {
     PlayerId("p2"))
   private val factory = new GeneratedFirstGamePlanFactory(catalog)
 
-  test("a generated plan feeds the unchanged setup machine") {
+  test("a generated Chronicle feeds GameStartRules") {
     val plan = factory.build(config).toOption.get
-    assertEquals(plan.orderedSites.size, 8)
-    assertEquals(plan.denizenOrder.size, 60)
-    assert(new FirstGameSetupRules(catalog)
-      .handle(OathState.NoGame, FirstGameSetupCommand.Begin(plan)).isRight)
+    // The generated Chronicle stores every catalog site (between-game
+    // storage for sites not currently in play); only the first 8 are the
+    // in-play atlas GameStartRules deals from.
+    assert(plan.chronicle.atlasBox.size >= 8)
+    assertEquals(plan.chronicle.worldDeck.size, 60)
+    val orders = ChronicleFirstGamePlan.dealOrder(plan.chronicle, plan.resolvedConfig)
+    assert(GameStartRules.evolve(catalog, plan.chronicle, orders).isRight)
   }
 
   test("seating order and first player are shuffled, keeping every participant") {
-    val plans = Vector.fill(30)(factory.build(config).toOption.get)
-    plans.foreach { plan =>
-      assertEquals(plan.participants.toSet, config.participants.toSet)
-      assertEquals(plan.firstPlayer, plan.participants.head.playerId)
+    val plans = Vector.fill(30)(factory.build(config).toOption.get.resolvedConfig)
+    plans.foreach { resolved =>
+      assertEquals(resolved.participants.toSet, config.participants.toSet)
+      assertEquals(resolved.firstPlayer, resolved.participants.head.playerId)
     }
     assert(plans.map(_.firstPlayer).distinct.size > 1,
       "the first player should vary across generated plans")
@@ -30,7 +33,7 @@ class GeneratedFirstGamePlanFactorySuite extends munit.FunSuite {
   }
 
   test("successive plans are randomized, not the fixed dev order") {
-    val orders = Vector.fill(5)(factory.build(config).toOption.get.orderedSites)
-    assert(orders.distinct.size > 1, "site order should vary across generated plans")
+    val atlasBoxes = Vector.fill(5)(factory.build(config).toOption.get.chronicle.atlasBox)
+    assert(atlasBoxes.distinct.size > 1, "site order should vary across generated plans")
   }
 }
