@@ -465,7 +465,16 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-world > .pane-content { padding: 0; background: #191c17; position: relative;
   touch-action: pan-x pan-y; }
 .map-surface { position: relative; overflow: hidden; }
-.map-content { position: absolute; width: 1500px; padding: 20px; transform-origin: top left; }
+/* Pinned, never inherited: the map is additionally transform-scaled, so an
+   inherited font-size change would compound with that invisibly. */
+.map-content { position: absolute; width: 1500px; padding: 20px;
+  transform-origin: top left; font-size: 1rem; }
+.map-content.map-compact .card-face .card-suit,
+.map-content.map-compact .card-face .card-tokens,
+.map-content.map-compact .card-face .card-stats,
+.map-content.map-compact .card-face .card-restriction,
+.map-content.map-compact .card-face .card-unimplemented-badge {
+  display: none; }
 .map-content .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .map-content .sites { grid-template-columns: 1fr; }
 .map-content .region { background: #272b21; padding: 12px; }
