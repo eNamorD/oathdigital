@@ -12,7 +12,7 @@ In scope:
 - A permanent summary on the face of every face-up card, replacing the hover popover.
 - A letter treatment for face-down cards, with a marker on the backs this viewer is entitled to know.
 - A full-screen inspection overlay, opened by click from any card anywhere in the UI.
-- Rendering the catalog's `[token]` markup as glyphs inside that overlay.
+- Rendering the catalog's `[token]` markup as inline-SVG glyphs inside that overlay, and the suit colour palette they need.
 - Removing `tabindex="0"` from `.decision-option`.
 
 Out of scope, recorded as follow-ups at the end: suit and restriction icons on the card face, restructuring player areas and sites beyond what fixed boxes force, porting the map to the `haunt-roll-fail` canvas approach, and the polling change-check (already recorded in [phase-5-follow-ups.md](../../operations/phase-5-follow-ups.md)).
@@ -33,7 +33,9 @@ In flow, revealing the popover grows the button that contains it and reflows the
 
 **Cards are no longer selection targets.** `BoardTargetRefProjection` has exactly one case, `Site(siteId)` ([`ActionProjectionDtos.scala:12`](../../../shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala)). Earlier work removed card-level targeting. `cardDetailsPopover` has nine call sites and none of them attach a selection handler. In decision panels, selection is by drag, by the `move-option` buttons, or by the `±` steppers — never by clicking the card. The card click is unclaimed everywhere.
 
-**Hidden cards are redacted server-side, completely.** `hiddenCard(kind)` ships `name = "Facedown <kind>"`, `hidden = true`, and nothing else — no id, no suit, no rules ([`GamePresentationProjector.scala:226`](../../../src/main/scala/oathdigital/application/GamePresentationProjector.scala)). Only three groups are face-down *and* known to the viewer: peeked site relics, the viewer's own face-down advisers, and face-down relics on the viewer's own board. For every other face-down card the client holds nothing to reveal.
+**Hidden cards are redacted server-side, completely.** `hiddenCard(kind)` ships `name = "Facedown <kind>"`, `hidden = true`, and nothing else — no id, no suit, no rules ([`GamePresentationProjector.scala:226`](../../../src/main/scala/oathdigital/application/GamePresentationProjector.scala)).
+
+Entitlement is decided by a single rule, `identifiesCard`, which combines face-up status, ownership, pawn presence for site relics, and **recorded per-viewer knowledge** — `knowledge.advisers`, `knowledge.heldRelics` and `knowledge.siteRelics`. That knowledge grows during play: a player who discloses an adviser or relic during a negotiation makes it identifiable to whoever learned it. The set of face-down cards a given viewer may identify is therefore dynamic, includes cards on *other* players' boards, and cannot be enumerated in the client.
 
 **Rules text is already tokenized, and is currently printed raw.** Catalog `powers[].rulesText` contains 17 icon tokens and Markdown emphasis, for example `[secret] [secret-burnt] **ACTION:** Gain [favor] [favor] [favor] [favor] from any favor bank or banks.` The UI prints the brackets and asterisks verbatim.
 
@@ -112,7 +114,9 @@ This is a deliberate trade. Today's hover shows a card's full rules without a cl
 
 A face-down card occupies the identical box as its face-up counterpart and shows a single centred letter: **D** for denizen or edifice, **V** for vision, **R** for relic.
 
-Face-down cards the viewer is entitled to identify — peeked site relics, the viewer's own face-down advisers, the viewer's own face-down relics — carry a corner pip marking them as knowable. Because redaction is server-side and total, the pip is derivable from whether the projection carried real `CardDetails` or a `hiddenCard` placeholder; the client never needs to reason about entitlement itself.
+A face-down card the viewer is entitled to identify carries a corner pip marking it as knowable. Entitlement is neither a fixed category nor the client's to compute: the server settles it in `identifiesCard`, and the pip follows from whether the projection carried real `CardDetails` or a `hiddenCard` placeholder.
+
+Because recorded knowledge grows during play, a pip can appear on a card that previously had none — a negotiation disclosing another player's face-down adviser is the ordinary case, and the card is on someone else's board. The renderer must treat knowability as projection state that changes between polls, not as a property fixed when the card was dealt.
 
 On devices that support hover, hovering a knowable face-down card reveals its summary inside the same box, with no size change. This is a pure CSS rule under `@media (hover: hover)` and holds no client state.
 
@@ -156,13 +160,53 @@ The threshold follows the measured scales: fit-to-screen lands at 0.45 to 0.57, 
 
 ## Icon glyphs
 
-This slice renders `[token]` markup as glyphs **in the overlay only**, using Unicode characters. No SVG, no artwork, and no icons on the card face.
+This slice renders `[token]` markup as glyphs **in the overlay only**, as **inline SVG** — one `<symbol>` sprite with seventeen paths, referenced by `<use>`. Glyphs are sized in `em` so they scale with the surrounding text, and coloured from custom properties.
 
-The 17 tokens: `[attack-die]`, `[defense-die]`, `[favor]`, `[favor-burnt]`, `[hollow-sword]`, `[round-die]`, `[secret]`, `[secret-burnt]`, `[shield]`, `[skull]`, `[sword]`, and the six `[suit-*]` tokens. Each needs a glyph and an accessible name, since a glyph alone is not readable by assistive technology.
+SVG rather than Unicode, for three reasons. Colour emoji ignore CSS `color` entirely, so any emoji-presentation glyph defeats the palette below. Non-emoji Unicode can be coloured but has no character resembling a cracked coin or a torn book, which is exactly what the two burnt tokens need. And a mixed approach costs more than an all-SVG one, because it requires both pipelines to be built and then kept in step on sizing, baseline alignment and accessible naming.
+
+Each glyph carries an accessible name; a glyph alone is not readable by assistive technology.
+
+### Shapes
+
+Shapes follow the physical components. `[favor]` is a coin, `[favor-burnt]` the same coin cracked. `[secret]` is a closed book, `[secret-burnt]` the same book torn. The suit tokens reuse the favor-bank emblems: a horned face for Discord, a star-marked triangle for Arcane, a pipped square for Order, a house for Hearth, a fox for Beast, a calm face for Nomad.
+
+### Palette
+
+Sampled from the reference images supplied by the product owner, not chosen by eye:
+
+| Token | Colour | |
+| --- | --- | --- |
+| `[favor]` | `#e4ba5a` | gold |
+| `[favor-burnt]` | `#a28a5a` | the same gold, darkened and desaturated |
+| `[secret]` | `#66a8d8` | blue |
+| `[secret-burnt]` | `#60849c` | the same blue, darkened and desaturated |
+
+Suit colours, taken from the **emblem inside the small suit circle** — not from the favor-bank ring, which is gold for both Arcane and Hearth and teal-or-blue for both Order and Beast, and so does not identify a suit at all:
+
+| Suit | Colour | |
+| --- | --- | --- |
+| Arcane | `#6e377d` | purple |
+| Beast | `#8c371e` | brown |
+| Discord | `#c84623` | red |
+| Hearth | `#d24b23` | orange |
+| Nomad | `#4b9678` | green |
+| Order | `#14417d` | blue |
+
+These are new to the codebase — `styles.css` defines no suit colours today. They are declared once as custom properties and used both by the suit glyphs and by the suit subtitle on the card face.
+
+Sampled from two independent reference images that agree to within a few units, so the relationships are reliable even if the absolute values are not canonical. If published component art carries exact values, prefer those.
+
+**One hazard to design around.** Discord `#c84623` and Hearth `#d24b23` are about one degree apart in hue, and Beast `#8c371e` is the same hue family at lower lightness. Both source images agree on this, so it is a property of the art rather than a sampling artefact: three of the six suits are warm red-orange and only lightness separates one of them.
+
+Colour therefore cannot be what identifies a suit. The emblem shapes must carry it — horned face, fox, house — and must stay distinguishable at text size and at the smallest card size. Verify the Discord/Hearth pair and the Discord/Beast pair explicitly during implementation. Where a suit is named in text rather than shown as a glyph, the name is the identifier and colour is decoration only.
+
+Frequency, which should guide how much care each glyph gets: `[favor]` is 32.2% of all 512 token occurrences in the catalog and `[secret]` 26.2%. With their burnt variants, those four are 67.8% of everything rendered. The six suit tokens are 15.7%, and the remaining seven share 16.5%.
+
+### Markup
 
 Emphasis markers `**bold**` and `_italic_` are rendered rather than printed. `CatalogModel.rulesText` joins multiple powers with a blank line before the projection sees them, so the renderer splits on that boundary to produce per-power blocks.
 
-Suit and restriction icons on the card face are deferred until the boxes are settled and their real budget is known.
+Icons on the card *face* remain deferred; this section covers the overlay only.
 
 ## Testing
 
@@ -170,10 +214,11 @@ The frontend suite runs under jsdom, which has no `ResizeObserver`; `TestBrowser
 
 - Face-up and face-down cards of the same type produce identical box dimensions.
 - A face-down card the viewer cannot identify exposes no name, suit or rules in the DOM.
-- The knowable-back pip appears only where the projection carried real card details.
+- The knowable-back pip appears only where the projection carried real card details, and appears on a previously unmarked card on another player's board when a later projection carries details for it.
 - Clicking a card opens the overlay; Escape, the Close button and a click on the overlay each dismiss it; focus returns to the originating card.
 - A projection update while the overlay is open leaves it open and unchanged.
-- Token markup renders as glyphs with accessible names, and multi-power cards render one block per power.
+- Token markup renders as SVG glyphs with accessible names, each carrying its palette colour, and multi-power cards render one block per power.
+- `[suit-discord]`, `[suit-hearth]` and `[suit-beast]` render as mutually distinguishable glyphs at text size and at the smallest card size, given that their colours are near-identical.
 - `.decision-option` is not focusable, and the `move-option` buttons remain the keyboard path.
 - Below 0.6 map scale the face shows the name only; at 0.6 and above it shows the summary.
 
