@@ -151,8 +151,10 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val service = new GameApplicationService(catalog, events)
     val begun = service.handle("auth-game", 0L,
       GameCommand.Begin(chronicle, orders)).toOption.get
-    val p2Hand = freshReady.game.current
-      .temporaryHands(PlayerId("p2")).collectFirst { case id: DenizenId => id }.get
+    val p2Denizens = freshReady.game.current
+      .temporaryHands(PlayerId("p2")).collect { case id: DenizenId => id }
+    val p2Hand = p2Denizens.head
+    val p2HandRest = p2Denizens.tail
     val csrfToken = "c" * 43
     val csrfDigest = CsrfTokenDigest.fromBytes(
       SensitiveTokenDigest.sha256(csrfToken)
@@ -268,7 +270,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
         resolveWalkerBody(begun.nextSequence, adviserDecision, "denizen", p2Hand.value))
       assertEquals(stale.statusCode(), 409, stale.body())
       val accepted = post(client, base + "/commands", p2User.value,
-        resolveWalkerBody(afterPawn, adviserDecision, "denizen", p2Hand.value))
+        resolveWalkerKeepPartitionBody(afterPawn, adviserDecision, "denizen",
+          p2Hand.value, p2HandRest.map(_.value)))
       assertEquals(accepted.statusCode(), 200)
 
       database.close()
@@ -307,6 +310,19 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
         "decisionId" -> decisionId,
         "payload" -> ujson.Obj("kind" -> "choose-one",
           "optionKind" -> optionKind, "optionId" -> optionId))))
+
+  private def resolveWalkerKeepPartitionBody(sequence: Long, decisionId: String,
+      optionKind: String, keptId: String, discardedIds: Vector[String]): String =
+    ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble),
+      "intent" -> ujson.Obj("type" -> "resolveWalker",
+        "decisionId" -> decisionId,
+        "payload" -> ujson.Obj("kind" -> "partition",
+          "placements" -> ujson.Arr.from(
+            ujson.Obj("optionKind" -> optionKind, "optionId" -> keptId,
+              "sectionKey" -> "keep") +:
+            discardedIds.map(id => ujson.Obj(
+              "optionKind" -> optionKind, "optionId" -> id,
+              "sectionKey" -> "discard")))))))
 
   private def post(client: HttpClient, url: String, user: String, body: String) =
     client.send(HttpRequest.newBuilder(URI.create(url))

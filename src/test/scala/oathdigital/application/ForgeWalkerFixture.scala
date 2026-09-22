@@ -82,12 +82,18 @@ object ForgeWalkerFixture extends munit.Assertions {
           SetupProcedure.pawnDecisionId(playerId),
           ChooseOneAnswer(DecisionOptionRef.Site(destination))))).toOption.get
       val Ready(placedReady) = accepted.state: @unchecked
-      val adviser = placedReady.game.current.temporaryHands(playerId)
-        .collectFirst { case id: DenizenId => id }.get
+      val denizens = placedReady.game.current.temporaryHands(playerId)
+        .collect { case id: DenizenId => id }
+      val adviser = denizens.head
+      val rejected = denizens.tail
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.ResolveWalker(playerId, TreeDecision(
           SetupProcedure.adviserDecisionId(playerId),
-          ChooseOneAnswer(DecisionOptionRef.Denizen(adviser))))).toOption.get
+          PartitionAnswer(
+            DecisionPlacement(DecisionOptionRef.Denizen(adviser),
+              SetupProcedure.adviserKeepKey) +:
+            rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
+              SetupProcedure.adviserDiscardKey)))))).toOption.get
     }
     val actor = PlayerId("p2")
     accepted = service.handle(gameId, accepted.nextSequence,

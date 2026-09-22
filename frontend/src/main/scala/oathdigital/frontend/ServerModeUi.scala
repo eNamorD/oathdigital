@@ -224,6 +224,7 @@ object ServerModeUi {
     def newGame(): Unit = {
       if (fixedSeat) return
       polling.foreach(_.stop())
+      dom.window.history.replaceState(null, "", Main.DevelopmentStartUrl)
       startOver()
     }
 

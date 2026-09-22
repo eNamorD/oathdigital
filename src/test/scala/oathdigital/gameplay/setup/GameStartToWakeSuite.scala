@@ -32,11 +32,17 @@ class GameStartToWakeSuite extends munit.FunSuite {
           FirstGameSetupFixture.sites(order.indexOf(playerId))))).toOption.get
       state = transition.state
       val Ready(placedReady) = state: @unchecked
-      val adviser = placedReady.game.current.temporaryHands(playerId)
-        .collectFirst { case id: DenizenId => id }.get
+      val denizens = placedReady.game.current.temporaryHands(playerId)
+        .collect { case id: DenizenId => id }
+      val adviser = denizens.head
+      val rejected = denizens.filterNot(_ == adviser)
       transition = rules.resolveWalker(state, playerId,
         SetupProcedure.adviserDecisionId(playerId),
-        ChooseOneAnswer(DecisionOptionRef.Denizen(adviser))).toOption.get
+        DecisionAnswer.PartitionAnswer(
+          DecisionPlacement(DecisionOptionRef.Denizen(adviser),
+            SetupProcedure.adviserKeepKey) +:
+          rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
+            SetupProcedure.adviserDiscardKey)))).toOption.get
       state = transition.state
     }
 
