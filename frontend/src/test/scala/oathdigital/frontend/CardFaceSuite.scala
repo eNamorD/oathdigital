@@ -123,4 +123,28 @@ class CardFaceSuite extends munit.FunSuite {
   test("the card id rides the element for focus restoration") {
     assertEquals(CardFace.render(faceUp).getAttribute("data-card-id"), "d1")
   }
+
+  test("an empty denizen slot and an unknown relic occupy their type's box") {
+    assert(ServerUiSupport.emptySlot().classList.contains("card-face-denizen"))
+    assert(ServerUiSupport.emptySlot().classList.contains("card-slot-empty"))
+    assertEquals(ServerUiSupport.emptySlot().getAttribute("aria-label"),
+      "Empty denizen slot")
+    val relic = ServerUiSupport.facedownCard("relic")
+    assert(relic.classList.contains("card-face-relic"))
+    assert(relic.classList.contains("card-face-down"))
+    assertEquals(relic.textContent, "R")
+    assertEquals(relic.getAttribute("aria-label"), "Facedown relic")
+  }
+
+  test("face-up and face-down cards of one type carry the same box class") {
+    Vector("denizen", "vision", "edifice", "relic").foreach { kind =>
+      val up = CardFace.render(CardDetails("c", kind, "Name",
+        orientation = Some("face-up")))
+      val down = CardFace.render(CardDetails("hidden", kind,
+        s"Facedown $kind", orientation = Some("face-down"), hidden = true))
+      assertEquals(CardFace.boxClass(kind), CardFace.boxClass(kind))
+      assert(up.classList.contains(CardFace.boxClass(kind)), kind)
+      assert(down.classList.contains(CardFace.boxClass(kind)), kind)
+    }
+  }
 }

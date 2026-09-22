@@ -54,7 +54,7 @@ private[frontend] object ActionDecisionRenderer {
      preview.appendChild(text("h3", "", "Your adviser options"))
      preview.appendChild(text("p", "decision-instruction",
        "Preview only. Place your pawn, then choose one to keep."))
-     value.privateAdviserPreview.foreach(card => preview.appendChild(cardDetailsPopover(card)))
+     value.privateAdviserPreview.foreach(card => preview.appendChild(CardFace.render(card)))
      panel.appendChild(preview)
    }
    value.oathkeeper.foreach { oath =>

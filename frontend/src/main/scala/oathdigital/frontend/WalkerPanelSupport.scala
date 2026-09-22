@@ -311,9 +311,8 @@ private[frontend] object WalkerPanelSupport {
     node.setAttribute("draggable", "true")
     node.setAttribute("data-option-id", item)
     node.setAttribute("aria-label", option.label)
-    node.appendChild(option.card.fold(
-      text("span", "option-summary", option.label))(
-      ServerUiSupport.cardDetailsPopover))
+    node.appendChild(option.card.fold[dom.Element](
+      text("span", "option-summary", option.label))(CardFace.render))
     node.addEventListener("dragstart", (event: dom.Event) =>
       event.asInstanceOf[dom.DragEvent].dataTransfer
         .setData("text/plain", item))

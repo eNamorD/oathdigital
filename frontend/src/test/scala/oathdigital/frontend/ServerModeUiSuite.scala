@@ -881,9 +881,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(owner.unknownRelicCount, 1)
     assertEquals(other.unknownRelicCount, 2)
     assertEquals(owner.peekedRelics.map(_.card.name), Vector("Ancient Crown"))
-    assert(owner.peekedRelics.forall(_.concealedAtRest))
-    assertEquals(owner.peekedRelics.head.revealInteractions,
-      Vector("hover", "focus", "press-and-hold"))
     assertEquals(other.peekedRelics, Vector.empty)
   }
 

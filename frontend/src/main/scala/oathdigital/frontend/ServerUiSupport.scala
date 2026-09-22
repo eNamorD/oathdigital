@@ -77,37 +77,28 @@ private[frontend] object ServerUiSupport {
 
     val denizens = element("div", "site-denizens")
     denizens.appendChild(text("strong", "", "Denizens: "))
-    if (site.denizens.isEmpty)
-      denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
-    else site.denizens.foreach { denizen =>
+    site.denizens.foreach { denizen =>
       val shell = element("span", "site-card-target")
-      val card = denizen.details.fold[dom.Element](VisualDomRenderer.render(
-        presentation.denizenVisuals.find(_._1 == denizen.denizenId).get._2,
-        "site-card"))(cardDetailsPopover)
+      val card = denizen.details.fold[dom.Element](
+        facedownCard("denizen"))(CardFace.render)
       card.setAttribute("data-denizen-id", denizen.denizenId)
       shell.appendChild(card)
       denizens.appendChild(shell)
     }
-    (site.denizens.size until site.denizenCapacity).foreach { _ =>
-      val slot = text("span", "empty-denizen-slot", "◇")
-      slot.setAttribute("role", "img")
-      slot.setAttribute("aria-label", "Empty denizen slot")
-      denizens.appendChild(slot)
-    }
+    (site.denizens.size until site.denizenCapacity)
+      .foreach(_ => denizens.appendChild(emptySlot()))
     details.appendChild(denizens)
 
     val relics = element("div", "site-relics")
     relics.appendChild(text("strong", "", "Relics: "))
     if (site.relics.facedownCount == 0)
       relics.appendChild(dom.document.createTextNode("None"))
+    // A peeked relic is a real card sitting face-down: CardFace gives it the
+    // knowable pip and the hover reveal, in the same box as an unknown one.
     presentation.peekedRelics.foreach(value =>
-      relics.appendChild(peekedRelic(value.card)))
-    (0 until presentation.unknownRelicCount).foreach { _ =>
-      val relic = text("span", "facedown-relic", "▣")
-      relic.setAttribute("role", "img")
-      relic.setAttribute("aria-label", "Facedown relic")
-      relics.appendChild(relic)
-    }
+      relics.appendChild(CardFace.render(value.card)))
+    (0 until presentation.unknownRelicCount)
+      .foreach(_ => relics.appendChild(facedownCard("relic")))
     details.appendChild(relics)
     details
   }
@@ -118,48 +109,23 @@ private[frontend] object ServerUiSupport {
   private[frontend] def forceCssClass(forces: SiteForces): String =
     s"force-${forces.colorToken}"
 
-  private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {
-    val node = element("button",
-      if (card.implemented) "card-detail" else "card-detail card-detail-unimplemented")
-    node.setAttribute("type", "button")
-    node.setAttribute("aria-label",
-      if (card.implemented) card.name else s"${card.name} (unimplemented)")
-    node.setAttribute("data-card-id", card.cardId)
-    node.appendChild(text("span", "card-summary", card.name))
-    if (!card.implemented)
-      node.appendChild(text("span", "card-unimplemented-badge", "Unimplemented"))
-    val details = element("span", "card-popover")
-    details.setAttribute("role", "tooltip")
-    val metadata = Vector(card.suit.map(value => s"Suit: $value"),
-      card.restrictions.map(value => s"Restrictions: $value"),
-      card.orientation.map(value => s"Orientation: $value"),
-      card.side.map(value => s"Side: $value"),
-      Option.when(card.favor > 0)(s"Favor: ${card.favor}"),
-      Option.when(card.secrets > 0)(s"Secrets: ${card.secrets}"),
-      card.relicValue.map(value => s"Relic value: $value"),
-      card.defense.map(value => s"Defense: $value"),
-      card.rulesText.map(value => s"Rules: $value")).flatten
-    metadata.zipWithIndex.foreach { case (value, index) =>
-      details.appendChild(text("span", "card-property", value))
-      if (index < metadata.size - 1)
-        details.appendChild(dom.document.createElement("br"))
-    }
-    node.appendChild(details)
+  /** A site relic the viewer cannot identify. Same box as a real relic, so
+    * learning what it is -- which a negotiation can do mid-game -- swaps the
+    * contents of a box that does not move.
+    */
+  private[frontend] def facedownCard(cardKind: String): dom.Element = {
+    val node = element("span", s"card-face ${CardFace.boxClass(cardKind)} card-face-down")
+    node.setAttribute("role", "img")
+    node.setAttribute("aria-label", s"Facedown $cardKind")
+    node.appendChild(text("span", "card-back-letter", CardFace.backLetter(cardKind)))
     node
   }
 
-  private[frontend] def peekedRelic(card: CardDetails): dom.Element = {
-    val shell = element("span", "peeked-relic")
-    val back = text("span", "facedown-relic peeked-relic-back", "▣")
-    back.setAttribute("aria-hidden", "true")
-    val reveal = cardDetailsPopover(card)
-    reveal.classList.add("peeked-relic-reveal")
-    reveal.setAttribute("aria-label", s"Peek at ${card.name}")
-    reveal.asInstanceOf[dom.html.Button].onmouseup = _ =>
-      reveal.asInstanceOf[dom.html.Button].blur()
-    reveal.addEventListener("touchend", (_: dom.Event) =>
-      reveal.asInstanceOf[dom.html.Button].blur())
-    shell.appendChild(back); shell.appendChild(reveal); shell
+  private[frontend] def emptySlot(): dom.Element = {
+    val node = element("span", "card-face card-face-denizen card-slot-empty")
+    node.setAttribute("role", "img")
+    node.setAttribute("aria-label", "Empty denizen slot")
+    node
   }
 
   private[frontend] def pileDisplay(

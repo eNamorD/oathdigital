@@ -3,9 +3,7 @@ package oathdigital.frontend
 import oathdigital.presentation._
 
 private[frontend] final case class SiteMetric(label: String, value: String)
-private[frontend] final case class PeekedRelicPresentation(card: CardDetails,
-    concealedAtRest: Boolean = true,
-    revealInteractions: Vector[String] = Vector("hover", "focus", "press-and-hold"))
+private[frontend] final case class PeekedRelicPresentation(card: CardDetails)
 
 private[frontend] final case class VisualRenderPlan(
     instruction: VisualInstruction,

@@ -314,17 +314,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-option + .decision-option { margin-top: 8px; }
 .decision-option button, .partition-confirm { min-height: 44px; margin: 5px; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
-.card-detail { position: relative; min-height: 36px; border: 1px solid #675a43;
-  border-radius: 6px; background: #17140f; color: #f5ecd7; }
-.card-detail-unimplemented { border-style: dashed; border-color: #a15c4a; }
-.card-popover { display: none; position: absolute; z-index: 3; left: 0; top: 100%;
-  min-width: 240px; padding: 9px; border: 1px solid #d2a85e; background: #17140f; }
-.card-detail:hover .card-popover, .card-detail:focus .card-popover,
-.card-detail:focus-within .card-popover { display: block; }
-.card-property { display: block; }
-.card-unimplemented-badge { display: block; margin-top: 2px; padding: 1px 5px;
-  border-radius: 4px; background: #a15c4a; color: #f5ecd7; font-size: 0.7rem;
-  text-transform: uppercase; letter-spacing: 0.03em; }
 /* One box per card type, in ex so a pane's font size scales every card in it
    together. Never overridden per pane: per-context size is font size alone. */
 :root { --card-w: 13ex; --card-h: calc(var(--card-w) * 1.4);
@@ -377,6 +366,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   .card-face-knowable:hover .card-back-letter,
   .card-face-knowable:focus-visible .card-back-letter { visibility: hidden; }
 }
+.card-slot-empty { border-style: dashed; border-color: #88775d;
+  background: transparent; }
+.decision-cards, .board-cards, .site-denizens, .site-relics {
+  gap: var(--card-gap); }
+.site-denizens, .site-relics { display: flex; flex-wrap: wrap;
+  align-items: flex-start; gap: var(--card-gap); }
 
 .pile-display { display: flex; align-items: center; gap: 6px; margin: 7px 0; }
 .pile-display > .pile-card { display: inline-flex; box-sizing: border-box;
@@ -386,8 +381,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   line-height: 1; vertical-align: middle; }
 .pile-display > .pile-back { background-color: #493751; color: #fff; }
 .pile-display > .pile-empty { background-color: #17140f; color: transparent; }
-.empty-denizen-slot, .facedown-relic { display: inline-grid; width: 2rem; height: 2rem;
-  margin: 3px; place-items: center; border: 1px dashed #88775d; border-radius: 5px; }
 .player-boards { margin-top: 18px; }
 .shared-bank { margin-top: 10px; padding-top: 16px; border-top: 1px solid #675a43; }
 .favor-banks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -426,16 +419,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   .sites { grid-template-columns: 1fr; }
   .panel { padding: 13px; }
 }
-.peeked-relic { display: inline-grid; vertical-align: middle; }
-.peeked-relic > * { grid-area: 1 / 1; }
-.peeked-relic-reveal { opacity: 0; position: relative; z-index: 1; }
-.peeked-relic-back { align-self: center; justify-self: center; }
-.peeked-relic:hover .peeked-relic-reveal,
-.peeked-relic:focus-within .peeked-relic-reveal,
-.peeked-relic-reveal:active { opacity: 1; }
-.peeked-relic:hover .peeked-relic-back,
-.peeked-relic:focus-within .peeked-relic-back { opacity: 0; }
-
 /* Arcs-inspired persistent table. Existing content styles stay in styles.css. */
 html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
 #app { width: 100%; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; }
@@ -513,9 +496,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-content:focus-visible, .pane-heading:focus-visible,
 .game-table button:focus-visible, .development-panel button:focus-visible,
 .game-table [tabindex]:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }
-/* Popovers stay inside scrolling content and participate in its overflow area. */
-.game-table .card-popover { position: static; min-width: 0; max-width: 280px;
-  white-space: normal; text-align: left; }
 @media (max-aspect-ratio: 4/3), (max-width: 1050px) {
   .game-table { grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
     grid-template-rows: minmax(130px, 23%) minmax(0, 1fr) minmax(80px, 14%);
