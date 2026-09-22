@@ -39,9 +39,6 @@ class CardFaceSuite extends munit.FunSuite {
   test("a face-up card shows its summary with no field names") {
     val node = CardFace.render(faceUp)
     assertEquals(one(node, ".card-name").map(_.textContent), Some("Old Oak"))
-    assertEquals(one(node, ".card-suit").map(_.textContent), Some("order"))
-    assertEquals(one(node, ".card-suit").map(_.getAttribute("class")),
-      Some("card-suit suit-order"))
     assertEquals(one(node, ".card-restriction").map(_.textContent),
       Some("site-only"))
     assertEquals(all(node, ".card-tokens .token-glyph")
@@ -70,8 +67,40 @@ class CardFaceSuite extends munit.FunSuite {
     assertEquals(one(node, ".card-back-letter").map(_.textContent), Some("V"))
     assertEquals(node.getAttribute("aria-label"), "Facedown vision")
     assertEquals(all(node, ".card-name"), Vector.empty)
-    assertEquals(all(node, ".card-suit"), Vector.empty)
+    assertEquals(all(node, ".card-header"), Vector.empty)
     assertEquals(node.textContent, "V")
+  }
+
+  /** The suit word is gone: the glyph carries the suit, and it is coloured by
+    * the same custom property the word used to be.
+    */
+  test("a suited card leads with its suit glyph, then its name") {
+    val node = CardFace.render(faceUp)
+    val header = one(node, ".card-header").getOrElse(fail("no card header"))
+    val glyph = one(header, ".token-glyph").getOrElse(fail("no suit glyph"))
+    assertEquals(glyph.getAttribute("aria-label"), "order suit")
+    assertEquals(glyph.getAttribute("class"), "token-glyph token-suit-order")
+    assertEquals(header.firstChild, glyph)
+    assertEquals(header.lastChild.asInstanceOf[dom.Element].getAttribute("class"),
+      "card-name")
+    assertEquals(all(node, ".card-suit"), Vector.empty)
+    assert(!node.textContent.contains("order"), node.textContent)
+  }
+
+  test("a card with no suit shows its name alone in the header") {
+    val header = one(CardFace.render(knowable.copy(orientation = Some("face-up"))),
+      ".card-header").getOrElse(fail("no card header"))
+    assertEquals(all(header, ".token-glyph"), Vector.empty)
+    assertEquals(header.textContent, "Ancient Crown")
+  }
+
+  /** Every card is unrestricted unless it says otherwise, so printing the word
+    * spends a line of a small face on nothing.
+    */
+  test("an unrestricted card prints no restriction") {
+    val node = CardFace.render(faceUp.copy(restrictions = Some("unrestricted")))
+    assertEquals(all(node, ".card-restriction"), Vector.empty)
+    assert(!node.textContent.contains("unrestricted"), node.textContent)
   }
 
   test("each hidden kind gets its own letter") {

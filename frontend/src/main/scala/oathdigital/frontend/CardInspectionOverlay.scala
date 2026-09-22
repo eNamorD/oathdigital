@@ -50,7 +50,7 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
     val panel = element("div", "card-overlay-details")
     val properties = element("dl", "card-overlay-properties")
     Vector(card.suit.map("Suit" -> _),
-      card.restrictions.map("Restrictions" -> _),
+      card.restrictions.filterNot(_ == "unrestricted").map("Restrictions" -> _),
       card.orientation.map("Orientation" -> _),
       card.side.map("Side" -> _),
       Option.when(card.favor > 0)("Favor" -> card.favor.toString),

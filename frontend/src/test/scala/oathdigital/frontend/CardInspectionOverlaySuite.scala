@@ -60,6 +60,15 @@ class CardInspectionOverlaySuite extends munit.FunSuite {
     overlay.dispose(); root.remove()
   }
 
+  test("an unrestricted card gets no Restrictions row") {
+    val (root, overlay) = fixture()
+    overlay.show(card.copy(restrictions = Some("unrestricted")), origin())
+    val node = root.querySelector(".card-overlay")
+    assert(!node.textContent.contains("Restrictions"), node.textContent)
+    assert(node.textContent.contains("Suit"), node.textContent)
+    overlay.dispose(); root.remove()
+  }
+
   test("multi-power rules render one block per power with glyphs") {
     val (root, overlay) = fixture()
     overlay.show(card, origin())

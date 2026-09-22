@@ -335,14 +335,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-face-unimplemented { border-style: dashed; border-color: #a15c4a; }
 .card-face:hover, .card-face:focus-visible { outline: 2px solid #fff0c9;
   outline-offset: -3px; }
-.card-name { font-weight: 750; font-size: 0.95em; overflow-wrap: anywhere; }
-.card-suit { font-size: 0.78em; text-transform: capitalize; color: #cdbfa2; }
-.card-suit.suit-arcane { color: var(--suit-arcane); }
-.card-suit.suit-beast { color: var(--suit-beast); }
-.card-suit.suit-discord { color: var(--suit-discord); }
-.card-suit.suit-hearth { color: var(--suit-hearth); }
-.card-suit.suit-nomad { color: var(--suit-nomad); }
-.card-suit.suit-order { color: var(--suit-order); }
+.card-header { display: flex; align-items: flex-start; gap: 0.25em;
+  min-width: 0; }
+.card-header .token-glyph { flex: 0 0 auto; width: 1.2em; height: 1.2em;
+  vertical-align: 0; }
+.card-name { min-width: 0; font-weight: 750; font-size: 0.95em;
+  overflow-wrap: anywhere; }
 .card-tokens, .card-stats { display: flex; align-items: center; gap: 0.15em;
   font-size: 0.8em; }
 .card-token-count { margin-right: 0.35em; font-weight: 700; }
@@ -474,7 +472,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    inherited font-size change would compound with that invisibly. */
 .map-content { position: absolute; width: 1500px; padding: 20px;
   transform-origin: top left; font-size: 1rem; }
-.map-content.map-compact .card-face .card-suit,
 .map-content.map-compact .card-face .card-tokens,
 .map-content.map-compact .card-face .card-stats,
 .map-content.map-compact .card-face .card-restriction,

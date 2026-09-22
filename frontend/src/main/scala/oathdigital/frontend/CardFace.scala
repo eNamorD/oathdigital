@@ -71,14 +71,17 @@ private[frontend] object CardFace {
     node
   }
 
-  /** Priority order, dropped from the bottom as the box shrinks: name, live
-    * tokens, suit, relic value and defense, restriction, unimplemented.
-    * Live tokens outrank suit because they are the only fields that change
-    * during play, and a board that looks stale is worse than one with an
-    * unlabelled suit.
+  /** Priority order, dropped from the bottom as the box shrinks: the header
+    * (suit glyph and name), live tokens, relic value and defense,
+    * restriction, unimplemented. The suit rides the header as a glyph rather
+    * than a word below the name: it costs no line and colour plus shape says
+    * it faster than reading does.
     */
   private def summary(card: CardDetails): Vector[dom.Element] = {
-    val name = text("span", "card-name", card.name)
+    val header = element("span", "card-header")
+    card.suit.foreach(value =>
+      header.appendChild(RulesTextRenderer.glyph(s"suit-$value")))
+    header.appendChild(text("span", "card-name", card.name))
     val tokens = element("span", "card-tokens")
     if (card.favor > 0) counted("favor", card.favor).foreach(tokens.appendChild)
     if (card.secrets > 0) counted("secret", card.secrets).foreach(tokens.appendChild)
@@ -89,11 +92,13 @@ private[frontend] object CardFace {
     card.defense.foreach(value =>
       stats.appendChild(labelled("card-stat relic-defense", value.toString,
         s"defense $value")))
-    Vector(Some(name),
+    Vector(Some(header),
       Option.when(tokens.childNodes.length > 0)(tokens),
-      card.suit.map(value => text("span", s"card-suit suit-$value", value)),
       Option.when(stats.childNodes.length > 0)(stats),
-      card.restrictions.map(value => text("span", "card-restriction", value)),
+      // Unrestricted is the default every card carries, so printing it spends
+      // a line of a small face on nothing.
+      card.restrictions.filterNot(_ == "unrestricted")
+        .map(value => text("span", "card-restriction", value)),
       Option.when(!card.implemented)(
         text("span", "card-unimplemented-badge", "Unimplemented"))).flatten
   }
