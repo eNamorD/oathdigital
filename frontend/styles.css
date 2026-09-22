@@ -200,7 +200,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   background: #3b3123;
 }
 .board-target-control[aria-pressed="true"]::before { content: "✓ "; }
-.site-card-target { display: inline-block; margin-right: 5px; padding: 2px; border: 1px solid transparent; border-radius: 7px; }
 .site-heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .site-name {
   min-width: 0;

@@ -85,12 +85,10 @@ private[frontend] object ServerUiSupport {
     // to three, so one row holds every card a site can ever have.
     val cards = element("div", "site-cards")
     site.denizens.foreach { denizen =>
-      val shell = element("span", "site-card-target")
       val card = denizen.details.fold[dom.Element](
         facedownCard("denizen"))(CardFace.render)
       card.setAttribute("data-denizen-id", denizen.denizenId)
-      shell.appendChild(card)
-      cards.appendChild(shell)
+      cards.appendChild(card)
     }
     (site.denizens.size until site.denizenCapacity)
       .foreach(_ => cards.appendChild(emptySlot()))

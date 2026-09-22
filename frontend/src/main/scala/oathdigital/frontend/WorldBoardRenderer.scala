@@ -34,19 +34,11 @@ private[frontend] object WorldBoardRenderer {
      section.appendChild(resources)
      val advisers = element("div", "board-cards advisers")
      advisers.appendChild(text("strong", "", "Advisers"))
-     board.advisers.foreach { card =>
-       val shell = element("span", "site-card-target")
-       shell.appendChild(CardFace.render(card))
-       advisers.appendChild(shell)
-     }
+     board.advisers.foreach(card => advisers.appendChild(CardFace.render(card)))
      section.appendChild(advisers)
      val relics = element("div", "board-cards relics")
      relics.appendChild(text("strong", "", "Relics"))
-     board.relics.foreach { card =>
-       val shell = element("span", "site-card-target")
-       shell.appendChild(CardFace.render(card))
-       relics.appendChild(shell)
-     }
+     board.relics.foreach(card => relics.appendChild(CardFace.render(card)))
      section.appendChild(relics)
      board.banners.foreach { banner =>
        section.appendChild(text("p", s"player-banner banner-${banner.key}",
