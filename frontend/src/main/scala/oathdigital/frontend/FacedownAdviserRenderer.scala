@@ -20,7 +20,7 @@ private[frontend] object FacedownAdviserRenderer {
       }
     }
     draft.selected.foreach { adviser =>
-      panel.appendChild(cardDetailsPopover(adviser.card))
+      panel.appendChild(CardFace.render(adviser.card))
       val start = button("Choose placement", "facedown-adviser-start")
       start.disabled = !canControl
       start.onclick = _ => draft.command.foreach(submitTargetCommand)

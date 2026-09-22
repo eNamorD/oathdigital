@@ -52,4 +52,16 @@ class MapViewStateSuite extends FunSuite {
     val hidden = MapViewState().resize(MapBounds(0, 0, 0, 0))
     assert(hidden.scale > 0 && !hidden.scale.isInfinity && !hidden.scale.isNaN)
   }
+
+  test("map cards drop to name only below 0.6 scale and not at or above it") {
+    // Measured working scales: fit-to-screen lands at 0.4524 and 0.5655,
+    // comfortable reading at 0.71. Below 0.6 the token and suit lines are
+    // noise while a name is still legible and is what a player scans for.
+    assert(GameTableShell.compactAtScale(0.4524))
+    assert(GameTableShell.compactAtScale(0.5655))
+    assert(GameTableShell.compactAtScale(0.5999))
+    assert(!GameTableShell.compactAtScale(0.6))
+    assert(!GameTableShell.compactAtScale(0.71))
+    assert(!GameTableShell.compactAtScale(1.0))
+  }
 }

@@ -3,7 +3,45 @@
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   background: #17140f;
   color: #f5ecd7;
+
+  /* Sampled from the product owner's reference images, not chosen by eye.
+     Discord, Hearth and Beast are one hue family: shape identifies a suit,
+     never colour. */
+  --token-favor: #e4ba5a;
+  --token-favor-burnt: #a28a5a;
+  --token-secret: #66a8d8;
+  --token-secret-burnt: #60849c;
+  --suit-arcane: #6e377d;
+  --suit-beast: #8c371e;
+  --suit-discord: #c84623;
+  --suit-hearth: #d24b23;
+  --suit-nomad: #4b9678;
+  --suit-order: #14417d;
+  --die-attack: #c0392b;
+  --die-defense: #3d6fb4;
+  --die-round: #9b59b6;
 }
+
+.token-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.token-glyph { display: inline-block; width: 1.05em; height: 1.05em;
+  vertical-align: -0.16em; }
+.token-favor { color: var(--token-favor); }
+.token-favor-burnt { color: var(--token-favor-burnt); }
+.token-secret { color: var(--token-secret); }
+.token-secret-burnt { color: var(--token-secret-burnt); }
+.token-suit-arcane { color: var(--suit-arcane); }
+.token-suit-beast { color: var(--suit-beast); }
+.token-suit-discord { color: var(--suit-discord); }
+.token-suit-hearth { color: var(--suit-hearth); }
+.token-suit-nomad { color: var(--suit-nomad); }
+.token-suit-order { color: var(--suit-order); }
+.token-attack-die { color: var(--die-attack); }
+.token-defense-die { color: var(--die-defense); }
+.token-round-die { color: var(--die-round); }
+.token-skull, .token-shield, .token-sword, .token-hollow-sword {
+  color: #d8cdb4; }
+.rules-power { margin: 0 0 0.7em; line-height: 1.5; }
+.rules-power:last-child { margin-bottom: 0; }
 
 * { box-sizing: border-box; }
 body { margin: 0; }
@@ -281,17 +319,65 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-option + .decision-option { margin-top: 8px; }
 .decision-option button, .partition-confirm { min-height: 44px; margin: 5px; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
-.card-detail { position: relative; min-height: 36px; border: 1px solid #675a43;
-  border-radius: 6px; background: #17140f; color: #f5ecd7; }
-.card-detail-unimplemented { border-style: dashed; border-color: #a15c4a; }
-.card-popover { display: none; position: absolute; z-index: 3; left: 0; top: 100%;
-  min-width: 240px; padding: 9px; border: 1px solid #d2a85e; background: #17140f; }
-.card-detail:hover .card-popover, .card-detail:focus .card-popover,
-.card-detail:focus-within .card-popover { display: block; }
-.card-property { display: block; }
-.card-unimplemented-badge { display: block; margin-top: 2px; padding: 1px 5px;
-  border-radius: 4px; background: #a15c4a; color: #f5ecd7; font-size: 0.7rem;
-  text-transform: uppercase; letter-spacing: 0.03em; }
+/* One box per card type, in ex so a pane's font size scales every card in it
+   together. Never overridden per pane: per-context size is font size alone. */
+:root { --card-w: 13ex; --card-h: calc(var(--card-w) * 1.4);
+  --card-gap: 0.55ex; }
+.card-face { position: relative; display: flex; flex-direction: column;
+  gap: 0.15em; box-sizing: border-box; width: var(--card-w);
+  height: var(--card-h); flex: 0 0 auto; margin: 0; padding: 0.4em;
+  overflow: hidden; text-align: left;
+  /* Reserved at rest so selection, focus and hover never reflow. */
+  border: 1px solid transparent; border-radius: 0.35em;
+  background: #17140f; color: #f5ecd7; font: inherit; line-height: 1.15; }
+.card-face-denizen { border-color: #675a43; }
+.card-face-relic { height: var(--card-w); border-color: #7a6a4c; }
+.card-face-unimplemented { border-style: dashed; border-color: #a15c4a; }
+.card-face:hover, .card-face:focus-visible { outline: 2px solid #fff0c9;
+  outline-offset: -3px; }
+.card-name { font-weight: 750; font-size: 0.95em; overflow-wrap: anywhere; }
+.card-suit { font-size: 0.78em; text-transform: capitalize; color: #cdbfa2; }
+.card-suit.suit-arcane { color: var(--suit-arcane); }
+.card-suit.suit-beast { color: var(--suit-beast); }
+.card-suit.suit-discord { color: var(--suit-discord); }
+.card-suit.suit-hearth { color: var(--suit-hearth); }
+.card-suit.suit-nomad { color: var(--suit-nomad); }
+.card-suit.suit-order { color: var(--suit-order); }
+.card-tokens, .card-stats { display: flex; align-items: center; gap: 0.15em;
+  font-size: 0.8em; }
+.card-token-count { margin-right: 0.35em; font-weight: 700; }
+.card-stat { padding: 0 0.3em; border: 1px solid #675a43; border-radius: 0.25em;
+  font-weight: 700; }
+.card-restriction { margin-top: auto; font-size: 0.72em; color: #a99f8c;
+  text-transform: capitalize; }
+.card-unimplemented-badge { align-self: flex-start; padding: 0 0.35em;
+  border-radius: 0.25em; background: #a15c4a; color: #f5ecd7;
+  font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.03em; }
+.card-face-down { align-items: center; justify-content: center;
+  border-style: solid; background: #2a2333; }
+.card-back-letter { font-size: 1.9em; font-weight: 800; color: #cbb7dd; }
+.card-knowable-pip { position: absolute; top: 0.3em; right: 0.3em;
+  width: 0.55em; height: 0.55em; border-radius: 50%;
+  background: var(--token-secret); }
+/* Hover reveal is CSS only and holds no client state: PanelContent.replace
+   rebuilds the pane on every poll, so a persistent flag would have to become
+   reconciled state. Touch users tap straight through to the overlay. */
+.card-hover-summary { display: none; position: absolute; inset: 0;
+  flex-direction: column; gap: 0.15em; padding: 0.4em; overflow: hidden;
+  background: #17140f; text-align: left; }
+@media (hover: hover) {
+  .card-face-knowable:hover .card-hover-summary,
+  .card-face-knowable:focus-visible .card-hover-summary { display: flex; }
+  .card-face-knowable:hover .card-back-letter,
+  .card-face-knowable:focus-visible .card-back-letter { visibility: hidden; }
+}
+.card-slot-empty { border-style: dashed; border-color: #88775d;
+  background: transparent; }
+.decision-cards, .board-cards, .site-denizens, .site-relics {
+  gap: var(--card-gap); }
+.site-denizens, .site-relics { display: flex; flex-wrap: wrap;
+  align-items: flex-start; gap: var(--card-gap); }
+
 .pile-display { display: flex; align-items: center; gap: 6px; margin: 7px 0; }
 .pile-display > .pile-card { display: inline-flex; box-sizing: border-box;
   flex: 0 0 1.65rem; width: 1.65rem; min-width: 1.65rem; height: 2.3rem;
@@ -300,8 +386,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   line-height: 1; vertical-align: middle; }
 .pile-display > .pile-back { background-color: #493751; color: #fff; }
 .pile-display > .pile-empty { background-color: #17140f; color: transparent; }
-.empty-denizen-slot, .facedown-relic { display: inline-grid; width: 2rem; height: 2rem;
-  margin: 3px; place-items: center; border: 1px dashed #88775d; border-radius: 5px; }
 .player-boards { margin-top: 18px; }
 .shared-bank { margin-top: 10px; padding-top: 16px; border-top: 1px solid #675a43; }
 .favor-banks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -340,16 +424,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   .sites { grid-template-columns: 1fr; }
   .panel { padding: 13px; }
 }
-.peeked-relic { display: inline-grid; vertical-align: middle; }
-.peeked-relic > * { grid-area: 1 / 1; }
-.peeked-relic-reveal { opacity: 0; position: relative; z-index: 1; }
-.peeked-relic-back { align-self: center; justify-self: center; }
-.peeked-relic:hover .peeked-relic-reveal,
-.peeked-relic:focus-within .peeked-relic-reveal,
-.peeked-relic-reveal:active { opacity: 1; }
-.peeked-relic:hover .peeked-relic-back,
-.peeked-relic:focus-within .peeked-relic-back { opacity: 0; }
-
 /* Arcs-inspired persistent table. Existing content styles stay in styles.css. */
 html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
 #app { width: 100%; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; }
@@ -396,7 +470,16 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-world > .pane-content { padding: 0; background: #191c17; position: relative;
   touch-action: pan-x pan-y; }
 .map-surface { position: relative; overflow: hidden; }
-.map-content { position: absolute; width: 1500px; padding: 20px; transform-origin: top left; }
+/* Pinned, never inherited: the map is additionally transform-scaled, so an
+   inherited font-size change would compound with that invisibly. */
+.map-content { position: absolute; width: 1500px; padding: 20px;
+  transform-origin: top left; font-size: 1rem; }
+.map-content.map-compact .card-face .card-suit,
+.map-content.map-compact .card-face .card-tokens,
+.map-content.map-compact .card-face .card-stats,
+.map-content.map-compact .card-face .card-restriction,
+.map-content.map-compact .card-face .card-unimplemented-badge {
+  display: none; }
 .map-content .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .map-content .sites { grid-template-columns: 1fr; }
 .map-content .region { background: #272b21; padding: 12px; }
@@ -427,9 +510,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-content:focus-visible, .pane-heading:focus-visible,
 .game-table button:focus-visible, .development-panel button:focus-visible,
 .game-table [tabindex]:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }
-/* Popovers stay inside scrolling content and participate in its overflow area. */
-.game-table .card-popover { position: static; min-width: 0; max-width: 280px;
-  white-space: normal; text-align: left; }
 @media (max-aspect-ratio: 4/3), (max-width: 1050px) {
   .game-table { grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
     grid-template-rows: minmax(130px, 23%) minmax(0, 1fr) minmax(80px, 14%);
@@ -446,3 +526,29 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
   .game-table { grid-template-rows: minmax(76px, 24%) minmax(0, 1fr) minmax(65px, 20%); }
 }
+
+/* Document level, above .game-pane -- which is what lets that pane keep
+   overflow: hidden without clipping anything a card needs to show. */
+.card-overlay { position: fixed; z-index: 300; inset: 0; display: flex;
+  align-items: center; justify-content: center; gap: 2ex; flex-wrap: wrap;
+  padding: 4vmin; background: #0b0a08e8; font-size: clamp(1rem, 2.6vmin, 1.9rem); }
+.card-overlay[hidden] { display: none; }
+.card-overlay-body { display: flex; align-items: flex-start; gap: 2ex;
+  flex-wrap: wrap; max-width: 100%; max-height: 100%; overflow: auto;
+  padding: 1.5ex; border: 1px solid #7c694b; border-radius: 0.5em;
+  background: #1b1811; }
+/* The card reuses its type's ratio at overlay scale, the way haunt-roll-fail's
+   courtCard is card's exact ratio at 1.34x. No third ratio. */
+.card-overlay-body > .card-face { font-size: 1.9em; }
+.card-overlay-details { flex: 1 1 22em; min-width: 0; max-width: 34em;
+  font-size: 0.82em; }
+.card-overlay-properties { display: grid;
+  grid-template-columns: auto minmax(0, 1fr); gap: 0.2em 0.9em; margin: 0 0 1em; }
+.card-overlay-property { display: contents; }
+.card-overlay-property dt { color: #a99f8c; }
+.card-overlay-property dd { margin: 0; text-transform: capitalize; }
+.card-overlay-close { position: absolute; top: 2vmin; right: 2vmin;
+  min-width: 32px; min-height: 30px; padding: 4px 9px; color: #e8d9bb;
+  background: #302a20; border: 1px solid #7c694b; border-radius: 4px;
+  font-size: 0.78rem; cursor: pointer; }
+.card-overlay-close:focus-visible { outline: 2px solid #fff0c9; }

@@ -32,8 +32,14 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   log.content.appendChild(text("p", "log-placeholder", "Game history will appear here."))
   private val mapContent = element("div", "map-content").asInstanceOf[dom.html.Div]
   private val zoomLabel = text("span", "zoom-label", "100%")
-  private val mapView = new MapViewport(world.content, mapContent,
-    scale => zoomLabel.textContent = s"${math.round(scale * 100)}%")
+  private val mapView = new MapViewport(world.content, mapContent, scale => {
+    zoomLabel.textContent = s"${math.round(scale * 100)}%"
+    // Pure class toggle, no re-render: the face keeps every element and CSS
+    // decides what is visible, so a degraded face-up card can never adopt the
+    // face-down letter treatment.
+    if (GameTableShell.compactAtScale(scale)) mapContent.classList.add("map-compact")
+    else mapContent.classList.remove("map-compact")
+  })
   private val zoomControls = element("div", "map-controls")
   private val out = button("−", "map-control")
   out.setAttribute("aria-label", "Zoom out on world map")
@@ -79,6 +85,8 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     if (e.key == "Escape" && !dev.hasAttribute("hidden")) { e.preventDefault(); setDev(false) }
   }
   dev.addEventListener("keydown", escape)
+  private val inspector = new CardInspectionOverlay(mount)
+  CardInspection.onOpen((card, origin) => inspector.show(card, origin))
   private var previousGame = ""
   private var previousDecision = ""
 
@@ -98,7 +106,15 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   def dispose(): Unit = {
     mapView.dispose()
     dev.removeEventListener("keydown", escape)
+    CardInspection.clear()
+    inspector.dispose()
     table.remove()
     dev.remove()
   }
+}
+
+private[frontend] object GameTableShell {
+  /** Below this the summary lines are noise at map scale; the name is not. */
+  private val CompactBelow = 0.6
+  def compactAtScale(scale: Double): Boolean = scale < CompactBelow
 }

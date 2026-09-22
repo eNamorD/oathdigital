@@ -36,7 +36,7 @@ private[frontend] object WorldBoardRenderer {
      advisers.appendChild(text("strong", "", "Advisers"))
      board.advisers.foreach { card =>
        val shell = element("span", "site-card-target")
-       shell.appendChild(cardDetailsPopover(card))
+       shell.appendChild(CardFace.render(card))
        advisers.appendChild(shell)
      }
      section.appendChild(advisers)
@@ -44,7 +44,7 @@ private[frontend] object WorldBoardRenderer {
      relics.appendChild(text("strong", "", "Relics"))
      board.relics.foreach { card =>
        val shell = element("span", "site-card-target")
-       shell.appendChild(cardDetailsPopover(card))
+       shell.appendChild(CardFace.render(card))
        relics.appendChild(shell)
      }
      section.appendChild(relics)
@@ -55,7 +55,7 @@ private[frontend] object WorldBoardRenderer {
      }
      board.revealedVision.foreach(card => {
        section.appendChild(text("strong", "", "Revealed Vision"))
-       section.appendChild(cardDetailsPopover(card))
+       section.appendChild(CardFace.render(card))
      })
      }
      panel.appendChild(section)

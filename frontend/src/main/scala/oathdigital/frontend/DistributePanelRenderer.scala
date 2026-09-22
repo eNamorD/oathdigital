@@ -42,9 +42,8 @@ private[frontend] object DistributePanelRenderer {
     val item = WalkerPartitionDraft.itemId(slot.option)
     val node = element("div", "distribute-slot")
     node.setAttribute("data-option-id", item)
-    node.appendChild(slot.option.card.fold(
-      text("span", "distribute-label", slot.option.label))(
-      ServerUiSupport.cardDetailsPopover))
+    node.appendChild(slot.option.card.fold[dom.Element](
+      text("span", "distribute-label", slot.option.label))(CardFace.render))
     node.appendChild(stepper("−", "distribute-decrement", canControl, ui,
       shift => if (shift) draft.drain(item) else draft.decrement(item)))
     node.appendChild(text("span", "distribute-amount",
