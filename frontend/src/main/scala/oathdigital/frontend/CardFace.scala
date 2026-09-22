@@ -62,6 +62,12 @@ private[frontend] object CardFace {
     } else {
       summary(card).foreach(node.appendChild)
     }
+
+    // Unclaimed everywhere: `BoardTargetRefProjection` has only a `Site` case,
+    // and decision panels select by drag, by the move-option buttons, or by
+    // the plus/minus steppers -- never by clicking a card. So a click can mean
+    // inspect, in every context, with nothing to disambiguate against.
+    node.onclick = _ => CardInspection.open(card, node)
     node
   }
 

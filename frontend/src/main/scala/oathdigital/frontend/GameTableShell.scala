@@ -79,6 +79,8 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     if (e.key == "Escape" && !dev.hasAttribute("hidden")) { e.preventDefault(); setDev(false) }
   }
   dev.addEventListener("keydown", escape)
+  private val inspector = new CardInspectionOverlay(mount)
+  CardInspection.onOpen((card, origin) => inspector.show(card, origin))
   private var previousGame = ""
   private var previousDecision = ""
 
@@ -98,6 +100,8 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   def dispose(): Unit = {
     mapView.dispose()
     dev.removeEventListener("keydown", escape)
+    CardInspection.clear()
+    inspector.dispose()
     table.remove()
     dev.remove()
   }
