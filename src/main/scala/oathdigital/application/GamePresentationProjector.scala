@@ -2,30 +2,18 @@ package oathdigital.application
 
 import oathdigital.catalog.{CardRestrictions, CatalogPoweredDefinition, ExecutableCatalog}
 import oathdigital.gameplay.PlayerSecretSummary
-import oathdigital.gameplay.powers.{PhasePowerCatalog, ReviewedPowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.PowerImplementationStatus
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
 private[application] final class GamePresentationProjector(
     catalog: ExecutableCatalog
 ) {
-  // A power id counts as implemented once any one of the three power
-  // catalogs claims it: `ReviewedPowerCatalog` says so explicitly per
-  // handler, while `WalkerPowerCatalog`/`PhasePowerCatalog` carry no such
-  // flag -- for them, being wired in at all means the power runs. A card is
-  // implemented only once every power it declares clears one of the three;
-  // a card with no declared power has nothing to fall back on, so it reads
-  // as not yet implemented rather than trivially done.
-  private val reviewedHandlersById = ReviewedPowerCatalog.powers
-    .map(power => power.id -> power.handlers).toMap
-  private val walkerImplementedIds =
-    WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
-  private val phaseImplementedIds =
-    PhasePowerCatalog.default(catalog).powers.map(_.id).toSet
-
-  private def powerImplemented(id: PowerId): Boolean =
-    walkerImplementedIds.contains(id) || phaseImplementedIds.contains(id) ||
-      reviewedHandlersById.get(id).exists(_.forall(_.implemented))
+  // A card is implemented only once every power it declares is implemented
+  // (see PowerImplementationStatus); a card with no declared power has
+  // nothing to fall back on, so it reads as not yet implemented rather than
+  // trivially done.
+  private val powerImplemented = PowerImplementationStatus.implemented(catalog)
 
   private def cardImplemented(definition: CatalogPoweredDefinition): Boolean =
     definition.powers.nonEmpty && definition.powers.forall(power =>
