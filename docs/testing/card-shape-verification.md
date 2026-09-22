@@ -169,11 +169,19 @@ even gaps.
 both computed `display` visible -- while tokens, stats and restriction
 stay hidden, which is the intended trade at map scale.
 
-**Open, not fixed:** a site whose relic slots are empty draws nothing for
-them, while an empty *denizen* slot does draw. So a site with one denizen
-slot and two relic slots shows one box, not three. This is the behaviour
-from before this slice, kept deliberately rather than changed without
-asking.
+**Slots, after the product owner's answer** (commit `ef3df0f`): both slot
+kinds draw empty, so a row is the site's capacity rather than its current
+contents. Re-checked in a fresh game — `Solitary Pillar` drew one empty
+denizen slot beside two face-down relics, `Golden Valley` one card and two
+empty denizen slots, all on one top edge. Capacity is not always three:
+the catalog has sites with one and two slots as well, and those rows are
+correspondingly shorter.
+
+**Suit colours, second revision** (commit `ef3df0f`): the first attempt
+brightened Beast, which the product owner rejected. Beast returns to the
+sampled `#8c371e`; Discord moves to a fire-engine `#ce2029` and Hearth to
+an orange `#e06a1e`. The three now differ in hue by roughly twenty degrees
+each rather than one.
 
 ## Outcome
 
