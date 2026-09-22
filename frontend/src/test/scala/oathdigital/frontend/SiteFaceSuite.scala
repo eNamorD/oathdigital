@@ -54,6 +54,30 @@ class SiteFaceSuite extends munit.FunSuite {
       "card-face card-face-relic card-face-down"))
   }
 
+  /** A slot a site owns is drawn whether or not a card sits in it, so the row
+    * reads as the site's capacity rather than as its current contents.
+    */
+  test("an empty relic slot is drawn like an empty denizen slot") {
+    val row = one(ServerUiSupport.siteDetails(woods.copy(denizenCapacity = 1,
+      relicCapacity = 2, denizens = Vector.empty, relics = GameSiteRelics(0))),
+      ".site-cards").getOrElse(fail("no site card row"))
+    assertEquals(all(row, ".card-face").map(_.getAttribute("class")), Vector(
+      "card-face card-face-denizen card-slot-empty",
+      "card-face card-face-relic card-slot-empty",
+      "card-face card-face-relic card-slot-empty"))
+    assertEquals(all(row, ".card-face").map(_.getAttribute("aria-label")),
+      Vector("Empty denizen slot", "Empty relic slot", "Empty relic slot"))
+  }
+
+  test("a relic in a slot leaves the rest of the relic slots drawn") {
+    val row = one(ServerUiSupport.siteDetails(mine), ".site-cards")
+      .getOrElse(fail("no site card row"))
+    assertEquals(all(row, ".card-face").map(_.getAttribute("class")), Vector(
+      "card-face card-face-denizen",
+      "card-face card-face-relic card-face-down",
+      "card-face card-face-relic card-face-down"))
+  }
+
   test("loose favor and secrets sit in the site's upper left as glyphs") {
     val heading = ServerUiSupport.siteHeading(woods)
     assertEquals(glyphs(heading, ".site-tokens"), Vector("favor", "secret"))

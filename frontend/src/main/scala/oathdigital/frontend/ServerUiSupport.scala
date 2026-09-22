@@ -91,13 +91,15 @@ private[frontend] object ServerUiSupport {
       cards.appendChild(card)
     }
     (site.denizens.size until site.denizenCapacity)
-      .foreach(_ => cards.appendChild(emptySlot()))
+      .foreach(_ => cards.appendChild(emptySlot("denizen")))
     // A peeked relic is a real card sitting face-down: CardFace gives it the
     // knowable pip and the hover reveal, in the same box as an unknown one.
     presentation.peekedRelics.foreach(value =>
       cards.appendChild(CardFace.render(value.card)))
     (0 until presentation.unknownRelicCount)
       .foreach(_ => cards.appendChild(facedownCard("relic")))
+    (site.relics.facedownCount until site.relicCapacity)
+      .foreach(_ => cards.appendChild(emptySlot("relic")))
     details.appendChild(cards)
     site.forces.foreach { forces =>
       val row = text("p", s"site-forces ${forceCssClass(forces)}",
@@ -159,10 +161,11 @@ private[frontend] object ServerUiSupport {
     node
   }
 
-  private[frontend] def emptySlot(): dom.Element = {
-    val node = element("span", "card-face card-face-denizen card-slot-empty")
+  private[frontend] def emptySlot(cardKind: String): dom.Element = {
+    val node = element("span",
+      s"card-face ${CardFace.boxClass(cardKind)} card-slot-empty")
     node.setAttribute("role", "img")
-    node.setAttribute("aria-label", "Empty denizen slot")
+    node.setAttribute("aria-label", s"Empty $cardKind slot")
     node
   }
 

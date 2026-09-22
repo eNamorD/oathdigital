@@ -154,10 +154,14 @@ class CardFaceSuite extends munit.FunSuite {
   }
 
   test("an empty denizen slot and an unknown relic occupy their type's box") {
-    assert(ServerUiSupport.emptySlot().classList.contains("card-face-denizen"))
-    assert(ServerUiSupport.emptySlot().classList.contains("card-slot-empty"))
-    assertEquals(ServerUiSupport.emptySlot().getAttribute("aria-label"),
+    assert(ServerUiSupport.emptySlot("denizen").classList
+      .contains("card-face-denizen"))
+    assert(ServerUiSupport.emptySlot("denizen").classList
+      .contains("card-slot-empty"))
+    assertEquals(ServerUiSupport.emptySlot("denizen").getAttribute("aria-label"),
       "Empty denizen slot")
+    assert(ServerUiSupport.emptySlot("relic").classList
+      .contains("card-face-relic"))
     val relic = ServerUiSupport.facedownCard("relic")
     assert(relic.classList.contains("card-face-relic"))
     assert(relic.classList.contains("card-face-down"))
