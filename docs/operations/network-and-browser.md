@@ -7,13 +7,17 @@ passwords, remote administration, or protection against malicious players.
 ## Browser support status
 
 Browser support remains provisional until each release is manually accepted.
-Automated HTTP smoke tests do not establish browser compatibility.
+Automated HTTP smoke tests do not establish browser compatibility. A build's own
+[acceptance record](../testing/alpha-acceptance-0.1.0-alpha.1.md) holds the exact
+tested browser, version, and OS; this table only summarizes the latest tested
+build. It is not a durable compatibility promise for later builds.
 
-| Browser family | Current status |
+| Browser family | Status as of `0.1.0-alpha.1` (2026-09-21) |
 | --- | --- |
-| Chromium-based desktop browsers | Untested for this build |
-| Firefox desktop | Untested for this build |
-| Safari desktop and mobile | Untested for this build |
+| Chromium-based desktop browsers | Tested: Chrome 153.0.8010.48, Windows |
+| Firefox desktop | Tested: Firefox 155.0.1, macOS and Windows |
+| Safari desktop | Tested: Safari 26.6.2, macOS |
+| Safari mobile | Untested for this build |
 | Mobile Chromium-based browsers | Untested for this build |
 
 Record exact browser names, versions, operating systems, and results in the
