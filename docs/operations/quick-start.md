@@ -18,22 +18,26 @@ else needs installing:
 
 1. Extract the archive: double-click it on macOS, or right-click and choose
    **Extract All** on Windows. On Linux, extract it with your file manager.
-2. Open the extracted `oathdigital-0.1.0-alpha.1` folder and start the server:
+2. Move the extracted `oathdigital-0.1.0-alpha.1` folder out of Downloads (or
+   Desktop or Documents) into a plain folder such as your home folder or
+   `Applications`, for example by dragging it there in Finder or Explorer.
+   Starting the server from inside Downloads, Desktop, or Documents makes the
+   operating system ask for extra one-time folder-access permission; starting
+   it from elsewhere avoids that prompt.
+3. Open the moved folder and start the server:
    - macOS: double-click **Start Oath Digital.command**. The first time, macOS
      says it cannot verify the file. Open **System Settings › Privacy &
-     Security**, choose **Open Anyway** for it, and confirm. Starting it again
-     may also ask whether Terminal can access files in your Downloads folder;
-     choose **Allow**.
+     Security**, choose **Open Anyway** for it, and confirm.
    - Windows: double-click **Start Oath Digital.bat**. If SmartScreen appears,
      choose **More info › Run anyway**.
    - Linux: run `./start-oathdigital.sh` from a terminal in that folder, or use
      your file manager's "Run in terminal" action.
-3. If the system asks whether to allow incoming connections, allow them on
+4. If the system asks whether to allow incoming connections, allow them on
    private networks only.
-4. The window shows the address players open, for example
+5. The window shows the address players open, for example
    `http://192.168.1.20:8080`, and your browser opens the game-creation page.
    Continue with [Create and distribute seats](#create-and-distribute-seats).
-5. Keep the window open while you play. Close it, or press Ctrl-C, to stop.
+6. Keep the window open while you play. Close it, or press Ctrl-C, to stop.
 
 Your games are stored outside the extracted folder, so you can replace the
 folder with a newer version. The window shows the data folder and the settings
