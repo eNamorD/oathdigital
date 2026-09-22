@@ -14,7 +14,23 @@ object OathServer {
   def main(arguments: Array[String]): Unit = {
     val version = Option(getClass.getPackage.getImplementationVersion)
       .getOrElse("development")
-    val config = ServerConfig.parse(arguments, sys.env, version) match {
+    val osName = sys.props.getOrElse("os.name", "")
+    val launch = DesktopLaunchProfile.prepare(
+      arguments,
+      sys.env,
+      osName,
+      sys.props.getOrElse("user.home", ""),
+      () => LanAddress.detect()
+    ) match {
+      case Left(error) =>
+        System.err.println(s"oathdigital: $error")
+        sys.exit(2)
+      case Right(prepared) => prepared
+    }
+    launch.toVector.flatMap(_.warnings)
+      .foreach(warning => System.err.println(s"oathdigital: warning: $warning"))
+    val environment = launch.fold(sys.env)(_.environment)
+    val config = ServerConfig.parse(arguments, environment, version) match {
       case Left(errors) =>
         errors.foreach(error => System.err.println(s"oathdigital: $error"))
         sys.exit(2)
@@ -90,7 +106,14 @@ object OathServer {
               runtime.close()
               system.terminate()
               Await.result(system.whenTerminated, 30.seconds)
-              throw error
+              launch.flatMap(desktop =>
+                DesktopConsole.bindFailure(error, config.port, desktop.settingsFile)
+              ) match {
+                case Some(message) =>
+                  System.err.println(s"oathdigital: $message")
+                  sys.exit(2)
+                case None => throw error
+              }
           }
         readiness.markReady()
         system.log.info(
@@ -98,6 +121,22 @@ object OathServer {
           config.host,
           Int.box(config.port)
         )
+        launch.foreach { desktop =>
+          System.out.print(DesktopConsole.banner(config, desktop))
+          System.out.flush()
+          if (desktop.openBrowser)
+            DesktopConsole.openBrowser(
+              osName,
+              DesktopConsole.browserUrl(config),
+              command => {
+                new ProcessBuilder(command: _*)
+                  .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                  .redirectError(ProcessBuilder.Redirect.DISCARD)
+                  .start()
+                ()
+              }
+            ).foreach(warning => system.log.warn(warning))
+        }
 
         CoordinatedShutdown(system).addTask(
           CoordinatedShutdown.PhaseServiceUnbind,
