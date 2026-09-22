@@ -12,11 +12,11 @@
 
 ## Global Constraints
 
-- **Box ratios.** Denizen box is 1 : 1.4 and applies to `cardKind` `denizen`, `edifice`, `vision` and `adviser`. Relic box is 1 : 1, `cardKind` `relic`. There is no third ratio.
+- **Box ratios.** Denizen box is 1 : 1.4 and applies to `cardKind` `denizen`, `edifice` and `vision`. Relic box is 1 : 1, `cardKind` `relic`. There is no third ratio.
 - **Starting size.** `--card-w: 13ex`, `--card-h: calc(var(--card-w) * 1.4)`. Declared once on `:root` and never overridden per pane. Per-context size comes from font size only.
 - **Pinned map font.** `.map-content` sets `font-size: 1rem` explicitly. It must not inherit, because the map is additionally `transform: scale()`d and an inherited change would compound with that invisibly.
 - **Map degradation threshold: 0.6.** Below it, map card faces show the name only. At and above it they show the full summary. A degraded face-up card must never adopt the face-down letter treatment.
-- **Face-down letters.** `D` for denizen and edifice, `V` for vision, `R` for relic, `A` for a hidden adviser. See the note in Task 2 — `A` is not in the spec and is a deliberate addition.
+- **Face-down letters.** `D` for denizen and edifice, `V` for vision, `R` for relic. Exactly the spec's three; there is no fourth case. This depends on commit `7ae54c3`, which stopped `GamePresentationProjector` over-redacting an unidentifiable adviser's `cardKind` to `"adviser"` — it now projects the real `"denizen"` or `"vision"`, which is public information because the two backs differ physically.
 - **The no-reflow invariant.** Every state a card can enter occupies identical space at rest. Borders that appear on selection, focus or hover are declared `transparent` at rest, not added on the state. Emphasis that cannot be reserved uses `outline`, which is out of flow.
 - **Token vocabulary — exactly these 17, verbatim from `docs/catalog/new-foundations-component-catalog.json`:** `favor`, `secret`, `attack-die`, `suit-beast`, `secret-burnt`, `favor-burnt`, `suit-nomad`, `defense-die`, `skull`, `suit-hearth`, `shield`, `suit-order`, `suit-discord`, `sword`, `hollow-sword`, `suit-arcane`, `round-die`. No others exist; do not invent any.
 - **Palette — exact hex values, all new to the codebase:**
@@ -413,8 +413,6 @@ EOF
 
 Builds the renderer and its CSS. Nothing calls it yet — Task 3 does the swap, so this task can be reviewed on its own output.
 
-**A decision the spec does not cover.** The spec names three letters, `D`, `V` and `R`. The server has a fourth case: `GamePresentationProjector.hiddenCard("adviser")` ships `cardKind = "adviser"` for an unidentifiable adviser, precisely so the client cannot tell a face-down denizen from a face-down vision. Showing `D` there would assert something the server refused to say. This plan adds a fourth letter, `A`, for that kind. Flag it if you disagree; do not silently pick `D`.
-
 **Files:**
 - Create: `frontend/src/main/scala/oathdigital/frontend/CardFace.scala`
 - Modify: `frontend/styles.css` (add the card-box block immediately before the `.pile-display` rule, currently line 295)
@@ -425,7 +423,7 @@ Builds the renderer and its CSS. Nothing calls it yet — Task 3 does the swap, 
 - Produces, for Tasks 3, 4 and 6:
   - `CardFace.render(card: CardDetails): dom.html.Button`
   - `CardFace.boxClass(cardKind: String): String` — `"card-face-relic"` or `"card-face-denizen"`.
-  - `CardFace.backLetter(cardKind: String): String` — `"D"`, `"V"`, `"R"` or `"A"`.
+  - `CardFace.backLetter(cardKind: String): String` — `"D"`, `"V"` or `"R"`.
   - `CardFace.faceDown(card: CardDetails): Boolean` — true when the projection says the card is not showing its face.
 
 - [ ] **Step 1: Write the failing test**
@@ -453,7 +451,7 @@ class CardFaceSuite extends munit.FunSuite {
     rulesText = Some("**ACTION:** Gain [favor]."),
     orientation = Some("face-up"), favor = 2, secrets = 1)
 
-  private val hidden = CardDetails("hidden", "adviser", "Facedown adviser",
+  private val hidden = CardDetails("hidden", "vision", "Facedown vision",
     orientation = Some("face-down"), hidden = true)
 
   private val knowable = CardDetails("r7", "relic", "Ancient Crown",
@@ -469,7 +467,6 @@ class CardFaceSuite extends munit.FunSuite {
       .classList.contains("card-face-relic"))
     assertEquals(CardFace.boxClass("edifice"), "card-face-denizen")
     assertEquals(CardFace.boxClass("vision"), "card-face-denizen")
-    assertEquals(CardFace.boxClass("adviser"), "card-face-denizen")
   }
 
   test("a face-up card shows its summary with no field names") {
@@ -503,11 +500,11 @@ class CardFaceSuite extends munit.FunSuite {
     val node = CardFace.render(hidden)
     assert(node.classList.contains("card-face-down"))
     assert(!node.classList.contains("card-face-knowable"))
-    assertEquals(one(node, ".card-back-letter").map(_.textContent), Some("A"))
-    assertEquals(node.getAttribute("aria-label"), "Facedown adviser")
+    assertEquals(one(node, ".card-back-letter").map(_.textContent), Some("V"))
+    assertEquals(node.getAttribute("aria-label"), "Facedown vision")
     assertEquals(all(node, ".card-name"), Vector.empty)
     assertEquals(all(node, ".card-suit"), Vector.empty)
-    assertEquals(node.textContent, "A")
+    assertEquals(node.textContent, "V")
   }
 
   test("each hidden kind gets its own letter") {
@@ -515,7 +512,20 @@ class CardFaceSuite extends munit.FunSuite {
     assertEquals(CardFace.backLetter("edifice"), "D")
     assertEquals(CardFace.backLetter("vision"), "V")
     assertEquals(CardFace.backLetter("relic"), "R")
-    assertEquals(CardFace.backLetter("adviser"), "A")
+  }
+
+  /** A denizen back and a vision back differ physically, so which one a
+    * face-down adviser is remains public even when its identity is not.
+    * `GamePresentationProjector` projects the real kind (commit `7ae54c3`);
+    * the face must therefore never collapse the two into one letter.
+    */
+  test("an unidentifiable adviser still says whether it is a denizen or a vision") {
+    val denizenBack = CardFace.render(CardDetails("hidden", "denizen",
+      "Facedown denizen", orientation = Some("face-down"), hidden = true))
+    val visionBack = CardFace.render(CardDetails("hidden", "vision",
+      "Facedown vision", orientation = Some("face-down"), hidden = true))
+    assertEquals(one(denizenBack, ".card-back-letter").map(_.textContent), Some("D"))
+    assertEquals(one(visionBack, ".card-back-letter").map(_.textContent), Some("V"))
   }
 
   test("a knowable back carries the pip and a hover-only summary") {
@@ -529,8 +539,8 @@ class CardFaceSuite extends munit.FunSuite {
   }
 
   test("knowability is read per render, so a later projection can add the pip") {
-    val before = CardFace.render(hidden.copy(cardKind = "relic",
-      name = "Facedown relic"))
+    val before = CardFace.render(CardDetails("hidden", "relic",
+      "Facedown relic", orientation = Some("face-down"), hidden = true))
     val after = CardFace.render(knowable)
     assert(!before.classList.contains("card-face-knowable"))
     assert(after.classList.contains("card-face-knowable"))
@@ -581,15 +591,14 @@ private[frontend] object CardFace {
   def boxClass(cardKind: String): String =
     if (cardKind == "relic") "card-face-relic" else "card-face-denizen"
 
-  /** `A` has no counterpart in the design doc. It exists because
-    * `GamePresentationProjector.hiddenCard("adviser")` deliberately withholds
-    * denizen-versus-vision for an adviser the viewer may not identify, and
-    * printing `D` there would assert what the server refused to say.
+  /** Safe on a card the viewer cannot identify: a denizen back and a vision
+    * back differ physically, so which one this is stays public even when the
+    * card's identity does not. `GamePresentationProjector` projects the real
+    * kind for an unidentifiable adviser (commit `7ae54c3`).
     */
   def backLetter(cardKind: String): String = cardKind match {
     case "vision" => "V"
     case "relic" => "R"
-    case "adviser" => "A"
     case _ => "D"
   }
 
@@ -751,9 +760,6 @@ permanent summary face-up and a centred letter face-down, so a card cannot
 change footprint when its state does. A back the viewer is entitled to
 identify carries a pip and a hover-only reveal inside the same box.
 
-Hidden advisers get the letter A: hiddenCard("adviser") deliberately withholds
-denizen-versus-vision, and D would assert what the server refused to say.
-
 Not yet wired; the call sites move in the next commit.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
@@ -805,7 +811,7 @@ And create the boundary test the spec calls for. Add to the same class:
 
 ```scala
   test("face-up and face-down cards of one type carry the same box class") {
-    Vector("denizen", "vision", "edifice", "adviser", "relic").foreach { kind =>
+    Vector("denizen", "vision", "edifice", "relic").foreach { kind =>
       val up = CardFace.render(CardDetails("c", kind, "Name",
         orientation = Some("face-up")))
       val down = CardFace.render(CardDetails("hidden", kind,
@@ -1758,31 +1764,57 @@ Zoom the map to below 0.6 and back to 1.0. At the smallest size at which a suit 
 
 Open any card with rules text. Confirm `[favor]` is gold, `[secret]` is blue, the burnt variants read as darker and duller versions of the same colour, and each suit subtitle carries its suit's colour. The hex values are in the `:root` block; the unit tests assert only the class names, so this step is the only check that the values actually reach the glyph.
 
-- [ ] **Step 5: Write the record**
+- [ ] **Step 5: Put all seventeen glyphs in front of the product owner**
 
-Create `docs/testing/card-shape-verification.md` with: the commit verified, the server command and database path, the four viewports, the measured footprint deltas for the four card states, the suit-distinguishability result for the Discord/Hearth and Discord/Beast pairs, the palette check, the `--card-w` value you landed on, and the two measurements from Task 6 Step 6. Record failures as failures with what you changed, not as a clean pass.
+**This step blocks.** Steps 3 and 4 only check the failure modes that could be named in advance — the warm-suit collisions and the palette. The glyph paths were authored from descriptions in the spec, not traced from component art, so the ones most likely to be wrong are the ones nobody thought to test.
 
-- [ ] **Step 6: Close out the spec**
+Render every glyph at both sizes it is used at. In the browser console on any page that has the sprite mounted:
+
+```javascript
+// One row per token, at card-face size and at overlay size, on the game's
+// own background so the palette is judged in context.
+const sheet = document.createElement('div');
+sheet.style.cssText = 'position:fixed;inset:0;z-index:999;overflow:auto;' +
+  'background:#1b1811;color:#f5ecd7;padding:2rem;font:14px Inter,sans-serif';
+sheet.innerHTML = [...document.querySelectorAll('.token-sprite symbol')]
+  .map(s => s.id.replace('token-', ''))
+  .map(t => `<div style="display:flex;align-items:center;gap:1.5rem;margin:.5rem 0">
+    <code style="width:11rem">${t}</code>
+    <span style="font-size:.8rem"><svg class="token-glyph token-${t}"
+      role="img" aria-label="${t}"><use href="#token-${t}"/></svg></span>
+    <span style="font-size:2.4rem"><svg class="token-glyph token-${t}"
+      role="img" aria-label="${t}"><use href="#token-${t}"/></svg></span>
+  </div>`).join('');
+document.body.appendChild(sheet);
+```
+
+Screenshot the sheet and hand it over. Wait for the response before writing the record — do not decide on the product owner's behalf that a glyph reads well enough. Apply whatever changes come back, re-run this step, and record which glyphs were revised and why.
+
+- [ ] **Step 6: Write the record**
+
+Create `docs/testing/card-shape-verification.md` with: the commit verified, the server command and database path, the four viewports, the measured footprint deltas for the four card states, the suit-distinguishability result for the Discord/Hearth and Discord/Beast pairs, the palette check, the glyph review outcome and every path revised because of it, the `--card-w` value you landed on, and the two measurements from Task 6 Step 6. Record failures as failures with what you changed, not as a clean pass.
+
+- [ ] **Step 7: Close out the spec**
 
 In `docs/superpowers/specs/2026-09-22-card-shape-and-inspection-design.md`, change the status line at the top to name this plan and the verification record. Leave the four follow-ups at the end open — suit and restriction icons on the card face, player area and site restructuring, the map implementation, and the polling change-check are all still deferred and each needs its own design.
 
-- [ ] **Step 7: Run the full gate one last time**
+- [ ] **Step 8: Run the full gate one last time**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 
 Expected: exit 0.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add docs/testing/card-shape-verification.md docs/superpowers/specs/2026-09-22-card-shape-and-inspection-design.md
+git add docs/testing/card-shape-verification.md docs/superpowers/specs/2026-09-22-card-shape-and-inspection-design.md frontend/src/main/scala/oathdigital/frontend/TokenSprite.scala
 git commit -m "$(cat <<'EOF'
 docs: record the card shape and inspection browser verification
 
 Covers what jsdom cannot assert: that no card changes footprint on hover,
-focus or selection at four viewports, and that the three warm suits are told
-apart by emblem shape at the smallest card size, since their colours are about
-one degree apart in hue.
+focus or selection at four viewports, that the three warm suits are told apart
+by emblem shape at the smallest card size, since their colours are about one
+degree apart in hue, and the product owner's review of all seventeen glyphs.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 EOF
@@ -1809,13 +1841,23 @@ EOF
 | Map degradation below 0.6 | 6 |
 | The no-reflow invariant, deleting the `position: static` override and `.peeked-relic` | 3 (deletions), 7 (measurement) |
 | Testing list, all nine items | 1, 2, 3, 4, 5, 6 unit tests; the two visual items in 7 |
-| Follow-ups | Left open in 7 Step 6 |
+| Follow-ups | Left open in 7 Step 7 |
 
 **Deviations, each stated where it occurs rather than folded in silently:**
 
-1. **A fourth letter, `A`.** The spec names `D`, `V` and `R`. `hiddenCard("adviser")` is a fourth `cardKind`, shipped precisely so the client cannot tell a face-down denizen from a face-down vision. Rendering `D` would assert what the server withheld. Called out at the head of Task 2.
-2. **The palette-colour and suit-distinguishability tests are browser checks, not unit tests.** The spec lists both under Testing. The hex values live in CSS custom properties, which a jsdom test cannot resolve, and "mutually distinguishable" is a visual judgement. The unit test asserts what is mechanical — three suits reference three different symbols, each glyph carries its colour class — and Task 7 Steps 3 and 4 carry the rest.
-3. **The glyph paths are authored here, not sourced.** Seventeen hand-written paths on a 24-unit grid. They are real and complete, not placeholders, but they are a first cut; Task 7 Step 3 is where they get judged, and changing one there is expected, not a failure.
+1. **The palette-colour and suit-distinguishability tests are browser checks, not unit tests.** The spec lists both under Testing. The hex values live in CSS custom properties, which a jsdom test cannot resolve, and "mutually distinguishable" is a visual judgement. The unit test asserts what is mechanical — three suits reference three different symbols, each glyph carries its colour class — and Task 7 Steps 3 to 5 carry the rest.
+2. **The glyph paths are authored here, not sourced.** Seventeen hand-written paths on a 24-unit grid. They are real and complete, not placeholders, but they are a first cut; Task 7 Step 5 puts all seventeen in front of the product owner, and changing several there is expected, not a failure.
+
+**One assumption this plan now rests on.** Commit `7ae54c3` fixed
+`GamePresentationProjector` to project the real `"denizen"` or `"vision"` for
+an adviser the viewer cannot identify, rather than collapsing both to
+`"adviser"`. Card backs are public information — the two backs differ
+physically — so this is not a leak, and the identical `cardKind` was already
+shipped unredacted for the world deck's face-down top card
+(`GameProjection.scala:83`). Without that fix the face would have needed a
+fourth letter for a kind the server refused to name. With it, the spec's
+`D`/`V`/`R` is complete, and `CardFaceSuite` pins the denizen-versus-vision
+distinction so a future re-redaction cannot quietly undo it.
 
 **Type consistency checked.** `CardFace.render` returns `dom.html.Button` everywhere it is named; `boxClass`/`backLetter` take `cardKind: String` and are called with `card.cardKind` and with literals in both the renderer and `ServerUiSupport.facedownCard`. `CardInspection.open(card, origin)` matches `onOpen`'s `(CardDetails, dom.html.Element) => Unit` and the shell's lambda. `RulesTextRenderer.powers` returns `Vector[dom.Element]` and is consumed as such in the overlay. `TokenSprite.label`/`isToken`/`ids`/`mount` are each used with the signature declared in Task 1.
 
