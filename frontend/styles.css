@@ -3,7 +3,40 @@
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   background: #17140f;
   color: #f5ecd7;
+
+  /* Sampled from the product owner's reference images, not chosen by eye.
+     Discord, Hearth and Beast are one hue family: shape identifies a suit,
+     never colour. */
+  --token-favor: #e4ba5a;
+  --token-favor-burnt: #a28a5a;
+  --token-secret: #66a8d8;
+  --token-secret-burnt: #60849c;
+  --suit-arcane: #6e377d;
+  --suit-beast: #8c371e;
+  --suit-discord: #c84623;
+  --suit-hearth: #d24b23;
+  --suit-nomad: #4b9678;
+  --suit-order: #14417d;
 }
+
+.token-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.token-glyph { display: inline-block; width: 1.05em; height: 1.05em;
+  vertical-align: -0.16em; }
+.token-favor { color: var(--token-favor); }
+.token-favor-burnt { color: var(--token-favor-burnt); }
+.token-secret { color: var(--token-secret); }
+.token-secret-burnt { color: var(--token-secret-burnt); }
+.token-suit-arcane { color: var(--suit-arcane); }
+.token-suit-beast { color: var(--suit-beast); }
+.token-suit-discord { color: var(--suit-discord); }
+.token-suit-hearth { color: var(--suit-hearth); }
+.token-suit-nomad { color: var(--suit-nomad); }
+.token-suit-order { color: var(--suit-order); }
+.token-attack-die, .token-defense-die, .token-round-die,
+.token-skull, .token-shield, .token-sword, .token-hollow-sword {
+  color: #d8cdb4; }
+.rules-power { margin: 0 0 0.7em; line-height: 1.5; }
+.rules-power:last-child { margin-bottom: 0; }
 
 * { box-sizing: border-box; }
 body { margin: 0; }
