@@ -40,10 +40,10 @@ private[frontend] object DevelopmentRenderer {
        bar.appendChild(retry)
      case _ => ()
    }
-   val fresh = button("New persisted test game", "restart")
+   val fresh = button("New game", "restart")
    fresh.setAttribute(
      "aria-label",
-     "Create and bootstrap a fresh persisted development game"
+     "Return to the start page to create another game"
    )
    fresh.onclick = _ => createGame()
    bar.appendChild(fresh)

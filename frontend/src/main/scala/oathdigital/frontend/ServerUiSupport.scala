@@ -457,13 +457,12 @@ private[frontend] object ServerUiSupport {
         }
       }.headOption.filter(_.nonEmpty)
 
+  private[frontend] def sessionUrl(gameId: String, playerId: String): String =
+    s"/?mode=server&gameId=${js.URIUtils.encodeURIComponent(gameId)}" +
+      s"&playerId=${js.URIUtils.encodeURIComponent(playerId)}"
+
   private[frontend] def updateUrl(gameId: String, playerId: String): Unit =
-    dom.window.history.replaceState(
-      null,
-      "",
-      s"/?mode=server&gameId=${js.URIUtils.encodeURIComponent(gameId)}" +
-        s"&playerId=${js.URIUtils.encodeURIComponent(playerId)}"
-    )
+    dom.window.history.replaceState(null, "", sessionUrl(gameId, playerId))
 
   private[frontend] def button(label: String, className: String): dom.html.Button = {
     val node =

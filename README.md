@@ -56,7 +56,10 @@ Build the frontend and run the loopback server:
 ./sbtw 'runMain oathdigital.server.OathServer --database-path var/oathdigital --catalog-path docs/catalog/new-foundations-component-catalog.json'
 ```
 
-Open `http://127.0.0.1:8080/?mode=server`. Check
+Open `http://127.0.0.1:8080/?mode=server`. The start page is the same one
+trusted-alpha hosts use and creates the game the same way, with a random
+Chronicle and seating; **Create game** then opens the development table as the
+first listed player, where the toolbar switches between players. Check
 `http://127.0.0.1:8080/health`, stop with Ctrl-C, and retain
 `var/oathdigital*` to preserve local games. The development transport
  is loopback-only and is not an authentication boundary.

@@ -5,7 +5,6 @@ import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 import scala.util.control.NonFatal
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  FirstGameBootstrapCodec, FirstGameBootstrapRequest,
   MajorActionPreviewCodec, MajorActionPreviewRequest, MajorActionPreviewResponse,
   ModifierInvocation, GameIntent => GameCommand}
 import oathdigital.protocol.projection.{GameProjection, GameProjectionCodec}
@@ -105,11 +104,6 @@ object GameClientFailure {
 }
 
 trait GameClient {
-  def bootstrap(
-      gameId: String,
-      selectedPlayerId: String,
-      config: FirstGameBootstrapRequest
-  ): Future[Either[GameClientFailure, GameProjection]]
   def load(
       gameId: String,
       selectedPlayerId: String
@@ -128,18 +122,6 @@ trait GameClient {
 
 final class HttpGameClient(transport: JsonTransport)
     extends GameClient {
-  override def bootstrap(
-      gameId: String,
-      selectedPlayerId: String,
-      config: FirstGameBootstrapRequest
-  ) =
-    send(
-      "POST",
-      s"/api/dev/first-games/${encode(gameId)}/bootstrap?playerId=" +
-        encode(selectedPlayerId),
-      Some(GameJson.encodeBootstrap(config))
-    )
-
   override def load(gameId: String, selectedPlayerId: String) =
     send(
       "GET",
@@ -208,10 +190,6 @@ final class TrustedHttpGameClient(transport: JsonTransport) extends GameClient {
   private def api(gameId: String): String =
     s"/games/${js.URIUtils.encodeURIComponent(gameId)}/api"
 
-  override def bootstrap(gameId: String, selectedPlayerId: String,
-      config: FirstGameBootstrapRequest) = Future.successful(Left(
-    GameClientFailure.HttpFailure(403, "seat-only", "Open your assigned seat link.")))
-
   override def load(gameId: String, selectedPlayerId: String) =
     send("GET", api(gameId), None)
 
@@ -250,9 +228,6 @@ object GameJson {
       error => if (response.status == 409) GameClientFailure.StalePosition(error._2)
         else GameClientFailure.HttpFailure(response.status, error._1, error._2)
     )
-
-  def encodeBootstrap(request: FirstGameBootstrapRequest): String =
-    FirstGameBootstrapCodec.encode(request)
 
   def encodeCommand(sequence: Long, command: GameCommand,
       modifiers: Vector[ModifierInvocation] = Vector.empty): String =

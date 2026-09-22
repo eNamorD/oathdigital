@@ -53,7 +53,7 @@ class HttpGameClientSuite extends FunSuite {
     }
   }
 
-  test("trusted conflict allows one reload without retry and bootstrap never sends") {
+  test("trusted conflict allows one reload without retry") {
     val transport = new StubTransport(Vector(
       Right(TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}""")),
       Right(TransportResponse(200, projectionJson(8)))))
@@ -61,12 +61,8 @@ class HttpGameClientSuite extends FunSuite {
     client.submit("game-1", "red-exile", 7, GameIntent.PlacePawn("site:a")).flatMap {
       case Left(_: GameClientFailure.StalePosition) => client.load("game-1", "red-exile")
       case other => fail(s"expected conflict: $other")
-    }.flatMap { loaded =>
+    }.map { loaded =>
       assertEquals(loaded.toOption.get.nextSequence, 8L)
-      client.bootstrap("game-1", "red-exile",
-        oathdigital.protocol.FirstGameBootstrapRequest(0, Vector.empty, "red-exile"))
-    }.map { result =>
-      assert(result.isLeft)
       assertEquals(transport.requests.map(_._1).toVector, Vector("POST", "GET"))
     }
   }
@@ -205,34 +201,6 @@ class HttpGameClientSuite extends FunSuite {
     assert(!finish.contains("\"playerId\""))
     assert(finish.contains("\"intent\""))
   }
-  private val bootstrap = oathdigital.protocol.FirstGameBootstrapRequest(
-    0,
-    Vector(
-      oathdigital.protocol.BootstrapParticipantRequest("red-exile", "red-lineage", "red"),
-      oathdigital.protocol.BootstrapParticipantRequest("blue-exile", "blue-lineage", "blue"),
-      oathdigital.protocol.BootstrapParticipantRequest("yellow-exile", "yellow-lineage", "yellow")
-    ),
-    "red-exile"
-  )
-
-  test("bootstrap uses same-origin route and server nextSequence") {
-    val transport = new StubTransport(Vector(
-      Right(TransportResponse(200, projectionJson(sequence = 1)))
-    ))
-    val client = new HttpGameClient(transport)
-
-    client.bootstrap("new game", "red-exile", bootstrap).map { result =>
-      assertEquals(result.toOption.get.nextSequence, 1L)
-      assertEquals(
-        transport.requests.head._2,
-        "/api/dev/first-games/new%20game/bootstrap?playerId=red-exile"
-      )
-      assert(transport.requests.head._3.exists(
-        _.contains("\"expectedNextSequence\":0")
-      ))
-    }
-  }
-
   test("pawn and adviser commands preserve explicit sequence and opaque IDs") {
     val opaqueSite = "site:ancient-city"
     val opaqueAdviser = "denizen:0612"
@@ -646,27 +614,6 @@ class HttpGameClientSuite extends FunSuite {
     val aborted = GameClientFailure.RequestAborted("POST", "/api")
     assert(timeout.message.contains("10000 ms"))
     assert(aborted.message.contains("aborted"))
-  }
-
-  test("new persisted test uses a distinct bootstrap route, never mutation") {
-    val transport = new StubTransport(Vector(
-      Right(TransportResponse(200, projectionJson(sequence = 1))),
-      Right(TransportResponse(200, projectionJson(sequence = 1)))
-    ))
-    val client = new HttpGameClient(transport)
-
-    client.bootstrap("game-a", "red-exile", bootstrap)
-      .flatMap(_ => client.bootstrap("game-b", "red-exile", bootstrap))
-      .map { _ =>
-        assertEquals(
-          transport.requests.map(_._2).toVector,
-          Vector(
-            "/api/dev/first-games/game-a/bootstrap?playerId=red-exile",
-            "/api/dev/first-games/game-b/bootstrap?playerId=red-exile"
-          )
-        )
-        assert(!transport.requests.exists(_._1 == "DELETE"))
-      }
   }
 
   test("projection contains scoped choices, no hidden plan, and Ready state") {

@@ -7,19 +7,10 @@ import org.scalajs.dom
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object ServerModeUi {
-  private val bootstrap = FirstGameBootstrapRequest(
-    0,
-    Vector(
-      BootstrapParticipantRequest("red-exile", "red-lineage", "red"),
-      BootstrapParticipantRequest("blue-exile", "blue-lineage", "blue"),
-      BootstrapParticipantRequest("yellow-exile", "yellow-lineage", "yellow")
-    ),
-    "red-exile"
-  )
-
   def start(mount: dom.Element,
       client: GameClient = new HttpGameClient(new SameOriginJsonTransport),
-      trustedGameId: Option[String] = None): Unit = {
+      trustedGameId: Option[String] = None,
+      startOver: () => Unit = () => dom.window.location.assign(Main.DevelopmentStartUrl)): Unit = {
     val fixedSeat = trustedGameId.nonEmpty
     var projection = Option.empty[GameProjection]
     var failure = Option.empty[GameClientFailure]
@@ -240,20 +231,7 @@ object ServerModeUi {
     def newGame(): Unit = {
       if (fixedSeat) return
       polling.foreach(_.stop())
-      gameId = freshGameId()
-      selectedPlayer = bootstrap.firstPlayer
-      projection = None
-      boardSelectionState = None
-      cardDecisionState = None
-      modifierWorkflow = None
-      rawEvents = Vector.empty
-      rawHistorySequence = None
-      failure = None
-      val request = coordinator.switchSession(gameId, selectedPlayer)
-      updateSessionUrl()
-      render()
-      client.bootstrap(gameId, selectedPlayer, bootstrap)
-        .foreach(accept(request, _))
+      startOver()
     }
 
     def reconnect(): Unit = {

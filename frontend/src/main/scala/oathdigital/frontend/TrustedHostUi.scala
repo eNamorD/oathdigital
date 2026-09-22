@@ -6,7 +6,13 @@ import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import ServerUiSupport._
 
-/** Seat links live only in this creation result; the host distributes them manually. */
+/** The game-creation page for both runtime modes.
+  *
+  * Both modes post the same trusted creation request, so games get the same
+  * generated setup. Trusted mode shows the seat links, which live only in this
+  * result; the host distributes them manually. Development mode passes
+  * `openCreated` to go straight to the new game instead.
+  */
 private[frontend] object TrustedHostUi {
   /** Lineage colors in menu order. Purple is the Chancellor's and is not offered yet. */
   val LineageColors: Vector[String] = Vector("red", "blue", "yellow", "white", "black", "pink", "brown")
@@ -23,13 +29,19 @@ private[frontend] object TrustedHostUi {
 
   private final case class PlayerRow(color: String, node: dom.Element, input: dom.html.Input)
 
-  def start(mount: dom.Element, transport: JsonTransport): Unit = {
+  def start(mount: dom.Element, transport: JsonTransport,
+      openCreated: Option[TrustedGameCreateResponse => Unit] = None): Unit = {
     mount.textContent = ""
     mount.appendChild(text("h1", "", "Create an Oath Digital game"))
-    mount.appendChild(text("p", "", "Add one row per player, then send each player " +
-      "their assigned link. Anyone with a seat link can control that seat. " +
-      "Seating order and the first player are chosen at random. " +
-      "Save these links before leaving this page."))
+    mount.appendChild(text("p", "", openCreated match {
+      case None => "Add one row per player, then send each player " +
+        "their assigned link. Anyone with a seat link can control that seat. " +
+        "Seating order and the first player are chosen at random. " +
+        "Save these links before leaving this page."
+      case Some(_) => "Add one row per player. " +
+        "Seating order and the first player are chosen at random. " +
+        "The new game opens as the first listed player; switch players from the toolbar."
+    }))
     var gameId = freshGameId()
     val form = element("form", "trusted-host-form")
     val list = element("ol", "host-players")
@@ -170,6 +182,9 @@ private[frontend] object TrustedHostUi {
           }
           decoded match {
             case Left(error) => create.disabled = false; status.textContent = error.message
+            case Right(created) if openCreated.nonEmpty =>
+              status.textContent = "Game created. Opening it…"
+              openCreated.foreach(_(created))
             case Right(created) =>
               mount.removeChild(form)
               status.textContent = "Game created. Copy and save each assigned seat link."

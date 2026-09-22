@@ -34,12 +34,26 @@ object ServerRoutes {
       readiness: ServerReadiness,
       nowMillis: () => Long = () => System.currentTimeMillis()
   ): Route = {
+    val publicOrigin = config.publicBaseUrl.getOrElse(
+      new java.net.URI("http", null, config.host, config.port, null, null, null))
+    // Development mode binds only to loopback, so a browser may reach it through
+    // any loopback alias; accept those origins on the same port.
+    val loopbackAliases =
+      if (config.mode == ServerMode.Development && config.publicBaseUrl.isEmpty)
+        Seq("localhost", "127.0.0.1", "[::1]").map(host =>
+          new java.net.URI(s"http://$host:${config.port}"))
+      else Nil
+    val trustedSeats = new TrustedSeatRoutes(runtime.identities,
+      runtime.trustedGameProvisioning, runtime.trustedGame, publicOrigin,
+      blockingExecutionContext, loopbackAliases).route
     val application = config.mode match {
       case ServerMode.Development =>
+        // The development start page creates games through the same trusted
+        // provisioning as trusted-alpha mode, so both get the generated setup.
         val development = DevelopmentRoutes.route(
           runtime.firstGame,
           blockingExecutionContext
-        )
+        ) ~ trustedSeats
         config.authenticatedRouteMount.fold(development) { configuration =>
           val authenticator = new SessionCookieAuthenticator(
             runtime.identities,
@@ -56,11 +70,7 @@ object ServerRoutes {
           ).route
         }
       case ServerMode.TrustedAlpha =>
-        val publicOrigin = config.publicBaseUrl.getOrElse(
-          new java.net.URI("http", null, config.host, config.port, null, null, null))
-        new TrustedSeatRoutes(runtime.identities, runtime.trustedGameProvisioning,
-          runtime.trustedGame, publicOrigin, blockingExecutionContext).route ~
-          ProductionFrontendRoutes.route
+        trustedSeats ~ ProductionFrontendRoutes.route
     }
     HealthRoutes.route(readiness) ~ application
   }

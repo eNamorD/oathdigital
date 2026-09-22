@@ -49,6 +49,12 @@ Slices 2 (setup on the walker) and 3 (the E02/E06/E22 powers) remain.
   it in the browser (`manual-<time>-<random>`) and generates a new one when the
   server reports a duplicate. The server should assign it and return it in the
   creation response, and the request should drop `gameId`.
+- [ ] **Deferred: retire the development bootstrap route.** The development
+  start page (`/?mode=server`) now creates games through the same `POST /games`
+  provisioning as trusted-alpha mode, so the browser no longer calls
+  `/api/dev/first-games/<id>/bootstrap`. That route and the deterministic
+  `DevelopmentFirstGamePlanFactory` remain only as JVM test fixtures. Move those
+  suites to generated plans with a seeded `ChronicleRandomPort`, then remove both.
 - [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
   the Chancellor or first player (site order is used until then). Player choices
   earlier in setup once foundations and legacies exist, such as the Chancellor

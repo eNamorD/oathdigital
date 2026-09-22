@@ -51,8 +51,7 @@ class ServerRoutesSuite extends munit.FunSuite {
         assertEquals(get(client, absent,
           "/api/dev/first-games/test-game/events?limit=101").statusCode(), 400)
         assertEquals(get(client, absent, "/s/AAAAAAAAAAAAAAAAAAAAAA").statusCode(), 404)
-        assertEquals(get(client, absent, "/games/game/api").statusCode(), 404)
-        assertEquals(get(client, absent, "/games/game").statusCode(), 404)
+        assertEquals(get(client, absent, "/games/game/api").statusCode(), 403)
       } finally Await.result(absent.terminate(5.seconds), 10.seconds)
 
       val configuration = AuthenticatedRouteMountConfiguration(
@@ -108,6 +107,48 @@ class ServerRoutesSuite extends munit.FunSuite {
         "/api/dev/first-games/test-game?playerId=p1").statusCode(), 404)
       assertEquals(get(client, binding,
         "/api/authenticated/first-games/test-game").statusCode(), 404)
+    } finally {
+      Await.result(binding.terminate(5.seconds), 10.seconds)
+      runtime.close()
+      system.terminate()
+      Await.result(system.whenTerminated, 10.seconds)
+    }
+  }
+
+  test("development mode creates games like trusted-alpha and opens them in the dev API") {
+    implicit val system: ActorSystem[Nothing] =
+      ActorSystem[Nothing](Behaviors.empty, "development-create-routes-test")
+    val blocking = system.dispatchers.lookup(
+      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
+    val runtime = ServerRuntime.open(
+      Files.createTempDirectory("development-create-routes-").resolve("database"),
+      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+    ).toOption.get
+    val client = HttpClient.newHttpClient()
+    val binding = bind(ServerRoutes.route(runtime, blocking,
+      config(ServerMode.Development), ServerReadiness.starting("test-version")))
+
+    def create(gameId: String, origin: String) = client.send(
+      HttpRequest.newBuilder(URI.create(
+        s"http://127.0.0.1:${binding.localAddress.getPort}/games"))
+        .header("Origin", origin)
+        .POST(HttpRequest.BodyPublishers.ofString(
+          s"""{"gameId":"$gameId","participants":[""" +
+            """{"playerId":"Red","lineageId":"red-lineage","color":"red"},""" +
+            """{"playerId":"Blue","lineageId":"blue-lineage","color":"blue"}]}"""))
+        .build(),
+      JavaResponse.BodyHandlers.ofString())
+
+    try {
+      assertEquals(create("foreign-game", "http://example.com:8080").statusCode(), 403)
+      assertEquals(create("other-port-game", "http://localhost:9090").statusCode(), 403)
+      assertEquals(create("ip-game", "http://127.0.0.1:8080").statusCode(), 201)
+      val created = create("dev-game", "http://localhost:8080")
+      assertEquals(created.statusCode(), 201)
+      assert(created.body().contains("http://127.0.0.1:8080/s/"))
+      val loaded = get(client, binding, "/api/dev/first-games/dev-game?playerId=Red")
+      assertEquals(loaded.statusCode(), 200)
+      assert(loaded.body().contains("\"gameId\":\"dev-game\""))
     } finally {
       Await.result(binding.terminate(5.seconds), 10.seconds)
       runtime.close()

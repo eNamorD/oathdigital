@@ -224,21 +224,37 @@ class ServerModeUiSuite extends FunSuite {
     }.andThen { case _ => browser.close() }
   }
 
-  test("development root without query still bootstraps a new game") {
-    val browser = new TestBrowser
-    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) = {
-        requests += method -> url
-        scala.concurrent.Future.successful(Left(GameClientFailure.NetworkFailure("offline")))
-      }
-    }
-    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+  test("development root without a game shows the start page and opens the created game") {
+    val browser = new TestBrowser("?mode=server")
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    val opened = scala.collection.mutable.ArrayBuffer.empty[String]
+    Main.start(browser.mount, "/", trustedAlpha = false, hostTransport(requests),
+      navigate = opened += _)
+    assertEquals(requests.size, 0)
+    assertEquals(hostColors(browser), Vector("red", "blue"))
+    assert(!browser.text.contains("assigned link"))
+    browser.click("create-trusted-game")
     browser.settle.map { _ =>
-      assertEquals(requests.size, 1)
-      assertEquals(requests.head._1, "POST")
-      assert(requests.head._2.endsWith("/bootstrap?playerId=red-exile"))
-      assert(browser.byClass("restart").nonEmpty)
+      assertEquals(requests.map(r => r._1 -> r._2).toVector, Vector("POST" -> "/games"))
+      assertEquals(hostRequests(requests).head.participants.map(_.color), Vector("red", "blue"))
+      assertEquals(opened.toVector, Vector("/?mode=server&gameId=host-game&playerId=Red"))
+      assert(browser.byClass("seat-link").isEmpty)
+    }.andThen { case _ => browser.close() }
+  }
+
+  test("development new game button returns to the start page") {
+    val browser = new TestBrowser("?mode=server&gameId=existing&playerId=red")
+    val opened = scala.collection.mutable.ArrayBuffer.empty[String]
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) =
+        scala.concurrent.Future.successful(Right(TransportResponse(200,
+          if (url.contains("/events")) """{"events":[]}"""
+          else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", ""))))
+    }
+    Main.start(browser.mount, "/", trustedAlpha = false, transport, navigate = opened += _)
+    browser.settle.map { _ =>
+      browser.click("restart")
+      assertEquals(opened.toVector, Vector("/?mode=server"))
     }.andThen { case _ => browser.close() }
   }
 

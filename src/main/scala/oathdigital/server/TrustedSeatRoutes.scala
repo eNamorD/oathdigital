@@ -17,7 +17,8 @@ final class TrustedSeatRoutes(
     provisioning: TrustedGameProvisioning,
     gateway: TrustedGameGateway,
     publicBaseUrl: URI,
-    blockingExecutionContext: ExecutionContext
+    blockingExecutionContext: ExecutionContext,
+    extraOrigins: Seq[URI] = Nil
 ) extends Directives {
   private val logger = LoggerFactory.getLogger(classOf[TrustedSeatRoutes])
   private val cookieName = "oath_seat"
@@ -132,8 +133,9 @@ final class TrustedSeatRoutes(
     origin.isAbsolute && origin.getHost != null && origin.getRawUserInfo == null &&
       origin.getRawQuery == null && origin.getRawFragment == null &&
       Option(origin.getRawPath).forall(_.isEmpty) &&
-      origin.getScheme.equalsIgnoreCase(publicBaseUrl.getScheme) &&
-      origin.getHost.equalsIgnoreCase(publicBaseUrl.getHost) && port(origin) == port(publicBaseUrl)
+      (publicBaseUrl +: extraOrigins).exists(allowed =>
+        origin.getScheme.equalsIgnoreCase(allowed.getScheme) &&
+          origin.getHost.equalsIgnoreCase(allowed.getHost) && port(origin) == port(allowed))
   }
 
   private def resolve(code: SeatCode): Either[TrustedSeatFailure, TrustedSeat] =
