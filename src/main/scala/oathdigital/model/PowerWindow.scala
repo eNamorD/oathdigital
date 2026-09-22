@@ -190,6 +190,13 @@ object PowerWindow {
     * chosen an adviser: Great Market, Bandit Market and Empty Grounds hook
     * here. */
   case object SetupEnd extends OtherWindow { val key = "setup.end" }
+  /** Where an explored site's effects resolve, once an explore procedure
+    * exists to fire it (2026-09-21 Chronicle design, "Setup powers" --
+    * out of scope until then). Slice 3's E02/E06/E22 powers already name
+    * this window alongside their SETUP window so the same contribution
+    * serves both without branching; nothing folds it yet.
+    */
+  case object WhenExplored extends OtherWindow { val key = "explore.when-explored" }
   case object NegotiationOffer extends OtherWindow { val key = "negotiation.offer" }
   case object NegotiationEligibility extends OtherWindow {
     val key = "negotiation.eligibility"
