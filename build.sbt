@@ -84,16 +84,25 @@ lazy val root = (project in file("."))
         "share/oathdigital/new-foundations-component-catalog.json") +:
         operations
     },
+    Universal / mappings ++= Seq(
+      "Start Oath Digital.command",
+      "start-oathdigital.sh",
+      "Start Oath Digital.bat"
+    ).map(name => baseDirectory.value / "packaging/desktop" / name -> name),
     Universal / javaOptions += "-Dfile.encoding=UTF-8",
     bashScriptExtraDefines ++= Seq(
       """if [ -z "${OATH_MODE+x}" ]; then OATH_MODE=trusted-alpha; fi""",
       "export OATH_MODE",
       """if [ -z "${OATH_CATALOG_PATH+x}" ]; then OATH_CATALOG_PATH="${app_home}/../share/oathdigital/new-foundations-component-catalog.json"; fi""",
-      "export OATH_CATALOG_PATH"
+      "export OATH_CATALOG_PATH",
+      // A bundled-runtime archive ships jre/ beside bin/. The template gives
+      // bundled_jvm priority over JAVA_HOME; -java-home still overrides it.
+      """if [ -x "${app_home}/../jre/bin/java" ]; then bundled_jvm="$(realpath "${app_home}/../jre")"; fi"""
     ),
     batScriptExtraDefines ++= Seq(
       "if not defined OATH_MODE set \"OATH_MODE=trusted-alpha\"",
-      "if not defined OATH_CATALOG_PATH set \"OATH_CATALOG_PATH=%~dp0..\\share\\oathdigital\\new-foundations-component-catalog.json\""
+      "if not defined OATH_CATALOG_PATH set \"OATH_CATALOG_PATH=%~dp0..\\share\\oathdigital\\new-foundations-component-catalog.json\"",
+      """if exist "%APP_HOME%\jre\bin\java.exe" set "BUNDLED_JVM=%APP_HOME%\jre""""
     ),
     Docker / packageName := "oathdigital",
     Docker / dockerExposedPorts := Seq(8080),
@@ -124,7 +133,10 @@ lazy val root = (project in file("."))
         "share/oathdigital/data-policy.md",
         "share/oathdigital/network-and-browser.md",
         "share/oathdigital/alpha-acceptance.md",
-        "share/oathdigital/releases.md"
+        "share/oathdigital/releases.md",
+        "Start Oath Digital.command",
+        "start-oathdigital.sh",
+        "Start Oath Digital.bat",
       )
       val missingFiles = requiredFiles.filterNot(destinations.contains)
       val serverJarMapped = packageMappings.exists { case (source, path) =>
@@ -193,8 +205,21 @@ lazy val root = (project in file("."))
         else Seq("Docker image must declare ENV OATH_HOST=0.0.0.0")
       val dockerFailures =
         orderingFailures ++ databasePathFailures ++ hostFailures
+      def launcherSource(destination: String): String = packageMappings
+        .collectFirst { case (source, `destination`) => IO.read(source) }
+        .getOrElse("")
+      val bundledRuntimeFailures = Seq(
+        if (launcherSource("bin/oathdigital").contains(
+              """then bundled_jvm="$(realpath "${app_home}/../jre")"; fi"""
+            )) None
+        else Some("bash launcher must prefer a bundled jre/"),
+        if (launcherSource("bin/oathdigital.bat").contains(
+              """if exist "%APP_HOME%\jre\bin\java.exe" set "BUNDLED_JVM=%APP_HOME%\jre""""
+            )) None
+        else Some("batch launcher must prefer a bundled jre\\")
+      ).flatten
       val failures = missingFiles.map(path => s"missing $path") ++
-        missingJars ++ dockerFailures
+        missingJars ++ dockerFailures ++ bundledRuntimeFailures
       if (failures.nonEmpty)
         sys.error("Invalid package mappings: " + failures.mkString(", "))
     },

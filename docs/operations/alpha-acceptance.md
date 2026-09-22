@@ -84,6 +84,20 @@ two-machine requirement.
 | 15 | Normal exchange, a controlled failing `/s/` request, and a `/s/` request with the backend unreachable (on a throwaway proxy instance) use a disposable test code; every NGINX access/error log, upstream application log, and applicable proxy, CDN, firewall, WAF, agent, or dashboard log is inspected, and no raw `/s/{seat-code}`, `Cookie`, or `Set-Cookie` value appears. | UNEXECUTED | Not observed. |
 | 16 | Forwarded identity headers do not select or change a seat; the seat cookie remains the only trusted seat identity. | UNEXECUTED | Not observed. |
 
+## Bundled archive checks
+
+Run once per bundled archive (macOS arm64, Windows x64, Linux x64) that the
+build ships. Use a machine without Java 21 on `PATH` where possible.
+
+| # | Check | Result | Notes |
+| --- | --- | --- | --- |
+| 17 | Download the archive with a browser and extract it with the OS's own tool. | PASS (macOS arm64) | See [checkpoint record](../testing/bundled-launch-macos-arm64-2026-09-22.md). Windows, Linux: UNEXECUTED. |
+| 18 | Double-click Start. Record the exact Gatekeeper or SmartScreen steps needed. | PASS (macOS arm64) | Required Privacy & Security › Open Anyway, then a Downloads-folder access prompt; found and fixed a gap where Gatekeeper approval did not cascade to `bin/oathdigital`. Windows, Linux: UNEXECUTED. |
+| 19 | Record the firewall prompt and the choice made (private networks only). | UNEXECUTED | |
+| 20 | The window shows the banner; the browser opens the game-creation page at the banner address. | PASS (macOS arm64) | Windows, Linux: UNEXECUTED. |
+| 21 | Create a game on the host; a second machine joins using a seat link with the banner address and completes a turn. | UNEXECUTED | |
+| 22 | Close the Start window (Windows: close the console window). The next start restores the game, and the log from the first run ends with `Oath Digital database closed`. | UNEXECUTED | |
+
 ## Browser observations
 
 | Browser, version, OS | Host form | Seat exchange | Gameplay | Reconnect/restart | Status and evidence |

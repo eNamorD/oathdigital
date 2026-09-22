@@ -49,6 +49,14 @@ Universal archives require Java 21; OCI images include Java 21 and run as UID
 launchers are included, but their browser/OS acceptance is provisional until
 recorded in the [alpha acceptance record](alpha-acceptance.md).
 
+Bundled archives include a Java 21 runtime built with `jlink` from the
+module list in `packaging/jlink-modules.txt`: `oathdigital-0.1.0-alpha.1-macos-arm64.tgz`,
+`oathdigital-0.1.0-alpha.1-windows-x64.zip`, and
+`oathdigital-0.1.0-alpha.1-linux-x64.tgz`. They extract to the same
+`oathdigital-0.1.0-alpha.1` directory. They are not signed or notarized; the
+[quick start](quick-start.md) describes the one-time macOS and Windows prompts.
+Intel Macs and Linux arm64 use the all-platform archive or the OCI image.
+
 No compatibility with another release's database is promised for this initial
 alpha. Restore only with the exact release that created the backup. Before any
 upgrade, stop the server and back up the complete database directory as described
@@ -71,8 +79,10 @@ limits before tagging. Schema checks do not replace release-specific policy.
 3. In Actions, select **Alpha release**, enter the exact existing tag, and leave
    **publish** false. The workflow checks out that tag, verifies its commit,
    runs JVM/frontend tests and architecture/catalog/Markdown/version/mapping
-   checks, extracts and smokes both archives under Java 21, and smokes loaded
-   `linux/amd64` and `linux/arm64` images. Download and inspect the resulting
+   checks, extracts and smokes both archives under Java 21, builds each bundled
+   archive from the tested all-platform archive on macOS, Windows, and Linux
+   runners and smokes it with no system Java, and smokes loaded `linux/amd64`
+   and `linux/arm64` images. Download and inspect the resulting
    artifacts. Verification does not write to GHCR or create a GitHub release.
 4. Once satisfied with that evidence and manual acceptance, dispatch the same
    tag with **publish** true. This new run repeats every gate. Publication can
@@ -84,7 +94,8 @@ limits before tagging. Schema checks do not replace release-specific policy.
    host access as described above. Confirm a clean host can pull the exact
    published reference before distributing OCI startup instructions.
 
-The GitHub prerelease contains both Universal archives, `SHA256SUMS`, these
+The GitHub prerelease contains both Universal archives, the three bundled
+archives, `SHA256SUMS`, these
 release notes, and sanitized archive/image/manifest evidence. Checksums cover
 the archives and evidence files. Verify downloads with `sha256sum --check
 SHA256SUMS` on Linux or `shasum -a 256 --check SHA256SUMS` on macOS. Successful
@@ -127,6 +138,15 @@ ordinary development; release verification explicitly requires Java 21.
 Local `./sbtw Docker/publishLocal` still builds only the host architecture.
 The workflow stages the same JVM output for Buildx, then loads and smokes each
 platform before saving it as a tested-image artifact.
+
+To build and smoke the bundled archive for the host platform (`macos-arm64`
+or `linux-x64`) from an all-platform archive:
+
+    sh scripts/verify-alpha-release.sh bundled target/universal/oathdigital-0.1.0-alpha.1.tgz macos-arm64 /tmp/oath-bundled
+
+The `windows-x64` archive is built and smoked only by the workflow. Its smoke
+cannot stop the server gracefully, so the database-close check for Windows is
+in the acceptance record.
 
 ## Workflow sources
 

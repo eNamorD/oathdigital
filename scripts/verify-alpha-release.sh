@@ -107,5 +107,27 @@ case "${1:-}" in
     (cd "$output" && shasum -a 256 "$root.zip" "$root.tgz" archive-evidence.txt release-notes.md >SHA256SUMS)
     echo "alpha archive release verification passed: $release_tag"
     ;;
-  *) fail "usage: $0 {validate-tag TAG|check-tag TAG|self-test|archives TAG NEW_OUTPUT_DIRECTORY}" ;;
+  bundled)
+    [ "$#" -eq 4 ] || fail "usage: bundled UNIVERSAL_TGZ TARGET NEW_OUTPUT_DIRECTORY"
+    case "$3" in
+      macos-arm64|linux-x64) ;;
+      windows-x64) fail "windows-x64 is built and smoked by the release workflow only" ;;
+      *) fail "unknown target: $3" ;;
+    esac
+    [ -f "$2" ] || fail "missing all-platform archive: $2"
+    [ ! -e "$4" ] || fail "output directory already exists"
+    temporary=$(mktemp -d "${TMPDIR:-/tmp}/oathdigital-bundled-release.XXXXXX")
+    trap 'rm -rf -- "$temporary"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    mkdir "$temporary/universal" "$temporary/bundled"
+    tar -xzf "$2" -C "$temporary/universal"
+    root=$(ls -A "$temporary/universal")
+    [ "$(printf '%s\n' "$root" | wc -l | tr -d ' ')" = 1 ] || fail "archive must have exactly one versioned root"
+    sh scripts/package-bundled-runtime.sh "$temporary/universal/$root" "$3" "$4"
+    tar -xzf "$4/$root-$3.tgz" -C "$temporary/bundled"
+    sh scripts/smoke-bundled-distribution.sh "$temporary/bundled/$root" 18081
+    echo "bundled archive verification passed: $root-$3"
+    ;;
+  *) fail "usage: $0 {validate-tag TAG|check-tag TAG|self-test|archives TAG NEW_OUTPUT_DIRECTORY|bundled UNIVERSAL_TGZ TARGET NEW_OUTPUT_DIRECTORY}" ;;
 esac

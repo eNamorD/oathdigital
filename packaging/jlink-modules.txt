@@ -1,0 +1,11 @@
+# Java modules in the bundled runtime. scripts/package-bundled-runtime.sh
+# fails when jdeps reports a module missing from this list.
+java.base
+java.desktop
+java.management
+java.naming
+java.sql
+jdk.crypto.ec
+jdk.jfr
+jdk.localedata
+jdk.unsupported
