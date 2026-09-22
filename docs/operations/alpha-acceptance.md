@@ -91,10 +91,10 @@ build ships. Use a machine without Java 21 on `PATH` where possible.
 
 | # | Check | Result | Notes |
 | --- | --- | --- | --- |
-| 17 | Download the archive with a browser and extract it with the OS's own tool. | UNEXECUTED | |
-| 18 | Double-click Start. Record the exact Gatekeeper or SmartScreen steps needed. | UNEXECUTED | |
+| 17 | Download the archive with a browser and extract it with the OS's own tool. | PASS (macOS arm64) | See [checkpoint record](../testing/bundled-launch-macos-arm64-2026-09-22.md). Windows, Linux: UNEXECUTED. |
+| 18 | Double-click Start. Record the exact Gatekeeper or SmartScreen steps needed. | PASS (macOS arm64) | Required Privacy & Security › Open Anyway, then a Downloads-folder access prompt; found and fixed a gap where Gatekeeper approval did not cascade to `bin/oathdigital`. Windows, Linux: UNEXECUTED. |
 | 19 | Record the firewall prompt and the choice made (private networks only). | UNEXECUTED | |
-| 20 | The window shows the banner; the browser opens the game-creation page at the banner address. | UNEXECUTED | |
+| 20 | The window shows the banner; the browser opens the game-creation page at the banner address. | PASS (macOS arm64) | Windows, Linux: UNEXECUTED. |
 | 21 | Create a game on the host; a second machine joins using a seat link with the banner address and completes a turn. | UNEXECUTED | |
 | 22 | Close the Start window (Windows: close the console window). The next start restores the game, and the log from the first run ends with `Oath Digital database closed`. | UNEXECUTED | |
 

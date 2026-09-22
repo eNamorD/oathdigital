@@ -21,7 +21,9 @@ else needs installing:
 2. Open the extracted `oathdigital-0.1.0-alpha.1` folder and start the server:
    - macOS: double-click **Start Oath Digital.command**. The first time, macOS
      says it cannot verify the file. Open **System Settings › Privacy &
-     Security**, choose **Open Anyway** for it, and confirm.
+     Security**, choose **Open Anyway** for it, and confirm. Starting it again
+     may also ask whether Terminal can access files in your Downloads folder;
+     choose **Allow**.
    - Windows: double-click **Start Oath Digital.bat**. If SmartScreen appears,
      choose **More info › Run anyway**.
    - Linux: run `./start-oathdigital.sh` from a terminal in that folder, or use
