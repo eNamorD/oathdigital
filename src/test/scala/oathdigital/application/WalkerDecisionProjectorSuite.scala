@@ -3,7 +3,6 @@ package oathdigital.application
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
@@ -31,8 +30,6 @@ import oathdigital.protocol.projection.WalkerWaitingProjection
   * answer.
   */
 class WalkerDecisionProjectorSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
-
   /** A one-node tree that parks on a `Roll` at path `Vector("0")`. */
   private val rollTree: Operation =
     Sequence(Roll(PoolKey("test.roll"), DiceSpec(DiceKind.Defense)))
@@ -47,7 +44,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     */
   private def parked(action: ActionRef, atSite: Option[SiteId] = None)
       : (ScopedProjectionContext, PlayerId) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val actor = base.game.current.turn.activePlayer
     val moved = atSite.fold(base.game.current.players)(site =>
       base.game.current.players.map(player =>
@@ -68,7 +65,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     * `GameApplicationServiceSuite` rather than here.
     */
   private lazy val facedownRelicSite: SiteId = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     base.game.current.map.sites.collectFirst {
       case (siteId, site)
           if site.relics.exists(_.orientation == Orientation.FaceDown) =>
@@ -443,7 +440,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     */
   private def parkedOffTurn: (ReadyGame, PlayerId, PlayerId,
       WalkerDecisionProjector) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val active = base.game.current.turn.activePlayer
     val owner = base.game.current.players.map(_.player).find(_ != active).get
     val tree: Operation = Sequence(Decide("test.off-turn", owner,

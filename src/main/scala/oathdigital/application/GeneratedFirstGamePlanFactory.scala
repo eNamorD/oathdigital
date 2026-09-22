@@ -2,14 +2,14 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powers.ReviewedPowerCatalog
-import oathdigital.model.FirstGameSetupPlan
+import oathdigital.model.Chronicle
 
 /**
- * Production first-game plan derivation: draws a random Chronicle through
- * `FirstGameChronicleGenerator` and bridges it into a `FirstGameSetupPlan`
- * via `ChronicleFirstGamePlan` (2026-09-21 Chronicle design, slice 1).
- * Trusted-game provisioning, development game creation, and authenticated
- * bootstrap all use this.
+ * Production first-game Chronicle derivation: draws a random Chronicle
+ * through `FirstGameChronicleGenerator` (2026-09-21 Chronicle design,
+ * slice 2). Trusted-game provisioning, development game creation, and
+ * authenticated bootstrap all use this now that the dev-only loopback route
+ * and its deterministic `DevelopmentFirstGamePlanFactory` are retired.
  *
  * The seating order is shuffled too, and the first seat becomes the first
  * player, so the requested `firstPlayer` is ignored. The shuffled order is
@@ -21,15 +21,15 @@ final class GeneratedFirstGamePlanFactory(
     policy: ShufflePolicy = ShufflePolicy.implementedFirst
 ) extends FirstGamePlanFactory {
   override def build(config: FirstGameBootstrapConfig)
-      : Either[BootstrapPlanFailure, FirstGameSetupPlan] =
+      : Either[BootstrapPlanFailure, FirstGamePlan] = {
+    val resolvedConfig = shuffledSeating(config)
     for {
       registry <- ReviewedPowerCatalog.registry(catalog)
         .left.map(violation => BootstrapPlanFailure(violation.toString))
       chronicle <- FirstGameChronicleGenerator.generate(catalog, registry, random, policy)
         .left.map(failure => BootstrapPlanFailure(failure.toString))
-      plan <- ChronicleFirstGamePlan.build(catalog, chronicle, shuffledSeating(config))
-        .left.map(failure => BootstrapPlanFailure(failure.toString))
-    } yield plan
+    } yield FirstGamePlan(chronicle, resolvedConfig)
+  }
 
   private def shuffledSeating(config: FirstGameBootstrapConfig)
       : FirstGameBootstrapConfig = {

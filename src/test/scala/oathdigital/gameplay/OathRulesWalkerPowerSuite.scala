@@ -44,8 +44,6 @@ object OathRulesWalkerPowerSuite {
 }
 
 class OathRulesWalkerPowerSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
-
   private val window: PowerWindow = PowerWindow.RecoverModifierSelection
 
   private val violation: OathViolation = OathViolation.RecoverUnavailable(
@@ -55,7 +53,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     * eligibility gates -- the injected tree source replaces them.
     */
   private def actable: (ReadyGame, PlayerId) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val ready = base.updateCurrent(_.copy(turn = base.game.current.turn.copy(
         phase = Phase.Act)))
     (ready, ready.game.current.turn.activePlayer)
@@ -202,7 +200,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
   test("a seated non-active player's RollWalker against another player's " +
       "parked pool is rejected, and appends nothing") {
-    val fixture = CatacombsContributionSuite.relicSite(setup)
+    val fixture = CatacombsContributionSuite.relicSite()
     val intruder = fixture.ready.game.current.players.map(_.player)
       .find(_ != fixture.actor).get
     val rulesInstance = new OathRules(catalog,

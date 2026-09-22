@@ -136,6 +136,26 @@ class OperationValidatorSuite extends munit.FunSuite {
       Vector("missing-piece"))
   }
 
+  test("a pawn with no prior site may move from the player area to a site") {
+    val unplaced = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
+      player => if (player.player == playerId) player.copy(pawnSite = None) else player
+    }))
+    val operation = Move(Piece.Pawn(playerId),
+      PositionedLocation(Location.PlayArea(playerId)),
+      PositionedLocation(Location.Site(sites.head)))
+
+    assertEquals(codes(OperationShape.validate(unplaced, operation)), Vector.empty)
+  }
+
+  test("a pawn already on a site cannot move from the player area again") {
+    val operation = Move(Piece.Pawn(playerId),
+      PositionedLocation(Location.PlayArea(playerId)),
+      PositionedLocation(Location.Site(sites.head)))
+
+    assertEquals(codes(OperationShape.validate(ready, operation)),
+      Vector("missing-piece"))
+  }
+
   test("validateBatch reports a cross-operation same-card move") {
     val op1 = Move(
       Piece.Card(worldDenizen),

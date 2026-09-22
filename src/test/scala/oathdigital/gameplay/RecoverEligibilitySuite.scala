@@ -4,7 +4,6 @@ import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -13,11 +12,10 @@ import oathdigital.model._
   * does not gate the action.
   */
 class RecoverEligibilitySuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
   private val projector = new GameProjector(catalog)
 
   private def baseReady: (ReadyGame, PlayerState, SiteId) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val siteId = base.game.current.map.inPlay.find { id =>

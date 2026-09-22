@@ -153,14 +153,15 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
       )
       val firstHistory = events.load("bootstrap-game").toOption.flatten.get
       val replayed = service.load("bootstrap-game").toOption.flatten.get
-      assertEquals(replayed.nextSequence, 1L)
-      val replayedPlan = replayed.state
-        .asInstanceOf[OathState.InProgress].plan
+      // GameStarted plus the WalkerParked fact from Setup's immediate first
+      // park (2026-09-21 Chronicle design, slice 2).
+      assertEquals(replayed.nextSequence, 2L)
+      val ready = replayed.state.asInstanceOf[OathState.Ready].value
       assertEquals(
-        replayedPlan.participants.map(_.playerId.value),
+        ready.game.current.players.map(_.player.value),
         Vector("p2", "p3", "p1")
       )
-      assertEquals(replayedPlan.firstPlayer.value, "p2")
+      assertEquals(ready.setup.firstPlayer.value, "p2")
 
       val duplicate = post(client, base, Some(owner.value), valid)
       assertEquals(duplicate.statusCode(), 409, duplicate.body())

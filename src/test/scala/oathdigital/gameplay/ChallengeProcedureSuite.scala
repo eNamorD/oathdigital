@@ -3,7 +3,6 @@ package oathdigital.gameplay
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.actions.challenge.ChallengeProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerParked,
@@ -17,8 +16,6 @@ import oathdigital.model.OathViolation.NoPlayableOption
   */
 class ChallengeProcedureSuite extends munit.FunSuite {
   import ChallengeFixture._
-
-  private val setup = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
   private val pf = DecisionOptionRef.Banner(Banner.PeoplesFavor)
   private val ds = DecisionOptionRef.Banner(Banner.DarkestSecret)
@@ -242,8 +239,7 @@ class ChallengeProcedureSuite extends munit.FunSuite {
   test("a completed Challenge replays exactly from its journal") {
     val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
     val orderedSites = wealthSite +: sites.filterNot(_ == wealthSite).take(7)
-    val replayPlan = plan.copy(orderedSites = orderedSites)
-    val (setupState, setupEvents) = execute(setup, replayPlan)
+    val (setupState, setupEvents) = execute(orderedSites)
     val activeId = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
     val wealth = rules.startWalker(setupState, ActionRef.TakeWealth, activeId,
       Vector.empty, Vector(DecisionOptionRef.Button("favor"))).toOption.get

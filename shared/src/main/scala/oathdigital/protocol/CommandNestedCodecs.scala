@@ -24,18 +24,6 @@ private[protocol] object CommandNestedCodecs {
     _ <- noDuplicates(disclosureKeys, s"$path.disclosures")
   } yield NegotiationTerms(transfers, disclosures) }
 
-  def encodeDecision(value: DecisionResolution): ujson.Obj = value match {
-    case DecisionResolution.StartingAdviser(id) => ujson.Obj("kind" -> "starting-adviser", "adviserId" -> id)
-  }
-
-  def decodeDecision(value: ujson.Value, path: String)
-      : Either[ProtocolDecodeFailure, DecisionResolution] = obj(value, path).flatMap { root =>
-    string(root, "kind", path).flatMap {
-      case "starting-adviser" => exact(root, Set("kind", "adviserId"), path)
-        .flatMap(_ => string(root, "adviserId", path)).map(DecisionResolution.StartingAdviser)
-      case kind => Left(InvalidValue(s"$path.kind", s"unknown decision resolution '$kind'"))
-    }}
-
   /** Mirrors the journal's generic decision-answer tags (`"choose-one"` /
     * `"partition"`) and its kind/id option spelling, so a client's answer and
     * the engine's recording of it read alike. An unknown tag fails with the

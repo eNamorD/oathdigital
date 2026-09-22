@@ -5,7 +5,6 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -14,14 +13,12 @@ class RelicWorshipSuite extends munit.FunSuite {
 
   private val worship = DenizenId("173")
   private val modifiers = Vector(RelicWorship.id)
-  private val setup = new FirstGameSetupRules(catalog)
-
   /** A Recover site with a facedown relic, the actor holding Relic Worship as
     * a faceup adviser, with `secrets` faceup secrets and 4 Supply.
     */
   private def staged(secrets: Int = 2)
       : (ReadyGame, CatacombsContributionSuite.Fixture) = {
-    val withRelic = CatacombsContributionSuite.relicSite(setup)
+    val withRelic = CatacombsContributionSuite.relicSite()
     val ready = PowerFixture.withBoard(PowerFixture.asAdviser(CardStaging
       .without(withRelic.ready, worship), worship))(board => board.copy(
       faceUpSecrets = secrets, supply = SupplyTrack(4)))
@@ -111,7 +108,7 @@ class RelicWorshipSuite extends munit.FunSuite {
       "selection, and accepted with two") {
     val catacombs = PowerId("denizen.catacombs")
     def attempt(secrets: Int) = {
-      val fixture = CatacombsContributionSuite.reliclessSite(setup, secrets)
+      val fixture = CatacombsContributionSuite.reliclessSite(secrets)
       val ready = PowerFixture.asAdviser(CardStaging.without(fixture.ready,
         worship), worship)
       rules.startWalker(Ready(ready), ActionRef.Recover, PowerFixture.actor,

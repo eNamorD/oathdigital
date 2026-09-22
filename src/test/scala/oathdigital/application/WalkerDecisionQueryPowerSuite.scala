@@ -2,7 +2,6 @@ package oathdigital.application
 
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.{WalkerParked, WalkerPowers}
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite}
@@ -30,7 +29,6 @@ import oathdigital.model._
   * [[WalkerDecisionProjectionSuite]].
   */
 class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
   private def presentation = new GamePresentationProjector(catalog)
 
   private val window: PowerWindow = PowerWindow.RecoverModifierSelection
@@ -43,7 +41,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     * eligibility gates, so the command never consults them.
     */
   private def actable: (ReadyGame, PlayerId) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val ready = base.updateCurrent(_.copy(turn = base.game.current.turn.copy(
         phase = Phase.Act)))
     (ready, ready.game.current.turn.activePlayer)

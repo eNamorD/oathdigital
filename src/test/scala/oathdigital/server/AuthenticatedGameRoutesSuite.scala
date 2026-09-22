@@ -17,8 +17,9 @@ import oathdigital.application.MembershipRole._
 import oathdigital.gameplay.OathRules
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.serialization.GameEventWire
-import oathdigital.gameplay.setup.FirstGameSetupRules
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.model.{DenizenId, PlayerId}
 import oathdigital.model.OathState
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite {
@@ -32,7 +33,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val identities = database.identities
     val repository = new InMemoryEventStreamRepository
     val gameId = "auth-negotiation-game"
-    val (setupState, setupEvents) = execute(new FirstGameSetupRules(catalog))
+    val (setupState, setupEvents) = execute()
     val OathState.Ready(ready) = setupState: @unchecked
     val actor = ready.game.current.turn.activePlayer
     val other = ready.game.current.players.find(_.player != actor).get
@@ -148,7 +149,10 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
 
     val events = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, events)
-    service.handle("auth-game", 0L, GameCommand.Begin(plan))
+    val begun = service.handle("auth-game", 0L,
+      GameCommand.Begin(chronicle, orders)).toOption.get
+    val p2Hand = freshReady.game.current
+      .temporaryHands(PlayerId("p2")).collectFirst { case id: DenizenId => id }.get
     val csrfToken = "c" * 43
     val csrfDigest = CsrfTokenDigest.fromBytes(
       SensitiveTokenDigest.sha256(csrfToken)
@@ -196,17 +200,17 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       // spoofed one is rejected outright, and no unknown field rides an
       // assignment payload.
       val actorDerivedForge = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
           "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
             "modifiers" -> ujson.Arr()))))
       assertEquals(actorDerivedForge.statusCode(), 422, actorDerivedForge.body())
       val spoofedForgeActor = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
           "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
             "modifiers" -> ujson.Arr(), "playerId" -> "p3"))))
       assertEquals(spoofedForgeActor.statusCode(), 400)
       val spoofedRelic = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
           "intent" -> ujson.Obj("type" -> "resolveWalker",
             "decisionId" -> "forge.assignment",
             "payload" -> ujson.Obj("kind" -> "partition",
@@ -214,50 +218,57 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
               "relicId" -> "relic:spoofed")))))
       assertEquals(spoofedRelic.statusCode(), 400, spoofedRelic.body())
       val actorDerivedMinor = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
           "intent" -> ujson.Obj("type" -> "peekSiteRelics"))))
       assertEquals(actorDerivedMinor.statusCode(), 422, actorDerivedMinor.body())
       val spoofedMinorActor = post(client, base + "/commands", p2User.value,
-        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(begun.nextSequence.toDouble),
           "intent" -> ujson.Obj("type" -> "peekSiteRelics", "playerId" -> "p3"))))
       assertEquals(spoofedMinorActor.statusCode(), 400)
 
+      val pawnDecision = SetupProcedure.pawnDecisionId(PlayerId("p2"))
       val pawn = post(client, base + "/commands", p2User.value,
-        intentBody(1L, "placePawn", "siteId", sites.head.value))
+        resolveWalkerBody(begun.nextSequence, pawnDecision, "site",
+          sites.head.value))
       assertEquals(pawn.statusCode(), 200, pawn.body())
-      assert(ujson.read(pawn.body())("pendingCardDecision")("cards").arr.nonEmpty)
+      assertEquals(ujson.read(pawn.body())("walkerDecision")("decisionId").str,
+        SetupProcedure.adviserDecisionId(PlayerId("p2")))
+      assert(ujson.read(pawn.body())("walkerDecision")("query")("options")
+        .arr.nonEmpty)
       assertNoHiddenPlan(pawn.body())
+      val afterPawn = ujson.read(pawn.body())("nextSequence").num.toLong
 
       Vector(owner, spectator, p3User).foreach { user =>
         val projection = get(client, base, Some(user.value))
         assertEquals(projection.statusCode(), 200)
-        assert(ujson.read(projection.body())("pendingCardDecision").isNull)
+        assert(ujson.read(projection.body())("walkerDecision").isNull)
         assertNoHiddenPlan(projection.body())
       }
 
+      val adviserDecision = SetupProcedure.adviserDecisionId(PlayerId("p2"))
       val impersonation = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj(
-          "expectedNextSequence" -> 2,
+          "expectedNextSequence" -> ujson.Num(afterPawn.toDouble),
           "intent" -> ujson.Obj(
-            "type" -> "resolveCardDecision",
+            "type" -> "resolveWalker",
             "playerId" -> "p3",
-            "decisionId" -> "setup-adviser-0-p2",
-            "resolution" -> ujson.Obj("kind" -> "starting-adviser",
-              "adviserId" -> plan.denizenOrder(9).value)
+            "decisionId" -> adviserDecision,
+            "payload" -> ujson.Obj("kind" -> "choose-one",
+              "optionKind" -> "denizen", "optionId" -> p2Hand.value)
           )
         )))
       assertEquals(impersonation.statusCode(), 400)
       Vector(owner, spectator).foreach { user =>
         assertEquals(post(client, base + "/commands", user.value,
-          intentBody(2L, "placePawn", "siteId", "S1")
+          resolveWalkerBody(afterPawn, adviserDecision, "denizen", p2Hand.value)
         ).statusCode(), 403)
       }
 
       val stale = post(client, base + "/commands", p2User.value,
-        decisionIntentBody(1L, plan.denizenOrder(9).value))
+        resolveWalkerBody(begun.nextSequence, adviserDecision, "denizen", p2Hand.value))
       assertEquals(stale.statusCode(), 409, stale.body())
       val accepted = post(client, base + "/commands", p2User.value,
-        decisionIntentBody(2L, plan.denizenOrder(9).value))
+        resolveWalkerBody(afterPawn, adviserDecision, "denizen", p2Hand.value))
       assertEquals(accepted.statusCode(), 200)
 
       database.close()
@@ -283,28 +294,19 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     assert(!body.contains("denizenOrder"))
   }
 
-  private def intentBody(
-      expected: Long,
-      intentType: String,
-      field: String,
-      value: String
-  ): String = ujson.write(ujson.Obj(
-    "expectedNextSequence" -> ujson.Num(expected.toDouble),
-    "intent" -> ujson.Obj("type" -> intentType, field -> value)
-  ))
-
   private def get(client: HttpClient, url: String, user: Option[String]) = {
     val builder = HttpRequest.newBuilder(URI.create(url)).GET()
     user.foreach(value => builder.header("X-Test-User", value))
     client.send(builder.build(), JavaResponse.BodyHandlers.ofString())
   }
 
-  private def decisionIntentBody(sequence: Long, adviserId: String): String =
+  private def resolveWalkerBody(sequence: Long, decisionId: String,
+      optionKind: String, optionId: String): String =
     ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble),
-      "intent" -> ujson.Obj("type" -> "resolveCardDecision",
-        "decisionId" -> "setup-adviser-0-p2",
-        "resolution" -> ujson.Obj("kind" -> "starting-adviser",
-          "adviserId" -> adviserId))))
+      "intent" -> ujson.Obj("type" -> "resolveWalker",
+        "decisionId" -> decisionId,
+        "payload" -> ujson.Obj("kind" -> "choose-one",
+          "optionKind" -> optionKind, "optionId" -> optionId))))
 
   private def post(client: HttpClient, url: String, user: String, body: String) =
     client.send(HttpRequest.newBuilder(URI.create(url))

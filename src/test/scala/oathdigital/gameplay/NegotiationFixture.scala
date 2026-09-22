@@ -17,11 +17,8 @@ object NegotiationFixture {
     def second: PlayerId = players(1).player
     def third: PlayerId = players(2).player
   }
-
-  private val setup = new FirstGameSetupRules(catalog)
-
   def board(): Board = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val siteId = base.game.current.map.inPlay.find(id =>
       base.game.current.map.sites(id).relics.nonEmpty).get
     val siteRelic = base.game.current.map.sites(siteId).relics.head.id

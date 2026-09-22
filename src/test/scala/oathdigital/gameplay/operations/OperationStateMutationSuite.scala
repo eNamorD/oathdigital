@@ -1,6 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model.OathState._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
@@ -35,8 +35,7 @@ class OperationStateMutationSuite extends munit.FunSuite {
   }
 
   private def titled(holder: Option[PlayerId], side: TitleSide): ReadyGame = {
-    val Ready(base) = FirstGameSetupFixture.execute(
-      new FirstGameSetupRules(FirstGameSetupFixture.catalog))._1: @unchecked
+    val Ready(base) = FirstGameSetupFixture.execute()._1: @unchecked
     base.updateCurrent(_.copy(
       title = OathkeeperState(holder, side)))
   }
@@ -86,5 +85,28 @@ class OperationStateMutationSuite extends munit.FunSuite {
       assertEquals(begin(ready, BeginTurn(playerId, phase)).left.map(_.code),
         Left("invalid-turn-phase"), phase.key)
     }
+  }
+
+  test("a pawn may move from the player area to a site once, with no prior site") {
+    val unplaced = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
+      player => if (player.player == playerId) player.copy(pawnSite = None) else player
+    }))
+    val result = new OperationExecutor().executeAll(unplaced, Vector(
+      Move(Piece.Pawn(playerId),
+        PositionedLocation(Location.PlayArea(playerId)),
+        PositionedLocation(Location.Site(sites.head)))))
+    assert(result.isRight)
+    assertEquals(
+      result.toOption.get.game.current.players.find(_.player == playerId)
+        .flatMap(_.pawnSite),
+      Some(sites.head))
+  }
+
+  test("a pawn already on a site cannot move from the player area again") {
+    val result = new OperationExecutor().executeAll(ready, Vector(
+      Move(Piece.Pawn(playerId),
+        PositionedLocation(Location.PlayArea(playerId)),
+        PositionedLocation(Location.Site(sites.head)))))
+    assert(result.isLeft)
   }
 }

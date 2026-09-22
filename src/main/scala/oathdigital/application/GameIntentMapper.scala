@@ -13,7 +13,6 @@ object GameIntentMapper {
   def bind(actorId: PlayerId, intent: Intent): Result[GameCommand] = {
     val actor = AuthorizedPlayer.forPlayer(actorId)
     intent match {
-      case Intent.PlacePawn(site) => Right(actor.placePawn(SiteId(site)))
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
@@ -25,7 +24,6 @@ object GameIntentMapper {
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
       case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
-      case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
       case Intent.StartWalker(value, modifiers, startArgs) => for {
         ref <- actionRef(value)
         ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
@@ -132,9 +130,6 @@ object GameIntentMapper {
       negotiation(terms).map(DecisionAnswer.ProposeTerms)
     case DecisionAnswerWire.AcceptDealWire => Right(DecisionAnswer.AcceptDeal)
     case DecisionAnswerWire.DeclineDealWire => Right(DecisionAnswer.DeclineDeal)
-  }
-  private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
-    case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))
   }
   private def traverse[A,B](values: Vector[A])(f: A => Result[B]): Result[Vector[B]] = values.foldLeft[Result[Vector[B]]](Right(Vector.empty)) { case (Right(acc), v) => f(v).map(acc :+ _); case (l @ Left(_), _) => l }
 }

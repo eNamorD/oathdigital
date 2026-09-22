@@ -160,7 +160,7 @@ private[application] final class LegalActionProjector(
           Option.when(negotiationStartable(context))("beginNegotiation")
         ).flatten ++ phasePowers.controls(projectedPhasePowers)
         case Phase.Rest => phasePowers.controls(projectedPhasePowers) :+ "finishRest"
-        case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
+        case Phase.Setup | Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
         case Phase.Wake =>
           takeableResources(context).map(takeControl) ++
             phasePowers.controls(projectedPhasePowers) :+ "endWake"

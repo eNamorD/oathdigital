@@ -521,6 +521,20 @@ object OperationShape {
       to: Location,
       state: MovedPieces
   ): (Vector[OperationError], MovedPieces) = (from, to) match {
+    case (Location.PlayArea(source), Location.Site(destination))
+        if source == player =>
+      playerState(ready, player) match {
+        case Left(error) => (Vector(error), state)
+        case Right(_) =>
+          val located = state.pawnSites.getOrElse(player, None)
+          if (located.nonEmpty)
+            (Vector(MissingPiece(Piece.Pawn(player), from)), state)
+          else siteState(ready, destination) match {
+            case Left(error) => (Vector(error), state)
+            case Right(_) => (Vector.empty, state.copy(
+              pawnSites = state.pawnSites.updated(player, Some(destination))))
+          }
+      }
     case (Location.Site(source), Location.Site(destination)) =>
       playerState(ready, player) match {
         case Left(error) => (Vector(error), state)

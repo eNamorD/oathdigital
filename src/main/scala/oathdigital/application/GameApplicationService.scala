@@ -11,7 +11,6 @@ import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.protocol.PreviewTarget
-import oathdigital.gameplay.setup.FirstGameSetupRules
 
 
 final case class GameAccepted(
@@ -85,7 +84,6 @@ final class GameApplicationService(
   import GameApplicationError._
   import RepositoryAppendResult._
 
-  private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog,
     warExhaustionRandomPort = warExhaustionRandomPort,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
@@ -96,9 +94,12 @@ final class GameApplicationService(
   /** Derives a validated initial journal and state without accessing storage. */
   def prepareBootstrap(
       gameId: String,
-      request: FirstGameSetupPlan
+      chronicle: Chronicle,
+      config: FirstGameBootstrapConfig
   ): Either[GameApplicationError, PreparedGameBootstrap] =
-    prepareTransition(gameId, rules.initialState, GameCommand.Begin(request), 0L)
+    prepareTransition(gameId, rules.initialState,
+      GameCommand.Begin(chronicle, ChronicleFirstGamePlan.dealOrder(chronicle, config)),
+      0L)
       .map { case (transition, records) => PreparedGameBootstrap(
         records, transition.state, transition.events, transition.continue) }
 
@@ -227,7 +228,7 @@ final class GameApplicationService(
           Left(StaleClientPosition(expectedNextSequence, 0L))
         else
           command match {
-            case GameCommand.Begin(_) =>
+            case GameCommand.Begin(_, _) =>
               handleAgainst(
                 gameId,
                 rules.initialState,
@@ -246,7 +247,7 @@ final class GameApplicationService(
           ))
         else
           command match {
-            case GameCommand.Begin(_) => Left(DuplicateGame(gameId))
+            case GameCommand.Begin(_, _) => Left(DuplicateGame(gameId))
             case _ =>
               reconstruct(gameId, stream).flatMap { state =>
                 handleAgainst(
@@ -369,8 +370,8 @@ final class GameApplicationService(
           }
         case _ => Left(OathViolation.GameNotStarted)
       }
-      case GameCommand.Begin(plan) =>
-        setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
+      case GameCommand.Begin(chronicle, orders) =>
+        rules.beginGame(state, chronicle, orders)
       case GameCommand.StartWalker(ActionRef.Search, start) => state match {
         case OathState.Ready(ready) => for {
           source <- SearchProcedure.sourceOf(start.startArgs)
@@ -401,13 +402,6 @@ final class GameApplicationService(
               s"walker roll pool ${pool.value} requested $count dice but " +
                 s"the defense dice port only rolls ${defenseDicePort.diceCount}"))
         }
-      case GameCommand.PlacePawn(playerId, siteId) =>
-        setupRules.handle(state, FirstGameSetupCommand.PlacePawn(playerId, siteId))
-      case GameCommand.ChooseAdviser(playerId, adviserId) =>
-        setupRules.handle(
-          state,
-          FirstGameSetupCommand.ChooseAdviser(playerId, adviserId)
-        )
       // Ending Wake is a walker procedure (batch-1 Task 7); the command
       // survives as the client's spelling for it, so no transport and no
       // caller had to learn that the engine changed underneath.
@@ -422,21 +416,6 @@ final class GameApplicationService(
         rules.handle(state, MinorActionCommand.RevealOwnedRelic(playerId, relic))
       case GameCommand.MoveWarbands(playerId, toSite, amount) =>
         rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
-      case GameCommand.ResolveCardDecision(playerId, decision, resolution) =>
-        resolution match {
-          case CardDecisionResolution.StartingAdviser(adviserId) => state match {
-            case progress: OathState.InProgress =>
-              val expected = CardDecisionIds.startingAdviser(
-                playerId, progress.adviserChoices.size)
-              if (decision != expected)
-                Left(OathViolation.InvalidEventOrder(
-                  "stale or incorrect starting-adviser decision ID"))
-              else setupRules.handle(state,
-                FirstGameSetupCommand.ChooseAdviser(playerId, adviserId))
-            case _ => Left(OathViolation.InvalidEventOrder(
-              "starting-adviser resolution has the wrong decision kind"))
-          }
-        }
       case GameCommand.BeginRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>

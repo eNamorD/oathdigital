@@ -26,13 +26,13 @@ class GameHttpWireSuite extends munit.FunSuite {
   test("development and authenticated transports decode the same actorless intent") {
     val json = ActorlessCommandCodec.encode(ActorlessCommandRequest(
       8L,
-      GameIntent.PlacePawn("site:ancient-city")
+      GameIntent.RevealOwnedRelic("relic:ancient-city")
     ))
     val development = GameHttpWire.decodeCommand(json).toOption.get
     val authenticated = AuthenticatedGameHttpWire.decodeCommand(json).toOption.get
     assertEquals(development.expectedNextSequence, authenticated.expectedNextSequence)
     assertEquals(development.intent, authenticated.intent)
-    assertEquals(development.intent, GameIntent.PlacePawn("site:ancient-city"))
+    assertEquals(development.intent, GameIntent.RevealOwnedRelic("relic:ancient-city"))
   }
 
   test("actor injection is rejected by both transports") {
@@ -46,8 +46,8 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("one mapper binds the transport-selected actor") {
     assertEquals(GameIntentMapper.bind(PlayerId("dev-selected"),
-      GameIntent.PlacePawn("site:a")),
-      Right(GameCommand.PlacePawn(PlayerId("dev-selected"), SiteId("site:a"))))
+      GameIntent.RevealOwnedRelic("relic:a")),
+      Right(GameCommand.RevealOwnedRelic(PlayerId("dev-selected"), RelicId("relic:a"))))
     assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
       Right(GameCommand.EndWake(PlayerId("member-seat"))))
   }

@@ -3,18 +3,33 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.catalog.RelicRole
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.model.{OathState, PlayerId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
-import oathdigital.protocol.projection.BoardTargetRefProjection
 import oathdigital.server.{GameHttpWire, GameServerGateway}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 /** `GameServerGateway.submit` with `GameCommand.Begin` is what the
-  * development and trusted bootstrap paths both reduce to once a
-  * `FirstGameSetupPlan` exists; this exercises persistence and redaction
-  * independent of how that plan was derived. */
+  * development and trusted bootstrap paths both reduce to once a Chronicle
+  * has been derived; this exercises persistence and redaction independent
+  * of how that Chronicle was derived. This suite asserts the exact
+  * requested first player, so seating must not shuffle. */
 class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
+  // GeneratedFirstGamePlanFactory always makes the head of the (possibly
+  // shuffled) seating the first player, ignoring the requested
+  // `firstPlayer` -- so with an identity shuffle, "p2" must already be
+  // first in `participants` to end up first here.
+  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort {
+    def shuffle[A](values: Vector[A]): Vector[A] = values
+  }
+  private val config = FirstGameBootstrapConfig(
+    participants.sortBy(p => if (p.playerId == PlayerId("p2")) 0 else 1),
+    PlayerId("p2"))
+
   test("beginning a game persists normal v2 history and returns redacted projection") {
+    val plan = new GeneratedFirstGamePlanFactory(catalog, unshuffled)
+      .build(config).toOption.get
+    val dealt = ChronicleFirstGamePlan.dealOrder(plan.chronicle, plan.resolvedConfig)
     val path = Files.createTempDirectory("oathdigital-bootstrap-")
       .resolve("journal")
     val repository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
@@ -22,14 +37,16 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
     val gateway = new GameServerGateway(service, new GameProjector(catalog))
     val projection =
       try gateway.submit("bootstrap-game", PlayerId("p2"), 0L,
-        GameCommand.Begin(plan)).toOption.get
+        GameCommand.Begin(plan.chronicle, dealt)).toOption.get
       finally repository.close()
     val json = GameHttpWire.encodeProjection(projection)
 
-    assertEquals(projection.nextSequence, 1L)
-    assertEquals(projection.phase, "awaiting-pawn")
-    assertEquals(projection.privateAdviserPreview.size, 3)
-    assertEquals(projection.playerBoards.size, participants.size)
+    // GameStarted plus the WalkerParked fact from Setup's immediate first
+    // park (2026-09-21 Chronicle design, slice 2): two records for one
+    // Begin command.
+    assertEquals(projection.nextSequence, 2L)
+    assertEquals(projection.phase, "setup-walker-decision")
+    assertEquals(projection.playerBoards.size, config.participants.size)
     assert(projection.world.flatMap(_.sites).exists(_.looseFavor > 0))
     assert(projection.world.flatMap(_.sites).exists(_.relics.facedownCount > 0))
     assert(projection.world.flatMap(_.sites).exists(_.forces.exists(_.forceKind == "bandit")))
@@ -52,20 +69,19 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
         track.firstPlayerId)), Some((1, 0, true, 4, "p2")))
     assertEquals(projection.relicDeckCount +
       projection.world.flatMap(_.sites).map(_.relics.facedownCount).sum,
-      plan.relicOrder.size)
-    val placement = projection.boardTargetActions.head
-    assertEquals(placement.actionKind, "place-pawn")
-    assert(placement.autoActivate)
-    assertEquals(placement.minimum -> placement.maximum, 1 -> 1)
-    assertEquals(placement.candidates.map(_.target).toSet,
-      projection.world.flatMap(_.sites).map(site =>
-        oathdigital.model.SiteId(site.siteId)).map(site =>
-        (BoardTargetRefProjection.Site(site.value): BoardTargetRefProjection)).toSet)
-    val targetWire = ujson.read(json)("boardTargetActions")(0)
-    assertEquals(targetWire("actionKind").str, "place-pawn")
-    assertEquals(targetWire("minimum").num.toInt ->
-      targetWire("maximum").num.toInt, 1 -> 1)
-    assertEquals(targetWire("candidates")(0)("target")("kind").str, "site")
+      plan.chronicle.relicDeck.size)
+    // The generic walker decision panel renders Setup's first pawn placement
+    // with no bespoke code (2026-09-21 Chronicle design, slice 2): no
+    // separate `boardTargetActions` entry, just the parked `Decide`.
+    assert(projection.boardTargetActions.isEmpty)
+    val decision = projection.walkerDecision.get
+    assertEquals(decision.action, "setup")
+    assertEquals(decision.decisionId, SetupProcedure.pawnDecisionId(PlayerId("p2")))
+    assertEquals(decision.kind, "decide")
+    assertEquals(decision.query.get.form, "choose-one")
+    val siteOptions = decision.query.get.options
+    assertEquals(siteOptions.size, 8)
+    assert(siteOptions.forall(_.kind == "site"))
     assert(!json.contains("relicOrder"))
     assert(!json.contains("worldDeckOrder"))
     assert(!json.contains("denizenOrder"))
@@ -76,13 +92,15 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
     try {
       val loaded = new GameApplicationService(catalog, reopened)
         .load("bootstrap-game").toOption.flatten.get
-      assertEquals(loaded.nextSequence, 1L)
-      assert(loaded.state.isInstanceOf[OathState.InProgress])
+      assertEquals(loaded.nextSequence, 2L)
+      assert(loaded.state.isInstanceOf[OathState.Ready])
       val publicProjection = new GameProjector(catalog).projectPublic(
         "bootstrap-game", loaded)
-      assertEquals(publicProjection.privateAdviserPreview, Vector.empty)
-      projection.privateAdviserPreview.foreach(card =>
-        assert(!GameHttpWire.encodeProjection(publicProjection).contains(card.cardId)))
+      // Nobody but the awaited player sees the parked decision's owner-private
+      // projection (WalkerDecisionProjector.project); the public view instead
+      // sees who it is waiting on.
+      assert(publicProjection.walkerDecision.isEmpty)
+      assertEquals(publicProjection.walkerWaiting.map(_.playerId), Some("p2"))
     } finally reopened.close()
   }
 }

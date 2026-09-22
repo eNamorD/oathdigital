@@ -65,6 +65,7 @@ final case class CampaignState(
   */
 sealed trait Phase extends Product with Serializable { def key: String }
 object Phase {
+  case object Setup extends Phase { val key = "setup" }
   case object Wake extends Phase { val key = "wake" }
   case object Act extends Phase { val key = "act" }
   case object Rest extends Phase { val key = "rest" }
@@ -75,7 +76,7 @@ object Phase {
     val key = "war-exhaustion"
   }
 
-  val all: Vector[Phase] = Vector(Wake, Act, Rest, RoundEnd, WarExhaustion)
+  val all: Vector[Phase] = Vector(Setup, Wake, Act, Rest, RoundEnd, WarExhaustion)
 
   def fromKey(key: String): Option[Phase] = all.find(_.key == key)
 }

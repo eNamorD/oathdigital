@@ -25,10 +25,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   /** The pre-release stream has one current format and no compatibility reader. */
   val FormatVersion: Int = 1
   val MaxSafeSequence: Long = 9007199254740991L
-  val FirstGameStartedType = "setup.first-game-started"
-  val PawnPlacedType = "setup.first-game-pawn-placed"
-  val AdviserChosenType = "setup.starting-adviser-chosen"
-  val FirstGameCompletedType = "setup.first-game-completed"
+  val GameStartedType = "setup.game-started"
   val IgnoredRulesRecordedType = "diagnostic.ignored-rules-recorded"
   val SiteRelicsPeekedType = "gameplay.site-relics-peeked"
   val OwnedRelicRevealedType = "gameplay.owned-relic-revealed"

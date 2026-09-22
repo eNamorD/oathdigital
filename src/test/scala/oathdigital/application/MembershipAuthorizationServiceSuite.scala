@@ -4,7 +4,7 @@ import java.nio.file.Files
 
 import oathdigital.application.AuthorizationFailure._
 import oathdigital.application.ProjectionScope._
-import oathdigital.model.{DenizenId, PlayerId, SiteId}
+import oathdigital.model.{DenizenId, PlayerId, RelicId, SiteId}
 import oathdigital.persistence.HsqldbDatabaseOwner
 
 class MembershipAuthorizationServiceSuite extends munit.FunSuite {
@@ -84,12 +84,12 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
       val actor = service.authorizeCommand(
         "game-1", AuthenticatedUser(playerUser)).toOption.get
       assertEquals(
-        actor.placePawn(SiteId("site-1")),
-        GameCommand.PlacePawn(PlayerId("p1"), SiteId("site-1"))
+        actor.endWake,
+        GameCommand.EndWake(PlayerId("p1"))
       )
       assertEquals(
-        actor.chooseAdviser(DenizenId("9")),
-        GameCommand.ChooseAdviser(PlayerId("p1"), DenizenId("9"))
+        actor.revealOwnedRelic(RelicId("r1")),
+        GameCommand.RevealOwnedRelic(PlayerId("p1"), RelicId("r1"))
       )
       assertEquals(
         service.authorizeCommand("game-1", AuthenticatedUser(ownerUser)),

@@ -4,7 +4,7 @@ class CommandProtocolSuite extends munit.FunSuite {
   import GameIntent._
 
   private val examples: Vector[GameIntent] = Vector(
-    PlacePawn("site:a"), EndWake, BeginRest, FinishRest,
+    EndWake, BeginRest, FinishRest,
     UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
     StartWalker("search", Vector.empty,
       Vector(WalkerStartArgWire("button", "search:world"))),
@@ -13,7 +13,6 @@ class CommandProtocolSuite extends munit.FunSuite {
     PeekSiteRelics,
     RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
     StartWalker("campaign", Vector.empty),
-    ResolveCardDecision("d1", DecisionResolution.StartingAdviser("d1")),
     StartWalker("recover", Vector.empty),
     StartWalker("recover", Vector("denizen.catacombs")),
     RollWalker("recover.pool"),
@@ -96,11 +95,6 @@ class CommandProtocolSuite extends munit.FunSuite {
       assertEquals(failure.path, "$.intent.type")
       assert(failure.message.contains("unknown intent type"))
     }
-  }
-
-  test("retired Search card resolution is rejected") {
-    val raw = ujson.read("""{"kind":"search","kept":{"kind":"denizen","id":"d1"},"discardedInOrder":[],"placement":{"kind":"discard","replace":null}}""")
-    assert(CommandNestedCodecs.decodeDecision(raw, "$.resolution").isLeft)
   }
 
   test("malformed fields and structural duplicates retain exact paths") {

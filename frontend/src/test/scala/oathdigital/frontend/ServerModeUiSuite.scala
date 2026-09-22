@@ -775,8 +775,8 @@ class ServerModeUiSuite extends FunSuite {
 
   test("inactive setup viewer waits without pawn or private adviser controls") {
     val value = projection(
-      Set("placePawn", "chooseAdviser"),
-      phase = "awaiting-adviser",
+      Set.empty,
+      phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
       ready = false
     )
@@ -799,8 +799,8 @@ class ServerModeUiSuite extends FunSuite {
     )
 
     val setup = projection(
-      Set("chooseAdviser"),
-      phase = "awaiting-adviser",
+      Set.empty,
+      phase = "setup-walker-decision",
       ready = false
     )
     assert(ServerUiSupport.viewerPresentation(
@@ -849,14 +849,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(badge, Some("2 Supply · +1 warband"))
     assert(!badge.get.contains(candidate.label))
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
-  }
-
-  test("card-decision zone helpers are specific to starting advisers") {
-    val adviser = PendingCardDecision("d", "starting-adviser", "red", "Choose",
-      Vector.empty, Vector(CardDetails("a", "denizen", "A")), 1, 1, false, Map.empty)
-    assertEquals(ServerUiSupport.cardDecisionZoneHelpers(adviser),
-      ServerUiSupport.CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
-        "The remaining candidates are discarded in order."))
   }
 
   test("populated site details render properties, stable IDs, and hidden relics") {

@@ -22,7 +22,6 @@ object ServerModeUi {
     var walkerPartitionDraft = Option.empty[WalkerPartitionDraft]
     var walkerDistributeDraft = Option.empty[WalkerDistributeDraft]
     var walkerSelectionDraft = Option.empty[WalkerSelectionDraft]
-    var cardDecisionState = Option.empty[CardDecisionState]
     var modifierWorkflow = Option.empty[ModifierWorkflow]
     var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
     var rawEvents = Vector.empty[RawEvent]
@@ -149,10 +148,6 @@ object ServerModeUi {
             walkerSelectionDraft,
             BoardSelectionContext(gameId, selectedPlayer,
               displayed.nextSequence), displayed.walkerDecision)
-          cardDecisionState = displayed.pendingCardDecision.map { decision =>
-            cardDecisionState.filter(_.decisionId == decision.decisionId)
-              .getOrElse(CardDecisionState.initial(decision))
-          }
           projection = Some(displayed)
           failure = retainedNotice
           render()
@@ -173,7 +168,6 @@ object ServerModeUi {
               retainedNotice
             ) =>
           boardSelectionState = None
-          cardDecisionState = None
           modifierWorkflow = None
           facedownAdviserDraft = None
           polling.foreach(_.stop())
@@ -213,7 +207,6 @@ object ServerModeUi {
       gameId = id.trim
       projection = None
       boardSelectionState = None
-      cardDecisionState = None
       modifierWorkflow = None
       rawEvents = Vector.empty
       rawHistorySequence = None
@@ -425,8 +418,6 @@ object ServerModeUi {
       def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
       def currentWalkerSelection = walkerSelectionDraft
       def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]) = walkerSelectionDraft = value
-      def currentCardDecision = cardDecisionState
-      def currentCardDecision_=(value: Option[CardDecisionState]) = cardDecisionState = value
       def currentModifierWorkflow = modifierWorkflow
       def currentFacedownAdviserDraft = facedownAdviserDraft
       def chooseFacedownAdviser(cardId: String) = {

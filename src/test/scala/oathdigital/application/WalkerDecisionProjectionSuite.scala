@@ -6,7 +6,6 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.gameplay.actions.forge.ForgeProcedure
@@ -41,8 +40,6 @@ import oathdigital.protocol.projection.{DecisionOptionProjection,
 class WalkerDecisionProjectionSuite extends munit.FunSuite {
   private def presentation = new GamePresentationProjector(catalog)
   private def walkerDecisions = new WalkerDecisionProjector(catalog, presentation)
-  private def setupRules = new FirstGameSetupRules(catalog)
-
   private final class FixedRecoverDice(faces: Vector[DefenseDieFace])
       extends DefenseDicePort {
     def rollTwo() = faces
@@ -80,36 +77,19 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     RecoverProcedure.actorSite(ready, actor)
       .flatMap(site => RecoverRules.difficulty(catalog, site)).get
 
-  private def execute(
-      service: GameApplicationService,
-      gameId: String,
-      placementSites: Vector[SiteId],
-      setupPlan: oathdigital.model.FirstGameSetupPlan
-  ): GameAccepted = {
-    var accepted = service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
-      .toOption.get
-    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
-    order.zipWithIndex.foreach { case (playerId, index) =>
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.PlacePawn(playerId, placementSites(index))).toOption.get
-      val participantIndex = setupPlan.participants.indexWhere(_.playerId == playerId)
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ChooseAdviser(playerId,
-          setupPlan.denizenOrder(6 + participantIndex * 3))).toOption.get
-    }
-    accepted
-  }
-
   private def startedAtRoll(gameId: String, dice: DefenseDicePort,
       maxDifficulty: Int = 8, minRelicSlots: Int = 1) = {
     val recoverSite = recoverSiteWithDifficulty(maxDifficulty, minRelicSlots)
-    val recoverPlan = plan.copy(orderedSites = recoverSite +:
-      plan.orderedSites.filterNot(_ == recoverSite))
-    val actor = recoverPlan.firstPlayer
+    val recoverChronicle = chronicle.copy(atlasBox =
+      chronicle.atlasBox.find(_.site == recoverSite).get +:
+        chronicle.atlasBox.filterNot(_.site == recoverSite))
+    val recoverSites = recoverChronicle.atlasBox.take(8).map(_.site)
+    val actor = orders.firstPlayer
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository,
       defenseDicePort = dice)
-    val setup = execute(service, gameId, recoverPlan.orderedSites, recoverPlan)
+    val setup = ParkedServiceFixture.setUp(service, gameId, recoverSites,
+      recoverChronicle, orders)
     val act = service.handle(gameId, setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     val started = service.handle(gameId, act.nextSequence,
@@ -336,7 +316,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
   test("the projector reports the roll the walker actually parked at with " +
       "Catacombs in effect, and would misreport it if it folded without " +
       "the power") {
-    val fixture = CatacombsContributionSuite.reliclessSite(setupRules)
+    val fixture = CatacombsContributionSuite.reliclessSite()
     val rules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
     val started = rules.startWalker(Ready(fixture.ready), ActionRef.Recover,

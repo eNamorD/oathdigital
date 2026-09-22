@@ -25,10 +25,13 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
   test("trusted gateway projects only the seat and binds command identity") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    assert(service.handle("trusted", 0L, GameCommand.Begin(plan)).isRight)
+    val begun = service.handle("trusted", 0L,
+      GameCommand.Begin(chronicle, orders)).toOption.get
     val gateway = new TrustedGameGateway(service, new GameProjector(catalog))
     val seat = TrustedSeat("trusted", "p2")
-    val command = GameHttpWire.decodeCommand(s"""{"expectedNextSequence":1,"intent":{"type":"placePawn","siteId":"${sites.head.value}"}}""").toOption.get
+    val pawnDecision = oathdigital.gameplay.setup.SetupProcedure
+      .pawnDecisionId(oathdigital.model.PlayerId("p2"))
+    val command = GameHttpWire.decodeCommand(s"""{"expectedNextSequence":${begun.nextSequence},"intent":{"type":"resolveWalker","decisionId":"$pawnDecision","payload":{"kind":"choose-one","optionKind":"site","optionId":"${sites.head.value}"}}}""").toOption.get
     val accepted = gateway.submit("trusted", seat, command).toOption.get
     assertEquals(accepted.viewerPlayerId, Some("p2"))
     assertEquals(gateway.load("trusted", TrustedSeat("trusted", "p3"))
@@ -38,20 +41,22 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     assertEquals(development.viewerPlayerId, None)
     assert(!oathdigital.protocol.projection.GameProjectionCodec.encode(development)
       .contains("viewerPlayerId"))
-    assert(accepted.pendingCardDecision.nonEmpty)
-    assert(gateway.load("trusted", seat).toOption.get.pendingCardDecision.nonEmpty)
-    assert(gateway.load("trusted", TrustedSeat("trusted", "p3")).toOption.get.pendingCardDecision.isEmpty)
+    assert(accepted.walkerDecision.nonEmpty)
+    assert(gateway.load("trusted", seat).toOption.get.walkerDecision.nonEmpty)
+    assert(gateway.load("trusted", TrustedSeat("trusted", "p3")).toOption.get.walkerDecision.isEmpty)
     assertEquals(gateway.load("other", seat), Left(TrustedSeatFailure.Forbidden))
     assertEquals(gateway.submit("other", seat, command), Left(TrustedSeatFailure.Forbidden))
     assertEquals(gateway.submit("trusted", seat, command),
-      Left(TrustedSeatFailure.Application(GameApplicationError.StaleClientPosition(1L, 2L))))
-    assertEquals(service.load("trusted").toOption.flatten.get.nextSequence, 2L)
-    assert(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"placePawn","playerId":"p3","siteId":"S1"}}""").isLeft)
+      Left(TrustedSeatFailure.Application(GameApplicationError.StaleClientPosition(
+        begun.nextSequence, accepted.nextSequence))))
+    assertEquals(service.load("trusted").toOption.flatten.get.nextSequence,
+      accepted.nextSequence)
+    assert(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}""").isLeft)
   }
 
   test("trusted preview binds resolved actor and rejects a different game") {
     val repository = new InMemoryEventStreamRepository
-    val (state, events) = execute(new oathdigital.gameplay.setup.FirstGameSetupRules(catalog))
+    val (state, events) = execute()
     val oathdigital.model.OathState.Ready(ready) = state: @unchecked
     val actor = ready.game.current.turn.activePlayer
     val act = new oathdigital.gameplay.OathRules(catalog).startWalker(state,
@@ -94,23 +99,32 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
       val api = "/games/game-a/api"
       val loaded = send(client, base, api, cookie = Some(s"oath_seat=$code"))
       assertEquals(loaded.statusCode(), 200, loaded.body())
-      val site = ujson.read(loaded.body())("world")(0)("sites")(0)("siteId").str
-      val command = ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-        "intent" -> ujson.Obj("type" -> "placePawn", "siteId" -> site)))
-      val spoofed = command.replace("\"type\":\"placePawn\"", "\"type\":\"placePawn\",\"playerId\":\"p1\"")
+      val decisionId = ujson.read(loaded.body())("walkerDecision")("decisionId").str
+      val site = ujson.read(loaded.body())("walkerDecision")("query")("options")(0)("id").str
+      val currentSequence = ujson.read(loaded.body())("nextSequence").num.toLong
+      val command = ujson.write(ujson.Obj(
+        "expectedNextSequence" -> ujson.Num(currentSequence.toDouble),
+        "intent" -> ujson.Obj("type" -> "resolveWalker", "decisionId" -> decisionId,
+          "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
+            "optionId" -> site))))
+      val spoofed = command.replace("\"type\":\"resolveWalker\"",
+        "\"type\":\"resolveWalker\",\"playerId\":\"p1\"")
       assertEquals(send(client, base, api + "/commands", Some(spoofed), Some(s"oath_seat=$code")).statusCode(), 400)
-      val stale = send(client, base, api + "/commands", Some(command.replace(":1,", ":0,")), Some(s"oath_seat=$code"))
+      val stale = send(client, base, api + "/commands", Some(command.replace(
+        s""""expectedNextSequence":$currentSequence,""", """"expectedNextSequence":0,""")),
+        Some(s"oath_seat=$code"))
       assertEquals(stale.statusCode(), 409, stale.body())
-      assertEquals(ujson.read(send(client, base, api, cookie = Some(s"oath_seat=$code")).body())("nextSequence").num, 1.0)
+      assertEquals(ujson.read(send(client, base, api, cookie = Some(s"oath_seat=$code")).body())("nextSequence").num,
+        currentSequence.toDouble)
       val accepted = send(client, base, api + "/commands", Some(command), Some(s"oath_seat=$code"))
       assertEquals(accepted.statusCode(), 200, accepted.body())
-      assert(ujson.read(accepted.body())("pendingCardDecision")("cards").arr.nonEmpty)
+      assert(ujson.read(accepted.body())("walkerDecision")("query")("options").arr.nonEmpty)
       val reloaded = send(client, base, api, cookie = Some(s"oath_seat=$code"))
-      assert(ujson.read(reloaded.body())("pendingCardDecision")("cards").arr.nonEmpty)
+      assert(ujson.read(reloaded.body())("walkerDecision")("query")("options").arr.nonEmpty)
       val otherCode = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
       val other = send(client, base, api, cookie = Some(s"oath_seat=$otherCode"))
       assertEquals(other.statusCode(), 200)
-      assert(ujson.read(other.body())("pendingCardDecision").isNull)
+      assert(ujson.read(other.body())("walkerDecision").isNull)
       Vector(accepted.body(), reloaded.body(), other.body()).foreach { body =>
         assert(!body.contains(code))
         assert(!body.contains("denizenOrder"))
@@ -308,14 +322,20 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
       val otherSeat = send(client, current._3, api, cookie = Some(otherCookie))
       assertEquals(otherSeat.statusCode(), 200, otherSeat.body())
       assertEquals(ujson.read(otherSeat.body())("viewerPlayerId").str, "p1")
-      assert(ujson.read(otherSeat.body())("pendingCardDecision").isNull)
-      val site = ujson.read(restored.body())("world")(0)("sites")(0)("siteId").str
-      val command = ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-        "intent" -> ujson.Obj("type" -> "placePawn", "siteId" -> site)))
+      assert(ujson.read(otherSeat.body())("walkerDecision").isNull)
+      val decisionId = ujson.read(restored.body())("walkerDecision")("decisionId").str
+      val site = ujson.read(restored.body())("walkerDecision")("query")("options")(0)("id").str
+      val currentSequence = ujson.read(restored.body())("nextSequence").num.toLong
+      val command = ujson.write(ujson.Obj(
+        "expectedNextSequence" -> ujson.Num(currentSequence.toDouble),
+        "intent" -> ujson.Obj("type" -> "resolveWalker", "decisionId" -> decisionId,
+          "payload" -> ujson.Obj("kind" -> "choose-one", "optionKind" -> "site",
+            "optionId" -> site))))
       assertEquals(send(client, current._3, api + "/commands", Some(command),
         Some(otherCookie)).statusCode(), 422)
       assertEquals(ujson.read(send(client, current._3, api,
-        cookie = Some(retainedCookie)).body())("nextSequence").num, 1.0)
+        cookie = Some(retainedCookie)).body())("nextSequence").num,
+        currentSequence.toDouble)
       assertEquals(send(client, current._3, api + "/commands", Some(command),
         Some(retainedCookie)).statusCode(), 200)
     } finally {

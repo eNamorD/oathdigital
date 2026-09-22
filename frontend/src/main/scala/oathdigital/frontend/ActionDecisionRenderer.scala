@@ -25,10 +25,6 @@ private[frontend] object ActionDecisionRenderer {
              .map(_.replace('-', ' ')).getOrElse("winner")
            s"Game over — $winner wins ($reason)."
          }
-     case None if value.phase == "awaiting-adviser" =>
-       node.textContent = "Setup — choose your starting adviser."
-     case None if value.phase == "awaiting-pawn" =>
-       node.textContent = "Setup — choose your pawn's starting site."
      case None =>
        node.appendChild(dom.document.createTextNode(
          s"${value.phase}; active participant: "
@@ -301,77 +297,6 @@ private[frontend] object ActionDecisionRenderer {
        panel.appendChild(finish)
      }
    }
-   value.pendingCardDecision.filter(_ => presentation.showGameplayControls)
-     .foreach(decision => panel.appendChild(cardDecision(value, decision, ui)))
    panel
- }
- def cardDecision(
-     value: GameProjection,
-     decision: PendingCardDecision,
-     ui: ServerUiView
- ): dom.Element = {
-   import ui._
-   val shell = element("section", "card-decision")
-   shell.setAttribute("aria-labelledby", "card-decision-title")
-   shell.setAttribute("data-decision-kind", decision.kind); shell.appendChild(text("h2", "", decision.prompt))
-   shell.lastChild.asInstanceOf[dom.Element].id = "card-decision-title"
-   val state = currentCardDecision.filter(_.decisionId == decision.decisionId)
-     .getOrElse(CardDecisionState.initial(decision))
-   def update(next: CardDecisionState): Unit = {
-     currentCardDecision = Some(next)
-     rerender()
-   }
-   def cardNode(card: CardDetails, zone: String): dom.Element = {
-     val node = element("article", "decision-card")
-     node.setAttribute("tabindex", "0")
-     node.setAttribute("draggable", "true")
-     node.setAttribute("data-card-id", card.cardId); node.setAttribute("aria-label", card.name)
-     node.appendChild(cardDetailsPopover(card))
-     val moveLabel = if (zone == "keep") s"Discard ${card.name}" else s"Keep ${card.name}"
-     val move = if (zone == "keep") button("→", "move-discard")
-       else button("←", "move-keep")
-     move.setAttribute("aria-label", moveLabel); move.setAttribute("title", moveLabel)
-     move.onclick = _ => if (zone == "keep") update(state.moveToDiscard(card.cardId))
-       else update(state.moveToKeep(card.cardId))
-     node.appendChild(move)
-     node.addEventListener("dragstart", (event: dom.Event) =>
-       event.asInstanceOf[dom.DragEvent].dataTransfer
-         .setData("text/plain", card.cardId))
-     node
-   }
-   def arrangementZones(): dom.Element = {
-     val helpers = cardDecisionZoneHelpers(decision)
-     val zones = element("div", "decision-zones")
-     val keep = element("section", "decision-zone keep-zone")
-     keep.appendChild(text("h3", "", "Keep")); keep.appendChild(text("p", "decision-zone-helper", helpers.keep))
-     state.keep.foreach(card => keep.appendChild(cardNode(card, "keep")))
-     keep.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
-     keep.addEventListener("drop", (event: dom.Event) => {
-       event.preventDefault()
-       update(dropOnKeep(state, event.asInstanceOf[dom.DragEvent]
-         .dataTransfer.getData("text/plain")))
-     })
-     val discard = element("section", "decision-zone discard-zone"); val discardHeading = element("div", "decision-zone-heading")
-     discardHeading.appendChild(text("h3", "", "Discard"))
-     discardHeading.appendChild(text("p", "decision-zone-helper", helpers.discard))
-     discard.appendChild(discardHeading)
-     state.discard.foreach(card => discard.appendChild(cardNode(card, "discard")))
-     discard.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
-     discard.addEventListener("drop", (event: dom.Event) => {
-       event.preventDefault()
-       update(dropOnDiscard(state, event.asInstanceOf[dom.DragEvent]
-         .dataTransfer.getData("text/plain")))
-     })
-     zones.appendChild(keep); zones.appendChild(discard)
-     zones
-   }
-   shell.appendChild(arrangementZones())
-   val confirm = button("Confirm adviser", "decision-confirm")
-   confirm.disabled = !state.arrangementValid(decision.cards) || !canControl
-   confirm.onclick = _ => state.keep.headOption.foreach(card => submitCommand(
-     GameCommand.ResolveCardDecision(decision.decisionId,
-       DecisionResolution.StartingAdviser(card.cardId))))
-   shell.appendChild(confirm)
-   shell
  }
 }

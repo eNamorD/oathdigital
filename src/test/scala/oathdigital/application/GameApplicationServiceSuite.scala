@@ -22,14 +22,11 @@ import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer, ChooseM
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.application.ForgeWalkerFixture.{blankCampaignDice,
   forgeReadyGame, mixedForgeCostCatalog}
-import oathdigital.model.OathEvent.{
-  GamePawnPlaced,
-  FirstGameStarted
-}
-import oathdigital.model.OathViolation.{CatalogMismatch, WrongPlayer}
+import oathdigital.model.OathViolation.WrongPlayer
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.OathRules
 
@@ -37,22 +34,36 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   private val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
     _.id.value == "denizen.catacombs")).get.id.value)
 
+  /** `target` swapped into the in-play 8, whether or not it was already one
+    * of the fixture's own 8 sites: the actual map (not merely the client's
+    * pick) determines which sites Recover/Muster/etc. see in play, so a
+    * test that needs a specific site in play must put it in `chronicle`'s
+    * own `atlasBox`, not just choose it as a placement.
+    */
+  private def withSiteInPlay(target: SiteId): (Chronicle, Vector[SiteId]) = {
+    val stored = chronicle.atlasBox.find(_.site == target)
+      .getOrElse(StoredSite(target))
+    val newChronicle = chronicle.copy(atlasBox =
+      stored +: chronicle.atlasBox.filterNot(_.site == target).take(7))
+    (newChronicle, newChronicle.atlasBox.take(8).map(_.site))
+  }
+
   test("withWorldDeckTop preserves two absent requested denizens of one suit") {
     val (suit, absent) = catalog.denizens.groupBy(_.suit).iterator
       .map { case (suit, definitions) => suit -> definitions
         .map(definition => DenizenId(definition.id.value))
-        .filterNot(plan.denizenOrder.contains) }
+        .filterNot(chronicle.worldDeck.contains) }
       .find(_._2.size >= 2).get
-    val (otherSuits, sameSuit) = plan.denizenOrder.partition(id =>
+    val (otherSuits, sameSuit) = chronicle.worldDeck.partition(id =>
       catalog.denizens.find(_.id.value == id.value).forall(_.suit != suit))
-    val base = plan.copy(denizenOrder = otherSuits ++ sameSuit)
+    val base = chronicle.copy(worldDeck = otherSuits ++ sameSuit)
     val requested = absent.take(2).toVector
-    val changed = ParkedServiceFixture.withWorldDeckTop(base, requested)
-    val dealt = 6 + changed.participants.size * 3
+    val (changed, _) = ParkedServiceFixture.withWorldDeckTop(base, orders, requested)
+    val dealt = 6 + orders.participants.size * 3
 
-    assertEquals(changed.denizenOrder.slice(dealt, dealt + 2), requested)
-    assertEquals(changed.denizenOrder.distinct.size, changed.denizenOrder.size)
-    assert(requested.forall(changed.denizenOrder.contains))
+    assertEquals(changed.worldDeck.slice(dealt, dealt + 2), requested)
+    assertEquals(changed.worldDeck.distinct.size, changed.worldDeck.size)
+    assert(requested.forall(changed.worldDeck.contains))
   }
 
   test("beginRest through the service parks the off-turn League Treaty ruler " +
@@ -76,17 +87,26 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertNotEquals(after.game.current.turn.activePlayer, active)
   }
 
-  private def catacombsPlan = {
+  private def catacombsSetup: (Chronicle, SetupOrders, Vector[SiteId]) = {
     val recoverSite = catalog.sites.find(site => site.recoverDifficulty.nonEmpty &&
       site.relicSlots == 1 && !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val actorIndex = plan.participants.indexWhere(_.playerId == PlayerId("p2"))
+    val actorIndex = orders.participants.indexWhere(_.playerId == PlayerId("p2"))
     val adviserIndex = 6 + actorIndex * 3
-    val oldIndex = plan.denizenOrder.indexWhere(_.value == catacombsId.value)
-    val order = if (oldIndex < 0) plan.denizenOrder.updated(adviserIndex, catacombsId)
-      else plan.denizenOrder.updated(adviserIndex, catacombsId)
-        .updated(oldIndex, plan.denizenOrder(adviserIndex))
-    plan.copy(orderedSites = recoverSite +: plan.orderedSites.filterNot(_ == recoverSite),
-      denizenOrder = order)
+    val oldIndex = chronicle.worldDeck.indexWhere(_.value == catacombsId.value)
+    val order = if (oldIndex < 0) chronicle.worldDeck.updated(adviserIndex, catacombsId)
+      else chronicle.worldDeck.updated(adviserIndex, catacombsId)
+        .updated(oldIndex, chronicle.worldDeck(adviserIndex))
+    val worldDeckChronicle = chronicle.copy(worldDeck = order)
+    val (catacombsChronicle, recoverSites) = {
+      val stored = worldDeckChronicle.atlasBox.find(_.site == recoverSite)
+        .getOrElse(StoredSite(recoverSite))
+      val swapped = worldDeckChronicle.copy(atlasBox =
+        stored +: worldDeckChronicle.atlasBox.filterNot(_.site == recoverSite).take(7))
+      (swapped, swapped.atlasBox.take(8).map(_.site))
+    }
+    val catacombsOrders = ChronicleFirstGamePlan.dealOrder(catacombsChronicle,
+      FirstGameBootstrapConfig(orders.participants, orders.firstPlayer))
+    (catacombsChronicle, catacombsOrders, recoverSites)
   }
 
   private final class CountingRecoverDice extends DefenseDicePort {
@@ -121,16 +141,15 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       site.recoverDifficulty.exists(difficulty => difficulty > 0 && difficulty <= 4) &&
         site.relicSlots > 0 &&
         !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverPlan = plan.copy(orderedSites = recoverSite +:
-      plan.orderedSites.filterNot(_ == recoverSite))
-    val actor = recoverPlan.firstPlayer
+    val (recoverChronicle, recoverSites) = withSiteInPlay(recoverSite)
+    val actor = orders.firstPlayer
 
     val walkerRepository = new InMemoryEventStreamRepository
     val walkerDice = new CountingRecoverDice
     def walkerService = new GameApplicationService(catalog, walkerRepository,
       defenseDicePort = walkerDice)
-    val walkerSetup = execute(walkerService, "walker-recover",
-      recoverPlan.orderedSites, recoverPlan)
+    val walkerSetup = execute(walkerService, "walker-recover", recoverSites,
+      recoverChronicle)
     val walkerAct = walkerService.handle("walker-recover",
       walkerSetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
 
@@ -217,15 +236,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       site.recoverDifficulty.exists(difficulty => difficulty > 0 &&
         difficulty <= 4) && site.relicSlots > 0 &&
         !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverPlan = plan.copy(orderedSites = recoverSite +:
-      plan.orderedSites.filterNot(_ == recoverSite))
-    val actor = recoverPlan.firstPlayer
+    val (recoverChronicle, recoverSites) = withSiteInPlay(recoverSite)
+    val actor = orders.firstPlayer
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository,
       defenseDicePort = new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
         DefenseDieFace.Doubler)))
-    val setup = execute(service, "walker-unknown-modifier",
-      recoverPlan.orderedSites, recoverPlan)
+    val setup = execute(service, "walker-unknown-modifier", recoverSites,
+      recoverChronicle)
     val act = service.handle("walker-unknown-modifier", setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
 
@@ -259,16 +277,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val recoverSite = catalog.sites.find(site =>
       site.recoverDifficulty.nonEmpty && site.relicSlots > 0 &&
         !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverPlan = plan.copy(orderedSites = recoverSite +:
-      plan.orderedSites.filterNot(_ == recoverSite))
+    val (recoverChronicle, recoverSites) = withSiteInPlay(recoverSite)
     val repository = new InMemoryEventStreamRepository
     val dice = new FixedRecoverDice(Vector(DefenseDieFace.Blank,
       DefenseDieFace.Blank))
     def service = new GameApplicationService(catalog, repository,
       defenseDicePort = dice)
-    val setup = execute(service, "walker-continue", recoverPlan.orderedSites,
-      recoverPlan)
-    val actor = recoverPlan.firstPlayer
+    val setup = execute(service, "walker-continue", recoverSites, recoverChronicle)
+    val actor = orders.firstPlayer
     val act = service.handle("walker-continue", setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     val started = service.handle("walker-continue", act.nextSequence,
@@ -330,13 +346,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       "multiplies shields from an earlier roll") {
     val saltFlats = SiteId("site:salt-flats")
     assertEquals(RecoverRules.difficulty(catalog, saltFlats), Some(2))
-    val orderedSites = saltFlats +:
-      plan.orderedSites.filterNot(_ == saltFlats).take(7)
-    val recoverPlan = plan.copy(
-      orderedSites = orderedSites,
-      homelandEdifices = plan.homelandEdifices.filter(entry =>
-        orderedSites.contains(entry._1)))
-    val actor = recoverPlan.firstPlayer
+    val (saltFlatsChronicle, orderedSites) = withSiteInPlay(saltFlats)
+    val actor = orders.firstPlayer
     val rolls = Vector[Vector[DefenseDieFace]](
       Vector(DefenseDieFace.OneShield, DefenseDieFace.Blank),
       Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank))
@@ -346,7 +357,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val walkerService = new GameApplicationService(catalog, walkerRepository,
       defenseDicePort = walkerDice)
     val walkerSetup = execute(walkerService, "walker-cross-roll-doubler",
-      recoverPlan.orderedSites, recoverPlan)
+      orderedSites, saltFlatsChronicle)
     val walkerAct = walkerService.handle("walker-cross-roll-doubler",
       walkerSetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
     val walkerStarted = walkerService.handle("walker-cross-roll-doubler",
@@ -417,15 +428,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val recoverSite = catalog.sites.find(site =>
       site.recoverDifficulty.nonEmpty && site.relicSlots > 0 &&
         !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverPlan = plan.copy(orderedSites = recoverSite +:
-      plan.orderedSites.filterNot(_ == recoverSite))
+    val (recoverChronicle, recoverSites) = withSiteInPlay(recoverSite)
     val repository = new InMemoryEventStreamRepository
     val dice = new CountingRecoverDice
     val service = new GameApplicationService(catalog, repository,
       defenseDicePort = dice)
-    val actor = recoverPlan.firstPlayer
-    val setup = execute(service, "walker-pool-mismatch",
-      recoverPlan.orderedSites, recoverPlan)
+    val actor = orders.firstPlayer
+    val setup = execute(service, "walker-pool-mismatch", recoverSites,
+      recoverChronicle)
     val act = service.handle("walker-pool-mismatch", setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     val started = service.handle("walker-pool-mismatch", act.nextSequence,
@@ -443,9 +453,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   }
 
   private def prepareCatacombs(service: GameApplicationService, gameId: String,
-      setupPlan: oathdigital.model.FirstGameSetupPlan)
+      setupChronicle: Chronicle, setupOrders: SetupOrders,
+      placementSites: Vector[SiteId])
       : (GameAccepted, PlayerId, OrderedRuleInvocation) = {
-    val setup = execute(service, gameId, setupPlan.orderedSites.take(3), setupPlan)
+    val setup = execute(service, gameId, placementSites.take(3),
+      setupChronicle, setupOrders)
     val Ready(ready) = setup.state: @unchecked
     val actor = ready.game.current.turn.activePlayer
     val act = service.handle(gameId, setup.nextSequence,
@@ -493,7 +505,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val service = new GameApplicationService(catalog, repository,
       defenseDicePort = dice)
     val gameId = "catacombs-walker-persisted"
-    val (prepared, actor, _) = prepareCatacombs(service, gameId, catacombsPlan)
+    val (catacombsChronicle, catacombsOrders, catacombsSites) = catacombsSetup
+    val (prepared, actor, _) = prepareCatacombs(service, gameId,
+      catacombsChronicle, catacombsOrders, catacombsSites)
     val Ready(before) = prepared.state: @unchecked
     val beforePlayer = before.game.current.players.find(_.player == actor).get
     val siteId = beforePlayer.pawnSite.get
@@ -559,7 +573,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val service = new GameApplicationService(catalog, repository,
       defenseDicePort = new CountingRecoverDice)
     val gameId = "catacombs-walker-preview"
-    val (prepared, actor, _) = prepareCatacombs(service, gameId, catacombsPlan)
+    val (catacombsChronicle, catacombsOrders, catacombsSites) = catacombsSetup
+    val (prepared, actor, _) = prepareCatacombs(service, gameId,
+      catacombsChronicle, catacombsOrders, catacombsSites)
     val preview = service.preview(gameId, prepared.nextSequence, actor,
       ActionKind.Recover, Vector.empty).toOption.get
     val offeredIds = preview.options.map(v => PowerId(v.handlerId))
@@ -600,20 +616,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       if (current < 0) order.updated(index, id)
       else order.updated(index, id).updated(current, order(index))
     }
-    val p2Index = 6 + plan.participants.indexWhere(_.playerId == PlayerId("p2")) * 3
-    val poweredOrder = place(plan.denizenOrder, p2Index, whenPlayedPower)
-    val remaining = poweredOrder.drop(6 + plan.participants.size * 3)
-    val poweredWorldDeck = remaining.take(10) ++
-      oathdigital.gameplay.setup.FirstGameRulesData.visions.take(2) ++
-      remaining.slice(10, 25) ++
-      oathdigital.gameplay.setup.FirstGameRulesData.visions.drop(2) ++ remaining.drop(25)
-    val poweredPlan = plan.copy(denizenOrder = poweredOrder,
-      worldDeckOrder = poweredWorldDeck)
+    val p2Index = 6 + orders.participants.indexWhere(_.playerId == PlayerId("p2")) * 3
+    val poweredWorldDeck = place(chronicle.worldDeck, p2Index, whenPlayedPower)
+    val poweredChronicle = chronicle.copy(worldDeck = poweredWorldDeck)
+    val poweredOrders = ChronicleFirstGamePlan.dealOrder(poweredChronicle,
+      FirstGameBootstrapConfig(orders.participants, orders.firstPlayer))
     var service = new GameApplicationService(catalog, repository,
       warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
         def choose(candidates: Vector[PlayerId]) = candidates.head
       })
-    var accepted = execute(service, "powered-playability", setupPlan = poweredPlan)
+    var accepted = execute(service, "powered-playability", sites,
+      poweredChronicle, poweredOrders)
     var played = Set.empty[PlayerId]
     var safety = 0
     while ({
@@ -745,18 +758,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val service = new GameApplicationService(catalog, repository)
     val gameId = "game-challenge-persistence"
     val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
-    val orderedSites = wealthSite +: sites.filterNot(_ == wealthSite).take(7)
-    val challengePlan = plan.copy(orderedSites = orderedSites)
-    var accepted = service.handle(gameId, 0L, GameCommand.Begin(challengePlan)).toOption.get
-    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
-    order.zipWithIndex.foreach { case (playerId, index) =>
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.PlacePawn(playerId, challengePlan.orderedSites(index))).toOption.get
-      val participantIndex = challengePlan.participants.indexWhere(_.playerId == playerId)
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ChooseAdviser(playerId,
-          challengePlan.denizenOrder(6 + participantIndex * 3))).toOption.get
-    }
+    val (wealthChronicle, orderedSites) = withSiteInPlay(wealthSite)
+    var accepted = execute(service, gameId, orderedSites, wealthChronicle)
     val Ready(setupReady) = accepted.state: @unchecked
     val actor = setupReady.game.current.turn.activePlayer
     accepted = service.handle(gameId, accepted.nextSequence,
@@ -1016,31 +1019,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       service: GameApplicationService,
       gameId: String,
       placementSites: Vector[oathdigital.model.SiteId] = sites,
-      setupPlan: oathdigital.model.FirstGameSetupPlan = plan
-  ): GameAccepted = {
-    var accepted =
-      service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
-        .toOption.get
-    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
-    order.zipWithIndex.foreach { case (playerId, index) =>
-      accepted = service.handle(
-        gameId,
-        accepted.nextSequence,
-        GameCommand.PlacePawn(playerId, placementSites(index))
-      ).toOption.get
-      val participantIndex =
-        setupPlan.participants.indexWhere(_.playerId == playerId)
-      accepted = service.handle(
-        gameId,
-        accepted.nextSequence,
-        GameCommand.ChooseAdviser(
-          playerId,
-          setupPlan.denizenOrder(6 + participantIndex * 3)
-        )
-      ).toOption.get
-    }
-    accepted
-  }
+      setupChronicle: Chronicle = chronicle,
+      setupOrders: SetupOrders = orders
+  ): GameAccepted =
+    ParkedServiceFixture.setUp(service, gameId, placementSites,
+      setupChronicle, setupOrders)
 
   test("a walker Campaign persists every command and replays to the same state") {
     val repository = new InMemoryEventStreamRepository
@@ -1064,26 +1047,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .load("game-v2").toOption.flatten.get
 
     assertEquals(reloaded.state, accepted.state)
-    assertEquals(reloaded.nextSequence, 8L)
+    // Setup now runs as an ordinary triggered walker procedure (2026-09-21
+    // Chronicle design, slice 2): `GameStarted` plus a `WalkerParked`/
+    // `WalkerStepRecorded`/`WalkerCompleted` fact per player decision and
+    // delta, not one event per legacy setup command.
+    assertEquals(reloaded.nextSequence, 21L)
     assert(reloaded.state.isInstanceOf[Ready])
     val records = repository.load("game-v2").toOption.flatten.get.records
-    assertEquals(records.size, 8)
+    assertEquals(records.size, 21)
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
-  }
-
-  test("reload preserves a non-Supremacy setup goal") {
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val accepted = execute(service, "game-protection", setupPlan =
-      plan.copy(oathkeeperGoal = OathkeeperGoal.Protection))
-    val reloaded = new GameApplicationService(catalog, repository)
-      .load("game-protection").toOption.flatten.get
-
-    assertEquals(reloaded.state, accepted.state)
-    assertEquals(reloaded.state.asInstanceOf[Ready].value.game.campaign
-      .oathkeeperGoal, OathkeeperGoal.Protection)
   }
 
   test("gameplay appends v3 at the absolute position and reloads equally") {
@@ -1110,10 +1084,10 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     // Take Wealth is one atomic walker command (batch-1 Task 7): the single
     // legacy event became the walker's three -- the resource move, the use
     // record, and the completion -- so the next free position moves by three.
-    assertEquals(wealth.nextSequence, 11L)
+    assertEquals(wealth.nextSequence, 24L)
     assertEquals(
-      service.handle("game-wake", 8L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(8L, 11L))
+      service.handle("game-wake", 21L, GameCommand.EndWake(active)),
+      Left(GameApplicationError.StaleClientPosition(21L, 24L))
     )
     val Ready(afterTake) = wealth.state: @unchecked
     // The phase did not end with the action: a completed Wake action returns
@@ -1135,14 +1109,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       oathdigital.gameplay.powers.wake.TakeWealthLimit.useRef(siteId)),
       "the replayed journal must restore the use limit it recorded")
     val records = repository.load("game-wake").toOption.flatten.get.records
-    assertEquals(records.take(8).map(record =>
+    assertEquals(records.take(21).map(record =>
       ujson.read(record)("formatVersion").num.toInt).distinct, Vector(1))
-    assertEquals(records.drop(8).map(record =>
+    assertEquals(records.drop(21).map(record =>
       ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1, 1))
     // Ending Wake is a walker procedure too now (batch-1 Task 7), so the
     // Wake phase journals nothing of its own: the last two records are its
     // phase-change step and its completion, not a `gameplay.wake-ended`.
-    assertEquals(records.drop(8).map(record =>
+    assertEquals(records.drop(21).map(record =>
       ujson.read(record)("eventType").str),
       Vector("walker.step-recorded", "walker.step-recorded",
         "walker.completed", "walker.step-recorded", "walker.completed"))
@@ -1253,7 +1227,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   test("a walker Muster on an edifice persists, reloads and replays with its kind") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    val (siteId, edificeId) = plan.homelandEdifices.head
+    val (siteId, edificeId) = chronicle.atlasBox.take(8).flatMap(stored =>
+      stored.items.collectFirst { case id: EdificeId => id }.map(stored.site -> _)).head
     val placements = siteId +: sites.filterNot(_ == siteId).take(2)
     val setup = execute(service, "game-walker-economy", placements)
     val Ready(ready) = setup.state: @unchecked
@@ -1585,19 +1560,22 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   test("stale expected position rejects a command legal on current state") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    service.handle("game-stale-v2", 0L, GameCommand.Begin(plan))
+    service.handle("game-stale-v2", 0L, GameCommand.Begin(chronicle, orders))
     service.handle(
       "game-stale-v2",
       1L,
-      GameCommand.PlacePawn(PlayerId("p2"), sites.head)
+      GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
+        SetupProcedure.pawnDecisionId(PlayerId("p2")),
+        ChooseOneAnswer(DecisionOptionRef.Site(sites.head))))
     )
-    val adviser = plan.denizenOrder(6 + 1 * 3)
 
     assertEquals(
       service.handle(
         "game-stale-v2",
         1L,
-        GameCommand.ChooseAdviser(PlayerId("p2"), adviser)
+        GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
+          SetupProcedure.adviserDecisionId(PlayerId("p2")),
+          ChooseOneAnswer(DecisionOptionRef.Denizen(DenizenId("92")))))
       ),
       Left(GameApplicationError.StaleClientPosition(1L, 2L))
     )
@@ -1622,40 +1600,25 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     })
   }
 
-  test("pre2 history is rejected by pre3 rules at its exact replay index") {
-    val repository = new InMemoryEventStreamRepository
-    val historical = CatalogRef(catalogRef.ruleset, "2026.07.27-pre2")
-    val record = GameEventWire.encodeEvent(
-      "game-pre2",
-      historical,
-      0L,
-      FirstGameStarted(plan.copy(catalog = historical))
-    ).toOption.get
-    repository.seed("game-pre2", Vector(ujson.write(record)))
-
-    assertEquals(
-      new GameApplicationService(catalog, repository).load("game-pre2"),
-      Left(GameApplicationError.ReplayFailure(
-        0L,
-        CatalogMismatch(catalogRef, historical)
-      ))
-    )
-  }
-
   test("v2 replay violations report the exact index and append nothing") {
     val repository = new InMemoryEventStreamRepository
+    val badDiagnostics = Vector(IgnoredRuleDiagnostic(
+      RuleSourceRef.Adviser(PlayerId("p2"), DenizenId("insomnia")),
+      "denizen.insomnia", ActionKind.Rest, RuleTiming.Trigger,
+      "corrupted for the test"))
     val records = Vector(
       GameEventWire.encodeEvent(
         "game-replay-corrupt",
         catalogRef,
         0L,
-        FirstGameStarted(plan)
+        OathEvent.GameStarted(chronicle, orders)
       ).toOption.get,
       GameEventWire.encodeEvent(
         "game-replay-corrupt",
         catalogRef,
         1L,
-        GamePawnPlaced(PlayerId("p1"), sites.head)
+        OathEvent.IgnoredRulesRecorded(PlayerId("p2"), ActionKind.Rest,
+          badDiagnostics)
       ).toOption.get
     ).map(ujson.write(_))
     repository.seed("game-replay-corrupt", records)
@@ -1664,11 +1627,12 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       new GameApplicationService(catalog, repository).handle(
         "game-replay-corrupt",
         2L,
-        GameCommand.PlacePawn(PlayerId("p2"), sites.head)
+        GameCommand.EndWake(PlayerId("p2"))
       ),
       Left(GameApplicationError.ReplayFailure(
         1L,
-        WrongPlayer(PlayerId("p2"), PlayerId("p1"))
+        oathdigital.model.OathViolation.InvalidEventOrder(
+          "ignored-rule diagnostics do not match authoritative discovery")
       ))
     )
     assertEquals(
@@ -1687,7 +1651,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         envelopeGameId,
         catalogRef,
         0L,
-        FirstGameStarted(plan)
+        OathEvent.GameStarted(chronicle, orders)
       ).toOption.get
       val repository = new EventStreamRepository {
         override def load(gameId: String) = Right(Some(StoredEventStream(
@@ -1714,7 +1678,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         new GameApplicationService(catalog, repository).handle(
           "game-a",
           1L,
-          GameCommand.PlacePawn(PlayerId("p2"), sites.head)
+          GameCommand.EndWake(PlayerId("p2"))
         ),
         Left(GameApplicationError.StreamIdentityMismatch(
           "game-a",
@@ -1731,7 +1695,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       "game-missing-zero",
       catalogRef,
       1L,
-      FirstGameStarted(plan)
+      OathEvent.GameStarted(chronicle, orders)
     ).toOption.get
     repository.seed("game-missing-zero", Vector(ujson.write(record)))
 
@@ -1748,49 +1712,56 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   test("player projection redacts other adviser hands and hidden orders") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    service.handle("game-private", 0L, GameCommand.Begin(plan))
+    val begun = service.handle("game-private", 0L,
+      GameCommand.Begin(chronicle, orders)).toOption.get
     val placed = service.handle(
       "game-private",
-      1L,
-      GameCommand.PlacePawn(PlayerId("p2"), sites.head)
+      begun.nextSequence,
+      GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
+        SetupProcedure.pawnDecisionId(PlayerId("p2")),
+        ChooseOneAnswer(DecisionOptionRef.Site(sites.head))))
     ).toOption.get
     val projector = new GameProjector(catalog)
     val loaded = LoadedGame(placed.state, placed.nextSequence)
     val own = projector.project("game-private", loaded, PlayerId("p2"))
     val other = projector.project("game-private", loaded, PlayerId("p1"))
-    val privateIds = own.pendingCardDecision.toVector.flatMap(_.cards)
-      .map(_.cardId)
+    val privateIds = own.walkerDecision.toVector.flatMap(_.query.toVector
+      .flatMap(_.options)).map(_.id)
     val otherJson = oathdigital.server.GameHttpWire
       .encodeProjection(other)
 
     assertEquals(privateIds.size, 3)
     assertEquals(own.privateAdviserPreview, Vector.empty)
-    assertEquals(other.pendingCardDecision, None)
+    assertEquals(other.walkerDecision, None)
     val publicShape = ujson.read(otherJson).obj
     assert(!publicShape.contains("privateAdviserChoices"))
     assert(!publicShape.contains("pendingSearch"))
-    assert(publicShape.contains("pendingCardDecision"))
+    assert(publicShape.contains("walkerWaiting"))
     privateIds.foreach(id => assert(!otherJson.contains(id)))
     val exposedValues = jsonStrings(ujson.read(otherJson))
     assertEquals(
-      exposedValues.intersect(plan.relicOrder.map(_.value).toSet),
+      exposedValues.intersect(chronicle.relicDeck.map(_.value).toSet),
       Set.empty[String]
     )
     assertEquals(
-      exposedValues.intersect(plan.worldDeckOrder.map(_.value).toSet),
+      exposedValues.intersect(orders.worldDeckOrder.map(_.value).toSet),
       Set.empty[String]
     )
     val chosen = service.handle("game-private", placed.nextSequence,
-      GameCommand.ChooseAdviser(PlayerId("p2"), DenizenId(privateIds.head)))
+      GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
+        SetupProcedure.adviserDecisionId(PlayerId("p2")),
+        ChooseOneAnswer(DecisionOptionRef.Denizen(DenizenId(privateIds.head))))))
       .toOption.get
     val continuedPublic = projector.projectPublic("game-private",
       LoadedGame(chosen.state, chosen.nextSequence))
     val continued = projector.project("game-private",
       LoadedGame(chosen.state, chosen.nextSequence),
-      PlayerId(continuedPublic.activeParticipantId.get))
-    assertEquals(continued.phase, "awaiting-pawn")
+      PlayerId(continuedPublic.walkerWaiting.get.playerId))
+    assertEquals(continued.phase, "setup-walker-decision")
     assertEquals(continued.world.map(_.discardCount).sum, 8)
-    assertEquals(continued.privateAdviserPreview.size, 3)
+    // The next park is the following player's own pawn placement (all 8
+    // in-play sites), not another adviser choice.
+    assertEquals(continued.walkerDecision.get.query.get.options.size, 8)
   }
 
   private def jsonStrings(value: ujson.Value): Set[String] =
@@ -1820,7 +1791,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       val loaded = new GameApplicationService(catalog, reopened)
         .load("game-hsql-v2").toOption.flatten.get
       assertEquals(loaded.state, accepted.state)
-      assertEquals(loaded.nextSequence, 8L)
+      assertEquals(loaded.nextSequence, 21L)
     } finally reopened.close()
   }
 

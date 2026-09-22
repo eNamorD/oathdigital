@@ -11,9 +11,6 @@ object OathViolation {
   final case class InvalidModifierInvocation(message: String) extends OathViolation
   case object GameAlreadyExists extends OathViolation
   case object GameNotStarted extends OathViolation
-  case object GameAlreadyReady extends OathViolation
-  final case class CatalogMismatch(expected: CatalogRef, actual: CatalogRef)
-      extends OathViolation
   case object GameEnded extends OathViolation
   final case class WrongPhase(expected: Phase, actual: Phase)
       extends OathViolation
@@ -83,6 +80,13 @@ object OathViolation {
   final case class UnsupportedBannerState(reason: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
       extends OathViolation
+  /** A Chronicle shape Setup does not support yet: a non-empty `world`
+    * (needs the Empire), stored denizens or relics on an atlas site (needs
+    * placement rules not specified yet), an unknown or duplicate id, or not
+    * enough cards to deal (2026-09-21 Chronicle design, slice 2, "Setup
+    * from a Chronicle").
+    */
+  final case class UnsupportedChronicle(reason: String) extends OathViolation
   final case class UnsupportedRoundEndRule(sourceKey: String, handlerId: String)
       extends OathViolation
   final case class UnsupportedRoundEndCatalogInventory(
@@ -96,28 +100,10 @@ object OathViolation {
       extends OathViolation
   final case class UnknownFirstPlayer(id: PlayerId)
       extends OathViolation
-  final case class WrongCount(field: String, expected: Int, actual: Int)
-      extends OathViolation
-  final case class DuplicateComponent(field: String, id: String)
-      extends OathViolation
-  final case class UnknownComponent(field: String, id: String)
-      extends OathViolation
-  final case class WrongDenizenSuitCount(suit: Suit, actual: Int)
-      extends OathViolation
-  final case class InvalidWorldDeck(detail: String)
-      extends OathViolation
-  final case class InvalidRelicOrder(detail: String)
-      extends OathViolation
-  final case class InvalidHomelandEdifice(siteId: SiteId, detail: String)
-      extends OathViolation
   final case class WrongPlayer(expected: PlayerId, actual: PlayerId)
       extends OathViolation
   final case class SiteNotInPlay(siteId: SiteId)
       extends OathViolation
-  final case class AdviserNotInHand(
-      playerId: PlayerId,
-      adviserId: DenizenId
-  ) extends OathViolation
   final case class InvalidEventOrder(detail: String)
       extends OathViolation
   final case class InvalidAggregate(problems: Vector[DomainProblem])

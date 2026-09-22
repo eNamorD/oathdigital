@@ -17,8 +17,6 @@ private[frontend] trait ServerUiView {
   def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]): Unit
   def currentWalkerSelection: Option[WalkerSelectionDraft]
   def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]): Unit
-  def currentCardDecision: Option[CardDecisionState]
-  def currentCardDecision_=(value: Option[CardDecisionState]): Unit
   def currentModifierWorkflow: Option[ModifierWorkflow]
   def currentFacedownAdviserDraft: Option[FacedownAdviserDraft]
   def chooseFacedownAdviser(cardId: String): Unit
@@ -119,25 +117,6 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def forceCssClass(forces: SiteForces): String =
     s"force-${forces.colorToken}"
-
-  private[frontend] def dropOnKeep(
-      state: CardDecisionState,
-      cardId: String
-  ): CardDecisionState = state.moveToKeep(cardId)
-
-  private[frontend] def dropOnDiscard(
-      state: CardDecisionState,
-      cardId: String
-  ): CardDecisionState =
-    state.moveToDiscard(cardId)
-
-  private[frontend] final case class CardDecisionZoneHelpers(
-      keep: String, discard: String)
-
-  private[frontend] def cardDecisionZoneHelpers(
-      decision: PendingCardDecision): CardDecisionZoneHelpers =
-    CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
-      "The remaining candidates are discarded in order.")
 
   private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {
     val node = element("button",
@@ -355,8 +334,6 @@ private[frontend] object ServerUiSupport {
   private[frontend] def commandForSelection(action: BoardTargetAction,
       targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
     (action.actionKind, targets) match {
-      case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
-        Some(GameCommand.PlacePawn(site))
       // Travel moved onto the generic walker (batch-1 Task 5), so the
       // destination the player just picked rides `StartWalker`'s start
       // selection instead of a `Travel` intent of its own -- as a plain site

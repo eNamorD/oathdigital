@@ -72,13 +72,5 @@ object ReadyGame {
 sealed trait OathState extends Product with Serializable
 object OathState {
   case object NoGame extends OathState
-
-  final case class InProgress(
-      plan: FirstGameSetupPlan,
-      placements: Vector[PawnPlacement],
-      adviserChoices: Vector[(PlayerId, DenizenId)],
-      temporaryHands: Map[PlayerId, Vector[WorldCardId]]
-  ) extends OathState
-
   final case class Ready(value: ReadyGame) extends OathState
 }
