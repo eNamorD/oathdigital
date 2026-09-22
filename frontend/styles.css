@@ -5,14 +5,16 @@
   color: #f5ecd7;
 
   /* Sampled from the product owner's reference images, not chosen by eye.
-     Discord, Hearth and Beast are one hue family: shape identifies a suit,
-     never colour. */
+     Discord and Hearth are one hue family: shape identifies a suit, never
+     colour. Beast is the one departure -- at the size a card face draws it,
+     the sampled brown read as a smudge, so the product owner asked for it
+     brighter and redder than the reference. */
   --token-favor: #e4ba5a;
   --token-favor-burnt: #a28a5a;
   --token-secret: #66a8d8;
   --token-secret-burnt: #60849c;
   --suit-arcane: #6e377d;
-  --suit-beast: #8c371e;
+  --suit-beast: #dc3b2c;
   --suit-discord: #c84623;
   --suit-hearth: #d24b23;
   --suit-nomad: #4b9678;
