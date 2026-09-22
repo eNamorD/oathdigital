@@ -28,12 +28,12 @@ import oathdigital.model.DecisionAnswer.PartitionAnswer
   * window a player-selected power is offered at, answered by `StartWalker`'s
   * `modifiers`. No other node carries a window.
   *
-  * Start gates are `ForgeRules.validate` unchanged -- exile-only unaltered
-  * foundations, audited catalog, the actor ruling their pawn site, a printed
-  * Forge cost totalling three resources, exactly three empty faceup denizens,
-  * supply >= 1, and a non-empty relic deck. Together they are what makes a
-  * started Forge always answerable: three eligible targets exist, the printed
-  * cost can be spread over them, and a relic is waiting on the deck.
+  * Start gates are `ForgeRules.validate` unchanged -- audited catalog, the
+  * actor ruling their pawn site, a printed Forge cost totalling three
+  * resources, exactly three empty faceup denizens, supply >= 1, and a
+  * non-empty relic deck. Together they are what makes a started Forge always
+  * answerable: three eligible targets exist, the printed cost can be spread
+  * over them, and a relic is waiting on the deck.
   *
   * Two decisions worth stating outright, because both are places the obvious
   * implementation is wrong:

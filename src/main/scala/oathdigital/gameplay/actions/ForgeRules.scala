@@ -17,12 +17,7 @@ object ForgeRules {
     val game = ready.game
     val definition = catalog.sites.find(_.id == siteId)
     val site = game.current.map.sites.get(siteId)
-    val blocked =
-      if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Forge is limited to the exile-only first game")
-      else if (game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty)) Some("altered Foundations are not supported for Forge")
-      else None
-    blocked.map(UnsupportedForgeState).toLeft(()).flatMap(_ =>
-      PowerRuntime.requireAudited(catalog)).flatMap { _ =>
+    PowerRuntime.requireAudited(catalog).flatMap { _ =>
       for {
         s <- site.toRight(SiteNotInPlay(siteId))
         ruled <- SiteRule.ruledBy(s.forces, game.current.players, player.player)

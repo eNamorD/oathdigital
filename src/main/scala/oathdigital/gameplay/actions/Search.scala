@@ -9,19 +9,8 @@ object SearchRules {
   import OathViolation._
 
   def validateSupportedState(catalog: ExecutableCatalog,
-      ready: ReadyGame): Either[OathViolation, Unit] = {
-    val game = ready.game
-    val reason =
-      if (game.campaign.lineages.values.exists(_.role != Role.Exile))
-        Some("Search is limited to the exile-only first game")
-      else if (game.campaign.foundations.values.exists(f =>
-        f.face != FoundationFace.Normal || f.alterationSources.nonEmpty))
-        Some("altered Foundations are not supported for Search")
-      else None
-    reason.fold[Either[OathViolation, Unit]](
-      PowerRuntime.requireAudited(catalog))(
-      value => Left(UnsupportedSearchState(value)))
-  }
+      ready: ReadyGame): Either[OathViolation, Unit] =
+    PowerRuntime.requireAudited(catalog)
 
   def cost(ready: ReadyGame, source: SearchSource,
       origin: Region): Either[OathViolation, Int] = source match {
