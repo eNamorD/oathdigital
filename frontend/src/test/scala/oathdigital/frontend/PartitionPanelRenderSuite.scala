@@ -245,4 +245,39 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     event.updateDynamic("dataTransfer")(transfer)
     event.asInstanceOf[dom.Event]
   }
+
+  test("a decision option is not a focus stop; the move buttons are the keyboard path") {
+    val panel = render(opened())
+    val options = all(panel, ".decision-option")
+    assert(options.nonEmpty)
+    options.foreach(option =>
+      assertEquals(option.getAttribute("tabindex"), null,
+        "a decision-option has no keydown handler, so a tab stop here is dead"))
+    assert(all(panel, ".move-option").nonEmpty)
+    all(panel, ".move-option").foreach(move =>
+      assert(move.getAttribute("aria-label").startsWith("Move ")))
+  }
+
+  test("a drag on an option swallows the click that follows; a plain press does not") {
+    val node = dom.document.createElement("div").asInstanceOf[dom.html.Element]
+    dom.document.body.appendChild(node)
+    var clicks = 0
+    node.addEventListener("click", (_: dom.Event) => clicks += 1)
+    DragClickGuard.attach(node)
+
+    def at(kind: String, x: Double, y: Double): Unit =
+      node.dispatchEvent(new dom.MouseEvent(kind,
+        new dom.MouseEventInit { bubbles = true; clientX = x; clientY = y }))
+
+    at("mousedown", 10, 10); at("mousemove", 12, 11); at("click", 12, 11)
+    assertEquals(clicks, 1, "a 2px wobble is a press, not a drag")
+
+    at("mousedown", 10, 10); at("mousemove", 40, 40); at("click", 40, 40)
+    assertEquals(clicks, 1, "a 30px drag must not also open the overlay")
+
+    at("mousedown", 10, 10); at("click", 10, 10)
+    assertEquals(clicks, 2, "the guard resets between gestures")
+
+    node.remove()
+  }
 }

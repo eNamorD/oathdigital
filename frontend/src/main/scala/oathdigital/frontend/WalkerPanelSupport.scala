@@ -307,10 +307,14 @@ private[frontend] object WalkerPanelSupport {
       draft: WalkerPartitionDraft, ui: ServerUiView): dom.Element = {
     val item = WalkerPartitionDraft.itemId(option)
     val node = element("article", "decision-option")
-    node.setAttribute("tabindex", "0")
     node.setAttribute("draggable", "true")
     node.setAttribute("data-option-id", item)
     node.setAttribute("aria-label", option.label)
+    // The article has no keydown handler and never did: the keyboard path for
+    // moving an option is the move-option buttons below. The tab stop was a
+    // duplicate announcement, and in front of a modal trigger it is a dead
+    // stop the user has to pass through to reach the card.
+    DragClickGuard.attach(node.asInstanceOf[dom.html.Element])
     node.appendChild(option.card.fold[dom.Element](
       text("span", "option-summary", option.label))(CardFace.render))
     node.addEventListener("dragstart", (event: dom.Event) =>
