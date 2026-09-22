@@ -44,10 +44,11 @@ and Chronicle progression.
 
 ## Application and transport
 
-`DevelopmentFirstGamePlanFactory` creates a reproducible catalog-derived plan
-for loopback development. Production bootstrap accepts only public participant
-configuration; the server derives the hidden plan and records it in the first
-event. Neither bootstrap response nor ordinary projection exposes hidden order.
+`GeneratedFirstGamePlanFactory` derives the plan from a random Chronicle and
+shuffled seating; development and trusted-alpha game creation both go through
+it. Bootstrap accepts only public participant configuration; the server
+derives the hidden plan and records it in the first event. Neither bootstrap
+response nor ordinary projection exposes hidden order.
 
 Shared `FirstGameBootstrapRequest` and its codec compile on JVM and Scala.js.
 They are actorless configuration DTOs. The authenticated route derives

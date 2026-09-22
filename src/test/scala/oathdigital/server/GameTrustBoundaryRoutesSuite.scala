@@ -43,8 +43,7 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
     }
     val gateway = new GameServerGateway(
       new GameApplicationService(catalog, repository),
-      new GameProjector(catalog),
-      new DevelopmentFirstGamePlanFactory(catalog)
+      new GameProjector(catalog)
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(

@@ -15,8 +15,8 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 
 import oathdigital.application.{
-  DevelopmentFirstGamePlanFactory,
   GameApplicationService,
+  GameCommand,
   GameProjector,
   InMemoryEventStreamRepository
 }
@@ -33,10 +33,10 @@ class GameRoutesSuite extends munit.FunSuite {
     )
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
+    assert(service.handle("route-game", 0L, GameCommand.Begin(plan)).isRight)
     val gateway = new GameServerGateway(
       service,
-      new GameProjector(catalog),
-      new DevelopmentFirstGamePlanFactory(catalog)
+      new GameProjector(catalog)
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
@@ -69,14 +69,6 @@ class GameRoutesSuite extends munit.FunSuite {
       )
       assertEquals(malformed.statusCode(), 400)
 
-      val started = post(
-        client,
-        s"$base/api/dev/first-games/route-game/bootstrap?playerId=p2",
-        bootstrapBody()
-      )
-      assertEquals(started.statusCode(), 200)
-      assertEquals(cacheControl(started), None)
-      assertEquals(ujson.read(started.body())("nextSequence").num.toLong, 1L)
       val history = get(client,
         s"$base/api/dev/first-games/route-game/events?limit=1")
       assertEquals(history.statusCode(), 200)
@@ -144,20 +136,6 @@ class GameRoutesSuite extends munit.FunSuite {
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
     }
-  }
-
-  private def bootstrapBody(): String = {
-    ujson.write(ujson.Obj(
-      "expectedNextSequence" -> 0,
-      "participants" -> ujson.Arr.from(participants.map { participant =>
-        ujson.Obj(
-          "playerId" -> participant.playerId.value,
-          "lineageId" -> participant.lineageId.value,
-          "color" -> participant.color.value
-        )
-      }),
-      "firstPlayer" -> "p2"
-    ))
   }
 
   private def get(

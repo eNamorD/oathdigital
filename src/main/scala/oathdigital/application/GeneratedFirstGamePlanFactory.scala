@@ -8,9 +8,8 @@ import oathdigital.model.FirstGameSetupPlan
  * Production first-game plan derivation: draws a random Chronicle through
  * `FirstGameChronicleGenerator` and bridges it into a `FirstGameSetupPlan`
  * via `ChronicleFirstGamePlan` (2026-09-21 Chronicle design, slice 1).
- * Trusted-game provisioning and authenticated bootstrap use this; the
- * dev-only loopback routes keep the deterministic
- * `DevelopmentFirstGamePlanFactory`.
+ * Trusted-game provisioning, development game creation, and authenticated
+ * bootstrap all use this.
  *
  * The seating order is shuffled too, and the first seat becomes the first
  * player, so the requested `firstPlayer` is ignored. The shuffled order is

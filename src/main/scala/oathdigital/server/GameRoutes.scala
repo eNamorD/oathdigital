@@ -16,10 +16,8 @@ import org.slf4j.LoggerFactory
 import oathdigital.application.{
   GameApplicationError,
   GameCommand,
-  FirstGameBootstrapMapper,
   GameIntentMapper
 }
-import oathdigital.protocol.FirstGameBootstrapRequest
 import oathdigital.protocol.{MajorActionPreviewRequest, MajorActionPreviewResponse,
   PreviewIgnoredRule, PreviewModifier, PreviewTarget}
 import oathdigital.protocol.projection.GameProjection
@@ -42,8 +40,7 @@ private[server] object CommandRejectionMessage {
 
 final class GameServerGateway(
     service: oathdigital.application.GameApplicationService,
-    projector: oathdigital.application.GameProjector,
-    planFactory: oathdigital.application.DevelopmentFirstGamePlanFactory
+    projector: oathdigital.application.GameProjector
 ) {
   def preview(gameId: String, requestingPlayer: PlayerId,
       request: MajorActionPreviewRequest)
@@ -69,21 +66,6 @@ final class GameServerGateway(
   def rawEventHistory(gameId: String, limit: Int)
       : Either[GameApplicationError, Vector[String]] =
     service.rawEventHistory(gameId, limit)
-  def bootstrap(
-      gameId: String,
-      requestingPlayer: PlayerId,
-      request: FirstGameBootstrapRequest
-  ): Either[GameApplicationError, GameProjection] =
-    planFactory.build(FirstGameBootstrapMapper.map(request))
-      .left.map(failure =>
-        GameApplicationError.BootstrapFailure(failure.message))
-      .flatMap(plan =>
-        submit(
-          gameId,
-          requestingPlayer,
-          request.expectedNextSequence,
-          GameCommand.Begin(plan)
-        ))
 
   def submit(
       gameId: String,
@@ -212,26 +194,6 @@ final class GameRoutes(
                           validGameId, PlayerId(validPlayerId),
                           request.expectedNextSequence, command))
                       }
-                  }
-                }
-              }
-            } ~
-            path("bootstrap") {
-              post {
-                entity(as[String]) { body =>
-                  GameHttpWire.decodeBootstrap(body) match {
-                    case Left(error) =>
-                      complete(jsonResponse(
-                        StatusCodes.BadRequest,
-                        "malformed-request",
-                        s"${error.path}: ${error.message}"
-                      ))
-                    case Right(request) =>
-                      completeAsync(gateway.bootstrap(
-                        validGameId,
-                        PlayerId(validPlayerId),
-                        request
-                      ))
                   }
                 }
               }

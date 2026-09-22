@@ -24,7 +24,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite {
 
   private def provision(owner: HsqldbDatabaseOwner, generate: () => SeatCode) =
     new TrustedGameProvisioning(new GameApplicationService(catalog, owner.eventStreams),
-      new DevelopmentFirstGamePlanFactory(catalog), owner.trustedGames, generate, () => 1234L)
+      new GeneratedFirstGamePlanFactory(catalog), owner.trustedGames, generate, () => 1234L)
 
   private def rows(connection: Connection, gameId: String): Vector[Int] =
     Vector("game_resources", "trusted_seats", "event_streams", "event_entries").map { table =>

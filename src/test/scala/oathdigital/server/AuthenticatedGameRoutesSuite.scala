@@ -70,7 +70,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val gateway = new AuthenticatedGameGateway(new GameApplicationService(catalog,
       repository), new GameProjector(catalog),
       new MembershipAuthorizationService(identities), identities,
-      new DevelopmentFirstGamePlanFactory(catalog))
+      new GeneratedFirstGamePlanFactory(catalog))
     val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
       new AuthenticatedGameRoutes(authenticator,
         new SameOriginCsrfProtection("http://127.0.0.1"), gateway, blocking).route),
@@ -166,7 +166,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       new GameProjector(catalog),
       new MembershipAuthorizationService(identities),
       identities,
-      new DevelopmentFirstGamePlanFactory(catalog)
+      new GeneratedFirstGamePlanFactory(catalog)
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(

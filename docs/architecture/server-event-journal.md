@@ -210,7 +210,6 @@ discriminators are rejected rather than reinterpreted.
 All endpoints are development-only:
 
 - `GET /health`
-- `POST /api/dev/first-games/{gameId}/bootstrap?playerId={playerId}`
 - `POST /api/dev/first-games/{gameId}/commands?playerId={playerId}`
 - `GET /api/dev/first-games/{gameId}?playerId={playerId}`
 - `GET /api/dev/first-games/{gameId}/events?limit={1..100}`
@@ -226,17 +225,14 @@ It returns raw authoritative envelopes and warns that hidden outcomes may be
 present. It is not mounted by authenticated routes and its data never enters an
 ordinary game projection.
 
-The development bootstrap request supplies public participant order, lineage,
-color, and first player. It never supplies hidden setup order.
-
-`DevelopmentFirstGamePlanFactory` deterministically selects eight catalog
-sites; ten printed denizen IDs per suit; the valid starting-hand, regional,
-and Vision packet order; every ordinary relic ordered by its catalog numeric
-`value` and printed ID; and a matching ruined edifice for each selected
-Homeland. This is reproducible local fixture construction, not production
-randomness. The derived plan is submitted through the same first-game bootstrap
-application path, so it is fully recorded in the authoritative first event.
-Neither the plan nor its hidden orders are returned by the route.
+Games are no longer created through this loopback API. The development start
+page creates them the same way trusted-alpha does, through `POST /games`
+(`TrustedSeatRoutes`), which derives the hidden plan from a random Chronicle
+and shuffled seating (`GeneratedFirstGamePlanFactory`) and submits it through
+the same first-game bootstrap application path, so it is fully recorded in the
+authoritative first event; neither the plan nor its hidden orders are returned
+by the route. The loopback commands/load/events routes above only continue
+play for a game created that way.
 
 The command route accepts the implemented setup, Wake, Travel, and Search
 intents. Transport-level `begin` and server-prepared Search draws are rejected:

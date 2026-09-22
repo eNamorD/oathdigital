@@ -62,10 +62,6 @@ object ServerRuntime {
             )
           val projector =
             new oathdigital.application.GameProjector(catalog)
-          val devPlanFactory =
-            new oathdigital.application.DevelopmentFirstGamePlanFactory(
-              catalog
-            )
           val generatedPlanFactory =
             new oathdigital.application.GeneratedFirstGamePlanFactory(
               catalog,
@@ -76,8 +72,7 @@ object ServerRuntime {
           new ServerRuntime(
             new GameServerGateway(
               firstGameService,
-              projector,
-              devPlanFactory
+              projector
             ),
             new AuthenticatedGameGateway(
               firstGameService,

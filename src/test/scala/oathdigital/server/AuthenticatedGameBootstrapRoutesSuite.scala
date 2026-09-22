@@ -19,6 +19,14 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState
 
 class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
+  /**
+   * This suite asserts the bootstrapped plan keeps the exact participant
+   * order and first player it was sent, so seating must not shuffle.
+   */
+  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort {
+    def shuffle[A](values: Vector[A]): Vector[A] = values
+  }
+
   test("owner bootstrap uses exactly the provisioned player memberships") {
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-bootstrap-test")
@@ -54,7 +62,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
       new GameProjector(catalog),
       new MembershipAuthorizationService(identities),
       identities,
-      new DevelopmentFirstGamePlanFactory(catalog)
+      new GeneratedFirstGamePlanFactory(catalog, unshuffled)
     )
     val csrfToken = "c" * 43
     val csrfDigest = CsrfTokenDigest.fromBytes(
