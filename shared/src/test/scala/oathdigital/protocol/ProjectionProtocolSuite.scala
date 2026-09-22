@@ -106,6 +106,14 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(carrying))
   }
 
+  test("a card defaults to implemented and round-trips implemented = false") {
+    assert(known.implemented)
+    val unimplemented = known.copy(cardId = "stub", implemented = false)
+    val withStub = projection.copy(privateAdviserPreview = Vector(unimplemented))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withStub)),
+      Right(withStub))
+  }
+
   test("a negotiate query and a waiting deal round trip with and without editing") {
     val card = CardDetailsProjection("r1", "relic", "Relic One",
       orientation = Some("face-down"))

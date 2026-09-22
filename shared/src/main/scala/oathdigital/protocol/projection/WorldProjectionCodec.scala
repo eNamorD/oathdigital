@@ -21,12 +21,12 @@ private[projection] object WorldProjectionCodec {
     "rulesText" -> stringOption(value.rulesText), "orientation" -> stringOption(value.orientation),
     "side" -> stringOption(value.side), "favor" -> value.favor, "secrets" -> value.secrets,
     "relicValue" -> intOption(value.relicValue), "defense" -> intOption(value.defense),
-    "hidden" -> value.hidden)
+    "hidden" -> value.hidden, "implemented" -> value.implemented)
   def decodeCard(raw: ujson.Value, path: String): Result[CardDetailsProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("cardId", "cardKind", "name", "suit", "restrictions",
       "rulesText", "orientation", "side", "favor", "secrets", "relicValue",
-      "defense", "hidden"), path)
+      "defense", "hidden", "implemented"), path)
     cardId <- string(value, "cardId", path)
     kind <- string(value, "cardKind", path)
     name <- string(value, "name", path)
@@ -40,8 +40,9 @@ private[projection] object WorldProjectionCodec {
     relicValue <- optionalAbsent(value, "relicValue", path)(int)
     defense <- optionalAbsent(value, "defense", path)(int)
     hidden <- bool(value, "hidden", path)
+    implemented <- boolOr(value, "implemented", path, true)
   } yield CardDetailsProjection(cardId, kind, name, suit, restrictions, rulesText,
-    orientation, side, favor, secrets, relicValue, defense, hidden)
+    orientation, side, favor, secrets, relicValue, defense, hidden, implemented)
 
   private def encodePower(value: SitePowerProjection): ujson.Value = ujson.Obj(
     "kind" -> value.kind, "label" -> value.label,

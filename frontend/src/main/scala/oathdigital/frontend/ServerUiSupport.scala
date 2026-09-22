@@ -140,11 +140,15 @@ private[frontend] object ServerUiSupport {
       "The remaining candidates are discarded in order.")
 
   private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {
-    val node = element("button", "card-detail")
+    val node = element("button",
+      if (card.implemented) "card-detail" else "card-detail card-detail-unimplemented")
     node.setAttribute("type", "button")
-    node.setAttribute("aria-label", card.name)
+    node.setAttribute("aria-label",
+      if (card.implemented) card.name else s"${card.name} (unimplemented)")
     node.setAttribute("data-card-id", card.cardId)
     node.appendChild(text("span", "card-summary", card.name))
+    if (!card.implemented)
+      node.appendChild(text("span", "card-unimplemented-badge", "Unimplemented"))
     val details = element("span", "card-popover")
     details.setAttribute("role", "tooltip")
     val metadata = Vector(card.suit.map(value => s"Suit: $value"),

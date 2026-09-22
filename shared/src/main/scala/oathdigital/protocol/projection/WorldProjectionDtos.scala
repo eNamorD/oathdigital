@@ -20,7 +20,8 @@ final case class CardDetailsProjection(
     secrets: Int = 0,
     relicValue: Option[Int] = None,
     defense: Option[Int] = None,
-    hidden: Boolean = false
+    hidden: Boolean = false,
+    implemented: Boolean = true
 )
 final case class SiteCardProjection(
     cardId: String,
