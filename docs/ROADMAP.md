@@ -39,7 +39,10 @@ random first-game Chronicle. Built in three slices, each with its own plan.
 Slice 1 (Chronicle model, generator and port; the dev fixture and trusted and
 authenticated bootstrap now build from a Chronicle) is done -- plan at
 [docs/superpowers/plans/2026-09-21-chronicle-setup-slice1.md](superpowers/plans/2026-09-21-chronicle-setup-slice1.md).
-Slices 2 (setup on the walker) and 3 (the E02/E06/E22 powers) remain.
+Slice 2 (setup on the walker: `Phase.Setup`, the triggered `Setup` procedure,
+and deletion of the legacy setup event machine) is done -- plan at
+[docs/superpowers/plans/2026-09-21-chronicle-setup-slice2.md](superpowers/plans/2026-09-21-chronicle-setup-slice2.md).
+Slice 3 (the E02/E06/E22 powers) remains.
 
 - [ ] **Deferred: derive the lineage from the color on the server.** The color
   is always associated with a lineage, but the trusted creation request still
