@@ -1750,7 +1750,12 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val chosen = service.handle("game-private", placed.nextSequence,
       GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
         SetupProcedure.adviserDecisionId(PlayerId("p2")),
-        ChooseOneAnswer(DecisionOptionRef.Denizen(DenizenId(privateIds.head))))))
+        PartitionAnswer(
+          DecisionPlacement(DecisionOptionRef.Denizen(DenizenId(privateIds.head)),
+            SetupProcedure.adviserKeepKey) +:
+          privateIds.tail.map(id => DecisionPlacement(
+            DecisionOptionRef.Denizen(DenizenId(id)),
+            SetupProcedure.adviserDiscardKey))))))
       .toOption.get
     val continuedPublic = projector.projectPublic("game-private",
       LoadedGame(chosen.state, chosen.nextSequence))

@@ -35,6 +35,9 @@ import oathdigital.model.OathViolation._
  * runs there yet.
  */
 object SetupProcedure {
+  val adviserKeepKey: String = "keep"
+  val adviserDiscardKey: String = "discard"
+
   def pawnDecisionId(player: PlayerId): String =
     s"setup.pawn-placement.${player.value}"
   def adviserDecisionId(player: PlayerId): String =
@@ -81,8 +84,11 @@ object SetupProcedure {
       BuildOps(placePawn(participant.playerId, pawnId),
         window = Some(PowerWindow.SetupPawnPlaced)),
       Decide(adviserId, participant.playerId,
-        DecisionQuery.ChooseOne(handOptions,
-          heading = Some("Choose your starting adviser"))),
+        DecisionQuery.Partition(
+          Vector(DecisionSection(adviserKeepKey, "Keep", 1, Some(1)),
+            DecisionSection(adviserDiscardKey, "Discard", 0)),
+          handOptions, heading = Some("Choose your starting adviser"),
+          confirmLabel = Some("Confirm Adviser"))),
       BuildOps(chooseAdviser(participant.playerId, adviserId))))
   }
 
@@ -104,9 +110,8 @@ object SetupProcedure {
   private def chooseAdviser(player: PlayerId, decisionId: String)
       : (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]] =
     (ready, pending) => for {
-      chosen <- adviserAnswer(pending, decisionId)
-      hand = ready.game.current.temporaryHands.getOrElse(player, Vector.empty)
-      rejected = hand.filterNot(_ == chosen)
+      selection <- adviserSelection(pending, decisionId)
+      (chosen, rejected) = selection
       pawnSite <- ready.game.current.players.find(_.player == player)
         .flatMap(_.pawnSite).toRight(PawnSiteMissing(player))
       region <- ready.game.current.map.regionOf(pawnSite)
@@ -119,14 +124,27 @@ object SetupProcedure {
         PositionedLocation(Location.RegionalDiscard(nextRegion(region)),
           StackPosition.Top)))
 
-  private def adviserAnswer(pending: PendingTree, decisionId: String)
-      : Either[OathViolation, DenizenId] =
+  private def adviserSelection(pending: PendingTree, decisionId: String)
+      : Either[OathViolation, (DenizenId, Vector[DenizenId])] =
     pending.answered.find(_.decisionId == decisionId).map(_.answer) match {
-      case Some(DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(id))) =>
-        Right(id)
+      case Some(DecisionAnswer.PartitionAnswer(placements)) =>
+        val kept = placements.filter(_.sectionKey == adviserKeepKey)
+          .flatMap(value => denizen(value.option))
+        val rejected = placements.filter(_.sectionKey == adviserDiscardKey)
+          .flatMap(value => denizen(value.option))
+        kept match {
+          case Vector(id) => Right(id -> rejected)
+          case _ => Left(InvalidEventOrder(
+            s"adviser-choice must keep exactly one card for $decisionId"))
+        }
       case _ => Left(InvalidEventOrder(
         s"no adviser-choice answer is recorded for $decisionId"))
     }
+
+  private def denizen(ref: DecisionOptionRef): Option[DenizenId] = ref match {
+    case DecisionOptionRef.Denizen(id) => Some(id)
+    case _ => None
+  }
 
   private def nextRegion(region: Region): Region = region match {
     case Region.Cradle => Region.Provinces

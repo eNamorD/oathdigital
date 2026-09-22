@@ -115,10 +115,16 @@ object FirstGameSetupFixture {
           ready.game.current.temporaryHands.getOrElse(playerId, Vector.empty)
         case _ => Vector.empty
       }
-      val adviser = hand.collectFirst { case id: DenizenId => id }.get
+      val denizens = hand.collect { case id: DenizenId => id }
+      val adviser = denizens.head
+      val rejected = denizens.filterNot(_ == adviser)
       val adviserDecision = SetupProcedure.adviserDecisionId(playerId)
       transition = rules.resolveWalker(state, playerId, adviserDecision,
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(adviser)))
+        DecisionAnswer.PartitionAnswer(
+          DecisionPlacement(DecisionOptionRef.Denizen(adviser),
+            SetupProcedure.adviserKeepKey) +:
+          rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
+            SetupProcedure.adviserDiscardKey))))
         .toOption.get
       state = transition.state
       events = events ++ transition.events

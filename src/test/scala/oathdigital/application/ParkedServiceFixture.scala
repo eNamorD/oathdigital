@@ -41,15 +41,21 @@ object ParkedServiceFixture {
             s"pawn placement for $playerId at ${placementSites(index)} failed: $error"),
             identity)
         val Ready(placedReady) = accepted.state: @unchecked
-        val adviser = placedReady.game.current.temporaryHands(playerId)
-          .collectFirst { case id: DenizenId => id }
-          .getOrElse(throw new AssertionError(
-            s"no denizen in $playerId's hand: " +
-              placedReady.game.current.temporaryHands(playerId)))
+        val denizens = placedReady.game.current.temporaryHands(playerId)
+          .collect { case id: DenizenId => id }
+        if (denizens.isEmpty) throw new AssertionError(
+          s"no denizen in $playerId's hand: " +
+            placedReady.game.current.temporaryHands(playerId))
+        val adviser = denizens.head
+        val rejected = denizens.tail
         accepted = service.handle(gameId, accepted.nextSequence,
           GameCommand.ResolveWalker(playerId, TreeDecision(
             SetupProcedure.adviserDecisionId(playerId),
-            ChooseOneAnswer(DecisionOptionRef.Denizen(adviser)))))
+            DecisionAnswer.PartitionAnswer(
+              DecisionPlacement(DecisionOptionRef.Denizen(adviser),
+                SetupProcedure.adviserKeepKey) +:
+              rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
+                SetupProcedure.adviserDiscardKey))))))
           .toOption.get
       }
     accepted

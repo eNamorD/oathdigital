@@ -126,13 +126,23 @@ class GameRoutesSuite extends munit.FunSuite {
       )
 
       val adviserDecision = SetupProcedure.adviserDecisionId(PlayerId("p2"))
-      val adviser = ujson.read(placed.body())("walkerDecision")("query")("options")(0)("id").str
+      val handOptions = ujson.read(placed.body())("walkerDecision")("query")("options")
+        .arr.map(_("id").str).toVector
+      val adviser = handOptions.head
+      val rejectedAdvisers = handOptions.tail
       val chosen = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":$afterPlaced,"intent":{"type":"resolveWalker",
-           |"decisionId":"$adviserDecision",
-           |"payload":{"kind":"choose-one","optionKind":"denizen","optionId":"$adviser"}}}""".stripMargin
+        ujson.write(ujson.Obj(
+          "expectedNextSequence" -> ujson.Num(afterPlaced.toDouble),
+          "intent" -> ujson.Obj("type" -> "resolveWalker",
+            "decisionId" -> adviserDecision,
+            "payload" -> ujson.Obj("kind" -> "partition",
+              "placements" -> ujson.Arr.from(
+                ujson.Obj("optionKind" -> "denizen", "optionId" -> adviser,
+                  "sectionKey" -> "keep") +: rejectedAdvisers.map(id =>
+                  ujson.Obj("optionKind" -> "denizen", "optionId" -> id,
+                    "sectionKey" -> "discard")))))))
       )
       assertEquals(chosen.statusCode(), 200)
 
