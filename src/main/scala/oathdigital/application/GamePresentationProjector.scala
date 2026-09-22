@@ -188,7 +188,7 @@ private[application] final class GamePresentationProjector(
               PlayerCardArea.Advisers))
             cardDetails(card.id, Some(adviserOrientation(card)),
               hidden = false)
-          else hiddenCard("adviser")),
+          else hiddenCard(cardKind(card.id))),
         player.relics.map(card =>
           if (identifies(card.id, card.orientation, PlayerCardArea.Relics))
             cardDetails(card.id, Some(card.orientation), hidden = false)
@@ -206,7 +206,7 @@ private[application] final class GamePresentationProjector(
       player.board.faceUpSecrets + player.board.faceDownSecrets,
       player.board.supply.supply,
       player.pawnSite.map(_.value),
-      player.advisers.map(card => hiddenCard("adviser")), Vector.empty, None))
+      player.advisers.map(card => hiddenCard(cardKind(card.id))), Vector.empty, None))
 
   def banners(ready: ReadyGame): Vector[BannerProjection] = {
     val current = ready.game.current
