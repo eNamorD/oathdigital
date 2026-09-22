@@ -42,7 +42,10 @@ authenticated bootstrap now build from a Chronicle) is done -- plan at
 Slice 2 (setup on the walker: `Phase.Setup`, the triggered `Setup` procedure,
 and deletion of the legacy setup event machine) is done -- plan at
 [docs/superpowers/plans/2026-09-21-chronicle-setup-slice2.md](superpowers/plans/2026-09-21-chronicle-setup-slice2.md).
-Slice 3 (the E02/E06/E22 powers) remains.
+Slice 3 (the E02/E06/E22 powers) is done -- plan at
+[docs/superpowers/plans/2026-09-21-chronicle-setup-slice3.md](superpowers/plans/2026-09-21-chronicle-setup-slice3.md).
+All six batch-1 edifices now work; only the WHEN EXPLORED windows they
+declared stay inert until an explore procedure exists to fire them.
 
 - [ ] **Deferred: derive the lineage from the color on the server.** The color
   is always associated with a lineage, but the trusted creation request still
