@@ -98,6 +98,7 @@ server {
 
     location ^~ /s/ {
         access_log off;
+        error_log /var/log/nginx/oathdigital-seat-exchange-error.log crit;
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-User "";
@@ -125,18 +126,26 @@ Its official [proxy module reference](https://nginx.org/en/docs/http/ngx_http_pr
 documents that an empty `proxy_set_header` value omits that header upstream.
 
 The credential-exchange `/s/` location disables access logging because its URI
-contains the raw seat code. The remaining log format uses `$uri`, not
+contains the raw seat code. It also sets its own `error_log` at level `crit`.
+Without that line, an unreachable or timed-out backend makes NGINX write the raw
+code to its error log at level `error`, in both the `request:` and `upstream:`
+fields. This was reproduced on the alpha acceptance run. With the line, the same
+failure logs nothing for `/s/`, while other locations still log errors normally.
+The remaining log format uses `$uri`, not
 `$request`, and does not include `$args`, `$http_referer`, `$http_cookie`, or
-any `$cookie_*` variable. This controls only the configured NGINX access logs.
-It does not redact NGINX error logs, upstream application logs, logs emitted
-before or after this location, or logs from a load balancer, CDN,
-web-application firewall, error-reporting agent, or hosting dashboard. Any of
-those layers may still record a raw request URI during an error.
+any `$cookie_*` variable. These settings control only NGINX's own access and
+error logs for that location. They do not redact other NGINX error logs, upstream
+application logs, logs emitted before NGINX selects the location (for example for
+a malformed request line), or logs from a load balancer, CDN, web-application
+firewall, error-reporting agent, or hosting dashboard. Any of those layers may
+still record a raw request URI during an error.
 
 Before Internet use, configure every logging layer to omit or redact `/s/`
-request URIs and to omit `Cookie` and `Set-Cookie` values. Exercise both a
-normal seat exchange and a controlled failing `/s/` request with a disposable
-test code, then inspect every access, error, and upstream log destination. Do
+request URIs and to omit `Cookie` and `Set-Cookie` values. Exercise a normal
+seat exchange, a controlled failing `/s/` request with a disposable test code,
+and a `/s/` request while the backend is unreachable (use a throwaway proxy
+instance whose upstream is a closed port, not your live one), then inspect every
+access, error, and upstream log destination. Do
 not expose the service to the Internet if raw-code redaction has not been
 demonstrated across those failure paths. Restrict retained logs to trusted
 operators even after redaction.

@@ -38,26 +38,25 @@ mechanics from rules text; unimplemented handlers stay explicit.
 
 ### Phase 5 - All-Exile alpha readiness
 
-The distribution and runtime foundation, trusted-alpha seat access, and the
-alpha data policy are built and covered by automated route and packaged-archive
-smokes. What remains is manual and remote evidence. The per-build
-[acceptance record](operations/alpha-acceptance.md) and the
-[Phase 5 follow-ups](operations/phase-5-follow-ups.md) track it.
+The distribution and runtime foundation, trusted-alpha seat access, the alpha
+data policy, and a two-machine LAN and HTTPS acceptance run of the local
+`0.1.0-alpha.1` build are done. The run's
+[record](testing/alpha-acceptance-0.1.0-alpha.1.md) passed with one NGINX
+log-redaction mitigation and a throwaway local CA. What remains is release
+operations. Deferred findings and requested UI changes are in the
+[Phase 5 follow-ups](operations/phase-5-follow-ups.md).
 
-1. [ ] Verify two or more browsers on separate machines can create/join,
-   reconnect, reload persisted games, and complete representative multi-player
-   turns over a LAN. Automated archive evidence at `5b817f6` does not replace
-   this gate: two LAN machines, browser/version observations, and the completed
-   per-build LAN/TLS record are still needed.
-2. [ ] Complete release operations: publish multi-architecture Linux OCI images
+1. [ ] Complete release operations: publish multi-architecture Linux OCI images
    for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
    browser support and firewall/reverse-proxy/TLS requirements, and publish a
    short host/player quick-start. Guidance and a gated workflow are committed,
    but the `linux/amd64` and `linux/arm64` Buildx smokes, GitHub Actions run,
    GHCR manifest publication, and GitHub prerelease remain unexecuted, as does
    the container smoke of the trusted-seat flow (no Docker daemon on
-   2026-09-09). Rerun the complete verification and packaged smoke gates before
-   each alpha build.
+   2026-09-09). Rebuild before release, because the tested archive predates the
+   documentation fixes made afterwards. Rerun the complete verification and
+   packaged smoke gates, and a new acceptance record if the release commit
+   differs from the tested one, before each alpha build.
 
 ### Phase - Player-facing action history
 

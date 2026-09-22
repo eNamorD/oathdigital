@@ -1,6 +1,7 @@
 # Per-build trusted-alpha acceptance record
 
-Copy this file for each candidate build. A blank template is not evidence.
+Copy this file for each candidate build and store the completed copy under
+`docs/testing/`. A blank template is not evidence.
 Every row below starts as **UNEXECUTED** and must remain so until the named
 check is observed on that build. Use **PASS**, **FAIL**, or **BLOCKED** only with
 dated evidence and operator initials.
@@ -80,7 +81,7 @@ two-machine requirement.
 | 12 | A newly generated seat link uses the exact configured HTTPS scheme, host, and port. | UNEXECUTED | Not observed. |
 | 13 | Visiting the seat link stays on the HTTPS origin and returns an `oath_seat` cookie with `Secure`, `HttpOnly`, `SameSite=Lax`, and the exact `/games/{game-id}` path. | UNEXECUTED | Not observed. |
 | 14 | A same-origin gameplay request succeeds; a deliberately mismatched `Origin` request is rejected without changing game state. | UNEXECUTED | Not observed. |
-| 15 | Normal exchange and a controlled failing `/s/` request use a disposable test code; every NGINX access/error log, upstream application log, and applicable proxy, CDN, firewall, WAF, agent, or dashboard log is inspected, and no raw `/s/{seat-code}`, `Cookie`, or `Set-Cookie` value appears. | UNEXECUTED | Not observed. |
+| 15 | Normal exchange, a controlled failing `/s/` request, and a `/s/` request with the backend unreachable (on a throwaway proxy instance) use a disposable test code; every NGINX access/error log, upstream application log, and applicable proxy, CDN, firewall, WAF, agent, or dashboard log is inspected, and no raw `/s/{seat-code}`, `Cookie`, or `Set-Cookie` value appears. | UNEXECUTED | Not observed. |
 | 16 | Forwarded identity headers do not select or change a seat; the seat cookie remains the only trusted seat identity. | UNEXECUTED | Not observed. |
 
 ## Browser observations

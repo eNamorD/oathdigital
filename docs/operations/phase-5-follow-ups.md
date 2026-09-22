@@ -27,10 +27,12 @@ evidence, but is not a release-build or two-architecture release gate.
 
 Still required before release:
 
-- Two separate LAN machines, three isolated seat profiles, and a completed
-  per-build [LAN/TLS record](alpha-acceptance.md), including browser versions,
-  reconnection, same-database restart, private-view checks, proxy log redaction,
-  configured HTTPS origin, and rejected mismatched Origin request.
+- A per-build [LAN/TLS record](alpha-acceptance.md) for the exact candidate
+  that is released. One was completed for the local `0.1.0-alpha.1` build on
+  2026-09-21 (see `docs/testing/alpha-acceptance-0.1.0-alpha.1.md` in a source
+  checkout; it is not bundled). It passed with a local throwaway CA and one
+  NGINX log mitigation. Any release build that differs from that commit needs
+  its own record.
 - Docker/Buildx with QEMU or equivalent GitHub-hosted runners to build, load,
   and smoke `linux/amd64` and `linux/arm64` for exact candidate tag.
 - GitHub repository remote, reviewed existing prerelease tag, Actions and GHCR
@@ -40,7 +42,8 @@ Still required before release:
   after all gates pass.
 
 No GitHub Actions run, GHCR push, manifest publication, GitHub prerelease,
-firewall/proxy change, or existing-database change has been performed.
+firewall change, or existing-database change has been performed. A local NGINX
+proxy was run on the operator's machine for the 2026-09-21 acceptance run only.
 
 ## Container release gate — now executed and passing
 
@@ -95,6 +98,44 @@ local builds retain `0.1.0-SNAPSHOT`.
 | 15 | `build.sbt` docker settings | The scoped/unscoped `dockerEnvVars` and `dockerExposedVolumes` pairs look redundant but are **load-bearing** — sbt-native-packager renders from the unscoped keys, and removing them silently drops the `ENV` and `VOLUME` lines. `verifyPackageMappings` catches it. Do not "simplify" without reading that gate. |
 | 16 | `build.sbt` `verifyPackageMappings` | The Dockerfile ordering assertion hardcodes the literal `oathdigital:root` instead of deriving it from `daemonUser`/`daemonGroup`. A plugin version emitting `chown -R 10001:0` would fail the build loudly, not pass silently. |
 | 18 | Docker image | No `HEALTHCHECK`. `/health/ready` is the right probe; the `-jre` base image has no `curl`, so this needs a `wget` or Java-based probe. |
+
+## Observed during LAN acceptance (2026-09-21) — not yet investigated
+
+Recorded by the operator while running the `0.1.0-alpha.1` LAN acceptance.
+Neither item blocks the acceptance run. Neither has been diagnosed.
+
+- **Earlier UI work is not visible in this build.** The operator did UI work a
+  while back and does not see those changes in the packaged build. Investigation
+  is deferred. Start by identifying which UI changes are expected, then compare
+  the source against the served frontend (`frontend/production-index.html`,
+  `frontend/styles.css`, the linked `main.js`) to see whether they were never
+  merged, were lost in a merge, or are not served in trusted-alpha mode.
+- **Reconnection UX after a disconnect.** After a client loses its connection,
+  it should retry with exponential backoff and show a **Try Again** button so
+  the player can retry immediately. On 2026-09-21 the operator disconnected
+  and reconnected machine B and it reconnected successfully; the behavior
+  during the outage (automatic retry, backoff, manual retry control) was not
+  recorded against this expectation.
+
+## Game-creation page redesign — requested, not started
+
+Requested by the operator after the LAN acceptance run. Nothing has been
+designed or built. Today the host form has a **Seat definitions** textarea that
+takes one `player ID,lineage ID,color` line per player, with colors `red`,
+`blue`, `yellow`, `white` and `black`. The request:
+
+- Load the page with two players already listed.
+- Offer an **Add a player** button for extra players, up to the number of
+  available colors.
+- Let the host remove a player, down to a minimum of two.
+- Offer a text box for the player ID and a separate control for the color, for
+  example a dropdown that offers only colors no other player has taken.
+- Do not offer lineage as a choice. The color is always associated with a
+  lineage, so the page derives the lineage from the color. Lineage IDs are
+  free-form strings that must be unique within a game, and the current form's
+  default text already uses `<color>-lineage`. The exact derivation, and whether
+  the color-to-lineage association is more than a naming convention, must be
+  confirmed against the setup rules before the design is written.
 
 ## Documentation gaps
 
