@@ -57,9 +57,9 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
 
   test("a single-slot section swaps its occupant back, a wider full one " +
       "refuses the move") {
-    val single = PartitionDecisionState.allIn(Vector(
+    val single = PartitionDecisionState(Vector(
       PartitionSection("keep", "Keep", 1, Some(1)),
-      PartitionSection("rest", "Rest", 0)), items, "rest")
+      PartitionSection("rest", "Rest", 0)), items, Map("rest" -> items))
     val kept = single.moveTo("a", "keep")
     assertEquals(kept.itemsIn("keep"), Vector("a"))
     assertEquals(kept.itemsIn("rest"), Vector("b", "c"))
@@ -67,17 +67,17 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
     assertEquals(swapped.itemsIn("keep"), Vector("b"))
     assertEquals(swapped.itemsIn("rest"), Vector("a", "c"))
 
-    val pair = PartitionDecisionState.allIn(Vector(
+    val pair = PartitionDecisionState(Vector(
       PartitionSection("keep", "Keep", 0, Some(2)),
-      PartitionSection("rest", "Rest", 0)), items, "rest")
+      PartitionSection("rest", "Rest", 0)), items, Map("rest" -> items))
     val full = pair.moveTo("a", "keep").moveTo("b", "keep")
     assertEquals(full.itemsIn("keep"), Vector("a", "b"))
     assertEquals(full.moveTo("c", "keep"), full)
   }
 
   test("ordering within a section survives placement and shifting") {
-    val listed = PartitionDecisionState.allIn(
-      Vector(PartitionSection("all", "All", 0)), items, "all")
+    val listed = PartitionDecisionState(
+      Vector(PartitionSection("all", "All", 0)), items, Map("all" -> items))
     assertEquals(listed.placeBefore("c", "all", Some("b")).itemsIn("all"),
       Vector("a", "c", "b"))
     // An unknown anchor appends rather than refusing.
@@ -91,9 +91,9 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
   }
 
   test("submitted placements follow the player's within-section order") {
-    val draft = PartitionDecisionState.allIn(Vector(
+    val draft = PartitionDecisionState(Vector(
       PartitionSection("keep", "Keep", 1, Some(1)),
-      PartitionSection("discard", "Discard", 0)), items, "discard")
+      PartitionSection("discard", "Discard", 0)), items, Map("discard" -> items))
       .moveTo("a", "keep")
       .placeBefore("c", "discard", Some("b"))
     assertEquals(draft.placements,

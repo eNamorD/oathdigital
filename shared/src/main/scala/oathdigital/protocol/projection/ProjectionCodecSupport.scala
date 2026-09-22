@@ -77,8 +77,6 @@ private[projection] object ProjectionCodecSupport {
     optional(value, name, path)(string)
   def optionalInt(value: ujson.Obj, name: String, path: String) =
     optional(value, name, path)(int)
-  def optionalBool(value: ujson.Obj, name: String, path: String) =
-    optional(value, name, path)(bool)
   def traverse[A, B](values: Vector[A], path: String)
       (decode: (A, String) => Result[B]): Result[Vector[B]] =
     values.zipWithIndex.foldLeft[Result[Vector[B]]](Right(Vector.empty)) {
@@ -91,5 +89,4 @@ private[projection] object ProjectionCodecSupport {
     value.fold[ujson.Value](ujson.Null)(encode)
   def stringOption(value: Option[String]): ujson.Value = option(value)(ujson.Str(_))
   def intOption(value: Option[Int]): ujson.Value = option(value)(v => ujson.Num(v))
-  def boolOption(value: Option[Boolean]): ujson.Value = option(value)(ujson.Bool(_))
 }

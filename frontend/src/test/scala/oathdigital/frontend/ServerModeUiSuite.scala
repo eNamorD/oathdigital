@@ -549,13 +549,6 @@ class ServerModeUiSuite extends FunSuite {
     assert(ServerUiSupport.cardinalityInstruction(single).contains("immediately"))
     assertEquals(ServerUiSupport.cardinalityInstruction(confirmed),
       "Choose one target, then confirm.")
-    assertEquals(ServerUiSupport.candidateButtonLabel(BoardTargetCandidate(
-      BoardTargetRef.Site("b"), "Site B", Vector("2 Supply"))),
-      "Site B · 2 Supply")
-    assertEquals(ServerUiSupport.candidateButtonLabel(BoardTargetCandidate(
-      BoardTargetRef.Site("b"), "Site B",
-      Vector("2 Supply", "Commit all 4 board warbands"))),
-      "Site B · 2 Supply · Commit all 4 board warbands")
     assertEquals(ServerUiSupport.cardinalityInstruction(single.copy(
       actionKind = "travel", minimum = 0, maximum = 0)),
       "No target is available; confirm to play this action.")

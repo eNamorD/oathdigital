@@ -16,15 +16,4 @@ object VisionCardPresentation {
       "This is not a true Vision. Play it to take a relic or banner from a player " +
         "whose pawn is at your site, then return Conspiracy to the box.")
   ).toMap
-
-  val tableSummary: String =
-    "Visions — " + Vector(
-      "vision:vision-of-conquest",
-      "vision:vision-of-rebellion",
-      "vision:vision-of-sanctuary",
-      "vision:vision-of-faith",
-      "vision:conspiracy"
-    ).flatMap(id => byId.get(id).map(card => s"${card.name}: ${card.rulesText}"))
-      .mkString(" ") +
-      " A true Vision must be revealed and three Visions must have been drawn."
 }

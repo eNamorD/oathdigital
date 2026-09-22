@@ -301,9 +301,6 @@ private[frontend] object ServerUiSupport {
     else if (action.explicitConfirm) "Choose one target, then confirm."
     else "Choose one target. Selection submits immediately."
 
-  private[frontend] def candidateButtonLabel(candidate: BoardTargetCandidate): String =
-    (candidate.label +: candidate.details).mkString(" · ")
-
   private[frontend] def candidateDetailText(
       candidate: BoardTargetCandidate): Option[String] =
     Option.when(candidate.details.nonEmpty)(candidate.details.mkString(" · "))

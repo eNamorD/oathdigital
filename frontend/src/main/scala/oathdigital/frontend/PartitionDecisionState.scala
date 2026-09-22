@@ -118,13 +118,6 @@ private[frontend] final case class PartitionDecisionState(
 }
 
 private[frontend] object PartitionDecisionState {
-  /** Opens with every item in one section -- how a card decision starts, all
-    * candidates in Discard until the player moves one across.
-    */
-  def allIn(sections: Vector[PartitionSection], items: Vector[String],
-      sectionKey: String): PartitionDecisionState =
-    PartitionDecisionState(sections, items, Map(sectionKey -> items))
-
   /** Opens by filling each section to its minimum in declared order, then
     * putting remaining items into the first section with capacity.
     *

@@ -44,10 +44,6 @@ private[frontend] final case class BoardTargetSelectionState(
     case _ => BoardSelectionResult.Updated(this)
   }
 
-  def keyboardChoose(key: String, target: BoardTargetRef): BoardSelectionResult =
-    if (key == "Enter" || key == " " || key == "Spacebar") choose(target)
-    else BoardSelectionResult.Updated(this)
-
   def selected(target: BoardTargetRef): Boolean =
     selectedKeys.contains(target.stableKey)
 
