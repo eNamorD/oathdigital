@@ -131,7 +131,9 @@ database.
    `player ID,lineage ID,color`. Available colors are `red`, `blue`, `yellow`,
    `white`, and `black`.
 4. In **First player ID**, enter one of those player IDs, then select
-   **Create game**.
+   **Create game**. The field is still required, but the server ignores it:
+   the seating order and the first player are shuffled when the game starts,
+   along with the sites and decks.
 5. Copy and privately save every displayed seat link before leaving the page.
    The creation result is the only place that lists all raw links.
 6. Send each player only their assigned link. Do not post links in public chat,

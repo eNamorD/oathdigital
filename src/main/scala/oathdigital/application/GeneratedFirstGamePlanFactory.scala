@@ -11,6 +11,10 @@ import oathdigital.model.FirstGameSetupPlan
  * Trusted-game provisioning and authenticated bootstrap use this; the
  * dev-only loopback routes keep the deterministic
  * `DevelopmentFirstGamePlanFactory`.
+ *
+ * The seating order is shuffled too, and the first seat becomes the first
+ * player, so the requested `firstPlayer` is ignored. The shuffled order is
+ * recorded in the plan, so replay stays RNG-free.
  */
 final class GeneratedFirstGamePlanFactory(
     catalog: ExecutableCatalog,
@@ -24,7 +28,14 @@ final class GeneratedFirstGamePlanFactory(
         .left.map(violation => BootstrapPlanFailure(violation.toString))
       chronicle <- FirstGameChronicleGenerator.generate(catalog, registry, random, policy)
         .left.map(failure => BootstrapPlanFailure(failure.toString))
-      plan <- ChronicleFirstGamePlan.build(catalog, chronicle, config)
+      plan <- ChronicleFirstGamePlan.build(catalog, chronicle, shuffledSeating(config))
         .left.map(failure => BootstrapPlanFailure(failure.toString))
     } yield plan
+
+  private def shuffledSeating(config: FirstGameBootstrapConfig)
+      : FirstGameBootstrapConfig = {
+    val seats = random.shuffle(config.participants)
+    seats.headOption.fold(config)(first =>
+      FirstGameBootstrapConfig(seats, first.playerId))
+  }
 }
