@@ -177,6 +177,19 @@ empty denizen slots, all on one top edge. Capacity is not always three:
 the catalog has sites with one and two slots as well, and those rows are
 correspondingly shorter.
 
+**Heading and overlay, third revision:** the letter badge beside each site
+name is gone — it repeated the name's first character — and the name is
+centred by a three-cell grid, so the tokens on one side and the defense
+dice on the other cannot pull it off centre. Measured in a fresh game:
+four sites, each with equal left and right gaps around the name. The
+overlay now leads its details with the card name above the `Suit` row, and
+turns a card the viewer is allowed to read face-up before drawing it; a
+card the viewer cannot identify still shows its back, since there is
+nothing to turn. Removing the badge left the frontend's whole visual
+chain unused, so `VisualDomRenderer` and `VisualRenderPlan` went with it;
+`oathdigital.presentation` itself is untouched and still has its own
+tests.
+
 **Suit colours, second revision** (commit `ef3df0f`): the first attempt
 brightened Beast, which the product owner rejected. Beast returns to the
 sampled `#8c371e`; Discord moves to a fire-engine `#ce2029` and Hearth to

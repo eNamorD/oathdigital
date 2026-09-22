@@ -78,6 +78,23 @@ class SiteFaceSuite extends munit.FunSuite {
       "card-face card-face-relic card-face-down"))
   }
 
+  /** The letter badge repeated the first character of the name beside it. */
+  test("a site heading carries no letter badge") {
+    val heading = ServerUiSupport.siteHeading(woods)
+    assertEquals(all(heading, ".site-visual"), Vector.empty)
+    assertEquals(one(heading, ".site-name").map(_.textContent), Some("Deep Woods"))
+  }
+
+  /** The three cells are always present so the name stays in the middle one,
+    * whether or not the site holds anything.
+    */
+  test("a heading keeps its token cell even when the site holds nothing") {
+    val heading = ServerUiSupport.siteHeading(woods.copy(looseFavor = 0,
+      looseSecrets = 0))
+    assertEquals(all(heading, ".site-tokens").size, 1)
+    assertEquals(one(heading, ".site-tokens").map(_.textContent), Some(""))
+  }
+
   test("loose favor and secrets sit in the site's upper left as glyphs") {
     val heading = ServerUiSupport.siteHeading(woods)
     assertEquals(glyphs(heading, ".site-tokens"), Vector("favor", "secret"))

@@ -1,7 +1,5 @@
 package oathdigital.frontend
 
-import oathdigital.presentation._
-
 private[frontend] final case class PeekedRelicPresentation(card: CardDetails)
 
 /** What a site asks of a player, which is never both at once: a site is
@@ -13,27 +11,7 @@ private[frontend] object SiteRequirement {
   final case class Recover(difficulty: Int) extends SiteRequirement
 }
 
-private[frontend] final case class VisualRenderPlan(
-    instruction: VisualInstruction,
-    fallback: VisualInstruction.Placeholder
-) {
-  def afterFailure: VisualInstruction.Placeholder = fallback
-}
-
-private[frontend] object VisualRenderPlan {
-  def from(
-      entity: PresentedEntity,
-      result: ImageLoadResult
-  ): VisualRenderPlan = {
-    val fallback = VisualResolver
-      .resolve(entity, ImageLoadResult.NotRequested)
-      .asInstanceOf[VisualInstruction.Placeholder]
-    VisualRenderPlan(VisualResolver.resolve(entity, result), fallback)
-  }
-}
-
 private[frontend] final case class SiteCardPresentation(
-    siteVisual: VisualRenderPlan,
     looseFavor: Int,
     looseSecrets: Int,
     defense: Int,
@@ -44,17 +22,7 @@ private[frontend] final case class SiteCardPresentation(
 
 private[frontend] object SiteCardPresentation {
   def from(site: GameSite): SiteCardPresentation = {
-    val siteEntity = SiteView(
-      ViewId(s"site:${site.siteId}"),
-      AccessibleLabel(site.label),
-      image = None,
-      fallback = FallbackVisual(initial(site.label), site.label)
-    )
     SiteCardPresentation(
-      siteVisual = VisualRenderPlan.from(
-        siteEntity,
-        ImageLoadResult.NotRequested
-      ),
       looseFavor = site.looseFavor,
       looseSecrets = site.looseSecrets,
       defense = site.defense,
@@ -66,7 +34,4 @@ private[frontend] object SiteCardPresentation {
       peekedRelics = site.relics.knownRelics.map(PeekedRelicPresentation(_))
     )
   }
-
-  private def initial(label: String): String =
-    label.trim.headOption.fold("?")(_.toUpper.toString)
 }

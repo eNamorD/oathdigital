@@ -917,64 +917,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.pileCardClasses(0), "pile-card pile-empty")
   }
 
-  test("a site visual deterministically falls back without assets") {
-    val details = SiteCardPresentation.from(GameSite(
-      "woods",
-      "Woods",
-      0,
-      0,
-      1,
-      0,
-      Vector(GameSiteCard("fox", "Fox")),
-      GameSiteRelics(0)
-    ))
-
-    assertEquals(details.siteVisual.instruction,
-      VisualInstruction.Placeholder(
-        "W", "Woods", AccessibleLabel("Woods")
-      ))
-  }
-
-  test("failed and stale assets share the same accessible fallback") {
-    val expected = ImageRef("sites/woods.webp")
-    val site = SiteView(
-      ViewId("site:woods"),
-      AccessibleLabel("Woods"),
-      Some(expected),
-      FallbackVisual("W", "Woods")
-    )
-    val fallback = VisualInstruction.Placeholder(
-      "W", "Woods", AccessibleLabel("Woods")
-    )
-
-    assertEquals(VisualRenderPlan.from(
-      site, ImageLoadResult.Failed(expected)).instruction, fallback)
-    assertEquals(VisualRenderPlan.from(
-      site,
-      ImageLoadResult.Loaded(ImageRef("sites/mine.webp"))
-    ).instruction, fallback)
-  }
-
-  test("an image load error deterministically selects the labelled fallback") {
-    val expected = ImageRef("sites/woods.webp")
-    val site = SiteView(
-      ViewId("site:woods"),
-      AccessibleLabel("Woods"),
-      Some(expected),
-      FallbackVisual("W", "Woods")
-    )
-    val plan = VisualRenderPlan.from(
-      site,
-      ImageLoadResult.Loaded(expected)
-    )
-
-    assertEquals(plan.instruction,
-      VisualInstruction.Image(expected, AccessibleLabel("Woods")))
-    assertEquals(plan.afterFailure, VisualInstruction.Placeholder(
-      "W", "Woods", AccessibleLabel("Woods")
-    ))
-  }
-
   test("a legal phase power becomes one usePower command") {
     val power = PhasePowerState("denizen.silver-tongue",
       DecisionOptionState("denizen", "92", "Silver Tongue"),

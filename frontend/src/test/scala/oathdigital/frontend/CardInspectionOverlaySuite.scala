@@ -60,6 +60,31 @@ class CardInspectionOverlaySuite extends munit.FunSuite {
     overlay.dispose(); root.remove()
   }
 
+  /** Inspection is for reading a card, and a card you are allowed to read has
+    * no reason to show you its back.
+    */
+  test("a card the viewer knows is inspected face-up, whichever way it lies") {
+    val (root, overlay) = fixture()
+    overlay.show(card.copy(orientation = Some("face-down")), origin())
+    val node = root.querySelector(".card-overlay")
+    assertEquals(all(node, ".card-back-letter"), Vector.empty)
+    assertEquals(one(node, ".card-name").map(_.textContent), Some("Old Oak"))
+    assert(!node.querySelector(".card-face").classList.contains("card-face-down"))
+    overlay.dispose(); root.remove()
+  }
+
+  test("the details lead with the card name, above the suit") {
+    val (root, overlay) = fixture()
+    overlay.show(card, origin())
+    val details = root.querySelector(".card-overlay-details")
+    assertEquals(details.firstChild.asInstanceOf[dom.Element].getAttribute("class"),
+      "card-overlay-name")
+    assertEquals(details.firstChild.textContent, "Old Oak")
+    assertEquals(one(details, ".card-overlay-property dt").map(_.textContent),
+      Some("Suit"))
+    overlay.dispose(); root.remove()
+  }
+
   test("an unrestricted card gets no Restrictions row") {
     val (root, overlay) = fixture()
     overlay.show(card.copy(restrictions = Some("unrestricted")), origin())

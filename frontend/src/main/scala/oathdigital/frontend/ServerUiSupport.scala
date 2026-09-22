@@ -57,9 +57,9 @@ private[frontend] object ServerUiSupport {
       siteToken("favor", presentation.looseFavor).foreach(tokens.appendChild)
     if (presentation.looseSecrets > 0)
       siteToken("secret", presentation.looseSecrets).foreach(tokens.appendChild)
-    if (tokens.childNodes.length > 0) heading.appendChild(tokens)
-    heading.appendChild(VisualDomRenderer.render(presentation.siteVisual,
-      "site-visual"))
+    // Always appended, empty or not: the name is the middle cell of three,
+    // and a missing cell would slide it off centre.
+    heading.appendChild(tokens)
     heading.appendChild(text("span", "site-name", site.label))
     val defense = element("span", "site-defense")
     defense.setAttribute("aria-label", s"Defense ${presentation.defense}")

@@ -31,7 +31,10 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
 
   def show(card: CardDetails, origin: dom.html.Element): Unit = {
     while (body.firstChild != null) body.removeChild(body.firstChild)
-    body.appendChild(CardFace.render(card))
+    // Inspection reads a card, so a card the viewer is allowed to read is
+    // turned over here. One the viewer cannot identify has nothing to turn.
+    body.appendChild(CardFace.render(
+      if (card.hidden) card else card.copy(orientation = Some("face-up"))))
     if (!card.hidden) body.appendChild(details(card))
     opener = Some(origin)
     node.removeAttribute("hidden")
@@ -48,6 +51,7 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
 
   private def details(card: CardDetails): dom.Element = {
     val panel = element("div", "card-overlay-details")
+    panel.appendChild(text("h3", "card-overlay-name", card.name))
     val properties = element("dl", "card-overlay-properties")
     Vector(card.suit.map("Suit" -> _),
       card.restrictions.filterNot(_ == "unrestricted").map("Restrictions" -> _),
