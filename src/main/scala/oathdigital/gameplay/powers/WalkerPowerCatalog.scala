@@ -7,6 +7,7 @@ import oathdigital.gameplay.powers.economy.KnightsErrant
 import oathdigital.gameplay.powers.cardplay.CardPlayTriggers
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
+import oathdigital.gameplay.powers.setup.{BanditMarket, GreatMarket}
 import oathdigital.gameplay.powers.targeting.TargetProtections
 import oathdigital.gameplay.powers.travel.{TravelModifiers, TravelSitePowers}
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
@@ -57,5 +58,6 @@ object WalkerPowerCatalog {
       SimplePlans.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
       BannerFacePowers.contributions ++
-      Dazzle.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
+      Dazzle.forCatalog(catalog) ++ GreatMarket.forCatalog(catalog) ++
+      BanditMarket.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
 }
