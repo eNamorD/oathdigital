@@ -1,29 +1,9 @@
 # Oath Digital
 
-Oath Digital is a Scala/Scala.js implementation of Oath: New Foundations. The
-JVM is authoritative: clients send actorless intents, deterministic gameplay
-emits domain events, and state is rebuilt by replaying the event stream.
-
-The copied HRF sources under `vendor/haunt-roll-fail/hrf` are MIT-licensed
-reference material and are not part of the build.
-
-## Architecture
-
-Start with [codebase structure](docs/architecture/codebase-structure.md). The
-main durable decisions are:
-
-- [gameplay modules](docs/architecture/gameplay-modules.md)
-- [core operations migration](docs/architecture/core-operations-migration.md)
-- [typed rule resolution](docs/architecture/rule-resolution.md)
-- [authoritative events](docs/architecture/authoritative-events.md)
-- [application/event-store boundary](docs/architecture/event-store-application-service.md)
-- [server journal and trust boundary](docs/architecture/server-event-journal.md)
-- [first-game setup](docs/architecture/game-setup.md)
-- [core domain model](docs/architecture/core-domain-model.md)
-
-Rule-specific designs remain in `docs/architecture/bounded-*.md` and the
-all-Exile decision notes. Rule coverage and current implementation evidence are
-tracked in [implementation traceability](docs/rules/implementation-traceability.md).
+This is a Scala/Scala.js implementation of Oath: New Foundations, heavily
+inspired by the HRF implementation of Arcs. The host runs a server which
+stores a database of games, and players use a web browser to connect
+and play the game.
 
 ## Build and verification
 
@@ -65,6 +45,10 @@ The catalog generator without `--output` is a non-writing equality check.
 
 ## Local server UI
 
+For testing services, the game can be played in server mode. Server mode offers
+developer tools on the UI which let you switch between players and inspect
+raw event logs.
+
 Build the frontend and run the loopback server:
 
 ```sh
@@ -74,9 +58,8 @@ Build the frontend and run the loopback server:
 
 Open `http://127.0.0.1:8080/?mode=server`. Check
 `http://127.0.0.1:8080/health`, stop with Ctrl-C, and retain
-`var/oathdigital*` to preserve local games. The development transport includes
-player-view controls and a privileged raw event log; it is loopback-only and is
-not an authentication boundary.
+`var/oathdigital*` to preserve local games. The development transport
+ is loopback-only and is not an authentication boundary.
 
 ## Packaged server
 
@@ -107,3 +90,27 @@ Operators should read these guides before inviting players:
 
 Seat links grant full control of their seats and are intended only for trusted
 alpha groups. The guides do not add accounts or remote administration.
+
+## Architecture
+
+The JVM is authoritative: clients send actorless intents, deterministic gameplay
+emits domain events, and state is rebuilt by replaying the event stream.
+
+The copied HRF sources under `vendor/haunt-roll-fail/hrf` are MIT-licensed
+reference material and are not part of the build.
+
+Start with [codebase structure](docs/architecture/codebase-structure.md). The
+main durable decisions are:
+
+- [gameplay modules](docs/architecture/gameplay-modules.md)
+- [core operations migration](docs/architecture/core-operations-migration.md)
+- [typed rule resolution](docs/architecture/rule-resolution.md)
+- [authoritative events](docs/architecture/authoritative-events.md)
+- [application/event-store boundary](docs/architecture/event-store-application-service.md)
+- [server journal and trust boundary](docs/architecture/server-event-journal.md)
+- [first-game setup](docs/architecture/game-setup.md)
+- [core domain model](docs/architecture/core-domain-model.md)
+
+Rule-specific designs remain in `docs/architecture/bounded-*.md` and the
+all-Exile decision notes. Rule coverage and current implementation evidence are
+tracked in [implementation traceability](docs/rules/implementation-traceability.md).
