@@ -114,7 +114,10 @@ object PhaseTransitionRef {
 object TriggeredProcedureRef {
   /** Every change of the Oathkeeper title holder at an action boundary. */
   case object Oathkeeper extends TriggeredProcedureRef { val key = "oathkeeper" }
-  val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper)
+  /** Runs once, right after `GameStarted` evolves (2026-09-21 Chronicle
+    * design, slice 2, "Setup on the walker"). No client command starts it. */
+  case object Setup extends TriggeredProcedureRef { val key = "setup" }
+  val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup)
 }
 
 object StartableRef {

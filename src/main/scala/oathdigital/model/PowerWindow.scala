@@ -182,6 +182,14 @@ object PowerWindow {
   case object RestReturnFavor extends OtherWindow { val key = "rest.return-favor" }
   case object RestReturnSecrets extends OtherWindow { val key = "rest.return-secrets" }
   case object RestEnd extends OtherWindow { val key = "rest.end" }
+  /** Where the placing player's site is fixed for this player's Setup turn
+    * (2026-09-21 Chronicle design, "Setup powers"): Great Forge and Broken
+    * Forge hook here. */
+  case object SetupPawnPlaced extends OtherWindow { val key = "setup.pawn-placed" }
+  /** Runs once, in site order, after every player has placed a pawn and
+    * chosen an adviser: Great Market, Bandit Market and Empty Grounds hook
+    * here. */
+  case object SetupEnd extends OtherWindow { val key = "setup.end" }
   case object NegotiationOffer extends OtherWindow { val key = "negotiation.offer" }
   case object NegotiationEligibility extends OtherWindow {
     val key = "negotiation.eligibility"

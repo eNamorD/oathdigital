@@ -111,7 +111,8 @@ object AtlasEntry {
   final case class StoredSite(
       id: SiteId,
       denizens: Vector[SiteDenizenState],
-      relics: Vector[RelicState]
+      relics: Vector[RelicState],
+      edifice: Option[EdificeId] = None
   ) extends AtlasEntry
 
   case object EmpireDivider extends AtlasEntry

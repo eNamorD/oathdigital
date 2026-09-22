@@ -4,10 +4,9 @@ import oathdigital.model._
 
 sealed trait OathContinue extends Product with Serializable
 object OathContinue {
-  final case class AwaitingPawn(playerId: PlayerId) extends OathContinue
-  final case class AwaitingAdviser(playerId: PlayerId)
+  final case class AwaitingSetupPawn(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
-  final case class ReadyForFirstTurn(playerId: PlayerId)
+  final case class AwaitingSetupAdviser(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingWakeAction(playerId: PlayerId)
       extends OathContinue

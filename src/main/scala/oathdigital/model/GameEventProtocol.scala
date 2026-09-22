@@ -20,15 +20,16 @@ object OathEvent {
   ) extends OathEvent {
     require(diagnostics.nonEmpty, "ignored-rule event must not be empty")
   }
-  final case class FirstGameStarted(plan: FirstGameSetupPlan)
+  /** Replaces `FirstGameStarted` (2026-09-21 Chronicle design, slice 2,
+    * "Setup from a Chronicle"). `chronicle` is the between-game record;
+    * `orders` is the concrete per-game deal Setup actually deals from --
+    * see the Global Constraints note on why the two are recorded
+    * separately. Evolving this event alone (before the triggered `Setup`
+    * procedure runs a single step) produces a `Ready` game in `Phase.Setup`
+    * with every pawn unplaced and every hand unresolved.
+    */
+  final case class GameStarted(chronicle: Chronicle, orders: SetupOrders)
       extends OathEvent
-  final case class GamePawnPlaced(playerId: PlayerId, siteId: SiteId)
-      extends OathEvent
-  final case class StartingAdviserChosen(
-      playerId: PlayerId,
-      adviserId: DenizenId
-  ) extends OathEvent
-  case object FirstGameCompleted extends OathEvent
   final case class SiteRelicsPeeked(
       playerId: PlayerId, siteId: SiteId, relics: Vector[RelicId])
       extends OathEvent

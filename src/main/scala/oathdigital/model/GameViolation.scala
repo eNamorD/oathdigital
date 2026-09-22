@@ -83,6 +83,13 @@ object OathViolation {
   final case class UnsupportedBannerState(reason: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
       extends OathViolation
+  /** A Chronicle shape Setup does not support yet: a non-empty `world`
+    * (needs the Empire), stored denizens or relics on an atlas site (needs
+    * placement rules not specified yet), an unknown or duplicate id, or not
+    * enough cards to deal (2026-09-21 Chronicle design, slice 2, "Setup
+    * from a Chronicle").
+    */
+  final case class UnsupportedChronicle(reason: String) extends OathViolation
   final case class UnsupportedRoundEndRule(sourceKey: String, handlerId: String)
       extends OathViolation
   final case class UnsupportedRoundEndCatalogInventory(
