@@ -26,14 +26,20 @@ campaign-continuity rules.
 
 ### Phase - Randomized setup for alpha
 
-Every game starts with sites randomized. Each Homeland is seeded with the
-matching edifice card which has been implemented. The top 30 cards of the
-world deck are randomized, and consist of implemented denizens (and visions, as usual).
+Every game starts with sites randomized. Each Homeland is seeded with its
+suit's edifice card, preferring an implemented one when the suit has one.
+The top 30 cards of the world deck are randomized, and consist of
+implemented denizens (and visions, as usual).
 
 Designed in the [Chronicle and randomized setup](superpowers/specs/2026-09-21-chronicle-setup-design.md)
 spec: setup becomes a function of a Chronicle (shaped like the TTS export format)
 plus recorded shuffle orders, runs on the walker, and a generator produces a
 random first-game Chronicle. Built in three slices, each with its own plan.
+
+Slice 1 (Chronicle model, generator and port; the dev fixture and trusted and
+authenticated bootstrap now build from a Chronicle) is done -- plan at
+[docs/superpowers/plans/2026-09-21-chronicle-setup-slice1.md](superpowers/plans/2026-09-21-chronicle-setup-slice1.md).
+Slices 2 (setup on the walker) and 3 (the E02/E06/E22 powers) remain.
 
 - [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
   the Chancellor or first player (site order is used until then). Player choices

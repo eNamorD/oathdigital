@@ -498,7 +498,9 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `Chronicle`/`StoredSite` (Task 1); `ChronicleRandomPort`, `ShufflePolicy` (Task 2); `ImplementedCardCatalog.{denizens, ordinaryRelics, homelandEdifice}` (Task 3).
-- Produces: `sealed trait ChronicleGeneratorFailure` with cases `WrongSiteCount(actual: Int)`, `NoImplementedEdifice(suit: Suit)`, `TooFewSuitDenizens(suit: Suit, implemented: Int, unimplemented: Int)`, `InvariantViolated(detail: String)`; `object FirstGameChronicleGenerator { def generate(catalog: ExecutableCatalog, registry: PowerRegistry, random: ChronicleRandomPort, policy: ShufflePolicy): Either[ChronicleGeneratorFailure, Chronicle] }`. Task 7 (the production plan factory) consumes `generate`.
+- Produces: `sealed trait ChronicleGeneratorFailure` with cases `WrongSiteCount(actual: Int)`, `TooFewSuitDenizens(suit: Suit, implemented: Int, unimplemented: Int)`, `InvariantViolated(detail: String)`; `object FirstGameChronicleGenerator { def generate(catalog: ExecutableCatalog, registry: PowerRegistry, random: ChronicleRandomPort, policy: ShufflePolicy): Either[ChronicleGeneratorFailure, Chronicle] }`. Task 7 (the production plan factory) consumes `generate`.
+
+> **Correction made during execution (2026-09-21):** this task originally also defined `NoImplementedEdifice(suit: Suit)` and failed generation whenever a Homeland's suit had no fully-implemented edifice. Checked against the real registry at execution time, only the Order suit has one (E17 and E19, both faces registered) -- Discord, Nomad, Arcane, Hearth and Beast currently have none, contradicting this plan's Global Constraints claim of "12 edifice faces implemented (1 edifice/suit)" (real count: 7 of 60 faces registered). Generation would therefore fail for 5 of 6 suits against the real catalog. Raised to the user; resolved as: a Homeland always carries its suit's edifice card -- the implemented one when the suit has one, otherwise the lowest-id edifice of that suit (it plays inert with the existing ignored-rule diagnostic, the same treatment already given to unimplemented denizens and relics). `NoImplementedEdifice` is removed as unreachable.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -606,7 +608,6 @@ import oathdigital.model._
 sealed trait ChronicleGeneratorFailure extends Product with Serializable
 object ChronicleGeneratorFailure {
   final case class WrongSiteCount(actual: Int) extends ChronicleGeneratorFailure
-  final case class NoImplementedEdifice(suit: Suit) extends ChronicleGeneratorFailure
   final case class TooFewSuitDenizens(suit: Suit, implemented: Int, unimplemented: Int)
       extends ChronicleGeneratorFailure
   final case class InvariantViolated(detail: String) extends ChronicleGeneratorFailure
@@ -615,11 +616,15 @@ object ChronicleGeneratorFailure {
 /**
  * Produces a random first-game Chronicle (2026-09-21 Chronicle design, "The
  * first-game generator"): all 24 sites shuffled into the atlas box, each
- * Homeland carrying its suit's implemented edifice; a 60-denizen world deck,
- * 10 per suit (5 implemented plus 5 random unimplemented); 12 dispossessed
- * denizens, 2 unimplemented per suit, drawn from what the 60 left behind; and
- * the full ordinary relic deck. Both decks are ordered implemented-first by
- * `policy`. Self-validates the counts before returning.
+ * Homeland carrying its suit's edifice (its implemented one when the suit
+ * has one; otherwise the lowest-id edifice of that suit, which plays inert
+ * with the existing ignored-rule diagnostic -- a Homeland is never left
+ * without its edifice card just because none of its suit's five are
+ * implemented yet); a 60-denizen world deck, 10 per suit (5 implemented plus
+ * 5 random unimplemented); 12 dispossessed denizens, 2 unimplemented per
+ * suit, drawn from what the 60 left behind; and the full ordinary relic
+ * deck. Both decks are ordered implemented-first by `policy`. Self-validates
+ * the counts before returning.
  */
 object FirstGameChronicleGenerator {
   import ChronicleGeneratorFailure._
@@ -648,20 +653,22 @@ object FirstGameChronicleGenerator {
       : Either[ChronicleGeneratorFailure, Vector[StoredSite]] = {
     val sites = catalog.sites.map(_.id)
     if (sites.size != 24) Left(WrongSiteCount(sites.size))
-    else
-      random.shuffle(sites).foldLeft[Either[ChronicleGeneratorFailure, Vector[StoredSite]]](
-          Right(Vector.empty)) { (acc, siteId) =>
-        acc.flatMap { built =>
-          homelandSuit(catalog, siteId) match {
-            case None => Right(built :+ StoredSite(siteId))
-            case Some(suit) =>
-              ImplementedCardCatalog.homelandEdifice(catalog, suit, registry)
-                .map(edificeId => built :+ StoredSite(siteId, Vector(edificeId)))
-                .toRight(NoImplementedEdifice(suit))
-          }
-        }
+    else Right(random.shuffle(sites).map { siteId =>
+      homelandSuit(catalog, siteId) match {
+        case None => StoredSite(siteId)
+        case Some(suit) =>
+          StoredSite(siteId, Vector(edificeForHomeland(catalog, registry, suit)))
       }
+    })
   }
+
+  /** The suit's implemented edifice when it has one; otherwise the lowest-id
+    * edifice of that suit, so a Homeland always carries an edifice card even
+    * when none of its suit's five are implemented yet. */
+  private def edificeForHomeland(catalog: ExecutableCatalog, registry: PowerRegistry,
+      suit: Suit): EdificeId =
+    ImplementedCardCatalog.homelandEdifice(catalog, suit, registry).getOrElse(
+      EdificeId(catalog.edifices.filter(_.suit == suit).map(_.id.value).min))
 
   private def denizenPools(catalog: ExecutableCatalog, registry: PowerRegistry,
       random: ChronicleRandomPort)
@@ -724,7 +731,7 @@ Add `import oathdigital.model.Chronicle` to the test file at Task 4 Step 1 if it
 - [ ] **Step 4: Run it to confirm it passes**
 
 Run: `./sbtw "testOnly oathdigital.application.FirstGameChronicleGeneratorSuite"`
-Expected: PASS (5 tests). If `NoImplementedEdifice` or `TooFewSuitDenizens` fires, the alpha batch's per-suit counts (Global Constraints) have changed since 2026-09-21 -- re-check `docs/catalog/new-foundations-component-catalog.json` and the reviewed power catalog before assuming a code bug.
+Expected: PASS (5 tests). If `TooFewSuitDenizens` fires, the alpha batch's per-suit counts (Global Constraints) have changed since 2026-09-21 -- re-check `docs/catalog/new-foundations-component-catalog.json` and the reviewed power catalog before assuming a code bug.
 
 - [ ] **Step 5: Commit**
 
