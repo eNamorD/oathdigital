@@ -503,8 +503,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(projector.waiting(ctx(None)), waiting)
   }
 
-  /** Ruling R-P1: a Player option naming nobody seated cannot be presented.
-    * Only the tree is substituted, and within it only one candidate.
+  /** A Player option naming nobody seated cannot be presented. Only the
+    * tree is substituted, and within it only one candidate.
     */
   test("an Oathkeeper candidate who holds no seat suppresses the projection") {
     val (ready, _, holder, _) = parkedOathkeeperTie

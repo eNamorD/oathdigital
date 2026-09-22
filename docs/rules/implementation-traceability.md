@@ -1,8 +1,8 @@
 > **Note (2026-09-05): code references will go stale.** Rules coverage here stays
-> authoritative, but the engine is being redesigned around the procedure walker
-> (`docs/superpowers/specs/2026-09-05-procedure-walker-design.md`): per-action
-> procedures, power seams, and event evolution are replaced by Operation trees,
-> a walker, and recorded-ops replay. Refresh file references as modules migrate.
+> authoritative, but the engine is being redesigned around the procedure
+> walker: per-action procedures, power seams, and event evolution are replaced
+> by Operation trees, a walker, and recorded-ops replay. Refresh file
+> references as modules migrate.
 
 # Rulebook implementation traceability
 

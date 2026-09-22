@@ -1,12 +1,11 @@
 > **Note (2026-09-05): implementation form superseded.** Rules content here stays
 > authoritative; the code it describes (bespoke action procedures, power seams,
-> typed-fact vocabularies) is being replaced by the procedure-walker design:
-> `docs/superpowers/specs/2026-09-05-procedure-walker-design.md`.
+> typed-fact vocabularies) is being replaced by the procedure-walker design.
 
 # First-game setup
 
 Status: implemented and replay-tested, reviewed September 2026 (Chronicle
-design, slice 3: `docs/superpowers/specs/2026-09-21-chronicle-setup-design.md`).
+design, slice 3).
 
 `gameplay/setup/GameStartRules.evolve` builds a fresh `Ready` game directly
 from a `Chronicle` and `SetupOrders`: it begins at `OathState.NoGame`, records

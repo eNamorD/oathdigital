@@ -479,7 +479,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
         assert(rejection.detail.contains("is not applicable"),
           s"violation detail '${rejection.detail}' should mention " +
             "inapplicability")
-        // Ruling R3: the message names the action, not "Recover".
+        // The message names the action, not "Recover".
         assert(rejection.detail.contains(ActionRef.Recover.key),
           s"violation detail '${rejection.detail}' should name the action")
       case other => fail(s"expected an InvalidEventOrder rejection, got $other")

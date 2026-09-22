@@ -1,8 +1,7 @@
 # Oath Digital Roadmap
 
 This is the forward-looking project-level source of truth for planned work.
-When a task is done, it should be deleted from this file. Past work can be
-identified by looking through specs and plans in `docs/superpowers/`.
+When a task is done, it should be deleted from this file.
 
 Refrain from labeling phases with numbers, as the roadmap items may shift
 in priority. (Some items may still be labeled as such, for consistency with specs)
@@ -11,10 +10,8 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 **Phase — Randomized setup for alpha** is active. Phase 3's first batch (30
 denizens, 12 edifice faces, 15 relics, the Wandering Flame phase power and the
-Mob card play modifier) is complete and merged: designed in the
-[powers design](superpowers/specs/2026-09-20-powers-design.md), with per-power
-rulings in the [powers rulings](superpowers/specs/2026-09-20-powers-rulings.md).
-All five slices (0 foundations, 1a-1d When Played/ACTION/WAKE powers, 2
+Mob card play modifier) is complete and merged. All five slices (0
+foundations, 1a-1d When Played/ACTION/WAKE powers, 2
 modifiers/restrictions/triggers, 3 battle plans, 4 banner faces) are
 implemented. The rest of the denizen/relic/edifice catalog is not needed for
 the alpha and stays future work (tracked generally under **L6** below).
@@ -30,17 +27,11 @@ Done. Every game starts with sites randomized, each Homeland seeded with its
 suit's edifice card (preferring an implemented one), and the top 30 world-deck
 cards drawn from implemented denizens. Setup is a pure function of a Chronicle
 (shaped like the TTS export format) plus recorded shuffle orders, and runs on
-the walker, with a generator producing a random first-game Chronicle. Designed
-in the [Chronicle and randomized setup](superpowers/specs/2026-09-21-chronicle-setup-design.md)
-spec and built in three slices:
-[1](superpowers/plans/2026-09-21-chronicle-setup-slice1.md) (Chronicle model,
-generator, port),
-[2](superpowers/plans/2026-09-21-chronicle-setup-slice2.md) (setup on the
-walker), and
-[3](superpowers/plans/2026-09-21-chronicle-setup-slice3.md) (the E02/E06/E22
-powers). All six batch-1 edifice faces now work; only the WHEN EXPLORED
-windows they declared stay inert until an explore procedure exists to fire
-them.
+the walker, with a generator producing a random first-game Chronicle, built in
+three slices: Chronicle model/generator/port, setup on the walker, and the
+E02/E06/E22 powers. All six batch-1 edifice faces now work; only the WHEN
+EXPLORED windows they declared stay inert until an explore procedure exists to
+fire them.
 
 - [ ] **Deferred: derive the lineage from the color on the server.** The color
   is always associated with a lineage, but the trusted creation request still
@@ -227,6 +218,12 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
     justifies the added server lifecycle complexity.
+- [ ] **L8 — Migrate the component catalog into typed Scala objects.**
+  `docs/catalog/new-foundations-component-catalog.json` is hand-authored JSON,
+  read at runtime and validated against its schema. Move denizens, relics,
+  edifices, legacies, and sites into typed Scala objects (or a compile-time
+  generated loader) so suit, restrictions, and modifiers are looked up as
+  fields instead of string-keyed JSON traversal.
 
 ## Standing rules
 

@@ -1,11 +1,26 @@
 # Oath Digital
 
-This is a Scala/Scala.js implementation of Oath: New Foundations, heavily
-inspired by the HRF implementation of Arcs. The host runs a server which
-stores a database of games, and players use a web browser to connect
-and play the game.
+A Scala/Scala.js implementation of Oath: New Foundations, heavily inspired by
+the HRF implementation of Arcs. The host runs a server that stores a database
+of games, and players use a web browser to connect and play.
 
-## Build and verification
+This is an unofficial, fan-made implementation. Oath: New Foundations is a
+tabletop game designed by Cole Wehrle, published by Buried Giant Studios; this
+project is not affiliated with or endorsed by them. The code in this
+repository is MIT-licensed (see [LICENSE](LICENSE)); that license covers the
+software only, not Buried Giant Studios' game design, text, or art.
+
+## How to Play
+
+To host or join a game, see the [host and player quick
+start](docs/operations/quick-start.md). It covers downloading and running the
+server, and creating and distributing seat links to players. Seat links grant
+full control of a seat and are intended for trusted groups who know each
+other — there are no accounts, passwords, or remote administration.
+
+## For Developers
+
+### Build and verification
 
 Use the project-local wrapper; a normal verification run does not require
 `clean`:
@@ -43,7 +58,7 @@ git diff --check
 
 The catalog generator without `--output` is a non-writing equality check.
 
-## Local server UI
+### Local server UI
 
 For testing services, the game can be played in server mode. Server mode offers
 developer tools on the UI which let you switch between players and inspect
@@ -64,7 +79,7 @@ first listed player, where the toolbar switches between players. Check
 `var/oathdigital*` to preserve local games. The development transport
  is loopback-only and is not an authentication boundary.
 
-## Packaged server
+### Packaged server
 
 Build versioned Universal ZIP and TGZ distributions with:
 
@@ -80,7 +95,7 @@ environment, then default precedence. See
 [runtime configuration](docs/operations/configuration.md) for every option and
 archive/container examples.
 
-## Trusted-alpha operations
+### Operating a server
 
 Operators should read these guides before inviting players:
 
@@ -91,10 +106,7 @@ Operators should read these guides before inviting players:
 - [per-build manual acceptance record](docs/operations/alpha-acceptance.md)
 - [packaged artifact smoke tests](docs/operations/packaged-smoke-test.md)
 
-Seat links grant full control of their seats and are intended only for trusted
-alpha groups. The guides do not add accounts or remote administration.
-
-## Architecture
+### Architecture
 
 The JVM is authoritative: clients send actorless intents, deterministic gameplay
 emits domain events, and state is rebuilt by replaying the event stream.

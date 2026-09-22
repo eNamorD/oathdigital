@@ -16,3 +16,6 @@ reference/
 
 .worktrees/
 node_modules/
+
+docs/superpowers/
+.superpowers/

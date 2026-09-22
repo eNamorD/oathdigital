@@ -1,9 +1,8 @@
 > **OUTDATED — engine redesign superseded.** The forward architecture is the
-> procedure-walker design (`docs/superpowers/specs/2026-09-05-procedure-walker-design.md`):
-> actions become `Operation` trees, a generic walker executes them, powers are
-> contributors (`Transform`/`Restriction`), replay applies recorded ops only.
-> This file is a historical record of the pre-walker design/code. Read the new
-> spec before planning new work.
+> procedure-walker design: actions become `Operation` trees, a generic walker
+> executes them, powers are contributors (`Transform`/`Restriction`), replay
+> applies recorded ops only. This file is a historical record of the
+> pre-walker design/code.
 
 # Gameplay modules
 

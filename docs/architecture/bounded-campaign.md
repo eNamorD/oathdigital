@@ -1,9 +1,7 @@
 > **Note (2026-09-19): ported to the procedure walker.** Campaign, Conquest and
 > Raid, now runs as `ActionRef.Campaign` on the generic walker. The legacy
 > `PendingProcedure` path, its seven commands, its seven events and the legacy
-> `pending` slot are deleted. Design:
-> `docs/superpowers/specs/2026-09-19-campaign-walker-design.md`. The file name is
-> kept so inbound links hold.
+> `pending` slot are deleted.
 
 # Campaign
 

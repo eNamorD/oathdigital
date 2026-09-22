@@ -202,9 +202,8 @@ private[gameplay] trait OathRulesWalker {
           .map(_.id).toSet
         modifiers.foldLeft[Either[OathViolation, Unit]](Right(())) {
           case (Right(_), id) if offered(id) => Right(())
-          // Ruling R3: name the action, not "Recover" -- this string is
-          // user-visible and would be flatly wrong for every action the
-          // batch port adds.
+          // Name the action, not "Recover" -- this string is user-visible
+          // and would be flatly wrong for every action the batch port adds.
           case (Right(_), id) if selectable(id) => Left(InvalidEventOrder(
             s"power ${id.value} is not applicable to this ${procedure.key}"))
           case (Right(_), id) => Left(InvalidEventOrder(

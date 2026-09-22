@@ -31,10 +31,8 @@ archive was extracted into its own temporary directory and passed
 Java 21 runtime. Both smokes observed readiness, frontend assets, three private
 seats, a command, seat restoration across restart, database close, and shutdown.
 
-This is automated archive evidence only. Source:
-`.superpowers/sdd/2026-09-09-phase-5-release-operations/task-2-report.md` at
-commit `5b817f6`. It does not satisfy any LAN, browser, proxy, TLS, or
-publication row below.
+This is automated archive evidence only. It does not satisfy any LAN,
+browser, proxy, TLS, or publication row below.
 
 ## Build and environment
 

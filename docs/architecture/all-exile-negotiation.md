@@ -1,8 +1,6 @@
 > **Note (2026-09-19): ported to the procedure walker.** Negotiation now runs as
 > `ActionRef.Negotiation` on the generic walker. The legacy `PendingProcedure`
-> path, its four commands and its five events are deleted. Design:
-> `docs/superpowers/specs/2026-09-19-negotiation-walker-design.md`. The file name
-> is kept so inbound links hold.
+> path, its four commands and its five events are deleted.
 
 # Negotiation
 
