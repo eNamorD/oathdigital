@@ -30,6 +30,19 @@ Every game starts with sites randomized. Each Homeland is seeded with the
 matching edifice card which has been implemented. The top 30 cards of the
 world deck are randomized, and consist of implemented denizens (and visions, as usual).
 
+Designed in the [Chronicle and randomized setup](superpowers/specs/2026-09-21-chronicle-setup-design.md)
+spec: setup becomes a function of a Chronicle (shaped like the TTS export format)
+plus recorded shuffle orders, runs on the walker, and a generator produces a
+random first-game Chronicle. Built in three slices, each with its own plan.
+
+- [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
+  the Chancellor or first player (site order is used until then). Player choices
+  earlier in setup once foundations and legacies exist, such as the Chancellor
+  choosing Recent or Forgotten sites. The Chronicle string codec for TTS import
+  and export, including the sections that format has not defined yet. Later-game
+  setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
+  triggers once an explore procedure exists.
+
 ### Phase 5 - All-Exile alpha readiness
 
 The distribution and runtime foundation, trusted-alpha seat access, the alpha
