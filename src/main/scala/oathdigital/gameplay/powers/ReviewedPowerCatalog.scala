@@ -33,15 +33,40 @@ object ReviewedPowerCatalog {
     requireAudited(catalog).map { _ =>
       val audited = CatalogHandlerInventory.handlerIds(catalog)
         .map(PowerId).toSet ++ syntheticIds
-      new PowerResolver(PowerRegistry.withAudited(audited, powers: _*))
+      new PowerResolver(PowerRegistry.withAudited(audited, effective(catalog): _*))
     }
 
   def registry(catalog: ExecutableCatalog): Either[OathViolation, PowerRegistry] =
     requireAudited(catalog).map { _ =>
       val audited = CatalogHandlerInventory.handlerIds(catalog).map(PowerId).toSet ++
         syntheticIds
-      PowerRegistry.withAudited(audited, powers: _*)
+      PowerRegistry.withAudited(audited, effective(catalog): _*)
     }
+
+  /** `powers`, with every handler's `implemented` widened by
+    * [[PowerImplementationStatus]]: a handler still declared unimplemented
+    * here reports implemented once its power's id is covered by
+    * `WalkerPowerCatalog` or `PhasePowerCatalog` for this catalog, so a
+    * legacy stub nobody deleted after its power ported elsewhere stops
+    * producing a stale "ignored rule" diagnostic.
+    */
+  private def effective(catalog: ExecutableCatalog): Vector[Power] = {
+    val status = PowerImplementationStatus.implemented(catalog)
+    powers.map { power =>
+      new Power {
+        def id: PowerId = power.id
+        def modifier = power.modifier
+        def handlers: Vector[PowerHandler] = power.handlers.map { handler =>
+          new PowerHandler {
+            def window = handler.window
+            def resolution = handler.resolution
+            def inspect(context: PowerContext) = handler.inspect(context)
+            def implemented: Boolean = handler.implemented || status(power.id)
+          }
+        }
+      }
+    }
+  }
 
   def facts(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId)
       : ReviewedPowerFacts = {

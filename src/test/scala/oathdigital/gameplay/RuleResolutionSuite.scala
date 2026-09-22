@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.powers.ReviewedPowerCatalog
+import oathdigital.gameplay.powers.{PowerFixture, ReviewedPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 
 class RuleResolutionSuite extends munit.FunSuite {
@@ -66,6 +66,25 @@ class RuleResolutionSuite extends munit.FunSuite {
     assert(ReviewedPowerCatalog.resolver(catalog).toOption.get.validateSources(
       Vector(RuleSourceRef.GameRule("test") ->
         Vector(PowerId("denizen.not-a-rule")))).isLeft)
+  }
+
+  /** Silver Tongue's legacy `ReviewedPower` handler at `SearchModifierSelection`
+    * ([[oathdigital.gameplay.powers.RestPowers]]) is still declared
+    * `implemented = false`, since nobody rewrote it once Search's restriction
+    * shipped as a real `ContributingPower`. Before
+    * [[oathdigital.gameplay.powers.PowerImplementationStatus]] folded walker
+    * and phase coverage into `ReviewedPowerCatalog`'s registry, this stale
+    * flag made every Search near an accessible Silver Tongue log a
+    * "rule ignored" diagnostic for a rule the engine already enforces.
+    */
+  test("a power covered by the walker or phase catalog no longer reports the " +
+      "legacy ignored-rule diagnostic") {
+    val silverTongue = DenizenId(catalog.denizens.find(
+      _.handlers.contains("denizen.silver-tongue")).get.id.value)
+    val ready = PowerFixture.asAdviser(PowerFixture.base, silverTongue)
+    val source = RuleSourceRef.Adviser(PowerFixture.actor, silverTongue)
+    assertEquals(PowerRuntime.ignoredAtSource(catalog, ready, PowerFixture.actor,
+      ActionKind.Search, source).toOption.get, Vector.empty)
   }
 
   test("rule source stable keys round trip for durable diagnostics") {
