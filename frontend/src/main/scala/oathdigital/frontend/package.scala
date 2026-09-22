@@ -15,6 +15,10 @@ package object frontend {
           case PlayerColorToken.Blue => "blue"
           case PlayerColorToken.Red => "red"
           case PlayerColorToken.Yellow => "yellow"
+          case PlayerColorToken.White => "white"
+          case PlayerColorToken.Black => "black"
+          case PlayerColorToken.Pink => "pink"
+          case PlayerColorToken.Brown => "brown"
           case PlayerColorToken.Neutral => "neutral"
         })
   }
