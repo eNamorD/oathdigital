@@ -6,7 +6,7 @@
 # First-game setup
 
 Status: implemented and replay-tested, reviewed September 2026 (Chronicle
-design, slice 2: `docs/superpowers/specs/2026-09-21-chronicle-setup-design.md`).
+design, slice 3: `docs/superpowers/specs/2026-09-21-chronicle-setup-design.md`).
 
 `gameplay/setup/GameStartRules.evolve` builds a fresh `Ready` game directly
 from a `Chronicle` and `SetupOrders`: it begins at `OathState.NoGame`, records
@@ -14,9 +14,10 @@ one `GameStarted` event carrying both, and runs Setup as an ordinary
 `TriggeredProcedureRef` walker (`gameplay/setup/SetupProcedure.scala`) from
 there. There is no separate setup state machine or command payload; the
 walker's per-player tree -- `Decide` a site, place the pawn, `Decide` an
-adviser, keep/discard, an empty `SetupEnd` window reserved for later
-Homeland/edifice powers -- ends the same way every other triggered procedure
-does, with `BeginTurn(firstPlayer, Wake)`.
+adviser, keep/discard, a `SetupEnd` window that folds the six batch-1 edifice
+powers (`gameplay/powers/setup/`: Great Market/Bandit Market, Great
+Forge/Broken Forge, Proving Grounds/Empty Grounds) -- ends the same way every
+other triggered procedure does, with `BeginTurn(firstPlayer, Wake)`.
 
 ## Chronicle, orders, and validation
 

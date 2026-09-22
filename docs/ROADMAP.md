@@ -26,26 +26,21 @@ campaign-continuity rules.
 
 ### Phase - Randomized setup for alpha
 
-Every game starts with sites randomized. Each Homeland is seeded with its
-suit's edifice card, preferring an implemented one when the suit has one.
-The top 30 cards of the world deck are randomized, and consist of
-implemented denizens (and visions, as usual).
-
-Designed in the [Chronicle and randomized setup](superpowers/specs/2026-09-21-chronicle-setup-design.md)
-spec: setup becomes a function of a Chronicle (shaped like the TTS export format)
-plus recorded shuffle orders, runs on the walker, and a generator produces a
-random first-game Chronicle. Built in three slices, each with its own plan.
-
-Slice 1 (Chronicle model, generator and port; trusted, development, and
-authenticated bootstrap now build from a Chronicle) is done -- plan at
-[docs/superpowers/plans/2026-09-21-chronicle-setup-slice1.md](superpowers/plans/2026-09-21-chronicle-setup-slice1.md).
-Slice 2 (setup on the walker: `Phase.Setup`, the triggered `Setup` procedure,
-and deletion of the legacy setup event machine) is done -- plan at
-[docs/superpowers/plans/2026-09-21-chronicle-setup-slice2.md](superpowers/plans/2026-09-21-chronicle-setup-slice2.md).
-Slice 3 (the E02/E06/E22 powers) is done -- plan at
-[docs/superpowers/plans/2026-09-21-chronicle-setup-slice3.md](superpowers/plans/2026-09-21-chronicle-setup-slice3.md).
-All six batch-1 edifices now work; only the WHEN EXPLORED windows they
-declared stay inert until an explore procedure exists to fire them.
+Done. Every game starts with sites randomized, each Homeland seeded with its
+suit's edifice card (preferring an implemented one), and the top 30 world-deck
+cards drawn from implemented denizens. Setup is a pure function of a Chronicle
+(shaped like the TTS export format) plus recorded shuffle orders, and runs on
+the walker, with a generator producing a random first-game Chronicle. Designed
+in the [Chronicle and randomized setup](superpowers/specs/2026-09-21-chronicle-setup-design.md)
+spec and built in three slices:
+[1](superpowers/plans/2026-09-21-chronicle-setup-slice1.md) (Chronicle model,
+generator, port),
+[2](superpowers/plans/2026-09-21-chronicle-setup-slice2.md) (setup on the
+walker), and
+[3](superpowers/plans/2026-09-21-chronicle-setup-slice3.md) (the E02/E06/E22
+powers). All six batch-1 edifice faces now work; only the WHEN EXPLORED
+windows they declared stay inert until an explore procedure exists to fire
+them.
 
 - [ ] **Deferred: derive the lineage from the color on the server.** The color
   is always associated with a lineage, but the trusted creation request still
