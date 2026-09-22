@@ -87,4 +87,27 @@ class OperationStateMutationSuite extends munit.FunSuite {
         Left("invalid-turn-phase"), phase.key)
     }
   }
+
+  test("a pawn may move from the player area to a site once, with no prior site") {
+    val unplaced = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
+      player => if (player.player == playerId) player.copy(pawnSite = None) else player
+    }))
+    val result = new OperationExecutor().executeAll(unplaced, Vector(
+      Move(Piece.Pawn(playerId),
+        PositionedLocation(Location.PlayArea(playerId)),
+        PositionedLocation(Location.Site(sites.head)))))
+    assert(result.isRight)
+    assertEquals(
+      result.toOption.get.game.current.players.find(_.player == playerId)
+        .flatMap(_.pawnSite),
+      Some(sites.head))
+  }
+
+  test("a pawn already on a site cannot move from the player area again") {
+    val result = new OperationExecutor().executeAll(ready, Vector(
+      Move(Piece.Pawn(playerId),
+        PositionedLocation(Location.PlayArea(playerId)),
+        PositionedLocation(Location.Site(sites.head)))))
+    assert(result.isLeft)
+  }
 }

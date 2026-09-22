@@ -243,6 +243,15 @@ private[operations] object OperationStateMutation {
   private def movePawn(ready: ReadyGame, player: PlayerId,
       from: Location, to: Location): Either[OperationError, ReadyGame] =
     (from, to) match {
+      case (Location.PlayArea(source), Location.Site(destination))
+          if source == player =>
+        playerState(ready, player).flatMap { state =>
+          Either.cond(state.pawnSite.isEmpty, (),
+            MissingPiece(Piece.Pawn(player), from)).flatMap { _ =>
+            siteState(ready, destination).flatMap(_ =>
+              updatePlayer(ready, player)(_.copy(pawnSite = Some(destination))))
+          }
+        }
       case (Location.Site(source), Location.Site(destination)) =>
         playerState(ready, player).flatMap { state =>
           Either.cond(state.pawnSite.contains(source), (),
