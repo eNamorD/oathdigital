@@ -10,7 +10,7 @@ private[gameplay] object OathLifecycle {
       playerId: PlayerId
   ): Either[OathViolation, ReadyGame] =
     state match {
-      case NoGame | _: InProgress => Left(GameNotStarted)
+      case NoGame => Left(GameNotStarted)
       case Ready(ready) =>
         val current = ready.game.current
         if (current.result.nonEmpty) Left(GameEnded)
@@ -25,7 +25,7 @@ private[gameplay] object OathLifecycle {
       state: OathState,
       playerId: PlayerId
   ): Either[OathViolation, ReadyGame] = state match {
-    case NoGame | _: InProgress => Left(GameNotStarted)
+    case NoGame => Left(GameNotStarted)
     case Ready(ready) =>
       val current = ready.game.current
       if (current.result.nonEmpty) Left(GameEnded)

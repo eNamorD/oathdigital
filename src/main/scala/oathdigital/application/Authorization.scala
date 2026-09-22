@@ -58,12 +58,6 @@ final case class ProjectionAuthorization(
 final case class AuthorizedPlayer private (
     access: GameAccessContext.Player
 ) {
-  def placePawn(siteId: SiteId): GameCommand =
-    GameCommand.PlacePawn(access.playerId, siteId)
-
-  def chooseAdviser(adviserId: DenizenId): GameCommand =
-    GameCommand.ChooseAdviser(access.playerId, adviserId)
-
   def endWake: GameCommand =
     GameCommand.EndWake(access.playerId)
 
@@ -76,12 +70,6 @@ final case class AuthorizedPlayer private (
     GameCommand.RevealOwnedRelic(access.playerId, relic)
   def moveWarbands(toSite: Boolean, amount: Int): GameCommand =
     GameCommand.MoveWarbands(access.playerId, toSite, amount)
-  def resolveCardDecision(
-      decision: DecisionId,
-      resolution: CardDecisionResolution
-  ): GameCommand = GameCommand.ResolveCardDecision(
-    access.playerId, decision, resolution)
-
   def rollWalker(pool: PoolKey): GameCommand =
     GameCommand.RollWalker(access.playerId, pool)
 

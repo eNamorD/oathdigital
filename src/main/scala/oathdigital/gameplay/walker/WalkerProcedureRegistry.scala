@@ -377,7 +377,19 @@ object WalkerProcedureRegistry {
         case _ => None
       },
       build = OathkeeperProcedure.build,
-      rebuild = OathkeeperProcedure.build))
+      rebuild = OathkeeperProcedure.build),
+    TriggeredProcedureRef.Setup -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (decisionId, awaited, decision) =>
+        if (decisionId.startsWith("setup.pawn-placement."))
+          Some(OathContinue.AwaitingSetupPawn(awaited, decision))
+        else if (decisionId.startsWith("setup.adviser-choice."))
+          Some(OathContinue.AwaitingSetupAdviser(awaited, decision))
+        else None,
+      build = oathdigital.gameplay.setup.SetupProcedure.build,
+      rebuild = oathdigital.gameplay.setup.SetupProcedure.build))
 
   /** Rejects start selections handed to an action that makes none.
     *

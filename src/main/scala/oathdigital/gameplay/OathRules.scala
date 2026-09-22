@@ -6,7 +6,6 @@ import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.{PhasePowers}
@@ -38,9 +37,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     protected val walkerDice: WalkerDice = WalkerDice.unavailable)
     extends EventEvolution[OathState, OathEvent, OathViolation]
     with OathRulesWalker {
-  private val setup = new FirstGameSetupRules(catalog)
-
-  override val initialState: OathState = setup.initialState
+  override val initialState: OathState = NoGame
 
   /** Walker-ownership invariant: while a walker procedure is parked, only
     * its resume commands run. `GameApplicationService.applyCommand` refuses
@@ -94,8 +91,34 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: RoundEnded => StateBasedEvaluation.evolve(catalog, state, event)
       case event: WarExhaustionResolved =>
         StateBasedEvaluation.evolve(catalog, state, event)
-      case setupEvent => setup.evolve(state, setupEvent)
+      case GameStarted(chronicle, orders) =>
+        state match {
+          case NoGame =>
+            oathdigital.gameplay.setup.GameStartRules
+              .evolve(catalog, chronicle, orders).map(Ready)
+          case _ => Left(GameAlreadyExists)
+        }
     }
+
+  /** Builds and evolves `GameStarted`, then immediately runs the triggered
+    * `Setup` procedure to its first park or its end -- both land in the
+    * same command, so a client sees one command produce however many
+    * `WalkerStepRecorded` facts Setup's first player's turn takes (2026-09-21
+    * Chronicle design, slice 2).
+    */
+  def beginGame(state: OathState, chronicle: Chronicle, orders: SetupOrders)
+      : Either[OathViolation, OathTransition] = state match {
+    case NoGame =>
+      val event = GameStarted(chronicle, orders)
+      for {
+        started <- GameplayTransition(state, Vector(event),
+          OathContinue.AwaitingSetupPawn(orders.firstPlayer,
+            DecisionId(oathdigital.gameplay.setup.SetupProcedure
+              .pawnDecisionId(orders.firstPlayer))))(evolve)
+        withSetup <- startTriggered(started, TriggeredProcedureRef.Setup)
+      } yield withSetup
+    case _ => Left(GameAlreadyExists)
+  }
 
   protected def completeAction(transition: OathTransition)
       : Either[OathViolation, OathTransition] =

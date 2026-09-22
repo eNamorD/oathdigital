@@ -6,7 +6,8 @@ sealed trait GameCommand extends Product with Serializable
 object GameCommand {
   final case class WithModifiers(command: GameCommand,
       ordered: Vector[OrderedRuleInvocation]) extends GameCommand
-  final case class Begin(plan: FirstGameSetupPlan) extends GameCommand
+  final case class Begin(chronicle: Chronicle, orders: SetupOrders)
+      extends GameCommand
   final case class StartWalker(procedure: StartableRef, start: StartPayload)
       extends GameCommand
   final case class ResolveWalker(actor: PlayerId, treeDecision: TreeDecision)
@@ -21,22 +22,12 @@ object GameCommand {
     * player in the game could resume another player's parked walker.
     */
   final case class RollWalker(actor: PlayerId, pool: PoolKey) extends GameCommand
-  final case class PlacePawn(playerId: PlayerId, siteId: SiteId)
-      extends GameCommand
-  /** Internal setup adapter retained for rules tests; transports use ResolveCardDecision. */
-  final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
-      extends GameCommand
   final case class EndWake(playerId: PlayerId) extends GameCommand
   final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand
   final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
       extends GameCommand
   final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
       extends GameCommand
-  final case class ResolveCardDecision(
-      playerId: PlayerId,
-      decision: DecisionId,
-      resolution: CardDecisionResolution
-  ) extends GameCommand
   final case class BeginRest(playerId: PlayerId) extends GameCommand
   final case class FinishRest(playerId: PlayerId) extends GameCommand
   final case class UsePower(playerId: PlayerId, power: PowerId,
@@ -66,9 +57,3 @@ final case class StartPayload(actor: PlayerId,
 
 /** One answer to the currently parked generic walker decision. */
 final case class TreeDecision(decisionId: String, answer: DecisionAnswer)
-
-sealed trait CardDecisionResolution extends Product with Serializable
-object CardDecisionResolution {
-  final case class StartingAdviser(adviserId: DenizenId)
-      extends CardDecisionResolution
-}
