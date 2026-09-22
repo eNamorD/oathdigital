@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
@@ -10,7 +9,7 @@ import oathdigital.model._
   * price worded as details.
   */
 class PricedOptionProjectionSuite extends munit.FunSuite {
-  private val Ready(base) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+  private val Ready(base) = execute()._1: @unchecked
   private val actor = base.game.current.turn.activePlayer
   private val site = base.game.current.map.inPlay.head
 

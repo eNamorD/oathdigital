@@ -21,7 +21,6 @@ import oathdigital.model._
   * boundary does NOT run on the way there.
   */
 class EndWakeProcedureSuite extends munit.FunSuite {
-  private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
 
   private def ready(sharedEnemy: Boolean = false): OathState = {
@@ -173,7 +172,7 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     // `EnterPhase` that detects it rather than a phase gate in an evolve:
     // entering the phase the turn is already in is rejected, so the repeat
     // fails at the first event of its second copy.
-    val setupEvents = execute(setupRules)._2
+    val setupEvents = execute()._2
     assertEquals(ended.events.size, 2)
     val corrupt = new EventReplayEngine(rules).replay(
       (setupEvents ++ ended.events ++ ended.events).zipWithIndex.map {

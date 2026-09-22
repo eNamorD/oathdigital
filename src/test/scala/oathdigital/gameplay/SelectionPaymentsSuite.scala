@@ -2,7 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -66,8 +65,7 @@ class SelectionPaymentsSuite extends munit.FunSuite {
   }
 
   test("Catacombs states its secret as a selection payment") {
-    val setup = new FirstGameSetupRules(catalog)
-    val fixture = CatacombsContributionSuite.reliclessSite(setup, secrets = 1)
+    val fixture = CatacombsContributionSuite.reliclessSite(secrets = 1)
     val power = oathdigital.gameplay.powers.recover.CatacombsContribution
       .forCatalog(catalog).get
     assertEquals(power.selectionPayments(fixture.ready, fixture.actor).size, 1)
@@ -78,8 +76,7 @@ class SelectionPaymentsSuite extends munit.FunSuite {
   }
 
   test("Catacombs with no faceup secret is refused at selection, not mid-action") {
-    val setup = new FirstGameSetupRules(catalog)
-    val fixture = CatacombsContributionSuite.reliclessSite(setup, secrets = 0)
+    val fixture = CatacombsContributionSuite.reliclessSite(secrets = 0)
     val power = oathdigital.gameplay.powers.recover.CatacombsContribution
       .forCatalog(catalog).get
     val rules = new OathRules(catalog, walkerPowerCatalog = WalkerPowers(

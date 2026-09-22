@@ -22,11 +22,8 @@ object CampaignFixture {
       site != origin && ready.game.current.map.sites(site).forces ==
         SiteForces.Occupied(ForceKind.Bandit, 2))
   }
-
-  private val setup = new FirstGameSetupRules(catalog)
-
   def board(extras: Int = 0, warbands: Int = 5, supply: Int = 7): Board = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val current = base.game.current
     val inPlay = current.map.inPlay
     val origin = inPlay.find(id => catalog.sites.find(_.id == id).exists(

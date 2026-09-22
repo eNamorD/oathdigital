@@ -4,7 +4,6 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.NegotiationFixture.{Board, player}
 import oathdigital.gameplay.actions.negotiation.{NegotiationDeal, NegotiationProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, DeclineDeal, ProposeTerms}
@@ -225,7 +224,7 @@ class NegotiationProcedureSuite extends munit.FunSuite {
   }
 
   test("a completed Negotiation replays exactly from its journal") {
-    val (setupState, setupEvents) = execute(new FirstGameSetupRules(catalog))
+    val (setupState, setupEvents) = execute()
     val Ready(original) = setupState: @unchecked
     val actor = original.game.current.turn.activePlayer
     val other = original.game.current.players.find(_.player != actor).get.player

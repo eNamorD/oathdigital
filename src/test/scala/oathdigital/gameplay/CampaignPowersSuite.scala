@@ -3,14 +3,12 @@ package oathdigital.gameplay
 import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.powers.travel.{NarrowPassSitePower, TravelSitePowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
 class CampaignPowersSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
-  private val Ready(initial) = execute(setup)._1: @unchecked
+  private val Ready(initial) = execute()._1: @unchecked
   private val actor: PlayerId = initial.game.current.turn.activePlayer
   private val other: PlayerId =
     initial.game.current.players.map(_.player).find(_ != actor).get

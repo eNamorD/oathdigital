@@ -6,7 +6,6 @@ package oathdigital.protocol
 sealed trait GameIntent extends Product with Serializable
 
 object GameIntent {
-  final case class PlacePawn(siteId: String) extends GameIntent
   case object EndWake extends GameIntent
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
@@ -15,8 +14,6 @@ object GameIntent {
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relicId: String) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
-  final case class ResolveCardDecision(decisionId: String,
-      resolution: DecisionResolution) extends GameIntent
   /** Starts a walker procedure. `action` is the engine's persisted `StartableRef`
     * wire key (e.g. `"recover"`); `modifiers` is the ordered list of opaque
     * player-selected power ids chosen before the walk begins -- validated
@@ -68,11 +65,6 @@ object NegotiationInformation {
       extends NegotiationInformation
   final case class SiteRelic(siteId: String, relicId: String)
       extends NegotiationInformation
-}
-
-sealed trait DecisionResolution extends Product with Serializable
-object DecisionResolution {
-  final case class StartingAdviser(adviserId: String) extends DecisionResolution
 }
 
 /** Wire form of a walker decision answer, generic over the engine's

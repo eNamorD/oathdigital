@@ -18,7 +18,6 @@ import oathdigital.model._
   * Parity is the acceptance criterion, not plausibility.
   */
 class TravelProcedureSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
   private val powers: WalkerPowers = WalkerPowers.selected(
     WalkerPowerCatalog.default(catalog), Vector.empty)
 
@@ -36,7 +35,7 @@ class TravelProcedureSuite extends munit.FunSuite {
       supply: Int = 7,
       passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1)
   ): ReadyGame = {
-    val Ready(initial) = execute(setup)._1: @unchecked
+    val Ready(initial) = execute()._1: @unchecked
     val chosen = Vector(source, coast, plains(1), mountain, pass, plains(2),
       island, plains(3))
     val ids = (chosen.distinct ++ catalog.sites.map(_.id)

@@ -14,11 +14,10 @@ import oathdigital.model.OathViolation.{UnsupportedRestState,
 import oathdigital.catalog.CatalogPower
 
 class RestSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
 
   private def act: ReadyGame = {
-    val Ready(initial) = execute(setup)._1: @unchecked
+    val Ready(initial) = execute()._1: @unchecked
     initial.updateCurrent(_.copy(
       turn = initial.game.current.turn.copy(phase = Phase.Act)))
   }

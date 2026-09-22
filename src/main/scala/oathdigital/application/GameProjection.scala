@@ -1,11 +1,10 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.OathState.{InProgress, NoGame, Ready}
+import oathdigital.model.OathState.{NoGame, Ready}
 import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.setup.FirstGameSetupMaterializer
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -24,7 +23,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
     walkerDecisions, phasePowerProjector)
   private val pendingProjector = new PendingProjector(catalog,
     presentation, walkerDecisions)
-  private val setupMaterializer = new FirstGameSetupMaterializer(catalog)
 
   def project(gameId: String, loaded: LoadedGame,
       requestingPlayer: PlayerId): GameProjection =
@@ -38,64 +36,9 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
     case NoGame => GameProjection(gameId, loaded.nextSequence, "not-started", None,
       Vector.empty, Vector.empty, Vector.empty, Vector.empty,
       ready = false, completed = false)
-    case progress: InProgress => setupProjection(
-      gameId, loaded.nextSequence, progress, requestingPlayer)
     case Ready(ready) =>
       val context = ScopedProjectionContext(ready, requestingPlayer)
       readyProjection(gameId, loaded.nextSequence, context)
-  }
-
-  private def setupProjection(gameId: String, sequence: Long,
-      progress: InProgress, viewer: Option[PlayerId]): GameProjection = {
-    val material = setupMaterializer.materialize(progress.plan,
-      progress.placements, progress.adviserChoices)
-    val order = turnOrder(progress.plan.participants, progress.plan.firstPlayer)
-    val awaitingAdviser = progress.placements.size == progress.adviserChoices.size + 1
-    val active = if (awaitingAdviser) order(progress.adviserChoices.size).playerId
-      else order(progress.placements.size).playerId
-    val controls = if (!viewer.contains(active)) Vector.empty
-      else if (awaitingAdviser) Vector("chooseAdviser") else Vector("placePawn")
-    val privateCards = if (viewer.contains(active)) {
-      progress.temporaryHands.getOrElse(active, Vector.empty)
-        .map(presentation.cardDetails(_,
-          Some(Orientation.FaceUp), hidden = false))
-    } else Vector.empty
-    val decision = Option.when(privateCards.nonEmpty && awaitingAdviser)(PendingCardDecisionProjection(
-      CardDecisionIds.startingAdviser(active, progress.adviserChoices.size).value,
-      "starting-adviser", active.value, "Choose your starting adviser",
-      Vector("Move exactly one adviser to Keep.",
-        "The remaining candidates are discarded."), privateCards,
-      1, 1, orderingRequired = false,
-      privateCards.map(card => card.cardId ->
-        Vector(CardResolutionProjection("starting-adviser"))).toMap))
-
-    GameProjection(gameId, sequence,
-      if (awaitingAdviser) "awaiting-adviser" else "awaiting-pawn",
-      Some(active.value), presentation.setupPlayers(progress.plan.participants),
-      presentation.setupWorld(material),
-      progress.placements.map(placement => PawnLocationProjection(
-        placement.playerId.value, placement.siteId.value)), controls,
-      ready = false, completed = false, pendingCardDecision = decision,
-      boardTargetActions = Option.when(controls.contains("placePawn"))(
-        BoardTargetActionProjection("place-pawn", "Choose a starting site",
-          1, 1, autoActivate = true,
-          progress.plan.orderedSites.map(site => BoardTargetCandidateProjection(
-            BoardTargetRefProjection.Site(site.value),
-            presentation.siteLabel(site))))).toVector,
-      worldDeckCount = material.commonCards.worldDeck.size,
-      worldDeckTopCardKind = material.commonCards.worldDeck.headOption
-        .map(presentation.cardKind),
-      playerBoards = presentation.setupPlayerBoards(material),
-      banners = Vector(
-        BannerProjection("peoples-favor", "mob", None, 1),
-        BannerProjection("darkest-secret", "wandering-flame", None, 1)),
-      favorBanks = Suit.all.map(suit => FavorBankProjection(
-        suit.key, material.favorBanks(suit))),
-      tracks = Some(GameTracksProjection(1, 0, usurperLimited = true, 4,
-        progress.plan.firstPlayer.value)),
-      relicDeckCount = material.commonCards.relicDeck.size,
-      privateAdviserPreview = Option.when(!awaitingAdviser)(privateCards)
-        .getOrElse(Vector.empty))
   }
 
   private def readyProjection(gameId: String, sequence: Long,
@@ -159,11 +102,5 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
         walkerWaiting = pending.walkerWaiting,
         phasePowers = projectedPhasePowers,
         lastCampaign = CampaignResultProjector.project(context.ready))
-  }
-
-  private def turnOrder(participants: Vector[FirstGameParticipant],
-      firstPlayer: PlayerId): Vector[FirstGameParticipant] = {
-    val index = participants.indexWhere(_.playerId == firstPlayer)
-    participants.drop(index) ++ participants.take(index)
   }
 }

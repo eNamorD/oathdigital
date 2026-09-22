@@ -20,8 +20,6 @@ import oathdigital.model._
   */
 class RecoverProcedureSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer {
-  private val setup = new FirstGameSetupRules(catalog)
-
   /** Recover declares no window yet (Task 4), so every walk here states an
     * empty power source explicitly -- `advance`/`roll`/`resolve` have no
     * default, so a powered production walk can never be shadowed by a
@@ -46,7 +44,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     * is removed to conserve card identity). Supply is full.
     */
   private def recoverable: (ReadyGame, PlayerState, SiteId, RelicState, Int) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val candidates = base.game.current.map.inPlay.filter(siteId =>

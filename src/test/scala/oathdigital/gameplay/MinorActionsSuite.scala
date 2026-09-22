@@ -10,7 +10,6 @@ import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 
 class MinorActionsSuite extends munit.FunSuite {
-  private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
 
   private def ready(): (ReadyGame, PlayerState, SiteId, WorldCardId, RelicId) = {
@@ -271,7 +270,7 @@ class MinorActionsSuite extends munit.FunSuite {
   }
 
   test("valid setup history replays exactly through a completed minor action") {
-    val (setupState, setupEvents) = execute(setupRules)
+    val (setupState, setupEvents) = execute()
     val active = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
     val adviser = setupState.asInstanceOf[Ready].value.game.current.players
       .find(_.player == active).get.advisers.head.id.asInstanceOf[WorldCardId]

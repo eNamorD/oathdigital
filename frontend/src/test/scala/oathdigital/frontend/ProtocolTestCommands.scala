@@ -7,7 +7,6 @@ import oathdigital.protocol.{GameIntent => Intent, _}
   * never reaches the encoded payload.
   */
 private[frontend] object GameCommand {
-  def PlacePawn(actor: String, site: String) = Intent.PlacePawn(site)
   // Take Wealth starts on the generic walker (batch-1 Task 7): the resource
   // rides the start selection as a button, not an intent of its own.
   def TakeWealth(actor: String, resource: String) =
@@ -26,15 +25,9 @@ private[frontend] object GameCommand {
         s"search:regional-discard:$r"))))
   def PeekSiteRelics(actor: String) = Intent.PeekSiteRelics
   def MoveWarbands(actor: String, toSite: Boolean, amount: Int) = Intent.MoveWarbands(toSite, amount)
-  def ResolveCardDecision(actor: String, id: String, value: DecisionResolution.Value) = Intent.ResolveCardDecision(id, value.intent)
   def StartWalker(actor: String, action: String, modifiers: Vector[String] = Vector.empty) =
     Intent.StartWalker(action, modifiers)
   def RollWalker(actor: String, pool: String) = Intent.RollWalker(pool)
   def ResolveWalker(actor: String, id: String, payload: DecisionAnswerWire) =
     Intent.ResolveWalker(id, payload)
-}
-
-private[frontend] object DecisionResolution {
-  sealed trait Value { def intent: oathdigital.protocol.DecisionResolution }
-  final case class StartingAdviser(id: String) extends Value { val intent = oathdigital.protocol.DecisionResolution.StartingAdviser(id) }
 }

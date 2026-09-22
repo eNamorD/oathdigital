@@ -96,7 +96,8 @@ object FirstGameSetupFixture {
     * fixture made: the next in-play site, then the first card in hand.
     * Lands on `Phase.Wake` with the returned real event history.
     */
-  def execute(): (OathState, Vector[OathEvent]) = {
+  def execute(placementSites: Vector[SiteId] = sites)
+      : (OathState, Vector[OathEvent]) = {
     val rules = new OathRules(catalog)
     val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
     var transition = rules.beginGame(OathState.NoGame, chronicle, orders).toOption.get
@@ -105,7 +106,7 @@ object FirstGameSetupFixture {
     order.zipWithIndex.foreach { case (playerId, index) =>
       val pawnDecision = SetupProcedure.pawnDecisionId(playerId)
       transition = rules.resolveWalker(state, playerId, pawnDecision,
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(sites(index))))
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(placementSites(index))))
         .toOption.get
       state = transition.state
       events = events ++ transition.events

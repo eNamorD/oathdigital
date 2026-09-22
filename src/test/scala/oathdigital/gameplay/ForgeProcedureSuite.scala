@@ -23,9 +23,6 @@ import oathdigital.model._
 class ForgeProcedureSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer {
   import ForgeProcedureSuite.Forgeable
-
-  private val setup = new FirstGameSetupRules(catalog)
-
   /** Forge declares no `ContributingPower` (Task 2 ports the tree only;
     * `ForgePowers.powers` is empty), so every walk states an empty power
     * source explicitly rather than relying on a default.
@@ -47,7 +44,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     cost.favor > 0 && cost.secrets > 0)
 
   private def forgeableWhere(printed: Tokens => Boolean): Forgeable = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val actor0 = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val actor = actor0.copy(board = actor0.board.copy(favor = 5,

@@ -18,10 +18,8 @@ import oathdigital.catalog.CatalogPower
   * relic play, the player-funded payments and the rejections).
   */
 class ForgeRulesSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
-
   private def forgeable: (ReadyGame, PlayerState, SiteId, Vector[SiteDenizenTarget], RelicId) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val actor = base.game.current.players.find(_.player == base.game.current.turn.activePlayer).get
     val siteId = catalog.sites.find(_.forgeRequirements.nonEmpty).get.id
     val ids = catalog.denizens.take(3).map(d => DenizenId(d.id.value))

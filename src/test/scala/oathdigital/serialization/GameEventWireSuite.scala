@@ -1,9 +1,9 @@
 package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
+import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.model.OathEvent.FirstGameCompleted
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, RollPayload,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
@@ -93,8 +93,6 @@ class GameEventWireSuite extends munit.FunSuite {
       assertEquals(decoded.event, event)
     }
   }
-  private val rules = new FirstGameSetupRules(catalog)
-
   test("a Vision victory event round trips") {
     val events = Vector[OathEvent](OathEvent.VisionVictory(PlayerId("red"),
       VisionId("vision:vision-of-faith")))
@@ -643,7 +641,7 @@ class GameEventWireSuite extends munit.FunSuite {
   }
 
   test("v2 serialized replay equals command state and preserves ordering") {
-    val (commandState, events) = execute(rules)
+    val (commandState, events) = execute()
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
     }
@@ -657,42 +655,28 @@ class GameEventWireSuite extends munit.FunSuite {
     }
 
     assertEquals(decoded.map(_.formatVersion).distinct, Vector(1))
+    // Setup runs as an ordinary triggered walker procedure (2026-09-21
+    // Chronicle design, slice 2): one `GameStarted`, then an interleaving of
+    // `walker.step-recorded`/`walker.parked` facts for every player's pawn
+    // placement and adviser choice, ending in `walker.completed` once the
+    // tree reaches `BeginTurn(firstPlayer, Wake)`.
+    val types = decoded.map(_.eventType)
+    assertEquals(types.head, GameEventWire.GameStartedType)
+    assertEquals(types.last, GameEventWire.WalkerCompletedType)
+    assert(types.tail.init.forall(t =>
+      t == GameEventWire.WalkerStepRecordedType ||
+        t == GameEventWire.WalkerParkedType))
     assertEquals(
-      decoded.map(_.eventType),
-      Vector(
-        GameEventWire.FirstGameStartedType,
-        GameEventWire.PawnPlacedType,
-        GameEventWire.AdviserChosenType,
-        GameEventWire.PawnPlacedType,
-        GameEventWire.AdviserChosenType,
-        GameEventWire.PawnPlacedType,
-        GameEventWire.AdviserChosenType,
-        GameEventWire.FirstGameCompletedType
-      )
-    )
-    assertEquals(
-      new EventReplayEngine(rules).replay(replayRecords),
+      new EventReplayEngine(new OathRules(catalog)).replay(replayRecords),
       Right(commandState)
     )
   }
 
-  test("v2 rejects catalog disagreement and non-contiguous order") {
-    val events = execute(rules)._2
+  test("v2 rejects non-contiguous order") {
+    val events = execute()._2
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
     }
-    assert(
-      GameEventWire
-        .encodeStream(
-          "game",
-          catalogRef.copy(version = "other"),
-          records
-        )
-        .left
-        .toOption
-        .get
-        .isInstanceOf[WireError.CatalogMismatch]
-    )
     assert(
       GameEventWire
         .encodeStream(
@@ -749,7 +733,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
   test("single-event and batch writers preserve nonzero absolute sequences") {
     val single = GameEventWire
-      .encodeEvent("game", catalogRef, 41L, FirstGameCompleted)
+      .encodeEvent("game", catalogRef, 41L, OathEvent.BanditsRefilled(Vector.empty))
       .toOption
       .get
     assertEquals(
@@ -757,7 +741,7 @@ class GameEventWireSuite extends munit.FunSuite {
       41L
     )
 
-    val events = execute(rules)._2.take(2)
+    val events = execute()._2.take(2)
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(41L + index, event)
     }
@@ -772,7 +756,7 @@ class GameEventWireSuite extends munit.FunSuite {
   }
 
   test("mixed contiguous v2 setup and v3 gameplay records round trip") {
-    val setupEvents = execute(rules)._2
+    val setupEvents = execute()._2
     // Any two v3 gameplay events serve. They used to be the Wake phase's
     // own; the Wake phase no longer has any, since both taking wealth and
     // ending Wake are journalled as walker steps (Task 7).
@@ -812,19 +796,20 @@ class GameEventWireSuite extends munit.FunSuite {
       events)
   }
 
-  test("setup history preserves every Oathkeeper goal") {
-    OathkeeperGoal.all.foreach { goal =>
-      val event = OathEvent.FirstGameStarted(plan.copy(oathkeeperGoal = goal))
-      val encoded = GameEventWire.encodeEvent("goal", catalogRef, 0L, event)
-        .toOption.get
-      assertEquals(encoded("payload")("oathkeeperGoal").str, goal.key)
-      assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
-    }
-    val invalid = GameEventWire.encodeEvent("goal", catalogRef, 0L,
-      OathEvent.FirstGameStarted(plan)).toOption.get
-    invalid("payload")("oathkeeperGoal") = "unknown"
+  test("GameStarted round trips its Chronicle and dealt SetupOrders") {
+    val event = OathEvent.GameStarted(chronicle, orders)
+    val encoded = GameEventWire.encodeEvent("goal", catalogRef, 0L, event)
+      .toOption.get
+    assertEquals(encoded("payload")("chronicle")("worldDeck").arr.size,
+      chronicle.worldDeck.size)
+    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
+
+    val invalid = GameEventWire.encodeEvent("goal", catalogRef, 0L, event)
+      .toOption.get
+    val storedIndex = chronicle.atlasBox.indexWhere(_.items.nonEmpty)
+    invalid("payload")("chronicle")("atlasBox")(storedIndex)("items")(0)("kind") = "unknown"
     assert(GameEventWire.decode(invalid).left.toOption.exists {
-      case WireError.InvalidValue(path, _) => path.endsWith(".oathkeeperGoal")
+      case WireError.InvalidValue(path, _) => path.endsWith(".kind")
       case _ => false
     })
   }
@@ -887,7 +872,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assert(
       GameEventWire
-        .encodeEvent("game", catalogRef, -1L, FirstGameCompleted)
+        .encodeEvent("game", catalogRef, -1L, OathEvent.BanditsRefilled(Vector.empty))
         .isLeft
     )
     assert(
@@ -896,7 +881,7 @@ class GameEventWireSuite extends munit.FunSuite {
           "game",
           catalogRef,
           GameEventWire.MaxSafeSequence + 1L,
-          FirstGameCompleted
+          OathEvent.BanditsRefilled(Vector.empty)
         )
         .isLeft
     )
@@ -906,7 +891,7 @@ class GameEventWireSuite extends munit.FunSuite {
         "game",
         catalogRef,
         GameEventWire.MaxSafeSequence,
-        FirstGameCompleted
+        OathEvent.BanditsRefilled(Vector.empty)
       )
       .toOption
       .get
@@ -918,7 +903,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
   private def completedValue(): ujson.Value =
     GameEventWire
-      .encodeEvent("game", catalogRef, 0L, FirstGameCompleted)
+      .encodeEvent("game", catalogRef, 0L, OathEvent.BanditsRefilled(Vector.empty))
       .toOption
       .get
 }

@@ -20,9 +20,11 @@ import oathdigital.application.{
   GameProjector,
   InMemoryEventStreamRepository
 }
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.model.PlayerId
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  GameIntent}
+  DecisionAnswerWire, GameIntent}
 
 class GameRoutesSuite extends munit.FunSuite {
   test("health load malformed request and stale command status mappings") {
@@ -65,7 +67,7 @@ class GameRoutesSuite extends munit.FunSuite {
       val malformed = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        """{"expectedNextSequence":1,"intent":{"type":"placePawn"}}"""
+        """{"expectedNextSequence":1,"intent":{"type":"resolveWalker"}}"""
       )
       assertEquals(malformed.statusCode(), 400)
 
@@ -76,21 +78,29 @@ class GameRoutesSuite extends munit.FunSuite {
       )
       assertEquals(started.statusCode(), 200)
       assertEquals(cacheControl(started), None)
-      assertEquals(ujson.read(started.body())("nextSequence").num.toLong, 1L)
+      // Setup now runs as an ordinary triggered walker procedure
+      // (2026-09-21 Chronicle design, slice 2): `GameStarted` plus the
+      // `WalkerParked` fact from its immediate first park, two records for
+      // one bootstrap command.
+      val afterBootstrap = ujson.read(started.body())("nextSequence").num.toLong
+      assertEquals(afterBootstrap, 2L)
       val history = get(client,
         s"$base/api/dev/first-games/route-game/events?limit=1")
       assertEquals(history.statusCode(), 200)
       assertEquals(ujson.read(history.body())("events").arr.size, 1)
-      assertEquals(ujson.read(history.body())("events")(0)("sequence").num.toLong, 0L)
+      assertEquals(ujson.read(history.body())("events")(0)("sequence").num.toLong,
+        afterBootstrap - 1)
       assert(ujson.read(history.body())("warning").str.contains("hidden"))
       assertEquals(get(client,
         s"$base/api/dev/first-games/route-game/events?limit=101").statusCode(), 400)
 
+      val pawnDecision = SetupProcedure.pawnDecisionId(PlayerId("p2"))
       val stale = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":0,"intent":{"type":"placePawn",
-           |"siteId":"${sites.head.value}"}}""".stripMargin
+        s"""{"expectedNextSequence":0,"intent":{"type":"resolveWalker",
+           |"decisionId":"$pawnDecision",
+           |"payload":{"kind":"choose-one","optionKind":"site","optionId":"site:ancient-city"}}}""".stripMargin
       )
       assertEquals(stale.statusCode(), 409)
       assertEquals(
@@ -102,29 +112,32 @@ class GameRoutesSuite extends munit.FunSuite {
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
         ActorlessCommandCodec.encode(ActorlessCommandRequest(
-          1L,
-          GameIntent.PlacePawn("site:ancient-city")
+          afterBootstrap,
+          GameIntent.ResolveWalker(pawnDecision,
+            DecisionAnswerWire.ChooseOneWire("site", "site:ancient-city"))
         ))
       )
       assertEquals(placed.statusCode(), 200)
       assertEquals(ujson.read(placed.body())("phase").str,
-        "awaiting-adviser")
+        "setup-walker-decision")
+      val afterPlaced = ujson.read(placed.body())("nextSequence").num.toLong
       val placedHistory = get(client,
         s"$base/api/dev/first-games/route-game/events?limit=2")
       assertEquals(placedHistory.statusCode(), 200)
       assertEquals(ujson.read(placedHistory.body())("events").arr.size, 2)
       assertEquals(
         ujson.read(placedHistory.body())("events")(1)("sequence").num.toLong,
-        1L
+        afterPlaced - 1
       )
 
-      val adviser = plan.denizenOrder(9)
+      val adviserDecision = SetupProcedure.adviserDecisionId(PlayerId("p2"))
+      val adviser = ujson.read(placed.body())("walkerDecision")("query")("options")(0)("id").str
       val chosen = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":2,"intent":{"type":"resolveCardDecision",
-           |"decisionId":"setup-adviser-0-p2",
-           |"resolution":{"kind":"starting-adviser","adviserId":"${adviser.value}"}}}""".stripMargin
+        s"""{"expectedNextSequence":$afterPlaced,"intent":{"type":"resolveWalker",
+           |"decisionId":"$adviserDecision",
+           |"payload":{"kind":"choose-one","optionKind":"denizen","optionId":"$adviser"}}}""".stripMargin
       )
       assertEquals(chosen.statusCode(), 200)
 
@@ -135,10 +148,10 @@ class GameRoutesSuite extends munit.FunSuite {
       assertEquals(reloaded.statusCode(), 200)
       assertEquals(
         ujson.read(reloaded.body())("nextSequence").num.toLong,
-        3L
+        ujson.read(chosen.body())("nextSequence").num.toLong
       )
       assertEquals(ujson.read(reloaded.body())("phase").str,
-        "awaiting-pawn")
+        "setup-walker-decision")
     } finally {
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()

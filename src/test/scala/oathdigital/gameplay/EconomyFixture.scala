@@ -12,7 +12,6 @@ import oathdigital.model.OathState.Ready
   * power cannot change the arithmetic under test.
   */
 object EconomyFixture {
-  private val setup = new FirstGameSetupRules(catalog)
   private val economic = Set("73", "76", "40", "42", "176", "177", "193",
     "196", "81", "144", "6", "119", "120", "199", "102", "224",
     "229", "231", "238", "241", "248")
@@ -30,7 +29,7 @@ object EconomyFixture {
       secrets: Int = 2, supply: Int = 7,
       advisers: Vector[AdviserState] = Vector.empty,
       bank: Int = 5, boardWarbands: Int = 3): ReadyGame = {
-    val Ready(initial) = execute(setup)._1: @unchecked
+    val Ready(initial) = execute()._1: @unchecked
     val activeId = initial.game.current.turn.activePlayer
     val active = initial.game.current.players.find(_.player == activeId).get
     val siteId = active.pawnSite.get

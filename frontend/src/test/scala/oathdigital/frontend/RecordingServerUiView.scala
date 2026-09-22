@@ -32,8 +32,6 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
     new ServerSessionCoordinator(gameId, playerId)
   def currentBoardSelection: Option[BoardTargetSelectionState] = None
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit = ()
-  def currentCardDecision: Option[CardDecisionState] = None
-  def currentCardDecision_=(value: Option[CardDecisionState]): Unit = ()
   def currentModifierWorkflow: Option[ModifierWorkflow] = None
   def currentFacedownAdviserDraft: Option[FacedownAdviserDraft] = None
   def chooseFacedownAdviser(cardId: String): Unit = ()

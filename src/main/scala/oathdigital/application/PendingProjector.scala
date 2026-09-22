@@ -38,6 +38,7 @@ private[application] final class PendingProjector(
         }
       }
     else context.current.turn.phase match {
+      case Phase.Setup => "setup"
       case Phase.Wake => "wake"
       case Phase.Act => "act-action-selection"
       case Phase.Rest => "rest"

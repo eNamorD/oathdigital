@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
 
 /** Take Wealth's once-per-turn-per-site limit, proved against contribution
@@ -23,8 +23,7 @@ import oathdigital.model._
   */
 class TakeWealthPowerSuite extends munit.FunSuite {
   private val catalog = FirstGameSetupFixture.catalog
-  private val baseReady = FirstGameSetupFixture.execute(
-    new FirstGameSetupRules(catalog))._1 match {
+  private val baseReady = FirstGameSetupFixture.execute()._1 match {
     case OathState.Ready(ready) => ready
     case other => fail(s"expected Ready state, got $other")
   }

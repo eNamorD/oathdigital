@@ -13,27 +13,20 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * the parked walker's own resume is then accepted.
   */
 class PendingWalkerInvariantSuite extends munit.FunSuite {
-  private val site = plan.orderedSites.head
-  private val denizen = plan.denizenOrder.head
-  private val relic = plan.relicOrder.head
-  private val decision = DecisionId("d1")
+  private val relic = relics.head
 
   /** One instance of every `GameCommand` constructor, bound to `actor`. */
   private def everyCommand(actor: PlayerId): Vector[GameCommand] = Vector(
     GameCommand.WithModifiers(GameCommand.EndWake(actor), Vector.empty),
-    GameCommand.Begin(plan),
+    GameCommand.Begin(chronicle, orders),
     GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)),
     GameCommand.ResolveWalker(actor, TreeDecision("not-parked",
       ChooseOneAnswer(DecisionOptionRef.Button("go")))),
     GameCommand.RollWalker(actor, PoolKey("not-parked")),
-    GameCommand.PlacePawn(actor, site),
-    GameCommand.ChooseAdviser(actor, denizen),
     GameCommand.EndWake(actor),
     GameCommand.PeekSiteRelics(actor),
     GameCommand.RevealOwnedRelic(actor, relic),
     GameCommand.MoveWarbands(actor, toSite = true, 1),
-    GameCommand.ResolveCardDecision(actor, decision,
-      CardDecisionResolution.StartingAdviser(denizen)),
     GameCommand.BeginRest(actor),
     GameCommand.FinishRest(actor),
     GameCommand.UsePower(actor, PowerId("denizen.silver-tongue"),
@@ -71,7 +64,7 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
     assert(records.size > before.size, "an accepted resume appends its events")
   }
 
-  private val everyone = plan.participants.map(_.playerId)
+  private val everyone = participants.map(_.playerId)
 
   test("over a parked Recover roll in Act, only its roll is accepted") {
     val repository = new InMemoryEventStreamRepository

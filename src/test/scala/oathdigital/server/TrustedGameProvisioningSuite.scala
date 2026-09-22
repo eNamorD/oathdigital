@@ -3,7 +3,8 @@ package oathdigital.server
 import java.nio.file.{Files, Path}
 import java.sql.{Connection, DriverManager}
 import oathdigital.application._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, plan}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, chronicle,
+  orders, participants}
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.protocol._
 
@@ -44,7 +45,10 @@ class TrustedGameProvisioningSuite extends munit.FunSuite {
       assertEquals(response, Right(TrustedGameCreateResponse("trusted-game", Vector(
         TrustedSeatLink("p1", "https://games.example.test/s/AAAAAAAAAAAAAAAAAAAAAA"),
         TrustedSeatLink("p2", "https://games.example.test/s/AQEBAQEBAQEBAQEBAQEBAQ")))))
-      assertEquals(rows(connection, request.gameId), Vector(1, 2, 1, 1))
+      // GameStarted plus the WalkerParked fact from Setup's immediate first
+      // park (2026-09-21 Chronicle design, slice 2): two event entries for
+      // one bootstrap, not the legacy one.
+      assertEquals(rows(connection, request.gameId), Vector(1, 2, 1, 2))
       codes.take(2).zipWithIndex.foreach { case (code, index) =>
         assertEquals(owner.identities.resolveTrustedSeat(code.digest),
           Right(TrustedSeat(request.gameId, s"p${index + 1}")))
@@ -60,7 +64,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite {
         }
       } finally statement.close()
       val loaded = new GameApplicationService(catalog, owner.eventStreams).load(request.gameId)
-      assertEquals(loaded.toOption.flatten.map(_.nextSequence), Some(1L))
+      assertEquals(loaded.toOption.flatten.map(_.nextSequence), Some(2L))
       val journal = owner.eventStreams.load(request.gameId).toOption.flatten.get.records.mkString
       codes.foreach(code => assert(!journal.contains(code.raw)))
     }
@@ -145,10 +149,13 @@ class TrustedGameProvisioningSuite extends munit.FunSuite {
       def append(id: String, expected: ExpectedStream, records: Vector[String]) =
         fail("preparation must not write storage")
     }
-    val prepared = new GameApplicationService(catalog, untouched).prepareBootstrap("prepared", plan).toOption.get
+    val config = FirstGameBootstrapConfig(participants, orders.firstPlayer)
+    val dealt = ChronicleFirstGamePlan.dealOrder(chronicle, config)
+    val prepared = new GameApplicationService(catalog, untouched)
+      .prepareBootstrap("prepared", chronicle, config).toOption.get
     val journal = new InMemoryEventStreamRepository
     val accepted = new GameApplicationService(catalog, journal)
-      .handle("prepared", 0L, GameCommand.Begin(plan)).toOption.get
+      .handle("prepared", 0L, GameCommand.Begin(chronicle, dealt)).toOption.get
     assertEquals(prepared.state, accepted.state)
     assertEquals(prepared.events, accepted.events)
     assertEquals(prepared.continue, accepted.continue)

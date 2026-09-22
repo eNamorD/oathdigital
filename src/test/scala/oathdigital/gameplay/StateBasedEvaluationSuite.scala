@@ -12,7 +12,6 @@ import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 
 class StateBasedEvaluationSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
 
   private def prepared(
@@ -22,7 +21,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       round: Int = 1,
       limited: Boolean = true
   ): ReadyGame = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val ruled = OathkeeperFixture.ruled(base, owners, holder, side)
     ruled.updateCurrent(_.copy(
       tracks = ruled.game.current.tracks.copy(round = round,
@@ -110,7 +109,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
   }
 
   test("round four releases limiter and retained Usurper wins next Wake") {
-    val base = execute(setup)._1.asInstanceOf[Ready].value
+    val base = execute()._1.asInstanceOf[Ready].value
     val holder = base.setup.firstPlayer
     val initial = Ready(prepared(Vector(Some(holder)), Some(holder),
       round = 3, limited = true))

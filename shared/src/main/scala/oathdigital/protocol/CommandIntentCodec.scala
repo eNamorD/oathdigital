@@ -5,7 +5,6 @@ private[protocol] object CommandIntentCodec {
   import CommandJsonSupport._
 
   def encode(intent: GameIntent): ujson.Obj = intent match {
-    case PlacePawn(site) => tagged("placePawn", "siteId" -> site)
     case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
     case FinishRest => tagged("finishRest")
@@ -14,7 +13,6 @@ private[protocol] object CommandIntentCodec {
     case PeekSiteRelics => tagged("peekSiteRelics")
     case RevealOwnedRelic(id) => tagged("revealOwnedRelic", "relicId" -> id)
     case MoveWarbands(toSite, amount) => tagged("moveWarbands", "toSite" -> toSite, "amount" -> amount)
-    case ResolveCardDecision(id, resolution) => tagged("resolveCardDecision", "decisionId" -> id, "resolution" -> decision(resolution))
     case StartWalker(action, modifiers, startArgs) =>
       tagged("startWalker", "action" -> action,
         "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))),
@@ -33,5 +31,4 @@ private[protocol] object CommandIntentCodec {
 
   private def tagged(kind: String, values: (String, ujson.Value)*): ujson.Obj =
     ujson.Obj.from(("type" -> ujson.Str(kind)) +: values)
-  private def decision(v: DecisionResolution): ujson.Obj = CommandNestedCodecs.encodeDecision(v)
 }

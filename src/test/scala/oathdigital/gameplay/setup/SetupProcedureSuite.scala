@@ -1,28 +1,34 @@
 package oathdigital.gameplay.setup
 
+import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 
-class SetupProcedureSuite extends munit.FunSuite {
+class SetupProcedureSuite extends munit.FunSuite with WalkerRecordedOpsReducer {
   private val catalog = FirstGameSetupFixture.catalog
   private val ready = FirstGameSetupFixture.freshReady
 
   /** Walks `tree` from scratch, answering every park with the first option
     * a `Decide` offers, until the tree finishes. Mirrors the resolve loop
     * `RecoverProcedureSuite`/`WalkerReplayDriftSuite` already use to drive a
-    * multi-park tree to completion inside a test. */
+    * multi-park tree to completion inside a test: `Parked.events` holds
+    * only the `WalkerStepRecorded` deltas before the park (the application,
+    * not the raw walker, appends `WalkerParked`), so the next `resolve`
+    * must see them folded into state first. */
   private def driveToCompletion(ready: ReadyGame, tree: Operation): ReadyGame = {
-    var outcome = ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty)
+    var state = ready
+    var outcome = ProcedureWalker.advance(state, tree, None, WalkerPowers.empty)
       .toOption.get
     while (outcome.isInstanceOf[WalkerOutcome.Parked]) {
-      val WalkerOutcome.Parked(pending, _) = outcome: @unchecked
-      val decide = ProcedureWalker.parkedDecide(ready, tree, pending,
+      val WalkerOutcome.Parked(pending, events) = outcome: @unchecked
+      state = foldRecordedOps(state, events, "setup walk failed")
+      val decide = ProcedureWalker.parkedDecide(state, tree, pending,
         WalkerPowers.empty).get
       val answer = Answered(decide.decisionId,
         DecisionAnswer.ChooseOneAnswer(
           decide.query.asInstanceOf[DecisionQuery.ChooseOne].options.head.ref),
         decide.owner)
-      outcome = ProcedureWalker.resolve(ready, tree, pending, answer,
+      outcome = ProcedureWalker.resolve(state, tree, pending, answer,
         WalkerPowers.empty).toOption.get
     }
     val WalkerOutcome.Finished(finished, _) = outcome: @unchecked

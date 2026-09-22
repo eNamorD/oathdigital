@@ -851,14 +851,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
   }
 
-  test("card-decision zone helpers are specific to starting advisers") {
-    val adviser = PendingCardDecision("d", "starting-adviser", "red", "Choose",
-      Vector.empty, Vector(CardDetails("a", "denizen", "A")), 1, 1, false, Map.empty)
-    assertEquals(ServerUiSupport.cardDecisionZoneHelpers(adviser),
-      ServerUiSupport.CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
-        "The remaining candidates are discarded in order."))
-  }
-
   test("populated site details render properties, stable IDs, and hidden relics") {
     val site = GameSite(
       "site:woods",

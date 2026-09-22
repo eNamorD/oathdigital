@@ -39,7 +39,7 @@ class HttpGameClientSuite extends FunSuite {
         MajorActionPreviewRequest(7, "trade", Map("resource" -> "favor")))
     }.flatMap { preview =>
       assertEquals(preview.toOption.get.nextSequence, 7L)
-      client.submit("game /?", "seat-must-not-travel", 7, GameIntent.PlacePawn("site:a"))
+      client.submit("game /?", "seat-must-not-travel", 7, GameIntent.RevealOwnedRelic("relic:a"))
     }.map { submitted =>
       assertEquals(submitted.toOption.get.nextSequence, 8L)
       assertEquals(transport.requests.map(r => r._1 -> r._2).toVector, Vector(
@@ -48,7 +48,7 @@ class HttpGameClientSuite extends FunSuite {
         "POST" -> "/games/game%20%2F%3F/api/commands"))
       assertEquals(transport.requests.head._3, None)
       assertEquals(ActorlessCommandCodec.decode(transport.requests.last._3.get),
-        Right(ActorlessCommandRequest(7, GameIntent.PlacePawn("site:a"))))
+        Right(ActorlessCommandRequest(7, GameIntent.RevealOwnedRelic("relic:a"))))
       assert(!transport.requests.toString.contains("seat-must-not-travel"))
     }
   }
@@ -58,7 +58,7 @@ class HttpGameClientSuite extends FunSuite {
       Right(TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}""")),
       Right(TransportResponse(200, projectionJson(8)))))
     val client = new TrustedHttpGameClient(transport)
-    client.submit("game-1", "red-exile", 7, GameIntent.PlacePawn("site:a")).flatMap {
+    client.submit("game-1", "red-exile", 7, GameIntent.RevealOwnedRelic("relic:a")).flatMap {
       case Left(_: GameClientFailure.StalePosition) => client.load("game-1", "red-exile")
       case other => fail(s"expected conflict: $other")
     }.map { loaded =>
@@ -202,32 +202,28 @@ class HttpGameClientSuite extends FunSuite {
     assert(finish.contains("\"intent\""))
   }
   test("pawn and adviser commands preserve explicit sequence and opaque IDs") {
+    // Setup's pawn placement and adviser choice are generic walker decisions
+    // now (2026-09-21 Chronicle design, slice 2): the client answers them
+    // through `ResolveWalker`, the same as Recover's or Forge's, rather
+    // than through a bespoke `place-pawn` board-target action.
     val opaqueSite = "site:ancient-city"
     val opaqueAdviser = "denizen:0612"
-    val target = BoardTargetRef.Site(opaqueSite)
-    val setupAction = BoardTargetAction(
-      "place-pawn",
-      "Choose a starting site",
-      1,
-      1,
-      autoActivate = true,
-      Vector(BoardTargetCandidate(target, "Ancient City"))
-    )
-    val setupCommand = ServerUiSupport.commandForSelection(
-      setupAction,
-      Vector(target),
-      "red-exile"
-    ).get
+    val pawnCommand = GameCommand.ResolveWalker("red-exile",
+      "setup.pawn-placement.red-exile",
+      DecisionAnswerWire.ChooseOneWire("site", opaqueSite))
+    val adviserCommand = GameCommand.ResolveWalker("red-exile",
+      "setup.adviser-choice.red-exile",
+      DecisionAnswerWire.ChooseOneWire("denizen", opaqueAdviser))
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, projectionJson(
         sequence = 2,
-        phase = "awaiting-adviser",
+        phase = "setup-walker-decision",
         siteId = opaqueSite,
         adviserId = opaqueAdviser
       ))),
       Right(TransportResponse(200, projectionJson(
         sequence = 3,
-        phase = "awaiting-pawn",
+        phase = "setup-walker-decision",
         siteId = opaqueSite,
         choices = false
       )))
@@ -239,18 +235,14 @@ class HttpGameClientSuite extends FunSuite {
         "game-1",
         "red-exile",
         1L,
-        setupCommand
+        pawnCommand
       )
       .flatMap { pawn =>
-        val adviser = pawn.toOption.get.pendingCardDecision.get.cards.head
-        assertEquals(adviser.cardId, opaqueAdviser)
         client.submit(
           "game-1",
           "red-exile",
           pawn.toOption.get.nextSequence,
-          GameCommand.ResolveCardDecision("red-exile",
-            pawn.toOption.get.pendingCardDecision.get.decisionId,
-            DecisionResolution.StartingAdviser(adviser.cardId))
+          adviserCommand
         )
       }
       .map { _ =>
@@ -258,7 +250,9 @@ class HttpGameClientSuite extends FunSuite {
         assertEquals(ujson.read(setupBody).obj.keySet,
           Set("expectedNextSequence", "intent"))
         assertEquals(ActorlessCommandCodec.decode(setupBody),
-          Right(ActorlessCommandRequest(1L, GameIntent.PlacePawn(opaqueSite))))
+          Right(ActorlessCommandRequest(1L, GameIntent.ResolveWalker(
+            "setup.pawn-placement.red-exile",
+            DecisionAnswerWire.ChooseOneWire("site", opaqueSite)))))
         assert(transport.requests(1)._3.exists(_.contains(opaqueAdviser)))
         assert(transport.requests(1)._3.exists(
           _.contains("\"expectedNextSequence\":2")
@@ -415,7 +409,7 @@ class HttpGameClientSuite extends FunSuite {
         "game-1",
         "red-exile",
         1L,
-        GameCommand.PlacePawn("red-exile", "site:001")
+        GameCommand.EndWake("red-exile")
       )
       .flatMap { conflict =>
         assert(conflict.left.toOption.exists(

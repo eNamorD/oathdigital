@@ -9,12 +9,10 @@ import oathdigital.model.OathState.Ready
   * with chosen favor, secrets and Supply, and one banner in a chosen state.
   */
 object ChallengeFixture {
-  private val setup = new FirstGameSetupRules(catalog)
-
   def ready(resources: Int, favor: Int = 6, faceup: Int = 6, facedown: Int = 4,
       supply: Int = 7, banner: Banner = Banner.PeoplesFavor,
       holder: Option[PlayerId] = None): (ReadyGame, PlayerState) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val actor0 = base.game.current.players
       .find(_.player == base.game.current.turn.activePlayer).get
     val actor = actor0.copy(board = actor0.board.copy(favor = favor,

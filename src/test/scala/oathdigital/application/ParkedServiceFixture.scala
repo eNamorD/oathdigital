@@ -4,20 +4,21 @@ import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.rest.SilverTongue
-import oathdigital.gameplay.setup.FirstGameRulesData
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.{WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.serialization.GameEventWire
 
 /** Real games parked on a walker through the application service.
   *
   * A park that needs a specific card in play puts that card on top of the
-  * world deck through the setup plan, then journals one arranging
-  * `WalkerStepRecorded` delta that moves it into place: the same replay path
-  * production uses, as the off-turn Oathkeeper reload test does.
+  * world deck through the Chronicle's own world deck, then journals one
+  * arranging `WalkerStepRecorded` delta that moves it into place: the same
+  * replay path production uses, as the off-turn Oathkeeper reload test does.
   */
 object ParkedServiceFixture {
   val treatyCard: DenizenId = DenizenId("237")
@@ -25,31 +26,45 @@ object ParkedServiceFixture {
 
   def setUp(service: GameApplicationService, gameId: String,
       placementSites: Vector[SiteId] = sites,
-      setupPlan: FirstGameSetupPlan = plan): GameAccepted = {
-    var accepted = service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
+      setupChronicle: Chronicle = chronicle,
+      setupOrders: SetupOrders = orders): GameAccepted = {
+    var accepted = service.handle(gameId, 0L,
+      GameCommand.Begin(setupChronicle, setupOrders))
       .fold(error => throw new AssertionError(error.toString), identity)
     Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1")).zipWithIndex
       .foreach { case (playerId, index) =>
         accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.PlacePawn(playerId, placementSites(index))).toOption.get
-        val participantIndex =
-          setupPlan.participants.indexWhere(_.playerId == playerId)
+          GameCommand.ResolveWalker(playerId, TreeDecision(
+            SetupProcedure.pawnDecisionId(playerId),
+            ChooseOneAnswer(DecisionOptionRef.Site(placementSites(index))))))
+          .fold(error => throw new AssertionError(
+            s"pawn placement for $playerId at ${placementSites(index)} failed: $error"),
+            identity)
+        val Ready(placedReady) = accepted.state: @unchecked
+        val adviser = placedReady.game.current.temporaryHands(playerId)
+          .collectFirst { case id: DenizenId => id }
+          .getOrElse(throw new AssertionError(
+            s"no denizen in $playerId's hand: " +
+              placedReady.game.current.temporaryHands(playerId)))
         accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.ChooseAdviser(playerId,
-            setupPlan.denizenOrder(6 + participantIndex * 3))).toOption.get
+          GameCommand.ResolveWalker(playerId, TreeDecision(
+            SetupProcedure.adviserDecisionId(playerId),
+            ChooseOneAnswer(DecisionOptionRef.Denizen(adviser)))))
+          .toOption.get
       }
     accepted
   }
 
   /** `cards`, in order, become the top of the world deck. A card already
     * dealt by setup swaps places with the card it displaces, and the world
-    * deck is rebuilt with the fixture's own interleaving of visions.
+    * deck order is rebuilt with `ChronicleFirstGamePlan`'s own interleaving
+    * of visions -- the same production splice, not a duplicate of it.
     */
-  def withWorldDeckTop(base: FirstGameSetupPlan,
-      cards: Vector[DenizenId]): FirstGameSetupPlan = {
-    val dealt = 6 + base.participants.size * 3
+  def withWorldDeckTop(baseChronicle: Chronicle, baseOrders: SetupOrders,
+      cards: Vector[DenizenId]): (Chronicle, SetupOrders) = {
+    val dealt = 6 + baseOrders.participants.size * 3
     val targets = (dealt until dealt + cards.size).toSet
-    val order = cards.zipWithIndex.foldLeft(base.denizenOrder) {
+    val worldDeck = cards.zipWithIndex.foldLeft(baseChronicle.worldDeck) {
       case (current, (card, offset)) =>
         val target = dealt + offset
         val existing = current.indexOf(card)
@@ -62,11 +77,10 @@ object ParkedServiceFixture {
         }
         current.updated(target, card).updated(at, current(target))
     }
-    val remaining = order.drop(dealt)
-    base.copy(denizenOrder = order, worldDeckOrder =
-      remaining.take(10) ++ FirstGameRulesData.visions.take(2) ++
-        remaining.slice(10, 25) ++ FirstGameRulesData.visions.drop(2) ++
-        remaining.drop(25))
+    val newChronicle = baseChronicle.copy(worldDeck = worldDeck)
+    val config = FirstGameBootstrapConfig(baseOrders.participants,
+      baseOrders.firstPlayer)
+    (newChronicle, ChronicleFirstGamePlan.dealOrder(newChronicle, config))
   }
 
   /** Journals one arranging delta at `at`, the stream's next sequence. */
@@ -99,8 +113,10 @@ object ParkedServiceFixture {
   def leagueTreatyPark(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, gameId: String)
       : (GameAccepted, PlayerId, PlayerId) = {
-    val setup = setUp(service, gameId, setupPlan = withWorldDeckTop(plan,
-      Vector(treatyCard)))
+    val (seededChronicle, seededOrders) = withWorldDeckTop(chronicle, orders,
+      Vector(treatyCard))
+    val setup = setUp(service, gameId, setupChronicle = seededChronicle,
+      setupOrders = seededOrders)
     val Ready(base) = setup.state: @unchecked
     val current = base.game.current
     assert(current.commonCards.worldDeck.headOption.contains(treatyCard),
@@ -138,17 +154,19 @@ object ParkedServiceFixture {
       site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
         site.relicSlots > 0 &&
         !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverPlan = plan.copy(orderedSites = recoverSite +:
-      plan.orderedSites.filterNot(_ == recoverSite))
-    val actor = recoverPlan.firstPlayer
-    val setup = setUp(service, gameId, recoverPlan.orderedSites, recoverPlan)
+    val recoverChronicle = chronicle.copy(atlasBox =
+      chronicle.atlasBox.find(_.site == recoverSite).get +:
+        chronicle.atlasBox.filterNot(_.site == recoverSite))
+    val recoverSites = recoverChronicle.atlasBox.take(8).map(_.site)
+    val actor = orders.firstPlayer
+    val setup = setUp(service, gameId, recoverSites, recoverChronicle, orders)
     val act = service.handle(gameId, setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     val parked = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
     assert(parked.continue == OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.rollDecisionId)), parked.continue.toString)
-    (parked, actor, recoverPlan.participants.map(_.playerId))
+    (parked, actor, orders.participants.map(_.playerId))
   }
 
   /** The off-turn Oathkeeper tie from the service suite: the holder must
@@ -207,7 +225,9 @@ object ParkedServiceFixture {
     val first = bySuit.head
     val second = bySuit.find(_._2 != first._2).get
     val cards = Vector(silverTongueCard, first._1, second._1)
-    val setup = setUp(service, gameId, setupPlan = withWorldDeckTop(plan, cards))
+    val (seededChronicle, seededOrders) = withWorldDeckTop(chronicle, orders, cards)
+    val setup = setUp(service, gameId, setupChronicle = seededChronicle,
+      setupOrders = seededOrders)
     val Ready(base) = setup.state: @unchecked
     val current = base.game.current
     assert(current.commonCards.worldDeck.take(3) == cards,

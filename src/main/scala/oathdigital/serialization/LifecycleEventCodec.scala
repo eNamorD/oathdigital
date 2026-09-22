@@ -8,26 +8,14 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
   import WireError._
 
   protected final val lifecycleDiscriminator: PartialFunction[OathEvent, String] = {
-      case _: FirstGameStarted => FirstGameStartedType
-      case _: GamePawnPlaced => PawnPlacedType
-      case _: StartingAdviserChosen => AdviserChosenType
-      case FirstGameCompleted => FirstGameCompletedType
+      case _: GameStarted => GameStartedType
       case _: IgnoredRulesRecorded => IgnoredRulesRecordedType
   }
 
   protected final val lifecycleEncoder: PartialFunction[OathEvent, ujson.Value] = {
-      case FirstGameStarted(plan) => encodePlan(plan)
-      case GamePawnPlaced(playerId, siteId) =>
-        ujson.Obj(
-          "playerId" -> playerId.value,
-          "siteId" -> siteId.value
-        )
-      case StartingAdviserChosen(playerId, adviserId) =>
-        ujson.Obj(
-          "playerId" -> playerId.value,
-          "adviserId" -> adviserId.value
-        )
-      case FirstGameCompleted => ujson.Obj()
+      case GameStarted(chronicle, orders) => ujson.Obj(
+        "chronicle" -> encodeChronicle(chronicle),
+        "orders" -> encodeSetupOrders(orders))
       case IgnoredRulesRecorded(player, action, diagnostics) => ujson.Obj(
         "playerId" -> player.value,
         "action" -> action.key,
@@ -41,34 +29,10 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
   protected final def lifecycleDecode(eventType: String, payload: ujson.Value,
       path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] = {
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] = {
-        case FirstGameStartedType =>
-          decodePlan(payload, path).flatMap { plan =>
-            if (plan.catalog == envelopeCatalog)
-              Right(FirstGameStarted(plan))
-            else
-              Left(
-                CatalogMismatch(
-                  s"$path.catalog",
-                  envelopeCatalog,
-                  plan.catalog
-                )
-              )
-          }
-        case PawnPlacedType =>
-          Right(
-            GamePawnPlaced(
-              PlayerId(payload("playerId").str),
-              SiteId(payload("siteId").str)
-            )
-          )
-        case AdviserChosenType =>
-          Right(
-            StartingAdviserChosen(
-              PlayerId(payload("playerId").str),
-              DenizenId(payload("adviserId").str)
-            )
-          )
-        case FirstGameCompletedType => Right(FirstGameCompleted)
+        case GameStartedType => for {
+          chronicle <- decodeChronicle(payload("chronicle"), s"$path.chronicle")
+          orders <- decodeSetupOrders(payload("orders"), s"$path.orders")
+        } yield GameStarted(chronicle, orders)
         case IgnoredRulesRecordedType => for {
           action <- ActionKind.fromKey(payload("action").str).toRight(
             InvalidValue(s"$path.action", "unknown major action"))

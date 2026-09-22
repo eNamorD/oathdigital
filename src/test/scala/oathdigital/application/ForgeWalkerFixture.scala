@@ -4,6 +4,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 
@@ -59,24 +60,34 @@ object ForgeWalkerFixture extends munit.Assertions {
     // this fixture plays three in, so the site has to be a non-homeland one.
     val forgeSite = cat.sites.find(site => site.forgeRequirements.nonEmpty &&
       !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val sitePlayable = plan.worldDeckOrder.collect { case id: DenizenId
+    val sitePlayable = orders.worldDeckOrder.collect { case id: DenizenId
         if cat.denizens.find(_.id.value == id.value).exists(definition =>
           definition.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted ||
           definition.restrictions == oathdigital.catalog.CardRestrictions.SiteOnly) => id
     }.take(6)
-    val forgePlan = plan.copy(orderedSites = forgeSite +:
-      plan.orderedSites.filterNot(_ == forgeSite),
-      worldDeckOrder = sitePlayable ++ plan.worldDeckOrder.filterNot(sitePlayable.contains))
-    var accepted = service.handle(gameId, 0L, GameCommand.Begin(forgePlan)).toOption.get
+    val forgeChronicle = chronicle.copy(atlasBox =
+      chronicle.atlasBox.find(_.site == forgeSite).get +:
+        chronicle.atlasBox.filterNot(_.site == forgeSite))
+    val forgeOrders = orders.copy(
+      worldDeckOrder = sitePlayable ++ orders.worldDeckOrder.filterNot(sitePlayable.contains))
+    var accepted = service.handle(gameId, 0L,
+      GameCommand.Begin(forgeChronicle, forgeOrders)).toOption.get
     val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
+    val orderedSites = forgeSite +: forgeChronicle.atlasBox.take(8)
+      .map(_.site).filterNot(_ == forgeSite)
     order.zipWithIndex.foreach { case (playerId, index) =>
-      val destination = if (index == 0) forgeSite else forgePlan.orderedSites(index)
+      val destination = orderedSites(index)
       accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.PlacePawn(playerId, destination)).toOption.get
-      val participantIndex = forgePlan.participants.indexWhere(_.playerId == playerId)
+        GameCommand.ResolveWalker(playerId, TreeDecision(
+          SetupProcedure.pawnDecisionId(playerId),
+          ChooseOneAnswer(DecisionOptionRef.Site(destination))))).toOption.get
+      val Ready(placedReady) = accepted.state: @unchecked
+      val adviser = placedReady.game.current.temporaryHands(playerId)
+        .collectFirst { case id: DenizenId => id }.get
       accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ChooseAdviser(playerId,
-          forgePlan.denizenOrder(6 + participantIndex * 3))).toOption.get
+        GameCommand.ResolveWalker(playerId, TreeDecision(
+          SetupProcedure.adviserDecisionId(playerId),
+          ChooseOneAnswer(DecisionOptionRef.Denizen(adviser))))).toOption.get
     }
     val actor = PlayerId("p2")
     accepted = service.handle(gameId, accepted.nextSequence,

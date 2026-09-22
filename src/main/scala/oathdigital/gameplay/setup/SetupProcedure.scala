@@ -116,7 +116,8 @@ object SetupProcedure {
         resultingOrientation = Some(Orientation.FaceDown)) +:
       rejected.map(id => Move(Piece.Card(id),
         PositionedLocation(Location.Hand(player)),
-        PositionedLocation(Location.RegionalDiscard(nextRegion(region)))))
+        PositionedLocation(Location.RegionalDiscard(nextRegion(region)),
+          StackPosition.Top)))
 
   private def adviserAnswer(pending: PendingTree, decisionId: String)
       : Either[OathViolation, DenizenId] =

@@ -105,8 +105,6 @@ private final case class AnswerResume(answer: Answered) extends Resume
 
 class WalkerReplayDriftSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer {
-  private val setup = new FirstGameSetupRules(catalog)
-
   /** The power source BOTH tracks walk with. It is a named value rather than
     * a default on the walker's entry points precisely so this suite cannot
     * drift into checking an unpowered walk while production walks with
@@ -132,7 +130,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
   }
 
   private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) = {
-    val Ready(base) = execute(setup)._1: @unchecked
+    val Ready(base) = execute()._1: @unchecked
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val candidates = base.game.current.map.inPlay.filter(siteId =>
@@ -331,7 +329,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
   test("drift check: Catacombs-modified Recover (advance -> roll -> resolve) " +
       "-- the first corpus entry where a power changed the tree") {
-    val fixture = CatacombsContributionSuite.reliclessSite(setup)
+    val fixture = CatacombsContributionSuite.reliclessSite()
     val finished = assertNoDrift(fixture.ready,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,

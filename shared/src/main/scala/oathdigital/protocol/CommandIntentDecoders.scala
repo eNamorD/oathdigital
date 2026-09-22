@@ -7,7 +7,6 @@ private[protocol] object CommandIntentDecoders {
 
   def decode(kind: String, value: ujson.Obj, path: String)
       : Either[ProtocolDecodeFailure, GameIntent] = kind match {
-    case "placePawn" => one(value, path, "siteId")(PlacePawn)
     case "endWake" => empty(value, path, EndWake)
     case "beginRest" => empty(value, path, BeginRest)
     case "finishRest" => empty(value, path, FinishRest)
@@ -29,11 +28,6 @@ private[protocol] object CommandIntentDecoders {
       toSite <- field(value, "toSite", path).flatMap(boolean(_, s"$path.toSite"))
       amount <- field(value, "amount", path).flatMap(integer(_, s"$path.amount"))
     } yield MoveWarbands(toSite, amount)
-    case "resolveCardDecision" => for {
-      _ <- exact(value, Set("type", "decisionId", "resolution"), path)
-      id <- string(value, "decisionId", path)
-      resolution <- field(value, "resolution", path).flatMap(CommandNestedCodecs.decodeDecision(_, s"$path.resolution"))
-    } yield ResolveCardDecision(id, resolution)
     case "startWalker" => for {
       _ <- exact(value, Set("type", "action", "modifiers", "startArgs"), path)
       action <- string(value, "action", path)
