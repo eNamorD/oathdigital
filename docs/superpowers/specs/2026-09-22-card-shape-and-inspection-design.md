@@ -1,6 +1,6 @@
 # Card Shape and Inspection
 
-> Status: design approved 2026-09-22. Not yet planned. One implementation plan covers the whole design; the deferred items at the end each need their own.
+> Status: implemented 2026-09-22. Plan: [2026-09-22-card-shape-and-inspection.md](../plans/2026-09-22-card-shape-and-inspection.md). Verification record: [card-shape-verification.md](../../testing/card-shape-verification.md). The deferred items at the end each still need their own design.
 
 ## Goal and scope
 

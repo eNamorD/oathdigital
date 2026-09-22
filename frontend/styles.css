@@ -17,6 +17,9 @@
   --suit-hearth: #d24b23;
   --suit-nomad: #4b9678;
   --suit-order: #14417d;
+  --die-attack: #c0392b;
+  --die-defense: #3d6fb4;
+  --die-round: #9b59b6;
 }
 
 .token-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
@@ -32,7 +35,9 @@
 .token-suit-hearth { color: var(--suit-hearth); }
 .token-suit-nomad { color: var(--suit-nomad); }
 .token-suit-order { color: var(--suit-order); }
-.token-attack-die, .token-defense-die, .token-round-die,
+.token-attack-die { color: var(--die-attack); }
+.token-defense-die { color: var(--die-defense); }
+.token-round-die { color: var(--die-round); }
 .token-skull, .token-shield, .token-sword, .token-hollow-sword {
   color: #d8cdb4; }
 .rules-power { margin: 0 0 0.7em; line-height: 1.5; }

@@ -34,9 +34,10 @@ private[frontend] object TokenSprite {
     ("suit-hearth", "hearth suit",
       "M12 2 2 12h3v9h14v-9h3zm-2 12h4v7h-4z"),
     ("suit-nomad", "nomad suit",
-      "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM7 10h4v1.5H7zm6 0h4v1.5h-4z" +
-        "m-5.2 4.3 1.6-.9A4 4 0 0 0 12 15.5a4 4 0 0 0 3.6-2.1l1.6.9A5.8 5.8 0 0 1 12 17.5" +
-        "a5.8 5.8 0 0 1-4.2-3.2z"),
+      "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" +
+        "M7.4 10.3A1.3 1.3 0 0 0 10 10.3L9.45 10.3A.75 .75 0 0 1 7.95 10.3Z" +
+        "M14 10.3A1.3 1.3 0 0 0 16.6 10.3L16.05 10.3A.75 .75 0 0 1 14.55 10.3Z" +
+        "M10 15h4v1h-4z"),
     ("suit-order", "order suit",
       "M3 3h18v18H3zm2 2v14h14V5zm3 3h2v2H8zm6 0h2v2h-2zm-6 6h2v2H8zm6 0h2v2h-2z" +
         "m-3-3h2v2h-2z"),
