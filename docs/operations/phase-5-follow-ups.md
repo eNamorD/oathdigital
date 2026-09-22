@@ -117,6 +117,34 @@ Neither item blocks the acceptance run. Neither has been diagnosed.
   during the outage (automatic retry, backoff, manual retry control) was not
   recorded against this expectation.
 
+## Snapshot polling sends a full projection on every tick
+
+Not a defect; a cost the current design pays and could stop paying.
+
+`SnapshotPollingCoordinator` reschedules a `setTimeout` every 5s while the tab
+is visible and every 30s while it is hidden. Each tick calls `GameClient.load`,
+which issues `GET /api/dev/first-games/{id}?playerId=…` and returns the entire
+viewer-scoped projection. Nothing has usually changed, so the steady-state cost
+of an idle game is a full projection per client per 5s.
+
+The comparison that prompted this note: `haunt-roll-fail` polls the same way but
+far more cheaply. Its client reschedules a 500ms `setTimeout` and reads an
+append-only journal by index, so an idle tick returns an empty body. It can
+afford 500ms because the common response costs nothing.
+
+We cannot copy that directly. Its clients replay the whole journal locally and
+therefore hold every player's hidden information, which is a trusted-client
+model. `GamePresentationProjector` redacts per viewer, and the raw event
+endpoint is deliberately withheld from trusted seats for that reason. Shipping
+event deltas would require redacting a stream per viewer rather than a snapshot.
+
+The available improvement keeps redaction intact: add a cheap change-check that
+returns the current sequence for a viewer, or a 304, and fetch the full
+projection only when the sequence advanced. That makes the idle tick nearly
+free and would allow a much shorter interval without the bandwidth growing.
+Sizing, measurement and endpoint shape are unspecified; this needs its own
+design before anyone implements it.
+
 ## Game-creation page redesign — done
 
 The host form's **Seat definitions** textarea, **Game ID** field and **First
