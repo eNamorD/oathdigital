@@ -46,17 +46,61 @@ private[frontend] object ServerUiSupport {
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
 
+  /** Name row and the two upper corners: what a site holds on the left, what
+    * it costs to walk into on the right.
+    */
+  private[frontend] def siteHeading(site: GameSite): dom.Element = {
+    val presentation = SiteCardPresentation.from(site)
+    val heading = element("div", "site-heading")
+    val tokens = element("span", "site-tokens")
+    if (presentation.looseFavor > 0)
+      siteToken("favor", presentation.looseFavor).foreach(tokens.appendChild)
+    if (presentation.looseSecrets > 0)
+      siteToken("secret", presentation.looseSecrets).foreach(tokens.appendChild)
+    if (tokens.childNodes.length > 0) heading.appendChild(tokens)
+    heading.appendChild(VisualDomRenderer.render(presentation.siteVisual,
+      "site-visual"))
+    heading.appendChild(text("span", "site-name", site.label))
+    val defense = element("span", "site-defense")
+    defense.setAttribute("aria-label", s"Defense ${presentation.defense}")
+    // Drawn as dice rather than a number because defense is rolled, and no
+    // site in the catalog exceeds two. An undefended site says so in words,
+    // since no die at all would read as missing information.
+    if (presentation.defense == 0)
+      defense.appendChild(text("span", "site-defense-none", "0"))
+    else (0 until presentation.defense)
+      .foreach(_ => defense.appendChild(RulesTextRenderer.glyph("defense-die")))
+    heading.appendChild(defense)
+    heading
+  }
+
+  private def siteToken(token: String, count: Int): Vector[dom.Element] =
+    Vector(RulesTextRenderer.glyph(token),
+      text("span", "site-token-count", count.toString))
+
   private[frontend] def siteDetails(site: GameSite): dom.Element = {
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
-    val properties = element("dl", "site-properties")
-    presentation.metrics.foreach { metric =>
-      val item = element("div", "site-property")
-      item.appendChild(text("dt", "", metric.label))
-      item.appendChild(text("dd", "", metric.value.toString))
-      properties.appendChild(item)
+    // Denizens and relics share one row: capacity and relic slots always sum
+    // to three, so one row holds every card a site can ever have.
+    val cards = element("div", "site-cards")
+    site.denizens.foreach { denizen =>
+      val shell = element("span", "site-card-target")
+      val card = denizen.details.fold[dom.Element](
+        facedownCard("denizen"))(CardFace.render)
+      card.setAttribute("data-denizen-id", denizen.denizenId)
+      shell.appendChild(card)
+      cards.appendChild(shell)
     }
-    details.appendChild(properties)
+    (site.denizens.size until site.denizenCapacity)
+      .foreach(_ => cards.appendChild(emptySlot()))
+    // A peeked relic is a real card sitting face-down: CardFace gives it the
+    // knowable pip and the hover reveal, in the same box as an unknown one.
+    presentation.peekedRelics.foreach(value =>
+      cards.appendChild(CardFace.render(value.card)))
+    (0 until presentation.unknownRelicCount)
+      .foreach(_ => cards.appendChild(facedownCard("relic")))
+    details.appendChild(cards)
     site.forces.foreach { forces =>
       val row = text("p", s"site-forces ${forceCssClass(forces)}",
         forceText(forces))
@@ -64,43 +108,39 @@ private[frontend] object ServerUiSupport {
       forces.rulerPlayerId.foreach(row.setAttribute("data-ruler-player-id", _))
       details.appendChild(row)
     }
-    if (site.powers.nonEmpty) {
-      val powers = element("ul", "site-powers")
-      site.powers.foreach { power =>
-        val item = element("li", "site-power")
-        item.textContent = power.description.fold(power.label)(description =>
-          s"${power.label}: $description")
-        powers.appendChild(item)
-      }
-      details.appendChild(powers)
+    val footer = element("div", "site-footer")
+    val powers = element("ul", "site-powers")
+    site.powers.foreach { power =>
+      val item = element("li", "site-power")
+      item.textContent = power.description.fold(power.label)(description =>
+        s"${power.label}: $description")
+      powers.appendChild(item)
     }
-
-    val denizens = element("div", "site-denizens")
-    denizens.appendChild(text("strong", "", "Denizens: "))
-    site.denizens.foreach { denizen =>
-      val shell = element("span", "site-card-target")
-      val card = denizen.details.fold[dom.Element](
-        facedownCard("denizen"))(CardFace.render)
-      card.setAttribute("data-denizen-id", denizen.denizenId)
-      shell.appendChild(card)
-      denizens.appendChild(shell)
-    }
-    (site.denizens.size until site.denizenCapacity)
-      .foreach(_ => denizens.appendChild(emptySlot()))
-    details.appendChild(denizens)
-
-    val relics = element("div", "site-relics")
-    relics.appendChild(text("strong", "", "Relics: "))
-    if (site.relics.facedownCount == 0)
-      relics.appendChild(dom.document.createTextNode("None"))
-    // A peeked relic is a real card sitting face-down: CardFace gives it the
-    // knowable pip and the hover reveal, in the same box as an unknown one.
-    presentation.peekedRelics.foreach(value =>
-      relics.appendChild(CardFace.render(value.card)))
-    (0 until presentation.unknownRelicCount)
-      .foreach(_ => relics.appendChild(facedownCard("relic")))
-    details.appendChild(relics)
+    footer.appendChild(powers)
+    presentation.requirement.foreach(value =>
+      footer.appendChild(requirementCorner(value)))
+    details.appendChild(footer)
     details
+  }
+
+  /** Forge keeps its word because the catalog has no forge glyph; its price is
+    * glyphs because favor and secrets do. Recover is a die-roll target rather
+    * than a price, so it stays a number.
+    */
+  private def requirementCorner(value: SiteRequirement): dom.Element = {
+    val node = element("span", "site-requirement")
+    value match {
+      case SiteRequirement.Forge(favor, secrets) =>
+        node.appendChild(text("span", "site-requirement-label", "Forge"))
+        (0 until favor).foreach(_ =>
+          node.appendChild(RulesTextRenderer.glyph("favor")))
+        (0 until secrets).foreach(_ =>
+          node.appendChild(RulesTextRenderer.glyph("secret")))
+      case SiteRequirement.Recover(difficulty) =>
+        node.appendChild(text("span", "site-requirement-label",
+          s"Recover $difficulty"))
+    }
+    node
   }
 
   private[frontend] def forceText(forces: SiteForces): String =

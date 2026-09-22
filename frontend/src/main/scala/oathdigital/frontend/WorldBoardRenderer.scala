@@ -113,13 +113,7 @@ private[frontend] object WorldBoardRenderer {
            }
          })
        }
-       val heading = element("div", "site-heading")
-       heading.appendChild(VisualDomRenderer.render(
-         SiteCardPresentation.from(site).siteVisual,
-         "site-visual"
-       ))
-       heading.appendChild(text("span", "site-name", site.label))
-       control.appendChild(heading)
+       control.appendChild(siteHeading(site))
        candidate.flatMap(candidateDetailBadge).foreach(control.appendChild)
        val pawns = element("div", "site-pawns")
        value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>

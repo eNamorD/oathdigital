@@ -2,8 +2,16 @@ package oathdigital.frontend
 
 import oathdigital.presentation._
 
-private[frontend] final case class SiteMetric(label: String, value: String)
 private[frontend] final case class PeekedRelicPresentation(card: CardDetails)
+
+/** What a site asks of a player, which is never both at once: a site is
+  * either buildable or plunderable, and the rules give no site both.
+  */
+private[frontend] sealed trait SiteRequirement
+private[frontend] object SiteRequirement {
+  final case class Forge(favor: Int, secrets: Int) extends SiteRequirement
+  final case class Recover(difficulty: Int) extends SiteRequirement
+}
 
 private[frontend] final case class VisualRenderPlan(
     instruction: VisualInstruction,
@@ -26,10 +34,10 @@ private[frontend] object VisualRenderPlan {
 
 private[frontend] final case class SiteCardPresentation(
     siteVisual: VisualRenderPlan,
-    metrics: Vector[SiteMetric],
-    denizenVisuals: Vector[(String, VisualRenderPlan)],
-    denizenEmpty: String,
-    relicSummary: String,
+    looseFavor: Int,
+    looseSecrets: Int,
+    defense: Int,
+    requirement: Option[SiteRequirement],
     unknownRelicCount: Int,
     peekedRelics: Vector[PeekedRelicPresentation]
 )
@@ -42,39 +50,17 @@ private[frontend] object SiteCardPresentation {
       image = None,
       fallback = FallbackVisual(initial(site.label), site.label)
     )
-    val denizens = site.denizens.map { denizen =>
-      val entity = CardView(
-        ViewId(s"card:${denizen.denizenId}"),
-        AccessibleLabel(denizen.label),
-        image = None,
-        fallback = FallbackVisual(initial(denizen.label), denizen.label),
-        rulesText = ""
-      )
-      denizen.denizenId -> VisualRenderPlan.from(
-        entity,
-        ImageLoadResult.NotRequested
-      )
-    }
-
     SiteCardPresentation(
       siteVisual = VisualRenderPlan.from(
         siteEntity,
         ImageLoadResult.NotRequested
       ),
-      metrics = Vector(
-        SiteMetric("Favor", site.looseFavor.toString),
-        SiteMetric("Secrets", site.looseSecrets.toString),
-        SiteMetric("Defense", site.defense.toString)
-      ) ++ site.forgeCost.map(cost => SiteMetric("Forge cost",
-        s"${cost.favor} favor · ${cost.secrets} secrets"))
-        .orElse(site.recoverDifficulty.map(value =>
-          SiteMetric("Recover difficulty", value.toString))),
-      denizenVisuals = denizens,
-      denizenEmpty = "None",
-      relicSummary =
-        if (site.relics.facedownCount == 0) "None"
-        else if (site.relics.facedownCount == 1) "1 facedown relic"
-        else s"${site.relics.facedownCount} facedown relics",
+      looseFavor = site.looseFavor,
+      looseSecrets = site.looseSecrets,
+      defense = site.defense,
+      requirement = site.forgeCost
+        .map(cost => SiteRequirement.Forge(cost.favor, cost.secrets))
+        .orElse(site.recoverDifficulty.map(SiteRequirement.Recover)),
       unknownRelicCount = math.max(0,
         site.relics.facedownCount - site.relics.knownRelics.size),
       peekedRelics = site.relics.knownRelics.map(PeekedRelicPresentation(_))

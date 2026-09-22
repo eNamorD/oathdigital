@@ -860,15 +860,11 @@ class ServerModeUiSuite extends FunSuite {
     )
     val details = SiteCardPresentation.from(site)
 
-    assertEquals(details.metrics, Vector(
-      SiteMetric("Favor", "2"),
-      SiteMetric("Secrets", "1"),
-      SiteMetric("Defense", "0")
-    ))
+    assertEquals((details.looseFavor, details.looseSecrets, details.defense),
+      (2, 1, 0))
     assertEquals(site.denizens.map(_.label), Vector("Fox", "Owl"))
     assertEquals(site.denizens.map(_.denizenId),
       Vector("denizen:fox", "denizen:owl"))
-    assertEquals(details.relicSummary, "2 facedown relics")
     assertEquals(details.unknownRelicCount, 2)
   }
 
@@ -896,22 +892,21 @@ class ServerModeUiSuite extends FunSuite {
       GameSiteRelics(0)
     ))
 
-    assertEquals(details.metrics.map(_.value), Vector("0", "0", "0"))
-    assertEquals(details.denizenEmpty, "None")
-    assertEquals(details.relicSummary, "None")
+    assertEquals((details.looseFavor, details.looseSecrets, details.defense),
+      (0, 0, 0))
+    assertEquals(details.requirement, None)
+    assertEquals(details.unknownRelicCount, 0)
   }
 
-  test("site metric uses Forge cost instead of Recover difficulty") {
+  test("a forgeable site shows its forge cost instead of its recover difficulty") {
     val forged = SiteCardPresentation.from(GameSite("forge", "Forge", 0, 0,
       3, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(4),
       forgeCost = Some(ForgeCost(2, 1))))
-    assert(forged.metrics.contains(SiteMetric("Forge cost", "2 favor · 1 secrets")))
-    assert(!forged.metrics.exists(_.label == "Recover difficulty"))
+    assertEquals(forged.requirement, Some(SiteRequirement.Forge(2, 1)))
 
     val recover = SiteCardPresentation.from(GameSite("recover", "Recover", 0, 0,
       2, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(3)))
-    assert(recover.metrics.contains(SiteMetric("Recover difficulty", "3")))
-    assert(!recover.metrics.exists(_.label == "Forge cost"))
+    assertEquals(recover.requirement, Some(SiteRequirement.Recover(3)))
   }
 
   test("pile symbols and shape classes distinguish public tops and empty piles") {
@@ -922,7 +917,7 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.pileCardClasses(0), "pile-card pile-empty")
   }
 
-  test("site and denizen visuals deterministically fall back without assets") {
+  test("a site visual deterministically falls back without assets") {
     val details = SiteCardPresentation.from(GameSite(
       "woods",
       "Woods",
@@ -938,8 +933,6 @@ class ServerModeUiSuite extends FunSuite {
       VisualInstruction.Placeholder(
         "W", "Woods", AccessibleLabel("Woods")
       ))
-    assertEquals(details.denizenVisuals.head._2.instruction,
-      VisualInstruction.Placeholder("F", "Fox", AccessibleLabel("Fox")))
   }
 
   test("failed and stale assets share the same accessible fallback") {
