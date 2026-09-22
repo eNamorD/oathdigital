@@ -2,7 +2,6 @@ package oathdigital.application
 
 import oathdigital.catalog.{ExecutableCatalog, RelicRole}
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameRulesData
 
 final case class FirstGameBootstrapConfig(
     participants: Vector[FirstGameParticipant],
@@ -18,7 +17,10 @@ trait FirstGamePlanFactory {
 }
 
 /**
- * Development-only deterministic plan derivation.
+ * Development-only deterministic plan derivation: assembles a fixed dev
+ * Chronicle (first 8 sites, first 10 denizens per suit, lowest-id edifice
+ * per suit, all ordinary relics by printed value) and bridges it through
+ * `ChronicleFirstGamePlan` (2026-09-21 Chronicle design, slice 1).
  *
  * This is reproducible fixture construction, not production randomness.
  */
@@ -28,49 +30,55 @@ final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog)
       config: FirstGameBootstrapConfig
   ): Either[BootstrapPlanFailure, FirstGameSetupPlan] =
     for {
-      sites <- selectedSites
-      denizens <- selectedDenizens
-      homelands <- homelandEdifices(sites)
-    } yield {
-      val dealt = 6 + config.participants.size * 3
-      val remaining = denizens.drop(dealt)
-      val world: Vector[WorldCardId] =
-        remaining.take(10) ++ FirstGameRulesData.visions.take(2) ++
-          remaining.slice(10, 25) ++
-          FirstGameRulesData.visions.drop(2) ++
-          remaining.drop(25)
-      val relics = catalog.relics
-        .filter(_.role == RelicRole.Ordinary)
+      chronicle <- devChronicle
+      plan <- ChronicleFirstGamePlan.build(catalog, chronicle, config)
+        .left.map(failure => BootstrapPlanFailure(failure.toString))
+    } yield plan
+
+  private def devChronicle: Either[BootstrapPlanFailure, Chronicle] =
+    for {
+      atlasBox <- devAtlasBox
+      denizens <- devDenizens
+    } yield Chronicle(
+      atlasBox,
+      worldDeck = denizens,
+      relicDeck = catalog.relics.filter(_.role == RelicRole.Ordinary)
         .sortBy(relic => relic.value -> relic.id.value)
         .map(relic => RelicId(relic.id.value))
+    )
 
-      FirstGameSetupPlan(
-        catalog.ref,
-        config.participants,
-        config.firstPlayer,
-        sites,
-        denizens,
-        world,
-        relics,
-        homelands
-      )
-    }
-
-  private def selectedSites
-      : Either[BootstrapPlanFailure, Vector[SiteId]] = {
-    val sites = catalog.sites.sortBy(_.id.value).take(8).map(_.id)
-    if (sites.size == 8) Right(sites)
-    else Left(BootstrapPlanFailure(
-      s"catalog has ${sites.size} sites; first-game setup requires 8"
-    ))
+  private def devAtlasBox: Either[BootstrapPlanFailure, Vector[StoredSite]] = {
+    val orderedSites = catalog.sites.sortBy(_.id.value).map(_.id)
+    if (orderedSites.size < 8)
+      Left(BootstrapPlanFailure(
+        s"catalog has ${orderedSites.size} sites; first-game setup requires 8"
+      ))
+    else
+      orderedSites.take(8).foldLeft[Either[BootstrapPlanFailure, Vector[StoredSite]]](
+          Right(Vector.empty)) { (acc, siteId) =>
+        acc.flatMap { built =>
+          val site = catalog.sites.find(_.id == siteId).get
+          homelandSuit(site.handlers) match {
+            case None => Right(built :+ StoredSite(siteId))
+            case Some(suit) =>
+              catalog.edifices.filter(_.suit == suit).sortBy(_.id.value).headOption match {
+                case Some(edifice) =>
+                  Right(built :+ StoredSite(siteId, Vector(EdificeId(edifice.id.value))))
+                case None =>
+                  Left(BootstrapPlanFailure(
+                    s"no edifice exists for Homeland suit '${suit.key}'"
+                  ))
+              }
+          }
+        }
+      }
   }
 
   /** The dev plan deals from suits in key order. This is a fixed selection
     * order for reproducible dev games, not the rules order in `Suit.all`. */
   private val alphabeticalSuits: Vector[Suit] = Suit.all.sortBy(_.key)
 
-  private def selectedDenizens
-      : Either[BootstrapPlanFailure, Vector[DenizenId]] = {
+  private def devDenizens: Either[BootstrapPlanFailure, Vector[DenizenId]] = {
     val selected = alphabeticalSuits.flatMap { suit =>
       catalog.denizens.filter(_.suit == suit)
         .sortBy(_.id.value)
@@ -85,30 +93,6 @@ final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog)
         )
     }.toLeft(selected)
   }
-
-  private def homelandEdifices(
-      sites: Vector[SiteId]
-  ): Either[BootstrapPlanFailure, Vector[(SiteId, EdificeId)]] =
-    sites.foldLeft[
-      Either[BootstrapPlanFailure, Vector[(SiteId, EdificeId)]]
-    ](Right(Vector.empty)) {
-      case (Right(accumulated), siteId) =>
-        val site = catalog.sites.find(_.id == siteId).get
-        homelandSuit(site.handlers) match {
-          case None => Right(accumulated)
-          case Some(suit) =>
-            catalog.edifices.filter(_.suit == suit)
-              .sortBy(_.id.value).headOption match {
-              case Some(edifice) =>
-                Right(accumulated :+ (siteId -> EdificeId(edifice.id.value)))
-              case None =>
-                Left(BootstrapPlanFailure(
-                  s"no edifice exists for Homeland suit '${suit.key}'"
-                ))
-            }
-        }
-      case (failure @ Left(_), _) => failure
-    }
 
   private def homelandSuit(handlers: Vector[String]): Option[Suit] =
     handlers.collectFirst {
