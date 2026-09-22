@@ -98,3 +98,14 @@ Run JVM and frontend tests before creating both versioned archives:
 
 This alias intentionally excludes Docker. Container smoke testing remains an
 explicit operator action because it depends on the local Docker runtime.
+
+## Bundled-runtime smoke
+
+`scripts/smoke-bundled-distribution.sh APP_DIRECTORY PORT` (macOS, Linux) and
+`scripts/smoke-bundled-distribution.ps1 -AppDirectory DIR -Port PORT`
+(Windows) start an extracted bundled archive with `OATH_LAUNCH=desktop`, no
+`JAVA_HOME`, no Java on `PATH`, and a temporary app-data folder. They check
+that the process runs from `jre/`, that the banner address answers
+`/health/ready`, `/`, and `/assets/main.js`, and that the settings file and
+database are in the app-data folder. The POSIX smoke also checks
+`Oath Digital database closed` after SIGTERM.

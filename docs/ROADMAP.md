@@ -70,7 +70,10 @@ operations. Deferred findings and requested UI changes are in the
 1. [ ] Complete release operations: publish multi-architecture Linux OCI images
    for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
    browser support and firewall/reverse-proxy/TLS requirements, and publish a
-   short host/player quick-start. Guidance and a gated workflow are committed,
+   short host/player quick-start. Bundled-runtime archives for macOS arm64,
+   Windows x64, and Linux x64 with a double-click Start are implemented; their
+   workflow run and acceptance rows 17-22 remain unexecuted. Guidance and a
+   gated workflow are committed,
    but the `linux/amd64` and `linux/arm64` Buildx smokes, GitHub Actions run,
    GHCR manifest publication, and GitHub prerelease remain unexecuted, as does
    the container smoke of the trusted-seat flow (no Docker daemon on

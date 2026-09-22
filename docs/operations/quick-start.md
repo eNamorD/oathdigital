@@ -5,10 +5,52 @@ another. Each seat link grants full control of that seat. There are no
 accounts, passwords, invitations, revocation, or remote-administration tools.
 Send each link only to its intended player and keep a private saved copy.
 
-## Universal archive
+## Easiest: download for your computer
+
+Download the archive for your computer. It includes its own Java, so nothing
+else needs installing:
+
+| Computer | Download |
+| --- | --- |
+| Mac with Apple silicon | `oathdigital-0.1.0-alpha.1-macos-arm64.tgz` |
+| Windows (64-bit Intel or AMD) | `oathdigital-0.1.0-alpha.1-windows-x64.zip` |
+| Linux (64-bit Intel or AMD) | `oathdigital-0.1.0-alpha.1-linux-x64.tgz` |
+
+1. Extract the archive: double-click it on macOS, or right-click and choose
+   **Extract All** on Windows. On Linux, extract it with your file manager.
+2. Open the extracted `oathdigital-0.1.0-alpha.1` folder and start the server:
+   - macOS: double-click **Start Oath Digital.command**. The first time, macOS
+     says it cannot verify the file. Open **System Settings › Privacy &
+     Security**, choose **Open Anyway** for it, and confirm.
+   - Windows: double-click **Start Oath Digital.bat**. If SmartScreen appears,
+     choose **More info › Run anyway**.
+   - Linux: run `./start-oathdigital.sh` from a terminal in that folder, or use
+     your file manager's "Run in terminal" action.
+3. If the system asks whether to allow incoming connections, allow them on
+   private networks only.
+4. The window shows the address players open, for example
+   `http://192.168.1.20:8080`, and your browser opens the game-creation page.
+   Continue with [Create and distribute seats](#create-and-distribute-seats).
+5. Keep the window open while you play. Close it, or press Ctrl-C, to stop.
+
+Your games are stored outside the extracted folder, so you can replace the
+folder with a newer version. The window shows the data folder and the settings
+file. See the [desktop launch profile](configuration.md#desktop-launch-profile)
+to change the port or the address, or to turn off the browser opening.
+
+Seat links contain the address. If the host's network address changes, for
+example after joining a different network, players need the new address.
+
+## Advanced: all-platform archive and OCI image
+
+The sections below need a terminal. Use them for other computers, servers, or
+HTTPS arrangements.
+
+### Universal archive
 
 The ZIP and TGZ archives require Java 21. They do not require sbt or Node.
-Verify the runtime before starting:
+The same archives also contain the Start files, which use the installed
+Java 21. Verify the runtime before starting:
 
 ```sh
 java -version
@@ -20,7 +62,7 @@ Use a data directory outside the extracted application so replacing the
 application does not replace the database. The value of `OATH_DATABASE_PATH`
 is the database file prefix inside that directory.
 
-### macOS
+#### macOS
 
 These archive examples use version `0.1.0-alpha.1`. Replace that version in the
 filename and extracted directory with the exact version in the archive you
@@ -41,7 +83,7 @@ OATH_DATABASE_PATH=/Users/alex/OathDigitalData/alpha-1/database \
 bin/oathdigital
 ```
 
-### Linux
+#### Linux
 
 This example assumes the archive is in `/home/alex/Downloads`:
 
@@ -58,7 +100,7 @@ OATH_DATABASE_PATH=/home/alex/oathdigital-data/alpha-1/database \
 bin/oathdigital
 ```
 
-### Windows
+#### Windows
 
 Run these commands in PowerShell. This example assumes the ZIP is in
 `C:\Users\Alex\Downloads`:
@@ -84,7 +126,7 @@ these direct HTTP examples; use the HTTPS arrangement in
 Press Ctrl-C once to stop an archive process. Wait for the process to exit and
 the `Oath Digital database closed` log line before backing up or moving data.
 
-## OCI image
+### OCI image
 
 The image includes Java 21 and runs as UID 10001. Ask the release operator for
 the exact published, versioned OCI reference; do not substitute an unversioned

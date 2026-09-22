@@ -103,3 +103,39 @@ proxy and log-redaction requirements in the network guidance, then record
 separate-machine LAN and TLS results in the
 [per-build alpha acceptance record](alpha-acceptance.md). An unexecuted record
 is a template, not acceptance evidence.
+
+## Desktop launch profile
+
+The Start files set `OATH_LAUNCH=desktop`. Without that variable, nothing in
+this section applies. Any other value of `OATH_LAUNCH` is a configuration
+error.
+
+Under the desktop profile, values come from, in order of precedence:
+
+1. Command-line options.
+2. Environment variables.
+3. The settings file.
+4. Desktop defaults: listen on `0.0.0.0`, detect the local network address,
+   store the database in the app-data folder, open the browser.
+5. The defaults in the table above.
+
+| Computer | App-data folder |
+| --- | --- |
+| macOS | `~/Library/Application Support/OathDigital` |
+| Windows | `%LOCALAPPDATA%\OathDigital` |
+| Linux and others | `$XDG_DATA_HOME/oathdigital`, else `~/.local/share/oathdigital` |
+
+The database is `data/database` inside that folder. The settings file is
+`oathdigital.properties` inside that folder. The first start writes it with
+every setting commented out. Remove the leading `#` from a line to use it, and
+restart the server. It accepts only `OATH_HOST`, `OATH_PORT`,
+`OATH_PUBLIC_BASE_URL`, `OATH_DATABASE_PATH`, and `OATH_OPEN_BROWSER`
+(`true` or `false`). On Windows, write paths with forward slashes, such as
+`C:/OathData/database`.
+
+The detected address is the private IPv4 address of the connection the
+computer uses for its default route. If there is none, the server listens on
+`127.0.0.1` only and says so. If the detected address is wrong, set
+`OATH_PUBLIC_BASE_URL` in the settings file. The port stays at 8080 unless
+you change it; if it is in use, the server stops with a message naming the
+settings file.
