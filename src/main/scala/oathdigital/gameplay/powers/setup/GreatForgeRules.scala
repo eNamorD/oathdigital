@@ -15,9 +15,12 @@ sealed abstract class ForgeRule extends ContributingPower {
 
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
-  private def at(ctx: PowerCtx): Option[SiteId] =
-    EdificeSetupSupport.siteOf(ctx.state, edifice, side)
-      .filter(site => EdificeSetupSupport.pawnPlacementSite(ctx).contains(site))
+  private def at(ctx: PowerCtx): Option[(PlayerId, SiteId)] =
+    for {
+      edificeSite <- EdificeSetupSupport.siteOf(ctx.state, edifice, side)
+      placement <- EdificeSetupSupport.pawnPlacement(ctx)
+      if placement._2 == edificeSite
+    } yield placement
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx).isDefined
 
@@ -26,8 +29,8 @@ sealed abstract class ForgeRule extends ContributingPower {
 
   final def contributions: Map[PowerWindow, Vector[Contribution]] = {
     val effect = Vector(Transform((ctx, ops) => at(ctx) match {
-      case Some(site) => ops :+ BuildOps((ready, _) =>
-        build(ready, ctx.activePlayer, site))
+      case Some((actor, site)) => ops :+ BuildOps((ready, _) =>
+        build(ready, actor, site))
       case None => ops
     }))
     Map(PowerWindow.SetupPawnPlaced -> effect, PowerWindow.WhenExplored -> effect)

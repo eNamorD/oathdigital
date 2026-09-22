@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.setup
 
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.model._
 
 /** Shared reads for the slice-3 SETUP/WHEN-EXPLORED edifice powers (E02,
@@ -22,15 +21,21 @@ object EdificeSetupSupport {
       } => site
     }
 
-  /** The site the acting player just chose for their pawn, read from the
-    * decisions answered so far this walk. Only meaningful at
-    * `PowerWindow.SetupPawnPlaced`; a future `WhenExplored` fire needs its
-    * own read of the explored site, not built by this slice.
+  /** The player and site of the pawn placement that was just answered,
+    * reached at a `PowerWindow.SetupPawnPlaced` fold -- always the LAST
+    * entry of `ctx.answered`, since `SetupProcedure`'s tree runs a
+    * `BuildOps(placePawn, window = Some(SetupPawnPlaced))` immediately
+    * after that player's own pawn `Decide`, with nothing else answered in
+    * between.
+    *
+    * `ctx.activePlayer` is NOT this: it stays `ready.setup.firstPlayer` for
+    * the whole Setup walk (`PowerCtx`'s own doc, "not a parked decision's
+    * owner"), so a power that placed the actor from `ctx.activePlayer`
+    * would attribute every player's placement to the first player alone.
     */
-  def pawnPlacementSite(ctx: PowerCtx): Option[SiteId] =
-    ctx.answered.collectFirst {
-      case Answered(decisionId, DecisionAnswer.ChooseOneAnswer(
-        DecisionOptionRef.Site(site)), _)
-        if decisionId == SetupProcedure.pawnDecisionId(ctx.activePlayer) => site
+  def pawnPlacement(ctx: PowerCtx): Option[(PlayerId, SiteId)] =
+    ctx.answered.lastOption.collect {
+      case Answered(_, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.Site(site)), by) => by -> site
     }
 }
