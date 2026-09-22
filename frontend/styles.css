@@ -325,6 +325,59 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-unimplemented-badge { display: block; margin-top: 2px; padding: 1px 5px;
   border-radius: 4px; background: #a15c4a; color: #f5ecd7; font-size: 0.7rem;
   text-transform: uppercase; letter-spacing: 0.03em; }
+/* One box per card type, in ex so a pane's font size scales every card in it
+   together. Never overridden per pane: per-context size is font size alone. */
+:root { --card-w: 13ex; --card-h: calc(var(--card-w) * 1.4);
+  --card-gap: 0.55ex; }
+.card-face { position: relative; display: flex; flex-direction: column;
+  gap: 0.15em; box-sizing: border-box; width: var(--card-w);
+  height: var(--card-h); flex: 0 0 auto; margin: 0; padding: 0.4em;
+  overflow: hidden; text-align: left;
+  /* Reserved at rest so selection, focus and hover never reflow. */
+  border: 1px solid transparent; border-radius: 0.35em;
+  background: #17140f; color: #f5ecd7; font: inherit; line-height: 1.15; }
+.card-face-denizen { border-color: #675a43; }
+.card-face-relic { height: var(--card-w); border-color: #7a6a4c; }
+.card-face-unimplemented { border-style: dashed; border-color: #a15c4a; }
+.card-face:hover, .card-face:focus-visible { outline: 2px solid #fff0c9;
+  outline-offset: -3px; }
+.card-name { font-weight: 750; font-size: 0.95em; overflow-wrap: anywhere; }
+.card-suit { font-size: 0.78em; text-transform: capitalize; color: #cdbfa2; }
+.card-suit.suit-arcane { color: var(--suit-arcane); }
+.card-suit.suit-beast { color: var(--suit-beast); }
+.card-suit.suit-discord { color: var(--suit-discord); }
+.card-suit.suit-hearth { color: var(--suit-hearth); }
+.card-suit.suit-nomad { color: var(--suit-nomad); }
+.card-suit.suit-order { color: var(--suit-order); }
+.card-tokens, .card-stats { display: flex; align-items: center; gap: 0.15em;
+  font-size: 0.8em; }
+.card-token-count { margin-right: 0.35em; font-weight: 700; }
+.card-stat { padding: 0 0.3em; border: 1px solid #675a43; border-radius: 0.25em;
+  font-weight: 700; }
+.card-restriction { margin-top: auto; font-size: 0.72em; color: #a99f8c;
+  text-transform: capitalize; }
+.card-unimplemented-badge { align-self: flex-start; padding: 0 0.35em;
+  border-radius: 0.25em; background: #a15c4a; color: #f5ecd7;
+  font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.03em; }
+.card-face-down { align-items: center; justify-content: center;
+  border-style: solid; background: #2a2333; }
+.card-back-letter { font-size: 1.9em; font-weight: 800; color: #cbb7dd; }
+.card-knowable-pip { position: absolute; top: 0.3em; right: 0.3em;
+  width: 0.55em; height: 0.55em; border-radius: 50%;
+  background: var(--token-secret); }
+/* Hover reveal is CSS only and holds no client state: PanelContent.replace
+   rebuilds the pane on every poll, so a persistent flag would have to become
+   reconciled state. Touch users tap straight through to the overlay. */
+.card-hover-summary { display: none; position: absolute; inset: 0;
+  flex-direction: column; gap: 0.15em; padding: 0.4em; overflow: hidden;
+  background: #17140f; text-align: left; }
+@media (hover: hover) {
+  .card-face-knowable:hover .card-hover-summary,
+  .card-face-knowable:focus-visible .card-hover-summary { display: flex; }
+  .card-face-knowable:hover .card-back-letter,
+  .card-face-knowable:focus-visible .card-back-letter { visibility: hidden; }
+}
+
 .pile-display { display: flex; align-items: center; gap: 6px; margin: 7px 0; }
 .pile-display > .pile-card { display: inline-flex; box-sizing: border-box;
   flex: 0 0 1.65rem; width: 1.65rem; min-width: 1.65rem; height: 2.3rem;
