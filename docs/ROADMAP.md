@@ -41,6 +41,14 @@ authenticated bootstrap now build from a Chronicle) is done -- plan at
 [docs/superpowers/plans/2026-09-21-chronicle-setup-slice1.md](superpowers/plans/2026-09-21-chronicle-setup-slice1.md).
 Slices 2 (setup on the walker) and 3 (the E02/E06/E22 powers) remain.
 
+- [ ] **Deferred: derive the lineage from the color on the server.** The color
+  is always associated with a lineage, but the trusted creation request still
+  carries a free-form `lineageId`, and the host page sends `<color>-lineage`.
+  The server should derive the lineage and the request should drop `lineageId`.
+- [ ] **Deferred: generate the game ID on the server.** The host page generates
+  it in the browser (`manual-<time>-<random>`) and generates a new one when the
+  server reports a duplicate. The server should assign it and return it in the
+  creation response, and the request should drop `gameId`.
 - [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
   the Chancellor or first player (site order is used until then). Player choices
   earlier in setup once foundations and legacies exist, such as the Chancellor

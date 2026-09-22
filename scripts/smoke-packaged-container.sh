@@ -173,7 +173,7 @@ create_game() {
     --output "$creation_response" \
     --write-out '%{http_code}' \
     --header 'Content-Type: application/json' \
-    --data '{"gameId":"packaged-seat-smoke","participants":[{"playerId":"red-exile","lineageId":"red-lineage","color":"red"},{"playerId":"blue-exile","lineageId":"blue-lineage","color":"blue"},{"playerId":"yellow-exile","lineageId":"yellow-lineage","color":"yellow"}],"firstPlayerId":"blue-exile"}' \
+    --data '{"gameId":"packaged-seat-smoke","participants":[{"playerId":"red-exile","lineageId":"red-lineage","color":"red"},{"playerId":"blue-exile","lineageId":"blue-lineage","color":"blue"},{"playerId":"yellow-exile","lineageId":"yellow-lineage","color":"yellow"}]}' \
     "$base_url/games") ||
     fail "game creation request failed on run $run_label"
   [ "$creation_status" = 201 ] ||

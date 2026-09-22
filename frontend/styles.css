@@ -11,6 +11,26 @@ button { font: inherit; }
 .trusted-host-form, .host-field { display: grid; gap: 0.5rem; }
 .trusted-host-form { max-width: 40rem; gap: 1rem; }
 .host-field input, .host-field textarea, .seat-link { font: inherit; padding: 0.5rem; min-width: 0; }
+.host-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.host-player { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.host-player-color { min-width: 4.5rem; font-weight: 700; }
+.host-player-id { font: inherit; padding: 0.5rem; flex: 1 1 12rem; min-width: 0; }
+/* Element-qualified so it beats the .player-* text styles, e.g. the black pill. */
+span.color-swatch { display: inline-block; width: 1.25rem; height: 1.25rem; padding: 0;
+  border-radius: 50%; background: currentColor; border: 2px solid #f5ecd7; flex: none; }
+.add-player { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.add-player-toggle { font-weight: 800; font-size: 1.1rem; padding: 0.85rem 1.5rem;
+  border: 2px solid #d2a85e; border-radius: 0.75rem; background: #2a2418; color: #f5ecd7; cursor: pointer; }
+.add-player-toggle::after { content: " \25BE"; }
+.add-player-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+.add-player-menu { position: absolute; top: 100%; left: 0; z-index: 10; margin: 0.25rem 0 0;
+  padding: 0.25rem; list-style: none; min-width: 12rem; background: #2a2418;
+  border: 2px solid #d2a85e; border-radius: 0.75rem; }
+.add-player-option { display: flex; align-items: center; gap: 0.75rem; width: 100%;
+  padding: 0.6rem 0.9rem; font-size: 1.05rem; background: none; border: 0; border-radius: 0.5rem;
+  color: #f5ecd7; cursor: pointer; text-align: left; }
+.add-player-option:hover, .add-player-option:focus { background: #3a3222; outline: none; }
+.add-player-limit { color: #d2a85e; }
 .seat-link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 1rem 0; }
 .seat-link { flex: 1 1 20rem; }
 
@@ -204,6 +224,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .player-blue { color: #8ecbff; }
 .player-red { color: #ffaaa5; }
 .player-yellow { color: #ffe08a; }
+/* White is pure white and underlined so it stays distinct from the cream neutral text. */
+.player-white { color: #ffffff; text-decoration: underline; text-decoration-thickness: 2px; }
+/* Black text needs a light pill to stay readable on the dark page. */
+.player-black { color: #111111; background: #e8dcc2; border-radius: 999px; padding: 0 0.4em; }
+.player-pink { color: #ffa6d8; }
+.player-brown { color: #d0a075; }
 .player-neutral { color: #f5ecd7; }
 
 .debug-toolbar input {

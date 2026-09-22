@@ -352,7 +352,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
 
   private def creationBody(gameId: String): String = TrustedGameCreateRequestCodec.encode(
     TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", "l1", "red"),
-      BootstrapParticipantRequest("p2", "l2", "blue")), "p2"))
+      BootstrapParticipantRequest("p2", "l2", "blue"))))
 
   private def create(client: HttpClient, base: String, gameId: String): TrustedGameCreateResponse = {
     val response = send(client, base, "/games", Some(creationBody(gameId)))

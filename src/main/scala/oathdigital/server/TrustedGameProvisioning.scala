@@ -31,8 +31,10 @@ final class TrustedGameProvisioning(
         valid <- TrustedGameCreateRequestCodec.decode(TrustedGameCreateRequestCodec.encode(request))
           .left.map(_ => InvalidRequest)
         origin <- validatedOrigin(publicBaseUrl)
+        // The plan factory shuffles the seating and picks the first player,
+        // so the first participant is only a placeholder.
         plan <- planFactory.build(FirstGameBootstrapMapper.map(FirstGameBootstrapRequest(
-          0L, valid.participants, valid.firstPlayerId))).left.map(_ => InvalidRequest)
+          0L, valid.participants, valid.participants.head.playerId))).left.map(_ => InvalidRequest)
         prepared <- service.prepareBootstrap(valid.gameId, plan).left.map {
           case _: GameApplicationError.CommandRejected => InvalidRequest
           case _ => StorageFailure

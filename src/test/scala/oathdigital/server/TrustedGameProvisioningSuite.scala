@@ -10,7 +10,7 @@ import oathdigital.protocol._
 class TrustedGameProvisioningSuite extends munit.FunSuite {
   private val request = TrustedGameCreateRequest("trusted-game", Vector(
     BootstrapParticipantRequest("p1", "l1", "red"),
-    BootstrapParticipantRequest("p2", "l2", "blue")), "p2")
+    BootstrapParticipantRequest("p2", "l2", "blue")))
   private val codes = Vector("AAAAAAAAAAAAAAAAAAAAAA", "AQEBAQEBAQEBAQEBAQEBAQ",
     "AgICAgICAgICAgICAgICAg", "AwMDAwMDAwMDAwMDAwMDAw").map(SeatCode.parse(_).toOption.get)
 

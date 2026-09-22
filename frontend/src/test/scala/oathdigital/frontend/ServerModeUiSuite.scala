@@ -57,35 +57,124 @@ class ServerModeUiSuite extends FunSuite {
     }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
   }
 
+  private def hostTransport(
+      requests: scala.collection.mutable.ArrayBuffer[(String, String, Option[String])],
+      status: Int = 201,
+      body: String = """{"gameId":"host-game","seats":[{"playerId":"Red","url":"https://oath.test/s/red-code"},{"playerId":"Blue","url":"https://oath.test/s/blue-code"}]}"""
+  ): JsonTransport = new JsonTransport {
+    def request(method: String, url: String, body0: Option[String]) = {
+      requests += ((method, url, body0))
+      scala.concurrent.Future.successful(Right(TransportResponse(status, body)))
+    }
+  }
+
+  private def hostRequests(requests: collection.Seq[(String, String, Option[String])]) =
+    requests.map(r => oathdigital.protocol.TrustedGameCreateRequestCodec.decode(r._3.get).toOption.get)
+
+  private def hostColors(browser: TestBrowser): Vector[String] =
+    browser.byClass("host-player").map(_.getAttribute("class").split(" ")
+      .find(_.startsWith("host-player-")).get.stripPrefix("host-player-"))
+
+  private def menuColors(browser: TestBrowser): Vector[String] =
+    browser.byClass("add-player-option").map(_.textContent)
+
+  private def toggle(browser: TestBrowser): org.scalajs.dom.html.Button =
+    browser.byClass("add-player-toggle").head.asInstanceOf[org.scalajs.dom.html.Button]
+
   test("trusted root posts host form and displays ordered copyable seat links") {
     val browser = new TestBrowser("?gameId=ignored&playerId=ignored")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) = {
-        requests += ((method, url, body))
-        scala.concurrent.Future.successful(Right(TransportResponse(201,
-          """{"gameId":"host-game","seats":[{"playerId":"blue","url":"https://oath.test/s/blue-code"},{"playerId":"red","url":"https://oath.test/s/red-code"}]}""")))
-      }
-    }
-    Main.start(browser.mount, "/", trustedAlpha = true, transport)
+    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
     assertEquals(requests.size, 0)
-    browser.input("Game ID").value = "host-game"
-    browser.input("Seat definitions").value = "blue,blue-lineage,blue\nred,red-lineage,red"
-    browser.input("First player ID").value = "blue"
+    assert(!browser.nodes.exists(_.getAttribute("aria-label") == "Game ID"))
+    assert(!browser.nodes.exists(_.getAttribute("aria-label") == "First player ID"))
+    assertEquals(hostColors(browser), Vector("red", "blue"))
+    assertEquals(browser.input("Red player ID").value, "Red")
+    assertEquals(browser.input("Blue player ID").value, "Blue")
     browser.click("create-trusted-game")
     browser.settle.map { _ =>
       assertEquals(requests.map(r => r._1 -> r._2).toVector, Vector("POST" -> "/games"))
-      val request = oathdigital.protocol.TrustedGameCreateRequestCodec.decode(requests.head._3.get).toOption.get
-      assertEquals(request.participants.map(_.playerId), Vector("blue", "red"))
-      assertEquals(request.firstPlayerId, "blue")
+      val request = hostRequests(requests).head
+      assert(request.gameId.startsWith("manual-"), request.gameId)
+      assertEquals(request.participants, Vector(
+        oathdigital.protocol.BootstrapParticipantRequest("Red", "red-lineage", "red"),
+        oathdigital.protocol.BootstrapParticipantRequest("Blue", "blue-lineage", "blue")))
+      assert(browser.text.contains("Game ID: host-game"))
       val links = browser.byClass("seat-link").map(_.asInstanceOf[org.scalajs.dom.html.Input])
-      assertEquals(links.map(_.value), Vector("https://oath.test/s/blue-code", "https://oath.test/s/red-code"))
+      assertEquals(links.map(_.value), Vector("https://oath.test/s/red-code", "https://oath.test/s/blue-code"))
       assert(links.forall(_.readOnly))
       assertEquals(browser.byClass("copy-seat-link").size, 2)
       assert(browser.urls.isEmpty)
       browser.click("copy-seat-link")
-      assertEquals(browser.copied, Vector("https://oath.test/s/blue-code"))
+      assertEquals(browser.copied, Vector("https://oath.test/s/red-code"))
     }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
+  }
+
+  test("host add-player menu offers untaken colors in order and stops at six players") {
+    val browser = new TestBrowser
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
+    assert(browser.byClass("add-player-menu").head.hasAttribute("hidden"))
+    browser.click("add-player-toggle")
+    assertEquals(toggle(browser).getAttribute("aria-expanded"), "true")
+    assertEquals(menuColors(browser), Vector("Yellow", "White", "Black", "Pink", "Brown"))
+    browser.click("add-player-pink")
+    assert(browser.byClass("add-player-menu").head.hasAttribute("hidden"))
+    assertEquals(hostColors(browser), Vector("red", "blue", "pink"))
+    Vector("add-player-white", "add-player-brown", "add-player-black").foreach { option =>
+      browser.click("add-player-toggle"); browser.click(option)
+    }
+    assertEquals(hostColors(browser), Vector("red", "blue", "pink", "white", "brown", "black"))
+    assert(toggle(browser).disabled)
+    assert(browser.text.contains("Maximum 6 players"))
+    browser.click("remove-player-white")
+    assertEquals(hostColors(browser), Vector("red", "blue", "pink", "brown", "black"))
+    assert(!toggle(browser).disabled)
+    assert(!browser.text.contains("Maximum 6 players"))
+    browser.click("add-player-toggle")
+    assertEquals(menuColors(browser), Vector("Yellow", "White"))
+    browser.click("create-trusted-game")
+    browser.settle.map { _ =>
+      assertEquals(hostRequests(requests).head.participants.map(p => p.playerId -> p.lineageId),
+        Vector("Red" -> "red-lineage", "Blue" -> "blue-lineage", "Pink" -> "pink-lineage",
+          "Brown" -> "brown-lineage", "Black" -> "black-lineage"))
+    }.andThen { case _ => browser.close() }
+  }
+
+  test("host form blocks fewer than two players, invalid IDs and duplicate IDs before posting") {
+    val browser = new TestBrowser
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
+    browser.click("remove-player-red")
+    browser.click("create-trusted-game")
+    assert(browser.text.contains("Need at least 2 players."))
+    browser.click("remove-player-blue")
+    assertEquals(hostColors(browser), Vector.empty)
+    browser.click("add-player-toggle"); browser.click("add-player-yellow")
+    browser.click("add-player-toggle"); browser.click("add-player-red")
+    assertEquals(hostColors(browser), Vector("yellow", "red"))
+    browser.input("Yellow player ID").value = "bad id"
+    browser.click("create-trusted-game")
+    assert(browser.text.contains("Yellow player ID must start with a letter or digit"))
+    browser.input("Yellow player ID").value = "Alex"
+    browser.input("Red player ID").value = " Alex "
+    browser.click("create-trusted-game")
+    assert(browser.text.contains("Player ID \"Alex\" is used twice."))
+    browser.input("Red player ID").value = "Sam"
+    browser.click("create-trusted-game")
+    browser.settle.map { _ =>
+      assertEquals(requests.size, 1)
+      assertEquals(hostRequests(requests).head.participants.map(p => p.playerId -> p.color),
+        Vector("Alex" -> "yellow", "Sam" -> "red"))
+    }.andThen { case _ => browser.close() }
+  }
+
+  test("host colors map to their own player badge tokens") {
+    assertEquals(TrustedHostUi.LineageColors.map(PlayerColorToken.fromKey(_).cssClass),
+      Vector("player-red", "player-blue", "player-yellow", "player-white", "player-black",
+        "player-pink", "player-brown"))
+    assertEquals(PlayerColorToken.fromKey("purple"), PlayerColorToken.Purple)
+    assertEquals(PlayerColorToken.fromKey("green"), PlayerColorToken.Neutral)
   }
 
   private def trustedProjection: String =
@@ -115,17 +204,20 @@ class ServerModeUiSuite extends FunSuite {
     }.andThen { case _ => browser.close() }
   }
 
-  test("host duplicate game response keeps form editable and explains choosing another ID") {
+  test("host duplicate game response keeps form editable and retries with a new game ID") {
     val browser = new TestBrowser
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) =
-        scala.concurrent.Future.successful(Right(TransportResponse(409,
-          """{"error":"game-already-exists","message":"Game already exists"}""")))
-    }
-    Main.start(browser.mount, "/", trustedAlpha = true, transport)
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests, 409,
+      """{"error":"game-already-exists","message":"Game already exists"}"""))
     browser.click("create-trusted-game")
-    browser.settle.map { _ =>
-      assert(browser.text.contains("Choose another game ID"))
+    browser.settle.flatMap { _ =>
+      assert(browser.text.contains("A new one was generated"))
+      browser.click("create-trusted-game")
+      browser.settle
+    }.map { _ =>
+      val ids = hostRequests(requests).map(_.gameId)
+      assertEquals(ids.size, 2)
+      assertNotEquals(ids(0), ids(1))
       assert(!browser.text.contains("refreshed"))
       assert(!browser.byClass("create-trusted-game").head.asInstanceOf[org.scalajs.dom.html.Button].disabled)
       assert(browser.byClass("seat-link").isEmpty)

@@ -117,25 +117,18 @@ Neither item blocks the acceptance run. Neither has been diagnosed.
   during the outage (automatic retry, backoff, manual retry control) was not
   recorded against this expectation.
 
-## Game-creation page redesign — requested, not started
+## Game-creation page redesign — done
 
-Requested by the operator after the LAN acceptance run. Nothing has been
-designed or built. Today the host form has a **Seat definitions** textarea that
-takes one `player ID,lineage ID,color` line per player, with colors `red`,
-`blue`, `yellow`, `white` and `black`. The request:
-
-- Load the page with two players already listed.
-- Offer an **Add a player** button for extra players, up to the number of
-  available colors.
-- Let the host remove a player, down to a minimum of two.
-- Offer a text box for the player ID and a separate control for the color, for
-  example a dropdown that offers only colors no other player has taken.
-- Do not offer lineage as a choice. The color is always associated with a
-  lineage, so the page derives the lineage from the color. Lineage IDs are
-  free-form strings that must be unique within a game, and the current form's
-  default text already uses `<color>-lineage`. The exact derivation, and whether
-  the color-to-lineage association is more than a naming convention, must be
-  confirmed against the setup rules before the design is written.
+The host form's **Seat definitions** textarea, **Game ID** field and **First
+player ID** field are gone. The page loads with a red and a blue player. An
+**Add a Player** menu offers the untaken lineage colors in the order red, blue,
+yellow, white, black, pink, brown, up to six players. Each row has an editable
+player ID, defaulting to the capitalized color name, and a **Remove** button.
+Creation needs at least two players. The page derives each lineage ID as
+`<color>-lineage` and generates the game ID in the browser. The trusted
+creation request no longer carries `firstPlayerId`, because the server shuffles
+the seating and picks the first player. In-game badges now cover white, black,
+pink and brown. Deferred server-side follow-ups are in the roadmap.
 
 ## Documentation gaps
 

@@ -1,10 +1,10 @@
 package oathdigital.protocol
 
 class TrustedGameProtocolSuite extends munit.FunSuite {
-  private val json = """{"gameId":"game-1","participants":[{"playerId":"p1","lineageId":"l1","color":"red"},{"playerId":"p2","lineageId":"l2","color":"blue"}],"firstPlayerId":"p2"}"""
+  private val json = """{"gameId":"game-1","participants":[{"playerId":"p1","lineageId":"l1","color":"red"},{"playerId":"p2","lineageId":"l2","color":"blue"}]}"""
   private val request = TrustedGameCreateRequest("game-1", Vector(
     BootstrapParticipantRequest("p1", "l1", "red"),
-    BootstrapParticipantRequest("p2", "l2", "blue")), "p2")
+    BootstrapParticipantRequest("p2", "l2", "blue")))
 
   test("creation request round trips with stable actorless field order") {
     assertEquals(TrustedGameCreateRequestCodec.encode(request), json)
@@ -13,12 +13,12 @@ class TrustedGameProtocolSuite extends munit.FunSuite {
 
   test("creation requires exact root and participant fields") {
     val base = ujson.read(json)
-    Vector("gameId", "participants", "firstPlayerId").foreach { key =>
+    Vector("gameId", "participants").foreach { key =>
       val value = ujson.read(json).obj
       value.remove(key)
       assert(TrustedGameCreateRequestCodec.decode(ujson.write(value)).isLeft)
     }
-    Vector("actor", "expectedNextSequence", "extra").foreach { key =>
+    Vector("actor", "expectedNextSequence", "firstPlayerId", "extra").foreach { key =>
       val value = ujson.read(json)
       value(key) = "p1"
       assert(TrustedGameCreateRequestCodec.decode(ujson.write(value)).isLeft)
@@ -27,14 +27,13 @@ class TrustedGameProtocolSuite extends munit.FunSuite {
     assert(TrustedGameCreateRequestCodec.decode(ujson.write(base)).isLeft)
   }
 
-  test("invalid identifiers, duplicates, empty participants and foreign first player fail") {
+  test("invalid identifiers, duplicates, and empty participants fail") {
     Vector("", " ", "a/b", "a?b", "a" * 129).foreach { invalid =>
       assert(TrustedGameCreateRequestCodec.decode(json.replace("game-1", invalid)).isLeft)
       assert(TrustedGameCreateRequestCodec.decode(json.replace("p1", invalid)).isLeft)
     }
     Vector(request.copy(participants = Vector.empty),
       request.copy(participants = Vector(request.participants.head, request.participants.head)),
-      request.copy(firstPlayerId = "p3"),
       request.copy(participants = request.participants.updated(0,
         request.participants.head.copy(lineageId = ""))),
       request.copy(participants = request.participants.updated(0,

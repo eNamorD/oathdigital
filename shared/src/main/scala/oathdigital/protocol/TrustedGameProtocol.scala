@@ -2,8 +2,7 @@ package oathdigital.protocol
 
 final case class TrustedGameCreateRequest(
     gameId: String,
-    participants: Vector[BootstrapParticipantRequest],
-    firstPlayerId: String
+    participants: Vector[BootstrapParticipantRequest]
 )
 
 final case class TrustedSeatLink(playerId: String, url: String)

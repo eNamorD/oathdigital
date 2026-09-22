@@ -51,12 +51,11 @@ object TrustedGameCreateRequestCodec {
   def encode(request: TrustedGameCreateRequest): String = ujson.write(ujson.Obj(
     "gameId" -> request.gameId,
     "participants" -> ujson.Arr.from(request.participants.map(p => ujson.Obj(
-      "playerId" -> p.playerId, "lineageId" -> p.lineageId, "color" -> p.color))),
-    "firstPlayerId" -> request.firstPlayerId))
+      "playerId" -> p.playerId, "lineageId" -> p.lineageId, "color" -> p.color)))))
 
   def decode(json: String): Either[ProtocolDecodeFailure, TrustedGameCreateRequest] =
     parse(json) { raw => for {
-      root <- exact(raw, Vector("gameId", "participants", "firstPlayerId"), "$")
+      root <- exact(raw, Vector("gameId", "participants"), "$")
       game <- identifier(root, "gameId", "$")
       participants <- array(root("participants"), "$.participants") { (raw, path) => for {
         obj <- exact(raw, Vector("playerId", "lineageId", "color"), path)
@@ -64,13 +63,10 @@ object TrustedGameCreateRequestCodec {
         lineage <- identifier(obj, "lineageId", path)
         color <- text(obj, "color", path)
       } yield BootstrapParticipantRequest(player, lineage, color) }
-      first <- identifier(root, "firstPlayerId", "$")
       _ <- Either.cond(participants.nonEmpty &&
         participants.map(_.playerId).distinct.size == participants.size, (),
         InvalidValue("$.participants", "requires unique player IDs and at least one participant"))
-      _ <- Either.cond(participants.exists(_.playerId == first), (),
-        InvalidValue("$.firstPlayerId", "must identify a participant"))
-    } yield TrustedGameCreateRequest(game, participants, first) }
+    } yield TrustedGameCreateRequest(game, participants) }
 }
 
 object TrustedGameCreateResponseCodec {

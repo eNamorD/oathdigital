@@ -126,14 +126,15 @@ database.
 
 1. Open the configured public base URL, such as
    `http://192.168.1.20:8080/`, on the host.
-2. In **Game ID**, enter a unique game identifier.
-3. In **Seat definitions**, enter one line per player in the exact form
-   `player ID,lineage ID,color`. Available colors are `red`, `blue`, `yellow`,
-   `white`, and `black`.
-4. In **First player ID**, enter one of those player IDs, then select
-   **Create game**. The field is still required, but the server ignores it:
-   the seating order and the first player are shuffled when the game starts,
-   along with the sites and decks.
+2. The page starts with a red and a blue player. Use **Add a Player** to add
+   another color (`red`, `blue`, `yellow`, `white`, `black`, `pink`, or
+   `brown`), up to six players, and **Remove** to drop one. A game needs at
+   least two players. Each color is its own lineage.
+3. Optionally edit each player ID. IDs default to the color name, must be
+   unique, and may use letters, digits, `.`, `_`, `:` and `-`.
+4. Select **Create game**. The page generates the game ID. The seating order
+   and the first player are shuffled when the game starts, along with the sites
+   and decks.
 5. Copy and privately save every displayed seat link before leaving the page.
    The creation result is the only place that lists all raw links.
 6. Send each player only their assigned link. Do not post links in public chat,
