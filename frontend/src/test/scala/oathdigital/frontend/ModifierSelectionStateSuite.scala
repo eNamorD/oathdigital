@@ -177,6 +177,21 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(decoded.orderedModifiers, Vector.empty[ModifierInvocation])
   }
 
+  test("a selected game-rule modifier such as Rowdy Pub invokes without throwing") {
+    val rowdyPub = PreviewModifier("game:denizen.rowdy-pub", "denizen.rowdy-pub",
+      "Rowdy Pub")
+    val selection = ModifierSelectionState.reconcile(None,
+      context.copy(action = "muster"), Vector(rowdyPub), "muster-preview")
+      .toggle(rowdyPub)
+    assertEquals(selection.invocations, Vector(
+      ModifierInvocation("game", "denizen.rowdy-pub", None, "denizen.rowdy-pub")))
+    val (submitted, outer) = ModifierWorkflow.submission(
+      GameIntent.StartWalker("muster", Vector.empty), selection.invocations)
+    assertEquals(submitted, GameIntent.StartWalker("muster",
+      Vector("denizen.rowdy-pub")))
+    assertEquals(outer, Vector.empty[ModifierInvocation])
+  }
+
   test("submission leaves non-walker commands on the legacy ordered-modifiers " +
       "channel untouched") {
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),

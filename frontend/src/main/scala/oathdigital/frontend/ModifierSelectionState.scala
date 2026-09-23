@@ -55,6 +55,8 @@ private[frontend] final case class ModifierSelectionState(
         "banner", value.sourceKey.stripPrefix("banner:"), None, value.handlerId)
       case Vector("foundation", id) =>
         ModifierInvocation("foundation", id, None, value.handlerId)
+      case _ if value.sourceKey.startsWith("game:") => ModifierInvocation(
+        "game", value.sourceKey.stripPrefix("game:"), None, value.handlerId)
       case _ if value.sourceKey.startsWith("legacy:") =>
         val fields = value.sourceKey.stripPrefix("legacy:").split(":", 2)
         ModifierInvocation("legacy", fields.last, Some(fields.head), value.handlerId)

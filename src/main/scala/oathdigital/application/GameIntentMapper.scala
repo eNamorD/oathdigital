@@ -58,6 +58,7 @@ object GameIntentMapper {
         "$.orderedModifiers.contextId", "edifice requires site context"))
         .map(site => RuleSourceRef.Edifice(SiteId(site), EdificeId(value.sourceId)))
       case "banner" => Right(RuleSourceRef.Banner(value.sourceId))
+      case "game" => Right(RuleSourceRef.GameRule(value.sourceId))
       case "foundation" => scala.util.Try(value.sourceId.toInt).toOption
         .flatMap(n => FoundationNumber.all.find(_.value == n))
         .map(n => RuleSourceRef.Foundation(n): RuleSourceRef).toRight(
