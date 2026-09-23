@@ -802,6 +802,48 @@ class ServerModeUiSuite extends FunSuite {
     ).showGameplayControls)
   }
 
+  /** Regression: the owner of a parked walker decision has
+    * `waitingForPlayerId = None` (Task 5, tested above), but the status line
+    * matched on that field alone, so this viewer fell through every named
+    * phase case straight to the `activeParticipantId` debug fallback --
+    * showing "setup-walker-decision; active participant: <someone else>"
+    * to the very player who needs to act. Assert the decision's own heading
+    * renders instead, for both the owner and an off-turn viewer.
+    */
+  test("a parked walker decision's owner sees its heading, not the debug fallback") {
+    val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
+    val pawnQuery = DecisionQueryState("choose-one", Vector(site),
+      heading = Some("Choose your starting site"))
+    val pawnDecision = WalkerDecisionState("setup", "setup.pawn-placement.blue-exile",
+      "decide", query = Some(pawnQuery))
+    val value = projection(
+      Set.empty,
+      phase = "setup-walker-decision",
+      activeParticipantId = "red-exile",
+      ready = false
+    ).copy(walkerDecision = Some(pawnDecision))
+
+    val ownerStatus = ActionDecisionRenderer.status(value, new RecordingView("game-1", "blue-exile"))
+    assertEquals(ownerStatus.textContent, "Choose your starting site")
+    assert(!ownerStatus.textContent.contains("active participant"))
+  }
+
+  test("a parked walker decision without a heading still avoids the debug fallback") {
+    val vote = DecisionOptionState("button", "yes", "Yes")
+    val query = DecisionQueryState("choose-one", Vector(vote))
+    val decision = WalkerDecisionState("setup", "setup.some-decision.blue-exile",
+      "decide", query = Some(query))
+    val value = projection(
+      Set.empty,
+      phase = "setup-walker-decision",
+      activeParticipantId = "red-exile",
+      ready = false
+    ).copy(walkerDecision = Some(decision))
+
+    val ownerStatus = ActionDecisionRenderer.status(value, new RecordingView("game-1", "blue-exile"))
+    assertEquals(ownerStatus.textContent, "Your decision.")
+  }
+
   test("board target classes distinguish candidate selected and read-only state") {
     assertEquals(ServerUiSupport.siteTargetClasses(false, false),
       "site site-readonly")

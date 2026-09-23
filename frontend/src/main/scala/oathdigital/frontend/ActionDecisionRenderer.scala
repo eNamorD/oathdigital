@@ -12,6 +12,14 @@ private[frontend] object ActionDecisionRenderer {
      case Some(playerId) =>
        node.appendChild(dom.document.createTextNode("Waiting for "))
        node.appendChild(playerReference(value, playerId))
+     case None if value.walkerDecision.nonEmpty =>
+       // A parked walker Decide belonging to this viewer projects
+       // waitingForPlayerId = None (see the ServerUiSupport.viewerPresentation
+       // comment), so this is genuinely this viewer's own turn. Falling
+       // through to the generic phase text or the activeParticipantId
+       // fallback below would show the wrong or no turn indicator at all.
+       node.textContent = value.walkerDecision.flatMap(_.query).flatMap(_.heading)
+         .getOrElse("Your decision.")
      case None if value.phase == "act-action-selection" =>
        node.textContent = "Act phase — choose your first normal action."
      case None if value.phase == "wake" =>
