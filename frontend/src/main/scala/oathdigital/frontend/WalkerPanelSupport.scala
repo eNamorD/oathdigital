@@ -35,6 +35,13 @@ private[frontend] object WalkerPanelSupport {
   private[frontend] val recoverChoiceDecisionId = "recover.choice"
   private[frontend] val recoverRelicDecisionId = "recover.relic"
 
+  /** Mirrors `SetupProcedure.pawnDecisionId`'s prefix (`setup.pawn-
+    * placement.<player>`) the same way the two ids above mirror Recover's --
+    * a plain string, since the frontend cannot depend on the JVM-only
+    * application sources that declare it.
+    */
+  private[frontend] val pawnPlacementDecisionIdPrefix = "setup.pawn-placement."
+
   /** The two button keys Recover's continue/stop query declares. Read to
     * decide which projected option gets the supply-aware treatment below --
     * never to decide whether that option exists.
@@ -184,13 +191,26 @@ private[frontend] object WalkerPanelSupport {
   }
 
   /** A choose-one decision no action-specific panel claims. Recover keeps its
-    * own panel for its richer copy; everything else is answered here, from the
-    * projected options alone.
+    * own panel for its richer copy; Setup's pawn placement is answered by
+    * clicking the site directly on the board (`WorldBoardRenderer.world`,
+    * via `pawnPlacementStep`) instead of a button list; everything else is
+    * answered here, from the projected options alone.
     */
   private[frontend] def chooseOneStep(decision: WalkerDecisionState)
       : Option[DecisionQueryState] =
-    if (decision.action == "recover" || decision.kind != "decide") None
+    if (decision.action == "recover" || decision.kind != "decide" ||
+        decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix)) None
     else chooseOneQuery(decision)
+
+  /** The pawn-placement Decide's own choose-one query, or `None` for any
+    * other decision -- the board renderer's counterpart to `chooseOneStep`
+    * above, keyed off the same decision id prefix.
+    */
+  private[frontend] def pawnPlacementStep(decision: WalkerDecisionState)
+      : Option[DecisionQueryState] =
+    if (decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix))
+      chooseOneQuery(decision)
+    else None
 
   private[frontend] def renderChooseOnePanel(value: GameProjection,
       presentation: ViewerPresentation, canControl: Boolean,
@@ -324,6 +344,17 @@ private[frontend] object WalkerPanelSupport {
     node.addEventListener("dragstart", (event: dom.Event) =>
       event.asInstanceOf[dom.DragEvent].dataTransfer
         .setData("text/plain", item))
+    // A drop on an option places the dragged one in front of it, which is
+    // how order is set by pointer; the zone's own handler would append, so
+    // this one stops before reaching it.
+    node.addEventListener("dragover",
+      (event: dom.Event) => event.preventDefault())
+    node.addEventListener("drop", (event: dom.Event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      update(draft.moveBefore(event.asInstanceOf[dom.DragEvent].dataTransfer
+        .getData("text/plain"), item), draft, ui)
+    })
     // The keyboard-reachable counterpart to the drag: one button per other
     // section, naming where it would move the option to.
     query.sections.filterNot(_.key == section.key).foreach { destination =>
@@ -334,15 +365,34 @@ private[frontend] object WalkerPanelSupport {
       move.onclick = _ => moveOption(draft, item, destination.key, ui)
       node.appendChild(move)
     }
+    // Order within a section is part of the answer, so it needs a keyboard
+    // path of its own. Both buttons are always drawn and disabled at the
+    // ends, so working an option along a row never reflows it.
+    val (index, size) = draft.positionOf(item).getOrElse((0, 1))
+    val reorder = element("div", "option-reorder")
+    Vector(("move-earlier", "◀", "earlier", -1, index <= 0),
+      ("move-later", "▶", "later", 1, index >= size - 1))
+      .foreach { case (cssClass, glyph, word, delta, atEnd) =>
+        val label = s"Move ${option.label} $word in ${section.label}"
+        val control = button(glyph, cssClass)
+        control.setAttribute("aria-label", label)
+        control.setAttribute("title", label)
+        control.disabled = atEnd
+        control.onclick = _ => update(draft.shift(item, delta), draft, ui)
+        reorder.appendChild(control)
+      }
+    node.appendChild(reorder)
     node
   }
 
   private def moveOption(draft: WalkerPartitionDraft, item: String,
-      sectionKey: String, ui: ServerUiView): Unit = {
-    val moved = draft.move(item, sectionKey)
+      sectionKey: String, ui: ServerUiView): Unit =
+    update(draft.move(item, sectionKey), draft, ui)
+
+  private def update(moved: WalkerPartitionDraft, draft: WalkerPartitionDraft,
+      ui: ServerUiView): Unit =
     if (moved != draft) {
       ui.currentWalkerPartition = Some(moved)
       ui.rerender()
     }
-  }
 }

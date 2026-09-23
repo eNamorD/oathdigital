@@ -211,6 +211,15 @@ Discard-two share a line. A three-card zone next to another takes its own
 line rather than shrinking, which is what flex wrapping does and reads
 fine.
 
+Ordering within a zone came back with it: the generic partition panel
+never had the drag-to-reorder the legacy card decision lost when Search
+was retired, though `PartitionDecisionState` kept `shift` and
+`placeBefore` the whole time. A drop on an option now places the dragged
+one in front of it, and each option carries a disabled-at-the-ends pair of
+reorder buttons for the keyboard path. The zone heading also traded its
+spacing around: 8px above it and 15px between it and the cards, where it
+had been about 29px above and 4px below.
+
 **Suit colours, second revision** (commit `ef3df0f`): the first attempt
 brightened Beast, which the product owner rejected. Beast returns to the
 sampled `#8c371e`; Discord moves to a fire-engine `#ce2029` and Hearth to

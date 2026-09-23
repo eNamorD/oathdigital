@@ -173,6 +173,26 @@ private[frontend] final case class WalkerPartitionDraft(
   def move(item: String, sectionKey: String): WalkerPartitionDraft =
     copy(partition = partition.moveTo(item, sectionKey))
 
+  /** Drops one item in front of another, wherever that anchor sits. Order
+    * within a section is part of the answer -- a discard section is
+    * discarded in the order it is left in.
+    */
+  def moveBefore(item: String, anchor: String): WalkerPartitionDraft =
+    partition.sectionOf(anchor).filterNot(_ => item == anchor).fold(this)(key =>
+      copy(partition = partition.placeBefore(item, key, Some(anchor))))
+
+  def shift(item: String, delta: Int): WalkerPartitionDraft =
+    copy(partition = partition.shift(item, delta))
+
+  /** Where an item sits in its own section, and how long that section is --
+    * what a reorder control needs to know whether it can still move.
+    */
+  def positionOf(item: String): Option[(Int, Int)] =
+    partition.sectionOf(item).map { key =>
+      val items = partition.itemsIn(key)
+      (items.indexOf(item), items.size)
+    }
+
   def canConfirm: Boolean = partition.canConfirm
 
   def command(playerId: String): Option[GameCommand.ResolveWalker] =

@@ -129,6 +129,51 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
       Vector("Denizen 3", "Denizen 1"))
   }
 
+  /** Order inside a zone is an answer, not a display detail: a discard zone
+    * is discarded in the order it is left in.
+    */
+  test("the reorder buttons slide an option within its zone") {
+    val ui = opened()
+    val later = one(render(ui),
+      """[data-option-id="denizen:denizen:1"] .move-later""")
+    assertEquals(later.getAttribute("aria-label"),
+      "Move Denizen 1 later in Pay Favor")
+    click(later)
+    assertEquals(optionLabelsIn(render(ui), "pay-favor"),
+      Vector("Denizen 2", "Denizen 1"))
+    click(one(render(ui),
+      """[data-option-id="denizen:denizen:1"] .move-earlier"""))
+    assertEquals(optionLabelsIn(render(ui), "pay-favor"),
+      Vector("Denizen 1", "Denizen 2"))
+  }
+
+  /** Disabled rather than absent, so moving an option never reflows the row
+    * out from under the pointer that is working it.
+    */
+  test("an option at the end of its zone keeps a disabled reorder button") {
+    val panel = render(opened())
+    def enabled(id: String, cls: String): Boolean = !one(panel,
+      s"""[data-option-id="$id"] .$cls""").asInstanceOf[dom.html.Button].disabled
+    assert(!enabled("denizen:denizen:1", "move-earlier"))
+    assert(enabled("denizen:denizen:1", "move-later"))
+    assert(enabled("denizen:denizen:2", "move-earlier"))
+    assert(!enabled("denizen:denizen:2", "move-later"))
+    // The only option in its zone can go neither way.
+    assert(!enabled("denizen:denizen:3", "move-earlier"))
+    assert(!enabled("denizen:denizen:3", "move-later"))
+  }
+
+  test("dropping an option on another places it before that one") {
+    val ui = opened()
+    val panel = render(ui)
+    val dragged = dragStartPayload(one(panel,
+      """[data-option-id="denizen:denizen:3"]"""))
+    drop(one(panel, """[data-option-id="denizen:denizen:1"]"""), dragged)
+    assertEquals(optionLabelsIn(render(ui), "pay-favor"),
+      Vector("Denizen 3", "Denizen 1", "Denizen 2"))
+    assertEquals(optionLabelsIn(render(ui), "pay-secret"), Vector.empty)
+  }
+
   test("dropping a dragged option on a zone moves it there") {
     val ui = opened()
     val panel = render(ui)
