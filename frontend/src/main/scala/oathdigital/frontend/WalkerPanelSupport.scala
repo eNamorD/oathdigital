@@ -290,8 +290,12 @@ private[frontend] object WalkerPanelSupport {
     zone.appendChild(text("h3", "", section.label))
     zone.appendChild(text("p", "decision-zone-helper",
       s"At least ${section.minRequired}."))
+    // Own row: a zone that holds heading and options together measures as
+    // wide as all of them laid end to end, whatever it can wrap to.
+    val options = element("div", "partition-options")
     draft.optionsIn(section.key).foreach(option =>
-      zone.appendChild(partitionOption(option, section, query, draft, ui)))
+      options.appendChild(partitionOption(option, section, query, draft, ui)))
+    zone.appendChild(options)
     zone.addEventListener("dragover",
       (event: dom.Event) => event.preventDefault())
     zone.addEventListener("drop", (event: dom.Event) => {

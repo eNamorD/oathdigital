@@ -200,10 +200,16 @@ at any legible card size. The players row grew from 23% to 26% of the
 table to buy that margin, which comes out of the map.
 
 A partition zone now lays its options out like a hand rather than stacking
-them. Measured by building a zone of four options in the docked actions
-pane at `1024x768`: zone 356px, option 95px, three across with the fourth
-wrapping. Below roughly 300px of zone width it drops to two, which is the
-honest limit rather than a failure.
+them, and is only as wide as the cards it holds. The first attempt kept
+the heading and the options in one wrapping flex container, which measures
+as wide as all of them laid end to end however it wraps, so a keep-one
+zone still claimed a full column; the options moved into a row of their
+own inside the zone. Measured in the docked actions pane at `1024x768`,
+pane 380px: a one-card zone is 112px (its floor, so an empty zone stays a
+drop target), two cards 202px, three 293px, and a Keep-one beside a
+Discard-two share a line. A three-card zone next to another takes its own
+line rather than shrinking, which is what flex wrapping does and reads
+fine.
 
 **Suit colours, second revision** (commit `ef3df0f`): the first attempt
 brightened Beast, which the product owner rejected. Beast returns to the

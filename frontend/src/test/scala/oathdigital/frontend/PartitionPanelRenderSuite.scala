@@ -101,6 +101,18 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
       Vector("denizen:denizen:1", "denizen:denizen:2", "denizen:denizen:3"))
   }
 
+  /** The options sit in their own row inside the zone. A zone that held them
+    * directly measured as wide as its heading plus every card laid end to
+    * end, so a keep-one zone claimed a full column it had no use for.
+    */
+  test("a zone's options live in a row of their own") {
+    val zone = all(render(opened()), ".partition-zone").head
+    val row = one(zone, ".partition-options")
+    assertEquals(row.parentNode, zone)
+    assertEquals(all(row, ".decision-option").size, 2)
+    assertEquals(all(zone, ":scope > .decision-option"), Vector.empty)
+  }
+
   test("the accessible move button moves one option to the other zone") {
     val ui = opened()
     val panel = render(ui)

@@ -307,22 +307,30 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-card { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
 .decision-card button, .decision-confirm, .decision-back, .resolution-choice,
 .player-selector { min-height: 44px; margin: 5px; }
-.decision-zones.partition-zones {
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* Zones are as wide as the cards they hold, not as wide as an equal share:
+   a Keep-one zone is one card wide and the zones sit side by side while the
+   room lasts. The floor is a drop target an empty zone can still be. */
+.decision-zones.partition-zones { display: flex; flex-wrap: wrap;
+  align-items: flex-start; }
+.partition-zones > .partition-zone { flex: 0 1 auto; min-width: 7rem;
+  max-width: 100%; }
 .decision-option { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
 .decision-option + .decision-option { margin-top: 8px; }
 .decision-option button, .partition-confirm { min-height: 44px; margin: 5px; }
-/* A partition is read as a row of cards, so the zone lays its options out
-   like a hand. Three fit across a docked pane at this size. */
-.partition-zone { display: flex; flex-wrap: wrap; align-items: flex-start;
+/* A partition is read as a row of cards, so the options lay out like a hand.
+   Three fit across a docked pane at this size. */
+.partition-options { display: flex; flex-wrap: wrap; align-items: flex-start;
   gap: 6px; }
-.partition-zone > h3, .partition-zone > .decision-zone-helper {
-  flex: 0 0 100%; margin-bottom: 0; }
+.partition-zone > h3 { margin-bottom: 0; }
+.partition-zone > .decision-zone-helper { margin-bottom: 0.4em; }
+/* The card sets the option's width; a move button's label must not, or the
+   zone inherits the widest destination name as its own width. */
 .partition-zone .decision-option { display: flex; flex-direction: column;
   align-items: center; gap: 4px; margin: 0; padding: 5px;
-  font-size: 0.74em; }
+  width: calc(var(--card-w) + 12px); font-size: 0.74em; }
 .partition-zone .move-option { min-height: 36px; width: 100%; margin: 0;
-  padding: 2px 6px; }
+  padding: 2px 4px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
 /* One box per card type, in ex so a pane's font size scales every card in it
    together. Never overridden per pane: per-context size is font size alone. */
