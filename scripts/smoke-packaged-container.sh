@@ -251,26 +251,58 @@ load_seat() {
 }
 
 submit_representative_command() {
-  site_id=$(sed -n 's/.*"siteId":"\([^"]*\)".*/\1/p' "$blue_projection")
-  [ -n "$site_id" ] || fail "blue-exile projection omitted a site ID"
-  case "$site_id" in
-    *[!A-Za-z0-9._:-]*) fail "blue-exile projection returned an invalid site ID" ;;
+  # Seating order and first player are shuffled per game (2026-09-22
+  # generated-game randomization), so the active participant after
+  # GameStarted's first walker park cannot be assumed to be any fixed seat.
+  # Read it from the shared game-state field, present identically in every
+  # viewer's own projection.
+  active_player_id=$(sed -n 's/.*"activeParticipantId":"\([^"]*\)".*/\1/p' "$red_projection" | head -n 1)
+  [ -n "$active_player_id" ] || fail "could not determine the active participant on run $run_label"
+  case "$active_player_id" in
+    red-exile) active_cookie_jar=$red_cookie_jar; active_projection=$red_projection ;;
+    blue-exile) active_cookie_jar=$blue_cookie_jar; active_projection=$blue_projection ;;
+    yellow-exile) active_cookie_jar=$yellow_cookie_jar; active_projection=$yellow_projection ;;
+    *) fail "unrecognized active participant $active_player_id on run $run_label" ;;
   esac
+
+  # The first setup decision (pawn placement) is a walker "choose-one" of a
+  # site, exposed only in walkerDecision (the non-active seats instead carry
+  # walkerWaiting). Scope extraction to text after the walkerDecision key so
+  # a site ID from the world-board listing earlier in the same document is
+  # never mistaken for one of this decision's actual options.
+  decision_tail=$(sed -n 's/.*"walkerDecision"//p' "$active_projection")
+  [ -n "$decision_tail" ] || fail "$active_player_id projection omitted a walker decision"
+  decision_id=$(printf '%s' "$decision_tail" |
+    sed -n 's/.*"decisionId":"\([^"]*\)".*/\1/p' | head -n 1)
+  [ -n "$decision_id" ] || fail "$active_player_id walker decision omitted a decision ID"
+  site_id=$(printf '%s' "$decision_tail" |
+    grep -o '"id":"site:[^"]*"' | head -n 1 | sed 's/^"id":"//; s/"$//')
+  [ -n "$site_id" ] || fail "$active_player_id walker decision offered no site option"
+  case "$site_id" in
+    *[!A-Za-z0-9._:-]*) fail "$active_player_id walker decision returned an invalid site ID" ;;
+  esac
+
   command_status=$(curl --silent --show-error \
     --connect-timeout "$curl_connect_timeout" \
     --max-time "$curl_request_timeout" \
     --output "$command_response" \
     --write-out '%{http_code}' \
-    --cookie "$blue_cookie_jar" \
+    --cookie "$active_cookie_jar" \
     --header 'Content-Type: application/json' \
-    --data "{\"expectedNextSequence\":1,\"intent\":{\"type\":\"placePawn\",\"siteId\":\"$site_id\"}}" \
+    --data "{\"expectedNextSequence\":2,\"intent\":{\"type\":\"resolveWalker\",\"decisionId\":\"$decision_id\",\"payload\":{\"kind\":\"choose-one\",\"optionKind\":\"site\",\"optionId\":\"$site_id\"}}}" \
     "$base_url/games/$game_id/api/commands") ||
     fail "representative command request failed on run $run_label"
   [ "$command_status" = 200 ] ||
     fail "representative command returned HTTP $command_status instead of 200 on run $run_label"
-  grep -F '"viewerPlayerId":"blue-exile"' "$command_response" >/dev/null ||
+  grep -F "\"viewerPlayerId\":\"$active_player_id\"" "$command_response" >/dev/null ||
     fail "representative command resolved the wrong seat on run $run_label"
-  grep -F '"nextSequence":2' "$command_response" >/dev/null ||
+
+  # How many automatic follow-up steps Setup takes after one placed pawn
+  # varies with the randomized board, so only the exact pre-command value
+  # (2) is fixed; a real advance just needs to be strictly greater than it.
+  post_command_sequence=$(sed -n 's/.*"nextSequence":\([0-9]*\).*/\1/p' "$command_response" | head -n 1)
+  [ -n "$post_command_sequence" ] || fail "representative command response omitted nextSequence on run $run_label"
+  [ "$post_command_sequence" -gt 2 ] ||
     fail "representative command did not advance the game on run $run_label"
 }
 
@@ -284,17 +316,17 @@ yellow_seat_url=$(extract_seat_url yellow-exile)
 exchange_seat red-exile "$red_seat_url" "$red_cookie_jar"
 exchange_seat blue-exile "$blue_seat_url" "$blue_cookie_jar"
 exchange_seat yellow-exile "$yellow_seat_url" "$yellow_cookie_jar"
-load_seat red-exile "$red_cookie_jar" "$red_projection" 1
-load_seat blue-exile "$blue_cookie_jar" "$blue_projection" 1
-load_seat yellow-exile "$yellow_cookie_jar" "$yellow_projection" 1
+load_seat red-exile "$red_cookie_jar" "$red_projection" 2
+load_seat blue-exile "$blue_cookie_jar" "$blue_projection" 2
+load_seat yellow-exile "$yellow_cookie_jar" "$yellow_projection" 2
 submit_representative_command
 docker restart --time 15 "$container_name" >/dev/null
 run_label=2
 wait_for_readiness
 check_frontend
-load_seat red-exile "$red_cookie_jar" "$red_projection" 2
-load_seat blue-exile "$blue_cookie_jar" "$blue_projection" 2
-load_seat yellow-exile "$yellow_cookie_jar" "$yellow_projection" 2
+load_seat red-exile "$red_cookie_jar" "$red_projection" "$post_command_sequence"
+load_seat blue-exile "$blue_cookie_jar" "$blue_projection" "$post_command_sequence"
+load_seat yellow-exile "$yellow_cookie_jar" "$yellow_projection" "$post_command_sequence"
 exchange_seat red-exile "$red_seat_url" "$red_cookie_jar"
 exchange_seat blue-exile "$blue_seat_url" "$blue_cookie_jar"
 exchange_seat yellow-exile "$yellow_seat_url" "$yellow_cookie_jar"
