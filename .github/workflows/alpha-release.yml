@@ -60,6 +60,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+          cache: npm
+      - name: Install Node dependencies (jsdom, for the frontend test DOM)
+        run: npm ci
       - uses: sbt/setup-sbt@6c68d2fe8dfbc0a0534d70101baa2e0420e1a506 # v1.1.9
       - name: Test and smoke both archives; stage the same binaries for OCI
         env:
