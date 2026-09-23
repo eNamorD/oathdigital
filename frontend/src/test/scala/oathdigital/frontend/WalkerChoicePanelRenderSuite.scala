@@ -45,4 +45,16 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     assertEquals(ui.submitted,
       Vector(WalkerPanelSupport.resolveChooseOneCommand(parked, oak)))
   }
+
+  test("Setup's pawn-placement decision renders no button panel -- it is " +
+      "answered by clicking the site on the board instead") {
+    val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
+    val pawnQuery = DecisionQueryState("choose-one", Vector(site),
+      heading = Some("Choose your starting site"))
+    val pawnDecision = WalkerDecisionState("setup", "setup.pawn-placement.p1",
+      "decide", query = Some(pawnQuery))
+    assertEquals(WalkerPanelSupport.chooseOneStep(pawnDecision), None)
+    assertEquals(WalkerPanelSupport.pawnPlacementStep(pawnDecision), Some(pawnQuery))
+    assertEquals(WalkerPanelSupport.pawnPlacementStep(parked), None)
+  }
 }
