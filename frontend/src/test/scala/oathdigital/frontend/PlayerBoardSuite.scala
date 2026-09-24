@@ -77,8 +77,8 @@ class PlayerBoardSuite extends munit.FunSuite {
     */
   private def titled(side: String): dom.Element = WorldBoardRenderer.playerBoards(
     GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red),
-        GamePlayer("blue", "Blue", "Exile", PlayerColorToken.Blue)),
+      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red),
+        GamePlayer("blue", "Blue", "Exile", PlayerColor.Blue)),
       Vector.empty, Vector.empty, Vector.empty, ready = true,
       completed = false, playerBoards = Vector(board,
         board.copy(playerId = "blue")),
