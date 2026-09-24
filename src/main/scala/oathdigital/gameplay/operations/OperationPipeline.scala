@@ -46,7 +46,7 @@ object OperationRun {
   * losing-force `ReturnToBoard` that moves warbands out of a bank which
   * in-batch `Kill`s replenish). Validating every operation against the initial
   * state would reject those trajectory batches the retired executor accepted,
-  * so the authoritative rejection is the staged `validateOne` per operation —
+  * so the authoritative rejection is the staged per-operation resolution —
   * the same first-fail, atomic behavior the executor performed.
   *
   * A card may leave the game only through a `Move` to `Location.SharedBank`
