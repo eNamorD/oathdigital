@@ -604,9 +604,6 @@ final case class Roll(pool: PoolKey, dice: DiceSpec,
 final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
     score: Option[Int]) extends PrimitiveOperation
 
-/** Removes `pool` from the rollPools state map. */
-final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
-
 /** Parks a walker until `owner` resolves the decision `query` states.
   *
   * `query` is the single source of both halves of the contract: the walker

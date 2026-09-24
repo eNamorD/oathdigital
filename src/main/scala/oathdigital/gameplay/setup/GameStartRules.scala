@@ -24,6 +24,13 @@ object GameStartRules {
       plan <- buildPlan(catalog, chronicle, orders)
       material = new FirstGameSetupMaterializer(catalog)
         .materialize(plan, Vector.empty, Vector.empty)
+      // An edifice the Chronicle stores at an atlas site stays there: it is
+      // not also in the edifice deck. The materializer only knows the edifices
+      // at the 8 sites in play.
+      storedEdifices = chronicle.atlasBox.flatMap(_.items)
+        .collect { case id: EdificeId => id }.toSet
+      commonCards = material.commonCards.copy(edificeDeck =
+        material.commonCards.edificeDeck.filterNot(storedEdifices))
       lineages = plan.participants.map(participant =>
         participant.lineageId -> LineageState(
           participant.lineageId, None, Role.Exile, Vector.empty, Vector.empty)
@@ -37,7 +44,7 @@ object GameStartRules {
         CampaignState(atlas, foundations, lineages, chronicle.reliquary,
           chronicle.dispossessed, Map.empty, plan.oathkeeperGoal,
           EraState(20, lineages.keys.map(_ -> 0).toMap)),
-        CurrentGameState(material.players, material.map, material.commonCards,
+        CurrentGameState(material.players, material.map, commonCards,
           material.banners, OathkeeperState(None, TitleSide.Oathkeeper),
           TurnState(orders.firstPlayer, Phase.Setup, Set.empty),
           material.tracks, None, material.temporaryHands))
