@@ -47,7 +47,8 @@ trait BattlePlan extends ContributingPower {
   final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] = {
     val offers: Map[PowerWindow, Vector[Contribution]] = sides.toVector.map {
       side => BattlePlan.windowOf(side) -> Vector[Contribution](Offer(ctx =>
-        PlanContext.of(ctx).filter(_.side == side).flatMap(plan)))
+        PlanContext.of(ctx).filter(_.side == side).flatMap(plan)
+          .map(_.copy(sides = sides))))
     }.toMap
     val afterwards: Map[PowerWindow, Vector[Contribution]] = later.map {
       case (window, build) => window -> Vector[Contribution](Transform(

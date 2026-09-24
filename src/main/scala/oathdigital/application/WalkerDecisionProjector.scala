@@ -275,12 +275,16 @@ private[application] final class WalkerDecisionProjector(
       details: Vector[String] = Vector.empty): Option[DecisionOptionProjection] = {
     val ref = option.ref
     def row(label: String, card: Option[CardDetailsProjection] = None,
-        extra: Vector[String] = Vector.empty) =
+        extra: Vector[String] = Vector.empty, badge: Option[String] = None) =
       Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card,
-        details ++ extra))
+        details ++ extra, badge))
     option match {
       case DecisionOption.Priced(inner, price) => optionProjection(ready,
         viewer, index, inner, details ++ PriceDetails.of(price))
+      // The badge is set after the wrapped option is described, so it survives
+      // whichever order a caller wraps price and badge in.
+      case DecisionOption.Badged(inner, badge) => optionProjection(ready,
+        viewer, index, inner, details).map(_.copy(badge = Some(badge)))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if (ready.game.current.players.exists(_.player == player.id))

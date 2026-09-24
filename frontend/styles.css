@@ -508,6 +508,17 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   gap: 0.3em; padding: 7px; border: 1px solid #675a43; border-radius: 6px;
   text-align: center; font-weight: 800; }
 .walker-choice .token-glyph { margin-right: 0.3em; vertical-align: -0.15em; }
+/* Which side a battle plan is for, as a chip beside the offer. */
+.option-badge {
+  display: inline-block;
+  border-radius: 1em;
+  padding: 0 0.6em;
+  font-size: 0.75em; }
+.plan-side-attack { background: var(--suit-discord); color: #fff; }
+.plan-side-defense { background: var(--suit-order); color: #fff; }
+.plan-side-both {
+  background: linear-gradient(90deg, var(--suit-discord), var(--suit-order));
+  color: #fff; }
 .player-board { margin-top: 12px; padding: 12px; border: 1px solid #40382c; border-radius: 9px; }
 .modifier-option { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .modifier-toggle { min-height: 44px; text-align: left; }

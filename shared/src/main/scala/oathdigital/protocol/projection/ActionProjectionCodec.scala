@@ -227,17 +227,19 @@ private[projection] object ActionProjectionCodec {
   private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value =
     ujson.Obj("kind" -> row.kind, "id" -> row.id, "label" -> row.label,
       "card" -> option(row.card)(encodeCard),
-      "details" -> encoded(row.details)(ujson.Str(_)))
+      "details" -> encoded(row.details)(ujson.Str(_)),
+      "badge" -> stringOption(row.badge))
 
   private[projection] def decodeOptionRow(raw: ujson.Value, child: String)
       : Result[DecisionOptionProjection] = for {
     row <- obj(raw, child)
-    _ <- exact(row, Set("kind", "id", "label", "card", "details"), child)
+    _ <- exact(row, Set("kind", "id", "label", "card", "details", "badge"), child)
     kind <- string(row, "kind", child); id <- string(row, "id", child)
     label <- string(row, "label", child)
     card <- optionalAbsent(row, "card", child)(decodeCard)
     details <- stringsOrEmpty(row, "details", child)
-  } yield DecisionOptionProjection(kind, id, label, card, details)
+    badge <- optionalString(row, "badge", child)
+  } yield DecisionOptionProjection(kind, id, label, card, details, badge)
 
   def encodePhasePower(value: PhasePowerProjection): ujson.Value = ujson.Obj(
     "powerId" -> value.powerId, "source" -> encodeOptionRow(value.source),

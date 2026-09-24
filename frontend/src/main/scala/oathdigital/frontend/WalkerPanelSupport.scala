@@ -251,6 +251,18 @@ private[frontend] object WalkerPanelSupport {
           if (option.kind == "favor-bank")
             choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
               choose.firstChild)
+          // An option that carries a card IS the card: a plan is chosen by
+          // reading what it does, which the face already says.
+          option.card.foreach { card =>
+            choose.textContent = ""
+            choose.setAttribute("aria-label", label)
+            choose.appendChild(CardFace.render(
+              card.copy(orientation = Some("face-up"))))
+          }
+          option.badge.foreach { badge =>
+            val chip = text("span", s"option-badge ${badgeClass(badge)}", badge)
+            choose.appendChild(chip)
+          }
           choose.disabled = !canControl
           choose.onclick = _ => ui.submitCommand(
             resolveChooseOneCommand(decision, option))
@@ -259,6 +271,15 @@ private[frontend] object WalkerPanelSupport {
             "walker-choice-details", option.details.mkString(" · ")))
         }
       }
+
+  /** The three battle-plan chips, so a side reads as a colour as well as a
+    * word. An unknown badge gets the neutral class rather than none.
+    */
+  private def badgeClass(badge: String): String = badge match {
+    case "Attack Plan" => "plan-side-attack"
+    case "Defense Plan" => "plan-side-defense"
+    case _ => "plan-side-both"
+  }
 
   /** The faces as the symbols printed on them, with the sentence they used
     * to be written as kept for a reader who cannot see the symbols.

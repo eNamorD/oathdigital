@@ -78,4 +78,26 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     assertEquals(WalkerPanelSupport.pawnPlacementStep(pawnDecision), Some(pawnQuery))
     assertEquals(WalkerPanelSupport.pawnPlacementStep(parked), None)
   }
+
+  test("a battle-plan offer draws its card and its side as a chip") {
+    val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",
+      orientation = Some("face-up"))
+    val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
+      Some(card), Vector("1 Favor"), Some("Battle Plan"))
+    val query = DecisionQueryState("choose-one", Vector(plan),
+      heading = Some("Choose a battle plan, or finish"))
+    val parked = WalkerDecisionState("campaign", "campaign.attacker-plan",
+      "decide", query = Some(query))
+    val projection = GameProjection("game", 9L, "act", Some("red"),
+      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false, walkerDecision = Some(parked))
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
+      canControl = true, panel, new RecordingView("game", "red"))
+    assertEquals(all(panel, ".walker-choice .card-face").size, 1)
+    assertEquals(all(panel, ".plan-side-both").map(_.textContent),
+      Vector("Battle Plan"))
+    assertEquals(all(panel, ".walker-choice-details").map(_.textContent),
+      Vector("1 Favor"))
+  }
 }

@@ -124,10 +124,15 @@ final case class DecisionQueryProjection(
   * `details` are the consequences the engine annotated on the option (for
   * example the Supply an answer costs and what it yields), already worded
   * for display; empty for an option nothing was annotated on.
+  *
+  * `badge` is one short label the option carries -- what kind of thing it is,
+  * such as `Attack Plan` -- for a client to draw as a chip. It is separate
+  * from `details`, which carries consequences and runs together into one line.
   */
 final case class DecisionOptionProjection(kind: String, id: String,
     label: String, card: Option[CardDetailsProjection] = None,
-    details: Vector[String] = Vector.empty)
+    details: Vector[String] = Vector.empty,
+    badge: Option[String] = None)
 
 /** One named bucket a partition spreads its options across: the stable
   * `key` a placement names, the section's prompt copy, and the fewest

@@ -181,6 +181,17 @@ object DecisionOption {
     def ref: DecisionOptionRef = option.ref
   }
 
+  /** An option carrying one short label a client draws as a chip: what kind of
+    * thing the option is, as opposed to what choosing it costs. Wrapping for
+    * the same reason `Priced` wraps -- `ref` is the wrapped option's, so an
+    * answer names the same thing badge or no badge, and the badge never
+    * affects legality.
+    */
+  final case class Badged(option: DecisionOption, badge: String)
+      extends DecisionOption {
+    def ref: DecisionOptionRef = option.ref
+  }
+
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so
     * a reference alone cannot present one.

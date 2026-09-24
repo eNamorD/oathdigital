@@ -231,6 +231,19 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
       DecisionOption.Relic(DecisionOptionRef.Relic(absent)))), None)
   }
 
+  test("a badged option projects its badge and keeps its price") {
+    val (context, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
+    val present = relicAtActorSite(context, actor)
+    val option = DecisionOption.Badged(DecisionOption.Priced(
+      DecisionOption.Relic(DecisionOptionRef.Relic(present)),
+      OptionPrice(favor = 1)), "Battle Plan")
+    val projected = projectorFor(decideTree(Vector.empty, actor))
+      .optionProjection(context.ready, Some(actor),
+        CardIndex.from(context.ready.game).toOption, option)
+    assertEquals(projected.flatMap(_.badge), Some("Battle Plan"))
+    assert(projected.exists(_.details.nonEmpty))
+  }
+
   test("an edifice option projects its label and details from the card's side, " +
       "and one that is not at a site suppresses the decision") {
     val (base, actor) = parked(ActionRef.Recover)
