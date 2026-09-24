@@ -60,7 +60,9 @@ class GameRoutesSuite extends munit.FunSuite {
       assertEquals(index.statusCode(), 200)
       assertEquals(cacheControl(index),
         Some("no-store, no-cache, must-revalidate, max-age=0"))
-      assert(index.body().contains("main.js?dev-cache=no-store-v1"))
+      // The pinned, version-free fastLinkJS output directory (build.sbt).
+      assert(index.body().contains(
+        "./target/fastopt/main.js?dev-cache=no-store-v1"))
       val stylesheet = get(client, s"$base/styles.css")
       assertEquals(stylesheet.statusCode(), 200)
       assertEquals(cacheControl(stylesheet),

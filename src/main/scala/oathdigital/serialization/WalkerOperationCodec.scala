@@ -654,6 +654,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     secretBurnt <- safeIntField(value.obj, "secretBurnt", path)
   } yield Cost(favor, secret, favorBurnt, secretBurnt)
 
+  // Must not be named encodeOrientation: under Scala 3 a same-named private
+  // method here was dispatched in place of GameEventJsonSupport's, which
+  // broke encoding of Flip and Play operations.
   private def orientationKey(value: Orientation): String = value match {
     case Orientation.FaceUp => "face-up"
     case Orientation.FaceDown => "face-down"
