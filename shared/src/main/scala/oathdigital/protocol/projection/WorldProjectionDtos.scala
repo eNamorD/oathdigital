@@ -1,12 +1,10 @@
 package oathdigital.protocol.projection
 
-import oathdigital.model.PlayerColor
-
 final case class SetupPlayerProjection(
     playerId: String,
     displayName: String,
     role: String,
-    color: PlayerColor
+    color: oathdigital.model.PlayerColor
 )
 final case class CardDetailsProjection(
     cardId: String,
@@ -41,7 +39,8 @@ sealed trait SiteForcesProjection extends Product with Serializable {
   def label: String
 }
 object SiteForcesProjection {
-  final case class Exile(count: Int, rulerPlayerId: String, color: PlayerColor,
+  final case class Exile(count: Int, rulerPlayerId: String,
+      color: oathdigital.model.PlayerColor,
       label: String) extends SiteForcesProjection
   final case class Imperial(count: Int, label: String)
       extends SiteForcesProjection
