@@ -532,4 +532,76 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(broken.project(ctx(Some(holder))), None)
     assertEquals(broken.waiting(ctx(None)), None)
   }
+
+  /** Task 5: a `cardplay.place.*` park -- the one question in the walker
+    * whose subject is not among its own options (a placement offers
+    * "discard"/"play faceup" buttons, never the card itself). The tree is
+    * substituted, the same way every other synthetic `Decide` in this suite
+    * is, but the decision id carries the real spelling `CardPlayProcedure`
+    * builds it with (`kind` then `value`), and the card sits where a real
+    * facedown adviser would: in the actor's own `advisers`.
+    */
+  private val facedownAdviserCard = DenizenId("denizen:vow-of-peace")
+
+  private def facedownAdviserTree(actor: PlayerId, card: DenizenId = facedownAdviserCard)
+      : Operation =
+    Sequence(Decide(s"cardplay.place.${card.kind}.${card.value}",
+      actor, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(DecisionOptionRef.Button("discard"), "Discard"),
+        DecisionOption.Button(DecisionOptionRef.Button("adviser-faceup"),
+          "Play faceup")))))
+
+  private def facedownAdviserPlacement: (ScopedProjectionContext, PlayerId) = {
+    val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
+    val withAdviser = context.copy(ready = context.ready.updateCurrent(
+      current => current.copy(players = current.players.map(player =>
+        if (player.player == actor) player.copy(advisers = player.advisers :+
+          DenizenState(facedownAdviserCard, Orientation.FaceDown, Tokens.empty))
+        else player))))
+    (withAdviser, actor)
+  }
+
+  test("a placement decision projects the card being placed") {
+    val (context, actor) = facedownAdviserPlacement
+    val projected = projectorFor(facedownAdviserTree(actor)).project(context)
+    assertEquals(projected.map(_.decisionId),
+      Some("cardplay.place.denizen.denizen:vow-of-peace"))
+    assertEquals(projected.toVector.flatMap(_.subjectCards).map(_.cardId),
+      Vector("denizen:vow-of-peace"))
+  }
+
+  /** `PlayFacedownAdviser` parks with the actor as its only owner, so there
+    * is no co-owner fixture that reaches the projector as a non-owning
+    * viewer (Task 5 brief's documented fallback): instead, a decision that
+    * is not a `cardplay.*` one -- the off-turn `Decide` above -- proves the
+    * subject is empty when the decision has none to name.
+    */
+  test("a decision that is about no card projects no subject") {
+    val (ready, _, owner, projector) = parkedOffTurn
+    val projected = projector.project(ScopedProjectionContext(ready, Some(owner)))
+    assertEquals(projected.toVector.flatMap(_.subjectCards), Vector.empty)
+  }
+
+  /** The redaction check the brief's own hidden-viewer test would have
+    * covered has no co-owner fixture to reach it through (see above), but
+    * the same redaction path is reachable directly: a decision naming a
+    * card that authoritative state does not hold at all. This also pins
+    * the doc comment's other half on `subjectCards` -- a card that cannot
+    * be found projects hidden, not dropped -- and, more importantly, that
+    * "hidden" means the real substitute [[GamePresentationProjector
+    * .hiddenCard]] (an opaque id and a generic name), not the real id and
+    * name with a flag set over them. `cardDetails(id, ..., hidden = true)`
+    * would have passed the projector test's own `cardId` assertion just as
+    * well while silently leaking the identity through the very fields a
+    * client is told to skip once `hidden` is true.
+    */
+  test("a placement naming a card absent from authoritative state projects " +
+      "it hidden, not with its real identity and not dropped") {
+    val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
+    val missing = DenizenId("denizen:not-on-board")
+    val subjects = projectorFor(facedownAdviserTree(actor, missing))
+      .project(context).toVector.flatMap(_.subjectCards)
+    assertEquals(subjects.map(s => (s.cardId, s.cardKind, s.hidden)),
+      Vector(("hidden", "denizen", true)))
+  }
 }

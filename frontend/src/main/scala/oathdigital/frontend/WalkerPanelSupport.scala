@@ -231,6 +231,15 @@ private[frontend] object WalkerPanelSupport {
       .flatMap(decision => chooseOneStep(decision).map(decision -> _))
       .foreach { case (decision, query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
+        // The card the question is about. A placement asks about a card that
+        // is neither an option nor in the temporary hand, so without this the
+        // player answers about a card they cannot see.
+        if (decision.subjectCards.nonEmpty) {
+          val subjects = element("div", "decision-subject")
+          decision.subjectCards.foreach(card =>
+            subjects.appendChild(CardFace.render(card)))
+          panel.appendChild(subjects)
+        }
         query.options.foreach { option =>
           val label = if (option.kind == "player")
             value.players.find(_.playerId == option.id).map(_.displayName)

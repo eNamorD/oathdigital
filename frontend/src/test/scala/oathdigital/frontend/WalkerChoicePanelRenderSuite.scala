@@ -46,6 +46,27 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Vector(WalkerPanelSupport.resolveChooseOneCommand(parked, oak)))
   }
 
+  test("the card a placement is about is drawn above the buttons") {
+    val subject = CardDetails("denizen:vow-of-peace", "denizen", "Vow of Peace",
+      orientation = Some("face-down"))
+    val place = WalkerDecisionState("play-facedown-adviser",
+      "cardplay.place.denizen.denizen:vow-of-peace", "decide",
+      query = Some(DecisionQueryState("choose-one", Vector(
+        DecisionOptionState("button", "discard", "Discard"),
+        DecisionOptionState("button", "adviser-faceup", "Play faceup")),
+        heading = Some("Play or discard card"))),
+      subjectCards = Vector(subject))
+    val projection = GameProjection("game", 9L, "act", Some("red"),
+      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false, walkerDecision = Some(place))
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
+      canControl = true, panel, new RecordingView("game", "red"))
+    assertEquals(all(panel, ".decision-subject .card-face").size, 1)
+    assertEquals(all(panel, ".walker-choice").map(_.textContent),
+      Vector("Discard", "Play faceup"))
+  }
+
   test("Setup's pawn-placement decision renders no button panel -- it is " +
       "answered by clicking the site on the board instead") {
     val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")

@@ -228,7 +228,14 @@ private[application] final class GamePresentationProjector(
         current.banners.darkestSecret.secrets))
   }
 
-  private def hiddenCard(kind: String) = CardDetailsProjection(
+  /** `private[application]`, not `private`: `WalkerDecisionProjector`
+    * (Task 5) is this redaction's third consumer, alongside [[playerBoards]]
+    * below and the doc comment on [[identifiesCard]] that already describes
+    * both -- a decision's subject card is redacted rather than dropped, the
+    * same way a board slot is, so it reaches for the same substitute rather
+    * than reproducing it.
+    */
+  private[application] def hiddenCard(kind: String) = CardDetailsProjection(
     "hidden", kind, s"Facedown $kind", orientation = Some("face-down"), hidden = true)
 
   /** Whether `viewer` may be told WHICH card this is, as opposed to merely

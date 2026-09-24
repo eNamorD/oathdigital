@@ -151,7 +151,8 @@ private[application] final class WalkerDecisionProjector(
             WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
               query = Some(projected),
               rollOutcome = Option.when(procedure == ActionRef.Recover)(
-                rollOutcome(ready, awaited)).flatten))
+                rollOutcome(ready, awaited)).flatten,
+              subjectCards = subjectCards(ready, viewer, decide.decisionId)))
         }
     }
 
@@ -351,6 +352,47 @@ private[application] final class WalkerDecisionProjector(
       ready, viewer, id, orientationOf(located.state),
       located.location.container)).map(located => presentation.cardDetails(id,
         orientationOf(located.state), hidden = false))
+
+  /** The cards a decision is about, read from its own id.
+    *
+    * A card-play decision is the one question in the walker whose subject is
+    * not among its options: `cardplay.place.*` offers four buttons and names
+    * the card only in the id it was built with. The id is the tree's own
+    * spelling of `WorldCardId` (`kind` then `value`), so this parses what the
+    * procedure wrote rather than reaching into the tree for it.
+    *
+    * A card that cannot be found, or that this viewer may not identify,
+    * projects hidden rather than being dropped: unlike an option, a subject
+    * carries no reference the client answers with, so showing a back is both
+    * honest and useful. "Hidden" means the same redacted substitute
+    * [[GamePresentationProjector.hiddenCard]] gives an unidentifiable board
+    * slot -- a generic back, not the real id and name with a flag set over
+    * them -- since `cardDetails` fills in the real catalog name and id
+    * whatever `hidden` is passed as, and the client trusts `hidden` to mean
+    * the rest of the row is safe to skip reading.
+    */
+  private def subjectCards(ready: ReadyGame, viewer: Option[PlayerId],
+      decisionId: String): Vector[CardDetailsProjection] = {
+    val index = CardIndex.from(ready.game).toOption
+    val prefixes = Vector("cardplay.place.", "cardplay.replace.")
+    prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>
+      decisionId.stripPrefix(prefix).split("\\.", 2).toVector match {
+        case Vector("denizen", value) => Vector(DenizenId(value): CardId)
+        case Vector("vision", value) => Vector(VisionId(value): CardId)
+        case _ => Vector.empty[CardId]
+      }
+    }.map { id =>
+      index.flatMap(_.get(id)) match {
+        case Some(located) =>
+          val orientation = orientationOf(located.state)
+          if (presentation.identifiesCard(ready, viewer, id, orientation,
+              located.location.container))
+            presentation.cardDetails(id, orientation, hidden = false)
+          else presentation.hiddenCard(presentation.cardKind(id))
+        case None => presentation.hiddenCard(presentation.cardKind(id))
+      }
+    }
+  }
 
   private def orientationOf(state: Option[CardState]): Option[Orientation] =
     state match {

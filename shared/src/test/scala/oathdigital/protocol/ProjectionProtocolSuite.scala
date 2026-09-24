@@ -118,6 +118,20 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(rolling))
   }
 
+  /** `ActionProjectionCodec` is `private[projection]`, so this reaches it
+    * the same way every other walker-decision test in this suite does: a
+    * full `GameProjection` round-trip through `GameProjectionCodec`.
+    */
+  test("a walker decision round-trips the cards it is about") {
+    val card = CardDetailsProjection("d1", "denizen", "Old Oak",
+      orientation = Some("face-down"))
+    val subject = projection.copy(walkerDecision = Some(
+      WalkerDecisionProjection("search", "cardplay.place.denizen.d1",
+        "decide", subjectCards = Vector(card))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(subject)),
+      Right(subject))
+  }
+
   test("a choose-one option round-trips its details and defaults them to none") {
     val annotated = DecisionQueryProjection("choose-one", Vector(
       DecisionOptionProjection("denizen", "d1", "Old Oak", None,

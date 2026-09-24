@@ -184,7 +184,15 @@ final case class WalkerDecisionProjection(
     pool: Option[String] = None,
     count: Option[Int] = None,
     query: Option[DecisionQueryProjection] = None,
-    rollOutcome: Option[WalkerRollOutcomeProjection] = None
+    rollOutcome: Option[WalkerRollOutcomeProjection] = None,
+    /** The cards this decision is ABOUT, as opposed to the cards its options
+      * name: the card being placed by a `cardplay.place.*` question, which is
+      * neither an option nor in the temporary hand. Plural so a decision about
+      * several cards needs no second field. Projected under the same
+      * disclosure rules as every other card, so a viewer who may not identify
+      * one receives it hidden.
+      */
+    subjectCards: Vector[CardDetailsProjection] = Vector.empty
 )
 /** `faces` are display-ready die-face labels (e.g. `"one-shield"`), in roll
   * order across every roll of the parked pool so far; `score` is the
