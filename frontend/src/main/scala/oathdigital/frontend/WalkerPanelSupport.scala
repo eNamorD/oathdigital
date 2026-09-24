@@ -252,8 +252,13 @@ private[frontend] object WalkerPanelSupport {
             choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
               choose.firstChild)
           // An option that carries a card IS the card: a plan is chosen by
-          // reading what it does, which the face already says.
-          option.card.foreach { card =>
+          // reading what it does, which the face already says. Gated on the
+          // badge, not merely on the card: Muster, Search, Forge and other
+          // choose-one queries also offer Denizen/Relic/Vision/Edifice
+          // options with a card attached, and those keep their labelled
+          // text button -- only a battle plan, which also carries a badge,
+          // draws as a face.
+          option.card.filter(_ => option.badge.nonEmpty).foreach { card =>
             choose.textContent = ""
             choose.setAttribute("aria-label", label)
             choose.appendChild(CardFace.render(
