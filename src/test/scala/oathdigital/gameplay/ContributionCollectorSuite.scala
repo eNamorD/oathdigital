@@ -32,7 +32,7 @@ class ContributionCollectorSuite extends munit.FunSuite {
       idValue: String,
       sourceKey: String,
       windows: Set[PowerWindow],
-      contribs: Vector[Contribution] = Vector.empty,
+      contribs: Vector[Contribution],
       priorityValue: Int = 0,
       applicableFlag: Boolean = true,
       ignore: Set[String] = Set.empty

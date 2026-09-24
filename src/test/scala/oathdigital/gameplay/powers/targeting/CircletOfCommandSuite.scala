@@ -98,7 +98,6 @@ class CircletOfCommandSuite extends munit.FunSuite {
     val base = PowerFixture.base
     val actor = PowerFixture.actor
     val enemy = base.game.current.players.map(_.player).find(_ != actor).get
-    val current = base.game.current
     val site = PowerFixture.player(base).pawnSite
     val staged = CardStaging.without(CardStaging.without(base, conspiracy), other)
       .updateCurrent(c => c.copy(
