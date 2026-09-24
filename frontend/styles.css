@@ -345,6 +345,15 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .card-decision { margin-top: 18px; padding-top: 18px; border-top: 1px solid #675a43; }
+/* Every slot shares one grid, so the steppers and the counts line up in
+   columns instead of landing wherever each label's width leaves them. */
+.distribute-slots { display: grid; align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto 2.5em auto auto; gap: 6px 8px; }
+.distribute-slot { display: contents; }
+.distribute-decrement, .distribute-increment { min-width: 2.2em; }
+.distribute-amount { text-align: center; font-weight: 700;
+  font-variant-numeric: tabular-nums; }
+.distribute-maximum { color: #9a8f7c; font-size: 0.85em; white-space: nowrap; }
 /* One term per row: control and caption together, so a deal reads as a list
    of offers instead of a paragraph of checkboxes. */
 .negotiation-item { display: flex; align-items: center; gap: 8px;
