@@ -10,8 +10,10 @@ import oathdigital.protocol.projection.GameProjection
   *
   * The maximum lets the client print "5/7" without knowing the rules, and
   * the Rest preview lets the Act button say what ending the Act returns.
-  * The preview is taken before Rest runs, so it is checked against what
-  * Rest actually pays.
+  * The preview is the return BEFORE the track's ceiling takes its cut, so a
+  * player pricing this Act's spending can read it as the Supply they may
+  * still spend for free; it is checked here against what Rest pays once the
+  * ceiling has applied.
   */
 class SupplyProjectionSuite extends munit.FunSuite {
   import EconomyFixture._
@@ -22,24 +24,41 @@ class SupplyProjectionSuite extends munit.FunSuite {
   private def project(ready: ReadyGame, viewer: PlayerId): GameProjection =
     projector.project("supply", LoadedGame(Ready(ready), 4), viewer)
 
-  test("the preview matches the Supply Rest actually returns") {
+  /** The Supply the resting player holds once Rest has run. */
+  private def rested(board: ReadyGame, actor: PlayerId): Int = {
+    val completed = rules
+      .startWalker(Ready(board), PhaseTransitionRef.BeginRest, actor)
+      .getOrElse(fail("Rest must run"))
+    val Ready(after) = completed.state: @unchecked
+    after.game.current.players.find(_.player == actor).get
+      .board.supply.supply
+  }
+
+  private def preview(board: ReadyGame, actor: PlayerId): Int =
+    project(board, actor).restSupplyGain
+      .getOrElse(fail("an Act that can Rest must preview the return"))
+
+  test("the preview is the Supply Rest returns, capped by the track") {
     val board = act(supply = 1)
     val actor = player(board).player
     val projected = project(board, actor)
     assertEquals(projected.supplyMaximum, 7)
     val gain = projected.restSupplyGain
       .getOrElse(fail("an Act that can Rest must preview the return"))
-    val completed = rules
-      .startWalker(Ready(board), PhaseTransitionRef.BeginRest, actor)
-      .getOrElse(fail("Rest must run"))
-    val Ready(after) = completed.state: @unchecked
-    assertEquals(after.game.current.players.find(_.player == actor).get
-      .board.supply.supply, 1 + gain)
+    assertEquals(rested(board, actor), math.min(7, 1 + gain))
   }
 
-  test("a full track returns nothing") {
-    val board = act(supply = 7)
-    assertEquals(project(board, player(board).player).restSupplyGain, Some(0))
+  test("a full track is still promised its whole band") {
+    val empty = act(supply = 0)
+    val full = act(supply = 7)
+    val actor = player(full).player
+    // The band is read off banked warbands, not off the track, so a player
+    // sitting at 7/7 is told the same number as one sitting at 0/7 -- which
+    // is what makes it a spending budget rather than the room left.
+    val gain = preview(full, actor)
+    assert(gain > 0, "an Exile band returns Supply")
+    assertEquals(gain, preview(empty, player(empty).player))
+    assertEquals(rested(full, actor), 7)
   }
 
   test("a player who cannot Rest is shown no preview") {

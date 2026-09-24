@@ -74,33 +74,63 @@ object FinishRestProcedure {
     favor ++ secrets ++ reveal
   }
 
+  /** The warbands the resting player's own bank holds right now -- the one
+    * count both the Supply band and its preview are read from, so neither
+    * can be derived a different way and disagree with the other.
+    */
+  private def bankedWarbands(ready: ReadyGame, player: PlayerState)
+      : Either[OathViolation, Int] = {
+    val kind = ForceKind.Exile(player.lineage)
+    ready.banks.warbandSupply.get(kind)
+      .toRight(UnsupportedRestState(s"no bounded warband supply for $kind"))
+      .map { supply =>
+        val siteWarbands = ready.game.current.map.sites.valuesIterator
+          .map(_.forces).collect {
+            case SiteForces.Occupied(ForceKind.Exile(owner), count)
+                if owner == player.lineage => count
+          }.sum
+        math.max(0, supply - player.board.warbands - siteWarbands)
+      }
+  }
+
+  private def restingPlayer(ready: ReadyGame, resting: PlayerId)
+      : Either[OathViolation, PlayerState] =
+    ready.game.current.players.find(_.player == resting)
+      .toRight(UnsupportedRestState(s"unknown resting player $resting"))
+
   /** The Supply the resting player would end Rest holding, from the warbands
     * their bank holds right now. Read before Rest it is a preview: a power
     * folded in front of cleanup can still move warbands and change the band.
     */
   def supplyAfterRest(ready: ReadyGame, resting: PlayerId)
-      : Either[OathViolation, Int] = {
-    val current = ready.game.current
-    for {
-      player <- current.players.find(_.player == resting)
-        .toRight(UnsupportedRestState(s"unknown resting player $resting"))
-      kind = ForceKind.Exile(player.lineage)
-      supply <- ready.banks.warbandSupply.get(kind)
-        .toRight(UnsupportedRestState(s"no bounded warband supply for $kind"))
-      siteWarbands = current.map.sites.valuesIterator.map(_.forces).collect {
-        case SiteForces.Occupied(ForceKind.Exile(owner), count)
-            if owner == player.lineage => count
-      }.sum
-      banked = math.max(0, supply - player.board.warbands - siteWarbands)
-      refreshed <- ExileSupply.refresh(banked, player.board.supply.supply)
-        .toRight(UnsupportedRestState(s"no Supply band for $banked banked warbands"))
-    } yield refreshed.supply
-  }
+      : Either[OathViolation, Int] = for {
+    player <- restingPlayer(ready, resting)
+    banked <- bankedWarbands(ready, player)
+    refreshed <- ExileSupply.refresh(banked, player.board.supply.supply)
+      .toRight(UnsupportedRestState(s"no Supply band for $banked banked warbands"))
+  } yield refreshed.supply
+
+  /** The Supply the resting player's band returns, BEFORE the track's
+    * ceiling takes its cut -- the band's base, which is what Rest adds to
+    * whatever is left unspent.
+    *
+    * This is the number the client shows on the button that ends the Act.
+    * The capped gain (`supplyAfterRest` minus the track) would shrink as the
+    * player saved Supply and read as a reason to spend nothing; the band
+    * does not move with the track, so it reads as the Supply this Act may
+    * still spend without costing the player anything at Rest.
+    */
+  def supplyGainAtRest(ready: ReadyGame, resting: PlayerId)
+      : Either[OathViolation, Int] = for {
+    player <- restingPlayer(ready, resting)
+    banked <- bankedWarbands(ready, player)
+    base <- ExileSupply.baseSupplyFor(banked)
+      .toRight(UnsupportedRestState(s"no Supply band for $banked banked warbands"))
+  } yield base
 
   private def supplyRefresh(ready: ReadyGame, resting: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] = for {
-    player <- ready.game.current.players.find(_.player == resting)
-      .toRight(UnsupportedRestState(s"unknown resting player $resting"))
+    player <- restingPlayer(ready, resting)
     refreshed <- supplyAfterRest(ready, resting)
   } yield {
     val change = refreshed - player.board.supply.supply

@@ -109,9 +109,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
         // Only the player who can end the Act is promised a return, and the
         // promise is dropped rather than guessed at when Rest cannot price it.
         restSupplyGain = Option.when(controls.contains("beginRest"))(
-          FinishRestProcedure.supplyAfterRest(context.ready, active.player)
-            .toOption.map(after =>
-              math.max(0, after - active.board.supply.supply))).flatten)
+          FinishRestProcedure.supplyGainAtRest(context.ready, active.player)
+            .toOption).flatten)
   }
 
   /** The viewer's own temporary hand, drawn face up because the cards are

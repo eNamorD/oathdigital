@@ -5,8 +5,9 @@ import oathdigital.model.PlayerColor
 import org.scalajs.dom
 
 /** Ending the Act refills the Supply track, so the button that ends it says
-  * how much it returns. A Rest that returns nothing says nothing: a full
-  * track is already reading 7/7 two panes away.
+  * how much it returns. The promise is the Supply Rest returns before the
+  * track's ceiling takes its cut, so a player reading it knows how much they
+  * may still spend this Act for free.
   */
 class RestButtonSuite extends munit.FunSuite {
   private def label(gain: Option[Int]): Option[String] =
@@ -23,8 +24,8 @@ class RestButtonSuite extends munit.FunSuite {
       .map(_.asInstanceOf[dom.Element].textContent).headOption
 
   test("the button says what Rest returns") {
-    assertEquals(label(Some(3)), Some("End Act and Rest (regain 3 Supply)"))
-    assertEquals(label(Some(1)), Some("End Act and Rest (regain 1 Supply)"))
+    assertEquals(label(Some(3)), Some("End Act and Rest (+3 Supply)"))
+    assertEquals(label(Some(1)), Some("End Act and Rest (+1 Supply)"))
   }
 
   test("a Rest that returns nothing promises nothing") {
