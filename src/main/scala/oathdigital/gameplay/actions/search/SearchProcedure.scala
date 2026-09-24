@@ -128,10 +128,9 @@ object SearchProcedure {
                   CardPlay.Origin.TemporaryHand)
               } yield previous ++ operations
             })
-          val cardTree = CardPlayProcedure.build(catalog, ready, actor, kept,
+          val cardTree = CardPlayProcedure.unchecked(catalog, ready, actor, kept,
             CardPlayProcedure.Origin.TemporaryHand)
-          Vector(removeOthers) ++ cardTree.fold(error => Vector(fail(error)),
-            value => Vector(value))
+          Vector(removeOthers, cardTree)
       }
     })
 

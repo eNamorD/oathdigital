@@ -45,7 +45,7 @@ object CardPlayProcedure {
   def rebuildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] =
-    facedownCard(args).flatMap(build(catalog, ready, actor, _,
+    facedownCard(args).map(unchecked(catalog, ready, actor, _,
       Origin.FacedownAdviser))
 
   private def facedownCard(args: Vector[DecisionOptionRef])
@@ -90,10 +90,13 @@ object CardPlayProcedure {
       }
   }
 
-  def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      card: WorldCardId, origin: Origin): Either[OathViolation, Operation] = {
+  /** Whether `card` is still at the origin the play started from. Once it is
+    * not, the play has been made and the tree is settled from the answers.
+    */
+  private def heldAtOrigin(ready: ReadyGame, actor: PlayerId,
+      card: WorldCardId, origin: Origin): Boolean = {
     val player = ready.game.current.players.find(_.player == actor)
-    val present = origin match {
+    origin match {
       case Origin.TemporaryHand =>
         ready.game.current.temporaryHands.getOrElse(actor, Vector.empty).contains(card)
       case Origin.FacedownAdviser => player.exists(_.advisers.exists {
@@ -102,11 +105,22 @@ object CardPlayProcedure {
         case _ => false
       })
     }
-    if (!present) Left(OathViolation.InvalidSearchPlacement(
-      "card is not held at the selected origin"))
-    else Right(new PlacementTree(card, rules =>
-      childrenFor(catalog, ready, actor, card, origin, rules)))
   }
+
+  def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
+      card: WorldCardId, origin: Origin): Either[OathViolation, Operation] =
+    if (!heldAtOrigin(ready, actor, card, origin)) Left(
+      OathViolation.InvalidSearchPlacement(
+        "card is not held at the selected origin"))
+    else Right(unchecked(catalog, ready, actor, card, origin))
+
+  /** The tree with no check that the card is at its origin: a walker that
+    * resumes rebuilds the tree from the state after the play, when it is not.
+    */
+  def unchecked(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
+      card: WorldCardId, origin: Origin): Operation =
+    new PlacementTree(card, rules =>
+      childrenFor(catalog, ready, actor, card, origin, rules))
 
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
@@ -116,8 +130,9 @@ object CardPlayProcedure {
         case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
         case Origin.FacedownAdviser => CardPlay.Origin.FacedownAdviser
       }
-      val candidates = CardPlay.legalChoices(catalog, ready, actor, card,
-        legacyOrigin, rules).map { choice =>
+      val held = heldAtOrigin(ready, actor, card, origin)
+      val candidates = if (!held) Vector.empty else CardPlay.legalChoices(
+        catalog, ready, actor, card, legacyOrigin, rules).map { choice =>
         val ref = choice.placement match {
           case SearchPlacement.Discard => discard
           case _: SearchPlacement.Site => site
@@ -139,9 +154,15 @@ object CardPlayProcedure {
           case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(value), _) =>
             value
         }
-        candidates.find(pair => ref.contains(pair._1)).toVector.flatMap {
+        val replacementId = s"cardplay.replace.${card.kind}.${card.value}"
+        val replaced = pending.answered.exists(_.decisionId == replacementId)
+        // Once the card has left its origin the choices can no longer be
+        // planned: the tree is settled from the answers instead, keeping the
+        // shape it had when the decisions were asked.
+        val chosen = if (held) candidates.find(pair => ref.contains(pair._1))
+        else ref.flatMap(settled(_, card, replaced))
+        chosen.toVector.flatMap {
           case (_, placement, replacements, optional) =>
-            val replacementId = s"cardplay.replace.${card.kind}.${card.value}"
             val choice = if (replacements.isEmpty) Vector.empty else Vector(
               Decide(replacementId, actor, DecisionQuery.ChooseOne(
                 (if (optional) Vector(noReplacement) else Vector.empty) ++
@@ -179,6 +200,27 @@ object CardPlayProcedure {
         }
       })
       Vector(choose, selected)
+  }
+
+  /** The replacement's options are not read once the play is made, only that
+    * the decision held its place in the tree. */
+  private def settled(ref: DecisionOptionRef, card: WorldCardId,
+      replaced: Boolean)
+      : Option[(DecisionOptionRef, SearchPlacement,
+          Vector[(DecisionOption, CardId)], Boolean)] = {
+    val placement: Option[SearchPlacement] = ref match {
+      case `discard` => Some(SearchPlacement.Discard)
+      case `site` => Some(SearchPlacement.Site(None))
+      case `adviserFaceUp` =>
+        Some(SearchPlacement.Adviser(Orientation.FaceUp, None))
+      case `adviserFaceDown` =>
+        Some(SearchPlacement.Adviser(Orientation.FaceDown, None))
+      case _ => None
+    }
+    placement.map(value => (ref, value,
+      if (replaced) Vector((noReplacement: DecisionOption) -> card)
+      else Vector.empty,
+      false))
   }
 
   private def replacementOption(id: CardId): DecisionOption = id match {
