@@ -64,8 +64,6 @@ private[frontend] object ActionDecisionRenderer {
    if (value.temporaryHandPreview.nonEmpty) {
      val preview = element("section", "temporary-hand-preview")
      preview.appendChild(text("h3", "", "Cards in hand"))
-     preview.appendChild(text("p", "decision-instruction",
-       "Preview only. You will be asked what to do with these."))
      val cards = element("div", "decision-cards")
      value.temporaryHandPreview.foreach(card =>
        cards.appendChild(CardFace.render(card)))
