@@ -190,8 +190,8 @@ leaked. Keep the raw loopback development event log separate.
   question through two interfaces. Migrating the two policies onto
   `OperationRestriction` would leave one seam, but it reorders precedence on
   the legacy-event path (allowlist reasons come before shape reasons today)
-  and needs its own preservation argument. Recorded during the
-  [operation family consolidation](superpowers/specs/2026-09-24-operation-family-consolidation-design.md).
+  and needs its own preservation argument. Recorded during the operation
+  family consolidation of 2026-09-24.
 
 ### Phase - Empire and campaign continuity
 

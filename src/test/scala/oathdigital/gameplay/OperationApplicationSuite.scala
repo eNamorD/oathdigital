@@ -108,6 +108,8 @@ class OperationApplicationSuite extends munit.FunSuite {
     assertEquals(codes(OperationApplication.validate(missing,
       Gain.Warbands(playerId, redForce, 1))),
       Vector("unknown-warband-supply"))
+    assertEquals(rejection(missing, Gain.Warbands(playerId, redForce, 1)),
+      "unknown-warband-supply")
   }
 
   test("counted move into an incompatible destination is invalid") {

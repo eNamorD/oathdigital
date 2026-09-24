@@ -15,6 +15,10 @@ import oathdigital.model._
   * banner, cards, then everything else; the guard checks in the order the
   * old shape layer used, which is what keeps every rejection code and detail
   * the same as before the families were split.
+  *
+  * The family objects' `apply*` and mutation members are package-visible
+  * only because this dispatcher is their sole caller. Call [[mutate]], never
+  * a family directly: a family entered on its own runs with no guard.
   */
 private[gameplay] object OperationApplication {
   import OperationError._
