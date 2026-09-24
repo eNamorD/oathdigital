@@ -100,17 +100,12 @@ object CampaignBattle {
     setup.force - ready.game.current.rollOutcomes.get(CampaignIds.attackPool)
       .fold(0)(_.skulls)
 
-  private def faceName(face: AttackDieFace): String = face match {
-    case AttackDieFace.HollowSword => "hollow sword"
-    case AttackDieFace.OneSword => "one sword"
-    case AttackDieFace.TwoSwordsSkull => "two swords and a skull"
-  }
-
-  def sacrificeHeading(faces: Vector[AttackDieFace], score: Int, skulls: Int,
-      max: Int): String =
-    s"Attack roll: ${if (faces.isEmpty) "no dice" else faces.map(faceName).mkString(", ")}. " +
-      s"Attack $score with $skulls skull loss${if (skulls == 1) "" else "es"}. " +
-      s"Sacrifice up to $max warband${if (max == 1) "" else "s"} for one attack each."
+  /** The question alone. The dice, the attack total and the skull loss are
+    * projected as a roll outcome and drawn as glyphs beside this, so writing
+    * them here again would print the same facts twice, once as words.
+    */
+  def sacrificeHeading(max: Int): String =
+    s"Sacrifice up to $max warband${if (max == 1) "" else "s"} for one attack each"
 
   /** The durable record of this battle, built from the recorded outcomes and
     * the answers, before any warband dies.

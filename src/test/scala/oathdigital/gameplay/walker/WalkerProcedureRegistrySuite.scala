@@ -195,4 +195,22 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
       WalkerProcedureRegistry.requiresPlayableOption).toSet,
       Set[ProcedureRef](ActionRef.Muster, ActionRef.Trade))
   }
+
+  /** Knights Errant runs a Campaign inside a Muster, so a Campaign question
+    * parked under Muster must show the roll it would under Campaign. Neither
+    * branch exercised here reads `catalog` or `state`, so `null` is safe for
+    * the same reason it is above.
+    */
+  test("Muster and Campaign declare the same roll for a Campaign question") {
+    import oathdigital.gameplay.actions.campaign.CampaignIds
+    Vector[ProcedureRef](ActionRef.Muster, ActionRef.Campaign).foreach { procedure =>
+      assertEquals(WalkerProcedureRegistry.rollFeedback(procedure, null, state,
+        actor, CampaignIds.placement),
+        Some(WalkerRollFeedback(CampaignIds.defensePool)))
+      assertEquals(WalkerProcedureRegistry.rollFeedback(procedure, null, state,
+        actor, CampaignIds.force), None)
+    }
+    assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Forge, null,
+      state, actor, ForgeProcedure.assignmentDecisionId), None)
+  }
 }

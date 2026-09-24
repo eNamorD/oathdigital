@@ -669,4 +669,42 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(projected.toVector.flatMap(_.answeredOptions).map(_.label),
       Vector("Sticky Fire"))
   }
+
+  /** Task 9: a Campaign parked at the sacrifice question, after an attack of
+    * two swords and a skull plus one sword with a force of two -- the skull
+    * costs one warband, so one is still left to sacrifice.
+    */
+  private lazy val campaignAtSacrifice: ReadyGame = {
+    val b = CampaignFixture.board()
+    val defense = Vector.fill(catalog.sites.find(_.id == b.origin).get.defense)(
+      DefenseDieFace.Blank)
+    val g = CampaignFixture.rules(CampaignFixture.dice(
+      Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword), defense))
+    val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
+      .getOrElse(fail("Campaign must start"))
+    val committed = g.resolveWalker(started.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(2)).getOrElse(fail("the force must be accepted"))
+    committed.state match {
+      case Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    }
+  }
+
+  test("a parked sacrifice projects the attack pool's faces, score and losses") {
+    val projected = project(campaignAtSacrifice, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some(CampaignIds.sacrifice))
+    val outcome = projected.flatMap(_.rollOutcome)
+    assertEquals(outcome.map(_.pool), Some("campaign.attack"))
+    assertEquals(outcome.map(_.faces),
+      Some(Vector("two-swords-skull", "one-sword")))
+    assertEquals(outcome.map(_.score), Some(3))
+    assertEquals(outcome.flatMap(_.target), None)
+    assertEquals(outcome.map(_.detail), Some(Vector("1 skull loss")))
+  }
+
+  test("a Campaign decision no roll belongs beside projects no roll") {
+    val projected = project(campaignWithOnePlanPlayed, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some("campaign.attacker-plan"))
+    assertEquals(projected.flatMap(_.rollOutcome), None)
+  }
 }

@@ -18,7 +18,7 @@ private[frontend] object WalkerSelectionPanels {
         case draft: WalkerChooseManyDraft =>
           renderMany(query, draft, canControl, panel, ui)
         case draft: WalkerAmountDraft =>
-          renderAmount(query, draft, canControl, panel, ui)
+          renderAmount(decision, query, draft, canControl, panel, ui)
       }
     }
 
@@ -53,8 +53,12 @@ private[frontend] object WalkerSelectionPanels {
     * rerender, so the open control keeps focus; the confirm handler reads the
     * latest draft at click time.
     */
-  private def renderAmount(query: DecisionQueryState, draft: WalkerAmountDraft,
+  private def renderAmount(decision: WalkerDecisionState,
+      query: DecisionQueryState, draft: WalkerAmountDraft,
       canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit = {
+    // The roll first, then what it came to, then the question about it: the
+    // sacrifice question is only answerable by reading the attack.
+    WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     val select = dom.document.createElement("select")
       .asInstanceOf[dom.html.Select]

@@ -97,20 +97,32 @@ private[frontend] object WalkerPanelSupport {
     GameCommand.ResolveWalker(decision.decisionId,
       DecisionAnswerWire.ChooseOneWire(option.kind, option.id))
 
-  /** Renders the parked Recover's accumulated roll feedback (I5) -- the
-    * dice faces rolled so far, the derived score, and the site's Recover
-    * difficulty -- the same information the legacy (deleted)
-    * `RecoverProjection`-backed panel showed, now sourced from
-    * `WalkerDecisionState.rollOutcome`. Before any roll `faces` is empty:
-    * the difficulty is still worth showing so the player knows the target
-    * before rolling.
+  /** The sentence the glyph row is read as, for a reader who cannot see the
+    * symbols. It is the accessible name of the row, never printed. Before any
+    * roll `faces` is empty, and a target is still worth announcing then.
     */
   private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
     if (outcome.faces.isEmpty)
-      s"Need ${outcome.difficulty} shields to succeed."
-    else
-      s"Rolled ${outcome.faces.mkString(", ")} -- ${outcome.score} shields " +
-        s"so far (need ${outcome.difficulty})."
+      outcome.target.fold("No dice rolled yet.")(target =>
+        s"Need $target to succeed.")
+    else {
+      val total =
+        if (outcome.pool == "recover") s"${outcome.score} shields so far"
+        else s"${poolLabel(outcome.pool)} ${outcome.score}"
+      s"Rolled ${outcome.faces.mkString(", ")} -- $total" +
+        outcome.target.fold("")(target => s" (need $target)") +
+        outcome.detail.map(", " + _).mkString + "."
+    }
+
+  /** What a roll is called in a total line. A pool key is a wire string, so an
+    * unknown one is printed as it arrives rather than guessed at.
+    */
+  private[frontend] def poolLabel(pool: String): String = pool match {
+    case "recover" => "Shields"
+    case "campaign.attack" => "Attack"
+    case "campaign.defense" => "Defense"
+    case other => other
+  }
 
   /** The public line shown to every viewer a parked walker position is NOT
     * waiting on (Task 5): who it awaits, and the question's heading when it
@@ -297,24 +309,22 @@ private[frontend] object WalkerPanelSupport {
     case _ => "plan-side-both"
   }
 
-  /** The faces as the symbols printed on them, with the sentence they used
-    * to be written as kept for a reader who cannot see the symbols.
+  /** The faces as the symbols printed on them, then one line of totals: what
+    * the roll came to, the number it is measured against where there is one,
+    * and any consequence the engine already worded.
     */
-  private def rollFeedback(decision: WalkerDecisionState,
+  private[frontend] def rollFeedback(decision: WalkerDecisionState,
       panel: dom.Element): Unit =
     decision.rollOutcome.foreach { outcome =>
-      val line = element("p", "recover-roll-outcome")
-      line.setAttribute("aria-label", rollOutcomeSummary(outcome))
-      if (outcome.faces.isEmpty)
-        line.appendChild(dom.document.createTextNode(
-          s"Need ${outcome.difficulty} shields to succeed."))
-      else {
-        line.appendChild(dom.document.createTextNode("Rolled "))
-        line.appendChild(DieFace.roll(outcome.faces))
-        line.appendChild(dom.document.createTextNode(
-          s" — ${outcome.score} shields so far (need ${outcome.difficulty})."))
+      if (outcome.faces.nonEmpty) {
+        val row = element("p", "walker-roll-faces")
+        row.setAttribute("aria-label", rollOutcomeSummary(outcome))
+        row.appendChild(DieFace.roll(outcome.faces))
+        panel.appendChild(row)
       }
-      panel.appendChild(line)
+      val parts = Vector(s"${poolLabel(outcome.pool)} ${outcome.score}") ++
+        outcome.target.map(target => s"need $target") ++ outcome.detail
+      panel.appendChild(text("p", "walker-roll-totals", parts.mkString(" · ")))
     }
 
   /** What a parked decision's panel calls itself, and what the control that

@@ -118,15 +118,19 @@ private[projection] object ActionProjectionCodec {
   } yield MinorActionsProjection(advisers, peek, relics, site, toSite, toBoard)
 
   def encodeRollOutcome(value: WalkerRollOutcomeProjection): ujson.Value = ujson.Obj(
-    "faces" -> encoded(value.faces)(ujson.Str(_)), "score" -> value.score,
-    "difficulty" -> value.difficulty)
+    "pool" -> value.pool, "faces" -> encoded(value.faces)(ujson.Str(_)),
+    "score" -> value.score, "target" -> intOption(value.target),
+    "detail" -> encoded(value.detail)(ujson.Str(_)))
   def decodeRollOutcome(raw: ujson.Value, path: String)
       : Result[WalkerRollOutcomeProjection] = for {
     value <- obj(raw, path)
-    _ <- exact(value, Set("faces", "score", "difficulty"), path)
+    _ <- exact(value, Set("pool", "faces", "score", "target", "detail"), path)
+    pool <- string(value, "pool", path)
     faces <- strings(value, "faces", path)
-    score <- int(value, "score", path); difficulty <- int(value, "difficulty", path)
-  } yield WalkerRollOutcomeProjection(faces, score, difficulty)
+    score <- int(value, "score", path)
+    target <- optionalInt(value, "target", path)
+    detail <- stringsOrEmpty(value, "detail", path)
+  } yield WalkerRollOutcomeProjection(pool, faces, score, target, detail)
 
   def encodeWalkerDecision(value: WalkerDecisionProjection): ujson.Value = ujson.Obj(
     "action" -> value.action, "decisionId" -> value.decisionId, "kind" -> value.kind,

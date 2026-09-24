@@ -51,6 +51,9 @@
   border: 1px solid #7c694b; border-radius: 0.25em; background: #17140f;
   font-size: 0.9em; font-weight: 700; line-height: 1; }
 .die-face .token-glyph { width: 0.95em; height: 0.95em; vertical-align: 0; }
+/* A roll during a walk: the faces, then one line of totals. */
+.walker-roll-faces { margin: 0; }
+.walker-roll-totals { margin: 0 0 0.3em; font-size: 0.9em; }
 .die-face-blank { border-style: dashed; border-color: #5d5144; }
 .rules-power { margin: 0 0 0.7em; line-height: 1.5; }
 .rules-power:last-child { margin-bottom: 0; }

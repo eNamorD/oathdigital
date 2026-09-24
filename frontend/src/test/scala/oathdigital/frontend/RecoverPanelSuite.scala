@@ -56,4 +56,24 @@ class RecoverPanelSuite extends munit.FunSuite {
     assert(!all(render(choice), ".recover-add").head
       .asInstanceOf[dom.html.Button].disabled)
   }
+
+  test("Recover shows its dice and how close the score is to the target") {
+    val outcome = WalkerRollOutcomeState("recover",
+      Vector("one-shield", "two-shields"), 3, Some(4), Vector.empty)
+    val panel = render(choice.copy(rollOutcome = Some(outcome)))
+    assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
+      Vector("Shields 3 · need 4"))
+    assertEquals(all(panel, ".walker-roll-faces").map(_.getAttribute("aria-label")),
+      Vector("Rolled one-shield, two-shields -- 3 shields so far (need 4)."))
+    assertEquals(all(panel, ".walker-roll-faces .die-faces").size, 1)
+  }
+
+  test("before the first roll, Recover shows the target and no dice") {
+    val outcome = WalkerRollOutcomeState("recover", Vector.empty, 0, Some(4))
+    val panel = render(WalkerDecisionState("recover", "recover.roll", "roll",
+      pool = Some("recover"), rollOutcome = Some(outcome)))
+    assertEquals(all(panel, ".walker-roll-faces").size, 0)
+    assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
+      Vector("Shields 0 · need 4"))
+  }
 }

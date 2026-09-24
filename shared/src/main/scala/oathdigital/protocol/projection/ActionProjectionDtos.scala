@@ -174,11 +174,10 @@ final case class DecisionSlotProjection(option: DecisionOptionProjection,
   * half-described option a client would render as a blank control and then
   * submit is worse than no prompt, so the whole projection is omitted.
   *
-  * `rollOutcome` (I5) carries the parked pool's accumulated roll feedback --
-  * the dice faces rolled so far, the derived score, and the site's
-  * Recover difficulty -- so the panel can show the player what they rolled
-  * and how close they are, matching the legacy (deleted) `RecoverProjection`
-  * this replaced. Owner-private exactly like the rest of this projection:
+  * `rollOutcome` (I5) carries the roll the parked decision is about -- the
+  * pool, the dice faces rolled so far, the derived score, and the target or
+  * consequences where the procedure declares them -- so the panel can show
+  * the player what they rolled and what it came to. Owner-private exactly like the rest of this projection:
   * the projector only ever returns the whole `WalkerDecisionProjection` for
   * the parked actor, so no other viewer sees a roll outcome either.
   */
@@ -211,17 +210,23 @@ final case class WalkerDecisionProjection(
       */
     answeredOptions: Vector[DecisionOptionProjection] = Vector.empty
 )
-/** `faces` are display-ready die-face labels (e.g. `"one-shield"`), in roll
-  * order across every roll of the parked pool so far; `score` is the
-  * derived total (a `Doubler` on a later roll multiplies earlier shields,
-  * so this is not simply a per-face sum); `difficulty` is the acting
-  * player's current site's Recover difficulty, the target `score` must
-  * reach.
+/** The roll a parked decision wants shown beside it.
+  *
+  * `pool` names which roll it is (`"recover"`, `"campaign.attack"`), so the
+  * client can word the total without guessing from the action. `faces` are
+  * display-ready die-face labels in roll order across every roll of that pool
+  * so far; `score` is the derived total (a `Doubler` on a later roll
+  * multiplies earlier shields, so this is not a per-face sum). `target` is the
+  * number the score must reach where there is one -- a Recover site's
+  * difficulty -- and `None` where there is not, as in a Campaign. `detail`
+  * carries already-worded consequences such as `"1 skull loss"`.
   */
 final case class WalkerRollOutcomeProjection(
+    pool: String,
     faces: Vector[String],
     score: Int,
-    difficulty: Int
+    target: Option[Int] = None,
+    detail: Vector[String] = Vector.empty
 )
 /** Public: who a parked walker position waits on, and the question's heading
   * when it has one (`None` for a roll). Every viewer except the awaited

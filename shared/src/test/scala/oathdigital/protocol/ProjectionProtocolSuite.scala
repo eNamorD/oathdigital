@@ -67,7 +67,8 @@ class ProjectionProtocolSuite extends munit.FunSuite {
           DecisionSectionProjection("pay-secret", "Pay Secret", 1)),
         heading = Some("Forge a relic"),
         confirmLabel = Some("Complete Forge"))),
-      rollOutcome = Some(WalkerRollOutcomeProjection(Vector("one-shield"), 1, 2)))),
+      rollOutcome = Some(WalkerRollOutcomeProjection("campaign.attack",
+        Vector("two-swords-skull"), 2, None, Vector("1 skull loss"))))),
     walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))),
     supplyMaximum = 7, restSupplyGain = Some(3))
 
@@ -113,7 +114,8 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     val rolling = projection.copy(walkerDecision = Some(
       WalkerDecisionProjection("recover", "walker.recover.roll", "roll",
         pool = Some("recover"), count = Some(2),
-        rollOutcome = Some(WalkerRollOutcomeProjection(Vector.empty, 0, 3)))))
+        rollOutcome = Some(WalkerRollOutcomeProjection("recover",
+          Vector.empty, 0, Some(3))))))
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(rolling)),
       Right(rolling))
   }

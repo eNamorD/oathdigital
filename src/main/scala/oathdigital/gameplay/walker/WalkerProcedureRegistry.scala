@@ -127,7 +127,13 @@ object WalkerProcedureRegistry {
         Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId,
         Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
-      requiresPlayableOption: Boolean = false)
+      requiresPlayableOption: Boolean = false,
+      /** The roll to show beside a parked decision of this procedure, by that
+        * decision's id. `None` for a decision no roll belongs beside, which is
+        * the default and every procedure that rolls nothing.
+        */
+      rollFeedback: (ExecutableCatalog, ReadyGame, PlayerId, String) =>
+        Option[WalkerRollFeedback] = (_, _, _, _) => None)
 
   /** `private[gameplay]`, not `private`: [[WalkerProcedureRegistrySuite]]
     * asserts this map's keys cover `ProcedureRef.all` (catching a registered
@@ -179,7 +185,8 @@ object WalkerProcedureRegistry {
       build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
         args).flatMap(_ => RecoverProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
-        args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, activePlayer))),
+        args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, activePlayer)),
+      rollFeedback = RecoverProcedure.rollFeedback),
 
     /** Batch-1 Task 3. Forge has no `Roll` node, so `rollDecisionId` is
       * `None` (R18).
@@ -230,7 +237,10 @@ object WalkerProcedureRegistry {
         args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
         args).flatMap(_ => MusterProcedure.rebuild(catalog, state, activePlayer)),
-      requiresPlayableOption = true),
+      requiresPlayableOption = true,
+      // Knights Errant campaigns inside a Muster, so its battle questions
+      // show the rolls a Campaign's own would.
+      rollFeedback = CampaignProcedure.rollFeedback),
 
     ActionRef.Trade -> Entry(
       fallbackKind = Some(ActionKind.Trade),
@@ -297,7 +307,8 @@ object WalkerProcedureRegistry {
         Option.when(CampaignProcedure.isDecision(decisionId))(
           OathContinue.AwaitingCampaignDecision(actor, decision)),
       build = CampaignProcedure.build,
-      rebuild = CampaignProcedure.rebuild),
+      rebuild = CampaignProcedure.rebuild,
+      rollFeedback = CampaignProcedure.rollFeedback),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside
@@ -491,6 +502,17 @@ object WalkerProcedureRegistry {
     lookup(procedure, registrations).flatMap(_.rollDecisionId.toRight(
       OathViolation.InvalidEventOrder(
         s"walker procedure ${procedure.key} declares no roll decision id")))
+
+  /** The roll `procedure` declares for its parked `decisionId`, or `None`
+    * when it declares none or is not registered -- see `Entry`'s doc.
+    * `WalkerDecisionProjector` reads this instead of naming a procedure.
+    */
+  def rollFeedback(procedure: ProcedureRef, catalog: ExecutableCatalog,
+      ready: ReadyGame, actor: PlayerId, decisionId: String,
+      registrations: Map[ProcedureRef, Entry] = entries)
+      : Option[WalkerRollFeedback] =
+    registrations.get(procedure).flatMap(_.rollFeedback(catalog, ready, actor,
+      decisionId))
 
   /** `procedure`'s modifier-selection [[PowerWindow]], or `None` when it
     * offers no player-selected powers at all -- see `Entry`'s doc.

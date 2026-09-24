@@ -136,8 +136,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val owner = ScopedProjectionContext(ready, Some(actor))
     // No roll yet: faces/score are empty/zero, but the difficulty is still
     // shown (I5) -- the player should see the target before rolling.
-    val noRollYet = WalkerRollOutcomeProjection(Vector.empty, 0,
-      expectedDifficulty(ready, actor))
+    val noRollYet = WalkerRollOutcomeProjection("recover", Vector.empty,
+      0, Some(expectedDifficulty(ready, actor)))
     assertEquals(projector.project(owner), Some(WalkerDecisionProjection(
       ActionRef.Recover.key, RecoverProcedure.rollDecisionId, "roll",
       pool = Some(RecoverProcedure.recoverPool.value), count = Some(2),
@@ -166,8 +166,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val owner = ScopedProjectionContext(ready, Some(actor))
     // Both dice came up Blank: score 0, still short of the difficulty --
     // this is exactly the feedback the continue/stop choice needs (I5).
-    val afterFailedRoll = WalkerRollOutcomeProjection(
-      Vector("blank", "blank"), 0, expectedDifficulty(ready, actor))
+    val afterFailedRoll = WalkerRollOutcomeProjection("recover",
+      Vector("blank", "blank"), 0, Some(expectedDifficulty(ready, actor)))
     assertEquals(walkerDecisions.project(owner), Some(WalkerDecisionProjection(
       ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide",
       query = Some(choiceQuery),
@@ -247,8 +247,9 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
 
     // TwoShields + Doubler = 4 shields, meeting a difficulty <= 4 (I5): the
     // relic park's feedback shows the successful roll that got here.
-    val afterSuccessfulRoll = WalkerRollOutcomeProjection(
-      Vector("two-shields", "doubler"), 4, expectedDifficulty(ready, actor))
+    val afterSuccessfulRoll = WalkerRollOutcomeProjection("recover",
+      Vector("two-shields", "doubler"), 4,
+      Some(expectedDifficulty(ready, actor)))
     val ownerDecision = walkerDecisions.project(owner)
     assertEquals(ownerDecision, Some(WalkerDecisionProjection(
       ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide",
@@ -330,9 +331,9 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     assertEquals(wired.project(context), Some(WalkerDecisionProjection(
       ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide",
       query = Some(choiceQuery),
-      rollOutcome = Some(WalkerRollOutcomeProjection(
+      rollOutcome = Some(WalkerRollOutcomeProjection("recover",
         Vector("blank", "blank"), 0,
-        expectedDifficulty(ready, fixture.actor))))))
+        Some(expectedDifficulty(ready, fixture.actor)))))))
 
     // The pre-Task-5 hardcoded `WalkerPowers.empty` folds the bare tree --
     // one node short of what the walker actually folded -- and can no

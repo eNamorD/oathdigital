@@ -418,7 +418,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val game = rules(CampaignFixture.dice(faces, blanks(b)))
     val start = committed(game, b, 2)
     assertEquals(parkedDecision(b, start).query, DecisionQuery.ChooseAmount(0, 1,
-      Some(CampaignBattle.sacrificeHeading(faces, 3, 1, 1)), "Sacrifice"))
+      Some(CampaignBattle.sacrificeHeading(1)), "Sacrifice"))
   }
 
   test("zero force asks no sacrifice, and the attacker loses with nothing to kill") {
