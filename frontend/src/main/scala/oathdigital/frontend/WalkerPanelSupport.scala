@@ -237,6 +237,11 @@ private[frontend] object WalkerPanelSupport {
               .getOrElse(option.label)
           else option.label
           val choose = button(label, "walker-choice")
+          // A favor bank is named by its suit, and a suit is read as its
+          // symbol everywhere else on the table.
+          if (option.kind == "favor-bank")
+            choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
+              choose.firstChild)
           choose.disabled = !canControl
           choose.onclick = _ => ui.submitCommand(
             resolveChooseOneCommand(decision, option))

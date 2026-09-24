@@ -62,6 +62,8 @@ package object frontend {
   val DecisionSlotState = protocol.projection.DecisionSlotProjection
   type BannerState = protocol.projection.BannerProjection
   val BannerState = protocol.projection.BannerProjection
+  type FavorBankState = protocol.projection.FavorBankProjection
+  val FavorBankState = protocol.projection.FavorBankProjection
   type MinorAdviser = protocol.projection.MinorAdviserProjection
   val MinorAdviser = protocol.projection.MinorAdviserProjection
   type MinorActionsState = protocol.projection.MinorActionsProjection

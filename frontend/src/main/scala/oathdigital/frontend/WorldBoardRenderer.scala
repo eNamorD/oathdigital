@@ -264,8 +264,15 @@ private[frontend] object WorldBoardRenderer {
  private def favorBanks(value: GameProjection): dom.Element = {
    val banks = element("div", "favor-banks")
    banks.setAttribute("aria-label", "Favor banks")
-   value.favorBanks.foreach(bank => banks.appendChild(text("span",
-     s"favor-bank suit-${bank.suit}", s"${bank.suit.capitalize}: ${bank.count}")))
+   value.favorBanks.foreach { bank =>
+     val box = text("span", s"favor-bank suit-${bank.suit}", "")
+     // The symbol first, as on a card: a player matching a bank against a
+     // card's suit reads the shape, not the word.
+     box.appendChild(RulesTextRenderer.glyph(s"suit-${bank.suit}"))
+     box.appendChild(dom.document.createTextNode(
+       s"${bank.suit.capitalize}: ${bank.count}"))
+     banks.appendChild(box)
+   }
    banks
  }
 
