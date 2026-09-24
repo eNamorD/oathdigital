@@ -309,8 +309,11 @@ private[frontend] object ServerUiSupport {
         val section = element("section", s"available-action-group action-group-$key")
         section.appendChild(text("h3", "action-group-heading", heading))
         val order = if (key == "major") majorFamilyOrder else nodes.map(_._1).distinct.toVector
-        order.foreach(family => nodes.filter(_._1 == family).foreach(entry =>
-          section.appendChild(entry._2)))
+        // One option per row: a run of buttons side by side reads as one blur.
+        order.foreach(family => nodes.filter(_._1 == family).foreach { entry =>
+          val row = element("div", "action-option")
+          row.appendChild(entry._2); section.appendChild(row)
+        })
         panel.appendChild(section)
       }
     }

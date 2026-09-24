@@ -498,6 +498,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .available-action-group { margin: 12px 0; padding: 10px; border: 1px solid #40382c;
   border-radius: 8px; }
 .action-group-heading { margin: 0 0 8px; color: #c9bfa9; font-size: 0.9rem; }
+.action-option { margin: 4px 0; }
 
 @media (max-width: 640px) {
   .decision-zones { grid-template-columns: 1fr; }

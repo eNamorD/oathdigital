@@ -223,12 +223,15 @@ private[frontend] object ActionDecisionRenderer {
              val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
              amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
              amount.value = "1"; amount.setAttribute("aria-label", label.textContent)
-             label.appendChild(amount); groups.appendKind("move-warbands", label)
+             label.appendChild(amount)
              val move = button("Move warbands", "minor-move-warband")
              move.disabled = !canControl
              move.onclick = _ => submitCommand(GameCommand.MoveWarbands(
                toSite, amount.value.toInt))
-             groups.appendKind("move-warbands", move)
+             // The count and its button are one option, so they share a row.
+             val option = dom.document.createElement("span")
+             option.appendChild(label); option.appendChild(move)
+             groups.appendKind("move-warbands", option)
            }
        }
        value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
