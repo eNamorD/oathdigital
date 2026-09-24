@@ -283,14 +283,24 @@ jobs:
           docker buildx imagetools inspect --raw "$REGISTRY_IMAGE:$RELEASE_TAG" > manifest.json
           jq -e '([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/amd64", "linux/arm64"]' manifest.json
           docker buildx imagetools inspect "$REGISTRY_IMAGE:$RELEASE_TAG" > release-bundle/manifest-evidence.txt
-      - name: Create prerelease without replacing existing assets
+      - name: Create prerelease with only the assets players need
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp images/amd64-evidence.txt images/arm64-evidence.txt release-bundle/
-          (cd release-bundle && sha256sum amd64-evidence.txt arm64-evidence.txt manifest-evidence.txt \
-            "oathdigital-$RELEASE_VERSION-macos-arm64.tgz" "oathdigital-$RELEASE_VERSION-linux-x64.tgz" \
-            "oathdigital-$RELEASE_VERSION-windows-x64.zip" >> SHA256SUMS)
+          # Everything else in release-bundle/ and images/ (the Universal
+          # archive, evidence/manifest text files, release-notes.md itself)
+          # is operator/CI verification evidence, not something a player
+          # downloading the game needs. Publish only the three bundled
+          # per-OS archives, plus a checksum file that covers exactly those.
+          mkdir player-assets
+          cp "release-bundle/oathdigital-$RELEASE_VERSION-macos-arm64.tgz" \
+            "release-bundle/oathdigital-$RELEASE_VERSION-linux-x64.tgz" \
+            "release-bundle/oathdigital-$RELEASE_VERSION-windows-x64.zip" \
+            player-assets/
+          (cd player-assets && sha256sum \
+            "oathdigital-$RELEASE_VERSION-macos-arm64.tgz" \
+            "oathdigital-$RELEASE_VERSION-linux-x64.tgz" \
+            "oathdigital-$RELEASE_VERSION-windows-x64.zip" >SHA256SUMS)
           gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --verify-tag --prerelease --latest=false --title "Oath Digital $RELEASE_TAG" \
-            --notes-file release-bundle/release-notes.md release-bundle/*
+            --notes-file release-bundle/release-notes.md player-assets/*
