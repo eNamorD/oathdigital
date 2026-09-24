@@ -46,6 +46,19 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
     found(0).asInstanceOf[dom.Element]
   }
 
+  test("every term the owner edits is labelled and on its own row") {
+    val panel = render(owner(deal()), new RecordingView("game", "red"))
+    val rows = panel.querySelectorAll(".negotiation-item").toVector
+      .map(_.asInstanceOf[dom.Element])
+    // One row for the favor box, one for the relic on offer.
+    assertEquals(rows.length, 2)
+    assert(rows.head.textContent.startsWith("Favor"),
+      s"the number box says what it counts, got '${rows.head.textContent}'")
+    assertEquals(rows.head.querySelectorAll("input[type=number]").length, 1)
+    assertEquals(rows(1).textContent.trim, "Relic One")
+    assertEquals(rows(1).querySelectorAll("input[type=checkbox]").length, 1)
+  }
+
   test("an owner sees the deal and can save, accept and decline") {
     val ui = new RecordingView("game", "red")
     val panel = render(owner(deal()), ui)

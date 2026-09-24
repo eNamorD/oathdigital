@@ -345,6 +345,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .card-decision { margin-top: 18px; padding-top: 18px; border-top: 1px solid #675a43; }
+/* One term per row: control and caption together, so a deal reads as a list
+   of offers instead of a paragraph of checkboxes. */
+.negotiation-item { display: flex; align-items: center; gap: 8px;
+  margin: 6px 0; }
+.negotiation-item input[type=number] { width: 5em; }
 .decision-final-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .decision-zones { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
 .decision-zone { min-height: 180px; padding: 12px; border: 1px solid #675a43; border-radius: 9px; }

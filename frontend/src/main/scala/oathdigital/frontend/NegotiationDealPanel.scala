@@ -52,6 +52,24 @@ private[frontend] object NegotiationDealPanel {
     node
   }
 
+  /** One term per row, each with the control and the words that name it in
+    * the same `label`: a run of bare checkboxes and their trailing text wraps
+    * into a paragraph of offers no one can read.
+    */
+  private def item(control: dom.html.Input, caption: String,
+      before: Boolean): dom.Element = {
+    val row = dom.document.createElement("label").asInstanceOf[dom.html.Label]
+    row.className = "negotiation-item"
+    if (before) {
+      row.appendChild(text("span", "negotiation-item-label", caption))
+      row.appendChild(control)
+    } else {
+      row.appendChild(control)
+      row.appendChild(text("span", "negotiation-item-label", caption))
+    }
+    row
+  }
+
   private def editor(decisionId: String, deal: NegotiationDealState,
       editing: NegotiationEditingState, canControl: Boolean,
       panel: dom.Element, ui: ServerUiView): Unit = {
@@ -68,7 +86,8 @@ private[frontend] object NegotiationDealPanel {
       favor.value = deal.transfers.find(t => t.authorPlayerId == me &&
         t.recipientPlayerId == recipient).map(_.favor).getOrElse(0).toString
       favor.setAttribute("aria-label", s"Favor offered to $recipient")
-      panel.appendChild(favor); favors += recipient -> favor
+      panel.appendChild(item(favor, "Favor", before = true))
+      favors += recipient -> favor
       editing.editableRelics.foreach { relic =>
         val check = input("checkbox")
         check.setAttribute("aria-label", s"Offer ${relic.name} to $recipient")
@@ -81,8 +100,7 @@ private[frontend] object NegotiationDealPanel {
             otherCheck.checked = false
           case _ => ()
         }
-        panel.appendChild(check)
-        panel.appendChild(text("span", "", s" ${relic.name} "))
+        panel.appendChild(item(check, relic.name, before = false))
         relics += ((recipient, relic.cardId, check))
       }
       offers(editing).foreach { offer =>
@@ -92,8 +110,8 @@ private[frontend] object NegotiationDealPanel {
         check.checked = deal.disclosures.exists(d => d.authorPlayerId == me &&
           d.recipientPlayerId == recipient && d.kind == offer.kind &&
           d.card.exists(_.cardId == offer.card.cardId))
-        panel.appendChild(check)
-        panel.appendChild(text("span", "", s" Show ${offer.card.name} "))
+        panel.appendChild(item(check, s"Show ${offer.card.name}",
+          before = false))
         disclosures += ((recipient, offer, check))
       }
     }
