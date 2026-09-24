@@ -134,9 +134,10 @@ private[frontend] object WalkerPanelSupport {
 
   /** Renders the Recover panel for whichever of the three parks
     * (`recoverWalkerStep`) the walker is at. Shows `rollOutcomeSummary`
-    * (I5) above each park's controls, and gates "Spend 1 Supply for two
-    * dice" on the player actually having supply -- as the legacy (deleted)
-    * Recover panel did.
+    * (I5) above each park's controls, and gates buying more dice on the
+    * player actually having supply -- as the legacy (deleted) Recover panel
+    * did. Buying dice and rolling them are separate parks, so the labels
+    * name that split: the answer buys, the button rolls.
     */
   private[frontend] def renderRecoverPanel(value: GameProjection,
       presentation: ViewerPresentation, canControl: Boolean,
@@ -152,7 +153,7 @@ private[frontend] object WalkerPanelSupport {
         // than this literal.
         panel.appendChild(text("h2", "", "Recover"))
         rollFeedback(decision, panel)
-        val roll = button("Roll", "recover-roll")
+        val roll = button("Roll the dice", "recover-roll")
         roll.disabled = !canControl
         roll.onclick = _ => ui.submitCommand(GameCommand.RollWalker(pool))
         panel.appendChild(roll)
@@ -167,7 +168,7 @@ private[frontend] object WalkerPanelSupport {
         query.options.foreach { option =>
           val spendsSupply = option.id == continueOptionKey
           val (label, className) =
-            if (spendsSupply) ("Spend 1 Supply for two dice", "recover-add")
+            if (spendsSupply) ("Add two dice (1 Supply)", "recover-add")
             else if (option.id == stopOptionKey) ("Stop Recover", "recover-stop")
             else (option.label, "recover-choice")
           val control = button(label, className)
