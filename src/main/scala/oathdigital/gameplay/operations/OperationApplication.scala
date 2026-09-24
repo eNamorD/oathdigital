@@ -2,67 +2,21 @@ package oathdigital.gameplay.operations
 
 import oathdigital.model._
 
-/** Aggregated validator owned by [[OperationPipeline]] for one run:
-  * `validateOne` checks every operation against the staged state during the
-  * fold, and `validateResolvedOne` re-checks a shrunk operation without the
-  * allowlist.
+/** The two dispatchers over the operation families.
   *
-  * Both return every violation as an [[OperationReason]] (never first-fail),
-  * so callers can inspect all of them. Pipeline rejection stays first-fail:
-  * it takes the head reason.
-  */
-final class OperationValidator(
-    allowlist: OperationPolicy,
-    restrictions: Vector[OperationRestriction]
-) {
-  /** Allowlist reasons first: the retired executor ran the per-action policy
-    * before any shape/mutation check, so a both-fail operation rejects with
-    * `RestrictedOperation` — mirrored here for byte-identical precedence.
-    */
-  def validateOne(
-      ready: ReadyGame,
-      operation: CoreOperation
-  ): Vector[OperationReason] =
-    allowlistReasons(ready, Vector(operation)) ++
-      validateResolvedOne(ready, operation)
-
-  /** Revalidation after a permitted operation shrinks must not re-run an
-    * exact allowlist against a different amount.
-    */
-  def validateResolvedOne(ready: ReadyGame,
-      operation: CoreOperation): Vector[OperationReason] =
-    OperationShape.validate(ready, operation) ++
-      restrictionReasons(ready, operation)
-
-  private def restrictionReasons(ready: ReadyGame,
-      operation: CoreOperation): Vector[OperationReason] =
-    restrictions.flatMap(_.reason(ready, operation))
-
-  private def allowlistReasons(
-      ready: ReadyGame,
-      operations: Vector[CoreOperation]
-  ): Vector[OperationReason] =
-    operations.flatMap { operation =>
-      allowlist.validate(ready, operation) match {
-        case Left(error) => Vector(OperationReason(error.code, error.detail))
-        case Right(_) => Vector.empty
-      }
-    }
-}
-
-/** Pure shape partition of the checks [[OperationStateMutation]] runs while
-  * applying one operation. It owns the *structural* validation of an operation
-  * against a ready state — primitive position conventions, card source and
-  * destination legality, counted-source sufficiency, pawn/banner
-  * preconditions, and the guards of non-move primitives — aggregated instead
-  * of first-fail so callers can inspect every violation of an operation or of
-  * a whole batch before anything is executed.
+  * [[validate]] aggregates every family's shape guard against `ready`, in a
+  * fixed order, so the resolver can inspect all of an operation's reasons
+  * before anything runs. [[mutate]] runs the same guard as its precondition
+  * and then the family mutations in their fixed order. The live pipeline and
+  * replay both reach the mutation through [[OperationExecutor]], so a guard
+  * written once beside its mutation is a guard on both paths.
   *
-  * Every reason mirrors the exact [[OperationError]] instance the mutation
-  * guards produce for the same condition, so [[first]] is byte-identical to
-  * the typed rejection the executor observes today.
+  * The mutation runs families in the order counted resources, pawn and
+  * banner, cards, then everything else; the guard checks in the order the
+  * old shape layer used, which is what keeps every rejection code and detail
+  * the same as before the families were split.
   */
-object OperationShape {
+private[gameplay] object OperationApplication {
   import OperationError._
 
   /** All shape violations for one operation against `ready`, aggregated. */
@@ -72,20 +26,16 @@ object OperationShape {
   ): Vector[OperationReason] =
     violations(ready, operation).map(reason(_, operation))
 
-  private def reason(error: OperationError,
-      operation: CoreOperation): OperationReason = {
-    val impossible = error match {
-      case _: InsufficientSupply => true
-      case InsufficientPieces(piece, _, _) => operation match {
-        case _: Discard | _: PayCost => false
-        case _ => piece.isInstanceOf[Piece.Counted]
-      }
-      case _ => false
-    }
-    OperationReason(error.code, error.detail,
-      if (impossible) OperationReasonKind.Impossible
-      else OperationReasonKind.Invalid)
-  }
+  /** Guard first, then mutate: the first shape violation rejects before any
+    * family runs, so no family mutation ever sees an operation the shape
+    * guard refuses.
+    */
+  private[operations] def mutate(
+      ready: ReadyGame,
+      operation: CoreOperation
+  ): Either[OperationError, ReadyGame] =
+    violations(ready, operation).headOption.toLeft(())
+      .flatMap(_ => applyFamilies(ready, operation))
 
   private def violations(
       ready: ReadyGame,
@@ -114,14 +64,40 @@ object OperationShape {
       ready, favorMoves, warbandMoves, secretReasons)
     accumulated ++= ResourceOperations.countedDestinationViolations(
       ready, leaves)
-    accumulated ++= BoardControlOperations.pawnAndBannerViolations(ready, leaves)
+    accumulated ++= BoardControlOperations.pawnAndBannerViolations(
+      ready, leaves)
     accumulated ++= nonMoveViolations(ready, leaves, plannedSecrets)
     accumulated.result()
   }
 
-  // ------------------------------------------------------------------
-  // 5. Non-move primitive guards
-  // ------------------------------------------------------------------
+  private def applyFamilies(
+      ready: ReadyGame,
+      operation: CoreOperation
+  ): Either[OperationError, ReadyGame] = {
+    val leaves = Operation.flatten(operation)
+    for {
+      resources <- ResourceOperations.applyCountedMoves(ready, leaves)
+      pieces <- BoardControlOperations.applyPawnAndBannerMoves(
+        resources, leaves)
+      cards <- CardMovementOperations.applyCardMoves(pieces, leaves)
+      finished <- applyNonMoveLeaves(cards, leaves)
+    } yield finished
+  }
+
+  private def reason(error: OperationError,
+      operation: CoreOperation): OperationReason = {
+    val impossible = error match {
+      case _: InsufficientSupply => true
+      case InsufficientPieces(piece, _, _) => operation match {
+        case _: Discard | _: PayCost => false
+        case _ => piece.isInstanceOf[Piece.Counted]
+      }
+      case _ => false
+    }
+    OperationReason(error.code, error.detail,
+      if (impossible) OperationReasonKind.Impossible
+      else OperationReasonKind.Invalid)
+  }
 
   private final case class RunningBoards(
       faceUp: Map[PlayerId, Int],
@@ -212,4 +188,38 @@ object OperationShape {
     reasons
   }
 
+  private def applyNonMoveLeaves(
+      ready: ReadyGame,
+      leaves: Vector[Operation]
+  ): Either[OperationError, ReadyGame] =
+    leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
+      case (result, Flip(id, at, orientation)) =>
+        result.flatMap(CardFaceOperations.flipCard(_, id, at, orientation))
+      case (result, FlipSecrets(player, amount, from, to)) =>
+        result.flatMap(ResourceOperations.flipPlayerSecrets(
+          _, player, amount, from, to))
+      case (result, Peek(viewer, id, at)) =>
+        result.flatMap(CardFaceOperations.peek(_, viewer, id, at))
+      case (result, SpendSupply(player, amount, _)) =>
+        result.flatMap(TurnStateOperations.adjustSupply(_, player, -amount))
+      case (result, GainSupply(player, amount)) =>
+        result.flatMap(TurnStateOperations.adjustSupply(_, player, amount))
+      case (result, AdvanceVisionsDrawn) =>
+        result.flatMap(TurnStateOperations.advanceVisionsDrawn)
+      case (result, ModifyDicePool(pool, delta, _)) =>
+        result.flatMap(TurnStateOperations.adjustDicePool(_, pool, delta))
+      case (result, ModifyRollOutcome(pool, skulls, score)) =>
+        result.map(TurnStateOperations.modifyRollOutcome(_, pool, skulls, score))
+      case (result, RecordPowerUse(power)) =>
+        result.map(TurnStateOperations.recordPowerUse(_, power))
+      case (result, EnterPhase(phase)) =>
+        result.flatMap(TurnStateOperations.enterPhase(_, phase))
+      case (result, SetOathkeeper(holder)) =>
+        result.flatMap(TurnStateOperations.setOathkeeper(_, holder))
+      case (result, RecordCampaignResult(fact)) =>
+        result.map(TurnStateOperations.recordCampaignResult(_, fact))
+      case (result, BeginTurn(player, phase)) =>
+        result.flatMap(TurnStateOperations.beginTurn(_, player, phase))
+      case (result, _) => result
+    }
 }

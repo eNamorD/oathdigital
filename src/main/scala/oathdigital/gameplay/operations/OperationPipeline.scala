@@ -35,11 +35,11 @@ object OperationRun {
   }.toSet
 }
 
-/** Sole public orchestrator of an operation batch. It owns the per-run
-  * [[OperationValidator]] (assembled from the caller's contextual
-  * `allowlist` policy plus the restrictions vector), folds each operation
-  * through staged validation and the raw [[OperationExecutor]], applies the
-  * owning procedure's direct `update`, and runs the post-state invariant.
+/** Sole public orchestrator of an operation batch. It folds each operation
+  * through settlement, staged resolution ([[OperationResolution]], which
+  * concatenates the caller's `allowlist` policy, the shape guard and the
+  * restrictions vector) and the [[OperationExecutor]], applies the owning
+  * procedure's direct `update`, and runs the post-state invariant.
   *
   * Whole-batch rejection must stay staged: an operation later in a batch can
   * be satisfiable only after earlier operations ran (for example a Campaign
@@ -67,7 +67,6 @@ object OperationPipeline {
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]
   ): Either[OathViolation, OperationRun] = {
-    val validator = new OperationValidator(allowlist, restrictions)
     if (operations.isEmpty) Left(OperationError.EmptyOperationBatch.toViolation)
     else
       for {
@@ -77,8 +76,8 @@ object OperationPipeline {
           Right(OperationRun(ready, Vector.empty, Vector.empty))) {
           (result, operation) => result.flatMap { current =>
             PayCostSettlement.prepare(current.state, operation).flatMap { prepared =>
-              OperationResolution.resolve(current.state, prepared, validator,
-                requireAll)
+              OperationResolution.resolve(current.state, prepared, allowlist,
+                restrictions, requireAll)
                 .flatMap {
                   case OperationResolution.Skip(reasons) =>
                     Right(current.copy(skipped = current.skipped :+
