@@ -3,7 +3,6 @@ package oathdigital.frontend
 import oathdigital.model.PlayerColor
 
 import munit.FunSuite
-import oathdigital.presentation._
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
@@ -38,7 +37,7 @@ class ServerModeUiSuite extends FunSuite {
       assert(browser.byClass("raw-event-log").isEmpty)
       assert(browser.byClass("restart").isEmpty)
       assert(browser.urls.isEmpty)
-    }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
+    }.andThen { case _ => browser.close() }(using scala.scalajs.concurrent.JSExecutionContext.queue)
   }
 
   test("trusted unauthorized player displays seat-link recovery without bootstrap") {
@@ -57,7 +56,7 @@ class ServerModeUiSuite extends FunSuite {
       assert(browser.text.contains("assigned seat link"))
       assert(!browser.text.contains("internal detail"))
       assert(browser.byClass("restart").isEmpty)
-    }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
+    }.andThen { case _ => browser.close() }(using scala.scalajs.concurrent.JSExecutionContext.queue)
   }
 
   private def hostTransport(
@@ -110,7 +109,7 @@ class ServerModeUiSuite extends FunSuite {
       assert(browser.urls.isEmpty)
       browser.click("copy-seat-link")
       assertEquals(browser.copied, Vector("https://oath.test/s/red-code"))
-    }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
+    }.andThen { case _ => browser.close() }(using scala.scalajs.concurrent.JSExecutionContext.queue)
   }
 
   test("host add-player menu offers untaken colors in order and stops at six players") {

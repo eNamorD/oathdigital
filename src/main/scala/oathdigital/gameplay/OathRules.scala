@@ -55,7 +55,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    MinorActions.handle(catalog, state, command).flatMap(completeAction _)
+    MinorActions.handle(catalog, state, command).flatMap(completeAction)
   }
 
   override def evolve(

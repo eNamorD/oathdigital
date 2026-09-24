@@ -1,7 +1,7 @@
 package oathdigital.server
 
 import java.net.URI
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Paths}
 
 class DesktopLaunchProfileSuite extends munit.FunSuite {
   private val appData = Paths.get("/data/oathdigital")

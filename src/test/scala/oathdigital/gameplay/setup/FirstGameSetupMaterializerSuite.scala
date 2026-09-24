@@ -14,7 +14,7 @@ class FirstGameSetupMaterializerSuite extends munit.FunSuite {
   test("site relic slots are filled from the top of relicOrder, leaving the " +
       "remainder -- in the same order -- as the drawable deck") {
     val sites = catalog.sites.filter(_.relicSlots > 0)
-      .sortBy(_.relicSlots)(Ordering[Int].reverse).take(3).map(_.id)
+      .sortBy(_.relicSlots)(using Ordering[Int].reverse).take(3).map(_.id)
     assert(sites.nonEmpty, "fixture catalog needs at least one relic-slotted site")
     val totalSlots = sites.map(id => catalog.sites.find(_.id == id).get.relicSlots).sum
     val relicOrder = (1 to totalSlots + 5).map(i => RelicId(s"relic:test-$i")).toVector

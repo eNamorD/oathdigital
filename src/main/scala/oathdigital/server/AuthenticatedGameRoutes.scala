@@ -267,7 +267,7 @@ final class AuthenticatedGameRoutes(
 
   private def completePreview(operation: => Either[AuthenticatedGameFailure,
       MajorActionPreviewResponse]): Route =
-    onComplete(Future(operation)(blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)) {
       case Success(Right(value)) => complete(HttpResponse(StatusCodes.OK,
         entity = HttpEntity(ContentTypes.`application/json`,
           oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
@@ -290,7 +290,7 @@ final class AuthenticatedGameRoutes(
   private def completeAsync(
       operation: => Either[AuthenticatedGameFailure, GameProjection]
   ): Route =
-    onComplete(Future(operation)(blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)) {
       case Success(Right(projection)) => complete(HttpResponse(
         StatusCodes.OK,
         entity = HttpEntity(

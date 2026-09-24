@@ -701,7 +701,7 @@ class HttpGameClientSuite extends FunSuite {
   private final class StubTransport(
       responses: Vector[Either[GameClientFailure, TransportResponse]]
   ) extends JsonTransport {
-    private val remaining = mutable.Queue(responses: _*)
+    private val remaining = mutable.Queue(responses*)
     val requests =
       mutable.ArrayBuffer.empty[(String, String, Option[String])]
 

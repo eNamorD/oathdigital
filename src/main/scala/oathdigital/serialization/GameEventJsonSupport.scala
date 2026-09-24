@@ -2,7 +2,6 @@ package oathdigital.serialization
 
 import scala.util.control.NonFatal
 import oathdigital.model._
-import oathdigital.model.OathEvent._
 
 /** Shared primitive and nested-model JSON vocabulary for v1 event families. */
 private[serialization] trait GameEventJsonSupport {

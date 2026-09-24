@@ -436,11 +436,11 @@ class DecisionQuerySuite extends munit.FunSuite {
     val full = Vector(Suit.Arcane -> 0, Suit.Discord -> 1, Suit.Hearth -> 2,
       Suit.Nomad -> 3)
     val cases = Vector(
-      amounts(full :+ (Suit.Order -> 0): _*) ->
+      amounts(full :+ (Suit.Order -> 0)*) ->
         "does not offer a distributed option",
-      amounts(full :+ (Suit.Nomad -> 0): _*) ->
+      amounts(full :+ (Suit.Nomad -> 0)*) ->
         "distributes to an option more than once",
-      amounts(full.init: _*) -> "leaves an option undistributed",
+      amounts(full.init*) -> "leaves an option undistributed",
       amounts(Suit.Arcane -> 3, Suit.Discord -> 0, Suit.Hearth -> 0,
         Suit.Nomad -> 3) -> "distributes to favor-bank/arcane outside 0..2",
       amounts(Suit.Arcane -> 0, Suit.Discord -> 0, Suit.Hearth -> 0,
@@ -453,7 +453,7 @@ class DecisionQuerySuite extends munit.FunSuite {
       DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad)), anyone),
       violation("expects a distribution answer"))
     assertEquals(DecisionQueries.accepts(decisionId, chooseOne,
-      amounts(full: _*), anyone), violation("expects a single-choice answer"))
+      amounts(full*), anyone), violation("expects a single-choice answer"))
   }
 
   private def siteRef(id: String) = DecisionOptionRef.Site(SiteId(id))

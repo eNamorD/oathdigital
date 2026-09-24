@@ -26,8 +26,8 @@ object GameIntentMapper {
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
       case Intent.StartWalker(value, modifiers, startArgs) => for {
         ref <- actionRef(value)
-        ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
-        args <- traverse(startArgs.zipWithIndex)((walkerStartArg _).tupled)
+        ids <- traverse(modifiers.zipWithIndex)(powerId.tupled)
+        args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
       } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>

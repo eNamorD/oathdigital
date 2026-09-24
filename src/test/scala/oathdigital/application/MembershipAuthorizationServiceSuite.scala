@@ -4,7 +4,7 @@ import java.nio.file.Files
 
 import oathdigital.application.AuthorizationFailure._
 import oathdigital.application.ProjectionScope._
-import oathdigital.model.{DenizenId, PlayerId, RelicId, SiteId}
+import oathdigital.model.{PlayerId, RelicId}
 import oathdigital.persistence.HsqldbDatabaseOwner
 
 class MembershipAuthorizationServiceSuite extends munit.FunSuite {

@@ -33,7 +33,7 @@ object WalkerDiceFixture {
     * meant fails instead of passing on borrowed faces.
     */
   def scripted(rolls: Vector[DieFace]*): WalkerDice = {
-    val queue = scala.collection.mutable.Queue(rolls: _*)
+    val queue = scala.collection.mutable.Queue(rolls*)
     (_, _) =>
       if (queue.isEmpty) Left(OathViolation.InvalidEventOrder(
         "the scripted dice source ran out of rolls"))

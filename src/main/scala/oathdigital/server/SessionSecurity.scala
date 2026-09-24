@@ -74,7 +74,7 @@ final class SessionCookieAuthenticator(
           })
       case _ => Left(AuthenticationFailure.InvalidCredential("invalid session"))
     }
-  }(blockingExecutionContext)
+  }(using blockingExecutionContext)
 }
 
 object SameOriginCsrfProtection {

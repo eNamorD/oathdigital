@@ -169,7 +169,7 @@ class HornedMaskSuite extends munit.FunSuite {
   }
 
   test("a full area of locked advisers takes nothing and asks nothing") {
-    val ready = holding(locked: _*)
+    val ready = holding(locked*)
     val t = use(ready, power, source).toOption.get
     assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
       t.continue.toString)
