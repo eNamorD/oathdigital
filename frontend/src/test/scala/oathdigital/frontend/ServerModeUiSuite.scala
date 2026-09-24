@@ -1067,11 +1067,13 @@ class ServerModeUiSuite extends FunSuite {
   }
   test("available controls use durable ordered presentation categories") {
     assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
-      Vector("Major actions", "Minor actions", "Powers"))
+      Vector("Major actions", "Minor actions"))
     assertEquals(ServerUiSupport.actionCategory("travel"), "major")
     assertEquals(ServerUiSupport.actionCategory("challenge"), "major")
     assertEquals(ServerUiSupport.actionCategory("campaign"), "major")
-    assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "powers")
+    // Using a power's "Action:" is itself a minor action, so an unrecognised
+    // kind joins them rather than opening a section of its own.
+    assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "minor")
     assertEquals(ServerUiSupport.majorFamilyOrder, Vector("search", "travel", "campaign",
       "muster", "trade", "forge", "recover", "challenge"))
     assertEquals(Vector("trade-favor", "trade-secret").map(

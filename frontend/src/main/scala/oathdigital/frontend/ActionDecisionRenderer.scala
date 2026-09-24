@@ -253,10 +253,10 @@ private[frontend] object ActionDecisionRenderer {
          }
          groups.appendKind(action.actionKind, control)
        }
+       PhasePowerButtons.appendTo(value, canControl, groups, submitCommand)
        groups.appendTo(panel)
        panel.appendChild(text("p", "informational",
          "Other normal action families are not yet implemented."))
-       PhasePowerButtons.render(value, canControl, panel, submitCommand)
        if (value.legalControls.contains("beginRest")) {
          // What Rest returns before the track's ceiling takes its cut, so
          // the number doubles as the Supply this Act may still spend for

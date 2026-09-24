@@ -281,10 +281,9 @@ private[frontend] object ServerUiSupport {
     case "search" | "travel" |
         "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
         "challenge" | "campaign" => "major"
-    case "negotiation" |
-        "place-banner-resource" | "facedown-adviser" | "peek-site-relics" |
-        "reveal-owned-relic" | "move-warbands" => "minor"
-    case _ => "powers"
+    // Using a power's "Action:" is a minor action like any other, so an
+    // unrecognised kind lands there rather than in a section of its own.
+    case _ => "minor"
   }
 
   private[frontend] val majorFamilyOrder: Vector[String] = Vector(
@@ -296,7 +295,7 @@ private[frontend] object ServerUiSupport {
   }
 
   private[frontend] val actionCategoryOrder: Vector[(String, String)] =
-    Vector("major" -> "Major actions", "minor" -> "Minor actions", "powers" -> "Powers")
+    Vector("major" -> "Major actions", "minor" -> "Minor actions")
 
   private[frontend] final class ActionSections {
     private val contents = scala.collection.mutable.Map.empty[String,

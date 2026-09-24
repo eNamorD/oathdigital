@@ -17,9 +17,15 @@ private[frontend] object PhasePowerButtons {
   def showsFinishRest(value: GameProjection): Boolean =
     value.phase == "rest" && value.legalControls.contains("finishRest")
 
-  def render(value: GameProjection, canControl: Boolean, panel: dom.Element,
-      submit: GameCommand => Unit): Unit =
-    actions(value).foreach { case (power, command) =>
+  /** The kind every power button is filed under. `ServerUiSupport`
+    * categorises it as a minor action, which is what using a power's
+    * "Action:" is.
+    */
+  private[frontend] val ActionKind: String = "power-action"
+
+  def buttons(value: GameProjection, canControl: Boolean,
+      submit: GameCommand => Unit): Vector[dom.html.Button] =
+    actions(value).map { case (power, command) =>
       val control = dom.document.createElement("button")
         .asInstanceOf[dom.html.Button]
       control.className = "phase-power"
@@ -28,6 +34,18 @@ private[frontend] object PhasePowerButtons {
       control.setAttribute("data-power-id", power.powerId)
       control.disabled = !canControl
       control.onclick = _ => submit(command)
-      panel.appendChild(control)
+      control
     }
+
+  def render(value: GameProjection, canControl: Boolean, panel: dom.Element,
+      submit: GameCommand => Unit): Unit =
+    buttons(value, canControl, submit).foreach(panel.appendChild)
+
+  /** The Act panel's route: the buttons join the listed actions instead of
+    * standing loose next to the one that ends the Act.
+    */
+  def appendTo(value: GameProjection, canControl: Boolean,
+      groups: ServerUiSupport.ActionSections,
+      submit: GameCommand => Unit): Unit =
+    buttons(value, canControl, submit).foreach(groups.appendKind(ActionKind, _))
 }
