@@ -167,13 +167,14 @@ private[application] final class LegalActionProjector(
     }
   }
 
-  /** Whether `active` can start Recover at their current site. Relic
-    * availability is deliberately irrelevant: a successful empty-site
-    * Recover is a legal wasted action.
+  /** Whether `active` can start Recover at their current site, Supply cost
+    * included. Relic availability is deliberately irrelevant: a successful
+    * empty-site Recover is a legal wasted action.
     */
   private def recoverEligible(context: ScopedProjectionContext,
       active: PlayerState): Boolean =
-    RecoverProcedure.build(catalog, context.ready, active.player).isRight
+    RecoverProcedure.startable(catalog, context.ready, active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
 
   /** While a generic-walker procedure is parked, no other Act control is legal
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command

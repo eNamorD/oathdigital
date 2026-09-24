@@ -87,4 +87,15 @@ class RecoverEligibilitySuite extends munit.FunSuite {
     assert(ready.game.current.map.sites(siteId).relics.isEmpty)
     assert(legalControls(ready, active.player).contains("beginRecover"))
   }
+
+  test("beginRecover is not offered without the Supply to pay for it") {
+    val (base, active, _) = baseReady
+    def withSupply(supply: Int) = base.updateCurrent(_.copy(
+      players = base.game.current.players.map(p =>
+        if (p.player == active.player)
+          p.copy(board = p.board.copy(supply = SupplyTrack(supply)))
+        else p)))
+    assert(legalControls(withSupply(1), active.player).contains("beginRecover"))
+    assert(!legalControls(withSupply(0), active.player).contains("beginRecover"))
+  }
 }

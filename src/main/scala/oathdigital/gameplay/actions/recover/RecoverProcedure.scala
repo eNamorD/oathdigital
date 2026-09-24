@@ -3,6 +3,7 @@ package oathdigital.gameplay.actions.recover
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.OathLifecycle
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
@@ -94,6 +95,15 @@ object RecoverProcedure {
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
   } yield tree(activePlayer, siteId, difficulty)
+
+  /** Whether Recover could start now: the gates pass and the first walk (the
+    * Supply cost, up to the first roll) is accepted, so a player without the
+    * Supply is not offered it.
+    */
+  def startable(catalog: ExecutableCatalog, state: ReadyGame,
+      activePlayer: PlayerId, powers: WalkerPowers): Boolean =
+    build(catalog, state, activePlayer)
+      .exists(WalkerSimulation.starts(_, state, powers))
 
   /** Rebuilds the same command-local tree for an already-started Recover. */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
