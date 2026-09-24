@@ -59,11 +59,11 @@ private[serialization] object DecisionAnswerCodec {
       path: String): Either[WireError, DecisionAnswer] =
     value("kind").str match {
       case ChooseOneTag => decodeRef(value("option"), s"$path.option")
-        .map(DecisionAnswer.ChooseOneAnswer)
+        .map(DecisionAnswer.ChooseOneAnswer.apply)
       case ChooseManyTag =>
         traverse(value("options").arr.toVector.zipWithIndex) {
           case (entry, index) => decodeRef(entry, s"$path.options[$index]")
-        }.map(DecisionAnswer.ChooseManyAnswer)
+        }.map(DecisionAnswer.ChooseManyAnswer.apply)
       case ChooseAmountTag =>
         val raw = value("amount").num
         Either.cond(raw.isValidInt, DecisionAnswer.ChooseAmountAnswer(raw.toInt),
@@ -74,7 +74,7 @@ private[serialization] object DecisionAnswerCodec {
             val entryPath = s"$path.placements[$index]"
             decodeRef(entry("option"), s"$entryPath.option").map(
               DecisionPlacement(_, entry("sectionKey").str))
-        }.map(DecisionAnswer.PartitionAnswer)
+        }.map(DecisionAnswer.PartitionAnswer.apply)
       case DistributeTag =>
         traverse(value("amounts").arr.toVector.zipWithIndex) {
           case (entry, index) =>
@@ -85,9 +85,9 @@ private[serialization] object DecisionAnswerCodec {
               amount <- Either.cond(raw.isValidInt, raw.toInt,
                 InvalidValue(s"$entryPath.amount", s"amount '$raw' is not an integer"))
             } yield DistributeAmount(ref, amount)
-        }.map(DecisionAnswer.DistributeAnswer)
+        }.map(DecisionAnswer.DistributeAnswer.apply)
       case ProposeTermsTag => NegotiationTermsCodec.decode(value("terms"),
-        s"$path.terms").map(DecisionAnswer.ProposeTerms)
+        s"$path.terms").map(DecisionAnswer.ProposeTerms.apply)
       case AcceptDealTag => Right(DecisionAnswer.AcceptDeal)
       case DeclineDealTag => Right(DecisionAnswer.DeclineDeal)
       case other => Left(InvalidValue(s"$path.kind",

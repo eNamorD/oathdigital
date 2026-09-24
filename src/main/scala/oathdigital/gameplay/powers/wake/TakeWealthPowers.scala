@@ -49,5 +49,5 @@ case object TakeWealthLimit extends ContributingPower {
     ctx.state.game.current.players.find(_.player == ctx.activePlayer)
       .flatMap(_.pawnSite).map(useRef)
       .filter(ctx.state.game.current.turn.usedPowers.contains)
-      .map(OathViolation.PowerAlreadyUsed)
+      .map(OathViolation.PowerAlreadyUsed.apply)
 }

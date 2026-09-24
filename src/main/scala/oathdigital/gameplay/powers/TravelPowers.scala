@@ -40,5 +40,5 @@ object TravelPowers {
     "site.headwaters.mountain", "site.hidden-place.mountain",
     "site.mines.mountain", "site.narrow-pass.pass", "site.rocky-coast.coast",
     "site.sunken-isles.coast", "site.sunken-isles.island",
-    "site.tidal-marshes.coast").map(TerrainPower)
+    "site.tidal-marshes.coast").map(TerrainPower.apply)
 }

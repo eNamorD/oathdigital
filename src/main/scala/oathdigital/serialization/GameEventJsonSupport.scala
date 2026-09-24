@@ -445,7 +445,7 @@ private[serialization] trait GameEventJsonSupport {
       : Either[WireError, SearchSource] = try value("kind").str match {
     case "world" => Right(SearchSource.WorldDeck)
     case "regional-discard" => decodeRegion(value("region").str, s"$path.region")
-      .map(SearchSource.RegionalDiscard)
+      .map(SearchSource.RegionalDiscard.apply)
     case other => Left(InvalidValue(s"$path.kind", s"unknown Search source '$other'"))
   } catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid Search source"))) }
@@ -493,7 +493,7 @@ private[serialization] trait GameEventJsonSupport {
     }
     try value("kind").str match {
       case "discard" => Right(SearchPlacement.Discard)
-      case "site" => replacement.map(SearchPlacement.Site)
+      case "site" => replacement.map(SearchPlacement.Site.apply)
       case "adviser" => for {
         orientation <- value("orientation").str match {
           case "face-up" => Right(Orientation.FaceUp)

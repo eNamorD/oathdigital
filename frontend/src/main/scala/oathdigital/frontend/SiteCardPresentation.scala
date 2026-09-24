@@ -28,7 +28,7 @@ private[frontend] object SiteCardPresentation {
       defense = site.defense,
       requirement = site.forgeCost
         .map(cost => SiteRequirement.Forge(cost.favor, cost.secrets))
-        .orElse(site.recoverDifficulty.map(SiteRequirement.Recover)),
+        .orElse(site.recoverDifficulty.map(SiteRequirement.Recover.apply)),
       unknownRelicCount = math.max(0,
         site.relics.facedownCount - site.relics.knownRelics.size),
       peekedRelics = site.relics.knownRelics.map(PeekedRelicPresentation(_))

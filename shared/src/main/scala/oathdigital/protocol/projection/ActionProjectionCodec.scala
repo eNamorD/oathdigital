@@ -11,7 +11,7 @@ private[projection] object ActionProjectionCodec {
     value <- obj(raw, path); kind <- string(value, "kind", path)
     target <- kind match {
       case "site" => exact(value, Set("kind", "siteId"), path).flatMap(_ =>
-        string(value, "siteId", path).map(BoardTargetRefProjection.Site))
+        string(value, "siteId", path).map(BoardTargetRefProjection.Site.apply))
       case other => Left(oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(
         s"$path.kind", s"unsupported board target '$other'"))
     }

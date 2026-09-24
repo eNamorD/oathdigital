@@ -78,11 +78,11 @@ private[frontend] object WalkerPanelSupport {
       : Option[RecoverWalkerStep] =
     if (decision.action != "recover") None
     else decision.kind match {
-      case "roll" => decision.pool.map(RecoverWalkerStep.Roll)
+      case "roll" => decision.pool.map(RecoverWalkerStep.Roll.apply)
       case "decide" if decision.decisionId == recoverChoiceDecisionId =>
-        chooseOneQuery(decision).map(RecoverWalkerStep.Choice)
+        chooseOneQuery(decision).map(RecoverWalkerStep.Choice.apply)
       case "decide" if decision.decisionId == recoverRelicDecisionId =>
-        chooseOneQuery(decision).map(RecoverWalkerStep.Relic)
+        chooseOneQuery(decision).map(RecoverWalkerStep.Relic.apply)
       case _ => None
     }
 

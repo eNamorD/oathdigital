@@ -52,7 +52,7 @@ object RuleSourceRef {
       case _ if stableKey.startsWith("banner:") =>
         Some(Banner(stableKey.stripPrefix("banner:")))
       case Vector("foundation", number) => scala.util.Try(number.toInt).toOption
-        .flatMap(n => FoundationNumber.all.find(_.value == n)).map(Foundation)
+        .flatMap(n => FoundationNumber.all.find(_.value == n)).map(Foundation.apply)
       case _ if stableKey.startsWith("legacy:") => stableKey
         .stripPrefix("legacy:").split(":", 2).toVector match {
           case Vector(lineage, id) => Some(Legacy(LineageId(lineage), LegacyId(id)))

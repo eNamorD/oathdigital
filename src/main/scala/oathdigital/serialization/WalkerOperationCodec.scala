@@ -248,7 +248,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
             Banner.fromKey(value("bannerKey").str).map(PowerSourceRef.Banner(_))
               .toRight(InvalidValue(s"$path.bannerKey", "unknown banner"))
           else decodePowerCard(value("cardKind").str, value("cardId").str,
-            s"$path.cardKind").map(PowerSourceRef.Card)
+            s"$path.cardKind").map(PowerSourceRef.Card.apply)
           ): Either[WireError, PowerSourceRef]
       } yield RecordPowerUse(PowerUseRef(timing, source,
         PowerId(value("powerId").str)))
@@ -525,9 +525,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
 
   private def decodePiece(value: ujson.Value,
       path: String): Either[WireError, Piece] = value("kind").str match {
-    case "card" => decodeCardRef(value("card"), s"$path.card").map(Piece.Card)
+    case "card" => decodeCardRef(value("card"), s"$path.card").map(Piece.Card.apply)
     case "banner" => decodeBanner(value("banner").str, s"$path.banner")
-      .map(Piece.Banner)
+      .map(Piece.Banner.apply)
     case "pawn" => Right(Piece.Pawn(PlayerId(value("playerId").str)))
     case "favor" => safeIntField(value.obj, "amount", path).flatMap(amount =>
       if (amount > 0) Right(Piece.Favor(amount))
@@ -614,19 +614,19 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       Right(Location.PlayArea(PlayerId(value("playerId").str)))
     case "hand" => Right(Location.Hand(PlayerId(value("playerId").str)))
     case "on-card" => decodeCardRef(value("card"), s"$path.card")
-      .map(Location.OnCard)
+      .map(Location.OnCard.apply)
     case "on-banner" => Banner.fromKey(value("banner").str)
       .toRight(InvalidValue(s"$path.banner",
-        s"unknown banner '${value("banner").str}'")).map(Location.OnBanner)
+        s"unknown banner '${value("banner").str}'")).map(Location.OnBanner.apply)
     case "favor-bank" => decodeSuit(value("suit").str, s"$path.suit")
-      .map(Location.FavorBank)
+      .map(Location.FavorBank.apply)
     case "warband-bank" => decodeForceKind(value("force"), s"$path.force")
-      .map(Location.WarbandBank)
+      .map(Location.WarbandBank.apply)
     case "deck" => decodeCardDeck(value("deck").str, s"$path.deck")
-      .map(Location.Deck)
+      .map(Location.Deck.apply)
     case "regional-discard" =>
       decodeRegion(value("region").str, s"$path.region")
-        .map(Location.RegionalDiscard)
+        .map(Location.RegionalDiscard.apply)
     case "shared-bank" => Right(Location.SharedBank)
     case "set-aside-relics" => Right(Location.SetAsideRelics)
     case "reliquary" => Right(Location.Reliquary)

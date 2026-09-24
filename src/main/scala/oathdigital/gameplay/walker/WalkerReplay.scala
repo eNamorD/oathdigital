@@ -25,7 +25,7 @@ private[walker] object WalkerReplay {
   def applyRecorded(state: OathState,
       event: WalkerEvent): Either[OathViolation, OathState] = state match {
     case OathState.Ready(ready) => applyRecordedReady(ready, event)
-      .map(OathState.Ready)
+      .map(OathState.Ready.apply)
     case _ => Left(OathViolation.GameNotStarted)
   }
 

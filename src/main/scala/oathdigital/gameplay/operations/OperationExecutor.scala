@@ -88,7 +88,7 @@ private[operations] object OperationStateInvariant {
   import OperationError._
 
   def cardIds(ready: ReadyGame): Either[OperationError, Set[CardId]] =
-    CardIndex.from(ready.game).left.map(InvalidCardIndex).map(_.ids)
+    CardIndex.from(ready.game).left.map(InvalidCardIndex.apply).map(_.ids)
 
   def validate(
       ready: ReadyGame,

@@ -36,7 +36,7 @@ object OperationStateAdapter {
       id: CardId,
       at: Location
   ): Either[OperationError, LocatedCard] =
-    CardIndex.from(ready.game).left.map(InvalidCardIndex).flatMap { index =>
+    CardIndex.from(ready.game).left.map(InvalidCardIndex.apply).flatMap { index =>
       index.get(id).toRight(UnknownCard(id)).flatMap { located =>
         Either.cond(matches(located.location.container, at), located,
           MissingPiece(Piece.Card(id), at))
@@ -49,12 +49,12 @@ object OperationStateAdapter {
       at: Location
   ): Either[OperationError, AvailableQuantity] = piece match {
     case Piece.Card(id) => card(ready, id, at).map(_ => Finite(1))
-    case Piece.Favor(_) => favor(ready, at).map(Finite)
+    case Piece.Favor(_) => favor(ready, at).map(Finite.apply)
     case Piece.Secrets(_) => at match {
       case Location.SharedBank => Right(Unbounded)
       case _ => secrets(ready, at).map(value => Finite(value.faceUp + value.faceDown))
     }
-    case Piece.Warbands(kind, _) => warbands(ready, kind, at).map(Finite)
+    case Piece.Warbands(kind, _) => warbands(ready, kind, at).map(Finite.apply)
     case Piece.Pawn(player) => at match {
       case Location.Site(site) => playerState(ready, player).map { state =>
         Finite(state.pawnSite.count(_ == site))
@@ -132,7 +132,7 @@ object OperationStateAdapter {
       ready: ReadyGame,
       id: CardId
   ): Either[OperationError, Tokens] =
-    CardIndex.from(ready.game).left.map(InvalidCardIndex).flatMap { index =>
+    CardIndex.from(ready.game).left.map(InvalidCardIndex.apply).flatMap { index =>
       index.stateOf(id).collect {
         case state: SiteDenizenState => state.tokens
         case state: RelicState => state.tokens

@@ -22,7 +22,7 @@ private[protocol] object CommandIntentDecoders {
         }
     } yield UsePower(power, source)
     case "peekSiteRelics" => empty(value, path, PeekSiteRelics)
-    case "revealOwnedRelic" => one(value, path, "relicId")(RevealOwnedRelic)
+    case "revealOwnedRelic" => one(value, path, "relicId")(RevealOwnedRelic.apply)
     case "moveWarbands" => for {
       _ <- exact(value, Set("type", "toSite", "amount"), path)
       toSite <- field(value, "toSite", path).flatMap(boolean(_, s"$path.toSite"))
@@ -40,7 +40,7 @@ private[protocol] object CommandIntentDecoders {
           s"$path.startArgs")
       }
     } yield StartWalker(action, modifiers, startArgs)
-    case "rollWalker" => one(value, path, "pool")(RollWalker)
+    case "rollWalker" => one(value, path, "pool")(RollWalker.apply)
     case "resolveWalker" => for {
       _ <- exact(value, Set("type", "decisionId", "payload"), path)
       id <- string(value, "decisionId", path)

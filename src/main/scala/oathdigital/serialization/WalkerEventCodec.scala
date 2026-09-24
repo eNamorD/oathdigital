@@ -94,7 +94,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
       path: String): Either[WireError, WalkerStepPayload] =
     value("kind").str match {
       case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
-        .map(WalkerStepPayload.DeltaRecorded)
+        .map(WalkerStepPayload.DeltaRecorded.apply)
       case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _,
           PlayerId(value("byPlayerId").str)))

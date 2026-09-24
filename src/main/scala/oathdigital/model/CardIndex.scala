@@ -234,7 +234,7 @@ object CardIndex {
       .sortBy(_.id.value)
     val missingProblems = (expectedCards -- grouped.keySet).toVector
       .sortBy(id => (id.kind, id.value))
-      .map(CardIndexProblem.MissingCard)
+      .map(CardIndexProblem.MissingCard.apply)
     val problems = duplicateProblems ++ missingProblems
 
     if (problems.nonEmpty) Left(problems)
