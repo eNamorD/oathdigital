@@ -86,7 +86,11 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   }
   dev.addEventListener("keydown", escape)
   private val inspector = new CardInspectionOverlay(mount)
-  CardInspection.onOpen((card, origin) => inspector.show(card, origin))
+  CardInspection.onOpen {
+    case CardInspection.Request.Card(card, origin) => inspector.show(card, origin)
+    case CardInspection.Request.Text(title, lines, origin) =>
+      inspector.showText(title, lines, origin)
+  }
   private var previousGame = ""
   private var previousDecision = ""
 

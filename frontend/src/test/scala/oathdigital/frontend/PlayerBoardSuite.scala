@@ -50,9 +50,11 @@ class PlayerBoardSuite extends munit.FunSuite {
   }
 
   /** Two labelled rows cost more height than the pane has, and the box shape
-    * already says which card is a relic, exactly as it does at a site.
+    * already says which card is a relic, exactly as it does at a site. A
+    * revealed Vision is a player state, not a card in the hand, so it sits
+    * in the slots row instead (see the slots-row tests below).
     */
-  test("advisers, relics and a revealed vision share one unlabelled row") {
+  test("advisers and relics share one unlabelled row; a revealed vision does not") {
     val node = WorldBoardRenderer.playerBoards(
       GameProjection("game", 1L, "act", Some("red"),
         Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
@@ -65,8 +67,7 @@ class PlayerBoardSuite extends munit.FunSuite {
       new RecordingView("game", "red"))
     assertEquals(all(node, ".board-cards").size, 1)
     assertEquals(all(node, ".board-cards .card-face").map(_.getAttribute("class")),
-      Vector("card-face card-face-denizen", "card-face card-face-relic",
-        "card-face card-face-denizen"))
+      Vector("card-face card-face-denizen", "card-face card-face-relic"))
     assertEquals(all(node, ".board-cards strong"), Vector.empty)
     assertEquals(one(node, ".board-cards").map(_.getAttribute("aria-label")),
       Some("Cards in play"))
@@ -93,7 +94,7 @@ class PlayerBoardSuite extends munit.FunSuite {
     assertEquals(badges.map(_.closest(".player-board").getAttribute(
       "data-player-id")), Vector("blue"))
     assertEquals(badges.map(_.getAttribute("title")),
-      Vector("Oath of Supremacy"))
+      Vector("Oathkeeper of Supremacy"))
   }
 
   test("the badge reads Usurper once the title flips") {
@@ -151,5 +152,58 @@ class PlayerBoardSuite extends munit.FunSuite {
     val secrets = all(render(), ".resource").apply(2)
     assertEquals(secrets.getAttribute("aria-label"),
       "Secrets 1/2. 1 available of 2 owned; 0 facedown and 0 committed")
+  }
+
+  /** A title and a Vision are states of the player, not cards in a hand, so
+    * they get a row of their own between the identity line and the cards.
+    */
+  private def renderWith(playerBoard: PlayerBoard,
+      oathkeeper: Option[OathkeeperStatus]): dom.Element =
+    WorldBoardRenderer.playerBoards(
+      GameProjection("game", 1L, "act", Some("red"),
+        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
+        Vector.empty, Vector.empty, Vector.empty, ready = true,
+        completed = false, playerBoards = Vector(playerBoard),
+        oathkeeper = oathkeeper),
+      new RecordingView("game", "red"))
+
+  test("the title and the Vision sit in their own row, not among the cards") {
+    val vision = CardDetails("vision:vision-of-faith", "vision",
+      "Vision of Faith", orientation = Some("face-up"),
+      rulesText = Some("Wake: You win if you hold the **Darkest Secret**."))
+    val node = renderWith(board.copy(revealedVision = Some(vision)),
+      Some(OathkeeperStatus("devotion", Some("red"), "oathkeeper",
+        usurperLimited = false, None)))
+    assertEquals(all(node, ".player-identity .player-title"), Vector.empty)
+    val slots = one(node, ".player-slots").getOrElse(fail("no slots row"))
+    assertEquals(all(slots, ".player-title").size, 1)
+    assertEquals(one(slots, ".player-slot-vision").map(_.textContent),
+      Some("Vision of Faith"))
+    assertEquals(all(node, ".board-cards .card-face")
+      .map(_.getAttribute("data-card-id"))
+      .contains("vision:vision-of-faith"), false)
+  }
+
+  test("a player with neither a title nor a Vision has no slots row") {
+    assertEquals(all(render(), ".player-slots"), Vector.empty)
+  }
+
+  test("the title pill opens the Oath text and the Vision pill its card") {
+    var opened = Vector.empty[String]
+    CardInspection.onOpen {
+      case CardInspection.Request.Text(title, _, _) => opened = opened :+ title
+      case CardInspection.Request.Card(card, _) => opened = opened :+ card.name
+    }
+    val vision = CardDetails("vision:vision-of-faith", "vision",
+      "Vision of Faith", orientation = Some("face-up"))
+    val node = renderWith(board.copy(revealedVision = Some(vision)),
+      Some(OathkeeperStatus("devotion", Some("red"), "oathkeeper",
+        usurperLimited = false, None)))
+    one(node, ".player-slots .player-title").getOrElse(fail("no title pill"))
+      .asInstanceOf[dom.html.Button].click()
+    one(node, ".player-slot-vision").getOrElse(fail("no vision pill"))
+      .asInstanceOf[dom.html.Button].click()
+    CardInspection.clear()
+    assertEquals(opened, Vector("Oathkeeper of Devotion", "Vision of Faith"))
   }
 }

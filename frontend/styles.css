@@ -51,6 +51,9 @@
   border: 1px solid #7c694b; border-radius: 0.25em; background: #17140f;
   font-size: 0.9em; font-weight: 700; line-height: 1; }
 .die-face .token-glyph { width: 0.95em; height: 0.95em; vertical-align: 0; }
+/* A roll during a walk: the faces, then one line of totals. */
+.walker-roll-faces { margin: 0; }
+.walker-roll-totals { margin: 0 0 0.3em; font-size: 0.9em; }
 .die-face-blank { border-style: dashed; border-color: #5d5144; }
 .rules-power { margin: 0 0 0.7em; line-height: 1.5; }
 .rules-power:last-child { margin-bottom: 0; }
@@ -366,6 +369,14 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-zone-heading h3 { margin-bottom: 0; }
 .decision-zone-helper { margin: 0.25rem 0 0.65rem; color: #a99f8c;
   font-size: 0.82rem; font-style: italic; font-weight: 400; }
+/* The card a decision is about, above the answers. */
+.decision-subject {
+  display: flex;
+  gap: 0.4em;
+  margin-bottom: 0.4em; }
+/* What the battle has already applied, above what is still on offer. */
+.plans-played { margin-bottom: 0.4em; font-size: 0.85em; }
+.plans-played ul { margin: 0; padding-left: 1.2em; }
 .decision-cards, .board-cards { display: flex; flex-wrap: wrap; gap: 8px; }
 .decision-card { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
 .decision-card button, .decision-confirm, .decision-back, .resolution-choice,
@@ -503,9 +514,27 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   gap: 0.3em; padding: 7px; border: 1px solid #675a43; border-radius: 6px;
   text-align: center; font-weight: 800; }
 .walker-choice .token-glyph { margin-right: 0.3em; vertical-align: -0.15em; }
+/* Which side a battle plan is for, as a chip beside the offer. */
+.option-badge {
+  display: inline-block;
+  border-radius: 1em;
+  padding: 0 0.6em;
+  font-size: 0.75em; }
+.plan-side-attack { background: var(--suit-discord); color: #fff; }
+.plan-side-defense { background: var(--suit-order); color: #fff; }
+.plan-side-both {
+  background: linear-gradient(90deg, var(--suit-discord), var(--suit-order));
+  color: #fff; }
 .player-board { margin-top: 12px; padding: 12px; border: 1px solid #40382c; border-radius: 9px; }
 .modifier-option { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .modifier-toggle { min-height: 44px; text-align: left; }
+/* A modifier option is the card it is printed on, with the action it
+   modifies under it. */
+.modifier-toggle .card-face { pointer-events: none; }
+.modifier-modifies {
+  display: block;
+  font-size: 0.8em;
+  opacity: 0.85; }
 .modifier-ordinal { display: inline-grid; width: 1.8rem; height: 1.8rem;
   place-items: center; border-radius: 50%; background: #d2a85e; color: #17140f;
   font-weight: 800; }
@@ -580,8 +609,23 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 /* Inline and one line tall, so the title costs the strip no height. */
 .player-title { color: var(--token-favor); border: 1px solid var(--token-favor);
   border-radius: 999px; padding: 0 0.45em; font-size: 0.78rem;
-  font-weight: 600; line-height: 1.15; }
-.player-identity > .player-title::before { content: none; }
+  font-weight: 600; line-height: 1.15; background: none; cursor: pointer; }
+/* A title and a Vision are states of the player, so they get a row of their
+   own between the identity line and the cards. It wraps rather than growing
+   the board: the player strip does not scroll. */
+.player-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin: 0.2em 0; }
+.player-slot-vision {
+  border: 1px solid var(--pill-border, currentColor);
+  border-radius: 1em;
+  padding: 0.1em 0.7em;
+  font-size: 0.85em;
+  background: none;
+  color: inherit;
+  cursor: pointer; }
 .resources { display: flex; align-items: baseline; flex-wrap: wrap;
   gap: 0 0.45em; color: #d9cdb5; font-weight: 400; }
 .resources > * + *::before { content: "·"; margin-right: 0.45em;

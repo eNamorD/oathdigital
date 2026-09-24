@@ -51,7 +51,7 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
           "major-action preview is unavailable for this actor or phase"))))
     _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application)
   } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
-    accepted.options.map(v => PreviewModifier(v.source.stableKey, v.handlerId, v.handlerId)),
+    accepted.modifiers,
     accepted.ignored.map(v => PreviewIgnoredRule(
       v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
     MajorActionPreviewTargets.from(projection, request, accepted.targets))

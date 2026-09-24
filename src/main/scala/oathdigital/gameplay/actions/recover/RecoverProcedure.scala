@@ -3,7 +3,8 @@ package oathdigital.gameplay.actions.recover
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerRollFeedback,
+  WalkerSimulation}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
@@ -70,6 +71,16 @@ object RecoverProcedure {
   val rollDecisionId: String = "walker.recover.roll"
 
   private val supplyCost: Int = 1
+
+  /** Every park of a Recover shows the same thing: the pool rolled so far and
+    * the site's difficulty, which is worth showing before the first roll too.
+    */
+  def rollFeedback(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, decisionId: String): Option[WalkerRollFeedback] =
+    Option.when(decisionId == rollDecisionId ||
+        decisionId == relicDecisionId || decisionId == choiceDecisionId)(
+      WalkerRollFeedback(recoverPool, target = actorSite(ready, actor)
+        .flatMap(RecoverRules.difficulty(catalog, _)))).filter(_.target.nonEmpty)
 
   /** The actor's current pawn site -- the single definition `build`,
     * `rebuild`, and [[actorFacedownRelics]] all read, so nothing in this

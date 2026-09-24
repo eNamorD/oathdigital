@@ -29,14 +29,10 @@ class CampaignBattleSuite extends munit.FunSuite {
       HollowSword), 3, ignoreSkulls = false), (1, 0))
   }
 
-  test("the sacrifice heading names the faces, the total and the survivors") {
-    assertEquals(CampaignBattle.sacrificeHeading(Vector(TwoSwordsSkull, OneSword),
-      score = 3, skulls = 1, max = 1),
-      "Attack roll: two swords and a skull, one sword. Attack 3 with 1 skull " +
-        "loss. Sacrifice up to 1 warband for one attack each.")
-    assertEquals(CampaignBattle.sacrificeHeading(Vector(OneSword, OneSword),
-      score = 2, skulls = 0, max = 2),
-      "Attack roll: one sword, one sword. Attack 2 with 0 skull losses. " +
-        "Sacrifice up to 2 warbands for one attack each.")
+  test("the sacrifice heading is the prompt alone -- the dice are glyphs") {
+    assertEquals(CampaignBattle.sacrificeHeading(1),
+      "Sacrifice up to 1 warband for one attack each")
+    assertEquals(CampaignBattle.sacrificeHeading(2),
+      "Sacrifice up to 2 warbands for one attack each")
   }
 }

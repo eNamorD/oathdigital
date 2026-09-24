@@ -219,7 +219,8 @@ class CampaignProcedureSuite extends munit.FunSuite {
       DecisionId(CampaignIds.attackerPlan)))
     assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Priced(
-        DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+        DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
+          RelicId(brass))), "Attack Plan"),
         OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))
@@ -244,7 +245,8 @@ class CampaignProcedureSuite extends munit.FunSuite {
       DecisionId(CampaignIds.attackerPlan)))
     assertEquals(parkedDecision(b, first).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Priced(
-        DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+        DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
+          RelicId(brass))), "Attack Plan"),
         OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))
@@ -285,8 +287,8 @@ class CampaignProcedureSuite extends munit.FunSuite {
     assertEquals(plans.continue, OathContinue.AwaitingCampaignDecision(b.other,
       DecisionId(CampaignIds.defenderPlan)))
     assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
-      DecisionOption.Button(DecisionOptionRef.Button("title"),
-        "Oathkeeper title: add 1 defense die"),
+      DecisionOption.Badged(DecisionOption.Button(DecisionOptionRef.Button("title"),
+        "Oathkeeper title: add 1 defense die"), "Defense Plan"),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Defender: choose a battle plan, or finish")))
     assert(answer(plans.state, b.actor, CampaignIds.defenderPlan, finish).isLeft)
@@ -416,7 +418,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val game = rules(CampaignFixture.dice(faces, blanks(b)))
     val start = committed(game, b, 2)
     assertEquals(parkedDecision(b, start).query, DecisionQuery.ChooseAmount(0, 1,
-      Some(CampaignBattle.sacrificeHeading(faces, 3, 1, 1)), "Sacrifice"))
+      Some(CampaignBattle.sacrificeHeading(1)), "Sacrifice"))
   }
 
   test("zero force asks no sacrifice, and the attacker loses with nothing to kill") {

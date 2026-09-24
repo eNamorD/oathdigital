@@ -1,6 +1,6 @@
 # Vision Identity and Modifier Selection — Design
 
-**Status:** proposed
+**Status:** implemented (2026-09-24; see "As built" at the end)
 **Date:** 2026-09-24
 **Supersedes nothing.** Extends `2026-09-19-visions-conspiracy-walker-design.md`
 (Vision play) and `2026-09-20-powers-design.md` (modifier ordering).
@@ -87,12 +87,21 @@ two glyphs in the second.
 
 ## 2. Vision play offers only what is legal
 
-A Vision may be played faceup or discarded. Nothing else is legal, so nothing
-else is offered.
+A Vision may be played faceup, held as a facedown adviser, or discarded. It is
+never played to a site, so that is not offered.
+
+> **Correction (review, 2026-09-24):** this section first said a Vision may
+> only be played faceup or discarded, and Task 2 removed the facedown play
+> with the site. That was wrong: a facedown Vision adviser is how an Exile
+> holds a Vision to reveal later, and how Conspiracy is later played faceup
+> from the Advisers area (`docs/architecture/bounded-visions-and-conspiracy.md`).
+> Search is the only way to draw a Vision, so without the facedown play those
+> paths were unreachable. Only the site option is filtered now.
 
 - In `CardPlayProcedure`, the placement options for a card whose id is a
-  `VisionId` become exactly `discard` and `adviser-faceup`. Site and facedown
-  disappear from the query rather than being rejected after the click.
+  `VisionId` lose `site`: it disappears from the query rather than being
+  rejected after the click. `discard`, `adviser-faceup` and
+  `adviser-facedown` stay.
 - The `cardplay.replace.*` decision is not built for a Vision. Displacing a
   revealed Vision is forced — there is exactly one card it can replace — so
   the walk plans the displacement itself and discards the old Vision to the
@@ -106,10 +115,10 @@ decision" rule would silently change every walker that parks a single-option
 choice, and some of those parks exist so the player sees what happened.
 
 **Tests:** `VisionPlaySuite` gains (a) the placement query for a Vision lists
-exactly Discard and Play faceup; (b) playing a Vision from the temporary hand
-over a revealed Vision completes in one answer, with the displaced Vision in
-the next region's discard; (c) a Vision answer naming `site` or
-`adviser-facedown` is rejected, because the option is not declared.
+Discard and both adviser plays, and no site; (b) playing a Vision from the
+temporary hand over a revealed Vision completes in one answer, with the
+displaced Vision in the next region's discard; (c) a Vision answer naming `site` is rejected,
+because the option is not declared.
 
 ## 3. The player-area slots row
 
@@ -316,3 +325,43 @@ separate totals line, and no panel prints a face as a word.
 - **§7 removes a field** (`difficulty`) rather than adding one. Recover's
   panel reads it; the plan must convert Recover and Campaign in the same
   task, not across two.
+
+## As built
+
+Implemented by the plan
+`docs/superpowers/plans/2026-09-24-vision-identity-and-modifier-selection.md`
+(Tasks 1–9) and a review pass after it. Where the build departs from the
+sections above, this is what is true:
+
+- **§2.** Only the site option is filtered for a Vision; the facedown adviser
+  play stays (see the correction note in §2).
+- **§5.** Nearly every walker power's rule source is a `GameRule` naming its
+  own id, not the card it is printed on, so `card` is resolved by finding the
+  card in play that carries the power: the actor's own adviser or relic
+  first, else a faceup card on the board, never someone else's facedown card.
+  `modifies` is read from the windows the power hooks, preferring the action
+  being previewed. The legacy (non-walker) preview branch has no power objects
+  in hand, so its `modifies` stays `None` and the client falls back to the
+  previewed action.
+- **§6.** A plan's card is drawn above its choose button, not inside it: the
+  face is itself the button that opens the inspector, and a click meant to
+  read a plan must not commit it. The button's accessible name carries the
+  side in words ("Sticky Fire, Battle Plan").
+- **§7.** A procedure declares the roll beside each of its decisions through
+  a `rollFeedback` entry on the walker registry. Campaign declares the attack
+  roll at `campaign.sacrifice` and the defense roll at `campaign.placement`
+  and `campaign.relocation`; Muster declares the same, because Knights Errant
+  runs a Campaign inside a Muster. The amount, choose-one and distribute
+  panels all draw the roll before the question. The glyph row is
+  `role="img"`, named by the sentence it stands for.
+
+Known gaps, deliberately left:
+
+- When all defenders go to one site, the defense dice appear twice: in the
+  "Last Campaign" box and above the placement question.
+- `answeredOptions` is filled for any repeated decision, but the client heads
+  it "Plans played"; only the battle-plan window repeats today.
+- Untested: a real two-sided `BattlePlan` stamping `Battle Plan`; the
+  projector's defense feedback at placement and relocation (only the registry
+  and the client are tested); a subject card that is present but not
+  identifiable by the viewer.

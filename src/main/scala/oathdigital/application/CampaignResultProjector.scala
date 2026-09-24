@@ -21,7 +21,7 @@ private[application] object CampaignResultProjector {
     }
 
   // The wire spellings, duplicated because the application layer may not
-  // import the serialization layer (see `defenseFaceName` in
+  // import the serialization layer (see `faceName` in
   // `WalkerDecisionProjector`).
   private def attackFace(face: AttackDieFace): String = face match {
     case AttackDieFace.HollowSword => "hollow-sword"

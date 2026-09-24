@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory
 
 import oathdigital.application._
 import oathdigital.protocol.{ActorlessCommandRequest, FirstGameBootstrapRequest,
-  MajorActionPreviewRequest, MajorActionPreviewResponse, PreviewModifier}
+  MajorActionPreviewRequest, MajorActionPreviewResponse}
 import oathdigital.protocol.projection.GameProjection
 
 sealed trait AuthenticatedGameFailure extends Product with Serializable
@@ -99,8 +99,7 @@ final class AuthenticatedGameGateway(
               "major-action preview is unavailable in this phase"))))
         _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application)
       } yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
-        request.action, accepted.options.map(v => PreviewModifier(
-          v.source.stableKey, v.handlerId, v.handlerId)),
+        request.action, accepted.modifiers,
         Vector.empty, MajorActionPreviewTargets.from(projection, request,
           accepted.targets)) }
 

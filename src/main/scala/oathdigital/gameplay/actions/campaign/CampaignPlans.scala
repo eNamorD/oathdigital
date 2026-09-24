@@ -47,14 +47,28 @@ object CampaignPlans {
   def appliedMarker(ref: DecisionOptionRef): PoolKey =
     PoolKey(s"campaign.plan-applied.${ref.kind}.${ref.wireId}")
 
-  /** A card is named by the projector; the title has no card, so its button
-    * carries the label its offer authored.
+  /** The chip an offer's sides produce. A plan usable by either side is a
+    * "Battle Plan"; one side's plan says which.
     */
-  def optionOf(offered: OfferedPlan): DecisionOption = offered.offer.source match {
-    case CampaignPlanSource.Title(_) => DecisionOption.Button(
-      DecisionOptionRef.Button("title"), offered.offer.label)
-    case source => DecisionOption.forRef(refOf(source)).getOrElse(
-      throw new IllegalStateException(s"no option for plan source $source"))
+  def badgeOf(sides: Set[CampaignPlanSide]): Option[String] =
+    if (sides.size > 1) Some("Battle Plan")
+    else sides.headOption.map {
+      case CampaignPlanSide.Attacker => "Attack Plan"
+      case CampaignPlanSide.Defender => "Defense Plan"
+    }
+
+  /** A card is named by the projector; the title has no card, so its button
+    * carries the label its offer authored. Either way the option says which
+    * side's plan it is.
+    */
+  def optionOf(offered: OfferedPlan): DecisionOption = {
+    val inner = offered.offer.source match {
+      case CampaignPlanSource.Title(_) => DecisionOption.Button(
+        DecisionOptionRef.Button("title"), offered.offer.label)
+      case source => DecisionOption.forRef(refOf(source)).getOrElse(
+        throw new IllegalStateException(s"no option for plan source $source"))
+    }
+    badgeOf(offered.offer.sides).fold(inner)(DecisionOption.Badged(inner, _))
   }
 
   /** The title first, then advisers, relics, and cards at sites. */

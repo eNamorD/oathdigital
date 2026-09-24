@@ -30,12 +30,39 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
   def isOpen: Boolean = !node.hasAttribute("hidden")
 
   def show(card: CardDetails, origin: dom.html.Element): Unit = {
-    while (body.firstChild != null) body.removeChild(body.firstChild)
+    clear()
+    node.setAttribute("aria-label", "Card details")
     // Inspection reads a card, so a card the viewer is allowed to read is
     // turned over here. One the viewer cannot identify has nothing to turn.
     body.appendChild(CardFace.render(
       if (card.hidden) card else card.copy(orientation = Some("face-up"))))
     if (!card.hidden) body.appendChild(details(card))
+    open(origin)
+  }
+
+  /** The overlay over something that is not a card: a title and its printed
+    * lines. The Oath is one of these -- it is a state of the game with a
+    * printed card behind it, and faking a `CardDetails` for it would put a
+    * card face on the table that nothing can be played from.
+    */
+  def showText(title: String, lines: Vector[String],
+      origin: dom.html.Element): Unit = {
+    clear()
+    // Named for what it shows: it is not a card, so "Card details" would
+    // misname it.
+    node.setAttribute("aria-label", title)
+    val panel = element("div", "card-overlay-details")
+    panel.appendChild(text("h3", "card-overlay-name", title))
+    lines.foreach(line => RulesTextRenderer.powers(line)
+      .foreach(panel.appendChild))
+    body.appendChild(panel)
+    open(origin)
+  }
+
+  private def clear(): Unit =
+    while (body.firstChild != null) body.removeChild(body.firstChild)
+
+  private def open(origin: dom.html.Element): Unit = {
     opener = Some(origin)
     node.removeAttribute("hidden")
     close.focus()

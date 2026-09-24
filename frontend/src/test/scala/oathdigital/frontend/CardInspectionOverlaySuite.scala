@@ -178,7 +178,10 @@ class CardInspectionOverlaySuite extends munit.FunSuite {
 
   test("clicking a card face asks the installed handler to open it") {
     var opened = Vector.empty[String]
-    CardInspection.onOpen((c, _) => opened = opened :+ c.cardId)
+    CardInspection.onOpen {
+      case CardInspection.Request.Card(c, _) => opened = opened :+ c.cardId
+      case _ => ()
+    }
     val face = CardFace.render(card)
     dom.document.body.appendChild(face)
     click(face)
@@ -191,12 +194,42 @@ class CardInspectionOverlaySuite extends munit.FunSuite {
 
   test("a face-down card is clickable too") {
     var opened = Vector.empty[String]
-    CardInspection.onOpen((c, _) => opened = opened :+ c.cardKind)
+    CardInspection.onOpen {
+      case CardInspection.Request.Card(c, _) => opened = opened :+ c.cardKind
+      case _ => ()
+    }
     val face = CardFace.render(hidden)
     dom.document.body.appendChild(face)
     click(face)
     assertEquals(opened, Vector("relic"))
     CardInspection.clear()
     face.remove()
+  }
+
+  test("text mode renders a title and its lines and draws no card") {
+    val (root, overlay) = fixture()
+    val opener = origin()
+    overlay.showText("Oathkeeper of Supremacy", Vector(
+      "Rules the most sites",
+      "Successor to the Chancellor: Holds more relics"), opener)
+    assert(overlay.isOpen)
+    assertEquals(one(root, ".card-overlay-name").map(_.textContent),
+      Some("Oathkeeper of Supremacy"))
+    assertEquals(all(root, ".rules-power").map(_.textContent), Vector(
+      "Rules the most sites",
+      "Successor to the Chancellor: Holds more relics"))
+    assertEquals(all(root, ".card-face"), Vector.empty)
+    assertEquals(root.querySelector(".card-overlay").getAttribute("aria-label"),
+      "Oathkeeper of Supremacy")
+  }
+
+  test("text mode closes and returns focus like card mode") {
+    val (root, overlay) = fixture()
+    val opener = origin()
+    overlay.showText("Oathkeeper of Devotion",
+      Vector("Holds the Darkest Secret"), opener)
+    press(root.querySelector(".card-overlay"), "Escape")
+    assert(!overlay.isOpen)
+    assertEquals(dom.document.activeElement, opener)
   }
 }

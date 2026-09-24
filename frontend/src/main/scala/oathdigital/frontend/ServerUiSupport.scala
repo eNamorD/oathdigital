@@ -274,6 +274,12 @@ private[frontend] object ServerUiSupport {
     case "challenge" => "Challenge"
     case "peoples-favor" => "People's Favor"
     case "darkest-secret" => "Darkest Secret"
+    case "search" => "Search"
+    case "campaign" => "Campaign"
+    case "muster" => "Muster"
+    case "trade" => "Trade"
+    case "forge" => "Forge"
+    case "recover" => "Recover"
     case other => other
   }
 

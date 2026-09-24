@@ -1,8 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.{BannerRules, RecoverRules}
-import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
@@ -129,8 +128,7 @@ private[application] final class WalkerDecisionProjector(
         WalkerProcedureRegistry.rollDecisionId(procedure).toOption.map(
           rollId => WalkerDecisionProjection(procedure.key, rollId, "roll",
             pool = Some(pool.value), count = Some(count),
-            rollOutcome = Option.when(procedure == ActionRef.Recover)(
-              rollOutcome(ready, awaited)).flatten))
+            rollOutcome = rollOutcome(procedure, ready, awaited, rollId)))
       // Task 4: no `decisionId` comparison and no candidate discovery.
       // Whatever the parked `Decide` declares -- after every power
       // transform, since `parkedDecide` resolves the node through the same
@@ -150,8 +148,11 @@ private[application] final class WalkerDecisionProjector(
           queryProjection(ready, viewer, query, details).map(projected =>
             WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
               query = Some(projected),
-              rollOutcome = Option.when(procedure == ActionRef.Recover)(
-                rollOutcome(ready, awaited)).flatten))
+              rollOutcome = rollOutcome(procedure, ready, awaited,
+                decide.decisionId),
+              subjectCards = subjectCards(ready, viewer, decide.decisionId),
+              answeredOptions = answeredOptions(ready, viewer, pending,
+                decide.decisionId)))
         }
     }
 
@@ -274,12 +275,16 @@ private[application] final class WalkerDecisionProjector(
       details: Vector[String] = Vector.empty): Option[DecisionOptionProjection] = {
     val ref = option.ref
     def row(label: String, card: Option[CardDetailsProjection] = None,
-        extra: Vector[String] = Vector.empty) =
+        extra: Vector[String] = Vector.empty, badge: Option[String] = None) =
       Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card,
-        details ++ extra))
+        details ++ extra, badge))
     option match {
       case DecisionOption.Priced(inner, price) => optionProjection(ready,
         viewer, index, inner, details ++ PriceDetails.of(price))
+      // The badge is set after the wrapped option is described, so it survives
+      // whichever order a caller wraps price and badge in.
+      case DecisionOption.Badged(inner, badge) => optionProjection(ready,
+        viewer, index, inner, details).map(_.copy(badge = Some(badge)))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if (ready.game.current.players.exists(_.player == player.id))
@@ -352,6 +357,61 @@ private[application] final class WalkerDecisionProjector(
       located.location.container)).map(located => presentation.cardDetails(id,
         orientationOf(located.state), hidden = false))
 
+  /** The cards a decision is about, read from its own id.
+    *
+    * A card-play decision is the one question in the walker whose subject is
+    * not among its options: `cardplay.place.*` offers placement buttons and names
+    * the card only in the id it was built with. The id is the tree's own
+    * spelling of `WorldCardId` (`kind` then `value`), so this parses what the
+    * procedure wrote rather than reaching into the tree for it.
+    *
+    * A card that cannot be found, or that this viewer may not identify,
+    * projects hidden rather than being dropped: unlike an option, a subject
+    * carries no reference the client answers with, so showing a back is both
+    * honest and useful. "Hidden" means the same redacted substitute
+    * [[GamePresentationProjector.hiddenCard]] gives an unidentifiable board
+    * slot -- a generic back, not the real id and name with a flag set over
+    * them -- since `cardDetails` fills in the real catalog name and id
+    * whatever `hidden` is passed as, and the client trusts `hidden` to mean
+    * the rest of the row is safe to skip reading.
+    */
+  private def subjectCards(ready: ReadyGame, viewer: Option[PlayerId],
+      decisionId: String): Vector[CardDetailsProjection] = {
+    val index = CardIndex.from(ready.game).toOption
+    val prefixes = Vector("cardplay.place.", "cardplay.replace.")
+    prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>
+      decisionId.stripPrefix(prefix).split("\\.", 2).toVector match {
+        case Vector("denizen", value) => Vector(DenizenId(value): CardId)
+        case Vector("vision", value) => Vector(VisionId(value): CardId)
+        case _ => Vector.empty[CardId]
+      }
+    }.map { id =>
+      index.flatMap(_.get(id)) match {
+        case Some(located) =>
+          val orientation = orientationOf(located.state)
+          if (presentation.identifiesCard(ready, viewer, id, orientation,
+              located.location.container))
+            presentation.cardDetails(id, orientation, hidden = false)
+          else presentation.hiddenCard(presentation.cardKind(id))
+        case None => presentation.hiddenCard(presentation.cardKind(id))
+      }
+    }
+  }
+
+  /** Every answer already recorded at `decisionId`, in answer order, described
+    * the way the decision's own options are. See `answeredOptions`' doc on the
+    * projection for why a button is dropped rather than labelled.
+    */
+  private def answeredOptions(ready: ReadyGame, viewer: Option[PlayerId],
+      pending: PendingTree, decisionId: String)
+      : Vector[DecisionOptionProjection] = {
+    val index = CardIndex.from(ready.game).toOption
+    pending.answered.collect {
+      case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
+    }.flatMap(DecisionOption.forRef)
+      .flatMap(optionProjection(ready, viewer, index, _))
+  }
+
   private def orientationOf(state: Option[CardState]): Option[Orientation] =
     state match {
       case Some(DenizenState(_, orientation, _)) => Some(orientation)
@@ -360,54 +420,44 @@ private[application] final class WalkerDecisionProjector(
       case _ => None
     }
 
-  /** The accumulated roll feedback for `actor`'s parked Recover (I5): the
-    * dice faces and derived score `ProcedureWalker` has written into
-    * `CurrentGameState.rollOutcomes` for `RecoverProcedure.recoverPool` SO
-    * FAR (empty/zero before the first roll -- the difficulty is still worth
-    * showing then), plus the actor's current site's Recover difficulty --
-    * the same two values `RecoverProcedure.build`/`rebuild` read to size the
-    * tree and `RecoverRules.difficulty` exposes.
+  /** The roll the parked decision declares it is about, with the faces
+    * accumulated in that pool so far.
     *
-    * `None` only when the actor has no pawn site or that site has no
-    * configured difficulty, which should not happen for an already-started
-    * Recover (`RecoverProcedure.build` requires both) -- this mirrors that
-    * method's own `Option`-returning reads rather than asserting.
-    *
-    * This reads `RecoverProcedure`/`RecoverRules` directly, and since Task 4
-    * replaced the projector's candidate discovery with `query` it is now the
-    * ONLY action-specific expression left in this file. That is deliberate
-    * rather than leftover: roll feedback is Recover's own pool, site and
-    * difficulty story, and a second rolling action would need its own. It is
-    * also why it is worth keeping separate from the decision projection
-    * above, which must stay generic -- a `decisionId` or `ProcedureRef`
-    * comparison deciding what to OFFER belongs nowhere in this layer.
-    *
-    * Only Recover has this feedback; the caller gates on the procedure.
+    * The procedure says which pool and why (`WalkerRollFeedback`); this reads
+    * the outcome and spells the faces. `RecoverRules` and `ActionRef.Recover`
+    * no longer appear here, which is the point: the last action-specific
+    * expression in this file moved into the registry beside the procedure's
+    * other declarations.
     */
-  private def rollOutcome(ready: ReadyGame, actor: PlayerId)
-      : Option[WalkerRollOutcomeProjection] = for {
-    site <- RecoverProcedure.actorSite(ready, actor)
-    difficulty <- RecoverRules.difficulty(catalog, site)
-  } yield {
-    val outcome = ready.game.current.rollOutcomes.get(RecoverProcedure.recoverPool)
-    WalkerRollOutcomeProjection(
-      faces = outcome.fold(Vector.empty[DefenseDieFace])(_.faces.collect {
-        case face: DefenseDieFace => face
-      }).map(defenseFaceName),
-      score = outcome.fold(0)(_.score),
-      difficulty = difficulty)
-  }
+  private def rollOutcome(procedure: ProcedureRef, ready: ReadyGame,
+      actor: PlayerId, decisionId: String)
+      : Option[WalkerRollOutcomeProjection] =
+    WalkerProcedureRegistry.rollFeedback(procedure, catalog, ready, actor,
+      decisionId).map { feedback =>
+      val outcome = ready.game.current.rollOutcomes.get(feedback.pool)
+      WalkerRollOutcomeProjection(
+        pool = feedback.pool.value,
+        faces = outcome.fold(Vector.empty[DieFace])(_.faces).flatMap(faceName),
+        score = outcome.fold(0)(_.score),
+        target = feedback.target,
+        detail = feedback.detail)
+    }
 
-  /** Local duplicate of `WalkerEventCodec`'s (serialization-layer)
-    * `encodeDefenseFace` vocabulary: the application layer may not import
-    * the serialization layer (`BackendArchitectureSuite`), and
-    * `CampaignResultProjector` follows the same precedent for Campaign's dice.
+  /** Local duplicate of `WalkerEventCodec`'s (serialization-layer) face
+    * vocabulary: the application layer may not import the serialization layer
+    * (`BackendArchitectureSuite`), and `CampaignResultProjector` follows the
+    * same precedent for Campaign's dice. `DieFace` is open, so a face family
+    * neither pool rolls spells as nothing rather than as a guess.
     */
-  private def defenseFaceName(value: DefenseDieFace): String = value match {
-    case DefenseDieFace.Blank => "blank"
-    case DefenseDieFace.OneShield => "one-shield"
-    case DefenseDieFace.TwoShields => "two-shields"
-    case DefenseDieFace.Doubler => "doubler"
+  private def faceName(value: DieFace): Vector[String] = value match {
+    case DefenseDieFace.Blank => Vector("blank")
+    case DefenseDieFace.OneShield => Vector("one-shield")
+    case DefenseDieFace.TwoShields => Vector("two-shields")
+    case DefenseDieFace.Doubler => Vector("doubler")
+    case AttackDieFace.HollowSword => Vector("hollow-sword")
+    case AttackDieFace.OneSword => Vector("one-sword")
+    case AttackDieFace.TwoSwordsSkull => Vector("two-swords-skull")
+    case _ => Vector.empty
   }
 }
 

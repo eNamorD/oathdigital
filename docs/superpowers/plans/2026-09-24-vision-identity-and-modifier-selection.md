@@ -22,9 +22,9 @@
 - **Glyph tokens are a closed vocabulary of 17**, listed in `frontend/src/main/scala/oathdigital/frontend/TokenSprite.scala`. `favor` and `secret` are in it. Do not invent a token; `relic` does not exist.
 - **The engine's Vision victory rules are out of scope.** `VisionVictoryEligibility` and `uniquePositiveLeader` are not touched by any task here.
 - **Do not raise the model or effort level of any subagent above this session's** (project `CLAUDE.md`).
-- **Commit messages end with** `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
+- **Commit messages end with** `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - **Other sessions commit to `main` in this repository.** Run `git log --oneline -1` and confirm HEAD is what you expect before any `--amend`, `reset` or `rebase`. Prefer a new commit.
-- **`docs/superpowers/` is gitignored** in this repository, so this plan and its spec are untracked on purpose. Do not `git add -f` them.
+- **`docs/superpowers/` is tracked** in this repository; this plan and its spec are committed on `main`. Commit any edit you make to the plan.
 
 ## File Structure
 
@@ -38,7 +38,7 @@
 | `shared/.../MajorActionPreviewProtocol.scala` | `PreviewModifier.card` and `.modifies`, and their codec (Task 6). |
 | `src/.../model/Decisions.scala` | `DecisionOption.Badged` (Task 7). |
 | `src/.../model/CampaignTypes.scala` | `CampaignPlanOffer.sides` (Task 7). |
-| `src/.../gameplay/actions/cardplay/CardPlayProcedure.scala` | A Vision's placement query lists only Discard and Play faceup (Task 2). |
+| `src/.../gameplay/actions/cardplay/CardPlayProcedure.scala` | A Vision's placement query drops the site option (Task 2; corrected in review -- see spec §2). |
 | `src/.../gameplay/actions/CardPlay.scala` | `planVision` derives the displaced Vision instead of requiring it as an answer (Task 2). |
 | `src/.../gameplay/actions/campaign/CampaignPlans.scala` | The badge a plan's sides produce (Task 7). |
 | `src/.../gameplay/actions/campaign/CampaignBattle.scala` | `sacrificeHeading` reduced to the prompt (Task 9). |
@@ -71,7 +71,7 @@ The printed text for the five Visions. Pure data in the shared module; the proje
 - Consumes: nothing from earlier tasks.
 - Produces: `VisionCardPresentation.byId: Map[String, VisionCardPresentation]` keyed by the five ids `vision:vision-of-conquest`, `vision:vision-of-sanctuary`, `vision:vision-of-rebellion`, `vision:vision-of-faith`, `vision:conspiracy`; each value is `VisionCardPresentation(name: String, rulesText: String)`. Unchanged shape.
 
-- [ ] **Step 1: Write the failing shared test**
+- [x] **Step 1: Write the failing shared test**
 
 Create `shared/src/test/scala/oathdigital/protocol/VisionCardPresentationSuite.scala`:
 
@@ -121,12 +121,12 @@ class VisionCardPresentationSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.VisionCardPresentationSuite"`
 Expected: FAIL — the current text reads "Win if you uniquely rule the most sites, and rule at least one site."
 
-- [ ] **Step 3: Replace the five entries**
+- [x] **Step 3: Replace the five entries**
 
 Rewrite the body of `VisionCardPresentation.byId` in `shared/src/main/scala/oathdigital/protocol/projection/VisionCardPresentation.scala`:
 
@@ -156,12 +156,12 @@ object VisionCardPresentation {
 }
 ```
 
-- [ ] **Step 4: Run the shared test to verify it passes**
+- [x] **Step 4: Run the shared test to verify it passes**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.VisionCardPresentationSuite"`
 Expected: PASS
 
-- [ ] **Step 5: Write the failing frontend rendering test**
+- [x] **Step 5: Write the failing frontend rendering test**
 
 Append to `frontend/src/test/scala/oathdigital/frontend/RulesTextRendererSuite.scala`, inside the existing class:
 
@@ -180,17 +180,17 @@ Append to `frontend/src/test/scala/oathdigital/frontend/RulesTextRendererSuite.s
 
 If `dom` is not already imported in that file, add `import org.scalajs.dom` at the top.
 
-- [ ] **Step 6: Run it**
+- [x] **Step 6: Run it**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.RulesTextRendererSuite"`
 Expected: PASS. `RulesTextRenderer` already splits on blank lines and renders `[token]` glyphs, so this test is a guard on the new text, not a request for new behaviour. If the glyph `aria-label`s differ from `favor`/`secret`, read `TokenSprite.label` and assert what it actually returns rather than changing the renderer.
 
-- [ ] **Step 7: Run the gate**
+- [x] **Step 7: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: all green. `GamePresentationProjectorPrintedFacesSuite` reads `VisionCardPresentation.byId` rather than hardcoding strings, so it follows the new text.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add shared/src/main/scala/oathdigital/protocol/projection/VisionCardPresentation.scala shared/src/test/scala/oathdigital/protocol/VisionCardPresentationSuite.scala frontend/src/test/scala/oathdigital/frontend/RulesTextRendererSuite.scala
@@ -199,12 +199,17 @@ git add shared/src/main/scala/oathdigital/protocol/projection/VisionCardPresenta
 ```bash
 git commit -m "fix(visions): print the text the Vision cards carry
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
 
 ### Task 2: A Vision offers only the plays that are legal
+
+> **Corrected in review (2026-09-24):** as first written, this task also removed
+> `adviser-facedown` for a Vision. That play is legal -- it is how an Exile
+> holds a Vision to reveal later -- so only `site` is filtered now. See the
+> correction note in spec §2. The steps below are kept as they were executed.
 
 A Vision may be played faceup or discarded. Today the placement query offers four buttons and rejects the illegal two after the click, and displacing a revealed Vision asks a one-option "Choose a card to discard". Both go.
 
@@ -219,7 +224,7 @@ Read `src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.sca
 - Consumes: nothing from earlier tasks.
 - Produces: the decision `cardplay.place.vision.<id>` now declares exactly two `DecisionOption.Button`s, `discard` ("Discard") and `adviser-faceup` ("Play faceup"), and no `cardplay.replace.vision.<id>` decision is ever built.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `src/test/scala/oathdigital/gameplay/VisionPlaySuite.scala`. Use the suite's existing fixture helpers for building a `ReadyGame` with a Vision in the actor's temporary hand — read the file first and follow whatever it already does to reach a parked `cardplay.place.*` decision; the three assertions below are what must hold:
 
@@ -247,12 +252,12 @@ Add to `src/test/scala/oathdigital/gameplay/VisionPlaySuite.scala`. Use the suit
   }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.VisionPlaySuite"`
 Expected: FAIL — the first with four options, the second because the walk parks again on `cardplay.replace.vision.*`.
 
-- [ ] **Step 3: Narrow the Vision's placement options**
+- [x] **Step 3: Narrow the Vision's placement options**
 
 In `CardPlayProcedure.childrenFor`, filter the candidate placements for a Vision immediately after `candidates` is built:
 
@@ -276,7 +281,7 @@ Then replace every remaining use of `candidates` inside `childrenFor` with `offe
         else ref.flatMap(settled(_, card, replaced))
 ```
 
-- [ ] **Step 4: Derive the displaced Vision instead of asking for it**
+- [x] **Step 4: Derive the displaced Vision instead of asking for it**
 
 In `CardPlay.planVision`, the `Origin.TemporaryHand if orientation == Orientation.FaceUp` branch currently requires `replace == expected`. Make the replacement derived, so `legalChoices` reports the placement as directly legal and offers no replacement candidates:
 
@@ -300,17 +305,17 @@ In `CardPlay.planVision`, the `Origin.TemporaryHand if orientation == Orientatio
         }
 ```
 
-- [ ] **Step 5: Run the suite**
+- [x] **Step 5: Run the suite**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.VisionPlaySuite"`
 Expected: PASS. If the second test still parks, check `CardPlay.legalChoices`: with the placement now directly legal, `direct` is true and `optional` is false, so `replacements` is `Vector.empty` and `CardPlayProcedure` builds no `Decide` for it.
 
-- [ ] **Step 6: Run the gate**
+- [x] **Step 6: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green. Suites that drove a Vision play through the replacement answer must be updated to stop answering it — that is the behaviour change, not a regression.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.scala src/main/scala/oathdigital/gameplay/actions/CardPlay.scala src/test/scala/oathdigital/gameplay/VisionPlaySuite.scala
@@ -319,7 +324,7 @@ git add src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.s
 ```bash
 git commit -m "fix(visions): offer only the plays a Vision has
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -345,7 +350,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `CardInspection.open(card: CardDetails, origin: dom.html.Element): Unit` — unchanged signature.
   - `CardInspectionOverlay.showText(title: String, lines: Vector[String], origin: dom.html.Element): Unit`
 
-- [ ] **Step 1: Write the failing shared test**
+- [x] **Step 1: Write the failing shared test**
 
 Create `shared/src/test/scala/oathdigital/protocol/OathkeeperPresentationSuite.scala`:
 
@@ -384,12 +389,12 @@ class OathkeeperPresentationSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.OathkeeperPresentationSuite"`
 Expected: FAIL — `OathkeeperPresentation` does not exist.
 
-- [ ] **Step 3: Write the presentation map**
+- [x] **Step 3: Write the presentation map**
 
 Create `shared/src/main/scala/oathdigital/protocol/projection/OathkeeperPresentation.scala`:
 
@@ -427,12 +432,12 @@ object OathkeeperPresentation {
 }
 ```
 
-- [ ] **Step 4: Run the shared test to verify it passes**
+- [x] **Step 4: Run the shared test to verify it passes**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.OathkeeperPresentationSuite"`
 Expected: PASS
 
-- [ ] **Step 5: Write the failing overlay test**
+- [x] **Step 5: Write the failing overlay test**
 
 Append to `frontend/src/test/scala/oathdigital/frontend/CardInspectionOverlaySuite.scala`, inside the existing class:
 
@@ -465,12 +470,12 @@ Append to `frontend/src/test/scala/oathdigital/frontend/CardInspectionOverlaySui
 
 If the existing suite drives Escape through a different node or handler, copy whatever the card-mode close test does — the point of this test is that text mode reuses that machinery rather than adding its own.
 
-- [ ] **Step 6: Run it to verify it fails**
+- [x] **Step 6: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.CardInspectionOverlaySuite"`
 Expected: FAIL — `showText` is not a member of `CardInspectionOverlay`.
 
-- [ ] **Step 7: Add the text mode**
+- [x] **Step 7: Add the text mode**
 
 In `CardInspectionOverlay`, extract the open/focus tail the two modes share and add `showText`:
 
@@ -511,7 +516,7 @@ In `CardInspectionOverlay`, extract the open/focus tail the two modes share and 
   }
 ```
 
-- [ ] **Step 8: Widen the handler slot**
+- [x] **Step 8: Widen the handler slot**
 
 Replace the body of `frontend/src/main/scala/oathdigital/frontend/CardInspection.scala`:
 
@@ -556,7 +561,7 @@ private[frontend] object CardInspection {
 }
 ```
 
-- [ ] **Step 9: Rewire the shell**
+- [x] **Step 9: Rewire the shell**
 
 Replace `frontend/src/main/scala/oathdigital/frontend/GameTableShell.scala:89`:
 
@@ -568,7 +573,7 @@ Replace `frontend/src/main/scala/oathdigital/frontend/GameTableShell.scala:89`:
   }
 ```
 
-- [ ] **Step 10: Print the Oath's real title in the shared bank**
+- [x] **Step 10: Print the Oath's real title in the shared bank**
 
 In `frontend/src/main/scala/oathdigital/frontend/WorldBoardRenderer.scala`, delete the whole `oathName` definition (and its doc comment) at lines 279-285, and change the shared-bank line to read the printed title:
 
@@ -586,17 +591,17 @@ Leave the identity-line `badge.setAttribute("title", ...)` call alone for now �
            oathdigital.protocol.projection.OathkeeperPresentation.title(oath.goal))
 ```
 
-- [ ] **Step 11: Run the frontend suites**
+- [x] **Step 11: Run the frontend suites**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.CardInspectionOverlaySuite oathdigital.frontend.PlayerBoardSuite"`
 Expected: PASS. If `PlayerBoardSuite` asserted the string `Oath of The People`, change the expectation to `Oathkeeper of the People` — that is the point of this task.
 
-- [ ] **Step 12: Run the gate**
+- [x] **Step 12: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green.
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add shared/src/main/scala/oathdigital/protocol/projection/OathkeeperPresentation.scala shared/src/test/scala/oathdigital/protocol/OathkeeperPresentationSuite.scala frontend/src/main/scala/oathdigital/frontend/CardInspection.scala frontend/src/main/scala/oathdigital/frontend/CardInspectionOverlay.scala frontend/src/main/scala/oathdigital/frontend/GameTableShell.scala frontend/src/main/scala/oathdigital/frontend/WorldBoardRenderer.scala frontend/src/test/scala/oathdigital/frontend/CardInspectionOverlaySuite.scala
@@ -605,7 +610,7 @@ git add shared/src/main/scala/oathdigital/protocol/projection/OathkeeperPresenta
 ```bash
 git commit -m "feat(frontend): name the Oath as its card prints it
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -623,7 +628,7 @@ A title and a Vision are states of the player, not cards in a hand. Give them a 
 - Consumes: `CardInspection.openText(title, lines, origin)` and `CardInspection.open(card, origin)` (Task 3); `OathkeeperPresentation.byGoal` / `.title` (Task 3).
 - Produces: DOM only. `div.player-slots` holds zero to two `<button>`s: `.player-title` (unchanged class, moved) and `.player-slot-vision`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `frontend/src/test/scala/oathdigital/frontend/PlayerBoardSuite.scala`. Follow the suite's existing fixture for building a `GameProjection` with a `PlayerBoardProjection`; the assertions are:
 
@@ -673,12 +678,12 @@ Add to `frontend/src/test/scala/oathdigital/frontend/PlayerBoardSuite.scala`. Fo
 
 The `data-card-id` attribute in the third assertion is what `CardFace.render` writes; if it writes a different attribute, read `CardFace.scala` and assert on that one instead.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.PlayerBoardSuite"`
 Expected: FAIL — there is no `.player-slots` element.
 
-- [ ] **Step 3: Build the slots row**
+- [x] **Step 3: Build the slots row**
 
 In `WorldBoardRenderer`, replace the badge block inside the identity line (lines 52-60) and the `revealedVision` line in `.board-cards` (lines 82-83). The title moves down, the Vision becomes a pill, and the row is only appended when it has something in it:
 
@@ -718,7 +723,7 @@ In `WorldBoardRenderer`, replace the badge block inside the identity line (lines
 
 `button` is already imported from `ServerUiSupport` in this file. A hidden Vision cannot reach here — `revealedVision` is projected only when it is face up — but if `card.hidden` is somehow true the pill would print `Facedown vision`, which is correct rather than disclosing.
 
-- [ ] **Step 4: Style the row**
+- [x] **Step 4: Style the row**
 
 Append to `frontend/styles.css`, next to the existing `.player-title` rules:
 
@@ -741,17 +746,17 @@ Append to `frontend/styles.css`, next to the existing `.player-title` rules:
   cursor: pointer; }
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.PlayerBoardSuite"`
 Expected: PASS
 
-- [ ] **Step 6: Run the gate**
+- [x] **Step 6: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green. `SiteBoxLayoutSuite` and `PanelPlacementSuite` may pin the player strip's structure; update expectations to include the new row rather than removing it.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/main/scala/oathdigital/frontend/WorldBoardRenderer.scala frontend/styles.css frontend/src/test/scala/oathdigital/frontend/PlayerBoardSuite.scala
@@ -760,7 +765,7 @@ git add frontend/src/main/scala/oathdigital/frontend/WorldBoardRenderer.scala fr
 ```bash
 git commit -m "feat(frontend): give the title and the Vision their own row
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -782,7 +787,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: nothing from earlier tasks.
 - Produces: `WalkerDecisionProjection.subjectCards: Vector[CardDetailsProjection] = Vector.empty`, wire key `"subjectCards"`, for Tasks 7 and 8 which add further keys to the same two `exact(...)` sets.
 
-- [ ] **Step 1: Write the failing codec test**
+- [x] **Step 1: Write the failing codec test**
 
 Add to `shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala`, following its existing round-trip style:
 
@@ -800,12 +805,12 @@ Add to `shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala
 
 Match the suite's existing imports and its way of reaching `ActionProjectionCodec` — if the codec object is `private[projection]`, add this test beside the existing walker-decision round-trip in whatever file already reaches it rather than widening visibility.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.ProjectionProtocolSuite"`
 Expected: FAIL — `subjectCards` is not a member of `WalkerDecisionProjection`.
 
-- [ ] **Step 3: Add the field and its codec keys**
+- [x] **Step 3: Add the field and its codec keys**
 
 In `ActionProjectionDtos.scala`, extend `WalkerDecisionProjection` and document it:
 
@@ -855,12 +860,12 @@ In `ActionProjectionCodec.scala`, add the key to both sides:
 
 `array`/`traverse`/`encoded` are the helpers `decodeMinorActions` already uses in this file (`ActionProjectionCodec.scala:114-115`); the encoder always writes the key, so `array` (which requires it) is correct rather than a defaulting read.
 
-- [ ] **Step 4: Run the codec test to verify it passes**
+- [x] **Step 4: Run the codec test to verify it passes**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.ProjectionProtocolSuite"`
 Expected: PASS
 
-- [ ] **Step 5: Write the failing projector test**
+- [x] **Step 5: Write the failing projector test**
 
 Add to `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala`, using the suite's existing fixture for a parked `PlayFacedownAdviser` walk:
 
@@ -889,12 +894,12 @@ The second case reaches the projector only if the opponent is a co-owner of the 
   }
 ```
 
-- [ ] **Step 6: Run it to verify it fails**
+- [x] **Step 6: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: FAIL — `subjectCards` is empty.
 
-- [ ] **Step 7: Fill it in the projector**
+- [x] **Step 7: Fill it in the projector**
 
 In `WalkerDecisionProjector.parked`, the `case None =>` branch, pass the subjects alongside the query:
 
@@ -946,12 +951,12 @@ and add the resolver next to `card`:
 
 Confirm the id spelling before writing the parse: `CardPlayProcedure` builds `s"cardplay.place.${card.kind}.${card.value}"`, and `DenizenId.kind`/`VisionId.kind` are `"denizen"` and `"vision"`. If a `WorldCardId.value` can itself contain a dot, the `split("\\.", 2)` above is already correct because it splits once.
 
-- [ ] **Step 8: Run the projector test**
+- [x] **Step 8: Run the projector test**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: PASS
 
-- [ ] **Step 9: Write the failing frontend test**
+- [x] **Step 9: Write the failing frontend test**
 
 Add to `frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuite.scala`:
 
@@ -978,12 +983,12 @@ Add to `frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuit
   }
 ```
 
-- [ ] **Step 10: Run it to verify it fails**
+- [x] **Step 10: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerChoicePanelRenderSuite"`
 Expected: FAIL — no `.decision-subject` element.
 
-- [ ] **Step 11: Draw the subjects**
+- [x] **Step 11: Draw the subjects**
 
 In `WalkerPanelSupport.renderChooseOnePanel`, between the heading and the options:
 
@@ -1011,17 +1016,17 @@ Add to `frontend/styles.css`, beside `.decision-cards`:
   margin-bottom: 0.4em; }
 ```
 
-- [ ] **Step 12: Run the frontend test**
+- [x] **Step 12: Run the frontend test**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerChoicePanelRenderSuite"`
 Expected: PASS
 
-- [ ] **Step 13: Run the gate**
+- [x] **Step 13: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green.
 
-- [ ] **Step 14: Commit**
+- [x] **Step 14: Commit**
 
 ```bash
 git add shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala frontend/styles.css frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuite.scala
@@ -1030,7 +1035,7 @@ git add shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDt
 ```bash
 git commit -m "feat(walker): show the card a placement question is about
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1058,7 +1063,7 @@ All three route sites build `PreviewModifier(sourceKey, handlerId, handlerId)`, 
   - `PreviewModifier(sourceKey: String, handlerId: String, description: String, card: Option[CardDetailsProjection] = None, modifies: Option[String] = None)`
   - `MajorActionPreviewAccepted.modifiers: Vector[PreviewModifier] = Vector.empty` — what all three routes now send instead of mapping `options` themselves.
 
-- [ ] **Step 1: Write the failing codec test**
+- [x] **Step 1: Write the failing codec test**
 
 Add to `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, beside the existing preview round-trip at line 182:
 
@@ -1076,19 +1081,19 @@ Add to `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, 
   }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.CommandProtocolSuite"`
 Expected: FAIL — `PreviewModifier` takes three arguments.
 
-- [ ] **Step 3: Widen the card codec's visibility**
+- [x] **Step 3: Widen the card codec's visibility**
 
 The preview codec lives in `oathdigital.protocol` and the card codec in `oathdigital.protocol.projection`; both already fail with `ProtocolDecodeFailure`, so only visibility is in the way. Change two declarations:
 
 - `shared/.../projection/ProjectionCodecSupport.scala:6`: `private[projection] object ProjectionCodecSupport` → `private[protocol] object ProjectionCodecSupport`
 - `shared/.../projection/WorldProjectionCodec.scala:5`: `private[projection] object WorldProjectionCodec` → `private[protocol] object WorldProjectionCodec`
 
-- [ ] **Step 4: Extend the payload and its codec**
+- [x] **Step 4: Extend the payload and its codec**
 
 In `MajorActionPreviewProtocol.scala`:
 
@@ -1139,12 +1144,12 @@ and in `decodeResponse`:
 
 This codec is hand-rolled and does not use `exact(...)`, so no key set needs updating here — but `decodeCard` does use it, which is why the card must be encoded by `encodeCard` and not by hand.
 
-- [ ] **Step 5: Run the codec test**
+- [x] **Step 5: Run the codec test**
 
 Run: `./sbtw "sharedJVM/testOnly oathdigital.protocol.CommandProtocolSuite"`
 Expected: PASS
 
-- [ ] **Step 6: Describe the modifiers server-side**
+- [x] **Step 6: Describe the modifiers server-side**
 
 Create `src/main/scala/oathdigital/application/PreviewModifierDescriptions.scala`:
 
@@ -1203,7 +1208,7 @@ private[application] final class PreviewModifierDescriptions(
 
 If `presentation.cardDetails` is not visible from this package, mirror the accessor `WalkerDecisionProjector` uses (`GamePresentationProjector.cardDetails`) — both classes are in `oathdigital.application`, so it already is.
 
-- [ ] **Step 7: Carry the descriptions through the preview result**
+- [x] **Step 7: Carry the descriptions through the preview result**
 
 In `GameApplicationService.scala`, add the field to the result type:
 
@@ -1239,7 +1244,7 @@ and fill it in `preview`, in both branches, after `acceptPreview` has returned:
 
 `descriptions` is a `private val descriptions = new PreviewModifierDescriptions(presentation)` on the service, built from whatever `GamePresentationProjector` the service already holds; if it holds none, construct one the same way the projector it already owns does. The legacy branch passes no powers, so a legacy modifier gets its card and name but no `modifies` — that branch serves actions that are not on the walker, and the frontend falls back to the previewed action's own label.
 
-- [ ] **Step 8: Send the described modifiers from all three routes**
+- [x] **Step 8: Send the described modifiers from all three routes**
 
 Replace the `accepted.options.map(v => PreviewModifier(...))` expression with `accepted.modifiers` at:
 
@@ -1249,12 +1254,12 @@ Replace the `accepted.options.map(v => PreviewModifier(...))` expression with `a
 
 Then delete the now-unused `PreviewModifier` import from any of those three files that no longer names the type.
 
-- [ ] **Step 9: Run the backend suites**
+- [x] **Step 9: Run the backend suites**
 
 Run: `./sbtw "test"`
 Expected: green. A route suite asserting `description == handlerId` must be updated to assert the card's name — that is the change.
 
-- [ ] **Step 10: Write the failing frontend test**
+- [x] **Step 10: Write the failing frontend test**
 
 Add to `frontend/src/test/scala/oathdigital/frontend/ModifierSelectionStateSuite.scala` (or the suite that renders the ordering panel, if that is a different file — search for `modifier-toggle` in `frontend/src/test`):
 
@@ -1275,12 +1280,12 @@ Add to `frontend/src/test/scala/oathdigital/frontend/ModifierSelectionStateSuite
 
 `renderOrderingPanel` is whatever fixture the suite already uses to reach the `currentModifierWorkflow.exists(_.ordering)` branch of `ActionDecisionRenderer`; reuse it rather than writing a new one.
 
-- [ ] **Step 11: Run it to verify it fails**
+- [x] **Step 11: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.ModifierSelectionStateSuite"`
 Expected: FAIL — the option is a plain button labelled with the handler id.
 
-- [ ] **Step 12: Render the option as a card**
+- [x] **Step 12: Render the option as a card**
 
 In `ActionDecisionRenderer`, inside `workflow.selection.candidates.foreach`, replace the `choose` button's construction so the card and caption go inside it and the ordinal prefix stays:
 
@@ -1338,17 +1343,17 @@ Add to `frontend/styles.css`:
 
 `pointer-events: none` on the nested face is what keeps a click on the card toggling the modifier instead of opening the inspector — the ordering panel is a selection, not a reading surface.
 
-- [ ] **Step 13: Run the frontend test**
+- [x] **Step 13: Run the frontend test**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.ModifierSelectionStateSuite"`
 Expected: PASS
 
-- [ ] **Step 14: Run the gate**
+- [x] **Step 14: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green.
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add shared/src/main/scala/oathdigital/protocol/MajorActionPreviewProtocol.scala shared/src/main/scala/oathdigital/protocol/projection/WorldProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/projection/ProjectionCodecSupport.scala shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala src/main/scala/oathdigital/application/PreviewModifierDescriptions.scala src/main/scala/oathdigital/application/GameApplicationService.scala src/main/scala/oathdigital/server frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala frontend/src/main/scala/oathdigital/frontend/ServerUiSupport.scala frontend/styles.css frontend/src/test/scala/oathdigital/frontend/ModifierSelectionStateSuite.scala
@@ -1357,7 +1362,7 @@ git add shared/src/main/scala/oathdigital/protocol/MajorActionPreviewProtocol.sc
 ```bash
 git commit -m "feat(powers): offer a modifier as its card and the action it changes
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1386,7 +1391,7 @@ Battle plans stay a one-at-a-time loop — pricing is a dry run against the stat
   - `CampaignPlans.badgeOf(sides: Set[CampaignPlanSide]): Option[String]` returning exactly `Some("Attack Plan")`, `Some("Defense Plan")`, `Some("Battle Plan")` or `None`
   - `DecisionOptionProjection.badge: Option[String] = None`, wire key `"badge"`
 
-- [ ] **Step 1: Write the failing engine test**
+- [x] **Step 1: Write the failing engine test**
 
 Add to `src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala`:
 
@@ -1411,12 +1416,12 @@ Add to `src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala`:
   }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.CampaignPlansSuite"`
 Expected: FAIL — `badgeOf` and `Badged` do not exist.
 
-- [ ] **Step 3: Let an offer carry its sides**
+- [x] **Step 3: Let an offer carry its sides**
 
 In `src/main/scala/oathdigital/model/CampaignTypes.scala`:
 
@@ -1441,7 +1446,7 @@ In `BattlePlan.contributions`, stamp it on every offer:
           .map(_.copy(sides = sides))))
 ```
 
-- [ ] **Step 4: Add the badged option**
+- [x] **Step 4: Add the badged option**
 
 In `src/main/scala/oathdigital/model/Decisions.scala`, beside `Priced`:
 
@@ -1458,7 +1463,7 @@ In `src/main/scala/oathdigital/model/Decisions.scala`, beside `Priced`:
   }
 ```
 
-- [ ] **Step 5: Set the badge from the sides**
+- [x] **Step 5: Set the badge from the sides**
 
 In `CampaignPlans`:
 
@@ -1488,12 +1493,12 @@ In `CampaignPlans`:
   }
 ```
 
-- [ ] **Step 6: Run the engine test**
+- [x] **Step 6: Run the engine test**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.CampaignPlansSuite"`
 Expected: PASS
 
-- [ ] **Step 7: Write the failing projection test**
+- [x] **Step 7: Write the failing projection test**
 
 Add to `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala`:
 
@@ -1511,12 +1516,12 @@ Add to `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scal
 
 Use whatever `ready`/`owner` fixture the suite already builds with a relic in play; `optionProjection` is `private[application]` so the suite can call it directly, as it already does elsewhere.
 
-- [ ] **Step 8: Run it to verify it fails**
+- [x] **Step 8: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: FAIL — `badge` is not a member of `DecisionOptionProjection`.
 
-- [ ] **Step 9: Add the wire field**
+- [x] **Step 9: Add the wire field**
 
 In `ActionProjectionDtos.scala`:
 
@@ -1554,7 +1559,7 @@ In `ActionProjectionCodec.scala`:
   } yield DecisionOptionProjection(kind, id, label, card, details, badge)
 ```
 
-- [ ] **Step 10: Project the badge**
+- [x] **Step 10: Project the badge**
 
 In `WalkerDecisionProjector.optionProjection`, add the case beside `Priced` and thread it through `row`:
 
@@ -1575,12 +1580,12 @@ In `WalkerDecisionProjector.optionProjection`, add the case beside `Priced` and 
 
 The other `row(...)` call sites keep their current arguments — `badge` defaults to `None`.
 
-- [ ] **Step 11: Run the projector test**
+- [x] **Step 11: Run the projector test**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: PASS
 
-- [ ] **Step 12: Write the failing frontend test**
+- [x] **Step 12: Write the failing frontend test**
 
 Add to `frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuite.scala`:
 
@@ -1608,12 +1613,12 @@ Add to `frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuit
   }
 ```
 
-- [ ] **Step 13: Run it to verify it fails**
+- [x] **Step 13: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerChoicePanelRenderSuite"`
 Expected: FAIL — `DecisionOptionState` takes five arguments and no chip is drawn.
 
-- [ ] **Step 14: Draw the card and the chip**
+- [x] **Step 14: Draw the card and the chip**
 
 In `WalkerPanelSupport.renderChooseOnePanel`, inside `query.options.foreach`, after the favor-bank glyph block:
 
@@ -1663,17 +1668,17 @@ Add to `frontend/styles.css`:
   color: #fff; }
 ```
 
-- [ ] **Step 15: Run the frontend test**
+- [x] **Step 15: Run the frontend test**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerChoicePanelRenderSuite"`
 Expected: PASS
 
-- [ ] **Step 16: Run the gate**
+- [x] **Step 16: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green.
 
-- [ ] **Step 17: Commit**
+- [x] **Step 17: Commit**
 
 ```bash
 git add src/main/scala/oathdigital/model/CampaignTypes.scala src/main/scala/oathdigital/model/Decisions.scala src/main/scala/oathdigital/gameplay/powers/campaign/BattlePlan.scala src/main/scala/oathdigital/gameplay/actions/campaign/CampaignPlans.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala frontend/styles.css src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuite.scala
@@ -1682,7 +1687,7 @@ git add src/main/scala/oathdigital/model/CampaignTypes.scala src/main/scala/oath
 ```bash
 git commit -m "feat(campaign): say whether a battle plan attacks or defends
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1703,7 +1708,7 @@ The plan window is a `Repeat`, so each pass re-asks with the chosen plans remove
 - Consumes: `DecisionOptionProjection.badge` (Task 7), `WalkerDecisionProjection.subjectCards` (Task 5) — this adds a third key to the same `exact(...)` sets.
 - Produces: `WalkerDecisionProjection.answeredOptions: Vector[DecisionOptionProjection] = Vector.empty`, wire key `"answeredOptions"`.
 
-- [ ] **Step 1: Write the failing projector test**
+- [x] **Step 1: Write the failing projector test**
 
 Add to `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala`:
 
@@ -1718,12 +1723,12 @@ Add to `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scal
 
 Build `campaignWithOnePlanPlayed` from the suite's existing Campaign fixture by answering one plan and re-parking; if the suite has no Campaign fixture, `src/test/scala/oathdigital/gameplay/CampaignFixture.scala` has one and the projector suite may use it.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: FAIL — `answeredOptions` is not a member.
 
-- [ ] **Step 3: Add the wire field**
+- [x] **Step 3: Add the wire field**
 
 In `ActionProjectionDtos.scala`, extend `WalkerDecisionProjection` after `subjectCards`:
 
@@ -1758,7 +1763,7 @@ In `ActionProjectionCodec.scala`, add `"answeredOptions"` to `encodeWalkerDecisi
     rollOutcome, subjects, answered)
 ```
 
-- [ ] **Step 4: Fill it in the projector**
+- [x] **Step 4: Fill it in the projector**
 
 In `WalkerDecisionProjector.parked`'s `case None =>` branch, add the argument:
 
@@ -1788,12 +1793,12 @@ and the resolver:
 
 `pending.answered` is a `Vector[Answered]`; confirm the `Answered` case class's shape in `src/main/scala/oathdigital/model/` before writing the pattern — `WalkerDecisionProjector` does not currently destructure it, but `CardPlayProcedure.scala:159` does, as `Answered(id, DecisionAnswer.ChooseOneAnswer(value), _)`.
 
-- [ ] **Step 5: Run the projector test**
+- [x] **Step 5: Run the projector test**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: PASS
 
-- [ ] **Step 6: Write the failing frontend test**
+- [x] **Step 6: Write the failing frontend test**
 
 Add to `frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuite.scala`:
 
@@ -1819,12 +1824,12 @@ Add to `frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuit
 
 `WalkerDecisionState` takes its arguments positionally in the other tests; pass `answeredOptions` by name as above so the two new fields cannot be swapped.
 
-- [ ] **Step 7: Run it to verify it fails**
+- [x] **Step 7: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerChoicePanelRenderSuite"`
 Expected: FAIL — no `.plans-played` element.
 
-- [ ] **Step 8: Draw the strip**
+- [x] **Step 8: Draw the strip**
 
 In `WalkerPanelSupport.renderChooseOnePanel`, after the subject-cards block from Task 5 and before `query.options.foreach`:
 
@@ -1850,17 +1855,17 @@ Add to `frontend/styles.css`:
 .plans-played ul { margin: 0; padding-left: 1.2em; }
 ```
 
-- [ ] **Step 9: Run the frontend test**
+- [x] **Step 9: Run the frontend test**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerChoicePanelRenderSuite"`
 Expected: PASS
 
-- [ ] **Step 10: Run the gate**
+- [x] **Step 10: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala frontend/styles.css frontend/src/test/scala/oathdigital/frontend/WalkerChoicePanelRenderSuite.scala
@@ -1869,7 +1874,7 @@ git add shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDt
 ```bash
 git commit -m "feat(campaign): list the battle plans already played
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1901,7 +1906,7 @@ Mid-walk roll feedback exists only for Recover, gated on `procedure == ActionRef
   - `WalkerProcedureRegistry.Entry.rollFeedback: (ExecutableCatalog, ReadyGame, PlayerId, String) => Option[WalkerRollFeedback]`, defaulting to `(_, _, _, _) => None`.
   - `CampaignBattle.sacrificeHeading(max: Int): String` — one argument, the prompt alone.
 
-- [ ] **Step 1: Write the failing engine test**
+- [x] **Step 1: Write the failing engine test**
 
 Replace the two `sacrificeHeading` cases in `src/test/scala/oathdigital/gameplay/CampaignBattleSuite.scala` with:
 
@@ -1914,12 +1919,12 @@ Replace the two `sacrificeHeading` cases in `src/test/scala/oathdigital/gameplay
   }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.CampaignBattleSuite"`
 Expected: FAIL — `sacrificeHeading` takes four arguments.
 
-- [ ] **Step 3: Reduce the heading to the prompt**
+- [x] **Step 3: Reduce the heading to the prompt**
 
 In `CampaignBattle.scala`, delete `faceName` and replace `sacrificeHeading`:
 
@@ -1948,12 +1953,12 @@ In `CampaignProcedure.sacrificeStep`, drop the now-unused attack lookup:
 
 Update `CampaignProcedureSuite.scala:419` to the one-argument call. If `AttackDieFace` is now unimported in either file, remove the import.
 
-- [ ] **Step 4: Run the engine suites**
+- [x] **Step 4: Run the engine suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.CampaignBattleSuite oathdigital.gameplay.CampaignProcedureSuite"`
 Expected: PASS
 
-- [ ] **Step 5: Write the failing feedback test**
+- [x] **Step 5: Write the failing feedback test**
 
 Add to `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala`:
 
@@ -1979,12 +1984,12 @@ Add to `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scal
 
 Build `campaignAtSacrifice` from `CampaignFixture` by rolling the attack pool with `TwoSwordsSkull, OneSword` and walking to the sacrifice park.
 
-- [ ] **Step 6: Run it to verify it fails**
+- [x] **Step 6: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: FAIL — `pool` is not a member of `WalkerRollOutcomeProjection`, and a Campaign projects no outcome at all.
 
-- [ ] **Step 7: Reshape the wire payload**
+- [x] **Step 7: Reshape the wire payload**
 
 In `ActionProjectionDtos.scala`:
 
@@ -2028,7 +2033,7 @@ In `ActionProjectionCodec.scala`:
   } yield WalkerRollOutcomeProjection(pool, faces, score, target, detail)
 ```
 
-- [ ] **Step 8: Declare what feedback a procedure wants**
+- [x] **Step 8: Declare what feedback a procedure wants**
 
 Create `src/main/scala/oathdigital/gameplay/walker/WalkerRollFeedback.scala`:
 
@@ -2074,7 +2079,7 @@ Add the accessor beside the existing `rollDecisionId`/`modifierWindow` ones:
       decisionId))
 ```
 
-- [ ] **Step 9: Declare Recover's and Campaign's feedback**
+- [x] **Step 9: Declare Recover's and Campaign's feedback**
 
 In `RecoverProcedure`, add:
 
@@ -2115,7 +2120,7 @@ In `CampaignProcedure`, add:
 
 Wire both into their registry entries by adding `rollFeedback = RecoverProcedure.rollFeedback` and `rollFeedback = CampaignProcedure.rollFeedback` to `ActionRef.Recover` and `ActionRef.Campaign` in `WalkerProcedureRegistry.entries`.
 
-- [ ] **Step 10: Project it generically**
+- [x] **Step 10: Project it generically**
 
 In `WalkerDecisionProjector`, replace both `Option.when(procedure == ActionRef.Recover)(rollOutcome(ready, awaited)).flatten` expressions:
 
@@ -2177,12 +2182,12 @@ and replace the Recover-specific `rollOutcome` helper with:
 
 The `_ => Vector.empty` case exists because `DieFace` may have a variant neither pool rolls; if the compiler reports the match as exhaustive without it, delete it. Confirm the face names match `CampaignResultProjector.scala:27-29` and `DieFace.scala:15-18` exactly — the client looks glyphs up by these strings.
 
-- [ ] **Step 11: Run the backend tests**
+- [x] **Step 11: Run the backend tests**
 
 Run: `./sbtw "test"`
 Expected: green.
 
-- [ ] **Step 12: Write the failing frontend tests**
+- [x] **Step 12: Write the failing frontend tests**
 
 In `frontend/src/test/scala/oathdigital/frontend/WalkerSelectionPanelsSuite.scala`:
 
@@ -2222,12 +2227,12 @@ In `frontend/src/test/scala/oathdigital/frontend/RecoverPanelSuite.scala`, updat
   }
 ```
 
-- [ ] **Step 13: Run them to verify they fail**
+- [x] **Step 13: Run them to verify they fail**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerSelectionPanelsSuite oathdigital.frontend.RecoverPanelSuite"`
 Expected: FAIL — `WalkerRollOutcomeState` takes three arguments and the amount panel draws no dice.
 
-- [ ] **Step 14: Make the roll feedback generic and reuse it**
+- [x] **Step 14: Make the roll feedback generic and reuse it**
 
 In `WalkerPanelSupport`, replace `rollOutcomeSummary` and `rollFeedback`:
 
@@ -2281,7 +2286,7 @@ Delete the old `.recover-roll-outcome` rule from `frontend/styles.css` and add:
 
 If `.recover-roll-outcome` is styled anywhere else, replace those selectors with the two above rather than keeping a dead class.
 
-- [ ] **Step 15: Show it on the amount panel**
+- [x] **Step 15: Show it on the amount panel**
 
 In `WalkerSelectionPanels`, pass the decision into `renderAmount` and call the feedback before the heading:
 
@@ -2302,17 +2307,17 @@ In `WalkerSelectionPanels`, pass the decision into `renderAmount` and call the f
 
 The rest of `renderAmount` is unchanged.
 
-- [ ] **Step 16: Run the frontend tests**
+- [x] **Step 16: Run the frontend tests**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.WalkerSelectionPanelsSuite oathdigital.frontend.RecoverPanelSuite"`
 Expected: PASS
 
-- [ ] **Step 17: Run the gate**
+- [x] **Step 17: Run the gate**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`
 Expected: green.
 
-- [ ] **Step 18: Commit**
+- [x] **Step 18: Commit**
 
 ```bash
 git add src/main/scala/oathdigital/gameplay/walker src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala src/main/scala/oathdigital/gameplay/actions/campaign src/main/scala/oathdigital/application/WalkerDecisionProjector.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala frontend/src/main/scala/oathdigital/frontend/WalkerSelectionPanels.scala frontend/styles.css src/test/scala/oathdigital frontend/src/test/scala/oathdigital/frontend
@@ -2321,7 +2326,7 @@ git add src/main/scala/oathdigital/gameplay/walker src/main/scala/oathdigital/ga
 ```bash
 git commit -m "feat(walker): show a roll as dice wherever a walk parks on one
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2329,6 +2334,28 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Finishing
 
 After Task 9, the branch is complete. Announce and use `superpowers:finishing-a-development-branch`: verify the gate is green, present the integration options, and follow the user's choice.
+
+## Execution record
+
+All nine tasks are done and merged to `main` (2026-09-24). Tasks 1–8 ran on the
+`vision-identity` worktree branch; Task 9 and the review ran in a follow-up
+session. The final gate was green at 1683 backend and 349 frontend tests.
+
+A review of the whole branch against this plan and the spec found, and fixed:
+
+- **Task 2** had removed a legal play: a Vision may be held as a facedown
+  adviser. Only the site option is filtered now (spec §2 correction).
+- **Task 6** named no card for a walker modifier: those powers' sources are
+  `GameRule`s, so `cardOf` never matched. `PreviewModifierDescriptions` now
+  finds the card in play that carries the power.
+- **Task 7/8**'s plan card was nested inside the button that commits the plan,
+  so reading the card chose it. The card now sits above its own button.
+- **Task 9** drew the defense roll only on the amount panel; the choose-one
+  and distribute panels draw it too. Muster declares Campaign's feedback for
+  Knights Errant.
+
+Smaller fixes and the gaps deliberately left are listed in the spec's
+"As built" section.
 
 ## Self-Review Notes
 

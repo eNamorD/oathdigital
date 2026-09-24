@@ -18,6 +18,9 @@ private[frontend] object DistributePanelRenderer {
         .flatMap(decision => decision.query.filter(_.form == "distribute")
           .map(decision -> _))
         .foreach { case (decision, query) =>
+      // A Campaign's placement is asked after the defense roll; the roll
+      // comes first, as on every panel a roll belongs beside.
+      WalkerPanelSupport.rollFeedback(decision, panel)
       panel.appendChild(text("h2", "", query.heading.getOrElse("Resolve decision")))
       ui.currentWalkerDistribution.filter(_.decisionId == decision.decisionId)
           .foreach { draft =>

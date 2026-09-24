@@ -2,13 +2,22 @@ package oathdigital.protocol
 
 import scala.util.control.NonFatal
 
+import oathdigital.protocol.projection.CardDetailsProjection
+
 final case class MajorActionPreviewRequest(
     expectedNextSequence: Long,
     action: String,
     baseParameters: Map[String, String] = Map.empty,
     orderedModifiers: Vector[ModifierInvocation] = Vector.empty)
+/** One offered modifier. `description` is the human sentence for the option --
+  * the printed card's name where there is a card -- and never the handler id.
+  * `card` is the card the power is printed on, absent for a power with no card
+  * (a banner face, a game rule). `modifies` is the major action's key, from
+  * the power's own declaration.
+  */
 final case class PreviewModifier(sourceKey: String, handlerId: String,
-    description: String)
+    description: String, card: Option[CardDetailsProjection] = None,
+    modifies: Option[String] = None)
 final case class PreviewIgnoredRule(sourceKey: String, handlerId: String,
     timing: String, reason: String)
 final case class PreviewTarget(key: String, supplyCost: Int, description: String)
@@ -78,7 +87,10 @@ object MajorActionPreviewCodec {
     "action" -> value.action,
     "modifiers" -> ujson.Arr.from(value.modifiers.map(v => ujson.Obj(
       "sourceKey" -> v.sourceKey, "handlerId" -> v.handlerId,
-      "description" -> v.description))),
+      "description" -> v.description,
+      "card" -> v.card.fold[ujson.Value](ujson.Null)(
+        oathdigital.protocol.projection.WorldProjectionCodec.encodeCard),
+      "modifies" -> v.modifies.fold[ujson.Value](ujson.Null)(ujson.Str(_))))),
     "ignoredRules" -> ujson.Arr.from(value.ignoredRules.map(v => ujson.Obj(
       "sourceKey" -> v.sourceKey, "handlerId" -> v.handlerId,
       "timing" -> v.timing, "reason" -> v.reason))),
@@ -99,7 +111,17 @@ object MajorActionPreviewCodec {
           source <- nonEmpty(value, "sourceKey", s"$path.sourceKey")
           handler <- nonEmpty(value, "handlerId", s"$path.handlerId")
           description <- nonEmpty(value, "description", s"$path.description")
-        } yield PreviewModifier(source, handler, description) }
+          card <- value.value.get("card") match {
+            case None | Some(ujson.Null) => Right(None)
+            case Some(raw) => oathdigital.protocol.projection
+              .WorldProjectionCodec.decodeCard(raw, s"$path.card").map(Some(_))
+          }
+          modifies <- value.value.get("modifies") match {
+            case None | Some(ujson.Null) => Right(None)
+            case Some(ujson.Str(text)) => Right(Some(text))
+            case Some(_) => Left(InvalidValue(s"$path.modifies", "expected string"))
+          }
+        } yield PreviewModifier(source, handler, description, card, modifies) }
         ignored <- array(root, "ignoredRules", "$.ignoredRules") { (value, path) => for {
           source <- nonEmpty(value, "sourceKey", s"$path.sourceKey")
           handler <- nonEmpty(value, "handlerId", s"$path.handlerId")

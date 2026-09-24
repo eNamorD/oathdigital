@@ -397,17 +397,20 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.secretSummaryLabel(1, 2, 0, 1),
       "1 available of 2 owned; 0 facedown and 1 committed")
   }
-  test("the Recover roll outcome summary shows the target before any roll " +
-      "and the accumulated dice and score after") {
+  test("the roll outcome summary reads the accumulated dice, the score and " +
+      "what it is measured against") {
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
-      WalkerRollOutcomeState(Vector.empty, 0, 4)),
-      "Need 4 shields to succeed.")
-    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
-      WalkerRollOutcomeState(Vector("blank", "blank"), 0, 4)),
+      WalkerRollOutcomeState("recover", Vector("blank", "blank"), 0, Some(4))),
       "Rolled blank, blank -- 0 shields so far (need 4).")
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
-      WalkerRollOutcomeState(Vector("two-shields", "doubler"), 4, 4)),
+      WalkerRollOutcomeState("recover", Vector("two-shields", "doubler"), 4,
+        Some(4))),
       "Rolled two-shields, doubler -- 4 shields so far (need 4).")
+    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState("campaign.attack",
+        Vector("two-swords-skull", "one-sword"), 3, None,
+        Vector("1 skull loss"))),
+      "Rolled two-swords-skull, one-sword -- Attack 3, 1 skull loss.")
   }
 
   /** Task 5: Forge is driven end to end through the shared two-zone

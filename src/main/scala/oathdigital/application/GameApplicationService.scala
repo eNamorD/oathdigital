@@ -10,7 +10,7 @@ import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
-import oathdigital.protocol.PreviewTarget
+import oathdigital.protocol.{PreviewModifier, PreviewTarget}
 
 
 final case class GameAccepted(
@@ -38,7 +38,8 @@ final case class PreparedGameBootstrap(
 final case class MajorActionPreviewAccepted(loaded: LoadedGame,
     options: Vector[OrderedRuleInvocation],
     ignored: Vector[IgnoredRuleDiagnostic],
-    targets: Vector[PreviewTarget] = Vector.empty)
+    targets: Vector[PreviewTarget] = Vector.empty,
+    modifiers: Vector[PreviewModifier] = Vector.empty)
 
 sealed trait GameApplicationError extends Product with Serializable
 object GameApplicationError {
@@ -89,6 +90,8 @@ final class GameApplicationService(
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     phasePowerCatalog = PhasePowerCatalog.default(catalog),
     walkerDice = CampaignDicePort.walkerDice(campaignDicePort))
+  private val presentation = new GamePresentationProjector(catalog)
+  private val descriptions = new PreviewModifierDescriptions(catalog, presentation)
   private val replay = new EventReplayEngine(rules)
 
   /** Derives a validated initial journal and state without accessing storage. */
@@ -146,14 +149,16 @@ final class GameApplicationService(
               OrderedRuleInvocation(power.source, power.id.value))
             accepted <- acceptPreview(loaded, options, selected, Vector.empty,
               walkerTargets(actionRef, ready, actor, selected))
-          } yield accepted
+          } yield accepted.copy(modifiers = descriptions.describe(ready,
+            actor, action, offerable, accepted.options))
           case None => for {
             options <- PowerRuntime.options(catalog, ready, actor, action)
               .left.map(CommandRejected)
             ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
               .left.map(CommandRejected)
             accepted <- acceptPreview(loaded, options, selected, ignored)
-          } yield accepted
+          } yield accepted.copy(modifiers = descriptions.describe(ready,
+            actor, action, Vector.empty, accepted.options))
         }
       case Some(_) => Left(CommandRejected(OathViolation.GameNotStarted))
     }
