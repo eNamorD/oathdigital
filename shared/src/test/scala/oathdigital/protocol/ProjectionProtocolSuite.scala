@@ -198,6 +198,22 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(rolling))
   }
 
+  test("warbands of every seat colour round-trip, and a mismatched ruler does not") {
+    def ruledBy(color: String, kind: String = "exile") = projection.copy(world =
+      projection.world.map(region => region.copy(sites = region.sites.map(
+        _.copy(forces = Some(SiteForcesProjection(kind, 2, "player",
+          Some(color), s"$color warbands", color)))))))
+    Vector("purple", "red", "blue", "yellow", "white", "black", "pink", "brown")
+      .foreach { color =>
+        val carrying = ruledBy(color)
+        assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+          Right(carrying))
+      }
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(
+      ruledBy("pink", "bandit"))).left.toOption.map(_.path),
+      Some("$.world[0].sites[0].forces"))
+  }
+
   test("projection decoder reports exact nested paths and unexpected fields") {
     val wrong = ujson.read(GameProjectionCodec.encode(projection))
     wrong("world")(0)("sites")(0)("relics")("facedownCount") = "one"

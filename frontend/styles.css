@@ -276,6 +276,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .force-blue { color: #8ecbff; }
 .force-yellow { color: #ffe08a; }
 .force-purple, .force-empire { color: #d9b8ff; }
+.force-white { color: #ffffff; }
+.force-black { color: #111111; background: #e8dcc2; border-radius: 999px;
+  padding: 0 0.4em; }
+.force-pink { color: #ffa6d8; }
+.force-brown { color: #d0a075; }
 .force-bandit { color: #d7ed72; }
 .site-card {
   display: inline-flex;

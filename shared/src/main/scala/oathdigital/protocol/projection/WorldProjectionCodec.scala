@@ -72,6 +72,11 @@ private[projection] object WorldProjectionCodec {
     cards <- traverse(raws, s"$path.knownRelics")(decodeCard)
   } yield SiteRelicsProjection(count, cards)
 
+  /** Every colour a seat can be dealt, so a fifth or sixth player's warbands
+    * decode as readily as the first four's. */
+  private val exileColors =
+    Set("purple", "red", "blue", "yellow", "white", "black", "pink", "brown")
+
   private def encodeForces(value: SiteForcesProjection): ujson.Value = ujson.Obj(
     "forceKind" -> value.forceKind, "count" -> value.count,
     "rulerKind" -> value.rulerKind, "rulerPlayerId" -> stringOption(value.rulerPlayerId),
@@ -87,7 +92,7 @@ private[projection] object WorldProjectionCodec {
     _ <- Either.cond(count > 0, (), oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(
       s"$path.count", "expected positive integer"))
     _ <- Either.cond((kind, ruler, player, color) match {
-      case ("exile", "player", Some(_), "red" | "blue" | "yellow" | "purple") => true
+      case ("exile", "player", Some(_), color) => exileColors(color)
       case ("imperial", "empire", None, "empire") => true
       case ("bandit", "bandit", None, "bandit") => true
       case _ => false
