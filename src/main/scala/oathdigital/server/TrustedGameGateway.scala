@@ -23,7 +23,7 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
   def load(gameId: String, seat: TrustedSeat): Either[TrustedSeatFailure, GameProjection] =
     for {
       player <- actor(gameId, seat)
-      loaded <- service.load(gameId).left.map(Application)
+      loaded <- service.load(gameId).left.map(Application.apply)
       game <- loaded.toRight(Application(GameApplicationError.StreamNotFound(gameId)))
     } yield projector.project(gameId, game, player).copy(viewerPlayerId = Some(player.value))
 
@@ -32,7 +32,7 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
     player <- actor(gameId, seat)
     command <- GameIntentMapper.bind(player, request.intent, request.orderedModifiers)
       .left.map(_ => InvalidIntent)
-    accepted <- service.handle(gameId, request.expectedNextSequence, command).left.map(Application)
+    accepted <- service.handle(gameId, request.expectedNextSequence, command).left.map(Application.apply)
   } yield projector.project(gameId, LoadedGame(accepted.state, accepted.nextSequence), player)
     .copy(viewerPlayerId = Some(player.value))
 
@@ -43,13 +43,13 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
     selected <- GameIntentMapper.bindModifiers(player, request.orderedModifiers)
       .left.map(_ => InvalidIntent)
     accepted <- service.preview(gameId, request.expectedNextSequence, player, action, selected)
-      .left.map(Application)
+      .left.map(Application.apply)
     projection = projector.project(gameId, accepted.loaded, player)
     _ <- Either.cond(projection.activeParticipantId.contains(player.value) &&
       projection.actionSelectionOpen, (), Application(GameApplicationError.CommandRejected(
         oathdigital.model.OathViolation.InvalidModifierInvocation(
           "major-action preview is unavailable for this actor or phase"))))
-    _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application)
+    _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application.apply)
   } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
     accepted.modifiers,
     accepted.ignored.map(v => PreviewIgnoredRule(

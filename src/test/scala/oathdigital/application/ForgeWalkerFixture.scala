@@ -26,8 +26,8 @@ object ForgeWalkerFixture extends munit.Assertions {
     * starts from is the same board every run.
     */
   val blankCampaignDice: CampaignDicePort = new CampaignDicePort {
-    def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
-    def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
+    def rollAttack(count: Int): Vector[AttackDieFace] = Vector.fill(count)(AttackDieFace.OneSword)
+    def rollDefense(count: Int): Vector[DefenseDieFace] = Vector.fill(count)(DefenseDieFace.Blank)
   }
 
   /** The shipped catalog with the one non-homeland forgeable site's printed

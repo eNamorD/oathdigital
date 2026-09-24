@@ -24,15 +24,15 @@ sealed trait PowerWindow extends Product with Serializable {
   def associatedMajorAction: Option[MajorActionType]
 }
 object PowerWindow {
-  sealed trait SearchWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Search) }
-  sealed trait TravelWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Travel) }
-  sealed trait CampaignWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Campaign) }
-  sealed trait MusterWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Muster) }
-  sealed trait TradeWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Trade) }
-  sealed trait ForgeWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Forge) }
-  sealed trait RecoverWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Recover) }
-  sealed trait ChallengeWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Challenge) }
-  sealed trait OtherWindow extends PowerWindow { final val associatedMajorAction = None }
+  sealed trait SearchWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Search) }
+  sealed trait TravelWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Travel) }
+  sealed trait CampaignWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Campaign) }
+  sealed trait MusterWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Muster) }
+  sealed trait TradeWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Trade) }
+  sealed trait ForgeWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Forge) }
+  sealed trait RecoverWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Recover) }
+  sealed trait ChallengeWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Challenge) }
+  sealed trait OtherWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = None }
 
   case object SearchActionEligibility extends SearchWindow { val key = "search.action-eligibility" }
   case object SearchModifierSelection extends SearchWindow { val key = "search.modifier-selection" }

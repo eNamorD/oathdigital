@@ -55,7 +55,7 @@ object FinishRestProcedure {
   private def cleanup(catalog: ExecutableCatalog, ready: ReadyGame,
       resting: PlayerId): Either[OathViolation, Vector[CoreOperation]] = for {
     plan <- RestCleanupPlan.derive(catalog, ready, resting)
-      .left.map(UnsupportedRestState)
+      .left.map(UnsupportedRestState.apply)
     player <- ready.game.current.players.find(_.player == resting)
       .toRight(UnsupportedRestState(s"unknown resting player $resting"))
   } yield {

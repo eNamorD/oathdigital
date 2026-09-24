@@ -28,7 +28,7 @@ import oathdigital.model._
   * arm.
   */
 private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
-    this: GameEventJsonSupport =>
+  this: GameEventJsonSupport =>
   import WireError._
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
@@ -72,7 +72,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "from" -> encodePositionedLocation(from),
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
-          value => ujson.Str(encodeOrientation(value))))
+          value => ujson.Str(orientationKey(value))))
       case PayCost(player, placedAt, cost, intoOccupied, matchingBank, _) =>
         val optional: Vector[(String, ujson.Value)] =
           (if (intoOccupied) Vector("intoOccupied" -> (ujson.Bool(true): ujson.Value))
@@ -88,7 +88,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "at" -> encodeLocation(at))
       case Flip(card, at, orientation) => ujson.Obj("kind" -> "flip",
         "card" -> encodeCardRef(card), "at" -> encodeLocation(at),
-        "orientation" -> encodeOrientation(orientation))
+        "orientation" -> orientationKey(orientation))
       case FlipSecrets(player, amount, from, to) => ujson.Obj(
         "kind" -> "flip-secrets", "playerId" -> player.value,
         "amount" -> amount, "from" -> encodeSecretSide(from),
@@ -141,7 +141,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "kind" -> "play", "card" -> encodeCardRef(card),
         "from" -> encodePositionedLocation(from),
         "destination" -> encodeLocation(destination),
-        "orientation" -> encodeOrientation(orientation))
+        "orientation" -> orientationKey(orientation))
       case Replace(removed, replacements, at, _) => ujson.Obj(
         "kind" -> "replace", "removed" -> encodePiece(removed),
         "replacements" -> encodePiece(replacements),
@@ -246,7 +246,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
             Banner.fromKey(value("bannerKey").str).map(PowerSourceRef.Banner(_))
               .toRight(InvalidValue(s"$path.bannerKey", "unknown banner"))
           else decodePowerCard(value("cardKind").str, value("cardId").str,
-            s"$path.cardKind").map(PowerSourceRef.Card)
+            s"$path.cardKind").map(PowerSourceRef.Card.apply)
           ): Either[WireError, PowerSourceRef]
       } yield RecordPowerUse(PowerUseRef(timing, source,
         PowerId(value("powerId").str)))
@@ -522,9 +522,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
 
   private def decodePiece(value: ujson.Value,
       path: String): Either[WireError, Piece] = value("kind").str match {
-    case "card" => decodeCardRef(value("card"), s"$path.card").map(Piece.Card)
+    case "card" => decodeCardRef(value("card"), s"$path.card").map(Piece.Card.apply)
     case "banner" => decodeBanner(value("banner").str, s"$path.banner")
-      .map(Piece.Banner)
+      .map(Piece.Banner.apply)
     case "pawn" => Right(Piece.Pawn(PlayerId(value("playerId").str)))
     case "favor" => safeIntField(value.obj, "amount", path).flatMap(amount =>
       if (amount > 0) Right(Piece.Favor(amount))
@@ -611,19 +611,19 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       Right(Location.PlayArea(PlayerId(value("playerId").str)))
     case "hand" => Right(Location.Hand(PlayerId(value("playerId").str)))
     case "on-card" => decodeCardRef(value("card"), s"$path.card")
-      .map(Location.OnCard)
+      .map(Location.OnCard.apply)
     case "on-banner" => Banner.fromKey(value("banner").str)
       .toRight(InvalidValue(s"$path.banner",
-        s"unknown banner '${value("banner").str}'")).map(Location.OnBanner)
+        s"unknown banner '${value("banner").str}'")).map(Location.OnBanner.apply)
     case "favor-bank" => decodeSuit(value("suit").str, s"$path.suit")
-      .map(Location.FavorBank)
+      .map(Location.FavorBank.apply)
     case "warband-bank" => decodeForceKind(value("force"), s"$path.force")
-      .map(Location.WarbandBank)
+      .map(Location.WarbandBank.apply)
     case "deck" => decodeCardDeck(value("deck").str, s"$path.deck")
-      .map(Location.Deck)
+      .map(Location.Deck.apply)
     case "regional-discard" =>
       decodeRegion(value("region").str, s"$path.region")
-        .map(Location.RegionalDiscard)
+        .map(Location.RegionalDiscard.apply)
     case "shared-bank" => Right(Location.SharedBank)
     case "set-aside-relics" => Right(Location.SetAsideRelics)
     case "reliquary" => Right(Location.Reliquary)
@@ -654,7 +654,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     secretBurnt <- safeIntField(value.obj, "secretBurnt", path)
   } yield Cost(favor, secret, favorBurnt, secretBurnt)
 
-  private def encodeOrientation(value: Orientation): String = value match {
+  // Must not be named encodeOrientation: under Scala 3 a same-named private
+  // method here was dispatched in place of GameEventJsonSupport's, which
+  // broke encoding of Flip and Play operations.
+  private def orientationKey(value: Orientation): String = value match {
     case Orientation.FaceUp => "face-up"
     case Orientation.FaceDown => "face-down"
   }

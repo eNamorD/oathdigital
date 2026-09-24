@@ -255,7 +255,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
 
     assertEquals(
       catalog.denizens.groupBy(_.restrictions).view.mapValues(_.size).toMap,
-      Map(
+      Map[CardRestrictions, Int](
         CardRestrictions.Unrestricted -> 133,
         CardRestrictions.SiteOnly -> 51,
         CardRestrictions.AdviserOnly -> 40,

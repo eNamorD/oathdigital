@@ -144,7 +144,7 @@ final class GameApplicationService(
           // does. It is the same ref, not a second derivation.
           case Some(actionRef) => for {
             offerable <- rules.offerableWalkerPowers(ready, actor, actionRef)
-              .left.map(CommandRejected)
+              .left.map(CommandRejected.apply)
             options = offerable.map(power =>
               OrderedRuleInvocation(power.source, power.id.value))
             accepted <- acceptPreview(loaded, options, selected, Vector.empty,
@@ -153,9 +153,9 @@ final class GameApplicationService(
             actor, action, offerable, accepted.options))
           case None => for {
             options <- PowerRuntime.options(catalog, ready, actor, action)
-              .left.map(CommandRejected)
+              .left.map(CommandRejected.apply)
             ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
-              .left.map(CommandRejected)
+              .left.map(CommandRejected.apply)
             accepted <- acceptPreview(loaded, options, selected, ignored)
           } yield accepted.copy(modifiers = descriptions.describe(ready,
             actor, action, Vector.empty, accepted.options))
@@ -277,7 +277,7 @@ final class GameApplicationService(
       envelopes <- eventCodec
         .decodeStream(stream.records.mkString("[", ",", "]"))
         .left
-        .map(CodecFailure)
+        .map(CodecFailure.apply)
       _ <- envelopes.zipWithIndex.collectFirst {
         case (envelope, index) if envelope.sequence != index.toLong =>
           CodecFailure(EventCodecFailure("invalid-sequence",
@@ -333,7 +333,7 @@ final class GameApplicationService(
       command: GameCommand,
       nextSequence: Long
   ): Either[GameApplicationError, (OathTransition, Vector[String])] = for {
-    transition <- applyCommand(state, command, nextSequence).left.map(CommandRejected)
+    transition <- applyCommand(state, command, nextSequence).left.map(CommandRejected.apply)
     records <- encode(gameId, nextSequence, transition.events)
   } yield transition -> records
 
@@ -454,7 +454,7 @@ final class GameApplicationService(
             event
           )
           .left
-          .map(CodecFailure)
+          .map(CodecFailure.apply)
           .map(value => accumulated :+ value)
       case (failure @ Left(_), _) => failure
     }

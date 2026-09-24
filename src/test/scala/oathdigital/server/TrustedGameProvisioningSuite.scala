@@ -147,8 +147,8 @@ class TrustedGameProvisioningSuite extends munit.FunSuite {
 
   test("bootstrap preparation performs no repository IO and matches ordinary handle") {
     val untouched = new EventStreamRepository {
-      def load(id: String) = fail("preparation must not read storage")
-      def append(id: String, expected: ExpectedStream, records: Vector[String]) =
+      def load(id: String): Either[RepositoryFailure, Option[StoredEventStream]] = fail("preparation must not read storage")
+      def append(id: String, expected: ExpectedStream, records: Vector[String]): Either[RepositoryFailure, RepositoryAppendResult] =
         fail("preparation must not write storage")
     }
     val config = FirstGameBootstrapConfig(participants, orders.firstPlayer)

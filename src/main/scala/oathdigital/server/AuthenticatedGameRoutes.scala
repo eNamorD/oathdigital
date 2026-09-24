@@ -46,9 +46,9 @@ final class AuthenticatedGameGateway(
       principal: AuthenticatedPrincipal
   ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeProjection(gameId, principal)
-      .left.map(Authorization)
+      .left.map(Authorization.apply)
       .flatMap { access =>
-        service.load(gameId).left.map(Application).flatMap {
+        service.load(gameId).left.map(Application.apply).flatMap {
           case None => Left(Application(
             GameApplicationError.StreamNotFound(gameId)
           ))
@@ -67,13 +67,13 @@ final class AuthenticatedGameGateway(
       request: ActorlessCommandRequest
   ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeCommand(gameId, principal)
-      .left.map(Authorization)
+      .left.map(Authorization.apply)
       .flatMap { actor =>
         GameIntentMapper.bind(actor.access.playerId, request.intent,
           request.orderedModifiers)
-          .left.map(InvalidIntent)
+          .left.map(InvalidIntent.apply)
           .flatMap(command => service.handle(gameId,
-            request.expectedNextSequence, command).left.map(Application))
+            request.expectedNextSequence, command).left.map(Application.apply))
           .map(accepted => projector.project(
             gameId,
             LoadedGame(accepted.state, accepted.nextSequence),
@@ -84,20 +84,20 @@ final class AuthenticatedGameGateway(
   def preview(gameId: String, principal: AuthenticatedPrincipal,
       request: MajorActionPreviewRequest)
       : Either[AuthenticatedGameFailure, MajorActionPreviewResponse] =
-    authorization.authorizeCommand(gameId, principal).left.map(Authorization)
+    authorization.authorizeCommand(gameId, principal).left.map(Authorization.apply)
       .flatMap { actor => for {
         action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
           InvalidIntent(GameIntentMappingFailure("$.action", "unknown major action")))
         selected <- GameIntentMapper.bindModifiers(actor.access.playerId,
-          request.orderedModifiers).left.map(InvalidIntent)
+          request.orderedModifiers).left.map(InvalidIntent.apply)
         accepted <- service.preview(gameId, request.expectedNextSequence,
-          actor.access.playerId, action, selected).left.map(Application)
+          actor.access.playerId, action, selected).left.map(Application.apply)
         projection = projector.project(gameId, accepted.loaded, actor.access.playerId)
         _ <- Either.cond(projection.actionSelectionOpen, (), Application(
           GameApplicationError.CommandRejected(
             oathdigital.model.OathViolation.InvalidModifierInvocation(
               "major-action preview is unavailable in this phase"))))
-        _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application)
+        _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application.apply)
       } yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
         request.action, accepted.modifiers,
         Vector.empty, MajorActionPreviewTargets.from(projection, request,
@@ -109,9 +109,9 @@ final class AuthenticatedGameGateway(
       request: FirstGameBootstrapRequest
   ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeBootstrap(gameId, principal)
-      .left.map(Authorization)
+      .left.map(Authorization.apply)
       .flatMap { _ =>
-        identities.listMemberships(gameId).left.map(Identity).flatMap {
+        identities.listMemberships(gameId).left.map(Identity.apply).flatMap {
           memberships =>
             val config = FirstGameBootstrapMapper.map(request)
             validateSeats(memberships, config).flatMap { _ =>
@@ -122,7 +122,7 @@ final class AuthenticatedGameGateway(
                   request.expectedNextSequence,
                   GameCommand.Begin(plan.chronicle,
                     ChronicleFirstGamePlan.dealOrder(plan.chronicle, plan.resolvedConfig))
-                ).left.map(Application))
+                ).left.map(Application.apply))
                 .map(accepted => projector.projectPublic(
                   gameId,
                   LoadedGame(accepted.state, accepted.nextSequence)

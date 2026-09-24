@@ -33,13 +33,13 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
     )
     val secret = "internal-database-password-and-path"
     val repository = new EventStreamRepository {
-      override def load(gameId: String) =
+      override def load(gameId: String): Either[RepositoryFailure, Option[StoredEventStream]] =
         Left(RepositoryFailure.StorageFailure(secret))
       override def append(
           gameId: String,
           expected: ExpectedStream,
           records: Vector[String]
-      ) = Left(RepositoryFailure.StorageFailure(secret))
+      ): Either[RepositoryFailure, RepositoryAppendResult] = Left(RepositoryFailure.StorageFailure(secret))
     }
     val gateway = new GameServerGateway(
       new GameApplicationService(catalog, repository),

@@ -63,7 +63,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val csrfDigest = CsrfTokenDigest.fromBytes(SensitiveTokenDigest.sha256("c" * 43))
       .toOption.get
     val authenticator = new HttpSessionAuthenticator {
-      override def authenticate(request: AkkaRequest) = Future.successful(
+      override def authenticate(request: AkkaRequest): Future[Either[AuthenticationFailure, AuthenticatedHttpSession]] = Future.successful(
         request.headers.find(_.name == "X-Test-User").map(header =>
           Right(AuthenticatedHttpSession(AuthenticatedUser(UserId(header.value)),
             csrfDigest))).getOrElse(Left(AuthenticationFailure.MissingCredential)))

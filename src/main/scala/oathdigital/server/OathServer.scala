@@ -1,7 +1,7 @@
 package oathdigital.server
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 import akka.Done
@@ -38,7 +38,7 @@ object OathServer {
     }
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "oathdigital-server")
-    implicit val executionContext = system.executionContext
+    implicit val executionContext: ExecutionContext = system.executionContext
     val blockingExecutionContext = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
     )

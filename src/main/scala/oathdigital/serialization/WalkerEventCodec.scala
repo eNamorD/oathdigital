@@ -10,7 +10,7 @@ import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts. */
 private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
-    this: GameEventJsonSupport =>
+  this: GameEventJsonSupport =>
   import GameEventWire._
   import WireError._
 
@@ -94,7 +94,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
       path: String): Either[WireError, WalkerStepPayload] =
     value("kind").str match {
       case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
-        .map(WalkerStepPayload.DeltaRecorded)
+        .map(WalkerStepPayload.DeltaRecorded.apply)
       case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _,
           PlayerId(value("byPlayerId").str)))

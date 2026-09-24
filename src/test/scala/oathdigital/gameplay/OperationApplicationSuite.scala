@@ -225,7 +225,7 @@ class OperationApplicationSuite extends munit.FunSuite {
 
   test("restriction registry is checked for each operation") {
     val blocking = new OperationRestriction {
-      override def reason(ready: ReadyGame, operation: CoreOperation) =
+      override def reason(ready: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("power-blocked", "test predicate",
           OperationReasonKind.Impossible))
     }

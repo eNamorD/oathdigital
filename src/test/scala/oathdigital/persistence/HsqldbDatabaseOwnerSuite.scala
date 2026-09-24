@@ -176,4 +176,62 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
     )
     assertEquals(attempts, 1)
   }
+
+  test("reopen retry returns the first success and rechecks the deadline after backoff") {
+    val failure = HsqldbDatabaseOwner.ConnectionFailure(
+      new RuntimeException("transient"))
+
+    var attempts = 0
+    var sleeps = 0
+    val recovered = HsqldbDatabaseOwner.retryTransientLock[Int](
+      () => {
+        attempts += 1
+        if (attempts == 1) Left(failure) else Right(7)
+      },
+      maxAttempts = 3,
+      deadlineNanos = 100L,
+      nanoTime = () => 0L,
+      sleep = _ => sleeps += 1,
+      retryable = _ => true
+    )
+    assertEquals(recovered, Right(7))
+    assertEquals(attempts, 2)
+    assertEquals(sleeps, 1)
+
+    attempts = 0
+    sleeps = 0
+    val notRetryable = HsqldbDatabaseOwner.retryTransientLock[Int](
+      () => {
+        attempts += 1
+        Left(failure)
+      },
+      maxAttempts = 3,
+      deadlineNanos = 100L,
+      nanoTime = () => 0L,
+      sleep = _ => sleeps += 1,
+      retryable = _ => false
+    )
+    assertEquals(notRetryable, Left(failure))
+    assertEquals(attempts, 1)
+    assertEquals(sleeps, 0)
+
+    attempts = 0
+    sleeps = 0
+    val clock = Iterator(0L, 200L)
+    val expiredDuringBackoff = HsqldbDatabaseOwner.retryTransientLock[Int](
+      () => {
+        attempts += 1
+        Left(failure)
+      },
+      maxAttempts = 3,
+      deadlineNanos = 100L,
+      nanoTime = () => clock.next(),
+      sleep = _ => sleeps += 1,
+      retryable = _ => true
+    )
+    assertEquals(expiredDuringBackoff, Left(failure))
+    assertEquals(attempts, 1)
+    assertEquals(sleeps, 1)
+    assert(!clock.hasNext)
+  }
 }

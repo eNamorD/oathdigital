@@ -113,22 +113,22 @@ object GameIntentMapper {
     */
   private def decisionAnswer(value: DecisionAnswerWire): Result[DecisionAnswer] = value match {
     case DecisionAnswerWire.ChooseOneWire(kind, id) =>
-      optionRef(kind, id, "$.intent.payload.option").map(ChooseOneAnswer)
+      optionRef(kind, id, "$.intent.payload.option").map(ChooseOneAnswer.apply)
     case DecisionAnswerWire.PartitionWire(placements) =>
       traverse(placements)(row => optionRef(row.optionKind, row.optionId,
         "$.intent.payload.placements.option").map(
-          DecisionPlacement(_, row.sectionKey))).map(PartitionAnswer)
+          DecisionPlacement(_, row.sectionKey))).map(PartitionAnswer.apply)
     case DecisionAnswerWire.DistributeWire(amounts) =>
       traverse(amounts)(row => optionRef(row.optionKind, row.optionId,
         "$.intent.payload.amounts.option").map(
-          DistributeAmount(_, row.amount))).map(DistributeAnswer)
+          DistributeAmount(_, row.amount))).map(DistributeAnswer.apply)
     case DecisionAnswerWire.ChooseManyWire(options) =>
       traverse(options)(row => optionRef(row.optionKind, row.optionId,
-        "$.intent.payload.options")).map(ChooseManyAnswer)
+        "$.intent.payload.options")).map(ChooseManyAnswer.apply)
     case DecisionAnswerWire.ChooseAmountWire(amount) =>
       Right(ChooseAmountAnswer(amount))
     case DecisionAnswerWire.ProposeTermsWire(terms) =>
-      negotiation(terms).map(DecisionAnswer.ProposeTerms)
+      negotiation(terms).map(DecisionAnswer.ProposeTerms.apply)
     case DecisionAnswerWire.AcceptDealWire => Right(DecisionAnswer.AcceptDeal)
     case DecisionAnswerWire.DeclineDealWire => Right(DecisionAnswer.DeclineDeal)
   }

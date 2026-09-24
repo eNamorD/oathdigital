@@ -4,8 +4,8 @@ import oathdigital.model._
 
 class WalkerDiceAdapterSuite extends munit.FunSuite {
   private val port = new CampaignDicePort {
-    def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
-    def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.TwoShields)
+    def rollAttack(count: Int): Vector[AttackDieFace] = Vector.fill(count)(AttackDieFace.OneSword)
+    def rollDefense(count: Int): Vector[DefenseDieFace] = Vector.fill(count)(DefenseDieFace.TwoShields)
   }
 
   test("the adapter routes by die kind and passes the count through") {

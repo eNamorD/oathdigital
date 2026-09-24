@@ -132,8 +132,8 @@ object WalkerProcedureRegistry {
         * decision's id. `None` for a decision no roll belongs beside, which is
         * the default and every procedure that rolls nothing.
         */
-      rollFeedback: (ExecutableCatalog, ReadyGame, PlayerId, String) =>
-        Option[WalkerRollFeedback] = (_, _, _, _) => None)
+      rollFeedback: (ExecutableCatalog, ReadyGame, PlayerId, String) => Option[WalkerRollFeedback] =
+        (_, _, _, _) => None)
 
   /** `private[gameplay]`, not `private`: [[WalkerProcedureRegistrySuite]]
     * asserts this map's keys cover `ProcedureRef.all` (catching a registered

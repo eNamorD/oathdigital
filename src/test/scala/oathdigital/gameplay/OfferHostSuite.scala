@@ -90,8 +90,8 @@ class OfferHostSuite extends munit.FunSuite {
   test("a host is told the walk is resuming inside it, and sees the answers recorded so far") {
     val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))
+    val seen: mutable.Buffer[(Boolean, Vector[Answered])] = mutable.Buffer.empty
     val hosted = new OfferHost {
-      val seen: mutable.Buffer[(Boolean, Vector[Answered])] = mutable.Buffer.empty
       override val window: Option[PowerWindow] = Some(OfferHostSuite.this.window)
       override val children: Vector[Operation] = Vector.empty
       def expand(offers: Vector[OfferedPlan], pass: OfferHost.Pass)
@@ -104,13 +104,13 @@ class OfferHostSuite extends munit.FunSuite {
     val state = low(ready)
     val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(state,
       tree, None, WalkerPowers.empty): @unchecked
-    assertEquals(hosted.seen.toVector, Vector((false, Vector.empty[Answered])))
+    assertEquals(seen.toVector, Vector((false, Vector.empty[Answered])))
     val answer = Answered("test.question", DecisionAnswer.ChooseOneAnswer(
       DecisionOptionRef.Button("yes")), actor)
     assert(ProcedureWalker.resolve(state, tree, pending, answer,
       WalkerPowers.empty).isRight)
     // The resume folds the host again, inside it.
-    assertEquals(hosted.seen.toVector.last, (true, Vector.empty[Answered]))
+    assertEquals(seen.toVector.last, (true, Vector.empty[Answered]))
     // The parked decision is found through the same fold.
     assertEquals(ProcedureWalker.parkedDecide(state, tree, pending,
       WalkerPowers.empty).map(_.decisionId), Some("test.question"))

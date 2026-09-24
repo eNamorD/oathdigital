@@ -95,7 +95,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         state match {
           case NoGame =>
             oathdigital.gameplay.setup.GameStartRules
-              .evolve(catalog, chronicle, orders).map(Ready)
+              .evolve(catalog, chronicle, orders).map(Ready.apply)
           case _ => Left(GameAlreadyExists)
         }
     }

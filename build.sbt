@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.16"
+ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / organization := "dev.oathdigital"
 ThisBuild / version := ReleaseVersion.resolve(sys.env.get("OATH_RELEASE_VERSION"))
 
@@ -54,12 +54,16 @@ lazy val root = (project in file("."))
       "-deprecation",
       "-feature",
       "-unchecked",
-      "-Xlint"
+      "-Wunused:imports,privates,locals,implicits,nowarn"
     ),
     // Ratchet: pinned at the baseline measured when scoverage was adopted
-    // (stmt 84.11%). Raise it as coverage improves; the goal is 100% with
-    // justified $COVERAGE-OFF$ exemptions. Enforced by `coverageReport`.
-    coverageMinimumStmtTotal := 84.0,
+    // (stmt 84.11% on Scala 2.13). Re-baselined on the Scala 3 switch to the
+    // measured stmt 86.497% (reported as 86.50%), down from 87.15% on 2.13
+    // the commit before: Scala 3 instruments statements differently, so the
+    // change is in measurement, not tests. Raise it as coverage improves; the goal is
+    // 100% with justified $COVERAGE-OFF$ exemptions. Enforced by
+    // `coverageReport`.
+    coverageMinimumStmtTotal := 86.4,
     coverageFailOnMinimum := true,
     Universal / packageName := s"oathdigital-${version.value}",
     verifyReleaseVersion := {
@@ -239,6 +243,10 @@ lazy val frontend = (project in file("frontend"))
     // it on for this Scala.js project too.
     coverageEnabled := false,
     scalaJSUseMainModuleInitializer := true,
+    // frontend/index.html loads the development bundle from here, so the
+    // path must not carry the Scala version the default crossTarget does.
+    Compile / fastLinkJS / scalaJSLinkerOutputDirectory :=
+      target.value / "fastopt",
     Compile / mainClass := Some("oathdigital.frontend.Main"),
     Compile / unmanagedSources ++= {
       val shared = (LocalRootProject / baseDirectory).value / "src" / "main" / "scala"
@@ -279,7 +287,7 @@ lazy val frontend = (project in file("frontend"))
       "-deprecation",
       "-feature",
       "-unchecked",
-      "-Xlint"
+      "-Wunused:imports,privates,locals,implicits,nowarn"
     )
   )
 

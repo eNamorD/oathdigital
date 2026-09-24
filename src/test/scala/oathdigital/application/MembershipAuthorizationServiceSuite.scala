@@ -104,7 +104,7 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
 
   test("identity storage failures remain distinct from nonmembership") {
     val failing = new IdentityRepositoryStub {
-      override def findMembership(gameId: String, userId: UserId) =
+      override def findMembership(gameId: String, userId: UserId): Either[IdentityFailure, Option[GameMembership]] =
         Left(IdentityFailure.StorageFailure("database unavailable"))
     }
     assertEquals(
@@ -151,23 +151,23 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
   private abstract class IdentityRepositoryStub extends IdentityRepository {
     private def unused[A]: Either[IdentityFailure, A] =
       fail("unexpected identity repository operation")
-    override def createUser(id: UserId, name: String, now: Long) = unused
-    override def linkExternalIdentity(identity: ExternalIdentity, id: UserId) =
+    override def createUser(id: UserId, name: String, now: Long): Either[IdentityFailure, Unit] = unused
+    override def linkExternalIdentity(identity: ExternalIdentity, id: UserId): Either[IdentityFailure, Unit] =
       unused
-    override def findUser(identity: ExternalIdentity) = unused
-    override def createGame(gameId: String, owner: UserId, now: Long) = unused
-    override def addMembership(membership: GameMembership, now: Long) = unused
-    override def listMemberships(gameId: String) = unused
-    override def createSession(session: StoredSession) = unused
-    override def resolveSession(digest: SessionTokenDigest, now: Long) = unused
-    override def revokeSession(digest: SessionTokenDigest, now: Long) = unused
-    override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long) =
+    override def findUser(identity: ExternalIdentity): Either[IdentityFailure, Option[UserId]] = unused
+    override def createGame(gameId: String, owner: UserId, now: Long): Either[IdentityFailure, Unit] = unused
+    override def addMembership(membership: GameMembership, now: Long): Either[IdentityFailure, Unit] = unused
+    override def listMemberships(gameId: String): Either[IdentityFailure, Vector[GameMembership]] = unused
+    override def createSession(session: StoredSession): Either[IdentityFailure, Unit] = unused
+    override def resolveSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, StoredSession] = unused
+    override def revokeSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, Unit] = unused
+    override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long): Either[IdentityFailure, Unit] =
       unused
     override def createTrustedSeats(
         gameId: String,
         seats: Vector[(SeatCodeDigest, String)],
         now: Long
-    ) = unused
-    override def resolveTrustedSeat(digest: SeatCodeDigest) = unused
+    ): Either[IdentityFailure, Unit] = unused
+    override def resolveTrustedSeat(digest: SeatCodeDigest): Either[IdentityFailure, TrustedSeat] = unused
   }
 }
