@@ -1,5 +1,7 @@
 package oathdigital.server
 
+import oathdigital.model.PlayerColor
+
 import java.nio.file.{Files, Path}
 import java.sql.{Connection, DriverManager}
 import oathdigital.application._
@@ -10,8 +12,8 @@ import oathdigital.protocol._
 
 class TrustedGameProvisioningSuite extends munit.FunSuite {
   private val request = TrustedGameCreateRequest("trusted-game", Vector(
-    BootstrapParticipantRequest("p1", "l1", "red"),
-    BootstrapParticipantRequest("p2", "l2", "blue")))
+    BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
+    BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue)))
   private val codes = Vector("AAAAAAAAAAAAAAAAAAAAAA", "AQEBAQEBAQEBAQEBAQEBAQ",
     "AgICAgICAgICAgICAgICAg", "AwMDAwMDAwMDAwMDAwMDAw").map(SeatCode.parse(_).toOption.get)
 
@@ -119,7 +121,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite {
       val service = provision(owner, () => fail("must validate before code generation"))
       Vector(request.copy(gameId = "bad/game"), request.copy(participants = Vector.empty),
         request.copy(participants = request.participants.updated(1,
-          request.participants(1).copy(color = "red"))),
+          request.participants(1).copy(color = PlayerColor.Red))),
         request.copy(participants = request.participants.updated(1,
           request.participants(1).copy(lineageId = "l1")))).foreach { invalid =>
         assertEquals(service.create(invalid, "https://games.test"), Left(TrustedGameFailure.InvalidRequest))

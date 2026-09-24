@@ -104,8 +104,15 @@ private[frontend] object ServerUiSupport {
     site.forces.foreach { forces =>
       val row = text("p", s"site-forces ${forceCssClass(forces)}",
         forceText(forces))
-      row.setAttribute("data-ruler-kind", forces.rulerKind)
-      forces.rulerPlayerId.foreach(row.setAttribute("data-ruler-player-id", _))
+      forces match {
+        case exile: SiteForces.Exile =>
+          row.setAttribute("data-ruler-kind", "player")
+          row.setAttribute("data-ruler-player-id", exile.rulerPlayerId)
+        case _: SiteForces.Imperial =>
+          row.setAttribute("data-ruler-kind", "empire")
+        case _: SiteForces.Bandit =>
+          row.setAttribute("data-ruler-kind", "bandit")
+      }
       details.appendChild(row)
     }
     val footer = element("div", "site-footer")
@@ -146,8 +153,11 @@ private[frontend] object ServerUiSupport {
   private[frontend] def forceText(forces: SiteForces): String =
     s"${forces.label} x${forces.count}"
 
-  private[frontend] def forceCssClass(forces: SiteForces): String =
-    s"force-${forces.colorToken}"
+  private[frontend] def forceCssClass(forces: SiteForces): String = forces match {
+    case exile: SiteForces.Exile => s"force-${exile.color.key}"
+    case _: SiteForces.Imperial => "force-empire"
+    case _: SiteForces.Bandit => "force-bandit"
+  }
 
   /** A site relic the viewer cannot identify. Same box as a real relic, so
     * learning what it is -- which a negotiation can do mid-game -- swaps the
@@ -317,9 +327,8 @@ private[frontend] object ServerUiSupport {
     candidateDetailText(candidate).map(value => text("span", "target-detail-badge", value))
 
   private[frontend] def winnerColorClass(value: GameProjection,
-      playerId: String): String = value.players.find(_.playerId == playerId)
-    .fold[PlayerColorToken](PlayerColorToken.Neutral)(p =>
-      PlayerColorToken.fromKey(p.colorToken)).cssClass
+      playerId: String): String =
+    PlayerColorCss.of(value.players.find(_.playerId == playerId).map(_.color))
 
   private[frontend] def winnerBanner(value: GameProjection,
       winner: String, victory: String): dom.Element = {
@@ -382,8 +391,7 @@ private[frontend] object ServerUiSupport {
     val player = value.players.find(_.playerId == playerId)
     val node = text(
       "span",
-      s"player-ref ${player.fold[PlayerColorToken](PlayerColorToken.Neutral)(p =>
-        PlayerColorToken.fromKey(p.colorToken)).cssClass}",
+      s"player-ref ${PlayerColorCss.of(player.map(_.color))}",
       player.fold(playerId)(_.displayName)
     )
     node.setAttribute("data-player-id", playerId)

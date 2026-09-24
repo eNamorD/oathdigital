@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
+
 import munit.FunSuite
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -377,8 +379,8 @@ class HttpGameClientSuite extends FunSuite {
       )
     )
     assertEquals(populated.relics, GameSiteRelics(2))
-    assertEquals(populated.forces, Some(SiteForces("exile", 2, "player",
-      Some("red-exile"), "Red Warbands", "red")))
+    assertEquals(populated.forces, Some(SiteForces.Exile(2, "red-exile",
+      PlayerColor.Red, "Red Warbands")))
     assertEquals(empty.denizens, Vector.empty)
     assertEquals(empty.relics.facedownCount, 0)
     assertEquals(empty.forces, None)

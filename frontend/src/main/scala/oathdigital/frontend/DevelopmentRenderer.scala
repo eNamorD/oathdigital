@@ -19,7 +19,7 @@ private[frontend] object DevelopmentRenderer {
    bar.appendChild(input)
    displayedProjection.toVector.flatMap(_.players).foreach { player =>
      val selector = button(player.displayName,
-       s"player-selector ${PlayerColorToken.fromKey(player.colorToken).cssClass}")
+       s"player-selector ${PlayerColorCss.of(player.color)}")
      selector.setAttribute("aria-pressed",
        (player.playerId == currentPlayerId).toString)
      selector.setAttribute("data-player-id", player.playerId)

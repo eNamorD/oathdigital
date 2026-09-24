@@ -5,14 +5,14 @@ import ProjectionCodecSupport._
 private[projection] object WorldProjectionCodec {
   def encodePlayer(value: SetupPlayerProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "displayName" -> value.displayName,
-    "role" -> value.role, "colorToken" -> value.colorToken)
+    "role" -> value.role, "colorToken" -> value.color.key)
   def decodePlayer(raw: ujson.Value, path: String): Result[SetupPlayerProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("playerId", "displayName", "role", "colorToken"), path)
     playerId <- string(value, "playerId", path)
     displayName <- string(value, "displayName", path)
     role <- string(value, "role", path)
-    color <- string(value, "colorToken", path)
+    color <- playerColor(value, "colorToken", path)
   } yield SetupPlayerProjection(playerId, displayName, role, color)
 
   def encodeCard(value: CardDetailsProjection): ujson.Value = ujson.Obj(
@@ -72,15 +72,20 @@ private[projection] object WorldProjectionCodec {
     cards <- traverse(raws, s"$path.knownRelics")(decodeCard)
   } yield SiteRelicsProjection(count, cards)
 
-  /** Every colour a seat can be dealt, so a fifth or sixth player's warbands
-    * decode as readily as the first four's. */
-  private val exileColors =
-    Set("purple", "red", "blue", "yellow", "white", "black", "pink", "brown")
-
-  private def encodeForces(value: SiteForcesProjection): ujson.Value = ujson.Obj(
-    "forceKind" -> value.forceKind, "count" -> value.count,
-    "rulerKind" -> value.rulerKind, "rulerPlayerId" -> stringOption(value.rulerPlayerId),
-    "label" -> value.label, "colorToken" -> value.colorToken)
+  /** The wire keeps the flat shape older clients read: kind, ruler and colour
+    * are each spelled out, and the decoder checks they name the same force.
+    */
+  private def encodeForces(value: SiteForcesProjection): ujson.Value = {
+    val (kind, ruler, player, color) = value match {
+      case SiteForcesProjection.Exile(_, playerId, color, _) =>
+        ("exile", "player", Some(playerId), color.key)
+      case _: SiteForcesProjection.Imperial => ("imperial", "empire", None, "empire")
+      case _: SiteForcesProjection.Bandit => ("bandit", "bandit", None, "bandit")
+    }
+    ujson.Obj("forceKind" -> kind, "count" -> value.count, "rulerKind" -> ruler,
+      "rulerPlayerId" -> stringOption(player), "label" -> value.label,
+      "colorToken" -> color)
+  }
   private def decodeForces(raw: ujson.Value, path: String): Result[SiteForcesProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("forceKind", "count", "rulerKind", "rulerPlayerId",
@@ -91,14 +96,18 @@ private[projection] object WorldProjectionCodec {
     label <- string(value, "label", path); color <- string(value, "colorToken", path)
     _ <- Either.cond(count > 0, (), oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(
       s"$path.count", "expected positive integer"))
-    _ <- Either.cond((kind, ruler, player, color) match {
-      case ("exile", "player", Some(_), color) => exileColors(color)
-      case ("imperial", "empire", None, "empire") => true
-      case ("bandit", "bandit", None, "bandit") => true
-      case _ => false
-    }, (), oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(path,
-      "force, ruler, and color tokens do not agree"))
-  } yield SiteForcesProjection(kind, count, ruler, player, label, color)
+    forces <- ((kind, ruler, player, color) match {
+      case ("exile", "player", Some(playerId), _) =>
+        playerColor(value, "colorToken", path).map(
+          SiteForcesProjection.Exile(count, playerId, _, label))
+      case ("imperial", "empire", None, "empire") =>
+        Right(SiteForcesProjection.Imperial(count, label))
+      case ("bandit", "bandit", None, "bandit") =>
+        Right(SiteForcesProjection.Bandit(count, label))
+      case _ => Left(oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(path,
+        "force, ruler, and color tokens do not agree"))
+    }): Result[SiteForcesProjection]
+  } yield forces
 
   private def encodeSite(value: SetupSiteProjection): ujson.Value = ujson.Obj(
     "siteId" -> value.siteId, "label" -> value.label,

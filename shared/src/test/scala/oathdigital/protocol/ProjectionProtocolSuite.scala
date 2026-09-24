@@ -1,5 +1,7 @@
 package oathdigital.protocol
 
+import oathdigital.model.PlayerColor
+
 import oathdigital.protocol.projection._
 
 class ProjectionProtocolSuite extends munit.FunSuite {
@@ -12,15 +14,15 @@ class ProjectionProtocolSuite extends munit.FunSuite {
   private val projection = GameProjection(
     gameId = "game-1", nextSequence = 7, phase = "act",
     activeParticipantId = Some("red"),
-    players = Vector(SetupPlayerProjection("red", "Red Exile", "exile", "red")),
+    players = Vector(SetupPlayerProjection("red", "Red Exile", "exile", PlayerColor.Red)),
     world = Vector(SetupRegionProjection("cradle", Vector(SetupSiteProjection(
       "site:a", "Site A", 1, 2, 3, 2,
       Vector(SiteCardProjection("hidden", "Unknown", Some(hidden))),
       SiteRelicsProjection(1, Vector(known)), defense = 2,
       recoverDifficulty = Some(3), forgeCost = Some(ForgeCostProjection(1, 1)),
       powers = Vector(SitePowerProjection("rest", "Rest", Some("public"))),
-      forces = Some(SiteForcesProjection("exile", 2, "player", Some("red"),
-        "Red warbands", "red")))), 1, Some("denizen"))),
+      forces = Some(SiteForcesProjection.Exile(2, "red", PlayerColor.Red,
+        "Red warbands")))), 1, Some("denizen"))),
     pawnLocations = Vector(PawnLocationProjection("red", "site:a")),
     legalControls = Vector("campaign"), ready = true, completed = false,
     activePlayerResources = Some(ActivePlayerResourcesProjection(2, 1, 1, 2, 4, 4)),
@@ -210,19 +212,31 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(rolling))
   }
 
-  test("warbands of every seat colour round-trip, and a mismatched ruler does not") {
-    def ruledBy(color: String, kind: String = "exile") = projection.copy(world =
-      projection.world.map(region => region.copy(sites = region.sites.map(
-        _.copy(forces = Some(SiteForcesProjection(kind, 2, "player",
-          Some(color), s"$color warbands", color)))))))
-    Vector("purple", "red", "blue", "yellow", "white", "black", "pink", "brown")
-      .foreach { color =>
-        val carrying = ruledBy(color)
-        assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-          Right(carrying))
-      }
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(
-      ruledBy("pink", "bandit"))).left.toOption.map(_.path),
+  test("warbands of every player colour round-trip") {
+    PlayerColor.all.foreach { color =>
+      val carrying = projection.copy(world = projection.world.map(region =>
+        region.copy(sites = region.sites.map(_.copy(forces = Some(
+          SiteForcesProjection.Exile(2, "red", color, s"${color.key} warbands")))))))
+      assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+        Right(carrying))
+    }
+  }
+
+  /** The types rule out an unknown colour or a force whose parts disagree, so
+    * only JSON from outside can carry one. The decoder refuses it at the
+    * field that is wrong.
+    */
+  test("the decoder refuses an unknown colour and a force that disagrees") {
+    def rejected(edit: ujson.Value => Unit): Option[String] = {
+      val json = ujson.read(GameProjectionCodec.encode(projection))
+      edit(json)
+      GameProjectionCodec.decode(ujson.write(json)).left.toOption.map(_.path)
+    }
+    assertEquals(rejected(_("players")(0)("colorToken") = "green"),
+      Some("$.players[0].colorToken"))
+    assertEquals(rejected(_("world")(0)("sites")(0)("forces")("colorToken") = "green"),
+      Some("$.world[0].sites[0].forces.colorToken"))
+    assertEquals(rejected(_("world")(0)("sites")(0)("forces")("forceKind") = "bandit"),
       Some("$.world[0].sites[0].forces"))
   }
 
@@ -239,8 +253,8 @@ class ProjectionProtocolSuite extends munit.FunSuite {
 
   test("bootstrap requests round-trip and reject malformed exact fields") {
     val request = FirstGameBootstrapRequest(0, Vector(
-      BootstrapParticipantRequest("red", "red-lineage", "red"),
-      BootstrapParticipantRequest("blue", "blue-lineage", "blue")), "red")
+      BootstrapParticipantRequest("red", "red-lineage", PlayerColor.Red),
+      BootstrapParticipantRequest("blue", "blue-lineage", PlayerColor.Blue)), "red")
     assertEquals(FirstGameBootstrapCodec.decode(FirstGameBootstrapCodec.encode(request)),
       Right(request))
     val unexpected = ujson.read(FirstGameBootstrapCodec.encode(request))

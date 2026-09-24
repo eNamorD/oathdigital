@@ -51,7 +51,7 @@ object TrustedGameCreateRequestCodec {
   def encode(request: TrustedGameCreateRequest): String = ujson.write(ujson.Obj(
     "gameId" -> request.gameId,
     "participants" -> ujson.Arr.from(request.participants.map(p => ujson.Obj(
-      "playerId" -> p.playerId, "lineageId" -> p.lineageId, "color" -> p.color)))))
+      "playerId" -> p.playerId, "lineageId" -> p.lineageId, "color" -> p.color.key)))))
 
   def decode(json: String): Either[ProtocolDecodeFailure, TrustedGameCreateRequest] =
     parse(json) { raw => for {
@@ -61,7 +61,9 @@ object TrustedGameCreateRequestCodec {
         obj <- exact(raw, Vector("playerId", "lineageId", "color"), path)
         player <- identifier(obj, "playerId", path)
         lineage <- identifier(obj, "lineageId", path)
-        color <- text(obj, "color", path)
+        color <- text(obj, "color", path).flatMap(key =>
+          oathdigital.model.PlayerColor.fromKey(key).toRight(
+            InvalidValue(s"$path.color", s"unknown player color '$key'")))
       } yield BootstrapParticipantRequest(player, lineage, color) }
       _ <- Either.cond(participants.nonEmpty &&
         participants.map(_.playerId).distinct.size == participants.size, (),

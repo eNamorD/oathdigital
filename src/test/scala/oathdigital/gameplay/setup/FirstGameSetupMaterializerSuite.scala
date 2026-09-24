@@ -20,7 +20,7 @@ class FirstGameSetupMaterializerSuite extends munit.FunSuite {
     val relicOrder = (1 to totalSlots + 5).map(i => RelicId(s"relic:test-$i")).toVector
     val plan = FirstGameSetupPlan(
       participants = Vector(
-        FirstGameParticipant(PlayerId("p1"), LineageId("l1"), PlayerColor("red"))),
+        FirstGameParticipant(PlayerId("p1"), LineageId("l1"), PlayerColor.Red)),
       firstPlayer = PlayerId("p1"),
       orderedSites = sites,
       denizenOrder = Vector.empty,

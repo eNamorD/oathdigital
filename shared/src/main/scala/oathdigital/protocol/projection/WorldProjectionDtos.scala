@@ -1,11 +1,12 @@
 package oathdigital.protocol.projection
 
+import oathdigital.model.PlayerColor
 
 final case class SetupPlayerProjection(
     playerId: String,
     displayName: String,
     role: String,
-    colorToken: String
+    color: PlayerColor
 )
 final case class CardDetailsProjection(
     cardId: String,
@@ -32,14 +33,21 @@ final case class SiteCardProjection(
 final case class SiteRelicsProjection(facedownCount: Int,
     knownRelics: Vector[CardDetailsProjection] = Vector.empty)
 final case class ForgeCostProjection(favor: Int, secrets: Int)
-final case class SiteForcesProjection(
-    forceKind: String,
-    count: Int,
-    rulerKind: String,
-    rulerPlayerId: Option[String],
-    label: String,
-    colorToken: String
-)
+/** Whose warbands hold a site. One case per kind of force, so a force, its
+  * ruler and its colour cannot disagree.
+  */
+sealed trait SiteForcesProjection extends Product with Serializable {
+  def count: Int
+  def label: String
+}
+object SiteForcesProjection {
+  final case class Exile(count: Int, rulerPlayerId: String, color: PlayerColor,
+      label: String) extends SiteForcesProjection
+  final case class Imperial(count: Int, label: String)
+      extends SiteForcesProjection
+  final case class Bandit(count: Int, label: String)
+      extends SiteForcesProjection
+}
 final case class SetupSiteProjection(
     siteId: String,
     label: String,

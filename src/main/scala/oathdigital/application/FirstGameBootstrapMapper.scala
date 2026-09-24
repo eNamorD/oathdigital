@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.model.{FirstGameParticipant, LineageId, PlayerColor, PlayerId}
+import oathdigital.model.{FirstGameParticipant, LineageId, PlayerId}
 import oathdigital.protocol.FirstGameBootstrapRequest
 
 object FirstGameBootstrapMapper {
@@ -9,7 +9,7 @@ object FirstGameBootstrapMapper {
       request.participants.map(participant => FirstGameParticipant(
         PlayerId(participant.playerId),
         LineageId(participant.lineageId),
-        PlayerColor(participant.color)
+        participant.color
       )),
       PlayerId(request.firstPlayer)
     )

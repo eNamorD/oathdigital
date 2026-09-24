@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
+
 import munit.FunSuite
 import oathdigital.presentation._
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -97,8 +99,8 @@ class ServerModeUiSuite extends FunSuite {
       val request = hostRequests(requests).head
       assert(request.gameId.startsWith("manual-"), request.gameId)
       assertEquals(request.participants, Vector(
-        oathdigital.protocol.BootstrapParticipantRequest("Red", "red-lineage", "red"),
-        oathdigital.protocol.BootstrapParticipantRequest("Blue", "blue-lineage", "blue")))
+        oathdigital.protocol.BootstrapParticipantRequest("Red", "red-lineage", PlayerColor.Red),
+        oathdigital.protocol.BootstrapParticipantRequest("Blue", "blue-lineage", PlayerColor.Blue)))
       assert(browser.text.contains("Game ID: host-game"))
       val links = browser.byClass("seat-link").map(_.asInstanceOf[org.scalajs.dom.html.Input])
       assertEquals(links.map(_.value), Vector("https://oath.test/s/red-code", "https://oath.test/s/blue-code"))
@@ -165,16 +167,15 @@ class ServerModeUiSuite extends FunSuite {
     browser.settle.map { _ =>
       assertEquals(requests.size, 1)
       assertEquals(hostRequests(requests).head.participants.map(p => p.playerId -> p.color),
-        Vector("Alex" -> "yellow", "Sam" -> "red"))
+        Vector("Alex" -> PlayerColor.Yellow, "Sam" -> PlayerColor.Red))
     }.andThen { case _ => browser.close() }
   }
 
   test("host colors map to their own player badge tokens") {
-    assertEquals(TrustedHostUi.LineageColors.map(PlayerColorToken.fromKey(_).cssClass),
+    assertEquals(TrustedHostUi.LineageColors.map(PlayerColorCss.of),
       Vector("player-red", "player-blue", "player-yellow", "player-white", "player-black",
         "player-pink", "player-brown"))
-    assertEquals(PlayerColorToken.fromKey("purple"), PlayerColorToken.Purple)
-    assertEquals(PlayerColorToken.fromKey("green"), PlayerColorToken.Neutral)
+    assertEquals(PlayerColorCss.of(None), "player-neutral")
   }
 
   private def trustedProjection: String =
@@ -236,7 +237,8 @@ class ServerModeUiSuite extends FunSuite {
     browser.click("create-trusted-game")
     browser.settle.map { _ =>
       assertEquals(requests.map(r => r._1 -> r._2).toVector, Vector("POST" -> "/games"))
-      assertEquals(hostRequests(requests).head.participants.map(_.color), Vector("red", "blue"))
+      assertEquals(hostRequests(requests).head.participants.map(_.color),
+        Vector(PlayerColor.Red, PlayerColor.Blue))
       assertEquals(opened.toVector, Vector("/?mode=server&gameId=host-game&playerId=Red"))
       assert(browser.byClass("seat-link").isEmpty)
     }.andThen { case _ => browser.close() }
@@ -646,14 +648,12 @@ class ServerModeUiSuite extends FunSuite {
 
   test("site forces retain accessible labels counts and stable color classes") {
     val cases = Vector(
-      SiteForces("exile", 2, "player", Some("red-exile"),
-        "Red Warbands", "red") -> ("Red Warbands x2", "force-red"),
-      SiteForces("exile", 1, "player", Some("blue-exile"),
-        "Blue Warbands", "blue") -> ("Blue Warbands x1", "force-blue"),
-      SiteForces("imperial", 1, "empire", None,
-        "Imperial Warbands", "empire") -> ("Imperial Warbands x1", "force-empire"),
-      SiteForces("bandit", 3, "bandit", None,
-        "Bandit Warbands", "bandit") -> ("Bandit Warbands x3", "force-bandit")
+      SiteForces.Exile(2, "red-exile", PlayerColor.Red,
+        "Red Warbands") -> ("Red Warbands x2", "force-red"),
+      SiteForces.Exile(1, "blue-exile", PlayerColor.Blue,
+        "Blue Warbands") -> ("Blue Warbands x1", "force-blue"),
+      SiteForces.Imperial(1, "Imperial Warbands") -> ("Imperial Warbands x1", "force-empire"),
+      SiteForces.Bandit(3, "Bandit Warbands") -> ("Bandit Warbands x3", "force-bandit")
     )
     cases.foreach { case (forces, (label, cssClass)) =>
       assertEquals(ServerUiSupport.forceText(forces), label)
@@ -998,13 +998,13 @@ class ServerModeUiSuite extends FunSuite {
           "red-exile",
           "Red Exile",
           "exile",
-          PlayerColorToken.Red
+          PlayerColor.Red
         ),
         GamePlayer(
           "blue-exile",
           "Blue Exile",
           "exile",
-          PlayerColorToken.Blue
+          PlayerColor.Blue
         )
       ),
       world = Vector.empty,

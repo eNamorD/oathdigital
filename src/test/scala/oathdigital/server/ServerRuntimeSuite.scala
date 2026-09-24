@@ -1,5 +1,7 @@
 package oathdigital.server
 
+import oathdigital.model.PlayerColor
+
 import java.nio.file.{Files, Paths}
 
 import oathdigital.application.TrustedSeat
@@ -7,9 +9,9 @@ import oathdigital.protocol._
 
 class ServerRuntimeSuite extends munit.FunSuite {
   private def request(gameId: String) = TrustedGameCreateRequest(gameId, Vector(
-    BootstrapParticipantRequest("p1", "l1", "red"),
-    BootstrapParticipantRequest("p2", "l2", "blue"),
-    BootstrapParticipantRequest("p3", "l3", "yellow")))
+    BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
+    BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue),
+    BootstrapParticipantRequest("p3", "l3", PlayerColor.Yellow)))
 
   test("trusted-game provisioning draws a randomized board, not the fixed dev one") {
     val runtime = ServerRuntime.open(

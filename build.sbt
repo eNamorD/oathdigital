@@ -244,6 +244,7 @@ lazy val frontend = (project in file("frontend"))
       val shared = (LocalRootProject / baseDirectory).value / "src" / "main" / "scala"
       Seq(
         shared / "oathdigital" / "model" / "Identity.scala",
+        shared / "oathdigital" / "model" / "PlayerColor.scala",
         shared / "oathdigital" / "model" / "Resources.scala",
         shared / "oathdigital" / "catalog" / "CatalogModel.scala",
         shared / "oathdigital" / "presentation" / "ViewModel.scala"

@@ -1,5 +1,7 @@
 package oathdigital.server
 
+import oathdigital.model.PlayerColor
+
 import java.net.{CookieManager, CookiePolicy, URI}
 import java.net.http.{HttpClient, HttpRequest, HttpResponse => JavaResponse}
 import java.nio.file.{Files, Paths}
@@ -379,8 +381,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
   }
 
   private def creationBody(gameId: String): String = TrustedGameCreateRequestCodec.encode(
-    TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", "l1", "red"),
-      BootstrapParticipantRequest("p2", "l2", "blue"))))
+    TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
+      BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue))))
 
   private def create(client: HttpClient, base: String, gameId: String): TrustedGameCreateResponse = {
     val response = send(client, base, "/games", Some(creationBody(gameId)))

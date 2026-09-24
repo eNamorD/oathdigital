@@ -31,17 +31,17 @@ object FirstGameSetupFixture {
     FirstGameParticipant(
       PlayerId("p1"),
       LineageId("l1"),
-      PlayerColor("red")
+      PlayerColor.Red
     ),
     FirstGameParticipant(
       PlayerId("p2"),
       LineageId("l2"),
-      PlayerColor("blue")
+      PlayerColor.Blue
     ),
     FirstGameParticipant(
       PlayerId("p3"),
       LineageId("l3"),
-      PlayerColor("yellow")
+      PlayerColor.Yellow
     )
   )
   val sites: Vector[SiteId] = catalog.sites.take(8).map(_.id)

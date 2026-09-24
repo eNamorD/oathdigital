@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.model.{OathState, PlayerId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.server.{GameHttpWire, GameServerGateway}
+import oathdigital.protocol.projection.SiteForcesProjection
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 /** `GameServerGateway.submit` with `GameCommand.Begin` is what the
@@ -49,7 +50,7 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
     assertEquals(projection.playerBoards.size, config.participants.size)
     assert(projection.world.flatMap(_.sites).exists(_.looseFavor > 0))
     assert(projection.world.flatMap(_.sites).exists(_.relics.facedownCount > 0))
-    assert(projection.world.flatMap(_.sites).exists(_.forces.exists(_.forceKind == "bandit")))
+    assert(projection.world.flatMap(_.sites).exists(_.forces.exists(_.isInstanceOf[SiteForcesProjection.Bandit])))
     assert(projection.world.flatMap(_.sites).exists(_.denizens.exists(
       _.details.exists(details => details.cardKind == "edifice" &&
         details.side.contains("ruined")))))

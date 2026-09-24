@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
+
 import org.scalajs.dom
 
 /** Ending the Act refills the Supply track, so the button that ends it says
@@ -10,7 +12,7 @@ class RestButtonSuite extends munit.FunSuite {
   private def label(gain: Option[Int]): Option[String] =
     ActionDecisionRenderer.actionsPanel(
       GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red)),
+        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
         Vector.empty, Vector.empty, Vector("beginRest"), ready = true,
         completed = false, actionSelectionOpen = true,
         restSupplyGain = gain),

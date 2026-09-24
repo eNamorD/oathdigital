@@ -2,7 +2,7 @@ package oathdigital.model
 
 class GameStartedSuite extends munit.FunSuite {
   private val participant = FirstGameParticipant(
-    PlayerId("p1"), LineageId("lineage-1"), PlayerColor("red"))
+    PlayerId("p1"), LineageId("lineage-1"), PlayerColor.Red)
   private val orders = SetupOrders(
     Vector(participant), PlayerId("p1"), Vector.empty, Vector.empty)
   private val chronicle = Chronicle(
