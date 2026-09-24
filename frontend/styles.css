@@ -589,10 +589,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    inherited font-size change would compound with that invisibly. */
 .map-content { position: absolute; width: 1500px; padding: 20px;
   transform-origin: top left; font-size: 1rem; }
-.map-content.map-compact .card-face .card-tokens,
+/* Zoomed out, a card keeps what a player scans the board for: its resources
+   and the badge saying it does not work yet. Defense and restriction are
+   re-read on the inspect overlay, so they go. */
 .map-content.map-compact .card-face .card-defense,
-.map-content.map-compact .card-face .card-restriction,
-.map-content.map-compact .card-face .card-unimplemented-badge {
+.map-content.map-compact .card-face .card-restriction {
   display: none; }
 .map-content .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .map-content .sites { grid-template-columns: 1fr; }
