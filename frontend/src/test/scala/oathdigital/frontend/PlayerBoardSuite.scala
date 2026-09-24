@@ -89,30 +89,24 @@ class PlayerBoardSuite extends munit.FunSuite {
       .map(_.playerId), Vector("red", "blue"))
   }
 
-  test("the rendered strip leads with the viewer's own board") {
-    val seats = Vector("red", "blue", "white")
-      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
-    val node = WorldBoardRenderer.playerBoards(
-      GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,
-        Vector.empty, Vector.empty, ready = true, completed = false,
-        viewerPlayerId = Some("white")),
-      new RecordingView("game", "white"))
-    assertEquals(all(node, ".player-board").map(_.getAttribute("data-player-id")),
-      Vector("white", "red", "blue"))
-  }
-
-  /** A development session is not a seat, so the projection names no viewer;
-    * the seat the client is acting as says the same thing.
+  /** The seat the client holds decides, in both modes: a trusted session
+    * adopts its seat from the projection's viewer before rendering and will
+    * not display a projection that disagrees with it, so the projected
+    * viewer is never the more correct answer -- only sometimes present.
     */
-  test("with no viewer named, the strip leads with the seat the client holds") {
+  test("the rendered strip leads with the seat the client holds") {
     val seats = Vector("red", "blue", "white")
       .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
-    val node = WorldBoardRenderer.playerBoards(
-      GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,
-        Vector.empty, Vector.empty, ready = true, completed = false),
-      new RecordingView("game", "blue"))
-    assertEquals(all(node, ".player-board").map(_.getAttribute("data-player-id")),
-      Vector("blue", "white", "red"))
+    def strip(viewer: Option[String], seat: String): Vector[String] =
+      all(WorldBoardRenderer.playerBoards(
+        GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,
+          Vector.empty, Vector.empty, ready = true, completed = false,
+          viewerPlayerId = viewer),
+        new RecordingView("game", seat)), ".player-board")
+        .map(_.getAttribute("data-player-id"))
+    assertEquals(strip(Some("white"), "white"), Vector("white", "red", "blue"))
+    // A development session holds a seat but is named by no viewer.
+    assertEquals(strip(None, "blue"), Vector("blue", "white", "red"))
   }
 
   /** The count alone cannot say which secrets are spendable, so the sentence

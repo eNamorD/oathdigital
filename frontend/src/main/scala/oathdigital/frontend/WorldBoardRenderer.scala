@@ -32,11 +32,12 @@ private[frontend] object WorldBoardRenderer {
 
  def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element = {
    val panel = element("section", "panel player-boards")
-   // Only the trusted seat gateway names a viewer; a development session
-   // knows which seat it is acting as instead, and both mean the same thing
-   // here -- the board this reader owns.
-   seatOrder(value.players, value.viewerPlayerId.filter(_.nonEmpty)
-     .orElse(Some(ui.currentPlayerId).filter(_.nonEmpty))).foreach { player =>
+   // The seat the client holds, not the projection's viewer: a trusted
+   // session adopts its seat from that viewer before it renders and refuses
+   // to display a projection that disagrees with it (`ServerModeUi.store`),
+   // so this is the one answer that is right in both modes.
+   seatOrder(value.players, Some(ui.currentPlayerId).filter(_.nonEmpty))
+     .foreach { player =>
      val section = element("section", "player-board")
      section.setAttribute("data-player-id", player.playerId)
      if (value.activeParticipantId.contains(player.playerId)) {
