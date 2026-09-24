@@ -91,7 +91,7 @@ final class GameApplicationService(
     phasePowerCatalog = PhasePowerCatalog.default(catalog),
     walkerDice = CampaignDicePort.walkerDice(campaignDicePort))
   private val presentation = new GamePresentationProjector(catalog)
-  private val descriptions = new PreviewModifierDescriptions(presentation)
+  private val descriptions = new PreviewModifierDescriptions(catalog, presentation)
   private val replay = new EventReplayEngine(rules)
 
   /** Derives a validated initial journal and state without accessing storage. */
@@ -150,7 +150,7 @@ final class GameApplicationService(
             accepted <- acceptPreview(loaded, options, selected, Vector.empty,
               walkerTargets(actionRef, ready, actor, selected))
           } yield accepted.copy(modifiers = descriptions.describe(ready,
-            offerable, accepted.options))
+            actor, action, offerable, accepted.options))
           case None => for {
             options <- PowerRuntime.options(catalog, ready, actor, action)
               .left.map(CommandRejected)
@@ -158,7 +158,7 @@ final class GameApplicationService(
               .left.map(CommandRejected)
             accepted <- acceptPreview(loaded, options, selected, ignored)
           } yield accepted.copy(modifiers = descriptions.describe(ready,
-            Vector.empty, accepted.options))
+            actor, action, Vector.empty, accepted.options))
         }
       case Some(_) => Left(CommandRejected(OathViolation.GameNotStarted))
     }

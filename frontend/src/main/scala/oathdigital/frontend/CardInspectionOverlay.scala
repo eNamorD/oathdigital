@@ -31,6 +31,7 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
 
   def show(card: CardDetails, origin: dom.html.Element): Unit = {
     clear()
+    node.setAttribute("aria-label", "Card details")
     // Inspection reads a card, so a card the viewer is allowed to read is
     // turned over here. One the viewer cannot identify has nothing to turn.
     body.appendChild(CardFace.render(
@@ -47,6 +48,9 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
   def showText(title: String, lines: Vector[String],
       origin: dom.html.Element): Unit = {
     clear()
+    // Named for what it shows: it is not a card, so "Card details" would
+    // misname it.
+    node.setAttribute("aria-label", title)
     val panel = element("div", "card-overlay-details")
     panel.appendChild(text("h3", "card-overlay-name", title))
     lines.foreach(line => RulesTextRenderer.powers(line)

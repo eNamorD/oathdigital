@@ -87,12 +87,21 @@ two glyphs in the second.
 
 ## 2. Vision play offers only what is legal
 
-A Vision may be played faceup or discarded. Nothing else is legal, so nothing
-else is offered.
+A Vision may be played faceup, held as a facedown adviser, or discarded. It is
+never played to a site, so that is not offered.
+
+> **Correction (review, 2026-09-24):** this section first said a Vision may
+> only be played faceup or discarded, and Task 2 removed the facedown play
+> with the site. That was wrong: a facedown Vision adviser is how an Exile
+> holds a Vision to reveal later, and how Conspiracy is later played faceup
+> from the Advisers area (`docs/architecture/bounded-visions-and-conspiracy.md`).
+> Search is the only way to draw a Vision, so without the facedown play those
+> paths were unreachable. Only the site option is filtered now.
 
 - In `CardPlayProcedure`, the placement options for a card whose id is a
-  `VisionId` become exactly `discard` and `adviser-faceup`. Site and facedown
-  disappear from the query rather than being rejected after the click.
+  `VisionId` lose `site`: it disappears from the query rather than being
+  rejected after the click. `discard`, `adviser-faceup` and
+  `adviser-facedown` stay.
 - The `cardplay.replace.*` decision is not built for a Vision. Displacing a
   revealed Vision is forced — there is exactly one card it can replace — so
   the walk plans the displacement itself and discards the old Vision to the
@@ -106,10 +115,10 @@ decision" rule would silently change every walker that parks a single-option
 choice, and some of those parks exist so the player sees what happened.
 
 **Tests:** `VisionPlaySuite` gains (a) the placement query for a Vision lists
-exactly Discard and Play faceup; (b) playing a Vision from the temporary hand
-over a revealed Vision completes in one answer, with the displaced Vision in
-the next region's discard; (c) a Vision answer naming `site` or
-`adviser-facedown` is rejected, because the option is not declared.
+Discard and both adviser plays, and no site; (b) playing a Vision from the
+temporary hand over a revealed Vision completes in one answer, with the
+displaced Vision in the next region's discard; (c) a Vision answer naming `site` is rejected,
+because the option is not declared.
 
 ## 3. The player-area slots row
 

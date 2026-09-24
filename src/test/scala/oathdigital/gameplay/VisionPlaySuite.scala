@@ -200,13 +200,17 @@ class VisionPlaySuite extends munit.FunSuite {
     assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
   }
 
-  test("a Vision's placement offers exactly Discard and Play faceup") {
+  test("a Vision's placement offers Discard and both adviser plays, " +
+      "never a site") {
     val decision = parkedPlacement(visionInTemporaryHand())
-    assertEquals(decision.query match {
-      case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
+    val offered = decision.query match {
+      case DecisionQuery.ChooseOne(options, _) => options.map(_.ref).toSet
       case other => fail(s"expected a choose-one, got $other")
-    }, Vector(DecisionOptionRef.Button("discard"),
-      DecisionOptionRef.Button("adviser-faceup")))
+    }
+    assertEquals(offered, Set[DecisionOptionRef](
+      DecisionOptionRef.Button("discard"),
+      DecisionOptionRef.Button("adviser-faceup"),
+      DecisionOptionRef.Button("adviser-facedown")))
   }
 
   test("playing a Vision over a revealed one asks no discard question") {

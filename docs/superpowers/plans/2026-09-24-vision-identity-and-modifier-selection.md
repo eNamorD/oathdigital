@@ -38,7 +38,7 @@
 | `shared/.../MajorActionPreviewProtocol.scala` | `PreviewModifier.card` and `.modifies`, and their codec (Task 6). |
 | `src/.../model/Decisions.scala` | `DecisionOption.Badged` (Task 7). |
 | `src/.../model/CampaignTypes.scala` | `CampaignPlanOffer.sides` (Task 7). |
-| `src/.../gameplay/actions/cardplay/CardPlayProcedure.scala` | A Vision's placement query lists only Discard and Play faceup (Task 2). |
+| `src/.../gameplay/actions/cardplay/CardPlayProcedure.scala` | A Vision's placement query drops the site option (Task 2; corrected in review -- see spec §2). |
 | `src/.../gameplay/actions/CardPlay.scala` | `planVision` derives the displaced Vision instead of requiring it as an answer (Task 2). |
 | `src/.../gameplay/actions/campaign/CampaignPlans.scala` | The badge a plan's sides produce (Task 7). |
 | `src/.../gameplay/actions/campaign/CampaignBattle.scala` | `sacrificeHeading` reduced to the prompt (Task 9). |
@@ -205,6 +205,11 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ---
 
 ### Task 2: A Vision offers only the plays that are legal
+
+> **Corrected in review (2026-09-24):** as first written, this task also removed
+> `adviser-facedown` for a Vision. That play is legal -- it is how an Exile
+> holds a Vision to reveal later -- so only `site` is filtered now. See the
+> correction note in spec §2. The steps below are kept as they were executed.
 
 A Vision may be played faceup or discarded. Today the placement query offers four buttons and rejects the illegal two after the click, and displacing a revealed Vision asks a one-option "Choose a card to discard". Both go.
 

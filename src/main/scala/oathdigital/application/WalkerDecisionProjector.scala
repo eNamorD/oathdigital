@@ -360,7 +360,7 @@ private[application] final class WalkerDecisionProjector(
   /** The cards a decision is about, read from its own id.
     *
     * A card-play decision is the one question in the walker whose subject is
-    * not among its options: `cardplay.place.*` offers four buttons and names
+    * not among its options: `cardplay.place.*` offers placement buttons and names
     * the card only in the id it was built with. The id is the tree's own
     * spelling of `WorldCardId` (`kind` then `value`), so this parses what the
     * procedure wrote rather than reaching into the tree for it.

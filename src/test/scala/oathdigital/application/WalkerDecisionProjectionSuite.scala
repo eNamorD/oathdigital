@@ -387,7 +387,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       Some(other))), None)
   }
 
-  test("only a Recover decision carries roll feedback") {
+  test("a Campaign force decision carries no roll") {
     val b = oathdigital.gameplay.CampaignFixture.board()
     val game = oathdigital.gameplay.CampaignFixture.rules()
     val started = game.startWalker(OathState.Ready(b.ready), ActionRef.Campaign,

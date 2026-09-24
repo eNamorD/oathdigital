@@ -397,11 +397,8 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.secretSummaryLabel(1, 2, 0, 1),
       "1 available of 2 owned; 0 facedown and 1 committed")
   }
-  test("the roll outcome summary shows the target before any roll " +
-      "and the accumulated dice and score after") {
-    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
-      WalkerRollOutcomeState("recover", Vector.empty, 0, Some(4))),
-      "Need 4 to succeed.")
+  test("the roll outcome summary reads the accumulated dice, the score and " +
+      "what it is measured against") {
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState("recover", Vector("blank", "blank"), 0, Some(4))),
       "Rolled blank, blank -- 0 shields so far (need 4).")

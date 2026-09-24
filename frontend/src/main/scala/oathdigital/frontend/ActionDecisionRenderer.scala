@@ -117,7 +117,12 @@ private[frontend] object ActionDecisionRenderer {
            choose.textContent = ""
            ordinal.foreach(n => choose.appendChild(
              text("span", "modifier-ordinal-prefix", s"$n.")))
-           choose.appendChild(CardFace.render(card))
+           // The toggle is the control; the face inside it is only what it
+           // shows, so it takes no focus of its own (CSS already stops its
+           // clicks).
+           val face = CardFace.render(card)
+           face.tabIndex = -1
+           choose.appendChild(face)
            choose.appendChild(text("span", "modifier-modifies",
              s"${actionLabel(modifier.modifies.getOrElse(workflow.preview.action))} Modifier"))
          }

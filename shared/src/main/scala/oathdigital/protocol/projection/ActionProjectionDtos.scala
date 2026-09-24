@@ -177,9 +177,10 @@ final case class DecisionSlotProjection(option: DecisionOptionProjection,
   * `rollOutcome` (I5) carries the roll the parked decision is about -- the
   * pool, the dice faces rolled so far, the derived score, and the target or
   * consequences where the procedure declares them -- so the panel can show
-  * the player what they rolled and what it came to. Owner-private exactly like the rest of this projection:
-  * the projector only ever returns the whole `WalkerDecisionProjection` for
-  * the parked actor, so no other viewer sees a roll outcome either.
+  * the player what they rolled and what it came to. Owner-private exactly
+  * like the rest of this projection: the projector only ever returns the
+  * whole `WalkerDecisionProjection` for the parked actor, so no other viewer
+  * sees a roll outcome either.
   */
 final case class WalkerDecisionProjection(
     action: String,
@@ -191,7 +192,8 @@ final case class WalkerDecisionProjection(
     rollOutcome: Option[WalkerRollOutcomeProjection] = None,
     /** The cards this decision is ABOUT, as opposed to the cards its options
       * name: the card being placed by a `cardplay.place.*` question, which is
-      * neither an option nor in the temporary hand. Plural so a decision about
+      * not among its options (a Search's kept card is in the temporary hand,
+      * a facedown adviser's is on the board, and neither is offered). Plural so a decision about
       * several cards needs no second field. Projected under the same
       * disclosure rules as every other card, so a viewer who may not identify
       * one receives it hidden.

@@ -72,11 +72,6 @@ object RecoverProcedure {
 
   private val supplyCost: Int = 1
 
-  /** The actor's current pawn site -- the single definition `build`,
-    * `rebuild`, and [[actorFacedownRelics]] all read, so nothing in this
-    * module (or a caller outside it) can derive "the Recover site" a
-    * different way and silently disagree with the others.
-    */
   /** Every park of a Recover shows the same thing: the pool rolled so far and
     * the site's difficulty, which is worth showing before the first roll too.
     */
@@ -87,6 +82,11 @@ object RecoverProcedure {
       WalkerRollFeedback(recoverPool, target = actorSite(ready, actor)
         .flatMap(RecoverRules.difficulty(catalog, _)))).filter(_.target.nonEmpty)
 
+  /** The actor's current pawn site -- the single definition `build`,
+    * `rebuild`, and [[actorFacedownRelics]] all read, so nothing in this
+    * module (or a caller outside it) can derive "the Recover site" a
+    * different way and silently disagree with the others.
+    */
   def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
 

@@ -219,6 +219,8 @@ class CardInspectionOverlaySuite extends munit.FunSuite {
       "Rules the most sites",
       "Successor to the Chancellor: Holds more relics"))
     assertEquals(all(root, ".card-face"), Vector.empty)
+    assertEquals(root.querySelector(".card-overlay").getAttribute("aria-label"),
+      "Oathkeeper of Supremacy")
   }
 
   test("text mode closes and returns focus like card mode") {

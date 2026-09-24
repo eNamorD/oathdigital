@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture, TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -39,6 +40,13 @@ class GossipSuite extends munit.FunSuite {
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
     assertEquals(discordBank(after), discordBank(ready) - 1)
     assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
+  }
+
+  test("a facedown Vision counts too") {
+    val ready = held(Vector(VisionRules.Faith))
+    val after = SearchFixture.after(play(ready, Vector.empty,
+      VisionRules.Faith, "adviser-facedown"))
+    assertEquals(favor(after, holder), favor(ready, holder) + 1)
   }
 
   test("a faceup play and a discard gain nothing") {

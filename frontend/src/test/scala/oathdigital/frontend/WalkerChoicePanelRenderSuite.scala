@@ -94,9 +94,12 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
       canControl = true, panel, new RecordingView("game", "red"))
-    assertEquals(all(panel, ".walker-choice .card-face").size, 1)
+    assertEquals(all(panel, ".card-choice > .card-face").size, 1)
+    assertEquals(all(panel, ".walker-choice .card-face").size, 0)
     assertEquals(all(panel, ".plan-side-both").map(_.textContent),
       Vector("Battle Plan"))
+    assertEquals(all(panel, ".walker-choice").map(_.getAttribute("aria-label")),
+      Vector("Sticky Fire, Battle Plan"))
     assertEquals(all(panel, ".walker-choice-details").map(_.textContent),
       Vector("1 Favor"))
   }
@@ -136,7 +139,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
       canControl = true, panel, new RecordingView("game", "red"))
     assertEquals(all(panel, ".walker-choice").map(_.textContent), Vector("Old Oak"))
-    assertEquals(all(panel, ".walker-choice .card-face").size, 0)
+    assertEquals(all(panel, ".card-face").size, 0)
   }
 
   test("an attacker-only plan draws its card and the attack chip") {
@@ -154,8 +157,77 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
       canControl = true, panel, new RecordingView("game", "red"))
-    assertEquals(all(panel, ".walker-choice .card-face").size, 1)
+    assertEquals(all(panel, ".card-choice > .card-face").size, 1)
     assertEquals(all(panel, "span.option-badge.plan-side-attack").map(_.textContent),
       Vector("Attack Plan"))
+  }
+
+  /** A plan applies as soon as it is chosen, so reading its card must not
+    * choose it: the face opens the inspector and nothing else.
+    */
+  test("clicking a battle plan's card submits nothing; its button chooses it") {
+    val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",
+      orientation = Some("face-up"))
+    val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
+      Some(card), badge = Some("Attack Plan"))
+    val query = DecisionQueryState("choose-one", Vector(plan),
+      heading = Some("Choose a battle plan, or finish"))
+    val parked = WalkerDecisionState("campaign", "campaign.attacker-plan",
+      "decide", query = Some(query))
+    val projection = GameProjection("game", 9L, "act", Some("red"),
+      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false, walkerDecision = Some(parked))
+    val panel = dom.document.createElement("div")
+    val ui = new RecordingView("game", "red")
+    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
+      canControl = true, panel, ui)
+    var inspected = Vector.empty[CardInspection.Request]
+    CardInspection.onOpen(request => inspected :+= request)
+    try all(panel, ".card-face").head.asInstanceOf[dom.html.Button].click()
+    finally CardInspection.clear()
+    assertEquals(inspected.size, 1)
+    assertEquals(ui.submitted.size, 0)
+    all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
+    assertEquals(ui.submitted.size, 1)
+  }
+
+  test("a badged option with no card names its side in words") {
+    val plan = DecisionOptionState("button", "title-plan", "Title plan",
+      badge = Some("Defense Plan"))
+    val query = DecisionQueryState("choose-one", Vector(plan),
+      heading = Some("Choose a battle plan, or finish"))
+    val parked = WalkerDecisionState("campaign", "campaign.defender-plan",
+      "decide", query = Some(query))
+    val projection = GameProjection("game", 9L, "act", Some("red"),
+      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false, walkerDecision = Some(parked))
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
+      canControl = true, panel, new RecordingView("game", "red"))
+    assertEquals(all(panel, ".walker-choice").map(_.getAttribute("aria-label")),
+      Vector("Title plan, Defense Plan"))
+    assertEquals(all(panel, ".card-choice").size, 0)
+  }
+
+  test("a choose-one asked after a roll draws the roll before the question") {
+    val outcome = WalkerRollOutcomeState("campaign.defense",
+      Vector("one-shield", "blank"), 1)
+    val site = DecisionOptionState("site", "s1", "The Spire")
+    val query = DecisionQueryState("choose-one", Vector(site),
+      heading = Some("Move the defending warbands"))
+    val parked = WalkerDecisionState("campaign", "campaign.relocation",
+      "decide", query = Some(query), rollOutcome = Some(outcome))
+    val projection = GameProjection("game", 9L, "act", Some("red"),
+      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false, walkerDecision = Some(parked))
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
+      canControl = true, panel, new RecordingView("game", "red"))
+    assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
+      Vector("Defense 1"))
+    assertEquals(all(panel, ".walker-roll-faces").map(_.getAttribute("role")),
+      Vector("img"))
+    assertEquals(panel.firstElementChild.getAttribute("class"),
+      "walker-roll-faces")
   }
 }

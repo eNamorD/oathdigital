@@ -98,21 +98,18 @@ private[frontend] object WalkerPanelSupport {
       DecisionAnswerWire.ChooseOneWire(option.kind, option.id))
 
   /** The sentence the glyph row is read as, for a reader who cannot see the
-    * symbols. It is the accessible name of the row, never printed. Before any
-    * roll `faces` is empty, and a target is still worth announcing then.
+    * symbols. It is the accessible name of the row, never printed, and only
+    * asked for once there are faces: before the first roll the totals line
+    * already says the target.
     */
-  private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
-    if (outcome.faces.isEmpty)
-      outcome.target.fold("No dice rolled yet.")(target =>
-        s"Need $target to succeed.")
-    else {
-      val total =
-        if (outcome.pool == "recover") s"${outcome.score} shields so far"
-        else s"${poolLabel(outcome.pool)} ${outcome.score}"
-      s"Rolled ${outcome.faces.mkString(", ")} -- $total" +
-        outcome.target.fold("")(target => s" (need $target)") +
-        outcome.detail.map(", " + _).mkString + "."
-    }
+  private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String = {
+    val total =
+      if (outcome.pool == "recover") s"${outcome.score} shields so far"
+      else s"${poolLabel(outcome.pool)} ${outcome.score}"
+    s"Rolled ${outcome.faces.mkString(", ")} -- $total" +
+      outcome.target.fold("")(target => s" (need $target)") +
+      outcome.detail.map(", " + _).mkString + "."
+  }
 
   /** What a roll is called in a total line. A pool key is a wire string, so an
     * unknown one is printed as it arrives rather than guessed at.
@@ -145,10 +142,10 @@ private[frontend] object WalkerPanelSupport {
       panel.appendChild(text("p", "walker-waiting", notice)))
 
   /** Renders the Recover panel for whichever of the parks
-    * (`recoverWalkerStep`) the walker is at. Shows `rollOutcomeSummary`
-    * (I5) above each park's controls, and gates buying more dice on the
-    * player actually having supply -- as the legacy (deleted) Recover panel
-    * did. Recover rolls as the walker walks, so the continue answer both
+    * (`recoverWalkerStep`) the walker is at. Shows the roll so far
+    * (`rollFeedback`: the dice, then the totals line) above each park's
+    * controls, and gates buying more dice on the player actually having
+    * supply -- as the legacy (deleted) Recover panel did. Recover rolls as the walker walks, so the continue answer both
     * buys the dice and throws them and its label says so; the Roll park
     * below it is reached only if a power folds a parked roll into the tree,
     * which is why the panel still knows how to answer one.
@@ -242,6 +239,9 @@ private[frontend] object WalkerPanelSupport {
     value.walkerDecision.filter(_ => presentation.showGameplayControls)
       .flatMap(decision => chooseOneStep(decision).map(decision -> _))
       .foreach { case (decision, query) =>
+        // The roll the question is asked after (a Campaign's relocation),
+        // first, as on every panel a roll belongs beside.
+        rollFeedback(decision, panel)
         panel.appendChild(text("h2", "", decisionHeading(query)))
         // The card the question is about. A placement asks about a card that
         // is neither an option nor in the temporary hand, so without this the
@@ -274,27 +274,32 @@ private[frontend] object WalkerPanelSupport {
           if (option.kind == "favor-bank")
             choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
               choose.firstChild)
-          // An option that carries a card IS the card: a plan is chosen by
-          // reading what it does, which the face already says. Gated on the
-          // badge, not merely on the card: Muster, Search, Forge and other
-          // choose-one queries also offer Denizen/Relic/Vision/Edifice
-          // options with a card attached, and those keep their labelled
-          // text button -- only a battle plan, which also carries a badge,
-          // draws as a face.
-          option.card.filter(_ => option.badge.nonEmpty).foreach { card =>
-            choose.textContent = ""
-            choose.setAttribute("aria-label", label)
-            choose.appendChild(CardFace.render(
-              card.copy(orientation = Some("face-up"))))
-          }
           option.badge.foreach { badge =>
-            val chip = text("span", s"option-badge ${badgeClass(badge)}", badge)
-            choose.appendChild(chip)
+            choose.appendChild(
+              text("span", s"option-badge ${badgeClass(badge)}", badge))
+            // Named in words: the content alone reads the label and the chip
+            // run together.
+            choose.setAttribute("aria-label", s"$label, $badge")
           }
           choose.disabled = !canControl
           choose.onclick = _ => ui.submitCommand(
             resolveChooseOneCommand(decision, option))
-          panel.appendChild(choose)
+          // A battle plan is chosen by reading what it does, so its card is
+          // drawn above its button -- beside it, never inside: the face is
+          // itself a button that opens the inspector, and a click meant to
+          // read the card must not also commit a plan that applies at once.
+          // Gated on the badge, not merely on the card: Muster, Search, Forge
+          // and other choose-one queries also offer cards, and those keep
+          // their labelled text button.
+          option.card.filter(_ => option.badge.nonEmpty) match {
+            case Some(card) =>
+              val choice = element("div", "card-choice")
+              choice.appendChild(CardFace.render(
+                card.copy(orientation = Some("face-up"))))
+              choice.appendChild(choose)
+              panel.appendChild(choice)
+            case None => panel.appendChild(choose)
+          }
           if (option.details.nonEmpty) panel.appendChild(text("p",
             "walker-choice-details", option.details.mkString(" · ")))
         }
@@ -318,6 +323,9 @@ private[frontend] object WalkerPanelSupport {
     decision.rollOutcome.foreach { outcome =>
       if (outcome.faces.nonEmpty) {
         val row = element("p", "walker-roll-faces")
+        // A paragraph may not carry a name of its own; as an image the row
+        // is read as the one sentence the glyphs add up to.
+        row.setAttribute("role", "img")
         row.setAttribute("aria-label", rollOutcomeSummary(outcome))
         row.appendChild(DieFace.roll(outcome.faces))
         panel.appendChild(row)

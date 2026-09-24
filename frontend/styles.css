@@ -610,7 +610,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .player-title { color: var(--token-favor); border: 1px solid var(--token-favor);
   border-radius: 999px; padding: 0 0.45em; font-size: 0.78rem;
   font-weight: 600; line-height: 1.15; background: none; cursor: pointer; }
-.player-identity > .player-title::before { content: none; }
 /* A title and a Vision are states of the player, so they get a row of their
    own between the identity line and the cards. It wraps rather than growing
    the board: the player strip does not scroll. */

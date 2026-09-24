@@ -97,18 +97,10 @@ class CardPlayHooksSuite extends munit.FunSuite {
     assert(attributed(done))
   }
 
-  test("a Vision cannot be played facedown from a temporary hand: the " +
-      "button is not offered") {
+  test("a Vision played as a facedown adviser visits the facedown window") {
     val (ready, actor) = inHand(VisionRules.Faith)
-    val tree = CardPlayProcedure.build(catalog, ready, actor,
-      VisionRules.Faith, CardPlayProcedure.Origin.TemporaryHand).toOption.get
-    val parked = ProcedureWalker.advance(ready, tree, None, powers).toOption.get
-      .asInstanceOf[WalkerOutcome.Parked].tree
-    val result = ProcedureWalker.resolve(ready, tree, parked, Answered(
-      s"cardplay.place.${VisionRules.Faith.kind}.${VisionRules.Faith.value}",
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button(
-        "adviser-facedown")), actor), powers)
-    assert(result.isLeft)
+    val done = play(ready, actor, VisionRules.Faith, "adviser-facedown")
+    assertEquals(supplyOf(done.treeless, actor), startSupply + 2)
   }
 
   test("a discard visits neither window") {

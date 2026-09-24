@@ -143,13 +143,13 @@ object CardPlayProcedure {
           choice.replacements.map(id => replacementOption(id) -> id),
           choice.replacementOptional)
       }
-      // A Vision is played faceup or discarded; nothing else is legal, so
-      // nothing else is offered. Rejecting a site or a facedown play after
-      // the click told the player only that a button they were given does
-      // not work.
+      // A Vision is never played to a site, so that button is not offered:
+      // rejecting it after the click told the player only that a button they
+      // were given does not work. It may still be held as a facedown adviser
+      // -- that is how an Exile keeps a Vision to reveal later, and how
+      // Conspiracy is later played faceup from the Advisers area.
       val offered = if (!card.isInstanceOf[VisionId]) candidates
-        else candidates.filter(pair => pair._1 == discard ||
-          pair._1 == adviserFaceUp)
+        else candidates.filter(pair => pair._1 != site)
       val options = offered.map { case (ref, _, _, _) =>
         DecisionOption.Button(ref, label(ref))
       }
