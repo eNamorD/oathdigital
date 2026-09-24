@@ -4,6 +4,7 @@ import oathdigital.model.PlayerColor
 
 import munit.FunSuite
 import oathdigital.presentation._
+import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
 
@@ -20,7 +21,7 @@ class ServerModeUiSuite extends FunSuite {
     val browser = new TestBrowser("?gameId=wrong&playerId=red")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
     val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) = {
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
         requests += ((method, url, body))
         scala.concurrent.Future.successful(Right(TransportResponse(200, trustedProjection)))
       }
@@ -44,7 +45,7 @@ class ServerModeUiSuite extends FunSuite {
     val browser = new TestBrowser
     var requests = 0
     val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) = {
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
         requests += 1
         scala.concurrent.Future.successful(Right(TransportResponse(401,
           """{"error":"unauthorized","message":"internal detail"}""")))
@@ -64,7 +65,7 @@ class ServerModeUiSuite extends FunSuite {
       status: Int = 201,
       body: String = """{"gameId":"host-game","seats":[{"playerId":"Red","url":"https://oath.test/s/red-code"},{"playerId":"Blue","url":"https://oath.test/s/blue-code"}]}"""
   ): JsonTransport = new JsonTransport {
-    def request(method: String, url: String, body0: Option[String]) = {
+    def request(method: String, url: String, body0: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
       requests += ((method, url, body0))
       scala.concurrent.Future.successful(Right(TransportResponse(status, body)))
     }
@@ -185,7 +186,7 @@ class ServerModeUiSuite extends FunSuite {
     val browser = new TestBrowser("?gameId=existing&playerId=red")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
     val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) = {
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
         requests += method -> url
         val json = if (url.contains("/events")) """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", "")
@@ -248,7 +249,7 @@ class ServerModeUiSuite extends FunSuite {
     val browser = new TestBrowser("?mode=server&gameId=existing&playerId=red")
     val opened = scala.collection.mutable.ArrayBuffer.empty[String]
     val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) =
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         scala.concurrent.Future.successful(Right(TransportResponse(200,
           if (url.contains("/events")) """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", ""))))
@@ -271,7 +272,7 @@ class ServerModeUiSuite extends FunSuite {
       TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}"""),
       TransportResponse(200, trustedProjection.replace("\"nextSequence\":1", "\"nextSequence\":2")))
     val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) = {
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
         requests += method -> url
         scala.concurrent.Future.successful(Right(responses.dequeue()))
       }
@@ -294,7 +295,7 @@ class ServerModeUiSuite extends FunSuite {
     val browser = new TestBrowser
     var requests = 0
     val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]) = {
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
         requests += 1
         scala.concurrent.Future.successful(Right(if (requests == 1)
           TransportResponse(200, trustedProjection) else TransportResponse(403,
@@ -324,7 +325,7 @@ class ServerModeUiSuite extends FunSuite {
         active.replace("\"viewerPlayerId\":\"blue\"", s"\"viewerPlayerId\":\"$id\"")
       }
       val transport = new JsonTransport {
-        def request(method: String, url: String, body: Option[String]) = {
+        def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
           requests += method -> url
           scala.concurrent.Future.successful(Right(TransportResponse(200,
             if (requests.size == 1) active else replacement)))

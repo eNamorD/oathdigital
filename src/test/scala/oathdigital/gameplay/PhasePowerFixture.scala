@@ -13,7 +13,7 @@ object PhasePowerFixture {
       override val cost: Cost = Cost.free)
       extends PhasePower {
     def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef) = true
-    def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef) =
+    def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Either[OathViolation, Operation] =
       Right(tree(player))
   }
 

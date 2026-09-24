@@ -207,7 +207,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, 1, 0, actor)
     val immunity = new OperationRestriction {
-      override def reason(state: ReadyGame, operation: CoreOperation) =
+      override def reason(state: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("immune", "site card cannot be discarded",
           OperationReasonKind.Impossible))
     }

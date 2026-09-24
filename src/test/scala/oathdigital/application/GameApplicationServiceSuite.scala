@@ -1261,7 +1261,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   test("Search draw port cannot inject card identities inconsistent with state") {
     val repository = new InMemoryEventStreamRepository
     val port = new SearchDrawPort {
-      def prepare(ready: ReadyGame, source: SearchSource, origin: Region) =
+      def prepare(ready: ReadyGame, source: SearchSource, origin: Region): Either[OathViolation, Vector[WorldCardId]] =
         Right(Vector(DenizenId("denizen:tampered")))
     }
     val service = new GameApplicationService(catalog, repository, port)
@@ -1656,7 +1656,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         OathEvent.GameStarted(chronicle, orders)
       ).toOption.get
       val repository = new EventStreamRepository {
-        override def load(gameId: String) = Right(Some(StoredEventStream(
+        override def load(gameId: String): Either[RepositoryFailure, Option[StoredEventStream]] = Right(Some(StoredEventStream(
           storedGameId,
           Vector(ujson.write(record))
         )))
@@ -1664,7 +1664,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
             gameId: String,
             expected: ExpectedStream,
             records: Vector[String]
-        ) = {
+        ): Either[RepositoryFailure, RepositoryAppendResult] = {
           appendCalls += 1
           Right(RepositoryAppendResult.Appended(1L, records.size))
         }

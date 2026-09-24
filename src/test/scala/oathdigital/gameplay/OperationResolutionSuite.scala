@@ -42,7 +42,7 @@ class OperationResolutionSuite extends munit.FunSuite {
     assert(OperationResolution.resolve(ready, wrongCard, validator).isLeft)
     val impossibleAndInvalid = Gain.Favor(playerId, Suit.Order, 7)
     val invalidRestriction = new OperationRestriction {
-      override def reason(state: ReadyGame, operation: CoreOperation) =
+      override def reason(state: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("invalid-test", "invalid alongside shortage",
           OperationReasonKind.Invalid))
     }

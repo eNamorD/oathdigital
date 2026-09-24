@@ -19,7 +19,7 @@ class SelectionPaymentsSuite extends munit.FunSuite {
       def source: RuleSourceRef = RuleSourceRef.GameRule(name)
       def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
       override def resolution: PowerResolution = PowerResolution.PlayerSelected
-      override def selectionPayments(ready: ReadyGame, player: PlayerId) =
+      override def selectionPayments(ready: ReadyGame, player: PlayerId): Vector[CoreOperation] =
         Vector(PayCost(player, Location.SharedBank,
           Cost(secretBurnt = secrets)))
     }

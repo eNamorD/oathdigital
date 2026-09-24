@@ -78,15 +78,15 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
       RuleSourceFace.FaceUp)
     val handler = new PowerHandler {
-      val window = PowerWindow.RestStart
-      val resolution = PowerResolution.PlayerSelected
+      val window: PowerWindow = PowerWindow.RestStart
+      val resolution: PowerResolution = PowerResolution.PlayerSelected
       val implemented = true
       def inspect(context: PowerContext) = ReviewedPowerInspector.inspect(context)
     }
     val power = new Power {
       val id = PowerId("test.site-relic")
-      val modifier = None
-      val handlers = Vector(handler)
+      val modifier: Option[MajorActionType] = None
+      val handlers: Vector[PowerHandler] = Vector(handler)
     }
     val result = new PowerResolver(PowerRegistry(power)).resolve(
       PowerWindow.RestStart, Vector(source -> Vector(power.id)),
