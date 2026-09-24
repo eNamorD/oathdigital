@@ -49,6 +49,15 @@ private[frontend] object WorldBoardRenderer {
      val identity = element("h3", "player-identity")
      identity.appendChild(playerReference(value, player.playerId))
      identity.appendChild(text("span", "player-role", player.role))
+     // The Shared Bank line still says who holds the title, but the strip is
+     // where a player looks for it, so the holder's line carries it too.
+     value.oathkeeper.filter(_.holderPlayerId.contains(player.playerId))
+       .foreach { oath =>
+         val badge = text("span", s"player-title title-${oath.side}",
+           oath.side.capitalize)
+         badge.setAttribute("title", oathName(oath.goal))
+         identity.appendChild(badge)
+       }
      section.appendChild(identity)
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
      val resources = element("span", "resources")

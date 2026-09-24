@@ -70,6 +70,36 @@ class PlayerBoardSuite extends munit.FunSuite {
       Some("Cards in play"))
   }
 
+  /** The strip is where a player looks for who holds what, so the title sits
+    * on its holder's line and nowhere else.
+    */
+  private def titled(side: String): dom.Element = WorldBoardRenderer.playerBoards(
+    GameProjection("game", 1L, "act", Some("red"),
+      Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red),
+        GamePlayer("blue", "Blue", "Exile", PlayerColorToken.Blue)),
+      Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false, playerBoards = Vector(board,
+        board.copy(playerId = "blue")),
+      oathkeeper = Some(OathkeeperStatus("supremacy", Some("blue"), side,
+        usurperLimited = true, winnerPlayerId = None))),
+    new RecordingView("game", "red"))
+
+  test("the Oathkeeper badge sits on its holder's line only") {
+    val node = titled("oathkeeper")
+    val badges = all(node, ".player-title")
+    assertEquals(badges.map(_.textContent), Vector("Oathkeeper"))
+    assertEquals(badges.map(_.closest(".player-board").getAttribute(
+      "data-player-id")), Vector("blue"))
+    assertEquals(badges.map(_.getAttribute("title")),
+      Vector("Oath of Supremacy"))
+  }
+
+  test("the badge reads Usurper once the title flips") {
+    assertEquals(all(titled("usurper"), ".player-title")
+      .map(badge => badge.textContent -> badge.classList.contains("title-usurper")),
+      Vector("Usurper" -> true))
+  }
+
   /** The seating vector is already the cyclic turn order, so anchoring it on
     * the viewer gives turn order from their own seat -- and it stays put as
     * turns pass, unlike an active-player anchor.
