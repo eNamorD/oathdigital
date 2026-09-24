@@ -22,9 +22,9 @@
 - **Glyph tokens are a closed vocabulary of 17**, listed in `frontend/src/main/scala/oathdigital/frontend/TokenSprite.scala`. `favor` and `secret` are in it. Do not invent a token; `relic` does not exist.
 - **The engine's Vision victory rules are out of scope.** `VisionVictoryEligibility` and `uniquePositiveLeader` are not touched by any task here.
 - **Do not raise the model or effort level of any subagent above this session's** (project `CLAUDE.md`).
-- **Commit messages end with** `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
+- **Commit messages end with** `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - **Other sessions commit to `main` in this repository.** Run `git log --oneline -1` and confirm HEAD is what you expect before any `--amend`, `reset` or `rebase`. Prefer a new commit.
-- **`docs/superpowers/` is gitignored** in this repository, so this plan and its spec are untracked on purpose. Do not `git add -f` them.
+- **`docs/superpowers/` is tracked** in this repository; this plan and its spec are committed on `main`. Commit any edit you make to the plan.
 
 ## File Structure
 
@@ -199,7 +199,7 @@ git add shared/src/main/scala/oathdigital/protocol/projection/VisionCardPresenta
 ```bash
 git commit -m "fix(visions): print the text the Vision cards carry
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -319,7 +319,7 @@ git add src/main/scala/oathdigital/gameplay/actions/cardplay/CardPlayProcedure.s
 ```bash
 git commit -m "fix(visions): offer only the plays a Vision has
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -605,7 +605,7 @@ git add shared/src/main/scala/oathdigital/protocol/projection/OathkeeperPresenta
 ```bash
 git commit -m "feat(frontend): name the Oath as its card prints it
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -760,7 +760,7 @@ git add frontend/src/main/scala/oathdigital/frontend/WorldBoardRenderer.scala fr
 ```bash
 git commit -m "feat(frontend): give the title and the Vision their own row
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1030,7 +1030,7 @@ git add shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDt
 ```bash
 git commit -m "feat(walker): show the card a placement question is about
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1357,7 +1357,7 @@ git add shared/src/main/scala/oathdigital/protocol/MajorActionPreviewProtocol.sc
 ```bash
 git commit -m "feat(powers): offer a modifier as its card and the action it changes
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1682,7 +1682,7 @@ git add src/main/scala/oathdigital/model/CampaignTypes.scala src/main/scala/oath
 ```bash
 git commit -m "feat(campaign): say whether a battle plan attacks or defends
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1869,7 +1869,7 @@ git add shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDt
 ```bash
 git commit -m "feat(campaign): list the battle plans already played
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2321,7 +2321,7 @@ git add src/main/scala/oathdigital/gameplay/walker src/main/scala/oathdigital/ga
 ```bash
 git commit -m "feat(walker): show a roll as dice wherever a walk parks on one
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
