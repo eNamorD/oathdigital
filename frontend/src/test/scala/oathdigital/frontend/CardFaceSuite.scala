@@ -54,10 +54,24 @@ class CardFaceSuite extends munit.FunSuite {
     assert(!CardFace.render(knowable).textContent.contains("Rule"))
   }
 
-  test("a relic face carries its value and defense, a denizen face does not") {
+  /** Defense is rolled against, so it is drawn as the dice that roll it, one
+    * per point. The printed relic value is a catalog number nobody acts on;
+    * it belongs to the overlay, not to the little face.
+    */
+  test("a relic face carries its defense as dice, and not its printed value") {
     val relic = CardFace.render(knowable.copy(orientation = Some("face-up")))
-    assertEquals(all(relic, ".card-stat").map(_.textContent), Vector("3", "1"))
-    assertEquals(all(CardFace.render(faceUp), ".card-stat"), Vector.empty)
+    assertEquals(all(relic, ".card-defense .token-glyph")
+      .map(_.getAttribute("aria-label")), Vector("defense die"))
+    assertEquals(relic.querySelector(".card-defense").getAttribute("aria-label"),
+      "defense 1")
+    assert(!relic.textContent.contains("3"), relic.textContent)
+    assertEquals(all(relic, ".card-stat"), Vector.empty)
+    assertEquals(all(CardFace.render(faceUp), ".card-defense"), Vector.empty)
+  }
+
+  test("each point of defense is its own die") {
+    assertEquals(all(CardFace.render(knowable.copy(orientation = Some("face-up"),
+      defense = Some(3))), ".card-defense .token-glyph").size, 3)
   }
 
   test("an unidentifiable card exposes no name, suit or rules and shows its letter") {
@@ -88,10 +102,20 @@ class CardFaceSuite extends munit.FunSuite {
   }
 
   test("a card with no suit shows its name alone in the header") {
-    val header = one(CardFace.render(knowable.copy(orientation = Some("face-up"))),
-      ".card-header").getOrElse(fail("no card header"))
+    val header = one(CardFace.render(knowable.copy(orientation = Some("face-up"),
+      defense = None)), ".card-header").getOrElse(fail("no card header"))
     assertEquals(all(header, ".token-glyph"), Vector.empty)
     assertEquals(header.textContent, "Ancient Crown")
+  }
+
+  /** The dice ride the header's right end, so a name that wraps is laid out
+    * beside them rather than under them.
+    */
+  test("defense dice sit at the end of the header, after the name") {
+    val header = one(CardFace.render(knowable.copy(orientation = Some("face-up"))),
+      ".card-header").getOrElse(fail("no card header"))
+    assertEquals(header.lastChild.asInstanceOf[dom.Element].getAttribute("class"),
+      "card-defense")
   }
 
   /** Every card is unrestricted unless it says otherwise, so printing the word

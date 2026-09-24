@@ -179,14 +179,23 @@ private[frontend] object WalkerPanelSupport {
       case (decision, RecoverWalkerStep.Relic(query)) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
+        // A relic at the site the actor stands on is one they can read, so
+        // the option is the card itself. The button takes it; a click on the
+        // card still opens the inspector, as everywhere else.
+        val relics = element("div", "card-choices")
         query.options.foreach { option =>
-          val choose = button(s"Take ${option.label} facedown",
-            "recover-relic-choice")
+          val choice = element("div", "card-choice")
+          option.card.foreach(card => choice.appendChild(
+            CardFace.render(card.copy(orientation = Some("face-up")))))
+          val choose = button("Take facedown", "recover-relic-choice")
+          choose.setAttribute("aria-label", s"Take ${option.label} facedown")
           choose.disabled = !canControl
           choose.onclick = _ => ui.submitCommand(
             resolveChooseOneCommand(decision, option))
-          panel.appendChild(choose)
+          choice.appendChild(choose)
+          relics.appendChild(choice)
         }
+        panel.appendChild(relics)
     }
   }
 

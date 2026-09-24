@@ -67,6 +67,54 @@ class PlayerBoardSuite extends munit.FunSuite {
       Some("Cards in play"))
   }
 
+  /** The seating vector is already the cyclic turn order, so anchoring it on
+    * the viewer gives turn order from their own seat -- and it stays put as
+    * turns pass, unlike an active-player anchor.
+    */
+  test("the viewer's seat leads, and the rest follow in turn order") {
+    val seats = Vector("red", "blue", "white", "black")
+      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
+    assertEquals(WorldBoardRenderer.seatOrder(seats, Some("white"))
+      .map(_.playerId), Vector("white", "black", "red", "blue"))
+    assertEquals(WorldBoardRenderer.seatOrder(seats, Some("red"))
+      .map(_.playerId), Vector("red", "blue", "white", "black"))
+  }
+
+  test("a viewer who holds no seat leaves the order alone") {
+    val seats = Vector("red", "blue")
+      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
+    assertEquals(WorldBoardRenderer.seatOrder(seats, None).map(_.playerId),
+      Vector("red", "blue"))
+    assertEquals(WorldBoardRenderer.seatOrder(seats, Some("ghost"))
+      .map(_.playerId), Vector("red", "blue"))
+  }
+
+  test("the rendered strip leads with the viewer's own board") {
+    val seats = Vector("red", "blue", "white")
+      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
+    val node = WorldBoardRenderer.playerBoards(
+      GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,
+        Vector.empty, Vector.empty, ready = true, completed = false,
+        viewerPlayerId = Some("white")),
+      new RecordingView("game", "white"))
+    assertEquals(all(node, ".player-board").map(_.getAttribute("data-player-id")),
+      Vector("white", "red", "blue"))
+  }
+
+  /** A development session is not a seat, so the projection names no viewer;
+    * the seat the client is acting as says the same thing.
+    */
+  test("with no viewer named, the strip leads with the seat the client holds") {
+    val seats = Vector("red", "blue", "white")
+      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
+    val node = WorldBoardRenderer.playerBoards(
+      GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,
+        Vector.empty, Vector.empty, ready = true, completed = false),
+      new RecordingView("game", "blue"))
+    assertEquals(all(node, ".player-board").map(_.getAttribute("data-player-id")),
+      Vector("blue", "white", "red"))
+  }
+
   /** The count alone cannot say which secrets are spendable, so the sentence
     * the old line carried stays as the accessible name.
     */

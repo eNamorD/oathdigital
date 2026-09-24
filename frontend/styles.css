@@ -357,17 +357,21 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-face-unimplemented { border-style: dashed; border-color: #a15c4a; }
 .card-face:hover, .card-face:focus-visible { outline: 2px solid #fff0c9;
   outline-offset: -3px; }
+/* The pip's gutter is reserved whether or not a pip is drawn, so a name
+   sits in the same place before and after a card becomes knowable. */
 .card-header { display: flex; align-items: flex-start; gap: 0.25em;
-  min-width: 0; }
+  min-width: 0; padding-left: 0.85em; }
 .card-header .token-glyph { flex: 0 0 auto; width: 1.2em; height: 1.2em;
   vertical-align: 0; }
 .card-name { min-width: 0; font-weight: 750; font-size: 0.95em;
   overflow-wrap: anywhere; }
-.card-tokens, .card-stats { display: flex; align-items: center; gap: 0.15em;
+.card-tokens { display: flex; align-items: center; gap: 0.15em;
   font-size: 0.8em; }
 .card-token-count { margin-right: 0.35em; font-weight: 700; }
-.card-stat { padding: 0 0.3em; border: 1px solid #675a43; border-radius: 0.25em;
-  font-weight: 700; }
+/* The header's right end: opposite the pip, and in the flow, so a name that
+   wraps is laid out beside the dice rather than under them. */
+.card-defense { display: flex; flex: 0 0 auto; align-items: flex-start;
+  gap: 0.05em; margin-left: auto; font-size: 0.8em; }
 .card-restriction { margin-top: auto; font-size: 0.72em; color: #a99f8c;
   text-transform: capitalize; }
 .card-unimplemented-badge { align-self: flex-start; padding: 0 0.35em;
@@ -376,7 +380,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-face-down { align-items: center; justify-content: center;
   border-style: solid; background: #2a2333; }
 .card-back-letter { font-size: 1.9em; font-weight: 800; color: #cbb7dd; }
-.card-knowable-pip { position: absolute; top: 0.3em; right: 0.3em;
+.card-knowable-pip { position: absolute; top: 0.45em; left: 0.4em;
   width: 0.55em; height: 0.55em; border-radius: 50%;
   background: var(--token-secret); }
 /* Hover reveal is CSS only and holds no client state: PanelContent.replace
@@ -393,6 +397,16 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 .card-slot-empty { border-style: dashed; border-color: #88775d;
   background: transparent; }
+/* A card on offer, with its picker under it: the card reads, the button
+   acts, the same shape a partition option uses. */
+.card-choices { display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: var(--card-gap); margin: 8px 0; }
+.card-choice { display: flex; flex-direction: column; align-items: center;
+  gap: 4px; }
+.card-choice button { width: 100%; min-height: 36px; margin: 0;
+  padding: 2px 6px; }
+.card-choice button[aria-pressed="true"] { border-color: #fff2d6;
+  background: #3b3123; }
 .decision-cards, .board-cards { gap: var(--card-gap); }
 .site-cards { display: flex; flex-wrap: wrap; align-items: flex-start;
   min-width: 0; gap: var(--card-gap); }
@@ -509,7 +523,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-content { position: absolute; width: 1500px; padding: 20px;
   transform-origin: top left; font-size: 1rem; }
 .map-content.map-compact .card-face .card-tokens,
-.map-content.map-compact .card-face .card-stats,
+.map-content.map-compact .card-face .card-defense,
 .map-content.map-compact .card-face .card-restriction,
 .map-content.map-compact .card-face .card-unimplemented-badge {
   display: none; }

@@ -85,16 +85,20 @@ private[frontend] object CardFace {
     val tokens = element("span", "card-tokens")
     if (card.favor > 0) counted("favor", card.favor).foreach(tokens.appendChild)
     if (card.secrets > 0) counted("secret", card.secrets).foreach(tokens.appendChild)
-    val stats = element("span", "card-stats")
-    card.relicValue.foreach(value =>
-      stats.appendChild(labelled("card-stat relic-value", value.toString,
-        s"relic value $value")))
-    card.defense.foreach(value =>
-      stats.appendChild(labelled("card-stat relic-defense", value.toString,
-        s"defense $value")))
+    // Defense is rolled against, so it is drawn as the dice that roll it. It
+    // rides the header's right end rather than floating over the corner: a
+    // name long enough to wrap would otherwise run under the dice. The
+    // printed relic value it used to share a line with is a catalog number,
+    // and lives in the overlay.
+    card.defense.filter(_ > 0).foreach { value =>
+      val node = element("span", "card-defense")
+      node.setAttribute("aria-label", s"defense $value")
+      (0 until value).foreach(_ =>
+        node.appendChild(RulesTextRenderer.glyph("defense-die")))
+      header.appendChild(node)
+    }
     Vector(Some(header),
       Option.when(tokens.childNodes.length > 0)(tokens),
-      Option.when(stats.childNodes.length > 0)(stats),
       // Unrestricted is the default every card carries, so printing it spends
       // a line of a small face on nothing.
       card.restrictions.filterNot(_ == "unrestricted")
@@ -106,11 +110,4 @@ private[frontend] object CardFace {
   private def counted(token: String, count: Int): Vector[dom.Element] =
     Vector(RulesTextRenderer.glyph(token),
       text("span", "card-token-count", count.toString))
-
-  private def labelled(className: String, value: String,
-      accessible: String): dom.Element = {
-    val node = text("span", className, value)
-    node.setAttribute("aria-label", accessible)
-    node
-  }
 }
