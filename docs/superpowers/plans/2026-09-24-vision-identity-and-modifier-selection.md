@@ -2357,6 +2357,13 @@ A review of the whole branch against this plan and the spec found, and fixed:
 Smaller fixes and the gaps deliberately left are listed in the spec's
 "As built" section.
 
+A follow-up (`66967741`) closed three leftovers from that review: the
+`build.sbt` exclusion of `OathkeeperPresentationSuite` (the suite now spells
+its keys instead of reading the model, so it compiles for Scala.js), the
+`PreviewModifier` doc that denied its own handler-id fallback, and the two
+`answeredOptions` omissions (other decisions' answers, a button) that had no
+test.
+
 ## Self-Review Notes
 
 Checked against the spec, section by section:

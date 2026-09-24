@@ -26,3 +26,25 @@ or as clickable sites on the world board. A viewer sees at most one surface for
 the parked decision, plus a waiting notice when the decision awaits someone
 else.
 _Avoid_: panel (a surface is one of the two kinds of panel), view, renderer
+
+**Subject card**:
+The card a parked decision is about, shown beside the question: the card being
+placed, or the card a replacement would discard. A parked decision has zero or
+more.
+_Avoid_: context card, preview card, card in hand
+
+**Roll feedback**:
+The dice a parked decision shows beside itself: the faces rolled so far in one
+pool, their score, and the target when the roll has one. A parked decision
+declares at most one.
+_Avoid_: roll outcome, difficulty, dice summary
+
+**Answered options**:
+The options already chosen at the parked decision when the same decision is
+asked again in one action, such as the battle plans played so far this
+Campaign.
+_Avoid_: plans played (the panel heading, not the concept), history, answers
+
+**Plan side**:
+Which side of a Campaign a battle plan applies to: attack, defense, or both.
+_Avoid_: badge, chip, colour, red/blue
