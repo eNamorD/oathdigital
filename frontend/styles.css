@@ -371,6 +371,9 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   display: flex;
   gap: 0.4em;
   margin-bottom: 0.4em; }
+/* What the battle has already applied, above what is still on offer. */
+.plans-played { margin-bottom: 0.4em; font-size: 0.85em; }
+.plans-played ul { margin: 0; padding-left: 1.2em; }
 .decision-cards, .board-cards { display: flex; flex-wrap: wrap; gap: 8px; }
 .decision-card { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
 .decision-card button, .decision-confirm, .decision-back, .resolution-choice,

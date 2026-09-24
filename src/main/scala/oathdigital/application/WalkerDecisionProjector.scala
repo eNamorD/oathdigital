@@ -152,7 +152,9 @@ private[application] final class WalkerDecisionProjector(
               query = Some(projected),
               rollOutcome = Option.when(procedure == ActionRef.Recover)(
                 rollOutcome(ready, awaited)).flatten,
-              subjectCards = subjectCards(ready, viewer, decide.decisionId)))
+              subjectCards = subjectCards(ready, viewer, decide.decisionId),
+              answeredOptions = answeredOptions(ready, viewer, pending,
+                decide.decisionId)))
         }
     }
 
@@ -396,6 +398,20 @@ private[application] final class WalkerDecisionProjector(
         case None => presentation.hiddenCard(presentation.cardKind(id))
       }
     }
+  }
+
+  /** Every answer already recorded at `decisionId`, in answer order, described
+    * the way the decision's own options are. See `answeredOptions`' doc on the
+    * projection for why a button is dropped rather than labelled.
+    */
+  private def answeredOptions(ready: ReadyGame, viewer: Option[PlayerId],
+      pending: PendingTree, decisionId: String)
+      : Vector[DecisionOptionProjection] = {
+    val index = CardIndex.from(ready.game).toOption
+    pending.answered.collect {
+      case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
+    }.flatMap(DecisionOption.forRef)
+      .flatMap(optionProjection(ready, viewer, index, _))
   }
 
   private def orientationOf(state: Option[CardState]): Option[Orientation] =

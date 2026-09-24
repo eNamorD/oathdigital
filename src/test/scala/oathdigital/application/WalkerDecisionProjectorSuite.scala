@@ -1,12 +1,16 @@
 package oathdigital.application
 
+import oathdigital.gameplay.CampaignFixture
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
+import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.protocol.projection.WalkerWaitingProjection
+import oathdigital.protocol.projection.{WalkerDecisionProjection,
+  WalkerWaitingProjection}
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
   *
@@ -616,5 +620,53 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
       .project(context).toVector.flatMap(_.subjectCards)
     assertEquals(subjects.map(s => (s.cardId, s.cardKind, s.hidden)),
       Vector(("hidden", "denizen", true)))
+  }
+
+  /** Task 8: the battle-plan window is a `Repeat` -- it re-asks
+    * `campaign.attacker-plan` after every pick until the actor finishes, so
+    * a second pass parks on the SAME decision id with one answer already
+    * recorded at it. Built by driving the real commands `CampaignPlanWindowSuite`
+    * drives (start, force, pick Sticky Fire), rather than hand-assembling a
+    * `PendingTree`, so this proves what a real second pass looks like.
+    */
+  private lazy val attacker: PlayerId = {
+    val Ready(base) = execute()._1: @unchecked
+    base.game.current.turn.activePlayer
+  }
+
+  private lazy val campaignWithOnePlanPlayed: ReadyGame = {
+    val relic = CampaignFixture.relicWith("relic.sticky-fire")
+    // A second, free attacker plan (Outriders) so at least one option besides
+    // Finish is still offered after Sticky Fire is picked -- with only one
+    // plan available the window would settle past the decision entirely
+    // rather than repeat it (see `CampaignPlanWindowSuite`'s "rebuilt after
+    // each pick" test), and there would be nothing to prove a repeat against.
+    val b = CampaignFixture.withAdviser(CampaignFixture.withRelic(
+      CampaignFixture.board(), relic), CampaignFixture.cardWith("denizen.outriders"),
+      Orientation.FaceUp)
+    val g = CampaignFixture.rules()
+    val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
+      .getOrElse(fail("Campaign must start"))
+    val forced = g.resolveWalker(started.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(2)).getOrElse(fail("the force must be accepted"))
+    val picked = g.resolveWalker(forced.state, b.actor, CampaignIds.attackerPlan,
+      ChooseOneAnswer(DecisionOptionRef.Relic(RelicId(relic))))
+      .fold(e => fail(s"the Sticky Fire plan must be accepted: $e"), identity)
+    picked.state match {
+      case Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    }
+  }
+
+  private def project(ready: ReadyGame, viewer: Option[PlayerId])
+      : Option[WalkerDecisionProjection] =
+    new WalkerDecisionProjector(catalog, new GamePresentationProjector(catalog))
+      .project(ScopedProjectionContext(ready, viewer))
+
+  test("a repeated decision lists what has already been answered at it") {
+    val projected = project(campaignWithOnePlanPlayed, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some("campaign.attacker-plan"))
+    assertEquals(projected.toVector.flatMap(_.answeredOptions).map(_.label),
+      Vector("Sticky Fire"))
   }
 }

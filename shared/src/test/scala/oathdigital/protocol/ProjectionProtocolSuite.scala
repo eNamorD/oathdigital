@@ -132,6 +132,22 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(subject))
   }
 
+  /** Task 8: the answers already recorded at a repeated decision, described
+    * as options -- the plan window's own "what has already been applied"
+    * strip, and the third key `WalkerDecisionProjection`'s codec added
+    * alongside `subjectCards` (Task 5) and `badge` (Task 7, on the option
+    * row itself).
+    */
+  test("a walker decision round-trips the options already answered at it") {
+    val played = DecisionOptionProjection("relic", "relic:sticky-fire",
+      "Sticky Fire", badge = Some("Attack Plan"))
+    val repeated = projection.copy(walkerDecision = Some(
+      WalkerDecisionProjection("campaign", "campaign.attacker-plan",
+        "decide", answeredOptions = Vector(played))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(repeated)),
+      Right(repeated))
+  }
+
   test("a choose-one option round-trips its details and defaults them to none") {
     val annotated = DecisionQueryProjection("choose-one", Vector(
       DecisionOptionProjection("denizen", "d1", "Old Oak", None,

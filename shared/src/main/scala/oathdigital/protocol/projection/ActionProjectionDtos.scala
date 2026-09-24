@@ -197,7 +197,19 @@ final case class WalkerDecisionProjection(
       * disclosure rules as every other card, so a viewer who may not identify
       * one receives it hidden.
       */
-    subjectCards: Vector[CardDetailsProjection] = Vector.empty
+    subjectCards: Vector[CardDetailsProjection] = Vector.empty,
+    /** The answers already recorded at THIS decision id, described as options.
+      *
+      * A decision inside a `Repeat` -- the battle-plan window is the only one
+      * today -- re-asks with the chosen answers removed, so without this the
+      * panel reads as resetting rather than accumulating.
+      *
+      * A reference whose option the projector cannot present from state alone
+      * is omitted: a button's label is authored by the query, and a spent
+      * answer has no query left to read it from. In the plan window that
+      * leaves out only the title's own plan.
+      */
+    answeredOptions: Vector[DecisionOptionProjection] = Vector.empty
 )
 /** `faces` are display-ready die-face labels (e.g. `"one-shield"`), in roll
   * order across every roll of the parked pool so far; `score` is the

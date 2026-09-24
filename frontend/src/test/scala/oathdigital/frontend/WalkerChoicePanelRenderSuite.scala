@@ -101,6 +101,24 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Vector("1 Favor"))
   }
 
+  test("the plans already played are listed above the remaining offers") {
+    val played = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
+      None, Vector.empty, Some("Battle Plan"))
+    val offer = DecisionOptionState("denizen", "denizen:longbows", "Longbows")
+    val query = DecisionQueryState("choose-one", Vector(offer),
+      heading = Some("Choose a battle plan, or finish"))
+    val parked = WalkerDecisionState("campaign", "campaign.attacker-plan",
+      "decide", query = Some(query), answeredOptions = Vector(played))
+    val projection = GameProjection("game", 9L, "act", Some("red"),
+      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false, walkerDecision = Some(parked))
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
+      canControl = true, panel, new RecordingView("game", "red"))
+    assertEquals(all(panel, ".plans-played li").map(_.textContent),
+      Vector("Sticky Fire"))
+  }
+
   test("a card-shaped option with no badge stays a labelled text button, " +
       "not a card face -- Muster, Search, Forge and the like offer a card " +
       "but no badge") {

@@ -240,6 +240,17 @@ private[frontend] object WalkerPanelSupport {
             subjects.appendChild(CardFace.render(card)))
           panel.appendChild(subjects)
         }
+        // What this loop has already applied. A `Repeat` re-asks with the
+        // chosen answers removed, so the panel otherwise reads as resetting.
+        if (decision.answeredOptions.nonEmpty) {
+          val played = element("div", "plans-played")
+          played.appendChild(text("h3", "", "Plans played"))
+          val list = element("ul", "")
+          decision.answeredOptions.foreach(option =>
+            list.appendChild(text("li", "", option.label)))
+          played.appendChild(list)
+          panel.appendChild(played)
+        }
         query.options.foreach { option =>
           val label = if (option.kind == "player")
             value.players.find(_.playerId == option.id).map(_.displayName)

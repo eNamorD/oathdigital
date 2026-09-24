@@ -133,11 +133,12 @@ private[projection] object ActionProjectionCodec {
     "pool" -> stringOption(value.pool), "count" -> intOption(value.count),
     "query" -> option(value.query)(encodeDecisionQuery),
     "rollOutcome" -> option(value.rollOutcome)(encodeRollOutcome),
-    "subjectCards" -> encoded(value.subjectCards)(encodeCard))
+    "subjectCards" -> encoded(value.subjectCards)(encodeCard),
+    "answeredOptions" -> encoded(value.answeredOptions)(encodeOptionRow))
   def decodeWalkerDecision(raw: ujson.Value, path: String): Result[WalkerDecisionProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("action", "decisionId", "kind", "pool", "count",
-      "query", "rollOutcome", "subjectCards"), path)
+      "query", "rollOutcome", "subjectCards", "answeredOptions"), path)
     action <- string(value, "action", path); decision <- string(value, "decisionId", path)
     kind <- string(value, "kind", path); pool <- optionalString(value, "pool", path)
     count <- optionalInt(value, "count", path)
@@ -145,8 +146,10 @@ private[projection] object ActionProjectionCodec {
     rollOutcome <- optionalAbsent(value, "rollOutcome", path)(decodeRollOutcome)
     subjectRaws <- array(value, "subjectCards", path)
     subjects <- traverse(subjectRaws, s"$path.subjectCards")(decodeCard)
+    answeredRaws <- array(value, "answeredOptions", path)
+    answered <- traverse(answeredRaws, s"$path.answeredOptions")(decodeOptionRow)
   } yield WalkerDecisionProjection(action, decision, kind, pool, count, query,
-    rollOutcome, subjects)
+    rollOutcome, subjects, answered)
 
   def encodeWalkerWaiting(value: WalkerWaitingProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "heading" -> stringOption(value.heading),
