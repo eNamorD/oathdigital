@@ -98,8 +98,11 @@ result, wire shape, projected control or walker event changes. Every existing
 discovered during the move is a separate fix.
 
 The one behavior change is on replay: a recorded operation that fails a shape
-guard now fails replay with the same `CoreOperationRejected` the live pipeline
-would have produced, instead of applying with the guard skipped. This is the
+guard now fails replay with a `CoreOperationRejected` carrying the first shape
+violation (the old `OperationShape.first` contract), instead of applying with
+the guard skipped. The live pipeline reports the first *invalid* reason, so
+for an operation carrying both an impossible and an invalid reason the two
+codes can differ; both paths reject. This is the
 posture `docs/architecture/core-operations-migration.md` asks for ("replay
 must reject invalid event facts with `OathViolation`"). No journal written by
 this codebase carries such an operation, because the pipeline rejected it
