@@ -34,7 +34,8 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
   def currentBoardSelection: Option[BoardTargetSelectionState] = boardSelection
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit =
     boardSelection = value
-  def currentModifierWorkflow: Option[ModifierWorkflow] = None
+  var modifierWorkflow: Option[ModifierWorkflow] = None
+  def currentModifierWorkflow: Option[ModifierWorkflow] = modifierWorkflow
   def currentFacedownAdviserDraft: Option[FacedownAdviserDraft] = None
   def chooseFacedownAdviser(cardId: String): Unit = ()
   def toggleModifier(value: PreviewModifier): Unit = ()

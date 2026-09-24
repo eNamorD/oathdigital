@@ -108,6 +108,19 @@ private[frontend] object ActionDecisionRenderer {
            s"$n. ${modifier.description}"), "modifier-toggle")
          choose.setAttribute("aria-pressed", ordinal.nonEmpty.toString); choose
            .setAttribute("data-source-key", modifier.sourceKey)
+         // The card, then what it modifies. The description stays as the
+         // control's accessible name so a reader who cannot see the face
+         // still hears which power this is.
+         modifier.card.foreach { card =>
+           choose.setAttribute("aria-label", ordinal.fold(modifier.description)(
+             n => s"$n. ${modifier.description}"))
+           choose.textContent = ""
+           ordinal.foreach(n => choose.appendChild(
+             text("span", "modifier-ordinal-prefix", s"$n.")))
+           choose.appendChild(CardFace.render(card))
+           choose.appendChild(text("span", "modifier-modifies",
+             s"${actionLabel(modifier.modifies.getOrElse(workflow.preview.action))} Modifier"))
+         }
          choose.onclick = _ => toggleModifier(modifier)
          choose.onkeydown = event => event.key match {
            case "Enter" | " " => event.preventDefault(); toggleModifier(modifier)

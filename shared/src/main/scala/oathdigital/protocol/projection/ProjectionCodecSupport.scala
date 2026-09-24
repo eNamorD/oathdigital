@@ -3,7 +3,7 @@ package oathdigital.protocol.projection
 import oathdigital.protocol.ProtocolDecodeFailure
 import oathdigital.protocol.ProtocolDecodeFailure._
 
-private[projection] object ProjectionCodecSupport {
+private[protocol] object ProjectionCodecSupport {
   type Result[A] = Either[ProtocolDecodeFailure, A]
   val MaxSafeInteger = 9007199254740991d
 

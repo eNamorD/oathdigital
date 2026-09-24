@@ -2,7 +2,7 @@ package oathdigital.protocol.projection
 
 import ProjectionCodecSupport._
 
-private[projection] object WorldProjectionCodec {
+private[protocol] object WorldProjectionCodec {
   def encodePlayer(value: SetupPlayerProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "displayName" -> value.displayName,
     "role" -> value.role, "colorToken" -> value.color.key)
