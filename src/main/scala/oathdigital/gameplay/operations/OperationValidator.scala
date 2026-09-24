@@ -113,7 +113,7 @@ object OperationShape {
     accumulated ++= countedSourceViolations(
       ready, favorMoves, warbandMoves, secretReasons)
     accumulated ++= countedDestinationViolations(ready, leaves)
-    accumulated ++= pawnAndBannerViolations(ready, leaves)
+    accumulated ++= BoardControlOperations.pawnAndBannerViolations(ready, leaves)
     accumulated ++= nonMoveViolations(ready, leaves, plannedSecrets)
     accumulated.result()
   }
@@ -417,113 +417,6 @@ object OperationShape {
     case AvailableQuantity.Finite(value) =>
       if (value >= requested) Vector.empty
       else Vector(InsufficientPieces(piece, location, value))
-  }
-
-  // ------------------------------------------------------------------
-  // 4. Pawn and banner move preconditions
-  // ------------------------------------------------------------------
-
-  private final case class MovedPieces(
-      pawnSites: Map[PlayerId, Option[SiteId]],
-      bannerHolders: Map[Banner, Option[PlayerId]]
-  )
-
-  private def pawnAndBannerViolations(
-      ready: ReadyGame,
-      leaves: Vector[Operation]
-  ): Vector[OperationError] = {
-    val pawnSites = ready.game.current.players.iterator.map { player =>
-      player.player -> player.pawnSite
-    }.toMap
-    val bannerHolders = Map(
-      Banner.PeoplesFavor -> bannerHolder(ready, Banner.PeoplesFavor),
-      Banner.DarkestSecret -> bannerHolder(ready, Banner.DarkestSecret)
-    )
-    val (reasons, _) = leaves.foldLeft[(Vector[OperationError],
-      MovedPieces)]((Vector.empty, MovedPieces(pawnSites, bannerHolders))) {
-      case ((result, state), Move(Piece.Pawn(player), from, to, _)) =>
-        val (violations, updated) =
-          pawnMoveViolation(ready, player, from.location, to.location, state)
-        (result ++ violations, updated)
-      case ((result, state), Move(Piece.Banner(banner), from, to, _)) =>
-        val (violations, updated) =
-          bannerMoveViolation(ready, banner, from.location, to.location, state)
-        (result ++ violations, updated)
-      case ((result, state), _) => (result, state)
-    }
-    reasons
-  }
-
-  private def pawnMoveViolation(
-      ready: ReadyGame,
-      player: PlayerId,
-      from: Location,
-      to: Location,
-      state: MovedPieces
-  ): (Vector[OperationError], MovedPieces) = (from, to) match {
-    case (Location.PlayArea(source), Location.Site(destination))
-        if source == player =>
-      playerState(ready, player) match {
-        case Left(error) => (Vector(error), state)
-        case Right(_) =>
-          val located = state.pawnSites.getOrElse(player, None)
-          if (located.nonEmpty)
-            (Vector(MissingPiece(Piece.Pawn(player), from)), state)
-          else siteState(ready, destination) match {
-            case Left(error) => (Vector(error), state)
-            case Right(_) => (Vector.empty, state.copy(
-              pawnSites = state.pawnSites.updated(player, Some(destination))))
-          }
-      }
-    case (Location.Site(source), Location.Site(destination)) =>
-      playerState(ready, player) match {
-        case Left(error) => (Vector(error), state)
-        case Right(_) =>
-          val located = state.pawnSites.getOrElse(player, None)
-          if (!located.contains(source))
-            (Vector(MissingPiece(Piece.Pawn(player), from)), state)
-          else siteState(ready, destination) match {
-            case Left(error) => (Vector(error), state)
-            case Right(_) => (Vector.empty, state.copy(
-              pawnSites = state.pawnSites.updated(player, Some(destination))))
-          }
-      }
-    case _ =>
-      (Vector(IncompatibleLocation(Piece.Pawn(player), to)), state)
-  }
-
-  private def bannerMoveViolation(
-      ready: ReadyGame,
-      banner: Banner,
-      from: Location,
-      to: Location,
-      state: MovedPieces
-  ): (Vector[OperationError], MovedPieces) = (from, to) match {
-    case (Location.PlayArea(source), Location.PlayArea(destination)) =>
-      playerState(ready, destination) match {
-        case Left(error) => (Vector(error), state)
-        case Right(_) =>
-          val holder = state.bannerHolders.getOrElse(banner, None)
-          if (!holder.contains(source))
-            (Vector(MissingPiece(Piece.Banner(banner), from)), state)
-          else (Vector.empty, state.copy(
-            bannerHolders = state.bannerHolders.updated(banner,
-              Some(destination))))
-      }
-    case (Location.SharedBank, Location.PlayArea(destination)) =>
-      playerState(ready, destination) match {
-        case Left(error) => (Vector(error), state)
-        case Right(_) =>
-          val holder = state.bannerHolders.getOrElse(banner, None)
-          if (holder.isEmpty)
-            (Vector.empty, state.copy(
-              bannerHolders = state.bannerHolders.updated(banner,
-                Some(destination))))
-          else (Vector(InsufficientPieces(Piece.Banner(banner), from, 0)),
-            state)
-      }
-    case _ =>
-      (Vector(IncompatibleLocation(Piece.Banner(banner), to)), state)
   }
 
   // ------------------------------------------------------------------

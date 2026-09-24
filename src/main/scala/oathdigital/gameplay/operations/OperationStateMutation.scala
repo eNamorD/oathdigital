@@ -26,7 +26,7 @@ private[operations] object OperationStateMutation {
     val leaves = Operation.flatten(operation)
     for {
       resources <- applyCountedMoves(ready, leaves)
-      pieces <- applyPawnAndBannerMoves(resources, leaves)
+      pieces <- BoardControlOperations.applyPawnAndBannerMoves(resources, leaves)
       cards <- OperationCardMutation.applyCardMoves(pieces, leaves)
       finished <- applyNonMoveLeaves(cards, leaves)
     } yield finished
@@ -183,85 +183,6 @@ private[operations] object OperationStateMutation {
     }
     case _ => Left(IncompatibleLocation(Piece.Warbands(kind, math.max(1,
       math.abs(delta))), at))
-  }
-
-  private def requireFinite(
-      piece: Piece,
-      location: Location,
-      available: AvailableQuantity,
-      requested: Int
-  ): Either[OperationError, Unit] = available match {
-    case AvailableQuantity.Unbounded => Right(())
-    case AvailableQuantity.Finite(value) => Either.cond(
-      value >= requested,
-      (),
-      InsufficientPieces(piece, location, value)
-    )
-  }
-
-  private def applyPawnAndBannerMoves(
-      ready: ReadyGame,
-      leaves: Vector[Operation]
-  ): Either[OperationError, ReadyGame] =
-    leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
-      case (result, Move(Piece.Pawn(player), from, to, _)) =>
-        result.flatMap(movePawn(_, player, from.location, to.location))
-      case (result, Move(Piece.Banner(banner), from, to, _)) =>
-        result.flatMap(moveBanner(_, banner, from.location, to.location))
-      case (result, _) => result
-    }
-
-  private def movePawn(ready: ReadyGame, player: PlayerId,
-      from: Location, to: Location): Either[OperationError, ReadyGame] =
-    (from, to) match {
-      case (Location.PlayArea(source), Location.Site(destination))
-          if source == player =>
-        playerState(ready, player).flatMap { state =>
-          Either.cond(state.pawnSite.isEmpty, (),
-            MissingPiece(Piece.Pawn(player), from)).flatMap { _ =>
-            siteState(ready, destination).flatMap(_ =>
-              updatePlayer(ready, player)(_.copy(pawnSite = Some(destination))))
-          }
-        }
-      case (Location.Site(source), Location.Site(destination)) =>
-        playerState(ready, player).flatMap { state =>
-          Either.cond(state.pawnSite.contains(source), (),
-            MissingPiece(Piece.Pawn(player), from)).flatMap { _ =>
-            siteState(ready, destination).flatMap(_ =>
-              updatePlayer(ready, player)(_.copy(pawnSite = Some(destination))))
-          }
-        }
-      case _ => Left(IncompatibleLocation(Piece.Pawn(player), to))
-    }
-
-  private def moveBanner(ready: ReadyGame, banner: Banner,
-      from: Location, to: Location): Either[OperationError, ReadyGame] =
-    (from, to) match {
-      case (Location.PlayArea(source), Location.PlayArea(destination)) =>
-        for {
-          _ <- playerState(ready, destination)
-          _ <- Either.cond(bannerHolder(ready, banner).contains(source), (),
-            MissingPiece(Piece.Banner(banner), from))
-        } yield setBannerHolder(ready, banner, destination)
-      case (Location.SharedBank, Location.PlayArea(destination)) =>
-        for {
-          _ <- playerState(ready, destination)
-          available <- quantity(ready, Piece.Banner(banner), from)
-          _ <- requireFinite(Piece.Banner(banner), from, available, 1)
-        } yield setBannerHolder(ready, banner, destination)
-      case _ => Left(IncompatibleLocation(Piece.Banner(banner), to))
-    }
-
-  private def setBannerHolder(ready: ReadyGame, banner: Banner,
-      player: PlayerId): ReadyGame = {
-    val current = ready.game.current
-    val banners = banner match {
-      case Banner.PeoplesFavor => current.banners.copy(
-        peoplesFavor = current.banners.peoplesFavor.copy(holder = Some(player)))
-      case Banner.DarkestSecret => current.banners.copy(
-        darkestSecret = current.banners.darkestSecret.copy(holder = Some(player)))
-    }
-    ready.copy(game = ready.game.copy(current = current.copy(banners = banners)))
   }
 
   private def applyNonMoveLeaves(
