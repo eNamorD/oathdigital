@@ -28,9 +28,16 @@ class CampaignResultPanelSuite extends munit.FunSuite {
     assert(text.contains("Last Campaign"), text)
     assert(text.contains("Conquest"), text)
     assert(text.contains("Bandits"), text)
-    assert(text.contains("one sword, two swords and a skull"), text)
     assert(text.contains("Attack 3 + 1 sacrificed = 4"), text)
-    assert(text.contains("one shield, doubler"), text)
+    // The faces are drawn as their printed symbols; the words they used to
+    // be written as are what a screen reader is given instead.
+    val rolls = panel.querySelectorAll(".die-faces").toVector
+      .map(_.asInstanceOf[dom.Element])
+    assertEquals(rolls.map(_.getAttribute("aria-label")),
+      Vector("one sword, two swords and a skull", "one shield, doubler"))
+    assertEquals(rolls.head.querySelectorAll(".token-glyph").toVector
+      .map(_.asInstanceOf[dom.Element].getAttribute("aria-label")),
+      Vector("sword", "sword", "sword", "skull"))
     assert(text.contains("Defense 4"), text)
     assert(text.contains("Victory"), text)
   }

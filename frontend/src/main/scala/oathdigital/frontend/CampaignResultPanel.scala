@@ -8,13 +8,24 @@ import org.scalajs.dom
 private[frontend] object CampaignResultPanel {
   import ServerUiSupport.{element, playerDisplayName, siteLabel, text}
 
-  private val names = Map("hollow-sword" -> "hollow sword",
-    "one-sword" -> "one sword", "two-swords-skull" -> "two swords and a skull",
-    "blank" -> "blank", "one-shield" -> "one shield",
-    "two-shields" -> "two shields", "doubler" -> "doubler")
+  /** The faces as the symbols printed on them, drawn by the same renderer
+    * the Recover panel uses, with the words kept as the accessible name.
+    */
+  private def dice(faces: Vector[String]): dom.Element =
+    if (faces.isEmpty) {
+      val none = element("span", "die-faces")
+      none.appendChild(dom.document.createTextNode("no dice"))
+      none
+    } else DieFace.roll(faces)
 
-  private def dice(faces: Vector[String]): String =
-    if (faces.isEmpty) "no dice" else faces.map(f => names.getOrElse(f, f)).mkString(", ")
+  private def line(className: String, before: String, faces: Vector[String],
+      after: String): dom.Element = {
+    val node = element("p", className)
+    node.appendChild(dom.document.createTextNode(before))
+    node.appendChild(dice(faces))
+    node.appendChild(dom.document.createTextNode(after))
+    node
+  }
 
   def render(value: GameProjection, panel: dom.Element): Unit =
     value.lastCampaign.foreach { result =>
@@ -29,12 +40,13 @@ private[frontend] object CampaignResultPanel {
         s"$kind by ${playerDisplayName(value, result.attackerPlayerId)} against " +
           s"$against${if (targets.isEmpty) "" else s" ($targets)"} with ${result.force} " +
           s"committed warband${if (result.force == 1) "" else "s"}"))
-      box.appendChild(text("p", "campaign-result-attack",
-        s"Attack dice: ${dice(result.attackDice)}. Attack ${result.attackScore} + " +
-          s"${result.sacrificed} sacrificed = ${result.attackScore + result.sacrificed}, " +
-          s"${result.skullLosses} skull loss${if (result.skullLosses == 1) "" else "es"}."))
-      box.appendChild(text("p", "campaign-result-defense",
-        s"Defense dice: ${dice(result.defenseDice)}. Defense ${result.defenseScore}."))
+      box.appendChild(line("campaign-result-attack", "Attack dice: ",
+        result.attackDice,
+        s". Attack ${result.attackScore} + ${result.sacrificed} sacrificed = " +
+          s"${result.attackScore + result.sacrificed}, ${result.skullLosses} " +
+          s"skull loss${if (result.skullLosses == 1) "" else "es"}."))
+      box.appendChild(line("campaign-result-defense", "Defense dice: ",
+        result.defenseDice, s". Defense ${result.defenseScore}."))
       box.appendChild(text("p", "campaign-result-outcome",
         if (result.attackerWins) "Victory" else "Defeat"))
       panel.appendChild(box)

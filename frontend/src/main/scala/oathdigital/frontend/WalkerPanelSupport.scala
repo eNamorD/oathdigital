@@ -243,10 +243,25 @@ private[frontend] object WalkerPanelSupport {
         }
       }
 
+  /** The faces as the symbols printed on them, with the sentence they used
+    * to be written as kept for a reader who cannot see the symbols.
+    */
   private def rollFeedback(decision: WalkerDecisionState,
       panel: dom.Element): Unit =
-    decision.rollOutcome.foreach(outcome => panel.appendChild(
-      text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
+    decision.rollOutcome.foreach { outcome =>
+      val line = element("p", "recover-roll-outcome")
+      line.setAttribute("aria-label", rollOutcomeSummary(outcome))
+      if (outcome.faces.isEmpty)
+        line.appendChild(dom.document.createTextNode(
+          s"Need ${outcome.difficulty} shields to succeed."))
+      else {
+        line.appendChild(dom.document.createTextNode("Rolled "))
+        line.appendChild(DieFace.roll(outcome.faces))
+        line.appendChild(dom.document.createTextNode(
+          s" — ${outcome.score} shields so far (need ${outcome.difficulty})."))
+      }
+      panel.appendChild(line)
+    }
 
   /** What a parked decision's panel calls itself, and what the control that
     * submits a partition is called.
