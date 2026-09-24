@@ -603,16 +603,15 @@ object OperationShape {
       case ((result, state), Peek(viewer, id, at)) =>
         (result ++ peekViolation(ready, viewer, id, at), state)
       case ((result, state), SpendSupply(player, amount, _)) =>
-        val (violations, updated) =
-          adjustSupplyViolation(ready, player, -amount, state)
-        (result ++ violations, updated)
+        val (violations, supply) = TurnStateOperations.supplyViolation(
+          ready, player, -amount, state.supply)
+        (result ++ violations, state.copy(supply = supply))
       case ((result, state), GainSupply(player, amount)) =>
-        val (violations, updated) =
-          adjustSupplyViolation(ready, player, amount, state)
-        (result ++ violations, updated)
+        val (violations, supply) = TurnStateOperations.supplyViolation(
+          ready, player, amount, state.supply)
+        (result ++ violations, state.copy(supply = supply))
       case ((result, state), AdvanceVisionsDrawn) =>
-        (result ++ Option.when(ready.game.current.tracks.visionsDrawn ==
-          Int.MaxValue)(OperationError.VisionsDrawnOverflow), state)
+        (result ++ TurnStateOperations.visionsDrawnViolation(ready), state)
       case ((result, state), _) => (result, state)
     }
     reasons
@@ -687,24 +686,4 @@ object OperationShape {
         case Right(_) => Vector.empty
       })
   }
-
-  private def adjustSupplyViolation(
-      ready: ReadyGame,
-      player: PlayerId,
-      amount: Int,
-      state: RunningBoards
-  ): (Vector[OperationError], RunningBoards) =
-    playerState(ready, player) match {
-      case Left(error) => (Vector(error), state)
-      case Right(_) =>
-        val current = state.supply.getOrElse(player, 0)
-        if (amount < 0) {
-          val required = -amount
-          if (current >= required) (Vector.empty, state.copy(
-            supply = state.supply.updated(player, current - required)))
-          else (Vector(InsufficientSupply(required, current)), state)
-        } else (Vector.empty, state.copy(
-          supply = state.supply.updated(player,
-            math.min(SupplyTrack.Maximum, current + amount))))
-    }
 }
