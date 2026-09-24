@@ -2,7 +2,8 @@ package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathLifecycle, PowerRuntime}
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerRollFeedback,
+  WalkerSimulation}
 import oathdigital.model._
 
 /** Campaign on the walker, in the rulebook's order: choose the kind and the
@@ -94,17 +95,33 @@ object CampaignProcedure {
       OathViolation.InvalidEventOrder(
         "Campaign reached a battle step without a complete setup"))
 
+  /** The sacrifice question is asked about the attack roll, and the placement
+    * and relocation questions are asked after the defense roll, so each shows
+    * the roll it is about. A Campaign has no target: the two scores are
+    * compared to each other, not to a difficulty.
+    */
+  def rollFeedback(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, decisionId: String): Option[WalkerRollFeedback] =
+    decisionId match {
+      case CampaignIds.sacrifice =>
+        val skulls = ready.game.current.rollOutcomes
+          .get(CampaignIds.attackPool).fold(0)(_.skulls)
+        Some(WalkerRollFeedback(CampaignIds.attackPool, detail =
+          if (skulls == 0) Vector.empty
+          else Vector(s"$skulls skull loss${if (skulls == 1) "" else "es"}")))
+      case CampaignIds.placement | CampaignIds.relocation =>
+        Some(WalkerRollFeedback(CampaignIds.defensePool))
+      case _ => None
+    }
+
   /** Omitted when no force survives the skulls. */
   private def sacrificeStep(actor: PlayerId): Operation =
     Branch((ready, pending) => CampaignSetup.setup(ready, actor, pending)
       .filter(setup => CampaignBattle.sacrificeMax(ready, setup) > 0).map { setup =>
         val max = CampaignBattle.sacrificeMax(ready, setup)
-        val attack = ready.game.current.rollOutcomes.get(CampaignIds.attackPool)
         Vector[Operation](Decide(CampaignIds.sacrifice, actor,
-          DecisionQuery.ChooseAmount(0, max, Some(CampaignBattle.sacrificeHeading(
-            attack.toVector.flatMap(_.faces.collect {
-              case face: AttackDieFace => face }), attack.fold(0)(_.score),
-            attack.fold(0)(_.skulls), max)), "Sacrifice"),
+          DecisionQuery.ChooseAmount(0, max,
+            Some(CampaignBattle.sacrificeHeading(max)), "Sacrifice"),
           window = Some(PowerWindow.CampaignSacrificeSelection)))
       }.getOrElse(Vector.empty))
 

@@ -129,9 +129,15 @@ object CampaignPlanSource {
   * (the resources it spends, the orientation of its card, the warbands it
   * moves), because the plan is rebuilt from a fresh offer whenever a walk
   * resumes inside it.
+  *
+  * `sides` is who may use the plan, copied in by `BattlePlan` from its own
+  * declaration rather than written by each power: a power already says which
+  * windows it offers at, and repeating that in every `plan` body is how the
+  * two would drift.
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
-    costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect])
+    costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect],
+    sides: Set[CampaignPlanSide] = Set.empty)
 
 /** An offer with the power that made it. */
 final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)

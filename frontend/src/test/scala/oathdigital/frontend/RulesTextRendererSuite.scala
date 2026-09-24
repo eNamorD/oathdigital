@@ -64,4 +64,15 @@ class RulesTextRendererSuite extends munit.FunSuite {
     assertEquals(all(root, "svg.token-sprite").size, 1)
     assertEquals(all(root, "symbol").size, 17)
   }
+
+  test("Conspiracy renders as two paragraphs with both banner glyphs") {
+    val text = oathdigital.protocol.projection.VisionCardPresentation
+      .byId("vision:conspiracy").rulesText
+    val blocks = RulesTextRenderer.powers(text)
+    assertEquals(blocks.size, 2)
+    val glyphs = blocks(1).querySelectorAll(".token-glyph").toVector
+    assertEquals(glyphs.size, 2)
+    assertEquals(glyphs.map(_.asInstanceOf[dom.Element]
+      .getAttribute("aria-label")), Vector("favor", "secret"))
+  }
 }

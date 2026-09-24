@@ -46,7 +46,7 @@ class PanelPlacementSuite extends munit.FunSuite {
   test("the oath and its holder are listed in the shared bank") {
     val line = one(world(projection()), ".shared-bank .oathkeeper-status")
       .getOrElse(fail("no oath line in the shared bank"))
-    assertEquals(line.textContent, "Oath of Supremacy · Oathkeeper: unheld")
+    assertEquals(line.textContent, "Oathkeeper of Supremacy · Oathkeeper: unheld")
   }
 
   /** The goal is projected, so the panel prints the oath actually in play
@@ -56,7 +56,7 @@ class PanelPlacementSuite extends munit.FunSuite {
     assertEquals(one(world(projection(oathkeeper =
       Some(oath.copy(goal = "the-people", holderPlayerId = Some("Blue"))))),
       ".shared-bank .oathkeeper-status").map(_.textContent),
-      Some("Oath of the People · Oathkeeper: Blue"))
+      Some("Oathkeeper of the People · Oathkeeper: Blue"))
   }
 
   test("the usurper notice sits under the round tracker, at the projected round") {

@@ -1,12 +1,16 @@
 package oathdigital.application
 
+import oathdigital.gameplay.CampaignFixture
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
+import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.protocol.projection.WalkerWaitingProjection
+import oathdigital.protocol.projection.{WalkerDecisionProjection,
+  WalkerWaitingProjection}
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
   *
@@ -229,6 +233,19 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(projects(context, actor, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(present)),
       DecisionOption.Relic(DecisionOptionRef.Relic(absent)))), None)
+  }
+
+  test("a badged option projects its badge and keeps its price") {
+    val (context, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
+    val present = relicAtActorSite(context, actor)
+    val option = DecisionOption.Badged(DecisionOption.Priced(
+      DecisionOption.Relic(DecisionOptionRef.Relic(present)),
+      OptionPrice(favor = 1)), "Battle Plan")
+    val projected = projectorFor(decideTree(Vector.empty, actor))
+      .optionProjection(context.ready, Some(actor),
+        CardIndex.from(context.ready.game).toOption, option)
+    assertEquals(projected.flatMap(_.badge), Some("Battle Plan"))
+    assert(projected.exists(_.details.nonEmpty))
   }
 
   test("an edifice option projects its label and details from the card's side, " +
@@ -531,5 +548,163 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     val broken = projectorFor(substituted)
     assertEquals(broken.project(ctx(Some(holder))), None)
     assertEquals(broken.waiting(ctx(None)), None)
+  }
+
+  /** Task 5: a `cardplay.place.*` park -- the one question in the walker
+    * whose subject is not among its own options (a placement offers
+    * "discard"/"play faceup" buttons, never the card itself). The tree is
+    * substituted, the same way every other synthetic `Decide` in this suite
+    * is, but the decision id carries the real spelling `CardPlayProcedure`
+    * builds it with (`kind` then `value`), and the card sits where a real
+    * facedown adviser would: in the actor's own `advisers`.
+    */
+  private val facedownAdviserCard = DenizenId("denizen:vow-of-peace")
+
+  private def facedownAdviserTree(actor: PlayerId, card: DenizenId = facedownAdviserCard)
+      : Operation =
+    Sequence(Decide(s"cardplay.place.${card.kind}.${card.value}",
+      actor, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(DecisionOptionRef.Button("discard"), "Discard"),
+        DecisionOption.Button(DecisionOptionRef.Button("adviser-faceup"),
+          "Play faceup")))))
+
+  private def facedownAdviserPlacement: (ScopedProjectionContext, PlayerId) = {
+    val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
+    val withAdviser = context.copy(ready = context.ready.updateCurrent(
+      current => current.copy(players = current.players.map(player =>
+        if (player.player == actor) player.copy(advisers = player.advisers :+
+          DenizenState(facedownAdviserCard, Orientation.FaceDown, Tokens.empty))
+        else player))))
+    (withAdviser, actor)
+  }
+
+  test("a placement decision projects the card being placed") {
+    val (context, actor) = facedownAdviserPlacement
+    val projected = projectorFor(facedownAdviserTree(actor)).project(context)
+    assertEquals(projected.map(_.decisionId),
+      Some("cardplay.place.denizen.denizen:vow-of-peace"))
+    assertEquals(projected.toVector.flatMap(_.subjectCards).map(_.cardId),
+      Vector("denizen:vow-of-peace"))
+  }
+
+  /** `PlayFacedownAdviser` parks with the actor as its only owner, so there
+    * is no co-owner fixture that reaches the projector as a non-owning
+    * viewer (Task 5 brief's documented fallback): instead, a decision that
+    * is not a `cardplay.*` one -- the off-turn `Decide` above -- proves the
+    * subject is empty when the decision has none to name.
+    */
+  test("a decision that is about no card projects no subject") {
+    val (ready, _, owner, projector) = parkedOffTurn
+    val projected = projector.project(ScopedProjectionContext(ready, Some(owner)))
+    assertEquals(projected.toVector.flatMap(_.subjectCards), Vector.empty)
+  }
+
+  /** The redaction check the brief's own hidden-viewer test would have
+    * covered has no co-owner fixture to reach it through (see above), but
+    * the same redaction path is reachable directly: a decision naming a
+    * card that authoritative state does not hold at all. This also pins
+    * the doc comment's other half on `subjectCards` -- a card that cannot
+    * be found projects hidden, not dropped -- and, more importantly, that
+    * "hidden" means the real substitute [[GamePresentationProjector
+    * .hiddenCard]] (an opaque id and a generic name), not the real id and
+    * name with a flag set over them. `cardDetails(id, ..., hidden = true)`
+    * would have passed the projector test's own `cardId` assertion just as
+    * well while silently leaking the identity through the very fields a
+    * client is told to skip once `hidden` is true.
+    */
+  test("a placement naming a card absent from authoritative state projects " +
+      "it hidden, not with its real identity and not dropped") {
+    val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
+    val missing = DenizenId("denizen:not-on-board")
+    val subjects = projectorFor(facedownAdviserTree(actor, missing))
+      .project(context).toVector.flatMap(_.subjectCards)
+    assertEquals(subjects.map(s => (s.cardId, s.cardKind, s.hidden)),
+      Vector(("hidden", "denizen", true)))
+  }
+
+  /** Task 8: the battle-plan window is a `Repeat` -- it re-asks
+    * `campaign.attacker-plan` after every pick until the actor finishes, so
+    * a second pass parks on the SAME decision id with one answer already
+    * recorded at it. Built by driving the real commands `CampaignPlanWindowSuite`
+    * drives (start, force, pick Sticky Fire), rather than hand-assembling a
+    * `PendingTree`, so this proves what a real second pass looks like.
+    */
+  private lazy val attacker: PlayerId = {
+    val Ready(base) = execute()._1: @unchecked
+    base.game.current.turn.activePlayer
+  }
+
+  private lazy val campaignWithOnePlanPlayed: ReadyGame = {
+    val relic = CampaignFixture.relicWith("relic.sticky-fire")
+    // A second, free attacker plan (Outriders) so at least one option besides
+    // Finish is still offered after Sticky Fire is picked -- with only one
+    // plan available the window would settle past the decision entirely
+    // rather than repeat it (see `CampaignPlanWindowSuite`'s "rebuilt after
+    // each pick" test), and there would be nothing to prove a repeat against.
+    val b = CampaignFixture.withAdviser(CampaignFixture.withRelic(
+      CampaignFixture.board(), relic), CampaignFixture.cardWith("denizen.outriders"),
+      Orientation.FaceUp)
+    val g = CampaignFixture.rules()
+    val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
+      .getOrElse(fail("Campaign must start"))
+    val forced = g.resolveWalker(started.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(2)).getOrElse(fail("the force must be accepted"))
+    val picked = g.resolveWalker(forced.state, b.actor, CampaignIds.attackerPlan,
+      ChooseOneAnswer(DecisionOptionRef.Relic(RelicId(relic))))
+      .fold(e => fail(s"the Sticky Fire plan must be accepted: $e"), identity)
+    picked.state match {
+      case Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    }
+  }
+
+  private def project(ready: ReadyGame, viewer: Option[PlayerId])
+      : Option[WalkerDecisionProjection] =
+    new WalkerDecisionProjector(catalog, new GamePresentationProjector(catalog))
+      .project(ScopedProjectionContext(ready, viewer))
+
+  test("a repeated decision lists what has already been answered at it") {
+    val projected = project(campaignWithOnePlanPlayed, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some("campaign.attacker-plan"))
+    assertEquals(projected.toVector.flatMap(_.answeredOptions).map(_.label),
+      Vector("Sticky Fire"))
+  }
+
+  /** Task 9: a Campaign parked at the sacrifice question, after an attack of
+    * two swords and a skull plus one sword with a force of two -- the skull
+    * costs one warband, so one is still left to sacrifice.
+    */
+  private lazy val campaignAtSacrifice: ReadyGame = {
+    val b = CampaignFixture.board()
+    val defense = Vector.fill(catalog.sites.find(_.id == b.origin).get.defense)(
+      DefenseDieFace.Blank)
+    val g = CampaignFixture.rules(CampaignFixture.dice(
+      Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword), defense))
+    val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
+      .getOrElse(fail("Campaign must start"))
+    val committed = g.resolveWalker(started.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(2)).getOrElse(fail("the force must be accepted"))
+    committed.state match {
+      case Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    }
+  }
+
+  test("a parked sacrifice projects the attack pool's faces, score and losses") {
+    val projected = project(campaignAtSacrifice, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some(CampaignIds.sacrifice))
+    val outcome = projected.flatMap(_.rollOutcome)
+    assertEquals(outcome.map(_.pool), Some("campaign.attack"))
+    assertEquals(outcome.map(_.faces),
+      Some(Vector("two-swords-skull", "one-sword")))
+    assertEquals(outcome.map(_.score), Some(3))
+    assertEquals(outcome.flatMap(_.target), None)
+    assertEquals(outcome.map(_.detail), Some(Vector("1 skull loss")))
+  }
+
+  test("a Campaign decision no roll belongs beside projects no roll") {
+    val projected = project(campaignWithOnePlanPlayed, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some("campaign.attacker-plan"))
+    assertEquals(projected.flatMap(_.rollOutcome), None)
   }
 }

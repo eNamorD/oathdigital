@@ -185,4 +185,16 @@ class CommandProtocolSuite extends munit.FunSuite {
     assertEquals(MajorActionPreviewCodec.decodeResponse(
       MajorActionPreviewCodec.encode(response)), Right(response))
   }
+
+  test("a preview modifier round-trips its card and the action it modifies") {
+    val card = oathdigital.protocol.projection.CardDetailsProjection(
+      "denizen:vow-of-peace", "denizen", "Vow of Peace",
+      suit = Some("order"), orientation = Some("face-up"))
+    val response = MajorActionPreviewResponse(4L, "travel",
+      Vector(PreviewModifier("adviser:p1:denizen:vow-of-peace",
+        "denizen.vow-of-peace", "Vow of Peace", Some(card), Some("travel"))),
+      Vector.empty, Vector.empty)
+    val json = MajorActionPreviewCodec.encode(response)
+    assertEquals(MajorActionPreviewCodec.decodeResponse(json), Right(response))
+  }
 }

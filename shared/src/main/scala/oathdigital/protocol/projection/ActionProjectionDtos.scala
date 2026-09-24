@@ -124,10 +124,15 @@ final case class DecisionQueryProjection(
   * `details` are the consequences the engine annotated on the option (for
   * example the Supply an answer costs and what it yields), already worded
   * for display; empty for an option nothing was annotated on.
+  *
+  * `badge` is one short label the option carries -- what kind of thing it is,
+  * such as `Attack Plan` -- for a client to draw as a chip. It is separate
+  * from `details`, which carries consequences and runs together into one line.
   */
 final case class DecisionOptionProjection(kind: String, id: String,
     label: String, card: Option[CardDetailsProjection] = None,
-    details: Vector[String] = Vector.empty)
+    details: Vector[String] = Vector.empty,
+    badge: Option[String] = None)
 
 /** One named bucket a partition spreads its options across: the stable
   * `key` a placement names, the section's prompt copy, and the fewest
@@ -169,13 +174,13 @@ final case class DecisionSlotProjection(option: DecisionOptionProjection,
   * half-described option a client would render as a blank control and then
   * submit is worse than no prompt, so the whole projection is omitted.
   *
-  * `rollOutcome` (I5) carries the parked pool's accumulated roll feedback --
-  * the dice faces rolled so far, the derived score, and the site's
-  * Recover difficulty -- so the panel can show the player what they rolled
-  * and how close they are, matching the legacy (deleted) `RecoverProjection`
-  * this replaced. Owner-private exactly like the rest of this projection:
-  * the projector only ever returns the whole `WalkerDecisionProjection` for
-  * the parked actor, so no other viewer sees a roll outcome either.
+  * `rollOutcome` (I5) carries the roll the parked decision is about -- the
+  * pool, the dice faces rolled so far, the derived score, and the target or
+  * consequences where the procedure declares them -- so the panel can show
+  * the player what they rolled and what it came to. Owner-private exactly
+  * like the rest of this projection: the projector only ever returns the
+  * whole `WalkerDecisionProjection` for the parked actor, so no other viewer
+  * sees a roll outcome either.
   */
 final case class WalkerDecisionProjection(
     action: String,
@@ -184,19 +189,46 @@ final case class WalkerDecisionProjection(
     pool: Option[String] = None,
     count: Option[Int] = None,
     query: Option[DecisionQueryProjection] = None,
-    rollOutcome: Option[WalkerRollOutcomeProjection] = None
+    rollOutcome: Option[WalkerRollOutcomeProjection] = None,
+    /** The cards this decision is ABOUT, as opposed to the cards its options
+      * name: the card being placed by a `cardplay.place.*` question, which is
+      * not among its options (a Search's kept card is in the temporary hand,
+      * a facedown adviser's is on the board, and neither is offered). Plural so a decision about
+      * several cards needs no second field. Projected under the same
+      * disclosure rules as every other card, so a viewer who may not identify
+      * one receives it hidden.
+      */
+    subjectCards: Vector[CardDetailsProjection] = Vector.empty,
+    /** The answers already recorded at THIS decision id, described as options.
+      *
+      * A decision inside a `Repeat` -- the battle-plan window is the only one
+      * today -- re-asks with the chosen answers removed, so without this the
+      * panel reads as resetting rather than accumulating.
+      *
+      * A reference whose option the projector cannot present from state alone
+      * is omitted: a button's label is authored by the query, and a spent
+      * answer has no query left to read it from. In the plan window that
+      * leaves out only the title's own plan.
+      */
+    answeredOptions: Vector[DecisionOptionProjection] = Vector.empty
 )
-/** `faces` are display-ready die-face labels (e.g. `"one-shield"`), in roll
-  * order across every roll of the parked pool so far; `score` is the
-  * derived total (a `Doubler` on a later roll multiplies earlier shields,
-  * so this is not simply a per-face sum); `difficulty` is the acting
-  * player's current site's Recover difficulty, the target `score` must
-  * reach.
+/** The roll a parked decision wants shown beside it.
+  *
+  * `pool` names which roll it is (`"recover"`, `"campaign.attack"`), so the
+  * client can word the total without guessing from the action. `faces` are
+  * display-ready die-face labels in roll order across every roll of that pool
+  * so far; `score` is the derived total (a `Doubler` on a later roll
+  * multiplies earlier shields, so this is not a per-face sum). `target` is the
+  * number the score must reach where there is one -- a Recover site's
+  * difficulty -- and `None` where there is not, as in a Campaign. `detail`
+  * carries already-worded consequences such as `"1 skull loss"`.
   */
 final case class WalkerRollOutcomeProjection(
+    pool: String,
     faces: Vector[String],
     score: Int,
-    difficulty: Int
+    target: Option[Int] = None,
+    detail: Vector[String] = Vector.empty
 )
 /** Public: who a parked walker position waits on, and the question's heading
   * when it has one (`None` for a roll). Every viewer except the awaited

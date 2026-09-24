@@ -583,6 +583,15 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val offeredIds = preview.options.map(v => PowerId(v.handlerId))
     assertEquals(offeredIds, Vector(PowerId("denizen.catacombs")))
 
+    // Each offered modifier travels as the card it is printed on and the
+    // action it modifies, not as its handler id.
+    val modifier = preview.modifiers.head
+    assertEquals(modifier.card.map(_.cardKind), Some("denizen"))
+    assertEquals(modifier.card.map(_.hidden), Some(false))
+    assertEquals(modifier.card.map(_.name), Some(modifier.description))
+    assertNotEquals(modifier.description, "denizen.catacombs")
+    assertEquals(modifier.modifies, Some("recover"))
+
     // The property that matters: the id the preview just offered is exactly
     // the id `OathRules.startWalker` will accept -- not merely "some id
     // that happens to work". A defect here (offered-but-rejected, or

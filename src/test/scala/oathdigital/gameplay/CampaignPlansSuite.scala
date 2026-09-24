@@ -184,6 +184,25 @@ class CampaignPlansSuite extends munit.FunSuite {
       DecisionOptionRef.Button("title"), "the words"))
   }
 
+  test("a plan's badge names the side or sides that may use it") {
+    import oathdigital.model.CampaignPlanSide._
+    assertEquals(CampaignPlans.badgeOf(Set(Attacker)), Some("Attack Plan"))
+    assertEquals(CampaignPlans.badgeOf(Set(Defender)), Some("Defense Plan"))
+    assertEquals(CampaignPlans.badgeOf(Set(Attacker, Defender)),
+      Some("Battle Plan"))
+    assertEquals(CampaignPlans.badgeOf(Set.empty), None)
+  }
+
+  test("the option a plan offers carries that badge") {
+    val offered = OfferedPlan(PowerId("relic.sticky-fire"),
+      CampaignPlanOffer(CampaignPlanSource.Relic(PlayerId("red"),
+        RelicId("relic:sticky-fire")), "Sticky Fire", Vector.empty,
+        Vector.empty, Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)))
+    assertEquals(CampaignPlans.optionOf(offered), DecisionOption.Badged(
+      DecisionOption.Relic(DecisionOptionRef.Relic(RelicId("relic:sticky-fire"))),
+      "Battle Plan"))
+  }
+
   test("the four ported plans register through one object, and are automatic whatever the catalog flag") {
     val plans = BattlePlans.forCatalog(catalog)
     assertEquals(plans.size, 4)

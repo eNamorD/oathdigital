@@ -251,10 +251,13 @@ object CardPlay {
             Vector.empty)
         }
     case Origin.TemporaryHand if orientation == Orientation.FaceUp =>
+      // The displacement is forced: a player has at most one revealed Vision,
+      // so there is nothing to choose. An answer that names it is still
+      // accepted, because a tree settled from earlier answers replays one.
       val expected = player.revealedVision.map(_.id)
-      Either.cond(replace == expected, (), InvalidSearchPlacement(
-        if (expected.nonEmpty) "a revealed Vision must be replaced"
-        else "there is no revealed Vision to replace")).map { _ =>
+      Either.cond(replace.isEmpty || replace == expected, (),
+        InvalidSearchPlacement("a Vision replaces only the revealed Vision"))
+        .map { _ =>
         val from = keptSource(origin, player.player)
         PlacementPlan(
           Some(Play(id, from, Location.PlayArea(player.player),

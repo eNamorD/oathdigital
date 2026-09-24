@@ -113,8 +113,9 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val (started, forced) = committed(g, b)
     assertEquals(forced.continue, awaits(b.actor, CampaignIds.attackerPlan))
     assertEquals(optionsOf(parked(Vector(plan), b, forced)), Vector(
-      DecisionOption.Priced(DecisionOption.Denizen(
-        DecisionOptionRef.Denizen(DenizenId(orderCard))), OptionPrice(favor = 1)),
+      DecisionOption.Priced(DecisionOption.Badged(DecisionOption.Denizen(
+        DecisionOptionRef.Denizen(DenizenId(orderCard))), "Attack Plan"),
+        OptionPrice(favor = 1)),
       finishOption))
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(orderCard))
@@ -141,8 +142,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val g = rulesWith(Vector(plan))
     val (_, forced) = committed(g, b)
     assertEquals(optionsOf(parked(Vector(plan), b, forced)).head,
-      DecisionOption.Priced(DecisionOption.Denizen(
-        DecisionOptionRef.Denizen(DenizenId(orderCard))),
+      DecisionOption.Priced(DecisionOption.Badged(DecisionOption.Denizen(
+        DecisionOptionRef.Denizen(DenizenId(orderCard))), "Attack Plan"),
         OptionPrice(favorBurnt = 1, secretsBurnt = 1)))
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(orderCard))
@@ -193,8 +194,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val (started, forced) = committed(g, b)
     assertEquals(forced.continue, awaits(b.other, CampaignIds.defenderPlan))
     assertEquals(optionsOf(parked(Vector(plan), b, forced)).head,
-      DecisionOption.Priced(DecisionOption.Denizen(
-        DecisionOptionRef.Denizen(DenizenId(orderCard))),
+      DecisionOption.Priced(DecisionOption.Badged(DecisionOption.Denizen(
+        DecisionOptionRef.Denizen(DenizenId(orderCard))), "Defense Plan"),
         OptionPrice(favor = 1, secrets = 1)))
     val suit = catalog.suitOf(DenizenId(orderCard)).get
     val bank = ready(forced.state).banks.favor.getOrElse(suit, 0)
@@ -243,8 +244,9 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       ChooseAmountAnswer(2)).toOption.get
     assertEquals(forced.continue, awaits(b.other, CampaignIds.defenderPlan))
     assertEquals(optionsOf(parked(Vector(sacrificing), b, forced)).head,
-      DecisionOption.Priced(DecisionOption.Denizen(
-        DecisionOptionRef.Denizen(DenizenId(orderCard))), OptionPrice(warbands = 1)))
+      DecisionOption.Priced(DecisionOption.Badged(DecisionOption.Denizen(
+        DecisionOptionRef.Denizen(DenizenId(orderCard))), "Defense Plan"),
+        OptionPrice(warbands = 1)))
     val picked = pick(g, forced, b.other, CampaignIds.defenderPlan,
       denizen(orderCard))
     assertEquals(player(picked.state, b.other).board.warbands, 2)
@@ -369,8 +371,9 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     // Without the surcharge the free plan is offered, free.
     val (_, freely) = committed(rulesWith(plain), with_(b, b.actor)(
       _.copy(faceUpSecrets = 0)))
-    assertEquals(optionsOf(parked(plain, b, freely)).head, DecisionOption.Denizen(
-      DecisionOptionRef.Denizen(DenizenId(orderCard))))
+    assertEquals(optionsOf(parked(plain, b, freely)).head, DecisionOption.Badged(
+      DecisionOption.Denizen(DecisionOptionRef.Denizen(DenizenId(orderCard))),
+      "Attack Plan"))
     // With it, and no secret to pay, it is not offered at all.
     val (_, broke) = committed(rulesWith(taxed), with_(b, b.actor)(
       _.copy(faceUpSecrets = 0)))
@@ -380,8 +383,9 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val g = rulesWith(taxed)
     val (_, forced) = committed(g, rich)
     assertEquals(optionsOf(parked(taxed, rich, forced)).head,
-      DecisionOption.Priced(DecisionOption.Denizen(
-        DecisionOptionRef.Denizen(DenizenId(orderCard))), OptionPrice(secrets = 1)))
+      DecisionOption.Priced(DecisionOption.Badged(DecisionOption.Denizen(
+        DecisionOptionRef.Denizen(DenizenId(orderCard))), "Attack Plan"),
+        OptionPrice(secrets = 1)))
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(orderCard))
     assertEquals(adviserTokens(picked.state, b.actor, orderCard), Tokens(0, 1))
