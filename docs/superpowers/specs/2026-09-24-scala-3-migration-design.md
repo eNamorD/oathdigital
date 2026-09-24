@@ -15,7 +15,7 @@ except where Scala 3 forces a change.
 | Topic | Decision |
 | --- | --- |
 | Scope | Compiler switch only; no syntax modernization |
-| Target version | Latest patch of the current Scala 3 LTS line |
+| Target version | Latest patch of the current Scala 3 LTS line: 3.9.0 (released 2026-09-03); 3.3.8 only as a fallback if a toolchain component fails on 3.9 |
 | Strategy | Staged on `main`: 2.13-compatible preparation first, then one switch commit |
 | Coverage ratchet | Re-baseline to the measured Scala 3 value, rounded down to one decimal, whether it falls or rises |
 | Dependencies | Same versions, `_3` artifacts via `%%`/`%%%`; bump only if a version has no `_3` artifact |
@@ -71,12 +71,15 @@ it lands on `main` independently and never needs reverting.
    case it does not already exercise.
 2. Give `OathServer`'s implicit execution context the explicit type
    `ExecutionContext`.
-3. Add `-Xsource:3` to `scalacOptions` in both projects, together with
-   `-Wconf:cat=scala3-migration:e` so migration warnings fail the compile.
-   The plan confirms the exact category name against 2.13.16 before relying
-   on it. Fix everything the flags report, grouped by kind of change rather
-   than by file. The flags are added in the same commit as the last fix, so
-   `main` is never red.
+3. Add `-Xsource:3` to `scalacOptions` in both projects. Scala 2.13 reports
+   the resulting diagnostics in the `scala3-migration` category, which is
+   an error by default (`-Wconf:cat=scala3-migration:e`), so no extra
+   `-Wconf` flag is needed. Fix everything the flag reports, grouped by kind
+   of change rather than by file. The flag is added in the same commit as
+   the last fix, so `main` is never red.
+4. Upgrade `sbt-scalajs` from 1.20.1 to 1.22.0. Scala 3.9's compiler
+   contains a Scala.js 1.22.0 backend, so the linker must be at least that
+   version.
 
 With the flags on, new feature code on `main` cannot introduce Scala 3
 incompatibilities while Stage 2 is pending.
@@ -87,8 +90,8 @@ A single commit:
 
 - `ThisBuild / scalaVersion` becomes the latest Scala 3 LTS patch release.
   `frontend` inherits it.
-- In both projects, `scalacOptions` drops `-Xlint`, `-Xsource:3`, and the
-  `-Wconf` flag. It keeps `-deprecation -feature -unchecked` and adds
+- In both projects, `scalacOptions` drops `-Xlint` and `-Xsource:3`. It
+  keeps `-deprecation -feature -unchecked` and adds
   `-Wunused:imports,privates,locals,implicits,nowarn`, the closest Scala 3
   match for the unused checks that 2.13's `-Xlint` enabled. The remaining
   `-Xlint` checks have no Scala 3 equivalent and are not replaced.
