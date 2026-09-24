@@ -8,24 +8,50 @@ object OperationResolution {
   final case class Execute(actual: CoreOperation) extends Result
   final case class Skip(reasons: Vector[OperationReason]) extends Result
 
+  /** Every reason for `requested`: allowlist first, then shape, then the
+    * contextual restrictions. Allowlist reasons come first because the
+    * retired executor ran the per-action policy before any shape or mutation
+    * check, so a both-fail operation rejects with `RestrictedOperation`.
+    */
+  private[gameplay] def reasons(ready: ReadyGame, requested: CoreOperation,
+      allowlist: OperationPolicy, restrictions: Vector[OperationRestriction])
+      : Vector[OperationReason] =
+    allowlistReasons(ready, requested, allowlist) ++
+      resolvedReasons(ready, requested, restrictions)
+
+  /** Revalidation after a permitted operation shrinks must not re-run an
+    * exact allowlist against a different amount.
+    */
+  private def resolvedReasons(ready: ReadyGame, operation: CoreOperation,
+      restrictions: Vector[OperationRestriction]): Vector[OperationReason] =
+    OperationApplication.validate(ready, operation) ++
+      restrictions.flatMap(_.reason(ready, operation))
+
+  private def allowlistReasons(ready: ReadyGame, operation: CoreOperation,
+      allowlist: OperationPolicy): Vector[OperationReason] =
+    allowlist.validate(ready, operation) match {
+      case Left(error) => Vector(OperationReason(error.code, error.detail))
+      case Right(_) => Vector.empty
+    }
+
   def resolve(ready: ReadyGame, requested: CoreOperation,
-      validator: OperationValidator,
+      allowlist: OperationPolicy, restrictions: Vector[OperationRestriction],
       requireAll: Boolean = false): Either[OathViolation, Result] = {
-    val reasons = validator.validateOne(ready, requested)
-    val invalid = reasons.find(_.kind == OperationReasonKind.Invalid)
+    val requestedReasons = reasons(ready, requested, allowlist, restrictions)
+    val invalid = requestedReasons.find(_.kind == OperationReasonKind.Invalid)
     invalid match {
       case Some(reason) => Left(rejection(reason))
       case None if requested.required || requireAll =>
-        reasons.headOption match {
+        requestedReasons.headOption match {
           case Some(reason) => Left(rejection(reason))
           case None => Right(Execute(requested))
         }
-      case None => optional(ready, requested, validator, reasons)
+      case None => optional(ready, requested, restrictions, requestedReasons)
     }
   }
 
   private def optional(ready: ReadyGame, requested: CoreOperation,
-      validator: OperationValidator,
+      restrictions: Vector[OperationRestriction],
       reasons: Vector[OperationReason]): Either[OathViolation, Result] = {
     counted(requested) match {
       case None =>
@@ -55,7 +81,7 @@ object OperationResolution {
           while (low < high) {
             val mid = low + (high - low + 1) / 2
             val candidate = rebuild(mid)
-            val candidateReasons = validator.validateResolvedOne(ready, candidate)
+            val candidateReasons = resolvedReasons(ready, candidate, restrictions)
             candidateReasons.find(_.kind == OperationReasonKind.Invalid) match {
               case Some(reason) => return Left(rejection(reason))
               case None if candidateReasons.isEmpty => low = mid

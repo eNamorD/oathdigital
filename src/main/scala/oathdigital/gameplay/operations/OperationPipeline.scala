@@ -35,20 +35,19 @@ object OperationRun {
   }.toSet
 }
 
-/** Sole public orchestrator of an operation batch. It owns the per-run
-  * [[OperationValidator]] (assembled from the caller's contextual
-  * `allowlist` policy plus the restrictions vector), folds each operation
-  * through staged validation and the raw [[OperationExecutor]], applies the
-  * owning procedure's direct `update`, and runs the post-state invariant.
+/** Sole public orchestrator of an operation batch. It folds each operation
+  * through settlement, staged resolution ([[OperationResolution]], which
+  * concatenates the caller's `allowlist` policy, the shape guard and the
+  * restrictions vector) and the [[OperationExecutor]], applies the owning
+  * procedure's direct `update`, and runs the post-state invariant.
   *
   * Whole-batch rejection must stay staged: an operation later in a batch can
   * be satisfiable only after earlier operations ran (for example a Campaign
   * losing-force `ReturnToBoard` that moves warbands out of a bank which
   * in-batch `Kill`s replenish). Validating every operation against the initial
   * state would reject those trajectory batches the retired executor accepted,
-  * so aggregated whole-batch validation is exposed through [[report]] and the
-  * authoritative rejection is the staged `validateOne` per operation — the
-  * same first-fail, atomic behavior the executor performed.
+  * so the authoritative rejection is the staged per-operation resolution —
+  * the same first-fail, atomic behavior the executor performed.
   *
   * A card may leave the game only through a `Move` to `Location.SharedBank`
   * that the batch declares; its id is then removed from the expected card
@@ -68,7 +67,6 @@ object OperationPipeline {
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]
   ): Either[OathViolation, OperationRun] = {
-    val validator = new OperationValidator(allowlist, restrictions)
     if (operations.isEmpty) Left(OperationError.EmptyOperationBatch.toViolation)
     else
       for {
@@ -78,8 +76,8 @@ object OperationPipeline {
           Right(OperationRun(ready, Vector.empty, Vector.empty))) {
           (result, operation) => result.flatMap { current =>
             PayCostSettlement.prepare(current.state, operation).flatMap { prepared =>
-              OperationResolution.resolve(current.state, prepared, validator,
-                requireAll)
+              OperationResolution.resolve(current.state, prepared, allowlist,
+                restrictions, requireAll)
                 .flatMap {
                   case OperationResolution.Skip(reasons) =>
                     Right(current.copy(skipped = current.skipped :+
@@ -105,14 +103,4 @@ object OperationPipeline {
       } yield staged.copy(state = updated)
   }
 
-  /** Aggregated whole-batch report against the initial state: shape reasons
-    * (per operation plus cross-operation) followed by allowlist reasons.
-    */
-  def report(
-      ready: ReadyGame,
-      operations: Vector[CoreOperation],
-      allowlist: OperationPolicy,
-      restrictions: Vector[OperationRestriction] = Vector.empty
-  ): Vector[OperationReason] =
-    new OperationValidator(allowlist, restrictions).validateBatch(ready, operations)
 }

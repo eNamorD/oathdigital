@@ -95,12 +95,6 @@ object OperationStateAdapter {
       ready.knowledge.siteRelics.getOrElse(viewer, Map.empty)
         .valuesIterator.exists(_.contains(card))
 
-  private[operations] def applyOperation(
-      ready: ReadyGame,
-      operation: CoreOperation
-  ): Either[OperationError, ReadyGame] =
-    OperationStateMutation.applyOperation(ready, operation)
-
   private def favor(ready: ReadyGame,
       at: Location): Either[OperationError, Int] = at match {
     case Location.PlayArea(player) => playerState(ready, player).map(_.board.favor)

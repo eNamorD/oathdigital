@@ -17,6 +17,28 @@ class GameStartRulesSuite extends munit.FunSuite {
       ready.game.current.temporaryHands.getOrElse(p.playerId, Vector.empty).size == 3))
   }
 
+  test("an edifice stored at an atlas site beyond the 8 in play stays in the " +
+      "atlas and is not also in the edifice deck") {
+    val homelandsInPlay = chronicle.atlasBox.flatMap(_.items).toSet
+    val offMapHomeland = catalog.sites.map(_.id)
+      .filterNot(chronicle.atlasBox.map(_.site).contains)
+      .flatMap(site => catalog.sites.find(_.id == site).get.handlers.collectFirst {
+        case handler if handler.contains(".homeland-") =>
+          val suit = Suit.fromKey(
+            handler.substring(handler.indexOf(".homeland-") + 10)).get
+          site -> catalog.edifices.map(e => EdificeId(e.id.value))
+            .find(id => catalog.edifices.find(_.id.value == id.value).get.suit == suit &&
+              !homelandsInPlay.contains(id)).get
+      }).head
+    val (site, edifice) = offMapHomeland
+    val withStorage = chronicle.copy(
+      atlasBox = chronicle.atlasBox :+ StoredSite(site, Vector(edifice)))
+    val ready = GameStartRules.evolve(catalog, withStorage, orders).toOption.get
+    assert(ready.game.campaign.atlas.entries.contains(
+      AtlasEntry.StoredSite(site, Vector.empty, Vector.empty, Some(edifice))))
+    assert(!ready.game.current.commonCards.edificeDeck.contains(edifice))
+  }
+
   test("a non-empty world is refused") {
     val withWorld = chronicle.copy(world = chronicle.atlasBox.take(1))
     val result = GameStartRules.evolve(catalog, withWorld, orders)

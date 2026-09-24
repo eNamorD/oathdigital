@@ -1,16 +1,16 @@
 package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.powers.ReviewedPowerCatalog
-import oathdigital.model.{Chronicle, Suit}
+import oathdigital.gameplay.powers.{PowerImplementationStatus, ReviewedPowerCatalog}
+import oathdigital.model.{Chronicle, DenizenId, EdificeId, PowerId, Suit}
 
 class FirstGameChronicleGeneratorSuite extends munit.FunSuite {
-  private val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
+  private val status = PowerImplementationStatus.implemented(catalog)
   private val random = ChronicleRandomPort.random
   private val policy = ShufflePolicy.implementedFirst
 
   private def generated: Chronicle =
-    FirstGameChronicleGenerator.generate(catalog, registry, random, policy)
+    FirstGameChronicleGenerator.generate(catalog, status, random, policy)
       .toOption.get
 
   test("the atlas box holds all 24 sites, each Homeland carrying its suit's edifice") {
@@ -37,7 +37,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite {
     val chronicle = generated
     assertEquals(chronicle.worldDeck.size, 60)
     assertEquals(chronicle.worldDeck.distinct.size, 60)
-    val implemented = ImplementedCardCatalog.denizens(catalog, registry)
+    val implemented = ImplementedCardCatalog.denizens(catalog, status)
     val (_, rest) = chronicle.worldDeck.span(implemented)
     assert(rest.forall(id => !implemented(id)),
       "no unimplemented denizen may precede an implemented one")
@@ -51,7 +51,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite {
   test("the dispossessed pile has 12 unimplemented denizens, 2 per suit, " +
       "disjoint from the world deck") {
     val chronicle = generated
-    val implemented = ImplementedCardCatalog.denizens(catalog, registry)
+    val implemented = ImplementedCardCatalog.denizens(catalog, status)
     assertEquals(chronicle.dispossessed.size, 12)
     assertEquals(chronicle.dispossessed.distinct.size, 12)
     assert(chronicle.dispossessed.forall(id => !implemented(id)))
@@ -70,9 +70,44 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite {
       .map(r => oathdigital.model.RelicId(r.id.value))
     assertEquals(chronicle.relicDeck.toSet, ordinary.toSet)
     assertEquals(chronicle.relicDeck.size, ordinary.size)
-    val implemented = ImplementedCardCatalog.ordinaryRelics(catalog, registry)
+    val implemented = ImplementedCardCatalog.ordinaryRelics(catalog, status)
     val (_, rest) = chronicle.relicDeck.span(implemented)
     assert(rest.forall(id => !implemented(id)))
+  }
+
+  test("implemented means what the UI marker reads, not presence in the " +
+      "reviewed registry: a walker-only power counts, a declared stub does not") {
+    val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
+    val walkerOnly = PowerId("edifice.e06.ruined")
+    assert(registry.lookup(walkerOnly).isEmpty && status(walkerOnly))
+    val stub = ReviewedPowerCatalog.powers.find(_.handlers.exists(!_.implemented))
+      .map(_.id).filterNot(status)
+    assert(stub.nonEmpty, "fixture expects at least one declared-unimplemented stub")
+    assert(registry.lookup(stub.get).isDefined)
+    val denizens = ImplementedCardCatalog.denizens(catalog, status)
+    catalog.denizens.filter(_.powers.exists(_.id == stub.get)).foreach { d =>
+      assert(!denizens(DenizenId(d.id.value)), s"${d.id.value} carries stub ${stub.get}")
+    }
+  }
+
+  test("every Homeland carries an implemented edifice when its suit has one") {
+    val chronicle = generated
+    chronicle.atlasBox.flatMap(_.items).collect { case id: EdificeId => id }
+      .foreach { id =>
+        val suit = catalog.edifices.find(_.id.value == id.value).get.suit
+        ImplementedCardCatalog.homelandEdifice(catalog, suit, status)
+          .foreach(expected => assertEquals(id, expected))
+      }
+  }
+
+  test("every implemented denizen of a suit reaches the world deck, up to 10") {
+    val deck = generated.worldDeck.toSet
+    val implemented = ImplementedCardCatalog.denizens(catalog, status)
+    Suit.all.foreach { suit =>
+      val suited = catalog.denizens.filter(_.suit == suit)
+        .map(d => DenizenId(d.id.value)).filter(implemented)
+      assertEquals(suited.count(deck), suited.size min 10, s"$suit")
+    }
   }
 
   test("two runs land different atlas orders: the port is actually consulted") {

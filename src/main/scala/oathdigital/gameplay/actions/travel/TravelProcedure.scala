@@ -33,7 +33,7 @@ import oathdigital.model.{CoreOperation, DecisionOptionRef, Location, Move, Oath
   * anywhere that knows a Travel start selection is one site.
   *
   * **What does not gate a start.** Supply is not a build gate: it is owned by
-  * the transformed `SpendSupply` and `OperationValidator`, and because the
+  * the transformed `SpendSupply` and the operation guard, and because the
   * tree is flat a rejection there leaves neither a moved pawn nor pending
   * state. Player role and Foundation faces are not gates either -- neither is
   * a fact about the printed Travel action. Terrain is not a gate: it is the

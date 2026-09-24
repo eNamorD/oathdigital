@@ -56,7 +56,8 @@ exists to point at.
 - Architecture reviews should not re-propose the post-invariant on replay
   without a concrete failing journal.
 - A recorded operation that fails a shape guard now fails replay, fatally,
-  like any other rejected event fact. This is the posture
+  like any other rejected event fact, with the first shape violation as its
+  reason. This is the posture
   `docs/architecture/core-operations-migration.md` already asks for and is the
   only replay behaviour change the guard consolidation introduces.
 - `WalkerReplayDriftSuite` remains the home of re-derived-versus-recorded

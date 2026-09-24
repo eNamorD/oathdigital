@@ -61,7 +61,7 @@ A test builds a `Chronicle` from the TTS codec's sample decoded JSON (its self-t
 The generator lives in the application layer, draws through the random port, and produces ordinary Chronicle input:
 
 - `atlasBox`: all 24 sites in random order. Each of the 6 Homelands (one per suit) carries its suit's implemented edifice as an item.
-- `worldDeck`: 60 denizens, 10 per suit: the 5 implemented denizens of each suit plus 5 random unimplemented ones.
+- `worldDeck`: 60 denizens, 10 per suit: every implemented denizen of the suit (up to 10), filled to 10 with random unimplemented ones. "Implemented" is `PowerImplementationStatus`, the same source as the UI's unimplemented-card marker.
 - `dispossessed`: 2 random unimplemented denizens per suit (12), taken from the denizens left after the 60.
 - `relicDeck`: all 47 ordinary relics.
 - Everything else empty or default.

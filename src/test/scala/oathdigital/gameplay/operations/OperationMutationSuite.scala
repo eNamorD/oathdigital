@@ -5,7 +5,7 @@ import oathdigital.model.OathState._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
-class OperationStateMutationSuite extends munit.FunSuite {
+class OperationMutationSuite extends munit.FunSuite {
   private val ready = ReadyGames.of(game.copy(current = game.current.copy(players = game.current.players.map {
       player => player.copy(board = player.board.copy(
         faceUpSecrets = 1, faceDownSecrets = 1))

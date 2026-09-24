@@ -1,25 +1,14 @@
 package oathdigital.application
 
 import oathdigital.catalog._
-import oathdigital.gameplay.powerresolver._
-import oathdigital.model.PowerWindow._
 import oathdigital.model.{CatalogRef, DenizenId, EdificeId, PowerId, RelicId, Suit}
 
 class ImplementedCardCatalogSuite extends munit.FunSuite {
-  private final case class TestPower(id: PowerId,
-      modifier: Option[oathdigital.model.MajorActionType],
-      handlers: Vector[PowerHandler]) extends Power
-
-  private def implementedPower(id: String): Power =
-    TestPower(PowerId(id), None, Vector(PowerHandlers.automatic(
-      RestStart, implemented = true)(
-      PowerInspector(_ => PowerInspection(applicable = true)))))
-
-  private val registry = PowerRegistry(
-    implementedPower("denizen.solar-hearth-child.done"),
-    implementedPower("relic.cup-of-plenty.done"),
-    implementedPower("edifice.hall-of-debate.intact"),
-    implementedPower("edifice.hall-of-debate.ruined"))
+  private val implemented: PowerId => Boolean = Set(
+    "denizen.solar-hearth-child.done",
+    "relic.cup-of-plenty.done",
+    "edifice.hall-of-debate.intact",
+    "edifice.hall-of-debate.ruined").map(PowerId(_))
 
   private def catalogPower(id: String) =
     CatalogPower(id, persistent = false, rulesText = "text")
@@ -65,20 +54,20 @@ class ImplementedCardCatalogSuite extends munit.FunSuite {
     legacies = Vector.empty,
     sites = Vector.empty)
 
-  test("a denizen is implemented only when every printed power is registered") {
-    assertEquals(ImplementedCardCatalog.denizens(catalog, registry),
+  test("a denizen is implemented only when every printed power is implemented") {
+    assertEquals(ImplementedCardCatalog.denizens(catalog, implemented),
       Set(DenizenId("solar-hearth-child"), DenizenId("blank-card")))
   }
 
-  test("only ordinary relics with every power registered count as implemented") {
-    assertEquals(ImplementedCardCatalog.ordinaryRelics(catalog, registry),
+  test("only ordinary relics with every power implemented count as implemented") {
+    assertEquals(ImplementedCardCatalog.ordinaryRelics(catalog, implemented),
       Set(RelicId("cup-of-plenty")))
   }
 
-  test("a Homeland's implemented edifice needs both faces registered") {
-    assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Hearth, registry),
+  test("a Homeland's implemented edifice needs both faces implemented") {
+    assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Hearth, implemented),
       Some(EdificeId("hall-of-debate")))
-    assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Beast, registry),
+    assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Beast, implemented),
       None)
   }
 }

@@ -168,8 +168,6 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "kind" -> "modify-roll-outcome", "pool" -> pool.value,
         "skulls" -> skulls.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
         "score" -> score.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
-      case ClearDicePool(pool) => ujson.Obj("kind" -> "clear-dice-pool",
-        "pool" -> pool.value)
       // The five arms below are the walker's own tree-control vocabulary
       // (see this trait's doc): `decide`/`build`/`repeat`/`branch` each
       // close over a Scala function value with no data representation, and
@@ -430,7 +428,6 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         skulls <- decodeOptionalSignedInt(value("skulls"), s"$path.skulls")
         score <- decodeOptionalSignedInt(value("score"), s"$path.score")
       } yield ModifyRollOutcome(PoolKey(value("pool").str), skulls, score)
-      case "clear-dice-pool" => Right(ClearDicePool(PoolKey(value("pool").str)))
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown recorded walker operation '$other'"))
     }
