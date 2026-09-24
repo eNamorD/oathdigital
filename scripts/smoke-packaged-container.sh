@@ -119,11 +119,15 @@ docker start "$container_name" >/dev/null
 base_url=http://127.0.0.1:$port
 
 wait_for_readiness() {
-  readiness_deadline=$(($(date +%s) + 30))
+  # 90s, not 30s: a JVM cold start under QEMU emulation (an amd64 runner
+  # building/smoking a linux/arm64 image) is slow enough to blow a 30-second
+  # budget on its own, well before the app itself is unhealthy.
+  readiness_timeout_seconds=90
+  readiness_deadline=$(($(date +%s) + readiness_timeout_seconds))
   while :; do
     readiness_remaining=$(($readiness_deadline - $(date +%s)))
     if [ "$readiness_remaining" -le 0 ]; then
-      fail "readiness timed out after 30 seconds"
+      fail "readiness timed out after $readiness_timeout_seconds seconds"
     fi
     readiness_connect_timeout=$curl_connect_timeout
     if [ "$readiness_remaining" -lt "$readiness_connect_timeout" ]; then
@@ -140,7 +144,7 @@ wait_for_readiness() {
     [ "$container_running" = true ] ||
       fail "container exited before readiness"
     if [ "$(date +%s)" -ge "$readiness_deadline" ]; then
-      fail "readiness timed out after 30 seconds"
+      fail "readiness timed out after $readiness_timeout_seconds seconds"
     fi
     if [ "$readiness_remaining" -gt 1 ]; then
       sleep 1

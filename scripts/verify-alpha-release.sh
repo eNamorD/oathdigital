@@ -103,7 +103,10 @@ case "${1:-}" in
       printf 'Archive smoke: readiness, frontend, three private seats, command, seat restoration across restart, database close, shutdown.\n'
       printf 'Separate-machine LAN/TLS and browser acceptance: not executed by CI.\n'
     } >"$output/archive-evidence.txt"
-    cp docs/operations/releases.md "$output/release-notes.md"
+    release_notes_source=docs/operations/release-notes/$release_version.md
+    [ -f "$release_notes_source" ] ||
+      fail "missing per-version release notes: $release_notes_source"
+    cp "$release_notes_source" "$output/release-notes.md"
     (cd "$output" && shasum -a 256 "$root.zip" "$root.tgz" archive-evidence.txt release-notes.md >SHA256SUMS)
     echo "alpha archive release verification passed: $release_tag"
     ;;
