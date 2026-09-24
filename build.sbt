@@ -50,20 +50,25 @@ lazy val root = (project in file("."))
       "org.scalameta" %% "munit" % "1.0.4" % Test,
       "org.scalameta" %% "munit-scalacheck" % "1.0.0" % Test
     ),
+    // `-Werror` keeps both projects warning-free: every warning the compiler
+    // reports fails the build. Scaladoc ignores the flag; `doc` only warns.
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
       "-unchecked",
-      "-Wunused:imports,privates,locals,implicits,nowarn"
+      "-Wunused:imports,privates,locals,implicits,nowarn",
+      "-Werror"
     ),
     // Ratchet: pinned at the baseline measured when scoverage was adopted
     // (stmt 84.11% on Scala 2.13). Re-baselined on the Scala 3 switch to the
     // measured stmt 86.497% (reported as 86.50%), down from 87.15% on 2.13
     // the commit before: Scala 3 instruments statements differently, so the
-    // change is in measurement, not tests. Raise it as coverage improves; the goal is
-    // 100% with justified $COVERAGE-OFF$ exemptions. Enforced by
-    // `coverageReport`.
-    coverageMinimumStmtTotal := 86.4,
+    // change is in measurement, not tests. Raised to 86.8 when the two
+    // `WalkerOperationCodec` matches were split below the compiler's 3000-node
+    // instrumentation limit and entered the measurement (stmt 86.84%). Raise
+    // it as coverage improves; the goal is 100% with justified $COVERAGE-OFF$
+    // exemptions. Enforced by `coverageReport`.
+    coverageMinimumStmtTotal := 86.8,
     coverageFailOnMinimum := true,
     Universal / packageName := s"oathdigital-${version.value}",
     verifyReleaseVersion := {
@@ -280,7 +285,8 @@ lazy val frontend = (project in file("frontend"))
       "-deprecation",
       "-feature",
       "-unchecked",
-      "-Wunused:imports,privates,locals,implicits,nowarn"
+      "-Wunused:imports,privates,locals,implicits,nowarn",
+      "-Werror"
     )
   )
 

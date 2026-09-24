@@ -39,7 +39,7 @@ class NegotiationProcedureSuite extends munit.FunSuite {
   /** Starts and chooses `who`, returning the state parked at the deal. */
   private def atDeal(b: Board, who: PlayerId*): OathTransition = {
     val started = start(b).getOrElse(fail("Negotiation must start"))
-    choose(started.state, b.actor, who: _*).getOrElse(
+    choose(started.state, b.actor, who*).getOrElse(
       fail("the negotiators must be accepted"))
   }
 

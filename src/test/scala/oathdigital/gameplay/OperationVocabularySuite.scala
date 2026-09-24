@@ -80,7 +80,7 @@ class OperationVocabularySuite extends munit.FunSuite {
           Orientation.FaceUp, Tokens(2, 1))))))))
     val before = loaded.game.current.players.find(_.player == actor).get.board
     val result = run(loaded, Bury.standard(BuryableCard.Denizen(denizen),
-      PositionedLocation(Location.Site(siteId)), Some(suit), 2, 1, actor): _*)
+      PositionedLocation(Location.Site(siteId)), Some(suit), 2, 1, actor)*)
       .fold(error => fail(error.toString), _.state)
     val after = result.game.current.players.find(_.player == actor).get.board
     assertEquals(after.faceDownSecrets, before.faceDownSecrets + 1)

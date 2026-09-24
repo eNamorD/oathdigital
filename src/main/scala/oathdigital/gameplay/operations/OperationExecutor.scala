@@ -44,7 +44,7 @@ object OperationPolicy {
   * family mutation. [[OperationPipeline]] owns best-effort resolution and the
   * post-state invariant; replay reaches the same guard by calling this class
   * directly. The describe guard converts constructor failures thrown by a
-  * mutation into typed [[OperationError]] rejections.
+  * mutation into typed [[oathdigital.model.OperationError]] rejections.
   */
 final class OperationExecutor {
   def execute(

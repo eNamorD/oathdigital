@@ -47,7 +47,6 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
         val state = park()
         val ready = state.asInstanceOf[Ready].value
         val actor = ready.game.current.turn.activePlayer
-        val site = ready.game.current.map.inPlay.head
         (StartableRef.all :+ ActionRef.UsePower(SilverTongue.id)).foreach { ref =>
           assertEquals(rules.startWalker(state, ref, actor).left.toOption,
             Some(pending), ref.key)

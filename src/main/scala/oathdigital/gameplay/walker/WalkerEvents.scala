@@ -78,7 +78,7 @@ final case class WalkerStepRecorded(
 /** Durable state fact written whenever walking stops at a Decide or Roll.
   * `procedure` is stored beside pointer-only PendingTree on replay so generic
   * resume commands can rebuild the correct tree after reload -- one of the
-  * three [[ProcedureRef]] families (Task 4), tagged with its family on the
+  * three [[oathdigital.model.ProcedureRef]] families (Task 4), tagged with its family on the
   * wire so a decoder rejects a reference read back under the wrong one.
   * `modifiers` (fix-round ruling I) is the player-selected power ids chosen
   * when the walker procedure started, carried on every park of this

@@ -88,7 +88,7 @@ object HsqldbDatabaseOwner {
         () => openAttempt(validated, nowMillis),
         ReopenAttempts,
         deadline,
-        System.nanoTime _,
+        () => System.nanoTime(),
         millis => Thread.sleep(millis),
         isTransientLockHeartbeat
       ).left.map {

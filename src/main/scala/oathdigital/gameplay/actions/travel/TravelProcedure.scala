@@ -93,7 +93,7 @@ object TravelProcedure {
     * projection and the major-action preview read.
     *
     * Each candidate is the SAME declared tree `StartWalker` walks, dry-run
-    * through [[WalkerSimulation]] against immutable state: its restrictions
+    * through [[oathdigital.gameplay.walker.WalkerSimulation]] against immutable state: its restrictions
     * run, its transforms fold, its operations validate, and nothing is
     * persisted. A destination whose route is restricted, whose tree does not
     * build, or whose transformed cost the actor cannot afford is simply

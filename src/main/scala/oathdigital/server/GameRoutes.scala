@@ -10,7 +10,8 @@ import akka.http.scaladsl.model.{
   StatusCode,
   StatusCodes
 }
-import akka.http.scaladsl.server.{Directives, Route}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import org.slf4j.LoggerFactory
 
 import oathdigital.application.{
@@ -131,7 +132,7 @@ private[server] object MajorActionPreviewTargets {
 final class GameRoutes(
     gateway: GameServerGateway,
     blockingExecutionContext: ExecutionContext
-) extends Directives {
+) {
   private val logger = LoggerFactory.getLogger(classOf[GameRoutes])
 
   val route: Route =
@@ -203,7 +204,7 @@ final class GameRoutes(
 
   private def completePreview(operation: => Either[GameApplicationError,
       MajorActionPreviewResponse]): Route =
-    onComplete(Future(operation)(blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)) {
       case Success(Right(value)) => complete(HttpResponse(StatusCodes.OK,
         entity = HttpEntity(ContentTypes.`application/json`,
           oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
@@ -218,7 +219,7 @@ final class GameRoutes(
 
   private def completeRawHistory(
       operation: => Either[GameApplicationError, Vector[String]]
-  ): Route = onComplete(Future(operation)(blockingExecutionContext)) {
+  ): Route = onComplete(Future(operation)(using blockingExecutionContext)) {
     case Success(Right(records)) =>
       val values = records.map(record => ujson.read(record))
       complete(HttpResponse(StatusCodes.OK, entity = HttpEntity(
@@ -237,7 +238,7 @@ final class GameRoutes(
   private def completeAsync(
       operation: => Either[GameApplicationError, GameProjection]
   ): Route =
-    onComplete(Future(operation)(blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)) {
       case Success(Right(projection)) =>
         complete(HttpResponse(
           StatusCodes.OK,

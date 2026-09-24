@@ -167,7 +167,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     // A fresh source per invocation, because every command here is run
     // twice -- once on the live state, once on the replayed one -- and both
     // runs must see the same faces in the same order.
-    val dice = WalkerDiceFixture.scripted(resume.rolls: _*)
+    val dice = WalkerDiceFixture.scripted(resume.rolls*)
     val result = resume match {
       case _: StartWalk =>
         ProcedureWalker.advance(state, tree, None, powers, dice)

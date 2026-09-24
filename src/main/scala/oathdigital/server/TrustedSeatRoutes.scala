@@ -7,7 +7,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{HttpCookie, RawHeader, SameSite, `Set-Cookie`}
-import akka.http.scaladsl.server.{Directives, Route}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import org.slf4j.LoggerFactory
 import oathdigital.application._
 import oathdigital.protocol._
@@ -19,7 +20,7 @@ final class TrustedSeatRoutes(
     publicBaseUrl: URI,
     blockingExecutionContext: ExecutionContext,
     extraOrigins: Seq[URI] = Nil
-) extends Directives {
+) {
   private val logger = LoggerFactory.getLogger(classOf[TrustedSeatRoutes])
   private val cookieName = "oath_seat"
   private val privateHeaders = List(RawHeader("Cache-Control", "no-store"),
@@ -67,7 +68,7 @@ final class TrustedSeatRoutes(
             get {
               onComplete(Future {
                 authenticate(request, gameId).flatMap(gateway.load(gameId, _))
-              }(blockingExecutionContext)) {
+              }(using blockingExecutionContext)) {
                 case Success(Right(_)) => ProductionFrontendRoutes.gamePage
                 case Success(Left(TrustedSeatFailure.Forbidden)) => complete(recovery)
                 case Success(Left(TrustedSeatFailure.Application(_: GameApplicationError.StreamNotFound))) =>
@@ -159,7 +160,7 @@ final class TrustedSeatRoutes(
       .toRight(()).flatMap(_ => MajorActionPreviewCodec.decode(body).left.map(_ => ()))
 
   private def async(operation: => HttpResponse): Route =
-    onComplete(Future(operation)(blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)) {
       case Success(response) => complete(response)
       case Failure(_) => complete(internalError())
     }

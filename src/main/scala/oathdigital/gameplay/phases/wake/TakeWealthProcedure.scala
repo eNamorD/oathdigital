@@ -20,7 +20,7 @@ import oathdigital.model._
   * gate `build` runs and which continuation the completed action produces.
   *
   * **The limit is not a gate here.** "Once per turn at each site" is a
-  * `Restriction` declared by [[TakeWealthLimit]] at this tree's own window, so
+  * `Restriction` declared by [[oathdigital.gameplay.powers.wake.TakeWealthLimit]] at this tree's own window, so
   * it is gathered and run at command entry like any other power's cannot-rule.
   * `build` therefore gates on what the printed action requires and nothing
   * else: the phase, the actor's pawn site, no enemy pawn on it, and the
@@ -59,7 +59,7 @@ object TakeWealthProcedure {
     * `TravelProcedure.candidates`.
     *
     * Each candidate is the SAME declared tree `StartWalker` walks, dry-run
-    * through [[WalkerSimulation]] against immutable state: its restrictions
+    * through [[oathdigital.gameplay.walker.WalkerSimulation]] against immutable state: its restrictions
     * run, its transforms fold, its operations validate, and nothing is
     * persisted. A resource absent from this vector is absent because the
     * simulation of taking it failed for the reason the command would have
@@ -85,7 +85,7 @@ object TakeWealthProcedure {
     *
     * A resource kind is not a game object, so it rides the reference
     * vocabulary's `Button` -- the variant for a choice with no game object
-    * behind it. Both directions read [[WakeResource]]'s own `key`, so the
+    * behind it. Both directions read [[oathdigital.model.WakeResource]]'s own `key`, so the
     * spelling a client must send and the spelling this action accepts are
     * one definition rather than two matches that agree today.
     */

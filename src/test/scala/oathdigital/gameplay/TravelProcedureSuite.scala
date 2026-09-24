@@ -202,7 +202,6 @@ class TravelProcedureSuite extends munit.FunSuite {
 
   test("a player-selected power changes the cost only when it is selected") {
     val ready = passRuled(act())
-    val actor = active(ready).player
     val destination = ready.game.current.map.cradle.find(
       _ != active(ready).pawnSite.get).get
     val surcharge = SurchargePower(PowerId("test.travel.surcharge"))

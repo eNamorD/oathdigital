@@ -55,7 +55,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    MinorActions.handle(catalog, state, command).flatMap(completeAction _)
+    MinorActions.handle(catalog, state, command).flatMap(completeAction)
   }
 
   override def evolve(
@@ -81,6 +81,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
+      // `WalkerEvent` is open, so an event type this match does not know
+      // rejects here instead of escaping as a `MatchError`.
+      case other: WalkerEvent =>
+        Left(InvalidEventOrder(s"unsupported walker event: ${other.productPrefix}"))
       case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
       case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
@@ -236,7 +240,7 @@ object OathRules {
 
   /** Production tree source: every registered procedure declares its own
     * tree via [[oathdigital.gameplay.walker.WalkerProcedureRegistry]] (Task
-    * 8) -- this is no longer an exhaustive match on [[ActionRef]], so an
+    * 8) -- this is no longer an exhaustive match on [[oathdigital.model.ActionRef]], so an
     * unregistered procedure rejects with a typed `Left` instead of a
     * `MatchError`.
     */

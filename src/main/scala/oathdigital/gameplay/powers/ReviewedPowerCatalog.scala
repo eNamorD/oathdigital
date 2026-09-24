@@ -32,15 +32,15 @@ object ReviewedPowerCatalog {
   def resolver(catalog: ExecutableCatalog): Either[OathViolation, PowerResolver] =
     requireAudited(catalog).map { _ =>
       val audited = CatalogHandlerInventory.handlerIds(catalog)
-        .map(PowerId).toSet ++ syntheticIds
-      new PowerResolver(PowerRegistry.withAudited(audited, effective(catalog): _*))
+        .map(PowerId.apply).toSet ++ syntheticIds
+      new PowerResolver(PowerRegistry.withAudited(audited, effective(catalog)*))
     }
 
   def registry(catalog: ExecutableCatalog): Either[OathViolation, PowerRegistry] =
     requireAudited(catalog).map { _ =>
-      val audited = CatalogHandlerInventory.handlerIds(catalog).map(PowerId).toSet ++
+      val audited = CatalogHandlerInventory.handlerIds(catalog).map(PowerId.apply).toSet ++
         syntheticIds
-      PowerRegistry.withAudited(audited, effective(catalog): _*)
+      PowerRegistry.withAudited(audited, effective(catalog)*)
     }
 
   /** `powers`, with every handler's `implemented` widened by

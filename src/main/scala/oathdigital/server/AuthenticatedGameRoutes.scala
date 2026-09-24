@@ -10,7 +10,8 @@ import akka.http.scaladsl.model.{
   StatusCode,
   StatusCodes
 }
-import akka.http.scaladsl.server.{Directives, Route}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import org.slf4j.LoggerFactory
 
 import oathdigital.application._
@@ -160,7 +161,7 @@ final class AuthenticatedGameRoutes(
     csrfProtection: SameOriginCsrfProtection,
     gateway: AuthenticatedGameGateway,
     blockingExecutionContext: ExecutionContext
-) extends Directives {
+) {
   private val logger = LoggerFactory.getLogger(
     classOf[AuthenticatedGameRoutes]
   )
@@ -267,7 +268,7 @@ final class AuthenticatedGameRoutes(
 
   private def completePreview(operation: => Either[AuthenticatedGameFailure,
       MajorActionPreviewResponse]): Route =
-    onComplete(Future(operation)(blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)) {
       case Success(Right(value)) => complete(HttpResponse(StatusCodes.OK,
         entity = HttpEntity(ContentTypes.`application/json`,
           oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
@@ -290,7 +291,7 @@ final class AuthenticatedGameRoutes(
   private def completeAsync(
       operation: => Either[AuthenticatedGameFailure, GameProjection]
   ): Route =
-    onComplete(Future(operation)(blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)) {
       case Success(Right(projection)) => complete(HttpResponse(
         StatusCodes.OK,
         entity = HttpEntity(

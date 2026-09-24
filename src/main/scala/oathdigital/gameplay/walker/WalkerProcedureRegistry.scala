@@ -18,7 +18,7 @@ import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, ActionKind, OathContinue, OathViolation, Operation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
-  * (Task 8; re-keyed by [[ProcedureRef]] family at Task 4). Before this,
+  * (Task 8; re-keyed by [[oathdigital.model.ProcedureRef]] family at Task 4). Before this,
   * `OathRules.buildWalker` and `WalkerDecisionProjector.rebuild` each
   * carried their own `case ActionRef.Recover =>` match, so adding a second
   * procedure meant editing both call sites -- and a missing branch there
@@ -33,7 +33,7 @@ import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, ActionKind, 
   */
 object WalkerProcedureRegistry {
 
-  /** `fallbackKind` (I4) is the [[ActionKind]] `OathRules.startWalker`
+  /** `fallbackKind` (I4) is the [[oathdigital.model.ActionKind]] `OathRules.startWalker`
     * runs `PowerRuntime.ignored` fallback-diagnostics against for this
     * procedure -- previously a bare `ActionKind.Recover` literal at the
     * `startWalker` call site regardless of which action was actually
@@ -66,7 +66,7 @@ object WalkerProcedureRegistry {
     * This is the single place `OathRulesWalker.parkedContinue` consults, so
     * it carries no `RecoverProcedure`-specific match of its own.
     *
-    * `modifierWindow` (batch-1 Task 1) is the [[PowerWindow]] at which a
+    * `modifierWindow` (batch-1 Task 1) is the [[oathdigital.model.PowerWindow]] at which a
     * player-selected `ContributingPower` is offered as a `StartWalker`
     * modifier for this procedure -- previously a bare
     * `PowerWindow.RecoverModifierSelection` literal at both
@@ -135,7 +135,7 @@ object WalkerProcedureRegistry {
       rollFeedback: (ExecutableCatalog, ReadyGame, PlayerId, String) => Option[WalkerRollFeedback] =
         (_, _, _, _) => None)
 
-  /** `private[gameplay]`, not `private`: [[WalkerProcedureRegistrySuite]]
+  /** `private[gameplay]`, not `private`: `WalkerProcedureRegistrySuite`
     * asserts this map's keys cover `ProcedureRef.all` (catching a registered
     * procedure missing its entry) and its type is referenced when the suite
     * calls `build`/`rebuild` with a `registrations` map that omits a real,
@@ -416,7 +416,7 @@ object WalkerProcedureRegistry {
   /** Builds `procedure`'s tree for a fresh start: its start gates run.
     *
     * `registrations` defaults to the production `entries` map, so every
-    * production call site is unaffected; [[WalkerProcedureRegistrySuite]]
+    * production call site is unaffected; `WalkerProcedureRegistrySuite`
     * overrides it with a map that omits a procedure to drive this exact
     * entry point down the missing-registration branch, rather than testing
     * `lookup` as an extracted stand-in.
@@ -467,7 +467,7 @@ object WalkerProcedureRegistry {
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
     }
 
-  /** `procedure`'s [[ActionKind]] for the `PowerRuntime.ignored`
+  /** `procedure`'s [[oathdigital.model.ActionKind]] for the `PowerRuntime.ignored`
     * fallback diagnostics `OathRules.startWalker` records alongside the
     * command (I4) -- queried here instead of a bare `ActionKind
     * .Recover` literal at the `startWalker` call site, so a second
@@ -514,7 +514,7 @@ object WalkerProcedureRegistry {
     registrations.get(procedure).flatMap(_.rollFeedback(catalog, ready, actor,
       decisionId))
 
-  /** `procedure`'s modifier-selection [[PowerWindow]], or `None` when it
+  /** `procedure`'s modifier-selection [[oathdigital.model.PowerWindow]], or `None` when it
     * offers no player-selected powers at all -- see `Entry`'s doc.
     * `OathRules.offerableWalkerPowers` and `OathRules.validateModifiers` read
     * this instead of naming `PowerWindow.RecoverModifierSelection`.

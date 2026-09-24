@@ -117,7 +117,7 @@ class PowerResolverSuite extends munit.FunSuite {
       Vector(RestStart), resolution = Automatic)
     val powers = Vector(selected, applicableAutomatic, inapplicableAutomatic,
       implementedAutomatic)
-    val result = new PowerResolver(PowerRegistry(powers: _*)).resolve(RestStart,
+    val result = new PowerResolver(PowerRegistry(powers*)).resolve(RestStart,
       Vector(sourceA -> powers.map(_.id)), NoFacts).toOption.get
     assertEquals(result.offered, Vector.empty)
     assertEquals(result.automatic.map(_.powerId),

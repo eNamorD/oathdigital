@@ -19,7 +19,7 @@ final class PowerRegistry private (
 
 object PowerRegistry {
   def apply(entries: Power*): PowerRegistry = {
-    withAudited(entries.map(_.id).toSet, entries: _*)
+    withAudited(entries.map(_.id).toSet, entries*)
   }
 
   def withAudited(auditedIds: Set[PowerId], entries: Power*)

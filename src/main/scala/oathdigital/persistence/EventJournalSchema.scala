@@ -31,10 +31,10 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
 
   private val migrations: Vector[(Int, Connection => Unit)] =
     Vector(
-      1 -> createEventJournal _,
-      2 -> createIdentityFoundation _,
-      3 -> addSessionCsrfDigest _,
-      4 -> createTrustedSeats _
+      1 -> createEventJournal,
+      2 -> createIdentityFoundation,
+      3 -> addSessionCsrfDigest,
+      4 -> createTrustedSeats
     )
 
   private def createVersionLedger(connection: Connection): Unit = {

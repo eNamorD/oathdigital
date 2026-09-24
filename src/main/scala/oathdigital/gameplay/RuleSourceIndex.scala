@@ -189,7 +189,7 @@ object RuleSourceIndex {
     case Orientation.FaceDown => RuleSourceFace.FaceDown
   }
 
-  private def rawIds(values: Vector[String]): Vector[PowerId] = values.map(PowerId)
+  private def rawIds(values: Vector[String]): Vector[PowerId] = values.map(PowerId.apply)
   private def ids(values: Vector[CatalogPower]): Vector[PowerId] =
     values.map(_.id)
 }

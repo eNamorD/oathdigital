@@ -84,7 +84,7 @@ object OathServer {
             runtime.close()
             system.log.info("Oath Digital database closed")
             Done
-          }(blockingExecutionContext)
+          }(using blockingExecutionContext)
         }
 
         val route = ServerRoutes.route(
@@ -129,7 +129,7 @@ object OathServer {
               osName,
               DesktopConsole.browserUrl(config),
               command => {
-                new ProcessBuilder(command: _*)
+                new ProcessBuilder(command*)
                   .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                   .redirectError(ProcessBuilder.Redirect.DISCARD)
                   .start()

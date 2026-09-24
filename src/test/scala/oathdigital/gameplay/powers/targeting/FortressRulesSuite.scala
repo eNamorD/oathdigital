@@ -18,7 +18,6 @@ class FortressRulesSuite extends munit.FunSuite {
   private val conquest = DecisionOptionRef.Button("conquest")
   private val raid = DecisionOptionRef.Button("raid")
 
-  private def player(b: Board, id: PlayerId): PlayerState = playerOf(b.ready, id)
   private def third(b: Board): PlayerId = b.ready.game.current.players
     .map(_.player).find(id => id != b.actor && id != b.other).get
 

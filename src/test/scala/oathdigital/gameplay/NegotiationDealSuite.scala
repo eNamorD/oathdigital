@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.negotiation.{DealState, NegotiationDeal}
+import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.NegotiationFixture.Board
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, DeclineDeal, ProposeTerms}

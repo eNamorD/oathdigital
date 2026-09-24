@@ -152,7 +152,7 @@ final class HttpGameClient(transport: JsonTransport)
         MajorActionPreviewCodec.decodeResponse(response.body).left.map(error =>
           GameClientFailure.DecodeFailure(error.path, error.message))
       else Left(GameClientFailure.HttpFailure(response.status, "preview", response.body)))
-    })(scala.scalajs.concurrent.JSExecutionContext.queue)
+    })(using scala.scalajs.concurrent.JSExecutionContext.queue)
 
   def loadRawEventHistory(gameId: String, limit: Int = 25)
       : Future[Either[GameClientFailure, Vector[RawEvent]]] =
@@ -175,11 +175,11 @@ final class HttpGameClient(transport: JsonTransport)
             Option(error.getMessage).getOrElse("invalid event history")))
         }
       }
-    }(scala.scalajs.concurrent.JSExecutionContext.queue)
+    }(using scala.scalajs.concurrent.JSExecutionContext.queue)
 
   private def send(method: String, url: String, body: Option[String]) =
     transport.request(method, url, body).map(_.flatMap(GameJson.projectionResponse))(
-      scala.scalajs.concurrent.JSExecutionContext.queue)
+      using scala.scalajs.concurrent.JSExecutionContext.queue)
 
   private def encode(value: String): String =
     js.URIUtils.encodeURIComponent(value)
@@ -207,11 +207,11 @@ final class TrustedHttpGameClient(transport: JsonTransport) extends GameClient {
           MajorActionPreviewCodec.decodeResponse(response.body).left.map(error =>
             GameClientFailure.DecodeFailure(error.path, error.message))
         else Left(GameJson.responseFailure(response))
-      })(scala.scalajs.concurrent.JSExecutionContext.queue)
+      })(using scala.scalajs.concurrent.JSExecutionContext.queue)
 
   private def send(method: String, url: String, body: Option[String]) =
     transport.request(method, url, body).map(_.flatMap(GameJson.projectionResponse))(
-      scala.scalajs.concurrent.JSExecutionContext.queue)
+      using scala.scalajs.concurrent.JSExecutionContext.queue)
 }
 
 object GameJson {
