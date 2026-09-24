@@ -49,16 +49,6 @@ private[frontend] object WorldBoardRenderer {
      val identity = element("h3", "player-identity")
      identity.appendChild(playerReference(value, player.playerId))
      identity.appendChild(text("span", "player-role", player.role))
-     // The Shared Bank line still says who holds the title, but the strip is
-     // where a player looks for it, so the holder's line carries it too.
-     value.oathkeeper.filter(_.holderPlayerId.contains(player.playerId))
-       .foreach { oath =>
-         val badge = text("span", s"player-title title-${oath.side}",
-           oath.side.capitalize)
-         badge.setAttribute("title",
-           oathdigital.protocol.projection.OathkeeperPresentation.title(oath.goal))
-         identity.appendChild(badge)
-       }
      section.appendChild(identity)
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
      val resources = element("span", "resources")
@@ -74,14 +64,35 @@ private[frontend] object WorldBoardRenderer {
      resources.appendChild(text("span", "resource",
        s"Supply ${board.supply}/${value.supplyMaximum}"))
      identity.appendChild(resources)
+
+     // A title and a Vision are states of the player, not cards in a hand:
+     // in the physical game a Vision is played sideways, which is what this
+     // row stands in for.
+     val slots = element("div", "player-slots")
+     value.oathkeeper.filter(_.holderPlayerId.contains(player.playerId))
+       .foreach { oath =>
+         val presented = oathdigital.protocol.projection
+           .OathkeeperPresentation.byGoal.get(oath.goal)
+         val pill = button(oath.side.capitalize, s"player-title title-${oath.side}")
+         val title = presented.fold(oath.goal)(_.title)
+         pill.setAttribute("title", title)
+         pill.onclick = _ => CardInspection.openText(title,
+           presented.fold(Vector.empty[String])(_.lines), pill)
+         slots.appendChild(pill)
+       }
+     board.revealedVision.foreach { card =>
+       val pill = button(card.name, "player-slot-vision")
+       pill.onclick = _ => CardInspection.open(card, pill)
+       slots.appendChild(pill)
+     }
+     if (slots.childNodes.length > 0) section.appendChild(slots)
+
      // One row, no headings: two labelled rows cost more height than the pane
      // has, and a relic's square box already says which card is which.
      val cards = element("div", "board-cards")
      cards.setAttribute("aria-label", "Cards in play")
      board.advisers.foreach(card => cards.appendChild(CardFace.render(card)))
      board.relics.foreach(card => cards.appendChild(CardFace.render(card)))
-     board.revealedVision.foreach(card =>
-       cards.appendChild(CardFace.render(card)))
      section.appendChild(cards)
      board.banners.foreach { banner =>
        section.appendChild(text("p", s"player-banner banner-${banner.key}",
