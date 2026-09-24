@@ -143,7 +143,14 @@ object CardPlayProcedure {
           choice.replacements.map(id => replacementOption(id) -> id),
           choice.replacementOptional)
       }
-      val options = candidates.map { case (ref, _, _, _) =>
+      // A Vision is played faceup or discarded; nothing else is legal, so
+      // nothing else is offered. Rejecting a site or a facedown play after
+      // the click told the player only that a button they were given does
+      // not work.
+      val offered = if (!card.isInstanceOf[VisionId]) candidates
+        else candidates.filter(pair => pair._1 == discard ||
+          pair._1 == adviserFaceUp)
+      val options = offered.map { case (ref, _, _, _) =>
         DecisionOption.Button(ref, label(ref))
       }
       val decisionId = s"cardplay.place.${card.kind}.${card.value}"
@@ -159,7 +166,7 @@ object CardPlayProcedure {
         // Once the card has left its origin the choices can no longer be
         // planned: the tree is settled from the answers instead, keeping the
         // shape it had when the decisions were asked.
-        val chosen = if (held) candidates.find(pair => ref.contains(pair._1))
+        val chosen = if (held) offered.find(pair => ref.contains(pair._1))
         else ref.flatMap(settled(_, card, replaced))
         chosen.toVector.flatMap {
           case (_, placement, replacements, optional) =>
