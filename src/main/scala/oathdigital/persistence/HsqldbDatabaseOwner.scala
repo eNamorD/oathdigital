@@ -4,6 +4,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
+import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
@@ -154,20 +155,19 @@ object HsqldbDatabaseOwner {
       sleep: Long => Unit,
       retryable: Throwable => Boolean
   ): Either[OpenAttemptFailure, A] = {
-    var attempts = 0
-    var result: Either[OpenAttemptFailure, A] = null
-    do {
-      attempts += 1
-      result = attempt()
+    @tailrec
+    def loop(attempts: Int): Either[OpenAttemptFailure, A] = {
+      val result = attempt()
       result match {
         case Left(ConnectionFailure(error))
             if attempts < maxAttempts && nanoTime() < deadlineNanos &&
               retryable(error) =>
           sleep(ReopenBackoffMillis)
-        case _ => return result
+          if (nanoTime() < deadlineNanos) loop(attempts + 1) else result
+        case _ => result
       }
-    } while (attempts < maxAttempts && nanoTime() < deadlineNanos)
-    result
+    }
+    loop(1)
   }
 
   private[persistence] def isTransientLockHeartbeat(error: Throwable): Boolean = {
