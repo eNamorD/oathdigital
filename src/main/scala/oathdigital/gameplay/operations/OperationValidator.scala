@@ -103,46 +103,22 @@ object OperationShape {
     val warbandMoves = leaves.collect {
       case move @ Move(_: Piece.Warbands, _, _, _) => move
     }
-    val (secretReasons, plannedSecrets) = planSecrets(ready, secretMoves)
+    val (secretReasons, plannedSecrets) =
+      ResourceOperations.planSecrets(ready, secretMoves)
 
     val accumulated = Vector.newBuilder[OperationError]
     accumulated ++= positionViolations(leaves)
     accumulated ++= cardViolations(ready, leaves)
-    accumulated ++= resourceDescriptionViolations(ready, operation)
+    accumulated ++= ResourceOperations.resourceDescriptionViolations(
+      ready, operation)
     accumulated ++= PayCostRules.violations(ready, operation)
-    accumulated ++= countedSourceViolations(
+    accumulated ++= ResourceOperations.countedSourceViolations(
       ready, favorMoves, warbandMoves, secretReasons)
-    accumulated ++= countedDestinationViolations(ready, leaves)
+    accumulated ++= ResourceOperations.countedDestinationViolations(
+      ready, leaves)
     accumulated ++= BoardControlOperations.pawnAndBannerViolations(ready, leaves)
     accumulated ++= nonMoveViolations(ready, leaves, plannedSecrets)
     accumulated.result()
-  }
-
-  private def resourceDescriptionViolations(ready: ReadyGame,
-      operation: CoreOperation): Vector[OperationError] = {
-    val described: Option[(CardId, Option[Int], Int)] = operation match {
-      case value: Discard.Denizen =>
-        Some((value.card, Some(value.favor), value.secrets))
-      case value: Discard.RuinedEdifice =>
-        Some((value.card, Some(value.favor), value.secrets))
-      case value: Discard.Relic => Some((value.card, None, value.secrets))
-      case _ => None
-    }
-    described.toVector.flatMap { case (cardId, favor, secrets) =>
-      val at = Location.OnCard(cardId)
-      val counts = for {
-        actualFavor <- quantity(ready, Piece.Favor(1), at)
-        actualSecrets <- quantity(ready, Piece.Secrets(1), at)
-      } yield (actualFavor, actualSecrets)
-      counts match {
-        case Right((AvailableQuantity.Finite(actualFavor),
-            AvailableQuantity.Finite(actualSecrets)))
-            if favor.exists(_ != actualFavor) || actualSecrets != secrets =>
-          Vector(InvalidDescription(
-            s"discard resources on ${cardId.value} do not match the card"))
-        case _ => Vector.empty
-      }
-    }
   }
 
   // ------------------------------------------------------------------
@@ -341,85 +317,6 @@ object OperationShape {
   }
 
   // ------------------------------------------------------------------
-  // 3. Counted-source sufficiency
-  // ------------------------------------------------------------------
-
-  private def planSecrets(
-      ready: ReadyGame,
-      moves: Vector[Move]
-  ): (Vector[OperationError],
-      Option[Vector[(Move, OperationSecretPlanner.SecretSplit)]]) =
-    OperationSecretPlanner.plan(ready, moves) match {
-      case Left(error) => (Vector(error), None)
-      case Right(planned) => (Vector.empty, Some(planned))
-    }
-
-  private def countedSourceViolations(
-      ready: ReadyGame,
-      favorMoves: Vector[Move],
-      warbandMoves: Vector[Move],
-      secretReasons: Vector[OperationError]
-  ): Vector[OperationError] =
-    favorSourceViolations(ready, favorMoves) ++
-      secretReasons ++
-      warbandSourceViolations(ready, warbandMoves)
-
-  private def countedDestinationViolations(ready: ReadyGame,
-      leaves: Vector[Operation]): Vector[OperationError] =
-    leaves.flatMap {
-      case Move(piece: Piece.Counted, _, to, _)
-          if piece.isInstanceOf[Piece.Favor] &&
-            to.location == Location.SharedBank => Vector.empty
-      case Move(piece: Piece.Counted, _, to, _) =>
-        quantity(ready, piece, to.location).left.toOption.toVector
-      case _ => Vector.empty
-    }
-
-  private def favorSourceViolations(
-      ready: ReadyGame,
-      moves: Vector[Move]
-  ): Vector[OperationError] =
-    moves.groupBy(_.from.location).toVector.flatMap {
-      case (location, values) =>
-        val amount = values.map(_.piece.asInstanceOf[Piece.Favor].amount).sum
-        val piece = Piece.Favor(amount)
-        quantity(ready, piece, location) match {
-          case Left(error) => Vector(error)
-          case Right(available) =>
-            finiteSufficiency(piece, location, available, amount)
-        }
-    }
-
-  private def warbandSourceViolations(
-      ready: ReadyGame,
-      moves: Vector[Move]
-  ): Vector[OperationError] =
-    moves.groupBy(move =>
-      move.piece.asInstanceOf[Piece.Warbands].kind -> move.from.location)
-      .toVector.flatMap { case ((kind, location), values) =>
-        val amount = values.map(
-          _.piece.asInstanceOf[Piece.Warbands].amount).sum
-        val piece = Piece.Warbands(kind, amount)
-        quantity(ready, piece, location) match {
-          case Left(error) => Vector(error)
-          case Right(available) =>
-            finiteSufficiency(piece, location, available, amount)
-        }
-      }
-
-  private def finiteSufficiency(
-      piece: Piece,
-      location: Location,
-      available: AvailableQuantity,
-      requested: Int
-  ): Vector[OperationError] = available match {
-    case AvailableQuantity.Unbounded => Vector.empty
-    case AvailableQuantity.Finite(value) =>
-      if (value >= requested) Vector.empty
-      else Vector(InsufficientPieces(piece, location, value))
-  }
-
-  // ------------------------------------------------------------------
   // 5. Non-move primitive guards
   // ------------------------------------------------------------------
 
@@ -491,9 +388,10 @@ object OperationShape {
         (result ++ CardFaceOperations.flipViolation(ready, id, at, orientation),
           state)
       case ((result, state), FlipSecrets(player, amount, from, to)) =>
-        val (violations, updated) =
-          flipSecretsViolation(ready, player, amount, from, to, state)
-        (result ++ violations, updated)
+        val (violations, faceUp, faceDown) =
+          ResourceOperations.flipSecretsViolation(ready, player, amount,
+            from, to, state.faceUp, state.faceDown)
+        (result ++ violations, state.copy(faceUp = faceUp, faceDown = faceDown))
       case ((result, state), Peek(viewer, id, at)) =>
         (result ++ CardFaceOperations.peekViolation(ready, viewer, id, at), state)
       case ((result, state), SpendSupply(player, amount, _)) =>
@@ -510,39 +408,5 @@ object OperationShape {
     }
     reasons
   }
-
-  private def flipSecretsViolation(
-      ready: ReadyGame,
-      player: PlayerId,
-      amount: Int,
-      from: SecretSide,
-      to: SecretSide,
-      state: RunningBoards
-  ): (Vector[OperationError], RunningBoards) =
-    playerState(ready, player) match {
-      case Left(error) => (Vector(error), state)
-      case Right(_) =>
-        val available = from match {
-          case SecretSide.FaceUp => state.faceUp.getOrElse(player, 0)
-          case SecretSide.FaceDown => state.faceDown.getOrElse(player, 0)
-        }
-        if (available < amount)
-          (Vector(InsufficientPieces(Piece.Secrets(amount),
-            Location.PlayArea(player), available)), state)
-        else {
-          val faceUpDelta = (from, to) match {
-            case (SecretSide.FaceUp, SecretSide.FaceDown) => -amount
-            case (SecretSide.FaceDown, SecretSide.FaceUp) => amount
-            case _ => 0
-          }
-          val updated = state.copy(
-            faceUp = state.faceUp.updated(player,
-              state.faceUp.getOrElse(player, 0) + faceUpDelta),
-            faceDown = state.faceDown.updated(player,
-              state.faceDown.getOrElse(player, 0) - faceUpDelta)
-          )
-          (Vector.empty, updated)
-        }
-    }
 
 }

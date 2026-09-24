@@ -4,9 +4,6 @@ import oathdigital.model._
 
 /** Internal immutable mutation planner for counted pieces and primitive effects. */
 private[operations] object OperationStateMutation {
-  import OperationError._
-  import OperationStateAdapter._
-  import OperationStateWrites._
 
   /** Applies a validated operation's leaves. Shape/allowlist checks are
     * owned by OperationShape/OperationValidator and run by OperationPipeline
@@ -25,164 +22,11 @@ private[operations] object OperationStateMutation {
   ): Either[OperationError, ReadyGame] = {
     val leaves = Operation.flatten(operation)
     for {
-      resources <- applyCountedMoves(ready, leaves)
+      resources <- ResourceOperations.applyCountedMoves(ready, leaves)
       pieces <- BoardControlOperations.applyPawnAndBannerMoves(resources, leaves)
       cards <- OperationCardMutation.applyCardMoves(pieces, leaves)
       finished <- applyNonMoveLeaves(cards, leaves)
     } yield finished
-  }
-
-  private def applyCountedMoves(
-      ready: ReadyGame,
-      leaves: Vector[Operation]
-  ): Either[OperationError, ReadyGame] = {
-    val favorMoves = leaves.collect {
-      case move @ Move(_: Piece.Favor, _, _, _) => move
-    }
-    val secretMoves = leaves.collect {
-      case move @ Move(_: Piece.Secrets, _, _, _) => move
-    }
-    val warbandMoves = leaves.collect {
-      case move @ Move(_: Piece.Warbands, _, _, _) => move
-    }
-    for {
-      plannedSecrets <- OperationSecretPlanner.plan(ready, secretMoves)
-      withoutFavor <- favorMoves.foldLeft[Either[OperationError, ReadyGame]](
-        Right(ready)) { (result, move) =>
-        val piece = move.piece.asInstanceOf[Piece.Favor]
-        result.flatMap(adjustFavor(_, move.from.location, -piece.amount))
-      }
-      withFavor <- favorMoves.foldLeft[Either[OperationError, ReadyGame]](
-        Right(withoutFavor)) { (result, move) =>
-        val piece = move.piece.asInstanceOf[Piece.Favor]
-        result.flatMap(adjustFavor(_, move.to.location, piece.amount))
-      }
-      withoutSecrets <- plannedSecrets.foldLeft[
-        Either[OperationError, ReadyGame]](Right(withFavor)) {
-        case (result, (move, split)) => result.flatMap(adjustSecrets(
-          _, move.from.location, -split.faceUp, -split.faceDown))
-      }
-      withSecrets <- plannedSecrets.foldLeft[
-        Either[OperationError, ReadyGame]](Right(withoutSecrets)) {
-        case (result, (move, split)) => result.flatMap(adjustSecrets(
-          _, move.to.location, split.faceUp, split.faceDown))
-      }
-      withoutWarbands <- warbandMoves.foldLeft[
-        Either[OperationError, ReadyGame]](Right(withSecrets)) {
-        case (result, move) =>
-          val piece = move.piece.asInstanceOf[Piece.Warbands]
-          result.flatMap(adjustWarbands(_, piece.kind, move.from.location,
-            -piece.amount))
-      }
-      withWarbands <- warbandMoves.foldLeft[
-        Either[OperationError, ReadyGame]](Right(withoutWarbands)) {
-        case (result, move) =>
-          val piece = move.piece.asInstanceOf[Piece.Warbands]
-          result.flatMap(adjustWarbands(_, piece.kind, move.to.location,
-            piece.amount))
-      }
-    } yield withWarbands
-  }
-
-  private def adjustFavor(
-      ready: ReadyGame,
-      at: Location,
-      delta: Int
-  ): Either[OperationError, ReadyGame] = at match {
-    case Location.PlayArea(player) => updatePlayer(ready, player) { state =>
-      state.copy(board = state.board.copy(favor = state.board.favor + delta))
-    }
-    case Location.Site(site) => updateSite(ready, site) { state =>
-      state.copy(tokens = state.tokens.copy(favor = state.tokens.favor + delta))
-    }
-    case Location.OnCard(id) => updateCardTokens(ready, id) { tokens =>
-      tokens.copy(favor = tokens.favor + delta)
-    }
-    case Location.OnBanner(Banner.PeoplesFavor) => Right(ready.copy(
-      game = ready.game.copy(current = ready.game.current.copy(
-        banners = ready.game.current.banners.copy(
-          peoplesFavor = ready.game.current.banners.peoplesFavor.copy(
-            favor = ready.game.current.banners.peoplesFavor.favor + delta
-          )
-        )
-      ))
-    ))
-    case Location.FavorBank(suit) => Right(ready.copy(
-      banks = ready.banks.copy(favor = ready.banks.favor.updated(
-        suit,
-        ready.banks.favor.getOrElse(suit, 0) + delta
-      ))
-    ))
-    case Location.SharedBank if delta > 0 => Right(ready)
-    case _ => Left(IncompatibleLocation(Piece.Favor(math.max(1, math.abs(delta))), at))
-  }
-
-  private def adjustSecrets(
-      ready: ReadyGame,
-      at: Location,
-      faceUpDelta: Int,
-      faceDownDelta: Int
-  ): Either[OperationError, ReadyGame] = at match {
-    case Location.PlayArea(player) => updatePlayer(ready, player) { state =>
-      state.copy(board = state.board.copy(
-        faceUpSecrets = state.board.faceUpSecrets + faceUpDelta,
-        faceDownSecrets = state.board.faceDownSecrets + faceDownDelta
-      ))
-    }
-    case Location.Site(site) if faceDownDelta == 0 => updateSite(ready, site) {
-      state => state.copy(tokens = state.tokens.copy(
-        secrets = state.tokens.secrets + faceUpDelta))
-    }
-    case Location.OnCard(id) if faceDownDelta == 0 =>
-      updateCardTokens(ready, id) { tokens =>
-        tokens.copy(secrets = tokens.secrets + faceUpDelta)
-      }
-    case Location.OnBanner(Banner.DarkestSecret) if faceDownDelta == 0 =>
-      Right(ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-        banners = ready.game.current.banners.copy(
-          darkestSecret = ready.game.current.banners.darkestSecret.copy(
-            secrets = ready.game.current.banners.darkestSecret.secrets + faceUpDelta
-          )
-        )
-      ))))
-    case Location.SharedBank => Right(ready)
-    case _ => Left(IncompatibleLocation(Piece.Secrets(
-      math.max(1, math.abs(faceUpDelta) + math.abs(faceDownDelta))), at))
-  }
-
-  private def adjustWarbands(
-      ready: ReadyGame,
-      kind: ForceKind,
-      at: Location,
-      delta: Int
-  ): Either[OperationError, ReadyGame] = at match {
-    case Location.WarbandBank(`kind`) => Right(ready)
-    case Location.PlayArea(player) => updatePlayer(ready, player) { state =>
-      state.copy(board = state.board.copy(warbands = state.board.warbands + delta))
-    }.flatMap { updated =>
-      quantity(updated, Piece.Warbands(kind, 1), Location.PlayArea(player))
-        .map(_ => updated)
-    }
-    case Location.Site(site) => siteState(ready, site).flatMap { state =>
-      state.forces match {
-        case SiteForces.Occupied(other, _) if other != kind =>
-          Left(ConflictingDeltas("site cannot contain multiple force kinds"))
-        case forces =>
-          val current = forces match {
-            case SiteForces.Empty => 0
-            case SiteForces.Occupied(_, count) => count
-          }
-          val next = current + delta
-          Either.cond(next >= 0, (), InsufficientPieces(
-            Piece.Warbands(kind, math.max(1, -delta)), at, current)).flatMap { _ =>
-            updateSite(ready, site)(_.copy(forces =
-              if (next == 0) SiteForces.Empty
-              else SiteForces.Occupied(kind, next)))
-          }
-      }
-    }
-    case _ => Left(IncompatibleLocation(Piece.Warbands(kind, math.max(1,
-      math.abs(delta))), at))
   }
 
   private def applyNonMoveLeaves(
@@ -193,7 +37,8 @@ private[operations] object OperationStateMutation {
       case (result, Flip(id, at, orientation)) =>
         result.flatMap(CardFaceOperations.flipCard(_, id, at, orientation))
       case (result, FlipSecrets(player, amount, from, to)) =>
-        result.flatMap(flipPlayerSecrets(_, player, amount, from, to))
+        result.flatMap(ResourceOperations.flipPlayerSecrets(
+          _, player, amount, from, to))
       case (result, Peek(viewer, id, at)) =>
         result.flatMap(CardFaceOperations.peek(_, viewer, id, at))
       case (result, SpendSupply(player, amount, _)) =>
@@ -217,28 +62,6 @@ private[operations] object OperationStateMutation {
       case (result, BeginTurn(player, phase)) =>
         result.flatMap(TurnStateOperations.beginTurn(_, player, phase))
       case (result, _) => result
-    }
-
-  private def flipPlayerSecrets(ready: ReadyGame, player: PlayerId, amount: Int,
-      from: SecretSide, to: SecretSide): Either[OperationError, ReadyGame] =
-    playerState(ready, player).flatMap { state =>
-      val available = from match {
-        case SecretSide.FaceUp => state.board.faceUpSecrets
-        case SecretSide.FaceDown => state.board.faceDownSecrets
-      }
-      Either.cond(available >= amount, (), InsufficientPieces(
-        Piece.Secrets(amount), Location.PlayArea(player), available)).flatMap { _ =>
-        updatePlayer(ready, player) { value =>
-          val faceUpDelta = (from, to) match {
-            case (SecretSide.FaceUp, SecretSide.FaceDown) => -amount
-            case (SecretSide.FaceDown, SecretSide.FaceUp) => amount
-            case _ => 0
-          }
-          value.copy(board = value.board.copy(
-            faceUpSecrets = value.board.faceUpSecrets + faceUpDelta,
-            faceDownSecrets = value.board.faceDownSecrets - faceUpDelta))
-        }
-      }
     }
 
 }
