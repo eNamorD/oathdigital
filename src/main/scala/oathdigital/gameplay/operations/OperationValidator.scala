@@ -3,28 +3,18 @@ package oathdigital.gameplay.operations
 import oathdigital.model._
 
 /** Aggregated validator owned by [[OperationPipeline]] for one run:
-  * `validateBatch` reports the whole batch against the initial state
-  * (including cross-operation conflicts), and `validateOne` re-checks every
-  * operation against the staged state during the fold. The pipeline's
-  * authoritative rejection uses the staged `validateOne` reasons so that
-  * trajectory-dependent batches stay legal.
+  * `validateOne` checks every operation against the staged state during the
+  * fold, and `validateResolvedOne` re-checks a shrunk operation without the
+  * allowlist.
   *
-  * `validateBatch` and `validateOne` return every violation as an
-  * [[OperationReason]] (never first-fail), so callers can inspect all of them.
-  * Pipeline rejection stays first-fail: it takes the head reason.
+  * Both return every violation as an [[OperationReason]] (never first-fail),
+  * so callers can inspect all of them. Pipeline rejection stays first-fail:
+  * it takes the head reason.
   */
 final class OperationValidator(
     allowlist: OperationPolicy,
     restrictions: Vector[OperationRestriction]
 ) {
-  def validateBatch(
-      ready: ReadyGame,
-      operations: Vector[CoreOperation]
-  ): Vector[OperationReason] =
-    allowlistReasons(ready, operations) ++
-      OperationShape.validateBatch(ready, operations) ++
-      operations.flatMap(restrictionReasons(ready, _))
-
   /** Allowlist reasons first: the retired executor ran the per-action policy
     * before any shape/mutation check, so a both-fail operation rejects with
     * `RestrictedOperation` — mirrored here for byte-identical precedence.
@@ -83,30 +73,6 @@ object OperationShape {
   ): Vector[OperationReason] =
     violations(ready, operation).map(reason(_, operation))
 
-  /** All shape violations for a whole batch against the INITIAL state, plus
-    * cross-operation violations (e.g. the same card moved by two operations).
-    */
-  def validateBatch(
-      ready: ReadyGame,
-      operations: Vector[CoreOperation]
-  ): Vector[OperationReason] = {
-    val perOperation = operations.flatMap(operation =>
-      violations(ready, operation).map(reason(_, operation)))
-    val movedById = operations.map(operation =>
-      Operation.flatten(operation).iterator.collect {
-        case Move(piece: Piece.Card, _, _, _) => piece.id
-        case bury: Bury => bury.card.id
-      }.toSet)
-    val crossOperation = for {
-      left <- movedById.indices
-      right <- (left + 1) until movedById.size
-      if movedById(left).intersect(movedById(right)).nonEmpty
-    } yield ConflictingDeltas(
-      "operation batch moves the same card more than once"): OperationError
-    perOperation ++
-      crossOperation.map(error => OperationReason(error.code, error.detail))
-  }
-
   private def reason(error: OperationError,
       operation: CoreOperation): OperationReason = {
     val impossible = error match {
@@ -121,13 +87,6 @@ object OperationShape {
       if (impossible) OperationReasonKind.Impossible
       else OperationReasonKind.Invalid)
   }
-
-  /** First violation as an [[OperationError]]-compatible rejection, if any. */
-  def first(
-      ready: ReadyGame,
-      operation: CoreOperation
-  ): Option[OperationError] =
-    violations(ready, operation).headOption
 
   private def violations(
       ready: ReadyGame,

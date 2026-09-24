@@ -46,9 +46,8 @@ object OperationRun {
   * losing-force `ReturnToBoard` that moves warbands out of a bank which
   * in-batch `Kill`s replenish). Validating every operation against the initial
   * state would reject those trajectory batches the retired executor accepted,
-  * so aggregated whole-batch validation is exposed through [[report]] and the
-  * authoritative rejection is the staged `validateOne` per operation — the
-  * same first-fail, atomic behavior the executor performed.
+  * so the authoritative rejection is the staged `validateOne` per operation —
+  * the same first-fail, atomic behavior the executor performed.
   *
   * A card may leave the game only through a `Move` to `Location.SharedBank`
   * that the batch declares; its id is then removed from the expected card
@@ -105,14 +104,4 @@ object OperationPipeline {
       } yield staged.copy(state = updated)
   }
 
-  /** Aggregated whole-batch report against the initial state: shape reasons
-    * (per operation plus cross-operation) followed by allowlist reasons.
-    */
-  def report(
-      ready: ReadyGame,
-      operations: Vector[CoreOperation],
-      allowlist: OperationPolicy,
-      restrictions: Vector[OperationRestriction] = Vector.empty
-  ): Vector[OperationReason] =
-    new OperationValidator(allowlist, restrictions).validateBatch(ready, operations)
 }

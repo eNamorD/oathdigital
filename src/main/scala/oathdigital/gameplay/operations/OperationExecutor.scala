@@ -21,22 +21,6 @@ object OperationPolicy {
     ): Either[OperationError, Unit] = Right(())
   }
 
-  /** Composes several policies first-fail. Reserved for the Phase 5
-    * restriction composition (allowlist + per-query restriction predicates);
-    * the pipeline today folds allowlist reasons through [[OperationValidator]].
-    */
-  def all(policies: Vector[OperationPolicy]): OperationPolicy =
-    new OperationPolicy {
-      override def validate(
-          ready: ReadyGame,
-          operation: CoreOperation
-      ): Either[OperationError, Unit] =
-        policies.foldLeft[Either[OperationError, Unit]](Right(())) {
-          case (result, policy) =>
-            result.flatMap(_ => policy.validate(ready, operation))
-        }
-    }
-
   /** Restricts execution to semantic roots reconstructed from one validated
     * authoritative event. Structural checks belong to [[OperationShape]].
     */

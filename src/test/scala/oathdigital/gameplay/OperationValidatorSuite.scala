@@ -45,8 +45,6 @@ class OperationValidatorSuite extends munit.FunSuite {
     assertEquals(reasons.map(_.code), Vector("insufficient-pieces"))
     assertEquals(reasons.head.detail, "favor bank contains 5 of requested favor")
     assertEquals(reasons.head.kind, OperationReasonKind.Impossible)
-    assertEquals(OperationShape.first(ready, operation).map(_.code),
-      Some("insufficient-pieces"))
   }
 
   test("wrong requested stack source position is an invalid-stack-position") {
@@ -97,9 +95,6 @@ class OperationValidatorSuite extends munit.FunSuite {
     assertEquals(codes(OperationShape.validate(missing,
       Gain.Warbands(playerId, redForce, 1))),
       Vector("unknown-warband-supply"))
-    assertEquals(OperationShape.first(missing,
-      Gain.Warbands(playerId, redForce, 1)).map(_.code),
-      Some("unknown-warband-supply"))
   }
 
   test("counted move into an incompatible destination is invalid") {
@@ -114,8 +109,6 @@ class OperationValidatorSuite extends munit.FunSuite {
   test("a supply spend beyond the track is an insufficient-supply") {
     assertEquals(codes(OperationShape.validate(ready,
       SpendSupply(playerId, 8))), Vector("insufficient-supply"))
-    assertEquals(OperationShape.first(ready, SpendSupply(playerId, 8))
-      .map(_.code), Some("insufficient-supply"))
   }
 
   test("an already held banner cannot be claimed from the shared bank") {
@@ -154,26 +147,6 @@ class OperationValidatorSuite extends munit.FunSuite {
 
     assertEquals(codes(OperationShape.validate(ready, operation)),
       Vector("missing-piece"))
-  }
-
-  test("validateBatch reports a cross-operation same-card move") {
-    val op1 = Move(
-      Piece.Card(worldDenizen),
-      PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
-      PositionedLocation(Location.Hand(playerId))
-    )
-    val op2 = Move(
-      Piece.Card(worldDenizen),
-      PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
-      PositionedLocation(Location.Hand(blueId))
-    )
-    // Each operation alone is well formed against the initial state.
-    assertEquals(codes(OperationShape.validate(ready, op1)), Vector.empty)
-    assertEquals(codes(OperationShape.validate(ready, op2)), Vector.empty)
-
-    val reasons = OperationShape.validateBatch(ready, Vector(op1, op2))
-    assert(reasons.exists(_.code == "conflicting-deltas"))
-    assertEquals(reasons.filter(_.code == "conflicting-deltas").size, 1)
   }
 
   test("pipeline rejection matches the first shape reason byte-for-byte") {
@@ -244,10 +217,4 @@ class OperationValidatorSuite extends munit.FunSuite {
       Vector("power-blocked"))
   }
 
-  test("report aggregates whole-batch reasons with allowlist precedence") {
-    val operation = Gain.Favor(playerId, Suit.Order, 7)
-    val reported = OperationPipeline.report(ready, Vector(operation),
-      OperationPolicy.Permissive)
-    assertEquals(reported.head.code, "insufficient-pieces")
-  }
 }
