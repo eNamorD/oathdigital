@@ -416,9 +416,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   gap: 0.05em; margin-left: auto; font-size: 0.8em; }
 .card-restriction { margin-top: auto; font-size: 0.72em; color: #a99f8c;
   text-transform: capitalize; }
-.card-unimplemented-badge { align-self: flex-start; padding: 0 0.35em;
+/* The footer sinks to the bottom with or without a restriction above it. */
+.card-unimplemented-badge { align-self: flex-start; margin-top: auto;
+  padding: 0 0.35em;
   border-radius: 0.25em; background: #a15c4a; color: #f5ecd7;
   font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.03em; }
+.card-restriction + .card-unimplemented-badge { margin-top: 0; }
 .card-face-down { align-items: center; justify-content: center;
   border-style: solid; background: #2a2333; }
 .card-back-letter { font-size: 1.9em; font-weight: 800; color: #cbb7dd; }
