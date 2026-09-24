@@ -670,6 +670,26 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
       Vector("Sticky Fire"))
   }
 
+  test("answers at other decisions do not count as answered options") {
+    val projected = project(campaignAtSacrifice, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some(CampaignIds.sacrifice))
+    assertEquals(projected.toVector.flatMap(_.answeredOptions), Vector.empty)
+  }
+
+  test("a button answered at the same decision is omitted, not labelled") {
+    val (context, actor) = parked(ActionRef.Recover)
+    val continue = DecisionOption.Button(DecisionOptionRef.Button("continue"),
+      "Continue")
+    val stop = DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop")
+    val withAnswer = context.copy(ready = context.ready.updateCurrent(_.copy(
+      walkerPending = Some(PendingTree(Vector("0"), Vector(
+        Answered("test.decide", ChooseOneAnswer(continue.ref), actor)))))))
+    val projected = projectorFor(decideTree(Vector(continue, stop), actor))
+      .project(withAnswer)
+    assertEquals(projected.map(_.decisionId), Some("test.decide"))
+    assertEquals(projected.toVector.flatMap(_.answeredOptions), Vector.empty)
+  }
+
   /** Task 9: a Campaign parked at the sacrifice question, after an attack of
     * two swords and a skull plus one sword with a force of two -- the skull
     * costs one warband, so one is still left to sacrifice.

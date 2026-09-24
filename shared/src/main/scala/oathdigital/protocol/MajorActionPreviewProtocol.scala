@@ -9,11 +9,12 @@ final case class MajorActionPreviewRequest(
     action: String,
     baseParameters: Map[String, String] = Map.empty,
     orderedModifiers: Vector[ModifierInvocation] = Vector.empty)
-/** One offered modifier. `description` is the human sentence for the option --
-  * the printed card's name where there is a card -- and never the handler id.
-  * `card` is the card the power is printed on, absent for a power with no card
-  * (a banner face, a game rule). `modifies` is the major action's key, from
-  * the power's own declaration.
+/** One offered modifier. `description` is the human sentence for the option:
+  * the printed card's name where there is a card, and the handler id only for
+  * a power with no card (a banner face, a game rule), where nothing better is
+  * known. `card` is the card the power is printed on, absent for such a
+  * power. `modifies` is the major action's key, from the power's own
+  * declaration.
   */
 final case class PreviewModifier(sourceKey: String, handlerId: String,
     description: String, card: Option[CardDetailsProjection] = None,
