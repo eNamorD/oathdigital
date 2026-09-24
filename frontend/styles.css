@@ -174,16 +174,37 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .sites { display: grid; grid-template-columns: 1fr; gap: 9px; }
+/* One size for every site, whatever it holds this turn. A pawn arriving, a
+   Travel preview opening or a site holding forces used to grow the box and
+   shift the board under the player, so each of those now has a place that
+   costs the same height empty as full. */
 .site {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  min-height: 0;
+  height: var(--site-h);
   padding: 12px;
+  overflow: hidden;
   border: 1px solid #675a43;
   border-radius: 9px;
   background: #2b251d;
   color: #f5ecd7;
   text-align: left;
+  /* The card row fills the site's width: three cards and their two gaps.
+     The ceiling is what fits the map pane's column, and the percentage takes
+     over wherever a site is drawn narrower than that. */
+  --card-w: min(8.6rem, calc((100% - 2 * var(--card-gap)) / 3));
+  --site-h: 19.5rem;
 }
+/* Sized from the width rather than a length of their own, so a card keeps its
+   proportions as the row divides up whatever width the site has. */
+.site .card-face { height: auto; aspect-ratio: 1 / 1.4; }
+.site .card-face-relic { height: auto; aspect-ratio: 1 / 1; }
+/* Drawn over the site's upper right, out of the flow: the preview appears and
+   disappears as actions are chosen, and nothing below it may move. */
+.site > .target-detail-badge { position: absolute; top: 8px; right: 10px;
+  margin: 0; }
 .site-readonly { cursor: default; }
 .board-target { border-color: #d2a85e; box-shadow: inset 0 0 0 1px #d2a85e; }
 .board-target:hover, .board-target:focus-within {
@@ -226,7 +247,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   font-weight: 800;
 }
 .site-details {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
   margin-top: 9px;
   color: #d9cdb5;
   font-size: 0.86rem;
@@ -238,8 +263,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site-token-count { margin-right: 0.35em; }
 .site-defense-none { color: #a99b82; }
 .site-footer { display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 9px; margin-top: 7px; }
-.site-powers { min-width: 0; margin: 0; padding-left: 1.1em; }
+  gap: 9px; margin-top: auto; }
+/* Clipped rather than allowed to grow: a site carries one or two powers, each
+   a single short line, so this is a guard and not the ordinary case. */
+.site-powers { min-width: 0; min-height: 0; margin: 0; padding-left: 1.1em;
+  overflow: hidden; }
 .site-requirement { display: flex; align-items: center; flex: 0 0 auto;
   gap: 0.15em; align-self: flex-end; color: #fff2d6; font-weight: 800; }
 .site-requirement-label { margin-right: 0.2em; }
@@ -260,7 +288,10 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   color: #f5ecd7;
   font-weight: 800;
 }
-.site-pawns { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 7px; }
+/* Keeps its line whether or not a pawn stands here, which is what holds the
+   card row at the same height across the board. */
+.site-pawns { display: flex; flex-wrap: wrap; gap: 4px 10px; min-height: 1.25em;
+  margin-top: 7px; }
 .pawn { display: inline-block; font-size: 0.9rem; }
 
 .player-ref { font-weight: 800; }
@@ -428,8 +459,9 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   background: #3b3123; color: #fff2d6; font-weight: 800; }
 .walker-many-option[aria-pressed="true"]::before { content: "✓ "; }
 .decision-cards, .board-cards { gap: var(--card-gap); }
-.site-cards { display: flex; flex-wrap: wrap; align-items: flex-start;
-  min-width: 0; gap: var(--card-gap); }
+.site-cards { display: flex; flex: 0 0 auto; flex-wrap: wrap;
+  align-items: flex-start; justify-content: flex-end; min-width: 0;
+  gap: var(--card-gap); }
 
 .pile-display { display: flex; align-items: center; gap: 6px; margin: 7px 0; }
 .pile-display > .pile-card { display: inline-flex; box-sizing: border-box;

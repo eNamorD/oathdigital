@@ -167,7 +167,10 @@ private[frontend] object WorldBoardRenderer {
          marker.appendChild(playerReference(value, pawn.playerId))
          pawns.appendChild(marker)
        }
-       if (pawns.childNodes.length > 0) control.appendChild(pawns)
+       // Appended whether or not anyone stands here: the row holds its line
+       // of height either way, so the cards below it sit at the same place in
+       // every site on the board.
+       control.appendChild(pawns)
        control.appendChild(siteDetails(site))
        sites.appendChild(control)
      }

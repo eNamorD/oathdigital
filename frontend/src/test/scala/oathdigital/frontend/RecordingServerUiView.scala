@@ -30,8 +30,10 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
   def displayedProjection: Option[GameProjection] = None
   val sessionCoordinator: ServerSessionCoordinator =
     new ServerSessionCoordinator(gameId, playerId)
-  def currentBoardSelection: Option[BoardTargetSelectionState] = None
-  def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit = ()
+  var boardSelection: Option[BoardTargetSelectionState] = None
+  def currentBoardSelection: Option[BoardTargetSelectionState] = boardSelection
+  def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit =
+    boardSelection = value
   def currentModifierWorkflow: Option[ModifierWorkflow] = None
   def currentFacedownAdviserDraft: Option[FacedownAdviserDraft] = None
   def chooseFacedownAdviser(cardId: String): Unit = ()
