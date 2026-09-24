@@ -367,10 +367,8 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-face-unimplemented { border-style: dashed; border-color: #a15c4a; }
 .card-face:hover, .card-face:focus-visible { outline: 2px solid #fff0c9;
   outline-offset: -3px; }
-/* The pip's gutter is reserved whether or not a pip is drawn, so a name
-   sits in the same place before and after a card becomes knowable. */
 .card-header { display: flex; align-items: flex-start; gap: 0.25em;
-  min-width: 0; padding-left: 0.85em; }
+  min-width: 0; }
 .card-header .token-glyph { flex: 0 0 auto; width: 1.2em; height: 1.2em;
   vertical-align: 0; }
 .card-name { min-width: 0; font-weight: 750; font-size: 0.95em;
@@ -378,8 +376,8 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-tokens { display: flex; align-items: center; gap: 0.15em;
   font-size: 0.8em; }
 .card-token-count { margin-right: 0.35em; font-weight: 700; }
-/* The header's right end: opposite the pip, and in the flow, so a name that
-   wraps is laid out beside the dice rather than under them. */
+/* The header's right end, in the flow, so a name that wraps is laid out
+   beside the dice rather than under them. */
 .card-defense { display: flex; flex: 0 0 auto; align-items: flex-start;
   gap: 0.05em; margin-left: auto; font-size: 0.8em; }
 .card-restriction { margin-top: auto; font-size: 0.72em; color: #a99f8c;
@@ -390,7 +388,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-face-down { align-items: center; justify-content: center;
   border-style: solid; background: #2a2333; }
 .card-back-letter { font-size: 1.9em; font-weight: 800; color: #cbb7dd; }
-.card-knowable-pip { position: absolute; top: 0.45em; left: 0.4em;
+.card-knowable-pip { position: absolute; top: 0.3em; right: 0.3em;
   width: 0.55em; height: 0.55em; border-radius: 50%;
   background: var(--token-secret); }
 /* Hover reveal is CSS only and holds no client state: PanelContent.replace
@@ -402,8 +400,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 @media (hover: hover) {
   .card-face-knowable:hover .card-hover-summary,
   .card-face-knowable:focus-visible .card-hover-summary { display: flex; }
+  /* The pip goes with the back it belongs to: the revealed summary draws a
+     relic's defense dice in that same corner. */
   .card-face-knowable:hover .card-back-letter,
-  .card-face-knowable:focus-visible .card-back-letter { visibility: hidden; }
+  .card-face-knowable:hover .card-knowable-pip,
+  .card-face-knowable:focus-visible .card-back-letter,
+  .card-face-knowable:focus-visible .card-knowable-pip { visibility: hidden; }
 }
 .card-slot-empty { border-style: dashed; border-color: #88775d;
   background: transparent; }
