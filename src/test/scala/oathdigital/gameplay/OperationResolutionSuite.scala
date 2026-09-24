@@ -7,12 +7,10 @@ import oathdigital.model.TestGameFixtures._
 
 class OperationResolutionSuite extends munit.FunSuite {
   private val ready = ReadyGames.of(game)
-  private val validator = new OperationValidator(OperationPolicy.Permissive,
-    Vector.empty)
 
   test("optional favor gain uses maximal available bank amount") {
     val result = OperationResolution.resolve(ready,
-      Gain.Favor(playerId, Suit.Order, 7), validator)
+      Gain.Favor(playerId, Suit.Order, 7), OperationPolicy.Permissive, Vector.empty)
     assertEquals(result, Right(OperationResolution.Execute(
       Gain.Favor(playerId, Suit.Order, 5))))
   }
@@ -23,43 +21,43 @@ class OperationResolutionSuite extends munit.FunSuite {
           supply = SupplyTrack(1))) else player
       }))
     assertEquals(OperationResolution.resolve(oneSupply,
-      SpendSupply(playerId, 3, required = false), validator),
+      SpendSupply(playerId, 3, required = false), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(
         SpendSupply(playerId, 1, required = false))))
     assert(OperationResolution.resolve(oneSupply,
-      SpendSupply(playerId, 3), validator).isLeft)
+      SpendSupply(playerId, 3), OperationPolicy.Permissive, Vector.empty).isLeft)
   }
 
   test("zero available optional gain skips while wrong card source rejects") {
     val empty = ready.copy(banks = ready.banks.copy(favor =
       ready.banks.favor.updated(Suit.Order, 0)))
     assert(OperationResolution.resolve(empty,
-      Gain.Favor(playerId, Suit.Order, 2), validator).toOption.get
+      Gain.Favor(playerId, Suit.Order, 2), OperationPolicy.Permissive, Vector.empty).toOption.get
       .isInstanceOf[OperationResolution.Skip])
     val wrongCard = Move(Piece.Card(worldDenizen),
       PositionedLocation(Location.Site(sites.head)),
       PositionedLocation(Location.Hand(playerId)))
-    assert(OperationResolution.resolve(ready, wrongCard, validator).isLeft)
+    assert(OperationResolution.resolve(ready, wrongCard, OperationPolicy.Permissive, Vector.empty).isLeft)
     val impossibleAndInvalid = Gain.Favor(playerId, Suit.Order, 7)
     val invalidRestriction = new OperationRestriction {
       override def reason(state: ReadyGame, operation: CoreOperation) =
         Some(OperationReason("invalid-test", "invalid alongside shortage",
           OperationReasonKind.Invalid))
     }
-    val mixedValidator = new OperationValidator(OperationPolicy.Permissive,
-      Vector(invalidRestriction))
-    val mixedReasons = mixedValidator.validateOne(ready, impossibleAndInvalid)
+    val mixed = Vector[OperationRestriction](invalidRestriction)
+    val mixedReasons = OperationResolution.reasons(ready, impossibleAndInvalid,
+      OperationPolicy.Permissive, mixed)
     assert(mixedReasons.exists(_.kind == OperationReasonKind.Impossible))
     assert(mixedReasons.exists(_.kind == OperationReasonKind.Invalid))
     assert(OperationResolution.resolve(ready, impossibleAndInvalid,
-      mixedValidator).isLeft)
+      OperationPolicy.Permissive, mixed).isLeft)
   }
 
   test("replacement shrinks both colors together") {
     val operation = Replace(Piece.Warbands(ForceKind.Bandit, 3),
       Piece.Warbands(ForceKind.Exile(lineageId), 3),
       PositionedLocation(Location.Site(sites.head)))
-    assertEquals(OperationResolution.resolve(ready, operation, validator),
+    assertEquals(OperationResolution.resolve(ready, operation, OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(Replace(
         Piece.Warbands(ForceKind.Bandit, 1),
         Piece.Warbands(ForceKind.Exile(lineageId), 1),
@@ -89,7 +87,7 @@ class OperationResolutionSuite extends munit.FunSuite {
         Sacrifice(playerId, Piece.Warbands(ForceKind.Exile(lineageId), 3),
           toArea))
     cases.foreach { case (requested, expected) =>
-      assertEquals(OperationResolution.resolve(ready, requested, validator),
+      assertEquals(OperationResolution.resolve(ready, requested, OperationPolicy.Permissive, Vector.empty),
         Right(OperationResolution.Execute(expected)))
     }
   }
@@ -97,20 +95,20 @@ class OperationResolutionSuite extends munit.FunSuite {
   test("secret flip and dice-pool subtraction shrink at the available count") {
     val flip = FlipSecrets(playerId, 3, SecretSide.FaceUp,
       SecretSide.FaceDown)
-    assertEquals(OperationResolution.resolve(ready, flip, validator),
+    assertEquals(OperationResolution.resolve(ready, flip, OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(flip.copy(amount = 1))))
     val dice = ready.updateCurrent(_.copy(rollPools = Map(PoolKey("recover") ->
         DicePoolState(2))))
     assertEquals(OperationResolution.resolve(dice,
-      ModifyDicePool(PoolKey("recover"), -4), validator),
+      ModifyDicePool(PoolKey("recover"), -4), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(
         ModifyDicePool(PoolKey("recover"), -2))))
     assertEquals(OperationResolution.resolve(dice,
-      ModifyDicePool(PoolKey("recover"), Int.MinValue), validator),
+      ModifyDicePool(PoolKey("recover"), Int.MinValue), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(
         ModifyDicePool(PoolKey("recover"), -2))))
     assertEquals(OperationResolution.resolve(dice,
-      ModifyDicePool(PoolKey("recover"), Int.MaxValue), validator),
+      ModifyDicePool(PoolKey("recover"), Int.MaxValue), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(
         ModifyDicePool(PoolKey("recover"), Int.MaxValue - 2))))
   }
@@ -120,13 +118,13 @@ class OperationResolutionSuite extends munit.FunSuite {
         player.copy(board = player.board.copy(supply = SupplyTrack(6)))
       }))
     assertEquals(OperationResolution.resolve(six,
-      GainSupply(playerId, 3), validator),
+      GainSupply(playerId, 3), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(GainSupply(playerId, 1))))
     val full = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack.full))
       }))
     assert(OperationResolution.resolve(full,
-      GainSupply(playerId, 1), validator).toOption.get
+      GainSupply(playerId, 1), OperationPolicy.Permissive, Vector.empty).toOption.get
       .isInstanceOf[OperationResolution.Skip])
   }
 
@@ -155,18 +153,17 @@ class OperationResolutionSuite extends munit.FunSuite {
     val discard = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, 1, 0, blue)
-    val reasons = new OperationValidator(OperationPolicy.Permissive,
-      Vector(restriction)).validateOne(changed, discard)
+    val reasons = OperationResolution.reasons(changed, discard,
+      OperationPolicy.Permissive, Vector(restriction))
     assertEquals(reasons.map(_.kind), Vector(OperationReasonKind.Impossible))
     assert(OperationResolution.resolve(changed, discard,
-      new OperationValidator(OperationPolicy.Permissive, Vector(restriction)))
+      OperationPolicy.Permissive, Vector(restriction))
       .toOption.get.isInstanceOf[OperationResolution.Skip])
     val rulerRestriction = new DiscardRestrictions(FirstGameSetupFixture.catalog,
       playerId)
     assertEquals(OperationResolution.resolve(changed,
       discard.copy(actingPlayer = playerId),
-      new OperationValidator(OperationPolicy.Permissive,
-        Vector(rulerRestriction))),
+      OperationPolicy.Permissive, Vector(rulerRestriction)),
       Right(OperationResolution.Execute(discard.copy(actingPlayer = playerId))))
   }
 
@@ -174,12 +171,14 @@ class OperationResolutionSuite extends munit.FunSuite {
     val stale = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, favor = 2, secrets = 0, playerId)
-    val reasons = validator.validateOne(ready, stale)
+    val reasons = OperationResolution.reasons(ready, stale,
+      OperationPolicy.Permissive, Vector.empty)
     assert(reasons.exists(_.kind == OperationReasonKind.Invalid))
-    assert(OperationResolution.resolve(ready, stale, validator).isLeft)
+    assert(OperationResolution.resolve(ready, stale, OperationPolicy.Permissive, Vector.empty).isLeft)
     val understated = stale.copy(favor = 0)
-    assert(validator.validateOne(ready, understated)
+    assert(OperationResolution.reasons(ready, understated,
+      OperationPolicy.Permissive, Vector.empty)
       .exists(_.kind == OperationReasonKind.Invalid))
-    assert(OperationResolution.resolve(ready, understated, validator).isLeft)
+    assert(OperationResolution.resolve(ready, understated, OperationPolicy.Permissive, Vector.empty).isLeft)
   }
 }
