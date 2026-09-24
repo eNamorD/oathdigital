@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import oathdigital.catalog.{ExecutableCatalog, RelicRole}
-import oathdigital.gameplay.powerresolver.PowerRegistry
 import oathdigital.model._
 
 sealed trait ChronicleGeneratorFailure extends Product with Serializable
@@ -19,24 +18,25 @@ object ChronicleGeneratorFailure {
  * has one; otherwise the lowest-id edifice of that suit, which plays inert
  * with the existing ignored-rule diagnostic -- a Homeland is never left
  * without its edifice card just because none of its suit's five are
- * implemented yet); a 60-denizen world deck, 10 per suit (5 implemented plus
- * 5 random unimplemented); 12 dispossessed denizens, 2 unimplemented per
- * suit, drawn from what the 60 left behind; and the full ordinary relic
- * deck. Both decks are ordered implemented-first by `policy`. Self-validates
- * the counts before returning.
+ * implemented yet); a 60-denizen world deck, 10 per suit (every implemented
+ * denizen of the suit, up to 10, topped up with random unimplemented ones);
+ * 12 dispossessed denizens, 2 unimplemented per suit, drawn from what the 60
+ * left behind; and the full ordinary relic deck. Both decks are ordered
+ * implemented-first by `policy`. `implemented` is the per-power answer
+ * `ImplementedCardCatalog` reads. Self-validates the counts before returning.
  */
 object FirstGameChronicleGenerator {
   import ChronicleGeneratorFailure._
 
-  def generate(catalog: ExecutableCatalog, registry: PowerRegistry,
+  def generate(catalog: ExecutableCatalog, implemented: PowerId => Boolean,
       random: ChronicleRandomPort, policy: ShufflePolicy)
       : Either[ChronicleGeneratorFailure, Chronicle] =
     for {
-      atlas <- atlasBox(catalog, registry, random)
-      pools <- denizenPools(catalog, registry, random)
+      atlas <- atlasBox(catalog, implemented, random)
+      pools <- denizenPools(catalog, implemented, random)
       (worldPool, dispossessedPool) = pools
-      implementedDenizens = ImplementedCardCatalog.denizens(catalog, registry)
-      implementedRelics = ImplementedCardCatalog.ordinaryRelics(catalog, registry)
+      implementedDenizens = ImplementedCardCatalog.denizens(catalog, implemented)
+      implementedRelics = ImplementedCardCatalog.ordinaryRelics(catalog, implemented)
       relicPool = catalog.relics.filter(_.role == RelicRole.Ordinary)
         .map(r => RelicId(r.id.value))
       chronicle = Chronicle(
@@ -47,7 +47,7 @@ object FirstGameChronicleGenerator {
       _ <- validate(catalog, chronicle)
     } yield chronicle
 
-  private def atlasBox(catalog: ExecutableCatalog, registry: PowerRegistry,
+  private def atlasBox(catalog: ExecutableCatalog, implemented: PowerId => Boolean,
       random: ChronicleRandomPort)
       : Either[ChronicleGeneratorFailure, Vector[StoredSite]] = {
     val sites = catalog.sites.map(_.id)
@@ -56,7 +56,7 @@ object FirstGameChronicleGenerator {
       homelandSuit(catalog, siteId) match {
         case None => StoredSite(siteId)
         case Some(suit) =>
-          StoredSite(siteId, Vector(edificeForHomeland(catalog, registry, suit)))
+          StoredSite(siteId, Vector(edificeForHomeland(catalog, implemented, suit)))
       }
     })
   }
@@ -64,15 +64,21 @@ object FirstGameChronicleGenerator {
   /** The suit's implemented edifice when it has one; otherwise the lowest-id
     * edifice of that suit, so a Homeland always carries an edifice card even
     * when none of its suit's five are implemented yet. */
-  private def edificeForHomeland(catalog: ExecutableCatalog, registry: PowerRegistry,
-      suit: Suit): EdificeId =
-    ImplementedCardCatalog.homelandEdifice(catalog, suit, registry).getOrElse(
+  private def edificeForHomeland(catalog: ExecutableCatalog,
+      implemented: PowerId => Boolean, suit: Suit): EdificeId =
+    ImplementedCardCatalog.homelandEdifice(catalog, suit, implemented).getOrElse(
       EdificeId(catalog.edifices.filter(_.suit == suit).map(_.id.value).min))
 
-  private def denizenPools(catalog: ExecutableCatalog, registry: PowerRegistry,
-      random: ChronicleRandomPort)
+  private val PerSuit = 10
+  private val DispossessedPerSuit = 2
+
+  /** Per suit: every implemented denizen (up to 10, chosen at random past
+    * that) goes into the world deck, random unimplemented ones fill it to 10,
+    * and the next 2 unimplemented ones are dispossessed. */
+  private def denizenPools(catalog: ExecutableCatalog,
+      implementedPower: PowerId => Boolean, random: ChronicleRandomPort)
       : Either[ChronicleGeneratorFailure, (Vector[DenizenId], Vector[DenizenId])] = {
-    val implemented = ImplementedCardCatalog.denizens(catalog, registry)
+    val implemented = ImplementedCardCatalog.denizens(catalog, implementedPower)
     Suit.all.foldLeft[Either[ChronicleGeneratorFailure,
         (Vector[DenizenId], Vector[DenizenId])]](Right(Vector.empty -> Vector.empty)) {
       (acc, suit) =>
@@ -80,13 +86,15 @@ object FirstGameChronicleGenerator {
         val suited = catalog.denizens.filter(_.suit == suit)
           .map(d => DenizenId(d.id.value))
         val (impl, unimpl) = suited.partition(implemented)
-        if (impl.size < 5 || unimpl.size < 7)
+        val chosenImpl = random.shuffle(impl).take(PerSuit)
+        val filler = PerSuit - chosenImpl.size
+        if (unimpl.size < filler + DispossessedPerSuit)
           Left(TooFewSuitDenizens(suit, impl.size, unimpl.size))
         else {
           val shuffledUnimpl = random.shuffle(unimpl)
-          val chosenImpl = random.shuffle(impl).take(5)
-          Right((worldPool ++ chosenImpl ++ shuffledUnimpl.take(5),
-            dispossessedPool ++ shuffledUnimpl.slice(5, 7)))
+          Right((worldPool ++ chosenImpl ++ shuffledUnimpl.take(filler),
+            dispossessedPool ++
+              shuffledUnimpl.slice(filler, filler + DispossessedPerSuit)))
         }
       }
     }
