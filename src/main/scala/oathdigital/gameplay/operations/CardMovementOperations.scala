@@ -2,10 +2,15 @@ package oathdigital.gameplay.operations
 
 import oathdigital.model._
 
-/** Internal card-storage mutation boundary used by [[OperationStateMutation]]. */
-private[operations] object OperationCardMutation {
+/** Card movement: `Move` of a card, `Bury`, and the composites that flatten
+  * to them. The guard checks stack-position conventions, that each card is
+  * where the operation says it is (and in the stack position it names), and
+  * that its destination can hold it; the mutation removes every card before
+  * inserting any.
+  */
+private[operations] object CardMovementOperations {
   import OperationError._
-  import OperationStateAdapter.playerState
+  import OperationStateAdapter.{card, playerState}
   import OperationStateWrites.{
     CardTransfer,
     cardTransfers,
@@ -14,6 +19,193 @@ private[operations] object OperationCardMutation {
     updateCommonCards,
     updatePlayer,
     updateSite
+  }
+
+  def positionViolations(
+      leaves: Vector[Operation]
+  ): Vector[OperationError] = leaves.iterator.flatMap {
+    case move: Move => positionViolations(move.from, move.to)
+    case bury: Bury => positionViolations(bury.from, bury.to)
+    case _ => Vector.empty
+  }.toVector
+
+  private def positionViolations(
+      from: PositionedLocation,
+      to: PositionedLocation
+  ): Vector[OperationError] =
+    sourcePositionViolation(from).toVector ++
+      destinationPositionViolation(to).toVector
+
+  private def sourcePositionViolation(
+      positioned: PositionedLocation
+  ): Option[OperationError] =
+    if (isStack(positioned.location)) None
+    else if (positioned.position == StackPosition.Unspecified) None
+    else Some(InvalidStackPosition(
+      positioned.location,
+      "non-stack source cannot specify top or bottom"
+    ))
+
+  private def destinationPositionViolation(
+      positioned: PositionedLocation
+  ): Option[OperationError] =
+    if (isStack(positioned.location)) {
+      if (positioned.position != StackPosition.Unspecified) None
+      else Some(InvalidStackPosition(
+        positioned.location,
+        "stack destination must specify top or bottom"
+      ))
+    } else if (positioned.position == StackPosition.Unspecified) None
+    else Some(InvalidStackPosition(
+      positioned.location,
+      "non-stack destination cannot specify top or bottom"
+    ))
+
+  private def isStack(location: Location): Boolean = location match {
+    case _: Location.Deck | _: Location.RegionalDiscard => true
+    case _ => false
+  }
+
+  private final case class ResolvedTransfer(
+      transfer: CardTransfer,
+      located: LocatedCard
+  )
+
+  def cardViolations(
+      ready: ReadyGame,
+      leaves: Vector[Operation]
+  ): Vector[OperationError] = {
+    val all = cardTransfers(leaves)
+    val duplicate: Vector[OperationError] =
+      if (all.map(_.piece.id).groupBy(identity).exists {
+        case (_, occurrences) => occurrences.size > 1
+      }) Vector(ConflictingDeltas(
+        "one operation moves the same card more than once"))
+      else Vector.empty
+
+    val resolved = all.map { transfer =>
+      card(ready, transfer.piece.id, transfer.from.location)
+        .map(ResolvedTransfer(transfer, _))
+    }
+    val sourceReasons = resolved.collect { case Left(error) => error }
+    val successful = resolved.collect { case Right(value) => value }
+
+    duplicate ++ sourceReasons ++
+      cardSourceOrderViolations(ready, successful) ++
+      successful.flatMap(value =>
+        cardDestinationViolation(value.located, value.transfer).toVector)
+  }
+
+  private def cardSourceOrderViolations(
+      ready: ReadyGame,
+      transfers: Vector[ResolvedTransfer]
+  ): Vector[OperationError] = {
+    val grouped = transfers.groupBy(_.located.location.container)
+    grouped.toVector.flatMap { case (container, values) =>
+      stackCards(ready, container) match {
+        case None => Vector.empty
+        case Some(initial) =>
+          val (failure, _) = values.foldLeft[(Option[OperationError],
+            Vector[CardId])]((None, initial)) {
+            case ((Some(error), cards), _) => (Some(error), cards)
+            case ((None, cards), value) =>
+              val id = value.located.id
+              val valid = value.transfer.from.position match {
+                case StackPosition.Unspecified => cards.contains(id)
+                case StackPosition.Top => cards.headOption.contains(id)
+                case StackPosition.Bottom => cards.lastOption.contains(id)
+              }
+              if (valid) (None, cards.filterNot(_ == id))
+              else (Some(InvalidStackPosition(
+                value.transfer.from.location,
+                "card does not match requested stack position"
+              )), cards)
+          }
+          failure.toVector
+      }
+    }
+  }
+
+  private def cardDestinationViolation(
+      located: LocatedCard,
+      transfer: CardTransfer
+  ): Option[OperationError] = {
+    val id = located.id
+    val destination = transfer.to.location
+    destination match {
+      case Location.Deck(deck) =>
+        if (cardDeck(id).contains(deck)) None
+        else Some(InvalidDestination(transfer.piece, destination))
+      case _: Location.RegionalDiscard =>
+        if (id.isInstanceOf[WorldCardId]) None
+        else Some(InvalidDestination(transfer.piece, destination))
+      case _: Location.Hand =>
+        if (id.isInstanceOf[WorldCardId]) None
+        else Some(InvalidDestination(transfer.piece, destination))
+      case Location.Reliquary | Location.SetAsideRelics =>
+        if (id.isInstanceOf[RelicId]) None
+        else Some(InvalidDestination(transfer.piece, destination))
+      case Location.Dispossessed =>
+        if (id.isInstanceOf[WorldCardId]) None
+        else Some(InvalidDestination(transfer.piece, destination))
+      case _: Location.Site => id match {
+        case _: DenizenId | _: EdificeId | _: RelicId =>
+          statefulMaterializationViolation(located, transfer)
+        case _ => Some(InvalidDestination(transfer.piece, destination))
+      }
+      case _: Location.PlayArea => id match {
+        case _: DenizenId | _: VisionId | _: RelicId =>
+          statefulMaterializationViolation(located, transfer)
+        case _ => Some(InvalidDestination(transfer.piece, destination))
+      }
+      case Location.SharedBank => id match {
+        case _: VisionId => None
+        case _ => Some(InvalidDestination(transfer.piece, destination))
+      }
+      case Location.Atlas => Some(AmbiguousLocation(
+        Location.Atlas,
+        "Atlas destination requires a stored-site identity"
+      ))
+      case _ => Some(InvalidDestination(transfer.piece, destination))
+    }
+  }
+
+  private def statefulMaterializationViolation(
+      located: LocatedCard,
+      transfer: CardTransfer
+  ): Option[OperationError] = located.id match {
+    case id: EdificeId if transfer.resultingOrientation.nonEmpty =>
+      Some(UnsupportedOrientation(id, transfer.to.location))
+    case id: EdificeId if located.state.isEmpty =>
+      Some(UnsupportedOrientation(id, transfer.to.location))
+    case id if located.state.isEmpty &&
+        transfer.resultingOrientation.isEmpty =>
+      Some(MissingOrientation(id, transfer.to.location))
+    case _ => None
+  }
+
+  private def cardDeck(id: CardId): Option[CardDeck] = id match {
+    case _: DenizenId | _: VisionId => Some(CardDeck.World)
+    case _: RelicId => Some(CardDeck.Relic)
+    case _: EdificeId => Some(CardDeck.Edifice)
+    case _: LegacyId => Some(CardDeck.Legacy)
+  }
+
+  private def stackCards(
+      ready: ReadyGame,
+      container: CardContainer
+  ): Option[Vector[CardId]] = container match {
+    case CardContainer.Deck(CardDeck.World) =>
+      Some(ready.game.current.commonCards.worldDeck)
+    case CardContainer.Deck(CardDeck.Relic) =>
+      Some(ready.game.current.commonCards.relicDeck)
+    case CardContainer.Deck(CardDeck.Edifice) =>
+      Some(ready.game.current.commonCards.edificeDeck)
+    case CardContainer.Deck(CardDeck.Legacy) =>
+      Some(ready.game.current.commonCards.legacyDeck)
+    case CardContainer.RegionalDiscard(region) =>
+      Some(ready.game.current.commonCards.discard(region).reverse)
+    case _ => None
   }
 
   private[operations] def applyCardMoves(

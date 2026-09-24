@@ -24,7 +24,7 @@ private[operations] object OperationStateMutation {
     for {
       resources <- ResourceOperations.applyCountedMoves(ready, leaves)
       pieces <- BoardControlOperations.applyPawnAndBannerMoves(resources, leaves)
-      cards <- OperationCardMutation.applyCardMoves(pieces, leaves)
+      cards <- CardMovementOperations.applyCardMoves(pieces, leaves)
       finished <- applyNonMoveLeaves(cards, leaves)
     } yield finished
   }
