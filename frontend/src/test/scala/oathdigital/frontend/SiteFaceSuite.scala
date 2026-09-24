@@ -135,10 +135,26 @@ class SiteFaceSuite extends munit.FunSuite {
     val footer = one(node, ".site-footer").getOrElse(fail("no site footer"))
     assertEquals(footer.firstChild.asInstanceOf[dom.Element].getAttribute("class"),
       "site-powers")
-    assertEquals(all(footer, ".site-power").map(_.textContent),
-      Vector("Coast: Travel along the Coast route."))
+    assertEquals(all(footer, ".site-power").map(_.textContent), Vector("Coast"))
     assertEquals(footer.lastChild.asInstanceOf[dom.Element].getAttribute("class"),
       "site-requirement")
+  }
+
+  /** The box has room for one line of powers, so a second power joins the
+    * first on it rather than wrapping onto a line the box then clips. Each
+    * power keeps its rules text on hover.
+    */
+  test("a site's powers share one line, each with its text on hover") {
+    val node = ServerUiSupport.siteDetails(woods.copy(powers = Vector(
+      SitePower("river", "River", Some("Part of the River route.")),
+      SitePower("coast", "Coast", Some("Travel along the Coast route.")),
+      SitePower("enduring", "Enduring", None))))
+    val line = one(node, ".site-powers").getOrElse(fail("no site powers"))
+    assertEquals(line.textContent, "River · Coast · Enduring")
+    assertEquals(all(line, ".site-power").map(_.getAttribute("title")), Vector(
+      "River: Part of the River route.",
+      "Coast: Travel along the Coast route.",
+      "Enduring"))
   }
 
   test("forge and recover are one corner, never both") {

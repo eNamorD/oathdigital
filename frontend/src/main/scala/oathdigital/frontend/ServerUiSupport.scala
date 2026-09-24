@@ -116,11 +116,14 @@ private[frontend] object ServerUiSupport {
       details.appendChild(row)
     }
     val footer = element("div", "site-footer")
-    val powers = element("ul", "site-powers")
-    site.powers.foreach { power =>
-      val item = element("li", "site-power")
-      item.textContent = power.description.fold(power.label)(description =>
-        s"${power.label}: $description")
+    // One line of labels: the box has no room for a second line, so each
+    // power's rules text rides on its hover title instead.
+    val powers = element("p", "site-powers")
+    site.powers.zipWithIndex.foreach { case (power, index) =>
+      if (index > 0) powers.appendChild(dom.document.createTextNode(" · "))
+      val item = text("span", "site-power", power.label)
+      item.setAttribute("title", power.description.fold(power.label)(
+        description => s"${power.label}: $description"))
       powers.appendChild(item)
     }
     footer.appendChild(powers)
