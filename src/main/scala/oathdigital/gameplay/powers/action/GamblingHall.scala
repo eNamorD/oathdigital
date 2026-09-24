@@ -23,15 +23,22 @@ case object GamblingHall extends PaidAction("denizen.gambling-hall",
       : Either[OathViolation, Operation] = Right(Sequence(Vector(
     ModifyDicePool(pool, Dice),
     Roll(pool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
-    Branch((state, _) =>
-      if (RollResults.score(state, pool) > 0) Vector(choice(player))
-      else Vector.empty),
+    Branch((state, _) => {
+      val total = RollResults.score(state, pool)
+      if (total > 0) Vector(choice(player, total)) else Vector.empty
+    }),
     BuildOps((state, pending) => take(state, player, pending)))))
 
-  private def choice(player: PlayerId): Decide = Decide(decisionId, player,
-    DecisionQuery.ChooseOne(Suit.all.map(suit =>
+  /** The bank question's copy. The roll has already happened and the whole
+    * total is taken, so the heading states the number rather than offering
+    * it as a ceiling the player chooses under.
+    */
+  def bankHeading(total: Int): String = s"Gain $total favor from one bank"
+
+  private def choice(player: PlayerId, total: Int): Decide =
+    Decide(decisionId, player, DecisionQuery.ChooseOne(Suit.all.map(suit =>
       DecisionOption.FavorBank(DecisionOptionRef.FavorBank(suit))),
-      heading = Some("Gambling Hall: take favor from a bank")))
+      heading = Some(bankHeading(total))))
 
   private def take(state: ReadyGame, player: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] = {

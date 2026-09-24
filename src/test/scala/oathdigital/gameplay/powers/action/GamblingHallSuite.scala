@@ -21,6 +21,14 @@ class GamblingHallSuite extends munit.FunSuite {
     assert(PhasePowerCatalog.default(catalog).find(GamblingHall.id).isDefined)
   }
 
+  test("the bank question says how much the roll won") {
+    // The take is not a choice of amount: the power gains the whole total
+    // the bank can pay, so the question states the number rather than
+    // implying a ceiling the player may choose under.
+    assertEquals(GamblingHall.bankHeading(4), "Gain 4 favor from one bank")
+    assertEquals(GamblingHall.bankHeading(1), "Gain 1 favor from one bank")
+  }
+
   test("it places 2 favor, rolls 4 dice and takes the total from the chosen bank") {
     val rules0 = rules(total4)
     val ready0 = staged()
