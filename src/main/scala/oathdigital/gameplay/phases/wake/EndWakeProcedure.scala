@@ -19,7 +19,7 @@ import oathdigital.model._
   * to stay a phase transition and it has: what changed is that it is no
   * longer a second hand-written `handle`/`evolve` pair beside the walker's.
   *
-  * **What follows Wake is stated here, once.** [[EnterPhase]] takes any
+  * **What follows Wake is stated here, once.** [[oathdigital.model.EnterPhase]] takes any
   * phase and the walker asks nothing about phases, so the turn's order lives
   * in the procedure that performs the change. `OathLifecycle.validateReady`
   * is the same gate the deleted `Wake` object ran -- active player, live

@@ -60,7 +60,7 @@ import oathdigital.model.DecisionAnswer.PartitionAnswer
   * that starts with the player unable to pay spends Supply and then fails at
   * its last node.
   *
-  * `build`/`rebuild` take the [[ExecutableCatalog]] to read the site's printed
+  * `build`/`rebuild` take the [[oathdigital.catalog.ExecutableCatalog]] to read the site's printed
   * cost; nothing else about the catalog reaches the tree, which closes over
   * the actor and that cost alone.
   */

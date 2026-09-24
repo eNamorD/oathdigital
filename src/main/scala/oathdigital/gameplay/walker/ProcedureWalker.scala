@@ -9,7 +9,7 @@ import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
 /** Outcome of one walker `advance`/`roll`/`resolve` command.
   *
   * A walk either runs until it must stop for a human/app decision
-  * ([[Parked]]) or consumes the whole action tree ([[Finished]]).
+  * ([[WalkerOutcome.Parked]]) or consumes the whole action tree ([[WalkerOutcome.Finished]]).
   */
 sealed trait WalkerOutcome extends Product with Serializable
 object WalkerOutcome {
@@ -55,7 +55,7 @@ object WalkerPowers {
         modifiers.contains(power.id)))
 }
 
-/** Auto-walk engine over an [[Operation]] action tree (Tasks 3-5).
+/** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
   * Contract (plan-owner rulings + brief):
   *  - `advance(state, action, pending)` walks `action` from `pending.at`
@@ -75,10 +75,10 @@ object WalkerPowers {
   *    [[ChoicePayload]] (`ops` empty) is recorded, and the walk continues.
   *  - Every other leaf validates + executes via `OperationPipeline`
   *    (`OperationPolicy.Permissive`) and records one [[WalkerStepRecorded]]
-  *    per executed leaf. [[BuildOps]] leaves are executed at walk time:
+  *    per executed leaf. [[oathdigital.model.BuildOps]] leaves are executed at walk time:
   *    `build(state, pending)` yields the delta batch to run and record (an
   *    empty batch runs nothing and records nothing).
-  *  - [[Branch]] composites are resolved at walk time by evaluating
+  *  - [[oathdigital.model.Branch]] composites are resolved at walk time by evaluating
   *    `select(state, pending)` and walking the selected operations as the
   *    branch's children (statically the branch has none).
   *  - `Repeat(guard, body)` runs whole body passes while `guard(state,
@@ -559,7 +559,7 @@ object ProcedureWalker {
     recordBatch(Vector(delta), contributions, ctx, path, leafLabel(delta),
       requireAll = strict)
 
-  /** Executes a [[BuildOps]] leaf: `build(state, pending)` returns the delta
+  /** Executes a [[oathdigital.model.BuildOps]] leaf: `build(state, pending)` returns the delta
     * batch to run through the pipeline, recorded as the node's step ops. An
     * empty batch runs nothing and records nothing (the node produced no
     * state change).
@@ -576,11 +576,11 @@ object ProcedureWalker {
 
   /** Executes `ops` through the pipeline as one atomic batch and records ONE
     * [[WalkerStepRecorded]] carrying the whole batch and `contributions` --
-    * the shared mechanic behind a plain delta leaf and a [[BuildOps]] leaf,
+    * the shared mechanic behind a plain delta leaf and a [[oathdigital.model.BuildOps]] leaf,
     * the two leaf kinds that run rather than park (spec decision 5: one
     * hookable node, one event, its final operation batch). `ops` must already
     * be non-empty; callers short-circuit an empty batch themselves (an empty
-    * [[BuildOps]] batch records nothing).
+    * [[oathdigital.model.BuildOps]] batch records nothing).
     */
   private def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],

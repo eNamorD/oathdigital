@@ -8,7 +8,7 @@ import oathdigital.model._
 /** How many advisers a player may hold, for a power that adds an adviser
   * outside card play (Horned Mask).
   *
-  * Card play gets its limit from [[PlacementRules]], which Silver Tongue's
+  * Card play gets its limit from [[oathdigital.gameplay.actions.PlacementRules]], which Silver Tongue's
   * `SearchPlayAdviser` transform narrows. This reads the same two facts as a
   * read of state, so the limit is defined once: the default is
   * `PlacementRules.DefaultAdviserLimit` and the only power that lowers it is

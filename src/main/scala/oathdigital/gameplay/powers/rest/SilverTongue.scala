@@ -8,7 +8,7 @@ import oathdigital.model._
 /** Silver Tongue (card 92): "You can only have two advisers. REST: Take a
   * favor from a favor bank matching a card at your site."
   *
-  * The REST power is a [[PhasePower]]. The adviser limit is a registered
+  * The REST power is a [[oathdigital.gameplay.powerresolver.PhasePower]]. The adviser limit is a registered
   * transform at `SearchPlayAdviser` reduces the holder's limit in both
   * adviser orientations and checks the resulting area after the card play.
   */

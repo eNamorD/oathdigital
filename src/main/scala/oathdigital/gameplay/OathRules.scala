@@ -240,7 +240,7 @@ object OathRules {
 
   /** Production tree source: every registered procedure declares its own
     * tree via [[oathdigital.gameplay.walker.WalkerProcedureRegistry]] (Task
-    * 8) -- this is no longer an exhaustive match on [[ActionRef]], so an
+    * 8) -- this is no longer an exhaustive match on [[oathdigital.model.ActionRef]], so an
     * unregistered procedure rejects with a typed `Left` instead of a
     * `MatchError`.
     */

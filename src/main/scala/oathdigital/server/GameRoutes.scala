@@ -10,7 +10,8 @@ import akka.http.scaladsl.model.{
   StatusCode,
   StatusCodes
 }
-import akka.http.scaladsl.server.{Directives, Route}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import org.slf4j.LoggerFactory
 
 import oathdigital.application.{
@@ -131,7 +132,7 @@ private[server] object MajorActionPreviewTargets {
 final class GameRoutes(
     gateway: GameServerGateway,
     blockingExecutionContext: ExecutionContext
-) extends Directives {
+) {
   private val logger = LoggerFactory.getLogger(classOf[GameRoutes])
 
   val route: Route =

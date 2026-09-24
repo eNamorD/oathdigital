@@ -6,7 +6,7 @@ import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, Dec
   * answerable at all, and whether a submitted answer satisfies it.
   *
   * It lives in gameplay rather than beside the vocabulary it validates
-  * because it returns typed [[OathViolation]]s, which the model may not name
+  * because it returns typed [[oathdigital.model.OathViolation]]s, which the model may not name
   * (plan ruling R3), and in its own object rather than in `ProcedureWalker`
   * because that file is already at the line cap.
   *
