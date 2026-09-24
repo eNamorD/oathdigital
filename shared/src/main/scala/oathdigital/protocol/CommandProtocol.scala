@@ -38,7 +38,7 @@ final case class ModifierInvocation(
 final case class BootstrapParticipantRequest(
     playerId: String,
     lineageId: String,
-    color: String
+    color: oathdigital.model.PlayerColor
 )
 final case class FirstGameBootstrapRequest(
     expectedNextSequence: Long,

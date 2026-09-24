@@ -20,7 +20,7 @@ class ReadyGameSuite extends munit.FunSuite {
   test("start stocks the seated lineages, the given banks and the first player") {
     val banks = Suit.all.map(_ -> 3).toMap
     val started = ReadyGame.start(twoSeats,
-      Map(playerId -> PlayerColor("red"), second.player -> PlayerColor("blue")),
+      Map(playerId -> PlayerColor.Red, second.player -> PlayerColor.Blue),
       firstPlayer = second.player, favorBanks = banks)
 
     assertEquals(started.banks.favor, banks)
@@ -55,7 +55,7 @@ class ReadyGameSuite extends munit.FunSuite {
     val table = ReadyGames.of(twoSeats, favorPerSuit = 2)
 
     assertEquals(table.playerColors, Map(
-      playerId -> PlayerColor("red"), second.player -> PlayerColor("blue")))
+      playerId -> PlayerColor.Red, second.player -> PlayerColor.Blue))
     assertEquals(table.setup.firstPlayer, playerId)
     assertEquals(table.banks.favor, Suit.all.map(_ -> 2).toMap)
   }

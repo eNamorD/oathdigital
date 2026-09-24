@@ -6,22 +6,7 @@ package object frontend {
   type GameProjection = protocol.projection.GameProjection
   val GameProjection = protocol.projection.GameProjection
   type GamePlayer = protocol.projection.SetupPlayerProjection
-  object GamePlayer {
-    def apply(playerId: String, displayName: String, role: String,
-        color: PlayerColorToken): GamePlayer =
-      protocol.projection.SetupPlayerProjection(playerId, displayName, role,
-        color match {
-          case PlayerColorToken.Purple => "purple"
-          case PlayerColorToken.Blue => "blue"
-          case PlayerColorToken.Red => "red"
-          case PlayerColorToken.Yellow => "yellow"
-          case PlayerColorToken.White => "white"
-          case PlayerColorToken.Black => "black"
-          case PlayerColorToken.Pink => "pink"
-          case PlayerColorToken.Brown => "brown"
-          case PlayerColorToken.Neutral => "neutral"
-        })
-  }
+  val GamePlayer = protocol.projection.SetupPlayerProjection
   type CardDetails = protocol.projection.CardDetailsProjection
   val CardDetails = protocol.projection.CardDetailsProjection
   type GameSiteCard = protocol.projection.SiteCardProjection

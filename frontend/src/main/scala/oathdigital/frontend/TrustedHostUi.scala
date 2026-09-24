@@ -1,5 +1,6 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
 import oathdigital.protocol._
 import org.scalajs.dom
 import scala.scalajs.js
@@ -15,19 +16,20 @@ import ServerUiSupport._
   */
 private[frontend] object TrustedHostUi {
   /** Lineage colors in menu order. Purple is the Chancellor's and is not offered yet. */
-  val LineageColors: Vector[String] = Vector("red", "blue", "yellow", "white", "black", "pink", "brown")
+  val LineageColors: Vector[PlayerColor] = PlayerColor.all.filterNot(_ == PlayerColor.Purple)
   val MinPlayers = 2
   val MaxPlayers = 6
 
   /** The color decides the lineage; the backend should derive it (see the roadmap). */
-  def lineageId(color: String): String = s"$color-lineage"
-  def defaultPlayerId(color: String): String = color.capitalize
+  def lineageId(color: PlayerColor): String = s"${color.key}-lineage"
+  def defaultPlayerId(color: PlayerColor): String = name(color)
+  private def name(color: PlayerColor): String = color.key.capitalize
 
   /** Mirrors the backend identifier rule in `TrustedGameCodecFields.identifier`. */
   def validPlayerId(value: String): Boolean =
     value.length <= 128 && value.matches("[A-Za-z0-9][A-Za-z0-9._:-]*")
 
-  private final case class PlayerRow(color: String, node: dom.Element, input: dom.html.Input)
+  private final case class PlayerRow(color: PlayerColor, node: dom.Element, input: dom.html.Input)
 
   def start(mount: dom.Element, transport: JsonTransport,
       openCreated: Option[TrustedGameCreateResponse => Unit] = None): Unit = {
@@ -66,7 +68,7 @@ private[frontend] object TrustedHostUi {
     adder.appendChild(limit)
     form.appendChild(adder)
 
-    def taken: Set[String] = rows.map(_.color).toSet
+    def taken: Set[PlayerColor] = rows.map(_.color).toSet
     def options: Vector[dom.html.Button] = {
       val found = menu.querySelectorAll("button")
       (0 until found.length).toVector.map(found(_).asInstanceOf[dom.html.Button])
@@ -80,11 +82,11 @@ private[frontend] object TrustedHostUi {
       LineageColors.filterNot(taken).foreach { color =>
         val item = element("li", "")
         item.setAttribute("role", "none")
-        val option = button("", s"add-player-option add-player-$color")
+        val option = button("", s"add-player-option add-player-${color.key}")
         option.setAttribute("type", "button")
         option.setAttribute("role", "option")
         option.appendChild(swatch(color))
-        option.appendChild(text("span", "", color.capitalize))
+        option.appendChild(text("span", "", name(color)))
         option.onclick = event => {
           event.preventDefault(); closeMenu(); addRow(color); toggle.focus()
         }
@@ -101,19 +103,19 @@ private[frontend] object TrustedHostUi {
       limit.textContent = if (full) s"Maximum $MaxPlayers players" else ""
       if (toggle.disabled) closeMenu()
     }
-    def addRow(color: String): Unit = {
-      val node = element("li", s"host-player host-player-$color")
+    def addRow(color: PlayerColor): Unit = {
+      val node = element("li", s"host-player host-player-${color.key}")
       node.appendChild(swatch(color))
-      node.appendChild(text("span", "host-player-color", color.capitalize))
+      node.appendChild(text("span", "host-player-color", name(color)))
       val input = dom.document.createElement("input").asInstanceOf[dom.html.Input]
       input.className = "host-player-id"
-      input.setAttribute("aria-label", s"${color.capitalize} player ID")
+      input.setAttribute("aria-label", s"${name(color)} player ID")
       input.value = defaultPlayerId(color)
       input.required = true
       node.appendChild(input)
-      val remove = button("Remove", s"remove-player remove-player-$color")
+      val remove = button("Remove", s"remove-player remove-player-${color.key}")
       remove.setAttribute("type", "button")
-      remove.setAttribute("aria-label", s"Remove ${color.capitalize} player")
+      remove.setAttribute("aria-label", s"Remove ${name(color)} player")
       remove.onclick = event => {
         event.preventDefault()
         rows = rows.filterNot(_.color == color)
@@ -153,7 +155,7 @@ private[frontend] object TrustedHostUi {
         if (rows.size < MinPlayers) Some(s"Need at least $MinPlayers players.")
         else rows.zip(ids).collectFirst {
           case (row, id) if !validPlayerId(id) =>
-            s"${row.color.capitalize} player ID must start with a letter or digit and use only " +
+            s"${name(row.color)} player ID must start with a letter or digit and use only " +
               "letters, digits, '.', '_', ':' or '-' (up to 128 characters)."
         }.orElse(ids.diff(ids.distinct).headOption.map(id =>
           s"Player ID \"$id\" is used twice. Give each player a different ID."))
@@ -223,8 +225,8 @@ private[frontend] object TrustedHostUi {
     mount.appendChild(status)
   }
 
-  private def swatch(color: String): dom.Element = {
-    val node = element("span", s"color-swatch ${PlayerColorToken.fromKey(color).cssClass}")
+  private def swatch(color: PlayerColor): dom.Element = {
+    val node = element("span", s"color-swatch ${PlayerColorCss.of(color)}")
     node.setAttribute("aria-hidden", "true")
     node
   }

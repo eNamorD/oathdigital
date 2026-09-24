@@ -1499,22 +1499,21 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(site.relics.facedownCount, 2)
     assertEquals(empty.denizens, Vector.empty)
     assertEquals(empty.relics.facedownCount, 0)
-    assertEquals(site.forces, Some(SiteForcesProjection("exile", 2, "player",
-      Some(activePlayer.player.value),
-      s"${ready.playerColors(activePlayer.player).value.capitalize} Warbands",
-      ready.playerColors(activePlayer.player).value)))
+    assertEquals(site.forces, Some(SiteForcesProjection.Exile(2,
+      activePlayer.player.value, ready.playerColors(activePlayer.player),
+      s"${ready.playerColors(activePlayer.player).key.capitalize} Warbands")))
     assertEquals(empty.forces, None)
     assertEquals(own.world.flatMap(_.sites).find(_.siteId == imperialSiteId.value)
-      .flatMap(_.forces), Some(SiteForcesProjection("imperial", 1, "empire",
-      None, "Imperial Warbands", "empire")))
+      .flatMap(_.forces), Some(SiteForcesProjection.Imperial(1,
+      "Imperial Warbands")))
     assertEquals(own.world.flatMap(_.sites).find(_.siteId == banditSiteId.value)
-      .flatMap(_.forces), Some(SiteForcesProjection("bandit", 3, "bandit",
-      None, "Bandit Warbands", "bandit")))
-    val otherColor = ready.playerColors(otherPlayer.player).value
+      .flatMap(_.forces), Some(SiteForcesProjection.Bandit(3,
+      "Bandit Warbands")))
+    val otherColor = ready.playerColors(otherPlayer.player)
     assertEquals(own.world.flatMap(_.sites).find(_.siteId == otherPlayerSiteId.value)
-      .flatMap(_.forces), Some(SiteForcesProjection("exile", 4, "player",
-      Some(otherPlayer.player.value), s"${otherColor.capitalize} Warbands",
-      otherColor)))
+      .flatMap(_.forces), Some(SiteForcesProjection.Exile(4,
+      otherPlayer.player.value, otherColor,
+      s"${otherColor.key.capitalize} Warbands")))
     val wire = ujson.read(GameHttpWire.encodeProjection(own))
     val wireSites = wire("world").arr.flatMap(_("sites").arr)
     val wirePlayerForces = wireSites.find(_("siteId").str == siteId.value)

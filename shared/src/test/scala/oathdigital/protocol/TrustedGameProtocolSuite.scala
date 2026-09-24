@@ -1,10 +1,12 @@
 package oathdigital.protocol
 
+import oathdigital.model.PlayerColor
+
 class TrustedGameProtocolSuite extends munit.FunSuite {
   private val json = """{"gameId":"game-1","participants":[{"playerId":"p1","lineageId":"l1","color":"red"},{"playerId":"p2","lineageId":"l2","color":"blue"}]}"""
   private val request = TrustedGameCreateRequest("game-1", Vector(
-    BootstrapParticipantRequest("p1", "l1", "red"),
-    BootstrapParticipantRequest("p2", "l2", "blue")))
+    BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
+    BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue)))
 
   test("creation request round trips with stable actorless field order") {
     assertEquals(TrustedGameCreateRequestCodec.encode(request), json)
@@ -35,10 +37,14 @@ class TrustedGameProtocolSuite extends munit.FunSuite {
     Vector(request.copy(participants = Vector.empty),
       request.copy(participants = Vector(request.participants.head, request.participants.head)),
       request.copy(participants = request.participants.updated(0,
-        request.participants.head.copy(lineageId = ""))),
-      request.copy(participants = request.participants.updated(0,
-        request.participants.head.copy(color = "")))).foreach { invalid =>
+        request.participants.head.copy(lineageId = "")))).foreach { invalid =>
       assert(TrustedGameCreateRequestCodec.decode(TrustedGameCreateRequestCodec.encode(invalid)).isLeft)
+    }
+    // A colour outside the closed set is refused where it enters.
+    Vector("", "green").foreach { invalid =>
+      assertEquals(TrustedGameCreateRequestCodec.decode(
+        json.replace("\"red\"", s"\"$invalid\"")).left.toOption.map(_.path),
+        Some("$.participants[0].color"))
     }
     Vector("[]", "null", "{", json.replace("\"game-1\"", "12")).foreach { invalid =>
       assert(TrustedGameCreateRequestCodec.decode(invalid).isLeft)

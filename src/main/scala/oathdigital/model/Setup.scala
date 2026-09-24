@@ -1,9 +1,5 @@
 package oathdigital.model
 
-final case class PlayerColor(value: String) {
-  require(value.trim.nonEmpty, "player color must not be blank")
-}
-
 final case class FirstGameParticipant(
     playerId: PlayerId,
     lineageId: LineageId,

@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
+
 import org.scalajs.dom
 
 /** Cards waiting in the temporary hand are drawn in the action panel, so the
@@ -9,7 +11,7 @@ class TemporaryHandPreviewSuite extends munit.FunSuite {
   private def panel(preview: Vector[CardDetails]): dom.Element =
     ActionDecisionRenderer.actionsPanel(
       GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red)),
+        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
         Vector.empty, Vector.empty, Vector.empty, ready = true,
         completed = false, temporaryHandPreview = preview),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,

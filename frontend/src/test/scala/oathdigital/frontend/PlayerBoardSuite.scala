@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
+
 import org.scalajs.dom
 
 /** The players pane is the one pane that must never scroll, so what a board
@@ -21,7 +23,7 @@ class PlayerBoardSuite extends munit.FunSuite {
 
   private def render(): dom.Element = WorldBoardRenderer.playerBoards(
     GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red)),
+      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
       Vector.empty,
       Vector(GamePawn("red", "site:woods")), Vector.empty, ready = true,
       completed = false, playerBoards = Vector(board), supplyMaximum = 7),
@@ -53,7 +55,7 @@ class PlayerBoardSuite extends munit.FunSuite {
   test("advisers, relics and a revealed vision share one unlabelled row") {
     val node = WorldBoardRenderer.playerBoards(
       GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red)),
+        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
         Vector.empty, Vector.empty, Vector.empty, ready = true,
         completed = false, playerBoards = Vector(board.copy(
           relics = Vector(CardDetails("r1", "relic", "Crown",
@@ -76,7 +78,7 @@ class PlayerBoardSuite extends munit.FunSuite {
     */
   test("the viewer's seat leads, and the rest follow in turn order") {
     val seats = Vector("red", "blue", "white", "black")
-      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
+      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColor.Red))
     assertEquals(WorldBoardRenderer.seatOrder(seats, Some("white"))
       .map(_.playerId), Vector("white", "black", "red", "blue"))
     assertEquals(WorldBoardRenderer.seatOrder(seats, Some("red"))
@@ -85,7 +87,7 @@ class PlayerBoardSuite extends munit.FunSuite {
 
   test("a viewer who holds no seat leaves the order alone") {
     val seats = Vector("red", "blue")
-      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
+      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColor.Red))
     assertEquals(WorldBoardRenderer.seatOrder(seats, None).map(_.playerId),
       Vector("red", "blue"))
     assertEquals(WorldBoardRenderer.seatOrder(seats, Some("ghost"))
@@ -99,7 +101,7 @@ class PlayerBoardSuite extends munit.FunSuite {
     */
   test("the rendered strip leads with the seat the client holds") {
     val seats = Vector("red", "blue", "white")
-      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColorToken.Red))
+      .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColor.Red))
     def strip(viewer: Option[String], seat: String): Vector[String] =
       all(WorldBoardRenderer.playerBoards(
         GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,

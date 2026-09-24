@@ -10,7 +10,9 @@ package oathdigital.model
   * is about that field.
   */
 object ReadyGames {
-  private val seatColors = Vector("red", "blue", "yellow", "purple")
+  import PlayerColor._
+  private val seatColors =
+    Vector(Red, Blue, Yellow, Purple, White, Black, Pink, Brown)
 
   def of(
       game: OathGame = TestGameFixtures.game,
@@ -19,7 +21,7 @@ object ReadyGames {
     ReadyGame.start(
       game,
       game.current.players.zipWithIndex.map { case (player, seat) =>
-        player.player -> PlayerColor(seatColors.lift(seat).getOrElse(s"seat-$seat"))
+        player.player -> seatColors(seat)
       }.toMap,
       firstPlayer = game.current.turn.activePlayer,
       favorBanks = Suit.all.map(_ -> favorPerSuit).toMap

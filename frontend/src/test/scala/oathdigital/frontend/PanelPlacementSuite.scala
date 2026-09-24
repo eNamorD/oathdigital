@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
+
 import org.scalajs.dom
 
 /** Which pane each standing line of state belongs to. The oath and the
@@ -23,7 +25,7 @@ class PanelPlacementSuite extends munit.FunSuite {
       oathkeeper: Option[OathkeeperStatus] = Some(oath),
       trackState: Option[oathdigital.protocol.projection.GameTracksProjection] = Some(tracks)): GameProjection =
     GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red)),
+      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
       // The tracker is drawn inside the cradle, so the region has to exist
       // for the notice under it to be reachable at all.
       Vector(GameRegion("cradle", Vector.empty)),

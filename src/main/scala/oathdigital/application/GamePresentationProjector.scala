@@ -62,12 +62,12 @@ private[application] final class GamePresentationProjector(
   def setupPlayers(participants: Vector[FirstGameParticipant]) =
     participants.map { participant =>
       SetupPlayerProjection(participant.playerId.value,
-        safeLabel(participant.playerId.value), "exile", participant.color.value)
+        safeLabel(participant.playerId.value), "exile", participant.color)
     }
 
   def readyPlayers(ready: ReadyGame) = ready.game.current.players.map { player =>
     SetupPlayerProjection(player.player.value, safeLabel(player.player.value),
-      "exile", ready.playerColors(player.player).value)
+      "exile", ready.playerColors(player.player))
   }
 
   def setupWorld(sites: Vector[SiteId]): Vector[SetupRegionProjection] = Vector(
@@ -139,8 +139,7 @@ private[application] final class GamePresentationProjector(
         case value: SiteForces.Occupied => ready match {
           case Some(game) => Some(forceProjection(value, game))
           case None if value.kind == ForceKind.Bandit => Some(
-            SiteForcesProjection("bandit", value.count, "bandit", None,
-              "Bandit Warbands", "bandit"))
+            SiteForcesProjection.Bandit(value.count, "Bandit Warbands"))
           case None => None
         }
         case SiteForces.Empty => None
@@ -158,14 +157,12 @@ private[application] final class GamePresentationProjector(
         val color = ready.playerColors.getOrElse(playerId,
           throw new IllegalStateException(
             s"missing color for site ruler ${playerId.value}"))
-        val colorLabel = color.value.headOption.fold(color.value)(head =>
-          s"${head.toUpper}${color.value.drop(1)}")
-        SiteForcesProjection("exile", forces.count, "player", Some(playerId.value),
-          s"$colorLabel Warbands", color.value)
-      case ForceKind.Imperial => SiteForcesProjection("imperial", forces.count,
-        "empire", None, "Imperial Warbands", "empire")
-      case ForceKind.Bandit => SiteForcesProjection("bandit", forces.count,
-        "bandit", None, "Bandit Warbands", "bandit")
+        SiteForcesProjection.Exile(forces.count, playerId.value, color,
+          s"${color.key.capitalize} Warbands")
+      case ForceKind.Imperial =>
+        SiteForcesProjection.Imperial(forces.count, "Imperial Warbands")
+      case ForceKind.Bandit =>
+        SiteForcesProjection.Bandit(forces.count, "Bandit Warbands")
     }
   }
 

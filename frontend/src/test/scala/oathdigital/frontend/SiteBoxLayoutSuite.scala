@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.model.PlayerColor
+
 import org.scalajs.dom
 
 /** Every site box is the same size, whatever it happens to hold. What a site
@@ -16,7 +18,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite {
 
   private def projection(pawns: Vector[GamePawn] = Vector.empty): GameProjection =
     GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red)),
+      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
       Vector(GameRegion("cradle", Vector(site))), pawns, Vector.empty,
       ready = true, completed = false)
 

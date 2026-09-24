@@ -10,7 +10,7 @@ object FirstGameBootstrapCodec {
     "expectedNextSequence" -> ujson.Num(request.expectedNextSequence.toDouble),
     "participants" -> ujson.Arr.from(request.participants.map(participant => ujson.Obj(
       "playerId" -> participant.playerId, "lineageId" -> participant.lineageId,
-      "color" -> participant.color))),
+      "color" -> participant.color.key))),
     "firstPlayer" -> request.firstPlayer))
 
   def decode(json: String): Either[ProtocolDecodeFailure, FirstGameBootstrapRequest] =
@@ -43,7 +43,9 @@ object FirstGameBootstrapCodec {
             _ <- exact(value, Set("playerId", "lineageId", "color"), path)
             player <- text(value, "playerId", path)
             lineage <- text(value, "lineageId", path)
-            color <- text(value, "color", path)
+            color <- text(value, "color", path).flatMap(key =>
+              oathdigital.model.PlayerColor.fromKey(key).toRight(
+                InvalidValue(s"$path.color", s"unknown player color '$key'")))
           } yield done :+ BootstrapParticipantRequest(player, lineage, color))
         case (Right(_), (_, index)) => Left(ExpectedObject(s"$$.participants[$index]"))
         case (failure @ Left(_), _) => failure

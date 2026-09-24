@@ -191,7 +191,7 @@ private[serialization] trait GameEventJsonSupport {
         ujson.Obj(
           "playerId" -> participant.playerId.value,
           "lineageId" -> participant.lineageId.value,
-          "color" -> participant.color.value
+          "color" -> participant.color.key
         )
       }),
       "firstPlayer" -> orders.firstPlayer.value,
@@ -203,11 +203,14 @@ private[serialization] trait GameEventJsonSupport {
       : Either[WireError, SetupOrders] = try {
     val obj = value.obj
     for {
-      participants <- traverse(obj("participants").arr.toVector) { participant =>
-        Right(FirstGameParticipant(
-          PlayerId(participant("playerId").str),
-          LineageId(participant("lineageId").str),
-          PlayerColor(participant("color").str)))
+      participants <- traverse(obj("participants").arr.zipWithIndex.toVector) {
+        case (participant, index) =>
+          val color = participant("color").str
+          PlayerColor.fromKey(color).toRight(InvalidValue(
+            s"$path.participants[$index].color",
+            s"unknown player color '$color'")).map(FirstGameParticipant(
+            PlayerId(participant("playerId").str),
+            LineageId(participant("lineageId").str), _))
       }
       worldDeckOrder <- traverse(obj("worldDeckOrder").arr.zipWithIndex.toVector) {
         case (item, index) => decodeWorldCardId(item, s"$path.worldDeckOrder[$index]")
