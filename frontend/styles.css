@@ -142,6 +142,8 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   border: 1px solid #a98b58; border-radius: 999px; background: #17140f;
   color: #f1c781; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
 .track-summary { margin: 0; color: #c9bfa9; font-size: 0.78rem; text-align: center; }
+.usurper-notice { margin: 3px 0 0; color: #d9b8ff; font-size: 0.78rem;
+  font-weight: 700; text-align: center; }
 .regions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -405,6 +407,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .pile-display > .pile-empty { background-color: #17140f; color: transparent; }
 .player-boards { margin-top: 18px; }
 .shared-bank { margin-top: 10px; padding-top: 16px; border-top: 1px solid #675a43; }
+.oathkeeper-status { margin: 0 0 6px; color: #f1c781; font-weight: 800; }
 .favor-banks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px; margin-top: 12px; }
 .favor-bank { padding: 7px; border: 1px solid #675a43; border-radius: 6px;

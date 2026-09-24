@@ -225,6 +225,11 @@ private[frontend] object WorldBoardRenderer {
    section.appendChild(svg)
    section.appendChild(text("p", "track-summary",
      s"Visions Drawn ${track.visionsDrawn} · First player ${track.firstPlayerId}"))
+   // Beside the marker the tracker already draws on that round, rather than
+   // in the action panel, which is about this turn rather than the game.
+   if (track.usurperLimited)
+     section.appendChild(text("p", "usurper-notice",
+       s"Usurper locked until round ${track.limiterRound}"))
    section
  }
 
@@ -236,9 +241,21 @@ private[frontend] object WorldBoardRenderer {
    banks
  }
 
+ /** `supremacy` reads as Supremacy, `the-people` as the People: the oath in
+   * play is projected, so the line names it rather than the one a first game
+   * happens to start with.
+   */
+ private[frontend] def oathName(goal: String): String =
+   "Oath of " + goal.split('-').map(word =>
+     if (word == "the") word else word.capitalize).mkString(" ")
+
  private def sharedBank(value: GameProjection, ui: ServerUiView): dom.Element = {
    val section = element("section", "shared-bank")
    section.appendChild(text("h3", "", "Shared Bank"))
+   value.oathkeeper.foreach(oath =>
+     section.appendChild(text("p", "oathkeeper-status",
+       s"${oathName(oath.goal)} · ${oath.side.capitalize}: " +
+         oath.holderPlayerId.getOrElse("unheld"))))
    section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
    value.banners.foreach { banner =>
      section.appendChild(text("p", s"shared-banner banner-${banner.key}",

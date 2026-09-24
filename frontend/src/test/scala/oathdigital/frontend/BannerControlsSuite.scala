@@ -27,7 +27,7 @@ class BannerControlsSuite extends munit.FunSuite {
   test("only the offered controls render and each starts its action") {
     val (buttons, submitted) = render(Vector("placeBannerResource", "beginChallenge"))
     assertEquals(buttons.map(_.textContent),
-      Vector("Challenge (1 Supply)", "Place banner resources (0 Supply)"))
+      Vector("Challenge (1 Supply)", "Place banner resources"))
     assertEquals(submitted, Vector[GameIntent](
       GameIntent.StartWalker("challenge", Vector.empty),
       GameIntent.StartWalker("place-banner-resource", Vector.empty)))

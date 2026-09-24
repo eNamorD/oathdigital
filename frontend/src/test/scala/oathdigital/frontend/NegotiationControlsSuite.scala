@@ -26,7 +26,7 @@ class NegotiationControlsSuite extends munit.FunSuite {
 
   test("the control renders only when offered and starts Negotiation") {
     val (buttons, submitted) = render(Vector("beginNegotiation"))
-    assertEquals(buttons.map(_.textContent), Vector("Negotiate (0 Supply)"))
+    assertEquals(buttons.map(_.textContent), Vector("Negotiate"))
     assertEquals(submitted, Vector[GameIntent](
       GameIntent.StartWalker("negotiation", Vector.empty)))
     assertEquals(render(Vector.empty)._1, Vector.empty)

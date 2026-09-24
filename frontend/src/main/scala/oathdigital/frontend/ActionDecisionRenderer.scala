@@ -65,34 +65,9 @@ private[frontend] object ActionDecisionRenderer {
      value.privateAdviserPreview.foreach(card => preview.appendChild(CardFace.render(card)))
      panel.appendChild(preview)
    }
-   value.oathkeeper.foreach { oath =>
-     val holder = oath.holderPlayerId.getOrElse("unheld")
-     val limiter = if (oath.usurperLimited) " · Usurper locked until round 4" else ""
-     val winner = oath.winnerPlayerId.fold("")(id => s" · Winner: $id")
-     panel.appendChild(text("p", "oathkeeper-status",
-       s"Oath of Supremacy · ${oath.side.capitalize}: $holder$limiter$winner"))
-   }
-   value.activePlayerResources.foreach { resources =>
-     val summary = text(
-       "p",
-       "resources",
-       s"Favor ${resources.favor} · Secrets ${resources.faceUpSecrets}/${resources.totalSecrets} · " +
-         s"Supply ${resources.supply}"
-     )
-     summary.setAttribute("title", secretSummaryLabel(resources.faceUpSecrets,
-       resources.totalSecrets, resources.faceDownSecrets, resources.committedSecrets))
-     summary.setAttribute("aria-label", summary.textContent + ". " +
-       summary.getAttribute("title"))
-     panel.appendChild(summary)
-   }
-   value.currentSiteResources.foreach { resources =>
-     panel.appendChild(text(
-       "p",
-       "site-resources",
-       s"${siteLabel(value, resources.siteId)} loose wealth: " +
-         s"${resources.favor} favor · ${resources.secrets} secrets"
-     ))
-   }
+   // The oath and the usurper limit describe the table, so they are drawn
+   // with the board; the acting player's resources are on their own board
+   // already, and a site's loose wealth is drawn on the site.
    if (value.phase == "wake" && presentation.showGameplayControls) {
      takeWealthActions(value, currentPlayerId).foreach { action =>
        val control = button(action.label, "wake-action")
