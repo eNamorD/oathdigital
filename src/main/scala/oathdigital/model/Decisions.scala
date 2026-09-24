@@ -282,9 +282,16 @@ object DecisionQuery {
     * as on [[Distribute]]: the panel has a confirm step, and a range with no
     * heading says nothing about what is being chosen. A single-value range is
     * still a decision the player confirms.
+    *
+    * `suggested` is where the panel opens, for a question whose usual answer
+    * is not its minimum -- Campaign's force, where an attacker nearly always
+    * commits everything. It is display only: the answer is still whatever the
+    * player confirms, and it is clamped to the range, so a suggestion can
+    * never widen what is legal.
     */
   final case class ChooseAmount(min: Int, max: Int, heading: Option[String],
-      confirmLabel: String) extends DecisionQuery
+      confirmLabel: String, suggested: Option[Int] = None)
+      extends DecisionQuery
 
   /** Spread every option across the declared sections, respecting each
     * section's minimum.

@@ -181,12 +181,14 @@ private[projection] object ActionProjectionCodec {
     "maxTotal" -> intOption(value.maxTotal),
     "minimum" -> intOption(value.minimum),
     "maximum" -> intOption(value.maximum),
+    "suggested" -> intOption(value.suggested),
     "deal" -> option(value.deal)(encodeDeal))
   def decodeDecisionQuery(raw: ujson.Value, path: String)
       : Result[DecisionQueryProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("form", "options", "sections", "heading",
-      "confirmLabel", "slots", "minTotal", "maxTotal", "minimum", "maximum", "deal"), path)
+      "confirmLabel", "slots", "minTotal", "maxTotal", "minimum", "maximum",
+      "suggested", "deal"), path)
     form <- string(value, "form", path)
     optionRaws <- array(value, "options", path)
     options <- traverse(optionRaws, s"$path.options")(decodeOptionRow)
@@ -214,9 +216,10 @@ private[projection] object ActionProjectionCodec {
     maxTotal <- optionalInt(value, "maxTotal", path)
     minimum <- optionalInt(value, "minimum", path)
     maximum <- optionalInt(value, "maximum", path)
+    suggested <- optionalInt(value, "suggested", path)
     deal <- optionalAbsent(value, "deal", path)(decodeDeal)
   } yield DecisionQueryProjection(form, options, sections, heading,
-    confirmLabel, slots, minTotal, maxTotal, minimum, maximum, deal)
+    confirmLabel, slots, minTotal, maxTotal, minimum, maximum, suggested, deal)
 
   private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value =
     ujson.Obj("kind" -> row.kind, "id" -> row.id, "label" -> row.label,

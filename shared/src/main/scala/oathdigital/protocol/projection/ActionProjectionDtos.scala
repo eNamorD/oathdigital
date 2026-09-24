@@ -107,6 +107,7 @@ final case class DecisionQueryProjection(
     maxTotal: Option[Int] = None,
     minimum: Option[Int] = None,
     maximum: Option[Int] = None,
+    suggested: Option[Int] = None,
     deal: Option[NegotiationDealProjection] = None)
 
 /** One selectable option: its stable reference as `kind` plus `id` -- the

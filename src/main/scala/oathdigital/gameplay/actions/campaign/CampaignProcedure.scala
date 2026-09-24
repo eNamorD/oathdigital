@@ -161,9 +161,11 @@ object CampaignProcedure {
   private def forceStep(state: ReadyGame, actor: PlayerId): Operation = {
     val warbands = state.game.current.players.find(_.player == actor)
       .fold(0)(_.board.warbands)
+    // Suggests the whole force: committing everything is what an attacker
+    // nearly always wants, and holding warbands back is the deliberate act.
     Decide(CampaignIds.force, actor, DecisionQuery.ChooseAmount(0, warbands,
       Some(s"Commit warbands to the Campaign: 0 to $warbands, each adds one " +
-        "attack die"), "Commit force"),
+        "attack die"), "Commit force", suggested = Some(warbands)),
       window = Some(PowerWindow.CampaignForceSelection))
   }
 }

@@ -101,7 +101,8 @@ object DecisionQueries {
             "nothing to decide")
       } yield ()
 
-    case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel) =>
+    case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel,
+        suggested) =>
       for {
         _ <- require(heading.exists(_.trim.nonEmpty), decisionId,
           "declares no heading")
@@ -109,6 +110,10 @@ object DecisionQueries {
           "declares a blank confirm label")
         _ <- require(min >= 0 && min <= max, decisionId,
           s"declares an amount range $min..$max")
+        // A suggestion is where the panel opens, so one outside the range
+        // would propose an answer the same query rejects.
+        _ <- require(suggested.forall(value => value >= min && value <= max),
+          decisionId, s"suggests ${suggested.getOrElse(0)} outside $min..$max")
       } yield ()
 
     case DecisionQuery.Partition(sections, options, _, _) =>
@@ -231,7 +236,7 @@ object DecisionQueries {
         reject(decisionId, "expects a multiple-choice answer")
     }
 
-    case DecisionQuery.ChooseAmount(min, max, _, _) => answer match {
+    case DecisionQuery.ChooseAmount(min, max, _, _, _) => answer match {
       case DecisionAnswer.ChooseAmountAnswer(amount) =>
         require(amount >= min && amount <= max, decisionId,
           s"amount $amount is outside $min..$max")

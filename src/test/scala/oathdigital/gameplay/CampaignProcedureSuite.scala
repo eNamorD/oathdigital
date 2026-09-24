@@ -48,9 +48,11 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val started = start(b).getOrElse(fail("Campaign must start"))
     assertEquals(started.continue, OathContinue.AwaitingCampaignDecision(b.actor,
       DecisionId(CampaignIds.force)))
+    // Committing everything is what an attacker almost always wants, so the
+    // question suggests the whole force and lets them dial it down.
     assertEquals(parkedDecision(b, started).query, DecisionQuery.ChooseAmount(0, 5,
       Some("Commit warbands to the Campaign: 0 to 5, each adds one attack die"),
-      "Commit force"))
+      "Commit force", suggested = Some(5)))
     assertEquals(supply(started.state, b.actor), 5)
   }
 
@@ -134,7 +136,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val started = start(b).toOption.get
     assertEquals(parkedDecision(b, started).query, DecisionQuery.ChooseAmount(0, 0,
       Some("Commit warbands to the Campaign: 0 to 0, each adds one attack die"),
-      "Commit force"))
+      "Commit force", suggested = Some(0)))
     val done = answer(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(0)).toOption.get
     assert(!ops(done.events).exists {

@@ -68,6 +68,20 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
       "challenge.amount", DecisionAnswerWire.ChooseAmountWire(5))))
   }
 
+  test("a draft opens at the amount the question suggests") {
+    // Campaign suggests the whole force: the common answer is committed by
+    // default, and dialling it down is one click.
+    val Some(draft: WalkerAmountDraft) = WalkerSelectionDraft.reconcile(None,
+      context, parked("campaign.force",
+        amount.copy(suggested = Some(6)))): @unchecked
+    assertEquals(draft.amount, 6)
+    // A suggestion outside the range cannot drag the opening value with it.
+    val Some(clamped: WalkerAmountDraft) = WalkerSelectionDraft.reconcile(None,
+      context, parked("campaign.force",
+        amount.copy(suggested = Some(9)))): @unchecked
+    assertEquals(clamped.amount, 6)
+  }
+
   test("reconcile keeps a draft for the same decision and drops it otherwise") {
     val Some(first: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("challenge.ribbon-site", many)): @unchecked

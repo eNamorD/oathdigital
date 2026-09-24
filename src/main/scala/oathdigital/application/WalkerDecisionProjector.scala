@@ -229,10 +229,11 @@ private[application] final class WalkerDecisionProjector(
         Some(DecisionQueryProjection("negotiate", Vector.empty,
           heading = negotiate.heading,
           deal = Some(deals.project(ready, viewer, negotiate))))
-      case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel) =>
+      case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel,
+          suggested) =>
         Some(DecisionQueryProjection("choose-amount", Vector.empty,
           heading = heading, confirmLabel = Some(confirmLabel),
-          minimum = Some(min), maximum = Some(max)))
+          minimum = Some(min), maximum = Some(max), suggested = suggested))
       case DecisionQuery.Partition(sections, options, heading, confirmLabel) =>
         described(options).map(DecisionQueryProjection("partition", _,
           sections.map(section => DecisionSectionProjection(section.key,

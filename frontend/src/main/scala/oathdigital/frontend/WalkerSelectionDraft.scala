@@ -76,7 +76,14 @@ private[frontend] object WalkerSelectionDraft {
           .getOrElse(
             if (query.form == "choose-many")
               WalkerChooseManyDraft(context, decisionId, query, Vector.empty)
-            else WalkerAmountDraft(context, decisionId, query,
-              query.minimum.getOrElse(0)))
+            else {
+              // Where the question says to open, clamped to its own range so
+              // a suggestion can never seed an illegal amount.
+              val least = query.minimum.getOrElse(0)
+              val most = query.maximum.getOrElse(least)
+              WalkerAmountDraft(context, decisionId, query,
+                query.suggested.fold(least)(value =>
+                  math.max(least, math.min(most, value))))
+            })
       }
 }
