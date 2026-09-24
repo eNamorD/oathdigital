@@ -51,7 +51,7 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       "Silver Tongue", "Take a favor.")),
     tracks = Some(GameTracksProjection(4, 3, false, 4, "red")),
     relicDeckCount = 21,
-    privateAdviserPreview = Vector(known),
+    temporaryHandPreview = Vector(known),
     // A partition query, the shape with every field populated: a form, two
     // sections with minima, and options carrying both a plain label and
     // card details. A choose-one query is the same type with no sections,
@@ -75,7 +75,7 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     assert(projection.playerBoards.head.advisers.head.hidden)
     assertEquals(projection.playerBoards.head.advisers.head.name, "Unknown")
     assertEquals(projection.tracks.map(_.round), Some(4))
-    assertEquals(projection.privateAdviserPreview.map(_.cardId), Vector("known"))
+    assertEquals(projection.temporaryHandPreview.map(_.cardId), Vector("known"))
   }
 
   /** Task 5b: a decision's panel copy is two OPTIONAL strings, so the
@@ -119,7 +119,7 @@ class ProjectionProtocolSuite extends munit.FunSuite {
   test("a card defaults to implemented and round-trips implemented = false") {
     assert(known.implemented)
     val unimplemented = known.copy(cardId = "stub", implemented = false)
-    val withStub = projection.copy(privateAdviserPreview = Vector(unimplemented))
+    val withStub = projection.copy(temporaryHandPreview = Vector(unimplemented))
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withStub)),
       Right(withStub))
   }

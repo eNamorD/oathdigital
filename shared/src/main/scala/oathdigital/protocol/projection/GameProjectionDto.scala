@@ -29,7 +29,7 @@ final case class GameProjection(
     ,favorBanks: Vector[FavorBankProjection] = Vector.empty
     ,tracks: Option[GameTracksProjection] = None
     ,relicDeckCount: Int = 0
-    ,privateAdviserPreview: Vector[CardDetailsProjection] = Vector.empty
+    ,temporaryHandPreview: Vector[CardDetailsProjection] = Vector.empty
     ,walkerDecision: Option[WalkerDecisionProjection] = None
     ,walkerWaiting: Option[WalkerWaitingProjection] = None
     ,phasePowers: Vector[PhasePowerProjection] = Vector.empty

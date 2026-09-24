@@ -1709,6 +1709,45 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     )
   }
 
+  /** The hand is a preview, not a question: it is drawn while the walker is
+    * asking about something else (the starting site), and goes quiet the
+    * moment the same cards become the options of a decision, so the panel
+    * never draws one card twice.
+    */
+  test("a temporary hand previews to its holder until it is asked about") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val begun = service.handle("game-hand", 0L,
+      GameCommand.Begin(chronicle, orders)).toOption.get
+    val projector = new GameProjector(catalog)
+    val waiting = LoadedGame(begun.state, begun.nextSequence)
+    val holder = PlayerId("p2")
+    val hand = projector.project("game-hand", waiting, holder)
+      .temporaryHandPreview
+
+    assertEquals(hand.size, 3)
+    assert(hand.forall(_.orientation.contains("face-up")), hand.toString)
+    assert(hand.forall(!_.hidden), hand.toString)
+    // Every seat was dealt a hand, and each one is shown only its own.
+    val otherHand = projector.project("game-hand", waiting, PlayerId("p1"))
+      .temporaryHandPreview
+    assertEquals(otherHand.size, 3)
+    assertEquals(otherHand.map(_.cardId).intersect(hand.map(_.cardId)),
+      Vector.empty)
+    assertEquals(projector.projectPublic("game-hand", waiting)
+      .temporaryHandPreview, Vector.empty)
+
+    val placed = service.handle("game-hand", begun.nextSequence,
+      GameCommand.ResolveWalker(holder, TreeDecision(
+        SetupProcedure.pawnDecisionId(holder),
+        ChooseOneAnswer(DecisionOptionRef.Site(sites.head))))).toOption.get
+    val asked = projector.project("game-hand",
+      LoadedGame(placed.state, placed.nextSequence), holder)
+
+    assert(asked.walkerDecision.exists(_.query.exists(_.options.nonEmpty)))
+    assertEquals(asked.temporaryHandPreview, Vector.empty)
+  }
+
   test("player projection redacts other adviser hands and hidden orders") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
@@ -1731,7 +1770,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .encodeProjection(other)
 
     assertEquals(privateIds.size, 3)
-    assertEquals(own.privateAdviserPreview, Vector.empty)
+    assertEquals(own.temporaryHandPreview, Vector.empty)
     assertEquals(other.walkerDecision, None)
     val publicShape = ujson.read(otherJson).obj
     assert(!publicShape.contains("privateAdviserChoices"))

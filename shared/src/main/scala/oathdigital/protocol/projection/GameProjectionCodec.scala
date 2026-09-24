@@ -18,7 +18,7 @@ object GameProjectionCodec {
     "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
-    "relicDeckCount", "privateAdviserPreview",
+    "relicDeckCount", "temporaryHandPreview",
     "walkerDecision", "walkerWaiting", "phasePowers", "lastCampaign", "viewerPlayerId",
     "supplyMaximum", "restSupplyGain")
 
@@ -72,7 +72,7 @@ object GameProjectionCodec {
       "usurperLimited" -> t.usurperLimited, "limiterRound" -> t.limiterRound,
       "firstPlayerId" -> t.firstPlayerId)),
     "relicDeckCount" -> value.relicDeckCount,
-    "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard),
+    "temporaryHandPreview" -> encoded(value.temporaryHandPreview)(encodeCard),
     "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
     "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting),
     "phasePowers" -> encoded(value.phasePowers)(encodePhasePower),
@@ -129,9 +129,9 @@ object GameProjectionCodec {
       first <- string(row, "firstPlayerId", child)
     } yield GameTracksProjection(round, visions, limited, limiter, first) }
     relicDeck <- intOr(value, "relicDeckCount", path, 0)
-    previewRaws <- default(value, "privateAdviserPreview", path,
+    previewRaws <- default(value, "temporaryHandPreview", path,
       Vector.empty[ujson.Value])(array)
-    preview <- traverse(previewRaws, s"$path.privateAdviserPreview")(decodeCard)
+    preview <- traverse(previewRaws, s"$path.temporaryHandPreview")(decodeCard)
     walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
     walkerWaiting <- optionalAbsent(value, "walkerWaiting", path)(decodeWalkerWaiting)
     powerRaws <- default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)

@@ -104,6 +104,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
         walkerWaiting = pending.walkerWaiting,
         phasePowers = projectedPhasePowers,
         lastCampaign = CampaignResultProjector.project(context.ready),
+        temporaryHandPreview = handPreview(context, pending.walkerDecision),
         supplyMaximum = SupplyTrack.Maximum,
         // Only the player who can end the Act is promised a return, and the
         // promise is dropped rather than guessed at when Rest cannot price it.
@@ -112,4 +113,33 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
             .toOption.map(after =>
               math.max(0, after - active.board.supply.supply))).flatten)
   }
+
+  /** The viewer's own temporary hand, drawn face up because the cards are
+    * held in their hand and read by them alone -- another seat, and a
+    * spectator, are shown nothing.
+    *
+    * The preview falls silent once the parked decision offers one of the
+    * same cards: the decision draws them itself, and one card drawn twice
+    * reads as two cards.
+    */
+  private def handPreview(context: ScopedProjectionContext,
+      decision: Option[WalkerDecisionProjection])
+      : Vector[CardDetailsProjection] = {
+    val hand = context.viewer.toVector.flatMap(viewer =>
+      context.current.temporaryHands.getOrElse(viewer, Vector.empty))
+    val offered = decision.toVector.flatMap(offeredCards)
+    if (hand.exists(card => offered.contains(card.value))) Vector.empty
+    else hand.map(card => presentation.cardDetails(card,
+      Some(Orientation.FaceUp), hidden = false))
+  }
+
+  /** Every card a decision puts in front of the player, named by the id an
+    * answer spells: an option's own reference, and the card details that
+    * option carries when it is card-shaped.
+    */
+  private def offeredCards(decision: WalkerDecisionProjection): Vector[String] =
+    decision.query.toVector.flatMap { query =>
+      val options = query.options ++ query.slots.map(_.option)
+      options.map(_.id) ++ options.flatMap(_.card).map(_.cardId)
+    }
 }

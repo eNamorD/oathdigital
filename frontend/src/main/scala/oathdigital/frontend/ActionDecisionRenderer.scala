@@ -57,12 +57,19 @@ private[frontend] object ActionDecisionRenderer {
        .getOrElse("winner").replace('-', ' ')
      panel.appendChild(winnerBanner(value, winner, victory))
    }
-   if (value.privateAdviserPreview.nonEmpty) {
-     val preview = element("section", "adviser-preview")
-     preview.appendChild(text("h3", "", "Your adviser options"))
+   // Drawn cards wait in the temporary hand: starting advisers, a Search's
+   // draw, a Vision in flight. The projection drops the preview once a
+   // decision offers the same cards, so nothing here has to know which
+   // action put them there.
+   if (value.temporaryHandPreview.nonEmpty) {
+     val preview = element("section", "temporary-hand-preview")
+     preview.appendChild(text("h3", "", "Cards in hand"))
      preview.appendChild(text("p", "decision-instruction",
-       "Preview only. Place your pawn, then choose one to keep."))
-     value.privateAdviserPreview.foreach(card => preview.appendChild(CardFace.render(card)))
+       "Preview only. You will be asked what to do with these."))
+     val cards = element("div", "decision-cards")
+     value.temporaryHandPreview.foreach(card =>
+       cards.appendChild(CardFace.render(card)))
+     preview.appendChild(cards)
      panel.appendChild(preview)
    }
    // The oath and the usurper limit describe the table, so they are drawn
