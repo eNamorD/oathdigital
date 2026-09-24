@@ -6,7 +6,7 @@ import oathdigital.model._
 private[operations] object OperationCardMutation {
   import OperationError._
   import OperationStateAdapter.playerState
-  import OperationStateMutation.{
+  import OperationStateWrites.{
     CardTransfer,
     cardTransfers,
     semanticLocation,

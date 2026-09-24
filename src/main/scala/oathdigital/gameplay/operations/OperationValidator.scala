@@ -65,6 +65,7 @@ final class OperationValidator(
 object OperationShape {
   import OperationError._
   import OperationStateAdapter._
+  import OperationStateWrites.{CardTransfer, cardTransfers}
 
   /** All shape violations for one operation against `ready`, aggregated. */
   def validate(
@@ -197,36 +198,16 @@ object OperationShape {
   // 2. Card-source and destination checks
   // ------------------------------------------------------------------
 
-  private final case class Transfer(
-      piece: Piece.Card,
-      from: PositionedLocation,
-      to: PositionedLocation,
-      resultingOrientation: Option[Orientation]
-  )
-
   private final case class ResolvedTransfer(
-      transfer: Transfer,
+      transfer: CardTransfer,
       located: LocatedCard
   )
-
-  private def transfers(
-      leaves: Vector[Operation]
-  ): Vector[Transfer] = leaves.collect {
-    case Move(piece: Piece.Card, from, to, orientation) =>
-      Transfer(piece, from, to, orientation)
-    case bury: Bury => Transfer(
-      Piece.Card(bury.card.id),
-      bury.from,
-      bury.to,
-      resultingOrientation = None
-    )
-  }
 
   private def cardViolations(
       ready: ReadyGame,
       leaves: Vector[Operation]
   ): Vector[OperationError] = {
-    val all = transfers(leaves)
+    val all = cardTransfers(leaves)
     val duplicate: Vector[OperationError] =
       if (all.map(_.piece.id).groupBy(identity).exists {
         case (_, occurrences) => occurrences.size > 1
@@ -279,7 +260,7 @@ object OperationShape {
 
   private def cardDestinationViolation(
       located: LocatedCard,
-      transfer: Transfer
+      transfer: CardTransfer
   ): Option[OperationError] = {
     val id = located.id
     val destination = transfer.to.location
@@ -323,7 +304,7 @@ object OperationShape {
 
   private def statefulMaterializationViolation(
       located: LocatedCard,
-      transfer: Transfer
+      transfer: CardTransfer
   ): Option[OperationError] = located.id match {
     case id: EdificeId if transfer.resultingOrientation.nonEmpty =>
       Some(UnsupportedOrientation(id, transfer.to.location))
