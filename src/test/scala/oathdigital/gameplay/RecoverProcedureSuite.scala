@@ -4,6 +4,7 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
+import oathdigital.gameplay.WalkerDiceFixture.scripted
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
@@ -111,36 +112,58 @@ class RecoverProcedureSuite extends munit.FunSuite
       case other => fail(s"expected a Parked outcome at $at, got $other")
     }
 
+  test("Recover rolls its own dice: the walk parks on the choice, never on " +
+      "the roll") {
+    val (ready, actor, _, _, _) = recoverable
+    val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
+
+    // The supply is spent before the dice leave the hand, so a park in front
+    // of them would ask the player to confirm a roll they have paid for and
+    // cannot decline. The walk rolls and carries on to the first thing that
+    // is a question.
+    val (choicePark, events) = expectParked(
+      ProcedureWalker.advance(ready, tree, None, noPowers, scripted(lowRoll)),
+      Vector("1", "0", "2", "0"))
+    assertEquals(events.map(_.asInstanceOf[WalkerStepRecorded].payload)
+      .collect { case roll: RollPayload => roll.faces }, Vector(lowRoll))
+
+    // Continuing buys the next two dice and rolls them in the same command.
+    val continue = Answered(RecoverProcedure.choiceDecisionId,
+      ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player)
+    val stateAtChoice = applyRecorded(ready, events)
+    val (relicPark, continueEvents) = expectParked(
+      ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
+        noPowers, scripted(highRoll)),
+      Vector("2", "0"))
+    assertEquals(relicPark.answered.size, 1)
+    assertEquals(continueEvents.map(_.asInstanceOf[WalkerStepRecorded].payload)
+      .collect { case roll: RollPayload => roll.faces }, Vector(highRoll))
+  }
+
   test("single-roll success parks the relic decision, then moves a facedown " +
       "relic into the play area for one supply") {
     val (ready, actor, siteId, relic, _) = recoverable
     val pool = RecoverProcedure.recoverPool
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
-    // 1. Fresh walk: auto pool setup, then park at the first Roll.
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    assertEquals(rollPark.answered, Vector.empty[Answered])
+    // 1. Fresh walk: the pool, the supply that pays for it, and the roll
+    //    that supply buys, with nothing asked along the way. A two-shield
+    //    roll reaches any difficulty <= 4, so the walk carries on to the
+    //    success-only relic decision and parks there.
+    val (relicPark, setupEvents) = expectParked(
+      ProcedureWalker.advance(ready, tree, None, noPowers, scripted(highRoll)),
+      Vector("2", "0"))
+    assertEquals(relicPark.answered, Vector.empty[Answered])
     // The head ModifyDicePool carries `RecoverBeforeFirstRoll` (Task 4): a
     // windowed leaf's folded vector is walked as its own children (ruling G),
     // so an unchanged fold still records the leaf one level deeper than an
     // unwindowed leaf would sit -- "0.0", not "0".
     assertEquals(setupEvents.map(_.asInstanceOf[WalkerStepRecorded].nodeId),
-      Vector("0.0", "1.0.0"))
-    val stateAtRoll = applyRecorded(ready, setupEvents)
-
-    // 2. A two-shield roll reaches any difficulty <= 4: park at the
-    //    success-only relic decision; the roll + its 1-supply payment are
-    //    recorded on the way.
-    val (relicPark, rollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers),
-      Vector("2", "0"))
-    assertEquals(relicPark.answered, Vector.empty[Answered])
-    val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
+      Vector("0.0", "1.0.0", "1.0.1"))
+    val stateAtRelic = applyRecorded(ready, setupEvents)
     assertEquals(supplyOf(stateAtRelic, actor.player), SupplyTrack.Maximum - 1)
 
-    // 3. Take the facedown site relic: tree ends; the relic is moved facedown
+    // 2. Take the facedown site relic: tree ends; the relic is moved facedown
     //    into the play area.
     val answer = Answered(RecoverProcedure.relicDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor.player)
@@ -169,7 +192,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // BuildOps at RecoverAfterRelic) each record one level deeper than their
     // unwindowed siblings ("0.0" and "2.1.0", not "0"/"2.1") for the same
     // reason as the park assertion above; nothing else in the tree shifts.
-    val steps = (setupEvents ++ rollEvents ++ resolveSteps)
+    val steps = (setupEvents ++ resolveSteps)
       .map(_.asInstanceOf[WalkerStepRecorded])
     assertEquals(steps.size, 5)
     assertEquals(steps.map(_.nodeId),
@@ -202,38 +225,28 @@ class RecoverProcedureSuite extends munit.FunSuite
     val pool = RecoverProcedure.recoverPool
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
-    val (rollPark1, setupEvents) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll1 = applyRecorded(ready, setupEvents)
-
     // First roll fails (score 0 < difficulty): parks the choice decision.
     val (choicePark, firstRollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll1, tree, rollPark1, lowRoll, noPowers),
+      ProcedureWalker.advance(ready, tree, None, noPowers, scripted(lowRoll)),
       Vector("1", "0", "2", "0"))
-    val stateAtChoice = applyRecorded(stateAtRoll1, firstRollEvents)
+    val stateAtChoice = applyRecorded(ready, firstRollEvents)
     assertEquals(supplyOf(stateAtChoice, actor.player), SupplyTrack.Maximum - 1)
 
-    // Continue -> fresh pass parks at the second Roll.
+    // Continue -> a fresh pass pays for two more dice, rolls them, and parks
+    // the relic decision the cumulative score has now earned.
     val continue = Answered(RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player)
-    val (rollPark2, continueEvents) = expectParked(
+    val (relicPark, continueEvents) = expectParked(
       ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
-        noPowers),
-      Vector("1", "0", "1"))
-    assertEquals(continueEvents.size, 2)
+        noPowers, scripted(highRoll)),
+      Vector("2", "0"))
+    assertEquals(continueEvents.size, 3)
     assertEquals(continueEvents.head.asInstanceOf[WalkerStepRecorded].payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player))
     assertEquals(continueEvents(1).asInstanceOf[WalkerStepRecorded].ops,
       Vector[CoreOperation](SpendSupply(actor.player, 1)))
-    val stateAtRoll2 = applyRecorded(stateAtChoice, continueEvents)
-
-    // Second roll succeeds cumulatively: parks the relic decision.
-    val (relicPark, secondRollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll2, tree, rollPark2, highRoll, noPowers),
-      Vector("2", "0"))
-    val stateAtRelic = applyRecorded(stateAtRoll2, secondRollEvents)
+    val stateAtRelic = applyRecorded(stateAtChoice, continueEvents)
     assertEquals(supplyOf(stateAtRelic, actor.player), SupplyTrack.Maximum - 2)
 
     val answer = Answered(RecoverProcedure.relicDecisionId,
@@ -253,8 +266,8 @@ class RecoverProcedureSuite extends munit.FunSuite
       _.player == actor.player).get.relics.map(_.id), Vector(relic.id))
 
     // Both rolls are recorded individually with their own faces.
-    val rollPayloads = Vector(setupEvents, firstRollEvents, continueEvents,
-      secondRollEvents).flatten.map(_.asInstanceOf[WalkerStepRecorded])
+    val rollPayloads = Vector(firstRollEvents, continueEvents)
+      .flatten.map(_.asInstanceOf[WalkerStepRecorded])
       .filter(_.payload.isInstanceOf[RollPayload])
       .map(_.payload.asInstanceOf[RollPayload])
     assertEquals(rollPayloads.map(_.faces), Vector(lowRoll, highRoll))
@@ -265,14 +278,11 @@ class RecoverProcedureSuite extends munit.FunSuite
     val (ready, actor, siteId, relic, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll = applyRecorded(ready, setupEvents)
     val (choicePark, rollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, lowRoll, noPowers),
+      ProcedureWalker.advance(ready, tree, None, noPowers,
+        scripted(lowRoll)),
       Vector("1", "0", "2", "0"))
-    val stateAtChoice = applyRecorded(stateAtRoll, rollEvents)
+    val stateAtChoice = applyRecorded(ready, rollEvents)
 
     val stop = Answered(RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor.player)
@@ -307,14 +317,11 @@ class RecoverProcedureSuite extends munit.FunSuite
     val poor = withSupply(ready, actor.player, 1)
     val tree = RecoverProcedure.build(catalog, poor, actor.player).toOption.get
 
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(poor, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll = applyRecorded(poor, setupEvents)
     val (choicePark, rollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, lowRoll, noPowers),
+      ProcedureWalker.advance(poor, tree, None, noPowers,
+        scripted(lowRoll)),
       Vector("1", "0", "2", "0"))
-    val stateAtChoice = applyRecorded(stateAtRoll, rollEvents)
+    val stateAtChoice = applyRecorded(poor, rollEvents)
     assertEquals(supplyOf(stateAtChoice, actor.player), 0)
 
     // Continue re-enters the loop, whose payment now precedes its Roll.
@@ -345,14 +352,11 @@ class RecoverProcedureSuite extends munit.FunSuite
     val (ready, actor, _, _, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll = applyRecorded(ready, setupEvents)
     val (relicPark, rollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers),
+      ProcedureWalker.advance(ready, tree, None, noPowers,
+        scripted(highRoll)),
       Vector("2", "0"))
-    val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
+    val stateAtRelic = applyRecorded(ready, rollEvents)
 
     val wrong = Answered(RecoverProcedure.relicDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("no-such-relic"))),
@@ -382,13 +386,9 @@ class RecoverProcedureSuite extends munit.FunSuite
 
     val tree = RecoverProcedure.build(catalog, relicless, actor.player)
       .toOption.get
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(relicless, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll = applyRecorded(relicless, setupEvents)
-
     val (finalState, finalEvents) =
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers) match {
+      ProcedureWalker.advance(relicless, tree, None, noPowers,
+          scripted(highRoll)) match {
         case Right(WalkerOutcome.Finished(treeless, events)) =>
           (treeless, events)
         case other => fail(s"expected relic-less Recover to finish, got $other")
@@ -430,14 +430,11 @@ class RecoverProcedureSuite extends munit.FunSuite
     val (ready, actor, _, _, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll = applyRecorded(ready, setupEvents)
     val (choicePark, rollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, lowRoll, noPowers),
+      ProcedureWalker.advance(ready, tree, None, noPowers,
+        scripted(lowRoll)),
       Vector("1", "0", "2", "0"))
-    val stateAtChoice = applyRecorded(stateAtRoll, rollEvents)
+    val stateAtChoice = applyRecorded(ready, rollEvents)
 
     val decide = ProcedureWalker.parkedDecide(stateAtChoice, tree, choicePark,
       noPowers).getOrElse(fail("expected the park to resolve to a Decide"))
@@ -467,14 +464,11 @@ class RecoverProcedureSuite extends munit.FunSuite
             site.copy(relics = Vector(relic, second, faceUp))))))
 
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll = applyRecorded(ready, setupEvents)
     val (relicPark, rollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers),
+      ProcedureWalker.advance(ready, tree, None, noPowers,
+        scripted(highRoll)),
       Vector("2", "0"))
-    val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
+    val stateAtRelic = applyRecorded(ready, rollEvents)
 
     val decide = ProcedureWalker.parkedDecide(stateAtRelic, tree, relicPark,
       noPowers).getOrElse(fail("expected the park to resolve to a Decide"))
@@ -508,16 +502,11 @@ class RecoverProcedureSuite extends munit.FunSuite
     val (ready, actor, _, _, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
-    val (rollPark, setupEvents) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "1"))
-    val stateAtRoll = applyRecorded(ready, setupEvents)
-
     // The roll succeeds, so the walk parks at the RELIC decision instead.
     val (relicPark, rollEvents) = expectParked(
-      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers),
+      ProcedureWalker.advance(ready, tree, None, noPowers, scripted(highRoll)),
       Vector("2", "0"))
-    val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
+    val stateAtRelic = applyRecorded(ready, rollEvents)
 
     val stale = Answered(RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player)

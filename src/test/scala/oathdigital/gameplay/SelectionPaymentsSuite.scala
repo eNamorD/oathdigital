@@ -70,7 +70,7 @@ class SelectionPaymentsSuite extends munit.FunSuite {
       .forCatalog(catalog).get
     assertEquals(power.selectionPayments(fixture.ready, fixture.actor).size, 1)
     val rules = new OathRules(catalog, walkerPowerCatalog = WalkerPowers(
-      Vector(power)))
+      Vector(power)), walkerDice = WalkerDiceFixture.blanks)
     assert(rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
       fixture.actor, Vector(power.id)).isRight)
   }

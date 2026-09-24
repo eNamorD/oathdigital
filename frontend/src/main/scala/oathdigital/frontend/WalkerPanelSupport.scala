@@ -132,12 +132,14 @@ private[frontend] object WalkerPanelSupport {
     waitingNotice(value).foreach(notice =>
       panel.appendChild(text("p", "walker-waiting", notice)))
 
-  /** Renders the Recover panel for whichever of the three parks
+  /** Renders the Recover panel for whichever of the parks
     * (`recoverWalkerStep`) the walker is at. Shows `rollOutcomeSummary`
     * (I5) above each park's controls, and gates buying more dice on the
     * player actually having supply -- as the legacy (deleted) Recover panel
-    * did. Buying dice and rolling them are separate parks, so the labels
-    * name that split: the answer buys, the button rolls.
+    * did. Recover rolls as the walker walks, so the continue answer both
+    * buys the dice and throws them and its label says so; the Roll park
+    * below it is reached only if a power folds a parked roll into the tree,
+    * which is why the panel still knows how to answer one.
     */
   private[frontend] def renderRecoverPanel(value: GameProjection,
       presentation: ViewerPresentation, canControl: Boolean,
@@ -168,7 +170,7 @@ private[frontend] object WalkerPanelSupport {
         query.options.foreach { option =>
           val spendsSupply = option.id == continueOptionKey
           val (label, className) =
-            if (spendsSupply) ("Add two dice (1 Supply)", "recover-add")
+            if (spendsSupply) ("Roll two more dice (1 Supply)", "recover-add")
             else if (option.id == stopOptionKey) ("Stop Recover", "recover-stop")
             else (option.label, "recover-choice")
           val control = button(label, className)

@@ -25,9 +25,13 @@ import oathdigital.model._
 class CatacombsContributionSuite extends munit.FunSuite {
   import CatacombsContributionSuite._
 
-  /** The production rules instance shape: the real contribution catalog. */
+  /** The production rules instance shape: the real contribution catalog,
+    * with dice that always fail the roll so every walk here parks on the
+    * continue-or-stop choice rather than running on to a relic.
+    */
   private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
+    walkerDice = WalkerDiceFixture.blanks)
 
   private def steps(events: Vector[OathEvent]): Vector[WalkerStepRecorded] =
     events.collect { case step: WalkerStepRecorded => step }
@@ -69,10 +73,11 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(after.game.current.commonCards.relicDeck,
       fixture.ready.game.current.commonCards.relicDeck.tail)
 
-    // The inserted node shifts every later index by one: the first Roll parks
-    // at "2.0.0" instead of the bare tree's "1.0.0".
+    // The inserted node shifts every later index by one: the choice the
+    // failed first roll parks on sits under "2" instead of the bare tree's
+    // "1".
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("2", "0", "1")))
+      Some(Vector("2", "0", "2", "0")))
     assertEquals(after.game.current.walkerModifiers, Vector(catacombsId))
   }
 
@@ -81,7 +86,7 @@ class CatacombsContributionSuite extends munit.FunSuite {
     val transition = started(fixture, Vector.empty)
     val Ready(after) = transition.state: @unchecked
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("1", "0", "1")))
+      Some(Vector("1", "0", "2", "0")))
     assertEquals(after.game.current.map.sites(fixture.site).relics,
       Vector.empty)
   }
@@ -92,8 +97,10 @@ class CatacombsContributionSuite extends munit.FunSuite {
     val transition = started(fixture, Vector.empty)
     val recorded = steps(transition.events)
 
-    assertEquals(recorded.map(_.nodeId), Vector("0.0", "1.0.0"))
+    assertEquals(recorded.map(_.nodeId), Vector("0.0", "1.0.0", "1.0.1"))
     assertEquals(recorded.flatMap(_.contributions), Vector.empty[PowerId])
+    // The roll itself records no operations: a Roll leaf writes its outcome
+    // as state (`ProcedureWalker.recordRoll`), not as an ops batch.
     assertEquals(recorded.flatMap(_.ops), Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll)),
@@ -103,7 +110,7 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(after.game.current.commonCards.relicDeck,
       fixture.ready.game.current.commonCards.relicDeck)
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("1", "0", "1")))
+      Some(Vector("1", "0", "2", "0")))
   }
 
   test("the Catacombs fold survives its own effect: a resume after the last " +
@@ -118,22 +125,21 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(parked.game.current.players.find(_.player == fixture.actor)
       .get.board.faceUpSecrets, 0)
     val parkedAt = parked.game.current.walkerPending.map(_.at)
-    assertEquals(parkedAt, Some(Vector("2", "0", "1")))
+    assertEquals(parkedAt, Some(Vector("2", "0", "2", "0")))
 
-    val rolled = rules.rollWalkerPrepared(transition.state, fixture.actor,
-      RecoverProcedure.recoverPool)(count => Right(
-        Vector.fill(count)(DefenseDieFace.Blank))) match {
+    val resumed = rules.resolveWalker(transition.state, fixture.actor,
+      RecoverProcedure.choiceDecisionId,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("continue"))) match {
       case Right(next) => next
-      case other => fail(s"expected the resumed roll to run, got $other")
+      case other => fail(s"expected the resumed choice to run, got $other")
     }
     // The invariant under test: the resumed fold must address the SAME leaf
     // the walk parked at, not a re-derived tree shifted by a dropped/moved
-    // Catacombs node. Pin the resumed Roll step's node id to the exact
-    // parked path, and its ops (a Roll leaf records outcome as state, not as
-    // an ops batch -- see `ProcedureWalker.recordRoll`).
-    val rollStep = steps(rolled.events).head
-    assertEquals(rollStep.nodeId, parkedAt.get.mkString("."))
-    assertEquals(rollStep.ops, Vector.empty[CoreOperation])
+    // Catacombs node. Pin the resumed answer's step to the exact parked
+    // path, and its ops (answering a Decide records none).
+    val choiceStep = steps(resumed.events).head
+    assertEquals(choiceStep.nodeId, parkedAt.get.mkString("."))
+    assertEquals(choiceStep.ops, Vector.empty[CoreOperation])
   }
 
   test("a Restriction-only power does not make relic-less Recover illegal") {
@@ -146,7 +152,8 @@ class CatacombsContributionSuite extends munit.FunSuite {
           Restriction((_, _) => None)))
     }
     val restrictedRules = new OathRules(catalog,
-      walkerPowerCatalog = WalkerPowers(Vector(restrictionOnly)))
+      walkerPowerCatalog = WalkerPowers(Vector(restrictionOnly)),
+      walkerDice = WalkerDiceFixture.blanks)
     assert(restrictedRules.startWalker(Ready(fixture.ready), ActionRef.Recover,
       fixture.actor).isRight)
   }

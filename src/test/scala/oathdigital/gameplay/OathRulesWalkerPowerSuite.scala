@@ -199,13 +199,14 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   }
 
   test("a seated non-active player's RollWalker against another player's " +
-      "parked pool is rejected, and appends nothing") {
+      "parked walker is rejected, and appends nothing") {
     val fixture = CatacombsContributionSuite.relicSite()
     val intruder = fixture.ready.game.current.players.map(_.player)
       .find(_ != fixture.actor).get
     val rulesInstance = new OathRules(catalog,
       walkerPowerCatalog = oathdigital.gameplay.powers.WalkerPowerCatalog
-        .default(catalog))
+        .default(catalog),
+      walkerDice = WalkerDiceFixture.blanks)
     val started = rulesInstance.startWalker(Ready(fixture.ready),
         ActionRef.Recover, fixture.actor, Vector.empty) match {
       case Right(transition) => transition

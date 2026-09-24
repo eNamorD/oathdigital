@@ -2,12 +2,11 @@ package oathdigital.frontend
 
 import org.scalajs.dom
 
-/** Recover's two controls, which are two steps and say so.
+/** Recover's controls.
   *
-  * The walker parks at a Roll and then, on a failed roll, at a
-  * continue/stop Decide, so buying more dice and rolling them are separate
-  * commands. The labels name that split rather than hiding it: the answer
-  * buys the dice, the button rolls them.
+  * The walker rolls as it walks and parks only on what it has to ask, so
+  * one answer buys the next two dice and rolls them. The label says both,
+  * because both happen on the click.
   */
 class RecoverPanelSuite extends munit.FunSuite {
   private def all(node: dom.Element, selector: String): Vector[dom.Element] =
@@ -40,13 +39,13 @@ class RecoverPanelSuite extends munit.FunSuite {
       Vector("Roll the dice"))
   }
 
-  /** The answer buys dice and stops there -- the roll is the next click, so
-    * the label promises dice rather than a result.
+  /** One click buys the dice and throws them, so the label names both the
+    * cost and the roll rather than promising a second button.
     */
-  test("continuing says what it buys, not that it rolls") {
+  test("continuing says it buys dice and rolls them") {
     val panel = render(choice)
     assertEquals(all(panel, ".recover-add").map(_.textContent),
-      Vector("Add two dice (1 Supply)"))
+      Vector("Roll two more dice (1 Supply)"))
     assertEquals(all(panel, ".recover-stop").map(_.textContent),
       Vector("Stop Recover"))
   }

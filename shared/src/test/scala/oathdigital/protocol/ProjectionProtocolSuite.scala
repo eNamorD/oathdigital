@@ -104,6 +104,18 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(without))
   }
 
+  /** A parked roll is the one decision shape that carries a pool and a
+    * count instead of a query, so those two fields have no other coverage.
+    */
+  test("a parked roll round-trips its pool and its count") {
+    val rolling = projection.copy(walkerDecision = Some(
+      WalkerDecisionProjection("recover", "walker.recover.roll", "roll",
+        pool = Some("recover"), count = Some(2),
+        rollOutcome = Some(WalkerRollOutcomeProjection(Vector.empty, 0, 3)))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(rolling)),
+      Right(rolling))
+  }
+
   test("a choose-one option round-trips its details and defaults them to none") {
     val annotated = DecisionQueryProjection("choose-one", Vector(
       DecisionOptionProjection("denizen", "d1", "Old Oak", None,

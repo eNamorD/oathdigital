@@ -151,10 +151,22 @@ object ParkedServiceFixture {
     (parked, active, ruler)
   }
 
-  /** A Recover roll parked in Act, at the first catalog site Recover can
-    * target.
+  /** Defense dice that always come up blank. A Recover started with these
+    * fails its roll, so it parks on the continue-or-stop choice instead of
+    * landing wherever a random port would send it.
     */
-  def recoverRollPark(service: GameApplicationService, gameId: String)
+  val failingDice: CampaignDicePort = new CampaignDicePort {
+    def rollAttack(count: Int): Vector[AttackDieFace] =
+      Vector.fill(count)(AttackDieFace.HollowSword)
+    def rollDefense(count: Int): Vector[DefenseDieFace] =
+      Vector.fill(count)(DefenseDieFace.Blank)
+  }
+
+  /** A Recover parked in Act on its continue-or-stop choice, at the first
+    * catalog site Recover can target. `service` must roll `failingDice`, or
+    * the walk lands somewhere else.
+    */
+  def recoverChoicePark(service: GameApplicationService, gameId: String)
       : (GameAccepted, PlayerId, Vector[PlayerId]) = {
     val recoverSite = catalog.sites.find(site =>
       site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
@@ -171,7 +183,7 @@ object ParkedServiceFixture {
     val parked = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
     assert(parked.continue == OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)), parked.continue.toString)
+      DecisionId(RecoverProcedure.choiceDecisionId)), parked.continue.toString)
     (parked, actor, orders.participants.map(_.playerId))
   }
 

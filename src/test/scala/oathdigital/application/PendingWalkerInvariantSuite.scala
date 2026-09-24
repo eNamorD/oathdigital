@@ -66,13 +66,16 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
 
   private val everyone = participants.map(_.playerId)
 
-  test("over a parked Recover roll in Act, only its roll is accepted") {
+  test("over a parked Recover choice in Act, only its answer is accepted") {
     val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = ParkedServiceFixture.failingDice)
     val (parked, actor, players) =
-      ParkedServiceFixture.recoverRollPark(service, "invariant-recover")
+      ParkedServiceFixture.recoverChoicePark(service, "invariant-recover")
     assertOnlyItsResume(service, repository, "invariant-recover", parked,
-      players, GameCommand.RollWalker(actor, RecoverProcedure.recoverPool))
+      players, GameCommand.ResolveWalker(actor, TreeDecision(
+        RecoverProcedure.choiceDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Button("stop")))))
   }
 
   test("over an off-turn Oathkeeper recipient, only the holder's answer is accepted") {

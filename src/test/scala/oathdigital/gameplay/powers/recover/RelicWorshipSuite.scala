@@ -1,15 +1,26 @@
 package oathdigital.gameplay.powers.recover
 
-import oathdigital.gameplay.CatacombsContributionSuite
+import oathdigital.gameplay.{CatacombsContributionSuite, OathRules,
+  WalkerDiceFixture}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture}
+import oathdigital.gameplay.powers.{CardStaging, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
 class RelicWorshipSuite extends munit.FunSuite {
-  import SearchFixture.rules
+  private def rulesRolling(dice: WalkerDice): OathRules = new OathRules(
+    catalog, walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
+    walkerDice = dice)
+
+  /** Recover rolls as it walks, so what the dice show is settled before the
+    * command runs: `rules` recovers on the first roll, `failing` never does.
+    */
+  private val rules = rulesRolling(WalkerDiceFixture.shields)
+  private val failing = rulesRolling(WalkerDiceFixture.blanks)
 
   private val worship = DenizenId("173")
   private val modifiers = Vector(RelicWorship.id)
@@ -31,16 +42,12 @@ class RelicWorshipSuite extends munit.FunSuite {
     val actor = PowerFixture.actor
     val started = rules.startWalker(Ready(ready), ActionRef.Recover, actor,
       selected).toOption.get
-    val rolled = rules.rollWalkerPrepared(started.state, actor,
-      RecoverProcedure.recoverPool)(count => Right(
-        Vector.fill(count)(DefenseDieFace.TwoShields))).toOption.get
     val relic = RecoverProcedure.actorFacedownRelics(
-      rolled.state.asInstanceOf[Ready].value, actor).head.id
-    val done = rules.resolveWalker(rolled.state, actor,
+      started.state.asInstanceOf[Ready].value, actor).head.id
+    val done = rules.resolveWalker(started.state, actor,
       RecoverProcedure.relicDecisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Relic(relic))).toOption.get
-    (started.events ++ rolled.events ++ done.events,
-      done.state.asInstanceOf[Ready].value)
+    (started.events ++ done.events, done.state.asInstanceOf[Ready].value)
   }
 
   private def me(ready: ReadyGame): PlayerState = PowerFixture.player(ready)
@@ -85,18 +92,15 @@ class RelicWorshipSuite extends munit.FunSuite {
       "gains nothing") {
     val (ready, _) = staged()
     val actor = PowerFixture.actor
-    val started = rules.startWalker(Ready(ready), ActionRef.Recover, actor,
+    val started = failing.startWalker(Ready(ready), ActionRef.Recover, actor,
       modifiers).toOption.get
-    // The secret is paid at the start, before any roll.
+    // The secret is paid at the start, before the roll that fails.
     val paid = started.state.asInstanceOf[Ready].value
     assertEquals(me(paid).board.faceUpSecrets, 1)
     assertEquals(me(paid).advisers.collectFirst {
       case card: DenizenState if card.id == worship => card.tokens
     }, Some(Tokens(0, 1)))
-    val failed = rules.rollWalkerPrepared(started.state, actor,
-      RecoverProcedure.recoverPool)(count => Right(
-        Vector.fill(count)(DefenseDieFace.Blank))).toOption.get
-    val stopped = rules.resolveWalker(failed.state, actor,
+    val stopped = failing.resolveWalker(started.state, actor,
       RecoverProcedure.choiceDecisionId, DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Button("stop"))).toOption.get
     val result = stopped.state.asInstanceOf[Ready].value

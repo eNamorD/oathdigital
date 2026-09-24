@@ -15,7 +15,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   *   Repeat(guard = not succeeded && lastChoice != Stop,
   *     Sequence(
   *       SpendSupply(actor, 1),            // validated by OperationPipeline
-  *       Roll("recover", Defense),          // parks; faces ride `roll()`
+  *       Roll("recover", Defense, Automatic), // rolls in the same command
   *       Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
   *     )),
   *   Branch(if success ->
@@ -32,6 +32,10 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * Semantics:
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
   *    `ModifyDicePool`) and costs 1 supply, debited by `SpendSupply`.
+  *  - The roll is automatic: the supply is spent before the dice are asked
+  *    for, so a park in front of them would ask the player to confirm a
+  *    roll they have already paid for and cannot decline. The walk rolls
+  *    and carries on to the first thing that is a question.
   *  - Success = `DefenseDieFace.score` over the combined faces from every roll
   *    of the "recover" pool (the walker accumulates roll outcomes per pool)
   *    reaching `RecoverRules.difficulty(catalog, site)`; site = the actor's
@@ -54,10 +58,14 @@ object RecoverProcedure {
   val relicDecisionId: String = "recover.relic"
 
   /** Synthetic decision id surfaced on the `AwaitingRecoverRoll` continuation
-    * when the walker parks on the Roll node itself (a `Roll` leaf carries no
+    * when the walker parks on a Roll node itself (a `Roll` leaf carries no
     * `decisionId` of its own — that concept only exists on `Decide` nodes).
     * Client-facing identity for "answer this with `RollWalker`, not
     * `ResolveWalker`".
+    *
+    * Recover's own roll is automatic and never parks, so this names a roll
+    * a power folded into the tree. It stays declared because the client has
+    * no other way to answer one.
     */
   val rollDecisionId: String = "walker.recover.roll"
 
@@ -169,7 +177,7 @@ object RecoverProcedure {
     // before randomness is requested.
     val body = Sequence(
       SpendSupply(actor, supplyCost),
-      Roll(recoverPool, DiceSpec(DiceKind.Defense)),
+      Roll(recoverPool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
       Branch((ready, _) =>
         if (succeeded(ready)) Vector.empty else Vector(choiceDecide)))
 

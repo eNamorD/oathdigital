@@ -28,8 +28,8 @@ import oathdigital.model._
   * replayed state via `RecoverProcedure.build`/`rebuild` (exactly what
   * `OathRules.buildWalker` does on every live command — the tree is never
   * cached across commands in production either), and re-invokes the same
-  * walker entry point with the same resume input (the same roll faces or the
-  * same decision answer the live walk used). It then asserts the operations
+  * walker entry point with the same resume input (the same decision answer
+  * the live walk used, over dice showing the same faces). It then asserts the operations
   * that independent re-derivation produces equal the operations the live walk
   * actually recorded.
   *
@@ -96,12 +96,16 @@ import oathdigital.model._
   * parameters; every Recover walk above keeps the Recover defaults.
   */
 /** One command in a scripted walk (top-level so pattern matches on it
-  * carry no per-instance outer reference).
+  * carry no per-instance outer reference). `rolls` is what the dice show
+  * for the rolls that command walks through: Recover rolls as it goes, so
+  * the faces belong to the command that reaches them rather than to a
+  * separate roll command.
   */
-private sealed trait Resume
-private case object StartWalk extends Resume
-private final case class RollResume(faces: Vector[DieFace]) extends Resume
-private final case class AnswerResume(answer: Answered) extends Resume
+private sealed trait Resume { def rolls: Vector[Vector[DieFace]] }
+private final case class StartWalk(
+    rolls: Vector[Vector[DieFace]] = Vector.empty) extends Resume
+private final case class AnswerResume(answer: Answered,
+    rolls: Vector[Vector[DieFace]] = Vector.empty) extends Resume
 
 class WalkerReplayDriftSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer {
@@ -160,14 +164,16 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
   private def runResume(resume: Resume, state: ReadyGame, tree: Operation,
       pending: Option[PendingTree], powers: WalkerPowers): WalkerOutcome = {
+    // A fresh source per invocation, because every command here is run
+    // twice -- once on the live state, once on the replayed one -- and both
+    // runs must see the same faces in the same order.
+    val dice = WalkerDiceFixture.scripted(resume.rolls: _*)
     val result = resume match {
-      case StartWalk => ProcedureWalker.advance(state, tree, None, powers)
-      case RollResume(faces) => ProcedureWalker.roll(state, tree,
-        pending.getOrElse(fail("roll() resume requires a pending park")), faces,
-        powers)
-      case AnswerResume(answer) => ProcedureWalker.resolve(state, tree,
+      case _: StartWalk =>
+        ProcedureWalker.advance(state, tree, None, powers, dice)
+      case AnswerResume(answer, _) => ProcedureWalker.resolve(state, tree,
         pending.getOrElse(fail("resolve() resume requires a pending park")),
-        answer, powers)
+        answer, powers, dice)
     }
     result.fold(violation => fail(s"walker step $resume failed: $violation"),
       identity)
@@ -274,10 +280,10 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     go(script, ready, None, OathState.Ready(ready), starting = true)
   }
 
-  test("drift check: single-roll success (advance -> roll -> resolve)") {
+  test("drift check: single-roll success (advance -> resolve)") {
     val (ready, actor, siteId, relic) = recoverable
     val finished = assertNoDrift(ready,
-      Vector(StartWalk, RollResume(highRoll),
+      Vector(StartWalk(Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
       walkerPowers)
@@ -295,10 +301,10 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       "rolls again to a cumulative success)") {
     val (ready, actor, _, relic) = recoverable
     val finished = assertNoDrift(ready,
-      Vector(StartWalk, RollResume(lowRoll),
+      Vector(StartWalk(Vector(lowRoll)),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)),
-        RollResume(highRoll),
+          ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor),
+          Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
       walkerPowers)
@@ -313,7 +319,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
   test("drift check: stop after a failed roll ends the walk with no relic") {
     val (ready, actor, siteId, relic) = recoverable
     val finished = assertNoDrift(ready,
-      Vector(StartWalk, RollResume(lowRoll),
+      Vector(StartWalk(Vector(lowRoll)),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))),
       walkerPowers)
@@ -327,11 +333,11 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     }
   }
 
-  test("drift check: Catacombs-modified Recover (advance -> roll -> resolve) " +
+  test("drift check: Catacombs-modified Recover (advance -> resolve) " +
       "-- the first corpus entry where a power changed the tree") {
     val fixture = CatacombsContributionSuite.reliclessSite()
     val finished = assertNoDrift(fixture.ready,
-      Vector(StartWalk, RollResume(highRoll),
+      Vector(StartWalk(Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic)),
           fixture.actor))), catacombsPowers)
@@ -357,7 +363,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       OathkeeperProcedure.build(catalog, state,
         state.game.current.turn.activePlayer, Vector.empty).toOption.get
     val finished = assertNoDrift(ready,
-      Vector(StartWalk, AnswerResume(Answered(
+      Vector(StartWalk(), AnswerResume(Answered(
         OathkeeperProcedure.recipientDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Player(leaders(1))), holder))),
       walkerPowers, TriggeredProcedureRef.Oathkeeper, oathkeeperTree)

@@ -13,6 +13,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.WalkerDiceFixture
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
@@ -109,27 +110,38 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     (catacombsChronicle, catacombsOrders, recoverSites)
   }
 
-  private final class CountingRecoverDice extends DefenseDicePort {
+  /** Recover rolls as the walker walks, so its dice come from the walker's
+    * own source -- the campaign port -- rather than from the port a parked
+    * roll command would have asked. `calls` counts the defense rolls, which
+    * is what every Recover test here cares about.
+    */
+  private final class CountingRecoverDice extends CampaignDicePort {
     var calls = 0
-    def rollTwo() = {
+    def rollAttack(count: Int): Vector[AttackDieFace] =
+      Vector.fill(count)(AttackDieFace.HollowSword)
+    def rollDefense(count: Int): Vector[DefenseDieFace] = {
       calls += 1
       Vector(DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
     }
   }
 
   private final class FixedRecoverDice(faces: Vector[DefenseDieFace])
-      extends DefenseDicePort {
+      extends CampaignDicePort {
     var calls = 0
-    def rollTwo() = {
+    def rollAttack(count: Int): Vector[AttackDieFace] =
+      Vector.fill(count)(AttackDieFace.HollowSword)
+    def rollDefense(count: Int): Vector[DefenseDieFace] = {
       calls += 1
       faces
     }
   }
 
   private final class ScriptedRecoverDice(
-      rolls: Vector[Vector[DefenseDieFace]]) extends DefenseDicePort {
+      rolls: Vector[Vector[DefenseDieFace]]) extends CampaignDicePort {
     var calls = 0
-    def rollTwo() = {
+    def rollAttack(count: Int): Vector[AttackDieFace] =
+      Vector.fill(count)(AttackDieFace.HollowSword)
+    def rollDefense(count: Int): Vector[DefenseDieFace] = {
       val faces = rolls(calls)
       calls += 1
       faces
@@ -147,20 +159,24 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val walkerRepository = new InMemoryEventStreamRepository
     val walkerDice = new CountingRecoverDice
     def walkerService = new GameApplicationService(catalog, walkerRepository,
-      defenseDicePort = walkerDice)
+      campaignDicePort = walkerDice)
     val walkerSetup = execute(walkerService, "walker-recover", recoverSites,
       recoverChronicle)
     val walkerAct = walkerService.handle("walker-recover",
       walkerSetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
 
+    // The start rolls on its way through: two shields and a doubler reach
+    // this site's difficulty, so the command that begins Recover is also the
+    // one that parks on the relic it won.
     val started = walkerService.handle("walker-recover", walkerAct.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
-    val Ready(atRoll) = started.state: @unchecked
+    val Ready(atRelic) = started.state: @unchecked
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(atRoll.game.current.walkerProcedure, Some(ActionRef.Recover))
-    assert(atRoll.game.current.walkerPending.nonEmpty)
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)))
+    assertEquals(walkerDice.calls, 1)
+    assertEquals(atRelic.game.current.walkerProcedure, Some(ActionRef.Recover))
+    assert(atRelic.game.current.walkerPending.nonEmpty)
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRelic(actor,
+      DecisionId(RecoverProcedure.relicDecisionId)))
 
     walkerService.handle("walker-recover", started.nextSequence,
       GameCommand.PeekSiteRelics(actor)) match {
@@ -171,20 +187,13 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(walkerService.load("walker-recover").toOption.flatten.get
       .nextSequence, started.nextSequence)
 
-    val reloadedAtRoll = new GameApplicationService(catalog, walkerRepository)
+    val reloadedAtRelic = new GameApplicationService(catalog, walkerRepository)
       .load("walker-recover").toOption.flatten.get
-    assertEquals(reloadedAtRoll.state, started.state)
-    val rolled = walkerService.handle("walker-recover",
-      reloadedAtRoll.nextSequence,
-      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
-    assertEquals(walkerDice.calls, 1)
-    val Ready(atRelic) = rolled.state: @unchecked
-    assert(rolled.events.last.isInstanceOf[WalkerParked])
-    assertEquals(rolled.continue, OathContinue.AwaitingRecoverRelic(actor,
-      DecisionId(RecoverProcedure.relicDecisionId)))
+    assertEquals(reloadedAtRelic.state, started.state)
     val relic = atRelic.game.current.map.sites(recoverSite).relics.head.id
 
-    val finished = walkerService.handle("walker-recover", rolled.nextSequence,
+    val finished = walkerService.handle("walker-recover",
+      reloadedAtRelic.nextSequence,
         GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(relic))))).toOption.get
     val Ready(afterWalker) = finished.state: @unchecked
@@ -212,7 +221,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(replayed.state, finished.state)
     assertEquals(replayed.nextSequence, finished.nextSequence)
 
-    val recordedOps = (started.events ++ rolled.events ++ finished.events)
+    val recordedOps = (started.events ++ finished.events)
       .collect { case step: WalkerStepRecorded => step.ops }.flatten
     assertEquals(recordedOps, Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
@@ -222,7 +231,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         PositionedLocation(Location.Site(recoverSite)),
         PositionedLocation(Location.PlayArea(actor)),
         resultingOrientation = Some(Orientation.FaceDown))))
-    assertEquals((started.events ++ rolled.events ++ finished.events).collect {
+    assertEquals((started.events ++ finished.events).collect {
       case WalkerStepRecorded(_, DeltaRecorded(semantic), _, _) => semantic
     }, Vector(
       DicePoolModified(RecoverProcedure.recoverPool, 2),
@@ -240,7 +249,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val actor = orders.firstPlayer
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository,
-      defenseDicePort = new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
+      campaignDicePort = new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
         DefenseDieFace.Doubler)))
     val setup = execute(service, "walker-unknown-modifier", recoverSites,
       recoverChronicle)
@@ -269,11 +278,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .toOption.get
     assert(started.events.nonEmpty)
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)))
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRelic(actor,
+      DecisionId(RecoverProcedure.relicDecisionId)))
   }
 
-  test("walker Continue answer and repeated Roll park survive reload") {
+  test("walker Continue answer and the roll it buys survive reload") {
     val recoverSite = catalog.sites.find(site =>
       site.recoverDifficulty.nonEmpty && site.relicSlots > 0 &&
         !site.handlers.exists(_.contains(".homeland-"))).get.id
@@ -282,28 +291,27 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val dice = new FixedRecoverDice(Vector(DefenseDieFace.Blank,
       DefenseDieFace.Blank))
     def service = new GameApplicationService(catalog, repository,
-      defenseDicePort = dice)
+      campaignDicePort = dice)
     val setup = execute(service, "walker-continue", recoverSites, recoverChronicle)
     val actor = orders.firstPlayer
     val act = service.handle("walker-continue", setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
-    val started = service.handle("walker-continue", act.nextSequence,
+    // Both dice come up blank, so the start's own roll fails and parks the
+    // Continue/Stop Decide.
+    val failed = service.handle("walker-continue", act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)))
-    val failed = service.handle("walker-continue", started.nextSequence,
-      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
-    // A failed roll parks the Continue/Stop Decide, not the Roll itself: same
-    // AwaitingRecoverRoll continuation shape as the Roll park above, but a
-    // different decision id — proving the mapping dispatches on the parked
-    // node's identity rather than reusing whatever it last saw at this path.
+    assertEquals(dice.calls, 1)
     assertEquals(failed.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.choiceDecisionId)))
+    // Continue buys two more dice and rolls them inside the same command,
+    // which fails again and parks the same choice: the continuation names
+    // the parked node's own decision id either way.
     val continued = service.handle("walker-continue", failed.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue"))))).toOption.get
+    assertEquals(dice.calls, 2)
     assertEquals(continued.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)))
+      DecisionId(RecoverProcedure.choiceDecisionId)))
     val Ready(ready) = continued.state: @unchecked
     assertEquals(ready.game.current.walkerPending.toVector.flatMap(_.answered),
       Vector(Answered(RecoverProcedure.choiceDecisionId,
@@ -316,11 +324,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         "\"procedure\":{\"family\":\"action\",\"key\":\"recover\"}") &&
         record.contains("\"answered\"")))
 
-    val failedAgain = service.handle("walker-continue", continued.nextSequence,
-      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
-    assertEquals(dice.calls, 2)
-    assertEquals(failedAgain.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.choiceDecisionId)))
+    val failedAgain = continued
     val Ready(afterSecondRoll) = failedAgain.state: @unchecked
     val accumulated = afterSecondRoll.game.current.rollOutcomes(
       RecoverProcedure.recoverPool)
@@ -355,18 +359,15 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val walkerRepository = new InMemoryEventStreamRepository
     val walkerDice = new ScriptedRecoverDice(rolls)
     val walkerService = new GameApplicationService(catalog, walkerRepository,
-      defenseDicePort = walkerDice)
+      campaignDicePort = walkerDice)
     val walkerSetup = execute(walkerService, "walker-cross-roll-doubler",
       orderedSites, saltFlatsChronicle)
     val walkerAct = walkerService.handle("walker-cross-roll-doubler",
       walkerSetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
-    val walkerStarted = walkerService.handle("walker-cross-roll-doubler",
+    val walkerFirst = walkerService.handle("walker-cross-roll-doubler",
       walkerAct.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
       .toOption.get
-    val walkerFirst = walkerService.handle("walker-cross-roll-doubler",
-      walkerStarted.nextSequence,
-      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     val Ready(walkerAfterFirst) = walkerFirst.state: @unchecked
     assertEquals(walkerAfterFirst.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 1)
@@ -379,13 +380,13 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(walkerAfterFirstReload.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 1)
 
-    val walkerContinued = walkerService.handle("walker-cross-roll-doubler",
+    // Continuing buys the second pair and rolls them in the same command:
+    // the Doubler that lands there multiplies the shield from the first
+    // roll, which is the accumulation under test.
+    val walkerSecond = walkerService.handle("walker-cross-roll-doubler",
       walkerFirstReloaded.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue"))))).toOption.get
-    val walkerSecond = walkerService.handle("walker-cross-roll-doubler",
-      walkerContinued.nextSequence,
-      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     val Ready(walkerAfterSecond) = walkerSecond.state: @unchecked
     assertEquals(walkerAfterSecond.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 2)
@@ -432,7 +433,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val repository = new InMemoryEventStreamRepository
     val dice = new CountingRecoverDice
     val service = new GameApplicationService(catalog, repository,
-      defenseDicePort = dice)
+      campaignDicePort = dice)
     val actor = orders.firstPlayer
     val setup = execute(service, "walker-pool-mismatch", recoverSites,
       recoverChronicle)
@@ -442,6 +443,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
       .toOption.get
 
+    // The start rolled once on its way to the park; a roll command naming
+    // a pool the walker is not parked on must add nothing to that count.
+    assertEquals(dice.calls, 1)
     val rejected = service.handle("walker-pool-mismatch", started.nextSequence,
       GameCommand.RollWalker(actor, PoolKey("not-the-parked-pool")))
     assert(rejected match {
@@ -449,7 +453,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
           _: oathdigital.model.OathViolation.InvalidEventOrder)) => true
       case _ => false
     }, s"expected InvalidEventOrder, got $rejected")
-    assertEquals(dice.calls, 0)
+    assertEquals(dice.calls, 1)
   }
 
   private def prepareCatacombs(service: GameApplicationService, gameId: String,
@@ -469,13 +473,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val started = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
       .toOption.get
-    val rolled = service.handle(gameId, started.nextSequence,
-      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
-    val Ready(atRelic) = rolled.state: @unchecked
+    val Ready(atRelic) = started.state: @unchecked
     val siteId = atRelic.game.current.players.find(_.player == actor).get
       .pawnSite.get
     val relic = atRelic.game.current.map.sites(siteId).relics.head.id
-    val emptied = service.handle(gameId, rolled.nextSequence,
+    val emptied = service.handle(gameId, started.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Relic(relic))))).toOption.get
     val selecting = service.handle(gameId, emptied.nextSequence,
@@ -503,7 +505,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val repository = new InMemoryEventStreamRepository
     val dice = new CountingRecoverDice
     val service = new GameApplicationService(catalog, repository,
-      defenseDicePort = dice)
+      campaignDicePort = dice)
     val gameId = "catacombs-walker-persisted"
     val (catacombsChronicle, catacombsOrders, catacombsSites) = catacombsSetup
     val (prepared, actor, _) = prepareCatacombs(service, gameId,
@@ -544,8 +546,10 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       relic.id -> relic.orientation), Vector(topRelic -> Orientation.FaceDown))
     assertEquals(afterPlayer.board.faceUpSecrets,
       beforePlayer.board.faceUpSecrets - 1)
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)))
+    // Catacombs put the relic there and the start's own roll won it, so the
+    // command parks on taking it.
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRelic(actor,
+      DecisionId(RecoverProcedure.relicDecisionId)))
 
     // Replay from the journal alone reproduces the same state: the ops did
     // not merely encode, they decode back to the operations that built it.
@@ -555,11 +559,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(reloaded.nextSequence, started.nextSequence)
 
     // And the walk still finishes on the reloaded stream.
-    val rolled = service.handle(gameId, reloaded.nextSequence,
-      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
-    val Ready(atRelic) = rolled.state: @unchecked
+    val Ready(atRelic) = reloaded.state: @unchecked
     val recovered = atRelic.game.current.map.sites(siteId).relics.head.id
-    val finished = service.handle(gameId, rolled.nextSequence,
+    val finished = service.handle(gameId, reloaded.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Relic(recovered))))).toOption.get
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
@@ -571,7 +573,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       "OathRules.startWalker accepts exactly the offered id (Task 9a)") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository,
-      defenseDicePort = new CountingRecoverDice)
+      campaignDicePort = new CountingRecoverDice)
     val gameId = "catacombs-walker-preview"
     val (catacombsChronicle, catacombsOrders, catacombsSites) = catacombsSetup
     val (prepared, actor, _) = prepareCatacombs(service, gameId,
@@ -594,7 +596,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     // Catacombs' relic move, so `StartWalker` passed here and failed at
     // append. The codec is now total over `Location`.)
     val rules = new OathRules(catalog,
-      walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
+      walkerDice = WalkerDiceFixture.blanks)
     val started = rules.startWalker(prepared.state, ActionRef.Recover, actor,
       offeredIds)
     assert(started.isRight,

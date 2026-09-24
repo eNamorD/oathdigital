@@ -45,16 +45,14 @@ Events record accepted facts needed for deterministic replay:
 
 - Search start records the application-prepared draw; completion records the
   exact ordered player decision.
-- Recover records prepared physical die faces and resolved costs. Campaign
-  records each answer as a walker `ChoicePayload` step, each automatic roll as a
-  `RollPayload` step marked `automatic`, and every other step as recorded core
-  operations, including `RecordCampaignResult`. It has no events of its own.
-- Catacombs records one procedure-scoped `CatacombsResolved` outcome containing
-  its exact power, source, payment, and relic placement. Replay revalidates the
-  Recover window and all power facts, then leaves a typed prepared-Recover
-  marker until the matching `RecoverRolled` event. Generic payment and relic
-  placement operations are internal composition values, not independently
-  injectable `OathEvent` cases.
+- Recover and Campaign both record each answer as a walker `ChoicePayload`
+  step, each roll as a `RollPayload` step marked `automatic`, and every other
+  step as recorded core operations, including Campaign's
+  `RecordCampaignResult`. Neither has events of its own.
+- Catacombs records its relic placement and its payment as the operations of
+  the one walker step its contribution produces, attributed to the power that
+  produced it. Those payment and placement operations are internal composition
+  values, not independently injectable `OathEvent` cases.
 - Forge records the prepared relic transfer and exact assignments.
 - Challenge, banners, minor actions, Visions, and endings record their
   authoritative choices and terminal facts. Negotiation records each answer
