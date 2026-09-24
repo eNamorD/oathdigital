@@ -306,12 +306,13 @@ private[application] final class WalkerDecisionProjector(
           row(s"${presentation.safeLabel(slot.owner.value)} facedown relic")
         else None
       case DecisionOption.Banner(held) =>
+        // The banner is one object on the table and the board says who holds
+        // it, so the option names the banner alone -- and counts what that
+        // banner actually takes.
         val current = ready.game.current
-        val owner = BannerRules.holder(current, held.banner)
-          .fold("Unclaimed")(holder => presentation.safeLabel(holder.value))
-        row(s"$owner ${presentation.safeLabel(held.banner.key)}",
-          extra = Vector(
-            s"Currently ${BannerRules.resources(current, held.banner)} resources"))
+        row(BannerRules.displayName(held.banner),
+          extra = Vector(s"Currently ${BannerRules.resources(current,
+            held.banner)} ${BannerRules.resourceName(held.banner)}"))
       case DecisionOption.Deck(deck) =>
         row(presentation.safeLabel(deck.id.key))
       case DecisionOption.FavorBank(bank) =>

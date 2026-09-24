@@ -15,6 +15,13 @@ object PlaceBannerResourceProcedure {
   val amountDecisionId: String = "place-banner-resource.amount"
   val decisionIds: Set[String] = Set(bannerDecisionId, amountDecisionId)
 
+  /** The amount question's own copy: the banner as it is printed, and the
+    * one resource that banner takes.
+    */
+  def amountHeading(banner: Banner): String =
+    s"Place ${BannerRules.resourceName(banner)} on " +
+      BannerRules.displayName(banner)
+
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
     _ <- noStartArgs(args)
@@ -77,8 +84,7 @@ object PlaceBannerResourceProcedure {
     val own = ready.game.current.players.find(_.player == actor)
       .fold(0)(BannerRules.playerResources(_, banner))
     Decide(amountDecisionId, actor, DecisionQuery.ChooseAmount(1,
-      math.max(1, own), Some(s"Place resources on ${banner.key}"),
-      "Place resources"),
+      math.max(1, own), Some(amountHeading(banner)), "Place resources"),
       window = Some(PowerWindow.PlaceBannerResourceAmountSelection))
   }
 

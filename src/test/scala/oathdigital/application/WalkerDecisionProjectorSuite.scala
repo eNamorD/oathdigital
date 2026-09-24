@@ -178,7 +178,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(query.options, Vector.empty)
   }
 
-  test("an unclaimed banner is presentable and every banner shows its resources") {
+  test("a banner is named as it is printed, and counts what it holds") {
     val (base, actor) = parked(ActionRef.Recover)
     val option = DecisionOption.Banner(DecisionOptionRef.Banner(Banner.DarkestSecret))
     val unclaimed = base.copy(ready = base.ready.updateCurrent(current =>
@@ -186,9 +186,11 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
         current.banners.darkestSecret.copy(holder = None, secrets = 3)))))
     val query = projects(unclaimed, actor, Vector(option))
       .getOrElse(fail("an unclaimed banner must project"))
+    // No owner in the label: the banner is one object on the table, and who
+    // holds it is read off the board. The count names the resource it takes.
     assertEquals(query.options.map(row => (row.kind, row.id, row.label,
       row.details)), Vector(("banner", "darkest-secret",
-      "Unclaimed Darkest Secret", Vector("Currently 3 resources"))))
+      "Darkest Secret", Vector("Currently 3 secrets"))))
   }
 
   /** Whether the tree below projects at all, for the given options. */

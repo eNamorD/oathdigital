@@ -56,6 +56,17 @@ class PlaceBannerResourceProcedureSuite extends munit.FunSuite {
       DecisionAnswer.ChooseAmountAnswer(actor.board.faceUpSecrets)).isRight)
   }
 
+  test("the amount question names the banner and the resource it takes") {
+    // A banner is named as it is printed, and each takes one resource, so
+    // the question says which rather than "resources on darkest-secret".
+    assertEquals(oathdigital.gameplay.actions.challenge
+      .PlaceBannerResourceProcedure.amountHeading(Banner.DarkestSecret),
+      "Place secrets on Darkest Secret")
+    assertEquals(oathdigital.gameplay.actions.challenge
+      .PlaceBannerResourceProcedure.amountHeading(Banner.PeoplesFavor),
+      "Place favor on People's Favor")
+  }
+
   test("only a banner the actor holds is offered") {
     val (board, actor) = holding
     val started = start(board).getOrElse(fail("must start"))

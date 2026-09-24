@@ -14,6 +14,18 @@ object BannerRules {
     case Banner.PeoplesFavor => current.banners.peoplesFavor.favor
     case Banner.DarkestSecret => current.banners.darkestSecret.secrets
   }
+  /** What the banner is called, as it is printed on the card. */
+  def displayName(banner: Banner): String = banner match {
+    case Banner.PeoplesFavor => "People's Favor"
+    case Banner.DarkestSecret => "Darkest Secret"
+  }
+  /** What the banner holds: a question about one says favor or secrets
+    * rather than the word "resources", which names neither.
+    */
+  def resourceName(banner: Banner): String = banner match {
+    case Banner.PeoplesFavor => "favor"
+    case Banner.DarkestSecret => "secrets"
+  }
   def playerResources(player: PlayerState, banner: Banner): Int = banner match {
     case Banner.PeoplesFavor => player.board.favor
     case Banner.DarkestSecret => player.board.faceUpSecrets // CR p.26: facedown do not count.
