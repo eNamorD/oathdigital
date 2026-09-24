@@ -55,7 +55,7 @@ final case class ProjectionAuthorization(
     scope: ProjectionScope
 )
 
-final case class AuthorizedPlayer private (
+final case class AuthorizedPlayer private[application] (
     access: GameAccessContext.Player
 ) {
   def endWake: GameCommand =

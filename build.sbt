@@ -50,11 +50,14 @@ lazy val root = (project in file("."))
       "org.scalameta" %% "munit" % "1.0.4" % Test,
       "org.scalameta" %% "munit-scalacheck" % "1.0.0" % Test
     ),
+    // -Xsource:3 and case-apply-copy-access make 2.13 enforce Scala 3 rules until the switch.
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
       "-unchecked",
-      "-Xlint"
+      "-Xlint",
+      "-Xsource:3",
+      "-Xsource-features:case-apply-copy-access"
     ),
     // Ratchet: pinned at the baseline measured when scoverage was adopted
     // (stmt 84.11%). Raise it as coverage improves; the goal is 100% with
@@ -268,11 +271,14 @@ lazy val frontend = (project in file("frontend"))
     // depend on suite ordering. The `jsdom` package is pinned in the repo
     // root's `package.json`; CI runs `npm ci` before `frontend/test`.
     Test / jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
+    // -Xsource:3 and case-apply-copy-access make 2.13 enforce Scala 3 rules until the switch.
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
       "-unchecked",
-      "-Xlint"
+      "-Xlint",
+      "-Xsource:3",
+      "-Xsource-features:case-apply-copy-access"
     )
   )
 
