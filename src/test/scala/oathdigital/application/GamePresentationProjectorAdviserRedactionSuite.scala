@@ -46,4 +46,15 @@ class GamePresentationProjectorAdviserRedactionSuite extends munit.FunSuite {
       .find(_.playerId == actor.value).get
     assertRedacted(board.advisers)
   }
+
+  test("playerBoards shows the tokens resting on the owner's faceup adviser") {
+    val placed = DenizenState(EconomyFixture.matchingId, Orientation.FaceUp,
+      Tokens(favor = 1, secrets = 2))
+    val ready = EconomyFixture.act(advisers = Vector(placed))
+    val actor = EconomyFixture.player(ready).player
+    val board = projector.playerBoards(ready, Some(actor))
+      .find(_.playerId == actor.value).get
+    assertEquals(board.advisers.map(card => (card.favor, card.secrets)),
+      Vector((1, 2)))
+  }
 }

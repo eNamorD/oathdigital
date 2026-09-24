@@ -186,18 +186,26 @@ private[application] final class GamePresentationProjector(
         player.advisers.map(card =>
           if (identifies(card.id, adviserOrientation(card),
               PlayerCardArea.Advisers))
-            cardDetails(card.id, Some(adviserOrientation(card)),
-              hidden = false)
+            withTokens(cardDetails(card.id, Some(adviserOrientation(card)),
+              hidden = false), card match {
+                case value: DenizenState => value.tokens
+                case _ => Tokens.empty
+              })
           else hiddenCard(cardKind(card.id))),
         player.relics.map(card =>
           if (identifies(card.id, card.orientation, PlayerCardArea.Relics))
-            cardDetails(card.id, Some(card.orientation), hidden = false)
+            withTokens(cardDetails(card.id, Some(card.orientation),
+              hidden = false), card.tokens)
           else hiddenCard("relic")),
         player.revealedVision.map(card => cardDetails(card.id,
           Some(card.orientation), hidden = false)),
         banners(ready).filter(_.holderPlayerId.contains(player.player.value)))
     }
   }
+
+  private def withTokens(details: CardDetailsProjection,
+      tokens: Tokens): CardDetailsProjection =
+    details.copy(favor = tokens.favor, secrets = tokens.secrets)
 
   def setupPlayerBoards(material: FirstGameSetupMaterial): Vector[PlayerBoardProjection] =
     material.players.map(player => PlayerBoardProjection(player.player.value,
