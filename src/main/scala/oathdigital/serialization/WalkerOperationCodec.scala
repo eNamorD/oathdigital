@@ -28,7 +28,7 @@ import oathdigital.model._
   * arm.
   */
 private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
-    this: GameEventJsonSupport =>
+  this: GameEventJsonSupport =>
   import WireError._
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
@@ -72,7 +72,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "from" -> encodePositionedLocation(from),
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
-          value => ujson.Str(encodeOrientation(value))))
+          value => ujson.Str(orientationKey(value))))
       case PayCost(player, placedAt, cost, intoOccupied, matchingBank, _) =>
         val optional: Vector[(String, ujson.Value)] =
           (if (intoOccupied) Vector("intoOccupied" -> (ujson.Bool(true): ujson.Value))
@@ -88,7 +88,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "at" -> encodeLocation(at))
       case Flip(card, at, orientation) => ujson.Obj("kind" -> "flip",
         "card" -> encodeCardRef(card), "at" -> encodeLocation(at),
-        "orientation" -> encodeOrientation(orientation))
+        "orientation" -> orientationKey(orientation))
       case FlipSecrets(player, amount, from, to) => ujson.Obj(
         "kind" -> "flip-secrets", "playerId" -> player.value,
         "amount" -> amount, "from" -> encodeSecretSide(from),
@@ -141,7 +141,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "kind" -> "play", "card" -> encodeCardRef(card),
         "from" -> encodePositionedLocation(from),
         "destination" -> encodeLocation(destination),
-        "orientation" -> encodeOrientation(orientation))
+        "orientation" -> orientationKey(orientation))
       case Replace(removed, replacements, at, _) => ujson.Obj(
         "kind" -> "replace", "removed" -> encodePiece(removed),
         "replacements" -> encodePiece(replacements),
@@ -657,7 +657,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     secretBurnt <- safeIntField(value.obj, "secretBurnt", path)
   } yield Cost(favor, secret, favorBurnt, secretBurnt)
 
-  private def encodeOrientation(value: Orientation): String = value match {
+  private def orientationKey(value: Orientation): String = value match {
     case Orientation.FaceUp => "face-up"
     case Orientation.FaceDown => "face-down"
   }

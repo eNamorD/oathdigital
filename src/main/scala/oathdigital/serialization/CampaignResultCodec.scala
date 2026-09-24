@@ -7,7 +7,7 @@ import scala.util.control.NonFatal
   * operation. Split out of `WalkerOperationCodec` for headroom.
   */
 private[serialization] trait CampaignResultCodec {
-    this: GameEventJsonSupport =>
+  this: GameEventJsonSupport =>
   import WireError._
 
   protected final def encodeCampaignResult(result: CampaignResult): ujson.Value =

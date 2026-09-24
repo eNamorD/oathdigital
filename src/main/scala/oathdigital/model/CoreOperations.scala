@@ -652,8 +652,8 @@ final case class Decide(decisionId: String, owner: PlayerId,
   * returns `Vector.empty` runs nothing and records no step (nothing ran).
   * Flatten sees a leaf: `Operation.flatten(BuildOps(...))` is itself.
   */
-final case class BuildOps(build: (ReadyGame, PendingTree) =>
-    Either[OathViolation, Vector[CoreOperation]],
+final case class BuildOps(
+    build: (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]],
     override val window: Option[PowerWindow] = None,
     restrictions: (ReadyGame, PendingTree) => Vector[OperationRestriction] =
       (_, _) => Vector.empty)

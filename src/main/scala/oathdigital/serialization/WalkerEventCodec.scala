@@ -10,7 +10,7 @@ import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts. */
 private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
-    this: GameEventJsonSupport =>
+  this: GameEventJsonSupport =>
   import GameEventWire._
   import WireError._
 

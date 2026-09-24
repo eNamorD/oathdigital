@@ -320,8 +320,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     assertEquals(ProcedureWalker.resolve(ready, tree, pending, undeclared,
       noPowers),
       Left(OathViolation.InvalidEventOrder(
-        "decision recover.choice does not offer the selected option")):
-        Either[OathViolation, WalkerOutcome])
+        "decision recover.choice does not offer the selected option"))
+        : Either[OathViolation, WalkerOutcome])
   }
 
   test("a Decide rejects an answer of the wrong shape for its query") {
@@ -333,8 +333,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         DecisionAnswer.PartitionAnswer(Vector.empty), actor),
       noPowers),
       Left(OathViolation.InvalidEventOrder(
-        "decision recover.choice expects a single-choice answer")):
-        Either[OathViolation, WalkerOutcome])
+        "decision recover.choice expects a single-choice answer"))
+        : Either[OathViolation, WalkerOutcome])
   }
 
   test("a malformed query is rejected as a contract failure before the " +
@@ -358,8 +358,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         Answered(node.decisionId, ChooseOneAnswer(continueOption), actor),
         noPowers),
         Left(OathViolation.InvalidEventOrder(
-          s"decision recover.choice $detail")):
-          Either[OathViolation, WalkerOutcome])
+          s"decision recover.choice $detail"))
+          : Either[OathViolation, WalkerOutcome])
     }
   }
 
@@ -373,8 +373,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       pending,
       Answered(decide.decisionId, ChooseOneAnswer(continueOption), intruder),
       noPowers),
-      Left(OathViolation.WrongPlayer(actor, intruder)):
-        Either[OathViolation, WalkerOutcome])
+      Left(OathViolation.WrongPlayer(actor, intruder))
+        : Either[OathViolation, WalkerOutcome])
   }
 
   test("a partition Decide accepts a complete legal placement and rejects " +
@@ -398,8 +398,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     assertEquals(ProcedureWalker.resolve(ready, tree, pending,
       answer(Vector("left", "right", "right")), noPowers),
       Left(OathViolation.InvalidEventOrder(
-        "decision split leaves section 'left' below its minimum of 2")):
-        Either[OathViolation, WalkerOutcome])
+        "decision split leaves section 'left' below its minimum of 2"))
+        : Either[OathViolation, WalkerOutcome])
   }
 
   test("a Roll leaf parks too (faces ride a later command; Task 4 wires them)") {

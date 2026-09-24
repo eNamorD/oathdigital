@@ -268,8 +268,8 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(first.window, Some(PowerWindow.ForgeCost): Option[PowerWindow])
     assertEquals(first.asInstanceOf[BuildOps].build(f.ready,
       PendingTree(Vector.empty, Vector.empty)),
-      Right(Vector[CoreOperation](SpendSupply(f.actor.player, 1))):
-        Either[OathViolation, Vector[CoreOperation]])
+      Right(Vector[CoreOperation](SpendSupply(f.actor.player, 1)))
+        : Either[OathViolation, Vector[CoreOperation]])
 
     // The walk records exactly that one leaf before parking. A windowed leaf
     // walks its own folded vector, so its node id sits one level deeper than
@@ -425,8 +425,8 @@ class ForgeProcedureSuite extends munit.FunSuite
 
     assertEquals(ProcedureWalker.resolve(atPark, tree,
       pending, answerOf(legalPlacements(f), other), noPowers),
-      Left(OathViolation.WrongPlayer(f.actor.player, other)):
-        Either[OathViolation, WalkerOutcome])
+      Left(OathViolation.WrongPlayer(f.actor.player, other))
+        : Either[OathViolation, WalkerOutcome])
   }
 
   test("P4/R14: the decision reads its eligible targets live, so a denizen " +
@@ -605,8 +605,8 @@ class ForgeProcedureSuite extends munit.FunSuite
     val emptied = atPark.updateCurrent(_.copy(commonCards =
         atPark.game.current.commonCards.copy(relicDeck = Vector.empty)))
     assertEquals(resolveWith(f, emptied, tree, pending, legal),
-      Left(OathViolation.ForgeUnavailable("relic deck is empty")):
-        Either[OathViolation, WalkerOutcome])
+      Left(OathViolation.ForgeUnavailable("relic deck is empty"))
+        : Either[OathViolation, WalkerOutcome])
   }
 
   /** Every node reachable from `node` through STATIC children, including

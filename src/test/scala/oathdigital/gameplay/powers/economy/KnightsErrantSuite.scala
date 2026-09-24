@@ -55,9 +55,9 @@ class KnightsErrantSuite extends munit.FunSuite {
     done.copy(events = started.events ++ done.events)
   }
 
-  private def answer(from: OathTransition, id: String, given: DecisionAnswer)
+  private def answer(from: OathTransition, id: String, choice: DecisionAnswer)
       : OathTransition = {
-    val next = rules.resolveWalker(from.state, actor, id, given).toOption.get
+    val next = rules.resolveWalker(from.state, actor, id, choice).toOption.get
     next.copy(events = from.events ++ next.events)
   }
 

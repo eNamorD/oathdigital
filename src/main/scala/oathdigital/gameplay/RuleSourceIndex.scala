@@ -86,7 +86,7 @@ object RuleSourceIndex {
     val current = ready.game.current
     val sites = current.map.inPlay.flatMap { siteId =>
       val printed = catalog.sites.find(_.id == siteId).toVector.map(definition =>
-        IndexedRuleSource(RuleSourceRef.Site(siteId), ids(definition.handlers),
+        IndexedRuleSource(RuleSourceRef.Site(siteId), rawIds(definition.handlers),
           RuleSourceFace.Printed))
       val cards = current.map.sites(siteId).denizens.flatMap {
         case denizen: DenizenState =>
@@ -140,9 +140,9 @@ object RuleSourceIndex {
       IndexedRuleSource(
         RuleSourceRef.Banner(Banner.PeoplesFavor.key),
         current.banners.peoplesFavor.active match {
-          case PeoplesFavorFace.Mob => ids(Vector("banner.peoples-favor.mob"))
+          case PeoplesFavorFace.Mob => rawIds(Vector("banner.peoples-favor.mob"))
           case PeoplesFavorFace.GrandCouncil =>
-            ids(Vector("banner.peoples-favor.grand-council"))
+            rawIds(Vector("banner.peoples-favor.grand-council"))
         },
         current.banners.peoplesFavor.active match {
           case PeoplesFavorFace.Mob => RuleSourceFace.Mob
@@ -153,11 +153,11 @@ object RuleSourceIndex {
       IndexedRuleSource(
         RuleSourceRef.Banner(Banner.DarkestSecret.key),
         current.banners.darkestSecret.active match {
-          case DarkestSecretFace.WanderingFlame => ids(Vector(
+          case DarkestSecretFace.WanderingFlame => rawIds(Vector(
             "banner.darkest-secret.wandering-flame.move",
             "banner.darkest-secret.wandering-flame.place"))
           case DarkestSecretFace.Festival =>
-            ids(Vector("banner.darkest-secret.festival"))
+            rawIds(Vector("banner.darkest-secret.festival"))
         },
         current.banners.darkestSecret.active match {
           case DarkestSecretFace.WanderingFlame => RuleSourceFace.WanderingFlame
@@ -171,7 +171,7 @@ object RuleSourceIndex {
           RuleSourceRef.Foundation(number),
           foundation.face match {
             case FoundationFace.Normal => Vector.empty
-            case FoundationFace.Altered => ids(Vector("foundation.altered"))
+            case FoundationFace.Altered => rawIds(Vector("foundation.altered"))
           },
           foundation.face match {
             case FoundationFace.Normal => RuleSourceFace.Normal
@@ -189,7 +189,7 @@ object RuleSourceIndex {
     case Orientation.FaceDown => RuleSourceFace.FaceDown
   }
 
-  private def ids(values: Vector[String]): Vector[PowerId] = values.map(PowerId)
+  private def rawIds(values: Vector[String]): Vector[PowerId] = values.map(PowerId)
   private def ids(values: Vector[CatalogPower]): Vector[PowerId] =
     values.map(_.id)
 }

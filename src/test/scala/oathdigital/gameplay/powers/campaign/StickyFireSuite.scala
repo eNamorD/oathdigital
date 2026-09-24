@@ -106,8 +106,8 @@ class StickyFireSuite extends munit.FunSuite {
     assertEquals(warbands(done.state, b.other), 0)
     assertEquals(favorOf(done.state, b.actor), 0)
     // The Raid then burns half of the defender's favor, the given one included.
-    val given = favorOf(OathState.Ready(b.ready), b.other) + 1
-    assertEquals(favorOf(done.state, b.other), given - given / 2)
+    val defenderFavor = favorOf(OathState.Ready(b.ready), b.other) + 1
+    assertEquals(favorOf(done.state, b.other), defenderFavor - defenderFavor / 2)
   }
 
   test("the same Raid without Sticky Fire kills half the board") {
