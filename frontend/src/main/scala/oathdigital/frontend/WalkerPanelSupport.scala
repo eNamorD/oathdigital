@@ -286,6 +286,35 @@ private[frontend] object WalkerPanelSupport {
   private[frontend] def partitionConfirmLabel(query: DecisionQueryState)
       : String = query.confirmLabel.getOrElse("Confirm")
 
+  /** A query that keeps exactly one thing says which one on its button.
+    *
+    * Read off the section's cap rather than its name: a section bounded at
+    * one, holding one, is the answer in miniature, so the button can name
+    * it -- "Keep Old Oak" -- instead of a generic confirmation. Its label
+    * supplies the verb, so nothing here knows what a Keep is. Any other
+    * shape falls back to what the query calls its own confirmation.
+    */
+  private[frontend] def partitionConfirmLabel(query: DecisionQueryState,
+      draft: WalkerPartitionDraft): String =
+    query.sections.filter(_.maxAllowed.contains(1))
+      .flatMap(section => draft.optionsIn(section.key) match {
+        case Vector(only) => Some(s"${section.label} ${only.label}")
+        case _ => None
+      }).headOption.getOrElse(partitionConfirmLabel(query))
+
+  /** Whether a zone's order is part of the answer the player should be told
+    * about: the zone that takes whatever is left over, with no minimum to
+    * meet and no cap to hit, holding enough cards for an order to exist.
+    *
+    * Keyed on that shape rather than on the word "Discard". A name match
+    * would stop matching the day the section is renamed -- silently, and
+    * exactly when a discard still exists -- where this at worst explains an
+    * order in some future leftover zone that has none, which is visible.
+    */
+  private[frontend] def ordered(section: DecisionSectionState,
+      held: Int): Boolean =
+    section.minRequired == 0 && section.maxAllowed.isEmpty && held > 1
+
   /** The instruction line, assembled from the query's own sections. */
   private[frontend] def partitionInstruction(query: DecisionQueryState): String =
     s"Assign every option: ${query.sections.map(section =>
@@ -318,7 +347,7 @@ private[frontend] object WalkerPanelSupport {
         query.sections.foreach(section =>
           zones.appendChild(partitionZone(section, query, draft, ui)))
         panel.appendChild(zones)
-        val confirm = button(partitionConfirmLabel(query),
+        val confirm = button(partitionConfirmLabel(query, draft),
           "partition-confirm")
         confirm.disabled = !canControl || !draft.canConfirm
         confirm.onclick = _ =>
@@ -335,6 +364,10 @@ private[frontend] object WalkerPanelSupport {
     zone.appendChild(text("h3", "", section.label))
     zone.appendChild(text("p", "decision-zone-helper",
       s"At least ${section.minRequired}."))
+    val held = draft.optionsIn(section.key)
+    if (ordered(section, held.size))
+      zone.appendChild(text("p", "decision-zone-order",
+        s"${section.label} happens in the order shown."))
     // Own row: a zone that holds heading and options together measures as
     // wide as all of them laid end to end, whatever it can wrap to.
     val options = element("div", "partition-options")

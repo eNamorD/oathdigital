@@ -113,6 +113,86 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assertEquals(all(zone, ":scope > .decision-option"), Vector.empty)
   }
 
+  /** Order within a zone is part of the answer, but only a zone that takes
+    * whatever is left over -- no minimum, no cap -- is one whose order the
+    * player needs explaining. Keyed on that shape rather than on the word
+    * "Discard", which would stop matching the day the section is renamed.
+    */
+  private val keepDiscard = DecisionQueryState("partition",
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+    Vector(DecisionSectionState("keep", "Keep", 1, Some(1)),
+      DecisionSectionState("discard", "Discard", 0)),
+    heading = Some("Choose your starting adviser"),
+    confirmLabel = Some("Confirm Adviser"))
+
+  private def picking(): RecordingView = {
+    val ui = new RecordingView("game", "red")
+    ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
+      BoardSelectionContext("game", "red", 9),
+      Some(WalkerDecisionState("setup", "setup-1", "decide",
+        query = Some(keepDiscard))))
+    ui
+  }
+
+  private def pickPanel(ui: RecordingView): dom.Element = {
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderPartitionPanel(
+      projectionWith(Some(WalkerDecisionState("setup", "setup-1", "decide",
+        query = Some(keepDiscard)))),
+      presentation, canControl = true, panel, ui)
+    panel
+  }
+
+  test("a leftover zone holding several options says its order counts") {
+    val zone = one(pickPanel(picking()), """[data-section-key="discard"]""")
+    assertEquals(one(zone, ".decision-zone-order").textContent,
+      "Discard happens in the order shown.")
+  }
+
+  test("the capped zone says nothing about order") {
+    assertEquals(all(one(pickPanel(picking()),
+      """[data-section-key="keep"]"""), ".decision-zone-order"), Vector.empty)
+  }
+
+  /** One card cannot be in an order, so the sentence would be noise. A pick
+    * of two leaves exactly one card behind, whichever one is kept.
+    */
+  test("a zone holding one option says nothing about order") {
+    val twoCards = keepDiscard.copy(options = keepDiscard.options.take(2))
+    val decision = WalkerDecisionState("setup", "setup-1", "decide",
+      query = Some(twoCards))
+    val ui = new RecordingView("game", "red")
+    ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
+      BoardSelectionContext("game", "red", 9), Some(decision))
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderPartitionPanel(projectionWith(Some(decision)),
+      presentation, canControl = true, panel, ui)
+    assertEquals(all(panel, ".decision-zone-order"), Vector.empty)
+  }
+
+  /** Forge pays into zones that each carry a minimum, so none of them is a
+    * leftover zone and none claims an order.
+    */
+  test("a partition of payments claims no order anywhere") {
+    assertEquals(all(render(opened()), ".decision-zone-order"), Vector.empty)
+  }
+
+  test("the confirm button names the card the one-card zone holds") {
+    assertEquals(confirm(pickPanel(picking())).textContent, "Keep Denizen 1")
+  }
+
+  /** With the slot empty or the query declaring no single-slot section, the
+    * query's own label is what the button says.
+    */
+  test("without a filled single slot the query's own label stands") {
+    val ui = picking()
+    ui.currentWalkerPartition = ui.currentWalkerPartition
+      .map(_.move("denizen:denizen:1", "discard"))
+    assertEquals(confirm(pickPanel(ui)).textContent, "Confirm Adviser")
+    assertEquals(confirm(render(opened())).textContent, "Complete Forge")
+  }
+
   test("the accessible move button moves one option to the other zone") {
     val ui = opened()
     val panel = render(ui)

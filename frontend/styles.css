@@ -337,7 +337,10 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
    space above it is the box's own padding twice over. */
 .partition-zone { padding-top: 7px; }
 .partition-zone > h3 { margin: 0; }
-.partition-zone > .decision-zone-helper { margin: 0.1em 0 1.15em; }
+.partition-zone > .decision-zone-helper { margin: 0.1em 0 0.35em; }
+.partition-zone > .decision-zone-order { margin: 0 0 1.15em; color: #a99f8c;
+  font-size: 0.82em; font-style: italic; }
+.partition-zone > .decision-zone-helper:last-of-type { margin-bottom: 1.15em; }
 /* The card sets the option's width; a move button's label must not, or the
    zone inherits the widest destination name as its own width. */
 .partition-zone .decision-option { display: flex; flex-direction: column;
@@ -419,6 +422,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   padding: 2px 6px; }
 .card-choice button[aria-pressed="true"] { border-color: #fff2d6;
   background: #3b3123; }
+.walker-many-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.walker-many-option { border: 2px solid transparent; }
+.walker-many-option[aria-pressed="true"] { border-color: #fff2d6;
+  background: #3b3123; color: #fff2d6; font-weight: 800; }
+.walker-many-option[aria-pressed="true"]::before { content: "✓ "; }
 .decision-cards, .board-cards { gap: var(--card-gap); }
 .site-cards { display: flex; flex-wrap: wrap; align-items: flex-start;
   min-width: 0; gap: var(--card-gap); }
