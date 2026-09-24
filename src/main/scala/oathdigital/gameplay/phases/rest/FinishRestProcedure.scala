@@ -74,8 +74,12 @@ object FinishRestProcedure {
     favor ++ secrets ++ reveal
   }
 
-  private def supplyRefresh(ready: ReadyGame, resting: PlayerId)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+  /** The Supply the resting player would end Rest holding, from the warbands
+    * their bank holds right now. Read before Rest it is a preview: a power
+    * folded in front of cleanup can still move warbands and change the band.
+    */
+  def supplyAfterRest(ready: ReadyGame, resting: PlayerId)
+      : Either[OathViolation, Int] = {
     val current = ready.game.current
     for {
       player <- current.players.find(_.player == resting)
@@ -90,12 +94,19 @@ object FinishRestProcedure {
       banked = math.max(0, supply - player.board.warbands - siteWarbands)
       refreshed <- ExileSupply.refresh(banked, player.board.supply.supply)
         .toRight(UnsupportedRestState(s"no Supply band for $banked banked warbands"))
-    } yield {
-      val change = refreshed.supply - player.board.supply.supply
-      if (change > 0) Vector(GainSupply(resting, change))
-      else if (change < 0) Vector(SpendSupply(resting, -change))
-      else Vector.empty
-    }
+    } yield refreshed.supply
+  }
+
+  private def supplyRefresh(ready: ReadyGame, resting: PlayerId)
+      : Either[OathViolation, Vector[CoreOperation]] = for {
+    player <- ready.game.current.players.find(_.player == resting)
+      .toRight(UnsupportedRestState(s"unknown resting player $resting"))
+    refreshed <- supplyAfterRest(ready, resting)
+  } yield {
+    val change = refreshed - player.board.supply.supply
+    if (change > 0) Vector(GainSupply(resting, change))
+    else if (change < 0) Vector(SpendSupply(resting, -change))
+    else Vector.empty
   }
 
   private def beginNextTurn(ready: ReadyGame, resting: PlayerId)

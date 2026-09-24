@@ -66,7 +66,8 @@ class ProjectionProtocolSuite extends munit.FunSuite {
         heading = Some("Forge a relic"),
         confirmLabel = Some("Complete Forge"))),
       rollOutcome = Some(WalkerRollOutcomeProjection(Vector("one-shield"), 1, 2)))),
-    walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))))
+    walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))),
+    supplyMaximum = 7, restSupplyGain = Some(3))
 
   test("populated player-scoped projections round-trip exactly on both runtimes") {
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(projection)),
@@ -83,6 +84,15 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     * query that declares neither, which is what every choose-one park
     * that has nothing to title itself sends.
     */
+  /** The Rest preview is offered only to the player who can end the Act, so
+    * its absence is the common case and has to survive the trip too.
+    */
+  test("a projection with no Rest preview round-trips as absent") {
+    val without = projection.copy(restSupplyGain = None)
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
+      Right(without))
+  }
+
   test("a decision query declaring no panel copy round-trips as absent") {
     val bare = DecisionQueryProjection("choose-one",
       Vector(DecisionOptionProjection("button", "stop", "Stop")))

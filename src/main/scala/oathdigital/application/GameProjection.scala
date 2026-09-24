@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathState.{NoGame, Ready}
 import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.powerresolver.PhasePowers
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -49,6 +50,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
     val legal = legalActions.project(context, projectedPhasePowers)
     val pending = pendingProjector.project(context)
     val site = context.activeSite
+    val controls = if (current.result.nonEmpty) Vector.empty else legal.controls
 
     GameProjection(
       gameId, sequence, pending.phase, Some(current.turn.activePlayer.value),
@@ -56,7 +58,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       presentation.readyWorld(context.ready, context.viewer),
       current.players.flatMap(player => player.pawnSite.map(site =>
         PawnLocationProjection(player.player.value, site.value))),
-      if (current.result.nonEmpty) Vector.empty else legal.controls,
+      controls,
       ready = true, completed = true,
       activePlayerResources = Some({
         val secrets = PlayerSecretSummary.derive(context.ready, active.player)
@@ -101,6 +103,13 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       .copy(walkerDecision = pending.walkerDecision,
         walkerWaiting = pending.walkerWaiting,
         phasePowers = projectedPhasePowers,
-        lastCampaign = CampaignResultProjector.project(context.ready))
+        lastCampaign = CampaignResultProjector.project(context.ready),
+        supplyMaximum = SupplyTrack.Maximum,
+        // Only the player who can end the Act is promised a return, and the
+        // promise is dropped rather than guessed at when Rest cannot price it.
+        restSupplyGain = Option.when(controls.contains("beginRest"))(
+          FinishRestProcedure.supplyAfterRest(context.ready, active.player)
+            .toOption.map(after =>
+              math.max(0, after - active.board.supply.supply))).flatten)
   }
 }

@@ -35,4 +35,6 @@ final case class GameProjection(
     ,phasePowers: Vector[PhasePowerProjection] = Vector.empty
     ,lastCampaign: Option[CampaignResultProjection] = None
     ,viewerPlayerId: Option[String] = None
+    ,supplyMaximum: Int = 0
+    ,restSupplyGain: Option[Int] = None
 )

@@ -250,7 +250,11 @@ private[frontend] object ActionDecisionRenderer {
          "Other normal action families are not yet implemented."))
        PhasePowerButtons.render(value, canControl, panel, submitCommand)
        if (value.legalControls.contains("beginRest")) {
-         val rest = button("End Act and Rest", "rest-action")
+         // A Rest that returns nothing says nothing: the player strip
+         // already reads 7/7 when the track cannot take any more.
+         val regained = value.restSupplyGain.filter(_ > 0)
+           .fold("")(gain => s" (regain $gain Supply)")
+         val rest = button(s"End Act and Rest$regained", "rest-action")
          rest.disabled = !canControl
          rest.onclick = _ => submitCommand(GameCommand.BeginRest)
          panel.appendChild(rest)

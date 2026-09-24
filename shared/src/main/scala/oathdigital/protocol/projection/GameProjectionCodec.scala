@@ -19,7 +19,8 @@ object GameProjectionCodec {
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
     "relicDeckCount", "privateAdviserPreview",
-    "walkerDecision", "walkerWaiting", "phasePowers", "lastCampaign", "viewerPlayerId")
+    "walkerDecision", "walkerWaiting", "phasePowers", "lastCampaign", "viewerPlayerId",
+    "supplyMaximum", "restSupplyGain")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -75,7 +76,9 @@ object GameProjectionCodec {
     "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
     "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting),
     "phasePowers" -> encoded(value.phasePowers)(encodePhasePower),
-    "lastCampaign" -> option(value.lastCampaign)(CampaignResultProjectionCodec.encode))
+    "lastCampaign" -> option(value.lastCampaign)(CampaignResultProjectionCodec.encode),
+    "supplyMaximum" -> value.supplyMaximum,
+    "restSupplyGain" -> intOption(value.restSupplyGain))
     value.viewerPlayerId.foreach(player => result("viewerPlayerId") = ujson.Str(player))
     result
   }
@@ -136,12 +139,15 @@ object GameProjectionCodec {
       decodePhasePower(raw, child) }
     lastCampaign <- optionalAbsent(value, "lastCampaign", path)(CampaignResultProjectionCodec.decode)
     viewer <- optionalAbsent(value, "viewerPlayerId", path)(string)
+    supplyMaximum <- intOr(value, "supplyMaximum", path, 0)
+    restGain <- optionalAbsent(value, "restSupplyGain", path)(int)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, actions, pending,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
-    walkerDecision, walkerWaiting, phasePowers, lastCampaign, viewer)
+    walkerDecision, walkerWaiting, phasePowers, lastCampaign, viewer,
+    supplyMaximum, restGain)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",

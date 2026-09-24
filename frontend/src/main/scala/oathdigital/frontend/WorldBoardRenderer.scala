@@ -61,7 +61,8 @@ private[frontend] object WorldBoardRenderer {
      secrets.setAttribute("title", secretSummaryLabel(board.faceUpSecrets,
        board.totalSecrets, board.faceDownSecrets, board.committedSecrets))
      resources.appendChild(secrets)
-     resources.appendChild(text("span", "resource", s"Supply ${board.supply}"))
+     resources.appendChild(text("span", "resource",
+       s"Supply ${board.supply}/${value.supplyMaximum}"))
      identity.appendChild(resources)
      // One row, no headings: two labelled rows cost more height than the pane
      // has, and a relic's square box already says which card is which.

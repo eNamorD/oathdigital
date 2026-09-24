@@ -24,7 +24,7 @@ class PlayerBoardSuite extends munit.FunSuite {
       Vector(GamePlayer("red", "Red", "Exile", PlayerColorToken.Red)),
       Vector.empty,
       Vector(GamePawn("red", "site:woods")), Vector.empty, ready = true,
-      completed = false, playerBoards = Vector(board)),
+      completed = false, playerBoards = Vector(board), supplyMaximum = 7),
     new RecordingView("game", "red"))
 
   test("name, role and resources share one line, and the location is gone") {
@@ -36,12 +36,15 @@ class PlayerBoardSuite extends munit.FunSuite {
     assertEquals(all(node, ".player-location"), Vector.empty)
   }
 
+  /** The track has a ceiling, so Supply reads against it: "7/7" says the
+    * Act cannot buy any more of it, where "7" alone says nothing.
+    */
   test("favor and secrets are glyphs, warbands and supply stay words") {
     val resources = one(render(), ".resources").getOrElse(fail("no resources"))
     assertEquals(all(resources, ".token-glyph").map(_.getAttribute("aria-label")),
       Vector("favor", "secret"))
     assertEquals(all(resources, ".resource").map(_.textContent),
-      Vector("Warbands 3", "2", "1/2", "Supply 7"))
+      Vector("Warbands 3", "2", "1/2", "Supply 7/7"))
   }
 
   /** Two labelled rows cost more height than the pane has, and the box shape
