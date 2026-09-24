@@ -62,9 +62,8 @@ private[operations] object CardFaceOperations {
 
   def peek(ready: ReadyGame, viewer: PlayerId, id: CardId,
       at: Location): Either[OperationError, ReadyGame] = for {
+    // The card kind is the guard's (peekViolation).
     _ <- playerState(ready, viewer)
-    _ <- Either.cond(id.isInstanceOf[WorldCardId] || id.isInstanceOf[RelicId],
-      (), IncompatibleLocation(Piece.Card(id), at))
     located <- card(ready, id, at)
   } yield located.location.container match {
     case CardContainer.Site(site, SiteCardArea.Relics) =>

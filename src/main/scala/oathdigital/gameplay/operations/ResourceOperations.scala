@@ -283,11 +283,10 @@ private[operations] object ResourceOperations {
       delta: Int
   ): Either[OperationError, ReadyGame] = at match {
     case Location.WarbandBank(`kind`) => Right(ready)
+    // Kind compatibility and sufficiency are the guard's
+    // (warbandSourceViolations, countedDestinationViolations).
     case Location.PlayArea(player) => updatePlayer(ready, player) { state =>
       state.copy(board = state.board.copy(warbands = state.board.warbands + delta))
-    }.flatMap { updated =>
-      quantity(updated, Piece.Warbands(kind, 1), Location.PlayArea(player))
-        .map(_ => updated)
     }
     case Location.Site(site) => siteState(ready, site).flatMap { state =>
       state.forces match {
@@ -299,12 +298,9 @@ private[operations] object ResourceOperations {
             case SiteForces.Occupied(_, count) => count
           }
           val next = current + delta
-          Either.cond(next >= 0, (), InsufficientPieces(
-            Piece.Warbands(kind, math.max(1, -delta)), at, current)).flatMap { _ =>
-            updateSite(ready, site)(_.copy(forces =
-              if (next == 0) SiteForces.Empty
-              else SiteForces.Occupied(kind, next)))
-          }
+          updateSite(ready, site)(_.copy(forces =
+            if (next == 0) SiteForces.Empty
+            else SiteForces.Occupied(kind, next)))
       }
     }
     case _ => Left(IncompatibleLocation(Piece.Warbands(kind, math.max(1,
@@ -313,23 +309,15 @@ private[operations] object ResourceOperations {
 
   def flipPlayerSecrets(ready: ReadyGame, player: PlayerId, amount: Int,
       from: SecretSide, to: SecretSide): Either[OperationError, ReadyGame] =
-    playerState(ready, player).flatMap { state =>
-      val available = from match {
-        case SecretSide.FaceUp => state.board.faceUpSecrets
-        case SecretSide.FaceDown => state.board.faceDownSecrets
+    // Sufficiency is the guard's (flipSecretsViolation).
+    updatePlayer(ready, player) { value =>
+      val faceUpDelta = (from, to) match {
+        case (SecretSide.FaceUp, SecretSide.FaceDown) => -amount
+        case (SecretSide.FaceDown, SecretSide.FaceUp) => amount
+        case _ => 0
       }
-      Either.cond(available >= amount, (), InsufficientPieces(
-        Piece.Secrets(amount), Location.PlayArea(player), available)).flatMap { _ =>
-        updatePlayer(ready, player) { value =>
-          val faceUpDelta = (from, to) match {
-            case (SecretSide.FaceUp, SecretSide.FaceDown) => -amount
-            case (SecretSide.FaceDown, SecretSide.FaceUp) => amount
-            case _ => 0
-          }
-          value.copy(board = value.board.copy(
-            faceUpSecrets = value.board.faceUpSecrets + faceUpDelta,
-            faceDownSecrets = value.board.faceDownSecrets - faceUpDelta))
-        }
-      }
+      value.copy(board = value.board.copy(
+        faceUpSecrets = value.board.faceUpSecrets + faceUpDelta,
+        faceDownSecrets = value.board.faceDownSecrets - faceUpDelta))
     }
 }

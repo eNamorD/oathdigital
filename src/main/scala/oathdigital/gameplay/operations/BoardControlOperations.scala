@@ -8,7 +8,7 @@ import oathdigital.model._
   */
 private[operations] object BoardControlOperations {
   import OperationError._
-  import OperationStateAdapter.{bannerHolder, playerState, quantity, siteState}
+  import OperationStateAdapter.{bannerHolder, playerState, siteState}
   import OperationStateWrites.updatePlayer
 
   private final case class MovedPieces(
@@ -129,41 +129,28 @@ private[operations] object BoardControlOperations {
   private def movePawn(ready: ReadyGame, player: PlayerId,
       from: Location, to: Location): Either[OperationError, ReadyGame] =
     (from, to) match {
+      // Whether the pawn is where `from` says is the guard's
+      // (pawnMoveViolation); by the time this runs it is.
       case (Location.PlayArea(source), Location.Site(destination))
           if source == player =>
-        playerState(ready, player).flatMap { state =>
-          Either.cond(state.pawnSite.isEmpty, (),
-            MissingPiece(Piece.Pawn(player), from)).flatMap { _ =>
-            siteState(ready, destination).flatMap(_ =>
-              updatePlayer(ready, player)(_.copy(pawnSite = Some(destination))))
-          }
-        }
-      case (Location.Site(source), Location.Site(destination)) =>
-        playerState(ready, player).flatMap { state =>
-          Either.cond(state.pawnSite.contains(source), (),
-            MissingPiece(Piece.Pawn(player), from)).flatMap { _ =>
-            siteState(ready, destination).flatMap(_ =>
-              updatePlayer(ready, player)(_.copy(pawnSite = Some(destination))))
-          }
-        }
+        siteState(ready, destination).flatMap(_ =>
+          updatePlayer(ready, player)(_.copy(pawnSite = Some(destination))))
+      case (Location.Site(_), Location.Site(destination)) =>
+        siteState(ready, destination).flatMap(_ =>
+          updatePlayer(ready, player)(_.copy(pawnSite = Some(destination))))
       case _ => Left(IncompatibleLocation(Piece.Pawn(player), to))
     }
 
   private def moveBanner(ready: ReadyGame, banner: Banner,
       from: Location, to: Location): Either[OperationError, ReadyGame] =
     (from, to) match {
-      case (Location.PlayArea(source), Location.PlayArea(destination)) =>
-        for {
-          _ <- playerState(ready, destination)
-          _ <- Either.cond(bannerHolder(ready, banner).contains(source), (),
-            MissingPiece(Piece.Banner(banner), from))
-        } yield setBannerHolder(ready, banner, destination)
+      // Who holds the banner is the guard's (bannerMoveViolation).
+      case (Location.PlayArea(_), Location.PlayArea(destination)) =>
+        playerState(ready, destination).map(_ =>
+          setBannerHolder(ready, banner, destination))
       case (Location.SharedBank, Location.PlayArea(destination)) =>
-        for {
-          _ <- playerState(ready, destination)
-          available <- quantity(ready, Piece.Banner(banner), from)
-          _ <- requireFinite(Piece.Banner(banner), from, available, 1)
-        } yield setBannerHolder(ready, banner, destination)
+        playerState(ready, destination).map(_ =>
+          setBannerHolder(ready, banner, destination))
       case _ => Left(IncompatibleLocation(Piece.Banner(banner), to))
     }
 
@@ -177,19 +164,5 @@ private[operations] object BoardControlOperations {
         darkestSecret = current.banners.darkestSecret.copy(holder = Some(player)))
     }
     ready.copy(game = ready.game.copy(current = current.copy(banners = banners)))
-  }
-
-  private def requireFinite(
-      piece: Piece,
-      location: Location,
-      available: AvailableQuantity,
-      requested: Int
-  ): Either[OperationError, Unit] = available match {
-    case AvailableQuantity.Unbounded => Right(())
-    case AvailableQuantity.Finite(value) => Either.cond(
-      value >= requested,
-      (),
-      InsufficientPieces(piece, location, value)
-    )
   }
 }

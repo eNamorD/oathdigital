@@ -50,10 +50,9 @@ private[operations] object TurnStateOperations {
   // ------------------------------------------------------------------
 
   def advanceVisionsDrawn(ready: ReadyGame): Either[OperationError, ReadyGame] = {
+    // Overflow is the guard's (visionsDrawnViolation).
     val current = ready.game.current
-    if (current.tracks.visionsDrawn == Int.MaxValue)
-      Left(VisionsDrawnOverflow)
-    else Right(ready.copy(game = ready.game.copy(current = current.copy(
+    Right(ready.copy(game = ready.game.copy(current = current.copy(
       tracks = current.tracks.copy(
         visionsDrawn = current.tracks.visionsDrawn + 1)))))
   }
@@ -63,19 +62,13 @@ private[operations] object TurnStateOperations {
 
   def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =
+    // Sufficiency is the guard's (supplyViolation).
     playerState(ready, player).flatMap { state =>
       val current = state.board.supply.supply
-      if (amount < 0) {
-        val required = -amount
-        Either.cond(current >= required, (), InsufficientSupply(
-          required, current)).flatMap { _ =>
-          updatePlayer(ready, player)(value => value.copy(
-            board = value.board.copy(supply = SupplyTrack(current - required))))
-        }
-      } else
-        updatePlayer(ready, player)(value => value.copy(
-          board = value.board.copy(supply = SupplyTrack(math.min(
-            SupplyTrack.Maximum, current + amount)))))
+      val next = if (amount < 0) current + amount
+        else math.min(SupplyTrack.Maximum, current + amount)
+      updatePlayer(ready, player)(value => value.copy(
+        board = value.board.copy(supply = SupplyTrack(next))))
     }
 
   /** Adds `delta` dice to a named pool's count in `rollPools` state. The
