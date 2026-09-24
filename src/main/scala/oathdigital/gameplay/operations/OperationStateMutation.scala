@@ -270,11 +270,11 @@ private[operations] object OperationStateMutation {
   ): Either[OperationError, ReadyGame] =
     leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
       case (result, Flip(id, at, orientation)) =>
-        result.flatMap(flipCard(_, id, at, orientation))
+        result.flatMap(CardFaceOperations.flipCard(_, id, at, orientation))
       case (result, FlipSecrets(player, amount, from, to)) =>
         result.flatMap(flipPlayerSecrets(_, player, amount, from, to))
       case (result, Peek(viewer, id, at)) =>
-        result.flatMap(peek(_, viewer, id, at))
+        result.flatMap(CardFaceOperations.peek(_, viewer, id, at))
       case (result, SpendSupply(player, amount, _)) =>
         result.flatMap(TurnStateOperations.adjustSupply(_, player, -amount))
       case (result, GainSupply(player, amount)) =>
@@ -298,22 +298,6 @@ private[operations] object OperationStateMutation {
       case (result, _) => result
     }
 
-  private def flipCard(ready: ReadyGame, id: CardId, at: Location,
-      orientation: Orientation): Either[OperationError, ReadyGame] = for {
-    located <- card(ready, id, at)
-    updated <- located.state match {
-      case Some(_: DenizenState) | Some(_: VisionState) | Some(_: RelicState) =>
-        updateCardState(ready, id) {
-          case value: DenizenState => value.copy(orientation = orientation)
-          case value: VisionState => value.copy(orientation = orientation)
-          case value: RelicState => value.copy(orientation = orientation)
-          case value => value
-        }
-      case None if isDiscardLook(at, orientation) => Right(ready)
-      case _ => Left(UnsupportedOrientation(id, at))
-    }
-  } yield updated
-
   private def flipPlayerSecrets(ready: ReadyGame, player: PlayerId, amount: Int,
       from: SecretSide, to: SecretSide): Either[OperationError, ReadyGame] =
     playerState(ready, player).flatMap { state =>
@@ -335,44 +319,5 @@ private[operations] object OperationStateMutation {
         }
       }
     }
-
-  private def peek(ready: ReadyGame, viewer: PlayerId, id: CardId,
-      at: Location): Either[OperationError, ReadyGame] = for {
-    _ <- playerState(ready, viewer)
-    _ <- Either.cond(id.isInstanceOf[WorldCardId] || id.isInstanceOf[RelicId],
-      (), IncompatibleLocation(Piece.Card(id), at))
-    located <- card(ready, id, at)
-  } yield located.location.container match {
-    case CardContainer.Site(site, SiteCardArea.Relics) =>
-      recordSiteRelicKnowledge(ready, viewer, site,
-        id.asInstanceOf[RelicId])
-    case CardContainer.AtlasSite(_, site, SiteCardArea.Relics) =>
-      recordSiteRelicKnowledge(ready, viewer, site,
-        id.asInstanceOf[RelicId])
-    case _ if id.isInstanceOf[RelicId] => ready.copy(knowledge =
-      ready.knowledge.copy(heldRelics = ready.knowledge.heldRelics.updated(viewer,
-        appendDistinct(ready.knowledge.heldRelics.getOrElse(viewer, Vector.empty),
-          id.asInstanceOf[RelicId]))))
-    case _ if id.isInstanceOf[WorldCardId] => ready.copy(knowledge =
-      ready.knowledge.copy(advisers = ready.knowledge.advisers.updated(viewer,
-        appendDistinct(ready.knowledge.advisers.getOrElse(viewer, Vector.empty),
-          id.asInstanceOf[WorldCardId]))))
-    case _ => ready
-  }
-
-  private def appendDistinct[A](values: Vector[A], value: A): Vector[A] =
-    if (values.contains(value)) values else values :+ value
-
-  private def recordSiteRelicKnowledge(
-      ready: ReadyGame,
-      viewer: PlayerId,
-      site: SiteId,
-      relic: RelicId
-  ): ReadyGame = {
-    val sites = ready.knowledge.siteRelics.getOrElse(viewer, Map.empty)
-    ready.copy(knowledge = ready.knowledge.copy(siteRelics =
-      ready.knowledge.siteRelics.updated(viewer, sites.updated(site,
-        appendDistinct(sites.getOrElse(site, Vector.empty), relic)))))
-  }
 
 }
