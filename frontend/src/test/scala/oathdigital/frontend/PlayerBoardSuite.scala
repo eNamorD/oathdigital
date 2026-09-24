@@ -93,7 +93,7 @@ class PlayerBoardSuite extends munit.FunSuite {
     assertEquals(badges.map(_.closest(".player-board").getAttribute(
       "data-player-id")), Vector("blue"))
     assertEquals(badges.map(_.getAttribute("title")),
-      Vector("Oath of Supremacy"))
+      Vector("Oathkeeper of Supremacy"))
   }
 
   test("the badge reads Usurper once the title flips") {

@@ -55,7 +55,8 @@ private[frontend] object WorldBoardRenderer {
        .foreach { oath =>
          val badge = text("span", s"player-title title-${oath.side}",
            oath.side.capitalize)
-         badge.setAttribute("title", oathName(oath.goal))
+         badge.setAttribute("title",
+           oathdigital.protocol.projection.OathkeeperPresentation.title(oath.goal))
          identity.appendChild(badge)
        }
      section.appendChild(identity)
@@ -276,21 +277,13 @@ private[frontend] object WorldBoardRenderer {
    banks
  }
 
- /** `supremacy` reads as Supremacy, `the-people` as the People: the oath in
-   * play is projected, so the line names it rather than the one a first game
-   * happens to start with.
-   */
- private[frontend] def oathName(goal: String): String =
-   "Oath of " + goal.split('-').map(word =>
-     if (word == "the") word else word.capitalize).mkString(" ")
-
  private def sharedBank(value: GameProjection, ui: ServerUiView): dom.Element = {
    val section = element("section", "shared-bank")
    section.appendChild(text("h3", "", "Shared Bank"))
    value.oathkeeper.foreach(oath =>
      section.appendChild(text("p", "oathkeeper-status",
-       s"${oathName(oath.goal)} · ${oath.side.capitalize}: " +
-         oath.holderPlayerId.getOrElse("unheld"))))
+       s"${oathdigital.protocol.projection.OathkeeperPresentation.title(oath.goal)} · " +
+         s"${oath.side.capitalize}: ${oath.holderPlayerId.getOrElse("unheld")}")))
    section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
    value.banners.foreach { banner =>
      section.appendChild(text("p", s"shared-banner banner-${banner.key}",

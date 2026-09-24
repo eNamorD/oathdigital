@@ -254,6 +254,13 @@ lazy val frontend = (project in file("frontend"))
       (LocalRootProject / baseDirectory).value / "shared" / "src" / "main" / "scala",
     Test / unmanagedSourceDirectories +=
       (LocalRootProject / baseDirectory).value / "shared" / "src" / "test" / "scala",
+    // OathkeeperPresentationSuite asserts against oathdigital.model.OathkeeperGoal,
+    // which lives in World.scala -- not on the small whitelist above, so it is
+    // not visible to Scala.js. The suite still runs on the JVM, where the
+    // shared test directory is also picked up by the root project.
+    Test / unmanagedSources / excludeFilter :=
+      (Test / unmanagedSources / excludeFilter).value ||
+        "OathkeeperPresentationSuite.scala",
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scalajs-dom" % "2.8.0",
       "com.lihaoyi" %%% "ujson" % "4.4.3",
