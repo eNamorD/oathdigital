@@ -252,15 +252,11 @@ object ServerModeUi:
           case Right(response) if response.modifiers.isEmpty =>
             submitTransport(command)
           case Right(response) =>
-            val context = ModifierSelectionContext(gameId, selectedPlayer,
-              current.nextSequence, action)
-            val fingerprint = s"${response.nextSequence}:${response.action}:" +
-              response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
-            drafts = drafts.copy(modifiers = Some(ModifierWorkflow(Some(command),
-              None, parameters, response,
-              ModifierSelectionState.reconcile(drafts.modifiers.map(_.selection),
-                context, response.modifiers, fingerprint),
-              ModifierWorkflowStage.Ordering)))
+            drafts = drafts.copy(modifiers = Some(ModifierWorkflow.fromPreview(
+              Some(command), None, parameters, response,
+              drafts.modifiers.map(_.selection),
+              ModifierSelectionContext(gameId, selectedPlayer,
+                current.nextSequence, action))))
             render()
           case Left(error) => failure = Some(error); render()
       }
@@ -289,15 +285,10 @@ object ServerModeUi:
       val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
       client.preview(gameId, selectedPlayer, request).foreach:
         case Right(response) =>
-          val context = ModifierSelectionContext(gameId, selectedPlayer,
-            current.nextSequence, action)
-          val fingerprint = s"${response.nextSequence}:${response.action}:" +
-            response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
-          val workflow = ModifierWorkflow(None, Some(actionKind), parameters,
-            response, ModifierSelectionState.reconcile(None, context,
-              response.modifiers, fingerprint),
-            if response.modifiers.nonEmpty then ModifierWorkflowStage.Ordering
-            else ModifierWorkflowStage.Targets)
+          val workflow = ModifierWorkflow.fromPreview(None, Some(actionKind),
+            parameters, response, drafts.modifiers.map(_.selection),
+            ModifierSelectionContext(gameId, selectedPlayer,
+              current.nextSequence, action))
           if workflow.ordering then { drafts = drafts.copy(modifiers = Some(workflow)); render() }
           else activatePreviewTargets(workflow, response)
         case Left(error) => failure = Some(error); render()
