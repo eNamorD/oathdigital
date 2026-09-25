@@ -14,13 +14,10 @@ import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
 
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
-import oathdigital.gameplay.OathRules
 import oathdigital.persistence.HsqldbDatabaseOwner
-import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.{DenizenId, PlayerId}
-import oathdigital.model.OathState
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite:
   test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders"):
@@ -33,22 +30,15 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
     val identities = database.identities
     val repository = new InMemoryEventStreamRepository
     val gameId = "auth-negotiation-game"
-    val (setupState, setupEvents) = execute()
-    val OathState.Ready(ready) = setupState: @unchecked
-    val actor = ready.game.current.turn.activePlayer
-    val other = ready.game.current.players.find(_.player != actor).get
-    val rules = new OathRules(catalog)
-    val act = rules.startWalker(setupState,
-      oathdigital.model.PhaseTransitionRef.EndWake, actor).toOption.get
-    val traveled = rules.startWalker(act.state,
-      oathdigital.model.ActionRef.Travel, actor, Vector.empty,
-      Vector(oathdigital.model.DecisionOptionRef.Site(
-        other.pawnSite.get))).toOption.get
-    val allEvents = setupEvents ++ act.events ++ traveled.events
-    repository.seed(gameId, allEvents.zipWithIndex.map { case (event, index) =>
-      ujson.write(GameEventWire.encodeEvent(gameId, catalog.ref, index.toLong, event)
-        .toOption.get)
-    })
+    val woken = initialSituation()
+    val actor = woken.ready.game.current.turn.activePlayer
+    val other = woken.ready.game.current.players.find(_.player != actor).get
+    val traveled = woken.parkedAfter(GameCommand.EndWake(actor),
+      GameCommand.StartWalker(oathdigital.model.ActionRef.Travel,
+        StartPayload(actor, Vector.empty,
+          Vector(oathdigital.model.DecisionOptionRef.Site(
+            other.pawnSite.get)))))
+    traveled.seedInto(repository, gameId)
     val ownerUser = UserId("negotiation-owner")
     val actorUser = UserId("negotiation-actor")
     val otherUser = UserId("negotiation-other")
@@ -81,7 +71,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
     try
       def sequenceOf(response: java.net.http.HttpResponse[String]): Long =
         ujson.read(response.body())("nextSequence").num.toLong
-      var sequence = allEvents.size.toLong
+      var sequence = traveled.nextSequence
       def send(user: UserId, intent: ujson.Obj) = post(client, base + "/commands",
         user.value, ujson.write(ujson.Obj("expectedNextSequence" ->
           ujson.Num(sequence.toDouble), "intent" -> intent)))

@@ -91,12 +91,16 @@ object FirstGameSetupFixture:
   /** Setup driven by `OathRules` from this first-game input, the n-th pawn
     * placed at `placementSites(n)` and every adviser choice keeping the
     * first card in hand: [[oathdigital.testkit.Situation.wake]] under the
-    * fixture's rules. Lands on `Phase.Wake` with the real event history.
+    * fixture's rules, ready to be driven further.
     */
+  def initialSituation(placementSites: Vector[SiteId] = sites): Situation =
+    Situation.wake(Situation.rules(catalog)
+      .withAnswers(Situation.pawnsAt(placementSites)), chronicle, orders)
+
+  /** [[initialSituation]]'s state and real event history, in `Phase.Wake`. */
   def execute(placementSites: Vector[SiteId] = sites)
       : (OathState, Vector[OathEvent]) =
-    val woken = Situation.wake(Situation.rules(catalog)
-      .withAnswers(Situation.pawnsAt(placementSites)), chronicle, orders)
+    val woken = initialSituation(placementSites)
     (woken.state, woken.events)
 
   /** The game `execute()` sets up. Immutable, so suites share one. */
