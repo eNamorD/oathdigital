@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.protocol.PreviewModifier
+
 /** The draft set (CONTEXT.md): everything a viewer has staged at the table
   * and not yet sent. One immutable value, bound to one game, seat and
   * position through `context`. `ServerModeUi` holds the current one; the
@@ -69,6 +71,28 @@ private[frontend] final case class SessionDrafts(
     case FlowExit.OrderingLeft =>
       copy(modifiers = None)
 
+  /** The set after one step inside the modifier flow. The table is the
+    * spec's; the module computes a `Targets` entry from the projection and
+    * the context, and this only applies it.
+    */
+  def step(value: FlowStep): SessionDrafts = value match
+    case FlowStep.Ordering(workflow) => copy(modifiers = Some(workflow))
+    case FlowStep.Targets(workflow, TargetsEntry.Facedown(pick)) =>
+      copy(modifiers = Some(workflow), facedownAdviser = pick, boardTargets = None)
+    case FlowStep.Targets(workflow, TargetsEntry.Board(targets)) =>
+      copy(modifiers = Some(workflow), boardTargets = Some(targets))
+    case FlowStep.Targets(workflow, TargetsEntry.NoTargets) =>
+      copy(modifiers = Some(workflow))
+    case FlowStep.Toggle(modifier) =>
+      copy(modifiers = modifiers.map(workflow =>
+        workflow.copy(selection = workflow.selection.toggle(modifier))))
+    case FlowStep.Move(modifier, delta) =>
+      copy(modifiers = modifiers.map(workflow => workflow.copy(selection =
+        if delta < 0 then workflow.selection.moveEarlier(modifier)
+        else workflow.selection.moveLater(modifier))))
+    case FlowStep.ChooseFacedown(cardId) =>
+      copy(facedownAdviser = facedownAdviser.map(_.choose(cardId)))
+
 private[frontend] object SessionDrafts:
   val empty: SessionDrafts =
     SessionDrafts(None, None, None, None, None, None, None, None)
@@ -102,3 +126,23 @@ private[frontend] enum FlowExit:
     * the workflow goes; the facedown pick and the board targets stay.
     */
   case OrderingLeft
+
+/** The five ways a viewer moves inside the modifier flow without leaving
+  * it. `Ordering` and `Targets` are the two entries; the other three are the
+  * steps a panel's controls take. Only `ModifierFlow` applies these.
+  */
+private[frontend] enum FlowStep:
+  case Ordering(workflow: ModifierWorkflow)
+  case Targets(workflow: ModifierWorkflow, entry: TargetsEntry)
+  case Toggle(value: PreviewModifier)
+  case Move(value: PreviewModifier, delta: Int)
+  case ChooseFacedown(cardId: String)
+
+/** What entering the Targets stage opens beside the workflow: the facedown
+  * pick (and no board targets), one activated board action, or nothing when
+  * the preview names no target action the board knows.
+  */
+private[frontend] enum TargetsEntry:
+  case Facedown(pick: Option[FacedownAdviserDraft])
+  case Board(targets: BoardTargetSelectionState)
+  case NoTargets
