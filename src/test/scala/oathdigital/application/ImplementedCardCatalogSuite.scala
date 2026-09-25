@@ -11,7 +11,7 @@ class ImplementedCardCatalogSuite extends munit.FunSuite {
     "edifice.hall-of-debate.ruined").map(PowerId(_))
 
   private def catalogPower(id: String) =
-    CatalogPower(id, persistent = false, rulesText = "text")
+    CatalogPower(PowerId(id), persistent = false, rulesText = "text")
 
   private def denizen(id: String, suit: Suit, powerIds: Vector[String]) =
     DenizenDefinition(DefinitionId(id), id, suit, CardRestrictions.Unrestricted,

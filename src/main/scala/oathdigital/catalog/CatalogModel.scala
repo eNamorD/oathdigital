@@ -10,10 +10,6 @@ final case class DefinitionId(value: String) {
 final case class CatalogPower(id: PowerId, persistent: Boolean, rulesText: String) {
   require(rulesText.trim.nonEmpty, "power rules text must not be blank")
 }
-object CatalogPower {
-  def apply(id: String, persistent: Boolean, rulesText: String): CatalogPower =
-    CatalogPower(PowerId(id), persistent, rulesText)
-}
 
 trait CatalogPoweredDefinition {
   def powers: Vector[CatalogPower]

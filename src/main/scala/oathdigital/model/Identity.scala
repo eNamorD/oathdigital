@@ -5,29 +5,51 @@ private[model] object IdentityValidation {
     require(value.trim.nonEmpty, s"$label must not be blank")
 }
 
-final case class PlayerId(value: String) {
-  IdentityValidation.nonBlank("player ID", value)
+opaque type PlayerId = String
+object PlayerId {
+  def apply(value: String): PlayerId = {
+    IdentityValidation.nonBlank("player ID", value)
+    value
+  }
+  def unapply(id: PlayerId): Some[String] = Some(id)
+  extension (id: PlayerId) def value: String = id
 }
 
-final case class LineageId(value: String) {
-  IdentityValidation.nonBlank("lineage ID", value)
+opaque type LineageId = String
+object LineageId {
+  def apply(value: String): LineageId = {
+    IdentityValidation.nonBlank("lineage ID", value)
+    value
+  }
+  def unapply(id: LineageId): Some[String] = Some(id)
+  extension (id: LineageId) def value: String = id
 }
 
-final case class DecisionId(value: String) {
-  IdentityValidation.nonBlank("decision ID", value)
+opaque type DecisionId = String
+object DecisionId {
+  def apply(value: String): DecisionId = {
+    IdentityValidation.nonBlank("decision ID", value)
+    value
+  }
+  def unapply(id: DecisionId): Some[String] = Some(id)
+  extension (id: DecisionId) def value: String = id
 }
 
-final case class PowerId(value: String) {
-  require(value.matches(PowerId.pattern), s"invalid stable power ID $value")
-}
-
+opaque type PowerId = String
 object PowerId {
   private val pattern = "[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"
+
+  def apply(value: String): PowerId = {
+    require(value.matches(pattern), s"invalid stable power ID $value")
+    value
+  }
+  def unapply(id: PowerId): Some[String] = Some(id)
+  extension (id: PowerId) def value: String = id
 
   /** Safe parse for untrusted (e.g. wire) input: `None` rather than throwing
    * when `value` does not satisfy the stable power ID shape. */
   def fromValue(value: String): Option[PowerId] =
-    if (value.matches(pattern)) Some(PowerId(value)) else None
+    if (value.matches(pattern)) Some(value) else None
 }
 
 final case class CatalogRef(ruleset: String, version: String) {
