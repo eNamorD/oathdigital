@@ -54,3 +54,11 @@ The site a viewer has picked on the board for the parked decision and not yet
 confirmed. A viewer has at most one, and only for a decision that asks to be
 confirmed.
 _Avoid_: pending selection, staged choice, highlighted site
+
+### Action pane
+
+**Act-action control**:
+A control offered to a viewer for starting a major or minor action, listed by
+the projection as legal for them. It starts an action; it never answers a
+parked decision.
+_Avoid_: button, action button, command
