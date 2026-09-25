@@ -1,6 +1,6 @@
 # Modifier Flow Module
 
-> Status: designed 2026-09-25, not yet planned. This is a behavior-preserving
+> Status: implemented 2026-09-25 (five commits, this plan). This is a behavior-preserving
 architecture slice with no stated exceptions. It is the first move of the
 session-drafts spec's option 3 (`2026-09-25-session-drafts-design.md`,
 "Follow-up"); session identity and polling are the second move and get their
@@ -154,12 +154,16 @@ reconciles the selection from `previous`, and sets the stage to `Ordering`
 when `response.modifiers` is non-empty and `Targets` otherwise. Both flow
 entries pass `host.currentDrafts.modifiers.map(_.selection)` as `previous`.
 
-Two unifications, both proven equal to today:
+Two unifications, both equal to today with one preview in flight:
 
 - `startTargetedFlow` passes `None` as the previous selection today;
   `submit` passes the current one. Passing the current one in both is
   identical because `startTargetedFlow` applies `leave(FlowExit.Restarted)`
-  before the preview, and `Restarted` sets `modifiers = None`.
+  before the preview, and `Restarted` sets `modifiers = None`. The selection
+  is read when the response lands, so with two targeted previews in flight
+  for the same action and position, the later-landing one now reconciles
+  against the workflow the earlier-landing one opened, and keeps its
+  selection where today it wiped it. That case is a stale response (below).
 - `submit` always builds with stage `Ordering` today; `startTargetedFlow`
   picks by `response.modifiers.nonEmpty`. The unified rule gives `Ordering`
   in `submit` because `submit` only builds a workflow in the branch where
@@ -189,8 +193,9 @@ the preview path unguarded. Known, covered by reconcile, and out of scope.
 
 ## Behavior changes
 
-None. The two `fromPreview` unifications above are named because they
-change the text of the flow, not its behavior.
+None with one preview in flight. The two `fromPreview` unifications above
+are named because they change the text of the flow, not its behavior; the
+first differs only for out-of-order stale responses, which stay unguarded.
 
 ## Verification
 

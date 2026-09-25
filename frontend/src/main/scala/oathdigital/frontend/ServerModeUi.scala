@@ -229,7 +229,7 @@ object ServerModeUi:
           if accepted then accept(request, Left(error))
 
     def submitTransport(command: GameCommand,
-        modifiers: Vector[ModifierInvocation] = Vector.empty): Unit =
+        modifiers: Vector[ModifierInvocation]): Unit =
       projection.foreach { current =>
         val request = coordinator.capture
         client
@@ -244,103 +244,6 @@ object ServerModeUi:
             case other => accept(request, other)
       }
 
-    def submit(command: GameCommand): Unit = ModifierWorkflow.action(command) match
-      case None => submitTransport(command)
-      case Some((action, parameters)) => projection.foreach { current =>
-        val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
-        client.preview(gameId, selectedPlayer, request).foreach:
-          case Right(response) if response.modifiers.isEmpty =>
-            submitTransport(command)
-          case Right(response) =>
-            val context = ModifierSelectionContext(gameId, selectedPlayer,
-              current.nextSequence, action)
-            val fingerprint = s"${response.nextSequence}:${response.action}:" +
-              response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
-            drafts = drafts.copy(modifiers = Some(ModifierWorkflow(Some(command),
-              None, parameters, response,
-              ModifierSelectionState.reconcile(drafts.modifiers.map(_.selection),
-                context, response.modifiers, fingerprint),
-              ModifierWorkflowStage.Ordering)))
-            render()
-          case Left(error) => failure = Some(error); render()
-      }
-
-    def activatePreviewTargets(workflow: ModifierWorkflow,
-        response: MajorActionPreviewResponse): Unit = for
-      current <- projection
-      context <- drafts.context
-      actionKind <- workflow.actionKind
-    do
-      val entered = if actionKind == "play-facedown-adviser" then
-        drafts.copy(facedownAdviser = current.minorActions.flatMap(
-          FacedownAdviserDraft.initial(context, _)), boardTargets = None)
-      else ModifierWorkflow.targetAction(actionKind, response,
-        current.boardTargetActions).fold(drafts)(action =>
-        drafts.copy(boardTargets = Some(BoardTargetSelectionState.reconcile(None,
-          context, Vector(action)).activate(actionKind))))
-      drafts = entered.copy(modifiers = Some(workflow.showTargets(response)))
-      render()
-
-    def startTargetedFlow(actionKind: String): Unit = for
-      current <- projection
-      (action, parameters) <- ModifierWorkflow.targeted(actionKind)
-    do
-      drafts = drafts.leave(FlowExit.Restarted)
-      val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
-      client.preview(gameId, selectedPlayer, request).foreach:
-        case Right(response) =>
-          val context = ModifierSelectionContext(gameId, selectedPlayer,
-            current.nextSequence, action)
-          val fingerprint = s"${response.nextSequence}:${response.action}:" +
-            response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
-          val workflow = ModifierWorkflow(None, Some(actionKind), parameters,
-            response, ModifierSelectionState.reconcile(None, context,
-              response.modifiers, fingerprint),
-            if response.modifiers.nonEmpty then ModifierWorkflowStage.Ordering
-            else ModifierWorkflowStage.Targets)
-          if workflow.ordering then { drafts = drafts.copy(modifiers = Some(workflow)); render() }
-          else activatePreviewTargets(workflow, response)
-        case Left(error) => failure = Some(error); render()
-
-    def confirmModifierSelection(): Unit = drafts.modifiers.foreach { workflow =>
-      val request = MajorActionPreviewRequest(workflow.selection.context.sequence,
-        workflow.selection.context.action, workflow.baseParameters,
-        workflow.selection.invocations)
-      client.preview(gameId, selectedPlayer, request).foreach:
-        case Right(response) => workflow.command match
-          case Some(command) =>
-            drafts = drafts.leave(FlowExit.OrderingLeft)
-            val (submitted, modifiers) = ModifierWorkflow.submission(command,
-              workflow.selection.invocations)
-            submitTransport(submitted, modifiers)
-          case None => activatePreviewTargets(workflow, response)
-        case Left(error) =>
-          drafts = drafts.leave(FlowExit.Failed)
-          failure = Some(error)
-          render()
-    }
-
-    def completeTargetCommand(command: GameCommand): Unit =
-      drafts.modifiers.filter(_.stage == ModifierWorkflowStage.Targets) match
-        case Some(workflow) =>
-          drafts = drafts.leave(FlowExit.Completed)
-          val (submitted, modifiers) = ModifierWorkflow.submission(command,
-            workflow.selection.invocations)
-          submitTransport(submitted, modifiers)
-        case None => submit(command)
-
-    def restoredTargets: Option[BoardTargetSelectionState] = for
-      current <- projection
-      context <- drafts.context
-    yield BoardTargetSelectionState.restore(context, current.boardTargetActions)
-
-    def handleBoardSelection(result: BoardSelectionResult): Unit = result match
-      case BoardSelectionResult.Updated(state) => ui.stage(Draft.BoardTargets(state))
-      case BoardSelectionResult.Submit(action, targets) =>
-        commandForSelection(action, targets, selectedPlayer).foreach { command =>
-          completeTargetCommand(command)
-        }
-
     lazy val session: SessionControls = new SessionControls:
       def currentGameId = gameId
       def currentPlayerId = selectedPlayer
@@ -350,45 +253,20 @@ object ServerModeUi:
       def reconnectSession() = reconnect()
       def createGame() = newGame()
 
-    lazy val ui: ActionControls = new ActionControls:
-      def stage(draft: Draft) =
-        drafts = drafts.staged(draft)
-        render()
-      def chooseFacedownAdviser(cardId: String) =
-        drafts = drafts.copy(facedownAdviser =
-          drafts.facedownAdviser.map(_.choose(cardId)))
-        render()
-      def toggleModifier(value: PreviewModifier) =
-        drafts = drafts.copy(modifiers = drafts.modifiers.map(workflow =>
-          workflow.copy(selection = workflow.selection.toggle(value))))
-        render()
-      def moveModifier(value: PreviewModifier, delta: Int) =
-        drafts = drafts.copy(modifiers = drafts.modifiers.map(workflow =>
-          workflow.copy(selection =
-            if delta < 0 then workflow.selection.moveEarlier(value)
-            else workflow.selection.moveLater(value))))
-        render()
-      def confirmModifiers() = confirmModifierSelection()
-      def backFromModifiers() =
-        drafts = drafts.leave(FlowExit.OrderingLeft)
-        render()
-      def cancelModifiers() =
-        drafts = drafts.leave(FlowExit.Cancelled(restoredTargets))
-        render()
-      def beginTargetedMajorAction(actionKind: String) =
-        startTargetedFlow(actionKind)
-      // Guarded as before: nothing happens when no flow is in flight.
-      def backFromTargets() = drafts.modifiers.foreach { _ =>
-        drafts = drafts.leave(FlowExit.TargetsLeft)
-        render()
-      }
-      def cancelTargetAction() =
-        drafts = drafts.leave(FlowExit.Cancelled(restoredTargets))
-        render()
-      def submitTargetCommand(command: GameCommand) =
-        completeTargetCommand(command)
-      def submitCommand(command: GameCommand) = submit(command)
-      def handleSelection(result: BoardSelectionResult) = handleBoardSelection(result)
+    lazy val host: FlowHost = new FlowHost:
+      def displayedProjection = projection
+      def currentGameId = gameId
+      def currentPlayerId = selectedPlayer
+      def currentDrafts = drafts
+      def replaceDrafts(value: SessionDrafts) = drafts = value
+      def redraw() = render()
+      def fail(error: GameClientFailure) = { failure = Some(error); render() }
+      def preview(request: MajorActionPreviewRequest) =
+        client.preview(gameId, selectedPlayer, request)
+      def send(command: GameCommand, modifiers: Vector[ModifierInvocation]) =
+        submitTransport(command, modifiers)
+
+    lazy val ui: ActionControls = new ModifierFlow(host)
 
     polling = Some(new SnapshotPollingCoordinator(
       new BrowserPollClock,

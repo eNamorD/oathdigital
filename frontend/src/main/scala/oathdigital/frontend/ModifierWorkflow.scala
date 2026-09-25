@@ -38,6 +38,22 @@ private[frontend] object ModifierWorkflow:
   def targeted(actionKind: String): Option[(String, Map[String, String])] =
     targetedActions.get(actionKind)
 
+  /** The workflow a preview response opens. Ordering when the response
+    * offers modifiers, Targets otherwise; the selection is reconciled from
+    * `previous` so a re-preview of the same shape keeps the viewer's order.
+    */
+  def fromPreview(command: Option[GameIntent], actionKind: Option[String],
+      parameters: Map[String, String], response: MajorActionPreviewResponse,
+      previous: Option[ModifierSelectionState],
+      context: ModifierSelectionContext): ModifierWorkflow =
+    val fingerprint = s"${response.nextSequence}:${response.action}:" +
+      response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
+    ModifierWorkflow(command, actionKind, parameters, response,
+      ModifierSelectionState.reconcile(previous, context, response.modifiers,
+        fingerprint),
+      if response.modifiers.nonEmpty then ModifierWorkflowStage.Ordering
+      else ModifierWorkflowStage.Targets)
+
   def reconcile(previous: Option[ModifierWorkflow],
       context: BoardSelectionContext): Option[ModifierWorkflow] = previous.filter:
     workflow =>
