@@ -2,12 +2,11 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent,
   NegotiationTerms, NegotiationTransfer}
+import ParkedDecision.Surface
 import org.scalajs.dom
 
 /** The deal panel for a parked negotiation, as an owner and as a spectator. */
 class NegotiationDealPanelSuite extends munit.FunSuite {
-  private val presentation = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None)
   // Faceup, so it is offered as a transfer only and not also as a disclosure.
   private val relic = CardDetails("r1", "relic", "Relic One",
     orientation = Some("face-up"))
@@ -19,24 +18,18 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
       Option.when(editing)(NegotiationEditingState(5, Vector(relic),
         Vector.empty, Vector.empty, canAccept)))
 
-  private def owner(value: NegotiationDealState): GameProjection =
-    GameProjection("game", 9L, "act-action-selection", Some("red"), Vector.empty,
-      Vector.empty, Vector.empty, Vector("resolveWalkerDecision"), ready = true,
-      completed = false, walkerDecision = Some(WalkerDecisionState("negotiation",
-        "negotiation.deal", "decide", query = Some(DecisionQueryState("negotiate",
-          Vector.empty, heading = Some("Negotiation"), deal = Some(value))))))
+  /** The surface the route hands a participant: the deal with its editor. */
+  private def owner(value: NegotiationDealState): Surface.Negotiate =
+    Surface.Negotiate(value, value.editing.map("negotiation.deal" -> _))
 
-  private def spectator(value: NegotiationDealState): GameProjection =
-    GameProjection("game", 9L, "act-action-selection", Some("red"), Vector.empty,
-      Vector.empty, Vector.empty, Vector.empty, ready = true, completed = false,
-      walkerWaiting = Some(WalkerWaitingState("red", Some("Negotiation"),
-        Vector("blue"), Some(value))))
+  /** The surface every other viewer gets: the deal, read-only. */
+  private def spectator(value: NegotiationDealState): Surface.Negotiate =
+    Surface.Negotiate(value, None)
 
-  private def render(projection: GameProjection, ui: RecordingView,
-      canControl: Boolean = true, shows: Boolean = true): dom.Element = {
+  private def render(surface: Surface.Negotiate, ui: RecordingView,
+      canControl: Boolean = true): dom.Element = {
     val panel = dom.document.createElement("div")
-    NegotiationDealPanel.render(projection, presentation.copy(
-      showGameplayControls = shows), canControl, panel, ui)
+    NegotiationDealPanel.render(surface, canControl, panel, ui)
     panel
   }
 
@@ -94,19 +87,11 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
 
   test("a spectator sees the deal read-only, with no inputs or buttons") {
     val ui = new RecordingView("game", "green")
-    val panel = render(spectator(deal(editing = false)), ui, shows = false)
+    val panel = render(spectator(deal(editing = false)), ui)
     assertEquals(one(panel, ".negotiation-status").textContent,
       "red: reviewing · blue: accepted")
     assertEquals(panel.querySelectorAll("input").length, 0)
     assertEquals(panel.querySelectorAll("button").length, 0)
-  }
-
-  test("nothing renders when no negotiation is parked") {
-    val ui = new RecordingView("game", "red")
-    val empty = GameProjection("game", 9L, "act-action-selection", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false)
-    assertEquals(render(empty, ui).childNodes.length, 0)
   }
 
   private def threeWay(editing: NegotiationEditingState,

@@ -38,10 +38,11 @@ class SuitGlyphSuite extends munit.FunSuite {
         heading = Some("Gain 3 favor from one bank"))))
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
+      ParkedDecision.Surface.ChooseOne(parked, parked.query.get),
       GameProjection("game", 9L, "act", Some("red"), Vector.empty,
         Vector.empty, Vector.empty, Vector.empty, ready = true,
-        completed = false, walkerDecision = Some(parked)),
-      presentation, canControl = true, panel, new RecordingView("game", "red"))
+        completed = false),
+      canControl = true, panel, new RecordingView("game", "red"))
     val choice = panel.querySelector(".walker-choice").asInstanceOf[dom.Element]
     assertEquals(choice.textContent, "Hearth")
     assertEquals(glyphs(choice), Vector("token-glyph token-suit-hearth"))

@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import ParkedDecision.Surface
+import WalkerPanelSupport.RecoverWalkerStep
 import org.scalajs.dom
 
 /** Recover's controls.
@@ -12,30 +14,39 @@ class RecoverPanelSuite extends munit.FunSuite {
   private def all(node: dom.Element, selector: String): Vector[dom.Element] =
     node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
-  private def render(decision: WalkerDecisionState,
-      supply: Int = 5): dom.Element = {
+  /** The panel takes the routed surface; the projection rides along only
+    * for the acting player's supply, which gates buying more dice.
+    */
+  private def render(surface: Surface.Recover, supply: Int = 5): dom.Element = {
     val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderRecoverPanel(
+    WalkerPanelSupport.renderRecoverPanel(surface,
       GameProjection("game", 1L, "act", Some("red"), Vector.empty, Vector.empty,
         Vector.empty, Vector.empty, ready = true, completed = false,
-        activePlayerResources = Some(ActivePlayerResources(0, 0, 0, 0, 0, supply)),
-        walkerDecision = Some(decision)),
-      ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
+        activePlayerResources = Some(ActivePlayerResources(0, 0, 0, 0, 0, supply))),
       canControl = true, panel, new RecordingView("game", "red"))
     panel
   }
 
-  private val choice = WalkerDecisionState("recover",
-    WalkerPanelSupport.recoverChoiceDecisionId, "decide",
-    query = Some(DecisionQueryState("choose-one",
-      Vector(DecisionOptionState("button", "continue", "Continue"),
-        DecisionOptionState("button", "stop", "Stop")),
-      Vector.empty, heading = Some("Recover"))))
+  private val choiceQuery = DecisionQueryState("choose-one",
+    Vector(DecisionOptionState("button", "continue", "Continue"),
+      DecisionOptionState("button", "stop", "Stop")),
+    Vector.empty, heading = Some("Recover"))
+
+  private def choice(rollOutcome: Option[WalkerRollOutcomeState] = None)
+      : Surface.Recover =
+    Surface.Recover(WalkerDecisionState("recover",
+      WalkerPanelSupport.recoverChoiceDecisionId, "decide",
+      query = Some(choiceQuery), rollOutcome = rollOutcome),
+      RecoverWalkerStep.Choice(choiceQuery))
+
+  private def roll(rollOutcome: Option[WalkerRollOutcomeState] = None)
+      : Surface.Recover =
+    Surface.Recover(WalkerDecisionState("recover", "recover.roll", "roll",
+      pool = Some("recover"), rollOutcome = rollOutcome),
+      RecoverWalkerStep.Roll("recover"))
 
   test("the roll button says it rolls") {
-    val panel = render(WalkerDecisionState("recover", "recover.roll", "roll",
-      pool = Some("recover")))
-    assertEquals(all(panel, ".recover-roll").map(_.textContent),
+    assertEquals(all(render(roll()), ".recover-roll").map(_.textContent),
       Vector("Roll the dice"))
   }
 
@@ -43,7 +54,7 @@ class RecoverPanelSuite extends munit.FunSuite {
     * cost and the roll rather than promising a second button.
     */
   test("continuing says it buys dice and rolls them") {
-    val panel = render(choice)
+    val panel = render(choice())
     assertEquals(all(panel, ".recover-add").map(_.textContent),
       Vector("Roll two more dice (1 Supply)"))
     assertEquals(all(panel, ".recover-stop").map(_.textContent),
@@ -51,16 +62,16 @@ class RecoverPanelSuite extends munit.FunSuite {
   }
 
   test("without the supply to buy them, the control is refused") {
-    assert(all(render(choice, supply = 0), ".recover-add").head
+    assert(all(render(choice(), supply = 0), ".recover-add").head
       .asInstanceOf[dom.html.Button].disabled)
-    assert(!all(render(choice), ".recover-add").head
+    assert(!all(render(choice()), ".recover-add").head
       .asInstanceOf[dom.html.Button].disabled)
   }
 
   test("Recover shows its dice and how close the score is to the target") {
     val outcome = WalkerRollOutcomeState("recover",
       Vector("one-shield", "two-shields"), 3, Some(4), Vector.empty)
-    val panel = render(choice.copy(rollOutcome = Some(outcome)))
+    val panel = render(choice(rollOutcome = Some(outcome)))
     assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
       Vector("Shields 3 · need 4"))
     assertEquals(all(panel, ".walker-roll-faces").map(_.getAttribute("aria-label")),
@@ -70,8 +81,7 @@ class RecoverPanelSuite extends munit.FunSuite {
 
   test("before the first roll, Recover shows the target and no dice") {
     val outcome = WalkerRollOutcomeState("recover", Vector.empty, 0, Some(4))
-    val panel = render(WalkerDecisionState("recover", "recover.roll", "roll",
-      pool = Some("recover"), rollOutcome = Some(outcome)))
+    val panel = render(roll(rollOutcome = Some(outcome)))
     assertEquals(all(panel, ".walker-roll-faces").size, 0)
     assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
       Vector("Shields 0 · need 4"))

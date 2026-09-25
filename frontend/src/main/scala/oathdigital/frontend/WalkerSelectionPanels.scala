@@ -6,21 +6,27 @@ import org.scalajs.dom
   * Both render only what the projected query declares and name no action.
   */
 private[frontend] object WalkerSelectionPanels {
-  import ServerUiSupport.{ViewerPresentation, button, element, text}
+  import ParkedDecision.DecisionForm
+  import ServerUiSupport.{button, element, text}
 
-  def render(value: GameProjection, presentation: ViewerPresentation,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
-    value.walkerDecision.filter(_ => presentation.showGameplayControls)
-        .flatMap(decision => decision.query.map(decision -> _))
-        .foreach { case (decision, query) =>
-      ui.currentWalkerSelection.filter(_.decisionId == decision.decisionId)
-          .foreach {
-        case draft: WalkerChooseManyDraft =>
-          renderMany(query, draft, canControl, panel, ui)
-        case draft: WalkerAmountDraft =>
-          renderAmount(decision, query, draft, canControl, panel, ui)
-      }
+  /** The draft is the session's, paired with the decision by id; the form
+    * says which draft shape to expect, and a draft of another shape (which
+    * `WalkerSelectionDraft.reconcile` never builds) renders nothing.
+    */
+  def render(surface: ParkedDecision.Surface.Selection, canControl: Boolean,
+      panel: dom.Element, ui: ServerUiView): Unit = {
+    val draft = ui.currentWalkerSelection
+      .filter(_.decisionId == surface.decision.decisionId)
+    surface.form match {
+      case DecisionForm.ChooseMany => draft
+        .collect { case many: WalkerChooseManyDraft => many }
+        .foreach(renderMany(surface.query, _, canControl, panel, ui))
+      case DecisionForm.ChooseAmount => draft
+        .collect { case amount: WalkerAmountDraft => amount }
+        .foreach(renderAmount(surface.decision, surface.query, _, canControl,
+          panel, ui))
     }
+  }
 
   private def renderMany(query: DecisionQueryState, draft: WalkerChooseManyDraft,
       canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit = {
@@ -76,7 +82,7 @@ private[frontend] object WalkerSelectionPanels {
     select.onchange = _ => select.value.toIntOption.foreach(value =>
       ui.currentWalkerSelection = Some(draft.choose(value)))
     panel.appendChild(select)
-    val confirm = button(query.confirmLabel.getOrElse("Confirm"),
+    val confirm = button(WalkerPanelSupport.partitionConfirmLabel(query),
       "walker-amount-confirm")
     confirm.disabled = !canControl || !draft.canConfirm
     confirm.onclick = _ => ui.currentWalkerSelection.collect {

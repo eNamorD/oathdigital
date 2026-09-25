@@ -17,7 +17,7 @@ import org.scalajs.dom
   * independent judgement about who is eligible.
   */
 private[frontend] object WalkerPanelSupport {
-  import ServerUiSupport.{ViewerPresentation, button, element, text}
+  import ServerUiSupport.{button, element, text}
 
   /** Which control the panel should render for a parked walker decision.
     * `WalkerDecisionState.kind` alone cannot tell the two "decide" parks
@@ -136,13 +136,8 @@ private[frontend] object WalkerPanelSupport {
         s"Waiting for $name: $heading")
     }
 
-  private[frontend] def renderWaitingNotice(value: GameProjection,
-      panel: dom.Element): Unit =
-    waitingNotice(value).foreach(notice =>
-      panel.appendChild(text("p", "walker-waiting", notice)))
-
   /** Renders the Recover panel for whichever of the parks
-    * (`recoverWalkerStep`) the walker is at. Shows the roll so far
+    * (`ParkedDecision.route`) the walker is at. Shows the roll so far
     * (`rollFeedback`: the dice, then the totals line) above each park's
     * controls, and gates buying more dice on the player actually having
     * supply -- as the legacy (deleted) Recover panel did. Recover rolls as the walker walks, so the continue answer both
@@ -150,13 +145,12 @@ private[frontend] object WalkerPanelSupport {
     * below it is reached only if a power folds a parked roll into the tree,
     * which is why the panel still knows how to answer one.
     */
-  private[frontend] def renderRecoverPanel(value: GameProjection,
-      presentation: ViewerPresentation, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit = {
-    value.walkerDecision.filter(_ => presentation.showGameplayControls)
-        .flatMap(decision => recoverWalkerStep(decision).map(decision -> _))
-        .foreach {
-      case (decision, RecoverWalkerStep.Roll(pool)) =>
+  private[frontend] def renderRecoverPanel(
+      surface: ParkedDecision.Surface.Recover, value: GameProjection,
+      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit = {
+    val decision = surface.decision
+    surface.step match {
+      case RecoverWalkerStep.Roll(pool) =>
         // The one heading still written here. A Roll park is not a `Decide`
         // -- it asks no question, carries a synthetic decision id and has no
         // query behind it -- so there is nothing to read a title from, and
@@ -168,7 +162,7 @@ private[frontend] object WalkerPanelSupport {
         roll.disabled = !canControl
         roll.onclick = _ => ui.submitCommand(GameCommand.RollWalker(pool))
         panel.appendChild(roll)
-      case (decision, RecoverWalkerStep.Choice(query)) =>
+      case RecoverWalkerStep.Choice(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
         val hasSupply = value.activePlayerResources.exists(_.supply >= 1)
@@ -188,7 +182,7 @@ private[frontend] object WalkerPanelSupport {
             resolveChooseOneCommand(decision, option))
           panel.appendChild(control)
         }
-      case (decision, RecoverWalkerStep.Relic(query)) =>
+      case RecoverWalkerStep.Relic(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
         // A relic at the site the actor stands on is one they can read, so
@@ -233,77 +227,76 @@ private[frontend] object WalkerPanelSupport {
       chooseOneQuery(decision)
     else None
 
-  private[frontend] def renderChooseOnePanel(value: GameProjection,
-      presentation: ViewerPresentation, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
-    value.walkerDecision.filter(_ => presentation.showGameplayControls)
-      .flatMap(decision => chooseOneStep(decision).map(decision -> _))
-      .foreach { case (decision, query) =>
-        // The roll the question is asked after (a Campaign's relocation),
-        // first, as on every panel a roll belongs beside.
-        rollFeedback(decision, panel)
-        panel.appendChild(text("h2", "", decisionHeading(query)))
-        // The card the question is about. A placement asks about a card that
-        // is neither an option nor in the temporary hand, so without this the
-        // player answers about a card they cannot see.
-        if (decision.subjectCards.nonEmpty) {
-          val subjects = element("div", "decision-subject")
-          decision.subjectCards.foreach(card =>
-            subjects.appendChild(CardFace.render(card)))
-          panel.appendChild(subjects)
-        }
-        // What this loop has already applied. A `Repeat` re-asks with the
-        // chosen answers removed, so the panel otherwise reads as resetting.
-        if (decision.answeredOptions.nonEmpty) {
-          val played = element("div", "plans-played")
-          played.appendChild(text("h3", "", "Plans played"))
-          val list = element("ul", "")
-          decision.answeredOptions.foreach(option =>
-            list.appendChild(text("li", "", option.label)))
-          played.appendChild(list)
-          panel.appendChild(played)
-        }
-        query.options.foreach { option =>
-          val label = if (option.kind == "player")
-            value.players.find(_.playerId == option.id).map(_.displayName)
-              .getOrElse(option.label)
-          else option.label
-          val choose = button(label, "walker-choice")
-          // A favor bank is named by its suit, and a suit is read as its
-          // symbol everywhere else on the table.
-          if (option.kind == "favor-bank")
-            choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
-              choose.firstChild)
-          option.badge.foreach { badge =>
-            choose.appendChild(
-              text("span", s"option-badge ${badgeClass(badge)}", badge))
-            // Named in words: the content alone reads the label and the chip
-            // run together.
-            choose.setAttribute("aria-label", s"$label, $badge")
-          }
-          choose.disabled = !canControl
-          choose.onclick = _ => ui.submitCommand(
-            resolveChooseOneCommand(decision, option))
-          // A battle plan is chosen by reading what it does, so its card is
-          // drawn above its button -- beside it, never inside: the face is
-          // itself a button that opens the inspector, and a click meant to
-          // read the card must not also commit a plan that applies at once.
-          // Gated on the badge, not merely on the card: Muster, Search, Forge
-          // and other choose-one queries also offer cards, and those keep
-          // their labelled text button.
-          option.card.filter(_ => option.badge.nonEmpty) match {
-            case Some(card) =>
-              val choice = element("div", "card-choice")
-              choice.appendChild(CardFace.render(
-                card.copy(orientation = Some("face-up"))))
-              choice.appendChild(choose)
-              panel.appendChild(choice)
-            case None => panel.appendChild(choose)
-          }
-          if (option.details.nonEmpty) panel.appendChild(text("p",
-            "walker-choice-details", option.details.mkString(" · ")))
-        }
+  private[frontend] def renderChooseOnePanel(
+      surface: ParkedDecision.Surface.ChooseOne, value: GameProjection,
+      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit = {
+    val decision = surface.decision
+    val query = surface.query
+    // The roll the question is asked after (a Campaign's relocation),
+    // first, as on every panel a roll belongs beside.
+    rollFeedback(decision, panel)
+    panel.appendChild(text("h2", "", decisionHeading(query)))
+    // The card the question is about. A placement asks about a card that
+    // is neither an option nor in the temporary hand, so without this the
+    // player answers about a card they cannot see.
+    if (decision.subjectCards.nonEmpty) {
+      val subjects = element("div", "decision-subject")
+      decision.subjectCards.foreach(card =>
+        subjects.appendChild(CardFace.render(card)))
+      panel.appendChild(subjects)
+    }
+    // What this loop has already applied. A `Repeat` re-asks with the
+    // chosen answers removed, so the panel otherwise reads as resetting.
+    if (decision.answeredOptions.nonEmpty) {
+      val played = element("div", "plans-played")
+      played.appendChild(text("h3", "", "Plans played"))
+      val list = element("ul", "")
+      decision.answeredOptions.foreach(option =>
+        list.appendChild(text("li", "", option.label)))
+      played.appendChild(list)
+      panel.appendChild(played)
+    }
+    query.options.foreach { option =>
+      val label = if (option.kind == "player")
+        value.players.find(_.playerId == option.id).map(_.displayName)
+          .getOrElse(option.label)
+      else option.label
+      val choose = button(label, "walker-choice")
+      // A favor bank is named by its suit, and a suit is read as its
+      // symbol everywhere else on the table.
+      if (option.kind == "favor-bank")
+        choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
+          choose.firstChild)
+      option.badge.foreach { badge =>
+        choose.appendChild(
+          text("span", s"option-badge ${badgeClass(badge)}", badge))
+        // Named in words: the content alone reads the label and the chip
+        // run together.
+        choose.setAttribute("aria-label", s"$label, $badge")
       }
+      choose.disabled = !canControl
+      choose.onclick = _ => ui.submitCommand(
+        resolveChooseOneCommand(decision, option))
+      // A battle plan is chosen by reading what it does, so its card is
+      // drawn above its button -- beside it, never inside: the face is
+      // itself a button that opens the inspector, and a click meant to
+      // read the card must not also commit a plan that applies at once.
+      // Gated on the badge, not merely on the card: Muster, Search, Forge
+      // and other choose-one queries also offer cards, and those keep
+      // their labelled text button.
+      option.card.filter(_ => option.badge.nonEmpty) match {
+        case Some(card) =>
+          val choice = element("div", "card-choice")
+          choice.appendChild(CardFace.render(
+            card.copy(orientation = Some("face-up"))))
+          choice.appendChild(choose)
+          panel.appendChild(choice)
+        case None => panel.appendChild(choose)
+      }
+      if (option.details.nonEmpty) panel.appendChild(text("p",
+        "walker-choice-details", option.details.mkString(" · ")))
+    }
+  }
 
   /** The three battle-plan chips, so a side reads as a colour as well as a
     * word. An unknown badge gets the neutral class rather than none.
@@ -402,30 +395,28 @@ private[frontend] object WalkerPanelSupport {
     * panel with no edit. This is the same interaction Keep/Discard runs,
     * borrowed rather than reimplemented.
     */
-  private[frontend] def renderPartitionPanel(value: GameProjection,
-      presentation: ViewerPresentation, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
-    value.walkerDecision.filter(_ => presentation.showGameplayControls)
-        .flatMap(decision => decision.query.filter(_.form == "partition")
-          .map(decision -> _))
-        .foreach { case (decision, query) =>
-      panel.appendChild(text("h2", "", decisionHeading(query)))
-      panel.appendChild(text("p", "partition-instruction",
-        partitionInstruction(query)))
-      ui.currentWalkerPartition.filter(_.decisionId == decision.decisionId)
-          .foreach { draft =>
-        val zones = element("div", "decision-zones partition-zones")
-        query.sections.foreach(section =>
-          zones.appendChild(partitionZone(section, query, draft, ui)))
-        panel.appendChild(zones)
-        val confirm = button(partitionConfirmLabel(query, draft),
-          "partition-confirm")
-        confirm.disabled = !canControl || !draft.canConfirm
-        confirm.onclick = _ =>
-          draft.command(ui.currentPlayerId).foreach(ui.submitCommand)
-        panel.appendChild(confirm)
-      }
+  private[frontend] def renderPartitionPanel(
+      surface: ParkedDecision.Surface.Partition, canControl: Boolean,
+      panel: dom.Element, ui: ServerUiView): Unit = {
+    val decision = surface.decision
+    val query = surface.query
+    panel.appendChild(text("h2", "", decisionHeading(query)))
+    panel.appendChild(text("p", "partition-instruction",
+      partitionInstruction(query)))
+    ui.currentWalkerPartition.filter(_.decisionId == decision.decisionId)
+        .foreach { draft =>
+      val zones = element("div", "decision-zones partition-zones")
+      query.sections.foreach(section =>
+        zones.appendChild(partitionZone(section, query, draft, ui)))
+      panel.appendChild(zones)
+      val confirm = button(partitionConfirmLabel(query, draft),
+        "partition-confirm")
+      confirm.disabled = !canControl || !draft.canConfirm
+      confirm.onclick = _ =>
+        draft.command(ui.currentPlayerId).foreach(ui.submitCommand)
+      panel.appendChild(confirm)
     }
+  }
 
   private def partitionZone(section: DecisionSectionState,
       query: DecisionQueryState, draft: WalkerPartitionDraft,

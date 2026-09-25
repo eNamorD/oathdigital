@@ -115,6 +115,11 @@ class ParkedDecisionSuite extends munit.FunSuite {
       "roll", pool = Some("recover"))).surface, None)
   }
 
+  test("a decide park whose query was suppressed routes to no surface") {
+    assertEquals(routeOf(WalkerDecisionState("forge", "forge-9", "decide"))
+      .surface, None)
+  }
+
   test("a choose-one that is not a decide park routes to no surface") {
     assertEquals(routeOf(parked("muster", "muster.source",
       query("choose-one"), kind = "roll")).surface, None)

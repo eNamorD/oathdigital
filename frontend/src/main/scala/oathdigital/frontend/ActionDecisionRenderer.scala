@@ -288,16 +288,8 @@ private[frontend] object ActionDecisionRenderer {
        }
      }
    }
-   WalkerPanelSupport.renderRecoverPanel(value, presentation, canControl,
-     panel, ui)
-   WalkerPanelSupport.renderChooseOnePanel(value, presentation, canControl,
-     panel, ui)
-   WalkerPanelSupport.renderPartitionPanel(value, presentation, canControl,
-     panel, ui)
-   DistributePanelRenderer.render(value, presentation, canControl, panel, ui)
-   NegotiationDealPanel.render(value, presentation, canControl, panel, ui)
-   WalkerSelectionPanels.render(value, presentation, canControl, panel, ui)
-   WalkerPanelSupport.renderWaitingNotice(value, panel)
+   ParkedDecision.render(value, ParkedDecision.route(value, presentation),
+     canControl, panel, ui)
    CampaignResultPanel.render(value, panel)
    if (value.phase == "rest" && presentation.showGameplayControls) {
      PhasePowerButtons.render(value, canControl, panel, submitCommand)

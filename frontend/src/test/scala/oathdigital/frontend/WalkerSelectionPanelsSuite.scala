@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
+import ParkedDecision.{DecisionForm, Surface}
 import org.scalajs.dom
 
 class WalkerSelectionPanelsSuite extends munit.FunSuite {
@@ -12,20 +13,20 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite {
   private val amount = DecisionQueryState("choose-amount", Vector.empty,
     heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
     minimum = Some(3), maximum = Some(5))
-  private val presentation = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None)
+  private def decision(id: String, query: DecisionQueryState,
+      rollOutcome: Option[WalkerRollOutcomeState] = None): WalkerDecisionState =
+    WalkerDecisionState("challenge", id, "decide", query = Some(query),
+      rollOutcome = rollOutcome)
 
-  private def projection(id: String, query: DecisionQueryState,
-      rollOutcome: Option[WalkerRollOutcomeState] = None): GameProjection =
-    GameProjection("game", 9L, "act-action-selection", Some("red"), Vector.empty,
-      Vector.empty, Vector.empty, Vector.empty, ready = true, completed = false,
-      walkerDecision = Some(WalkerDecisionState("challenge", id, "decide",
-        query = Some(query), rollOutcome = rollOutcome)))
+  /** The form the route would read off the query. */
+  private def form(query: DecisionQueryState): ParkedDecision.SelectionForm =
+    if (query.form == "choose-many") DecisionForm.ChooseMany
+    else DecisionForm.ChooseAmount
 
   private def opened(id: String, query: DecisionQueryState) = {
     val ui = new RecordingView("game", "red")
     ui.currentWalkerSelection = WalkerSelectionDraft.reconcile(None,
-      BoardSelectionContext("game", "red", 9), projection(id, query).walkerDecision)
+      BoardSelectionContext("game", "red", 9), Some(decision(id, query)))
     ui
   }
 
@@ -33,8 +34,8 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite {
       canControl: Boolean = true,
       rollOutcome: Option[WalkerRollOutcomeState] = None): dom.Element = {
     val panel = dom.document.createElement("div")
-    WalkerSelectionPanels.render(projection(id, query, rollOutcome), presentation,
-      canControl, panel, ui)
+    WalkerSelectionPanels.render(Surface.Selection(
+      decision(id, query, rollOutcome), query, form(query)), canControl, panel, ui)
     panel
   }
 

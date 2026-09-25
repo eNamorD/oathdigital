@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import ParkedDecision.Surface
+import WalkerPanelSupport.RecoverWalkerStep
 import org.scalajs.dom
 
 /** Panels that ask a player to pick one card out of several. A card the
@@ -62,16 +64,19 @@ class CardChoicePanelSuite extends munit.FunSuite {
           orientation = Some("face-down"), defense = Some(1))))),
     Vector.empty, heading = Some("Take a relic"))
 
-  private def recoverRelics(): dom.Element = {
+  private val relicPark: Surface.Recover = Surface.Recover(WalkerDecisionState("recover",
+    WalkerPanelSupport.recoverRelicDecisionId, "decide",
+    query = Some(relicQuery)), RecoverWalkerStep.Relic(relicQuery))
+
+  private val table = GameProjection("game", 1L, "act", Some("red"),
+    Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+    completed = false)
+
+  private def recoverRelics(ui: RecordingView = new RecordingView("game", "red"))
+      : dom.Element = {
     val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderRecoverPanel(
-      GameProjection("game", 1L, "act", Some("red"), Vector.empty, Vector.empty,
-        Vector.empty, Vector.empty, ready = true, completed = false,
-        walkerDecision = Some(WalkerDecisionState("recover",
-          WalkerPanelSupport.recoverRelicDecisionId, "decide",
-          query = Some(relicQuery)))),
-      ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
-      canControl = true, panel, new RecordingView("game", "red"))
+    WalkerPanelSupport.renderRecoverPanel(relicPark, table, canControl = true,
+      panel, ui)
     panel
   }
 
@@ -87,15 +92,7 @@ class CardChoicePanelSuite extends munit.FunSuite {
 
   test("taking a relic submits the option the button belongs to") {
     val ui = new RecordingView("game", "red")
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderRecoverPanel(
-      GameProjection("game", 1L, "act", Some("red"), Vector.empty, Vector.empty,
-        Vector.empty, Vector.empty, ready = true, completed = false,
-        walkerDecision = Some(WalkerDecisionState("recover",
-          WalkerPanelSupport.recoverRelicDecisionId, "decide",
-          query = Some(relicQuery)))),
-      ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
-      canControl = true, panel, ui)
+    val panel = recoverRelics(ui)
     all(panel, ".recover-relic-choice").last.asInstanceOf[dom.html.Element].click()
     assertEquals(ui.submitted.size, 1)
     assert(ui.submitted.head.toString.contains("relic:horn"),

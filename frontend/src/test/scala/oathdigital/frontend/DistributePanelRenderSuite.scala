@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, DistributeAmountWire,
   GameIntent => Intent}
+import ParkedDecision.Surface
 import org.scalajs.dom
 import scala.scalajs.js
 
@@ -19,13 +20,6 @@ class DistributePanelRenderSuite extends munit.FunSuite {
   private val parked = WalkerDecisionState("begin-rest",
     "rest.league-treaty.distribution", "decide", query = Some(query))
 
-  private def projection: GameProjection = GameProjection("game", 9L, "rest",
-    Some("red"), Vector.empty, Vector.empty, Vector.empty, Vector.empty,
-    ready = true, completed = false, walkerDecision = Some(parked))
-
-  private val presentation = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None)
-
   private def opened(): RecordingView = {
     val ui = new RecordingView("game", "red")
     ui.currentWalkerDistribution = WalkerDistributeDraft.reconcile(None,
@@ -35,7 +29,8 @@ class DistributePanelRenderSuite extends munit.FunSuite {
 
   private def render(ui: RecordingView, canControl: Boolean = true): dom.Element = {
     val panel = dom.document.createElement("div")
-    DistributePanelRenderer.render(projection, presentation, canControl, panel, ui)
+    DistributePanelRenderer.render(Surface.Distribute(parked, query), canControl,
+      panel, ui)
     panel
   }
 
@@ -112,10 +107,10 @@ class DistributePanelRenderSuite extends munit.FunSuite {
     val ui = new RecordingView("game", "red")
     ui.currentWalkerDistribution = WalkerDistributeDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(rangedParked))
-    val ranged = projection.copy(walkerDecision = Some(rangedParked))
     def draw(): dom.Element = {
       val panel = dom.document.createElement("div")
-      DistributePanelRenderer.render(ranged, presentation, true, panel, ui)
+      DistributePanelRenderer.render(Surface.Distribute(rangedParked, rangedQuery),
+        canControl = true, panel, ui)
       panel
     }
     assertEquals(one(draw(), ".distribute-minimum").textContent,

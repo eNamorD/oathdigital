@@ -1,5 +1,6 @@
 package oathdigital.frontend
 
+import ParkedDecision.Surface
 import org.scalajs.dom
 
 /** The generic choose-one panel, at the DOM: every projected option is one
@@ -14,15 +15,20 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     heading = Some("Choose a card to Muster from"))
   private val parked = WalkerDecisionState("muster", "muster.source", "decide",
     query = Some(query))
-  private val presentation = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None)
 
-  private def render(ui: RecordingView): dom.Element = {
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
+  /** The table the panel reads player names off; nothing here names one. */
+  private val table = GameProjection("game", 9L, "act", Some("red"),
+    Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+    completed = false)
+
+  /** Draws the panel for a choose-one decision the route has already
+    * matched: the surface carries the decision and its query.
+    */
+  private def draw(decision: WalkerDecisionState,
+      ui: RecordingView = new RecordingView("game", "red")): dom.Element = {
     val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
+    WalkerPanelSupport.renderChooseOnePanel(
+      Surface.ChooseOne(decision, decision.query.get), table,
       canControl = true, panel, ui)
     panel
   }
@@ -31,7 +37,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     root.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
   test("each projected option is one control and its details show beside it") {
-    val panel = render(new RecordingView("game", "red"))
+    val panel = draw(parked)
     assertEquals(all(panel, ".walker-choice").map(_.textContent),
       Vector("Old Oak", "Rowdy Pub"))
     assertEquals(all(panel, ".walker-choice-details").map(_.textContent),
@@ -40,7 +46,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
 
   test("choosing an option submits the generic answer for its kind and id") {
     val ui = new RecordingView("game", "red")
-    val panel = render(ui)
+    val panel = draw(parked, ui)
     all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
     assertEquals(ui.submitted,
       Vector(WalkerPanelSupport.resolveChooseOneCommand(parked, oak)))
@@ -56,12 +62,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
         DecisionOptionState("button", "adviser-faceup", "Play faceup")),
         heading = Some("Play or discard card"))),
       subjectCards = Vector(subject))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(place))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, new RecordingView("game", "red"))
+    val panel = draw(place)
     assertEquals(all(panel, ".decision-subject .card-face").size, 1)
     assertEquals(all(panel, ".walker-choice").map(_.textContent),
       Vector("Discard", "Play faceup"))
@@ -86,14 +87,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Some(card), Vector("1 Favor"), Some("Battle Plan"))
     val query = DecisionQueryState("choose-one", Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
-    val parked = WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, new RecordingView("game", "red"))
+    val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
+      "decide", query = Some(query)))
     assertEquals(all(panel, ".card-choice > .card-face").size, 1)
     assertEquals(all(panel, ".walker-choice .card-face").size, 0)
     assertEquals(all(panel, ".plan-side-both").map(_.textContent),
@@ -110,14 +105,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     val offer = DecisionOptionState("denizen", "denizen:longbows", "Longbows")
     val query = DecisionQueryState("choose-one", Vector(offer),
       heading = Some("Choose a battle plan, or finish"))
-    val parked = WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query), answeredOptions = Vector(played))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, new RecordingView("game", "red"))
+    val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
+      "decide", query = Some(query), answeredOptions = Vector(played)))
     assertEquals(all(panel, ".plans-played li").map(_.textContent),
       Vector("Sticky Fire"))
   }
@@ -130,14 +119,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     val option = DecisionOptionState("denizen", "d1", "Old Oak", Some(card))
     val query = DecisionQueryState("choose-one", Vector(option),
       heading = Some("Choose a card to Muster from"))
-    val parked = WalkerDecisionState("muster", "muster.source", "decide",
-      query = Some(query))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, new RecordingView("game", "red"))
+    val panel = draw(WalkerDecisionState("muster", "muster.source", "decide",
+      query = Some(query)))
     assertEquals(all(panel, ".walker-choice").map(_.textContent), Vector("Old Oak"))
     assertEquals(all(panel, ".card-face").size, 0)
   }
@@ -149,14 +132,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Some(card), badge = Some("Attack Plan"))
     val query = DecisionQueryState("choose-one", Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
-    val parked = WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, new RecordingView("game", "red"))
+    val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
+      "decide", query = Some(query)))
     assertEquals(all(panel, ".card-choice > .card-face").size, 1)
     assertEquals(all(panel, "span.option-badge.plan-side-attack").map(_.textContent),
       Vector("Attack Plan"))
@@ -172,15 +149,9 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Some(card), badge = Some("Attack Plan"))
     val query = DecisionQueryState("choose-one", Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
-    val parked = WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
-    val panel = dom.document.createElement("div")
     val ui = new RecordingView("game", "red")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, ui)
+    val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
+      "decide", query = Some(query)), ui)
     var inspected = Vector.empty[CardInspection.Request]
     CardInspection.onOpen(request => inspected :+= request)
     try all(panel, ".card-face").head.asInstanceOf[dom.html.Button].click()
@@ -196,14 +167,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       badge = Some("Defense Plan"))
     val query = DecisionQueryState("choose-one", Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
-    val parked = WalkerDecisionState("campaign", "campaign.defender-plan",
-      "decide", query = Some(query))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, new RecordingView("game", "red"))
+    val panel = draw(WalkerDecisionState("campaign", "campaign.defender-plan",
+      "decide", query = Some(query)))
     assertEquals(all(panel, ".walker-choice").map(_.getAttribute("aria-label")),
       Vector("Title plan, Defense Plan"))
     assertEquals(all(panel, ".card-choice").size, 0)
@@ -215,14 +180,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     val site = DecisionOptionState("site", "s1", "The Spire")
     val query = DecisionQueryState("choose-one", Vector(site),
       heading = Some("Move the defending warbands"))
-    val parked = WalkerDecisionState("campaign", "campaign.relocation",
-      "decide", query = Some(query), rollOutcome = Some(outcome))
-    val projection = GameProjection("game", 9L, "act", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, walkerDecision = Some(parked))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderChooseOnePanel(projection, presentation,
-      canControl = true, panel, new RecordingView("game", "red"))
+    val panel = draw(WalkerDecisionState("campaign", "campaign.relocation",
+      "decide", query = Some(query), rollOutcome = Some(outcome)))
     assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
       Vector("Defense 1"))
     assertEquals(all(panel, ".walker-roll-faces").map(_.getAttribute("role")),

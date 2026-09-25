@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
   GameIntent => Intent}
+import ParkedDecision.Surface
 import org.scalajs.dom
 import scala.scalajs.js
 
@@ -32,23 +33,15 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
   private val parked =
     WalkerDecisionState("forge", "forge-9", "decide", query = Some(query))
 
-  private def projectionWith(decision: Option[WalkerDecisionState])
-      : GameProjection = GameProjection("game", 9L, "act", Some("red"),
-    Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-    completed = false, walkerDecision = decision)
-
-  private val presentation = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None)
-
   /** Renders the panel into a detached container and hands back both, so a
     * test can read the tree and then re-render it after a click the way the
     * real `rerender()` would.
     */
   private def render(ui: RecordingView, canControl: Boolean = true,
-      decision: Option[WalkerDecisionState] = Some(parked)): dom.Element = {
+      decision: WalkerDecisionState = parked): dom.Element = {
     val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderPartitionPanel(projectionWith(decision),
-      presentation, canControl, panel, ui)
+    WalkerPanelSupport.renderPartitionPanel(
+      Surface.Partition(decision, decision.query.get), canControl, panel, ui)
     panel
   }
 
@@ -135,14 +128,9 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     ui
   }
 
-  private def pickPanel(ui: RecordingView): dom.Element = {
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderPartitionPanel(
-      projectionWith(Some(WalkerDecisionState("setup", "setup-1", "decide",
-        query = Some(keepDiscard)))),
-      presentation, canControl = true, panel, ui)
-    panel
-  }
+  private def pickPanel(ui: RecordingView): dom.Element =
+    render(ui, decision = WalkerDecisionState("setup", "setup-1", "decide",
+      query = Some(keepDiscard)))
 
   test("a leftover zone holding several options says its order counts") {
     val zone = one(pickPanel(picking()), """[data-section-key="discard"]""")
@@ -165,10 +153,8 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     val ui = new RecordingView("game", "red")
     ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(decision))
-    val panel = dom.document.createElement("div")
-    WalkerPanelSupport.renderPartitionPanel(projectionWith(Some(decision)),
-      presentation, canControl = true, panel, ui)
-    assertEquals(all(panel, ".decision-zone-order"), Vector.empty)
+    assertEquals(all(render(ui, decision = decision), ".decision-zone-order"),
+      Vector.empty)
   }
 
   /** Forge pays into zones that each carry a minimum, so none of them is a
@@ -327,16 +313,14 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
   test("the panel titles itself from the query, not from the action") {
     val retitled = query.copy(heading = Some("Pay for the relic"),
       confirmLabel = Some("Pay"))
-    val panel = render(opened(),
-      decision = Some(parked.copy(query = Some(retitled))))
+    val panel = render(opened(), decision = parked.copy(query = Some(retitled)))
     assertEquals(one(panel, "h2").textContent, "Pay for the relic")
     assertEquals(confirm(panel).textContent, "Pay")
   }
 
   test("a partition query declaring no copy falls back to generic copy") {
     val bare = query.copy(heading = None, confirmLabel = None)
-    val panel = render(opened(),
-      decision = Some(parked.copy(query = Some(bare))))
+    val panel = render(opened(), decision = parked.copy(query = Some(bare)))
     assertEquals(one(panel, "h2").textContent, "Resolve decision")
     assertEquals(confirm(panel).textContent, "Confirm")
     // Untitled, not unusable: the zones and the options are still there.
@@ -344,19 +328,6 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assertEquals(all(panel, ".decision-option").size, 3)
   }
 
-  test("a park with no partition query renders no controls at all") {
-    val ui = opened()
-    assertEquals(all(render(ui, decision = None), ".partition-zone"),
-      Vector.empty)
-    val suppressed = Some(parked.copy(query = None))
-    assertEquals(all(render(ui, decision = suppressed), ".partition-zone"),
-      Vector.empty)
-    val chooseOne = Some(WalkerDecisionState("recover", "recover.choice",
-      "decide", query = Some(DecisionQueryState("choose-one",
-        Vector(DecisionOptionState("button", "stop", "Stop"))))))
-    assertEquals(all(render(ui, decision = chooseOne), ".partition-zone"),
-      Vector.empty)
-  }
 
   /** Fires `dragstart` and returns what the handler wrote to the transfer.
     * jsdom implements neither `DragEvent` nor `DataTransfer`, so the event

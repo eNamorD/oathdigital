@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import org.scalajs.dom
+
 /** The route from a parked decision to the one surface a viewer sees it on.
   *
   * A `WalkerDecisionState` arrives as strings: an action, a kind, a decision
@@ -17,7 +19,7 @@ package oathdigital.frontend
   * (`WalkerDecisionProjector.project`/`.waiting` split on ownership).
   */
 private[frontend] object ParkedDecision {
-  import ServerUiSupport.ViewerPresentation
+  import ServerUiSupport.{ViewerPresentation, text}
 
   /** A query's form, parsed once from the wire string. `Unknown` keeps the
     * raw spelling: a form this client has no surface for renders nothing
@@ -85,6 +87,37 @@ private[frontend] object ParkedDecision {
   def route(value: GameProjection, presentation: ViewerPresentation): Routed =
     Routed(surface(value, presentation.showGameplayControls),
       waitingNotice(value))
+
+  /** Draws the routed surface into the action pane, then the notice, in
+    * that order. One exhaustive match: a new surface is a case here and
+    * nothing elsewhere. The board surface is `WorldBoardRenderer`'s to draw,
+    * which takes the `PawnPlacement` case itself; this table only records
+    * that the pane does not draw it.
+    *
+    * Two panels read past the decision: Recover gates buying dice on the
+    * acting player's supply, and the choose-one panel names a player option
+    * by its display name. Both are the projection's, so it rides along.
+    */
+  def render(value: GameProjection, routed: Routed, canControl: Boolean,
+      panel: dom.Element, ui: ServerUiView): Unit = {
+    routed.surface.foreach {
+      case surface: Surface.Recover => WalkerPanelSupport.renderRecoverPanel(
+        surface, value, canControl, panel, ui)
+      case surface: Surface.ChooseOne => WalkerPanelSupport.renderChooseOnePanel(
+        surface, value, canControl, panel, ui)
+      case surface: Surface.Partition => WalkerPanelSupport.renderPartitionPanel(
+        surface, canControl, panel, ui)
+      case surface: Surface.Distribute =>
+        DistributePanelRenderer.render(surface, canControl, panel, ui)
+      case surface: Surface.Negotiate =>
+        NegotiationDealPanel.render(surface, canControl, panel, ui)
+      case surface: Surface.Selection =>
+        WalkerSelectionPanels.render(surface, canControl, panel, ui)
+      case _: Surface.PawnPlacement => ()
+    }
+    routed.notice.foreach(notice =>
+      panel.appendChild(text("p", "walker-waiting", notice)))
+  }
 
   private def surface(value: GameProjection,
       showGameplayControls: Boolean): Option[Surface] =

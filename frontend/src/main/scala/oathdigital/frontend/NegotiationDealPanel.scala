@@ -4,27 +4,23 @@ import oathdigital.protocol.{DecisionAnswerWire, GameIntent => GameCommand}
 import org.scalajs.dom
 
 /** The deal panel for a parked negotiation. Every viewer sees who is in the
-  * deal, who has accepted, and the terms as their redaction level allows; only
-  * an owner gets the editor, which answers the deal decision through
-  * `ResolveWalker` (propose terms, accept, decline).
+  * deal, who has accepted, and the terms as their redaction level allows; the
+  * viewer the route gave an editor answers the deal decision through it
+  * (`ResolveWalker`: propose terms, accept, decline).
   */
 private[frontend] object NegotiationDealPanel {
-  import ServerUiSupport.{ViewerPresentation, button, protocolNegotiationTerms, text}
+  import ServerUiSupport.{button, protocolNegotiationTerms, text}
 
   private final case class DisclosureOffer(kind: String, card: CardDetails,
       siteId: Option[String])
 
-  def render(value: GameProjection, presentation: ViewerPresentation,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
-    value.walkerDecision.flatMap(decision => decision.query
-        .filter(_.form == "negotiate").flatMap(_.deal)
-        .map(decision.decisionId -> _)) match {
-      case Some((decisionId, deal)) =>
-        summary(deal, panel)
-        deal.editing.filter(_ => presentation.showGameplayControls).foreach(
-          editor(decisionId, deal, _, canControl, panel, ui))
-      case None => value.walkerWaiting.flatMap(_.deal).foreach(summary(_, panel))
+  def render(surface: ParkedDecision.Surface.Negotiate, canControl: Boolean,
+      panel: dom.Element, ui: ServerUiView): Unit = {
+    summary(surface.deal, panel)
+    surface.editor.foreach { case (decisionId, editing) =>
+      editor(decisionId, surface.deal, editing, canControl, panel, ui)
     }
+  }
 
   private def summary(deal: NegotiationDealState, panel: dom.Element): Unit = {
     panel.appendChild(text("h2", "", "Negotiation"))
