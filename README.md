@@ -58,6 +58,14 @@ git diff --check
 
 The catalog generator without `--output` is a non-writing equality check.
 
+Two commits rewrote the whole code base to Scala 3 indentation and control
+syntax. They are listed in `.git-blame-ignore-revs`; run this once so
+`git blame` looks through them:
+
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ### Local server UI
 
 For testing services, the game can be played in server mode. Server mode offers
