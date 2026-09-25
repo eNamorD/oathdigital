@@ -65,8 +65,7 @@ class GleamingArmorSuite extends munit.FunSuite:
   test("a plan the defender cannot afford with the added cost is not offered"):
     val b = attackerHolds(0)
     // Neither the title's plan nor the Watchdog can be paid for.
-    assertEquals(commit(rules(losing), b, 4).continue,
-      awaits(b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(losing), b, 4), b.actor, CampaignIds.sacrifice))
 
   test("without Gleaming Armor the same plans are free"):
     val base = againstPlayer(board())
@@ -98,8 +97,8 @@ class GleamingArmorSuite extends munit.FunSuite:
     // and a record of each, on top of the printed defense.
     val plain = commit(rules(losing), free, 2)
     val armored = commit(rules(losing), taxed, 2)
-    assertEquals(plain.continue, awaits(free.actor, CampaignIds.sacrifice))
-    assertEquals(armored.continue, awaits(taxed.actor, CampaignIds.sacrifice))
+    assert(awaits(plain, free.actor, CampaignIds.sacrifice))
+    assert(awaits(armored, taxed.actor, CampaignIds.sacrifice))
     assertEquals(defenseChanges(plain) - defenseChanges(armored), 3)
     // It offers nothing to the attacker either, and nothing is paid or flipped.
     assertEquals(armored.ops.count(op => op.isInstanceOf[PayCost] ||
@@ -133,8 +132,7 @@ class GleamingArmorSuite extends munit.FunSuite:
 
   test("an attacker with only the secret Brass Army needs cannot pay the added cost, so it is not offered"):
     val b = defenderHolds(1)
-    assertEquals(commit(rules(winning), b, 2).continue,
-      awaits(b.other, CampaignIds.defenderPlan))
+    assert(awaits(commit(rules(winning), b, 2), b.other, CampaignIds.defenderPlan))
 
   test("the holder's own plans are not taxed"):
     val base = againstPlayer(board())

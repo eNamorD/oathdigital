@@ -32,7 +32,7 @@ class MercenariesSuite extends munit.FunSuite:
   test("an attacker pays a favor onto the card and adds three attack dice"):
     val b = attackerBoard
     val run = commit(rules(winning), b, 0)
-    assertEquals(run.continue, awaits(b.actor, CampaignIds.attackerPlan))
+    assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))
     assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(1, 0)))
@@ -89,8 +89,7 @@ class MercenariesSuite extends munit.FunSuite:
 
   test("an attacker with no favor to place is not offered Mercenaries"):
     val b = funded(attackerBoard, attackerBoard.actor, 0)
-    assertEquals(commit(rules(winning), b, 2).continue,
-      awaits(b.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(winning), b, 2), b.actor, CampaignIds.sacrifice))
 
   private def defending(warbands: Int = 8): Board =
     val base = againstPlayer(board(warbands = warbands))
@@ -100,7 +99,7 @@ class MercenariesSuite extends munit.FunSuite:
   test("a defender pays at once and takes away the dice the attacker would roll, down to none"):
     val b = defending(warbands = 2)
     val run = commit(rules(winning), b, 2)
-    assertEquals(run.continue, awaits(b.other, CampaignIds.defenderPlan))
+    assert(awaits(run, b.other, CampaignIds.defenderPlan))
     val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
     // The pool held two dice, so two are taken and not three.
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
@@ -131,7 +130,7 @@ class MercenariesSuite extends munit.FunSuite:
     val two = board(extras = 1)
     val b = funded(withSiteCard(two, two.extras.head, card), two.actor, 5)
     val run = commit(rules(winning), b, 2)
-    assertEquals(run.continue, awaits(b.actor, CampaignIds.sacrifice))
+    assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!run.ops.exists(_.isInstanceOf[PayCost]))
 
   test("the card is found in the catalog and registered once"):

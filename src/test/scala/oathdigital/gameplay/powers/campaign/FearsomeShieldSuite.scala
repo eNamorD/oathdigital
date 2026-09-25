@@ -24,7 +24,7 @@ class FearsomeShieldSuite extends munit.FunSuite:
   test("a defender burns two secrets and adds two defense dice"):
     val b = defending(3)
     val run = commit(rules(losing), b, 4)
-    assertEquals(run.continue, awaits(b.other, CampaignIds.defenderPlan))
+    assert(awaits(run, b.other, CampaignIds.defenderPlan))
     val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
     assertEquals(picked.since(run).size, 2)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 2)))
@@ -39,7 +39,7 @@ class FearsomeShieldSuite extends munit.FunSuite:
     val b = defending(1)
     val run = commit(rules(losing), b, 4)
     // Only the title's plan is left to choose.
-    assertEquals(run.continue, awaits(b.other, CampaignIds.defenderPlan))
+    assert(awaits(run, b.other, CampaignIds.defenderPlan))
     val done = run.finish
     assertEquals(secretsOf(done.state, b.other), (1, 0))
     assert(!done.ops.exists(_.isInstanceOf[PayCost]))
@@ -52,5 +52,5 @@ class FearsomeShieldSuite extends munit.FunSuite:
     assertEquals(commit(rules(losing), down, 4).ops.count(_.isInstanceOf[PayCost]), 0)
     val attacker = replacePlayer(withRelic(board(), relic), board().actor)(p =>
       p.copy(board = p.board.copy(faceUpSecrets = 3)))
-    assertEquals(commit(rules(losing), attacker, 2).continue,
-      awaits(attacker.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(losing), attacker, 2), attacker.actor,
+      CampaignIds.sacrifice))

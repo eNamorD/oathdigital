@@ -55,7 +55,7 @@ class WarningSignalsSuite extends munit.FunSuite:
   test("choosing it asks the defender to arrange their board and every ruled site"):
     val b = defending
     val run = chosen(b)
-    assertEquals(run.continue, awaits(b.other, decision))
+    assert(awaits(run, b.other, decision))
     // Nothing has moved yet, and the card has not been discarded.
     assertEquals(forcesAt(run.state, b.origin), exile(b, 2))
     assertEquals(player(run.state, b.other).board.warbands, 3)
@@ -69,7 +69,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     assertEquals(forcesAt(moved.state, secondSite(b)), exile(b, 3))
     assertEquals(player(moved.state, b.other).board.warbands, 0)
     // The window then offers what is left, so the defender finishes it.
-    assertEquals(moved.continue, awaits(b.other, CampaignIds.defenderPlan))
+    assert(awaits(moved, b.other, CampaignIds.defenderPlan))
 
   test("warbands may also go from the sites to the board"):
     val b = defending
@@ -133,7 +133,7 @@ class WarningSignalsSuite extends munit.FunSuite:
       base.other)(p => p.copy(board = p.board.copy(warbands = 3)))
     val run = commit(rules(losing), b, 2, raid = true).pick(b.other,
       CampaignIds.defenderPlan, ref)
-    assertEquals(run.continue, awaits(b.actor, CampaignIds.sacrifice))
+    assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finish
     assert(ready(done.state).game.current.commonCards.regionalDiscards.values
       .exists(_.contains(id)))
@@ -141,11 +141,11 @@ class WarningSignalsSuite extends munit.FunSuite:
   test("a bandit defender never uses it, and the attacker's own copy is no defender's plan"):
     val two = board(extras = 1)
     val bandit = withSiteCard(two, two.extras.head, card)
-    assertEquals(commit(rules(losing), bandit, 2).continue,
-      awaits(bandit.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(losing), bandit, 2), bandit.actor,
+      CampaignIds.sacrifice))
     val attacker = withAdviser(board(), card, Orientation.FaceUp)
-    assertEquals(commit(rules(losing), attacker, 2).continue,
-      awaits(attacker.actor, CampaignIds.sacrifice))
+    assert(awaits(commit(rules(losing), attacker, 2), attacker.actor,
+      CampaignIds.sacrifice))
 
   test("the recorded moves replay to the same state, and survive the journal wire"):
     val b = defending

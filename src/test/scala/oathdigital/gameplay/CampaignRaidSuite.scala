@@ -3,12 +3,18 @@ package oathdigital.gameplay
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
 
 class CampaignRaidSuite extends munit.FunSuite:
+  /** Every `rules(...)` call in this file keeps the `powers = true` default. */
+  private val parked = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog))
+
   private def ready(state: OathState): ReadyGame = state match
     case Ready(value) => value
     case other => fail(s"expected a ready game, got $other")
@@ -47,8 +53,8 @@ class CampaignRaidSuite extends munit.FunSuite:
   test("a Raid victory transfers in the printed order and then asks where the pawn goes"):
     val (b, relic) = raidBoard()
     val (game, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
-    assertEquals(sacrificed.continue, OathContinue.AwaitingCampaignDecision(b.actor,
-      DecisionId(CampaignIds.relocation)))
+    parked.assertParked(sacrificed.state, ActionRef.Campaign,
+      CampaignIds.relocation, b.actor)
     val after = ready(sacrificed.state)
     // The transfer has happened; the pawn has not moved yet.
     assert(player(sacrificed.state, b.actor).relics.exists(_.id == relic))
@@ -75,7 +81,7 @@ class CampaignRaidSuite extends munit.FunSuite:
     val done = game.resolveWalker(sacrificed.state, b.actor, CampaignIds.relocation,
       ChooseOneAnswer(DecisionOptionRef.Site(destination))).toOption.get
     assertEquals(player(done.state, b.other).pawnSite, Some(destination))
-    assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
+    parked.assertResumed(done.state, Phase.Act, b.actor)
     assertEquals(ready(done.state).game.current.walkerPending, None)
 
   test("the pawn cannot be relocated to its own site"):
@@ -87,7 +93,7 @@ class CampaignRaidSuite extends munit.FunSuite:
   test("a Raid defeat transfers nothing, moves no pawn and kills half the survivors"):
     val (b, relic) = raidBoard(defenderWarbands = 9)
     val (_, _, _, _, _, done) = walk(b, relic, attack = 4)
-    assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
+    parked.assertResumed(done.state, Phase.Act, b.actor)
     assertEquals(player(done.state, b.actor).relics.exists(_.id == relic), false)
     assertEquals(player(done.state, b.other).pawnSite, Some(b.origin))
     assertEquals(player(done.state, b.other).board.warbands, 9)
@@ -106,8 +112,8 @@ class CampaignRaidSuite extends munit.FunSuite:
       b.actor).toOption.get
     val kind = game.resolveWalker(started.state, b.actor, CampaignIds.kind, raid)
       .toOption.get
-    assertEquals(kind.continue, OathContinue.AwaitingCampaignDecision(b.actor,
-      DecisionId(CampaignIds.defender)))
+    parked.assertParked(kind.state, ActionRef.Campaign, CampaignIds.defender,
+      b.actor)
     assert(game.resolveWalker(kind.state, b.actor, CampaignIds.defender,
       ChooseOneAnswer(DecisionOptionRef.Player(b.other))).isRight)
 

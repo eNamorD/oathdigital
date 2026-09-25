@@ -40,7 +40,7 @@ class RampartSuite extends munit.FunSuite:
   test("Towering Rampart at a targeted site adds two defense dice"):
     val b = targeted(EdificeSide.Intact)
     val run = commit(rules(losing), b, 4)
-    assertEquals(run.continue, awaits(b.other, CampaignIds.defenderPlan))
+    assert(awaits(run, b.other, CampaignIds.defenderPlan))
     val picked = run.pick(b.other, CampaignIds.defenderPlan, edificeRef)
     assertEquals(picked.since(run), Vector[CoreOperation](
       ModifyDicePool(defensePool, 2)))
@@ -87,7 +87,7 @@ class RampartSuite extends munit.FunSuite:
       case _ => false
     val before = commit(rules(losing), board(), 2)
     val run = commit(rules(losing), b, 2)
-    assertEquals(run.continue, awaits(b.actor, CampaignIds.sacrifice))
+    assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assertEquals(defensePoolChanges(run), defensePoolChanges(before) + 1)
 
   test("the two faces are two powers of one card, registered once each"):

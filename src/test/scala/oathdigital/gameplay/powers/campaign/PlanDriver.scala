@@ -5,7 +5,8 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.CampaignFixture.Board
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerDice, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
+  WalkerDice, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
@@ -34,14 +35,21 @@ object PlanDriver:
   def player(state: OathState, id: PlayerId): PlayerState =
     ready(state).game.current.players.find(_.player == id).get
 
-  def awaits(who: PlayerId, id: String): OathContinue =
-    OathContinue.AwaitingCampaignDecision(who, DecisionId(id))
+  /** The parked decision, as this file's suites rebuild it: the same catalog
+    * and walker power catalog `CampaignFixture.rules(dice, powers = true)`
+    * builds `OathRules` with.
+    */
+  val parked = new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog))
+
+  /** Whether the run is parked on `id`, awaiting `who`. */
+  def awaits(run: Run, who: PlayerId, id: String): Boolean =
+    parked.parkedDecision(run.state).exists(facts =>
+      facts.decision == id && facts.awaiting == who)
 
   /** A Campaign in progress: the transition it reached and every event so far. */
   final case class Run(game: OathRules, transition: OathTransition,
       events: Vector[OathEvent]):
     def state: OathState = transition.state
-    def continue: OathContinue = transition.continue
 
     /** The operations recorded so far, in order. */
     def ops: Vector[CoreOperation] = events.collect {
@@ -82,14 +90,15 @@ object PlanDriver:
     /** Finishes every plan window, sacrifices nothing and places nothing, until
       * the Campaign ends or asks something else.
       */
-    def finish: Run = continue match
-      case OathContinue.AwaitingCampaignDecision(who, DecisionId(id)) => id match
+    def finish: Run = parked.parkedDecision(state) match
+      case Some(facts) => facts.decision match
         case CampaignIds.attackerPlan | CampaignIds.defenderPlan =>
-          answer(who, id, ChooseOneAnswer(CampaignIds.finish)).finish
+          answer(facts.awaiting, facts.decision,
+            ChooseOneAnswer(CampaignIds.finish)).finish
         case CampaignIds.sacrifice | CampaignIds.placement =>
-          answer(who, id, ChooseAmountAnswer(0)).finish
+          answer(facts.awaiting, facts.decision, ChooseAmountAnswer(0)).finish
         case _ => this
-      case _ => this
+      case None => this
 
   /** Starts a Campaign, chooses a Raid when asked and `raid` is set, answers the
     * optional targets (when asked) and the force.
@@ -102,11 +111,11 @@ object PlanDriver:
         identity)
     val run = Run(game, started, started.events)
     val kind =
-      if run.continue == awaits(b.actor, CampaignIds.kind) then run.pick(b.actor,
+      if awaits(run, b.actor, CampaignIds.kind) then run.pick(b.actor,
         CampaignIds.kind, DecisionOptionRef.Button(if raid then "raid" else "conquest"))
       else run
     val asked =
-      if kind.continue == awaits(b.actor, CampaignIds.targets) then
+      if awaits(kind, b.actor, CampaignIds.targets) then
         kind.answer(b.actor, CampaignIds.targets, ChooseManyAnswer(targets))
       else kind
     asked.answer(b.actor, CampaignIds.force, ChooseAmountAnswer(force))

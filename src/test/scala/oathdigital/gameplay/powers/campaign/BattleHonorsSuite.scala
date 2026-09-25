@@ -76,7 +76,7 @@ class BattleHonorsSuite extends munit.FunSuite:
     val bank = orderBank(asState(b))
     val run = commit(rules(losing), b, 2)
     // It applied the free plan by itself, so nothing was asked of the attacker.
-    assertEquals(run.continue, awaits(b.actor, CampaignIds.sacrifice))
+    assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finish
     assertEquals(ready(done.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(false))

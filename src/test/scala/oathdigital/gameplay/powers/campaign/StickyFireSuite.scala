@@ -39,7 +39,7 @@ class StickyFireSuite extends munit.FunSuite:
     val asked = commit(g, b, 4).pick(b.actor, CampaignIds.attackerPlan, ref)
       .pick(b.other, CampaignIds.defenderPlan, CampaignIds.finish)
       .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
-    assertEquals(asked.continue, awaits(b.actor, decision))
+    assert(awaits(asked, b.actor, decision))
     // The question is asked first: nobody has died yet.
     assertEquals(ready(asked.state).game.current.map.sites(b.origin).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.other).lineage), 2))
@@ -69,13 +69,13 @@ class StickyFireSuite extends munit.FunSuite:
       .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
     assertEquals(ready(lost.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(false))
-    assertNotEquals(lost.continue, awaits(b.actor, decision))
-    assertNotEquals(lost.continue, awaits(b.other, decision))
+    assert(!awaits(lost, b.actor, decision))
+    assert(!awaits(lost, b.other, decision))
     val unchosen = commit(rules(winning), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, CampaignIds.finish)
       .pick(b.other, CampaignIds.defenderPlan, CampaignIds.finish)
       .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
-    assertNotEquals(unchosen.continue, awaits(b.actor, decision))
+    assert(!awaits(unchosen, b.actor, decision))
 
   test("the favor is given only if the winner has one to give"):
     val b = favored(conquest, conquest.actor, 0)
@@ -126,7 +126,7 @@ class StickyFireSuite extends munit.FunSuite:
       .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
     assertEquals(ready(asked.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(false))
-    assertEquals(asked.continue, awaits(b.other, decision))
+    assert(awaits(asked, b.other, decision))
     val done = asked.pick(b.other, decision, StickyFire.yes).finish
     assertEquals(warbands(done.state, b.actor), 0)
     assertEquals(favorOf(done.state, b.other), 1)
