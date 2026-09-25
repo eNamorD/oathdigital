@@ -228,6 +228,53 @@ class ServerModeUiSuite extends FunSuite:
         .map(_.textContent), Vector("Assign every option: Pay Favor (2), Pay Secret (1)."))
     }.andThen { case _ => browser.close() }
 
+  /** Spec, verification: the only test that proves the FlowHost wiring. A
+    * Recover whose preview offers one modifier renders the ordering panel;
+    * toggling and confirming previews again with the invocation, then posts
+    * the StartWalker with the handler folded into its own modifiers.
+    */
+  test("a previewed major action orders its modifier and posts the ordered command"):
+    val browser = new TestBrowser("?gameId=g&playerId=red")
+    val projection = oathdigital.protocol.projection.GameProjectionCodec.encode(
+      GameProjection("g", 1L, "act-action-selection", Some("red"),
+        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
+        Vector.empty, Vector.empty, Vector("beginRecover"), ready = true,
+        completed = false, actionSelectionOpen = true))
+    val preview = """{"nextSequence":1,"action":"recover","modifiers":[{"sourceKey":"adviser:p:denizen:a","handlerId":"h.a","description":"Old Oak"}],"ignoredRules":[],"targets":[]}"""
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
+        requests += ((method, url, body))
+        val json = if url.contains("/events") then """{"events":[]}"""
+          else if url.contains("/preview") then preview
+          else projection
+        Future.successful(Right(TransportResponse(200, json)))
+    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    browser.settle.flatMap { _ =>
+      browser.click("recover-action")
+      browser.settle
+    }.flatMap { _ =>
+      assert(browser.byClass("modifier-confirm").nonEmpty, browser.text)
+      browser.click("modifier-toggle")
+      browser.settle
+    }.flatMap { _ =>
+      assert(browser.byClass("modifier-ordinal").nonEmpty, browser.text)
+      browser.click("modifier-confirm")
+      browser.settle
+    }.map { _ =>
+      val posts = requests.filter(_._1 == "POST").toVector
+      assertEquals(posts.map(_._2), Vector(
+        "/api/dev/first-games/g/preview?playerId=red",
+        "/api/dev/first-games/g/preview?playerId=red",
+        "/api/dev/first-games/g/commands?playerId=red"))
+      assert(posts(1)._3.exists(_.contains("\"handlerId\":\"h.a\"")), posts(1)._3)
+      val command = posts(2)._3.get
+      assert(command.contains("\"action\":\"recover\""), command)
+      assert(command.contains("\"modifiers\":[\"h.a\"]"), command)
+      assert(!command.contains("orderedModifiers"), command)
+      assert(browser.byClass("modifier-confirm").isEmpty, browser.text)
+    }.andThen { case _ => browser.close() }
+
   test("host duplicate game response keeps form editable and retries with a new game ID"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]

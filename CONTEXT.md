@@ -77,6 +77,7 @@ _Avoid_: session state, UI state, pending selections, the drafts
 The steps a viewer walks between choosing a major action and sending it:
 previewing the action, ordering the modifiers it offers, and picking its
 targets. A viewer is in at most one at a time, and leaves it by sending,
-cancelling, backing out, or a failed preview.
+cancelling, backing out, or a failed preview. A flow step keeps the viewer
+in the flow; a flow exit takes them out of it.
 _Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of
 the flow)
