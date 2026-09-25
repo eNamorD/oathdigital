@@ -155,49 +155,49 @@ final class GameRoutes(
           case Left(error) =>
             complete(inputError(error))
           case Right((validGameId, validPlayerId)) =>
-          pathEndOrSingleSlash {
-            get {
-              completeAsync(gateway.load(
-                validGameId,
-                PlayerId(validPlayerId)
-              ))
-            }
-          } ~
-            path("preview") {
-              post {
-                entity(as[String]) { body =>
-                  oathdigital.protocol.MajorActionPreviewCodec.decode(body) match {
-                    case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
-                      "malformed-request", s"${error.path}: ${error.message}"))
-                    case Right(request) => completePreview(gateway.preview(validGameId,
-                      PlayerId(validPlayerId), request))
-                  }
-                }
+            pathEndOrSingleSlash {
+              get {
+                completeAsync(gateway.load(
+                  validGameId,
+                  PlayerId(validPlayerId)
+                ))
               }
             } ~
-            path("commands") {
-              post {
-                entity(as[String]) { body =>
-                  GameHttpWire.decodeCommand(body) match {
-                    case Left(error) =>
-                      complete(jsonResponse(
-                        StatusCodes.BadRequest,
-                        "malformed-request",
-                        s"${error.path}: ${error.message}"
-                      ))
-                    case Right(request) =>
-                      GameIntentMapper.bind(PlayerId(validPlayerId), request.intent,
-                        request.orderedModifiers) match {
-                        case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
-                          "malformed-request", s"${error.path}: ${error.message}"))
-                        case Right(command) => completeAsync(gateway.submit(
-                          validGameId, PlayerId(validPlayerId),
-                          request.expectedNextSequence, command))
-                      }
+              path("preview") {
+                post {
+                  entity(as[String]) { body =>
+                    oathdigital.protocol.MajorActionPreviewCodec.decode(body) match {
+                      case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
+                        "malformed-request", s"${error.path}: ${error.message}"))
+                      case Right(request) => completePreview(gateway.preview(validGameId,
+                        PlayerId(validPlayerId), request))
+                    }
+                  }
+                }
+              } ~
+              path("commands") {
+                post {
+                  entity(as[String]) { body =>
+                    GameHttpWire.decodeCommand(body) match {
+                      case Left(error) =>
+                        complete(jsonResponse(
+                          StatusCodes.BadRequest,
+                          "malformed-request",
+                          s"${error.path}: ${error.message}"
+                        ))
+                      case Right(request) =>
+                        GameIntentMapper.bind(PlayerId(validPlayerId), request.intent,
+                          request.orderedModifiers) match {
+                          case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
+                            "malformed-request", s"${error.path}: ${error.message}"))
+                          case Right(command) => completeAsync(gateway.submit(
+                            validGameId, PlayerId(validPlayerId),
+                            request.expectedNextSequence, command))
+                        }
+                    }
                   }
                 }
               }
-            }
         }
       }
     }
