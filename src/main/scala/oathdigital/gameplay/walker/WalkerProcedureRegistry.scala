@@ -15,7 +15,7 @@ import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, ActionKind, OathContinue, OathViolation, Operation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
+import oathdigital.model.{ActionRef, DecisionOptionRef, ActionKind, OathViolation, Operation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[oathdigital.model.ProcedureRef]] family at Task 4). Before this,
@@ -44,8 +44,8 @@ object WalkerProcedureRegistry:
     * `rollDecisionId` (I4) is the synthetic client-facing decision id
     * surfaced when the walker parks on this procedure's Roll node itself (a
     * `Roll` leaf carries no `decisionId` of its own -- see
-    * `RecoverProcedure`'s doc). Exposed here so both `OathRules
-    * .parkedContinue` and `WalkerDecisionProjector` read the same
+    * `RecoverProcedure`'s doc). Exposed here so both `OathRulesWalker
+    * .checkAnswerable` and `WalkerDecisionProjector` read the same
     * per-procedure value instead of each importing `RecoverProcedure`
     * directly.
     *
@@ -57,14 +57,6 @@ object WalkerProcedureRegistry:
     * meaning. `None` is therefore a rule, and the `rollDecisionId`
     * accessor below turns it into a typed rejection rather than handing a
     * sentinel onward.
-    *
-    * `continuationFor` (I4) maps ANY of this procedure's decision ids --
-    * `rollDecisionId` included -- to the client-facing [[OathContinue]] it
-    * produces, keyed by the id string alone (never by tree path, for the
-    * same reorder-safety reason `ProcedureWalker.parkedDecide` dispatches
-    * on `decisionId`). `None` for an id this procedure does not recognise.
-    * This is the single place `OathRulesWalker.parkedContinue` consults, so
-    * it carries no `RecoverProcedure`-specific match of its own.
     *
     * `modifierWindow` (batch-1 Task 1) is the [[oathdigital.model.PowerWindow]] at which a
     * player-selected `ContributingPower` is offered as a `StartWalker`
@@ -122,7 +114,6 @@ object WalkerProcedureRegistry:
       fallbackKind: Option[ActionKind],
       rollDecisionId: Option[String],
       modifierWindow: Option[PowerWindow],
-      continuationFor: (String, PlayerId, DecisionId) => Option[OathContinue],
       build: (ExecutableCatalog, ReadyGame, PlayerId,
         Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId,
@@ -152,9 +143,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
-      continuationFor = (decisionId, actor, decision) =>
-        Option.when(decisionId.startsWith("cardplay."))(
-          OathContinue.AwaitingSearchDecision(actor, decision)),
       build = CardPlayProcedure.buildFacedown,
       rebuild = CardPlayProcedure.rebuildFacedown),
 
@@ -162,10 +150,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
-      continuationFor = (decisionId, actor, decision) =>
-        Option.when(decisionId == SearchProcedure.cardDecisionId ||
-          decisionId.startsWith("cardplay."))(
-          OathContinue.AwaitingSearchDecision(actor, decision)),
       build = SearchProcedure.build,
       rebuild = SearchProcedure.rebuild),
 
@@ -173,15 +157,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = Some(PowerWindow.RecoverModifierSelection),
-      continuationFor = (decisionId, actor, decision) => decisionId match {
-        case RecoverProcedure.rollDecisionId =>
-          Some(OathContinue.AwaitingRecoverRoll(actor, decision))
-        case RecoverProcedure.relicDecisionId =>
-          Some(OathContinue.AwaitingRecoverRelic(actor, decision))
-        case RecoverProcedure.choiceDecisionId =>
-          Some(OathContinue.AwaitingRecoverRoll(actor, decision))
-        case _ => None
-      },
       build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
         args).flatMap(_ => RecoverProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
@@ -195,11 +170,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Forge),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ForgeModifierSelection),
-      continuationFor = (decisionId, actor, decision) => decisionId match {
-        case ForgeProcedure.assignmentDecisionId =>
-          Some(OathContinue.AwaitingForgeAssignment(actor, decision))
-        case _ => None
-      },
       build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
         args).flatMap(_ => ForgeProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
@@ -207,16 +177,15 @@ object WalkerProcedureRegistry:
 
     /** Batch-1 Task 5. Travel has no `Roll` and no `Decide`: its tree is a
       * pay node and a pawn move, so it runs to the end inside the command
-      * that starts it and `continuationFor` is never consulted. It is the
-      * first action to declare a start argument, and `build` and `rebuild`
-      * are the same function because every gate Travel has is a fact about
-      * the route rather than a start-only cost.
+      * that starts it and never parks. It is the first action to declare a
+      * start argument, and `build` and `rebuild` are the same function
+      * because every gate Travel has is a fact about the route rather than a
+      * start-only cost.
       */
     ActionRef.Travel -> Entry(
       fallbackKind = Some(ActionKind.Travel),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.TravelModifierSelection),
-      continuationFor = (_, _, _) => None,
       build = TravelProcedure.build,
       rebuild = TravelProcedure.build),
 
@@ -228,11 +197,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Muster),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.MusterModifierSelection),
-      continuationFor = (decisionId, actor, decision) =>
-        if CampaignProcedure.isDecision(decisionId) then
-          Some(OathContinue.AwaitingCampaignDecision(actor, decision))
-        else Option.when(decisionId.startsWith(MusterProcedure.decisionPrefix))(
-          OathContinue.AwaitingEconomyDecision(actor, decision)),
       build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
         args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
       rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
@@ -246,9 +210,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Trade),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.TradeModifierSelection),
-      continuationFor = (decisionId, actor, decision) =>
-        Option.when(decisionId == TradeProcedure.decisionId)(
-          OathContinue.AwaitingEconomyDecision(actor, decision)),
       build = TradeProcedure.build,
       rebuild = TradeProcedure.rebuild,
       requiresPlayableOption = true),
@@ -261,9 +222,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Challenge),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ChallengeModifierSelection),
-      continuationFor = (decisionId, actor, decision) =>
-        Option.when(ChallengeProcedure.decisionIds.contains(decisionId))(
-          OathContinue.AwaitingBannerDecision(actor, decision)),
       build = ChallengeProcedure.build,
       rebuild = ChallengeProcedure.rebuild),
 
@@ -274,9 +232,6 @@ object WalkerProcedureRegistry:
       fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (decisionId, actor, decision) =>
-        Option.when(PlaceBannerResourceProcedure.decisionIds.contains(decisionId))(
-          OathContinue.AwaitingBannerDecision(actor, decision)),
       build = PlaceBannerResourceProcedure.build,
       rebuild = PlaceBannerResourceProcedure.rebuild),
 
@@ -288,9 +243,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Negotiation),
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (decisionId, actor, decision) =>
-        Option.when(NegotiationProcedure.decisionIds.contains(decisionId))(
-          OathContinue.AwaitingNegotiation(actor, decision)),
       build = NegotiationProcedure.build,
       rebuild = NegotiationProcedure.rebuild),
 
@@ -303,9 +255,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Campaign),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.CampaignModifierSelection),
-      continuationFor = (decisionId, actor, decision) =>
-        Option.when(CampaignProcedure.isDecision(decisionId))(
-          OathContinue.AwaitingCampaignDecision(actor, decision)),
       build = CampaignProcedure.build,
       rebuild = CampaignProcedure.rebuild,
       rollFeedback = CampaignProcedure.rollFeedback),
@@ -317,14 +266,13 @@ object WalkerProcedureRegistry:
       *
       * `modifierWindow` is `None` -- Take Wealth offers no player-selected
       * powers, which is the case Task 1 made the field optional for. Its tree
-      * has no `Roll` and no `Decide`, so `rollDecisionId` is `None` and
-      * `continuationFor` is never consulted.
+      * has no `Roll` and no `Decide`, so `rollDecisionId` is `None` and it
+      * never parks at all.
       */
     ActionRef.TakeWealth -> Entry(
       fallbackKind = Some(ActionKind.Wake),
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (_, _, _) => None,
       build = TakeWealthProcedure.build,
       rebuild = TakeWealthProcedure.build),
 
@@ -346,7 +294,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Wake),
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (_, _, _) => None,
       build = EndWakeProcedure.build,
       rebuild = EndWakeProcedure.build),
 
@@ -357,7 +304,6 @@ object WalkerProcedureRegistry:
       fallbackKind = Some(ActionKind.Rest),
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (_, _, _) => None,
       build = BeginRestProcedure.build,
       rebuild = BeginRestProcedure.build),
 
@@ -369,8 +315,6 @@ object WalkerProcedureRegistry:
       fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (_, awaited, decision) =>
-        Some(OathContinue.AwaitingRestDecision(awaited, decision)),
       build = FinishRestProcedure.build,
       rebuild = FinishRestProcedure.build),
 
@@ -382,23 +326,12 @@ object WalkerProcedureRegistry:
       fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (decisionId, awaited, decision) => decisionId match {
-        case OathkeeperProcedure.recipientDecisionId =>
-          Some(OathContinue.AwaitingOathkeeperRecipient(awaited, decision))
-        case _ => None
-      },
       build = OathkeeperProcedure.build,
       rebuild = OathkeeperProcedure.build),
     TriggeredProcedureRef.Setup -> Entry(
       fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
-      continuationFor = (decisionId, awaited, decision) =>
-        if decisionId.startsWith("setup.pawn-placement.") then
-          Some(OathContinue.AwaitingSetupPawn(awaited, decision))
-        else if decisionId.startsWith("setup.adviser-choice.") then
-          Some(OathContinue.AwaitingSetupAdviser(awaited, decision))
-        else None,
       build = oathdigital.gameplay.setup.SetupProcedure.build,
       rebuild = oathdigital.gameplay.setup.SetupProcedure.build))
 
@@ -453,8 +386,6 @@ object WalkerProcedureRegistry:
     fallbackKind = None,
     rollDecisionId = None,
     modifierWindow = None,
-    continuationFor = (_, awaited, decision) =>
-      Some(OathContinue.AwaitingPowerDecision(awaited, decision)),
     build = PhasePowerProcedure.build(id, powers),
     rebuild = PhasePowerProcedure.rebuild(id, powers))
 
@@ -482,7 +413,7 @@ object WalkerProcedureRegistry:
     lookup(procedure, entries).map(_.fallbackKind)
 
   /** `procedure`'s synthetic Roll-park decision id (I4) -- see `Entry`'s doc.
-    * Both `OathRules.parkedContinue` and `WalkerDecisionProjector` read
+    * Both `OathRulesWalker.checkAnswerable` and `WalkerDecisionProjector` read
     * this instead of `RecoverProcedure.rollDecisionId` directly.
     *
     * An entry declaring no roll decision id (R18: a procedure whose tree has
@@ -525,17 +456,6 @@ object WalkerProcedureRegistry:
       registrations: Map[ProcedureRef, Entry] = entries)
       : Either[OathViolation, Option[PowerWindow]] =
     lookup(procedure, registrations).map(_.modifierWindow)
-
-  /** `procedure`'s client-facing continuation for `decisionId` (I4) -- see
-    * `Entry`'s doc. `OathRulesWalker.parkedContinue` is the sole caller: it
-    * reports `None` onward as its own `InvalidEventOrder`, since only it
-    * knows the parked-position context worth naming in that message.
-    */
-  def continuationFor(procedure: ProcedureRef, decisionId: String,
-      actor: PlayerId, decision: DecisionId)
-      : Either[OathViolation, Option[OathContinue]] =
-    lookup(procedure, entries).map(_.continuationFor(decisionId, actor,
-      decision))
 
   /** Whether `procedure` runs on the generic walker at all (Task 9a). The
     * pre-start modifier preview asks this to decide whether to offer

@@ -110,10 +110,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     case NoGame =>
       val event = GameStarted(chronicle, orders)
       for
-        started <- GameplayTransition(state, Vector(event),
-          OathContinue.AwaitingSetupPawn(orders.firstPlayer,
-            DecisionId(oathdigital.gameplay.setup.SetupProcedure
-              .pawnDecisionId(orders.firstPlayer))))(evolve)
+        started <- GameplayTransition(state, Vector(event))(evolve)
         withSetup <- startTriggered(started, TriggeredProcedureRef.Setup)
       yield withSetup
     case _ => Left(GameAlreadyExists)
@@ -178,11 +175,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
   private def enterWake(transition: OathTransition): Either[OathViolation, OathTransition] =
     def append(current: OathTransition, event: OathEvent) =
       evolve(current.state, event).map(next => current.copy(state = next,
-        events = current.events :+ event, continue = event match {
-          case UsurperVictory(winner) => OathContinue.GameFinished(winner)
-          case VisionVictory(winner, _) => OathContinue.GameFinished(winner)
-          case _ => current.continue
-        }))
+        events = current.events :+ event))
     val prepared = transition.state match
       case Ready(ready) => PowerRuntime.ignored(catalog, ready,
         ready.game.current.turn.activePlayer, ActionKind.Wake).map { diagnostics =>

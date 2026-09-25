@@ -73,7 +73,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
   /** Batch-1 Task 3, ruling R18. `Entry.rollDecisionId` is `Option[String]`
     * because Forge's tree has no `Roll` node at all, and the accessor
     * flattens `None` into a typed rejection rather than handing a sentinel
-    * id to `OathRules.parkedContinue` and `WalkerDecisionProjector` -- the
+    * id to `OathRulesWalker.checkAnswerable` and `WalkerDecisionProjector` -- the
     * two call sites that ask it "which id is the Roll park this action just
     * produced".
     *
@@ -81,7 +81,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     * the rejection through rather than continuing on a sentinel is proven
     * where those call sites actually run, since a `Left` nobody honours
     * would keep this test green:
-    *  - `OathRulesWalker.parkedContinue` --
+    *  - `OathRulesWalker.checkAnswerable` --
     *    `OathRulesWalkerPowerSuite`, "a Roll park under an action declaring
     *    no roll decision id rejects the whole command with the accessor's
     *    typed Left, appending nothing".

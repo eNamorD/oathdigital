@@ -16,7 +16,6 @@ import oathdigital.protocol.{PreviewModifier, PreviewTarget}
 final case class GameAccepted(
     state: OathState,
     events: Vector[OathEvent],
-    continue: OathContinue,
     nextSequence: Long
 )
 
@@ -27,8 +26,7 @@ final case class LoadedGame(
 final case class PreparedGameBootstrap(
     records: Vector[String],
     state: OathState,
-    events: Vector[OathEvent],
-    continue: OathContinue
+    events: Vector[OathEvent]
 )
 /** `targets` (batch-1 Task 5) is the walker-action targets costed against the
   * modifiers THIS preview selected, rather than against the automatic set the
@@ -103,7 +101,7 @@ final class GameApplicationService(
       GameCommand.Begin(chronicle, ChronicleFirstGamePlan.dealOrder(chronicle, config)),
       0L)
       .map { case (transition, records) => PreparedGameBootstrap(
-        records, transition.state, transition.events, transition.continue) }
+        records, transition.state, transition.events) }
 
   /** Privileged development support. Never include this in a player projection. */
   def rawEventHistory(
@@ -303,7 +301,6 @@ final class GameApplicationService(
           Right(GameAccepted(
             transition.state,
             transition.events,
-            transition.continue,
             nextSequence + count
           ))
         case StreamAlreadyExists => Left(DuplicateGame(gameId))

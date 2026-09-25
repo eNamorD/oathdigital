@@ -3,7 +3,6 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
-import oathdigital.model.OathContinue.ActActionSelection
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
@@ -174,11 +173,4 @@ object MinorActions:
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
       event: OathEvent): Either[OathViolation, OathTransition] =
-    evolve(catalog, state, event).map(OathTransition(_, Vector(event),
-      ActActionSelection(playerId(event))))
-
-  private def playerId(event: OathEvent): PlayerId = event match
-    case value: SiteRelicsPeeked => value.playerId
-    case value: OwnedRelicRevealed => value.playerId
-    case value: WarbandsMoved => value.playerId
-    case _ => throw new IllegalArgumentException("not a minor-action event")
+    evolve(catalog, state, event).map(OathTransition(_, Vector(event)))

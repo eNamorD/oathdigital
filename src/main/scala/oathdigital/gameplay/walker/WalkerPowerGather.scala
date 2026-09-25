@@ -186,7 +186,8 @@ private[walker] object WalkerPowerGather:
     * function of state (same invariant `Branch.select` already carries), so
     * re-folding here with the same `powers` reproduces the exact indices the
     * walk parked at. The sole caller is [[ProcedureWalker.parkedRoll]]/
-    * [[ProcedureWalker.parkedDecide]] (in turn `OathRules.parkedContinue`),
+    * [[ProcedureWalker.parkedDecide]] (in turn
+    * `OathRulesWalker.checkAnswerable`),
     * moved here (like [[applyWindow]]/[[restrictionViolations]] above) to
     * keep `ProcedureWalker.scala` under the project's line bound.
     */

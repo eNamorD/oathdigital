@@ -910,8 +910,8 @@ class ProcedureWalkerSuite extends munit.FunSuite:
   // `parkedDecide`) must resolve a park position against the FOLDED tree, not
   // the declared one -- an inserting `Transform` at a windowed composite
   // shifts a later sibling's index in the fold without moving it in the
-  // composite's own declared `children`. `OathRules.parkedContinue` (and,
-  // through it, the client-facing continuation prompt) is the only caller;
+  // composite's own declared `children`. `OathRulesWalker.checkAnswerable`
+  // is the only caller;
   // these tests drive `parkedRoll`/`parkedDecide` directly, synthetically,
   // exactly like Task 3's own `WindowedNode`/`TestTransformPower` doubles --
   // no dependency on Recover or the catalog.
@@ -942,7 +942,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     // Before ruling J's fix, `leafAt` indexed `windowed.children` (the
     // DECLARED, unfolded `Vector(decide)`) directly: index 1 was out of
     // range there, so this returned `None` even though the walk is
-    // legitimately parked on a real Decide -- `OathRules.parkedContinue`
+    // legitimately parked on a real Decide -- `OathRulesWalker.checkAnswerable`
     // would have rejected a live client's resume with "parked walker
     // position is neither a Roll nor a Decide".
     assertEquals(ProcedureWalker.parkedDecide(parkedState, tree, parked,

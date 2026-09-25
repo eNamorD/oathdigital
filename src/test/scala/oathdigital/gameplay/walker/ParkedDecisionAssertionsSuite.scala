@@ -87,11 +87,9 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   // Recover's OWN tree regardless of what an injected `walkerTree` source
   // walked; a hand-built tree under the `Recover` identity would rebuild to
   // a shape the stored `PendingTree.at` path does not address. The inserted
-  // node reuses Recover's own `choiceDecisionId`: `startWalker` maps a
-  // parked decision id to a client continuation through
-  // `WalkerProcedureRegistry.Entry.continuationFor`, which recognises only
-  // Recover's own three ids, and this park never reaches the tree's OWN
-  // (actor-owned) choice decide -- the inserted node is walked first.
+  // node reuses Recover's own `choiceDecisionId`, and this park never
+  // reaches the tree's OWN (actor-owned) choice decide -- the inserted node
+  // is walked first.
   test("an off-turn owner is reported, not the active player"):
     val (ready, actor) = recoverable
     val owner = ready.game.current.players.map(_.player)

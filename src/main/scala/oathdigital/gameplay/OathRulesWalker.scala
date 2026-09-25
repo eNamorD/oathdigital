@@ -382,30 +382,24 @@ private[gameplay] trait OathRulesWalker:
     case WalkerOutcome.Parked(pending, steps) =>
       val fact = WalkerParked(procedure, pending.at,
         pending.answered, modifiers, startArgs)
-      // The park's continuation prompt can depend on a Branch selecting its
-      // children by *live* state (Recover's success-only relic decision
-      // checks the just-written roll outcome), so `continue` must be derived
-      // from the state after `steps` land, not from this command's pre-walk
-      // snapshot — a stale-state Branch.select would silently resolve to the
-      // wrong node or none at all.
+      // Which node the walker is parked on can depend on a Branch selecting
+      // its children by *live* state (Recover's success-only relic decision
+      // checks the just-written roll outcome), so the answerability check
+      // must run against the state after `steps` land, not against this
+      // command's pre-walk snapshot — a stale-state Branch.select would
+      // silently resolve to the wrong node or none at all.
       for
         afterSteps <- foldEvents(state, steps)
         liveReady <- afterSteps match
           case Ready(live) => Right(live)
           case _ => Left(InvalidEventOrder(
             "walker park did not resolve to a Ready state"))
-        continue <- parkedContinue(liveReady, tree, pending, powers, procedure)
+        _ <- checkAnswerable(liveReady, tree, pending, powers, procedure)
         finalState <- evolve(afterSteps, fact)
-      yield OathTransition(finalState, steps :+ fact, continue)
+      yield OathTransition(finalState, steps :+ fact)
 
-    case WalkerOutcome.Finished(treeless, steps) =>
-      val turn = treeless.game.current.turn
-      val continued =
-        if runsTurnBoundary(procedure) then
-          Right(OathContinue.AwaitingWakeAction(turn.activePlayer))
-        else continuationIn(turn.phase, turn.activePlayer)
-      continued.flatMap(continue => GameplayTransition(state,
-          steps :+ WalkerCompleted(procedure), continue)(evolve)
+    case WalkerOutcome.Finished(_, steps) =>
+      GameplayTransition(state, steps :+ WalkerCompleted(procedure))(evolve)
         .flatMap(recordCardPlayFallback(_, procedure, steps))
         .flatMap(transition =>
           if runsActionBoundary(procedure) then completeAction(transition)
@@ -413,7 +407,7 @@ private[gameplay] trait OathRulesWalker:
           else Right(transition))
         .flatMap(transition =>
           if procedure == PhaseTransitionRef.BeginRest then autoFinishRest(transition)
-          else Right(transition)))
+          else Right(transition))
 
   /** Diagnostics for unimplemented WHEN PLAYED handlers follow the recorded
     * faceup placement, not the pre-play Search state. Implemented walker
@@ -462,8 +456,7 @@ private[gameplay] trait OathRulesWalker:
       case _: PhaseTransitionRef | _: TriggeredProcedureRef => false
 
   /** Whether the turn boundary (round end, then Wake evaluation) follows a
-    * completed procedure. Only Finish Rest hands the turn over; it owns its
-    * continuation, so `continuationIn` is never asked about `RoundEnd`.
+    * completed procedure. Only Finish Rest hands the turn over.
     */
   private def runsTurnBoundary(procedure: ProcedureRef): Boolean =
     procedure == PhaseTransitionRef.FinishRest
@@ -481,27 +474,6 @@ private[gameplay] trait OathRulesWalker:
         finished.copy(events = transition.events ++ finished.events))
     case _ => Right(transition)
 
-  /** Where a completed walker procedure returns its player: read off the
-    * phase the procedure finished in, and deliberately not declared by the
-    * procedure or carried on its registry entry -- the walker and its
-    * registry state what a procedure DOES, and which phase a player is in is
-    * neither's business.
-    *
-    * Rest has a continuation. `RoundEnd` has none, because only Finish Rest
-    * reaches it and the turn boundary owns that continuation.
-    * A phase with no walker continuation is a typed rejection rather than a
-    * default, because a default here is exactly the kind of behaviour nobody
-    * chooses: the first procedure registered in Rest should fail loudly and
-    * be given its continuation, not silently return its player to Act.
-    */
-  private def continuationIn(phase: Phase, actor: PlayerId)
-      : Either[OathViolation, OathContinue] = phase match
-    case Phase.Act => Right(OathContinue.ActActionSelection(actor))
-    case Phase.Wake => Right(OathContinue.AwaitingWakeAction(actor))
-    case Phase.Rest => Right(OathContinue.AwaitingRestAction(actor))
-    case other => Left(InvalidEventOrder("a walker procedure completed in " +
-      s"the ${other.productPrefix} phase, which has no walker continuation"))
-
   /** Folds `evolve` over `events` in order, threading state — the same
     * left-fold [[GameplayTransition]] performs internally, exposed here so
     * `walkerTransition` can inspect the intermediate state reached after the
@@ -513,44 +485,23 @@ private[gameplay] trait OathRulesWalker:
       case (Right(current), event) => evolve(current, event)
       case (failure @ Left(_), _) => failure
 
-  /** Maps a parked walker position to its client-facing continuation prompt
-    * by dispatching on the parked node's stable identity — a Roll's pool via
-    * [[ProcedureWalker.parkedRoll]], or a Decide's `decisionId` via
-    * [[ProcedureWalker.parkedDecide]] — rather than on the park's structural
-    * child-index path. Dispatching on path made the mapping fragile: inserting
-    * or reordering a node in the action's tree would silently change which
-    * path a given decision parks at, and the client would be handed the wrong
-    * prompt (and decision id) with no error.
+  /** A park a client cannot answer is refused at command time, before the
+    * `WalkerParked` fact is appended -- the rejection `parkedContinue` ran
+    * on its way to building a continuation nobody read.
     *
-    * The decision id -> continuation mapping itself is looked up on
-    * [[WalkerProcedureRegistry.continuationFor]] for `procedure` (I4), rather
-    * than matched here against one procedure's own constants (previously
-    * `RecoverProcedure.rollDecisionId`/`relicDecisionId`/`choiceDecisionId`)
-    * -- this module has no reason to know which decision ids any given
-    * procedure declares, only how to resolve the one the walker just parked
-    * on.
+    * A Roll park carries no `Decide` and therefore no decision id of its own,
+    * so the procedure must declare one; `WalkerDecisionProjector` reads the
+    * same accessor when it projects the park, and a park whose id no tree
+    * declares would be handed to the client as an unanswerable question.
     */
-  private def parkedContinue(ready: ReadyGame, tree: Operation,
+  private def checkAnswerable(ready: ReadyGame, tree: Operation,
       pending: PendingTree, powers: WalkerPowers, procedure: ProcedureRef)
-      : Either[OathViolation, OathContinue] =
-    // The awaited player (a Decide's owner, or the active player for a
-    // Roll) names who must answer, so a continuation such as
-    // `AwaitingOathkeeperRecipient(owner, decision)` is issued together with
-    // the same recomputed owner that authorizes the next command.
-    val awaited = ProcedureWalker.awaitedPlayer(ready, tree, pending, powers)
-      .getOrElse(ready.game.current.turn.activePlayer)
-    def continuationFor(decisionId: String): Either[OathViolation, OathContinue] =
-      WalkerProcedureRegistry.continuationFor(procedure, decisionId,
-        awaited, DecisionId(decisionId))
-        .flatMap(_.toRight(InvalidEventOrder(
-          "no client continuation is registered for walker decision " +
-            decisionId)))
-
+      : Either[OathViolation, Unit] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match
-      case Some(_) => WalkerProcedureRegistry.rollDecisionId(procedure)
-        .flatMap(continuationFor)
+      case Some(_) =>
+        WalkerProcedureRegistry.rollDecisionId(procedure).map(_ => ())
       case None => ProcedureWalker.parkedDecide(ready, tree, pending,
           powers) match
-        case Some(decide) => continuationFor(decide.decisionId)
+        case Some(_) => Right(())
         case None => Left(InvalidEventOrder(
           "parked walker position is neither a Roll nor a Decide"))

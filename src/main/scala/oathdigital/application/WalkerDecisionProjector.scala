@@ -22,8 +22,8 @@ import oathdigital.protocol.projection.{CardDetailsProjection,
   *
   * Reuses [[ProcedureWalker.parkedRoll]]/[[ProcedureWalker.parkedDecide]] —
   * the same reorder-safe, decisionId-keyed introspection `OathRules`
-  * dispatches on to pick a live command's `OathContinue` — rather than
-  * inspecting `PendingTree.at` directly, for the identical reason: a
+  * dispatches on to check that a live command's park is answerable — rather
+  * than inspecting `PendingTree.at` directly, for the identical reason: a
   * structural path match would silently point at the wrong node if
   * `RecoverProcedure`'s tree shape ever changes.
   *

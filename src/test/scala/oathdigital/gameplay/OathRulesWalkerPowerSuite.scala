@@ -393,7 +393,6 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       fallbackKind = Some(ActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = modifierWindow,
-      continuationFor = (_, _, _) => None,
       build = (_, _, _, _) =>
         Left(OathViolation.InvalidEventOrder("build is not exercised here")),
       rebuild = (_, _, _, _) =>
@@ -482,7 +481,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
   // id no tree ever declares, which is precisely the failure R18 exists to
   // prevent.
   //
-  // `parkedContinue`'s Roll branch is only reachable from a tree carrying a
+  // `checkAnswerable`'s Roll branch is only reachable from a tree carrying a
   // `Roll` node, and Forge's real tree has none, so the injected
   // `walkerTree` seam supplies one. The control below is the same tree
   // under `ActionRef.Recover`: the ONLY difference between the two calls is
@@ -572,13 +571,3 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       actor, RecoverProcedure.choiceDecisionId, continue)
     assert(resumed.isRight, s"a Wake resume must not be phase-gated, got $resumed")
 
-  test("a procedure completing in a phase with no walker continuation is " +
-      "still a typed rejection"):
-    val (act, actor) = actable
-    val roundEnd = act.updateCurrent(_.copy(
-      turn = act.game.current.turn.copy(phase = Phase.RoundEnd)))
-    val flat = new OathRules(catalog, walkerTree = (_, _, _, _, _, _) =>
-      Right(Sequence(Vector.empty)))
-    assertEquals(flat.startWalker(Ready(roundEnd), ActionRef.Recover, actor),
-      Left(OathViolation.InvalidEventOrder("a walker procedure completed in " +
-        "the RoundEnd phase, which has no walker continuation")))

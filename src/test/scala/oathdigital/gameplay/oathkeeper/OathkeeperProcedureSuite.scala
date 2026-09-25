@@ -125,7 +125,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     val (ready, _, _, _) = tie
     val parked = travel(ready).toOption.get
     val result = rules.startTriggered(
-      OathTransition(parked.state, Vector.empty, parked.continue),
+      OathTransition(parked.state, Vector.empty),
       TriggeredProcedureRef.Oathkeeper)
     assert(result.left.toOption.exists(_.isInstanceOf[OathViolation.InvalidEventOrder]),
       s"expected a typed rejection, got $result")
