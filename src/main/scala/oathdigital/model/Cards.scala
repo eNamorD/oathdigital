@@ -1,16 +1,8 @@
 package oathdigital.model
 
-sealed trait Orientation extends Product with Serializable
-object Orientation {
-  case object FaceUp extends Orientation
-  case object FaceDown extends Orientation
-}
+enum Orientation { case FaceUp, FaceDown }
 
-sealed trait EdificeSide extends Product with Serializable
-object EdificeSide {
-  case object Intact extends EdificeSide
-  case object Ruined extends EdificeSide
-}
+enum EdificeSide { case Intact, Ruined }
 
 sealed trait CardState extends Product with Serializable {
   def id: CardId
@@ -51,20 +43,12 @@ final case class RelicState(
 
 final case class LegacyState(id: LegacyId, active: Boolean) extends CardState
 
-sealed trait Region extends Product with Serializable {
-  def key: String
+enum Region(val key: String) {
+  case Cradle extends Region("cradle")
+  case Provinces extends Region("provinces")
+  case Hinterland extends Region("hinterland")
 }
 object Region {
-  case object Cradle extends Region {
-    override val key: String = "cradle"
-  }
-  case object Provinces extends Region {
-    override val key: String = "provinces"
-  }
-  case object Hinterland extends Region {
-    override val key: String = "hinterland"
-  }
-
   val all: Vector[Region] = Vector(Cradle, Provinces, Hinterland)
 }
 

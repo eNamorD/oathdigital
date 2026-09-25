@@ -3,11 +3,7 @@ package oathdigital.model
 /** One shape violation against an operation, mirroring the code/detail of the
   * [[OperationError]] the mutation pipeline would reject with.
   */
-sealed trait OperationReasonKind
-object OperationReasonKind {
-  case object Impossible extends OperationReasonKind
-  case object Invalid extends OperationReasonKind
-}
+enum OperationReasonKind { case Impossible, Invalid }
 
 final case class OperationReason(code: String, detail: String,
     kind: OperationReasonKind = OperationReasonKind.Invalid)

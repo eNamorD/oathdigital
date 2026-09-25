@@ -1,11 +1,8 @@
 package oathdigital.model
 
-sealed trait CampaignKind extends Product with Serializable {
-  def key: String
-}
-object CampaignKind {
-  case object Conquest extends CampaignKind { val key = "conquest" }
-  case object Raid extends CampaignKind { val key = "raid" }
+enum CampaignKind(val key: String) {
+  case Conquest extends CampaignKind("conquest")
+  case Raid extends CampaignKind("raid")
 }
 
 sealed trait CampaignRaidTarget extends Product with Serializable {
@@ -47,11 +44,7 @@ object CampaignDefender {
 }
 
 /** Which side of a Campaign a battle plan belongs to. */
-sealed trait CampaignPlanSide extends Product with Serializable
-object CampaignPlanSide {
-  case object Attacker extends CampaignPlanSide
-  case object Defender extends CampaignPlanSide
-}
+enum CampaignPlanSide { case Attacker, Defender }
 
 /** What using a battle plan costs its user. `Favor` and `Secret` are placed onto
   * the plan's source card, which may already hold resources; `FavorBurnt` and

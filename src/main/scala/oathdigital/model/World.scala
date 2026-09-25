@@ -1,18 +1,9 @@
 package oathdigital.model
 
-sealed trait Role extends Product with Serializable {
-  def isImperial: Boolean
-}
-object Role {
-  case object Exile extends Role {
-    override val isImperial: Boolean = false
-  }
-  case object Citizen extends Role {
-    override val isImperial: Boolean = true
-  }
-  case object Chancellor extends Role {
-    override val isImperial: Boolean = true
-  }
+enum Role(val isImperial: Boolean) {
+  case Exile extends Role(false)
+  case Citizen extends Role(true)
+  case Chancellor extends Role(true)
 }
 
 sealed trait ForceKind extends Product with Serializable
@@ -183,17 +174,9 @@ final case class AtlasState(entries: Vector[AtlasEntry]) {
   }
 }
 
-sealed trait PeoplesFavorFace extends Product with Serializable
-object PeoplesFavorFace {
-  case object Mob extends PeoplesFavorFace
-  case object GrandCouncil extends PeoplesFavorFace
-}
+enum PeoplesFavorFace { case Mob, GrandCouncil }
 
-sealed trait DarkestSecretFace extends Product with Serializable
-object DarkestSecretFace {
-  case object WanderingFlame extends DarkestSecretFace
-  case object Festival extends DarkestSecretFace
-}
+enum DarkestSecretFace { case WanderingFlame, Festival }
 
 final case class PeoplesFavorState(
     active: PeoplesFavorFace,
@@ -216,55 +199,46 @@ final case class BannersState(
     darkestSecret: DarkestSecretState
 )
 
-sealed trait Banner extends Product with Serializable { def key: String }
+enum Banner(val key: String) {
+  case PeoplesFavor extends Banner("peoples-favor")
+  case DarkestSecret extends Banner("darkest-secret")
+}
 object Banner {
-  case object PeoplesFavor extends Banner { val key = "peoples-favor" }
-  case object DarkestSecret extends Banner { val key = "darkest-secret" }
   val all: Vector[Banner] = Vector(PeoplesFavor, DarkestSecret)
   def fromKey(key: String): Option[Banner] = all.find(_.key == key)
 }
 
-sealed trait FoundationNumber extends Product with Serializable {
-  def value: Int
+enum FoundationNumber(val value: Int) {
+  case I extends FoundationNumber(1)
+  case II extends FoundationNumber(2)
+  case III extends FoundationNumber(3)
+  case IV extends FoundationNumber(4)
+  case V extends FoundationNumber(5)
+  case VI extends FoundationNumber(6)
 }
 object FoundationNumber {
-  case object I extends FoundationNumber { override val value: Int = 1 }
-  case object II extends FoundationNumber { override val value: Int = 2 }
-  case object III extends FoundationNumber { override val value: Int = 3 }
-  case object IV extends FoundationNumber { override val value: Int = 4 }
-  case object V extends FoundationNumber { override val value: Int = 5 }
-  case object VI extends FoundationNumber { override val value: Int = 6 }
-
   val all: Vector[FoundationNumber] = Vector(I, II, III, IV, V, VI)
 }
 
-sealed trait FoundationFace extends Product with Serializable
-object FoundationFace {
-  case object Normal extends FoundationFace
-  case object Altered extends FoundationFace
-}
+enum FoundationFace { case Normal, Altered }
 
 final case class FoundationState(
     face: FoundationFace,
     alterationSources: Set[LegacyId]
 )
 
-sealed trait OathkeeperGoal extends Product with Serializable { def key: String }
+enum OathkeeperGoal(val key: String) {
+  case Supremacy extends OathkeeperGoal("supremacy")
+  case Protection extends OathkeeperGoal("protection")
+  case ThePeople extends OathkeeperGoal("the-people")
+  case Devotion extends OathkeeperGoal("devotion")
+}
 object OathkeeperGoal {
-  case object Supremacy extends OathkeeperGoal { val key = "supremacy" }
-  case object Protection extends OathkeeperGoal { val key = "protection" }
-  case object ThePeople extends OathkeeperGoal { val key = "the-people" }
-  case object Devotion extends OathkeeperGoal { val key = "devotion" }
-
   val all: Vector[OathkeeperGoal] =
     Vector(Supremacy, Protection, ThePeople, Devotion)
 }
 
-sealed trait TitleSide extends Product with Serializable
-object TitleSide {
-  case object Oathkeeper extends TitleSide
-  case object Usurper extends TitleSide
-}
+enum TitleSide { case Oathkeeper, Usurper }
 
 final case class OathkeeperState(
     holder: Option[PlayerId],

@@ -65,18 +65,9 @@ object Location {
   }
 }
 
-sealed trait SecretSide extends Product with Serializable
-object SecretSide {
-  case object FaceUp extends SecretSide
-  case object FaceDown extends SecretSide
-}
+enum SecretSide { case FaceUp, FaceDown }
 
-sealed trait StackPosition extends Product with Serializable
-object StackPosition {
-  case object Unspecified extends StackPosition
-  case object Top extends StackPosition
-  case object Bottom extends StackPosition
-}
+enum StackPosition { case Unspecified, Top, Bottom }
 
 final case class PositionedLocation(
     location: Location,

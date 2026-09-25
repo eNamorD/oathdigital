@@ -7,19 +7,17 @@ package oathdigital.model
   * Cross-compiled into the frontend (see `build.sbt`), so it depends on
   * nothing else in the model.
   */
-sealed abstract class PlayerColor(val key: String)
-    extends Product with Serializable
-
+enum PlayerColor(val key: String) {
+  case Purple extends PlayerColor("purple")
+  case Red extends PlayerColor("red")
+  case Blue extends PlayerColor("blue")
+  case Yellow extends PlayerColor("yellow")
+  case White extends PlayerColor("white")
+  case Black extends PlayerColor("black")
+  case Pink extends PlayerColor("pink")
+  case Brown extends PlayerColor("brown")
+}
 object PlayerColor {
-  case object Purple extends PlayerColor("purple")
-  case object Red extends PlayerColor("red")
-  case object Blue extends PlayerColor("blue")
-  case object Yellow extends PlayerColor("yellow")
-  case object White extends PlayerColor("white")
-  case object Black extends PlayerColor("black")
-  case object Pink extends PlayerColor("pink")
-  case object Brown extends PlayerColor("brown")
-
   val all: Vector[PlayerColor] =
     Vector(Purple, Red, Blue, Yellow, White, Black, Pink, Brown)
 
