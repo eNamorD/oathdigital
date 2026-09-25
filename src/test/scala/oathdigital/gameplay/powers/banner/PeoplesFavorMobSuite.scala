@@ -7,13 +7,19 @@ import oathdigital.gameplay.powers.{PowerFixture, SearchFixture, TargetsFixture,
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerOutcome
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerOutcome}
 import oathdigital.model._
 
 class PeoplesFavorMobSuite extends munit.FunSuite:
   import PowerFixture._
   import BannerFixture._
   import SearchFixture.{denizensOf, keep, place, rules, start}
+
+  /** The parked decision, as this suite rebuilds it: the same catalog and
+    * walker power catalog `SearchFixture.rules` was built with.
+    */
+  private val parked = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog))
 
   private val noDiscard = CardPlayProcedure.noReplacement.ref
   private val played = denizensOf(Suit.Beast).head
@@ -40,8 +46,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     .fold(error => throw new AssertionError(error.toString), identity)
 
   private def asksToDiscard(transition: OathTransition): Boolean =
-    transition.continue == OathContinue.AwaitingSearchDecision(actor,
-      DecisionId(decisionId("replace")))
+    parked.parkedDecision(transition.state).exists(facts =>
+      facts.decision == decisionId("replace") && facts.awaiting == actor)
 
   private def discardAnswer(from: OathTransition, chosen: DecisionOptionRef)
       : Either[OathViolation, OathTransition] = rules.resolveWalker(from.state,

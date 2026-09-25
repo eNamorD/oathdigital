@@ -51,7 +51,8 @@ class HornedMaskSuite extends munit.FunSuite:
     val ready = withEdifice(atHome(atHome(staged, inn), elders),
       EdificeId("E15"), EdificeSide.Intact, home(staged))
     val t = use(ready, power, source).toOption.get
-    assert(awaits(t, HornedMask.denizenDecisionId), t.continue.toString)
+    assert(awaits(t, HornedMask.denizenDecisionId),
+      parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor).map(_.toSet),
       Some(denizensHere(ready).map(id => "denizen" -> id.value).toSet))
     assertEquals(denizensHere(ready).toSet, Set(inn, elders))
@@ -89,7 +90,8 @@ class HornedMaskSuite extends munit.FunSuite:
     val t = use(ready, power, source).toOption.get
     val asked = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
-    assert(awaits(asked, HornedMask.discardDecisionId), asked.continue.toString)
+    assert(awaits(asked, HornedMask.discardDecisionId),
+      parked.parkedDecision(asked.state).toString)
     assertEquals(offered(asked, actor).map(_.toSet), Some(Set(
       "denizen" -> elders.value, "denizen" -> fresh.value,
       "denizen" -> wolves.value)))
@@ -122,7 +124,8 @@ class HornedMaskSuite extends munit.FunSuite:
     val t = use(ready, power, source).toOption.get
     val asked = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
-    assert(awaits(asked, HornedMask.discardDecisionId), asked.continue.toString)
+    assert(awaits(asked, HornedMask.discardDecisionId),
+      parked.parkedDecision(asked.state).toString)
     assertEquals(offered(asked, actor), Some(Vector("denizen" -> elders.value)))
     val done = answer(asked, actor, HornedMask.discardDecisionId,
       choose(elders)).toOption.get
@@ -135,7 +138,7 @@ class HornedMaskSuite extends munit.FunSuite:
       "Tongue and nothing else discardable, takes nothing"):
     val ready = holding(tongue, locked.head)
     val t = use(ready, power, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision])
+    parked.assertNotParked(t.state)
     assert(denizensHere(after(t)).contains(inn))
 
   test("a facedown Silver Tongue does not lower the limit"):
@@ -145,8 +148,7 @@ class HornedMaskSuite extends munit.FunSuite:
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
-    assert(!done.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
-      done.continue.toString)
+    parked.assertNotParked(done.state)
     assertEquals(player(after(done)).advisers.size, 3)
 
   test("a player who is not the Silver Tongue holder keeps the limit of three"):
@@ -154,14 +156,13 @@ class HornedMaskSuite extends munit.FunSuite:
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
-    assert(!done.continue.isInstanceOf[OathContinue.AwaitingPowerDecision])
+    parked.assertNotParked(done.state)
     assertEquals(player(after(done)).advisers.size, 3)
 
   test("a full area of locked advisers takes nothing and asks nothing"):
     val ready = holding(locked*)
     val t = use(ready, power, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
-      t.continue.toString)
+    parked.assertNotParked(t.state)
     assert(denizensHere(after(t)).contains(inn))
     assertEquals(player(after(t)).advisers, player(ready).advisers)
 
@@ -169,7 +170,7 @@ class HornedMaskSuite extends munit.FunSuite:
     val ready = staged
     assertEquals(denizensHere(ready), Vector.empty)
     val t = use(ready, power, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision])
+    parked.assertNotParked(t.state)
     assertEquals(player(after(t)).advisers, player(ready).advisers)
 
   test("only the acting player answers, with an offered denizen"):

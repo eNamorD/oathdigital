@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerStepRecorded
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -14,6 +14,13 @@ import oathdigital.model.OathState.Ready
 object MovementFixture:
   import PowerFixture._
   import TargetsFixture.rules
+
+  /** The parked decision, as this file's suites rebuild it: the same catalog
+    * and phase power catalog `rules` (= `TargetsFixture.rules`) was built
+    * with.
+    */
+  val parked = new ParkedDecisionAssertions(catalog,
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
   val p1: PlayerId = PlayerId("p1")
   val p3: PlayerId = PlayerId("p3")
@@ -78,11 +85,13 @@ object MovementFixture:
       PhasePowerCatalog.default(catalog)).exists(_.power.id == power)
 
   def parkedAt(transition: OathTransition, decisionId: String): Boolean =
-    transition.continue ==
-      OathContinue.AwaitingPowerDecision(actor, DecisionId(decisionId))
+    parked.parkedDecision(transition.state).exists(facts =>
+      facts.decision == decisionId && facts.awaiting == actor)
 
   def backToActing(transition: OathTransition): Boolean =
-    transition.continue == OathContinue.ActActionSelection(actor)
+    val turn = readyOf(transition.state).game.current.turn
+    parked.parkedDecision(transition.state).isEmpty &&
+      turn.phase == Phase.Act && turn.activePlayer == actor
 
   def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
     events.collect { case step: WalkerStepRecorded => step.ops }.flatten

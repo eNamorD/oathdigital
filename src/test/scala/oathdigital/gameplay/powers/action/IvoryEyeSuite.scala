@@ -39,7 +39,8 @@ class IvoryEyeSuite extends munit.FunSuite:
     val ready = giveVision(giveAdviser(staged, target, DenizenId("26"),
       Orientation.FaceUp), actor, faith, Orientation.FaceDown)
     val t = use(ready, IvoryEye, source).toOption.get
-    assert(awaits(t, IvoryEye.decisionId), t.continue.toString)
+    assert(awaits(t, IvoryEye.decisionId),
+      parked.parkedDecision(t.state).toString)
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
     assertEquals(player(after(t)).board.faceUpSecrets, 0)
     assertEquals(offered(t, actor),
@@ -96,8 +97,7 @@ class IvoryEyeSuite extends munit.FunSuite:
   test("with no facedown adviser the cost is paid and nothing else happens"):
     val ready = (others(base) :+ actor).foldLeft(staged)(withoutAdvisers)
     val t = use(ready, IvoryEye, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
-      t.continue.toString)
+    parked.assertNotParked(t.state)
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
 
   test("it is unusable without a faceup secret, or while the relic holds one"):

@@ -27,7 +27,8 @@ class WolvesSuite extends munit.FunSuite:
 
   test("using it places a secret on its card and asks for a player board"):
     val t = parked
-    assert(awaits(t, Wolves.decisionId), t.continue.toString)
+    assert(awaits(t, Wolves.decisionId),
+      TargetsFixture.parked.parkedDecision(t.state).toString)
     assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
     assertEquals(player(after(t)).board.faceUpSecrets, 0)
     assertEquals(offered(t, actor), Some(after(t).game.current.players

@@ -39,15 +39,14 @@ class AlchemistSuite extends munit.FunSuite:
   test("one bank holding all the favor gives four from it without a decision"):
     val ready = staged(Suit.Nomad -> 9)
     val t = use(ready, Alchemist, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
-      t.continue.toString)
+    parked.assertNotParked(t.state)
     assertEquals(player(after(t)).board.favor, player(ready).board.favor + 4)
     assertEquals(bank(after(t), Suit.Nomad), 5)
 
   test("four or fewer in all takes everything from every bank, unasked"):
     val ready = staged(Suit.Arcane -> 2, Suit.Discord -> 1)
     val t = use(ready, Alchemist, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision])
+    parked.assertNotParked(t.state)
     assertEquals(player(after(t)).board.favor, player(ready).board.favor + 3)
     assertEquals(bank(after(t), Suit.Arcane), 0)
     assertEquals(bank(after(t), Suit.Discord), 0)
@@ -61,7 +60,8 @@ class AlchemistSuite extends munit.FunSuite:
   test("several banks holding more than four ask for a distribution of four"):
     val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3, Suit.Nomad -> 2)
     val t = use(ready, Alchemist, source).toOption.get
-    assert(awaits(t, Alchemist.decisionId), t.continue.toString)
+    assert(awaits(t, Alchemist.decisionId),
+      parked.parkedDecision(t.state).toString)
     val query = queryOf(t, actor).get
     assertEquals(query.form, "distribute")
     assertEquals(query.slots.map(s => (s.option.id, s.minimum, s.maximum)),

@@ -5,6 +5,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.protocol.projection.{DecisionQueryProjection, PlayerBoardProjection}
 
@@ -17,6 +18,12 @@ object TargetsFixture:
   val rules = new OathRules(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
   private val projector = new GameProjector(catalog)
+
+  /** The parked decision, as this file's suites rebuild it: the same catalog
+    * and phase power catalog `rules` was built with.
+    */
+  val parked = new ParkedDecisionAssertions(catalog,
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
   def others(ready: ReadyGame): Vector[PlayerId] =
     ready.game.current.players.map(_.player).filter(_ != actor)
@@ -69,8 +76,8 @@ object TargetsFixture:
     transition.state.asInstanceOf[OathState.Ready].value
 
   def awaits(transition: OathTransition, decision: String): Boolean =
-    transition.continue ==
-      OathContinue.AwaitingPowerDecision(actor, DecisionId(decision))
+    parked.parkedDecision(transition.state).exists(facts =>
+      facts.decision == decision && facts.awaiting == actor)
 
   def pick(ref: DecisionOptionRef): DecisionAnswer =
     DecisionAnswer.ChooseOneAnswer(ref)

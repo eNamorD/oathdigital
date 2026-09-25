@@ -62,7 +62,8 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("the cost is one secret placed on the Vial and one burnt"):
     val t = use(staged, power, source).toOption.get
-    assert(awaits(t, CrystalVial.decisionId), t.continue.toString)
+    assert(awaits(t, CrystalVial.decisionId),
+      parked.parkedDecision(t.state).toString)
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
     assertEquals(secretsOf(after(t)), (0, 0))
 
@@ -134,8 +135,7 @@ class CrystalVialSuite extends munit.FunSuite:
     val ready = bare
     assertEquals(siteCards(ready), Vector.empty)
     val t = use(ready, power, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
-      t.continue.toString)
+    parked.assertNotParked(t.state)
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
     assertEquals(secretsOf(after(t)), (0, 0))
 

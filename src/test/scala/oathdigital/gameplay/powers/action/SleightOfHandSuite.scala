@@ -39,7 +39,8 @@ class SleightOfHandSuite extends munit.FunSuite:
       "holding two or more secrets"):
     val ready = staged(2, 0)
     val t = use(ready, SleightOfHand, source).toOption.get
-    assert(awaits(t, SleightOfHand.decisionId), t.continue.toString)
+    assert(awaits(t, SleightOfHand.decisionId),
+      parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor), Some(Vector("player" -> victim.value)))
     assertEquals(cardOf(after(t)).tokens, Tokens(1, 0))
     assertEquals(player(after(t)).board.favor, 0)
@@ -83,8 +84,7 @@ class SleightOfHandSuite extends munit.FunSuite:
   test("a player holding one secret is not a target, so nothing is asked"):
     val ready = staged(1, 0)
     val t = use(ready, SleightOfHand, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
-      t.continue.toString)
+    parked.assertNotParked(t.state)
     assertEquals(secretsOf(after(t), victim), (1, 0))
     assertEquals(cardOf(after(t)).tokens, Tokens(1, 0))
     assertEquals(player(after(t)).board.favor, 0)
@@ -92,7 +92,7 @@ class SleightOfHandSuite extends munit.FunSuite:
   test("a player at another site is not a target"):
     val ready = withPawn(staged(3, 0), victim, elsewhere(staged(3, 0)))
     val t = use(ready, SleightOfHand, source).toOption.get
-    assert(!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision])
+    parked.assertNotParked(t.state)
     assertEquals(secretsOf(after(t), victim), (3, 0))
 
   test("every eligible player is offered"):
