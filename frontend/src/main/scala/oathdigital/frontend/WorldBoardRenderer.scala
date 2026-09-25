@@ -139,7 +139,6 @@ private[frontend] object WorldBoardRenderer:
  def world(
      value: GameProjection,
      board: Option[ParkedDecision.Surface.Board],
-     presentation: ViewerPresentation,
      canControl: Boolean,
      drafts: SessionDrafts,
      controls: TableControls

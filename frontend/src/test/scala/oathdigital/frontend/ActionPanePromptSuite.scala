@@ -5,8 +5,10 @@ import oathdigital.protocol.MajorActionPreviewResponse
 import org.scalajs.dom
 
 /** The prompt the action pane reports is the text the old DOM scrape
-  * (`querySelector(".selection-instruction,.modifier-confirm")`) found, so
-  * the decision key `ServerModeUi` composes is the same string it was.
+  * found, so the decision key `ServerModeUi` composes is the same string it
+  * was. That scrape had four selectors; two of them (`#card-decision-title`,
+  * `.resolution-choice`) matched nothing, so these cases compare against
+  * the two live ones, `.selection-instruction,.modifier-confirm`.
   */
 class ActionPanePromptSuite extends munit.FunSuite:
   private val context = BoardSelectionContext("game", "red", 1L)

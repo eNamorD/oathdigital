@@ -221,6 +221,11 @@ class ServerModeUiSuite extends FunSuite:
       // The route still shows Forge's partition heading to the new seat;
       // the zones come from a draft, and there is none.
       assert(browser.byClass("partition-zones").isEmpty, browser.text)
+      // Not vacuous: blue's frame did render, with Forge's partition panel.
+      assert(browser.text.contains("Development-only active-player view: blue"),
+        browser.text)
+      assertEquals(browser.byClass("partition-instruction")
+        .map(_.textContent), Vector("Assign every option: Pay Favor (2), Pay Secret (1)."))
     }.andThen { case _ => browser.close() }
 
   test("host duplicate game response keeps form editable and retries with a new game ID"):

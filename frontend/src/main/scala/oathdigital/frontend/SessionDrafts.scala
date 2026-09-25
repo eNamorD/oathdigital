@@ -49,7 +49,7 @@ private[frontend] final case class SessionDrafts(
     case Draft.Board(value) => copy(board = value)
     case Draft.BoardTargets(value) => copy(boardTargets = Some(value))
 
-  /** The set after leaving the modifier flow one of five ways. The table
+  /** The set after leaving the modifier flow one of six ways. The table
     * is the spec's; `Failed` and `Completed` differ only on the board
     * targets, and that is observable on a submit error.
     */
@@ -66,6 +66,8 @@ private[frontend] final case class SessionDrafts(
     case FlowExit.TargetsLeft =>
       copy(modifiers = modifiers.flatMap(_.backFromTargets),
         facedownAdviser = None, boardTargets = None)
+    case FlowExit.OrderingLeft =>
+      copy(modifiers = None)
 
 private[frontend] object SessionDrafts:
   val empty: SessionDrafts =
@@ -84,10 +86,10 @@ private[frontend] enum Draft:
   case Board(value: Option[WalkerBoardDraft])
   case BoardTargets(value: BoardTargetSelectionState)
 
-/** The five ways a viewer leaves the modifier flow. `Cancelled` carries the
+/** The six ways a viewer leaves the modifier flow. `Cancelled` carries the
   * restored board targets because computing them needs the projection's
-  * `boardTargetActions`; the caller builds them as `restoreBoardTargetActions`
-  * always did.
+  * `boardTargetActions`; the caller (`restoredTargets` in `ServerModeUi`)
+  * builds the restore from the set's own context.
   */
 private[frontend] enum FlowExit:
   case Restarted
@@ -95,3 +97,8 @@ private[frontend] enum FlowExit:
   case Completed
   case Cancelled(restored: Option[BoardTargetSelectionState])
   case TargetsLeft
+  /** Leaving the ordering stage with no targets stage after it: Confirm
+    * submitted the command directly, or Back left the ordering panel. Only
+    * the workflow goes; the facedown pick and the board targets stay.
+    */
+  case OrderingLeft

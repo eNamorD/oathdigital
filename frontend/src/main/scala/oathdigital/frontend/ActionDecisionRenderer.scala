@@ -4,7 +4,9 @@ import ServerUiSupport._
 private[frontend] object ActionDecisionRenderer:
  /** The pane and the one line `ServerModeUi` keys the panel's focus reset
    * on: the first selection instruction or modifier confirm appended, or
-   * "" -- what the old `querySelector` over the same two classes returned.
+   * "". The old `querySelector` had four selectors; two of them
+   * (`#card-decision-title`, `.resolution-choice`) matched nothing, and the
+   * prompt reproduces what the two live ones returned.
    */
  final case class ActionPane(element: dom.Element, prompt: String)
 

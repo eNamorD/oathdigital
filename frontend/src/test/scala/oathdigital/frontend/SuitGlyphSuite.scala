@@ -20,7 +20,7 @@ class SuitGlyphSuite extends munit.FunSuite:
       favorBanks = Vector(FavorBankState("arcane", 3),
         FavorBankState("nomad", 0)))
     val panel = WorldBoardRenderer.world(value, None,
-      ServerUiSupport.viewerPresentation(value, "red"), canControl = true,
+      canControl = true,
       SessionDrafts.empty, new RecordingControls())
     val banks = panel.querySelectorAll(".favor-bank").toVector
       .map(_.asInstanceOf[dom.Element])

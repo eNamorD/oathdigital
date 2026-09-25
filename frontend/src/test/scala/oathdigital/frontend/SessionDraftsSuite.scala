@@ -123,6 +123,13 @@ class SessionDraftsSuite extends munit.FunSuite:
     // A workflow that never had a modifier stage has nowhere to go back to.
     assertEquals(full.leave(FlowExit.TargetsLeft).modifiers, None)
 
+  test("OrderingLeft clears only the workflow"):
+    val left = full.leave(FlowExit.OrderingLeft)
+    assertEquals(left, full.copy(modifiers = None))
+    assert(left.facedownAdviser.nonEmpty)
+    assert(left.boardTargets.nonEmpty)
+    assert(left.partition.nonEmpty)
+
   test("empty has no context and nothing staged"):
     assertEquals(SessionDrafts.empty, SessionDrafts(None, None, None, None,
       None, None, None, None))

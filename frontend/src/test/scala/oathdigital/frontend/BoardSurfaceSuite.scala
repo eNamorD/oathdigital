@@ -47,9 +47,7 @@ class BoardSurfaceSuite extends munit.FunSuite:
   private def world(ui: RecordingControls, board: Option[Surface.Board] =
       Some(surface(confirm = true)), draft: Option[WalkerBoardDraft] = None,
       targets: Option[BoardTargetSelectionState] = None): dom.Element =
-    WorldBoardRenderer.world(projection(), board,
-      ServerUiSupport.viewerPresentation(projection(), "red"),
-      canControl = true,
+    WorldBoardRenderer.world(projection(), board, canControl = true,
       SessionDrafts.empty.copy(context = Some(context), board = draft,
         boardTargets = targets), ui)
 

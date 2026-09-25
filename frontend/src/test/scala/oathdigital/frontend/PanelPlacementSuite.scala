@@ -36,7 +36,7 @@ class PanelPlacementSuite extends munit.FunSuite:
 
   private def world(value: GameProjection): dom.Element =
     WorldBoardRenderer.world(value, None,
-      ServerUiSupport.viewerPresentation(value, "red"), canControl = true,
+      canControl = true,
       SessionDrafts.empty, new RecordingControls())
 
   private def actions(value: GameProjection): dom.Element =

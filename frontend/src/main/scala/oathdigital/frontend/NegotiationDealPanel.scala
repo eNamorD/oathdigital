@@ -63,9 +63,8 @@ private[frontend] object NegotiationDealPanel:
     row
 
   private def editor(decisionId: String, deal: NegotiationDealState,
-      editing: NegotiationEditingState, playerId: String, canControl: Boolean,
+      editing: NegotiationEditingState, me: String, canControl: Boolean,
       panel: dom.Element, controls: TableControls): Unit =
-    val me = playerId
     val favors = scala.collection.mutable.ArrayBuffer.empty[(String, dom.html.Input)]
     val relics = scala.collection.mutable.ArrayBuffer.empty[
       (String, String, dom.html.Input)]

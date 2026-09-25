@@ -88,7 +88,7 @@ object ServerModeUi:
           (WorldBoardRenderer.players(value, selectedPlayer),
             WorldBoardRenderer.world(value, routed.surface.collect {
               case board: ParkedDecision.Surface.Board => board
-            }, presentation, controlsAvailable, drafts, ui), decisionKey)
+            }, controlsAvailable, drafts, ui), decisionKey)
       val development = element("div", "development-content")
       if !fixedSeat then
         development.appendChild(DevelopmentRenderer.controls(session))
@@ -309,7 +309,7 @@ object ServerModeUi:
       client.preview(gameId, selectedPlayer, request).foreach:
         case Right(response) => workflow.command match
           case Some(command) =>
-            drafts = drafts.copy(modifiers = None)
+            drafts = drafts.leave(FlowExit.OrderingLeft)
             val (submitted, modifiers) = ModifierWorkflow.submission(command,
               workflow.selection.invocations)
             submitTransport(submitted, modifiers)
@@ -370,7 +370,7 @@ object ServerModeUi:
         render()
       def confirmModifiers() = confirmModifierSelection()
       def backFromModifiers() =
-        drafts = drafts.copy(modifiers = None)
+        drafts = drafts.leave(FlowExit.OrderingLeft)
         render()
       def cancelModifiers() =
         drafts = drafts.leave(FlowExit.Cancelled(restoredTargets))

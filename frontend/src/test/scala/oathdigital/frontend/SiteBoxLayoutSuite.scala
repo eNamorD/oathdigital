@@ -27,7 +27,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
   private def world(value: GameProjection,
       targets: Option[BoardTargetSelectionState] = None): dom.Element =
     WorldBoardRenderer.world(value, None,
-      ServerUiSupport.viewerPresentation(value, "red"), canControl = true,
+      canControl = true,
       SessionDrafts.empty.copy(context = Some(context), boardTargets = targets),
       new RecordingControls())
 

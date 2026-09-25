@@ -74,6 +74,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(select.value, "3")
     select.value = "5"
     select.dispatchEvent(new dom.Event("change"))
+    assertEquals(ui.staged, Vector.empty)
     val confirm = one(panel, ".walker-amount-confirm").asInstanceOf[dom.html.Button]
     assertEquals(confirm.textContent, "Take banner")
     confirm.click()
