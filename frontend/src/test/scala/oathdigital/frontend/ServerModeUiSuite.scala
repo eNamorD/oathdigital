@@ -189,6 +189,40 @@ class ServerModeUiSuite extends FunSuite:
       assert(!browser.text.contains("assigned seat link"))
     }.andThen { case _ => browser.close() }
 
+  /** Spec, behavior change 1. A development session follows the active
+    * player; the render between the seat change and the reload used to show
+    * the previous seat's walker drafts, since they were cleared only by the
+    * reload's reconcile. The reload here never lands, so the interim frame
+    * is what the test sees.
+    */
+  test("a seat change clears the walker drafts before the interim render"):
+    val browser = new TestBrowser("?gameId=g&playerId=red")
+    def snapshot(sequence: Long, active: String): String =
+      oathdigital.protocol.projection.GameProjectionCodec.encode(
+        GameProjection("g", sequence, "act", Some(active),
+          Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red),
+            GamePlayer("blue", "Blue", "Exile", PlayerColor.Blue)),
+          Vector.empty, Vector.empty, Vector.empty, ready = false,
+          completed = false, walkerDecision = Some(forgeParked)))
+    var loads = 0
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
+        if url.contains("/events") then
+          Future.successful(Right(TransportResponse(200, """{"events":[]}""")))
+        else
+          loads += 1
+          loads match
+            case 1 => Future.successful(Right(TransportResponse(200, snapshot(1L, "red"))))
+            case 2 => Future.successful(Right(TransportResponse(200, snapshot(2L, "blue"))))
+            case _ => Future.never
+    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
+      assertEquals(loads, 3)
+      // The route still shows Forge's partition heading to the new seat;
+      // the zones come from a draft, and there is none.
+      assert(browser.byClass("partition-zones").isEmpty, browser.text)
+    }.andThen { case _ => browser.close() }
+
   test("host duplicate game response keeps form editable and retries with a new game ID"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]

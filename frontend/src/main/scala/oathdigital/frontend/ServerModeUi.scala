@@ -18,13 +18,7 @@ object ServerModeUi:
     var gameId = trustedGameId.getOrElse(queryParameter("gameId").getOrElse(freshGameId()))
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
-    var boardSelectionState = Option.empty[BoardTargetSelectionState]
-    var walkerPartitionDraft = Option.empty[WalkerPartitionDraft]
-    var walkerDistributeDraft = Option.empty[WalkerDistributeDraft]
-    var walkerSelectionDraft = Option.empty[WalkerSelectionDraft]
-    var walkerBoardDraft = Option.empty[WalkerBoardDraft]
-    var modifierWorkflow = Option.empty[ModifierWorkflow]
-    var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
+    var drafts = SessionDrafts.empty
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
     val shell = new GameTableShell(mount, !fixedSeat)
@@ -79,29 +73,22 @@ object ServerModeUi:
             text("p", "empty-state", "World unavailable."), "unavailable")
         case Some(value) =>
           val presentation = viewerPresentation(value, selectedPlayer)
-          // Transitional: the draft set assembled from the session's vars.
-          // Task 6 makes it the session's one value.
-          val currentDrafts = SessionDrafts(
-            Some(BoardSelectionContext(gameId, selectedPlayer, value.nextSequence)),
-            boardSelectionState, walkerPartitionDraft, walkerDistributeDraft,
-            walkerSelectionDraft, walkerBoardDraft, modifierWorkflow,
-            facedownAdviserDraft)
           // Routed once per render: both panes read the same answer.
           val routed = ParkedDecision.route(value, presentation)
           val pane = ActionDecisionRenderer.actionsPanel(value, presentation,
-            routed, ui.canControl, currentDrafts, ui)
+            routed, ui.canControl, drafts, ui)
           actionContent.appendChild(pane.element)
           val decisionKey = Vector(selectedPlayer, value.phase,
             value.activeParticipantId.getOrElse(""),
             value.pendingCardDecision.map(_.decisionId).getOrElse(""),
             value.walkerDecision.map(_.decisionId).getOrElse(""),
-            currentDrafts.boardTargets.flatMap(_.activeActionKind).getOrElse(""),
-            currentDrafts.modifiers.map(_.stage.toString).getOrElse(""),
+            drafts.boardTargets.flatMap(_.activeActionKind).getOrElse(""),
+            drafts.modifiers.map(_.stage.toString).getOrElse(""),
             pane.prompt).mkString("|")
           (WorldBoardRenderer.players(value, selectedPlayer),
             WorldBoardRenderer.world(value, routed.surface.collect {
               case board: ParkedDecision.Surface.Board => board
-            }, presentation, ui.canControl, currentDrafts, ui), decisionKey)
+            }, presentation, ui.canControl, drafts, ui), decisionKey)
       val development = element("div", "development-content")
       if !fixedSeat then
         development.appendChild(DevelopmentRenderer.controls(session))
@@ -133,31 +120,9 @@ object ServerModeUi:
           None
       routed.foreach:
         case ProjectionRoute.Display(displayed, retainedNotice) =>
-          modifierWorkflow = ModifierWorkflow.reconcile(modifierWorkflow,
-            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence))
-          facedownAdviserDraft = FacedownAdviserDraft.reconcile(facedownAdviserDraft,
+          drafts = drafts.reconcile(
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
-            displayed.minorActions)
-          boardSelectionState = Some(BoardTargetSelectionState.reconcile(
-            boardSelectionState,
-            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
-            displayed.boardTargetActions))
-          walkerPartitionDraft = WalkerPartitionDraft.reconcile(
-            walkerPartitionDraft,
-            BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.walkerDecision)
-          walkerDistributeDraft = WalkerDistributeDraft.reconcile(
-            walkerDistributeDraft,
-            BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.walkerDecision)
-          walkerSelectionDraft = WalkerSelectionDraft.reconcile(
-            walkerSelectionDraft,
-            BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.walkerDecision)
-          walkerBoardDraft = WalkerBoardDraft.reconcile(
-            walkerBoardDraft,
-            BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.walkerDecision)
+            displayed)
           projection = Some(displayed)
           failure = retainedNotice
           render()
@@ -174,9 +139,7 @@ object ServerModeUi:
               nextRequest,
               retainedNotice
             ) =>
-          boardSelectionState = None
-          modifierWorkflow = None
-          facedownAdviserDraft = None
+          drafts = SessionDrafts.empty
           polling.foreach(_.stop())
           projection = Some(displayed)
           failure = retainedNotice
@@ -209,8 +172,7 @@ object ServerModeUi:
       polling.foreach(_.stop())
       gameId = id.trim
       projection = None
-      boardSelectionState = None
-      modifierWorkflow = None
+      drafts = SessionDrafts.empty
       rawEvents = Vector.empty
       rawHistorySequence = None
       failure = None
@@ -275,8 +237,7 @@ object ServerModeUi:
           .foreach:
             case Left(stale: GameClientFailure.StalePosition)
                 if coordinator.accepts(request) =>
-              boardSelectionState = None
-              modifierWorkflow = None
+              drafts = SessionDrafts.empty
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach:
                 refreshed => accept(request, refreshed, Some(stale))
@@ -295,11 +256,11 @@ object ServerModeUi:
               current.nextSequence, action)
             val fingerprint = s"${response.nextSequence}:${response.action}:" +
               response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
-            modifierWorkflow = Some(ModifierWorkflow(Some(command), None,
-              parameters, response,
-              ModifierSelectionState.reconcile(modifierWorkflow.map(_.selection),
+            drafts = drafts.copy(modifiers = Some(ModifierWorkflow(Some(command),
+              None, parameters, response,
+              ModifierSelectionState.reconcile(drafts.modifiers.map(_.selection),
                 context, response.modifiers, fingerprint),
-              ModifierWorkflowStage.Ordering))
+              ModifierWorkflowStage.Ordering)))
             render()
           case Left(error) => failure = Some(error); render()
       }
@@ -307,29 +268,24 @@ object ServerModeUi:
     def activatePreviewTargets(workflow: ModifierWorkflow,
         response: MajorActionPreviewResponse): Unit = for
       current <- projection
+      context <- drafts.context
       actionKind <- workflow.actionKind
     do
-      val context = BoardSelectionContext(gameId, selectedPlayer,
-        current.nextSequence)
-      if actionKind == "play-facedown-adviser" then
-        facedownAdviserDraft = current.minorActions.flatMap(
-          FacedownAdviserDraft.initial(context, _))
-        boardSelectionState = None
+      val entered = if actionKind == "play-facedown-adviser" then
+        drafts.copy(facedownAdviser = current.minorActions.flatMap(
+          FacedownAdviserDraft.initial(context, _)), boardTargets = None)
       else ModifierWorkflow.targetAction(actionKind, response,
-        current.boardTargetActions).foreach { action =>
-        boardSelectionState = Some(BoardTargetSelectionState.reconcile(None,
-          context, Vector(action)).activate(actionKind))
-      }
-      modifierWorkflow = Some(workflow.showTargets(response))
+        current.boardTargetActions).fold(drafts)(action =>
+        drafts.copy(boardTargets = Some(BoardTargetSelectionState.reconcile(None,
+          context, Vector(action)).activate(actionKind))))
+      drafts = entered.copy(modifiers = Some(workflow.showTargets(response)))
       render()
 
     def startTargetedFlow(actionKind: String): Unit = for
       current <- projection
       (action, parameters) <- ModifierWorkflow.targeted(actionKind)
     do
-      modifierWorkflow = None
-      facedownAdviserDraft = None
-      boardSelectionState = boardSelectionState.map(_.cancel)
+      drafts = drafts.leave(FlowExit.Restarted)
       val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
       client.preview(gameId, selectedPlayer, request).foreach:
         case Right(response) =>
@@ -342,51 +298,44 @@ object ServerModeUi:
               response.modifiers, fingerprint),
             if response.modifiers.nonEmpty then ModifierWorkflowStage.Ordering
             else ModifierWorkflowStage.Targets)
-          if workflow.ordering then { modifierWorkflow = Some(workflow); render() }
+          if workflow.ordering then { drafts = drafts.copy(modifiers = Some(workflow)); render() }
           else activatePreviewTargets(workflow, response)
         case Left(error) => failure = Some(error); render()
 
-    def confirmModifierSelection(): Unit = modifierWorkflow.foreach { workflow =>
+    def confirmModifierSelection(): Unit = drafts.modifiers.foreach { workflow =>
       val request = MajorActionPreviewRequest(workflow.selection.context.sequence,
         workflow.selection.context.action, workflow.baseParameters,
         workflow.selection.invocations)
       client.preview(gameId, selectedPlayer, request).foreach:
         case Right(response) => workflow.command match
           case Some(command) =>
-            modifierWorkflow = None
+            drafts = drafts.copy(modifiers = None)
             val (submitted, modifiers) = ModifierWorkflow.submission(command,
               workflow.selection.invocations)
             submitTransport(submitted, modifiers)
           case None => activatePreviewTargets(workflow, response)
         case Left(error) =>
-          modifierWorkflow = None
-          facedownAdviserDraft = None
+          drafts = drafts.leave(FlowExit.Failed)
           failure = Some(error)
           render()
     }
 
     def completeTargetCommand(command: GameCommand): Unit =
-      modifierWorkflow.filter(_.stage == ModifierWorkflowStage.Targets) match
+      drafts.modifiers.filter(_.stage == ModifierWorkflowStage.Targets) match
         case Some(workflow) =>
-          modifierWorkflow = None
-          facedownAdviserDraft = None
-          boardSelectionState = None
+          drafts = drafts.leave(FlowExit.Completed)
           val (submitted, modifiers) = ModifierWorkflow.submission(command,
             workflow.selection.invocations)
           submitTransport(submitted, modifiers)
         case None => submit(command)
 
-    def restoreBoardTargetActions(): Unit =
-      boardSelectionState = projection.map { current =>
-        BoardTargetSelectionState.restore(
-          BoardSelectionContext(gameId, selectedPlayer, current.nextSequence),
-          current.boardTargetActions)
-      }
+    def restoredTargets: Option[BoardTargetSelectionState] = for
+      current <- projection
+      context <- drafts.context
+    yield BoardTargetSelectionState.restore(context, current.boardTargetActions)
 
     def handleBoardSelection(result: BoardSelectionResult): Unit = result match
-      case BoardSelectionResult.Updated(state) =>
-        boardSelectionState = Some(state)
-        render()
+      case BoardSelectionResult.Updated(state) => ui.stage(Draft.BoardTargets(state))
       case BoardSelectionResult.Submit(action, targets) =>
         commandForSelection(action, targets, selectedPlayer).foreach { command =>
           completeTargetCommand(command)
@@ -402,59 +351,61 @@ object ServerModeUi:
       def createGame() = newGame()
 
     lazy val ui: ServerUiView = new ServerUiView:
-      def currentBoardSelection = boardSelectionState
-      def currentBoardSelection_=(value: Option[BoardTargetSelectionState]) = boardSelectionState = value
-      def currentWalkerPartition = walkerPartitionDraft
-      def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]) = walkerPartitionDraft = value
-      def currentWalkerDistribution = walkerDistributeDraft
-      def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
-      def currentWalkerSelection = walkerSelectionDraft
-      def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]) = walkerSelectionDraft = value
-      def currentWalkerBoard = walkerBoardDraft
-      def currentWalkerBoard_=(value: Option[WalkerBoardDraft]) = walkerBoardDraft = value
-      def currentModifierWorkflow = modifierWorkflow
-      def currentFacedownAdviserDraft = facedownAdviserDraft
+      def currentBoardSelection = drafts.boardTargets
+      def currentBoardSelection_=(value: Option[BoardTargetSelectionState]) =
+        drafts = drafts.copy(boardTargets = value)
+      def currentWalkerPartition = drafts.partition
+      def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]) =
+        drafts = drafts.copy(partition = value)
+      def currentWalkerDistribution = drafts.distribute
+      def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) =
+        drafts = drafts.copy(distribute = value)
+      def currentWalkerSelection = drafts.selection
+      def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]) =
+        drafts = drafts.copy(selection = value)
+      def currentWalkerBoard = drafts.board
+      def currentWalkerBoard_=(value: Option[WalkerBoardDraft]) =
+        drafts = drafts.copy(board = value)
+      def currentModifierWorkflow = drafts.modifiers
+      def currentFacedownAdviserDraft = drafts.facedownAdviser
+      def stage(draft: Draft) =
+        drafts = drafts.staged(draft)
+        render()
       def chooseFacedownAdviser(cardId: String) =
-        facedownAdviserDraft = facedownAdviserDraft.map(_.choose(cardId)); render()
+        drafts = drafts.copy(facedownAdviser =
+          drafts.facedownAdviser.map(_.choose(cardId)))
+        render()
       def toggleModifier(value: PreviewModifier) =
-        modifierWorkflow = modifierWorkflow.map(workflow => workflow.copy(
-          selection = workflow.selection.toggle(value))); render()
+        drafts = drafts.copy(modifiers = drafts.modifiers.map(workflow =>
+          workflow.copy(selection = workflow.selection.toggle(value))))
+        render()
       def moveModifier(value: PreviewModifier, delta: Int) =
-        modifierWorkflow = modifierWorkflow.map(workflow => workflow.copy(selection =
-          if delta < 0 then workflow.selection.moveEarlier(value)
-          else workflow.selection.moveLater(value))); render()
+        drafts = drafts.copy(modifiers = drafts.modifiers.map(workflow =>
+          workflow.copy(selection =
+            if delta < 0 then workflow.selection.moveEarlier(value)
+            else workflow.selection.moveLater(value))))
+        render()
       def confirmModifiers() = confirmModifierSelection()
-      def backFromModifiers() = { modifierWorkflow = None; render() }
+      def backFromModifiers() =
+        drafts = drafts.copy(modifiers = None)
+        render()
       def cancelModifiers() =
-        modifierWorkflow = None
-        facedownAdviserDraft = None
-        restoreBoardTargetActions()
+        drafts = drafts.leave(FlowExit.Cancelled(restoredTargets))
         render()
       def beginTargetedMajorAction(actionKind: String) =
         startTargetedFlow(actionKind)
-      def backFromTargets() = modifierWorkflow.foreach { workflow =>
-        facedownAdviserDraft = None
-        boardSelectionState = None
-        modifierWorkflow = workflow.backFromTargets
+      // Guarded as before: nothing happens when no flow is in flight.
+      def backFromTargets() = drafts.modifiers.foreach { _ =>
+        drafts = drafts.leave(FlowExit.TargetsLeft)
         render()
       }
       def cancelTargetAction() =
-        modifierWorkflow = modifierWorkflow.flatMap(_.cancel)
-        facedownAdviserDraft = None
-        restoreBoardTargetActions()
+        drafts = drafts.leave(FlowExit.Cancelled(restoredTargets))
         render()
       def submitTargetCommand(command: GameCommand) =
         completeTargetCommand(command)
       def canControl = controlsAvailable
       def rerender() = render()
-      def stage(draft: Draft) =
-        draft match
-          case Draft.Partition(value) => walkerPartitionDraft = Some(value)
-          case Draft.Distribute(value) => walkerDistributeDraft = Some(value)
-          case Draft.Selection(value) => walkerSelectionDraft = Some(value)
-          case Draft.Board(value) => walkerBoardDraft = value
-          case Draft.BoardTargets(value) => boardSelectionState = Some(value)
-        render()
       def submitCommand(command: GameCommand) = submit(command)
       def handleSelection(result: BoardSelectionResult) = handleBoardSelection(result)
 
