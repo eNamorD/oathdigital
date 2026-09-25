@@ -59,7 +59,7 @@ private[application] final class PreviewModifierDescriptions(
       : Option[MajorActionType] = power.flatMap { power =>
     val hooked = power.contributions.keySet.flatMap(_.associatedMajorAction)
     hooked.find(_.key == action.key).orElse(
-      MajorActionType.values.find(hooked.contains))
+      MajorActionType.all.find(hooked.contains))
   }
 
   /** The card in play that carries `handlerId`, for a walker power whose

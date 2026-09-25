@@ -1,17 +1,17 @@
 package oathdigital.model
 
-sealed trait MajorActionType extends Product with Serializable { def key: String }
+enum MajorActionType(val key: String) {
+  case Search extends MajorActionType("search")
+  case Travel extends MajorActionType("travel")
+  case Campaign extends MajorActionType("campaign")
+  case Muster extends MajorActionType("muster")
+  case Trade extends MajorActionType("trade")
+  case Forge extends MajorActionType("forge")
+  case Recover extends MajorActionType("recover")
+  case Challenge extends MajorActionType("challenge")
+}
 object MajorActionType {
-  case object Search extends MajorActionType { val key = "search" }
-  case object Travel extends MajorActionType { val key = "travel" }
-  case object Campaign extends MajorActionType { val key = "campaign" }
-  case object Muster extends MajorActionType { val key = "muster" }
-  case object Trade extends MajorActionType { val key = "trade" }
-  case object Forge extends MajorActionType { val key = "forge" }
-  case object Recover extends MajorActionType { val key = "recover" }
-  case object Challenge extends MajorActionType { val key = "challenge" }
-
-  val values: Vector[MajorActionType] = Vector(
+  val all: Vector[MajorActionType] = Vector(
     Search, Travel, Campaign, Muster, Trade, Forge, Recover, Challenge)
 }
 
@@ -206,8 +206,4 @@ object PowerWindow {
   }
 }
 
-sealed trait PowerResolution extends Product with Serializable
-object PowerResolution {
-  case object PlayerSelected extends PowerResolution
-  case object Automatic extends PowerResolution
-}
+enum PowerResolution { case PlayerSelected, Automatic }

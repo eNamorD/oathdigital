@@ -2,11 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse, ModifierInvocation}
 
-private[frontend] sealed trait ModifierWorkflowStage
-private[frontend] object ModifierWorkflowStage {
-  case object Ordering extends ModifierWorkflowStage
-  case object Targets extends ModifierWorkflowStage
-}
+private[frontend] enum ModifierWorkflowStage { case Ordering, Targets }
 
 private[frontend] final case class ModifierWorkflow(
     command: Option[GameIntent],

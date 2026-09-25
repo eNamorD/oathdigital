@@ -7,13 +7,7 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 
-sealed trait ReadinessState
-
-object ReadinessState {
-  case object Starting extends ReadinessState
-  case object Ready extends ReadinessState
-  case object Stopping extends ReadinessState
-}
+enum ReadinessState { case Starting, Ready, Stopping }
 
 final class ServerReadiness private (
     val version: String,

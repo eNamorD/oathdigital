@@ -45,7 +45,7 @@ class PowerResolverSuite extends munit.FunSuite {
   }
 
   test("major action vocabulary contains only selectable major actions") {
-    assertEquals(MajorActionType.values.map(_.key), Vector("search", "travel",
+    assertEquals(MajorActionType.all.map(_.key), Vector("search", "travel",
       "campaign", "muster", "trade", "forge", "recover", "challenge"))
   }
 

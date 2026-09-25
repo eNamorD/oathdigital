@@ -7,19 +7,18 @@ package oathdigital.model
   * persisted (see `Decisions.scala`). The move changed the package and
   * nothing else: same four case objects, same names, same JSON and wire
   * strings.
+  *
+  * `key` is the stable wire spelling, frozen: it is the `Location.Deck`
+  * journal tag and the identity half of a `DecisionOptionRef.Deck` on the
+  * command wire.
   */
-sealed trait CardDeck extends Product with Serializable {
-  /** Stable wire spelling, frozen: it is the `Location.Deck` journal tag and
-    * the identity half of a `DecisionOptionRef.Deck` on the command wire.
-    */
-  def key: String
+enum CardDeck(val key: String) {
+  case World extends CardDeck("world")
+  case Relic extends CardDeck("relic")
+  case Edifice extends CardDeck("edifice")
+  case Legacy extends CardDeck("legacy")
 }
 object CardDeck {
-  case object World extends CardDeck { val key = "world" }
-  case object Relic extends CardDeck { val key = "relic" }
-  case object Edifice extends CardDeck { val key = "edifice" }
-  case object Legacy extends CardDeck { val key = "legacy" }
-
   val all: Vector[CardDeck] = Vector(World, Relic, Edifice, Legacy)
 
   /** Safe parse for untrusted (wire) input, mirroring `Suit.fromKey`. */

@@ -1,11 +1,7 @@
 package oathdigital.model
 
-sealed trait AttackDieFace extends DieFace with Product with Serializable
+enum AttackDieFace extends DieFace { case HollowSword, OneSword, TwoSwordsSkull }
 object AttackDieFace {
-  case object HollowSword extends AttackDieFace
-  case object OneSword extends AttackDieFace
-  case object TwoSwordsSkull extends AttackDieFace
-
   def score(faces: Vector[AttackDieFace]): Int =
     faces.count(_ == OneSword) + faces.count(_ == HollowSword) / 2 +
       faces.count(_ == TwoSwordsSkull) * 2
@@ -14,13 +10,8 @@ object AttackDieFace {
     faces.count(_ == TwoSwordsSkull)
 }
 
-sealed trait DefenseDieFace extends DieFace with Product with Serializable
+enum DefenseDieFace extends DieFace { case Blank, OneShield, TwoShields, Doubler }
 object DefenseDieFace {
-  case object Blank extends DefenseDieFace
-  case object OneShield extends DefenseDieFace
-  case object TwoShields extends DefenseDieFace
-  case object Doubler extends DefenseDieFace
-
   def score(faces: Vector[DefenseDieFace]): Int = {
     val shields = faces.map {
       case OneShield => 1

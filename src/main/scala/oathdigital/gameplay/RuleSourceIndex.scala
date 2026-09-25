@@ -5,21 +5,9 @@ import oathdigital.catalog.CatalogPower
 import oathdigital.model._
 
 /** Orientation is a factual property only; callers still own activation rules. */
-sealed trait RuleSourceFace extends Product with Serializable
-object RuleSourceFace {
-  case object FaceUp extends RuleSourceFace
-  case object FaceDown extends RuleSourceFace
-  case object Intact extends RuleSourceFace
-  case object Ruined extends RuleSourceFace
-  case object Printed extends RuleSourceFace
-  case object Active extends RuleSourceFace
-  case object Inactive extends RuleSourceFace
-  case object Mob extends RuleSourceFace
-  case object GrandCouncil extends RuleSourceFace
-  case object WanderingFlame extends RuleSourceFace
-  case object Festival extends RuleSourceFace
-  case object Normal extends RuleSourceFace
-  case object Altered extends RuleSourceFace
+enum RuleSourceFace {
+  case FaceUp, FaceDown, Intact, Ruined, Printed, Active, Inactive, Mob,
+    GrandCouncil, WanderingFlame, Festival, Normal, Altered
 }
 
 /** Which rule sources a player can use: a site, site card or site relic at

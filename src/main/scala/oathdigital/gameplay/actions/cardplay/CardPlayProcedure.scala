@@ -8,11 +8,7 @@ import oathdigital.model._
 
 /** Embeddable card-placement tree using CardPlay's pure operation planner. */
 object CardPlayProcedure {
-  sealed trait Origin
-  object Origin {
-    case object TemporaryHand extends Origin
-    case object FacedownAdviser extends Origin
-  }
+  enum Origin { case TemporaryHand, FacedownAdviser }
 
   private val discard = DecisionOptionRef.Button("discard")
   private val site = DecisionOptionRef.Button("site")

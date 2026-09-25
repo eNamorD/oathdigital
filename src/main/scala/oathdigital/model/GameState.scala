@@ -87,12 +87,7 @@ final case class TurnState(
     usedPowers: Set[PowerUseRef]
 )
 
-sealed trait PowerTiming extends Product with Serializable
-object PowerTiming {
-  case object Wake extends PowerTiming
-  case object Act extends PowerTiming
-  case object Rest extends PowerTiming
-}
+enum PowerTiming { case Wake, Act, Rest }
 
 sealed trait PowerSourceRef extends Product with Serializable
 object PowerSourceRef {
@@ -126,12 +121,11 @@ final case class GameTracks(
   require(visionsDrawn >= 0, "Visions Drawn must be non-negative")
 }
 
-sealed trait VictoryKind extends Product with Serializable { def key: String }
-object VictoryKind {
-  case object Usurper extends VictoryKind { val key = "usurper" }
-  case object Visionary extends VictoryKind { val key = "visionary" }
-  case object Oathkeeper extends VictoryKind { val key = "oathkeeper" }
-  case object RandomSelection extends VictoryKind { val key = "random-selection" }
+enum VictoryKind(val key: String) {
+  case Usurper extends VictoryKind("usurper")
+  case Visionary extends VictoryKind("visionary")
+  case Oathkeeper extends VictoryKind("oathkeeper")
+  case RandomSelection extends VictoryKind("random-selection")
 }
 
 final case class GameResult(winner: PlayerId,

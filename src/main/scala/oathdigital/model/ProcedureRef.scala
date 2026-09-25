@@ -30,16 +30,33 @@ sealed trait ActionRef extends StartableRef { final def family = "action" }
   * change is a state write, but they are not actions: no action boundary
   * runs after one, whichever phase it lands in.
   */
-sealed trait PhaseTransitionRef extends StartableRef {
-  final def family = "phase-transition"
+enum PhaseTransitionRef(val key: String) extends StartableRef {
+  final def family: String = "phase-transition"
+
+  /** Batch-1 Task 7 moved End Wake here from `ActionRef`: the action
+    * boundary follows only a completed `ActionRef`, in whatever phase it
+    * ran. End Wake is a phase transition, not something a player spends a
+    * turn on, so it runs none.
+    */
+  case EndWake extends PhaseTransitionRef("end-wake")
+  /** Leaves Act for Rest (rest-walker spec, Rest procedure). */
+  case BeginRest extends PhaseTransitionRef("begin-rest")
+  /** Cleans up, refreshes Supply and hands the turn over. */
+  case FinishRest extends PhaseTransitionRef("finish-rest")
 }
 
 /** A procedure the engine starts on its own. No command can name one --
   * `StartableRef` excludes this family -- and no boundary runs after one.
   * Oathkeeper (Task 7) is the first: the action boundary starts it.
   */
-sealed trait TriggeredProcedureRef extends ProcedureRef {
-  final def family = "triggered"
+enum TriggeredProcedureRef(val key: String) extends ProcedureRef {
+  final def family: String = "triggered"
+
+  /** Every change of the Oathkeeper title holder at an action boundary. */
+  case Oathkeeper extends TriggeredProcedureRef("oathkeeper")
+  /** Runs once, right after `GameStarted` evolves (2026-09-21 Chronicle
+    * design, slice 2, "Setup on the walker"). No client command starts it. */
+  case Setup extends TriggeredProcedureRef("setup")
 }
 
 object ActionRef {
@@ -96,27 +113,10 @@ object ActionRef {
 }
 
 object PhaseTransitionRef {
-  /** Batch-1 Task 7 moved End Wake here from `ActionRef`: the action
-    * boundary follows only a completed `ActionRef`, in whatever phase it
-    * ran. End Wake is a phase transition, not something a player spends a
-    * turn on, so it runs none.
-    */
-  case object EndWake extends PhaseTransitionRef { val key = "end-wake" }
-
-  /** Leaves Act for Rest (rest-walker spec, Rest procedure). */
-  case object BeginRest extends PhaseTransitionRef { val key = "begin-rest" }
-  /** Cleans up, refreshes Supply and hands the turn over. */
-  case object FinishRest extends PhaseTransitionRef { val key = "finish-rest" }
-
   val all: Vector[PhaseTransitionRef] = Vector(EndWake, BeginRest, FinishRest)
 }
 
 object TriggeredProcedureRef {
-  /** Every change of the Oathkeeper title holder at an action boundary. */
-  case object Oathkeeper extends TriggeredProcedureRef { val key = "oathkeeper" }
-  /** Runs once, right after `GameStarted` evolves (2026-09-21 Chronicle
-    * design, slice 2, "Setup on the walker"). No client command starts it. */
-  case object Setup extends TriggeredProcedureRef { val key = "setup" }
   val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup)
 }
 

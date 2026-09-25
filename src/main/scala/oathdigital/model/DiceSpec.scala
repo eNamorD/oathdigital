@@ -1,11 +1,7 @@
 package oathdigital.model
 
 /** Family of a rolled die, matching the two physical die kinds in Oath. */
-sealed trait DiceKind extends Product with Serializable
-object DiceKind {
-  case object Defense extends DiceKind
-  case object Attack extends DiceKind
-}
+enum DiceKind { case Defense, Attack }
 
 /** Die specification a walker `Roll` node draws from a named pool.
   *
@@ -15,10 +11,9 @@ object DiceKind {
 final case class DiceSpec(die: DiceKind)
 
 /** How a `Roll` node gets its faces. */
-sealed trait RollMode extends Product with Serializable
-object RollMode {
+enum RollMode {
   /** The walker parks and the faces ride a later `RollWalker` command. */
-  case object Parked extends RollMode
+  case Parked
   /** The walker asks its dice source and keeps walking in the same command. */
-  case object Automatic extends RollMode
+  case Automatic
 }

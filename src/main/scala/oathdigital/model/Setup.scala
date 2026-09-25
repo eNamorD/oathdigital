@@ -21,10 +21,7 @@ final case class SetupOrders(
     relicOrder: Vector[RelicId]
 )
 
-sealed trait FirstGameFoundationProfile extends Product with Serializable
-object FirstGameFoundationProfile {
-  case object FixedUnaltered extends FirstGameFoundationProfile
-}
+enum FirstGameFoundationProfile { case FixedUnaltered }
 
 final case class FirstGameSupportState(
     foundationProfile: FirstGameFoundationProfile,

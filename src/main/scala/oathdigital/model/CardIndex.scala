@@ -1,24 +1,10 @@
 package oathdigital.model
 
-sealed trait SiteCardArea extends Product with Serializable
-object SiteCardArea {
-  case object Denizens extends SiteCardArea
-  case object Relics extends SiteCardArea
-}
+enum SiteCardArea { case Denizens, Relics }
 
-sealed trait PlayerCardArea extends Product with Serializable
-object PlayerCardArea {
-  case object Hand extends PlayerCardArea
-  case object Advisers extends PlayerCardArea
-  case object Relics extends PlayerCardArea
-  case object RevealedVision extends PlayerCardArea
-}
+enum PlayerCardArea { case Hand, Advisers, Relics, RevealedVision }
 
-sealed trait LineageCardArea extends Product with Serializable
-object LineageCardArea {
-  case object Legacies extends LineageCardArea
-  case object StartingAdvisers extends LineageCardArea
-}
+enum LineageCardArea { case Legacies, StartingAdvisers }
 
 sealed trait CardContainer extends Product with Serializable
 object CardContainer {
