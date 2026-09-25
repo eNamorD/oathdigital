@@ -17,7 +17,7 @@ import oathdigital.model._
   * faceup secret are refused at the start instead of stranding the Recover.
   */
 final case class RelicWorship private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = RelicWorship.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Recover)
   override def cost: Cost = Cost(secret = RelicWorship.Secrets)
@@ -25,13 +25,11 @@ final case class RelicWorship private (cardId: DenizenId,
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.RecoverAfterRelic -> Vector(Transform((ctx, operations) =>
       operations :+ GainSupply(ctx.activePlayer, RelicWorship.Supply))))
-}
 
-object RelicWorship {
+object RelicWorship:
   val id: PowerId = PowerId("denizen.relic-worship")
   val Secrets: Int = 1
   val Supply: Int = 2
 
   def forCatalog(catalog: ExecutableCatalog): Option[RelicWorship] =
     CatalogCards.denizen(catalog, id).map(new RelicWorship(_, catalog))
-}

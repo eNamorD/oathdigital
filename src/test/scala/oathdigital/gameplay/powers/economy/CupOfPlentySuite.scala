@@ -8,7 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
-class CupOfPlentySuite extends munit.FunSuite {
+class CupOfPlentySuite extends munit.FunSuite:
   import EconomyFixture._
   import SearchFixture.rules
 
@@ -23,7 +23,7 @@ class CupOfPlentySuite extends munit.FunSuite {
 
   /** Trades for favor with the plain card at the site, returning the result. */
   private def trade(ready: ReadyGame, selected: Vector[PowerId])
-      : (OathTransition, ReadyGame) = {
+      : (OathTransition, ReadyGame) =
     val started = rules.startWalker(Ready(ready), ActionRef.Trade,
       PowerFixture.actor, selected, Vector(DecisionOptionRef.Button("favor")))
       .toOption.get
@@ -33,45 +33,38 @@ class CupOfPlentySuite extends munit.FunSuite {
       .toOption.get
     (started.copy(events = started.events ++ done.events),
       done.state.asInstanceOf[Ready].value)
-  }
 
   private def supply(ready: ReadyGame): Int = player(ready).board.supply.supply
 
-  test("the Cup is a registered selected Trade modifier") {
+  test("the Cup is a registered selected Trade modifier"):
     val power = CupOfPlenty.forCatalog(catalog).get
     assertEquals(power.cardId, cup)
     assertEquals(power.actions, Set[MajorActionType](MajorActionType.Trade))
     assertEquals(power.resolution, PowerResolution.PlayerSelected)
-  }
 
-  test("trading costs the printed Supply without the Cup") {
+  test("trading costs the printed Supply without the Cup"):
     assertEquals(supply(trade(held(Vector.empty), Vector.empty)._2), 6)
-  }
 
-  test("a player with no faceup adviser trades for no Supply") {
+  test("a player with no faceup adviser trades for no Supply"):
     val ready = held(Vector.empty)
     val (transition, result) = trade(ready, modifiers)
     assertEquals(supply(result), 7)
     assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
       result)
     assert(PaidActionHarness.wireRoundTrips(transition.events))
-  }
 
-  test("a faceup adviser of another suit does not stop the free trade") {
+  test("a faceup adviser of another suit does not stop the free trade"):
     val adviser = DenizenState(otherId, Orientation.FaceUp, Tokens.empty)
     assertEquals(supply(trade(held(Vector(adviser)), modifiers)._2), 7)
-  }
 
-  test("a faceup adviser of the traded card's suit makes the trade cost Supply") {
+  test("a faceup adviser of the traded card's suit makes the trade cost Supply"):
     assertEquals(supply(trade(held(Vector(matchingAdviser)), modifiers)._2), 6)
-  }
 
-  test("a facedown adviser of the traded card's suit does not count") {
+  test("a facedown adviser of the traded card's suit does not count"):
     val facedown = DenizenState(matchingId, Orientation.FaceDown, Tokens.empty)
     assertEquals(supply(trade(held(Vector(facedown)), modifiers)._2), 7)
-  }
 
-  test("it is a Trade modifier, and only while the relic is faceup in play") {
+  test("it is a Trade modifier, and only while the relic is faceup in play"):
     val offered = (ready: ReadyGame, action: ActionRef) =>
       rules.offerableWalkerPowers(ready, PowerFixture.actor, action)
         .toOption.get.map(_.id)
@@ -79,8 +72,6 @@ class CupOfPlentySuite extends munit.FunSuite {
     assert(!offered(held(Vector.empty), ActionRef.Muster).contains(CupOfPlenty.id))
     val facedown = PowerFixture.withRelic(act(), cup, Orientation.FaceDown)
     assert(!offered(facedown, ActionRef.Trade).contains(CupOfPlenty.id))
-  }
 
   private def player(ready: ReadyGame): PlayerState =
     EconomyFixture.player(ready)
-}

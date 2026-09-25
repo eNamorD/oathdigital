@@ -29,7 +29,7 @@ import oathdigital.model._
   * are read from the pending position the restriction is checked against, so it
   * holds for a Campaign that a power runs inside another action as well.
   */
-sealed abstract class FortressRule extends ContributingPower {
+sealed abstract class FortressRule extends ContributingPower:
   def catalog: ExecutableCatalog
   protected def fortress: EdificeId
   protected def side: EdificeSide
@@ -67,26 +67,23 @@ sealed abstract class FortressRule extends ContributingPower {
       : Option[SiteId] = ready.game.current.players.find(_.player == player)
     .flatMap(_.pawnSite)
 
-  private def raidBlocked(ready: ReadyGame, attacker: PlayerId): Boolean = {
+  private def raidBlocked(ready: ReadyGame, attacker: PlayerId): Boolean =
     val defenders = CampaignSetup.raidDefenders(ready, attacker)
     defenders.nonEmpty && defenders.forall(shields(ready, attacker, _))
-  }
 
   private def kindGuard(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[OathViolation] = ref match {
+      : Option[OathViolation] = ref match
     case DecisionOptionRef.Button("raid")
         if raidBlocked(ctx.state, ctx.activePlayer) =>
       Some(blocked("a Fortress protects every player a Raid could target"))
     case _ => None
-  }
 
   private def defenderGuard(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[OathViolation] = ref match {
+      : Option[OathViolation] = ref match
     case DecisionOptionRef.Player(defender)
         if shields(ctx.state, ctx.activePlayer, defender) =>
       Some(blocked(s"a Fortress protects ${defender.value} from a Raid"))
     case _ => None
-  }
 
   private def startGuard(ctx: PowerCtx): Option[OathViolation] =
     Option.when(!underway(ctx.state) &&
@@ -100,22 +97,20 @@ sealed abstract class FortressRule extends ContributingPower {
       CampaignIds.all.contains(answered.decisionId)))
 
   private def bannerGuard(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[OathViolation] = ref match {
+      : Option[OathViolation] = ref match
     case DecisionOptionRef.Banner(banner)
         if BannerRules.holder(ctx.state.game.current, banner)
           .exists(shields(ctx.state, ctx.activePlayer, _)) =>
       Some(OathViolation.InvalidEventOrder(
         s"a Fortress protects the holder of ${banner.key} from a Challenge"))
     case _ => None
-  }
-}
 
 /** The Oaken Fortress (E28, intact): while its ruler is at this site, they
   * cannot be targeted by a Challenge or a Raid. Empire rulers are not
   * supported.
   */
 final case class OakenFortress private (fortress: EdificeId,
-    catalog: ExecutableCatalog) extends FortressRule {
+    catalog: ExecutableCatalog) extends FortressRule:
   def id: PowerId = OakenFortress.id
   protected def side: EdificeSide = EdificeSide.Intact
 
@@ -125,21 +120,19 @@ final case class OakenFortress private (fortress: EdificeId,
       ready.game.current.map.sites.get(site).flatMap(state =>
         SiteRule.ruler(state.forces, ready.game.current.players).toOption)
         .contains(SiteRuler.Player(defender)))
-}
 
-object OakenFortress {
+object OakenFortress:
   val id: PowerId = PowerId("edifice.e28.intact")
 
   def forCatalog(catalog: ExecutableCatalog): Option[OakenFortress] =
     CatalogCards.edifice(catalog, id).map(new OakenFortress(_, catalog))
-}
 
 /** The Rotting Fortress (E28, ruined): players at this site cannot be targeted
   * by a Challenge or a Raid, unless the targeting player has a faceup beast
   * adviser.
   */
 final case class RottingFortress private (fortress: EdificeId,
-    catalog: ExecutableCatalog) extends FortressRule {
+    catalog: ExecutableCatalog) extends FortressRule:
   def id: PowerId = RottingFortress.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
@@ -154,11 +147,9 @@ final case class RottingFortress private (fortress: EdificeId,
         catalog.suitOf(card).contains(Suit.Beast)
       case _ => false
     })
-}
 
-object RottingFortress {
+object RottingFortress:
   val id: PowerId = PowerId("edifice.e28.ruined")
 
   def forCatalog(catalog: ExecutableCatalog): Option[RottingFortress] =
     CatalogCards.edifice(catalog, id).map(new RottingFortress(_, catalog))
-}

@@ -12,7 +12,7 @@ import oathdigital.model.PowerId
   * The place power covers the printed "on your site" half; the "on the banner"
   * half is the generic Place Banner Resource action.
   */
-object BannerFacePowers {
+object BannerFacePowers:
   val phasePowers: Vector[PhasePower] =
     Vector[PhasePower](WanderingFlameMove, WanderingFlamePlace)
 
@@ -30,4 +30,3 @@ object BannerFacePowers {
   /** The name and the text of a banner face's phase power. */
   def printed(id: PowerId): Option[(String, String)] =
     texts.collectFirst { case (`id`, name, text) => (name, text) }
-}

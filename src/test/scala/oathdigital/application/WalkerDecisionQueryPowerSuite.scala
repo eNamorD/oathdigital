@@ -28,7 +28,7 @@ import oathdigital.model._
   * declare their own options live off state and are covered in
   * [[WalkerDecisionProjectionSuite]].
   */
-class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
+class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
   private def presentation = new GamePresentationProjector(catalog)
 
   private val window: PowerWindow = PowerWindow.RecoverModifierSelection
@@ -40,12 +40,11 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
   /** A ready game in the Act phase; the injected tree replaces Recover's own
     * eligibility gates, so the command never consults them.
     */
-  private def actable: (ReadyGame, PlayerId) = {
+  private def actable: (ReadyGame, PlayerId) =
     val Ready(base) = execute()._1: @unchecked
     val ready = base.updateCurrent(_.copy(turn = base.game.current.turn.copy(
         phase = Phase.Act)))
     (ready, ready.game.current.turn.activePlayer)
-  }
 
   /** One windowed composite holding one `Decide`: the transform below sees
     * the composite's children, which is exactly the vector the live walk
@@ -104,35 +103,31 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
 
   /** Starts the walker under `powers` and returns the parked state. */
   private def parked(ready: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): oathdigital.model.OathState = {
+      powers: WalkerPowers): oathdigital.model.OathState =
     val started = rules(actor, powers).startWalker(Ready(ready),
-      ActionRef.Recover, actor) match {
+      ActionRef.Recover, actor) match
       case Right(transition) => transition
       case other => fail(s"expected the walker to park, got $other")
-    }
     assert(started.events.last.isInstanceOf[WalkerParked])
     started.state
-  }
 
   /** The option keys the projector offers at the park. */
   private def offered(state: oathdigital.model.OathState, actor: PlayerId,
-      powers: WalkerPowers): Vector[String] = {
+      powers: WalkerPowers): Vector[String] =
     val Ready(ready) = state: @unchecked
     projector(actor, powers)
       .project(ScopedProjectionContext(ready, Some(actor)))
       .flatMap(_.query).map(_.options.map(_.id)).getOrElse(
         fail("the parked actor must be offered the decision"))
-  }
 
   /** The heading the projector offers at the park, if any. */
   private def titled(state: oathdigital.model.OathState, actor: PlayerId,
-      powers: WalkerPowers): Option[String] = {
+      powers: WalkerPowers): Option[String] =
     val Ready(ready) = state: @unchecked
     projector(actor, powers)
       .project(ScopedProjectionContext(ready, Some(actor)))
       .flatMap(_.query).map(_.heading).getOrElse(
         fail("the parked actor must be offered the decision"))
-  }
 
   private def answering(state: oathdigital.model.OathState,
       actor: PlayerId, powers: WalkerPowers,
@@ -142,27 +137,25 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
       DecisionAnswer.ChooseOneAnswer(selected))
 
   test("with no power the projected options and the accepted answers are " +
-      "the two the tree declares") {
+      "the two the tree declares"):
     val (ready, actor) = actable
     val state = parked(ready, actor, WalkerPowers.empty)
     assertEquals(offered(state, actor, WalkerPowers.empty),
       Vector("continue", "stop"))
     assert(answering(state, actor, WalkerPowers.empty, continueOption).isRight)
     assert(answering(state, actor, WalkerPowers.empty, extraOption).isLeft)
-  }
 
   test("a power that adds an option adds it to the projection and to what " +
-      "the walker accepts") {
+      "the walker accepts"):
     val (ready, actor) = actable
     val state = parked(ready, actor, adding)
     assertEquals(offered(state, actor, adding),
       Vector("continue", "stop", "extra"))
     assert(answering(state, actor, adding, extraOption).isRight,
       "the walker must accept the option the power added")
-  }
 
   test("a power that removes an option removes it from the projection and " +
-      "from what the walker accepts") {
+      "from what the walker accepts"):
     val (ready, actor) = actable
     val state = parked(ready, actor, removing)
     assertEquals(offered(state, actor, removing), Vector("stop"))
@@ -170,10 +163,9 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
       "the walker must reject the option the power removed")
     assert(answering(state, actor, removing, stopOption).isRight,
       "the surviving option must still be answerable")
-  }
 
   test("a transform applied to the walk but not to the projection makes the " +
-      "two disagree, which is the failure this contract removes") {
+      "two disagree, which is the failure this contract removes"):
     val (ready, actor) = actable
 
     // The walk folds `adding`, so the walker accepts the added option...
@@ -188,10 +180,9 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     assertEquals(offered(state, actor, removing), Vector("stop"))
     assert(answering(state, actor, adding, continueOption).isRight,
       "the walker accepts an option the mismatched projection dropped")
-  }
 
   test("a power that rewrites a decision's heading changes what is " +
-      "projected, in the same edit that moves its options") {
+      "projected, in the same edit that moves its options"):
     val (ready, actor) = actable
     assertEquals(titled(parked(ready, actor, WalkerPowers.empty), actor,
       WalkerPowers.empty), Some("Recover"),
@@ -207,7 +198,6 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     assertEquals(offered(state, actor, retitling), Vector("stop"))
     assert(answering(state, actor, retitling, continueOption).isLeft)
     assert(answering(state, actor, retitling, stopOption).isRight)
-  }
 
   /** Task 5: a power that reowns the parked `Decide` moves who may answer it
     * (the walker), who is projected it (`project`) and who the public
@@ -215,7 +205,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     * all three read the same transformed node's `owner`.
     */
   test("a power that reowns a parked Decide moves who may answer it, who is " +
-      "projected it, and who the waiting projection names") {
+      "projected it, and who the waiting projection names"):
     val (ready, actor) = actable
     val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val powers = WalkerPowers(Vector(ProcedureWalkerSuite.TestTransformPower(
@@ -244,5 +234,3 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     assertEquals(projector(actor, powers).waiting(
       ScopedProjectionContext(readyState, Some(actor))).map(_.playerId),
       Some(other.value))
-  }
-}

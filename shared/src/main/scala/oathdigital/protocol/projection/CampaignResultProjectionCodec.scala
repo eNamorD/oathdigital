@@ -2,7 +2,7 @@ package oathdigital.protocol.projection
 
 import ProjectionCodecSupport._
 
-private[projection] object CampaignResultProjectionCodec {
+private[projection] object CampaignResultProjectionCodec:
   private val Fields = Set("attackerPlayerId", "kind", "defenderPlayerId",
     "targetSiteIds", "raidTargets", "force", "attackDice", "attackScore",
     "skullLosses", "sacrificed", "defenseDice", "defenseScore", "attackerWins")
@@ -19,7 +19,7 @@ private[projection] object CampaignResultProjectionCodec {
     "defenseDice" -> encoded(value.defenseDice)(ujson.Str(_)),
     "defenseScore" -> value.defenseScore, "attackerWins" -> value.attackerWins)
 
-  def decode(raw: ujson.Value, path: String): Result[CampaignResultProjection] = for {
+  def decode(raw: ujson.Value, path: String): Result[CampaignResultProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Fields, path)
     attacker <- string(value, "attackerPlayerId", path)
@@ -35,7 +35,6 @@ private[projection] object CampaignResultProjectionCodec {
     defenseDice <- strings(value, "defenseDice", path)
     defenseScore <- int(value, "defenseScore", path)
     attackerWins <- bool(value, "attackerWins", path)
-  } yield CampaignResultProjection(attacker, kind, defender, sites, raid, force,
+  yield CampaignResultProjection(attacker, kind, defender, sites, raid, force,
     attackDice, attackScore, skulls, sacrificed, defenseDice, defenseScore,
     attackerWins)
-}

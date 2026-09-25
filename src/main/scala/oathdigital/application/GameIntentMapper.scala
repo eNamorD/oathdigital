@@ -7,47 +7,47 @@ import oathdigital.protocol.{GameIntent => Intent, _}
 final case class GameIntentMappingFailure(path: String, message: String)
 
 /** Sole conversion and actor-binding boundary for transport-safe commands. */
-object GameIntentMapper {
+object GameIntentMapper:
   private type Result[A] = Either[GameIntentMappingFailure, A]
 
-  def bind(actorId: PlayerId, intent: Intent): Result[GameCommand] = {
+  def bind(actorId: PlayerId, intent: Intent): Result[GameCommand] =
     val actor = AuthorizedPlayer.forPlayer(actorId)
-    intent match {
+    intent match
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
-      case Intent.UsePower(value, source) => for {
-        power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
-          "$.intent.powerId", s"invalid power id '$value'"))
-        ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
-      } yield actor.usePower(power, ref)
+      case Intent.UsePower(value, source) =>
+        for
+          power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
+            "$.intent.powerId", s"invalid power id '$value'"))
+          ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
+        yield actor.usePower(power, ref)
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
       case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
-      case Intent.StartWalker(value, modifiers, startArgs) => for {
-        ref <- actionRef(value)
-        ids <- traverse(modifiers.zipWithIndex)(powerId.tupled)
-        args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
-      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
+      case Intent.StartWalker(value, modifiers, startArgs) =>
+        for
+          ref <- actionRef(value)
+          ids <- traverse(modifiers.zipWithIndex)(powerId.tupled)
+          args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
+        yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
-    }
-  }
 
   def bind(actorId: PlayerId, intent: Intent,
       modifiers: Vector[ModifierInvocation]): Result[GameCommand] =
-    for {
+    for
       command <- bind(actorId, intent)
       ordered <- traverse(modifiers)(modifier(actorId, _))
-    } yield if (ordered.isEmpty) command else GameCommand.WithModifiers(command, ordered)
+    yield if ordered.isEmpty then command else GameCommand.WithModifiers(command, ordered)
 
   def bindModifiers(actorId: PlayerId, modifiers: Vector[ModifierInvocation])
       : Result[Vector[OrderedRuleInvocation]] = traverse(modifiers)(modifier(actorId, _))
 
   private def modifier(actor: PlayerId, value: ModifierInvocation)
-      : Result[OrderedRuleInvocation] = {
-    val source = value.sourceKind match {
+      : Result[OrderedRuleInvocation] =
+    val source = value.sourceKind match
       case "site" => Right(RuleSourceRef.Site(SiteId(value.sourceId)))
       case "site-card" => value.contextId.toRight(GameIntentMappingFailure(
         "$.orderedModifiers.contextId", "site-card requires site context"))
@@ -68,18 +68,15 @@ object GameIntentMapper {
         .map(lineage => RuleSourceRef.Legacy(LineageId(lineage), LegacyId(value.sourceId)))
       case other => Left(GameIntentMappingFailure("$.orderedModifiers.sourceKind",
         s"unknown modifier source '$other'"))
-    }
     source.map(OrderedRuleInvocation(_, value.handlerId))
-  }
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))
   private def world(value: WorldCard, path: String): Result[WorldCardId] = value.kind match { case "denizen" => Right(DenizenId(value.id)); case "vision" => Right(VisionId(value.id)); case v => invalid(s"$path.kind", v, "world card kind") }
   private def negotiation(value: oathdigital.protocol.NegotiationTerms): Result[oathdigital.model.NegotiationTerms] = traverse(value.disclosures)(disclosure).map(ds => oathdigital.model.NegotiationTerms(value.transfers.map(v => oathdigital.model.NegotiationTransfer(PlayerId(v.recipientPlayerId), v.favor, v.relicIds.map(RelicId.apply))), ds))
-  private def disclosure(value: oathdigital.protocol.NegotiationDisclosure): Result[oathdigital.model.NegotiationDisclosure] = value.information match {
+  private def disclosure(value: oathdigital.protocol.NegotiationDisclosure): Result[oathdigital.model.NegotiationDisclosure] = value.information match
     case NegotiationInformation.Adviser(owner, c) => world(c, "$.intent.terms.disclosures.information.card").map(v => oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.Adviser(PlayerId(owner), v)))
     case NegotiationInformation.HeldRelic(owner, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.HeldRelic(PlayerId(owner), RelicId(relic))))
     case NegotiationInformation.SiteRelic(site, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.SiteRelic(SiteId(site), RelicId(relic))))
-  }
   /** One wire start selection to the engine's own reference, through the SAME
     * `DecisionOptionRef.fromWire` a walker answer is decoded with (see
     * `optionRef`). Whether the action accepts this reference at all is not
@@ -111,7 +108,7 @@ object GameIntentMapper {
     * query shapes the engine declares, and the engine checks it against the
     * query the parked node actually carries.
     */
-  private def decisionAnswer(value: DecisionAnswerWire): Result[DecisionAnswer] = value match {
+  private def decisionAnswer(value: DecisionAnswerWire): Result[DecisionAnswer] = value match
     case DecisionAnswerWire.ChooseOneWire(kind, id) =>
       optionRef(kind, id, "$.intent.payload.option").map(ChooseOneAnswer.apply)
     case DecisionAnswerWire.PartitionWire(placements) =>
@@ -131,6 +128,4 @@ object GameIntentMapper {
       negotiation(terms).map(DecisionAnswer.ProposeTerms.apply)
     case DecisionAnswerWire.AcceptDealWire => Right(DecisionAnswer.AcceptDeal)
     case DecisionAnswerWire.DeclineDealWire => Right(DecisionAnswer.DeclineDeal)
-  }
   private def traverse[A,B](values: Vector[A])(f: A => Result[B]): Result[Vector[B]] = values.foldLeft[Result[Vector[B]]](Right(Vector.empty)) { case (Right(acc), v) => f(v).map(acc :+ _); case (l @ Left(_), _) => l }
-}

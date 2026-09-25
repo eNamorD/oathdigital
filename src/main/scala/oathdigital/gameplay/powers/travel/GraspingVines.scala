@@ -15,7 +15,7 @@ import oathdigital.model._
   * traveller with none is not stopped.
   */
 final case class GraspingVines private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = GraspingVines.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -27,20 +27,18 @@ final case class GraspingVines private (cardId: DenizenId,
 
   override def applicable(ctx: PowerCtx): Boolean = kill(ctx).nonEmpty
 
-  private def kill(ctx: PowerCtx): Option[CoreOperation] = for {
+  private def kill(ctx: PowerCtx): Option[CoreOperation] = for
     route <- TravelRoute.pawnMove(ctx.operation)
     ruler <- TravelRulers.rulerOfCard(ctx.state, cardId)
     if TravelRulers.isEnemy(ruler, route.player)
     if TravelRulers.rulerOf(ctx.state, route.source).contains(ruler)
     warband <- TravelPayments.ownWarband(ctx.state, route.player,
       GraspingVines.Warbands)
-  } yield Kill(warband, PositionedLocation(Location.PlayArea(route.player)))
-}
+  yield Kill(warband, PositionedLocation(Location.PlayArea(route.player)))
 
-object GraspingVines {
+object GraspingVines:
   val id: PowerId = PowerId("denizen.grasping-vines")
   val Warbands: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[GraspingVines] =
     CatalogCards.denizen(catalog, id).map(new GraspingVines(_, catalog))
-}

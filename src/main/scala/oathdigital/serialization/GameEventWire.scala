@@ -19,7 +19,7 @@ final case class GameEventEnvelope(
  */
 object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     with ActionEventCodec with EndingEventCodec
-    with WalkerEventCodec {
+    with WalkerEventCodec:
   import WireError._
 
   /** The pre-release stream has one current format and no compatibility reader. */
@@ -90,7 +90,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
       event: OathEvent
   ): Either[WireError, ujson.Value] =
     try Right(encodePayload(event))
-    catch {
+    catch
       case UnencodableOperation(error) => Left(error)
       case NonFatal(error) =>
         Left(
@@ -99,16 +99,14 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             Option(error.getMessage).getOrElse("invalid payload")
           )
         )
-    }
 
   def encodeStream(
       gameId: String,
       catalog: CatalogRef,
       events: Vector[RecordedEvent[OathEvent]]
-  ): Either[WireError, String] = {
+  ): Either[WireError, String] =
     val startSequence = events.headOption.map(_.index).getOrElse(0L)
     encodeStream(gameId, catalog, startSequence, events)
-  }
 
   def encodeStream(
       gameId: String,
@@ -119,10 +117,10 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     validateSequence(startSequence, "$[*].sequence").flatMap { _ =>
       traverse(events.zipWithIndex) { case (record, position) =>
         val expected =
-          if (startSequence > MaxSafeSequence - position.toLong)
+          if startSequence > MaxSafeSequence - position.toLong then
             None
           else Some(startSequence + position.toLong)
-        if (!expected.contains(record.index))
+        if !expected.contains(record.index) then
           Left(
             InvalidSequence(
               s"$$[$position].sequence",
@@ -138,15 +136,14 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   def decodeStream(
       json: String
   ): Either[WireError, Vector[GameEventEnvelope]] =
-    try {
-      ujson.read(json) match {
+    try
+      ujson.read(json) match
         case array: ujson.Arr =>
           traverse(array.value.zipWithIndex.toVector) {
             case (value, position) => decode(value, s"$$[$position]")
           }.flatMap(validateStream)
         case _ => Left(WrongType("$", "expected an array"))
-      }
-    } catch {
+    catch
       case NonFatal(error) =>
         Left(
           MalformedJson(
@@ -154,18 +151,17 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             Option(error.getMessage).getOrElse("invalid JSON")
           )
         )
-    }
 
   def decode(
       value: ujson.Value,
       path: String = "$"
-  ): Either[WireError, GameEventEnvelope] = {
-    value match {
+  ): Either[WireError, GameEventEnvelope] =
+    value match
       case obj: ujson.Obj =>
-        for {
+        for
           version <- formatVersionField(obj, path)
           _ <-
-            if (version == FormatVersion)
+            if version == FormatVersion then
               Right(())
             else
               Left(
@@ -177,7 +173,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
               )
           gameId <- stringField(obj, "gameId", path)
           _ <-
-            if (gameId.trim.nonEmpty) Right(())
+            if gameId.trim.nonEmpty then Right(())
             else Left(InvalidValue(s"$path.gameId", "gameId must not be blank"))
           sequence <- safeIntegerField(obj, "sequence", path)
           refValue <- requiredField(obj, "catalog", path)
@@ -190,7 +186,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             s"$path.payload",
             ref
           )
-        } yield GameEventEnvelope(
+        yield GameEventEnvelope(
           version,
           gameId,
           sequence,
@@ -199,13 +195,11 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
           event
         )
       case _ => Left(WrongType(path, "expected an object"))
-    }
-  }
 
   private def validateStream(
       envelopes: Vector[GameEventEnvelope]
   ): Either[WireError, Vector[GameEventEnvelope]] =
-    envelopes.headOption match {
+    envelopes.headOption match
       case None => Right(envelopes)
       case Some(first) =>
         envelopes.zipWithIndex.collectFirst {
@@ -229,14 +223,13 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
               envelope.catalog
             )
         }.toLeft(envelopes)
-    }
 
   private def validateEnvelope(
       envelope: GameEventEnvelope
   ): Either[WireError, Unit] =
-    for {
+    for
       _ <-
-        if (envelope.formatVersion == FormatVersion) Right(())
+        if envelope.formatVersion == FormatVersion then Right(())
         else
           Left(
             UnsupportedFormatVersion(
@@ -246,11 +239,11 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             )
           )
       _ <-
-        if (envelope.gameId.trim.nonEmpty) Right(())
+        if envelope.gameId.trim.nonEmpty then Right(())
         else Left(InvalidValue("$.gameId", "gameId must not be blank"))
       _ <- validateSequence(envelope.sequence, "$.sequence")
       _ <-
-        if (envelope.eventType == discriminator(envelope.event)) Right(())
+        if envelope.eventType == discriminator(envelope.event) then Right(())
         else
           Left(
             InvalidValue(
@@ -259,7 +252,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             )
           )
       _ <- validateEventCatalog(envelope.event, envelope.catalog, "$")
-    } yield ()
+    yield ()
 
   private val discriminatorDispatch = lifecycleDiscriminator
     .orElse(actionDiscriminator)
@@ -280,16 +273,12 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
       path: String,
       envelopeCatalog: CatalogRef
   ): Either[WireError, OathEvent] =
-    try {
+    try
       lifecycleDecode(eventType, payload, path, envelopeCatalog)
         .orElse(actionDecode(eventType, payload, path, envelopeCatalog))
         .orElse(endingDecode(eventType, payload, path, envelopeCatalog))
         .orElse(walkerDecode(eventType, payload, path, envelopeCatalog))
         .getOrElse(Left(UnknownEventType(s"$path.eventType", eventType)))
-    } catch {
+    catch
       case NonFatal(error) => Left(InvalidValue(path,
         Option(error.getMessage).getOrElse("invalid payload")))
-    }
-
-
-}

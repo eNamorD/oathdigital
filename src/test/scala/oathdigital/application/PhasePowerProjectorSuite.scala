@@ -6,10 +6,10 @@ import oathdigital.gameplay.powers.rest.{SilverTongue, SilverTongueFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-class PhasePowerProjectorSuite extends munit.FunSuite {
+class PhasePowerProjectorSuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
 
-  test("a usable REST power is projected and legal for its active player only") {
+  test("a usable REST power is projected and legal for its active player only"):
     val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
       Set(Suit.Arcane))
     val own = projector.project("phase-powers", LoadedGame(Ready(ready), 30L), actor)
@@ -23,13 +23,12 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
       other)
     assertEquals(theirs.phasePowers, Vector.empty)
     assert(!theirs.legalControls.exists(_.startsWith("usePower:")))
-  }
 
-  test("a synthetic WAKE or ACTION power is projected and legal only in its phase") {
+  test("a synthetic WAKE or ACTION power is projected and legal only in its phase"):
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, card,
       inPhase, powerId}
     val control = s"usePower:${powerId.value}:${card.value}"
-    Vector(PowerTiming.Wake -> Phase.Wake, PowerTiming.Act -> Phase.Act).foreach {
+    Vector(PowerTiming.Wake -> Phase.Wake, PowerTiming.Act -> Phase.Act).foreach:
       case (timing, phase) =>
         val synthetic = new GameProjector(catalog,
           PhasePowers(Vector(TestPower(powerId, timing))))
@@ -38,16 +37,14 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
             LoadedGame(Ready(inPhase(shown)), 30L), actor)
           val legal = shown == phase
           assertEquals(projected.phasePowers.map(_.powerId),
-            if (legal) Vector(powerId.value) else Vector.empty,
+            if legal then Vector(powerId.value) else Vector.empty,
             s"$timing power in $shown")
           assertEquals(projected.legalControls.contains(control), legal,
             s"$timing power in $shown")
         }
-    }
-  }
 
   test("a phase power used from a held relic is projected and legal with the " +
-      "relic's printed name and text") {
+      "relic's printed name and text"):
     import oathdigital.gameplay.{IndexedRuleSource, RuleSourceIndex}
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, base}
     val current = base.game.current
@@ -55,7 +52,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
       r => r.id.value == id.value && r.powers.nonEmpty)).get
     val held = base.updateCurrent(_.copy(
       turn = TurnState(actor, Phase.Act, Set.empty),
-      players = current.players.map(p => if (p.player != actor) p else
+      players = current.players.map(p => if p.player != actor then p else
         p.copy(relics = p.relics :+ RelicState(relic, Orientation.FaceUp,
           Tokens.empty))),
       commonCards = current.commonCards.copy(relicDeck =
@@ -74,10 +71,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
         printed.powers.find(_.id == powerId).get.rulesText)))
     assert(projected.legalControls.contains(
       s"usePower:${powerId.value}:${relic.value}"))
-  }
 
   test("a phase power used from an edifice at the pawn's site is projected " +
-      "and legal with the edifice face's printed name") {
+      "and legal with the edifice face's printed name"):
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, base, card,
       powerId}
     val current = base.game.current
@@ -86,12 +82,12 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
     val printed = catalog.denizens.find(_.id.value == card.value).get.powers
       .find(_.id == powerId).get
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
-      if (e.id == edifice.id) e.copy(
+      if e.id == edifice.id then e.copy(
         intact = e.intact.copy(powers = e.intact.powers :+ printed)) else e))
     val home = current.players.find(_.player == actor).get.pawnSite.get
     val state = base.updateCurrent(c => c.copy(
       turn = TurnState(actor, Phase.Act, Set.empty),
-      players = c.players.map(p => if (p.player != actor) p else
+      players = c.players.map(p => if p.player != actor then p else
         p.copy(advisers = Vector.empty)),
       // The adviser card returns to the deck so the card inventory stays whole.
       commonCards = c.commonCards.copy(
@@ -107,17 +103,15 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
       Vector((powerId.value, edifice.intact.name)))
     assert(projected.legalControls.exists(_.startsWith(
       s"usePower:${powerId.value}:")))
-  }
 
-  test("an unusable power is neither projected nor legal") {
+  test("an unusable power is neither projected nor legal"):
     val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
       Set(Suit.Nomad))
     val own = projector.project("phase-powers", LoadedGame(Ready(ready), 30L), actor)
     assertEquals(own.phasePowers, Vector.empty)
     assert(!own.legalControls.exists(_.startsWith("usePower:")))
-  }
 
-  test("Rest still offers Finish Rest when catalog drift makes its gate fail") {
+  test("Rest still offers Finish Rest when catalog drift makes its gate fail"):
     val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
       Set(Suit.Arcane))
     val drifted = catalog.copy(denizens = catalog.denizens.filterNot(_.id.value ==
@@ -126,9 +120,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
       LoadedGame(Ready(ready), 30L), actor)
 
     assert(projected.legalControls.contains("finishRest"))
-  }
 
-  test("real League Treaty and Silver Tongue parks project their panels") {
+  test("real League Treaty and Silver Tongue parks project their panels"):
     val treatyRepository = new InMemoryEventStreamRepository
     val treatyService = new GameApplicationService(catalog, treatyRepository)
     val (treatyPark, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
@@ -151,5 +144,3 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
     assertEquals(tongueOwner.walkerDecision.map(_.query.map(_.form)),
       Some(Some("choose-one")))
     assertEquals(tongueOwner.legalControls, Vector("resolveWalkerDecision"))
-  }
-}

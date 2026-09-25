@@ -8,7 +8,7 @@ import oathdigital.model.{Cost, DecisionOptionRef, OathViolation, Operation, Pla
   * records the use after `build`'s tree. `build` must be a pure function of
   * state: the tree is rebuilt on every resume.
   */
-trait PhasePower {
+trait PhasePower:
   def id: PowerId
   def timing: PowerTiming
   /** Power-specific preconditions beyond access and once-per-turn. */
@@ -21,11 +21,8 @@ trait PhasePower {
   def cost: Cost = Cost.free
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation]
-}
 
-final case class PhasePowers(powers: Vector[PhasePower]) {
+final case class PhasePowers(powers: Vector[PhasePower]):
   def find(id: PowerId): Option[PhasePower] = powers.find(_.id == id)
-}
-object PhasePowers {
+object PhasePowers:
   val empty: PhasePowers = PhasePowers(Vector.empty)
-}

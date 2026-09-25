@@ -1,12 +1,12 @@
 package oathdigital.model
 
-class WorldModelSuite extends munit.FunSuite {
+class WorldModelSuite extends munit.FunSuite:
   private def player(id: String, lineage: String): PlayerState = PlayerState(
     PlayerId(id), LineageId(lineage), None,
     PlayerBoardState(0, 0, 0, 0, SupplyTrack.full), Vector.empty,
     Vector.empty, None)
 
-  test("site rule derives players and shared rulers directly from forces") {
+  test("site rule derives players and shared rulers directly from forces"):
     val red = player("red-player", "red-lineage")
     val blue = player("blue-player", "blue-lineage")
     val players = Vector(red, blue)
@@ -24,9 +24,8 @@ class WorldModelSuite extends munit.FunSuite {
       Right(SiteRuler.Player(red.player)))
     assertEquals(SiteRule.ruledBy(SiteForces.Occupied(
       ForceKind.Exile(red.lineage), 1), players, red.player), Right(true))
-  }
 
-  test("same-ruler and enemy semantics support Campaign target derivation") {
+  test("same-ruler and enemy semantics support Campaign target derivation"):
     val red = player("red-player", "red-lineage")
     val players = Vector(red)
     val redForces = SiteForces.Occupied(ForceKind.Exile(red.lineage), 1)
@@ -40,9 +39,8 @@ class WorldModelSuite extends munit.FunSuite {
     assert(SiteRule.enemies(SiteRuler.Player(red.player), SiteRuler.Empire))
     assert(!SiteRule.enemies(SiteRuler.Bandits, SiteRuler.Bandits))
     assert(!SiteRule.enemies(SiteRuler.Unruled, SiteRuler.Empire))
-  }
 
-  test("site rule rejects unknown and duplicate current lineage mappings") {
+  test("site rule rejects unknown and duplicate current lineage mappings"):
     val red = player("red-player", "red-lineage")
     val duplicate = player("other-red-player", "red-lineage")
     val forces = SiteForces.Occupied(ForceKind.Exile(red.lineage), 1)
@@ -52,9 +50,8 @@ class WorldModelSuite extends munit.FunSuite {
     assertEquals(SiteRule.ruler(forces, Vector(red, duplicate)),
       Left(SiteRuleError.DuplicateCurrentLineage(
         red.lineage, Vector(red.player, duplicate.player))))
-  }
 
-  test("the Atlas is one sequence with Recent and Forgotten ends") {
+  test("the Atlas is one sequence with Recent and Forgotten ends"):
     val middle = AtlasEntry.EmpireDivider
     val recent = AtlasEntry.StoredSite(
       SiteId("recent"),
@@ -73,9 +70,8 @@ class WorldModelSuite extends munit.FunSuite {
     assertEquals(atlas.entries, Vector(recent, middle, forgotten))
     assertEquals(atlas.mostRecent, Some(recent))
     assertEquals(atlas.mostForgotten, Some(forgotten))
-  }
 
-  test("bulk Recent additions preserve supplied front-to-back order") {
+  test("bulk Recent additions preserve supplied front-to-back order"):
     val first = AtlasEntry.StoredSite(
       SiteId("first"),
       Vector.empty,
@@ -93,9 +89,8 @@ class WorldModelSuite extends munit.FunSuite {
       atlas.entries,
       Vector(first, second, AtlasEntry.EmpireDivider)
     )
-  }
 
-  test("Recent removal counts sites and includes an encountered divider") {
+  test("Recent removal counts sites and includes an encountered divider"):
     val first = AtlasEntry.StoredSite(
       SiteId("first"),
       Vector.empty,
@@ -126,9 +121,8 @@ class WorldModelSuite extends munit.FunSuite {
       Vector(third)
     )
     assertEquals(atlas.entries.size, 4)
-  }
 
-  test("Forgotten removal returns entries in back-to-front removal order") {
+  test("Forgotten removal returns entries in back-to-front removal order"):
     val first = AtlasEntry.StoredSite(
       SiteId("first"),
       Vector.empty,
@@ -158,9 +152,8 @@ class WorldModelSuite extends munit.FunSuite {
       removal.remaining.entries,
       Vector(first)
     )
-  }
 
-  test("Atlas removal handles zero, insufficient sites, and invalid counts") {
+  test("Atlas removal handles zero, insufficient sites, and invalid counts"):
     val site = AtlasEntry.StoredSite(
       SiteId("only-site"),
       Vector.empty,
@@ -181,9 +174,8 @@ class WorldModelSuite extends munit.FunSuite {
     )
     intercept[IllegalArgumentException](atlas.removeRecent(-1))
     intercept[IllegalArgumentException](atlas.removeForgotten(-1))
-  }
 
-  test("banner faces change without changing physical banner families") {
+  test("banner faces change without changing physical banner families"):
     val banners = BannersState(
       PeoplesFavorState(
         PeoplesFavorFace.Mob,
@@ -210,9 +202,8 @@ class WorldModelSuite extends munit.FunSuite {
     assertEquals(flipped.peoplesFavor.favor, 4)
     assertEquals(flipped.darkestSecret.holder, Some(PlayerId("blue")))
     assertEquals(flipped.darkestSecret.secrets, 3)
-  }
 
-  test("site tokens represent current loose favor and secrets") {
+  test("site tokens represent current loose favor and secrets"):
     val site = SiteState(
       SiteForces.Occupied(ForceKind.Bandit, 2),
       Vector.empty,
@@ -221,5 +212,3 @@ class WorldModelSuite extends munit.FunSuite {
     )
 
     assertEquals(site.tokens, Tokens(2, 1))
-  }
-}

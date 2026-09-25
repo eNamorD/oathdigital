@@ -4,7 +4,7 @@ import oathdigital.protocol.{GameIntent => GameCommand, WalkerStartArgWire}
 import org.scalajs.dom
 
 /** One button per legal phase power, in Act, Wake and Rest alike. */
-private[frontend] object PhasePowerButtons {
+private[frontend] object PhasePowerButtons:
   /** Each projected power whose `usePower` control is legal, with the
     * command its button submits.
     */
@@ -48,4 +48,3 @@ private[frontend] object PhasePowerButtons {
       groups: ServerUiSupport.ActionSections,
       submit: GameCommand => Unit): Unit =
     buttons(value, canControl, submit).foreach(groups.appendKind(ActionKind, _))
-}

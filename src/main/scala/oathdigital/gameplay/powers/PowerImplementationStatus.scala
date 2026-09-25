@@ -14,13 +14,11 @@ import oathdigital.model.PowerId
   * `ReviewedPowerCatalog` handler left at `implemented = false` after its
   * power ported elsewhere once did.
   */
-object PowerImplementationStatus {
-  def implemented(catalog: ExecutableCatalog): PowerId => Boolean = {
+object PowerImplementationStatus:
+  def implemented(catalog: ExecutableCatalog): PowerId => Boolean =
     val covered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet ++
       PhasePowerCatalog.default(catalog).powers.map(_.id).toSet
     val reviewedHandlers = ReviewedPowerCatalog.powers
       .map(power => power.id -> power.handlers).toMap
     id => covered.contains(id) ||
       reviewedHandlers.get(id).exists(_.forall(_.implemented))
-  }
-}

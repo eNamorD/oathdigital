@@ -7,10 +7,9 @@ private[gameplay] final case class OperationShadowComparison(
     candidateSucceeded: Boolean,
     stateMatches: Boolean,
     cardIndexMatches: Boolean
-) {
+):
   def matchesAuthoritative: Boolean =
     candidateSucceeded && stateMatches && cardIndexMatches
-}
 
 /** Internal differential result. Candidate state never becomes authoritative,
   * serialized, logged, or projected by production evolution.
@@ -21,12 +20,12 @@ private[gameplay] final case class OperationShadowResult(
     comparison: OperationShadowComparison
 )
 
-private[gameplay] object OperationShadowEvolution {
+private[gameplay] object OperationShadowEvolution:
   def compare(
       authoritative: ReadyGame,
       candidate: Either[OathViolation, ReadyGame]
-  ): OperationShadowResult = {
-    val comparison = candidate match {
+  ): OperationShadowResult =
+    val comparison = candidate match
       case Left(_) => OperationShadowComparison(
         candidateSucceeded = false,
         stateMatches = false,
@@ -43,7 +42,4 @@ private[gameplay] object OperationShadowEvolution {
           case _ => false
         }
       )
-    }
     OperationShadowResult(authoritative, candidate, comparison)
-  }
-}

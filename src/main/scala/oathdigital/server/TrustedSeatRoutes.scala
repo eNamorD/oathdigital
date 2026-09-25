@@ -20,35 +20,32 @@ final class TrustedSeatRoutes(
     publicBaseUrl: URI,
     blockingExecutionContext: ExecutionContext,
     extraOrigins: Seq[URI] = Nil
-) {
+):
   private val logger = LoggerFactory.getLogger(classOf[TrustedSeatRoutes])
   private val cookieName = "oath_seat"
   private val privateHeaders = List(RawHeader("Cache-Control", "no-store"),
     RawHeader("Referrer-Policy", "no-referrer"))
 
-  val route: Route = respondWithHeaders(privateHeaders) {
+  val route: Route = respondWithHeaders(privateHeaders):
     path("games") {
       post { noQuery { sameOrigin {
         entity(as[String]) { body =>
-          TrustedGameCreateRequestCodec.decode(body) match {
+          TrustedGameCreateRequestCodec.decode(body) match
             case Left(_) => complete(malformed)
-            case Right(request) => async {
-              provisioning.create(request, publicBaseUrl.toString) match {
+            case Right(request) => async:
+              provisioning.create(request, publicBaseUrl.toString) match
                 case Right(created) => json(StatusCodes.Created, TrustedGameCreateResponseCodec.encode(created))
                 case Left(TrustedGameFailure.InvalidRequest) => malformed
                 case Left(TrustedGameFailure.DuplicateGame) => error(StatusCodes.Conflict,
                   "duplicate-game", "the game already exists")
                 case Left(_) => internalError()
-              }
-            }
-          }
         }
       } } }
     } ~ path("s" / Segment) { raw =>
       get { noQuery { async {
-        SeatCode.parse(raw) match {
+        SeatCode.parse(raw) match
           case Left(_) => invalidLink
-          case Right(code) => resolve(code) match {
+          case Right(code) => resolve(code) match
             case Right(seat) if DevelopmentTrustBoundary.validateIdentifier(seat.gameId, "$.gameId").isRight =>
               val path = canonicalPath(seat.gameId)
               val cookie = HttpCookie(cookieName, code.raw, maxAge = Some(31536000L),
@@ -57,29 +54,25 @@ final class TrustedSeatRoutes(
               HttpResponse(StatusCodes.SeeOther, headers = List(canonicalLocation(seat.gameId), `Set-Cookie`(cookie)))
             case Left(TrustedSeatFailure.StorageFailure) => internalError()
             case _ => invalidLink
-          }
-        }
       } } }
     } ~ pathPrefix("games" / Segment) { gameId =>
-      noQuery {
-        if (DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId").isLeft) complete(malformed)
+      noQuery:
+        if DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId").isLeft then complete(malformed)
         else extractRequest { request =>
           pathEnd {
-            get {
+            get:
               onComplete(Future {
                 authenticate(request, gameId).flatMap(gateway.load(gameId, _))
-              }(using blockingExecutionContext)) {
+              }(using blockingExecutionContext)):
                 case Success(Right(_)) => ProductionFrontendRoutes.gamePage
                 case Success(Left(TrustedSeatFailure.Forbidden)) => complete(recovery)
                 case Success(Left(TrustedSeatFailure.Application(_: GameApplicationError.StreamNotFound))) =>
                   complete(recovery)
                 case _ => complete(internalError())
-              }
-            }
           } ~ pathSingleSlash {
             get { complete(HttpResponse(StatusCodes.SeeOther,
               headers = List(canonicalLocation(gameId)))) }
-          } ~ pathPrefix("api") {
+          } ~ pathPrefix("api"):
             pathEndOrSingleSlash {
               get { async {
                 authenticate(request, gameId).flatMap(gateway.load(gameId, _))
@@ -94,7 +87,7 @@ final class TrustedSeatRoutes(
                         projection => json(StatusCodes.OK, GameHttpWire.encodeProjection(projection)))))
                 } }
               } }
-            } ~ path("preview") {
+            } ~ path("preview"):
               post { sameOrigin {
                 entity(as[String]) { body => async {
                   authenticate(request, gameId).fold(publicError, seat =>
@@ -103,12 +96,8 @@ final class TrustedSeatRoutes(
                         value => json(StatusCodes.OK, MajorActionPreviewCodec.encode(value)))))
                 } }
               } }
-            }
-          }
         }
-      }
     }
-  }
 
   private def canonicalPath(gameId: String): String =
     "/games/" + URLEncoder.encode(gameId, StandardCharsets.UTF_8)
@@ -119,18 +108,18 @@ final class TrustedSeatRoutes(
     RawHeader("Location", canonicalPath(gameId))
 
   private def noQuery(inner: => Route): Route = parameterMap { parameters =>
-    if (parameters.nonEmpty) complete(malformed) else inner
+    if parameters.nonEmpty then complete(malformed) else inner
   }
 
   private def sameOrigin(inner: => Route): Route = extractRequest { request =>
     val origins = request.headers.filter(_.is("origin")).map(_.value)
-    if (origins.isEmpty || (origins.size == 1 && originMatches(origins.head))) inner
+    if origins.isEmpty || (origins.size == 1 && originMatches(origins.head)) then inner
     else complete(error(StatusCodes.Forbidden, "csrf-validation-failed", "request origin is invalid"))
   }
 
   private def originMatches(raw: String): Boolean = Try(new URI(raw)).toOption.exists { origin =>
-    def port(uri: URI): Int = if (uri.getPort >= 0) uri.getPort
-      else if (uri.getScheme.equalsIgnoreCase("https")) 443 else 80
+    def port(uri: URI): Int = if uri.getPort >= 0 then uri.getPort
+      else if uri.getScheme.equalsIgnoreCase("https") then 443 else 80
     origin.isAbsolute && origin.getHost != null && origin.getRawUserInfo == null &&
       origin.getRawQuery == null && origin.getRawFragment == null &&
       Option(origin.getRawPath).forall(_.isEmpty) &&
@@ -140,17 +129,15 @@ final class TrustedSeatRoutes(
   }
 
   private def resolve(code: SeatCode): Either[TrustedSeatFailure, TrustedSeat] =
-    identities.resolveTrustedSeat(code.digest).left.map {
+    identities.resolveTrustedSeat(code.digest).left.map:
       case IdentityFailure.TrustedSeatNotFound => TrustedSeatFailure.Forbidden
       case _ => TrustedSeatFailure.StorageFailure
-    }
 
   private def authenticate(request: HttpRequest, gameId: String)
-      : Either[TrustedSeatFailure, TrustedSeat] = request.cookies.filter(_.name == cookieName).map(_.value) match {
+      : Either[TrustedSeatFailure, TrustedSeat] = request.cookies.filter(_.name == cookieName).map(_.value) match
     case Seq(raw) => SeatCode.parse(raw).left.map(_ => TrustedSeatFailure.Forbidden)
       .flatMap(resolve).flatMap(seat => Either.cond(seat.gameId == gameId, seat, TrustedSeatFailure.Forbidden))
     case _ => Left(TrustedSeatFailure.Forbidden)
-  }
 
   // The shared preview decoder is permissive about envelope fields. This boundary
   // rejects actor fields without changing the existing development/authenticated APIs.
@@ -160,15 +147,14 @@ final class TrustedSeatRoutes(
       .toRight(()).flatMap(_ => MajorActionPreviewCodec.decode(body).left.map(_ => ()))
 
   private def async(operation: => HttpResponse): Route =
-    onComplete(Future(operation)(using blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)):
       case Success(response) => complete(response)
       case Failure(_) => complete(internalError())
-    }
 
-  private def publicError(failure: TrustedSeatFailure): HttpResponse = failure match {
+  private def publicError(failure: TrustedSeatFailure): HttpResponse = failure match
     case TrustedSeatFailure.Forbidden => error(StatusCodes.Forbidden, "forbidden", "access is denied")
     case TrustedSeatFailure.InvalidIntent => malformed
-    case TrustedSeatFailure.Application(application) => application match {
+    case TrustedSeatFailure.Application(application) => application match
       case _: GameApplicationError.StreamNotFound =>
         error(StatusCodes.NotFound, "stream-not-found", "the requested game does not exist")
       case _: GameApplicationError.StaleClientPosition =>
@@ -178,18 +164,15 @@ final class TrustedSeatRoutes(
       case GameApplicationError.CommandRejected(violation) =>
         error(StatusCodes.UnprocessableContent, "command-rejected", CommandRejectionMessage.text(violation))
       case _ => internalError()
-    }
     case TrustedSeatFailure.StorageFailure => internalError()
-  }
 
-  private def internalError(): HttpResponse = {
+  private def internalError(): HttpResponse =
     // Exception messages and request URIs can contain credentials. Log only a
     // generated reference, never the request, principal, failure value or throwable.
     val reference = UUID.randomUUID().toString
     logger.error("Trusted seat request failed; reference={}", reference)
     error(StatusCodes.InternalServerError, "internal-error", "the server could not complete the request")
       .addHeader(RawHeader("X-Request-ID", reference))
-  }
 
   private def invalidLink: HttpResponse = HttpResponse(StatusCodes.NotFound,
     entity = HttpEntity(ContentTypes.`text/html(UTF-8)`,
@@ -202,4 +185,3 @@ final class TrustedSeatRoutes(
     json(status, GameHttpWire.encodeError(code, message))
   private def json(status: StatusCode, body: String): HttpResponse =
     HttpResponse(status, entity = HttpEntity(ContentTypes.`application/json`, body))
-}

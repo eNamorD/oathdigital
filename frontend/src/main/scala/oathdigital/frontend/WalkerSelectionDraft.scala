@@ -8,18 +8,17 @@ import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   * query, so the submitted answer names only projected options or a
   * projected range.
   */
-private[frontend] sealed trait WalkerSelectionDraft {
+private[frontend] sealed trait WalkerSelectionDraft:
   def context: BoardSelectionContext
   def decisionId: String
   def query: DecisionQueryState
   def canConfirm: Boolean
   def command: Option[GameCommand.ResolveWalker]
-}
 
 private[frontend] final case class WalkerChooseManyDraft(
     context: BoardSelectionContext, decisionId: String,
     query: DecisionQueryState, selected: Vector[String])
-    extends WalkerSelectionDraft {
+    extends WalkerSelectionDraft:
   private def minimum: Int = query.minimum.getOrElse(0)
   private def maximum: Int = query.maximum.getOrElse(0)
 
@@ -27,9 +26,9 @@ private[frontend] final case class WalkerChooseManyDraft(
     * removes a selected one; adding past the maximum changes nothing.
     */
   def toggle(item: String): WalkerChooseManyDraft =
-    if (selected.contains(item)) copy(selected = selected.filterNot(_ == item))
-    else if (selected.size < maximum &&
-      query.options.exists(WalkerPartitionDraft.itemId(_) == item))
+    if selected.contains(item) then copy(selected = selected.filterNot(_ == item))
+    else if selected.size < maximum &&
+      query.options.exists(WalkerPartitionDraft.itemId(_) == item) then
       copy(selected = selected :+ item)
     else this
 
@@ -40,11 +39,10 @@ private[frontend] final case class WalkerChooseManyDraft(
       query.options.filter(option =>
         selected.contains(WalkerPartitionDraft.itemId(option)))
         .map(option => DecisionOptionWire(option.kind, option.id)))))
-}
 
 private[frontend] final case class WalkerAmountDraft(
     context: BoardSelectionContext, decisionId: String,
-    query: DecisionQueryState, amount: Int) extends WalkerSelectionDraft {
+    query: DecisionQueryState, amount: Int) extends WalkerSelectionDraft:
   private def minimum: Int = query.minimum.getOrElse(0)
   private def maximum: Int = query.maximum.getOrElse(0)
 
@@ -56,9 +54,8 @@ private[frontend] final case class WalkerAmountDraft(
   def command: Option[GameCommand.ResolveWalker] = Option.when(canConfirm)(
     GameCommand.ResolveWalker(decisionId,
       DecisionAnswerWire.ChooseAmountWire(amount)))
-}
 
-private[frontend] object WalkerSelectionDraft {
+private[frontend] object WalkerSelectionDraft:
   /** Adopts whichever parked decision projects a choose-many or
     * choose-amount query, and drops the draft when the decision, the query or
     * the board context changes.
@@ -74,7 +71,7 @@ private[frontend] object WalkerSelectionDraft {
         previous.filter(draft => draft.context == context &&
             draft.decisionId == decisionId && draft.query == query)
           .getOrElse(
-            if (query.form == "choose-many")
+            if query.form == "choose-many" then
               WalkerChooseManyDraft(context, decisionId, query, Vector.empty)
             else {
               // Where the question says to open, clamped to its own range so
@@ -86,4 +83,3 @@ private[frontend] object WalkerSelectionDraft {
                   math.max(least, math.min(most, value))))
             })
       }
-}

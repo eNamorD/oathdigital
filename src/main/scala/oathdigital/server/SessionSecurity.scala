@@ -16,12 +16,11 @@ final case class AuthenticatedHttpSession(
     csrfTokenDigest: CsrfTokenDigest
 )
 
-trait HttpSessionAuthenticator {
+trait HttpSessionAuthenticator:
   def authenticate(request: HttpRequest)
       : Future[Either[AuthenticationFailure, AuthenticatedHttpSession]]
-}
 
-object SensitiveTokenDigest {
+object SensitiveTokenDigest:
   private val TokenPattern = "[A-Za-z0-9_-]{43,128}".r
 
   def sha256(rawToken: String): Vector[Byte] =
@@ -34,19 +33,18 @@ object SensitiveTokenDigest {
 
   def constantTimeEquals(left: Vector[Byte], right: Vector[Byte]): Boolean =
     MessageDigest.isEqual(left.toArray, right.toArray)
-}
 
 final class SessionCookieAuthenticator(
     repository: IdentityRepository,
     cookieName: String,
     nowMillis: () => Long,
     blockingExecutionContext: ExecutionContext
-) extends HttpSessionAuthenticator {
+) extends HttpSessionAuthenticator:
   require(cookieName.matches("[A-Za-z0-9_-]{1,64}"), "invalid cookie name")
 
   override def authenticate(request: HttpRequest) = Future {
     val rawTokens = request.cookies.filter(_.name == cookieName).map(_.value)
-    rawTokens match {
+    rawTokens match
       case Seq() => Left(AuthenticationFailure.MissingCredential)
       case Seq(value) if !SensitiveTokenDigest.isWellFormed(value) =>
         Left(AuthenticationFailure.InvalidCredential("invalid session"))
@@ -73,11 +71,9 @@ final class SessionCookieAuthenticator(
             ))
           })
       case _ => Left(AuthenticationFailure.InvalidCredential("invalid session"))
-    }
   }(using blockingExecutionContext)
-}
 
-object SameOriginCsrfProtection {
+object SameOriginCsrfProtection:
   val InvalidOriginMessage: String =
     "public origin must be HTTPS or an explicit loopback HTTP origin"
 
@@ -95,12 +91,11 @@ object SameOriginCsrfProtection {
         uri.getRawQuery == null && uri.getRawFragment == null &&
         Option(uri.getRawPath).forall(_.isEmpty)
     }
-}
 
 final class SameOriginCsrfProtection(
     expectedOrigin: String,
     headerName: String = "X-CSRF-Token"
-) {
+):
   require(
     SameOriginCsrfProtection.validateOrigin(expectedOrigin).isRight,
     SameOriginCsrfProtection.InvalidOriginMessage
@@ -109,7 +104,7 @@ final class SameOriginCsrfProtection(
   def validate(
       request: HttpRequest,
       session: AuthenticatedHttpSession
-  ): Boolean = {
+  ): Boolean =
     val origins = request.headers.filter(_.is("origin")).map(_.value)
     val csrfTokens = request.headers.filter(_.is(headerName.toLowerCase))
       .map(_.value)
@@ -119,5 +114,3 @@ final class SameOriginCsrfProtection(
         SensitiveTokenDigest.sha256(csrfTokens.head),
         session.csrfTokenDigest.bytes
       )
-  }
-}

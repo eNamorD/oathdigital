@@ -2,24 +2,22 @@ package oathdigital.gameplay.operations
 
 import oathdigital.model._
 
-trait OperationPolicy {
+trait OperationPolicy:
   def validate(
       ready: ReadyGame,
       operation: CoreOperation
   ): Either[OperationError, Unit]
-}
 
-object OperationPolicy {
+object OperationPolicy:
   /** For tests and paths whose owning procedure has already enforced every
     * semantic restriction. Production migrations should prefer a contextual
     * policy rather than treating this as a legality check.
     */
-  case object Permissive extends OperationPolicy {
+  case object Permissive extends OperationPolicy:
     override def validate(
         ready: ReadyGame,
         operation: CoreOperation
     ): Either[OperationError, Unit] = Right(())
-  }
 
   /** Restricts execution to semantic roots reconstructed from one validated
     * authoritative event. Structural checks belong to [[OperationApplication]].
@@ -27,7 +25,7 @@ object OperationPolicy {
   def exact(
       expected: Vector[CoreOperation],
       rejectionDetail: String
-  ): OperationPolicy = new OperationPolicy {
+  ): OperationPolicy = new OperationPolicy:
     override def validate(
         ready: ReadyGame,
         operation: CoreOperation
@@ -36,8 +34,6 @@ object OperationPolicy {
       (),
       OperationError.RestrictedOperation(rejectionDetail)
     )
-  }
-}
 
 /** Applies one operation (or a raw fold of several) through
   * [[OperationApplication.mutate]], which runs the shape guard before any
@@ -46,7 +42,7 @@ object OperationPolicy {
   * directly. The describe guard converts constructor failures thrown by a
   * mutation into typed [[oathdigital.model.OperationError]] rejections.
   */
-final class OperationExecutor {
+final class OperationExecutor:
   def execute(
       ready: ReadyGame,
       operation: CoreOperation
@@ -59,14 +55,12 @@ final class OperationExecutor {
       ready: ReadyGame,
       operations: Vector[CoreOperation]
   ): Either[OperationError, ReadyGame] =
-    if (operations.isEmpty) Left(OperationError.EmptyOperationBatch)
+    if operations.isEmpty then Left(OperationError.EmptyOperationBatch)
     else
-      operations.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
+      operations.foldLeft[Either[OperationError, ReadyGame]](Right(ready)):
         (result, operation) => result.flatMap(staged => execute(staged, operation))
-      }
-}
 
-private[operations] object OperationStateInvariant {
+private[operations] object OperationStateInvariant:
   import OperationError._
 
   def cardIds(ready: ReadyGame): Either[OperationError, Set[CardId]] =
@@ -76,7 +70,7 @@ private[operations] object OperationStateInvariant {
       ready: ReadyGame,
       expectedCards: Set[CardId]
   ): Either[OperationError, Unit] =
-    for {
+    for
       actual <- cardIds(ready)
       _ <- Either.cond(
         actual == expectedCards,
@@ -87,11 +81,11 @@ private[operations] object OperationStateInvariant {
       _ <- Either.cond(problems.isEmpty, (), InvalidPostState(problems))
       _ <- validateOrientations(ready)
       _ <- validateWarbands(ready)
-    } yield ()
+    yield ()
 
   private def validateOrientations(
       ready: ReadyGame
-  ): Either[OperationError, Unit] = {
+  ): Either[OperationError, Unit] =
     val invalidRevealed = ready.game.current.players.exists(
       _.revealedVision.exists(_.orientation != Orientation.FaceUp)
     )
@@ -106,23 +100,21 @@ private[operations] object OperationStateInvariant {
       (),
       ConflictingDeltas("Vision orientation is invalid for its container")
     )
-  }
 
   private def validateWarbands(
       ready: ReadyGame
-  ): Either[OperationError, Unit] = {
+  ): Either[OperationError, Unit] =
     val playerKinds = ready.game.current.players.flatMap(player =>
       PlayerForceKind.of(ready, player))
     val siteKinds = ready.game.current.map.sites.valuesIterator.flatMap {
-      _.forces match {
+      _.forces match
         case SiteForces.Occupied(kind, _) => Some(kind)
         case SiteForces.Empty => None
-      }
     }.toVector
     val kinds = (playerKinds ++ siteKinds ++
       ready.banks.warbandSupply.keys).distinct
 
-    kinds.foldLeft[Either[OperationError, Unit]](Right(())) {
+    kinds.foldLeft[Either[OperationError, Unit]](Right(())):
       case (result, kind) =>
         result.flatMap { _ =>
           OperationStateAdapter.quantity(
@@ -131,6 +123,3 @@ private[operations] object OperationStateInvariant {
             Location.WarbandBank(kind)
           ).map(_ => ())
         }
-    }
-  }
-}

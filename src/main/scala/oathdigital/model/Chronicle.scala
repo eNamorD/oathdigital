@@ -5,9 +5,8 @@ package oathdigital.model
  * edifice. Order is kept but not meaningful between games (2026-09-21
  * Chronicle design, "The Chronicle model").
  */
-final case class StoredSite(site: SiteId, items: Vector[CardId] = Vector.empty) {
+final case class StoredSite(site: SiteId, items: Vector[CardId] = Vector.empty):
   require(items.size <= 3, "a stored site holds at most three items")
-}
 
 /**
  * The between-game record. Setup becomes a pure function of a Chronicle plus

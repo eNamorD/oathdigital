@@ -15,7 +15,7 @@ import oathdigital.model._
   * to the bank.
   */
 final case class Mercenaries private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan {
+    catalog: ExecutableCatalog) extends BattlePlan:
   def id: PowerId = Mercenaries.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -23,26 +23,23 @@ final case class Mercenaries private (cardId: DenizenId,
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.denizen(cardId).map { source =>
-      val (label, effect) = context.side match {
+      val (label, effect) = context.side match
         case CampaignPlanSide.Attacker => "Mercenaries: add 3 attack dice" ->
           CampaignPlanEffect.AddAttackDice(Mercenaries.Dice)
         case CampaignPlanSide.Defender => "Mercenaries: remove 3 attack dice" ->
           CampaignPlanEffect.RemoveAttackDice(Mercenaries.Dice)
-      }
       CampaignPlanOffer(source, label, Vector(CampaignPlanCost.Favor(1)),
         Vector(effect))
     }
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
-      if (!use.won.contains(false)) Vector.empty
+      if !use.won.contains(false) then Vector.empty
       else use.user.toVector.map(PlanDiscard.denizen(catalog, _, cardId))))
-}
 
-object Mercenaries {
+object Mercenaries:
   val id: PowerId = PowerId("denizen.mercenaries")
   val Dice: Int = 3
 
   def forCatalog(catalog: ExecutableCatalog): Option[Mercenaries] =
     CatalogCards.denizen(catalog, id).map(new Mercenaries(_, catalog))
-}

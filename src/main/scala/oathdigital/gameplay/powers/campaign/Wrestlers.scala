@@ -13,7 +13,7 @@ import oathdigital.model._
   * so it lowers the recorded force by one. A defender with no warband in their
   * force cannot pay, and the plan is not offered.
   */
-final case class Wrestlers private (cardId: DenizenId) extends BattlePlan {
+final case class Wrestlers private (cardId: DenizenId) extends BattlePlan:
   def id: PowerId = Wrestlers.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -23,11 +23,9 @@ final case class Wrestlers private (cardId: DenizenId) extends BattlePlan {
       "Wrestlers: sacrifice a warband for 1 defense die",
       Vector(CampaignPlanCost.SacrificeWarband),
       Vector(CampaignPlanEffect.AddDefenseDice(1))))
-}
 
-object Wrestlers {
+object Wrestlers:
   val id: PowerId = PowerId("denizen.wrestlers")
 
   def forCatalog(catalog: ExecutableCatalog): Option[Wrestlers] =
     CatalogCards.denizen(catalog, id).map(new Wrestlers(_))
-}

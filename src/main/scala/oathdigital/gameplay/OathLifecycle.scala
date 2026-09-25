@@ -4,44 +4,40 @@ import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
 import oathdigital.model._
 
-private[gameplay] object OathLifecycle {
+private[gameplay] object OathLifecycle:
   def validateReady(
       state: OathState,
       playerId: PlayerId
   ): Either[OathViolation, ReadyGame] =
-    state match {
+    state match
       case NoGame => Left(GameNotStarted)
       case Ready(ready) =>
         val current = ready.game.current
-        if (current.result.nonEmpty) Left(GameEnded)
-        else if (current.turn.activePlayer != playerId)
+        if current.result.nonEmpty then Left(GameEnded)
+        else if current.turn.activePlayer != playerId then
           Left(WrongPlayer(current.turn.activePlayer, playerId))
-        else if (current.turn.phase != Phase.Wake)
+        else if current.turn.phase != Phase.Wake then
           Left(WrongPhase(Phase.Wake, current.turn.phase))
         else Right(ready)
-    }
 
   def validateAct(
       state: OathState,
       playerId: PlayerId
-  ): Either[OathViolation, ReadyGame] = state match {
+  ): Either[OathViolation, ReadyGame] = state match
     case NoGame => Left(GameNotStarted)
     case Ready(ready) =>
       val current = ready.game.current
-      if (current.result.nonEmpty) Left(GameEnded)
-      else if (current.turn.activePlayer != playerId)
+      if current.result.nonEmpty then Left(GameEnded)
+      else if current.turn.activePlayer != playerId then
         Left(WrongPlayer(current.turn.activePlayer, playerId))
-      else if (current.turn.phase != Phase.Act)
+      else if current.turn.phase != Phase.Act then
         Left(WrongPhase(Phase.Act, current.turn.phase))
-      else if (current.walkerPending.nonEmpty)
+      else if current.walkerPending.nonEmpty then
         Left(InvalidEventOrder(
           "a walker procedure is pending; legacy actions are blocked"))
       else Right(ready)
-  }
 
-}
-
-private[gameplay] object GameplayTransition {
+private[gameplay] object GameplayTransition:
   def apply(
       state: OathState,
       events: Vector[OathEvent],
@@ -53,4 +49,3 @@ private[gameplay] object GameplayTransition {
       case (Right(current), event) => evolve(current, event)
       case (failure @ Left(_), _) => failure
     }.map(OathTransition(_, events, continue))
-}

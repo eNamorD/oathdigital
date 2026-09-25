@@ -1,6 +1,6 @@
 package oathdigital.model
 
-enum MajorActionType(val key: String) {
+enum MajorActionType(val key: String):
   case Search extends MajorActionType("search")
   case Travel extends MajorActionType("travel")
   case Campaign extends MajorActionType("campaign")
@@ -9,21 +9,18 @@ enum MajorActionType(val key: String) {
   case Forge extends MajorActionType("forge")
   case Recover extends MajorActionType("recover")
   case Challenge extends MajorActionType("challenge")
-}
-object MajorActionType {
+object MajorActionType:
   val all: Vector[MajorActionType] = Vector(
     Search, Travel, Campaign, Muster, Trade, Forge, Recover, Challenge)
-}
 
 /** A procedure point, not a persistence or relevance category. The stable key
   * is presentation/serialization data; semantic validation uses the typed
   * major-action association.
   */
-sealed trait PowerWindow extends Product with Serializable {
+sealed trait PowerWindow extends Product with Serializable:
   def key: String
   def associatedMajorAction: Option[MajorActionType]
-}
-object PowerWindow {
+object PowerWindow:
   sealed trait SearchWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Search) }
   sealed trait TravelWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Travel) }
   sealed trait CampaignWindow extends PowerWindow { final val associatedMajorAction: Option[MajorActionType] = Some(MajorActionType.Campaign) }
@@ -56,127 +53,94 @@ object PowerWindow {
     * one the single played-card window always had, so reviewed data and
     * fingerprints do not change.
     */
-  case object ActionCardPlayedFaceup extends OtherWindow {
+  case object ActionCardPlayedFaceup extends OtherWindow:
     val key = "action.card-played"
-  }
   /** A card placed facedown as an adviser, a denizen or a Vision. */
-  case object ActionCardPlayedFacedown extends OtherWindow {
+  case object ActionCardPlayedFacedown extends OtherWindow:
     val key = "action.card-played-facedown"
-  }
-  case object ActionAfterMajorAction extends OtherWindow {
+  case object ActionAfterMajorAction extends OtherWindow:
     val key = "action.after-major-action"
-  }
   case object SearchEligibility extends SearchWindow { val key = "search.eligibility" }
   case object SearchCost extends SearchWindow { val key = "search.cost" }
   case object SearchBeforeDraw extends SearchWindow { val key = "search.before-draw" }
   case object SearchPlayToSite extends SearchWindow { val key = "search.play-to-site" }
-  case object SearchPlayAdviser extends SearchWindow {
+  case object SearchPlayAdviser extends SearchWindow:
     val key = "search.play-adviser"
-  }
   case object TravelCost extends TravelWindow { val key = "travel.cost" }
-  case object CampaignBeforeTargets extends CampaignWindow {
+  case object CampaignBeforeTargets extends CampaignWindow:
     val key = "campaign.before-targets"
-  }
-  case object CampaignAttackerBattlePlans extends CampaignWindow {
+  case object CampaignAttackerBattlePlans extends CampaignWindow:
     val key = "campaign.attacker-battle-plans"
-  }
-  case object CampaignDefenderBattlePlans extends CampaignWindow {
+  case object CampaignDefenderBattlePlans extends CampaignWindow:
     val key = "campaign.defender-battle-plans"
-  }
   /** One battle plan being paid for and applied. A power may add to what a
     * chosen plan costs or does, matching on the plan's owner, side and source.
     */
-  case object CampaignPlanApplication extends CampaignWindow {
+  case object CampaignPlanApplication extends CampaignWindow:
     val key = "campaign.plan-application"
-  }
-  case object CampaignAfterOutcome extends CampaignWindow {
+  case object CampaignAfterOutcome extends CampaignWindow:
     val key = "campaign.after-outcome"
-  }
   case object CampaignCost extends CampaignWindow { val key = "campaign.cost" }
-  case object CampaignKindSelection extends CampaignWindow {
+  case object CampaignKindSelection extends CampaignWindow:
     val key = "campaign.kind-selection"
-  }
-  case object CampaignDefenderSelection extends CampaignWindow {
+  case object CampaignDefenderSelection extends CampaignWindow:
     val key = "campaign.defender-selection"
-  }
-  case object CampaignTargetSelection extends CampaignWindow {
+  case object CampaignTargetSelection extends CampaignWindow:
     val key = "campaign.target-selection"
-  }
-  case object CampaignForceSelection extends CampaignWindow {
+  case object CampaignForceSelection extends CampaignWindow:
     val key = "campaign.force-selection"
-  }
-  case object CampaignGatherPools extends CampaignWindow {
+  case object CampaignGatherPools extends CampaignWindow:
     val key = "campaign.gather-pools"
-  }
-  case object CampaignAttackRoll extends CampaignWindow {
+  case object CampaignAttackRoll extends CampaignWindow:
     val key = "campaign.attack-roll"
-  }
-  case object CampaignAttackResult extends CampaignWindow {
+  case object CampaignAttackResult extends CampaignWindow:
     val key = "campaign.attack-result"
-  }
-  case object CampaignSacrificeSelection extends CampaignWindow {
+  case object CampaignSacrificeSelection extends CampaignWindow:
     val key = "campaign.sacrifice-selection"
-  }
-  case object CampaignDefenseRoll extends CampaignWindow {
+  case object CampaignDefenseRoll extends CampaignWindow:
     val key = "campaign.defense-roll"
-  }
-  case object CampaignDefenseResult extends CampaignWindow {
+  case object CampaignDefenseResult extends CampaignWindow:
     val key = "campaign.defense-result"
-  }
   case object CampaignLosses extends CampaignWindow { val key = "campaign.losses" }
-  case object CampaignPlacement extends CampaignWindow {
+  case object CampaignPlacement extends CampaignWindow:
     val key = "campaign.placement"
-  }
-  case object CampaignRaidTransfer extends CampaignWindow {
+  case object CampaignRaidTransfer extends CampaignWindow:
     val key = "campaign.raid-transfer"
-  }
-  case object CampaignRaidRelocation extends CampaignWindow {
+  case object CampaignRaidRelocation extends CampaignWindow:
     val key = "campaign.raid-relocation"
-  }
   case object MusterCost extends MusterWindow { val key = "muster.cost" }
   case object TradeCost extends TradeWindow { val key = "trade.cost" }
-  case object MusterSourceSelection extends MusterWindow {
+  case object MusterSourceSelection extends MusterWindow:
     val key = "muster.source-selection"
-  }
   case object MusterGain extends MusterWindow { val key = "muster.gain" }
-  case object TradeSourceSelection extends TradeWindow {
+  case object TradeSourceSelection extends TradeWindow:
     val key = "trade.source-selection"
-  }
   case object TradeGain extends TradeWindow { val key = "trade.gain" }
-  case object ChallengeBannerSelection extends ChallengeWindow {
+  case object ChallengeBannerSelection extends ChallengeWindow:
     val key = "challenge.banner-selection"
-  }
-  case object ChallengeAmountSelection extends ChallengeWindow {
+  case object ChallengeAmountSelection extends ChallengeWindow:
     val key = "challenge.amount-selection"
-  }
   case object ChallengeCost extends ChallengeWindow { val key = "challenge.cost" }
   case object ChallengeRibbon extends ChallengeWindow { val key = "challenge.ribbon" }
-  case object ChallengePlacement extends ChallengeWindow {
+  case object ChallengePlacement extends ChallengeWindow:
     val key = "challenge.placement"
-  }
   /** The target decision of a played Conspiracy: a power may remove targets
     * from it, and a decision left with none is not asked.
     */
-  case object ConspiracyTargetSelection extends OtherWindow {
+  case object ConspiracyTargetSelection extends OtherWindow:
     val key = "conspiracy.target-selection"
-  }
-  case object PlaceBannerResourceEligibility extends OtherWindow {
+  case object PlaceBannerResourceEligibility extends OtherWindow:
     val key = "place-banner-resource.eligibility"
-  }
-  case object PlaceBannerResourceBannerSelection extends OtherWindow {
+  case object PlaceBannerResourceBannerSelection extends OtherWindow:
     val key = "place-banner-resource.banner-selection"
-  }
-  case object PlaceBannerResourceAmountSelection extends OtherWindow {
+  case object PlaceBannerResourceAmountSelection extends OtherWindow:
     val key = "place-banner-resource.amount-selection"
-  }
-  case object PlaceBannerResourcePlacement extends OtherWindow {
+  case object PlaceBannerResourcePlacement extends OtherWindow:
     val key = "place-banner-resource.placement"
-  }
   case object ForgeCost extends ForgeWindow { val key = "forge.cost" }
   case object RecoverEligibility extends RecoverWindow { val key = "recover.eligibility" }
-  case object RecoverBeforeFirstRoll extends RecoverWindow {
+  case object RecoverBeforeFirstRoll extends RecoverWindow:
     val key = "recover.before-first-roll"
-  }
   case object RecoverAfterRelic extends RecoverWindow { val key = "recover.after-relic" }
   case object RestStart extends OtherWindow { val key = "rest.start" }
   case object RestReturnFavor extends OtherWindow { val key = "rest.return-favor" }
@@ -198,12 +162,9 @@ object PowerWindow {
     */
   case object WhenExplored extends OtherWindow { val key = "explore.when-explored" }
   case object NegotiationOffer extends OtherWindow { val key = "negotiation.offer" }
-  case object NegotiationEligibility extends OtherWindow {
+  case object NegotiationEligibility extends OtherWindow:
     val key = "negotiation.eligibility"
-  }
-  case object NegotiationSettlement extends OtherWindow {
+  case object NegotiationSettlement extends OtherWindow:
     val key = "negotiation.settlement"
-  }
-}
 
 enum PowerResolution { case PlayerSelected, Automatic }

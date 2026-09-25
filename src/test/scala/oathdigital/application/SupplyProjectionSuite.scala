@@ -15,7 +15,7 @@ import oathdigital.protocol.projection.GameProjection
   * still spend for free; it is checked here against what Rest pays once the
   * ceiling has applied.
   */
-class SupplyProjectionSuite extends munit.FunSuite {
+class SupplyProjectionSuite extends munit.FunSuite:
   import EconomyFixture._
 
   private val rules = new OathRules(catalog)
@@ -25,20 +25,19 @@ class SupplyProjectionSuite extends munit.FunSuite {
     projector.project("supply", LoadedGame(Ready(ready), 4), viewer)
 
   /** The Supply the resting player holds once Rest has run. */
-  private def rested(board: ReadyGame, actor: PlayerId): Int = {
+  private def rested(board: ReadyGame, actor: PlayerId): Int =
     val completed = rules
       .startWalker(Ready(board), PhaseTransitionRef.BeginRest, actor)
       .getOrElse(fail("Rest must run"))
     val Ready(after) = completed.state: @unchecked
     after.game.current.players.find(_.player == actor).get
       .board.supply.supply
-  }
 
   private def preview(board: ReadyGame, actor: PlayerId): Int =
     project(board, actor).restSupplyGain
       .getOrElse(fail("an Act that can Rest must preview the return"))
 
-  test("the preview is the Supply Rest returns, capped by the track") {
+  test("the preview is the Supply Rest returns, capped by the track"):
     val board = act(supply = 1)
     val actor = player(board).player
     val projected = project(board, actor)
@@ -46,9 +45,8 @@ class SupplyProjectionSuite extends munit.FunSuite {
     val gain = projected.restSupplyGain
       .getOrElse(fail("an Act that can Rest must preview the return"))
     assertEquals(rested(board, actor), math.min(7, 1 + gain))
-  }
 
-  test("a full track is still promised its whole band") {
+  test("a full track is still promised its whole band"):
     val empty = act(supply = 0)
     val full = act(supply = 7)
     val actor = player(full).player
@@ -59,12 +57,9 @@ class SupplyProjectionSuite extends munit.FunSuite {
     assert(gain > 0, "an Exile band returns Supply")
     assertEquals(gain, preview(empty, player(empty).player))
     assertEquals(rested(full, actor), 7)
-  }
 
-  test("a player who cannot Rest is shown no preview") {
+  test("a player who cannot Rest is shown no preview"):
     val board = act()
     val other = board.game.current.players.map(_.player)
       .find(_ != player(board).player).get
     assertEquals(project(board, other).restSupplyGain, None)
-  }
-}

@@ -5,21 +5,20 @@ import oathdigital.catalog.CatalogPower
 import oathdigital.model._
 
 /** Orientation is a factual property only; callers still own activation rules. */
-enum RuleSourceFace {
+enum RuleSourceFace:
   case FaceUp, FaceDown, Intact, Ruined, Printed, Active, Inactive, Mob,
     GrandCouncil, WanderingFlame, Festival, Normal, Altered
-}
 
 /** Which rule sources a player can use: a site, site card or site relic at
   * their pawn site, an intact edifice there, their own faceup advisers and
   * relics, banners, Foundations and their lineage's active legacies.
   */
-private[gameplay] object RuleSourceAccess {
+private[gameplay] object RuleSourceAccess:
   def accessible(ref: RuleSourceRef, face: RuleSourceFace, ready: ReadyGame,
-      actor: PlayerId, facedownAdviser: Boolean): Boolean = {
+      actor: PlayerId, facedownAdviser: Boolean): Boolean =
     val player = ready.game.current.players.find(_.player == actor)
     val pawn = player.flatMap(_.pawnSite)
-    ref match {
+    ref match
       case RuleSourceRef.Site(id) => pawn.contains(id)
       case RuleSourceRef.SiteCard(id, _) =>
         pawn.contains(id) && face == RuleSourceFace.FaceUp
@@ -36,62 +35,55 @@ private[gameplay] object RuleSourceAccess {
       case RuleSourceRef.Legacy(lineage, _) =>
         player.exists(_.lineage == lineage) && face == RuleSourceFace.Active
       case _ => false
-    }
-  }
-}
 
 /** Mutable facts carried by sources that are not catalog cards. */
 sealed trait RuleSourceState extends Product with Serializable
-object RuleSourceState {
+object RuleSourceState:
   case object Stateless extends RuleSourceState
   final case class Banner(holder: Option[PlayerId], resources: Int)
       extends RuleSourceState
   final case class Foundation(alterationSources: Vector[LegacyId])
       extends RuleSourceState
-}
 
 final case class IndexedRuleSource(
     source: RuleSourceRef,
     powerIds: Vector[PowerId],
     face: RuleSourceFace,
     state: RuleSourceState = RuleSourceState.Stateless
-) {
+):
   /** Temporary compatibility projection for callers not yet migrated to the
     * window resolver. Factual source identity is typed at this boundary.
     */
   def handlerIds: Vector[String] = powerIds.map(_.value)
-}
 
 /** Redaction-neutral inventory of runtime sources and their declared handlers.
   * This index deliberately makes no accessibility, relevance, or activation
   * decision.
   */
-object RuleSourceIndex {
+object RuleSourceIndex:
   def enumerate(
       catalog: ExecutableCatalog,
       ready: ReadyGame
-  ): Vector[IndexedRuleSource] = {
+  ): Vector[IndexedRuleSource] =
     val current = ready.game.current
     val sites = current.map.inPlay.flatMap { siteId =>
       val printed = catalog.sites.find(_.id == siteId).toVector.map(definition =>
         IndexedRuleSource(RuleSourceRef.Site(siteId), rawIds(definition.handlers),
           RuleSourceFace.Printed))
-      val cards = current.map.sites(siteId).denizens.flatMap {
+      val cards = current.map.sites(siteId).denizens.flatMap:
         case denizen: DenizenState =>
           catalog.denizens.find(_.id.value == denizen.id.value).toVector.map(
             definition => IndexedRuleSource(
               RuleSourceRef.SiteCard(siteId, denizen.id), ids(definition.powers),
               orientation(denizen.orientation)))
         case edifice: EdificeState =>
-          catalog.edifices.find(_.id.value == edifice.id.value).toVector.map {
+          catalog.edifices.find(_.id.value == edifice.id.value).toVector.map:
             definition =>
-              val face = if (edifice.side == EdificeSide.Intact)
+              val face = if edifice.side == EdificeSide.Intact then
                 definition.intact else definition.ruined
               IndexedRuleSource(RuleSourceRef.Edifice(siteId, edifice.id),
-                ids(face.powers), if (edifice.side == EdificeSide.Intact)
+                ids(face.powers), if edifice.side == EdificeSide.Intact then
                   RuleSourceFace.Intact else RuleSourceFace.Ruined)
-          }
-      }
       val relics = current.map.sites(siteId).relics.flatMap { relic =>
         catalog.relics.find(_.id.value == relic.id.value).toVector.map(
           definition => IndexedRuleSource(
@@ -121,7 +113,7 @@ object RuleSourceIndex {
           catalog.legacies.find(_.id.value == legacy.id.value).toVector.map(
             definition => IndexedRuleSource(
               RuleSourceRef.Legacy(lineageId, legacy.id), ids(definition.powers),
-              if (legacy.active) RuleSourceFace.Active else RuleSourceFace.Inactive))
+              if legacy.active then RuleSourceFace.Active else RuleSourceFace.Inactive))
         }
       }
     val banners = Vector(
@@ -170,14 +162,11 @@ object RuleSourceIndex {
       }
     }
     sites ++ players ++ banners ++ foundations ++ legacies
-  }
 
-  private def orientation(value: Orientation): RuleSourceFace = value match {
+  private def orientation(value: Orientation): RuleSourceFace = value match
     case Orientation.FaceUp => RuleSourceFace.FaceUp
     case Orientation.FaceDown => RuleSourceFace.FaceDown
-  }
 
   private def rawIds(values: Vector[String]): Vector[PowerId] = values.map(PowerId.apply)
   private def ids(values: Vector[CatalogPower]): Vector[PowerId] =
     values.map(_.id)
-}

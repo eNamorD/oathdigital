@@ -4,12 +4,12 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 
 /** The battle arithmetic and its operations. */
-object CampaignBattle {
+object CampaignBattle:
   /** The printed defense dice of the targets: a Conquest's sites, or a Raid's
     * pawn (2), each targeted relic's printed defense and each banner (3).
     */
   def printedDefense(catalog: ExecutableCatalog, setup: CampaignSetup): Int =
-    setup.kind match {
+    setup.kind match
       case CampaignKind.Conquest => setup.targetSites
         .flatMap(site => catalog.sites.find(_.id == site)).map(_.defense).sum
       case CampaignKind.Raid => setup.raidTargets.map {
@@ -18,34 +18,30 @@ object CampaignBattle {
           .find(_.id.value == relic.value).map(_.defense).getOrElse(0)
         case _: CampaignRaidTarget.Banner => 3
       }.sum
-    }
 
   /** Both pools, gathered once the force is known. A pool of zero is not
     * created: an empty pool is never rolled.
     */
   def gatherPools(catalog: ExecutableCatalog, setup: CampaignSetup)
-      : Vector[CoreOperation] = {
+      : Vector[CoreOperation] =
     val printed = printedDefense(catalog, setup)
     Vector[Option[CoreOperation]](
       Option.when(setup.force > 0)(
         ModifyDicePool(CampaignIds.attackPool, setup.force)),
       Option.when(printed > 0)(
         ModifyDicePool(CampaignIds.defensePool, printed))).flatten
-  }
 
   /** The attack after the skull cap: a skull removes one force warband and its
     * two swords count only when that loss can be paid; skulls beyond the force
     * add nothing; Outriders ignores every skull. Returns (score, skulls lost).
     */
   def attackResult(faces: Vector[AttackDieFace], force: Int,
-      ignoreSkulls: Boolean): (Int, Int) = {
+      ignoreSkulls: Boolean): (Int, Int) =
     val rolled = AttackDieFace.skulls(faces)
-    if (ignoreSkulls) AttackDieFace.score(faces) -> 0
-    else {
+    if ignoreSkulls then AttackDieFace.score(faces) -> 0
+    else
       val payable = math.min(rolled, force)
       (AttackDieFace.score(faces) - (rolled - payable) * 2) -> payable
-    }
-  }
 
   /** The faces the attack pool rolled, before any cap. */
   def attackFacesOf(ready: ReadyGame): Vector[AttackDieFace] =
@@ -68,32 +64,28 @@ object CampaignBattle {
   /** The force a defender adds to its dice: the warbands at every target, or a
     * Raid defender's board.
     */
-  def defenderForce(ready: ReadyGame, setup: CampaignSetup): Int = {
+  def defenderForce(ready: ReadyGame, setup: CampaignSetup): Int =
     val current = ready.game.current
-    setup.kind match {
+    setup.kind match
       case CampaignKind.Conquest => setup.targetSites.flatMap(current.map.sites.get)
         .map(_.forces match {
           case SiteForces.Occupied(_, count) => count
           case SiteForces.Empty => 0
         }).sum
-      case CampaignKind.Raid => setup.defender match {
+      case CampaignKind.Raid => setup.defender match
         case CampaignDefender.Player(player) => current.players
           .find(_.player == player).fold(0)(_.board.warbands)
         case CampaignDefender.Bandits => 0
-      }
-    }
-  }
 
   /** The defense is the dice score plus the defender's force. It is written
     * here, before any warband dies, so the victor never reads the board.
     */
   def defenseResultOps(ready: ReadyGame, setup: CampaignSetup)
-      : Vector[CoreOperation] = {
+      : Vector[CoreOperation] =
     val dice = ready.game.current.rollOutcomes.get(CampaignIds.defensePool)
       .fold(0)(_.score)
     Vector(ModifyRollOutcome(CampaignIds.defensePool, None,
       Some(dice + defenderForce(ready, setup))))
-  }
 
   /** How many force warbands the attacker may still sacrifice. */
   def sacrificeMax(ready: ReadyGame, setup: CampaignSetup): Int =
@@ -105,13 +97,13 @@ object CampaignBattle {
     * them here again would print the same facts twice, once as words.
     */
   def sacrificeHeading(max: Int): String =
-    s"Sacrifice up to $max warband${if (max == 1) "" else "s"} for one attack each"
+    s"Sacrifice up to $max warband${if max == 1 then "" else "s"} for one attack each"
 
   /** The durable record of this battle, built from the recorded outcomes and
     * the answers, before any warband dies.
     */
   def result(ready: ReadyGame, setup: CampaignSetup, pending: PendingTree)
-      : CampaignResult = {
+      : CampaignResult =
     val outcomes = ready.game.current.rollOutcomes
     val attack = outcomes.get(CampaignIds.attackPool)
     val defense = outcomes.get(CampaignIds.defensePool)
@@ -123,7 +115,6 @@ object CampaignBattle {
       attack.fold(0)(_.skulls), sacrificed,
       defense.toVector.flatMap(_.faces.collect { case face: DefenseDieFace => face }),
       defenseScore, attackScore + sacrificed > defenseScore)
-  }
 
   /** Step 8: kill the defeated warbands. Attacker deaths are the skull and
     * sacrifice losses, plus half the survivors on a defeat; on a victory every
@@ -131,34 +122,32 @@ object CampaignBattle {
     * the supply to their board, and a Raid defender loses half its board.
     */
   def losses(ready: ReadyGame, result: CampaignResult)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val current = ready.game.current
     current.players.find(_.player == result.attacker).toRight(
       OathViolation.InvalidEventOrder("the Campaign's attacker is not in the game"))
       .map { attacker =>
         val survivors = result.force - result.skullLosses - result.sacrificed
         val deaths = result.skullLosses + result.sacrificed +
-          (if (result.attackerWins) 0 else survivors / 2)
+          (if result.attackerWins then 0 else survivors / 2)
         val own: Vector[CoreOperation] = Option.when(deaths > 0)(Kill(
           Piece.Warbands(ForceKind.Exile(attacker.lineage), deaths),
           PositionedLocation(Location.PlayArea(result.attacker)))).toVector
-        own ++ (if (!result.attackerWins) Vector.empty
+        own ++ (if !result.attackerWins then Vector.empty
           else result.kind match {
             case CampaignKind.Conquest => conquestLosses(ready, result)
             case CampaignKind.Raid => raidBoardLosses(ready, result)
           })
       }
-  }
 
   private def conquestLosses(ready: ReadyGame, result: CampaignResult)
-      : Vector[CoreOperation] = {
+      : Vector[CoreOperation] =
     val sites = result.targetSites.flatMap(site =>
       ready.game.current.map.sites.get(site).map(state => site -> state.forces))
-    val kills: Vector[CoreOperation] = sites.collect {
+    val kills: Vector[CoreOperation] = sites.collect:
       case (site, SiteForces.Occupied(force, count)) if count > 0 => Kill(
         Piece.Warbands(force, count), PositionedLocation(Location.Site(site)))
-    }
-    val returned: Vector[CoreOperation] = result.defender match {
+    val returned: Vector[CoreOperation] = result.defender match
       case CampaignDefender.Player(player) =>
         val total = sites.collect { case (_, SiteForces.Occupied(_, n)) => n }.sum
         val back = total - total / 2
@@ -168,20 +157,15 @@ object CampaignBattle {
             PositionedLocation(Location.WarbandBank(force)),
             PositionedLocation(Location.PlayArea(player))))
       case CampaignDefender.Bandits => Vector.empty
-    }
     kills ++ returned
-  }
 
   private def raidBoardLosses(ready: ReadyGame, result: CampaignResult)
-      : Vector[CoreOperation] = result.defender match {
+      : Vector[CoreOperation] = result.defender match
     case CampaignDefender.Player(player) =>
-      ready.game.current.players.find(_.player == player).toVector.flatMap {
+      ready.game.current.players.find(_.player == player).toVector.flatMap:
         defender =>
           val killed = defender.board.warbands / 2
           Option.when(killed > 0)(Kill(Piece.Warbands(
             ForceKind.Exile(defender.lineage), killed),
             PositionedLocation(Location.PlayArea(player)))).toVector
-      }
     case CampaignDefender.Bandits => Vector.empty
-  }
-}

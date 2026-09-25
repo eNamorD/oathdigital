@@ -8,11 +8,11 @@ import oathdigital.model._
   * carved out of, so a Recover at a freshly-set-up site can turn up an
   * implemented relic exactly as reliably as a draw from the deck would.
   */
-class FirstGameSetupMaterializerSuite extends munit.FunSuite {
+class FirstGameSetupMaterializerSuite extends munit.FunSuite:
   private val materializer = new FirstGameSetupMaterializer(catalog)
 
   test("site relic slots are filled from the top of relicOrder, leaving the " +
-      "remainder -- in the same order -- as the drawable deck") {
+      "remainder -- in the same order -- as the drawable deck"):
     val sites = catalog.sites.filter(_.relicSlots > 0)
       .sortBy(_.relicSlots)(using Ordering[Int].reverse).take(3).map(_.id)
     assert(sites.nonEmpty, "fixture catalog needs at least one relic-slotted site")
@@ -32,5 +32,3 @@ class FirstGameSetupMaterializerSuite extends munit.FunSuite {
     val placedRelics = sites.flatMap(id => material.map.sites(id).relics.map(_.id))
     assertEquals(placedRelics.toSet, relicOrder.take(totalSlots).toSet)
     assertEquals(material.commonCards.relicDeck, relicOrder.drop(totalSlots))
-  }
-}

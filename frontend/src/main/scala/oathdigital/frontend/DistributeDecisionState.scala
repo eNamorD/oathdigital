@@ -18,7 +18,7 @@ private[frontend] final case class DistributeDecisionState(
     minTotal: Int,
     maxTotal: Int,
     amounts: Map[String, Int]
-) {
+):
   def amount(item: String): Int = amounts.getOrElse(item, 0)
 
   def allocated: Int = slots.map(slot => amount(slot.item)).sum
@@ -41,13 +41,13 @@ private[frontend] final case class DistributeDecisionState(
     slot(item).fold(this) { bounds =>
       val step = math.min(by, math.min(remaining,
         bounds.maximum - amount(item)))
-      if (step <= 0) this else set(item, amount(item) + step)
+      if step <= 0 then this else set(item, amount(item) + step)
     }
 
   private def lower(item: String, by: Int): DistributeDecisionState =
     slot(item).fold(this) { bounds =>
       val step = math.min(by, amount(item) - bounds.minimum)
-      if (step <= 0) this else set(item, amount(item) - step)
+      if step <= 0 then this else set(item, amount(item) - step)
     }
 
   private def slot(item: String): Option[DistributeSlotBounds] =
@@ -55,16 +55,14 @@ private[frontend] final case class DistributeDecisionState(
 
   private def set(item: String, value: Int): DistributeDecisionState =
     copy(amounts = amounts.updated(item, value))
-}
 
-private[frontend] object DistributeDecisionState {
+private[frontend] object DistributeDecisionState:
   /** Opens at `suggested` when the query carries one, else at the minimums. */
   def opened(slots: Vector[DistributeSlotBounds], minTotal: Int, maxTotal: Int,
       suggested: Option[Vector[Int]]): DistributeDecisionState =
     DistributeDecisionState(slots, minTotal, maxTotal, slots.map(_.item).zip(
       suggested.filter(_.size == slots.size)
         .getOrElse(slots.map(_.minimum))).toMap)
-}
 
 /** A draft answer to a parked walker distribution. Like
   * [[WalkerPartitionDraft]], everything it knows comes from the projected
@@ -75,7 +73,7 @@ private[frontend] final case class WalkerDistributeDraft(
     decisionId: String,
     query: DecisionQueryState,
     state: DistributeDecisionState
-) {
+):
   def increment(item: String): WalkerDistributeDraft = copy(state = state.increment(item))
   def decrement(item: String): WalkerDistributeDraft = copy(state = state.decrement(item))
   def fill(item: String): WalkerDistributeDraft = copy(state = state.fill(item))
@@ -87,9 +85,8 @@ private[frontend] final case class WalkerDistributeDraft(
       DecisionAnswerWire.DistributeWire(query.slots.map(slot =>
         DistributeAmountWire(slot.option.kind, slot.option.id,
           state.amount(WalkerPartitionDraft.itemId(slot.option)))))))
-}
 
-private[frontend] object WalkerDistributeDraft {
+private[frontend] object WalkerDistributeDraft:
   /** Adopts whichever parked decision projects a distribute query, and drops
     * the draft when the decision, the query or the board context changes.
     */
@@ -110,4 +107,3 @@ private[frontend] object WalkerDistributeDraft {
                 query.slots.forall(_.suggested.nonEmpty))(
                 query.slots.flatMap(_.suggested)))))
       }
-}

@@ -2,12 +2,11 @@ package oathdigital.gameplay
 
 import oathdigital.model._
 
-trait TypedRuleHandler {
+trait TypedRuleHandler:
   def resolve(
       activation: RuleActivation,
       context: RuleQueryContext
   ): RuleOutcome
-}
 
 /** Explicit registry for handlers activated by a caller. Activations resolve by
   * priority, then stable source identity, then handler ID. This total ordering is
@@ -15,7 +14,7 @@ trait TypedRuleHandler {
   */
 final class RuleRegistry private (
     handlers: Map[String, TypedRuleHandler]
-) {
+):
   def lookup(handlerId: String): Option[TypedRuleHandler] = handlers.get(handlerId)
 
   def resolve(
@@ -31,12 +30,9 @@ final class RuleRegistry private (
           .getOrElse(RuleOutcome.UnsupportedRelevantRule(activation.handlerId))
       )
     }
-}
 
-object RuleRegistry {
-  def apply(entries: (String, TypedRuleHandler)*): RuleRegistry = {
+object RuleRegistry:
+  def apply(entries: (String, TypedRuleHandler)*): RuleRegistry =
     require(entries.map(_._1).distinct.size == entries.size,
       "rule handler IDs must be unique")
     new RuleRegistry(entries.toMap)
-  }
-}

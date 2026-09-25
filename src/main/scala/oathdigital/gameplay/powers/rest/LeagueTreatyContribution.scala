@@ -14,7 +14,7 @@ import oathdigital.model._
   * same state, and folds to the same vector, while either is parked.
   */
 final case class LeagueTreatyContribution private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   import LeagueTreatyContribution._
 
   def id: PowerId = LeagueTreatyContribution.id
@@ -28,15 +28,14 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
   /** One region card holding favor, in map site order then site card order. */
   private final case class Holding(card: CardId, suit: Suit, favor: Int)
   private final case class Treaty(site: SiteId, ruler: PlayerId,
-      holdings: Vector[Holding]) {
+      holdings: Vector[Holding]):
     def favorOf(suit: Suit): Int = holdings.filter(_.suit == suit).map(_.favor).sum
     def suits: Vector[Suit] = Suit.all.filter(favorOf(_) > 0)
     def total: Int = holdings.map(_.favor).sum
-  }
 
-  private def treaty(ready: ReadyGame): Option[Treaty] = {
+  private def treaty(ready: ReadyGame): Option[Treaty] =
     val current = ready.game.current
-    for {
+    for
       site <- current.map.inPlay.find(id => current.map.sites.get(id).exists(
         _.denizens.exists {
           case DenizenState(`cardId`, Orientation.FaceUp, _) => true
@@ -57,11 +56,10 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
         }
       }
       if holdings.nonEmpty
-    } yield Treaty(site, ruler, holdings)
-  }
+    yield Treaty(site, ruler, holdings)
 
   private def inserted(ready: ReadyGame, rester: PlayerId,
-      treaty: Treaty): Vector[Operation] = {
+      treaty: Treaty): Vector[Operation] =
     val destination = destinationDecisionId(ready, rester, treaty.site, cardId)
     val distribution = distributionDecisionId(ready, rester, treaty.site, cardId)
     Vector(
@@ -79,7 +77,6 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
           amounts(pending, distribution).map(moves(treaty, bank, _))
         case _ => Right(Vector.empty)
       }))
-  }
 
   private def query(treaty: Treaty, bank: Suit): DecisionQuery.Distribute =
     DecisionQuery.Distribute.exactly(
@@ -103,14 +100,13 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
       cards.foldLeft((treaty.favorOf(suit) - kept.getOrElse(suit, 0),
           Vector.empty[CoreOperation])) { case ((left, ops), holding) =>
         val taken = math.min(left, holding.favor)
-        (left - taken, if (taken == 0) ops else ops :+ Move(Piece.Favor(taken),
+        (left - taken, if taken == 0 then ops else ops :+ Move(Piece.Favor(taken),
           PositionedLocation(Location.OnCard(holding.card)),
           PositionedLocation(Location.FavorBank(bank))))
       }._2
     }
-}
 
-object LeagueTreatyContribution {
+object LeagueTreatyContribution:
   val id: PowerId = PowerId("denizen.league-treaty")
   private val Decline = "decline"
 
@@ -127,10 +123,9 @@ object LeagueTreatyContribution {
       card: DenizenId): String = stem(ready, rester, site, card) + "-distribution"
 
   private def chosenBank(pending: PendingTree, decision: String): Option[Suit] =
-    pending.answered.collectFirst {
+    pending.answered.collectFirst:
       case Answered(`decision`, DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.FavorBank(suit)), _) => suit
-    }
 
   private def amounts(pending: PendingTree, decision: String)
       : Either[OathViolation, Map[Suit, Int]] = pending.answered.collectFirst {
@@ -139,4 +134,3 @@ object LeagueTreatyContribution {
         suit -> n }.toMap
   }.toRight(OathViolation.InvalidEventOrder(
     s"no League Treaty distribution answer is recorded for $decision"))
-}

@@ -11,7 +11,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
   * UI touches (history, timers, clipboard, credential storage) are overridden in
   * place and restored by `close()`.
   */
-private[frontend] final class TestBrowser(search: String = "") {
+private[frontend] final class TestBrowser(search: String = ""):
   private val browser: js.Dynamic = new js.Function("search", """return (() => {
     const urls = [], timers = [], copied = [];
     const saved = { href: window.location.href, setTimeout: window.setTimeout,
@@ -64,7 +64,5 @@ private[frontend] final class TestBrowser(search: String = "") {
   def urls: Vector[String] = browser.urls.asInstanceOf[js.Array[String]].toVector
   def copied: Vector[String] = browser.copied.asInstanceOf[js.Array[String]].toVector
   def close(): Unit = { browser.close(); () }
-  def settle: Future[Unit] = (1 to 12).foldLeft(Future.successful(())) {
+  def settle: Future[Unit] = (1 to 12).foldLeft(Future.successful(())):
     (previous, _) => previous.flatMap(_ => Future.successful(()))
-  }
-}

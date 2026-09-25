@@ -3,8 +3,8 @@ package oathdigital.frontend
 import org.scalajs.dom
 import ServerUiSupport._
 
-private[frontend] object DevelopmentRenderer {
- def controls(ui: ServerUiView): dom.Element = {
+private[frontend] object DevelopmentRenderer:
+ def controls(ui: ServerUiView): dom.Element =
    import ui._
    val bar = element("div", "debug-toolbar")
    bar.appendChild(text(
@@ -29,7 +29,7 @@ private[frontend] object DevelopmentRenderer {
    val load = button("Load existing game", "load-game")
    load.onclick = _ => loadSession(input.value, currentPlayerId)
    bar.appendChild(load)
-   sessionCoordinator.connectionState match {
+   sessionCoordinator.connectionState match
      case ServerConnectionState.Disconnected(_) =>
        val retry = button("Reconnect", "reconnectSession")
        retry.setAttribute(
@@ -39,7 +39,6 @@ private[frontend] object DevelopmentRenderer {
        retry.onclick = _ => reconnectSession()
        bar.appendChild(retry)
      case _ => ()
-   }
    val fresh = button("New game", "restart")
    fresh.setAttribute(
      "aria-label",
@@ -48,14 +47,13 @@ private[frontend] object DevelopmentRenderer {
    fresh.onclick = _ => createGame()
    bar.appendChild(fresh)
    bar
- }
 
- def rawEventLog(rawEvents: Vector[RawEvent]): dom.Element = {
+ def rawEventLog(rawEvents: Vector[RawEvent]): dom.Element =
    val panel = element("section", "panel raw-event-log")
    panel.appendChild(text("h2", "", "Raw authoritative event log"))
    panel.appendChild(text("p", "warning",
      "Development only. Raw authoritative events may reveal hidden outcomes."))
-   if (rawEvents.isEmpty) panel.appendChild(text("p", "empty-state", "No events."))
+   if rawEvents.isEmpty then panel.appendChild(text("p", "empty-state", "No events."))
    val list = element("ol", "events")
    rawEvents.foreach { event =>
      val item = element("li", "raw-event")
@@ -65,6 +63,3 @@ private[frontend] object DevelopmentRenderer {
    }
    panel.appendChild(list)
    panel
- }
-
-}

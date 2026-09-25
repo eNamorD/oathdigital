@@ -19,7 +19,7 @@ final case class ServerConfig(
     version: String
 )
 
-object ServerConfig {
+object ServerConfig:
   private val DefaultHost = "127.0.0.1"
   private val DefaultPort = "8080"
   private val DefaultDatabasePath = "var/oathdigital"
@@ -51,7 +51,7 @@ object ServerConfig {
       arguments: Array[String],
       environment: Map[String, String],
       version: String
-  ): Either[Vector[String], ServerConfig] = {
+  ): Either[Vector[String], ServerConfig] =
     val (cli, argumentErrors) = parseArguments(arguments.toVector)
 
     val host = parseHost(value(
@@ -111,11 +111,10 @@ object ServerConfig {
     ).collect { case (option, Some(error)) => option -> error } ++
       authenticatedRouteMount.left.toOption.toVector
 
-    val trustBoundaryErrors = (host, publicBaseUrl, mode) match {
+    val trustBoundaryErrors = (host, publicBaseUrl, mode) match
       case (Right(validHost), Right(baseUrl), Right(validMode)) =>
         validateTrustBoundary(validHost, baseUrl, validMode).toVector
       case _ => Vector.empty
-    }
     val errors = (argumentErrors ++ validationErrors ++ trustBoundaryErrors)
       .zipWithIndex
       .sortBy { case ((option, _), sequence) =>
@@ -123,7 +122,7 @@ object ServerConfig {
       }
       .map(_._1._2)
 
-    if (errors.nonEmpty) Left(errors)
+    if errors.nonEmpty then Left(errors)
     else
       Right(ServerConfig(
         host.toOption.get,
@@ -135,33 +134,32 @@ object ServerConfig {
         authenticatedRouteMount.toOption.get,
         version
       ))
-  }
 
   private def parseArguments(
       remaining: Vector[String],
       values: Map[String, String] = Map.empty,
       errors: Vector[(String, String)] = Vector.empty
   ): (Map[String, String], Vector[(String, String)]) =
-    if (remaining.isEmpty) (values, errors)
-    else {
+    if remaining.isEmpty then (values, errors)
+    else
       val argument = remaining.head
       val hasValue = remaining.lengthCompare(1) > 0 &&
         !remaining(1).startsWith("--")
-      if (SupportedOptions.contains(argument) && hasValue)
+      if SupportedOptions.contains(argument) && hasValue then
         parseArguments(
           remaining.drop(2),
           values.updated(argument, remaining(1)),
           errors
         )
-      else if (SupportedOptions.contains(argument))
+      else if SupportedOptions.contains(argument) then
         parseArguments(
           remaining.tail,
           values,
           errors :+ argument -> s"missing value for $argument. $usage"
         )
-      else if (argument.startsWith("--"))
+      else if argument.startsWith("--") then
         parseArguments(
-          remaining.drop(if (hasValue) 2 else 1),
+          remaining.drop(if hasValue then 2 else 1),
           values,
           errors :+ argument -> s"unknown option $argument. $usage"
         )
@@ -171,7 +169,6 @@ object ServerConfig {
           values,
           errors :+ argument -> s"unknown argument $argument. $usage"
         )
-    }
 
   private def value(
       option: String,
@@ -189,7 +186,7 @@ object ServerConfig {
       environment: Map[String, String]
   ): Option[String] = cli.get(option).orElse(environment.get(environmentName))
 
-  private def parseHost(value: String): Either[String, String] = {
+  private def parseHost(value: String): Either[String, String] =
     val host = value.trim
     val valid = host.nonEmpty && !host.exists(_.isWhitespace) &&
       !host.exists("/?#@".contains(_)) &&
@@ -200,7 +197,6 @@ object ServerConfig {
       host,
       "--host: must be a valid non-blank host"
     )
-  }
 
   private def parsePort(value: String): Either[String, Int] =
     Try(value.trim.toInt).toOption
@@ -209,10 +205,9 @@ object ServerConfig {
 
   private def parseOptionalUri(
       value: Option[String]
-  ): Either[String, Option[URI]] = value match {
+  ): Either[String, Option[URI]] = value match
     case None => Right(None)
     case Some(raw) => parsePublicBaseUrl(raw).map(Some(_))
-  }
 
   private def parseAuthenticatedRouteMount(
       sessionCookieName: Option[String],
@@ -222,12 +217,12 @@ object ServerConfig {
       .fromOptions(sessionCookieName, publicOrigin)
       .left.map { message =>
         val option =
-          if (sessionCookieName.forall(_.trim.isEmpty))
+          if sessionCookieName.forall(_.trim.isEmpty) then
             "--session-cookie-name"
           else "--authenticated-public-origin"
         option -> s"$option: $message"
       }
-      .flatMap {
+      .flatMap:
         case Some(configuration) =>
           SameOriginCsrfProtection
             .validateOrigin(configuration.publicOrigin)
@@ -237,9 +232,8 @@ object ServerConfig {
             )
             .map(_ => Some(configuration))
         case None => Right(None)
-      }
 
-  private def parsePublicBaseUrl(value: String): Either[String, URI] = {
+  private def parsePublicBaseUrl(value: String): Either[String, URI] =
     val parsed = Try(new URI(value.trim)).toOption
     parsed.filter { uri =>
       val scheme = Option(uri.getScheme).map(_.toLowerCase)
@@ -254,33 +248,30 @@ object ServerConfig {
       "--public-base-url: must be an absolute HTTP or HTTPS origin " +
         "without credentials, path, query, or fragment"
     )
-  }
 
   private def parsePath(
       option: String,
       value: String
   ): Either[String, Path] =
-    if (value.trim.isEmpty) Left(s"$option: must not be blank")
+    if value.trim.isEmpty then Left(s"$option: must not be blank")
     else
       try Right(Paths.get(value).toAbsolutePath.normalize)
-      catch {
+      catch
         case NonFatal(_) => Left(s"$option: must be a valid path")
-      }
 
   private def parseMode(value: String): Either[String, ServerMode] =
-    value.trim match {
+    value.trim match
       case "development" => Right(ServerMode.Development)
       case "trusted-alpha" => Right(ServerMode.TrustedAlpha)
       case _ => Left(
         "--mode: must be development or trusted-alpha"
       )
-    }
 
   private def validateTrustBoundary(
       host: String,
       publicBaseUrl: Option[URI],
       mode: ServerMode
-  ): Option[(String, String)] = mode match {
+  ): Option[(String, String)] = mode match
     case ServerMode.Development =>
       DevelopmentTrustBoundary.validateLoopbackHost(host).left.toOption
         .map(message => "--host" -> s"--host: $message")
@@ -290,8 +281,6 @@ object ServerConfig {
         "--public-base-url: required for non-loopback trusted-alpha binding"
       )
     case ServerMode.TrustedAlpha => None
-  }
 
   private def isLoopback(host: String): Boolean =
     Set("127.0.0.1", "localhost", "::1").contains(host.toLowerCase)
-}

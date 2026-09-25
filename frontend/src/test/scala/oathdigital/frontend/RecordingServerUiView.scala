@@ -6,7 +6,7 @@ import oathdigital.protocol.{GameIntent => Intent, PreviewModifier}
   * touching a server, shared by the walker panel render suites.
   */
 private[frontend] final class RecordingView(gameId: String, playerId: String)
-    extends ServerUiView {
+    extends ServerUiView:
   var partition: Option[WalkerPartitionDraft] = None
   var distribution: Option[WalkerDistributeDraft] = None
   var selection: Option[WalkerSelectionDraft] = None
@@ -52,4 +52,3 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
   def loadSession(gameId: String, playerId: String): Unit = ()
   def reconnectSession(): Unit = ()
   def createGame(): Unit = ()
-}

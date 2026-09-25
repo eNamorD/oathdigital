@@ -19,16 +19,15 @@ import oathdigital.model.OathState.Ready
   * not the shape of the state -- that makes an assertion about a parked
   * Forge worth anything.
   */
-object ForgeWalkerFixture extends munit.Assertions {
+object ForgeWalkerFixture extends munit.Assertions:
 
   /** Every Forge in this fixture is preceded by a conquest, and a conquest
     * needs dice. These always come up the same way so the board the Forge
     * starts from is the same board every run.
     */
-  val blankCampaignDice: CampaignDicePort = new CampaignDicePort {
+  val blankCampaignDice: CampaignDicePort = new CampaignDicePort:
     def rollAttack(count: Int): Vector[AttackDieFace] = Vector.fill(count)(AttackDieFace.OneSword)
     def rollDefense(count: Int): Vector[DefenseDieFace] = Vector.fill(count)(DefenseDieFace.Blank)
-  }
 
   /** The shipped catalog with the one non-homeland forgeable site's printed
     * cost rewritten to name both resources, so a Forge there parks.
@@ -39,13 +38,12 @@ object ForgeWalkerFixture extends munit.Assertions {
     * declares no decision node there at all. This override is what gives
     * the PARKED path a real board to be tested against.
     */
-  lazy val mixedForgeCostCatalog: oathdigital.catalog.ExecutableCatalog = {
+  lazy val mixedForgeCostCatalog: oathdigital.catalog.ExecutableCatalog =
     val siteId = catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
       !site.handlers.exists(_.contains(".homeland-"))).get.id
     catalog.copy(sites = catalog.sites.map(site =>
-      if (site.id != siteId) site
+      if site.id != siteId then site
       else site.copy(forgeRequirements = Some(Tokens(2, 1)))))
-  }
 
   /** Drives a real, journalled game to the point where `p2` can start a
     * Forge: a ruled site with a printed Forge cost, exactly three empty
@@ -55,7 +53,7 @@ object ForgeWalkerFixture extends munit.Assertions {
     */
   def forgeReadyGame(service: GameApplicationService, gameId: String,
       cat: oathdigital.catalog.ExecutableCatalog = catalog)
-      : (GameAccepted, PlayerId, SiteId) = {
+      : (GameAccepted, PlayerId, SiteId) =
     // Every homeland site restricts which denizens may be played there, and
     // this fixture plays three in, so the site has to be a non-homeland one.
     val forgeSite = cat.sites.find(site => site.forgeRequirements.nonEmpty &&
@@ -102,8 +100,8 @@ object ForgeWalkerFixture extends munit.Assertions {
       GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
       .fold(error => fail(s"Campaign fixture rejected: $error"), identity)
     // Other bandit-ruled sites are optional targets: take none.
-    if (accepted.continue == OathContinue.AwaitingCampaignDecision(actor,
-        DecisionId(CampaignIds.targets)))
+    if accepted.continue == OathContinue.AwaitingCampaignDecision(actor,
+        DecisionId(CampaignIds.targets)) then
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.targets,
           ChooseManyAnswer(Vector.empty)))).toOption.get
@@ -113,16 +111,15 @@ object ForgeWalkerFixture extends munit.Assertions {
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.sacrifice,
         ChooseAmountAnswer(2)))).toOption.get
-    accepted.continue match {
+    accepted.continue match
       case OathContinue.AwaitingCampaignDecision(_, decision)
           if decision.value == CampaignIds.placement =>
         accepted = service.handle(gameId, accepted.nextSequence,
           GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.placement,
             ChooseAmountAnswer(1)))).toOption.get
       case _ => ()
-    }
 
-    def searchOne(): Unit = {
+    def searchOne(): Unit =
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
           Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
@@ -133,21 +130,19 @@ object ForgeWalkerFixture extends munit.Assertions {
         pendingReady, actor, card, SearchPlacement.Site(None),
         CardPlay.Origin.TemporaryHand).isRight)
         .getOrElse(fail(s"no site-playable card in prepared draw $drawn"))
-      if (drawn.size > 1) {
+      if drawn.size > 1 then
         val choices = drawn.map(card => DecisionPlacement(card match {
           case id: DenizenId => DecisionOptionRef.Denizen(id)
           case id: VisionId => DecisionOptionRef.Vision(id)
-        }, if (card == kept) "keep" else "discard"))
+        }, if card == kept then "keep" else "discard"))
         accepted = service.handle(gameId, accepted.nextSequence,
           GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
             DecisionAnswer.PartitionAnswer(choices)))).toOption.get
-      }
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.ResolveWalker(actor, TreeDecision(
           s"cardplay.place.${kept.kind}.${kept.value}",
           DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("site")))))
         .toOption.get
-    }
     searchOne(); searchOne()
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.BeginRest(actor)).toOption.get
@@ -161,7 +156,6 @@ object ForgeWalkerFixture extends munit.Assertions {
       GameCommand.EndWake(actor)).toOption.get
     searchOne()
     (accepted, actor, forgeSite)
-  }
 
   /** The position a mixed-cost Forge PARKS from: the fixture board above,
     * reached under [[mixedForgeCostCatalog]], plus the `StartWalker` that
@@ -172,7 +166,7 @@ object ForgeWalkerFixture extends munit.Assertions {
     */
   def parkedForge(gameId: String)
       : (oathdigital.catalog.ExecutableCatalog, GameAccepted, PlayerId,
-        SiteId) = {
+        SiteId) =
     val forgeCatalog = mixedForgeCostCatalog
     val service = new GameApplicationService(forgeCatalog,
       new InMemoryEventStreamRepository, campaignDicePort = blankCampaignDice)
@@ -182,5 +176,3 @@ object ForgeWalkerFixture extends munit.Assertions {
       GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
       .fold(error => fail(s"walker Forge start rejected: $error"), identity)
     (forgeCatalog, started, actor, forgeSite)
-  }
-}

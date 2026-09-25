@@ -38,7 +38,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * offers itself there, and the title's defense, which no card prints, is always
   * present.
   */
-object WalkerPowerCatalog {
+object WalkerPowerCatalog:
   def default(catalog: ExecutableCatalog): WalkerPowers =
     WalkerPowers(CatacombsContribution.forCatalog(catalog).toVector ++
       VowOfPeaceContribution.forCatalog(catalog).toVector ++
@@ -62,4 +62,3 @@ object WalkerPowerCatalog {
       BanditMarket.forCatalog(catalog) ++ GreatForge.forCatalog(catalog) ++
       BrokenForge.forCatalog(catalog) ++ ProvingGrounds.forCatalog(catalog) ++
       EmptyGrounds.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
-}

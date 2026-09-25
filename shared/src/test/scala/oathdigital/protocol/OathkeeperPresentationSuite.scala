@@ -5,8 +5,8 @@ import oathdigital.protocol.projection.OathkeeperPresentation
 /** The Oath as the four goal cards print it: the title, the goal the
   * Oathkeeper holds it by, and the successor clause on the purple band.
   */
-class OathkeeperPresentationSuite extends munit.FunSuite {
-  test("every goal key carries its printed title and both lines") {
+class OathkeeperPresentationSuite extends munit.FunSuite:
+  test("every goal key carries its printed title and both lines"):
     assertEquals(OathkeeperPresentation.byGoal("supremacy"),
       OathkeeperPresentation("Oathkeeper of Supremacy", Vector(
         "Rules the most sites",
@@ -23,14 +23,11 @@ class OathkeeperPresentationSuite extends munit.FunSuite {
       OathkeeperPresentation("Oathkeeper of the People", Vector(
         "Holds the People's Favor",
         "Successor to the Chancellor: Holds the Darkest Secret")))
-  }
 
   /** The four keys `OathkeeperGoal.all` spells. Written out rather than read
     * from the model: this suite also compiles for Scala.js, where the model
     * is not on the frontend's source whitelist.
     */
-  test("the map covers every goal the model declares") {
+  test("the map covers every goal the model declares"):
     assertEquals(OathkeeperPresentation.byGoal.keySet,
       Set("supremacy", "protection", "the-people", "devotion"))
-  }
-}

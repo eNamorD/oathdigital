@@ -13,7 +13,7 @@ import oathdigital.model._
   * and on the Wandering Flame face only.
   */
 case object WanderingFlamePlace extends PaidAction(
-    "banner.darkest-secret.wandering-flame.place", Cost.free) {
+    "banner.darkest-secret.wandering-flame.place", Cost.free):
   override def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = faceUpSecrets(ready, player) > 0
 
@@ -28,9 +28,8 @@ case object WanderingFlamePlace extends PaidAction(
   private def place(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     PawnMoves.pawnSite(ready, player).map { here =>
-      if (faceUpSecrets(ready, player) == 0) Vector.empty
+      if faceUpSecrets(ready, player) == 0 then Vector.empty
       else Vector(Move(Piece.Secrets(1),
         PositionedLocation(Location.PlayArea(player)),
         PositionedLocation(Location.Site(here))))
     }
-}

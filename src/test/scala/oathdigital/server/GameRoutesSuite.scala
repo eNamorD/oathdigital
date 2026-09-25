@@ -26,8 +26,8 @@ import oathdigital.model.PlayerId
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   DecisionAnswerWire, GameIntent}
 
-class GameRoutesSuite extends munit.FunSuite {
-  test("health load malformed request and stale command status mappings") {
+class GameRoutesSuite extends munit.FunSuite:
+  test("health load malformed request and stale command status mappings"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "first-game-route-test")
     val blocking = system.dispatchers.lookup(
@@ -55,7 +55,7 @@ class GameRoutesSuite extends munit.FunSuite {
       s"http://127.0.0.1:${binding.localAddress.getPort}"
     val client = HttpClient.newHttpClient()
 
-    try {
+    try
       val index = get(client, s"$base/")
       assertEquals(index.statusCode(), 200)
       assertEquals(cacheControl(index),
@@ -159,12 +159,10 @@ class GameRoutesSuite extends munit.FunSuite {
       )
       assertEquals(ujson.read(reloaded.body())("phase").str,
         "setup-walker-decision")
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
   private def get(
       client: HttpClient,
@@ -177,10 +175,9 @@ class GameRoutesSuite extends munit.FunSuite {
 
   private def cacheControl(
       response: JavaHttpResponse[String]
-  ): Option[String] = {
+  ): Option[String] =
     val value = response.headers().firstValue("Cache-Control")
-    if (value.isPresent) Some(value.get()) else None
-  }
+    if value.isPresent then Some(value.get()) else None
 
   private def post(
       client: HttpClient,
@@ -194,4 +191,3 @@ class GameRoutesSuite extends munit.FunSuite {
         .build(),
       JavaHttpResponse.BodyHandlers.ofString()
     )
-}

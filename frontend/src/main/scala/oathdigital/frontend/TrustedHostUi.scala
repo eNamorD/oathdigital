@@ -14,7 +14,7 @@ import ServerUiSupport._
   * result; the host distributes them manually. Development mode passes
   * `openCreated` to go straight to the new game instead.
   */
-private[frontend] object TrustedHostUi {
+private[frontend] object TrustedHostUi:
   /** Lineage colors in menu order. Purple is the Chancellor's and is not offered yet. */
   val LineageColors: Vector[PlayerColor] = PlayerColor.all.filterNot(_ == PlayerColor.Purple)
   val MinPlayers = 2
@@ -32,7 +32,7 @@ private[frontend] object TrustedHostUi {
   private final case class PlayerRow(color: PlayerColor, node: dom.Element, input: dom.html.Input)
 
   def start(mount: dom.Element, transport: JsonTransport,
-      openCreated: Option[TrustedGameCreateResponse => Unit] = None): Unit = {
+      openCreated: Option[TrustedGameCreateResponse => Unit] = None): Unit =
     mount.textContent = ""
     mount.appendChild(text("h1", "", "Create an Oath Digital game"))
     mount.appendChild(text("p", "", openCreated match {
@@ -69,15 +69,13 @@ private[frontend] object TrustedHostUi {
     form.appendChild(adder)
 
     def taken: Set[PlayerColor] = rows.map(_.color).toSet
-    def options: Vector[dom.html.Button] = {
+    def options: Vector[dom.html.Button] =
       val found = menu.querySelectorAll("button")
       (0 until found.length).toVector.map(found(_).asInstanceOf[dom.html.Button])
-    }
-    def closeMenu(): Unit = {
+    def closeMenu(): Unit =
       menu.setAttribute("hidden", "")
       toggle.setAttribute("aria-expanded", "false")
-    }
-    def openMenu(): Unit = {
+    def openMenu(): Unit =
       menu.textContent = ""
       LineageColors.filterNot(taken).foreach { color =>
         val item = element("li", "")
@@ -96,14 +94,12 @@ private[frontend] object TrustedHostUi {
       menu.removeAttribute("hidden")
       toggle.setAttribute("aria-expanded", "true")
       options.headOption.foreach(_.focus())
-    }
-    def refresh(): Unit = {
+    def refresh(): Unit =
       val full = rows.size >= MaxPlayers
       toggle.disabled = full || taken.size == LineageColors.size
-      limit.textContent = if (full) s"Maximum $MaxPlayers players" else ""
-      if (toggle.disabled) closeMenu()
-    }
-    def addRow(color: PlayerColor): Unit = {
+      limit.textContent = if full then s"Maximum $MaxPlayers players" else ""
+      if toggle.disabled then closeMenu()
+    def addRow(color: PlayerColor): Unit =
       val node = element("li", s"host-player host-player-${color.key}")
       node.appendChild(swatch(color))
       node.appendChild(text("span", "host-player-color", name(color)))
@@ -126,43 +122,40 @@ private[frontend] object TrustedHostUi {
       list.appendChild(node)
       rows = rows :+ PlayerRow(color, node, input)
       refresh()
-    }
 
     toggle.onclick = event => {
       event.preventDefault()
-      if (menu.hasAttribute("hidden")) openMenu() else closeMenu()
+      if menu.hasAttribute("hidden") then openMenu() else closeMenu()
     }
     menu.asInstanceOf[dom.html.Element].onkeydown = event => {
       val current = options.indexWhere(_ == dom.document.activeElement)
-      event.key match {
+      event.key match
         case "Escape" => event.preventDefault(); closeMenu(); toggle.focus()
         case "ArrowDown" if options.nonEmpty =>
           event.preventDefault(); options((current + 1) % options.size).focus()
         case "ArrowUp" if options.nonEmpty =>
           event.preventDefault(); options((current - 1 + options.size) % options.size).focus()
         case _ => ()
-      }
     }
 
     LineageColors.take(MinPlayers).foreach(addRow)
 
     val create = button("Create game", "create-trusted-game")
     create.setAttribute("type", "submit")
-    def submit(): Unit = {
-      if (create.disabled) return
+    def submit(): Unit =
+      if create.disabled then return
       val ids = rows.map(_.input.value.trim)
       val problem =
-        if (rows.size < MinPlayers) Some(s"Need at least $MinPlayers players.")
+        if rows.size < MinPlayers then Some(s"Need at least $MinPlayers players.")
         else rows.zip(ids).collectFirst {
           case (row, id) if !validPlayerId(id) =>
             s"${name(row.color)} player ID must start with a letter or digit and use only " +
               "letters, digits, '.', '_', ':' or '-' (up to 128 characters)."
         }.orElse(ids.diff(ids.distinct).headOption.map(id =>
           s"Player ID \"$id\" is used twice. Give each player a different ID."))
-      problem match {
+      problem match
         case Some(message) => status.textContent = message; return
         case None => ()
-      }
       val participants = rows.zip(ids).map { case (row, id) =>
         BootstrapParticipantRequest(id, lineageId(row.color), row.color)
       }
@@ -172,17 +165,16 @@ private[frontend] object TrustedHostUi {
       transport.request("POST", "/games", Some(TrustedGameCreateRequestCodec.encode(request)))
         .foreach { result =>
           val decoded = result.flatMap { response =>
-            if (response.status >= 200 && response.status < 300)
+            if response.status >= 200 && response.status < 300 then
               TrustedGameCreateResponseCodec.decode(response.body).left.map(error =>
                 GameClientFailure.DecodeFailure(error.path, error.message))
-            else if (response.status == 409) {
+            else if response.status == 409 then
               gameId = freshGameId()
               Left(GameClientFailure.HttpFailure(409, "game-already-exists",
                 "That game ID was already taken. A new one was generated; select Create game again."))
-            }
             else Left(GameJson.responseFailure(response))
           }
-          decoded match {
+          decoded match
             case Left(error) => create.disabled = false; status.textContent = error.message
             case Right(created) if openCreated.nonEmpty =>
               status.textContent = "Game created. Opening it…"
@@ -206,7 +198,7 @@ private[frontend] object TrustedHostUi {
                   link.focus(); link.select()
                   status.textContent = "Link selected. Copy it to share with its player."
                   val clipboard = dom.window.navigator.asInstanceOf[js.Dynamic].selectDynamic("clipboard")
-                  if (!js.isUndefined(clipboard) && clipboard != null)
+                  if !js.isUndefined(clipboard) && clipboard != null then
                     clipboard.writeText(seat.url).asInstanceOf[js.Promise[Unit]].toFuture.foreach { _ =>
                       status.textContent = s"Copied seat link for ${seat.playerId}."
                     }
@@ -215,19 +207,14 @@ private[frontend] object TrustedHostUi {
                 links.appendChild(row)
               }
               mount.appendChild(links)
-          }
         }
-    }
     create.onclick = event => { event.preventDefault(); submit() }
     form.asInstanceOf[dom.html.Form].onsubmit = event => { event.preventDefault(); submit() }
     form.appendChild(create)
     mount.appendChild(form)
     mount.appendChild(status)
-  }
 
-  private def swatch(color: PlayerColor): dom.Element = {
+  private def swatch(color: PlayerColor): dom.Element =
     val node = element("span", s"color-swatch ${PlayerColorCss.of(color)}")
     node.setAttribute("aria-hidden", "true")
     node
-  }
-}

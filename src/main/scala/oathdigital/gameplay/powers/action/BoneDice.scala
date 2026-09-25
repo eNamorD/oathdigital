@@ -12,36 +12,33 @@ import oathdigital.model._
   * `BuildOps`, after the engine has paid the cost, and not in `build`, which
   * runs before it.
   */
-case object BoneDice extends PaidAction("relic.bone-dice", Cost(secret = 1)) {
+case object BoneDice extends PaidAction("relic.bone-dice", Cost(secret = 1)):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("bone-dice")
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
-      : Either[OathViolation, Operation] = source match {
+      : Either[OathViolation, Operation] = source match
     case DecisionOptionRef.Relic(id) => Right(Sequence(Vector(
       ModifyDicePool(pool, Dice),
       Roll(pool, DiceSpec(DiceKind.Attack), RollMode.Automatic),
       BuildOps((state, _) => settle(state, player, id)))))
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not a relic source"))
-  }
 
   private def settle(state: ReadyGame, player: PlayerId, id: RelicId)
-      : Either[OathViolation, Vector[CoreOperation]] = for {
+      : Either[OathViolation, Vector[CoreOperation]] = for
     held <- PlayerFacts.player(state, player)
     relic <- held.relics.find(_.id == id).toRight(
       OathViolation.InvalidEventOrder(
         s"${id.value} is not held by ${player.value}"))
-  } yield {
+  yield
     val supply = RollResults.score(state, pool)
     val gain: Vector[CoreOperation] =
-      if (supply > 0) Vector(GainSupply(player, supply)) else Vector.empty
+      if supply > 0 then Vector(GainSupply(player, supply)) else Vector.empty
     val bury: Vector[CoreOperation] =
-      if (RollResults.skulls(state, pool) > 0)
+      if RollResults.skulls(state, pool) > 0 then
         Bury.standard(BuryableCard.Relic(id),
           PositionedLocation(Location.PlayArea(player)), None, 0,
           relic.tokens.secrets, player)
       else Vector.empty
     gain ++ bury
-  }
-}

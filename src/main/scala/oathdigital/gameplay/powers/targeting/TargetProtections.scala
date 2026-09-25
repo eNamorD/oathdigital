@@ -7,9 +7,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Challenge or a Conspiracy, registered together. A power whose card is absent
   * from `catalog` is omitted.
   */
-object TargetProtections {
+object TargetProtections:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     CircletOfCommand.forCatalog(catalog).toVector ++
       OakenFortress.forCatalog(catalog).toVector ++
       RottingFortress.forCatalog(catalog).toVector
-}

@@ -25,7 +25,7 @@ import oathdigital.model._
   * and stays a target.
   */
 final case class CircletOfCommand private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = CircletOfCommand.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -42,21 +42,19 @@ final case class CircletOfCommand private (cardId: RelicId,
       "the Circlet of Command protects its holder's banners and relics"))
 
   private def dropShielded(ctx: PowerCtx, operations: Vector[Operation])
-      : Vector[Operation] = operations.flatMap {
-    case decide: Decide => decide.query match {
+      : Vector[Operation] = operations.flatMap:
+    case decide: Decide => decide.query match
       case one: DecisionQuery.ChooseOne =>
         val options = one.options.filterNot(option => shields(ctx, option.ref))
-        if (options.isEmpty) Vector.empty
+        if options.isEmpty then Vector.empty
         else Vector(decide.copy(query = one.copy(options = options)))
       case _ => Vector(decide)
-    }
     case other => Vector(other)
-  }
 
   /** Whether `ref` names a banner or a relic of the holder that the acting
     * player may not target.
     */
-  private def shields(ctx: PowerCtx, ref: DecisionOptionRef): Boolean = {
+  private def shields(ctx: PowerCtx, ref: DecisionOptionRef): Boolean =
     val current = ctx.state.game.current
     val holder = current.players.find(_.relics.exists {
       case RelicState(`cardId`, Orientation.FaceUp, _) => true
@@ -64,7 +62,7 @@ final case class CircletOfCommand private (cardId: RelicId,
     }).map(_.player)
     def held(owner: PlayerId): Boolean = holder.contains(owner) &&
       owner != ctx.activePlayer
-    ref match {
+    ref match
       case DecisionOptionRef.Banner(banner) =>
         BannerRules.holder(current, banner).exists(held)
       case DecisionOptionRef.Relic(relic) => relic != cardId &&
@@ -74,13 +72,9 @@ final case class CircletOfCommand private (cardId: RelicId,
         !current.players.find(_.player == owner).flatMap(_.relics.lift(slot))
           .exists(_.id == cardId)
       case _ => false
-    }
-  }
-}
 
-object CircletOfCommand {
+object CircletOfCommand:
   val id: PowerId = PowerId("relic.circlet-of-command")
 
   def forCatalog(catalog: ExecutableCatalog): Option[CircletOfCommand] =
     CatalogCards.relic(catalog, id).map(new CircletOfCommand(_, catalog))
-}

@@ -4,7 +4,7 @@ import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
-class OperationStateAdapterSuite extends munit.FunSuite {
+class OperationStateAdapterSuite extends munit.FunSuite:
   private val exile = ForceKind.Exile(lineageId)
   private val ready = ReadyGames.of(game).copy(knowledge = CardKnowledge(
       siteRelics = Map(playerId -> Map(sites(1) -> Vector(siteRelic.id))),
@@ -12,7 +12,7 @@ class OperationStateAdapterSuite extends munit.FunSuite {
       heldRelics = Map(playerId -> Vector(reliquaryRelic))
     ))
 
-  test("card lookup maps precise containers to semantic locations") {
+  test("card lookup maps precise containers to semantic locations"):
     assert(OperationStateAdapter.card(ready, worldDenizen,
       Location.Deck(CardDeck.World)).isRight)
     assert(OperationStateAdapter.card(ready, siteDenizen.id,
@@ -28,9 +28,8 @@ class OperationStateAdapterSuite extends munit.FunSuite {
     assert(OperationStateAdapter.card(ready, worldDenizen,
       Location.PlayArea(playerId)).left.toOption.get
       .isInstanceOf[OperationError.MissingPiece])
-  }
 
-  test("temporary hands are not part of a player's play area") {
+  test("temporary hands are not part of a player's play area"):
     val inHand = ready.updateCurrent(_.copy(
         commonCards = ready.game.current.commonCards.copy(worldDeck = Vector.empty),
         temporaryHands = Map(playerId -> Vector(worldDenizen))))
@@ -40,9 +39,8 @@ class OperationStateAdapterSuite extends munit.FunSuite {
     assert(OperationStateAdapter.card(inHand, worldDenizen,
       Location.PlayArea(playerId)).left.toOption.get
       .isInstanceOf[OperationError.MissingPiece])
-  }
 
-  test("piece quantities cover boards sites cards banners and bounded banks") {
+  test("piece quantities cover boards sites cards banners and bounded banks"):
     import AvailableQuantity._
 
     assertEquals(OperationStateAdapter.quantity(ready, Piece.Favor(1),
@@ -67,13 +65,10 @@ class OperationStateAdapterSuite extends munit.FunSuite {
     val unknown = PlayerId("unknown")
     assertEquals(OperationStateAdapter.quantity(ready, Piece.Pawn(unknown),
       Location.Site(sites.head)), Left(OperationError.UnknownPlayer(unknown)))
-  }
 
-  test("secret orientation and private knowledge remain separate from location") {
+  test("secret orientation and private knowledge remain separate from location"):
     assertEquals(OperationStateAdapter.secrets(ready,
       Location.PlayArea(playerId)), Right(SecretInventory(1, 0)))
     assert(OperationStateAdapter.knows(ready, playerId, siteRelic.id))
     assert(OperationStateAdapter.knows(ready, playerId, adviser.id))
     assert(OperationStateAdapter.knows(ready, playerId, reliquaryRelic))
-  }
-}

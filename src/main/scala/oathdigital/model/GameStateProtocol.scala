@@ -5,13 +5,12 @@ import oathdigital.model._
 final case class MaterialBankState(
     favor: Map[Suit, Int],
     warbandSupply: Map[ForceKind, Int]
-) {
+):
   require(favor.values.forall(_ >= 0), "favor banks must be non-negative")
   require(warbandSupply.values.forall(_ >= 0),
     "warband supplies must be non-negative")
-}
 
-object MaterialBankState {
+object MaterialBankState:
   val ExileWarbandsPerLineage = 14
   val BanditWarbands = 24
 
@@ -21,7 +20,6 @@ object MaterialBankState {
     lineages.map(lineage =>
       (ForceKind.Exile(lineage): ForceKind) -> ExileWarbandsPerLineage).toMap +
       (ForceKind.Bandit -> BanditWarbands)
-}
 
 /** Private card knowledge, independent of physical card ownership. */
 final case class CardKnowledge(
@@ -36,15 +34,14 @@ final case class ReadyGame(
     setup: FirstGameSupportState,
     banks: MaterialBankState,
     knowledge: CardKnowledge = CardKnowledge()
-) {
+):
   def updateCurrent(f: CurrentGameState => CurrentGameState): ReadyGame =
     copy(game = game.copy(current = f(game.current)))
 
   def updateCampaign(f: CampaignState => CampaignState): ReadyGame =
     copy(game = game.copy(campaign = f(game.campaign)))
-}
 
-object ReadyGame {
+object ReadyGame:
   /** Table state for a game that has just been set up: the printed warband
     * inventory for the lineages seated in `game`, and the given favor banks.
     * Every setup path, first game or otherwise, builds its `ReadyGame` here so
@@ -67,10 +64,8 @@ object ReadyGame {
           game.current.players.map(_.lineage))
       )
     )
-}
 
 sealed trait OathState extends Product with Serializable
-object OathState {
+object OathState:
   case object NoGame extends OathState
   final case class Ready(value: ReadyGame) extends OathState
-}

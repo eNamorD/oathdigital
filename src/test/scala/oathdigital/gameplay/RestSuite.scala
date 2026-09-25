@@ -13,14 +13,13 @@ import oathdigital.model.OathViolation.{UnsupportedRestState,
   UnsupportedRuleCatalog}
 import oathdigital.catalog.CatalogPower
 
-class RestSuite extends munit.FunSuite {
+class RestSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
 
-  private def act: ReadyGame = {
+  private def act: ReadyGame =
     val Ready(initial) = execute()._1: @unchecked
     initial.updateCurrent(_.copy(
       turn = initial.game.current.turn.copy(phase = Phase.Act)))
-  }
 
   private def rest(state: OathState, player: PlayerId,
       using: OathRules = rules) =
@@ -33,10 +32,9 @@ class RestSuite extends munit.FunSuite {
     * (one from each group first, then any remaining from the leftover pool).
     */
   private def takeUnplacedDenizens(base: ReadyGame, count: Int,
-      minSuits: Int = 1): (Vector[DenizenId], ReadyGame) = {
-    val deck = base.game.current.commonCards.worldDeck.collect {
+      minSuits: Int = 1): (Vector[DenizenId], ReadyGame) =
+    val deck = base.game.current.commonCards.worldDeck.collect:
       case id: DenizenId => id
-    }
     val groups = deck.groupBy { id => catalog.denizens
       .find(_.id.value == id.value).map(_.suit.key).getOrElse("") }
       .toVector.sortBy(_._1).map(_._2)
@@ -47,29 +45,26 @@ class RestSuite extends munit.FunSuite {
       id => chosen.contains(id))
     chosen -> base.updateCurrent(_.copy(commonCards =
         base.game.current.commonCards.copy(worldDeck = worldDeck)))
-  }
 
   /** Picks `count` relics still in the relic deck and removes them from it. */
   private def takeUnplacedRelics(base: ReadyGame, count: Int)
-      : (Vector[RelicId], ReadyGame) = {
+      : (Vector[RelicId], ReadyGame) =
     val chosen = base.game.current.commonCards.relicDeck.take(count)
     val relicDeck = base.game.current.commonCards.relicDeck.filterNot(
       id => chosen.contains(id))
     chosen -> base.updateCurrent(_.copy(commonCards =
         base.game.current.commonCards.copy(relicDeck = relicDeck)))
-  }
 
   /** Picks an edifice still in the edifice deck and removes it. */
   private def takeUnplacedEdifice(base: ReadyGame)
-      : (EdificeId, ReadyGame) = {
+      : (EdificeId, ReadyGame) =
     val chosen = base.game.current.commonCards.edificeDeck.head
     val edificeDeck = base.game.current.commonCards.edificeDeck.filterNot(
       _ == chosen)
     chosen -> base.updateCurrent(_.copy(commonCards =
         base.game.current.commonCards.copy(edificeDeck = edificeDeck)))
-  }
 
-  test("Rest returns controlled resources reveals secrets refreshes and wakes next") {
+  test("Rest returns controlled resources reveals secrets refreshes and wakes next"):
     val base0 = act
     val actor = base0.game.current.players.find(
       _.player == base0.game.current.turn.activePlayer).get
@@ -91,7 +86,7 @@ class RestSuite extends munit.FunSuite {
         map = withRelics.game.current.map.copy(sites =
           withRelics.game.current.map.sites.updated(siteId, site)),
         players = withRelics.game.current.players.map { player =>
-          if (player.player != actor.player) player
+          if player.player != actor.player then player
           else player.copy(
             board = player.board.copy(faceDownSecrets = 2,
               supply = SupplyTrack(1)),
@@ -116,9 +111,8 @@ class RestSuite extends munit.FunSuite {
     assertEquals(after.game.current.turn.usedPowers, Set.empty[PowerUseRef])
     assertEquals(after.banks.favor.values.sum,
       prepared.banks.favor.values.sum + 3)
-  }
 
-  test("Rest rejects a missing bounded warband supply") {
+  test("Rest rejects a missing bounded warband supply"):
     val ready = act
     val actor = ready.game.current.players.find(
       _.player == ready.game.current.turn.activePlayer).get
@@ -127,9 +121,8 @@ class RestSuite extends munit.FunSuite {
 
     assert(rest(Ready(malformed), actor.player)
       .left.toOption.get.isInstanceOf[UnsupportedRestState])
-  }
 
-  test("Rest globally cleans every in-play denizen and relic") {
+  test("Rest globally cleans every in-play denizen and relic"):
     val base0 = act
     val actor = base0.game.current.players.find(
       _.player == base0.game.current.turn.activePlayer).get
@@ -164,10 +157,10 @@ class RestSuite extends munit.FunSuite {
           forces = SiteForces.Occupied(ForceKind.Bandit, 1),
           denizens = Vector(outsideCard), relics = Vector(siteRelic)))),
       players = withRelics.game.current.players.map { p =>
-        if (p.player == actor.player)
+        if p.player == actor.player then
           p.copy(board = p.board.copy(faceDownSecrets = 2), advisers = Vector(adviser),
             relics = Vector(relic))
-        else if (p.player == otherBefore.player)
+        else if p.player == otherBefore.player then
           p.copy(advisers = Vector(otherAdviser), relics = Vector(otherRelic))
         else p
       }))
@@ -199,9 +192,8 @@ class RestSuite extends munit.FunSuite {
       case denizen: DenizenState => denizen.tokens
     }.forall(_.isEmpty))
     assert(otherAfter.relics.forall(_.tokens.isEmpty))
-  }
 
-  test("replaying a round of walker Rests reproduces the state and advances the round") {
+  test("replaying a round of walker Rests reproduces the state and advances the round"):
     var state: OathState = Ready(act)
     var events = Vector.empty[OathEvent]
     val participants = act.game.current.players.map(_.player)
@@ -211,12 +203,11 @@ class RestSuite extends munit.FunSuite {
       val rested = rest(state, player).toOption.get
       events ++= rested.events
       state = rested.state
-      if (player != order.last) {
+      if player != order.last then
         val woke = rules.startWalker(state, PhaseTransitionRef.EndWake,
           state.asInstanceOf[Ready].value.game.current.turn.activePlayer).toOption.get
         events ++= woke.events
         state = woke.state
-      }
     }
     val Ready(after) = state: @unchecked
     assertEquals(after.game.current.tracks.round, 2)
@@ -225,9 +216,8 @@ class RestSuite extends munit.FunSuite {
     assertEquals(events.foldLeft[Either[OathViolation, OathState]](
       Right(Ready(act)))((next, event) => next.flatMap(rules.evolve(_, event))),
       Right(state))
-  }
 
-  test("unrelated active powers and the end-die Arbiter legacy do not block") {
+  test("unrelated active powers and the end-die Arbiter legacy do not block"):
     val base = act
     val lineage = base.game.campaign.lineages.values.head
     val unrelatedHandlers = Set(
@@ -245,15 +235,14 @@ class RestSuite extends munit.FunSuite {
       base.game.current.copy(commonCards = base.game.current.commonCards.copy(
         worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == unrelated)),
         players = base.game.current.players.map { player =>
-        if (player.player != base.game.current.turn.activePlayer) player
+        if player.player != base.game.current.turn.activePlayer then player
         else player.copy(advisers = Vector(DenizenState(
           unrelated, Orientation.FaceUp, Tokens.empty)))
       })))
     rest(Ready(supported), supported.game.current.turn.activePlayer)
       .fold(error => fail(error.toString), _ => ())
-  }
 
-  test("each relevant Rest handler records fallback diagnostics without blocking") {
+  test("each relevant Rest handler records fallback diagnostics without blocking"):
     val base = act
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
@@ -264,7 +253,7 @@ class RestSuite extends munit.FunSuite {
       val adviser = DenizenState(DenizenId(definition.id.value),
         Orientation.FaceUp, Tokens.empty)
       val state = base.updateCurrent(_.copy(
-        players = base.game.current.players.map(p => if (p.player == actor.player)
+        players = base.game.current.players.map(p => if p.player == actor.player then
           p.copy(advisers = Vector(adviser)) else p)))
       val accepted = rest(Ready(state), actor.player).toOption.get
       val recorded = accepted.events.head.asInstanceOf[IgnoredRulesRecorded]
@@ -288,9 +277,8 @@ class RestSuite extends munit.FunSuite {
       .toOption.get.events.head.asInstanceOf[IgnoredRulesRecorded]
     assert(siteAccepted.diagnostics.head.source.stableKey
       .startsWith(s"site-card:${siteId.value}:"))
-  }
 
-  test("changed inventory in every catalog family fails before runtime discovery") {
+  test("changed inventory in every catalog family fails before runtime discovery"):
     val base = act
     val actor = base.game.current.turn.activePlayer
     def rejects(c: oathdigital.catalog.ExecutableCatalog) =
@@ -319,9 +307,8 @@ class RestSuite extends munit.FunSuite {
       catalog.copy(sites = catalog.sites.updated(0,
         catalog.sites.head.copy(handlers = catalog.sites.head.handlers :+ "changed"))))
     assert(changed.forall(rejects))
-  }
 
-  test("altered banner and Foundation types record stable fallback identities") {
+  test("altered banner and Foundation types record stable fallback identities"):
     val base = act
     val actor = base.game.current.turn.activePlayer
     def diagnostic(ready: ReadyGame) = rest(Ready(ready), actor)
@@ -338,9 +325,8 @@ class RestSuite extends munit.FunSuite {
         number, FoundationState(FoundationFace.Altered, Set.empty))))
     assertEquals(diagnostic(foundation).source.stableKey,
       s"foundation:${number.value}")
-  }
 
-  test("last player of round eight finishes the game by War Exhaustion") {
+  test("last player of round eight finishes the game by War Exhaustion"):
     val base = act
     val participants = base.game.current.players.map(_.player)
     val start = participants.indexOf(base.setup.firstPlayer)
@@ -368,6 +354,3 @@ class RestSuite extends munit.FunSuite {
       "round-eight", oathdigital.application.LoadedGame(
         Ready(unsupported), 30L), last)
     assert(projection.legalControls.contains("beginRest"))
-  }
-
-}

@@ -8,7 +8,7 @@ import ServerUiSupport._
   * decides nothing: it draws what `legalControls` names. The banner and the
   * amount are chosen at the parked decisions, not here.
   */
-private[frontend] object BannerControls {
+private[frontend] object BannerControls:
   private final case class Control(control: String, kind: String,
       label: String, command: GameCommand)
 
@@ -28,4 +28,3 @@ private[frontend] object BannerControls {
         node.onclick = _ => submit(control.command)
         groups.appendKind(control.kind, node)
       }
-}

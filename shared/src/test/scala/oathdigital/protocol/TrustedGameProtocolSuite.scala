@@ -2,18 +2,17 @@ package oathdigital.protocol
 
 import oathdigital.model.PlayerColor
 
-class TrustedGameProtocolSuite extends munit.FunSuite {
+class TrustedGameProtocolSuite extends munit.FunSuite:
   private val json = """{"gameId":"game-1","participants":[{"playerId":"p1","lineageId":"l1","color":"red"},{"playerId":"p2","lineageId":"l2","color":"blue"}]}"""
   private val request = TrustedGameCreateRequest("game-1", Vector(
     BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
     BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue)))
 
-  test("creation request round trips with stable actorless field order") {
+  test("creation request round trips with stable actorless field order"):
     assertEquals(TrustedGameCreateRequestCodec.encode(request), json)
     assertEquals(TrustedGameCreateRequestCodec.decode(json), Right(request))
-  }
 
-  test("creation requires exact root and participant fields") {
+  test("creation requires exact root and participant fields"):
     val base = ujson.read(json)
     Vector("gameId", "participants").foreach { key =>
       val value = ujson.read(json).obj
@@ -27,9 +26,8 @@ class TrustedGameProtocolSuite extends munit.FunSuite {
     }
     base("participants")(0)("actor") = "p1"
     assert(TrustedGameCreateRequestCodec.decode(ujson.write(base)).isLeft)
-  }
 
-  test("invalid identifiers, duplicates, and empty participants fail") {
+  test("invalid identifiers, duplicates, and empty participants fail"):
     Vector("", " ", "a/b", "a?b", "a" * 129).foreach { invalid =>
       assert(TrustedGameCreateRequestCodec.decode(json.replace("game-1", invalid)).isLeft)
       assert(TrustedGameCreateRequestCodec.decode(json.replace("p1", invalid)).isLeft)
@@ -49,9 +47,8 @@ class TrustedGameProtocolSuite extends munit.FunSuite {
     Vector("[]", "null", "{", json.replace("\"game-1\"", "12")).foreach { invalid =>
       assert(TrustedGameCreateRequestCodec.decode(invalid).isLeft)
     }
-  }
 
-  test("response contains only ordered game and seat links with strict decoding") {
+  test("response contains only ordered game and seat links with strict decoding"):
     val response = TrustedGameCreateResponse("game-1", Vector(
       TrustedSeatLink("p2", "https://example.test/s/code2"),
       TrustedSeatLink("p1", "https://example.test/s/code1")))
@@ -66,5 +63,3 @@ class TrustedGameProtocolSuite extends munit.FunSuite {
     assert(TrustedGameCreateResponseCodec.decode(ujson.write(missing)).isLeft)
     extra.obj("unexpected") = ujson.Bool(true)
     assert(TrustedGameCreateResponseCodec.decode(ujson.write(extra)).isLeft)
-  }
-}

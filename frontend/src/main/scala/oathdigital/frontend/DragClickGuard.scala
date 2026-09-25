@@ -10,10 +10,10 @@ import org.scalajs.dom
   * phase, with the same six-pixel threshold; the decision panel is outside the
   * map, so it needs its own.
   */
-private[frontend] object DragClickGuard {
+private[frontend] object DragClickGuard:
   private val Threshold = 6.0
 
-  def attach(node: dom.html.Element): Unit = {
+  def attach(node: dom.html.Element): Unit =
     var start = Option.empty[(Double, Double)]
     var suppress = false
     node.addEventListener("mousedown", (event: dom.MouseEvent) => {
@@ -22,14 +22,12 @@ private[frontend] object DragClickGuard {
     })
     node.addEventListener("mousemove", (event: dom.MouseEvent) =>
       start.foreach { case (x, y) =>
-        if (math.hypot(event.clientX - x, event.clientY - y) > Threshold)
+        if math.hypot(event.clientX - x, event.clientY - y) > Threshold then
           suppress = true
       })
     node.addEventListener("dragstart", (_: dom.Event) => suppress = true)
     node.addEventListener("click", (event: dom.Event) => {
-      if (suppress) { event.preventDefault(); event.stopImmediatePropagation() }
+      if suppress then { event.preventDefault(); event.stopImmediatePropagation() }
       suppress = false
       start = None
     }, true)
-  }
-}

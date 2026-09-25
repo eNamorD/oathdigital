@@ -11,7 +11,7 @@ import oathdigital.model.OathState.Ready
   * suites. The first game seats three players: the actor (p2) at
   * ancient-city, p1 at buried-giant and p3 at broken-peaks.
   */
-object MovementFixture {
+object MovementFixture:
   import PowerFixture._
   import TargetsFixture.rules
 
@@ -37,7 +37,7 @@ object MovementFixture {
 
   def withRelicTokens(ready: ReadyGame, id: RelicId, tokens: Tokens)
       : ReadyGame = updateActor(ready)(p => p.copy(relics = p.relics.map(r =>
-    if (r.id == id) r.copy(tokens = tokens) else r)))
+    if r.id == id then r.copy(tokens = tokens) else r)))
 
   /** Replaces a regional discard pile. The old pile goes back under the world
     * deck and a new card leaves it if it is there, so the inventory stays
@@ -53,11 +53,10 @@ object MovementFixture {
   }
 
   /** A denizen of `suit` that is nowhere in the game yet. */
-  def freshDenizen(ready: ReadyGame, suit: Suit, skip: Int = 0): DenizenId = {
+  def freshDenizen(ready: ReadyGame, suit: Suit, skip: Int = 0): DenizenId =
     val present = CardIndex.from(ready.game).toOption.get.ids
     catalog.denizens.filter(_.suit == suit).map(d => DenizenId(d.id.value))
       .filterNot(present.contains)(skip)
-  }
 
   def aVision(ready: ReadyGame): VisionId =
     ready.game.current.commonCards.worldDeck.collectFirst {
@@ -87,4 +86,3 @@ object MovementFixture {
 
   def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
     events.collect { case step: WalkerStepRecorded => step.ops }.flatten
-}

@@ -8,7 +8,7 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * two faces of the Rampart and Battle Honors, registered together. A plan whose
   * card is absent from `catalog` is omitted.
   */
-object SimplePlans {
+object SimplePlans:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Mercenaries.forCatalog(catalog).toVector ++
       Wrestlers.forCatalog(catalog).toVector ++
@@ -16,4 +16,3 @@ object SimplePlans {
       ToweringRampart.forCatalog(catalog).toVector ++
       CrackedRampart.forCatalog(catalog).toVector ++
       BattleHonors.forCatalog(catalog).toVector
-}

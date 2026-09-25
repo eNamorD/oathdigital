@@ -3,7 +3,7 @@ package oathdigital.gameplay.actions
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 
-private[gameplay] object MinorActionOperationPolicy extends OperationPolicy {
+private[gameplay] object MinorActionOperationPolicy extends OperationPolicy:
   override def validate(
       ready: ReadyGame,
       operation: CoreOperation
@@ -15,7 +15,7 @@ private[gameplay] object MinorActionOperationPolicy extends OperationPolicy {
   )
 
   private def permits(ready: ReadyGame, operation: CoreOperation): Boolean =
-    operation match {
+    operation match
       case Reveal(relic: RelicId, Location.PlayArea(player)) =>
         activePlayerAt(ready, player, None).exists(_.relics.exists(value =>
           value.id == relic && value.orientation == Orientation.FaceDown))
@@ -36,7 +36,6 @@ private[gameplay] object MinorActionOperationPolicy extends OperationPolicy {
           None
       ) => validWarbandActor(ready, player, site, kind)
       case _ => false
-    }
 
   private def validWarbandActor(
       ready: ReadyGame,
@@ -54,4 +53,3 @@ private[gameplay] object MinorActionOperationPolicy extends OperationPolicy {
     actor.player == player &&
       ready.game.current.turn.activePlayer == player &&
       site.forall(actor.pawnSite.contains))
-}

@@ -9,18 +9,17 @@ import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
 import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts. */
-private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
+private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
   this: GameEventJsonSupport =>
   import GameEventWire._
   import WireError._
 
-  protected final val walkerDiscriminator: PartialFunction[OathEvent, String] = {
+  protected final val walkerDiscriminator: PartialFunction[OathEvent, String] =
     case _: WalkerStepRecorded => WalkerStepRecordedType
     case _: WalkerParked => WalkerParkedType
     case _: WalkerCompleted => WalkerCompletedType
-  }
 
-  protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] = {
+  protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] =
     case WalkerStepRecorded(nodeId, payload, ops, contributions) =>
       ujson.Obj(
         "nodeId" -> nodeId,
@@ -40,21 +39,18 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
           DecisionAnswerCodec.encodeRef)))
     case WalkerCompleted(procedure) => ujson.Obj(
       "procedure" -> encodeProcedure(procedure))
-  }
 
   protected final def walkerDecode(eventType: String, payload: ujson.Value,
       path: String, envelopeCatalog: CatalogRef)
-      : Option[Either[WireError, OathEvent]] = {
-    val decoder: PartialFunction[String, Either[WireError, OathEvent]] = {
+      : Option[Either[WireError, OathEvent]] =
+    val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
       case WalkerStepRecordedType => decodeStepRecorded(payload, path)
       case WalkerParkedType => decodeParked(payload, path)
-      case WalkerCompletedType => for {
+      case WalkerCompletedType => for
         procedure <- decodeProcedure(payload("procedure"),
           s"$path.procedure")
-      } yield WalkerCompleted(procedure)
-    }
+      yield WalkerCompleted(procedure)
     decoder.lift(eventType)
-  }
 
   private def encodeAnswered(answered: Answered): ujson.Value = ujson.Obj(
     "decisionId" -> answered.decisionId,
@@ -62,13 +58,13 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
     "byPlayerId" -> answered.by.value)
 
   private def decodeAnswered(value: ujson.Value,
-      path: String): Either[WireError, Answered] = for {
+      path: String): Either[WireError, Answered] = for
     answer <- DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
-  } yield Answered(value("decisionId").str, answer,
+  yield Answered(value("decisionId").str, answer,
     PlayerId(value("byPlayerId").str))
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
-    payload match {
+    payload match
       case WalkerStepPayload.DeltaRecorded(meaning) =>
         ujson.Obj("kind" -> "delta", "meaning" -> encodeDeltaMeaning(meaning))
       case ChoicePayload(decisionId, answer, by) => ujson.Obj(
@@ -84,15 +80,14 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
             case other => throw new IllegalArgumentException(
               s"unsupported walker die face $other")
           }))
-        if (automatic) encoded("automatic") = ujson.True
+        if automatic then encoded("automatic") = ujson.True
         encoded
       case other => throw new IllegalArgumentException(
         s"unsupported walker step payload $other")
-    }
 
   private def decodeStepPayload(value: ujson.Value,
       path: String): Either[WireError, WalkerStepPayload] =
-    value("kind").str match {
+    value("kind").str match
       case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
         .map(WalkerStepPayload.DeltaRecorded.apply)
       case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
@@ -104,17 +99,15 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
           value.obj.get("automatic").exists(_.bool)))
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker step payload '$other'"))
-    }
 
   private def decodeDieFace(value: String, path: String)
-      : Either[WireError, DieFace] = value match {
+      : Either[WireError, DieFace] = value match
     case "hollow-sword" | "one-sword" | "two-swords-skull" =>
       decodeAttackFace(value, path)
     case _ => decodeDefenseFace(value, path)
-  }
 
   private def encodeDeltaMeaning(meaning: DeltaMeaning): ujson.Value =
-    meaning match {
+    meaning match
       case DicePoolModified(pool, delta) => ujson.Obj(
         "kind" -> "dice-pool-modified", "pool" -> pool.value,
         "delta" -> delta)
@@ -126,16 +119,15 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
         "relicId" -> relic.value, "siteId" -> site.value)
       case OperationApplied(label) => ujson.Obj(
         "kind" -> "operation-applied", "label" -> label)
-    }
 
   private def decodeDeltaMeaning(value: ujson.Value,
-      path: String): Either[WireError, DeltaMeaning] = value("kind").str match {
+      path: String): Either[WireError, DeltaMeaning] = value("kind").str match
     case "dice-pool-modified" =>
       decodeSignedInt(value("delta"), s"$path.delta").map(delta =>
         DicePoolModified(PoolKey(value("pool").str), delta))
     case "supply-spent" =>
       decodeSignedInt(value("amount"), s"$path.amount").flatMap { amount =>
-        if (amount > 0) Right(SupplySpent(
+        if amount > 0 then Right(SupplySpent(
           PlayerId(value("playerId").str), amount))
         else Left(InvalidValue(s"$path.amount", "must be positive"))
       }
@@ -146,7 +138,6 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
       Right(OperationApplied(value("label").str))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown walker delta meaning '$other'"))
-  }
 
   /** Wire spelling of a procedure reference (Task 4): a family tag plus its
     * key, so a decoder can reject a reference read back under the wrong
@@ -157,36 +148,33 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
     ujson.Obj("family" -> procedure.family, "key" -> procedure.key)
 
   private def decodeProcedure(value: ujson.Value,
-      path: String): Either[WireError, ProcedureRef] = {
+      path: String): Either[WireError, ProcedureRef] =
     val family = value("family").str
     val key = value("key").str
     ProcedureRef.fromFamilyKey(family, key).toRight(InvalidValue(path,
       s"unknown walker procedure '$family/$key'"))
-  }
 
   private def decodeStepRecorded(value: ujson.Value,
-      path: String): Either[WireError, OathEvent] = try for {
+      path: String): Either[WireError, OathEvent] = try for
     step <- decodeStepPayload(value("step"), s"$path.step")
-    ops <- traverse(value("ops").arr.zipWithIndex.toVector) {
+    ops <- traverse(value("ops").arr.zipWithIndex.toVector):
       case (operation, index) => decodeOperation(operation, s"$path.ops[$index]")
-    }
     contributions = value("contributions").arr.toVector.map(id =>
       PowerId(id.str))
-  } yield WalkerStepRecorded(
+  yield WalkerStepRecorded(
     value("nodeId").str, step, ops, contributions)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker step"))) }
 
   private def decodeParked(value: ujson.Value,
-      path: String): Either[WireError, OathEvent] = try for {
+      path: String): Either[WireError, OathEvent] = try for
     procedure <- decodeProcedure(value("procedure"), s"$path.procedure")
-    answered <- traverse(value("answered").arr.zipWithIndex.toVector) {
+    answered <- traverse(value("answered").arr.zipWithIndex.toVector):
       case (answer, index) => decodeAnswered(answer,
         s"$path.answered[$index]")
-    }
     modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
     startArgs <- decodeStartArgs(value, s"$path.startArgs")
-  } yield WalkerParked(procedure,
+  yield WalkerParked(procedure,
     value("at").arr.toVector.map(_.str), answered, modifiers, startArgs)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }
@@ -197,11 +185,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
     */
   private def decodeStartArgs(value: ujson.Value, path: String)
       : Either[WireError, Vector[DecisionOptionRef]] =
-    value.obj.get("startArgs") match {
+    value.obj.get("startArgs") match
       case None => Right(Vector.empty)
-      case Some(args) => traverse(args.arr.zipWithIndex.toVector) {
+      case Some(args) => traverse(args.arr.zipWithIndex.toVector):
         case (ref, index) =>
           DecisionAnswerCodec.decodeRef(ref, s"$path[$index]")
-      }
-    }
-}

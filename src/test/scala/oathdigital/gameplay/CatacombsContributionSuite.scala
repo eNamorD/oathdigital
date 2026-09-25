@@ -22,7 +22,7 @@ import oathdigital.model._
   * top card facedown at the site for a printed 1-secret cost placed on the
   * Catacombs card itself.
   */
-class CatacombsContributionSuite extends munit.FunSuite {
+class CatacombsContributionSuite extends munit.FunSuite:
   import CatacombsContributionSuite._
 
   /** The production rules instance shape: the real contribution catalog,
@@ -39,13 +39,12 @@ class CatacombsContributionSuite extends munit.FunSuite {
   private def started(fixture: CatacombsContributionSuite.Fixture,
       modifiers: Vector[PowerId]): OathTransition =
     rules.startWalker(Ready(fixture.ready), ActionRef.Recover, fixture.actor,
-      modifiers) match {
+      modifiers) match
       case Right(transition) => transition
       case other => fail(s"expected the walker start to run, got $other")
-    }
 
   test("Catacombs makes a relic-less site recoverable, placing the relic and " +
-      "paying its secret in one recorded step attributed to the power") {
+      "paying its secret in one recorded step attributed to the power"):
     val fixture = reliclessSite()
     val transition = started(fixture, Vector(catacombsId))
 
@@ -79,9 +78,8 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(after.game.current.walkerPending.map(_.at),
       Some(Vector("2", "0", "2", "0")))
     assertEquals(after.game.current.walkerModifiers, Vector(catacombsId))
-  }
 
-  test("without the Catacombs modifier the same relic-less start remains legal") {
+  test("without the Catacombs modifier the same relic-less start remains legal"):
     val fixture = reliclessSite()
     val transition = started(fixture, Vector.empty)
     val Ready(after) = transition.state: @unchecked
@@ -89,10 +87,9 @@ class CatacombsContributionSuite extends munit.FunSuite {
       Some(Vector("1", "0", "2", "0")))
     assertEquals(after.game.current.map.sites(fixture.site).relics,
       Vector.empty)
-  }
 
   test("a site that already holds a facedown relic starts with no modifier " +
-      "and records no placement operations") {
+      "and records no placement operations"):
     val fixture = relicSite()
     val transition = started(fixture, Vector.empty)
     val recorded = steps(transition.events)
@@ -111,10 +108,9 @@ class CatacombsContributionSuite extends munit.FunSuite {
       fixture.ready.game.current.commonCards.relicDeck)
     assertEquals(after.game.current.walkerPending.map(_.at),
       Some(Vector("1", "0", "2", "0")))
-  }
 
   test("the Catacombs fold survives its own effect: a resume after the last " +
-      "secret is spent still addresses the leaf the walk parked at") {
+      "secret is spent still addresses the leaf the walk parked at"):
     // The contribution's applicability must be STABLE across the commands of
     // one action: the walker re-derives and re-folds the tree every command,
     // so an `applicable` that consulted the resources the power itself spends
@@ -129,10 +125,9 @@ class CatacombsContributionSuite extends munit.FunSuite {
 
     val resumed = rules.resolveWalker(transition.state, fixture.actor,
       RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("continue"))) match {
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("continue"))) match
       case Right(next) => next
       case other => fail(s"expected the resumed choice to run, got $other")
-    }
     // The invariant under test: the resumed fold must address the SAME leaf
     // the walk parked at, not a re-derived tree shifted by a dropped/moved
     // Catacombs node. Pin the resumed answer's step to the exact parked
@@ -140,42 +135,37 @@ class CatacombsContributionSuite extends munit.FunSuite {
     val choiceStep = steps(resumed.events).head
     assertEquals(choiceStep.nodeId, parkedAt.get.mkString("."))
     assertEquals(choiceStep.ops, Vector.empty[CoreOperation])
-  }
 
-  test("a Restriction-only power does not make relic-less Recover illegal") {
+  test("a Restriction-only power does not make relic-less Recover illegal"):
     val fixture = reliclessSite()
-    val restrictionOnly = new ContributingPower {
+    val restrictionOnly = new ContributingPower:
       def id: PowerId = PowerId("test.restriction-only")
       def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
       def contributions: Map[PowerWindow, Vector[Contribution]] =
         Map(PowerWindow.RecoverActionEligibility -> Vector(
           Restriction((_, _) => None)))
-    }
     val restrictedRules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowers(Vector(restrictionOnly)),
       walkerDice = WalkerDiceFixture.blanks)
     assert(restrictedRules.startWalker(Ready(fixture.ready), ActionRef.Recover,
       fixture.actor).isRight)
-  }
 
   test("Catacombs is rejected when the site's relic slot is already full " +
-      "(finding I1: capacity is enforced, not just the empty-deck case)") {
+      "(finding I1: capacity is enforced, not just the empty-deck case)"):
     val fixture = fullRelicSite()
     rules.startWalker(Ready(fixture.ready), ActionRef.Recover, fixture.actor,
-        Vector(catacombsId)) match {
+        Vector(catacombsId)) match
       case Left(violation: OathViolation.RecoverUnavailable) =>
         assert(violation.detail.contains("no empty relic slot"),
           s"violation detail '${violation.detail}' should mention the " +
             "full relic slot")
       case other =>
         fail(s"expected the capacity-full start to be rejected, got $other")
-    }
     // A `Left` carries no transition at all: nothing is appended and the
     // fixture's own state (never mutated -- it is immutable data) is the
     // only state that exists for this command.
-  }
 
-  test("Catacombs at a site the actor rules places the relic at its own site") {
+  test("Catacombs at a site the actor rules places the relic at its own site"):
     val fixture = ruledElsewhere()
     val transition = started(fixture, Vector(catacombsId))
     val Ready(after) = transition.state: @unchecked
@@ -184,23 +174,19 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(there.denizens.head match {
       case d: DenizenState => d.tokens.secrets
       case _ => -1 }, 1)
-  }
 
-  test("Catacombs at a site the actor neither rules nor stands on is not applicable") {
+  test("Catacombs at a site the actor neither rules nor stands on is not applicable"):
     val fixture = ruledElsewhere(ruled = false)
     rules.startWalker(Ready(fixture.ready), ActionRef.Recover, fixture.actor,
-      Vector(catacombsId)) match {
+      Vector(catacombsId)) match
       case Left(OathViolation.InvalidEventOrder(detail)) =>
         assert(detail.contains("not applicable"), detail)
       case other => fail(s"expected the modifier to be refused, got $other")
-    }
-  }
-}
 
 /** Shared fixture: the application-level projection suite drives the same
   * Catacombs game to pin the projector against the walker's own fold.
   */
-object CatacombsContributionSuite {
+object CatacombsContributionSuite:
   val catacombsId: PowerId = PowerId("denizen.catacombs")
 
   /** Read from the catalog so the fixture and the contribution have to agree
@@ -227,7 +213,7 @@ object CatacombsContributionSuite {
     fixture(secrets = 2, placeRelic = false, fillCapacity = true)
 
   private def fixture(secrets: Int,
-      placeRelic: Boolean, fillCapacity: Boolean = false): Fixture = {
+      placeRelic: Boolean, fillCapacity: Boolean = false): Fixture =
     val Ready(base) = FirstGameSetupFixture.execute()._1: @unchecked
     val current = base.game.current
     val active = current.players.find(
@@ -244,14 +230,14 @@ object CatacombsContributionSuite {
     assert(deck.size > slots,
       "fixture needs enough relics to fill the site and still draw one")
     val relics =
-      if (placeRelic) Vector(RelicState(deck.head, Orientation.FaceDown,
+      if placeRelic then Vector(RelicState(deck.head, Orientation.FaceDown,
         Tokens.empty))
-      else if (fillCapacity) deck.take(slots).map(id =>
+      else if fillCapacity then deck.take(slots).map(id =>
         RelicState(id, Orientation.FaceUp, Tokens.empty))
       else Vector.empty
     val remainingDeck =
-      if (placeRelic) deck.tail
-      else if (fillCapacity) deck.drop(slots)
+      if placeRelic then deck.tail
+      else if fillCapacity then deck.drop(slots)
       else deck
     val site = current.map.sites(siteId).copy(relics = relics,
       denizens = Vector(DenizenState(catacombsCard, Orientation.FaceUp,
@@ -261,7 +247,7 @@ object CatacombsContributionSuite {
     val ready = base.updateCurrent(_.copy(
       turn = current.turn.copy(phase = Phase.Act),
       players = current.players.map(other =>
-        if (other.player == player.player) player else other),
+        if other.player == player.player then player else other),
       commonCards = current.commonCards.copy(
         relicDeck = remainingDeck,
         worldDeck = current.commonCards.worldDeck.filterNot(
@@ -273,14 +259,13 @@ object CatacombsContributionSuite {
       map = current.map.copy(sites =
         current.map.sites.updated(siteId, site))))
     Fixture(ready, player.player, siteId, remainingDeck.head)
-  }
 
   /** The pawn stands on a Recover site that already holds a facedown relic.
     * The Catacombs card sits at a different in-play site with a free relic
     * slot, which the actor rules. `site` is the Catacombs site.
     */
   def ruledElsewhere(
-      ruled: Boolean = true): Fixture = {
+      ruled: Boolean = true): Fixture =
     val home = relicSite()
     val current = home.ready.game.current
     val lineage = current.players.find(_.player == home.actor).get.lineage
@@ -290,7 +275,7 @@ object CatacombsContributionSuite {
       catalog.sites.find(_.id == id).exists(_.relicSlots > 0)).get
     val freed = current.map.sites(far).relics.map(_.id)
     val forces =
-      if (ruled) SiteForces.Occupied(ForceKind.Exile(lineage), 1)
+      if ruled then SiteForces.Occupied(ForceKind.Exile(lineage), 1)
       else SiteForces.Occupied(ForceKind.Bandit, 1)
     val moved = home.ready.updateCurrent(c => c.copy(
       commonCards = c.commonCards.copy(relicDeck =
@@ -301,5 +286,3 @@ object CatacombsContributionSuite {
           Vector.empty, denizens = Vector(DenizenState(catacombsCard,
             Orientation.FaceUp, Tokens.empty)))))))
     home.copy(ready = moved, site = far)
-  }
-}

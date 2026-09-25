@@ -5,7 +5,7 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model.{OathViolation, PlayerId, PowerId, ReadyGame, RuleSourceRef}
 
-object ReviewedPowerCatalog {
+object ReviewedPowerCatalog:
   val AuditedCatalogFingerprint: String =
     "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2"
 
@@ -23,11 +23,10 @@ object ReviewedPowerCatalog {
       TradePowers.powers ++ ForgePowers.powers ++ RecoverPowers.powers ++
       RestPowers.powers ++ NegotiationPowers.powers
 
-  def requireAudited(catalog: ExecutableCatalog): Either[OathViolation, Unit] = {
+  def requireAudited(catalog: ExecutableCatalog): Either[OathViolation, Unit] =
     val actual = CatalogHandlerInventory.fingerprint(catalog)
     Either.cond(actual == AuditedCatalogFingerprint, (),
       OathViolation.UnsupportedRuleCatalog(AuditedCatalogFingerprint, actual))
-  }
 
   def resolver(catalog: ExecutableCatalog): Either[OathViolation, PowerResolver] =
     requireAudited(catalog).map { _ =>
@@ -50,33 +49,28 @@ object ReviewedPowerCatalog {
     * legacy stub nobody deleted after its power ported elsewhere stops
     * producing a stale "ignored rule" diagnostic.
     */
-  private def effective(catalog: ExecutableCatalog): Vector[Power] = {
+  private def effective(catalog: ExecutableCatalog): Vector[Power] =
     val status = PowerImplementationStatus.implemented(catalog)
     powers.map { power =>
-      new Power {
+      new Power:
         def id: PowerId = power.id
         def modifier = power.modifier
         def handlers: Vector[PowerHandler] = power.handlers.map { handler =>
-          new PowerHandler {
+          new PowerHandler:
             def window = handler.window
             def resolution = handler.resolution
             def inspect(context: PowerContext) = handler.inspect(context)
             def implemented: Boolean = handler.implemented || status(power.id)
-          }
         }
-      }
     }
-  }
 
   def facts(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId)
-      : ReviewedPowerFacts = {
+      : ReviewedPowerFacts =
     val sources = RuleSourceIndex.enumerate(catalog, ready)
     ReviewedPowerFacts(catalog, ready, actor,
       sources.map(source => source.source -> source).toMap)
-  }
 
   def sources(catalog: ExecutableCatalog, ready: ReadyGame)
       : Vector[(RuleSourceRef, Vector[PowerId])] =
     RuleSourceIndex.enumerate(catalog, ready).map(source =>
       source.source -> source.powerIds)
-}

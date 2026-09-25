@@ -36,7 +36,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     protected val phasePowerCatalog: PhasePowers = PhasePowers.empty,
     protected val walkerDice: WalkerDice = WalkerDice.unavailable)
     extends EventEvolution[OathState, OathEvent, OathViolation]
-    with OathRulesWalker {
+    with OathRulesWalker:
   override val initialState: OathState = NoGame
 
   /** Walker-ownership invariant: while a walker procedure is parked, only
@@ -46,25 +46,23 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     */
   private def unlessWalkerPending(state: OathState)(
       handled: => Either[OathViolation, OathTransition])
-      : Either[OathViolation, OathTransition] = state match {
+      : Either[OathViolation, OathTransition] = state match
     case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
         ready.game.current.walkerProcedure.nonEmpty =>
       Left(InvalidEventOrder("a walker procedure is already pending"))
     case _ => handled
-  }
 
   def handle(state: OathState, command: MinorActionCommand)
-      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
+      : Either[OathViolation, OathTransition] = unlessWalkerPending(state):
     MinorActions.handle(catalog, state, command).flatMap(completeAction)
-  }
 
   override def evolve(
       state: OathState,
       event: OathEvent
   ): Either[OathViolation, OathState] =
-    event match {
-      case recorded: IgnoredRulesRecorded => state match {
-        case Ready(ready) => (if (recorded.action == ActionKind.WhenPlayed)
+    event match
+      case recorded: IgnoredRulesRecorded => state match
+        case Ready(ready) => (if recorded.action == ActionKind.WhenPlayed then
           recorded.diagnostics.map(_.source).distinct.foldLeft[
             Either[OathViolation, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
               case (Right(found), source) => PowerRuntime.ignoredAtSource(
@@ -77,7 +75,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
           Either.cond(expected == recorded.diagnostics, state,
             InvalidEventOrder("ignored-rule diagnostics do not match authoritative discovery")))
         case _ => Left(GameNotStarted)
-      }
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
@@ -96,13 +93,11 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WarExhaustionResolved =>
         StateBasedEvaluation.evolve(catalog, state, event)
       case GameStarted(chronicle, orders) =>
-        state match {
+        state match
           case NoGame =>
             oathdigital.gameplay.setup.GameStartRules
               .evolve(catalog, chronicle, orders).map(Ready.apply)
           case _ => Left(GameAlreadyExists)
-        }
-    }
 
   /** Builds and evolves `GameStarted`, then immediately runs the triggered
     * `Setup` procedure to its first park or its end -- both land in the
@@ -111,18 +106,17 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     * Chronicle design, slice 2).
     */
   def beginGame(state: OathState, chronicle: Chronicle, orders: SetupOrders)
-      : Either[OathViolation, OathTransition] = state match {
+      : Either[OathViolation, OathTransition] = state match
     case NoGame =>
       val event = GameStarted(chronicle, orders)
-      for {
+      for
         started <- GameplayTransition(state, Vector(event),
           OathContinue.AwaitingSetupPawn(orders.firstPlayer,
             DecisionId(oathdigital.gameplay.setup.SetupProcedure
               .pawnDecisionId(orders.firstPlayer))))(evolve)
         withSetup <- startTriggered(started, TriggeredProcedureRef.Setup)
-      } yield withSetup
+      yield withSetup
     case _ => Left(GameAlreadyExists)
-  }
 
   protected def completeAction(transition: OathTransition)
       : Either[OathViolation, OathTransition] =
@@ -131,17 +125,15 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       .flatMap(oathkeeperStep)
 
   protected def turnBoundary(transition: OathTransition)
-      : Either[OathViolation, OathTransition] = {
-    val rounded = transition.state match {
+      : Either[OathViolation, OathTransition] =
+    val rounded = transition.state match
       case Ready(ready) if ready.game.current.turn.phase == Phase.RoundEnd =>
         TurnBoundary.finishRound(catalog, transition, warExhaustionRandomPort)
       case _ => Right(transition)
-    }
     rounded.flatMap(next => next.state match {
       case Ready(ready) if ready.game.current.result.nonEmpty => Right(next)
       case _ => enterWake(next)
     })
-  }
 
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
     PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog).nonEmpty
@@ -150,43 +142,40 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     * procedure performs the change, so every title change is one walker step.
     */
   private def oathkeeperStep(transition: OathTransition)
-      : Either[OathViolation, OathTransition] = transition.state match {
+      : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) => StateBasedEvaluation.supported(transition.state)
       .flatMap(_ => OathkeeperRules.outcome(ready) match {
         case OathkeeperOutcome.NoChange => Right(transition)
         case _ => startTriggered(transition, TriggeredProcedureRef.Oathkeeper)
       })
     case _ => Right(transition)
-  }
 
   private def recordBoundaryFallback(transition: OathTransition) =
-    transition.state match {
+    transition.state match
       case Ready(ready) =>
         val actor = ready.game.current.turn.activePlayer
         PowerRuntime.ignored(catalog, ready, actor,
           ActionKind.ActionBoundary).map { diagnostics =>
-          if (diagnostics.isEmpty) transition else transition.copy(events =
+          if diagnostics.isEmpty then transition else transition.copy(events =
             transition.events :+ IgnoredRulesRecorded(actor,
               ActionKind.ActionBoundary, diagnostics))
         }
       case _ => Right(transition)
-    }
 
   protected def withFallback(state: OathState, actor: PlayerId,
       action: ActionKind)(
       operation: => Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition] =
-    state match {
+    state match
       case Ready(ready) => PowerRuntime.ignored(catalog, ready, actor, action)
         .flatMap { diagnostics => operation.map { transition =>
-          if (diagnostics.isEmpty) transition
+          if diagnostics.isEmpty then transition
           else transition.copy(events = IgnoredRulesRecorded(actor, action,
             diagnostics) +: transition.events)
         }}
       case _ => operation
-    }
 
-  private def enterWake(transition: OathTransition): Either[OathViolation, OathTransition] = {
+  private def enterWake(transition: OathTransition): Either[OathViolation, OathTransition] =
     def append(current: OathTransition, event: OathEvent) =
       evolve(current.state, event).map(next => current.copy(state = next,
         events = current.events :+ event, continue = event match {
@@ -194,15 +183,14 @@ final class OathRules(protected val catalog: ExecutableCatalog,
           case VisionVictory(winner, _) => OathContinue.GameFinished(winner)
           case _ => current.continue
         }))
-    val prepared = transition.state match {
+    val prepared = transition.state match
       case Ready(ready) => PowerRuntime.ignored(catalog, ready,
         ready.game.current.turn.activePlayer, ActionKind.Wake).map { diagnostics =>
-        if (diagnostics.isEmpty) transition else transition.copy(events =
+        if diagnostics.isEmpty then transition else transition.copy(events =
           transition.events :+ IgnoredRulesRecorded(
             ready.game.current.turn.activePlayer, ActionKind.Wake, diagnostics))
       }
       case _ => Right(transition)
-    }
     prepared.flatMap(current => StateBasedEvaluation.atWake(current.state).flatMap {
       case Some(win: UsurperVictory) => append(current, win)
       case Some(flip: UsurperFlipped) => append(current, flip).flatMap { after =>
@@ -218,18 +206,15 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case Some(other) => Left(InvalidEventOrder(
         s"unexpected Wake evaluation event: $other"))
     })
-  }
 
   private def appendEvaluation(transition: OathTransition,
       evaluate: OathState => Either[OathViolation, Option[OathEvent]]) =
-    evaluate(transition.state).flatMap {
+    evaluate(transition.state).flatMap:
       case None => Right(transition)
       case Some(event) => evolve(transition.state, event).map(next =>
         transition.copy(state = next, events = transition.events :+ event))
-    }
-}
 
-object OathRules {
+object OathRules:
   /** How a walker command derives its procedure tree. `starting`
     * distinguishes a fresh start, which runs the procedure's start gates,
     * from resume reconstruction.
@@ -246,8 +231,7 @@ object OathRules {
     */
   val declaredWalkerTree: WalkerTreeSource =
     (catalog, procedure, ready, actor, args, starting) =>
-      if (starting) WalkerProcedureRegistry.build(procedure, catalog, ready,
+      if starting then WalkerProcedureRegistry.build(procedure, catalog, ready,
         actor, args)
       else WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor,
         args)
-}

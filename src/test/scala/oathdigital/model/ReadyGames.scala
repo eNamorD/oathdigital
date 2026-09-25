@@ -9,7 +9,7 @@ package oathdigital.model
   * uses the printed warband supply. Override a field with `copy` when a test
   * is about that field.
   */
-object ReadyGames {
+object ReadyGames:
   import PlayerColor._
   private val seatColors =
     Vector(Red, Blue, Yellow, Purple, White, Black, Pink, Brown)
@@ -26,4 +26,3 @@ object ReadyGames {
       firstPlayer = game.current.turn.activePlayer,
       favorBanks = Suit.all.map(_ -> favorPerSuit).toMap
     )
-}

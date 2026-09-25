@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.model.{FirstGameParticipant, LineageId, PlayerId}
 import oathdigital.protocol.FirstGameBootstrapRequest
 
-object FirstGameBootstrapMapper {
+object FirstGameBootstrapMapper:
   def map(request: FirstGameBootstrapRequest): FirstGameBootstrapConfig =
     FirstGameBootstrapConfig(
       request.participants.map(participant => FirstGameParticipant(
@@ -13,4 +13,3 @@ object FirstGameBootstrapMapper {
       )),
       PlayerId(request.firstPlayer)
     )
-}

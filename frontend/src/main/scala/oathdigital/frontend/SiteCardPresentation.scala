@@ -6,10 +6,9 @@ private[frontend] final case class PeekedRelicPresentation(card: CardDetails)
   * either buildable or plunderable, and the rules give no site both.
   */
 private[frontend] sealed trait SiteRequirement
-private[frontend] object SiteRequirement {
+private[frontend] object SiteRequirement:
   final case class Forge(favor: Int, secrets: Int) extends SiteRequirement
   final case class Recover(difficulty: Int) extends SiteRequirement
-}
 
 private[frontend] final case class SiteCardPresentation(
     looseFavor: Int,
@@ -20,8 +19,8 @@ private[frontend] final case class SiteCardPresentation(
     peekedRelics: Vector[PeekedRelicPresentation]
 )
 
-private[frontend] object SiteCardPresentation {
-  def from(site: GameSite): SiteCardPresentation = {
+private[frontend] object SiteCardPresentation:
+  def from(site: GameSite): SiteCardPresentation =
     SiteCardPresentation(
       looseFavor = site.looseFavor,
       looseSecrets = site.looseSecrets,
@@ -33,5 +32,3 @@ private[frontend] object SiteCardPresentation {
         site.relics.facedownCount - site.relics.knownRelics.size),
       peekedRelics = site.relics.knownRelics.map(PeekedRelicPresentation(_))
     )
-  }
-}

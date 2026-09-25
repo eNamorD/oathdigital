@@ -39,7 +39,7 @@ import oathdigital.model.{CoreOperation, DecisionOptionRef, Location, Move, Oath
   * a fact about the printed Travel action. Terrain is not a gate: it is the
   * transforms folding over this tree's own cost node.
   */
-object TravelProcedure {
+object TravelProcedure:
 
   /** Fresh start and resume build the same tree: Travel's gates are all facts
     * about the route, which a resume must re-check exactly as a start does.
@@ -47,13 +47,13 @@ object TravelProcedure {
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Operation] = for {
+      : Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
     destination <- destinationOf(args)
     source <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
     base <- TravelRules.cost(catalog, state, source, destination)
-  } yield tree(activePlayer, source, destination, base)
+  yield tree(activePlayer, source, destination, base)
 
   /** The destination Travel's start selection names, or a typed rejection.
     *
@@ -64,14 +64,13 @@ object TravelProcedure {
     * one destination is not a Travel, whatever else it named.
     */
   private def destinationOf(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, SiteId] = args match {
+      : Either[OathViolation, SiteId] = args match
     case Vector(DecisionOptionRef.Site(destination)) => Right(destination)
     case Vector() => Left(OathViolation.InvalidEventOrder(
       "travel requires a destination site as its start selection"))
     case other => Left(OathViolation.InvalidEventOrder(
       "travel takes exactly one destination site as its start selection, " +
         s"got ${other.map(_.kind).mkString(", ")}"))
-  }
 
   def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
@@ -128,4 +127,3 @@ object TravelProcedure {
       : Int = operations.collect {
     case SpendSupply(player, amount, _) if player == actor => amount
   }.lastOption.getOrElse(0)
-}

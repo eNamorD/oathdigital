@@ -13,27 +13,25 @@ private[frontend] final case class ModifierSelectionState(
     candidates: Vector[PreviewModifier],
     previewFingerprint: String,
     selected: Vector[PreviewModifier]
-) {
+):
   def toggle(value: PreviewModifier): ModifierSelectionState =
-    if (!candidates.contains(value)) this
-    else if (selected.contains(value)) copy(selected = selected.filterNot(_ == value))
+    if !candidates.contains(value) then this
+    else if selected.contains(value) then copy(selected = selected.filterNot(_ == value))
     else copy(selected = selected :+ value)
 
   def moveEarlier(value: PreviewModifier): ModifierSelectionState = move(value, -1)
   def moveLater(value: PreviewModifier): ModifierSelectionState = move(value, 1)
-  def keyboard(value: PreviewModifier, key: String): ModifierSelectionState = key match {
+  def keyboard(value: PreviewModifier, key: String): ModifierSelectionState = key match
     case "Enter" | " " | "Spacebar" => toggle(value)
     case "ArrowUp" => moveEarlier(value)
     case "ArrowDown" => moveLater(value)
     case _ => this
-  }
-  def ordinal(value: PreviewModifier): Option[Int] = selected.indexOf(value) match {
+  def ordinal(value: PreviewModifier): Option[Int] = selected.indexOf(value) match
     case -1 => None
     case index => Some(index + 1)
-  }
   def invocations: Vector[ModifierInvocation] = selected.map { value =>
     val parts = value.sourceKey.split(":", 4).toVector
-    parts match {
+    parts match
       case Vector("adviser", _, _, id) =>
         ModifierInvocation("adviser", id, None, value.handlerId)
       case _ if value.sourceKey.startsWith("site-card:") =>
@@ -61,7 +59,6 @@ private[frontend] final case class ModifierSelectionState(
         val fields = value.sourceKey.stripPrefix("legacy:").split(":", 2)
         ModifierInvocation("legacy", fields.last, Some(fields.head), value.handlerId)
       case _ => unsupported(value.sourceKey)
-    }
   }
 
   private def typed(value: String, kinds: Vector[String]) = kinds.iterator
@@ -77,20 +74,16 @@ private[frontend] final case class ModifierSelectionState(
   private def unsupported(source: String): Nothing =
     throw new IllegalStateException(s"unsupported modifier source $source")
 
-  private def move(value: PreviewModifier, delta: Int) = {
+  private def move(value: PreviewModifier, delta: Int) =
     val index = selected.indexOf(value)
     val next = index + delta
-    if (index < 0 || next < 0 || next >= selected.size) this
+    if index < 0 || next < 0 || next >= selected.size then this
     else copy(selected = selected.updated(index, selected(next)).updated(next, value))
-  }
-}
 
-private[frontend] object ModifierSelectionState {
+private[frontend] object ModifierSelectionState:
   def reconcile(previous: Option[ModifierSelectionState],
       context: ModifierSelectionContext, candidates: Vector[PreviewModifier],
-      previewFingerprint: String): ModifierSelectionState = previous match {
+      previewFingerprint: String): ModifierSelectionState = previous match
     case Some(value) if value.context == context && value.candidates == candidates &&
         value.previewFingerprint == previewFingerprint => value
     case _ => ModifierSelectionState(context, candidates, previewFingerprint, Vector.empty)
-  }
-}

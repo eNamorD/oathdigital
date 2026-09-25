@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog._
 import oathdigital.model.{CatalogRef, DenizenId, EdificeId, PowerId, RelicId, Suit}
 
-class ImplementedCardCatalogSuite extends munit.FunSuite {
+class ImplementedCardCatalogSuite extends munit.FunSuite:
   private val implemented: PowerId => Boolean = Set(
     "denizen.solar-hearth-child.done",
     "relic.cup-of-plenty.done",
@@ -54,20 +54,16 @@ class ImplementedCardCatalogSuite extends munit.FunSuite {
     legacies = Vector.empty,
     sites = Vector.empty)
 
-  test("a denizen is implemented only when every printed power is implemented") {
+  test("a denizen is implemented only when every printed power is implemented"):
     assertEquals(ImplementedCardCatalog.denizens(catalog, implemented),
       Set(DenizenId("solar-hearth-child"), DenizenId("blank-card")))
-  }
 
-  test("only ordinary relics with every power implemented count as implemented") {
+  test("only ordinary relics with every power implemented count as implemented"):
     assertEquals(ImplementedCardCatalog.ordinaryRelics(catalog, implemented),
       Set(RelicId("cup-of-plenty")))
-  }
 
-  test("a Homeland's implemented edifice needs both faces implemented") {
+  test("a Homeland's implemented edifice needs both faces implemented"):
     assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Hearth, implemented),
       Some(EdificeId("hall-of-debate")))
     assertEquals(ImplementedCardCatalog.homelandEdifice(catalog, Suit.Beast, implemented),
       None)
-  }
-}

@@ -23,7 +23,7 @@ private[application] final class LegalActionProjector(
     presentation: GamePresentationProjector,
     walkerDecisions: WalkerDecisionProjector,
     phasePowers: PhasePowerProjector
-) {
+):
   def this(catalog: ExecutableCatalog,
       presentation: GamePresentationProjector,
       walkerDecisions: WalkerDecisionProjector) =
@@ -97,44 +97,42 @@ private[application] final class LegalActionProjector(
     * to is presentation, which is why this mapping is here and the question
     * of whether the resource is takeable at all is not.
     */
-  private def takeControl(resource: WakeResource): String = resource match {
+  private def takeControl(resource: WakeResource): String = resource match
     case WakeResource.Favor => "takeFavor"
     case WakeResource.Secret => "takeSecret"
-  }
 
   def project(context: ScopedProjectionContext): LegalProjection =
     project(context, phasePowers.project(context))
 
   def project(context: ScopedProjectionContext,
-      projectedPhasePowers: Vector[PhasePowerProjection]): LegalProjection = {
+      projectedPhasePowers: Vector[PhasePowerProjection]): LegalProjection =
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty)(minorActionsProjection(context))
     val ordinaryAct = context.viewerIsActive &&
       context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty
-    val travelFacts = if (ordinaryAct) travelCandidates(context)
+    val travelFacts = if ordinaryAct then travelCandidates(context)
       else Vector.empty[(SiteId, Int)]
     LegalProjection(
       controls(context, minor, projectedPhasePowers),
       travelFacts.map { case (site, cost) =>
         LegalTravelDestinationProjection(site.value, cost)
       },
-      if (ordinaryAct) legalSearch(context) else Vector.empty,
-      if (ordinaryAct) boardTargetActions(context, travelFacts)
+      if ordinaryAct then legalSearch(context) else Vector.empty,
+      if ordinaryAct then boardTargetActions(context, travelFacts)
       else Vector.empty,
       minor)
-  }
 
   private def controls(context: ScopedProjectionContext,
       minor: Option[MinorActionsProjection],
-      projectedPhasePowers: Vector[PhasePowerProjection]): Vector[String] = {
+      projectedPhasePowers: Vector[PhasePowerProjection]): Vector[String] =
     val current = context.current
     val active = context.active
-    if (current.result.nonEmpty) Vector.empty
-    else if (current.walkerPending.nonEmpty) walkerControls(context)
-    else if (!context.viewerIsActive) Vector.empty
-    else current.turn.phase match {
+    if current.result.nonEmpty then Vector.empty
+    else if current.walkerPending.nonEmpty then walkerControls(context)
+    else if !context.viewerIsActive then Vector.empty
+    else current.turn.phase match
         case Phase.Act => Vector(
           Option.when(BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
@@ -164,8 +162,6 @@ private[application] final class LegalActionProjector(
         case Phase.Wake =>
           takeableResources(context).map(takeControl) ++
             phasePowers.controls(projectedPhasePowers) :+ "endWake"
-    }
-  }
 
   /** Whether `active` can start Recover at their current site, Supply cost
     * included. Relic availability is deliberately irrelevant: a successful
@@ -183,20 +179,18 @@ private[application] final class LegalActionProjector(
     * only to the player the parked position awaits.
     */
   private def walkerControls(context: ScopedProjectionContext): Vector[String] =
-    walkerDecisions.project(context).toVector.map {
+    walkerDecisions.project(context).toVector.map:
       case decision if decision.kind == "roll" => "rollWalker"
       case _ => "resolveWalkerDecision"
-    }
 
   private def legalSearch(context: ScopedProjectionContext) =
     SearchProcedure.legalSources(catalog, context.ready,
       context.active.player, WalkerPowers.selected(walkerPowerCatalog,
-        Vector.empty)).map {
+        Vector.empty)).map:
       case (SearchSource.WorldDeck, cost) =>
         LegalSearchSourceProjection("world", None, cost)
       case (SearchSource.RegionalDiscard(region), cost) =>
         LegalSearchSourceProjection("regional-discard", Some(region.key), cost)
-    }
 
   /** The legal ways to resolve one facedown adviser right now -- reuses the
     * same planner Search itself resolves placements with, so a facedown
@@ -207,12 +201,11 @@ private[application] final class LegalActionProjector(
       id: WorldCardId): Vector[CardResolutionProjection] =
     CardPlay.legalChoices(catalog, context.ready, context.active.player, id,
       CardPlay.Origin.FacedownAdviser).map { choice =>
-      val (kind, orientation) = choice.placement match {
+      val (kind, orientation) = choice.placement match
         case SearchPlacement.Discard => ("discard", None)
         case _: SearchPlacement.Site => ("play-site", None)
         case SearchPlacement.Adviser(value, _) =>
           ("play-adviser", Some(presentation.orientationName(value)))
-      }
       CardResolutionProjection(kind, orientation,
         replacementRequired = choice.replacements.nonEmpty &&
           !choice.replacementOptional,
@@ -220,12 +213,11 @@ private[application] final class LegalActionProjector(
           presentation.cardDetails(_, None, hidden = false)))
     }
 
-  private def minorActionsProjection(context: ScopedProjectionContext) = {
+  private def minorActionsProjection(context: ScopedProjectionContext) =
     val active = context.active
-    val facedown = active.advisers.collect {
+    val facedown = active.advisers.collect:
       case d: DenizenState if d.orientation == Orientation.FaceDown => d.id: WorldCardId
       case v: VisionState if v.orientation == Orientation.FaceDown => v.id: WorldCardId
-    }
     val ruled = context.activeSite.exists(site => SiteRule.ruledBy(site.forces,
       context.current.players, active.player).getOrElse(false))
     val siteWarbands = context.activeSite.flatMap(_.forces match {
@@ -239,21 +231,17 @@ private[application] final class LegalActionProjector(
     }, context.activeSite.exists(_.relics.nonEmpty), active.relics.filter(
       _.orientation == Orientation.FaceDown).map(r => presentation.cardDetails(r.id,
       Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),
-      if (ruled) active.board.warbands else 0, math.max(0, siteWarbands - 1))
-  }
+      if ruled then active.board.warbands else 0, math.max(0, siteWarbands - 1))
 
   private def boardTargetActions(context: ScopedProjectionContext,
-      travelFacts: Vector[(SiteId, Int)]) = {
-    val travel = travelFacts.map {
+      travelFacts: Vector[(SiteId, Int)]) =
+    val travel = travelFacts.map:
       case (site, cost) => BoardTargetCandidateProjection(
         BoardTargetRefProjection.Site(site.value), presentation.siteLabel(site),
         Vector(s"$cost Supply"))
-    }
     Vector(selection("travel", "Choose a Travel destination", travel)).flatten
-  }
 
   private def selection(kind: String, prompt: String,
       candidates: Vector[BoardTargetCandidateProjection]) =
     Option.when(candidates.nonEmpty)(BoardTargetActionProjection(kind, prompt,
       1, 1, autoActivate = false, candidates))
-}

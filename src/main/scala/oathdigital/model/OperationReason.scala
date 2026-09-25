@@ -11,9 +11,8 @@ final case class OperationReason(code: String, detail: String,
 /** Extension seam for per-query contextual restrictions beyond the static
   * allowlist. Restrictions report typed rule impossibility or invalidity.
   */
-trait OperationRestriction {
+trait OperationRestriction:
   def reason(
       ready: ReadyGame,
       operation: CoreOperation
   ): Option[OperationReason]
-}

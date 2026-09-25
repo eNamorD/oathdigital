@@ -7,7 +7,7 @@ package oathdigital.model
   * Cross-compiled into the frontend (see `build.sbt`), so it depends on
   * nothing else in the model.
   */
-enum PlayerColor(val key: String) {
+enum PlayerColor(val key: String):
   case Purple extends PlayerColor("purple")
   case Red extends PlayerColor("red")
   case Blue extends PlayerColor("blue")
@@ -16,11 +16,9 @@ enum PlayerColor(val key: String) {
   case Black extends PlayerColor("black")
   case Pink extends PlayerColor("pink")
   case Brown extends PlayerColor("brown")
-}
-object PlayerColor {
+object PlayerColor:
   val all: Vector[PlayerColor] =
     Vector(Purple, Red, Blue, Yellow, White, Black, Pink, Brown)
 
   /** Safe parse for untrusted (wire or journal) input. */
   def fromKey(value: String): Option[PlayerColor] = all.find(_.key == value)
-}

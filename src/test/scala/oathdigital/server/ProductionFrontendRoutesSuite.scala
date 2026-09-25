@@ -11,14 +11,14 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 
-class ProductionFrontendRoutesSuite extends munit.FunSuite {
-  test("serves the packaged shell and assets with production cache policy") {
+class ProductionFrontendRoutesSuite extends munit.FunSuite:
+  test("serves the packaged shell and assets with production cache policy"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "production-frontend-routes-test")
     val binding = bind(ProductionFrontendRoutes.route)
     val client = HttpClient.newHttpClient()
 
-    try {
+    try
       val index = get(client, binding, "/")
       assertEquals(index.statusCode(), 200)
       assert(index.body().contains("/assets/main.js"))
@@ -42,12 +42,10 @@ class ProductionFrontendRoutesSuite extends munit.FunSuite {
 
       assertEquals(get(client, binding, "/missing.js").statusCode(), 404)
       assertEquals(get(client, binding, "/assets/missing.js").statusCode(), 404)
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
   private def bind(route: Route)(using system: ActorSystem[Nothing]) =
     Await.result(
@@ -68,4 +66,3 @@ class ProductionFrontendRoutesSuite extends munit.FunSuite {
 
   private def cacheControl(response: JavaResponse[String]): Option[String] =
     Option(response.headers().firstValue("Cache-Control").orElse(null))
-}

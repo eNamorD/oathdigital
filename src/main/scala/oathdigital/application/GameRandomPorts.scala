@@ -11,26 +11,22 @@ import oathdigital.model._
   * handling) checks against this instead of a bare literal `2` scattered at
   * the call site.
   */
-trait DefenseDicePort {
+trait DefenseDicePort:
   val diceCount: Int = 2
   def rollTwo(): Vector[DefenseDieFace]
-}
-object DefenseDicePort {
-  val random: DefenseDicePort = new DefenseDicePort {
+object DefenseDicePort:
+  val random: DefenseDicePort = new DefenseDicePort:
     private val rng = new scala.util.Random()
     private val faces = Vector(DefenseDieFace.Blank, DefenseDieFace.Blank,
       DefenseDieFace.OneShield, DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
     def rollTwo(): Vector[DefenseDieFace] = Vector.fill(diceCount)(faces(rng.nextInt(6)))
-  }
-}
 
-trait CampaignDicePort {
+trait CampaignDicePort:
   def rollAttack(count: Int): Vector[AttackDieFace]
   def rollDefense(count: Int): Vector[DefenseDieFace]
-}
-object CampaignDicePort {
-  val random: CampaignDicePort = new CampaignDicePort {
+object CampaignDicePort:
+  val random: CampaignDicePort = new CampaignDicePort:
     private val rng = new scala.util.Random()
     private val attack = Vector(
       AttackDieFace.HollowSword, AttackDieFace.HollowSword,
@@ -41,7 +37,6 @@ object CampaignDicePort {
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
     def rollAttack(count: Int) = Vector.fill(count)(attack(rng.nextInt(6)))
     def rollDefense(count: Int) = Vector.fill(count)(defense(rng.nextInt(6)))
-  }
 
   /** The walker's dice source, backed by `port`: the same faces a legacy
     * Campaign rolled, now drawn by an automatic `Roll` node.
@@ -51,25 +46,20 @@ object CampaignDicePort {
       case DiceKind.Attack => port.rollAttack(count)
       case DiceKind.Defense => port.rollDefense(count)
     })
-}
 
-object CardDecisionIds {
+object CardDecisionIds:
   /** Stable across reload/replay and derived solely from authoritative setup progress. */
   def startingAdviser(playerId: PlayerId, placementIndex: Int): DecisionId =
     DecisionId(s"setup-adviser-${placementIndex}-${playerId.value}")
-}
 
-trait SearchDrawPort {
+trait SearchDrawPort:
   def prepare(
       ready: oathdigital.model.ReadyGame,
       source: SearchSource,
       origin: Region
   ): Either[OathViolation, Vector[WorldCardId]]
-}
 
-object SearchDrawPort {
-  val authoritative: SearchDrawPort = new SearchDrawPort {
+object SearchDrawPort:
+  val authoritative: SearchDrawPort = new SearchDrawPort:
     def prepare(ready: oathdigital.model.ReadyGame, source: SearchSource,
         origin: Region) = SearchRules.draw(ready, source, origin)
-  }
-}

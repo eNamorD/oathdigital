@@ -11,8 +11,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-class BackendArchitectureSuite extends munit.FunSuite {
-  test("shared transition helper applies ordered events and stops at failure") {
+class BackendArchitectureSuite extends munit.FunSuite:
+  test("shared transition helper applies ordered events and stops at failure"):
     val events = Vector(OathEvent.BanditsRefilled(Vector.empty),
       OathEvent.BanditsRefilled(Vector.empty))
     val violation = OathViolation.InvalidEventOrder("second event rejected")
@@ -20,13 +20,12 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val result = GameplayTransition(OathState.NoGame, events,
       OathContinue.AwaitingWakeAction(PlayerId("p1"))) { (state, _) =>
       applied += 1
-      if (applied == 1) Right(state) else Left(violation)
+      if applied == 1 then Right(state) else Left(violation)
     }
     assertEquals(result, Left(violation))
     assertEquals(applied, 2)
-  }
 
-  test("factual source index enumerates every source category deterministically") {
+  test("factual source index enumerates every source category deterministically"):
     val ready = FirstGameSetupFixture.initialReady
     val facts = RuleSourceIndex.enumerate(catalog, ready)
     val printed = facts.collectFirst {
@@ -40,9 +39,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assert(facts.exists(_.source.isInstanceOf[RuleSourceRef.Adviser]))
     assertEquals(facts, RuleSourceIndex.enumerate(catalog, ready))
     assertEquals(facts.map(_.source.stableKey).distinct.size, facts.size)
-  }
 
-  test("site relics retain site identity, orientation, and declared handlers") {
+  test("site relics retain site identity, orientation, and declared handlers"):
     val ready = FirstGameSetupFixture.initialReady
     val (siteId, relic) = ready.game.current.map.inPlay.iterator.flatMap(id =>
       ready.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
@@ -59,15 +57,14 @@ class BackendArchitectureSuite extends munit.FunSuite {
       case Orientation.FaceUp => RuleSourceFace.FaceUp
       case Orientation.FaceDown => RuleSourceFace.FaceDown
     })
-  }
 
-  test("resolver treats a faceup relic at the actor pawn site as accessible") {
+  test("resolver treats a faceup relic at the actor pawn site as accessible"):
     val base = FirstGameSetupFixture.initialReady
     val actor = base.game.current.turn.activePlayer
     val (siteId, relic) = base.game.current.map.inPlay.iterator.flatMap(id =>
       base.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
     val players = base.game.current.players.map(player =>
-      if (player.player == actor) player.copy(pawnSite = Some(siteId)) else player)
+      if player.player == actor then player.copy(pawnSite = Some(siteId)) else player)
     val site = base.game.current.map.sites(siteId)
     val faceup = relic.copy(orientation = Orientation.FaceUp)
     val changed = base.updateCurrent(_.copy(
@@ -77,24 +74,21 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val source = RuleSourceRef.SiteRelic(siteId, relic.id)
     val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
       RuleSourceFace.FaceUp)
-    val handler = new PowerHandler {
+    val handler = new PowerHandler:
       val window: PowerWindow = PowerWindow.RestStart
       val resolution: PowerResolution = PowerResolution.PlayerSelected
       val implemented = true
       def inspect(context: PowerContext) = ReviewedPowerInspector.inspect(context)
-    }
-    val power = new Power {
+    val power = new Power:
       val id = PowerId("test.site-relic")
       val modifier: Option[MajorActionType] = None
       val handlers: Vector[PowerHandler] = Vector(handler)
-    }
     val result = new PowerResolver(PowerRegistry(power)).resolve(
       PowerWindow.RestStart, Vector(source -> Vector(power.id)),
       ReviewedPowerFacts(catalog, changed, actor, Map(source -> indexed))).toOption.get
     assertEquals(result.offered.map(_.source), Vector(source))
-  }
 
-  test("both banners expose faces, holdings, and exact synthetic handlers") {
+  test("both banners expose faces, holdings, and exact synthetic handlers"):
     val base = FirstGameSetupFixture.initialReady
     val changed = base.updateCurrent(_.copy(banners =
       BannersState(
@@ -112,9 +106,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assertEquals(banners.map(_.handlerIds), Vector(
       Vector("banner.peoples-favor.grand-council"),
       Vector("banner.darkest-secret.festival")))
-  }
 
-  test("all six Foundations expose ordered identities, faces, and state") {
+  test("all six Foundations expose ordered identities, faces, and state"):
     val base = FirstGameSetupFixture.initialReady
     val altered = base.updateCampaign(_.copy(foundations = base.game.campaign.foundations.updated(
         FoundationNumber.III, FoundationState(FoundationFace.Altered,
@@ -133,9 +126,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
       case (source, _) => source.handlerIds.isEmpty &&
         source.state == RuleSourceState.Foundation(Vector.empty)
     })
-  }
 
-  test("legacy inventory remains declared and lineage-qualified") {
+  test("legacy inventory remains declared and lineage-qualified"):
     val base = FirstGameSetupFixture.initialReady
     val lineageId = base.game.campaign.lineages.keys.toVector.sortBy(_.value).head
     val legacyDefinition = catalog.legacies.head
@@ -149,9 +141,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
       s"legacy:${lineageId.value}:${legacy.id.value}")
     assertEquals(indexed.handlerIds, legacyDefinition.handlers)
     assertEquals(indexed.face, RuleSourceFace.Inactive)
-  }
 
-  test("central handler inventory equals the audited catalog vocabulary") {
+  test("central handler inventory equals the audited catalog vocabulary"):
     val expected = (catalog.denizens.flatMap(_.handlers) ++
       catalog.relics.flatMap(_.handlers) ++ catalog.legacies.flatMap(_.handlers) ++
       catalog.sites.flatMap(_.handlers) ++ catalog.edifices.flatMap(e =>
@@ -159,23 +150,20 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assertEquals(CatalogHandlerInventory.handlerIds(catalog), expected)
     assertEquals(CatalogHandlerInventory.fingerprint(catalog),
       "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2")
-  }
 
-  test("Recover registry uses exact power-ID data") {
+  test("Recover registry uses exact power-ID data"):
     val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
     assert(registry.lookup(PowerId("edifice.e17.intact")).nonEmpty)
     assert(registry.lookup(PowerId("denizen.future-recover-text")).isEmpty)
-  }
 
-  test("gameplay production sources never infer mechanics from rulesText") {
+  test("gameplay production sources never infer mechanics from rulesText"):
     val root = Paths.get("src/main/scala/oathdigital/gameplay")
     val offenders = Files.walk(root).iterator.asScala.filter(path =>
       path.toString.endsWith(".scala") &&
         Files.readString(path).contains("rulesText")).map(_.toString).toVector
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("legacy central power shell cannot return") {
+  test("legacy central power shell cannot return"):
     val root = Paths.get("src/main/scala/oathdigital/gameplay")
     assert(!Files.exists(root.resolve("MajorActionPowerShell.scala")))
     val offenders = Files.walk(root).iterator.asScala.filter(path =>
@@ -183,9 +171,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
         Files.readString(path).contains("object MajorActionPowerShell"))
       .map(_.toString).toVector
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("Catacombs mechanics remain owned by Recover powers") {
+  test("Catacombs mechanics remain owned by Recover powers"):
     // Post-cutover (Task 9b): the legacy `Recover.scala`/
     // `RecoverPowerIntegration.scala` are gone, so this guard now asserts
     // the property they used to stand in for directly -- the application
@@ -204,10 +191,9 @@ class BackendArchitectureSuite extends munit.FunSuite {
       assert(!Files.readString(path).toLowerCase.contains("catacombs"),
         s"$path must use the typed Recover power boundary")
     }
-  }
 
   test("a walker power imports no engine, and the engine never learns its " +
-      "name") {
+      "name"):
     // Two architectural boundaries keep the walker generic: a power sees only
     // the `Operation`/contribution vocabulary (`gameplay.operations`,
     // `gameplay.powerresolver`), never `gameplay.walker` itself; and
@@ -288,9 +274,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
       finally stream.close()
     }.sorted
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("wire decoders read strings through the validating helpers") {
+  test("wire decoders read strings through the validating helpers"):
     // Untrusted client JSON reaches the engine through `protocol`'s decoders,
     // and the id types it feeds (`SiteId`, `DecisionId`, `RelicId`, ...)
     // validate with a THROWING `require(value.trim.nonEmpty)`. Nothing today
@@ -333,9 +318,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assertEquals(offenders, Vector.empty,
       "decode wire strings with CommandJsonSupport.string/strings, which " +
         "reject blanks with a typed error, not the raw .str accessor")
-  }
 
-  test("generic power operations are not independently replayable events") {
+  test("generic power operations are not independently replayable events"):
     val protocol = Files.readString(Paths.get(
       "src/main/scala/oathdigital/model/GameEventProtocol.scala"))
     val aggregate = Files.readString(Paths.get(
@@ -356,9 +340,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
     // property this test guards (granular operations never become their own
     // replayable event) now rests on `WalkerStepRecorded`.
     assert(walkerEvents.contains("case class WalkerStepRecorded"))
-  }
 
-  test("individual power definitions use factories instead of handler subclasses") {
+  test("individual power definitions use factories instead of handler subclasses"):
     val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
     val powerDefinition = "\\bobject\\s+[A-Za-z0-9_]+\\s+extends\\s+Power\\b".r
     val bespokeHandler = "\\bextends\\s+[A-Za-z0-9_]*PowerHandler\\b".r
@@ -369,9 +352,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
         bespokeHandler.findFirstIn(source).nonEmpty)(path.toString)
     }.toVector
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("Rest registry cannot own procedure orchestration or state mutation") {
+  test("Rest registry cannot own procedure orchestration or state mutation"):
     val source = Files.readString(Paths.get(
       "src/main/scala/oathdigital/gameplay/powers/RestPowers.scala"))
     Vector("def begin", "def evolve", "OathTransition", "PendingProcedure",
@@ -379,9 +361,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
       assert(!source.contains(forbidden),
         s"RestPowers must leave '$forbidden' to typed handlers/integration")
     }
-  }
 
-  test("procedure power inventories use named Power objects, not raw ID tables") {
+  test("procedure power inventories use named Power objects, not raw ID tables"):
     // Aimed at the legacy `Power` inventories (`ActionPowers`, `SearchPowers`,
     // ...), where a collection literal meant an id table standing in for named
     // power objects. A `ContributingPower` is not one of those: it declares
@@ -407,9 +388,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
         text.contains("handlerId match")
     }.map(_.toString)
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("application never imports server or serialization layers") {
+  test("application never imports server or serialization layers"):
     val root = Paths.get("src/main/scala/oathdigital/application")
     val forbidden = Vector("import oathdigital.server", "import oathdigital.persistence",
       "import oathdigital.serialization")
@@ -417,9 +397,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
       path.toString.endsWith(".scala") && forbidden.exists(
         Files.readString(path).contains)).map(_.toString).toVector
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("application projection collaborators stay bounded and layer-independent") {
+  test("application projection collaborators stay bounded and layer-independent"):
     val root = Paths.get("src/main/scala/oathdigital/application")
     val projectionFiles = Files.walk(root).iterator.asScala.filter(path =>
       path.toString.endsWith(".scala") &&
@@ -438,17 +417,15 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assertEquals(oversized, Vector.empty)
     assert(projectionFiles.exists(_.getFileName.toString ==
       "ScopedProjectionContext.scala"))
-  }
 
-  test("shared command protocol is compiled by both configured runtimes") {
+  test("shared command protocol is compiled by both configured runtimes"):
     val build = Files.readString(Paths.get("build.sbt"))
     assert(build.contains("shared\" / \"src\" / \"main\" / \"scala"))
     assert(build.contains("shared\" / \"src\" / \"test\" / \"scala"))
     assert(Files.exists(Paths.get(
       "shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala")))
-  }
 
-  test("client and server define no duplicate command intent DTO vocabulary") {
+  test("client and server define no duplicate command intent DTO vocabulary"):
     val roots = Vector(Paths.get("src/main/scala"), Paths.get("frontend/src/main/scala"))
     val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
       .filter(path => path.toString.endsWith(".scala") &&
@@ -457,9 +434,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
           "\\s*(sealed trait|final case class) (GameIntent|GameCommand)(\\s|\\().*")))
       .map(_.toString).sorted
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("projection and bootstrap transport DTOs are defined only in shared protocol") {
+  test("projection and bootstrap transport DTOs are defined only in shared protocol"):
     val roots = Vector(Paths.get("src/main/scala"), Paths.get("frontend/src/main/scala"))
     val forbidden = Set("GameProjection", "SetupPlayerProjection",
       "CardDetailsProjection", "PendingCardDecisionProjection",
@@ -468,18 +444,16 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val definition = "\\s*final case class ([A-Za-z0-9_]+).*".r
     val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
       .filter(_.toString.endsWith(".scala")).flatMap { path =>
-        Files.readAllLines(path).asScala.collect {
+        Files.readAllLines(path).asScala.collect:
           case definition(name) if forbidden(name) => s"$path:$name"
-        }
       }.sorted
     assertEquals(offenders, Vector.empty)
     assert(Files.exists(Paths.get(
       "shared/src/main/scala/oathdigital/protocol/projection/GameProjectionDto.scala")))
     assert(Files.exists(Paths.get(
       "shared/src/main/scala/oathdigital/protocol/BootstrapProtocolCodec.scala")))
-  }
 
-  test("frontend production sources stay bounded and renderers remain isolated") {
+  test("frontend production sources stay bounded and renderers remain isolated"):
     val root = Paths.get("frontend/src/main/scala/oathdigital/frontend")
     val sources = Files.walk(root).iterator.asScala
       .filter(_.toString.endsWith(".scala")).toVector
@@ -494,9 +468,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
         Files.readString(path).contains)).map(_.toString).sorted
     assertEquals(oversized, Vector.empty)
     assertEquals(rendererViolations, Vector.empty)
-  }
 
-  test("all production Scala files stay bounded") {
+  test("all production Scala files stay bounded"):
     val roots = Vector(Paths.get("src/main/scala"),
       Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
     val oversized = roots.flatMap(root => Files.walk(root).iterator.asScala)
@@ -505,9 +478,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
         Option.when(lines > 800)(s"$path:$lines")
       }.sorted
     assertEquals(oversized, Vector.empty)
-  }
 
-  test("inner production packages do not import outer adapters") {
+  test("inner production packages do not import outer adapters"):
     val constraints = Vector(
       Paths.get("src/main/scala/oathdigital/model") -> Vector(
         "application", "gameplay", "persistence", "serialization", "server"),
@@ -521,9 +493,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
         .map(_.toString)
     }.sorted
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("retired setup and browser-memory symbols do not return") {
+  test("retired setup and browser-memory symbols do not return"):
     val roots = Vector(Paths.get("src/main/scala"),
       Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
     val retired = Vector("oathdigital.setup", "SetupEventWire", "SetupState",
@@ -533,9 +504,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
       .filter(path => retired.exists(Files.readString(path).contains))
       .map(_.toString).sorted
     assertEquals(offenders, Vector.empty)
-  }
 
-  test("migrated modules never directly edit owned material state") {
+  test("migrated modules never directly edit owned material state"):
     // Phase 9 boundary: migrated action/phase/power modules express every
     // owned-material change (card vectors, site cards/tokens, banner custody
     // and resources, bank favor, hand keys, empty-key drops) as core
@@ -580,5 +550,3 @@ class BackendArchitectureSuite extends munit.FunSuite {
       }
     }.sorted
     assertEquals(offenders, Vector.empty)
-  }
-}

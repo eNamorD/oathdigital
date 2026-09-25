@@ -15,13 +15,13 @@ final class TrustedGameProvisioning(
     store: TrustedGameStore,
     generateCode: () => SeatCode = () => TrustedGameProvisioning.generateCode(),
     nowMillis: () => Long = () => System.currentTimeMillis()
-) {
+):
   import TrustedGameFailure._
 
   def create(request: TrustedGameCreateRequest, publicBaseUrl: String)
       : Either[TrustedGameFailure, TrustedGameCreateResponse] =
-    try {
-      for {
+    try
+      for
         valid <- TrustedGameCreateRequestCodec.decode(TrustedGameCreateRequestCodec.encode(request))
           .left.map(_ => InvalidRequest)
         origin <- validatedOrigin(publicBaseUrl)
@@ -31,45 +31,39 @@ final class TrustedGameProvisioning(
           0L, valid.participants, valid.participants.head.playerId))
         plan <- planFactory.build(config).left.map(_ => InvalidRequest)
         prepared <- service.prepareBootstrap(valid.gameId, plan.chronicle,
-          plan.resolvedConfig).left.map {
+          plan.resolvedConfig).left.map:
           case _: GameApplicationError.CommandRejected => InvalidRequest
           case _ => StorageFailure
-        }
         codes <- generateSeats(valid.participants)
         _ <- store.create(valid.gameId, codes.map { case (player, code) =>
-          code.digest -> player }, prepared.records, nowMillis()).left.map {
+          code.digest -> player }, prepared.records, nowMillis()).left.map:
           case TrustedGameStoreFailure.DuplicateGame => DuplicateGame
           case TrustedGameStoreFailure.CodeCollision => CodeCollision
           case TrustedGameStoreFailure.InvalidInput => InvalidRequest
           case TrustedGameStoreFailure.StorageFailure => StorageFailure
-        }
-      } yield TrustedGameCreateResponse(valid.gameId, codes.map { case (player, code) =>
+      yield TrustedGameCreateResponse(valid.gameId, codes.map { case (player, code) =>
         TrustedSeatLink(player, s"$origin/s/${code.raw}") })
-    } catch { case NonFatal(_) => Left(StorageFailure) }
+    catch { case NonFatal(_) => Left(StorageFailure) }
 
   private def generateSeats(participants: Vector[BootstrapParticipantRequest])
-      : Either[TrustedGameFailure, Vector[(String, SeatCode)]] = {
+      : Either[TrustedGameFailure, Vector[(String, SeatCode)]] =
     var used = Set.empty[SeatCodeDigest]
     val seats = Vector.newBuilder[(String, SeatCode)]
     val remaining = participants.iterator
-    while (remaining.hasNext) {
+    while remaining.hasNext do
       val participant = remaining.next()
       var selected = Option.empty[SeatCode]
       var attempts = 0
-      while (selected.isEmpty && attempts < 8) {
+      while selected.isEmpty && attempts < 8 do
         val code = generateCode()
         attempts += 1
-        if (!used.contains(code.digest)) selected = Some(code)
-      }
-      selected match {
+        if !used.contains(code.digest) then selected = Some(code)
+      selected match
         case None => return Left(CodeCollision)
         case Some(code) =>
           used += code.digest
           seats += participant.playerId -> code
-      }
-    }
     Right(seats.result())
-  }
 
   private def validatedOrigin(value: String): Either[TrustedGameFailure, String] =
     Try(new URI(value)).toOption.filter { uri =>
@@ -79,9 +73,7 @@ final class TrustedGameProvisioning(
         uri.getRawUserInfo == null && uri.getRawQuery == null && uri.getRawFragment == null &&
         Option(uri.getRawPath).forall(_.isEmpty)
     }.map(_.toString).toRight(InvalidRequest)
-}
 
-object TrustedGameProvisioning {
+object TrustedGameProvisioning:
   private lazy val random = new SecureRandom()
   private def generateCode(): SeatCode = SeatCode.generate(random)
-}

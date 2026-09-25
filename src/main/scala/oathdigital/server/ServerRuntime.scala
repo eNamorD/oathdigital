@@ -21,11 +21,10 @@ final class ServerRuntime private (
     val trustedGameProvisioning: TrustedGameProvisioning,
     val trustedGame: TrustedGameGateway,
     private val database: HsqldbDatabaseOwner
-) extends AutoCloseable {
+) extends AutoCloseable:
   override def close(): Unit = database.close()
-}
 
-object ServerRuntime {
+object ServerRuntime:
   def open(
       databasePath: Path,
       catalogPath: Path,
@@ -95,4 +94,3 @@ object ServerRuntime {
           error
         }
     }
-}

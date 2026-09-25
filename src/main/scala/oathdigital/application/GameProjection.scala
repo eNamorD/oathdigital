@@ -10,7 +10,7 @@ import oathdigital.model._
 import oathdigital.protocol.projection._
 
 /** Assembles a player-scoped projection from authoritative state. */
-final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) {
+final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
   def this(catalog: ExecutableCatalog) =
     this(catalog, PhasePowerCatalog.default(catalog))
 
@@ -33,24 +33,23 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
     projectFor(gameId, loaded, None)
 
   private def projectFor(gameId: String, loaded: LoadedGame,
-      requestingPlayer: Option[PlayerId]): GameProjection = loaded.state match {
+      requestingPlayer: Option[PlayerId]): GameProjection = loaded.state match
     case NoGame => GameProjection(gameId, loaded.nextSequence, "not-started", None,
       Vector.empty, Vector.empty, Vector.empty, Vector.empty,
       ready = false, completed = false)
     case Ready(ready) =>
       val context = ScopedProjectionContext(ready, requestingPlayer)
       readyProjection(gameId, loaded.nextSequence, context)
-  }
 
   private def readyProjection(gameId: String, sequence: Long,
-      context: ScopedProjectionContext): GameProjection = {
+      context: ScopedProjectionContext): GameProjection =
     val current = context.current
     val active = context.active
     val projectedPhasePowers = phasePowerProjector.project(context)
     val legal = legalActions.project(context, projectedPhasePowers)
     val pending = pendingProjector.project(context)
     val site = context.activeSite
-    val controls = if (current.result.nonEmpty) Vector.empty else legal.controls
+    val controls = if current.result.nonEmpty then Vector.empty else legal.controls
 
     GameProjection(
       gameId, sequence, pending.phase, Some(current.turn.activePlayer.value),
@@ -73,8 +72,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
           state.tokens.secrets))),
       actionSelectionOpen = current.result.isEmpty &&
         current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
-      actionFamilies = if (current.result.isEmpty && current.turn.phase == Phase.Act &&
-        current.walkerPending.isEmpty)
+      actionFamilies = if current.result.isEmpty && current.turn.phase == Phase.Act &&
+        current.walkerPending.isEmpty then
         Vector("Search", "Travel", "Campaign", "Muster", "Trade", "Forge",
           "Recover", "Challenge", "Minor Actions") else Vector.empty,
       legalTravelDestinations = legal.travel,
@@ -111,7 +110,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
         restSupplyGain = Option.when(controls.contains("beginRest"))(
           FinishRestProcedure.supplyGainAtRest(context.ready, active.player)
             .toOption).flatten)
-  }
 
   /** The viewer's own temporary hand, drawn face up because the cards are
     * held in their hand and read by them alone -- another seat, and a
@@ -123,14 +121,13 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
     */
   private def handPreview(context: ScopedProjectionContext,
       decision: Option[WalkerDecisionProjection])
-      : Vector[CardDetailsProjection] = {
+      : Vector[CardDetailsProjection] =
     val hand = context.viewer.toVector.flatMap(viewer =>
       context.current.temporaryHands.getOrElse(viewer, Vector.empty))
     val offered = decision.toVector.flatMap(offeredCards)
-    if (hand.exists(card => offered.contains(card.value))) Vector.empty
+    if hand.exists(card => offered.contains(card.value)) then Vector.empty
     else hand.map(card => presentation.cardDetails(card,
       Some(Orientation.FaceUp), hidden = false))
-  }
 
   /** Every card a decision puts in front of the player, named by the id an
     * answer spells: an option's own reference, and the card details that
@@ -141,4 +138,3 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       val options = query.options ++ query.slots.map(_.option)
       options.map(_.id) ++ options.flatMap(_.card).map(_.cardId)
     }
-}

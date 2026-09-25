@@ -7,7 +7,7 @@ import oathdigital.model._
   * without the card (a test stub), so a power whose card is absent is omitted
   * rather than failing construction.
   */
-object CatalogCards {
+object CatalogCards:
   def denizen(catalog: ExecutableCatalog, power: PowerId): Option[DenizenId] =
     catalog.denizens.find(_.powers.exists(_.id == power))
       .map(card => DenizenId(card.id.value))
@@ -20,4 +20,3 @@ object CatalogCards {
     catalog.edifices.find(card => card.intact.powers.exists(_.id == power) ||
       card.ruined.powers.exists(_.id == power))
       .map(card => EdificeId(card.id.value))
-}

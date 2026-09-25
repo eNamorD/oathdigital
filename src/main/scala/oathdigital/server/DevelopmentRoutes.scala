@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.model.headers.RawHeader
 
-object DevelopmentRoutes {
+object DevelopmentRoutes:
   private val DevelopmentAssetCacheControl = RawHeader(
     "Cache-Control",
     "no-store, no-cache, must-revalidate, max-age=0"
@@ -16,20 +16,17 @@ object DevelopmentRoutes {
       firstGame: GameServerGateway,
       blockingExecutionContext: ExecutionContext,
       serveFrontend: Boolean = true
-  ): Route = {
+  ): Route =
     val api = new GameRoutes(
       firstGame,
       blockingExecutionContext
     ).route
 
-    if (!serveFrontend) api
+    if !serveFrontend then api
     else
       api ~
-        respondWithHeader(DevelopmentAssetCacheControl) {
+        respondWithHeader(DevelopmentAssetCacheControl):
           pathEndOrSingleSlash {
             getFromFile("frontend/index.html")
           } ~
           getFromDirectory("frontend")
-        }
-  }
-}

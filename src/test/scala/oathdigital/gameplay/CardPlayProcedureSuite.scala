@@ -7,9 +7,9 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-class CardPlayProcedureSuite extends munit.FunSuite {
+class CardPlayProcedureSuite extends munit.FunSuite:
 
-  private def handState: (ReadyGame, PlayerId, DenizenId) = {
+  private def handState: (ReadyGame, PlayerId, DenizenId) =
     val base = initialReady
     val actor = base.game.current.turn.activePlayer
     val card = base.game.current.commonCards.worldDeck.collectFirst {
@@ -21,9 +21,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
         current.commonCards.worldDeck.filterNot(_ == card)),
       temporaryHands = current.temporaryHands.updated(actor, Vector(card)))
     (base.copy(game = base.game.copy(current = changed)), actor, card)
-  }
 
-  test("CardPlay exposes legal placement choices in decision order") {
+  test("CardPlay exposes legal placement choices in decision order"):
     val (ready, actor, card) = handState
     val choices = CardPlay.legalChoices(catalog, ready, actor, card,
       CardPlay.Origin.TemporaryHand)
@@ -32,9 +31,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       SearchPlacement.Adviser(Orientation.FaceUp, None),
       SearchPlacement.Adviser(Orientation.FaceDown, None))
     assertEquals(choices.map(_.placement), expected)
-  }
 
-  test("temporary-hand card builds a reusable placement decision") {
+  test("temporary-hand card builds a reusable placement decision"):
     val (ready, actor, card) = handState
     val tree = CardPlayProcedure.build(catalog, ready, actor, card,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
@@ -43,26 +41,23 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       .options.exists(_.ref == DecisionOptionRef.Button("discard")))
     val domain = CardPlay.legalChoices(catalog, ready, actor, card,
       CardPlay.Origin.TemporaryHand)
-    val expected = domain.map(_.placement).map {
+    val expected = domain.map(_.placement).map:
       case SearchPlacement.Discard => DecisionOptionRef.Button("discard")
       case _: SearchPlacement.Site => DecisionOptionRef.Button("site")
       case SearchPlacement.Adviser(Orientation.FaceUp, _) =>
         DecisionOptionRef.Button("adviser-faceup")
       case SearchPlacement.Adviser(Orientation.FaceDown, _) =>
         DecisionOptionRef.Button("adviser-facedown")
-    }
     assertEquals(decision.query.asInstanceOf[DecisionQuery.ChooseOne]
       .options.map(_.ref), expected)
-  }
 
-  test("card absent from temporary hand cannot build card play") {
+  test("card absent from temporary hand cannot build card play"):
     val (ready, actor, card) = handState
     val absent = ready.updateCurrent(_.copy(temporaryHands = Map.empty))
     assert(CardPlayProcedure.build(catalog, absent, actor, card,
       CardPlayProcedure.Origin.TemporaryHand).isLeft)
-  }
 
-  test("full adviser area offers placement then a discardable replacement") {
+  test("full adviser area offers placement then a discardable replacement"):
     val (base, actor, card) = handState
     val current = base.game.current
     val extras = current.commonCards.worldDeck.collect {
@@ -71,7 +66,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     val player = current.players.find(_.player == actor).get
     val added = extras.take(3 - player.advisers.size)
     val full = base.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = p.advisers ++ added.map(id =>
           DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
@@ -110,9 +105,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     assertEquals(advisers.size, 3)
     assert(advisers.exists(_.id == card))
     assert(!advisers.exists(_.id == added.head))
-  }
 
-  test("selected site placement moves kept card and empties temporary hand") {
+  test("selected site placement moves kept card and empties temporary hand"):
     val (ready, actor, card) = handState
     val planned = CardPlay.plannedOperations(catalog, ready, actor, card,
       SearchPlacement.Site(None), CardPlay.Origin.TemporaryHand).toOption.get
@@ -129,9 +123,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     val site = ready.game.current.players.find(_.player == actor).get.pawnSite.get
     assert(result.treeless.game.current.map.sites(site).denizens.exists(_.id == card))
     assertEquals(result.treeless.game.current.temporaryHands(actor), Vector.empty)
-  }
 
-  test("selected temporary-hand discard is a required semantic discard") {
+  test("selected temporary-hand discard is a required semantic discard"):
     val (ready, actor, card) = handState
     val planned = CardPlay.plannedOperations(catalog, ready, actor, card,
       SearchPlacement.Discard, CardPlay.Origin.TemporaryHand).toOption.get
@@ -139,16 +132,15 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       case value: Discard.Denizen => value.card == card && value.required
       case _ => false
     })
-  }
 
-  test("locked full adviser area offers no adviser placement") {
+  test("locked full adviser area offers no adviser placement"):
     val (base, actor, card) = handState
     val current = base.game.current
     val locked = catalog.denizens.filter(
       _.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
       .map(d => DenizenId(d.id.value)).filterNot(_ == card).take(3)
     val full = base.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = locked.map(id =>
           DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
@@ -162,9 +154,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     assert(!CardPlay.legalChoices(catalog, full, actor, card,
       CardPlay.Origin.TemporaryHand).exists(_.placement ==
       SearchPlacement.Adviser(Orientation.FaceUp, None)))
-  }
 
-  test("a faceup Conspiracy is planned as no placement and offers no replacement") {
+  test("a faceup Conspiracy is planned as no placement and offers no replacement"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -176,7 +167,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
           id == vision || id == revealed)),
       temporaryHands = current.temporaryHands.updated(actor, Vector(vision)),
       players = current.players.map(player =>
-        if (player.player == actor) player.copy(revealedVision =
+        if player.player == actor then player.copy(revealedVision =
           Some(VisionState(revealed, Orientation.FaceUp))) else player)))
     val faceup = SearchPlacement.Adviser(Orientation.FaceUp, None)
     val choices = CardPlay.legalChoices(catalog, ready, actor, vision,
@@ -188,9 +179,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     assert(CardPlay.plannedOperations(catalog, ready, actor, vision,
       SearchPlacement.Adviser(Orientation.FaceUp, Some(revealed)),
       CardPlay.Origin.TemporaryHand).isLeft)
-  }
 
-  test("a facedown Vision is offered discard and faceup play only, with no replacement") {
+  test("a facedown Vision is offered discard and faceup play only, with no replacement"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -201,7 +191,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
         current.commonCards.worldDeck.filterNot(id =>
           held.contains(id) || id == revealed)),
       players = current.players.map(player =>
-        if (player.player == actor) player.copy(
+        if player.player == actor then player.copy(
           advisers = player.advisers ++ held.map(VisionState(_,
             Orientation.FaceDown)),
           revealedVision = Some(VisionState(revealed, Orientation.FaceUp)))
@@ -215,9 +205,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       assertEquals(choices.map(_.replacements), Vector(Vector.empty, Vector.empty),
         vision.value)
     }
-  }
 
-  test("full site without Homeland permission offers no site placement") {
+  test("full site without Homeland permission offers no site placement"):
     val (base, actor, card) = handState
     val current = base.game.current
     val siteId = current.players.find(_.player == actor).get.pawnSite.get
@@ -235,9 +224,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       CardPlayProcedure.Origin.TemporaryHand).toOption.get.children.head
       .asInstanceOf[Decide].query.asInstanceOf[DecisionQuery.ChooseOne]
     assert(!query.options.exists(_.ref == DecisionOptionRef.Button("site")))
-  }
 
-  test("placement buttons use the retired renderer labels") {
+  test("placement buttons use the retired renderer labels"):
     val (ready, actor, card) = handState
     val query = CardPlayProcedure.build(catalog, ready, actor, card,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get.children.head
@@ -247,9 +235,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     }.toMap
     assertEquals(labels, Map("discard" -> "Discard", "site" -> "Play at site",
       "adviser-faceup" -> "Play faceup", "adviser-facedown" -> "Play facedown"))
-  }
 
-  test("Hall of Ministers hides site-card replacement from the ruler's enemy") {
+  test("Hall of Ministers hides site-card replacement from the ruler's enemy"):
     val (base, actor, _) = handState
     val current = base.game.current
     val player = current.players.find(_.player == actor).get
@@ -283,15 +270,14 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       .collect { case id: DenizenId => id }.toSet, fillers.toSet)
     assertEquals(siteReplacements(prepared(enemy.lineage))
       .collect { case id: DenizenId => id }, Vector.empty)
-  }
 
-  test("Search Vision can replace an existing revealed Vision") {
+  test("Search Vision can replace an existing revealed Vision"):
     val (base, actor, _) = handState
     val incoming = VisionRules.Faith
     val old = VisionRules.Conquest
     val current = base.game.current
     val changed = current.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p),
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(id => id == incoming || id == old)),
@@ -302,9 +288,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       .asInstanceOf[Decide].query.asInstanceOf[DecisionQuery.ChooseOne]
     assert(query.options.exists(_.ref == DecisionOptionRef.Button(
       "adviser-faceup")))
-  }
 
-  test("facedown adviser starts the shared walker placement tree") {
+  test("facedown adviser starts the shared walker placement tree"):
     val setup = initialReady
     val actor = setup.game.current.turn.activePlayer
     val adviser = setup.game.current.players.find(_.player == actor).get
@@ -329,5 +314,3 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     assert(owner.walkerDecision.nonEmpty)
     assertEquals(hidden.walkerDecision, None)
     assert(hidden.walkerWaiting.nonEmpty)
-  }
-}

@@ -14,7 +14,7 @@ import oathdigital.model._
   * gains it too, settled into the shared bank, because bandits hold no board of
   * their own. It applies the plan by itself, since the plan is free.
   */
-final case class BattleHonors private (cardId: DenizenId) extends BattlePlan {
+final case class BattleHonors private (cardId: DenizenId) extends BattlePlan:
   def id: PowerId = BattleHonors.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -26,7 +26,7 @@ final case class BattleHonors private (cardId: DenizenId) extends BattlePlan {
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
-      if (!use.won.contains(true)) Vector.empty
+      if !use.won.contains(true) then Vector.empty
       else Vector(use.user.fold[Operation](toBandits)(
         Gain.Favor(_, Suit.Order, BattleHonors.Favor)))))
 
@@ -34,12 +34,10 @@ final case class BattleHonors private (cardId: DenizenId) extends BattlePlan {
   private def toBandits: Operation = Move(Piece.Favor(BattleHonors.Favor),
     PositionedLocation(Location.FavorBank(Suit.Order)),
     PositionedLocation(Location.SharedBank))
-}
 
-object BattleHonors {
+object BattleHonors:
   val id: PowerId = PowerId("denizen.battle-honors")
   val Favor: Int = 2
 
   def forCatalog(catalog: ExecutableCatalog): Option[BattleHonors] =
     CatalogCards.denizen(catalog, id).map(new BattleHonors(_))
-}

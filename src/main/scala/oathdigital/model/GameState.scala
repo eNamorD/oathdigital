@@ -6,12 +6,11 @@ final case class PlayerBoardState(
     faceDownSecrets: Int,
     warbands: Int,
     supply: SupplyTrack
-) {
+):
   require(favor >= 0, "player favor must be non-negative")
   require(faceUpSecrets >= 0, "faceup secrets must be non-negative")
   require(faceDownSecrets >= 0, "facedown secrets must be non-negative")
   require(warbands >= 0, "player-board warbands must be non-negative")
-}
 
 final case class PlayerState(
     player: PlayerId,
@@ -38,13 +37,12 @@ final case class LineageState(
 final case class EraState(
     targetScore: Int,
     lineageScores: Map[LineageId, Int]
-) {
+):
   require(targetScore > 0, "era target score must be positive")
   require(
     lineageScores.values.forall(_ >= 0),
     "lineage scores must be non-negative"
   )
-}
 
 final case class CampaignState(
     atlas: AtlasState,
@@ -64,22 +62,19 @@ final case class CampaignState(
   * it instead of in a match a new phase could be added without touching.
   */
 sealed trait Phase extends Product with Serializable { def key: String }
-object Phase {
+object Phase:
   case object Setup extends Phase { val key = "setup" }
   case object Wake extends Phase { val key = "wake" }
   case object Act extends Phase { val key = "act" }
   case object Rest extends Phase { val key = "rest" }
-  private[oathdigital] case object RoundEnd extends Phase {
+  private[oathdigital] case object RoundEnd extends Phase:
     val key = "round-end"
-  }
-  private[oathdigital] case object WarExhaustion extends Phase {
+  private[oathdigital] case object WarExhaustion extends Phase:
     val key = "war-exhaustion"
-  }
 
   val all: Vector[Phase] = Vector(Setup, Wake, Act, Rest, RoundEnd, WarExhaustion)
 
   def fromKey(key: String): Option[Phase] = all.find(_.key == key)
-}
 
 final case class TurnState(
     activePlayer: PlayerId,
@@ -90,7 +85,7 @@ final case class TurnState(
 enum PowerTiming { case Wake, Act, Rest }
 
 sealed trait PowerSourceRef extends Product with Serializable
-object PowerSourceRef {
+object PowerSourceRef:
   final case class Site(id: SiteId) extends PowerSourceRef
 
   /** A globally named card whose printed power was used. This includes
@@ -102,7 +97,6 @@ object PowerSourceRef {
 
   /** A banner whose printed face power was used. */
   final case class Banner(banner: oathdigital.model.Banner) extends PowerSourceRef
-}
 
 /** A stable identity for one use-limited power instance this turn. */
 final case class PowerUseRef(
@@ -115,18 +109,16 @@ final case class GameTracks(
     round: Int,
     visionsDrawn: Int,
     usurperLimited: Boolean
-) {
+):
   require(round >= 1, "round must be positive")
   require(round <= 8, "round must be eight or less")
   require(visionsDrawn >= 0, "Visions Drawn must be non-negative")
-}
 
-enum VictoryKind(val key: String) {
+enum VictoryKind(val key: String):
   case Usurper extends VictoryKind("usurper")
   case Visionary extends VictoryKind("visionary")
   case Oathkeeper extends VictoryKind("oathkeeper")
   case RandomSelection extends VictoryKind("random-selection")
-}
 
 final case class GameResult(winner: PlayerId,
     kind: VictoryKind = VictoryKind.Usurper)

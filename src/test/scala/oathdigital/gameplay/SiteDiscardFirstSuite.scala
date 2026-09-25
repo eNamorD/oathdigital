@@ -10,7 +10,7 @@ import oathdigital.model._
   * card of the site's card list, at any capacity. No real power sets it yet
   * (the People's Favor banner face does), so a test double does.
   */
-class SiteDiscardFirstSuite extends munit.FunSuite {
+class SiteDiscardFirstSuite extends munit.FunSuite:
   import PlacementFixture._
 
   private val powers = WalkerPowers(Vector(discardFirst))
@@ -23,15 +23,14 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
 
   /** Chooses "play at site" and returns the walk parked on the discard. */
   private def toDiscardDecision(ready: ReadyGame, actor: PlayerId,
-      card: DenizenId): (Operation, PendingTree) = {
+      card: DenizenId): (Operation, PendingTree) =
     val tree = build(ready, actor, card)
     val placed = answer(ready, tree, park(ready, tree, powers), powers,
       decisionId(card, "place"), DecisionOptionRef.Button("site"), actor)
       .asInstanceOf[WalkerOutcome.Parked]
     (tree, placed.tree)
-  }
 
-  test("a site with room offers a discard only under the permission") {
+  test("a site with room offers a discard only under the permission"):
     val Vector(card, kept, other) = plain(initialReady).take(3)
     val (ready, actor, siteId) = staged(card, Vector(denizen(kept), denizen(other)))
     val capacity = catalog.sites.find(_.id == siteId).get.capacity
@@ -43,9 +42,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
       PlacementRules.default.withSiteDiscardFirst).get
     assertEquals(allowed.replacements.toSet, Set[CardId](kept, other))
     assert(allowed.replacementOptional)
-  }
 
-  test("declining the optional discard plays the card and discards nothing") {
+  test("declining the optional discard plays the card and discards nothing"):
     val Vector(card, kept) = plain(initialReady).take(2)
     val (ready, actor, siteId) = staged(card, Vector(denizen(kept)))
     val (tree, asked) = toDiscardDecision(ready, actor, card)
@@ -56,9 +54,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
     assertEquals(done.game.current.map.sites(siteId).denizens.map(_.id),
       Vector[CardId](kept, card))
     assertEquals(done.game.current.temporaryHands(actor), Vector.empty)
-  }
 
-  test("choosing a site card discards it with the standard returns") {
+  test("choosing a site card discards it with the standard returns"):
     val card = plain(initialReady).head
     val kept = plain(initialReady).find(id =>
       catalog.suitOf(id) != catalog.suitOf(card)).get
@@ -78,10 +75,9 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
       ready.banks.favor.getOrElse(suit, 0) + 1)
     assertEquals(actorOf(done).board.faceDownSecrets,
       actorOf(ready).board.faceDownSecrets + 1)
-  }
 
   test("a full site with no matching homeland accepts the play only with a " +
-      "discard, and only under the permission") {
+      "discard, and only under the permission"):
     val cards = plain(initialReady)
     val card = cards.head
     val (_, _, probeSite) = staged(card, Vector.empty)
@@ -102,9 +98,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
       .asInstanceOf[WalkerOutcome.Finished].treeless
     assertEquals(done.game.current.map.sites(siteId).denizens.size, capacity)
     assert(done.game.current.map.sites(siteId).denizens.exists(_.id == card))
-  }
 
-  test("an intact edifice is never offered for the discard: it is locked") {
+  test("an intact edifice is never offered for the discard: it is locked"):
     val Vector(card, kept) = plain(initialReady).take(2)
     val hall = EdificeId("E16")
     val (built, actor, siteId) = staged(card, Vector(denizen(kept),
@@ -113,9 +108,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
     val site = choices(ready, actor, card,
       PlacementRules.default.withSiteDiscardFirst).get
     assertEquals(site.replacements, Vector[CardId](kept))
-  }
 
-  test("a ruined edifice may be discarded, and it goes back to the edifice deck") {
+  test("a ruined edifice may be discarded, and it goes back to the edifice deck"):
     val Vector(card, kept) = plain(initialReady).take(2)
     val hall = EdificeId("E16")
     val ruined = DecisionOptionRef.Button("replace:edifice:E16")
@@ -131,9 +125,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
     assertEquals(done.game.current.map.sites(siteId).denizens.map(_.id),
       Vector[CardId](kept, card))
     assertEquals(done.game.current.commonCards.edificeDeck.last, hall)
-  }
 
-  test("the permission composes with an adviser limit through the walker") {
+  test("the permission composes with an adviser limit through the walker"):
     val Vector(card, kept, first, second) = plain(initialReady).take(4)
     val (built, actor, _) = staged(card, Vector(denizen(kept)))
     val held = Vector(first, second)
@@ -141,7 +134,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
     val ready = built.updateCurrent(_.copy(
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(held.contains)),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = held.map(id => DenizenState(id,
           Orientation.FaceDown, Tokens.empty))) else p)))
     val both = WalkerPowers(Vector(discardFirst, limitTwo))
@@ -158,9 +151,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
     val site = answer(ready, tree, parked, both, decisionId(card, "place"),
       DecisionOptionRef.Button("site"), actor).asInstanceOf[WalkerOutcome.Parked]
     assertEquals(options(ready, tree, site.tree, both).head, noReplacement)
-  }
 
-  test("without the permission a site with room asks no discard") {
+  test("without the permission a site with room asks no discard"):
     val Vector(card, kept) = plain(initialReady).take(2)
     val (ready, actor, siteId) = staged(card, Vector(denizen(kept)))
     val none = WalkerPowers.empty
@@ -170,5 +162,3 @@ class SiteDiscardFirstSuite extends munit.FunSuite {
       .asInstanceOf[WalkerOutcome.Finished].treeless
     assertEquals(done.game.current.map.sites(siteId).denizens.map(_.id),
       Vector[CardId](kept, card))
-  }
-}

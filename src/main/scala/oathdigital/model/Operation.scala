@@ -12,22 +12,19 @@ package oathdigital.model
   * concrete [[CoreOperation]]/[[PrimitiveOperation]] cases stay in
   * `CoreOperations.scala` with their sealed parents.
   */
-trait Operation {
+trait Operation:
   /** Hook point for power windows; None = engine-internal. */
   def window: Option[PowerWindow] = None
   /** Immediate children of this node. Primitives expose `Vector(this)`. */
   def children: Vector[Operation]
-}
 
-object Operation {
+object Operation:
   /** Depth-first leaf sequence of an operation tree.
     *
     * A [[PrimitiveOperation]] is a leaf and flattens to itself; composites
     * flatten to the leaves of each child, in child order.
     */
   def flatten(operation: Operation): Vector[Operation] =
-    operation match {
+    operation match
       case _: PrimitiveOperation => Vector(operation)
       case _ => operation.children.flatMap(flatten)
-    }
-}

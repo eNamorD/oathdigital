@@ -6,7 +6,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.model._
 
-class LeagueTreatySuite extends munit.FunSuite {
+class LeagueTreatySuite extends munit.FunSuite:
   import LeagueTreatyFixture._
 
   private val rules = new OathRules(catalog,
@@ -20,7 +20,7 @@ class LeagueTreatySuite extends munit.FunSuite {
   private val example = Vector(Suit.Arcane -> 2, Suit.Discord -> 2,
     Suit.Hearth -> 2)
 
-  test("an unruled treaty site or a region without card favor asks nothing") {
+  test("an unruled treaty site or a region without card favor asks nothing"):
     Vector(arranged(None, example), arranged(Some(offTurn(act)), Vector.empty))
       .foreach { case (ready, _) =>
       val rested = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
@@ -28,10 +28,9 @@ class LeagueTreatySuite extends munit.FunSuite {
       assert(rested.continue.isInstanceOf[OathContinue.AwaitingWakeAction],
         rested.continue.toString)
     }
-  }
 
   test("the off-turn ruler alone answers the destination, and declining " +
-      "leaves cleanup to printed banks") {
+      "leaves cleanup to printed banks"):
     val owner = offTurn(act)
     val (ready, site) = arranged(Some(owner), example)
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
@@ -49,10 +48,9 @@ class LeagueTreatySuite extends munit.FunSuite {
     example.foreach { case (suit, amount) =>
       assertEquals(banks(declined.state)(suit), ready.banks.favor(suit) + amount)
     }
-  }
 
   test("a destination that is the only source suit moves nothing and asks " +
-      "no distribution") {
+      "no distribution"):
     val owner = offTurn(act)
     val (ready, site) = arranged(Some(owner),
       Vector(Suit.Nomad -> 2, Suit.Nomad -> 1))
@@ -64,10 +62,9 @@ class LeagueTreatySuite extends munit.FunSuite {
       DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad))).toOption.get
     assert(chosen.continue.isInstanceOf[OathContinue.AwaitingWakeAction])
     assertEquals(banks(chosen.state)(Suit.Nomad), ready.banks.favor(Suit.Nomad) + 3)
-  }
 
   test("the worked example moves 2 Arcane and 1 Discord favor to Nomad, " +
-      "and a replayed park resumes to the same decision") {
+      "and a replayed park resumes to the same decision"):
     val owner = offTurn(act)
     val (ready, site) = arranged(Some(owner), example)
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
@@ -97,9 +94,8 @@ class LeagueTreatySuite extends munit.FunSuite {
       assertEquals(banks(done.state)(suit), ready.banks.favor(suit) + delta,
         suit.toString)
     }
-  }
 
-  test("favor on an edifice in the region moves with the rest, on either face") {
+  test("favor on an edifice in the region moves with the rest, on either face"):
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
       val owner = offTurn(act)
       val (arrangedReady, site) = arranged(Some(owner), Vector(Suit.Arcane -> 1))
@@ -130,5 +126,3 @@ class LeagueTreatySuite extends munit.FunSuite {
       assertEquals(banks(done.state)(destinationBank),
         ready.banks.favor(destinationBank) + 3, side.toString)
     }
-  }
-}

@@ -5,7 +5,7 @@ import oathdigital.gameplay.walker.{WalkerStepPayload, DeltaMeaning, WalkerStepR
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-class CampaignResultCodecSuite extends munit.FunSuite {
+class CampaignResultCodecSuite extends munit.FunSuite:
   private val conquest = CampaignResult(PlayerId("red"), CampaignKind.Conquest,
     CampaignDefender.Bandits, Vector(SiteId("site:a"), SiteId("site:b")),
     Vector.empty, force = 3,
@@ -24,7 +24,7 @@ class CampaignResultCodecSuite extends munit.FunSuite {
     defenseFaces = Vector.empty, attackScore = 0, skullLosses = 0,
     sacrificed = 0, force = 0)
 
-  test("a recorded Campaign result round trips through the wire for both kinds") {
+  test("a recorded Campaign result round trips through the wire for both kinds"):
     val events = Vector(conquest, raid, empty).map(result =>
       WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.OperationApplied("campaign")),
@@ -37,9 +37,8 @@ class CampaignResultCodecSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct,
       Vector("record-campaign-result"))
-  }
 
-  test("a malformed recorded result is a typed decode failure, not an exception") {
+  test("a malformed recorded result is a typed decode failure, not an exception"):
     val encoded = GameEventWire.encodeEvent("campaign-result", catalog.ref, 0,
       WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.OperationApplied("campaign")),
@@ -47,5 +46,3 @@ class CampaignResultCodecSuite extends munit.FunSuite {
     val json = ujson.read(encoded)
     json("payload")("ops")(0)("result")("attackFaces") = ujson.Arr("not-a-face")
     assert(GameEventWire.decode(json.toString).isLeft)
-  }
-}

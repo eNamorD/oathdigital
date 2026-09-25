@@ -8,7 +8,7 @@ import oathdigital.model._
   * Magic Carpet). A pawn relocation that is not Travel is a plain `Move`, and
   * nothing here runs a Travel window.
   */
-object PawnMoves {
+object PawnMoves:
   def pawnSite(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, SiteId] =
     PowerAccess.pawnSite(ready, player).toRight(OathViolation.InvalidEventOrder(
@@ -38,7 +38,7 @@ object PawnMoves {
   def relocate(ready: ReadyGame, player: PlayerId, to: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] =
     pawnSite(ready, player).map(from =>
-      if (from == to) Vector.empty
+      if from == to then Vector.empty
       else Vector(Move(Piece.Pawn(player),
         PositionedLocation(Location.Site(from)),
         PositionedLocation(Location.Site(to)))))
@@ -47,4 +47,3 @@ object PawnMoves {
       : Either[OathViolation, SiteId] = PowerAnswers.one(pending, decisionId)
     .collect { case DecisionOptionRef.Site(site) => site }
     .toRight(PowerAnswers.missing(decisionId))
-}

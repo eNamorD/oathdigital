@@ -5,7 +5,7 @@ import org.scalajs.dom
 /** The site box, which carries its own numbers in its corners the way a
   * printed Oath site does. Runs under jsdom (`Test / jsEnv` in `build.sbt`).
   */
-class SiteFaceSuite extends munit.FunSuite {
+class SiteFaceSuite extends munit.FunSuite:
   private def all(node: dom.Element, selector: String): Vector[dom.Element] =
     node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
@@ -32,7 +32,7 @@ class SiteFaceSuite extends munit.FunSuite {
     relics = GameSiteRelics(2), defense = 0,
     recoverDifficulty = Some(4))
 
-  test("a site's denizens and relics share one row, with no headings") {
+  test("a site's denizens and relics share one row, with no headings"):
     val node = ServerUiSupport.siteDetails(mine)
     val row = one(node, ".site-cards").getOrElse(fail("no site card row"))
     assertEquals(all(row, ".card-face").size, 3)
@@ -41,9 +41,8 @@ class SiteFaceSuite extends munit.FunSuite {
     assert(!node.textContent.contains("Denizens"), node.textContent)
     assert(!node.textContent.contains("Relics"), node.textContent)
     assert(!node.textContent.contains("None"), node.textContent)
-  }
 
-  test("empty denizen slots fill the row up to capacity, ahead of the relics") {
+  test("empty denizen slots fill the row up to capacity, ahead of the relics"):
     val row = one(ServerUiSupport.siteDetails(woods.copy(denizenCapacity = 2,
       relicCapacity = 1, denizens = Vector(denizen("denizen:fox", "Fox", "beast")),
       relics = GameSiteRelics(1))), ".site-cards")
@@ -52,12 +51,11 @@ class SiteFaceSuite extends munit.FunSuite {
       "card-face card-face-denizen",
       "card-face card-face-denizen card-slot-empty",
       "card-face card-face-relic card-face-down"))
-  }
 
   /** A slot a site owns is drawn whether or not a card sits in it, so the row
     * reads as the site's capacity rather than as its current contents.
     */
-  test("an empty relic slot is drawn like an empty denizen slot") {
+  test("an empty relic slot is drawn like an empty denizen slot"):
     val row = one(ServerUiSupport.siteDetails(woods.copy(denizenCapacity = 1,
       relicCapacity = 2, denizens = Vector.empty, relics = GameSiteRelics(0))),
       ".site-cards").getOrElse(fail("no site card row"))
@@ -67,70 +65,62 @@ class SiteFaceSuite extends munit.FunSuite {
       "card-face card-face-relic card-slot-empty"))
     assertEquals(all(row, ".card-face").map(_.getAttribute("aria-label")),
       Vector("Empty denizen slot", "Empty relic slot", "Empty relic slot"))
-  }
 
-  test("a relic in a slot leaves the rest of the relic slots drawn") {
+  test("a relic in a slot leaves the rest of the relic slots drawn"):
     val row = one(ServerUiSupport.siteDetails(mine), ".site-cards")
       .getOrElse(fail("no site card row"))
     assertEquals(all(row, ".card-face").map(_.getAttribute("class")), Vector(
       "card-face card-face-denizen",
       "card-face card-face-relic card-face-down",
       "card-face card-face-relic card-face-down"))
-  }
 
   /** The letter badge repeated the first character of the name beside it. */
-  test("a site heading carries no letter badge") {
+  test("a site heading carries no letter badge"):
     val heading = ServerUiSupport.siteHeading(woods)
     assertEquals(all(heading, ".site-visual"), Vector.empty)
     assertEquals(one(heading, ".site-name").map(_.textContent), Some("Deep Woods"))
-  }
 
   /** The three cells are always present so the name stays in the middle one,
     * whether or not the site holds anything.
     */
-  test("a heading keeps its token cell even when the site holds nothing") {
+  test("a heading keeps its token cell even when the site holds nothing"):
     val heading = ServerUiSupport.siteHeading(woods.copy(looseFavor = 0,
       looseSecrets = 0))
     assertEquals(all(heading, ".site-tokens").size, 1)
     assertEquals(one(heading, ".site-tokens").map(_.textContent), Some(""))
-  }
 
-  test("loose favor and secrets sit in the site's upper left as glyphs") {
+  test("loose favor and secrets sit in the site's upper left as glyphs"):
     val heading = ServerUiSupport.siteHeading(woods)
     assertEquals(glyphs(heading, ".site-tokens"), Vector("favor", "secret"))
     assertEquals(all(heading, ".site-tokens .site-token-count")
       .map(_.textContent), Vector("2", "1"))
     assertEquals(one(heading, ".site-name").map(_.textContent), Some("Deep Woods"))
-  }
 
-  test("a token the site does not hold is not drawn at all") {
+  test("a token the site does not hold is not drawn at all"):
     val heading = ServerUiSupport.siteHeading(
       woods.copy(looseFavor = 0, looseSecrets = 3))
     assertEquals(glyphs(heading, ".site-tokens"), Vector("secret"))
     assertEquals(all(heading, ".site-tokens .site-token-count")
       .map(_.textContent), Vector("3"))
-  }
 
-  test("defense is a die in the upper right, drawn once per point") {
+  test("defense is a die in the upper right, drawn once per point"):
     val heading = ServerUiSupport.siteHeading(woods)
     assertEquals(glyphs(heading, ".site-defense"),
       Vector("defense die", "defense die"))
     assertEquals(one(heading, ".site-defense").map(_.getAttribute("aria-label")),
       Some("Defense 2"))
-  }
 
   /** A site anyone can walk into still says so, rather than leaving the
     * reader to decide whether a missing die means zero or means unknown.
     */
-  test("an undefended site says zero instead of drawing no die") {
+  test("an undefended site says zero instead of drawing no die"):
     val heading = ServerUiSupport.siteHeading(mine)
     assertEquals(glyphs(heading, ".site-defense"), Vector.empty)
     assertEquals(one(heading, ".site-defense").map(_.textContent), Some("0"))
     assertEquals(one(heading, ".site-defense").map(_.getAttribute("aria-label")),
       Some("Defense 0"))
-  }
 
-  test("site powers sit in the lower left, the requirement in the lower right") {
+  test("site powers sit in the lower left, the requirement in the lower right"):
     val node = ServerUiSupport.siteDetails(woods.copy(recoverDifficulty = Some(5)))
     val footer = one(node, ".site-footer").getOrElse(fail("no site footer"))
     assertEquals(footer.firstChild.asInstanceOf[dom.Element].getAttribute("class"),
@@ -138,13 +128,12 @@ class SiteFaceSuite extends munit.FunSuite {
     assertEquals(all(footer, ".site-power").map(_.textContent), Vector("Coast"))
     assertEquals(footer.lastChild.asInstanceOf[dom.Element].getAttribute("class"),
       "site-requirement")
-  }
 
   /** The box has room for one line of powers, so a second power joins the
     * first on it rather than wrapping onto a line the box then clips. Each
     * power keeps its rules text on hover.
     */
-  test("a site's powers share one line, each with its text on hover") {
+  test("a site's powers share one line, each with its text on hover"):
     val node = ServerUiSupport.siteDetails(woods.copy(powers = Vector(
       SitePower("river", "River", Some("Part of the River route.")),
       SitePower("coast", "Coast", Some("Travel along the Coast route.")),
@@ -155,9 +144,8 @@ class SiteFaceSuite extends munit.FunSuite {
       "River: Part of the River route.",
       "Coast: Travel along the Coast route.",
       "Enduring"))
-  }
 
-  test("forge and recover are one corner, never both") {
+  test("forge and recover are one corner, never both"):
     val recover = one(ServerUiSupport.siteDetails(mine), ".site-requirement")
       .getOrElse(fail("no requirement"))
     assertEquals(recover.textContent, "Recover 4")
@@ -169,10 +157,7 @@ class SiteFaceSuite extends munit.FunSuite {
     assert(forged.textContent.startsWith("Forge"), forged.textContent)
     assert(!forged.textContent.contains("Recover"), forged.textContent)
     assertEquals(glyphs(forged, ""), Vector("favor", "favor", "secret"))
-  }
 
-  test("a site with neither requirement leaves the corner out") {
+  test("a site with neither requirement leaves the corner out"):
     assertEquals(all(ServerUiSupport.siteDetails(woods), ".site-requirement"),
       Vector.empty)
-  }
-}

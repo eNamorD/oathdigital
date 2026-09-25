@@ -17,7 +17,7 @@ import oathdigital.model.OathState.Ready
   * that asks a question of its own is resumed. The ported plans are covered by
   * `CampaignPlansSuite` and `CampaignProcedureSuite`.
   */
-class CampaignPlanWindowSuite extends munit.FunSuite {
+class CampaignPlanWindowSuite extends munit.FunSuite:
   private val orderCard = cardWith("denizen.outriders")
   private val hearthCard = cardWith("denizen.watchdog")
 
@@ -27,7 +27,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       costs: Vector[CampaignPlanCost] = Vector.empty,
       effects: Vector[CampaignPlanEffect] = Vector.empty,
       afterwards: Map[PowerWindow, PlanUse => Vector[Operation]] = Map.empty)
-      extends BattlePlan {
+      extends BattlePlan:
     def id: PowerId = PowerId(s"test.plan.$name")
     def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
     def sides: Set[CampaignPlanSide] = planSides
@@ -36,7 +36,6 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
         effects))
     override def later: Map[PowerWindow, PlanUse => Vector[Operation]] =
       afterwards
-  }
 
   /** Every attack die a sword and every defense die blank, whatever the pool. */
   private val swords: WalkerDice = (kind, count) => Right(kind match {
@@ -47,10 +46,9 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
   private val attacker = Set[CampaignPlanSide](CampaignPlanSide.Attacker)
   private val defender = Set[CampaignPlanSide](CampaignPlanSide.Defender)
 
-  private def ready(state: OathState): ReadyGame = state match {
+  private def ready(state: OathState): ReadyGame = state match
     case Ready(value) => value
     case other => fail(s"expected a ready game, got $other")
-  }
 
   private def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
     events.collect { case step: WalkerStepRecorded => step.ops }.flatten
@@ -67,31 +65,28 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       : Board = replacePlayer(b, id)(p => p.copy(board = f(p.board)))
 
   private def committed(g: OathRules, b: Board, force: Int = 2)
-      : (OathTransition, OathTransition) = {
+      : (OathTransition, OathTransition) =
     val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
       .getOrElse(fail("Campaign must start"))
     started -> g.resolveWalker(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(force)).fold(e => fail(s"the force must be accepted: $e"), identity)
-  }
 
   private def pick(g: OathRules, from: OathTransition, who: PlayerId, id: String,
       ref: DecisionOptionRef): OathTransition = g.resolveWalker(from.state, who,
     id, ChooseOneAnswer(ref)).fold(e => fail(s"the plan must be accepted: $e"), identity)
 
   private def parked(plans: Vector[ContributingPower], b: Board,
-      from: OathTransition): Decide = {
+      from: OathTransition): Decide =
     val current = ready(from.state)
     val tree = CampaignProcedure.rebuild(catalog, current, b.actor,
       Vector.empty).toOption.get
     ProcedureWalker.openDecisions(current, tree,
       current.game.current.walkerPending.get, WalkerPowers(plans)).head
-  }
 
   private def optionsOf(decide: Decide): Vector[DecisionOption] =
-    decide.query match {
+    decide.query match
       case DecisionQuery.ChooseOne(options, _) => options
       case other => fail(s"expected a choose-one, got $other")
-    }
 
   private def awaits(who: PlayerId, id: String) =
     OathContinue.AwaitingCampaignDecision(who, DecisionId(id))
@@ -103,7 +98,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
 
   // ---- costs --------------------------------------------------------------
 
-  test("a favor cost is placed onto a card that already holds resources, and the option states the price") {
+  test("a favor cost is placed onto a card that already holds resources, and the option states the price"):
     val base = board()
     val b = with_(withAdviserFor(base, base.actor, orderCard,
       Orientation.FaceUp, Tokens(1, 0)), base.actor)(_.copy(favor = 2))
@@ -130,9 +125,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     assertEquals(PaidActionHarness.replayed(g, b.ready, events),
       ready(picked.state))
     assert(PaidActionHarness.wireRoundTrips(events))
-  }
 
-  test("burnt costs leave play to the shared bank, and the option states them apart") {
+  test("burnt costs leave play to the shared bank, and the option states them apart"):
     val base = board()
     val b = with_(withAdviserFor(base, base.actor, orderCard,
       Orientation.FaceUp), base.actor)(_.copy(favor = 1, faceUpSecrets = 1))
@@ -153,9 +147,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     assert(ops(picked.events).contains(PayCost(b.actor,
       Location.OnCard(DenizenId(orderCard)), Cost(favorBurnt = 1, secretBurnt = 1),
       intoOccupied = true, matchingBank = catalog.suitOf(DenizenId(orderCard)))))
-  }
 
-  test("a plan the user cannot pay is not offered, and a window with nothing to offer is skipped") {
+  test("a plan the user cannot pay is not offered, and a window with nothing to offer is skipped"):
     val base = board()
     val b = withAdviserFor(base, base.actor, orderCard, Orientation.FaceUp)
     val plan = Plan("poor", orderCard, attacker, Vector(CampaignPlanCost.Favor(1)),
@@ -163,9 +156,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val (_, forced) = committed(rulesWith(Vector(plan)), with_(b, b.actor)(
       _.copy(favor = 0)))
     assertEquals(forced.continue, awaits(b.actor, CampaignIds.sacrifice))
-  }
 
-  test("the options are rebuilt after each pick: a second plan the payment made unaffordable is gone") {
+  test("the options are rebuilt after each pick: a second plan the payment made unaffordable is gone"):
     val base = board()
     val b = with_(withAdviserFor(withAdviserFor(base, base.actor, orderCard,
       Orientation.FaceUp), base.actor, hearthCard, Orientation.FaceUp),
@@ -181,9 +173,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(orderCard))
     assertEquals(picked.continue, awaits(b.actor, CampaignIds.sacrifice))
-  }
 
-  test("a defender's plan is paid at once: favor goes to the card's suit bank and a secret turns facedown") {
+  test("a defender's plan is paid at once: favor goes to the card's suit bank and a secret turns facedown"):
     val base = againstPlayer(board())
     val b = with_(withAdviserFor(base, base.other, orderCard, Orientation.FaceUp),
       base.other)(_.copy(favor = 2, faceUpSecrets = 1, faceDownSecrets = 0))
@@ -210,9 +201,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     // The recorded payment is the requested one, and replay settles it again.
     assertEquals(PaidActionHarness.replayed(g, b.ready,
       started.events ++ forced.events ++ picked.events), ready(picked.state))
-  }
 
-  test("a defender plan with a cost the defender cannot pay is not offered") {
+  test("a defender plan with a cost the defender cannot pay is not offered"):
     val base = againstPlayer(board())
     val b = withAdviserFor(base, base.other, orderCard, Orientation.FaceUp)
     val plan = Plan("guard", orderCard, defender,
@@ -220,21 +210,19 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       Vector(CampaignPlanEffect.AddDefenseDice(1)))
     val (_, forced) = committed(rulesWith(Vector(plan)), b)
     assertEquals(forced.continue, awaits(b.actor, CampaignIds.sacrifice))
-  }
 
   // ---- a warband sacrifice ------------------------------------------------
 
-  private def defenderHolding(b: Board, warbands: Int): Board = {
+  private def defenderHolding(b: Board, warbands: Int): Board =
     val against = withEnemyAtOrigin(againstPlayer(b))
     with_(withAdviserFor(against, against.other, orderCard, Orientation.FaceUp),
       against.other)(_.copy(warbands = warbands))
-  }
 
   private val sacrificing = Plan("sacrifice", orderCard, defender,
     Vector(CampaignPlanCost.SacrificeWarband),
     Vector(CampaignPlanEffect.AddDefenseDice(1)))
 
-  test("a Raid defender sacrifices a warband from the board") {
+  test("a Raid defender sacrifices a warband from the board"):
     val b = defenderHolding(board(warbands = 4), 3)
     val g = rulesWith(Vector(sacrificing))
     val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor).toOption.get
@@ -251,9 +239,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       denizen(orderCard))
     assertEquals(player(picked.state, b.other).board.warbands, 2)
     assert(ops(picked.events).exists(_.isInstanceOf[Sacrifice]))
-  }
 
-  test("a Raid defender with no warband on the board cannot pay the sacrifice, so the plan is not offered") {
+  test("a Raid defender with no warband on the board cannot pay the sacrifice, so the plan is not offered"):
     val b = defenderHolding(board(warbands = 4), 0)
     val g = rulesWith(Vector(sacrificing))
     val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor).toOption.get
@@ -262,9 +249,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val forced = g.resolveWalker(kind.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(2)).toOption.get
     assertEquals(forced.continue, awaits(b.actor, CampaignIds.sacrifice))
-  }
 
-  test("a Conquest defender sacrifices from the one target site it rules") {
+  test("a Conquest defender sacrifices from the one target site it rules"):
     val b = withAdviserFor(againstPlayer(board()), againstPlayer(board()).other,
       orderCard, Orientation.FaceUp)
     val g = rulesWith(Vector(sacrificing))
@@ -274,9 +260,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       denizen(orderCard))
     assertEquals(ready(picked.state).game.current.map.sites(b.origin).forces,
       SiteForces.Occupied(ForceKind.Exile(b.player(b.other).lineage), 1))
-  }
 
-  test("with several target sites the defender chooses which pays, and the walk resumes inside the plan") {
+  test("with several target sites the defender chooses which pays, and the walk resumes inside the plan"):
     val two = againstPlayer(board(extras = 1))
     val extra = two.extras.head
     val lineage = two.player(two.other).lineage
@@ -308,11 +293,10 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     assert(ops(paid.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
     // Nothing else is offered, so the window ends and the attacker sacrifices.
     assertEquals(paid.continue, awaits(staged.actor, CampaignIds.sacrifice))
-  }
 
   // ---- effects ------------------------------------------------------------
 
-  test("a defender plan that removes attack dice takes what the pool holds, and none from an empty pool") {
+  test("a defender plan that removes attack dice takes what the pool holds, and none from an empty pool"):
     val base = againstPlayer(board())
     val b = withAdviserFor(base, base.other, orderCard, Orientation.FaceUp)
     val plan = Plan("remove", orderCard, defender, effects =
@@ -326,9 +310,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val nothing = pick(g, none, b.other, CampaignIds.defenderPlan,
       denizen(orderCard))
     assert(!ops(nothing.events).exists(_.isInstanceOf[ModifyDicePool]))
-  }
 
-  test("a plan's own operations run after its payment") {
+  test("a plan's own operations run after its payment"):
     val b = withAdviserFor(board(supply = 4), board().actor, orderCard,
       Orientation.FaceUp)
     val plan = Plan("run", orderCard, attacker, effects =
@@ -338,12 +321,11 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(orderCard))
     assertEquals(player(picked.state, b.actor).board.supply.supply, 3)
-  }
 
   // ---- other powers change what a plan costs ------------------------------
 
   /** Every attacker plan costs one more secret, placed on its card. */
-  private final case class Surcharge() extends ContributingPower {
+  private final case class Surcharge() extends ContributingPower:
     def id: PowerId = PowerId("test.surcharge")
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -359,9 +341,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
             }
           case _ => children
         })))
-  }
 
-  test("a power that adds to a plan's cost changes what is offered, and the option's price") {
+  test("a power that adds to a plan's cost changes what is offered, and the option's price"):
     val base = board()
     val b = withAdviserFor(base, base.actor, orderCard, Orientation.FaceUp)
     val plan = Plan("free", orderCard, attacker, effects =
@@ -390,11 +371,10 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       denizen(orderCard))
     assertEquals(adviserTokens(picked.state, b.actor, orderCard), Tokens(0, 1))
     assertEquals(player(picked.state, b.actor).board.faceUpSecrets, 0)
-  }
 
   // ---- later windows ------------------------------------------------------
 
-  test("what a used plan adds at a later window runs only when the plan was chosen") {
+  test("what a used plan adds at a later window runs only when the plan was chosen"):
     val base = board(supply = 4)
     val b = withAdviserFor(base, base.actor, orderCard, Orientation.FaceUp)
     val plan = Plan("later", orderCard, attacker, effects =
@@ -402,11 +382,11 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
         PowerWindow.CampaignActionEligibility -> (use =>
           Vector[Operation](GainSupply(use.actor, 1)))))
     val plans = Vector[ContributingPower](plan)
-    def finished(chooses: Boolean): Int = {
+    def finished(chooses: Boolean): Int =
       val g = rulesWith(plans, swords)
       val (_, forced) = committed(g, b, force = 4)
       val next =
-        if (chooses) pick(g, forced, b.actor, CampaignIds.attackerPlan,
+        if chooses then pick(g, forced, b.actor, CampaignIds.attackerPlan,
           denizen(orderCard))
         else pick(g, forced, b.actor, CampaignIds.attackerPlan,
           CampaignIds.finish)
@@ -415,14 +395,12 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       val placed = g.resolveWalker(sacrificed.state, b.actor,
         CampaignIds.placement, ChooseAmountAnswer(0)).getOrElse(fail("no placement"))
       player(placed.state, b.actor).board.supply.supply
-    }
     assertEquals(finished(chooses = true), 3)
     assertEquals(finished(chooses = false), 2)
-  }
 
   // ---- a bandit defender --------------------------------------------------
 
-  test("a bandit defender applies every cost-free plan of a site it rules, and none that costs") {
+  test("a bandit defender applies every cost-free plan of a site it rules, and none that costs"):
     val two = board(extras = 1)
     val staged = withSiteCard(withSiteCard(two, two.origin, orderCard),
       two.extras.head, hearthCard)
@@ -445,9 +423,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
     assert(!pools.exists(_.delta == 5))
     assert(!ops(forced.events).exists(_.isInstanceOf[PayCost]))
     assertEquals(forced.continue, awaits(staged.actor, CampaignIds.sacrifice))
-  }
 
-  test("Finish ends the window and a chosen source is not offered again") {
+  test("Finish ends the window and a chosen source is not offered again"):
     val base = board()
     val b = withAdviserFor(base, base.actor, orderCard, Orientation.FaceUp)
     val plan = Plan("once", orderCard, attacker, effects =
@@ -462,5 +439,3 @@ class CampaignPlanWindowSuite extends munit.FunSuite {
       denizen(orderCard))
     assert(g.resolveWalker(taken.state, b.actor, CampaignIds.attackerPlan,
       ChooseOneAnswer(denizen(orderCard))).isLeft)
-  }
-}

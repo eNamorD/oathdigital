@@ -4,14 +4,12 @@ enum Orientation { case FaceUp, FaceDown }
 
 enum EdificeSide { case Intact, Ruined }
 
-sealed trait CardState extends Product with Serializable {
+sealed trait CardState extends Product with Serializable:
   def id: CardId
-}
 
 sealed trait AdviserState extends CardState
-sealed trait SiteDenizenState extends CardState {
+sealed trait SiteDenizenState extends CardState:
   def tokens: Tokens
-}
 
 final case class DenizenState(
     id: DenizenId,
@@ -43,14 +41,12 @@ final case class RelicState(
 
 final case class LegacyState(id: LegacyId, active: Boolean) extends CardState
 
-enum Region(val key: String) {
+enum Region(val key: String):
   case Cradle extends Region("cradle")
   case Provinces extends Region("provinces")
   case Hinterland extends Region("hinterland")
-}
-object Region {
+object Region:
   val all: Vector[Region] = Vector(Cradle, Provinces, Hinterland)
-}
 
 final case class CardZones(
     worldDeck: Vector[WorldCardId],
@@ -58,12 +54,10 @@ final case class CardZones(
     edificeDeck: Vector[EdificeId],
     legacyDeck: Vector[LegacyId],
     regionalDiscards: Map[Region, Vector[WorldCardId]]
-) {
+):
   def discard(region: Region): Vector[WorldCardId] =
     regionalDiscards.getOrElse(region, Vector.empty)
-}
 
 /** Stable, container-qualified target for a denizen printed at a site. */
-final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId) {
+final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId):
   def stableKey: String = s"site:${siteId.value}:denizen:${denizenId.value}"
-}

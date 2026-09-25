@@ -1,6 +1,6 @@
 package oathdigital.model
 
-class ChronicleSuite extends munit.FunSuite {
+class ChronicleSuite extends munit.FunSuite:
   // atlasBox: 22 stored sites, four of them carrying 1-2 items (relics, in
   // this TTS sample).
   private val atlasBox = Vector(
@@ -86,7 +86,7 @@ class ChronicleSuite extends munit.FunSuite {
     dispossessed = dispossessedNames.map(DenizenId(_))
   )
 
-  test("constructs from the TTS sample's shape with its section sizes") {
+  test("constructs from the TTS sample's shape with its section sizes"):
     assertEquals(chronicle.atlasBox.size, 22)
     assertEquals(chronicle.world.size, 2)
     assertEquals(chronicle.worldDeck.size, 55)
@@ -95,18 +95,13 @@ class ChronicleSuite extends munit.FunSuite {
     // Every site across both sections is unique: the sample's 24 sites, none
     // both in play and in storage.
     assertEquals((chronicle.atlasBox ++ chronicle.world).map(_.site).distinct.size, 24)
-  }
 
-  test("a stored site holds at most three items") {
-    intercept[IllegalArgumentException] {
+  test("a stored site holds at most three items"):
+    intercept[IllegalArgumentException]:
       StoredSite(SiteId("x"), Vector(RelicId("a"), RelicId("b"),
         RelicId("c"), RelicId("d")))
-    }
-  }
 
-  test("reliquary, foundations and lineages default empty for a first game") {
+  test("reliquary, foundations and lineages default empty for a first game"):
     assertEquals(chronicle.reliquary, Vector.empty)
     assertEquals(chronicle.foundations, Map.empty[FoundationNumber, FoundationState])
     assertEquals(chronicle.lineages, Vector.empty)
-  }
-}

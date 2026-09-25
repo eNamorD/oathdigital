@@ -5,7 +5,7 @@ import oathdigital.model.{Location, Move, OperationError, Piece}
 
 
 /** Resolves secret orientations for one atomic operation snapshot. */
-private[operations] object OperationSecretPlanner {
+private[operations] object OperationSecretPlanner:
   import OperationError._
   import OperationStateAdapter.secrets
 
@@ -17,7 +17,7 @@ private[operations] object OperationSecretPlanner {
   private[operations] def plan(
       ready: ReadyGame,
       moves: Vector[Move]
-  ): Either[OperationError, Vector[(Move, SecretSplit)]] = {
+  ): Either[OperationError, Vector[(Move, SecretSplit)]] =
     val grouped = moves.zipWithIndex
       .groupBy(_._1.from.location)
       .toVector
@@ -27,14 +27,13 @@ private[operations] object OperationSecretPlanner {
     }).map(_.flatten.sortBy(_._1).map { case (_, move, split) =>
       move -> split
     })
-  }
 
   private def planSecretSource(
       ready: ReadyGame,
       source: Location,
       indexed: Vector[(Move, Int)]
   ): Either[OperationError, Vector[(Int, Move, SecretSplit)]] =
-    if (source == Location.SharedBank)
+    if source == Location.SharedBank then
       Right(indexed.map { case (move, index) =>
         val amount = move.piece.asInstanceOf[Piece.Secrets].amount
         (index, move, SecretSplit(amount, 0))
@@ -46,12 +45,10 @@ private[operations] object OperationSecretPlanner {
       // held no faceup secrets at all.
       val (faceUpOnly, flexible) =
         indexed.foldLeft[(Vector[(Move, Int)], Vector[(Move, Int)])](
-          (Vector.empty, Vector.empty)) {
-          case ((fixed, flexible), entry) => entry._1.to.location match {
+          (Vector.empty, Vector.empty)):
+          case ((fixed, flexible), entry) => entry._1.to.location match
             case _: Location.PlayArea => (fixed, flexible :+ entry)
             case _ => (fixed :+ entry, flexible)
-          }
-        }
       val mandatoryFaceUp = secretAmount(faceUpOnly)
       val flexibleTotal = secretAmount(flexible)
       val total = mandatoryFaceUp + flexibleTotal
@@ -59,19 +56,19 @@ private[operations] object OperationSecretPlanner {
       val availableFaceDown = inventory.faceDown.toLong
       val availableTotal = availableFaceUp + availableFaceDown
 
-      if (mandatoryFaceUp > availableFaceUp)
+      if mandatoryFaceUp > availableFaceUp then
         Left(InsufficientPieces(
           Piece.Secrets(clampPositive(mandatoryFaceUp)),
           source,
           clampNonNegative(availableFaceUp)
         ))
-      else if (total > availableTotal)
+      else if total > availableTotal then
         Left(InsufficientPieces(
           Piece.Secrets(clampPositive(total)),
           source,
           clampNonNegative(availableTotal)
         ))
-      else {
+      else
         val remainingFaceUp = availableFaceUp - mandatoryFaceUp
         val minimumFlexibleFaceUp = math.max(
           0L, flexibleTotal - availableFaceDown)
@@ -90,7 +87,6 @@ private[operations] object OperationSecretPlanner {
           }
           mandatory ++ flexibleSplits
         }
-      }
     }
 
   private def uniqueFlexibleSecretSplits(
@@ -99,15 +95,15 @@ private[operations] object OperationSecretPlanner {
       total: Long,
       minimumFaceUp: Long,
       maximumFaceUp: Long
-  ): Either[OperationError, Vector[(Int, Move, SecretSplit)]] = {
+  ): Either[OperationError, Vector[(Int, Move, SecretSplit)]] =
     val movedAmount = clampPositive(total)
-    if (minimumFaceUp > maximumFaceUp)
+    if minimumFaceUp > maximumFaceUp then
       Left(InsufficientPieces(Piece.Secrets(movedAmount), source, 0))
-    else if (minimumFaceUp != maximumFaceUp)
+    else if minimumFaceUp != maximumFaceUp then
       Left(AmbiguousSecretOrientation(source, movedAmount))
-    else {
+    else
       val faceUp = minimumFaceUp
-      flexible match {
+      flexible match
         case Vector() => Right(Vector.empty)
         case Vector((move, index)) =>
           val amount = move.piece.asInstanceOf[Piece.Secrets].amount
@@ -124,9 +120,6 @@ private[operations] object OperationSecretPlanner {
             (index, move, SecretSplit(amount, 0))
         })
         case _ => Left(AmbiguousSecretOrientation(source, movedAmount))
-      }
-    }
-  }
 
   private def secretAmount(values: Vector[(Move, Int)]): Long =
     values.iterator.map { case (move, _) =>
@@ -142,10 +135,8 @@ private[operations] object OperationSecretPlanner {
   private def sequence[A](
       values: Vector[Either[OperationError, A]]
   ): Either[OperationError, Vector[A]] =
-    values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)) {
-      case (result, value) => for {
+    values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)):
+      case (result, value) => for
         accumulated <- result
         next <- value
-      } yield accumulated :+ next
-    }
-}
+      yield accumulated :+ next

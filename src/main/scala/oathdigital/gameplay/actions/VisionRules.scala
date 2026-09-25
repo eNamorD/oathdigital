@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.model._
 
-object VisionRules {
+object VisionRules:
   val Conquest = VisionId("vision:vision-of-conquest")
   val Sanctuary = VisionId("vision:vision-of-sanctuary")
   val Rebellion = VisionId("vision:vision-of-rebellion")
@@ -16,4 +16,3 @@ object VisionRules {
     Faith -> OathkeeperGoal.Devotion)
 
   def trueGoal(id: VisionId): Option[OathkeeperGoal] = goals.get(id)
-}

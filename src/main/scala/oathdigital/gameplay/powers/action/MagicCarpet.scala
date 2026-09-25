@@ -13,13 +13,13 @@ import oathdigital.model._
   * new pawn site. It is not asked when nobody is eligible: the Carpet is then
   * discarded.
   */
-case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free) {
+case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free):
   val siteDecisionId: String = "power.magic-carpet.site"
   val fateDecisionId: String = "power.magic-carpet.fate"
   val discard: DecisionOptionRef.Button = DecisionOptionRef.Button("discard")
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
-      : Either[OathViolation, Operation] = source match {
+      : Either[OathViolation, Operation] = source match
     case DecisionOptionRef.Relic(carpet) => Right(Sequence(Vector[Operation](
       PawnMoves.siteChoice(siteDecisionId, player,
         ready.game.current.map.inPlay,
@@ -30,32 +30,28 @@ case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free) {
       BuildOps((state, pending) => settle(state, player, carpet, pending)))))
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not a relic source"))
-  }
 
-  private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] = {
+  private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
     val takers = PawnMoves.atOtherSites(ready, player)
-    if (takers.isEmpty) Vector.empty
+    if takers.isEmpty then Vector.empty
     else Vector(Decide(fateDecisionId, player, DecisionQuery.ChooseOne(
       DecisionOption.Button(discard, "Discard Magic Carpet") +:
         takers.map(taker => DecisionOption.Player(
           DecisionOptionRef.Player(taker))),
       heading = Some("Magic Carpet: discard it, or give it to a player at " +
         "another site"))))
-  }
 
   private def settle(ready: ReadyGame, player: PlayerId, carpet: RelicId,
       pending: PendingTree): Either[OathViolation, Vector[CoreOperation]] =
-    for {
+    for
       held <- PlayerFacts.player(ready, player)
       relic <- held.relics.find(_.id == carpet).toRight(
         OathViolation.InvalidEventOrder(
           s"${carpet.value} is not held by ${player.value}"))
-    } yield PowerAnswers.one(pending, fateDecisionId) match {
+    yield PowerAnswers.one(pending, fateDecisionId) match
       case Some(DecisionOptionRef.Player(taker)) => Vector[CoreOperation](
         Give(Piece.Card(carpet), player, Location.PlayArea(player),
           Location.PlayArea(taker)))
       case _ => Vector[CoreOperation](Discard.Relic(carpet,
         PositionedLocation(Location.PlayArea(player)), relic.tokens.secrets,
         player))
-    }
-}

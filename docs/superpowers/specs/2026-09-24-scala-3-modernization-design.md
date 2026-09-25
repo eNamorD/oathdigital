@@ -1,7 +1,15 @@
 # Scala 3 modernization — design
 
 Date: 2026-09-24
-Status: approved design, not yet planned or implemented
+Status: implemented 2026-09-24. Stage A: 21 implicit sites converted to
+given/using (18 `implicit val` values, 3 `(implicit ...)` parameter
+lists), 1 extension, 1 package object. Stage B: 7 of 7 ids opaque
+(dropped: none). Stage C: 49 of 49 flat families converted, kept sealed:
+`Phase` (two `private[oathdigital]` cases), the nine `PowerWindow`
+sub-families (`SearchWindow`, `TravelWindow`, `CampaignWindow`,
+`MusterWindow`, `TradeWindow`, `ForgeWindow`, `RecoverWindow`,
+`ChallengeWindow`, `OtherWindow`; cases live in the parent companion).
+Stage D: both rewrites, SHAs in `.git-blame-ignore-revs`.
 
 ## Goal
 
@@ -16,9 +24,9 @@ deferred, minus the parts ruled out below.
 | Topic | Decision |
 | --- | --- |
 | Execution | One spec, one branch per stage, merged in order A, B, C, D |
-| A: implicits | `given`/`using` for the 16 implicit values, one extension method, top-level definitions replacing the frontend package object |
+| A: implicits | `given`/`using` for the implicit values (21 sites), one extension method, top-level definitions replacing the frontend package object |
 | B: opaque types | The 7 standalone id wrappers; the 6 card and site ids stay case classes |
-| C: enums | The 61 flat sealed families (case objects only); mixed and parameterized families stay sealed traits |
+| C: enums | The flat sealed families (49 on hand check) (case objects only); mixed and parameterized families stay sealed traits |
 | D: syntax | Both compiler rewrites: `-indent` and `-new-syntax` |
 | Enforcement | No new compiler flag; `-Werror` from the warning cleanup remains the only gate on style |
 
@@ -44,6 +52,12 @@ Measured on 2026-09-24, after the warning cleanup merge (`d832f08c`):
   mix objects and case classes, 36 have only case classes, and 25 could
   not be classified by pattern because their members are declared over
   several lines or nested.
+- The hand check done during Stage C found 49 flat families, not 61,
+  against which the stage was measured: five (`AtlasEntry`,
+  `RuleSourceState`, `AuthenticationFailure`, `RepositoryAppendResult`,
+  `ServerConnectionState`) are mixed rather than flat, and two
+  (`PhaseTransitionRef`, `TriggeredProcedureRef`) had been scanned as
+  unclassified rather than flat.
 - Id wrappers `final case class XId(value: String)`: 13. `PlayerId`,
   `LineageId`, `DecisionId`, `PowerId` (in `model/Identity.scala`),
   `DefinitionId` (`catalog/CatalogModel.scala`), `UserId`
@@ -53,7 +67,9 @@ Measured on 2026-09-24, after the warning cleanup merge (`d832f08c`):
   `SiteId` (`ComponentId`) extend sealed hierarchies that carry dispatch,
   and an opaque type cannot extend a trait.
 - No scalafmt or other formatter in the build.
-- `main` is quiet: no other session is committing during this work.
+- `main` was not quiet during the design phase: commit `b0b30274`
+  landed from another session before this plan started. No other
+  session committed to `main` during the four stages.
 
 ## Stage A: givens, extension, top-level definitions
 
@@ -175,7 +191,10 @@ The compiler rewrites only sources it compiles, so `build.sbt` and
 without the rewrite flags, run the full gate, and review the diff for two
 known rewriter artefacts, fixed by hand in the same commit: over-long
 lines where a closing brace held a wrapped expression, and comments that
-sat on a brace line.
+sat on a brace line. In practice the `-new-syntax` rewriter also emitted
+unparsable `for` comprehensions at some `case ... => for {` and
+off-column `yield` sites; the 37 such layouts were fixed by hand in the
+same commit.
 
 `.git-blame-ignore-revs` lists both commit SHAs; the README developer
 section gains the one-line `git config blame.ignoreRevsFile

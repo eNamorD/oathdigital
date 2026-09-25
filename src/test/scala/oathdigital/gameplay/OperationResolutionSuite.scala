@@ -5,19 +5,18 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
-class OperationResolutionSuite extends munit.FunSuite {
+class OperationResolutionSuite extends munit.FunSuite:
   private val ready = ReadyGames.of(game)
 
-  test("optional favor gain uses maximal available bank amount") {
+  test("optional favor gain uses maximal available bank amount"):
     val result = OperationResolution.resolve(ready,
       Gain.Favor(playerId, Suit.Order, 7), OperationPolicy.Permissive, Vector.empty)
     assertEquals(result, Right(OperationResolution.Execute(
       Gain.Favor(playerId, Suit.Order, 5))))
-  }
 
-  test("optional spend shrinks but required spend rejects") {
+  test("optional spend shrinks but required spend rejects"):
     val oneSupply = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
-        if (player.player == playerId) player.copy(board = player.board.copy(
+        if player.player == playerId then player.copy(board = player.board.copy(
           supply = SupplyTrack(1))) else player
       }))
     assertEquals(OperationResolution.resolve(oneSupply,
@@ -26,9 +25,8 @@ class OperationResolutionSuite extends munit.FunSuite {
         SpendSupply(playerId, 1, required = false))))
     assert(OperationResolution.resolve(oneSupply,
       SpendSupply(playerId, 3), OperationPolicy.Permissive, Vector.empty).isLeft)
-  }
 
-  test("zero available optional gain skips while wrong card source rejects") {
+  test("zero available optional gain skips while wrong card source rejects"):
     val empty = ready.copy(banks = ready.banks.copy(favor =
       ready.banks.favor.updated(Suit.Order, 0)))
     assert(OperationResolution.resolve(empty,
@@ -39,11 +37,10 @@ class OperationResolutionSuite extends munit.FunSuite {
       PositionedLocation(Location.Hand(playerId)))
     assert(OperationResolution.resolve(ready, wrongCard, OperationPolicy.Permissive, Vector.empty).isLeft)
     val impossibleAndInvalid = Gain.Favor(playerId, Suit.Order, 7)
-    val invalidRestriction = new OperationRestriction {
+    val invalidRestriction = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("invalid-test", "invalid alongside shortage",
           OperationReasonKind.Invalid))
-    }
     val mixed = Vector[OperationRestriction](invalidRestriction)
     val mixedReasons = OperationResolution.reasons(ready, impossibleAndInvalid,
       OperationPolicy.Permissive, mixed)
@@ -51,9 +48,8 @@ class OperationResolutionSuite extends munit.FunSuite {
     assert(mixedReasons.exists(_.kind == OperationReasonKind.Invalid))
     assert(OperationResolution.resolve(ready, impossibleAndInvalid,
       OperationPolicy.Permissive, mixed).isLeft)
-  }
 
-  test("replacement shrinks both colors together") {
+  test("replacement shrinks both colors together"):
     val operation = Replace(Piece.Warbands(ForceKind.Bandit, 3),
       Piece.Warbands(ForceKind.Exile(lineageId), 3),
       PositionedLocation(Location.Site(sites.head)))
@@ -62,9 +58,8 @@ class OperationResolutionSuite extends munit.FunSuite {
         Piece.Warbands(ForceKind.Bandit, 1),
         Piece.Warbands(ForceKind.Exile(lineageId), 1),
         PositionedLocation(Location.Site(sites.head))))))
-  }
 
-  test("counted moves, takes, gives, burns, kills, and sacrifices shrink") {
+  test("counted moves, takes, gives, burns, kills, and sacrifices shrink"):
     val fromBank = PositionedLocation(Location.FavorBank(Suit.Order))
     val toArea = PositionedLocation(Location.PlayArea(playerId))
     val site = PositionedLocation(Location.Site(sites.head))
@@ -90,9 +85,8 @@ class OperationResolutionSuite extends munit.FunSuite {
       assertEquals(OperationResolution.resolve(ready, requested, OperationPolicy.Permissive, Vector.empty),
         Right(OperationResolution.Execute(expected)))
     }
-  }
 
-  test("secret flip and dice-pool subtraction shrink at the available count") {
+  test("secret flip and dice-pool subtraction shrink at the available count"):
     val flip = FlipSecrets(playerId, 3, SecretSide.FaceUp,
       SecretSide.FaceDown)
     assertEquals(OperationResolution.resolve(ready, flip, OperationPolicy.Permissive, Vector.empty),
@@ -111,9 +105,8 @@ class OperationResolutionSuite extends munit.FunSuite {
       ModifyDicePool(PoolKey("recover"), Int.MaxValue), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(
         ModifyDicePool(PoolKey("recover"), Int.MaxValue - 2))))
-  }
 
-  test("Supply gain shrinks at the track maximum") {
+  test("Supply gain shrinks at the track maximum"):
     val six = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(6)))
       }))
@@ -126,9 +119,8 @@ class OperationResolutionSuite extends munit.FunSuite {
     assert(OperationResolution.resolve(full,
       GainSupply(playerId, 1), OperationPolicy.Permissive, Vector.empty).toOption.get
       .isInstanceOf[OperationResolution.Skip])
-  }
 
-  test("Hall of Ministers blocks enemy site-card discard") {
+  test("Hall of Ministers blocks enemy site-card discard"):
     val blue = PlayerId("blue")
     val blueLineage = LineageId("blue")
     val bluePlayer = player.copy(player = blue, lineage = blueLineage,
@@ -165,9 +157,8 @@ class OperationResolutionSuite extends munit.FunSuite {
       discard.copy(actingPlayer = playerId),
       OperationPolicy.Permissive, Vector(rulerRestriction)),
       Right(OperationResolution.Execute(discard.copy(actingPlayer = playerId))))
-  }
 
-  test("discard resource fields describe the card and cannot shrink") {
+  test("discard resource fields describe the card and cannot shrink"):
     val stale = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, favor = 2, secrets = 0, playerId)
@@ -180,5 +171,3 @@ class OperationResolutionSuite extends munit.FunSuite {
       OperationPolicy.Permissive, Vector.empty)
       .exists(_.kind == OperationReasonKind.Invalid))
     assert(OperationResolution.resolve(ready, understated, OperationPolicy.Permissive, Vector.empty).isLeft)
-  }
-}

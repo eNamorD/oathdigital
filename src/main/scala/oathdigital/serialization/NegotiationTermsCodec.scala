@@ -8,7 +8,7 @@ import oathdigital.serialization.WireError.InvalidValue
   * codec and (until it is deleted) the legacy Negotiation event codec, so the
   * two spell terms identically.
   */
-private[serialization] object NegotiationTermsCodec {
+private[serialization] object NegotiationTermsCodec:
   def encode(terms: NegotiationTerms): ujson.Value = ujson.Obj(
     "transfers" -> ujson.Arr.from(terms.transfers.map(transfer => ujson.Obj(
       "recipientPlayerId" -> transfer.recipient.value,
@@ -31,8 +31,8 @@ private[serialization] object NegotiationTermsCodec {
     }))
 
   def decode(value: ujson.Value, path: String)
-      : Either[WireError, NegotiationTerms] = try {
-    for {
+      : Either[WireError, NegotiationTerms] = try
+    for
       transfers <- traverse(value("transfers").arr.toVector) { row =>
         val raw = row("favor").num
         Either.cond(raw.isValidInt, raw.toInt, InvalidValue(
@@ -43,7 +43,7 @@ private[serialization] object NegotiationTermsCodec {
       disclosures <- traverse(value("disclosures").arr.toVector) { row =>
         val info = row("information")
         val decoded: Either[WireError, NegotiationDisclosureRef] =
-          info("kind").str match {
+          info("kind").str match
             case "adviser" => decodeWorldCard(info("card"),
               s"$path.disclosures.card").map(card =>
               NegotiationDisclosureRef.Adviser(
@@ -54,31 +54,26 @@ private[serialization] object NegotiationTermsCodec {
               SiteId(info("siteId").str), RelicId(info("relicId").str)))
             case other => Left(InvalidValue(s"$path.disclosures.kind",
               s"unknown disclosure kind '$other'"))
-          }
         decoded.map(NegotiationDisclosure(
           PlayerId(row("recipientPlayerId").str), _))
       }
-    } yield NegotiationTerms(transfers, disclosures)
-  } catch { case NonFatal(error) => Left(InvalidValue(path,
+    yield NegotiationTerms(transfers, disclosures)
+  catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid Negotiation terms"))) }
 
-  private def encodeWorldCard(id: WorldCardId): ujson.Value = id match {
+  private def encodeWorldCard(id: WorldCardId): ujson.Value = id match
     case value: DenizenId => ujson.Obj("kind" -> "denizen", "id" -> value.value)
     case value: VisionId => ujson.Obj("kind" -> "vision", "id" -> value.value)
-  }
 
   private def decodeWorldCard(value: ujson.Value, path: String)
-      : Either[WireError, WorldCardId] = value("kind").str match {
+      : Either[WireError, WorldCardId] = value("kind").str match
     case "denizen" => Right(DenizenId(value("id").str))
     case "vision" => Right(VisionId(value("id").str))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown world card kind '$other'"))
-  }
 
   private def traverse[A, B](values: Vector[A])(
       f: A => Either[WireError, B]): Either[WireError, Vector[B]] =
-    values.foldLeft[Either[WireError, Vector[B]]](Right(Vector.empty)) {
+    values.foldLeft[Either[WireError, Vector[B]]](Right(Vector.empty)):
       case (Right(acc), value) => f(value).map(acc :+ _)
       case (failure @ Left(_), _) => failure
-    }
-}

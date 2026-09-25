@@ -11,7 +11,7 @@ import oathdigital.model._
   * empty warband bank gives nothing.
   */
 final case class DragonskinDrum private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = DragonskinDrum.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
 
@@ -25,12 +25,10 @@ final case class DragonskinDrum private (cardId: RelicId,
   private def gain(actor: PlayerId): Operation = BuildOps((ready, _) =>
     PlayerFacts.forceKind(ready, actor).map(kind =>
       Vector(Gain.Warbands(actor, kind, DragonskinDrum.Warbands))))
-}
 
-object DragonskinDrum {
+object DragonskinDrum:
   val id: PowerId = PowerId("relic.dragonskin-drum")
   val Warbands: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[DragonskinDrum] =
     CatalogCards.relic(catalog, id).map(new DragonskinDrum(_, catalog))
-}

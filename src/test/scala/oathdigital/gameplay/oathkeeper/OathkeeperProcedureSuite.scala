@@ -10,19 +10,18 @@ import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
-class OathkeeperProcedureSuite extends munit.FunSuite {
+class OathkeeperProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
 
   /** A Travel by the active player: the cheapest walker action whose
     * completion runs the action boundary and moves no forces.
     */
-  private def travel(ready: ReadyGame) = {
+  private def travel(ready: ReadyGame) =
     val active = ready.game.current.turn.activePlayer
     val pawn = ready.game.current.players.find(_.player == active).get.pawnSite.get
     val destination = ready.game.current.map.inPlay.find(_ != pawn).get
     rules.startWalker(Ready(ready), ActionRef.Travel, active, Vector.empty,
       Vector(DecisionOptionRef.Site(destination)))
-  }
 
   private def replays(start: ReadyGame, events: Vector[OathEvent],
       expected: OathState): Unit =
@@ -31,15 +30,14 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
       Right(expected))
 
   /** Holder is not the active player; the two leaders are everyone else. */
-  private def tie: (ReadyGame, PlayerId, PlayerId, Vector[PlayerId]) = {
+  private def tie: (ReadyGame, PlayerId, PlayerId, Vector[PlayerId]) =
     val active = base.game.current.turn.activePlayer
     val holder = players.find(_ != active).get
     val leaders = players.filterNot(_ == holder).take(2)
     (inPhase(ruled(base, leaders.map(Some(_)), holder = Some(holder)),
       Phase.Act), active, holder, leaders)
-  }
 
-  test("a single new leader takes the title inside the action's own command") {
+  test("a single new leader takes the title inside the action's own command"):
     val leader = players.last
     val ready = inPhase(ruled(base, Vector(Some(leader))), Phase.Act)
     val accepted = travel(ready).toOption.get
@@ -54,10 +52,9 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
       OathkeeperState(Some(leader), TitleSide.Oathkeeper))
     assertEquals(after.game.current.walkerPending, None)
     replays(ready, accepted.events, accepted.state)
-  }
 
   test("a tie parks for the holder, who may be off-turn, and only the holder " +
-      "may answer with a tied leader") {
+      "may answer with a tied leader"):
     val (ready, active, holder, leaders) = tie
     val parked = travel(ready).toOption.get
     assertEquals(parked.continue, OathContinue.AwaitingOathkeeperRecipient(
@@ -88,9 +85,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
     assertEquals(after.game.current.title,
       OathkeeperState(Some(leaders(1)), TitleSide.Oathkeeper))
     replays(ready, parked.events ++ chosen.events, chosen.state)
-  }
 
-  test("completing the Oathkeeper procedure runs no action boundary") {
+  test("completing the Oathkeeper procedure runs no action boundary"):
     val (ready, _, holder, leaders) = tie
     val parked = travel(ready).toOption.get
     // An empty site with capacity makes a boundary observable: if one ran on
@@ -109,9 +105,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
       OathkeeperProcedure.recipientDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Player(leaders(0)))).toOption.get
     assertEquals(chosen.events.collect { case e: BanditsRefilled => e }, Vector.empty)
-  }
 
-  test("a tie found after Take Wealth parks in Wake and returns the player to Wake") {
+  test("a tie found after Take Wealth parks in Wake and returns the player to Wake"):
     val active = base.game.current.turn.activePlayer
     val holder = players.find(_ != active).get
     val leaders = players.filterNot(_ == holder).take(2)
@@ -124,9 +119,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
       OathkeeperProcedure.recipientDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Player(leaders(0)))).toOption.get
     assertEquals(chosen.continue, OathContinue.AwaitingWakeAction(active))
-  }
 
-  test("the engine refuses to start a triggered procedure over a pending one") {
+  test("the engine refuses to start a triggered procedure over a pending one"):
     val (ready, _, _, _) = tie
     val parked = travel(ready).toOption.get
     val result = rules.startTriggered(
@@ -134,9 +128,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
       TriggeredProcedureRef.Oathkeeper)
     assert(result.left.toOption.exists(_.isInstanceOf[OathViolation.InvalidEventOrder]),
       s"expected a typed rejection, got $result")
-  }
 
-  test("the procedure rejects a start selection and a state with nothing to change") {
+  test("the procedure rejects a start selection and a state with nothing to change"):
     val ready = inPhase(base, Phase.Act)
     assertEquals(OathkeeperProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty),
@@ -144,5 +137,3 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
     assert(OathkeeperProcedure.build(catalog, ruled(ready, Vector(Some(players.last))),
       ready.game.current.turn.activePlayer,
       Vector(DecisionOptionRef.Site(ready.game.current.map.inPlay.head))).isLeft)
-  }
-}

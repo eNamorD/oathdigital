@@ -6,38 +6,37 @@ import oathdigital.protocol._
 import oathdigital.protocol.projection.GameProjection
 
 sealed trait TrustedSeatFailure extends Product with Serializable
-object TrustedSeatFailure {
+object TrustedSeatFailure:
   case object Forbidden extends TrustedSeatFailure
   case object InvalidIntent extends TrustedSeatFailure
   case object StorageFailure extends TrustedSeatFailure
   final case class Application(error: GameApplicationError) extends TrustedSeatFailure
-}
 
 /** TrustedSeat is resolved from a credential before crossing this boundary. */
-final class TrustedGameGateway(service: GameApplicationService, projector: GameProjector) {
+final class TrustedGameGateway(service: GameApplicationService, projector: GameProjector):
   import TrustedSeatFailure._
 
   private def actor(gameId: String, seat: TrustedSeat): Either[TrustedSeatFailure, PlayerId] =
     Either.cond(gameId == seat.gameId, PlayerId(seat.playerId), Forbidden)
 
   def load(gameId: String, seat: TrustedSeat): Either[TrustedSeatFailure, GameProjection] =
-    for {
+    for
       player <- actor(gameId, seat)
       loaded <- service.load(gameId).left.map(Application.apply)
       game <- loaded.toRight(Application(GameApplicationError.StreamNotFound(gameId)))
-    } yield projector.project(gameId, game, player).copy(viewerPlayerId = Some(player.value))
+    yield projector.project(gameId, game, player).copy(viewerPlayerId = Some(player.value))
 
   def submit(gameId: String, seat: TrustedSeat, request: ActorlessCommandRequest)
-      : Either[TrustedSeatFailure, GameProjection] = for {
+      : Either[TrustedSeatFailure, GameProjection] = for
     player <- actor(gameId, seat)
     command <- GameIntentMapper.bind(player, request.intent, request.orderedModifiers)
       .left.map(_ => InvalidIntent)
     accepted <- service.handle(gameId, request.expectedNextSequence, command).left.map(Application.apply)
-  } yield projector.project(gameId, LoadedGame(accepted.state, accepted.nextSequence), player)
+  yield projector.project(gameId, LoadedGame(accepted.state, accepted.nextSequence), player)
     .copy(viewerPlayerId = Some(player.value))
 
   def preview(gameId: String, seat: TrustedSeat, request: MajorActionPreviewRequest)
-      : Either[TrustedSeatFailure, MajorActionPreviewResponse] = for {
+      : Either[TrustedSeatFailure, MajorActionPreviewResponse] = for
     player <- actor(gameId, seat)
     action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(InvalidIntent)
     selected <- GameIntentMapper.bindModifiers(player, request.orderedModifiers)
@@ -50,9 +49,8 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
         oathdigital.model.OathViolation.InvalidModifierInvocation(
           "major-action preview is unavailable for this actor or phase"))))
     _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application.apply)
-  } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
+  yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
     accepted.modifiers,
     accepted.ignored.map(v => PreviewIgnoredRule(
       v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
     MajorActionPreviewTargets.from(projection, request, accepted.targets))
-}

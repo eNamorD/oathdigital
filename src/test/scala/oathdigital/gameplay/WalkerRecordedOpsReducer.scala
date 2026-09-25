@@ -29,39 +29,34 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
   protected def foldRecordedOps(state: ReadyGame, events: Vector[OathEvent],
       failureContext: String): ReadyGame =
     events.foldLeft(state) { (current, event) =>
-      val step = event match {
+      val step = event match
         case recorded: WalkerStepRecorded => recorded
         case other => self.fail(s"expected a WalkerStepRecorded, got $other")
-      }
-      step.payload match {
+      step.payload match
         case RollPayload(pool, faces, _) =>
-          def derive(all: Vector[DieFace]): (Int, Int) = {
+          def derive(all: Vector[DieFace]): (Int, Int) =
             val attack = all.collect { case face: AttackDieFace => face }
-            if (attack.nonEmpty)
+            if attack.nonEmpty then
               (AttackDieFace.skulls(attack), AttackDieFace.score(attack))
             else (0, DefenseDieFace.score(all.collect {
               case face: DefenseDieFace => face }))
-          }
           val (skulls, score) = derive(faces)
           val outcome = RollOutcome(pool, faces.size, faces, skulls, score)
           val accumulated =
-            current.game.current.rollOutcomes.get(pool).fold(outcome) {
+            current.game.current.rollOutcomes.get(pool).fold(outcome):
               previous =>
                 val accumulatedFaces = previous.faces ++ outcome.faces
                 RollOutcome(pool, previous.count + outcome.count,
                   accumulatedFaces, previous.skulls + outcome.skulls,
                   derive(accumulatedFaces)._2)
-            }
           current.updateCurrent(_.copy(rollOutcomes =
               current.game.current.rollOutcomes.updated(pool, accumulated)))
         case _ if step.ops.isEmpty => current
         case _ =>
           OperationPipeline.run(current, step.ops,
-            OperationPolicy.Permissive)(Right(_)) match {
+            OperationPolicy.Permissive)(Right(_)) match
             case Right(updated) => updated.state
             case Left(violation) =>
               self.fail(s"$failureContext: $violation")
-          }
-      }
     }
 }

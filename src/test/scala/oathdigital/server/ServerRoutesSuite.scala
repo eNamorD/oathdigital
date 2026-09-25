@@ -11,8 +11,8 @@ import akka.actor.typed.{ActorSystem, DispatcherSelector}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 
-class ServerRoutesSuite extends munit.FunSuite {
-  test("authenticated routes mount only with complete session configuration") {
+class ServerRoutesSuite extends munit.FunSuite:
+  test("authenticated routes mount only with complete session configuration"):
     assertEquals(
       AuthenticatedRouteMountConfiguration.fromOptions(None, None),
       Right(None)
@@ -32,7 +32,7 @@ class ServerRoutesSuite extends munit.FunSuite {
     ).toOption.get
     val client = HttpClient.newHttpClient()
 
-    try {
+    try
       val readiness = ServerReadiness.starting("test-version")
       val absent = bind(ServerRoutes.route(
         runtime,
@@ -40,7 +40,7 @@ class ServerRoutesSuite extends munit.FunSuite {
         config(ServerMode.Development),
         readiness
       ))
-      try {
+      try
         assertEquals(get(client, absent, "/health/live").statusCode(), 200)
         assertEquals(get(client, absent, "/health").statusCode(), 503)
         readiness.markReady()
@@ -52,7 +52,7 @@ class ServerRoutesSuite extends munit.FunSuite {
           "/api/dev/first-games/test-game/events?limit=101").statusCode(), 400)
         assertEquals(get(client, absent, "/s/AAAAAAAAAAAAAAAAAAAAAA").statusCode(), 404)
         assertEquals(get(client, absent, "/games/game/api").statusCode(), 403)
-      } finally Await.result(absent.terminate(5.seconds), 10.seconds)
+      finally Await.result(absent.terminate(5.seconds), 10.seconds)
 
       val configuration = AuthenticatedRouteMountConfiguration(
         "oath_session", "http://127.0.0.1")
@@ -69,14 +69,12 @@ class ServerRoutesSuite extends munit.FunSuite {
       try assertEquals(get(client, mounted,
         "/api/authenticated/first-games/game").statusCode(), 401)
       finally Await.result(mounted.terminate(5.seconds), 10.seconds)
-    } finally {
+    finally
       runtime.close()
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
-  test("trusted-alpha serves production frontend without development routes") {
+  test("trusted-alpha serves production frontend without development routes"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "trusted-alpha-routes-test")
     val blocking = system.dispatchers.lookup(
@@ -99,7 +97,7 @@ class ServerRoutesSuite extends munit.FunSuite {
       ServerReadiness.starting("test-version")
     ))
 
-    try {
+    try
       assertEquals(get(client, binding, "/").statusCode(), 200)
       assertEquals(get(client, binding, "/games/test-game").statusCode(), 403)
       assertEquals(get(client, binding, "/games/test-game/api").statusCode(), 403)
@@ -107,15 +105,13 @@ class ServerRoutesSuite extends munit.FunSuite {
         "/api/dev/first-games/test-game?playerId=p1").statusCode(), 404)
       assertEquals(get(client, binding,
         "/api/authenticated/first-games/test-game").statusCode(), 404)
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       runtime.close()
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
-  test("development mode creates games like trusted-alpha and opens them in the dev API") {
+  test("development mode creates games like trusted-alpha and opens them in the dev API"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "development-create-routes-test")
     val blocking = system.dispatchers.lookup(
@@ -139,7 +135,7 @@ class ServerRoutesSuite extends munit.FunSuite {
         .build(),
       JavaResponse.BodyHandlers.ofString())
 
-    try {
+    try
       assertEquals(create("foreign-game", "http://example.com:8080").statusCode(), 403)
       assertEquals(create("other-port-game", "http://localhost:9090").statusCode(), 403)
       assertEquals(create("ip-game", "http://127.0.0.1:8080").statusCode(), 201)
@@ -149,13 +145,11 @@ class ServerRoutesSuite extends munit.FunSuite {
       val loaded = get(client, binding, "/api/dev/first-games/dev-game?playerId=Red")
       assertEquals(loaded.statusCode(), 200)
       assert(loaded.body().contains("\"gameId\":\"dev-game\""))
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       runtime.close()
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
   private def config(
       mode: ServerMode,
@@ -189,4 +183,3 @@ class ServerRoutesSuite extends munit.FunSuite {
     )).GET().build(),
     JavaResponse.BodyHandlers.ofString()
   )
-}

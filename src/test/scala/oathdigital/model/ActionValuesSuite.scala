@@ -5,16 +5,15 @@ package oathdigital.model
   * two literal assertions are the property's last independent check, so a
   * regression here would otherwise go unnoticed by every surviving caller.
   */
-class ActionValuesSuite extends munit.FunSuite {
-  test("defense faces accumulate shields then apply every doubler") {
+class ActionValuesSuite extends munit.FunSuite:
+  test("defense faces accumulate shields then apply every doubler"):
     assertEquals(DefenseDieFace.score(Vector(DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler,
       DefenseDieFace.Doubler)), 12)
     assertEquals(DefenseDieFace.score(Vector(DefenseDieFace.Blank,
       DefenseDieFace.Doubler)), 0)
-  }
 
-  test("procedure references form three families with keys unique across all") {
+  test("procedure references form three families with keys unique across all"):
     assertEquals(ActionRef.all.map(_.key),
       Vector("search", "play-facedown-adviser", "recover", "forge",
         "travel", "take-wealth", "muster", "trade", "challenge", "place-banner-resource", "negotiation", "campaign"))
@@ -33,5 +32,3 @@ class ActionValuesSuite extends munit.FunSuite {
       TriggeredProcedureRef.Setup))
     // A client names a procedure by key alone; the triggered key must not resolve.
     assertEquals(StartableRef.fromKey("oathkeeper"), None)
-  }
-}

@@ -14,7 +14,7 @@ import oathdigital.model.OathViolation.NoPlayableOption
 /** Challenge through the rules, as a client drives it: start, answer the
   * banner, answer the amount, and (Wandering Flame) the tied sites.
   */
-class ChallengeProcedureSuite extends munit.FunSuite {
+class ChallengeProcedureSuite extends munit.FunSuite:
   import ChallengeFixture._
   private val rules = new OathRules(catalog)
   private val pf = DecisionOptionRef.Banner(Banner.PeoplesFavor)
@@ -36,22 +36,20 @@ class ChallengeProcedureSuite extends munit.FunSuite {
     "challenge.ribbon-site", DecisionAnswer.ChooseManyAnswer(
       sites.map(DecisionOptionRef.Site(_))))
 
-  private def ready(state: OathState): ReadyGame = state match {
+  private def ready(state: OathState): ReadyGame = state match
     case Ready(value) => value
     case other => fail(s"expected a ready game, got $other")
-  }
 
   private def player(board: ReadyGame, id: PlayerId): PlayerState =
     board.game.current.players.find(_.player == id).get
 
   /** Starts, answers the banner, and returns the state parked at the amount. */
-  private def atAmount(board: ReadyGame, banner: DecisionOptionRef): OathState = {
+  private def atAmount(board: ReadyGame, banner: DecisionOptionRef): OathState =
     val started = start(board).getOrElse(fail("a legal Challenge must start"))
     chooseBanner(started.state, active(board), banner)
       .getOrElse(fail("the banner must be accepted")).state
-  }
 
-  test("starting spends the Supply and parks on the banner decision") {
+  test("starting spends the Supply and parks on the banner decision"):
     val (board, actor) = ChallengeFixture.ready(resources = 2)
     val started = start(board).getOrElse(fail("a legal Challenge must start"))
     assert(started.events.last.isInstanceOf[WalkerParked])
@@ -59,43 +57,37 @@ class ChallengeProcedureSuite extends munit.FunSuite {
       SupplyTrack(actor.board.supply.supply - 1))
     assertEquals(ready(started.state).game.current.banners,
       board.game.current.banners)
-  }
 
-  test("only banners the actor could take are offered") {
+  test("only banners the actor could take are offered"):
     val (board, actor) = ChallengeFixture.ready(resources = 2, faceup = 0)
     val started = start(board).getOrElse(fail("People's Favor is legal"))
     assert(chooseBanner(started.state, actor.player, ds).isLeft)
     assert(chooseBanner(started.state, actor.player, pf).isRight)
-  }
 
-  test("a start with no legal banner is rejected and changes nothing") {
+  test("a start with no legal banner is rejected and changes nothing"):
     val (board, _) = ChallengeFixture.ready(resources = 6, favor = 6, faceup = 0)
     assertEquals(start(board), Left(NoPlayableOption("challenge")))
-  }
 
-  test("a start with no Supply is rejected") {
+  test("a start with no Supply is rejected"):
     val (board, _) = ChallengeFixture.ready(resources = 2, supply = 0)
     assert(start(board).isLeft)
-  }
 
-  test("an enemy-held banner needs co-location") {
+  test("an enemy-held banner needs co-location"):
     // No faceup secrets, so People's Favor is the only banner in question.
     val (base, _) = ChallengeFixture.ready(resources = 2, faceup = 0)
     val apart = enemyHolds(base, Banner.PeoplesFavor, 2, colocated = false)
     assertEquals(start(apart), Left(NoPlayableOption("challenge")))
     assert(start(enemyHolds(base, Banner.PeoplesFavor, 2)).isRight)
-  }
 
-  test("the amount must exceed the banner and fit the actor's resources") {
+  test("the amount must exceed the banner and fit the actor's resources"):
     val (board, actor) = ChallengeFixture.ready(resources = 2, favor = 6)
     val parked = atAmount(board, pf)
     assert(chooseAmount(parked, actor.player, 2).isLeft)
     assert(chooseAmount(parked, actor.player, 7).isLeft)
     assert(chooseAmount(parked, actor.player, 3).isRight)
     assert(chooseAmount(parked, actor.player, 6).isRight)
-  }
 
-  test("People's Favor: an unclaimed banner is taken and its favor returns to the least banks") {
+  test("People's Favor: an unclaimed banner is taken and its favor returns to the least banks"):
     val (board, actor) = ChallengeFixture.ready(resources = 2)
     val done = chooseAmount(atAmount(board, pf), actor.player, 3)
       .getOrElse(fail("the amount must be accepted"))
@@ -110,9 +102,8 @@ class ChallengeProcedureSuite extends munit.FunSuite {
       BannerRules.raidFavorReturn(board.banks.favor, 2))
     assertEquals(after.banks.favor, expected)
     assertEquals(current.walkerPending, None)
-  }
 
-  test("People's Favor: an enemy-held banner moves to the challenger") {
+  test("People's Favor: an enemy-held banner moves to the challenger"):
     val (base, actor) = ChallengeFixture.ready(resources = 2)
     val board = enemyHolds(base, Banner.PeoplesFavor, 2)
     val done = chooseAmount(atAmount(board, pf), actor.player, 3)
@@ -120,9 +111,8 @@ class ChallengeProcedureSuite extends munit.FunSuite {
     val after = ready(done.state).game.current
     assertEquals(after.banners.peoplesFavor.holder, Some(actor.player))
     assertEquals(after.banners.peoplesFavor.favor, 3)
-  }
 
-  test("Wandering Flame: a unique least site takes secrets one at a time, with no site decision") {
+  test("Wandering Flame: a unique least site takes secrets one at a time, with no site decision"):
     val (base, actor) = ChallengeFixture.ready(resources = 3,
       banner = Banner.DarkestSecret)
     val Vector(a, b, c) = base.game.current.map.inPlay.take(3): @unchecked
@@ -138,9 +128,8 @@ class ChallengeProcedureSuite extends munit.FunSuite {
     assertEquals(after.game.current.banners.darkestSecret.secrets, 4)
     assertEquals(player(after, actor.player).board.faceUpSecrets,
       actor.board.faceUpSecrets - 4)
-  }
 
-  test("Wandering Flame: fewer secrets than tied sites parks one choose-many, then finishes") {
+  test("Wandering Flame: fewer secrets than tied sites parks one choose-many, then finishes"):
     val (base, actor) = ChallengeFixture.ready(resources = 2,
       banner = Banner.DarkestSecret)
     val Vector(a, b, c) = base.game.current.map.inPlay.take(3): @unchecked
@@ -162,9 +151,8 @@ class ChallengeProcedureSuite extends munit.FunSuite {
     assertEquals(after.game.current.banners.darkestSecret.holder,
       Some(actor.player))
     assertEquals(after.game.current.walkerPending, None)
-  }
 
-  test("Wandering Flame: an enemy holder gets the retained half back") {
+  test("Wandering Flame: an enemy holder gets the retained half back"):
     val (base, actor) = ChallengeFixture.ready(resources = 5,
       banner = Banner.DarkestSecret)
     val board = withSiteSecrets(enemyHolds(base, Banner.DarkestSecret, 5), Map.empty)
@@ -183,12 +171,11 @@ class ChallengeProcedureSuite extends munit.FunSuite {
     assertEquals(after.game.current.banners.darkestSecret.holder,
       Some(actor.player))
     assertEquals(after.game.current.banners.darkestSecret.secrets, 6)
-  }
 
   /** Adds Darkest Secret to the banner decision and widens the amount by two,
     * which is exactly what a power hooking those windows would do.
     */
-  private final case class WidenChallenge(id: PowerId) extends ContributingPower {
+  private final case class WidenChallenge(id: PowerId) extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.Banner("test")
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
       PowerWindow.ChallengeBannerSelection -> Vector(Transform((_, operations) =>
@@ -210,9 +197,8 @@ class ChallengeProcedureSuite extends munit.FunSuite {
           }
           case other => other
         })))
-  }
 
-  test("a power's transforms reach the banner and amount selections") {
+  test("a power's transforms reach the banner and amount selections"):
     val (board, actor) = ChallengeFixture.ready(resources = 2, faceup = 0)
     val tree = ChallengeProcedure.build(catalog, board, actor.player, Vector.empty)
       .getOrElse(fail("the tree must build"))
@@ -234,9 +220,8 @@ class ChallengeProcedureSuite extends munit.FunSuite {
       case query: DecisionQuery.ChooseAmount => (query.min, query.max)
       case _ => (0, 0)
     }, (3, actor.board.favor + 2))
-  }
 
-  test("a completed Challenge replays exactly from its journal") {
+  test("a completed Challenge replays exactly from its journal"):
     val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
     val orderedSites = wealthSite +: sites.filterNot(_ == wealthSite).take(7)
     val (setupState, setupEvents) = execute(orderedSites)
@@ -259,5 +244,3 @@ class ChallengeProcedureSuite extends munit.FunSuite {
       case (event, index) => RecordedEvent(index.toLong, event)
     }).toOption.get
     assertEquals(replayed, done.state)
-  }
-}

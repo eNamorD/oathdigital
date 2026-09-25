@@ -22,14 +22,14 @@ import oathdigital.model._
   * collector only lets a power ignore what is gathered beside it.
   */
 final case class ForestPaths private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = ForestPaths.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
   override def cost: Cost = Cost(favor = ForestPaths.Favor)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      if (beastAtDestination(ctx))
+      if beastAtDestination(ctx) then
         TravelPayments.withoutSupply(operations, ctx.activePlayer)
       else operations)),
     PowerWindow.TravelActionEligibility ->
@@ -48,12 +48,10 @@ final case class ForestPaths private (cardId: DenizenId,
       case _: RuleSourceRef.Site => true
       case _ => false
     })
-}
 
-object ForestPaths {
+object ForestPaths:
   val id: PowerId = PowerId("denizen.forest-paths")
   val Favor: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[ForestPaths] =
     CatalogCards.denizen(catalog, id).map(new ForestPaths(_, catalog))
-}

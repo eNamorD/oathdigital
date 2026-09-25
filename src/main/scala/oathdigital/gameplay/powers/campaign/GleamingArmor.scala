@@ -25,7 +25,7 @@ import oathdigital.model._
   * players' faceup advisers.
   */
 final case class GleamingArmor private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = GleamingArmor.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -47,10 +47,10 @@ final case class GleamingArmor private (cardId: DenizenId,
 
   /** The added cost, when the plan is the enemy's of a holder in this Campaign. */
   private def surcharge(ctx: PowerCtx, application: CampaignPlanApplication)
-      : Option[Operation] = for {
+      : Option[Operation] = for
     holding <- holder(ctx)
     if enemy(application, holding)
-  } yield application.user.fold[Operation](unpayable)(user =>
+  yield application.user.fold[Operation](unpayable)(user =>
     BuildOps((ready, _) => CampaignPlans.cardOf(application.source) match {
       case Some(card) => Right(Vector[CoreOperation](Costs.onCard(user, card,
         Cost(secret = 1), catalog, intoOccupied = true)))
@@ -59,26 +59,23 @@ final case class GleamingArmor private (cardId: DenizenId,
         // title's plan is checked here rather than left to a best-effort flip.
         val faceUp = ready.game.current.players.find(_.player == user)
           .fold(0)(_.board.faceUpSecrets)
-        if (faceUp >= 1) Right(Vector[CoreOperation](FlipSecrets(user, 1,
+        if faceUp >= 1 then Right(Vector[CoreOperation](FlipSecrets(user, 1,
           SecretSide.FaceUp, SecretSide.FaceDown)))
         else Left(OathViolation.InsufficientSecrets(1, faceUp))
     }))
 
   private def enemy(application: CampaignPlanApplication, holding: PlayerId)
-      : Boolean = application.side match {
+      : Boolean = application.side match
     case CampaignPlanSide.Defender => application.setup.actor == holding
     case CampaignPlanSide.Attacker =>
       application.setup.defender == CampaignDefender.Player(holding)
-  }
 
   /** Bandits hold no secrets, so a bandit's plan cannot pay the added cost. */
   private def unpayable: Operation = BuildOps((_, _) =>
     Left(OathViolation.InsufficientSecrets(1, 0)))
-}
 
-object GleamingArmor {
+object GleamingArmor:
   val id: PowerId = PowerId("denizen.gleaming-armor")
 
   def forCatalog(catalog: ExecutableCatalog): Option[GleamingArmor] =
     CatalogCards.denizen(catalog, id).map(new GleamingArmor(_, catalog))
-}

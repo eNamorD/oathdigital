@@ -5,7 +5,7 @@ import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupW
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 
-class GreatForgeRulesSuite extends munit.FunSuite {
+class GreatForgeRulesSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
   private val edifice = EdificeId("E06")
   private val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
@@ -23,22 +23,20 @@ class GreatForgeRulesSuite extends munit.FunSuite {
         c.map.sites(site).copy(denizens = c.map.sites(site).denizens :+
           EdificeState(edifice, side, Tokens.empty))))))
 
-  private def finish(ready: ReadyGame): ReadyGame = {
+  private def finish(ready: ReadyGame): ReadyGame =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
     SetupWalkDriver.driveToCompletion(ready, tree, powers)
-  }
 
-  test("Great Forge gives the placing player the top relic facedown") {
+  test("Great Forge gives the placing player the top relic facedown"):
     val staged = stagedAt(EdificeSide.Intact)
     val topRelic = staged.game.current.commonCards.relicDeck.head
     val finished = finish(staged)
     val player = finished.game.current.players.find(_.player == firstPlayer).get
     assert(player.relics.exists(r => r.id == topRelic &&
       r.orientation == Orientation.FaceDown))
-  }
 
-  test("Broken Forge discards every relic in its region to setAsideRelics") {
+  test("Broken Forge discards every relic in its region to setAsideRelics"):
     val staged = stagedAt(EdificeSide.Ruined)
     val region = staged.game.current.map.regionOf(site).get
     val relicSite = staged.game.current.map.inPlay
@@ -48,5 +46,3 @@ class GreatForgeRulesSuite extends munit.FunSuite {
     val finished = finish(staged)
     assert(finished.game.current.map.sites(relicSite).relics.isEmpty)
     assert(relicsBefore.nonEmpty)
-  }
-}

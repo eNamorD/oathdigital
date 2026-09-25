@@ -20,8 +20,7 @@ final case class FirstGamePlan(
     resolvedConfig: FirstGameBootstrapConfig
 )
 
-trait FirstGamePlanFactory {
+trait FirstGamePlanFactory:
   def build(
       config: FirstGameBootstrapConfig
   ): Either[BootstrapPlanFailure, FirstGamePlan]
-}

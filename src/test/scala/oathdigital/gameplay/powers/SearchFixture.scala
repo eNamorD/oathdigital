@@ -11,7 +11,7 @@ import oathdigital.model.OathState.Ready
   * `PowerFixture`; the first game deals only some cards, so a test names the
   * cards it needs and the fixture arranges the deck.
   */
-object SearchFixture {
+object SearchFixture:
   import PowerFixture._
 
   val rules: OathRules = new OathRules(catalog,
@@ -24,7 +24,7 @@ object SearchFixture {
     * deck, its edifice to the edifice deck), the world deck topped by `top`,
     * the actor in the Act phase with `supply` Supply.
     */
-  def staged(top: Vector[WorldCardId], supply: Int = 5): ReadyGame = {
+  def staged(top: Vector[WorldCardId], supply: Int = 5): ReadyGame =
     val siteId = home(base)
     val ready = base.updateCurrent { current =>
       val site = current.map.sites(siteId)
@@ -38,14 +38,13 @@ object SearchFixture {
           site.copy(denizens = Vector.empty))))
     }
     inPhase(withBoard(ready)(_.copy(supply = SupplyTrack(supply))), Phase.Act)
-  }
 
   /** The plain denizens of `suit` (unrestricted, with no production walker
     * power of their own) that no player and no site holds: in the world deck,
     * or not dealt at all. `staged` puts a card that is not dealt on top of the
     * deck.
     */
-  def denizensOf(suit: Suit): Vector[DenizenId] = {
+  def denizensOf(suit: Suit): Vector[DenizenId] =
     val index = CardIndex.from(base.game).toOption.get
     val powered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
     catalog.denizens.filter(d => d.suit == suit &&
@@ -54,7 +53,6 @@ object SearchFixture {
       .map(d => DenizenId(d.id.value)).filter(id =>
         index.get(id).forall(_.location.container ==
           CardContainer.Deck(CardDeck.World)))
-  }
 
   /** Starts a world Search with `modifiers`. */
   def start(ready: ReadyGame, modifiers: Vector[PowerId] = Vector.empty)
@@ -62,21 +60,19 @@ object SearchFixture {
     rules.startWalker(Ready(ready), ActionRef.Search, actor, modifiers,
       Vector(DecisionOptionRef.Button("search:world")))
 
-  private def refOf(card: WorldCardId): DecisionOptionRef = card match {
+  private def refOf(card: WorldCardId): DecisionOptionRef = card match
     case id: DenizenId => DecisionOptionRef.Denizen(id)
     case id: VisionId => DecisionOptionRef.Vision(id)
-  }
 
   /** Keeps `kept` from the drawn hand and discards the others. */
   def keep(from: OathTransition, kept: WorldCardId)
-      : Either[OathViolation, OathTransition] = {
+      : Either[OathViolation, OathTransition] =
     val drawn = after(from).game.current.temporaryHands(actor)
-    if (drawn.size == 1) Right(from.copy(events = Vector.empty))
+    if drawn.size == 1 then Right(from.copy(events = Vector.empty))
     else rules.resolveWalker(from.state, actor, SearchProcedure.cardDecisionId,
       DecisionAnswer.PartitionAnswer(DecisionPlacement(refOf(kept),
         SearchProcedure.keepKey) +: drawn.filterNot(_ == kept).map(card =>
         DecisionPlacement(refOf(card), SearchProcedure.discardKey))))
-  }
 
   /** Places the card with the placement button. */
   def place(from: OathTransition, card: WorldCardId, button: String)
@@ -89,11 +85,11 @@ object SearchFixture {
     * those of the whole Search, so a replay can start from `ready`.
     */
   def play(ready: ReadyGame, modifiers: Vector[PowerId], kept: WorldCardId,
-      button: String): OathTransition = (for {
+      button: String): OathTransition = (for
     started <- start(ready, modifiers)
     chosen <- keep(started, kept)
     placed <- place(chosen, kept, button)
-  } yield placed.copy(events = started.events ++ chosen.events ++
+  yield placed.copy(events = started.events ++ chosen.events ++
     placed.events)).fold(error => throw new AssertionError(error.toString),
     identity)
 
@@ -102,11 +98,11 @@ object SearchFixture {
     * action.
     */
   def playFacedown(ready: ReadyGame, modifiers: Vector[PowerId],
-      card: DenizenId, button: String): OathTransition = (for {
+      card: DenizenId, button: String): OathTransition = (for
     started <- rules.startWalker(Ready(ready), ActionRef.PlayFacedownAdviser,
       actor, modifiers, Vector(DecisionOptionRef.Denizen(card)))
     placed <- place(started, card, button)
-  } yield placed.copy(events = started.events ++ placed.events)).fold(
+  yield placed.copy(events = started.events ++ placed.events)).fold(
     error => throw new AssertionError(error.toString), identity)
 
   /** Answers the replacement decision of a play with `chosen`. */
@@ -120,4 +116,3 @@ object SearchFixture {
         case other => DecisionOptionRef.Button(
           s"replace:${other.kind}:${other.value}")
       }))
-}

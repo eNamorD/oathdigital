@@ -1,9 +1,9 @@
 package oathdigital.model
 
-class PlayerSetupStateSuite extends munit.FunSuite {
+class PlayerSetupStateSuite extends munit.FunSuite:
   import TestGameFixtures._
 
-  test("a player may exist before placing their pawn") {
+  test("a player may exist before placing their pawn"):
     val unplacedGame = game.copy(
       current = game.current.copy(
         players = Vector(player.copy(pawnSite = None))
@@ -11,9 +11,8 @@ class PlayerSetupStateSuite extends munit.FunSuite {
     )
 
     assertEquals(DomainValidation.validate(unplacedGame), Vector.empty)
-  }
 
-  test("a placed pawn must still reference an in-play site") {
+  test("a placed pawn must still reference an in-play site"):
     val invalidSite = SiteId("not-in-play")
     val invalidGame = game.copy(
       current = game.current.copy(
@@ -26,9 +25,8 @@ class PlayerSetupStateSuite extends munit.FunSuite {
         DomainProblem.PawnOutsideMap(playerId, invalidSite)
       )
     )
-  }
 
-  test("multiple starting advisers retain order and derived locations") {
+  test("multiple starting advisers retain order and derived locations"):
     val first = DenizenState(
       DenizenId("D-start-1"),
       Orientation.FaceDown,
@@ -74,5 +72,3 @@ class PlayerSetupStateSuite extends munit.FunSuite {
       )
     )
     assertEquals(DomainValidation.validate(updatedGame), Vector.empty)
-  }
-}

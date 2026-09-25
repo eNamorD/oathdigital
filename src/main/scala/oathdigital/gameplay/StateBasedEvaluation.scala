@@ -18,7 +18,7 @@ import oathdigital.model.{Move => CoreMove}
  * leaders when no longer tied. The latter is a player decision and is not
  * guessed here. This is deliberately not a reusable, context-free tie breaker.
  */
-object StateBasedEvaluation {
+object StateBasedEvaluation:
   private val operationAllowlist: OperationPolicy =
     StateBasedOperationPolicy
   private val visionPriority = Vector(VisionRules.Conquest,
@@ -27,10 +27,9 @@ object StateBasedEvaluation {
       : Either[OathViolation, Option[OathEvent]] = supported(state).map { ready =>
     val capacities = catalog.sites.map(s => s.id -> s.capacity).toMap
     val refills = ready.game.current.map.inPlay.flatMap { siteId =>
-      ready.game.current.map.sites.get(siteId).collect {
+      ready.game.current.map.sites.get(siteId).collect:
         case SiteState(SiteForces.Empty, _, _, _) if capacities.getOrElse(siteId, 0) > 0 =>
           siteId -> capacities(siteId)
-      }
     }
     Option.when(refills.nonEmpty)(BanditsRefilled(refills))
   }
@@ -38,14 +37,13 @@ object StateBasedEvaluation {
   def atWake(state: OathState): Either[OathViolation, Option[OathEvent]] =
     supported(state).map { ready =>
       val current = ready.game.current
-      current.title match {
+      current.title match
         case OathkeeperState(Some(player), TitleSide.Usurper)
             if player == current.turn.activePlayer => Some(UsurperVictory(player))
         case OathkeeperState(Some(player), TitleSide.Oathkeeper)
             if player == current.turn.activePlayer && !current.tracks.usurperLimited =>
           Some(UsurperFlipped(player))
         case _ => None
-      }
     }
 
   def visionAtWake(state: OathState): Either[OathViolation, Option[OathEvent]] =
@@ -64,18 +62,17 @@ object StateBasedEvaluation {
     val order = ready.game.current.players.map(_.player)
     val firstIndex = order.indexOf(ready.setup.firstPlayer)
     val turnOrder = order.drop(firstIndex) ++ order.take(firstIndex)
-    if (current.turn.phase != Phase.RoundEnd ||
-        current.turn.activePlayer != turnOrder.head)
+    if current.turn.phase != Phase.RoundEnd ||
+        current.turn.activePlayer != turnOrder.head then
       Left(InvalidEventOrder("round ending requires the completed round's final Rest"))
-    else if (current.tracks.round < 8)
+    else if current.tracks.round < 8 then
       Right(Vector(RoundEnded(current.tracks.round,
         Some(current.tracks.round + 1))))
-    else {
-      val usurper = current.title match {
+    else
+      val usurper = current.title match
         case OathkeeperState(Some(player), TitleSide.Usurper) => Some(
           WarExhaustionResolved(player, VictoryKind.Usurper, None, Vector.empty))
         case _ => None
-      }
       val visionary = visionPriority.iterator.flatMap { vision =>
           current.players.find(p => p.revealedVision.exists(_.id == vision) &&
             VisionVictoryEligibility.qualifies(p.player, current))
@@ -83,18 +80,16 @@ object StateBasedEvaluation {
               Some(vision), Vector.empty))
         }.toSeq.headOption
       val fallback = current.title.holder.map(player => WarExhaustionResolved(
-        player, VictoryKind.Oathkeeper, None, Vector.empty)).getOrElse {
+        player, VictoryKind.Oathkeeper, None, Vector.empty)).getOrElse:
         val candidates = turnOrder
         WarExhaustionResolved(randomWinner(candidates),
           VictoryKind.RandomSelection, None, candidates)
-      }
       Right(Vector(RoundEnded(8, None), usurper.orElse(visionary).getOrElse(fallback)))
-    }
   }
 
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent): Either[OathViolation, OathState] =
-    event match {
-      case recorded: BanditsRefilled => banditRefill(catalog, state).flatMap {
+    event match
+      case recorded: BanditsRefilled => banditRefill(catalog, state).flatMap:
         case Some(expected: BanditsRefilled) if expected == recorded =>
           supported(state).flatMap { ready =>
             val operations = recorded.sites.map { case (site, count) =>
@@ -112,42 +107,38 @@ object StateBasedEvaluation {
           }
         case expected => Left(InvalidEventOrder(
           s"Bandit refill mismatch: expected $expected, recorded $recorded"))
-      }
       case recorded: UsurperFlipped =>
-        atWake(state).flatMap {
+        atWake(state).flatMap:
           case Some(expected: UsurperFlipped) if expected == recorded =>
             update(state)(current => current.copy(
               title = current.title.copy(side = TitleSide.Usurper)))
           case expected => Left(InvalidEventOrder(
             s"Usurper flip mismatch: expected $expected, recorded $recorded"))
-        }
       case recorded: UsurperVictory =>
-        atWake(state).flatMap {
+        atWake(state).flatMap:
           case Some(expected: UsurperVictory) if expected == recorded =>
             update(state)(current => current.copy(result = Some(GameResult(
               recorded.playerId, VictoryKind.Usurper))))
           case expected => Left(InvalidEventOrder(
             s"Usurper victory mismatch: expected $expected, recorded $recorded"))
-        }
       case recorded: VisionVictory =>
-        visionAtWake(state).flatMap {
+        visionAtWake(state).flatMap:
           case Some(expected: VisionVictory) if expected == recorded =>
             update(state)(current => current.copy(result = Some(GameResult(
               recorded.playerId, VictoryKind.Visionary))))
           case expected => Left(InvalidEventOrder(
             s"Vision victory mismatch: expected $expected, recorded $recorded"))
-        }
-      case recorded: RoundEnded => state match {
+      case recorded: RoundEnded => state match
         case Ready(ready) =>
           val round = ready.game.current.tracks.round
           val expected = RoundEnded(round, Option.when(round < 8)(round + 1))
           val players = ready.game.current.players.map(_.player)
           val firstIndex = players.indexOf(ready.setup.firstPlayer)
           val first = (players.drop(firstIndex) ++ players.take(firstIndex)).head
-          if (ready.game.current.turn.phase != Phase.RoundEnd ||
-              ready.game.current.turn.activePlayer != first)
+          if ready.game.current.turn.phase != Phase.RoundEnd ||
+              ready.game.current.turn.activePlayer != first then
             Left(InvalidEventOrder("round-end event is outside the round-end procedure"))
-          else if (recorded != expected) Left(InvalidEventOrder(
+          else if recorded != expected then Left(InvalidEventOrder(
             s"round-end mismatch: expected $expected, recorded $recorded"))
           else update(state)(current => current.copy(
             tracks = current.tracks.copy(
@@ -157,8 +148,7 @@ object StateBasedEvaluation {
             turn = current.turn.copy(phase = recorded.nextRound.fold[Phase](
               Phase.WarExhaustion)(_ => Phase.Wake))))
         case _ => Left(GameNotStarted)
-      }
-      case recorded: WarExhaustionResolved => expectedWarExhaustion(state).flatMap {
+      case recorded: WarExhaustionResolved => expectedWarExhaustion(state).flatMap:
         case ExactWar(expected) if expected == recorded => update(state)(current => current.copy(
           result = Some(GameResult(recorded.winner, recorded.kind))))
         case LeftRandom(candidates) if recorded.kind == VictoryKind.RandomSelection &&
@@ -167,17 +157,14 @@ object StateBasedEvaluation {
           result = Some(GameResult(recorded.winner, recorded.kind))))
         case expected => Left(InvalidEventOrder(
           s"War Exhaustion mismatch: expected $expected, recorded $recorded"))
-      }
       case _ => Left(InvalidEventOrder("not a state-based evaluation event"))
-    }
 
-  private[gameplay] def supported(state: OathState): Either[OathViolation, ReadyGame] = state match {
+  private[gameplay] def supported(state: OathState): Either[OathViolation, ReadyGame] = state match
     case Ready(ready) if ready.game.campaign.lineages.values.forall(
       _.role == Role.Exile) => Right(ready)
     case Ready(_) => Left(UnsupportedWakeVictoryState(
       "state-based Oathkeeper evaluation is limited to the fixed, unaltered all-Exile game"))
     case _ => Left(GameNotStarted)
-  }
 
   private sealed trait ExpectedWarExhaustion
   private final case class ExactWar(value: WarExhaustionResolved)
@@ -188,15 +175,15 @@ object StateBasedEvaluation {
   private def expectedWarExhaustion(state: OathState)
       : Either[OathViolation, ExpectedWarExhaustion] = supported(state).flatMap { ready =>
     val current = ready.game.current
-    if (current.tracks.round != 8 || current.result.nonEmpty ||
-        current.turn.phase != Phase.WarExhaustion)
+    if current.tracks.round != 8 || current.result.nonEmpty ||
+        current.turn.phase != Phase.WarExhaustion then
       Left(InvalidEventOrder("War Exhaustion is only resolved after round eight"))
     else endRoundWinner(current, ready.setup.firstPlayer)
   }
 
   private def endRoundWinner(current: CurrentGameState, first: PlayerId)
-      : Either[OathViolation, ExpectedWarExhaustion] = {
-    current.title match {
+      : Either[OathViolation, ExpectedWarExhaustion] =
+    current.title match
       case OathkeeperState(Some(player), TitleSide.Usurper) => Right(ExactWar(
         WarExhaustionResolved(player, VictoryKind.Usurper, None, Vector.empty)))
       case _ =>
@@ -206,20 +193,15 @@ object StateBasedEvaluation {
               .map(p => WarExhaustionResolved(p.player, VictoryKind.Visionary,
                 Some(vision), Vector.empty))
           }.toSeq.headOption.orElse(current.title.holder.map(player =>
-          WarExhaustionResolved(player, VictoryKind.Oathkeeper, None, Vector.empty))) match {
+          WarExhaustionResolved(player, VictoryKind.Oathkeeper, None, Vector.empty))) match
           case Some(value) => Right(ExactWar(value))
           case None =>
             val players = current.players.map(_.player)
             val i = players.indexOf(first)
             val candidates = players.drop(i) ++ players.take(i)
             Right(LeftRandom(candidates))
-        }
-    }
-  }
 
-  private def update(state: OathState)(f: CurrentGameState => CurrentGameState) = state match {
+  private def update(state: OathState)(f: CurrentGameState => CurrentGameState) = state match
     case Ready(ready) => Right(Ready(ready.copy(game = ready.game.copy(
       current = f(ready.game.current)))))
     case _ => Left(GameNotStarted)
-  }
-}
