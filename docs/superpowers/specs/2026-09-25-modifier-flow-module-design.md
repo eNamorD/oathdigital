@@ -46,7 +46,7 @@ The seven functions move into it unchanged in logic. `submitCommand` is
 otherwise `host.send`); `submitTargetCommand` is `completeTargetCommand`;
 `handleSelection` keeps its two branches (`Updated` stages
 `Draft.BoardTargets`, `Submit` completes the target command). `stage` is
-`host.drafts = host.drafts.staged(draft); host.render()`. The ten flow
+`host.replaceDrafts(host.currentDrafts.staged(draft)); host.redraw()`. The ten flow
 commands read as today, with `drafts.copy(...)` replaced by
 `drafts.step(FlowStep.X)` and the two workflow constructions replaced by
 `ModifierWorkflow.fromPreview`.
@@ -62,29 +62,33 @@ the class, implemented anonymously in `ServerModeUi` next to `session`:
 
 ```scala
 private[frontend] trait FlowHost:
-  def projection: Option[GameProjection]
-  def gameId: String
-  def playerId: String
-  def drafts: SessionDrafts
-  def drafts_=(value: SessionDrafts): Unit
-  def render(): Unit
+  def displayedProjection: Option[GameProjection]
+  def currentGameId: String
+  def currentPlayerId: String
+  def currentDrafts: SessionDrafts
+  def replaceDrafts(value: SessionDrafts): Unit
+  def redraw(): Unit
   def fail(error: GameClientFailure): Unit
   def preview(request: MajorActionPreviewRequest)
       : Future[Either[GameClientFailure, MajorActionPreviewResponse]]
   def send(command: GameCommand, modifiers: Vector[ModifierInvocation]): Unit
 ```
 
-- `drafts_=` writes without rendering. Three flow sites write and then send
+- Member names follow `SessionControls` (`currentGameId`, `displayedProjection`)
+  rather than the closure's own names: inside the anonymous implementation in
+  `ServerModeUi.start`, a member named `projection` or `render` would shadow
+  the local it forwards to and recurse.
+- `replaceDrafts` writes without rendering. Three flow sites write and then send
   or preview without a render in between (`Restarted` before the targeted
   preview, `OrderingLeft` before the direct submit, `Completed` before the
   target submit), so a write that always rendered would not fit. Every
   "write then render" pair stays visible in the module.
-- `fail` sets `failure` and renders. Every failure write in the flow today is
+- `redraw` is `render()`. `fail` sets `failure` and renders. Every failure write in the flow today is
   followed by `render()`.
 - `preview` is `client.preview(gameId, selectedPlayer, request)`. `send` is
   `submitTransport`. Both add the identity themselves; the flow keeps
   `gameId` and `playerId` only to build `ModifierSelectionContext`.
-- `projection` is read for `nextSequence`, `minorActions` and
+- `displayedProjection` is read for `nextSequence`, `minorActions` and
   `boardTargetActions`, as today.
 
 The draft set stays owned by `ServerModeUi`: `reconcile` on `Display`, and
@@ -148,7 +152,7 @@ It builds the fingerprint
 `s"${response.nextSequence}:${response.action}:" + modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")`,
 reconciles the selection from `previous`, and sets the stage to `Ordering`
 when `response.modifiers` is non-empty and `Targets` otherwise. Both flow
-entries pass `host.drafts.modifiers.map(_.selection)` as `previous`.
+entries pass `host.currentDrafts.modifiers.map(_.selection)` as `previous`.
 
 Two unifications, both proven equal to today:
 
