@@ -2,6 +2,7 @@
 .bloop/
 .metals/
 .vscode/
+.claude/
 .tooling/cache/
 project/metals.sbt
 project/project/

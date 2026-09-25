@@ -2,24 +2,28 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse, ModifierInvocation}
 
-private[frontend] enum ModifierWorkflowStage { case Ordering, Targets }
+private[frontend] enum ModifierFlowStage { case Ordering, Targets }
 
-private[frontend] final case class ModifierWorkflow(
+/** The modifier flow's slot in the draft set (CONTEXT.md): the preview the
+  * major action opened, the viewer's modifier order, and the stage the flow
+  * is at. `ModifierFlow` is the behavior; this is the value it steps.
+  */
+private[frontend] final case class ModifierFlowDraft(
     command: Option[GameIntent],
     actionKind: Option[String],
     baseParameters: Map[String, String],
     preview: MajorActionPreviewResponse,
     selection: ModifierSelectionState,
-    stage: ModifierWorkflowStage):
-  def ordering: Boolean = stage == ModifierWorkflowStage.Ordering
+    stage: ModifierFlowStage):
+  def ordering: Boolean = stage == ModifierFlowStage.Ordering
   def hadModifierStage: Boolean = preview.modifiers.nonEmpty
-  def showTargets(response: MajorActionPreviewResponse): ModifierWorkflow =
-    copy(preview = response, stage = ModifierWorkflowStage.Targets)
-  def backFromTargets: Option[ModifierWorkflow] = Option.when(hadModifierStage)(
-    copy(stage = ModifierWorkflowStage.Ordering))
-  def cancel: Option[ModifierWorkflow] = None
+  def showTargets(response: MajorActionPreviewResponse): ModifierFlowDraft =
+    copy(preview = response, stage = ModifierFlowStage.Targets)
+  def backFromTargets: Option[ModifierFlowDraft] = Option.when(hadModifierStage)(
+    copy(stage = ModifierFlowStage.Ordering))
+  def cancel: Option[ModifierFlowDraft] = None
 
-private[frontend] object ModifierWorkflow:
+private[frontend] object ModifierFlowDraft:
   /** The `ActionRef` wire keys registered on the generic walker, as plain
     * strings for the same reason `ServerUiSupport` spells Recover's
     * decision ids out: `ActionRef` lives in the JVM-only engine sources the
@@ -38,10 +42,26 @@ private[frontend] object ModifierWorkflow:
   def targeted(actionKind: String): Option[(String, Map[String, String])] =
     targetedActions.get(actionKind)
 
-  def reconcile(previous: Option[ModifierWorkflow],
-      context: BoardSelectionContext): Option[ModifierWorkflow] = previous.filter:
-    workflow =>
-      val selected = workflow.selection.context
+  /** The flow draft a preview response opens. Ordering when the response
+    * offers modifiers, Targets otherwise; the selection is reconciled from
+    * `previous` so a re-preview of the same shape keeps the viewer's order.
+    */
+  def fromPreview(command: Option[GameIntent], actionKind: Option[String],
+      parameters: Map[String, String], response: MajorActionPreviewResponse,
+      previous: Option[ModifierSelectionState],
+      context: ModifierSelectionContext): ModifierFlowDraft =
+    val fingerprint = s"${response.nextSequence}:${response.action}:" +
+      response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
+    ModifierFlowDraft(command, actionKind, parameters, response,
+      ModifierSelectionState.reconcile(previous, context, response.modifiers,
+        fingerprint),
+      if response.modifiers.nonEmpty then ModifierFlowStage.Ordering
+      else ModifierFlowStage.Targets)
+
+  def reconcile(previous: Option[ModifierFlowDraft],
+      context: BoardSelectionContext): Option[ModifierFlowDraft] = previous.filter:
+    draft =>
+      val selected = draft.selection.context
       selected.gameId == context.gameId && selected.playerId == context.playerId &&
         selected.sequence == context.sequence
 

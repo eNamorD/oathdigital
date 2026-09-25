@@ -31,12 +31,12 @@ class SessionDraftsSuite extends munit.FunSuite:
       Vector.empty, Vector.empty, Vector.empty, ready = true, completed = false,
       boardTargetActions = Vector(travel), walkerDecision = parked,
       minorActions = Some(minor))
-  private val workflow = ModifierWorkflow(None, Some("travel"), Map.empty,
+  private val draft = ModifierFlowDraft(None, Some("travel"), Map.empty,
     MajorActionPreviewResponse(9L, "travel", Vector.empty, Vector.empty,
       Vector.empty),
     ModifierSelectionState.reconcile(None,
       ModifierSelectionContext("game", "red", 9, "travel"), Vector.empty, "p"),
-    ModifierWorkflowStage.Targets)
+    ModifierFlowStage.Targets)
   private val targets = BoardTargetSelectionState(context, Vector(travel),
     Some("travel"), Set.empty)
 
@@ -46,7 +46,7 @@ class SessionDraftsSuite extends munit.FunSuite:
     */
   private def full: SessionDrafts =
     SessionDrafts.empty.reconcile(context, projection()).copy(
-      boardTargets = Some(targets), modifiers = Some(workflow),
+      boardTargets = Some(targets), modifiers = Some(draft),
       facedownAdviser = FacedownAdviserDraft.initial(context, minor)
         .map(_.choose("a1")))
 
@@ -64,7 +64,7 @@ class SessionDraftsSuite extends munit.FunSuite:
 
   test("reconcile keeps every slot under the same context and drops them under another"):
     val kept = full.reconcile(context, projection())
-    assertEquals(kept.modifiers, Some(workflow))
+    assertEquals(kept.modifiers, Some(draft))
     assertEquals(kept.facedownAdviser.flatMap(_.selectedCardId), Some("a1"))
     assertEquals(kept.boardTargets, Some(targets))
     val moved = full.reconcile(context.copy(sequence = 10), projection())
@@ -113,22 +113,76 @@ class SessionDraftsSuite extends munit.FunSuite:
     assertEquals(left.boardTargets, Some(restored))
     assertEquals(full.leave(FlowExit.Cancelled(None)).boardTargets, None)
 
-  test("TargetsLeft steps the workflow back and clears the pick and the targets"):
-    val ordering = workflow.copy(preview = workflow.preview.copy(modifiers =
+  test("TargetsLeft steps the flow draft back and clears the pick and the targets"):
+    val ordering = draft.copy(preview = draft.preview.copy(modifiers =
       Vector(PreviewModifier("adviser:p:denizen:a", "h.a", "A"))))
     val left = full.copy(modifiers = Some(ordering)).leave(FlowExit.TargetsLeft)
-    assertEquals(left.modifiers.map(_.stage), Some(ModifierWorkflowStage.Ordering))
+    assertEquals(left.modifiers.map(_.stage), Some(ModifierFlowStage.Ordering))
     assertEquals(left.facedownAdviser, None)
     assertEquals(left.boardTargets, None)
-    // A workflow that never had a modifier stage has nowhere to go back to.
+    // A flow draft that never had a modifier stage has nowhere to go back to.
     assertEquals(full.leave(FlowExit.TargetsLeft).modifiers, None)
 
-  test("OrderingLeft clears only the workflow"):
+  test("OrderingLeft clears only the flow draft"):
     val left = full.leave(FlowExit.OrderingLeft)
     assertEquals(left, full.copy(modifiers = None))
     assert(left.facedownAdviser.nonEmpty)
     assert(left.boardTargets.nonEmpty)
     assert(left.partition.nonEmpty)
+
+  private val modifier = PreviewModifier("adviser:p:denizen:a", "h.a", "A")
+  private val ordering = draft.copy(
+    preview = draft.preview.copy(modifiers = Vector(modifier)),
+    selection = draft.selection.copy(candidates = Vector(modifier)),
+    stage = ModifierFlowStage.Ordering)
+
+  test("Ordering sets only the flow draft"):
+    val stepped = full.copy(modifiers = None).step(FlowStep.Ordering(ordering))
+    assertEquals(stepped, full.copy(modifiers = Some(ordering)))
+
+  test("Targets with a facedown entry sets the pick and clears the board targets"):
+    val pick = FacedownAdviserDraft.initial(context, minor)
+    val stepped = full.step(FlowStep.Targets(draft, TargetsEntry.Facedown(pick)))
+    assertEquals(stepped.modifiers, Some(draft))
+    assertEquals(stepped.facedownAdviser, pick)
+    assertEquals(stepped.boardTargets, None)
+    assertEquals(stepped.partition, full.partition)
+
+  test("Targets with a board entry sets the targets and keeps the pick"):
+    val activated = targets.copy(selectedKeys = Set("site:site:woods"))
+    val stepped = full.step(FlowStep.Targets(draft, TargetsEntry.Board(activated)))
+    assertEquals(stepped.modifiers, Some(draft))
+    assertEquals(stepped.boardTargets, Some(activated))
+    assertEquals(stepped.facedownAdviser, full.facedownAdviser)
+    assertEquals(stepped.partition, full.partition)
+
+  test("Targets with no entry sets only the flow draft"):
+    val stepped = full.copy(modifiers = None)
+      .step(FlowStep.Targets(draft, TargetsEntry.NoTargets))
+    assertEquals(stepped, full.copy(modifiers = Some(draft)))
+
+  test("Toggle and Move map the selection and nothing else"):
+    val base = full.copy(modifiers = Some(ordering))
+    val toggled = base.step(FlowStep.Toggle(modifier))
+    assertEquals(toggled.modifiers.map(_.selection.selected), Some(Vector(modifier)))
+    assertEquals(toggled.copy(modifiers = None), base.copy(modifiers = None))
+    val second = PreviewModifier("adviser:p:denizen:b", "h.b", "B")
+    val two = ordering.copy(selection = ordering.selection.copy(
+      candidates = Vector(modifier, second), selected = Vector(modifier, second)))
+    val moved = full.copy(modifiers = Some(two)).step(FlowStep.Move(second, -1))
+    assertEquals(moved.modifiers.map(_.selection.selected), Some(Vector(second, modifier)))
+    val back = moved.step(FlowStep.Move(second, 1))
+    assertEquals(back.modifiers.map(_.selection.selected), Some(Vector(modifier, second)))
+    // No flow draft: the step is a no-op.
+    assertEquals(full.copy(modifiers = None).step(FlowStep.Toggle(modifier)),
+      full.copy(modifiers = None))
+
+  test("ChooseFacedown maps the pick and nothing else"):
+    val stepped = full.step(FlowStep.ChooseFacedown("a2"))
+    assertEquals(stepped.facedownAdviser.flatMap(_.selectedCardId), Some("a2"))
+    assertEquals(stepped.copy(facedownAdviser = None), full.copy(facedownAdviser = None))
+    assertEquals(full.copy(facedownAdviser = None).step(FlowStep.ChooseFacedown("a2")),
+      full.copy(facedownAdviser = None))
 
   test("empty has no context and nothing staged"):
     assertEquals(SessionDrafts.empty, SessionDrafts(None, None, None, None,

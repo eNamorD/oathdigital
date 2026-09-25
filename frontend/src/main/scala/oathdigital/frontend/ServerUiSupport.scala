@@ -319,7 +319,7 @@ private[frontend] object ServerUiSupport:
       // destination the player just picked rides `StartWalker`'s start
       // selection instead of a `Travel` intent of its own -- as a plain site
       // reference, which is all the wire says about it. Modifiers are folded
-      // into this same intent by `ModifierWorkflow.submission`, which is why
+      // into this same intent by `ModifierFlowDraft.submission`, which is why
       // they are empty here.
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.StartWalker("travel", Vector.empty,
