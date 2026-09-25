@@ -363,7 +363,7 @@ CSS grid with 4px gaps on a Table background, four panes:
 
 Each pane is a `section` with a 39px header strip and a scrolling
 `.pane-content` (12px padding, thin scrollbar in Brass Line on Pane). The
-World pane is the exception: zero padding, a `#191c17` field, a hidden
+World pane is the exception: zero padding, a Base field, a hidden
 scrollbar, and a `.map-content` surface fixed at 1500px wide with 20px padding
 that is transform-scaled by the viewport. The map's font size is pinned to
 1rem so zoom and font scaling never compound. Below a zoom threshold the map
