@@ -379,9 +379,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .player-selector { min-height: 44px; margin: 5px; }
 /* Zones are as wide as the cards they hold, not as wide as an equal share:
    a Keep-one zone is one card wide and the zones sit side by side while the
-   room lasts. The floor is a drop target an empty zone can still be. */
+   room lasts. The floor is a drop target an empty zone can still be. Zones
+   that share a row share its height, so a wrapped helper line in one zone
+   does not leave the other zone short. */
 .decision-zones.partition-zones { display: flex; flex-wrap: wrap;
-  align-items: flex-start; }
+  align-items: stretch; }
 .partition-zones > .partition-zone { flex: 0 1 auto; min-width: 7rem;
   max-width: 100%; }
 .decision-option { padding: 10px; border: 1px solid #88775d; border-radius: 8px; }
