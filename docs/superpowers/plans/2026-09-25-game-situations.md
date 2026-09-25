@@ -17,7 +17,7 @@
 - **Dependencies are accepted, not created.** `Situation` takes catalog, rules or service, dice, repository and game id as parameters; `default` companions cover the common case. No situation builds a port it was not given.
 - **No new decision-id strings.** Overrides key on ids the procedures export (`SetupProcedure.pawnDecisionId`, `RecoverProcedure.choiceDecisionId`, `CampaignIds.*`).
 - **Keep power names out of `src/test/scala/oathdigital/testkit/`.** The module is engine-adjacent; suites may name a power, the module may not.
-- Commit messages: Conventional Commits, `test(testkit): ...` unless noted. End every commit message with the trailer line `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` — this plan's trailer overrides a worker's own model trailer.
+- Commit messages: Conventional Commits, `test(testkit): ...` unless noted. End every commit message with the `Co-Authored-By:` trailer of the model that made the commit.
 - Run the full JVM suite (`./sbtw test`) at the end of every task, not only the touched suites: the fixture's blast radius is the whole gameplay tree.
 - Line numbers are as of commit `c286cfd2` and drift as tasks run. Locate members by signature and assertions by text.
 - Work in one worktree off `main`. `main` moves under this plan (other sessions merge into it); re-check `git log -1 main` before any rebase.
