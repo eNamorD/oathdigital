@@ -26,7 +26,7 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
   )
 
   test("route validates identity actor and internal-error boundaries") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "trust-boundary-route-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")

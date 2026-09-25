@@ -11,7 +11,7 @@ import oathdigital.application._
 import oathdigital.application.MembershipRole.Player
 
 class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
-  implicit private val executionContext: ExecutionContext =
+  private given executionContext: ExecutionContext =
     ExecutionContext.global
 
   private def path(label: String): Path =

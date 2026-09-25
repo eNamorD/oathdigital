@@ -28,7 +28,7 @@ import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
 
 class GameRoutesSuite extends munit.FunSuite {
   test("health load malformed request and stale command status mappings") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "first-game-route-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")

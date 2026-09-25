@@ -23,7 +23,7 @@ class SessionSecuritySuite extends munit.FunSuite {
     val identities = database.identities
     val user = UserId("session-user")
     identities.createUser(user, "Session User", 0L)
-    implicit val executionContext: ExecutionContext = ExecutionContext.global
+    given executionContext: ExecutionContext = ExecutionContext.global
     val authenticator = new SessionCookieAuthenticator(
       identities, cookieName, () => 150L, executionContext)
 

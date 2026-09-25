@@ -18,7 +18,7 @@ import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,
   RoundEnded, WarExhaustionResolved}
 
 class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
-  implicit private val executionContext: ExecutionContext =
+  private given executionContext: ExecutionContext =
     ExecutionContext.global
 
   private def databasePath(label: String): Path =

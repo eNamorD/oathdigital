@@ -36,9 +36,9 @@ object OathServer {
         sys.exit(2)
       case Right(parsed) => parsed
     }
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "oathdigital-server")
-    implicit val executionContext: ExecutionContext = system.executionContext
+    given executionContext: ExecutionContext = system.executionContext
     val blockingExecutionContext = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
     )

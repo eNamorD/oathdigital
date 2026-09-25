@@ -12,7 +12,7 @@ import akka.http.scaladsl.Http
 
 class HealthRoutesSuite extends munit.FunSuite {
   test("liveness stays live while readiness follows lifecycle state") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "health-routes-test")
     val readiness = ServerReadiness.starting("test-version")
     val binding = bind(HealthRoutes.route(readiness))
@@ -70,7 +70,7 @@ class HealthRoutesSuite extends munit.FunSuite {
     assertEquals(response.headers().firstValue("Cache-Control").get(), "no-store")
   }
 
-  private def bind(route: akka.http.scaladsl.server.Route)(implicit
+  private def bind(route: akka.http.scaladsl.server.Route)(using
       system: ActorSystem[Nothing]
   ) = Await.result(
     Http().newServerAt("127.0.0.1", 0).bind(route),
