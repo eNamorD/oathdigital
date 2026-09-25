@@ -4,14 +4,16 @@ import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
-  WalkerProcedureRegistry}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
+  WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
 class VisionPlaySuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  private val walkerParked = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog))
   private val conspiracy = VisionRules.Conspiracy
   private val newVision = VisionRules.Faith
   private val existingVision = VisionRules.Conquest
@@ -109,7 +111,8 @@ class VisionPlaySuite extends munit.FunSuite:
       .toOption.get
     val parked = rules.resolveWalker(started.state, actor, placeId(conspiracy),
       faceup).toOption.get
-    assert(parked.continue.isInstanceOf[OathContinue.AwaitingSearchDecision])
+    walkerParked.assertParked(parked.state, ActionRef.Search,
+      "cardplay.conspiracy.target", actor)
     val OathState.Ready(waiting) = parked.state: @unchecked
     assertEquals(waiting.game.current.temporaryHands(actor),
       Vector[WorldCardId](conspiracy))

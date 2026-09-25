@@ -504,8 +504,9 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
         actor) match
       case Right(transition) => transition
       case other => fail(s"expected the Recover roll park to run, got $other")
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)))
+    val Ready(startedReady) = started.state: @unchecked
+    assertEquals(startedReady.game.current.walkerProcedure, Some(ActionRef.Recover))
+    assert(startedReady.game.current.walkerPending.nonEmpty)
     assert(started.events.nonEmpty)
 
     // Forge declares none: the rejection is carried through as the command's
@@ -540,8 +541,15 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val owner = ready.game.current.players.map(_.player).find(_ != actor).get
     val started = ownedRules(owner).startWalker(Ready(ready), ActionRef.Recover,
       actor).toOption.get
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(owner,
-      DecisionId(RecoverProcedure.choiceDecisionId)))
+    // `ownedRules` injects a synthetic tree through the same `walkerTree` seam
+    // as the Roll-park control above, so `ParkedDecisionAssertions` cannot
+    // rebuild it either: it would rebuild the real Recover tree, which the
+    // injected tree's pending path does not address. The decision id and the
+    // owner are instead proven directly below, by the `WrongPlayer` the
+    // active player draws and the owner's own successful answer.
+    val Ready(startedReady) = started.state: @unchecked
+    assertEquals(startedReady.game.current.walkerProcedure, Some(ActionRef.Recover))
+    assert(startedReady.game.current.walkerPending.nonEmpty)
     assertEquals(ownedRules(owner).resolveWalker(started.state, actor,
       RecoverProcedure.choiceDecisionId, continue),
       Left(OathViolation.WrongPlayer(owner, actor)))

@@ -2,8 +2,8 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
+  WalkerOutcome, WalkerPowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -299,12 +299,14 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val ready = setup.updateCurrent(_.copy(turn = setup.game.current.turn.copy(
         phase = Phase.Act)))
     val rules = new OathRules(catalog)
+    val walkerParked = new ParkedDecisionAssertions(catalog)
     val started = rules.startWalker(OathState.Ready(ready),
       ActionRef.PlayFacedownAdviser, actor,
       startArgs = Vector(DecisionOptionRef.Denizen(adviser)))
     assert(started.isRight)
-    assert(started.toOption.get.continue
-      .isInstanceOf[OathContinue.AwaitingSearchDecision])
+    walkerParked.assertParked(started.toOption.get.state,
+      ActionRef.PlayFacedownAdviser, s"cardplay.place.${adviser.kind}.${adviser.value}",
+      actor)
     val parked = started.toOption.get
     val other = ready.game.current.players.find(_.player != actor).get.player
     val projector = new oathdigital.application.GameProjector(catalog)

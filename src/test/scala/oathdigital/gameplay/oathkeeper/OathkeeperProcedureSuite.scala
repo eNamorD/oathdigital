@@ -5,13 +5,14 @@ import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.oathkeeper.OathkeeperFixture._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
-  WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
+  WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
 class OathkeeperProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
+  private val walkerParked = new ParkedDecisionAssertions(catalog)
 
   /** A Travel by the active player: the cheapest walker action whose
     * completion runs the action boundary and moves no forces.
@@ -57,8 +58,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
       "may answer with a tied leader"):
     val (ready, active, holder, leaders) = tie
     val parked = travel(ready).toOption.get
-    assertEquals(parked.continue, OathContinue.AwaitingOathkeeperRecipient(
-      holder, DecisionId(OathkeeperProcedure.recipientDecisionId)))
+    walkerParked.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
+      OathkeeperProcedure.recipientDecisionId, holder)
     assert(parked.events.last.isInstanceOf[WalkerParked])
     val Ready(waiting) = parked.state: @unchecked
     assertEquals(waiting.game.current.walkerProcedure,
@@ -80,7 +81,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
       case WalkerStepRecorded(_, ChoicePayload(_, _, by), _, _) => by == holder
       case _ => false
     })
-    assertEquals(chosen.continue, OathContinue.ActActionSelection(active))
+    walkerParked.assertResumed(chosen.state, Phase.Act, active)
     val Ready(after) = chosen.state: @unchecked
     assertEquals(after.game.current.title,
       OathkeeperState(Some(leaders(1)), TitleSide.Oathkeeper))
@@ -113,12 +114,12 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     val ready = TakeWealthFixture.wakeReady(ruled(base, leaders.map(Some(_)),
       holder = Some(holder)))
     val parked = TakeWealthFixture.take(rules, ready).toOption.get
-    assertEquals(parked.continue, OathContinue.AwaitingOathkeeperRecipient(
-      holder, DecisionId(OathkeeperProcedure.recipientDecisionId)))
+    walkerParked.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
+      OathkeeperProcedure.recipientDecisionId, holder)
     val chosen = rules.resolveWalker(parked.state, holder,
       OathkeeperProcedure.recipientDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Player(leaders(0)))).toOption.get
-    assertEquals(chosen.continue, OathContinue.AwaitingWakeAction(active))
+    walkerParked.assertResumed(chosen.state, Phase.Wake, active)
 
   test("the engine refuses to start a triggered procedure over a pending one"):
     val (ready, _, _, _) = tie

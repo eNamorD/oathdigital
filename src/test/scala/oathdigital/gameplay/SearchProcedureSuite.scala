@@ -4,11 +4,13 @@ import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
+  WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 
 class SearchProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
+  private val parked = new ParkedDecisionAssertions(catalog)
 
   private def ready: ReadyGame =
     val state = initialReady
@@ -81,8 +83,9 @@ class SearchProcedureSuite extends munit.FunSuite:
         DecisionPlacement(ref(card), SearchProcedure.discardKey))
       rules.resolveWalker(started.state, actor, SearchProcedure.cardDecisionId,
         DecisionAnswer.PartitionAnswer(placements)).toOption.get
-    assert(afterSelection.continue.isInstanceOf[OathContinue.AwaitingSearchDecision])
     val kept = drawn.head
+    parked.assertParked(afterSelection.state, ActionRef.Search,
+      s"cardplay.place.${kept.kind}.${kept.value}", actor)
     val completed = rules.resolveWalker(afterSelection.state, actor,
       s"cardplay.place.${kept.kind}.${kept.value}",
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))
@@ -105,6 +108,8 @@ class SearchProcedureSuite extends munit.FunSuite:
         Vector(vision) ++ deck.filterNot(_ == vision))))
     val withPowers = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    val withPowersParked = new ParkedDecisionAssertions(catalog,
+      WalkerPowerCatalog.default(catalog))
     val started = withPowers.startWalker(OathState.Ready(initial), ActionRef.Search,
       actor, startArgs = Vector(DecisionOptionRef.Button("search:world")))
       .toOption.get
@@ -115,7 +120,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     val OathState.Ready(after) = result.state: @unchecked
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
     assertEquals(after.game.current.walkerPending, None)
-    assert(!result.continue.isInstanceOf[OathContinue.AwaitingSearchDecision])
+    withPowersParked.assertNotParked(result.state)
 
   test("Search uses its registered modifier-selection window"):
     val initial = ready

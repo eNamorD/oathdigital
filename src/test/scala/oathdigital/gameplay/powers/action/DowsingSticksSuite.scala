@@ -2,11 +2,15 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 class DowsingSticksSuite extends munit.FunSuite:
   import PaidActionHarness._
   import PowerFixture._
+
+  private val parked = new ParkedDecisionAssertions(catalog,
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
   private val sticks = RelicId("R09")
   private val source = DecisionOptionRef.Relic(sticks)
@@ -27,7 +31,7 @@ class DowsingSticksSuite extends munit.FunSuite:
     assert(!end.game.current.commonCards.relicDeck.contains(top))
     assertEquals(tokensOn(end, sticks), Tokens(0, 1))
     assertEquals(player(end).board.faceUpSecrets, 0)
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    parked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(replayed(rules0, ready0, done.events), end)
     assert(wireRoundTrips(done.events))
 

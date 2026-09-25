@@ -7,7 +7,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 
 /** Travel on the generic walker (batch 1, Task 5).
@@ -203,6 +203,7 @@ class TravelProcedureSuite extends munit.FunSuite:
   test("Travel never parks and leaves no walker state behind"):
     val ready = passRuled(act())
     val rules = new OathRules(catalog, walkerPowerCatalog = powers)
+    val parked = new ParkedDecisionAssertions(catalog, powers)
     val destination = ready.game.current.map.cradle.find(
       _ != active(ready).pawnSite.get).get
     val accepted = rules.startWalker(Ready(ready), ActionRef.Travel,
@@ -211,9 +212,7 @@ class TravelProcedureSuite extends munit.FunSuite:
     val Ready(after) = accepted.state: @unchecked
     assertEquals(after.game.current.walkerPending, None)
     assertEquals(after.game.current.walkerProcedure, None)
-    assertEquals(accepted.continue, OathContinue.ActActionSelection(
-      active(ready).player))
-    assertEquals(after.game.current.turn.phase, Phase.Act)
+    parked.assertResumed(accepted.state, Phase.Act, active(ready).player)
 
   test("the declared tree is a windowed cost sequence inside an eligibility root"):
     val ready = passRuled(act())

@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.oathkeeper.OathkeeperFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted, WalkerParked}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.NoPlayableOption
@@ -15,6 +15,7 @@ class EconomyWalkerSuite extends munit.FunSuite:
   import EconomyFixture._
 
   private val rules = new OathRules(catalog)
+  private val parked = new ParkedDecisionAssertions(catalog)
   private val favor = Vector[DecisionOptionRef](DecisionOptionRef.Button("favor"))
   private val secret = Vector[DecisionOptionRef](DecisionOptionRef.Button("secret"))
   private val card = DecisionOptionRef.Denizen(plainId)
@@ -37,13 +38,13 @@ class EconomyWalkerSuite extends munit.FunSuite:
     val actor = player(board).player
     val started = start(board).getOrElse(fail("a legal Muster must start"))
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(started.continue, OathContinue.AwaitingEconomyDecision(actor,
-      DecisionId(MusterProcedure.decisionId)))
-    val parked = ready(started.state)
-    assertEquals(parked.game.current.walkerProcedure, Some(ActionRef.Muster))
-    assert(parked.game.current.walkerPending.nonEmpty)
-    assertEquals(player(parked).board.favor, 4)
-    assertEquals(player(parked).board.supply.supply, 7)
+    parked.assertParked(started.state, ActionRef.Muster,
+      MusterProcedure.decisionId, actor)
+    val at = ready(started.state)
+    assertEquals(at.game.current.walkerProcedure, Some(ActionRef.Muster))
+    assert(at.game.current.walkerPending.nonEmpty)
+    assertEquals(player(at).board.favor, 4)
+    assertEquals(player(at).board.supply.supply, 7)
 
   test("answering the source decision pays, gains and completes the action"):
     val board = act(advisers = Vector(matchingAdviser))
@@ -56,7 +57,7 @@ class EconomyWalkerSuite extends munit.FunSuite:
     assertEquals(player(after).board.supply.supply, 6)
     assertEquals(player(after).board.warbands, 5)
     assertEquals(after.game.current.walkerPending, None)
-    assertEquals(accepted.continue, OathContinue.ActActionSelection(actor))
+    parked.assertResumed(accepted.state, Phase.Act, actor)
     assert(accepted.events.exists {
       case WalkerCompleted(ActionRef.Muster) => true
       case _ => false
@@ -83,8 +84,8 @@ class EconomyWalkerSuite extends munit.FunSuite:
       val started = start(board, ActionRef.Trade, args)
         .getOrElse(fail(s"Trade for $name must start"))
       assertEquals(ready(started.state).game.current.walkerStartArgs, args)
-      assertEquals(started.continue, OathContinue.AwaitingEconomyDecision(actor,
-        DecisionId(TradeProcedure.decisionId)))
+      parked.assertParked(started.state, ActionRef.Trade,
+        TradeProcedure.decisionId, actor)
       val accepted = answer(started.state, actor, TradeProcedure.decisionId, card)
         .getOrElse(fail(s"Trade for $name must complete"))
       assertEquals(ready(accepted.state).game.current.walkerPending, None)

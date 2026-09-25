@@ -29,7 +29,6 @@ class RestWalkerSuite extends munit.FunSuite:
     val next = ready(rested.state).game.current.turn
     assertEquals(next.phase, Phase.Wake)
     assertNotEquals(next.activePlayer, actor)
-    assertEquals(rested.continue, OathContinue.AwaitingWakeAction(next.activePlayer))
     assertEquals(rested.events.foldLeft[Either[OathViolation, OathState]](
       Right(Ready(act)))((state, event) => state.flatMap(rules.evolve(_, event))),
       Right(rested.state))
@@ -76,7 +75,8 @@ class RestWalkerSuite extends munit.FunSuite:
       })
     val finished = rest(Ready(eighth), order.last, deterministic).toOption.get
     assert(finished.events.exists(_.isInstanceOf[OathEvent.WarExhaustionResolved]))
-    assert(finished.continue.isInstanceOf[OathContinue.GameFinished])
+    assertEquals(ready(finished.state).game.current.result.map(_.winner),
+      Some(order.last))
 
   test("walker Begin Rest records the Rest fallback diagnostics first"):
     val definition = catalog.denizens.find(_.handlers.contains(

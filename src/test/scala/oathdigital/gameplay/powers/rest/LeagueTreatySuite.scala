@@ -4,6 +4,7 @@ import oathdigital.gameplay._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 class LeagueTreatySuite extends munit.FunSuite:
@@ -11,6 +12,8 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+  private val walkerParked = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog))
 
   private def rester(ready: ReadyGame) = ready.game.current.turn.activePlayer
   private def offTurn(ready: ReadyGame) =
@@ -20,13 +23,21 @@ class LeagueTreatySuite extends munit.FunSuite:
   private val example = Vector(Suit.Arcane -> 2, Suit.Discord -> 2,
     Suit.Hearth -> 2)
 
+  /** Nothing is parked, the game is in Wake, and (since a completed Rest
+    * always passes the turn) the active player is not `resting`.
+    */
+  private def assertWake(state: OathState, resting: PlayerId): Unit =
+    val Ready(ready) = state: @unchecked
+    val next = ready.game.current.turn.activePlayer
+    assertNotEquals(next, resting)
+    walkerParked.assertResumed(state, Phase.Wake, next)
+
   test("an unruled treaty site or a region without card favor asks nothing"):
     Vector(arranged(None, example), arranged(Some(offTurn(act)), Vector.empty))
       .foreach { case (ready, _) =>
       val rested = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
         rester(ready)).toOption.get
-      assert(rested.continue.isInstanceOf[OathContinue.AwaitingWakeAction],
-        rested.continue.toString)
+      assertWake(rested.state, rester(ready))
     }
 
   test("the off-turn ruler alone answers the destination, and declining " +
@@ -37,14 +48,14 @@ class LeagueTreatySuite extends munit.FunSuite:
       rester(ready), site, treatyCard)
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       rester(ready)).toOption.get
-    assertEquals(parked.continue,
-      OathContinue.AwaitingRestDecision(owner, DecisionId(destination)))
+    walkerParked.assertParked(parked.state, PhaseTransitionRef.FinishRest,
+      destination, owner)
     val decline = DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("decline"))
     assert(rules.resolveWalker(parked.state, rester(ready), destination,
       decline).isLeft)
     val declined = rules.resolveWalker(parked.state, owner, destination,
       decline).toOption.get
-    assert(declined.continue.isInstanceOf[OathContinue.AwaitingWakeAction])
+    assertWake(declined.state, rester(ready))
     example.foreach { case (suit, amount) =>
       assertEquals(banks(declined.state)(suit), ready.banks.favor(suit) + amount)
     }
@@ -60,7 +71,7 @@ class LeagueTreatySuite extends munit.FunSuite:
       rester(ready)).toOption.get
     val chosen = rules.resolveWalker(parked.state, owner, destination,
       DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad))).toOption.get
-    assert(chosen.continue.isInstanceOf[OathContinue.AwaitingWakeAction])
+    assertWake(chosen.state, rester(ready))
     assertEquals(banks(chosen.state)(Suit.Nomad), ready.banks.favor(Suit.Nomad) + 3)
 
   test("the worked example moves 2 Arcane and 1 Discord favor to Nomad, " +
@@ -75,8 +86,8 @@ class LeagueTreatySuite extends munit.FunSuite:
       rester(ready)).toOption.get
     val chosen = rules.resolveWalker(parked.state, owner, destination,
       DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad))).toOption.get
-    assertEquals(chosen.continue,
-      OathContinue.AwaitingRestDecision(owner, DecisionId(distribution)))
+    walkerParked.assertParked(chosen.state, PhaseTransitionRef.FinishRest,
+      distribution, owner)
 
     val replayed = (parked.events ++ chosen.events)
       .foldLeft[Either[OathViolation, OathState]](Right(Ready(ready)))(
@@ -88,7 +99,7 @@ class LeagueTreatySuite extends munit.FunSuite:
       .map { case (suit, n) => DistributeAmount(bank(suit), n) })
     val done = rules.resolveWalker(replayed.toOption.get, owner, distribution,
       answer).toOption.get
-    assert(done.continue.isInstanceOf[OathContinue.AwaitingWakeAction])
+    assertWake(done.state, rester(ready))
     Vector(Suit.Arcane -> 0, Suit.Discord -> 1, Suit.Hearth -> 2,
       Suit.Nomad -> 3).foreach { case (suit, delta) =>
       assertEquals(banks(done.state)(suit), ready.banks.favor(suit) + delta,

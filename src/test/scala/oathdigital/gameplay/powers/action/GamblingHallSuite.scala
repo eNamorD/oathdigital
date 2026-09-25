@@ -2,11 +2,15 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 class GamblingHallSuite extends munit.FunSuite:
   import PaidActionHarness._
   import PowerFixture._
+
+  private val walkerParked = new ParkedDecisionAssertions(catalog,
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
   private val hall = DenizenId("93")
   private val source = DecisionOptionRef.Denizen(hall)
@@ -31,8 +35,8 @@ class GamblingHallSuite extends munit.FunSuite:
     val rules0 = rules(total4)
     val ready0 = staged()
     val parked = use(rules0, ready0, GamblingHall.id, source).toOption.get
-    assertEquals(parked.continue, OathContinue.AwaitingPowerDecision(actor,
-      DecisionId(GamblingHall.decisionId)))
+    walkerParked.assertParked(parked.state, ActionRef.UsePower(GamblingHall.id),
+      GamblingHall.decisionId, actor)
     val paid = ready(parked.state)
     assertEquals(player(paid).board.favor, 1)
     assertEquals(tokensOn(paid, hall), Tokens(2, 0))
@@ -44,7 +48,7 @@ class GamblingHallSuite extends munit.FunSuite:
     assertEquals(player(end).board.favor, 5)
     assertEquals(end.banks.favor(Suit.Beast),
       ready0.banks.favor(Suit.Beast) - 4)
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(end.game.current.rollPools, Map.empty[PoolKey, DicePoolState])
     assertEquals(replayed(rules0, ready0, parked.events ++ done.events), end)
     assert(wireRoundTrips(parked.events ++ done.events))
@@ -77,7 +81,7 @@ class GamblingHallSuite extends munit.FunSuite:
     val rules0 = rules(defenseDice(DefenseDieFace.Blank, DefenseDieFace.Blank,
       DefenseDieFace.Blank, DefenseDieFace.Blank))
     val done = use(rules0, staged(), GamblingHall.id, source).toOption.get
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(player(ready(done.state)).board.favor, 1)
     assertEquals(tokensOn(ready(done.state), hall), Tokens(2, 0))
 

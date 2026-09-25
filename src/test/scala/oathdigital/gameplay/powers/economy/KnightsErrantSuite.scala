@@ -7,7 +7,7 @@ import oathdigital.gameplay.powers.{CardStaging, PowerFixture, WalkerPowerCatalo
 import oathdigital.gameplay.powers.targeting.TargetingFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers, WalkerProcedureRegistry}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker, WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
@@ -21,6 +21,12 @@ class KnightsErrantSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     walkerDice = CampaignFixture.anyDice)
+
+  /** The parked decision, as this file rebuilds it: the same catalog and
+    * walker power catalog `rules` was built with.
+    */
+  private val parked = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog))
 
   /** The actor holds Knights Errant and stands at a site with a token-free card
     * to muster from. The site is ruled by bandits, so a Conquest is legal,
@@ -59,12 +65,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     next.copy(events = from.events ++ next.events)
 
   private def parkedOn(transition: OathTransition): String =
-    ready(transition).game.current.walkerPending
-      .fold("")(_ => transition.continue match {
-        case OathContinue.AwaitingEconomyDecision(_, id) => id.value
-        case OathContinue.AwaitingCampaignDecision(_, id) => id.value
-        case other => other.toString
-      })
+    parked.parkedDecision(transition.state).fold("")(_.decision)
 
   private def query(transition: OathTransition): DecisionQuery =
     val state = ready(transition)
@@ -101,8 +102,6 @@ class KnightsErrantSuite extends munit.FunSuite:
   test("after the gain it asks whether to campaign, as a Muster decision"):
     val asked = musterFrom(staged(), modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
-    assertEquals(asked.continue, OathContinue.AwaitingEconomyDecision(actor,
-      DecisionId(KnightsErrant.decisionId)))
     assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
       .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.campaignOption,
       KnightsErrant.declineOption))
@@ -130,8 +129,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     val forced = toForce(answer(musterFrom(start, modifiers),
       KnightsErrant.decisionId, campaign))
     assertEquals(parkedOn(forced), CampaignIds.force)
-    assertEquals(forced.continue, OathContinue.AwaitingCampaignDecision(actor,
-      DecisionId(CampaignIds.force)))
+    parked.assertParked(forced.state, ActionRef.Muster, CampaignIds.force, actor)
     assertEquals(query(forced).asInstanceOf[DecisionQuery.ChooseAmount].max,
       afterMuster)
     // 1 Supply less the Muster's 1: the Campaign's 2 was not spent.

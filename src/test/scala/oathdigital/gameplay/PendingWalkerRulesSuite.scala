@@ -3,9 +3,10 @@ package oathdigital.gameplay
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.powers.rest.{LeagueTreatyFixture, SilverTongue,
-  SilverTongueFixture}
+import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution,
+  LeagueTreatyFixture, SilverTongue, SilverTongueFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 /** The rules half of the pending-walker invariant: over a parked walker,
@@ -15,6 +16,8 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val walkerParked = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
   private val pending = OathViolation.InvalidEventOrder(
     "a walker procedure is already pending")
 
@@ -22,11 +25,15 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
     val act = LeagueTreatyFixture.act
     val ruler = act.game.current.players.map(_.player)
       .find(_ != act.game.current.turn.activePlayer).get
-    val (ready, _) = LeagueTreatyFixture.arranged(Some(ruler),
+    val (ready, site) = LeagueTreatyFixture.arranged(Some(ruler),
       Vector(Suit.Arcane -> 2, Suit.Discord -> 2))
+    val actor = ready.game.current.turn.activePlayer
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
-      ready.game.current.turn.activePlayer).toOption.get
-    assert(parked.continue.isInstanceOf[OathContinue.AwaitingRestDecision])
+      actor).toOption.get
+    walkerParked.assertParked(parked.state, PhaseTransitionRef.FinishRest,
+      LeagueTreatyContribution.destinationDecisionId(ready, actor, site,
+        LeagueTreatyFixture.treatyCard),
+      ruler)
     parked.state
 
   private def silverTonguePark: OathState =
@@ -35,7 +42,8 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
     val parked = rules.startWalker(Ready(ready), ActionRef.UsePower(SilverTongue.id),
       actor, Vector.empty, Vector(DecisionOptionRef.Denizen(DenizenId("92"))))
       .toOption.get
-    assert(parked.continue.isInstanceOf[OathContinue.AwaitingPowerDecision])
+    walkerParked.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
+      SilverTongue.choiceDecisionId(ready, actor), actor)
     parked.state
 
   Vector("off-turn League Treaty" -> (() => leagueTreatyPark),

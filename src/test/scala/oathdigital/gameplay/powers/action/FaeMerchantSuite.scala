@@ -2,11 +2,15 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 class FaeMerchantSuite extends munit.FunSuite:
   import PaidActionHarness._
   import PowerFixture._
+
+  private val walkerParked = new ParkedDecisionAssertions(catalog,
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
   private val fae = DenizenId("180")
   private val source = DecisionOptionRef.Denizen(fae)
@@ -27,8 +31,8 @@ class FaeMerchantSuite extends munit.FunSuite:
     val top = ready0.game.current.commonCards.relicDeck.head
     val rules0 = rules()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
-    assertEquals(parked.continue, OathContinue.AwaitingPowerDecision(actor,
-      DecisionId(FaeMerchant.decisionId)))
+    walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
+      FaeMerchant.decisionId, actor)
     val mid = ready(parked.state)
     assertEquals(relicIds(mid), Vector(held1, top))
     assertEquals(player(mid).relics.last.orientation, Orientation.FaceDown)
@@ -39,7 +43,7 @@ class FaeMerchantSuite extends munit.FunSuite:
     val end = ready(done.state)
     assertEquals(relicIds(end), Vector(top))
     assertEquals(end.game.current.commonCards.relicDeck.last, held1)
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(replayed(rules0, ready0, parked.events ++ done.events), end)
     assert(wireRoundTrips(parked.events ++ done.events))
 
@@ -68,7 +72,7 @@ class FaeMerchantSuite extends munit.FunSuite:
     val top = ready0.game.current.commonCards.relicDeck.head
     val done = use(rules(), ready0, FaeMerchant.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(relicIds(end), Vector(scepter))
     assertEquals(end.game.current.commonCards.relicDeck.last, top)
 
@@ -76,7 +80,7 @@ class FaeMerchantSuite extends munit.FunSuite:
     val ready0 = staged(Vector.empty)
     val top = ready0.game.current.commonCards.relicDeck.head
     val done = use(rules(), ready0, FaeMerchant.id, source).toOption.get
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
     val end = ready(done.state)
     assertEquals(relicIds(end), Vector.empty[RelicId])
     assertEquals(end.game.current.commonCards.relicDeck.last, top)
@@ -101,7 +105,7 @@ class FaeMerchantSuite extends munit.FunSuite:
         current.commonCards.relicDeck))
     val done = use(rules(), emptied, FaeMerchant.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(relicIds(end), Vector.empty[RelicId])
     assertEquals(end.game.current.commonCards.relicDeck, Vector(held1))
 

@@ -2,11 +2,15 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PlayerFacts, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 class MurkyFountainSuite extends munit.FunSuite:
   import PaidActionHarness._
   import PowerFixture._
+
+  private val walkerParked = new ParkedDecisionAssertions(catalog,
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
   private val fountain = EdificeId("E15")
   private val source = DecisionOptionRef.Edifice(fountain)
@@ -38,8 +42,7 @@ class MurkyFountainSuite extends munit.FunSuite:
     val end = ready(done.state)
     assertEquals(player(end).board.supply, SupplyTrack(4))
     assertEquals(tokensOn(end, fountain), Tokens(0, 1))
-    assertEquals(end.game.current.turn.phase, Phase.Act)
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(replayed(rules0, ready0, done.events), end)
     assert(wireRoundTrips(done.events))
 
@@ -62,8 +65,7 @@ class MurkyFountainSuite extends munit.FunSuite:
     val ready0 = staged()
     val done = use(rules0, ready0, MurkyFountain.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(end.game.current.turn.phase, Phase.Rest)
-    assertEquals(done.continue, OathContinue.AwaitingRestAction(actor))
+    walkerParked.assertResumed(done.state, Phase.Rest, actor)
     assertEquals(player(end).board.supply, SupplyTrack(1))
     assertEquals(tokensOn(end, fountain), Tokens(0, 1))
     assertEquals(replayed(rules0, ready0, done.events), end)
@@ -77,8 +79,7 @@ class MurkyFountainSuite extends munit.FunSuite:
     assertEquals(tokensOn(end, fountain), Tokens(0, 1))
     assertEquals(secrets(end), secrets(away) - 1)
     assertEquals(player(end).board.supply, SupplyTrack(1))
-    assertEquals(end.game.current.turn.phase, Phase.Act)
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
 
   test("it is unusable without a faceup secret, or with a secret already on the card"):
     val noSecret = withBoard(staged())(_.copy(faceUpSecrets = 0))

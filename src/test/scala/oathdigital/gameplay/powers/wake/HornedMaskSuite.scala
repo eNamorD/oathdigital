@@ -68,7 +68,7 @@ class HornedMaskSuite extends munit.FunSuite:
       Some(Orientation.FaceDown))
     assertEquals(player(after(done)).advisers.size, 2)
     assert(after(done).game.current.turn.usedPowers.contains(used))
-    assertEquals(done.continue, OathContinue.AwaitingWakeAction(actor))
+    parked.assertResumed(done.state, Phase.Wake, actor)
     assertEquals(use(after(done), power, source).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))

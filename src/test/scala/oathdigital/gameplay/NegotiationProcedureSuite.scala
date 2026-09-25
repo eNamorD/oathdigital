@@ -4,7 +4,7 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.NegotiationFixture.{Board, player}
 import oathdigital.gameplay.actions.negotiation.{NegotiationDeal, NegotiationProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, DeclineDeal, ProposeTerms}
 import oathdigital.model.OathEvent.IgnoredRulesRecorded
@@ -15,6 +15,7 @@ import oathdigital.model.OathState.Ready
   */
 class NegotiationProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
+  private val parked = new ParkedDecisionAssertions(catalog)
   private val negotiators = NegotiationDeal.negotiatorsDecisionId
   private val dealId = NegotiationDeal.dealDecisionId
 
@@ -44,14 +45,12 @@ class NegotiationProcedureSuite extends munit.FunSuite:
   test("starting parks on the negotiator choice, offered to the actor"):
     val b = NegotiationFixture.board()
     val started = start(b).getOrElse(fail("Negotiation must start"))
-    assertEquals(started.continue, OathContinue.AwaitingNegotiation(b.actor,
-      DecisionId(negotiators)))
+    parked.assertParked(started.state, ActionRef.Negotiation, negotiators, b.actor)
 
   test("a lone candidate skips the negotiator choice"):
     val b = NegotiationFixture.withThirdElsewhere(NegotiationFixture.board())
     val started = start(b).getOrElse(fail("Negotiation must start"))
-    assertEquals(started.continue, OathContinue.AwaitingNegotiation(b.actor,
-      DecisionId(dealId)))
+    parked.assertParked(started.state, ActionRef.Negotiation, dealId, b.actor)
 
   test("with no candidate the start is rejected and offered nowhere"):
     val b = NegotiationFixture.isolated(NegotiationFixture.board())
@@ -79,8 +78,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
   test("a bilateral favor and relic transfer settles atomically on the last accept"):
     val b = NegotiationFixture.board()
     val deal = atDeal(b, b.second)
-    assertEquals(deal.continue, OathContinue.AwaitingNegotiation(b.actor,
-      DecisionId(dealId)))
+    parked.assertParked(deal.state, ActionRef.Negotiation, dealId, b.actor)
     val proposed = say(deal.state, b.actor, gift(b.second, 3, Vector(b.actorRelic)))
       .getOrElse(fail("terms must be accepted"))
     val theirs = say(proposed.state, b.second, AcceptDeal)
@@ -95,7 +93,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     assertEquals(player(after, b.second).relics.find(_.id == b.actorRelic)
       .get.tokens, Tokens(0, 1))
     assertEquals(after.game.current.walkerPending, None)
-    assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
+    parked.assertResumed(done.state, Phase.Act, b.actor)
 
   test("three players answer in any order and a changed term resets consent"):
     val b = NegotiationFixture.board()
@@ -122,7 +120,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val after = ready(declined.state)
     assertEquals(after.game.current.players, b.ready.game.current.players)
     assertEquals(after.game.current.walkerPending, None)
-    assertEquals(declined.continue, OathContinue.ActActionSelection(b.actor))
+    parked.assertResumed(declined.state, Phase.Act, b.actor)
 
   test("a player outside the chosen negotiators cannot answer"):
     val b = NegotiationFixture.board()
@@ -220,8 +218,8 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val started = rules.startWalker(traveled.state, ActionRef.Negotiation, actor)
       .getOrElse(fail("Negotiation must start"))
     val chosen =
-      if started.continue == OathContinue.AwaitingNegotiation(actor,
-          DecisionId(negotiators)) then
+      if parked.parkedDecision(started.state).exists(facts =>
+          facts.decision == negotiators && facts.awaiting == actor) then
         choose(started.state, actor, other).getOrElse(fail("negotiators"))
       else started
     val terms = ProposeTerms(NegotiationTerms(disclosures = Vector(

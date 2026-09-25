@@ -1,6 +1,7 @@
 package oathdigital.gameplay.setup
 
 import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
@@ -8,15 +9,15 @@ import oathdigital.model.OathState.Ready
 class GameStartToWakeSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
   private val rules = new OathRules(catalog)
+  private val parked = new ParkedDecisionAssertions(catalog)
   private val chronicle = FirstGameSetupFixture.chronicle
   private val orders = FirstGameSetupFixture.orders
 
   test("beginGame parks on the first player's pawn-placement decision"):
     val transition = rules.beginGame(OathState.NoGame, chronicle, orders)
       .toOption.get
-    assertEquals(transition.continue,
-      OathContinue.AwaitingSetupPawn(orders.firstPlayer,
-        DecisionId(SetupProcedure.pawnDecisionId(orders.firstPlayer))))
+    parked.assertParked(transition.state, TriggeredProcedureRef.Setup,
+      SetupProcedure.pawnDecisionId(orders.firstPlayer), orders.firstPlayer)
 
   test("driving every player's two decisions ends in Wake with the recorded seating"):
     var state: OathState = OathState.NoGame
@@ -45,10 +46,8 @@ class GameStartToWakeSuite extends munit.FunSuite:
       state = transition.state
     }
 
-    assertEquals(transition.continue,
-      OathContinue.AwaitingWakeAction(orders.firstPlayer))
+    parked.assertResumed(transition.state, Phase.Wake, orders.firstPlayer)
     val Ready(ready) = state: @unchecked
-    assertEquals(ready.game.current.turn.phase, Phase.Wake)
     assertEquals(ready.game.current.players.count(_.pawnSite.nonEmpty),
       orders.participants.size)
     assertEquals(ready.game.current.players.count(_.advisers.size == 1),

@@ -5,7 +5,8 @@ import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
+  WalkerOutcome, WalkerPowers}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -15,6 +16,8 @@ class SilverTongueSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  private val walkerParked = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
   private val use = ActionRef.UsePower(SilverTongue.id)
   private val source = DecisionOptionRef.Denizen(tongue)
   private def favor(state: OathState) = state.asInstanceOf[Ready].value.banks.favor
@@ -24,7 +27,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane))
     val used = rules.startWalker(Ready(ready), use, actor, Vector.empty,
       Vector(source)).toOption.get
-    assertEquals(used.continue, OathContinue.AwaitingRestAction(actor))
+    walkerParked.assertResumed(used.state, Phase.Rest, actor)
     assertEquals(favor(used.state)(Suit.Arcane), 2)
     assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
     val ref = PowerUseRef(PowerTiming.Rest, PowerSourceRef.Card(tongue),
@@ -38,8 +41,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val choice = SilverTongue.choiceDecisionId(ready, actor)
     val parked = rules.startWalker(Ready(ready), use, actor, Vector.empty,
       Vector(source)).toOption.get
-    assertEquals(parked.continue,
-      OathContinue.AwaitingPowerDecision(actor, DecisionId(choice)))
+    walkerParked.assertParked(parked.state, use, choice, actor)
     assert(rules.resolveWalker(parked.state, actor, choice,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Order)))
       .isLeft)
@@ -48,7 +50,7 @@ class SilverTongueSuite extends munit.FunSuite:
       .toOption.get
     assertEquals(favor(taken.state)(Suit.Nomad), 2)
     assertEquals(favor(taken.state)(Suit.Arcane), 3)
-    assertEquals(taken.continue, OathContinue.AwaitingRestAction(actor))
+    walkerParked.assertResumed(taken.state, Phase.Rest, actor)
 
   test("without matching favor Silver Tongue is not usable and Rest skips ahead"):
     val (ready, actor) = arranged(Vector(Suit.Arcane), Set(Suit.Nomad))
@@ -58,8 +60,10 @@ class SilverTongueSuite extends munit.FunSuite:
       .copy(turn = TurnState(actor, Phase.Act, Set.empty))))
     val rested = rules.startWalker(Ready(act), PhaseTransitionRef.BeginRest,
       actor).toOption.get
-    assert(rested.continue.isInstanceOf[OathContinue.AwaitingWakeAction],
-      rested.continue.toString)
+    val Ready(restedReady) = rested.state: @unchecked
+    val next = restedReady.game.current.turn.activePlayer
+    assertNotEquals(next, actor)
+    walkerParked.assertResumed(rested.state, Phase.Wake, next)
 
   test("Silver Tongue requires replacement when a third adviser is played"):
     val (base, actor) = arranged(Vector.empty, Set.empty)

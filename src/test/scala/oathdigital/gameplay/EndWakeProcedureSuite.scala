@@ -1,15 +1,14 @@
 package oathdigital.gameplay
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.phases.wake.EndWakeProcedure
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 
 /** Ending the Wake phase, on the generic walker (batch-1 Task 7).
@@ -22,6 +21,7 @@ import oathdigital.model._
   */
 class EndWakeProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
+  private val parked = new ParkedDecisionAssertions(catalog)
 
   private def ready(sharedEnemy: Boolean = false): OathState =
     val value = initialReady
@@ -56,9 +56,7 @@ class EndWakeProcedureSuite extends munit.FunSuite:
       EnterPhase(Phase.Act)))
     assertEquals(accepted.events.last,
       WalkerCompleted(PhaseTransitionRef.EndWake): OathEvent)
-    assertEquals(accepted.continue, ActActionSelection(active))
-    assertEquals(value.game.current.turn.phase, Phase.Act)
-    assertEquals(value.game.current.walkerPending, None)
+    parked.assertResumed(accepted.state, Phase.Act, active)
     assertEquals(value.game.current.walkerProcedure, None)
 
   test("ending Wake does not run the Act action boundary"):

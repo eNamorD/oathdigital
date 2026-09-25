@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.{MinorActionCommand,
   MinorActionOperationPolicy, MinorActions}
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -11,6 +12,7 @@ import oathdigital.model.OathState.Ready
 
 class MinorActionsSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
+  private val parked = new ParkedDecisionAssertions(catalog)
 
   private def ready(): (ReadyGame, PlayerState, SiteId, WorldCardId, RelicId) =
     val base = initialReady
@@ -114,7 +116,7 @@ class MinorActionsSuite extends munit.FunSuite:
           .updated(siteId, event.relics))))
     assertEquals(peeked.state, Ready(expected))
     assertEquals(peeked.events, Vector(event))
-    assertEquals(peeked.continue, OathContinue.ActActionSelection(actor.player))
+    parked.assertResumed(peeked.state, Phase.Act, actor.player)
     assertEquals(rules.evolve(Ready(base), event), Right(Ready(expected)))
 
     val other = base.game.current.players.find(_.player != actor.player).get.player
@@ -155,8 +157,7 @@ class MinorActionsSuite extends munit.FunSuite:
     val expected = withRevealedRelic(base, actor.player, held)
     assertEquals(revealedReady, expected)
     assertEquals(revealed.events, Vector(revealEvent))
-    assertEquals(revealed.continue,
-      OathContinue.ActActionSelection(actor.player))
+    parked.assertResumed(revealed.state, Phase.Act, actor.player)
     assertEquals(rules.evolve(Ready(base), revealEvent), Right(Ready(expected)))
     val replayed = completed.events.foldLeft[
       Either[OathViolation, OathState]](Right(Ready(base))):
@@ -196,7 +197,7 @@ class MinorActionsSuite extends munit.FunSuite:
       toSite = true, 2)
     assertEquals(atSite, expectedAtSite)
     assertEquals(toSite.events, Vector(toSiteEvent))
-    assertEquals(toSite.continue, OathContinue.ActActionSelection(actor.player))
+    parked.assertResumed(toSite.state, Phase.Act, actor.player)
     assertEquals(rules.evolve(Ready(base), toSiteEvent), Right(Ready(atSite)))
     assertEquals(atSite.game.current.players.find(_.player == actor.player).get.board.warbands, 2)
     assertEquals(atSite.game.current.map.sites(siteId).forces,

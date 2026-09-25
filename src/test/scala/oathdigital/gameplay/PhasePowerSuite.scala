@@ -5,6 +5,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 /** Synthetic WAKE, ACTION and REST powers on a faceup adviser, injected
@@ -15,6 +16,12 @@ class PhasePowerSuite extends munit.FunSuite:
 
   private def rules(power: PhasePower) =
     new OathRules(catalog, phasePowerCatalog = PhasePowers(Vector(power)))
+
+  /** The parked decision, as this file rebuilds it: the same catalog and
+    * phase power catalog `rules` was built with, per test's own power.
+    */
+  private def walkerParked(power: PhasePower) = new ParkedDecisionAssertions(
+    catalog, phasePowerCatalog = PhasePowers(Vector(power)))
   private def use(power: PhasePower, state: OathState, by: PlayerId = actor) =
     rules(power).startWalker(state, ActionRef.UsePower(power.id), by,
       Vector.empty, Vector(source))
@@ -33,7 +40,7 @@ class PhasePowerSuite extends munit.FunSuite:
     val used = use(power, Ready(inPhase(Phase.Wake))).toOption.get
     val ref = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
     assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
-    assertEquals(used.continue, OathContinue.AwaitingWakeAction(actor))
+    walkerParked(power).assertResumed(used.state, Phase.Wake, actor)
     assert(ready(used.state).game.current.turn.usedPowers.contains(ref))
     assertEquals(use(power, used.state).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(ref)))
@@ -70,10 +77,10 @@ class PhasePowerSuite extends munit.FunSuite:
       PhasePowers(Vector(power))).map(_.ref), Vector(secondSource))
 
   test("an ACTION power returns its player to action selection"):
-    val used = use(TestPower(powerId, PowerTiming.Act), Ready(inPhase(Phase.Act)))
-      .toOption.get
+    val power = TestPower(powerId, PowerTiming.Act)
+    val used = use(power, Ready(inPhase(Phase.Act))).toOption.get
     assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
-    assertEquals(used.continue, OathContinue.ActActionSelection(actor))
+    walkerParked(power).assertResumed(used.state, Phase.Act, actor)
 
   test("another player, the wrong phase and an inaccessible source are refused"):
     val power = TestPower(powerId, PowerTiming.Act)
@@ -110,9 +117,9 @@ class PhasePowerSuite extends munit.FunSuite:
     val power = TestPower(powerId, PowerTiming.Rest)
     val rested = rules(power).startWalker(Ready(inPhase(Phase.Act)),
       PhaseTransitionRef.BeginRest, actor).toOption.get
-    assertEquals(rested.continue, OathContinue.AwaitingRestAction(actor))
+    walkerParked(power).assertResumed(rested.state, Phase.Rest, actor)
     val used = use(power, rested.state).toOption.get
-    assertEquals(used.continue, OathContinue.AwaitingRestAction(actor))
+    walkerParked(power).assertResumed(used.state, Phase.Rest, actor)
     val finished = rules(power).startWalker(used.state,
       PhaseTransitionRef.FinishRest, actor).toOption.get
     val next = ready(finished.state).game.current.turn
@@ -126,11 +133,11 @@ class PhasePowerSuite extends munit.FunSuite:
         DecisionOption.Button(DecisionOptionRef.Button("go"), "Go"),
         DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop")))))
     val parked = use(power, Ready(inPhase(Phase.Act))).toOption.get
-    assertEquals(parked.continue,
-      OathContinue.AwaitingPowerDecision(actor, DecisionId(choice)))
+    walkerParked(power).assertParked(parked.state, ActionRef.UsePower(powerId),
+      choice, actor)
     val done = rules(power).resolveWalker(parked.state, actor, choice,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("go"))).toOption.get
-    assertEquals(done.continue, OathContinue.ActActionSelection(actor))
+    walkerParked(power).assertResumed(done.state, Phase.Act, actor)
     assertEquals((parked.events ++ done.events)
       .foldLeft[Either[OathViolation, OathState]](Right(Ready(inPhase(Phase.Act))))(
         (state, event) => state.flatMap(rules(power).evolve(_, event))),

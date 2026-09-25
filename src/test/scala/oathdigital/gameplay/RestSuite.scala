@@ -342,7 +342,8 @@ class RestSuite extends munit.FunSuite:
     val finished = rest(Ready(unsupported), last, deterministic).toOption.get
     assert(finished.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
     assert(finished.events.exists(_.isInstanceOf[OathEvent.WarExhaustionResolved]))
-    assert(finished.continue.isInstanceOf[OathContinue.GameFinished])
+    val Ready(after) = finished.state: @unchecked
+    assertEquals(after.game.current.result.map(_.winner), Some(last))
     val result = finished.events.collectFirst {
       case event: OathEvent.WarExhaustionResolved => event
     }.get

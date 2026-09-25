@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
@@ -8,7 +7,7 @@ import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 
 /** Take Wealth's board setup and command, extracted from
@@ -76,6 +75,7 @@ object TakeWealthFixture extends munit.Assertions:
 class TakeWealthProcedureSuite extends munit.FunSuite:
   private val powers: WalkerPowers = WalkerPowerCatalog.default(catalog)
   private def rules = new OathRules(catalog, walkerPowerCatalog = powers)
+  private val parked = new ParkedDecisionAssertions(catalog, powers)
 
   private val favorArg = TakeWealthFixture.favorArg
   private val secretArg = TakeWealthFixture.secretArg
@@ -118,8 +118,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     assertEquals(state.game.current.map.sites(site).tokens.favor, 0)
     assert(state.game.current.turn.usedPowers.contains(
       TakeWealthLimit.useRef(site)))
-    assertEquals(state.game.current.turn.phase, Phase.Wake)
-    assertEquals(transition.continue, AwaitingWakeAction(actor(ready)))
+    parked.assertResumed(transition.state, Phase.Wake, actor(ready))
     assertEquals(transition.events.map(_.productPrefix),
       Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
     assertEquals(state.game.current.walkerPending, None)
@@ -147,7 +146,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       "precondition: the boundary would refill bandits in this state")
     val result = accepted(ready)
     assertEquals(result.events.collect { case event: BanditsRefilled => event }.size, 1)
-    assertEquals(result.continue, AwaitingWakeAction(ready.game.current.turn.activePlayer))
+    parked.assertResumed(result.state, Phase.Wake,
+      ready.game.current.turn.activePlayer)
 
   test("a second take at the same site this turn is blocked"):
     val ready = wake(favor = 2)
