@@ -55,7 +55,7 @@ private[frontend] final case class BoardTargetSelectionState(
   def confirm: Option[BoardSelectionResult.Submit] = for {
     action <- activeAction if canConfirm
     targets = action.candidates.collect {
-    case candidate if selected(candidate.target) => candidate.target
+      case candidate if selected(candidate.target) => candidate.target
     }
   } yield BoardSelectionResult.Submit(action, targets)
 
