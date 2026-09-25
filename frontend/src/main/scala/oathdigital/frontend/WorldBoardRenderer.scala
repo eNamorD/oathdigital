@@ -105,9 +105,16 @@ private[frontend] object WorldBoardRenderer {
    panel
  }
 
+ /** `pawnPlacement` is the board's one surface for a parked decision
+   * (`ParkedDecision.Surface.PawnPlacement`): Setup's pawn-placement Decide
+   * is answered by clicking the site directly on the board, as the legacy
+   * first-game event machine's place-pawn board-target command did before
+   * Task 6 folded Setup onto the generic walker, rather than through the
+   * generic choose-one button panel.
+   */
  def world(
      value: GameProjection,
-     presentation: ViewerPresentation,
+     pawnPlacement: Option[ParkedDecision.Surface.PawnPlacement],
      ui: ServerUiView
  ): dom.Element = {
    import ui._
@@ -116,14 +123,6 @@ private[frontend] object WorldBoardRenderer {
    panel.appendChild(text("h2", "", "The World"))
    panel.appendChild(pileDisplay("World deck", value.worldDeckCount,
      value.worldDeckTopCardKind))
-   // Setup's pawn-placement Decide is answered by clicking the site
-   // directly on the board (the legacy first-game event machine's
-   // place-pawn board-target command did the same before Task 6 folded
-   // Setup onto the generic walker) rather than through the generic
-   // choose-one button panel -- WalkerPanelSupport.chooseOneStep excludes
-   // it from that panel for the same reason.
-   val pawnPlacement = value.walkerDecision.filter(_ => presentation.showGameplayControls)
-     .flatMap(decision => WalkerPanelSupport.pawnPlacementStep(decision).map(decision -> _))
    val regions = element("div", "regions")
    value.world.foreach { region =>
      val section = element("section", "region")
@@ -143,9 +142,8 @@ private[frontend] object WorldBoardRenderer {
        val candidate = currentBoardSelection.flatMap(
          _.activeAction.flatMap(_.candidates.find(_.target == siteTarget)))
        val isSelected = currentBoardSelection.exists(_.selected(siteTarget))
-       val pawnOption = pawnPlacement.flatMap { case (_, query) =>
-         query.options.find(option => option.kind == "site" && option.id == site.siteId)
-       }
+       val pawnOption = pawnPlacement.flatMap(_.query.options.find(option =>
+         option.kind == "site" && option.id == site.siteId))
        val control = element("article", siteTargetClasses(
          candidate.nonEmpty || pawnOption.nonEmpty, isSelected))
        control.setAttribute("aria-label", site.label)
@@ -169,10 +167,9 @@ private[frontend] object WorldBoardRenderer {
        pawnOption.foreach { option =>
          control.setAttribute("role", "button")
          control.setAttribute("tabindex", "0")
-         def choose(): Unit = if (canControl) pawnPlacement.foreach {
-           case (decision, _) =>
-             submitCommand(WalkerPanelSupport.resolveChooseOneCommand(decision, option))
-         }
+         def choose(): Unit = if (canControl) pawnPlacement.foreach(surface =>
+           submitCommand(WalkerPanelSupport.resolveChooseOneCommand(
+             surface.decision, option)))
          control.addEventListener("click", (_: dom.Event) => choose())
          control.addEventListener("keydown", (event: dom.Event) => {
            val key = event.asInstanceOf[dom.KeyboardEvent].key

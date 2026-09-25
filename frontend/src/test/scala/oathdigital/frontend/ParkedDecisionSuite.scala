@@ -1,8 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
-import ParkedDecision.{DecisionForm, Routed, Surface}
-import WalkerPanelSupport.RecoverWalkerStep
+import ParkedDecision.{DecisionForm, RecoverStep, Routed, Surface}
 
 /** The route as a pure function of a viewer's projection: one case per form
   * and per surface, Recover's parks, pawn placement to the board, an
@@ -84,15 +83,15 @@ class ParkedDecisionSuite extends munit.FunSuite {
     val roll = WalkerDecisionState("recover", "walker.recover.roll", "roll",
       pool = Some("recover"), count = Some(2))
     assertEquals(routeOf(roll).surface,
-      Some(Surface.Recover(roll, RecoverWalkerStep.Roll("recover"))))
-    val choice = parked("recover", WalkerPanelSupport.recoverChoiceDecisionId,
+      Some(Surface.Recover(roll, RecoverStep.Roll("recover"))))
+    val choice = parked("recover", ParkedDecision.recoverChoiceDecisionId,
       query("choose-one"))
     assertEquals(routeOf(choice).surface,
-      Some(Surface.Recover(choice, RecoverWalkerStep.Choice(query("choose-one")))))
-    val relic = parked("recover", WalkerPanelSupport.recoverRelicDecisionId,
+      Some(Surface.Recover(choice, RecoverStep.Choice(query("choose-one")))))
+    val relic = parked("recover", ParkedDecision.recoverRelicDecisionId,
       query("choose-one"))
     assertEquals(routeOf(relic).surface,
-      Some(Surface.Recover(relic, RecoverWalkerStep.Relic(query("choose-one")))))
+      Some(Surface.Recover(relic, RecoverStep.Relic(query("choose-one")))))
   }
 
   test("a Recover park with nothing to render routes to no surface") {
@@ -100,8 +99,8 @@ class ParkedDecisionSuite extends munit.FunSuite {
     assertEquals(routeOf(WalkerDecisionState("recover", "walker.recover.roll",
       "roll")).surface, None)
     // A decide park whose query was suppressed: no answer could be built.
-    Vector(WalkerPanelSupport.recoverChoiceDecisionId,
-      WalkerPanelSupport.recoverRelicDecisionId).foreach(id =>
+    Vector(ParkedDecision.recoverChoiceDecisionId,
+      ParkedDecision.recoverRelicDecisionId).foreach(id =>
       assertEquals(routeOf(WalkerDecisionState("recover", id, "decide"))
         .surface, None, s"$id must route nowhere without a query"))
     // A Recover choose-one at a decision id its panel does not know is

@@ -80,7 +80,10 @@ object ServerModeUi {
             text("p", "empty-state", "World unavailable."), "unavailable")
         case Some(value) =>
           val presentation = viewerPresentation(value, selectedPlayer)
-          actionContent.appendChild(ActionDecisionRenderer.actionsPanel(value, presentation, ui))
+          // Routed once per render: both panes read the same answer.
+          val routed = ParkedDecision.route(value, presentation)
+          actionContent.appendChild(ActionDecisionRenderer.actionsPanel(
+            value, presentation, routed, ui))
           val prompt = Option(actionContent.querySelector(
             "#card-decision-title,.selection-instruction,.modifier-confirm,.resolution-choice"))
             .map(_.textContent).getOrElse("")
@@ -91,7 +94,9 @@ object ServerModeUi {
             boardSelectionState.flatMap(_.activeActionKind).getOrElse(""),
             modifierWorkflow.map(_.stage.toString).getOrElse(""), prompt).mkString("|")
           (WorldBoardRenderer.players(value, ui),
-            WorldBoardRenderer.world(value, presentation, ui), decisionKey)
+            WorldBoardRenderer.world(value, routed.surface.collect {
+              case pawn: ParkedDecision.Surface.PawnPlacement => pawn
+            }, ui), decisionKey)
       }
       val development = element("div", "development-content")
       if (!fixedSeat) {

@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
-import ParkedDecision.Surface
-import WalkerPanelSupport.RecoverWalkerStep
+import ParkedDecision.{RecoverStep, Surface}
 import org.scalajs.dom
 
 /** Recover's controls.
@@ -35,15 +34,15 @@ class RecoverPanelSuite extends munit.FunSuite {
   private def choice(rollOutcome: Option[WalkerRollOutcomeState] = None)
       : Surface.Recover =
     Surface.Recover(WalkerDecisionState("recover",
-      WalkerPanelSupport.recoverChoiceDecisionId, "decide",
+      ParkedDecision.recoverChoiceDecisionId, "decide",
       query = Some(choiceQuery), rollOutcome = rollOutcome),
-      RecoverWalkerStep.Choice(choiceQuery))
+      RecoverStep.Choice(choiceQuery))
 
   private def roll(rollOutcome: Option[WalkerRollOutcomeState] = None)
       : Surface.Recover =
     Surface.Recover(WalkerDecisionState("recover", "recover.roll", "roll",
       pool = Some("recover"), rollOutcome = rollOutcome),
-      RecoverWalkerStep.Roll("recover"))
+      RecoverStep.Roll("recover"))
 
   test("the roll button says it rolls") {
     assertEquals(all(render(roll()), ".recover-roll").map(_.textContent),

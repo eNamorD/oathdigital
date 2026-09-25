@@ -23,8 +23,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite {
       ready = true, completed = false)
 
   private def world(value: GameProjection, ui: ServerUiView): dom.Element =
-    WorldBoardRenderer.world(value, ServerUiSupport.ViewerPresentation(
-      showGameplayControls = true, None, None), ui)
+    WorldBoardRenderer.world(value, None, ui)
 
   /** The row is drawn empty rather than left out, so the cards under it start
     * at the same height on a site nobody stands on as on one they do.

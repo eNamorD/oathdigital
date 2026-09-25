@@ -32,7 +32,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
         Vector.empty, Vector.empty, Vector.empty, ready = true,
         completed = false, actionSelectionOpen = true),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
-      view)
+      ParkedDecision.Routed(None, None), view)
   }
 
   test("selection preserves click order supports badges reorder toggle and keyboard") {

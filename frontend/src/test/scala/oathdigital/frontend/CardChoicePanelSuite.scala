@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
-import ParkedDecision.Surface
-import WalkerPanelSupport.RecoverWalkerStep
+import ParkedDecision.{RecoverStep, Surface}
 import org.scalajs.dom
 
 /** Panels that ask a player to pick one card out of several. A card the
@@ -65,8 +64,8 @@ class CardChoicePanelSuite extends munit.FunSuite {
     Vector.empty, heading = Some("Take a relic"))
 
   private val relicPark: Surface.Recover = Surface.Recover(WalkerDecisionState("recover",
-    WalkerPanelSupport.recoverRelicDecisionId, "decide",
-    query = Some(relicQuery)), RecoverWalkerStep.Relic(relicQuery))
+    ParkedDecision.recoverRelicDecisionId, "decide",
+    query = Some(relicQuery)), RecoverStep.Relic(relicQuery))
 
   private val table = GameProjection("game", 1L, "act", Some("red"),
     Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,

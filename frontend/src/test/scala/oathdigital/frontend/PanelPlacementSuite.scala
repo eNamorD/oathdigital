@@ -35,13 +35,12 @@ class PanelPlacementSuite extends munit.FunSuite {
       oathkeeper = oathkeeper, tracks = trackState)
 
   private def world(value: GameProjection): dom.Element =
-    WorldBoardRenderer.world(value, ServerUiSupport.ViewerPresentation(
-      showGameplayControls = true, None, None), new RecordingView("game", "red"))
+    WorldBoardRenderer.world(value, None, new RecordingView("game", "red"))
 
   private def actions(value: GameProjection): dom.Element =
     ActionDecisionRenderer.actionsPanel(value,
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
-      new RecordingView("game", "red"))
+      ParkedDecision.Routed(None, None), new RecordingView("game", "red"))
 
   test("the oath and its holder are listed in the shared bank") {
     val line = one(world(projection()), ".shared-bank .oathkeeper-status")

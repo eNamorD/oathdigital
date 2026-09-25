@@ -21,6 +21,20 @@ import org.scalajs.dom
 private[frontend] object ParkedDecision {
   import ServerUiSupport.{ViewerPresentation, text}
 
+  /** The decision ids the route recognises by name. `kind` alone cannot
+    * tell Recover's two decide parks apart (both are `"decide"`); only the
+    * id does. The two Recover ids mirror `RecoverProcedure.choiceDecisionId`
+    * and `.relicDecisionId`, and the prefix mirrors
+    * `SetupProcedure.pawnDecisionId`'s (`setup.pawn-placement.<player>`), as
+    * plain strings: those objects live in the JVM-only application sources
+    * the frontend cannot depend on, and a `decisionId` already rides the
+    * wire as an uninterpreted string on every walker command (see
+    * `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`).
+    */
+  private[frontend] val recoverChoiceDecisionId = "recover.choice"
+  private[frontend] val recoverRelicDecisionId = "recover.relic"
+  private val pawnPlacementDecisionIdPrefix = "setup.pawn-placement."
+
   /** A query's form, parsed once from the wire string. `Unknown` keeps the
     * raw spelling: a form this client has no surface for renders nothing
     * rather than something wrong, and the value can still say what arrived.
@@ -48,6 +62,20 @@ private[frontend] object ParkedDecision {
   type SelectionForm =
     DecisionForm.ChooseMany.type | DecisionForm.ChooseAmount.type
 
+  /** Which of its parks Recover's panel is at. */
+  enum RecoverStep {
+    /** A Roll park asks nothing, so it has no query behind it -- which is
+      * why its heading is the one Recover string the panel still writes.
+      */
+    case Roll(pool: String)
+    /** The projected continue/stop query: its options in declared order,
+      * and the heading the action declared above them.
+      */
+    case Choice(query: DecisionQueryState)
+    /** The projected relic query, the same way. */
+    case Relic(query: DecisionQueryState)
+  }
+
   /** Where a viewer sees the parked decision. Every case carries the whole
     * decision, so an attribute of any parked decision (its roll feedback,
     * its subject cards) is read by the surface that shows it, and a change
@@ -55,8 +83,7 @@ private[frontend] object ParkedDecision {
     */
   enum Surface {
     /** Recover's own panel, at whichever of its parks the walker sits. */
-    case Recover(decision: WalkerDecisionState,
-        step: WalkerPanelSupport.RecoverWalkerStep)
+    case Recover(decision: WalkerDecisionState, step: RecoverStep)
     /** The generic choose-one button panel: a decide park no
       * action-specific surface claims.
       */
@@ -141,21 +168,20 @@ private[frontend] object ParkedDecision {
       }
 
   /** Recover keeps its own panel for its richer copy, so its parks are
-    * claimed before the form is read. `kind` alone cannot tell its two
-    * decide parks apart (both share `"decide"`); only the decision id does.
+    * claimed before the form is read. A park with nothing to render -- a
+    * roll with no projected pool, a decide park whose query the engine
+    * suppressed because an option could not be presented -- is `None`:
+    * there is no answer the client could safely build.
     */
   private def recoverStep(decision: WalkerDecisionState)
-      : Option[WalkerPanelSupport.RecoverWalkerStep] =
+      : Option[RecoverStep] =
     if (decision.action != "recover") None
     else decision.kind match {
-      case "roll" =>
-        decision.pool.map(WalkerPanelSupport.RecoverWalkerStep.Roll.apply)
-      case "decide"
-          if decision.decisionId == WalkerPanelSupport.recoverChoiceDecisionId =>
-        chooseOneQuery(decision).map(WalkerPanelSupport.RecoverWalkerStep.Choice.apply)
-      case "decide"
-          if decision.decisionId == WalkerPanelSupport.recoverRelicDecisionId =>
-        chooseOneQuery(decision).map(WalkerPanelSupport.RecoverWalkerStep.Relic.apply)
+      case "roll" => decision.pool.map(RecoverStep.Roll.apply)
+      case "decide" if decision.decisionId == recoverChoiceDecisionId =>
+        chooseOneQuery(decision).map(RecoverStep.Choice.apply)
+      case "decide" if decision.decisionId == recoverRelicDecisionId =>
+        chooseOneQuery(decision).map(RecoverStep.Relic.apply)
       case _ => None
     }
 
@@ -169,8 +195,7 @@ private[frontend] object ParkedDecision {
       : Option[Surface] =
     DecisionForm.parse(query.form) match {
       case DecisionForm.ChooseOne
-          if decision.decisionId.startsWith(
-            WalkerPanelSupport.pawnPlacementDecisionIdPrefix) =>
+          if decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix) =>
         Some(Surface.PawnPlacement(decision, query))
       // A Recover choose-one at a decision id Recover's panel does not
       // know is not handed to the generic panel either: there is no

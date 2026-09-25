@@ -19,72 +19,12 @@ import org.scalajs.dom
 private[frontend] object WalkerPanelSupport {
   import ServerUiSupport.{button, element, text}
 
-  /** Which control the panel should render for a parked walker decision.
-    * `WalkerDecisionState.kind` alone cannot tell the two "decide" parks
-    * apart (both `"recover.choice"` and `"recover.relic"` share it) -- only
-    * `decisionId` does, so that comparison lives here rather than being
-    * re-derived at each call site. The two decision id literals mirror
-    * `RecoverProcedure.choiceDecisionId`/`.relicDecisionId`
-    * (`src/main/scala/oathdigital/gameplay/actions/recover/
-    * RecoverProcedure.scala`) as plain strings: that object lives in the
-    * JVM-only application sources the frontend cannot depend on, and a
-    * `decisionId` already rides the wire as an uninterpreted string on
-    * every walker/decision command (see
-    * `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`).
-    */
-  private[frontend] val recoverChoiceDecisionId = "recover.choice"
-  private[frontend] val recoverRelicDecisionId = "recover.relic"
-
-  /** Mirrors `SetupProcedure.pawnDecisionId`'s prefix (`setup.pawn-
-    * placement.<player>`) the same way the two ids above mirror Recover's --
-    * a plain string, since the frontend cannot depend on the JVM-only
-    * application sources that declare it.
-    */
-  private[frontend] val pawnPlacementDecisionIdPrefix = "setup.pawn-placement."
-
   /** The two button keys Recover's continue/stop query declares. Read to
     * decide which projected option gets the supply-aware treatment below --
     * never to decide whether that option exists.
     */
   private[frontend] val continueOptionKey = "continue"
   private[frontend] val stopOptionKey = "stop"
-
-  private[frontend] sealed trait RecoverWalkerStep
-  private[frontend] object RecoverWalkerStep {
-    /** A Roll park asks nothing, so it has no query behind it -- and that is
-      * why its heading is the one Recover string still written here.
-      */
-    final case class Roll(pool: String) extends RecoverWalkerStep
-    /** The projected continue/stop query: its options in declared order,
-      * and (Task 5b) the heading the action declared above them.
-      */
-    final case class Choice(query: DecisionQueryState)
-        extends RecoverWalkerStep
-    /** The projected relic query, the same way. */
-    final case class Relic(query: DecisionQueryState)
-        extends RecoverWalkerStep
-  }
-
-  /** A decide park's projected choose-one query, or `None` when the
-    * projection carries no query -- which the engine does on purpose when an
-    * option could not be presented. Rendering nothing is then correct: there
-    * is no answer the client could safely build.
-    */
-  private[frontend] def chooseOneQuery(decision: WalkerDecisionState)
-      : Option[DecisionQueryState] =
-    decision.query.filter(_.form == "choose-one")
-
-  private[frontend] def recoverWalkerStep(decision: WalkerDecisionState)
-      : Option[RecoverWalkerStep] =
-    if (decision.action != "recover") None
-    else decision.kind match {
-      case "roll" => decision.pool.map(RecoverWalkerStep.Roll.apply)
-      case "decide" if decision.decisionId == recoverChoiceDecisionId =>
-        chooseOneQuery(decision).map(RecoverWalkerStep.Choice.apply)
-      case "decide" if decision.decisionId == recoverRelicDecisionId =>
-        chooseOneQuery(decision).map(RecoverWalkerStep.Relic.apply)
-      case _ => None
-    }
 
   /** The answer for any projected choose-one option, built from the option's
     * own `kind`/`id` pair. One builder serves Recover's buttons and its
@@ -121,21 +61,6 @@ private[frontend] object WalkerPanelSupport {
     case other => other
   }
 
-  /** The public line shown to every viewer a parked walker position is NOT
-    * waiting on (Task 5): who it awaits, and the question's heading when it
-    * has one -- `None` for a parked Roll, which asks nothing. `None` here
-    * (no `walkerWaiting` at all) means either nothing is parked or this
-    * viewer IS the one it awaits, in which case `renderRecoverPanel`/
-    * `renderPartitionPanel` above render the decision itself instead.
-    */
-  private[frontend] def waitingNotice(value: GameProjection): Option[String] =
-    value.walkerWaiting.map { waiting =>
-      val name = value.players.find(_.playerId == waiting.playerId)
-        .map(_.displayName).getOrElse(waiting.playerId)
-      waiting.heading.fold(s"Waiting for $name")(heading =>
-        s"Waiting for $name: $heading")
-    }
-
   /** Renders the Recover panel for whichever of the parks
     * (`ParkedDecision.route`) the walker is at. Shows the roll so far
     * (`rollFeedback`: the dice, then the totals line) above each park's
@@ -150,7 +75,7 @@ private[frontend] object WalkerPanelSupport {
       canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit = {
     val decision = surface.decision
     surface.step match {
-      case RecoverWalkerStep.Roll(pool) =>
+      case ParkedDecision.RecoverStep.Roll(pool) =>
         // The one heading still written here. A Roll park is not a `Decide`
         // -- it asks no question, carries a synthetic decision id and has no
         // query behind it -- so there is nothing to read a title from, and
@@ -162,7 +87,7 @@ private[frontend] object WalkerPanelSupport {
         roll.disabled = !canControl
         roll.onclick = _ => ui.submitCommand(GameCommand.RollWalker(pool))
         panel.appendChild(roll)
-      case RecoverWalkerStep.Choice(query) =>
+      case ParkedDecision.RecoverStep.Choice(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
         val hasSupply = value.activePlayerResources.exists(_.supply >= 1)
@@ -182,7 +107,7 @@ private[frontend] object WalkerPanelSupport {
             resolveChooseOneCommand(decision, option))
           panel.appendChild(control)
         }
-      case RecoverWalkerStep.Relic(query) =>
+      case ParkedDecision.RecoverStep.Relic(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
         // A relic at the site the actor stands on is one they can read, so
@@ -204,28 +129,6 @@ private[frontend] object WalkerPanelSupport {
         panel.appendChild(relics)
     }
   }
-
-  /** A choose-one decision no action-specific panel claims. Recover keeps its
-    * own panel for its richer copy; Setup's pawn placement is answered by
-    * clicking the site directly on the board (`WorldBoardRenderer.world`,
-    * via `pawnPlacementStep`) instead of a button list; everything else is
-    * answered here, from the projected options alone.
-    */
-  private[frontend] def chooseOneStep(decision: WalkerDecisionState)
-      : Option[DecisionQueryState] =
-    if (decision.action == "recover" || decision.kind != "decide" ||
-        decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix)) None
-    else chooseOneQuery(decision)
-
-  /** The pawn-placement Decide's own choose-one query, or `None` for any
-    * other decision -- the board renderer's counterpart to `chooseOneStep`
-    * above, keyed off the same decision id prefix.
-    */
-  private[frontend] def pawnPlacementStep(decision: WalkerDecisionState)
-      : Option[DecisionQueryState] =
-    if (decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix))
-      chooseOneQuery(decision)
-    else None
 
   private[frontend] def renderChooseOnePanel(
       surface: ParkedDecision.Surface.ChooseOne, value: GameProjection,

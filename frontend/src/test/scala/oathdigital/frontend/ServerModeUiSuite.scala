@@ -559,19 +559,9 @@ class ServerModeUiSuite extends FunSuite {
       "No target is available; confirm to play this action.")
   }
 
-  test("a parked walker roll classifies as a Roll control carrying the projected pool") {
-    val roll = WalkerDecisionState("recover", "walker.recover.roll", "roll",
-      pool = Some("recover"), count = Some(2))
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(roll),
-      Some(WalkerPanelSupport.RecoverWalkerStep.Roll("recover")))
-    // No die faces ride the command -- only the projected pool key does.
+  test("a roll answer carries the projected pool key and no die faces") {
     assertEquals(GameCommand.RollWalker("red", "recover"),
       oathdigital.protocol.GameIntent.RollWalker("recover"))
-  }
-
-  test("a roll park with no projected pool renders no control rather than guessing one") {
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(
-      WalkerDecisionState("recover", "walker.recover.roll", "roll")), None)
   }
 
   /** Task 4: both decide parks take their option set from the projected
@@ -588,11 +578,6 @@ class ServerModeUiSuite extends FunSuite {
       Vector(continueOption, stopOption), heading = Some("Recover"))
     val choice = WalkerDecisionState("recover", "recover.choice", "decide",
       query = Some(choiceQuery))
-    // Task 5b: the step carries the whole query, not just its options, so
-    // the panel reads the heading the action declared from the same place
-    // it reads what to offer.
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(choice),
-      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(choiceQuery)))
     assertEquals(
       WalkerPanelSupport.resolveChooseOneCommand(choice, continueOption),
       GameCommand.ResolveWalker("red", "recover.choice",
@@ -600,13 +585,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(choice, stopOption),
       GameCommand.ResolveWalker("red", "recover.choice",
         DecisionAnswerWire.ChooseOneWire("button", "stop")))
-    // A power that drops an option drops the control with it: the step
-    // carries whatever the projection offered, never a fixed pair.
-    val stopOnly = DecisionQueryState("choose-one", Vector(stopOption),
-      heading = Some("Recover"))
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(
-      choice.copy(query = Some(stopOnly))),
-      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(stopOnly)))
   }
 
   test("the parked Recover relic decision offers one control per projected " +
@@ -619,34 +597,12 @@ class ServerModeUiSuite extends FunSuite {
       heading = Some("Take a relic"))
     val relic = WalkerDecisionState("recover", "recover.relic", "decide",
       query = Some(relicQuery))
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(relic),
-      Some(WalkerPanelSupport.RecoverWalkerStep.Relic(relicQuery)))
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, bronze),
       GameCommand.ResolveWalker("red", "recover.relic",
         DecisionAnswerWire.ChooseOneWire("relic", "relic-1")))
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, silver),
       GameCommand.ResolveWalker("red", "recover.relic",
         DecisionAnswerWire.ChooseOneWire("relic", "relic-2")))
-  }
-
-  test("a decide park whose query was suppressed renders no control, since " +
-      "there is no answer the client could safely build") {
-    Vector("recover.choice", "recover.relic").foreach(decisionId =>
-      assertEquals(WalkerPanelSupport.recoverWalkerStep(
-        WalkerDecisionState("recover", decisionId, "decide")), None,
-        s"$decisionId must render nothing without a projected query"))
-  }
-
-  test("an unrecognized parked walker decision renders no Recover control") {
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(
-      WalkerDecisionState("recover", "some.other.decision", "decide")), None)
-  }
-
-  test("a parked decision for a walker procedure other than Recover renders no " +
-      "Recover control, even if it happens to reuse a Recover-shaped kind") {
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(
-      WalkerDecisionState("teleport", "walker.recover.roll", "roll",
-        pool = Some("recover"))), None)
   }
 
   test("site forces retain accessible labels counts and stable color classes") {
@@ -1018,35 +974,12 @@ class ServerModeUiSuite extends FunSuite {
       phasePowers = phasePowers
     )
 
-  /** Task 5: a `GameProjection` parked on the Forge decision above, for the
-    * waiting-notice test below. Reuses `forgeParked` -- the same
-    * `WalkerDecisionState` the "Forge is answered by..." test builds and
-    * asserts against -- rather than authoring a second, possibly diverging
-    * walker decision.
-    */
-  private def forgeProjection: GameProjection =
-    projection(Set.empty).copy(walkerDecision = Some(forgeParked))
-
-  test("a parked walker waiting on another player names them and the question") {
-    val waitingOn = forgeProjection.copy(walkerDecision = None,
-      walkerWaiting = Some(WalkerWaitingState(
-        forgeProjection.players.head.playerId, Some("Choose the Oathkeeper"))))
-    assertEquals(WalkerPanelSupport.waitingNotice(waitingOn),
-      Some(s"Waiting for ${forgeProjection.players.head.displayName}: " +
-        "Choose the Oathkeeper"))
-    assertEquals(WalkerPanelSupport.waitingNotice(
-      waitingOn.copy(walkerWaiting = None)), None)
-  }
   test("a choose-one decision outside Recover is answered from its projected options") {
     val decision = WalkerDecisionState("oathkeeper", "oathkeeper.recipient",
       "decide", query = Some(DecisionQueryState("choose-one", Vector(
         DecisionOptionState("player", "blue", "blue"),
         DecisionOptionState("player", "yellow", "yellow")),
         heading = Some("Choose the Oathkeeper"))))
-    assertEquals(WalkerPanelSupport.chooseOneStep(decision).map(_.options.map(_.id)),
-      Some(Vector("blue", "yellow")))
-    assertEquals(WalkerPanelSupport.chooseOneStep(decision.copy(action = "recover")),
-      None)
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(decision,
       decision.query.get.options(1)),
       GameCommand.ResolveWalker("red", "oathkeeper.recipient",

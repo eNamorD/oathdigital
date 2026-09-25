@@ -68,18 +68,6 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Vector("Discard", "Play faceup"))
   }
 
-  test("Setup's pawn-placement decision renders no button panel -- it is " +
-      "answered by clicking the site on the board instead") {
-    val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
-    val pawnQuery = DecisionQueryState("choose-one", Vector(site),
-      heading = Some("Choose your starting site"))
-    val pawnDecision = WalkerDecisionState("setup", "setup.pawn-placement.p1",
-      "decide", query = Some(pawnQuery))
-    assertEquals(WalkerPanelSupport.chooseOneStep(pawnDecision), None)
-    assertEquals(WalkerPanelSupport.pawnPlacementStep(pawnDecision), Some(pawnQuery))
-    assertEquals(WalkerPanelSupport.pawnPlacementStep(parked), None)
-  }
-
   test("a battle-plan offer draws its card and its side as a chip") {
     val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",
       orientation = Some("face-up"))

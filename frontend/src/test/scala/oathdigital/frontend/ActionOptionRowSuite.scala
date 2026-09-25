@@ -28,6 +28,7 @@ class ActionOptionRowSuite extends munit.FunSuite {
           canPeekSiteRelics = true, Vector.empty, Some("site:a"), 2, 1))),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None),
+      ParkedDecision.Routed(None, None),
       new RecordingView("game", "red"))
 
   private def rows(group: String,

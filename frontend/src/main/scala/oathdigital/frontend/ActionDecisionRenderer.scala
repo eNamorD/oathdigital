@@ -47,7 +47,7 @@ private[frontend] object ActionDecisionRenderer {
    node
  }
  def actionsPanel(value: GameProjection, presentation: ViewerPresentation,
-     ui: ServerUiView): dom.Element = {
+     routed: ParkedDecision.Routed, ui: ServerUiView): dom.Element = {
    import ui._
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
@@ -288,8 +288,7 @@ private[frontend] object ActionDecisionRenderer {
        }
      }
    }
-   ParkedDecision.render(value, ParkedDecision.route(value, presentation),
-     canControl, panel, ui)
+   ParkedDecision.render(value, routed, canControl, panel, ui)
    CampaignResultPanel.render(value, panel)
    if (value.phase == "rest" && presentation.showGameplayControls) {
      PhasePowerButtons.render(value, canControl, panel, submitCommand)

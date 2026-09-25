@@ -8,9 +8,6 @@ import org.scalajs.dom
   * that name a favor bank print the symbol too rather than the word alone.
   */
 class SuitGlyphSuite extends munit.FunSuite {
-  private val presentation = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None)
-
   private def glyphs(node: dom.Element): Vector[String] =
     node.querySelectorAll(".token-glyph").toVector
       .map(_.asInstanceOf[dom.Element].getAttribute("class"))
@@ -23,7 +20,7 @@ class SuitGlyphSuite extends munit.FunSuite {
         completed = false,
         favorBanks = Vector(FavorBankState("arcane", 3),
           FavorBankState("nomad", 0))),
-      presentation, new RecordingView("game", "red"))
+      None, new RecordingView("game", "red"))
     val banks = panel.querySelectorAll(".favor-bank").toVector
       .map(_.asInstanceOf[dom.Element])
     assertEquals(banks.map(_.textContent), Vector("Arcane: 3", "Nomad: 0"))
