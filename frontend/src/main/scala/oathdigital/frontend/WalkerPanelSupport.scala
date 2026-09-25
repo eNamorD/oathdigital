@@ -126,6 +126,25 @@ private[frontend] object WalkerPanelSupport:
         }
         panel.appendChild(relics)
 
+  /** The pane's half of a board surface: the question, what the board draft
+    * holds, and -- when the surface asks for confirmation -- the Confirm
+    * button that submits it. The sites themselves are the board's.
+    */
+  private[frontend] def renderBoardPanel(
+      surface: ParkedDecision.Surface.Board, canControl: Boolean,
+      panel: dom.Element, ui: ServerUiView): Unit =
+    panel.appendChild(text("h2", "", decisionHeading(surface.query)))
+    val draft = ui.currentWalkerBoard
+      .filter(_.decisionId == surface.decision.decisionId)
+    panel.appendChild(text("p", "board-draft",
+      draft.fold("Choose a site on the board.")(_.option.label)))
+    if surface.confirm then
+      val confirm = button(partitionConfirmLabel(surface.query),
+        "walker-board-confirm")
+      confirm.disabled = !canControl || draft.isEmpty
+      confirm.onclick = _ => draft.foreach(value => ui.submitCommand(value.command))
+      panel.appendChild(confirm)
+
   private[frontend] def renderChooseOnePanel(
       surface: ParkedDecision.Surface.ChooseOne, value: GameProjection,
       canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =

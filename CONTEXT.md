@@ -48,3 +48,9 @@ _Avoid_: plans played (the panel heading, not the concept), history, answers
 **Plan side**:
 Which side of a Campaign a battle plan applies to: attack, defense, or both.
 _Avoid_: badge, chip, colour, red/blue
+
+**Board draft**:
+The site a viewer has picked on the board for the parked decision and not yet
+confirmed. A viewer has at most one, and only for a decision that asks to be
+confirmed.
+_Avoid_: pending selection, staged choice, highlighted site

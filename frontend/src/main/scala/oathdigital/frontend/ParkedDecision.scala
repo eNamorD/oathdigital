@@ -94,11 +94,14 @@ private[frontend] object ParkedDecision:
       */
     case Negotiate(deal: NegotiationDealState,
         editor: Option[(String, NegotiationEditingState)])
-    /** Setup's pawn placement, answered by clicking a site on the board
-      * rather than a button in the action pane.
+    /** A choose-one answered by clicking a site on the board rather than a
+      * button in the action pane. With `confirm`, the click only drafts the
+      * pick and the pane's Confirm button submits it; without, the click
+      * submits at once. Setup's pawn placement is the one decision routed
+      * here today.
       */
-    case PawnPlacement(decision: WalkerDecisionState,
-        query: DecisionQueryState)
+    case Board(decision: WalkerDecisionState, query: DecisionQueryState,
+        confirm: Boolean)
 
   /** What one render of one viewer's projection shows for the parked
     * decision: the surface, if this viewer sees one, and the public notice
@@ -112,9 +115,9 @@ private[frontend] object ParkedDecision:
 
   /** Draws the routed surface into the action pane, then the notice, in
     * that order. One exhaustive match: a new surface is a case here and
-    * nothing elsewhere. The board surface is `WorldBoardRenderer`'s to draw,
-    * which takes the `PawnPlacement` case itself; this table only records
-    * that the pane does not draw it.
+    * nothing elsewhere. The board surface is drawn twice over: its sites by
+    * `WorldBoardRenderer`, which takes the `Board` case itself, and its
+    * heading and Confirm by the pane here.
     *
     * Two panels read past the decision: Recover gates buying dice on the
     * acting player's supply, and the choose-one panel names a player option
@@ -135,7 +138,8 @@ private[frontend] object ParkedDecision:
         NegotiationDealPanel.render(surface, canControl, panel, ui)
       case surface: Surface.Selection =>
         WalkerSelectionPanels.render(surface, canControl, panel, ui)
-      case _: Surface.PawnPlacement => ()
+      case surface: Surface.Board => WalkerPanelSupport.renderBoardPanel(
+        surface, canControl, panel, ui)
     routed.notice.foreach(notice =>
       panel.appendChild(text("p", "walker-waiting", notice)))
 
@@ -185,9 +189,11 @@ private[frontend] object ParkedDecision:
       query: DecisionQueryState, showGameplayControls: Boolean)
       : Option[Surface] =
     DecisionForm.parse(query.form) match
+      // Confirmed from the pane: a pawn is placed once a game and cannot be
+      // moved back, so one click on a crowded board must not commit it.
       case DecisionForm.ChooseOne
           if decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix) =>
-        Some(Surface.PawnPlacement(decision, query))
+        Some(Surface.Board(decision, query, confirm = true))
       // A Recover choose-one at a decision id Recover's panel does not
       // know is not handed to the generic panel either: there is no
       // answer this client could safely build for it.

@@ -85,6 +85,15 @@ Routing runs once per render in `ServerModeUi.render`. The `Routed` value is
 passed to `ActionDecisionRenderer.actionsPanel` and its `PawnPlacement` case
 to `WorldBoardRenderer.world`.
 
+> Later change (2026-09-24, board draft slice): `PawnPlacement` became
+> `Board(decision, query, confirm)`, the general case for a choose-one
+> answered on the board. Pawn placement routes there with `confirm = true`:
+> a site click drafts the pick (`WalkerBoardDraft`, kept on the session like
+> the other drafts) and the pane's Confirm button submits it. The pane now
+> draws the heading and Confirm for a `Board` surface; the sites stay the
+> board's. A click on a card inside a site reads the card and no longer picks
+> the site.
+
 ## Scope and preservation
 
 Rendered DOM is byte-identical before and after, including element order,

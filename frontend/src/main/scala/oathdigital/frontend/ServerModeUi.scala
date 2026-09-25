@@ -22,6 +22,7 @@ object ServerModeUi:
     var walkerPartitionDraft = Option.empty[WalkerPartitionDraft]
     var walkerDistributeDraft = Option.empty[WalkerDistributeDraft]
     var walkerSelectionDraft = Option.empty[WalkerSelectionDraft]
+    var walkerBoardDraft = Option.empty[WalkerBoardDraft]
     var modifierWorkflow = Option.empty[ModifierWorkflow]
     var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
     var rawEvents = Vector.empty[RawEvent]
@@ -93,7 +94,7 @@ object ServerModeUi:
             modifierWorkflow.map(_.stage.toString).getOrElse(""), prompt).mkString("|")
           (WorldBoardRenderer.players(value, ui),
             WorldBoardRenderer.world(value, routed.surface.collect {
-              case pawn: ParkedDecision.Surface.PawnPlacement => pawn
+              case board: ParkedDecision.Surface.Board => board
             }, ui), decisionKey)
       val development = element("div", "development-content")
       if !fixedSeat then
@@ -145,6 +146,10 @@ object ServerModeUi:
               displayed.nextSequence), displayed.walkerDecision)
           walkerSelectionDraft = WalkerSelectionDraft.reconcile(
             walkerSelectionDraft,
+            BoardSelectionContext(gameId, selectedPlayer,
+              displayed.nextSequence), displayed.walkerDecision)
+          walkerBoardDraft = WalkerBoardDraft.reconcile(
+            walkerBoardDraft,
             BoardSelectionContext(gameId, selectedPlayer,
               displayed.nextSequence), displayed.walkerDecision)
           projection = Some(displayed)
@@ -394,6 +399,8 @@ object ServerModeUi:
       def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
       def currentWalkerSelection = walkerSelectionDraft
       def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]) = walkerSelectionDraft = value
+      def currentWalkerBoard = walkerBoardDraft
+      def currentWalkerBoard_=(value: Option[WalkerBoardDraft]) = walkerBoardDraft = value
       def currentModifierWorkflow = modifierWorkflow
       def currentFacedownAdviserDraft = facedownAdviserDraft
       def chooseFacedownAdviser(cardId: String) =
