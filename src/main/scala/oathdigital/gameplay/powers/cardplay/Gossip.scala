@@ -14,7 +14,7 @@ import oathdigital.model._
   * players' faceup advisers.
   */
 final case class Gossip private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = Gossip.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -28,20 +28,17 @@ final case class Gossip private (cardId: DenizenId,
   override def applicable(ctx: PowerCtx): Boolean = holderOf(ctx).nonEmpty
 
   /** The holder, when the hooked play is another player's facedown play. */
-  private def holderOf(ctx: PowerCtx): Option[PlayerId] = ctx.operation match {
+  private def holderOf(ctx: PowerCtx): Option[PlayerId] = ctx.operation match
     case CardPlayedFacedown(_, player) => ctx.state.game.current.players
       .find(_.advisers.exists {
         case DenizenState(card, Orientation.FaceUp, _) => card == cardId
         case _ => false
       }).map(_.player).filter(_ != player)
     case _ => None
-  }
-}
 
-object Gossip {
+object Gossip:
   val id: PowerId = PowerId("denizen.gossip")
   val Favor: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[Gossip] =
     CatalogCards.denizen(catalog, id).map(new Gossip(_, catalog))
-}

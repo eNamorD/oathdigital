@@ -16,7 +16,7 @@ import oathdigital.model._
   * step reads the durable `CampaignResult` and the answers instead, because
   * the losses change the board.
   */
-object CampaignProcedure {
+object CampaignProcedure:
   val decisionIds: Set[String] = CampaignIds.all
 
   /** Every decision a Campaign asks starts with this, whether the engine or a
@@ -102,7 +102,7 @@ object CampaignProcedure {
     */
   def rollFeedback(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, decisionId: String): Option[WalkerRollFeedback] =
-    decisionId match {
+    decisionId match
       case CampaignIds.sacrifice =>
         val skulls = ready.game.current.rollOutcomes
           .get(CampaignIds.attackPool).fold(0)(_.skulls)
@@ -112,7 +112,6 @@ object CampaignProcedure {
       case CampaignIds.placement | CampaignIds.relocation =>
         Some(WalkerRollFeedback(CampaignIds.defensePool))
       case _ => None
-    }
 
   /** Omitted when no force survives the skulls. */
   private def sacrificeStep(actor: PlayerId): Operation =
@@ -175,7 +174,7 @@ object CampaignProcedure {
   /** Always asked, even for zero: a Campaign with no force is legal, and the
     * confirmation states what it commits.
     */
-  private def forceStep(state: ReadyGame, actor: PlayerId): Operation = {
+  private def forceStep(state: ReadyGame, actor: PlayerId): Operation =
     val warbands = state.game.current.players.find(_.player == actor)
       .fold(0)(_.board.warbands)
     // Suggests the whole force: committing everything is what an attacker
@@ -184,5 +183,3 @@ object CampaignProcedure {
       Some(s"Commit warbands to the Campaign: 0 to $warbands, each adds one " +
         "attack die"), "Commit force", suggested = Some(warbands)),
       window = Some(PowerWindow.CampaignForceSelection))
-  }
-}

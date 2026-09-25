@@ -4,7 +4,7 @@ import oathdigital.protocol.{GameIntent => GameCommand, _}
 import org.scalajs.dom
 import scala.scalajs.js
 
-private[frontend] trait ServerUiView {
+private[frontend] trait ServerUiView:
   def currentGameId: String
   def currentPlayerId: String
   def displayedProjection: Option[GameProjection]
@@ -36,8 +36,7 @@ private[frontend] trait ServerUiView {
   def loadSession(gameId: String, playerId: String): Unit
   def reconnectSession(): Unit
   def createGame(): Unit
-}
-private[frontend] object ServerUiSupport {
+private[frontend] object ServerUiSupport:
   private[frontend] def secretSummaryLabel(available: Int, total: Int,
       facedown: Int, committed: Int): String =
     s"$available available of $total owned; $facedown facedown and $committed committed"
@@ -49,7 +48,7 @@ private[frontend] object ServerUiSupport {
   /** Name row and the two upper corners: what a site holds on the left, what
     * it costs to walk into on the right.
     */
-  private[frontend] def siteHeading(site: GameSite): dom.Element = {
+  private[frontend] def siteHeading(site: GameSite): dom.Element =
     val presentation = SiteCardPresentation.from(site)
     val heading = element("div", "site-heading")
     val tokens = element("span", "site-tokens")
@@ -72,13 +71,12 @@ private[frontend] object ServerUiSupport {
       .foreach(_ => defense.appendChild(RulesTextRenderer.glyph("defense-die")))
     heading.appendChild(defense)
     heading
-  }
 
   private def siteToken(token: String, count: Int): Vector[dom.Element] =
     Vector(RulesTextRenderer.glyph(token),
       text("span", "site-token-count", count.toString))
 
-  private[frontend] def siteDetails(site: GameSite): dom.Element = {
+  private[frontend] def siteDetails(site: GameSite): dom.Element =
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
     // Denizens and relics share one row: capacity and relic slots always sum
@@ -104,7 +102,7 @@ private[frontend] object ServerUiSupport {
     site.forces.foreach { forces =>
       val row = text("p", s"site-forces ${forceCssClass(forces)}",
         forceText(forces))
-      forces match {
+      forces match
         case exile: SiteForces.Exile =>
           row.setAttribute("data-ruler-kind", "player")
           row.setAttribute("data-ruler-player-id", exile.rulerPlayerId)
@@ -112,7 +110,6 @@ private[frontend] object ServerUiSupport {
           row.setAttribute("data-ruler-kind", "empire")
         case _: SiteForces.Bandit =>
           row.setAttribute("data-ruler-kind", "bandit")
-      }
       details.appendChild(row)
     }
     val footer = element("div", "site-footer")
@@ -131,15 +128,14 @@ private[frontend] object ServerUiSupport {
       footer.appendChild(requirementCorner(value)))
     details.appendChild(footer)
     details
-  }
 
   /** Forge keeps its word because the catalog has no forge glyph; its price is
     * glyphs because favor and secrets do. Recover is a die-roll target rather
     * than a price, so it stays a number.
     */
-  private def requirementCorner(value: SiteRequirement): dom.Element = {
+  private def requirementCorner(value: SiteRequirement): dom.Element =
     val node = element("span", "site-requirement")
-    value match {
+    value match
       case SiteRequirement.Forge(favor, secrets) =>
         node.appendChild(text("span", "site-requirement-label", "Forge"))
         (0 until favor).foreach(_ =>
@@ -149,44 +145,39 @@ private[frontend] object ServerUiSupport {
       case SiteRequirement.Recover(difficulty) =>
         node.appendChild(text("span", "site-requirement-label",
           s"Recover $difficulty"))
-    }
     node
-  }
 
   private[frontend] def forceText(forces: SiteForces): String =
     s"${forces.label} x${forces.count}"
 
-  private[frontend] def forceCssClass(forces: SiteForces): String = forces match {
+  private[frontend] def forceCssClass(forces: SiteForces): String = forces match
     case exile: SiteForces.Exile => s"force-${exile.color.key}"
     case _: SiteForces.Imperial => "force-empire"
     case _: SiteForces.Bandit => "force-bandit"
-  }
 
   /** A site relic the viewer cannot identify. Same box as a real relic, so
     * learning what it is -- which a negotiation can do mid-game -- swaps the
     * contents of a box that does not move.
     */
-  private[frontend] def facedownCard(cardKind: String): dom.Element = {
+  private[frontend] def facedownCard(cardKind: String): dom.Element =
     val node = element("span", s"card-face ${CardFace.boxClass(cardKind)} card-face-down")
     node.setAttribute("role", "img")
     node.setAttribute("aria-label", s"Facedown $cardKind")
     node.appendChild(text("span", "card-back-letter", CardFace.backLetter(cardKind)))
     node
-  }
 
-  private[frontend] def emptySlot(cardKind: String): dom.Element = {
+  private[frontend] def emptySlot(cardKind: String): dom.Element =
     val node = element("span",
       s"card-face ${CardFace.boxClass(cardKind)} card-slot-empty")
     node.setAttribute("role", "img")
     node.setAttribute("aria-label", s"Empty $cardKind slot")
     node
-  }
 
   private[frontend] def pileDisplay(
       label: String,
       count: Int,
       topCardKind: Option[String]
-  ): dom.Element = {
+  ): dom.Element =
     val pile = element("div", "pile-display")
     pile.appendChild(text("span", "pile-label", s"$label:"))
     val css = pileCardClasses(count)
@@ -202,14 +193,12 @@ private[frontend] object ServerUiSupport {
     pile.appendChild(back)
     pile.appendChild(text("span", "pile-count", s"x$count"))
     pile
-  }
 
   private[frontend] def pileSymbol(count: Int, topCardKind: Option[String]): String =
-    if (count == 0) "" else topCardKind match {
+    if (count == 0) "" else topCardKind match
       case Some("denizen") => "D"
       case Some("vision") => "V"
       case _ => ""
-    }
 
   private[frontend] def pileCardClasses(count: Int): String =
     if (count == 0) "pile-card pile-empty" else "pile-card pile-back"
@@ -229,7 +218,7 @@ private[frontend] object ServerUiSupport {
   private[frontend] def viewerPresentation(
       value: GameProjection,
       playerId: String
-  ): ViewerPresentation = {
+  ): ViewerPresentation =
     if (value.oathkeeper.exists(_.winnerPlayerId.nonEmpty))
       return ViewerPresentation(showGameplayControls = false,
         waitingForPlayerId = None, waitingForDisplayName = None)
@@ -249,7 +238,7 @@ private[frontend] object ServerUiSupport {
         waitingForDisplayName = value.walkerWaiting.map(w =>
           playerDisplayName(value, w.playerId)))
     val controllingPlayer = value.activeParticipantId
-    controllingPlayer match {
+    controllingPlayer match
       case Some(activePlayerId) if activePlayerId != playerId =>
         ViewerPresentation(
           showGameplayControls = false,
@@ -261,15 +250,13 @@ private[frontend] object ServerUiSupport {
         waitingForPlayerId = None,
         waitingForDisplayName = None
       )
-    }
-  }
 
   private[frontend] def showActActionControls(
       value: GameProjection,
       presentation: ViewerPresentation
   ): Boolean = value.actionSelectionOpen && presentation.showGameplayControls
 
-  private[frontend] def actionLabel(kind: String): String = kind match {
+  private[frontend] def actionLabel(kind: String): String = kind match
     case "travel" => "Travel"
     case "challenge" => "Challenge"
     case "peoples-favor" => "People's Favor"
@@ -281,29 +268,26 @@ private[frontend] object ServerUiSupport {
     case "forge" => "Forge"
     case "recover" => "Recover"
     case other => other
-  }
 
-  private[frontend] def actionCategory(kind: String): String = kind match {
+  private[frontend] def actionCategory(kind: String): String = kind match
     case "search" | "travel" |
         "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
         "challenge" | "campaign" => "major"
     // Using a power's "Action:" is a minor action like any other, so an
     // unrecognised kind lands there rather than in a section of its own.
     case _ => "minor"
-  }
 
   private[frontend] val majorFamilyOrder: Vector[String] = Vector(
     "search", "travel", "campaign", "muster", "trade", "forge", "recover", "challenge")
 
-  private[frontend] def actionFamily(kind: String): String = kind match {
+  private[frontend] def actionFamily(kind: String): String = kind match
     case "trade-favor" | "trade-secret" => "trade"
     case other => other
-  }
 
   private[frontend] val actionCategoryOrder: Vector[(String, String)] =
     Vector("major" -> "Major actions", "minor" -> "Minor actions")
 
-  private[frontend] final class ActionSections {
+  private[frontend] final class ActionSections:
     private val contents = scala.collection.mutable.Map.empty[String,
       scala.collection.mutable.ArrayBuffer[(String, dom.Node)]]
     def appendKind(kind: String, node: dom.Node): Unit = contents
@@ -322,7 +306,6 @@ private[frontend] object ServerUiSupport {
         panel.appendChild(section)
       }
     }
-  }
 
   private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
     if (action.maximum == 0) "No target is available; confirm to play this action."
@@ -342,13 +325,12 @@ private[frontend] object ServerUiSupport {
     PlayerColorCss.of(value.players.find(_.playerId == playerId).map(_.color))
 
   private[frontend] def winnerBanner(value: GameProjection,
-      winner: String, victory: String): dom.Element = {
+      winner: String, victory: String): dom.Element =
     val banner = element("div", s"victory-banner ${winnerColorClass(value, winner)}")
     banner.setAttribute("role", "status")
     banner.appendChild(playerReference(value, winner))
     banner.appendChild(dom.document.createTextNode(s" wins — $victory victory"))
     banner
-  }
 
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =
@@ -357,7 +339,7 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def commandForSelection(action: BoardTargetAction,
       targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
-    (action.actionKind, targets) match {
+    (action.actionKind, targets) match
       // Travel moved onto the generic walker (batch-1 Task 5), so the
       // destination the player just picked rides `StartWalker`'s start
       // selection instead of a `Travel` intent of its own -- as a plain site
@@ -368,7 +350,6 @@ private[frontend] object ServerUiSupport {
         Some(GameCommand.StartWalker("travel", Vector.empty,
           Vector(oathdigital.protocol.WalkerStartArgWire("site", site))))
       case _ => None
-    }
 
   private def takeWealth(resource: String): GameCommand =
     GameCommand.StartWalker("take-wealth", Vector.empty,
@@ -390,15 +371,14 @@ private[frontend] object ServerUiSupport {
         "Take Wealth: 1 favor", takeWealth("favor")),
       "takeSecret" -> TakeWealthAction(
         "Take Wealth: 1 secret", takeWealth("secret"))
-    ).collect {
+    ).collect:
       case (legalControl, action)
           if value.legalControls.contains(legalControl) => action
-    }
 
   private[frontend] def playerReference(
       value: GameProjection,
       playerId: String
-  ): dom.Element = {
+  ): dom.Element =
     val player = value.players.find(_.playerId == playerId)
     val node = text(
       "span",
@@ -407,7 +387,6 @@ private[frontend] object ServerUiSupport {
     )
     node.setAttribute("data-player-id", playerId)
     node
-  }
 
   private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
     if (minor.advisers.nonEmpty) 1 else 0
@@ -440,21 +419,19 @@ private[frontend] object ServerUiSupport {
     s"manual-${js.Date.now().toLong}-${(js.Math.random() * 1000000).toInt}"
 
   private[frontend] def canonicalGameId(pathname: String): Option[String] =
-    pathname.split("/", -1).toVector match {
+    pathname.split("/", -1).toVector match
       case Vector("", "games", encoded) if encoded.nonEmpty =>
         try Option(js.URIUtils.decodeURIComponent(encoded)).filter(_.nonEmpty)
         catch { case scala.util.control.NonFatal(_) => None }
       case _ => None
-    }
 
   private[frontend] def queryParameter(name: String): Option[String] =
     dom.window.location.search.stripPrefix("?").split("&").toVector
       .flatMap { pair =>
-        pair.split("=", 2).toVector match {
+        pair.split("=", 2).toVector match
           case Vector(key, value) if key == name =>
             Some(js.URIUtils.decodeURIComponent(value))
           case _ => None
-        }
       }.headOption.filter(_.nonEmpty)
 
   private[frontend] def sessionUrl(gameId: String, playerId: String): String =
@@ -464,23 +441,19 @@ private[frontend] object ServerUiSupport {
   private[frontend] def updateUrl(gameId: String, playerId: String): Unit =
     dom.window.history.replaceState(null, "", sessionUrl(gameId, playerId))
 
-  private[frontend] def button(label: String, className: String): dom.html.Button = {
+  private[frontend] def button(label: String, className: String): dom.html.Button =
     val node =
       dom.document.createElement("button").asInstanceOf[dom.html.Button]
     node.className = className
     node.textContent = label
     node
-  }
 
-  private[frontend] def text(tag: String, className: String, value: String): dom.Element = {
+  private[frontend] def text(tag: String, className: String, value: String): dom.Element =
     val node = element(tag, className)
     node.textContent = value
     node
-  }
 
-  private[frontend] def element(tag: String, className: String): dom.Element = {
+  private[frontend] def element(tag: String, className: String): dom.Element =
     val node = dom.document.createElement(tag)
     if (className.nonEmpty) node.setAttribute("class", className)
     node
-  }
-}

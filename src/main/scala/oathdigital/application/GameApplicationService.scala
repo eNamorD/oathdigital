@@ -42,7 +42,7 @@ final case class MajorActionPreviewAccepted(loaded: LoadedGame,
     modifiers: Vector[PreviewModifier] = Vector.empty)
 
 sealed trait GameApplicationError extends Product with Serializable
-object GameApplicationError {
+object GameApplicationError:
   final case class StreamNotFound(gameId: String)
       extends GameApplicationError
   final case class DuplicateGame(gameId: String)
@@ -67,7 +67,6 @@ object GameApplicationError {
       extends GameApplicationError
   final case class StorageFailure(message: String)
       extends GameApplicationError
-}
 
 /**
  * Event-sourced application service for the single current v1 game stream.
@@ -81,7 +80,7 @@ final class GameApplicationService(
     warExhaustionRandomPort: WarExhaustionRandomPort =
       WarExhaustionRandomPort.random,
     eventCodec: GameEventCodec = GameEventCodec.default
-) {
+):
   import GameApplicationError._
   import RepositoryAppendResult._
 
@@ -113,30 +112,28 @@ final class GameApplicationService(
   ): Either[GameApplicationError, Vector[String]] =
     if (limit < 1 || limit > 100)
       Left(BootstrapFailure("event history limit must be between 1 and 100"))
-    else repository.load(gameId).left.map(storageError).flatMap {
+    else repository.load(gameId).left.map(storageError).flatMap:
       case None => Left(GameApplicationError.StreamNotFound(gameId))
       case Some(stream) => Right(stream.records.takeRight(limit))
-    }
 
   def load(
       gameId: String
   ): Either[GameApplicationError, Option[LoadedGame]] =
-    repository.load(gameId).left.map(storageError).flatMap {
+    repository.load(gameId).left.map(storageError).flatMap:
       case None => Right(None)
       case Some(stream) =>
         reconstruct(gameId, stream).map(state =>
           Some(LoadedGame(state, stream.nextSequence)))
-    }
 
   def preview(gameId: String, expectedNextSequence: Long, actor: PlayerId,
       action: ActionKind, selected: Vector[OrderedRuleInvocation])
       : Either[GameApplicationError, MajorActionPreviewAccepted] =
-    load(gameId).flatMap {
+    load(gameId).flatMap:
       case None => Left(GameApplicationError.StreamNotFound(gameId))
       case Some(loaded) if loaded.nextSequence != expectedNextSequence =>
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
       case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) =>
-        walkerAction(action) match {
+        walkerAction(action) match
           // The `ActionRef` this match already resolved is bound rather than
           // discarded (batch-1 Task 1): `offerableWalkerPowers` reads the
           // action's own modifier-selection window from the registry, so the
@@ -159,9 +156,7 @@ final class GameApplicationService(
             accepted <- acceptPreview(loaded, options, selected, ignored)
           } yield accepted.copy(modifiers = descriptions.describe(ready,
             actor, action, Vector.empty, accepted.options))
-        }
       case Some(_) => Left(CommandRejected(OathViolation.GameNotStarted))
-    }
 
   /** `action` runs on the generic walker (Task 9a) exactly when its wire key
     * names a registered [[oathdigital.model.ActionRef]] --
@@ -211,28 +206,26 @@ final class GameApplicationService(
   private def walkerTargets(action: ActionRef,
       ready: oathdigital.model.ReadyGame,
       actor: PlayerId, selected: Vector[OrderedRuleInvocation])
-      : Vector[PreviewTarget] = action match {
+      : Vector[PreviewTarget] = action match
     case ActionRef.Travel =>
       val powers = rules.walkerPowers(ready, actor,
         selected.map(invocation => PowerId(invocation.handlerId)))
-      TravelProcedure.candidates(catalog, ready, actor, powers).map {
+      TravelProcedure.candidates(catalog, ready, actor, powers).map:
         case (site, cost) =>
           PreviewTarget(s"site:${site.value}", cost, "Travel destination")
-      }
     case _ => Vector.empty
-  }
 
   def handle(
       gameId: String,
       expectedNextSequence: Long,
       command: GameCommand
   ): Either[GameApplicationError, GameAccepted] =
-    repository.load(gameId).left.map(storageError).flatMap {
+    repository.load(gameId).left.map(storageError).flatMap:
       case None =>
         if (expectedNextSequence != 0L)
           Left(StaleClientPosition(expectedNextSequence, 0L))
         else
-          command match {
+          command match
             case GameCommand.Begin(_, _) =>
               handleAgainst(
                 gameId,
@@ -243,7 +236,6 @@ final class GameApplicationService(
               )
             case _ =>
               Left(GameApplicationError.StreamNotFound(gameId))
-          }
       case Some(stream) =>
         if (expectedNextSequence != stream.nextSequence)
           Left(StaleClientPosition(
@@ -251,7 +243,7 @@ final class GameApplicationService(
             stream.nextSequence
           ))
         else
-          command match {
+          command match
             case GameCommand.Begin(_, _) => Left(DuplicateGame(gameId))
             case _ =>
               reconstruct(gameId, stream).flatMap { state =>
@@ -263,8 +255,6 @@ final class GameApplicationService(
                   stream.nextSequence
                 )
               }
-          }
-    }
 
   private def reconstruct(
       gameId: String,
@@ -305,7 +295,7 @@ final class GameApplicationService(
       (transition, records) = prepared
       result <- repository.append(gameId, expected, records)
         .left.map(storageError)
-      accepted <- result match {
+      accepted <- result match
         case Appended(first, count)
             if first == nextSequence && count == records.size =>
           Right(GameAccepted(
@@ -324,7 +314,6 @@ final class GameApplicationService(
             s"expected first=$nextSequence count=${records.size}; " +
               s"repository returned first=$first count=$count"
           ))
-      }
     } yield accepted
 
   private def prepareTransition(
@@ -342,7 +331,7 @@ final class GameApplicationService(
       command: GameCommand,
       nextSequence: Long
   ): Either[OathViolation, OathTransition] =
-    state match {
+    state match
       case OathState.Ready(ready)
           if (ready.game.current.walkerPending.nonEmpty ||
             ready.game.current.walkerProcedure.nonEmpty) &&
@@ -350,15 +339,14 @@ final class GameApplicationService(
         Left(OathViolation.InvalidEventOrder(
           "a walker procedure is pending; only walker resume commands are legal"))
       case _ => applyUnblockedCommand(state, command, nextSequence)
-    }
 
   private def applyUnblockedCommand(
       state: OathState,
       command: GameCommand,
       nextSequence: Long
   ): Either[OathViolation, OathTransition] =
-    command match {
-      case GameCommand.WithModifiers(inner, ordered) => state match {
+    command match
+      case GameCommand.WithModifiers(inner, ordered) => state match
         case OathState.Ready(ready) => majorAction(inner).toRight(
           OathViolation.InvalidModifierInvocation(
             "ordered modifiers are only valid on a major-action start"))
@@ -374,10 +362,9 @@ final class GameApplicationService(
             }
           }
         case _ => Left(OathViolation.GameNotStarted)
-      }
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
-      case GameCommand.StartWalker(ActionRef.Search, start) => state match {
+      case GameCommand.StartWalker(ActionRef.Search, start) => state match
         case OathState.Ready(ready) => for {
           source <- SearchProcedure.sourceOf(start.startArgs)
           region <- ready.game.current.players.find(_.player == start.actor)
@@ -393,7 +380,6 @@ final class GameApplicationService(
             start.modifiers, start.startArgs)
         } yield result
         case _ => Left(OathViolation.GameNotStarted)
-      }
       case GameCommand.StartWalker(procedure, start) =>
         rules.startWalker(state, procedure, start.actor, start.modifiers,
           start.startArgs)
@@ -425,17 +411,14 @@ final class GameApplicationService(
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
-    }
 
-  private def isWalkerResume(command: GameCommand): Boolean = command match {
+  private def isWalkerResume(command: GameCommand): Boolean = command match
     case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true
     case _ => false
-  }
 
   private def majorAction(command: GameCommand): Option[(PlayerId, ActionKind)] =
-    command match {
+    command match
       case _ => None
-    }
 
   private def encode(
       gameId: String,
@@ -444,7 +427,7 @@ final class GameApplicationService(
   ): Either[GameApplicationError, Vector[String]] =
     events.zipWithIndex.foldLeft[
       Either[GameApplicationError, Vector[String]]
-    ](Right(Vector.empty)) {
+    ](Right(Vector.empty)):
       case (Right(accumulated), (event, offset)) =>
         eventCodec
           .encodeEvent(
@@ -457,15 +440,12 @@ final class GameApplicationService(
           .map(CodecFailure.apply)
           .map(value => accumulated :+ value)
       case (failure @ Left(_), _) => failure
-    }
 
   private def storageError(
       failure: RepositoryFailure
   ): GameApplicationError =
-    failure match {
+    failure match
       case RepositoryFailure.StorageFailure(message) =>
         StorageFailure(message)
       case RepositoryFailure.InvalidConfiguration(message) =>
         StorageFailure(message)
-    }
-}

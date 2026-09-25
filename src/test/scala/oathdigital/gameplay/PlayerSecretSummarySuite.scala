@@ -3,14 +3,14 @@ package oathdigital.gameplay
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
 
-class PlayerSecretSummarySuite extends munit.FunSuite {
+class PlayerSecretSummarySuite extends munit.FunSuite:
   import FirstGameSetupFixture._
   private val base = initialReady
   private val actor = base.game.current.players.find(
     _.player == base.game.current.turn.activePlayer).get
 
   private def withState(available: Int, facedown: Int,
-      siteCommitted: Int): ReadyGame = {
+      siteCommitted: Int): ReadyGame =
     val site = actor.pawnSite.get
     val definition = catalog.denizens.head
     base.updateCurrent(_.copy(
@@ -23,9 +23,8 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
           Option.when(siteCommitted > 0)(DenizenState(
             DenizenId(definition.id.value), Orientation.FaceUp,
             Tokens(0, siteCommitted))).toVector)))))
-  }
 
-  test("derived secret accounting reports available facedown committed and total") {
+  test("derived secret accounting reports available facedown committed and total"):
     val examples = Vector(
       withState(1, 0, 0) -> PlayerSecretSummary(1, 0, 0),
       withState(0, 0, 1) -> PlayerSecretSummary(0, 0, 1),
@@ -38,9 +37,8 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
       assertEquals(actual.totalSecrets,
         actual.available + actual.facedown + actual.committed)
     }
-  }
 
-  test("valid inactive player has zero commitments and ignores ruled-site tokens") {
+  test("valid inactive player has zero commitments and ignores ruled-site tokens"):
     val ready = withState(0, 0, 1)
     val inactive = ready.game.current.players.find(_.player != actor.player).get
     val pawn = actor.pawnSite.get
@@ -52,9 +50,8 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
       inactive.player).toOption.get.committed, 0)
     assertEquals(PlayerSecretSummary.derive(ruledByInactive,
       actor.player).toOption.get.committed, 1)
-  }
 
-  test("active total includes a committed secret on another player's adviser") {
+  test("active total includes a committed secret on another player's adviser"):
     val inactive = base.game.current.players.find(_.player != actor.player).get
     val card = DenizenState(DenizenId(catalog.denizens.head.id.value),
       Orientation.FaceUp, Tokens(0, 1))
@@ -65,9 +62,8 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
       actor.player).toOption.get.committed, 1)
     assertEquals(PlayerSecretSummary.derive(corrupt,
       inactive.player).toOption.get.committed, 0)
-  }
 
-  test("active total includes a committed secret on another player's relic") {
+  test("active total includes a committed secret on another player's relic"):
     val inactive = base.game.current.players.find(_.player != actor.player).get
     val relic = RelicState(RelicId(catalog.relics.head.id.value),
       Orientation.FaceUp, Tokens(0, 2))
@@ -82,5 +78,3 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
       "cross-player-secrets", oathdigital.application.LoadedGame(OathState.Ready(corrupt), 9L))
     assertEquals(projected.playerBoards.find(_.playerId == actor.player.value)
       .map(_.committedSecrets), Some(2))
-  }
-}

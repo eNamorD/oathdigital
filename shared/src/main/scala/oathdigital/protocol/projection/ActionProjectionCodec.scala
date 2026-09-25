@@ -3,18 +3,16 @@ package oathdigital.protocol.projection
 import ProjectionCodecSupport._
 import WorldProjectionCodec.{decodeCard, encodeCard}
 
-private[projection] object ActionProjectionCodec {
-  def encodeTarget(value: BoardTargetRefProjection): ujson.Value = value match {
+private[projection] object ActionProjectionCodec:
+  def encodeTarget(value: BoardTargetRefProjection): ujson.Value = value match
     case BoardTargetRefProjection.Site(id) => ujson.Obj("kind" -> "site", "siteId" -> id)
-  }
   def decodeTarget(raw: ujson.Value, path: String): Result[BoardTargetRefProjection] = for {
     value <- obj(raw, path); kind <- string(value, "kind", path)
-    target <- kind match {
+    target <- kind match
       case "site" => exact(value, Set("kind", "siteId"), path).flatMap(_ =>
         string(value, "siteId", path).map(BoardTargetRefProjection.Site.apply))
       case other => Left(oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(
         s"$path.kind", s"unsupported board target '$other'"))
-    }
   } yield target
 
   def encodeAction(value: BoardTargetActionProjection): ujson.Value = ujson.Obj(
@@ -339,4 +337,3 @@ private[projection] object ActionProjectionCodec {
       canAccept <- bool(row, "canAccept", child)
     } yield NegotiationEditingProjection(favor, relics, advisers, sites, canAccept) }
   } yield NegotiationDealProjection(participants, accepted, transfers, disclosures, editing)
-}

@@ -2,6 +2,5 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver.Power
 
-object WakePowers {
+object WakePowers:
   val powers: Vector[Power] = Vector.empty
-}

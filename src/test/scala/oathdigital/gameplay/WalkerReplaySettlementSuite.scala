@@ -11,7 +11,7 @@ import oathdigital.model.OathState.Ready
   * live command, whose state is the replay of its own events, would rest a
   * defender's payment on the card it was settled off.
   */
-class WalkerReplaySettlementSuite extends munit.FunSuite {
+class WalkerReplaySettlementSuite extends munit.FunSuite:
   private val base = initialReady
   private val current = base.game.current
   private val active = current.turn.activePlayer
@@ -34,10 +34,9 @@ class WalkerReplaySettlementSuite extends munit.FunSuite {
     Ready(arranged), WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("PayCost")),
       Vector(pay),
-      Vector.empty)) match {
+      Vector.empty)) match
     case Right(Ready(state)) => state
     case other => fail(s"the recorded payment must replay, got $other")
-  }
 
   private def tokens(state: ReadyGame): Tokens =
     state.game.current.map.sites(siteId).denizens.collectFirst {
@@ -46,7 +45,7 @@ class WalkerReplaySettlementSuite extends munit.FunSuite {
   private def board(state: ReadyGame, who: PlayerId) =
     state.game.current.players.find(_.player == who).get.board
 
-  test("an off-turn payment replays settled: favor to the matching bank, a secret facedown") {
+  test("an off-turn payment replays settled: favor to the matching bank, a secret facedown"):
     val done = replay(PayCost(payer, Location.OnCard(denizen),
       Cost(favor = 1, secret = 1), intoOccupied = true, matchingBank = Some(suit)))
     assertEquals(tokens(done), Tokens.empty)
@@ -55,18 +54,14 @@ class WalkerReplaySettlementSuite extends munit.FunSuite {
       (2, 2, 1))
     assertEquals(done.banks.favor.getOrElse(suit, 0),
       arranged.banks.favor.getOrElse(suit, 0) + 1)
-  }
 
-  test("the active player's payment replays resting on the card") {
+  test("the active player's payment replays resting on the card"):
     val done = replay(PayCost(active, Location.OnCard(denizen),
       Cost(favor = 1, secret = 1), matchingBank = Some(suit)))
     assertEquals(tokens(done), Tokens(1, 1))
     assertEquals(board(done, active).faceDownSecrets, 0)
-  }
 
-  test("a recorded batch of other operations replays as before") {
+  test("a recorded batch of other operations replays as before"):
     val done = replay(PayCost(active, Location.OnCard(denizen),
       Cost(favorBurnt = 1)))
     assertEquals(board(done, active).favor, 2)
-  }
-}

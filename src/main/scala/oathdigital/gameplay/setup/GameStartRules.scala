@@ -17,7 +17,7 @@ import oathdigital.model.OathViolation._
  * (`FirstGameChronicleGenerator.validate`), checked once at generation
  * time rather than again at every setup.
  */
-object GameStartRules {
+object GameStartRules:
   def evolve(catalog: ExecutableCatalog, chronicle: Chronicle,
       orders: SetupOrders): Either[OathViolation, ReadyGame] =
     for {
@@ -80,13 +80,12 @@ object GameStartRules {
       inPlay.map(_.site), chronicle.worldDeck, orders.worldDeckOrder,
       chronicle.relicDeck, homelands)
 
-  private def duplicate[A](values: Vector[A]): Option[A] = {
+  private def duplicate[A](values: Vector[A]): Option[A] =
     val seen = scala.collection.mutable.HashSet.empty[A]
     values.find(value => !seen.add(value))
-  }
 
   private def validateIds(catalog: ExecutableCatalog, chronicle: Chronicle)
-      : Either[OathViolation, Unit] = {
+      : Either[OathViolation, Unit] =
     val siteIds = catalog.sites.map(_.id).toSet
     val edificeIds = catalog.edifices.map(e => EdificeId(e.id.value)).toSet
     val denizenIds = catalog.denizens.map(d => DenizenId(d.id.value)).toSet
@@ -117,10 +116,9 @@ object GameStartRules {
       Left(UnsupportedChronicle(
         s"duplicate relic ${duplicate(chronicle.relicDeck).get.value}"))
     else Right(())
-  }
 
   private def validateParticipants(orders: SetupOrders)
-      : Either[OathViolation, Unit] = {
+      : Either[OathViolation, Unit] =
     val playerIds = orders.participants.map(_.playerId)
     val lineageIds = orders.participants.map(_.lineageId)
     val colors = orders.participants.map(_.color)
@@ -134,20 +132,19 @@ object GameStartRules {
     else if (!playerIds.contains(orders.firstPlayer))
       Left(UnknownFirstPlayer(orders.firstPlayer))
     else Right(())
-  }
 
   private def homelandEdifices(catalog: ExecutableCatalog,
       inPlay: Vector[StoredSite])
-      : Either[OathViolation, Vector[(SiteId, EdificeId)]] = {
+      : Either[OathViolation, Vector[(SiteId, EdificeId)]] =
     val sitesById = catalog.sites.map(s => s.id -> s).toMap
     val edificesById = catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap
     inPlay.foldLeft[Either[OathViolation, Vector[(SiteId, EdificeId)]]](
         Right(Vector.empty)) { (acc, stored) =>
       acc.flatMap { built =>
-        homelandSuit(sitesById(stored.site).handlers) match {
+        homelandSuit(sitesById(stored.site).handlers) match
           case None => Right(built)
           case Some(suit) =>
-            stored.items.collectFirst { case id: EdificeId => id } match {
+            stored.items.collectFirst { case id: EdificeId => id } match
               case Some(edificeId) if edificesById.get(edificeId)
                     .exists(_.suit == suit) =>
                 Right(built :+ (stored.site -> edificeId))
@@ -156,11 +153,8 @@ object GameStartRules {
                   "not match its Homeland suit"))
               case None => Left(UnsupportedChronicle(
                 s"Homeland ${stored.site.value} has no stored edifice"))
-            }
-        }
       }
     }
-  }
 
   private def homelandSuit(handlers: Vector[String]): Option[Suit] =
     handlers.collectFirst {
@@ -170,4 +164,3 @@ object GameStartRules {
 
   private def relicSlots(catalog: ExecutableCatalog, site: SiteId): Int =
     catalog.sites.find(_.id == site).get.relicSlots
-}

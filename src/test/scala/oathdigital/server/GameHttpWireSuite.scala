@@ -7,8 +7,8 @@ import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, Part
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   DecisionAnswerWire, DecisionPlacementWire, DistributeAmountWire, GameIntent}
 
-class GameHttpWireSuite extends munit.FunSuite {
-  test("the usePower intent binds to a UsePower command for the requester") {
+class GameHttpWireSuite extends munit.FunSuite:
+  test("the usePower intent binds to a UsePower command for the requester"):
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
         oathdigital.protocol.WalkerStartArgWire("denizen", "92"))),
@@ -22,8 +22,7 @@ class GameHttpWireSuite extends munit.FunSuite {
     assert(GameIntentMapper.bind(PlayerId("actor-1"),
       oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
         oathdigital.protocol.WalkerStartArgWire("warband", "w1"))).isLeft)
-  }
-  test("development and authenticated transports decode the same actorless intent") {
+  test("development and authenticated transports decode the same actorless intent"):
     val json = ActorlessCommandCodec.encode(ActorlessCommandRequest(
       8L,
       GameIntent.RevealOwnedRelic("relic:ancient-city")
@@ -33,35 +32,31 @@ class GameHttpWireSuite extends munit.FunSuite {
     assertEquals(development.expectedNextSequence, authenticated.expectedNextSequence)
     assertEquals(development.intent, authenticated.intent)
     assertEquals(development.intent, GameIntent.RevealOwnedRelic("relic:ancient-city"))
-  }
 
-  test("actor injection is rejected by both transports") {
+  test("actor injection is rejected by both transports"):
     val json =
       """{"expectedNextSequence":8,"intent":{"type":"endWake","playerId":"spoof"}}"""
     val development = GameHttpWire.decodeCommand(json).left.toOption.get
     val authenticated = AuthenticatedGameHttpWire.decodeCommand(json).left.toOption.get
     assertEquals(development, authenticated)
     assertEquals(development.path, "$.intent.playerId")
-  }
 
-  test("one mapper binds the transport-selected actor") {
+  test("one mapper binds the transport-selected actor"):
     assertEquals(GameIntentMapper.bind(PlayerId("dev-selected"),
       GameIntent.RevealOwnedRelic("relic:a")),
       Right(GameCommand.RevealOwnedRelic(PlayerId("dev-selected"), RelicId("relic:a"))))
     assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
       Right(GameCommand.EndWake(PlayerId("member-seat"))))
-  }
 
-  test("domain conversion rejects unknown protocol identifiers without throwing") {
+  test("domain conversion rejects unknown protocol identifiers without throwing"):
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.StartWalker("search", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("teleport", "x"))))
       .left.toOption.get
     assertEquals(failure.path, "$.intent.startArgs[0]")
-  }
 
   test("walker intents map onto Task 4's StartWalker/RollWalker/ResolveWalker " +
-      "commands, and RollWalker never carries client-supplied faces") {
+      "commands, and RollWalker never carries client-supplied faces"):
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.StartWalker("recover", Vector("denizen.catacombs"))),
       Right(GameCommand.StartWalker(ActionRef.Recover,
@@ -119,64 +114,54 @@ class GameHttpWireSuite extends munit.FunSuite {
     assert(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.relic",
         DecisionAnswerWire.ChooseOneWire("relic", "   "))).isLeft)
-  }
 
-  test("an unknown walker action string is rejected without throwing") {
+  test("an unknown walker action string is rejected without throwing"):
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.StartWalker("teleport", Vector.empty)).left.toOption.get
     assertEquals(failure.path, "$.intent.action")
     assert(failure.message.contains("unknown action"))
-  }
 
   test("a malformed walker modifier id is rejected with a typed failure, " +
-      "not an exception") {
+      "not an exception"):
     val result = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.StartWalker("recover", Vector("Recover")))
-    val failure = result match {
+    val failure = result match
       case Left(f) => f
       case Right(command) => fail(s"expected a typed rejection, got $command")
-    }
     assertEquals(failure.path, "$.intent.modifiers[0]")
-  }
 
-  test("an unknown option kind is rejected without throwing") {
+  test("an unknown option kind is rejected without throwing"):
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.choice",
         DecisionAnswerWire.ChooseOneWire("teleport", "x"))).left.toOption.get
     assertEquals(failure.path, "$.intent.payload.option")
-  }
 
   test("a blank relic id is rejected with a typed failure, not an " +
-      "IllegalArgumentException escaping the mapper (finding I7)") {
+      "IllegalArgumentException escaping the mapper (finding I7)"):
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.relic",
         DecisionAnswerWire.ChooseOneWire("relic", ""))).left.toOption.get
     assertEquals(failure.path, "$.intent.payload.option")
-  }
 
   test("an unplaceable option inside a partition answer is rejected with " +
-      "the placement path, not the choose-one path") {
+      "the placement path, not the choose-one path"):
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("forge.assignment",
         DecisionAnswerWire.PartitionWire(Vector(
           DecisionPlacementWire("warband", "w1", "pay-favor")))))
       .left.toOption.get
     assertEquals(failure.path, "$.intent.payload.placements.option")
-  }
 
-  test("malformed actorless requests retain typed paths") {
+  test("malformed actorless requests retain typed paths"):
     assertEquals(GameHttpWire.decodeCommand("{").left.toOption.get.path, "$")
     val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
       """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(GameHttpWire.decodeCommand(missing).left.toOption.get.path,
       "$.intent.startArgs[0].optionId")
-  }
 
-  test("development bootstrap remains configuration-only") {
+  test("development bootstrap remains configuration-only"):
     val json =
       """{"expectedNextSequence":0,"participants":[{"playerId":"p1","lineageId":"l1","color":"red"}],"firstPlayer":"p1"}"""
     val request = GameHttpWire.decodeBootstrap(json).toOption.get
     assertEquals(request.expectedNextSequence, 0L)
     assertEquals(request.participants.map(_.playerId), Vector("p1"))
-  }
-}

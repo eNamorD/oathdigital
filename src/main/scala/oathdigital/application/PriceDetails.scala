@@ -6,7 +6,7 @@ import oathdigital.model.OptionPrice
   * choose a battle plan. Every part is a line of its own, in a fixed order, and
   * a part that costs nothing is not mentioned.
   */
-private[application] object PriceDetails {
+private[application] object PriceDetails:
   def of(price: OptionPrice): Vector[String] = Vector(
     line(price.favor, "favor", "favor", ""),
     line(price.secrets, "secret", "secrets", ""),
@@ -20,4 +20,3 @@ private[application] object PriceDetails {
       : String =
     if (count == 0) ""
     else s"Cost: $count ${if (count == 1) one else many}$suffix"
-}

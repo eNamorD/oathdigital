@@ -5,7 +5,7 @@ package oathdigital.protocol
   */
 sealed trait GameIntent extends Product with Serializable
 
-object GameIntent {
+object GameIntent:
   case object EndWake extends GameIntent
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
@@ -35,7 +35,6 @@ object GameIntent {
   final case class RollWalker(pool: String) extends GameIntent
   final case class ResolveWalker(decisionId: String,
       payload: DecisionAnswerWire) extends GameIntent
-}
 
 /** One game-object reference in a walker procedure's start selection, spelled
   * exactly as a decision answer spells one: a kind and an id, decoded by the
@@ -58,14 +57,13 @@ final case class NegotiationDisclosure(
     recipientPlayerId: String, information: NegotiationInformation)
 
 sealed trait NegotiationInformation extends Product with Serializable
-object NegotiationInformation {
+object NegotiationInformation:
   final case class Adviser(ownerPlayerId: String, card: WorldCard)
       extends NegotiationInformation
   final case class HeldRelic(ownerPlayerId: String, relicId: String)
       extends NegotiationInformation
   final case class SiteRelic(siteId: String, relicId: String)
       extends NegotiationInformation
-}
 
 /** Wire form of a walker decision answer, generic over the engine's
   * `DecisionQuery` shapes rather than over any action's own vocabulary.
@@ -77,7 +75,7 @@ object NegotiationInformation {
   * identifier in this protocol.
   */
 sealed trait DecisionAnswerWire extends Product with Serializable
-object DecisionAnswerWire {
+object DecisionAnswerWire:
   /** Answers a choose-one decision with the single option selected. */
   final case class ChooseOneWire(optionKind: String, optionId: String)
       extends DecisionAnswerWire
@@ -107,7 +105,6 @@ object DecisionAnswerWire {
 
   /** Declines, which ends the negotiation. */
   case object DeclineDealWire extends DecisionAnswerWire
-}
 
 /** One option named in a [[DecisionAnswerWire.ChooseManyWire]]. */
 final case class DecisionOptionWire(optionKind: String, optionId: String)

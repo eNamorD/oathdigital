@@ -6,14 +6,13 @@ import oathdigital.model._
 /** League Treaty arranged on a first-game Act state, shared with the
   * pending-walker invariant (Task 13).
   */
-object LeagueTreatyFixture {
+object LeagueTreatyFixture:
   val treatyCard = DenizenId("237")
 
-  def act: ReadyGame = {
+  def act: ReadyGame =
     val initial = initialReady
     initial.updateCurrent(_.copy(
       turn = initial.game.current.turn.copy(phase = Phase.Act)))
-  }
 
   def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get
 
@@ -23,7 +22,7 @@ object LeagueTreatyFixture {
     * by `ruler`'s warband when `ruler` is set, and by bandits otherwise.
     */
   def arranged(ruler: Option[PlayerId],
-      favor: Vector[(Suit, Int)]): (ReadyGame, SiteId) = {
+      favor: Vector[(Suit, Int)]): (ReadyGame, SiteId) =
     val base = act
     val current = base.game.current
     val site = current.map.cradle.head
@@ -32,11 +31,10 @@ object LeagueTreatyFixture {
     val deck = (current.commonCards.worldDeck ++
       current.commonCards.regionalDiscards.values.flatten)
       .collect { case id: DenizenId => id }
-    val picks = favor.foldLeft(Vector.empty[(DenizenId, Int)]) {
+    val picks = favor.foldLeft(Vector.empty[(DenizenId, Int)]):
       case (chosen, (suit, amount)) => chosen :+ (deck.find(id =>
         id != treatyCard && !chosen.exists(_._1 == id) && suitOf(id) == suit)
         .get -> amount)
-    }
     val lineage = current.players.map(p => p.player -> p.lineage).toMap
     val placed = picks.zipWithIndex.groupBy { case (_, i) =>
       region(i % region.size) }.map { case (id, rows) => id -> rows.map {
@@ -69,5 +67,3 @@ object LeagueTreatyFixture {
             case _ => false
           }
         })))) -> site
-  }
-}

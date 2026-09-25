@@ -7,9 +7,9 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 
-class DazzleSuite extends munit.FunSuite {
+class DazzleSuite extends munit.FunSuite:
 
-  test("Dazzle discards Hearth and Order site cards from the actor region") {
+  test("Dazzle discards Hearth and Order site cards from the actor region"):
     val base = initialReady
     val actor = base.game.current.turn.activePlayer
     val dazzle = catalog.denizens.find(_.powers.exists(
@@ -52,9 +52,8 @@ class DazzleSuite extends munit.FunSuite {
     assertEquals(PowerRuntime.ignoredAtSource(catalog, prepared, actor,
       ActionKind.WhenPlayed, RuleSourceRef.Adviser(actor, dazzle)),
       Right(Vector.empty))
-  }
 
-  test("Dazzle skips a rule-immune target and still discards another") {
+  test("Dazzle skips a rule-immune target and still discards another"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -102,9 +101,8 @@ class DazzleSuite extends munit.FunSuite {
       step.ops }.flatten
     assertEquals(ops.collect { case value: Discard.Denizen => value.card },
       Vector(targets.head))
-  }
 
-  test("Dazzle rejects a site denizen absent from the catalog") {
+  test("Dazzle rejects a site denizen absent from the catalog"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -121,9 +119,8 @@ class DazzleSuite extends munit.FunSuite {
     val hook = CardPlayedFaceup(dazzleId, RuleSourceRef.Adviser(actor, dazzleId))
     assert(ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(dazzle))).isLeft)
-  }
 
-  test("Dazzle discards ruined Hearth and Order edifices, not intact ones or other suits") {
+  test("Dazzle discards ruined Hearth and Order edifices, not intact ones or other suits"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -160,9 +157,8 @@ class DazzleSuite extends munit.FunSuite {
     assert(remaining.contains(intactHearth), "an intact edifice is locked")
     assert(remaining.contains(ruinedBeast), "another suit is not discarded")
     assertEquals(after.commonCards.edificeDeck.lastOption, Some(ruinedHearth))
-  }
 
-  test("Dazzle leaves other suits and other regions alone") {
+  test("Dazzle leaves other suits and other regions alone"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -202,5 +198,3 @@ class DazzleSuite extends munit.FunSuite {
     assert(at(home, beast), "a Beast card in the region is not discarded")
     assert(!at(home, near), "a Hearth card in the region is discarded")
     assert(at(away, faraway), "a Hearth card in another region is not discarded")
-  }
-}

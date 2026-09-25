@@ -22,7 +22,7 @@ import oathdigital.serialization.WireError.InvalidValue
   * eight variants are named once in the model rather than tabulated again
   * here, in the command protocol, and in the projection.
   */
-private[serialization] object DecisionAnswerCodec {
+private[serialization] object DecisionAnswerCodec:
   private val ChooseOneTag = "choose-one"
   private val ChooseManyTag = "choose-many"
   private val ChooseAmountTag = "choose-amount"
@@ -32,7 +32,7 @@ private[serialization] object DecisionAnswerCodec {
   private val AcceptDealTag = "accept-deal"
   private val DeclineDealTag = "decline-deal"
 
-  def encode(answer: DecisionAnswer): ujson.Value = answer match {
+  def encode(answer: DecisionAnswer): ujson.Value = answer match
     case DecisionAnswer.ChooseOneAnswer(selected) => ujson.Obj(
       "kind" -> ChooseOneTag, "option" -> encodeRef(selected))
     case DecisionAnswer.ChooseManyAnswer(selected) => ujson.Obj(
@@ -53,11 +53,10 @@ private[serialization] object DecisionAnswerCodec {
       "kind" -> ProposeTermsTag, "terms" -> NegotiationTermsCodec.encode(terms))
     case DecisionAnswer.AcceptDeal => ujson.Obj("kind" -> AcceptDealTag)
     case DecisionAnswer.DeclineDeal => ujson.Obj("kind" -> DeclineDealTag)
-  }
 
   def decode(value: ujson.Value,
       path: String): Either[WireError, DecisionAnswer] =
-    value("kind").str match {
+    value("kind").str match
       case ChooseOneTag => decodeRef(value("option"), s"$path.option")
         .map(DecisionAnswer.ChooseOneAnswer.apply)
       case ChooseManyTag =>
@@ -92,7 +91,6 @@ private[serialization] object DecisionAnswerCodec {
       case DeclineDealTag => Right(DecisionAnswer.DeclineDeal)
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker decision answer '$other'"))
-    }
 
   /** `private[serialization]`, not `private`: [[WalkerEventCodec]] writes the
     * start selections on a `WalkerParked` with this same pair, so the journal
@@ -104,17 +102,14 @@ private[serialization] object DecisionAnswerCodec {
     ujson.Obj("kind" -> ref.kind, "id" -> ref.wireId)
 
   private[serialization] def decodeRef(value: ujson.Value,
-      path: String): Either[WireError, DecisionOptionRef] = {
+      path: String): Either[WireError, DecisionOptionRef] =
     val kind = value("kind").str
     val id = value("id").str
     DecisionOptionRef.fromWire(kind, id).toRight(InvalidValue(path,
       s"unknown decision option '$kind/$id'"))
-  }
 
   private def traverse[A, B](values: Vector[A])(
       f: A => Either[WireError, B]): Either[WireError, Vector[B]] =
-    values.foldLeft[Either[WireError, Vector[B]]](Right(Vector.empty)) {
+    values.foldLeft[Either[WireError, Vector[B]]](Right(Vector.empty)):
       case (Right(acc), value) => f(value).map(acc :+ _)
       case (failure @ Left(_), _) => failure
-    }
-}

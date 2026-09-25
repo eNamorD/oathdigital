@@ -5,27 +5,26 @@ import org.scalajs.dom
 /** The last Campaign's result, drawn for every viewer: it is public, and it is
   * the only place the dice of a Campaign that ended in one command are shown.
   */
-private[frontend] object CampaignResultPanel {
+private[frontend] object CampaignResultPanel:
   import ServerUiSupport.{element, playerDisplayName, siteLabel, text}
 
   /** The faces as the symbols printed on them, drawn by the same renderer
     * the Recover panel uses, with the words kept as the accessible name.
     */
   private def dice(faces: Vector[String]): dom.Element =
-    if (faces.isEmpty) {
+    if (faces.isEmpty)
       val none = element("span", "die-faces")
       none.appendChild(dom.document.createTextNode("no dice"))
       none
-    } else DieFace.roll(faces)
+    else DieFace.roll(faces)
 
   private def line(className: String, before: String, faces: Vector[String],
-      after: String): dom.Element = {
+      after: String): dom.Element =
     val node = element("p", className)
     node.appendChild(dom.document.createTextNode(before))
     node.appendChild(dice(faces))
     node.appendChild(dom.document.createTextNode(after))
     node
-  }
 
   def render(value: GameProjection, panel: dom.Element): Unit =
     value.lastCampaign.foreach { result =>
@@ -51,4 +50,3 @@ private[frontend] object CampaignResultPanel {
         if (result.attackerWins) "Victory" else "Defeat"))
       panel.appendChild(box)
     }
-}

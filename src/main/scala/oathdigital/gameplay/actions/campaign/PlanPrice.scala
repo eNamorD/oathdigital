@@ -12,10 +12,10 @@ import oathdigital.model._
   * that asks which force pays, before the warband is killed, so it may not have
   * recorded the kill yet.
   */
-private[campaign] object PlanPrice {
+private[campaign] object PlanPrice:
   def of(offer: CampaignPlanOffer, operations: Vector[CoreOperation])
-      : OptionPrice = {
-    val paid = operations.foldLeft(OptionPrice()) {
+      : OptionPrice =
+    val paid = operations.foldLeft(OptionPrice()):
       case (price, PayCost(_, _, cost, _, _, _)) => price.copy(
         favor = price.favor + cost.favor,
         secrets = price.secrets + cost.secret,
@@ -24,16 +24,12 @@ private[campaign] object PlanPrice {
       case (price, FlipSecrets(_, amount, SecretSide.FaceUp, SecretSide.FaceDown)) =>
         price.copy(secrets = price.secrets + amount)
       case (price, _) => price
-    }
     if (offer.costs.contains(CampaignPlanCost.SacrificeWarband))
       paid.copy(warbands = 1)
     else paid
-  }
 
   /** The option, carrying its price when it has one. */
   def priced(option: DecisionOption, offer: CampaignPlanOffer,
-      operations: Vector[CoreOperation]): DecisionOption = {
+      operations: Vector[CoreOperation]): DecisionOption =
     val price = of(offer, operations)
     if (price.isFree) option else DecisionOption.Priced(option, price)
-  }
-}

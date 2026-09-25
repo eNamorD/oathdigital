@@ -33,7 +33,7 @@ package oathdigital.model
   * at, because location is a legality fact used while BUILDING a query, not
   * part of a card's identity.
   */
-sealed trait DecisionOptionRef extends Product with Serializable {
+sealed trait DecisionOptionRef extends Product with Serializable:
   /** Which of the eleven variants this is, as a stable wire string. */
   def kind: String
 
@@ -47,69 +47,57 @@ sealed trait DecisionOptionRef extends Product with Serializable {
     * the failure mode this whole vocabulary exists to remove.
     */
   def wireId: String
-}
-object DecisionOptionRef {
+object DecisionOptionRef:
   /** A choice with no game object behind it, keyed by a stable string
     * (e.g. `"continue"`, `"stop"`).
     */
-  final case class Button(key: String) extends DecisionOptionRef {
+  final case class Button(key: String) extends DecisionOptionRef:
     val kind: String = "button"
     def wireId: String = key
-  }
-  final case class Player(id: PlayerId) extends DecisionOptionRef {
+  final case class Player(id: PlayerId) extends DecisionOptionRef:
     val kind: String = "player"
     def wireId: String = id.value
-  }
-  final case class Site(id: SiteId) extends DecisionOptionRef {
+  final case class Site(id: SiteId) extends DecisionOptionRef:
     val kind: String = "site"
     def wireId: String = id.value
-  }
-  final case class Denizen(id: DenizenId) extends DecisionOptionRef {
+  final case class Denizen(id: DenizenId) extends DecisionOptionRef:
     val kind: String = "denizen"
     def wireId: String = id.value
-  }
-  final case class Relic(id: RelicId) extends DecisionOptionRef {
+  final case class Relic(id: RelicId) extends DecisionOptionRef:
     val kind: String = "relic"
     def wireId: String = id.value
-  }
-  final case class Vision(id: VisionId) extends DecisionOptionRef {
+  final case class Vision(id: VisionId) extends DecisionOptionRef:
     val kind: String = "vision"
     def wireId: String = id.value
-  }
-  final case class Edifice(id: EdificeId) extends DecisionOptionRef {
+  final case class Edifice(id: EdificeId) extends DecisionOptionRef:
     val kind: String = "edifice"
     def wireId: String = id.value
-  }
   /** One relic of another player, named by its position in their relic
     * vector rather than by the card, so a facedown relic's identity is never
     * disclosed by an option. The owner may contain a colon; the slot is
     * always the text after the last one.
     */
   final case class RelicSlot(owner: PlayerId, slot: Int)
-      extends DecisionOptionRef {
+      extends DecisionOptionRef:
     require(slot >= 0, "a relic slot must be non-negative")
     val kind: String = "relic-slot"
     def wireId: String = s"${owner.value}:$slot"
-  }
   /** A banner. It names no holder: who holds it is read from live state, so
     * an answer cannot name a holder that has since changed.
     */
   final case class Banner(banner: oathdigital.model.Banner)
-      extends DecisionOptionRef {
+      extends DecisionOptionRef:
     val kind: String = "banner"
     def wireId: String = banner.key
-  }
-  final case class Deck(id: CardDeck) extends DecisionOptionRef {
+  final case class Deck(id: CardDeck) extends DecisionOptionRef:
     val kind: String = "deck"
     def wireId: String = id.key
-  }
   /** A suit's favor bank: the one shared place favor of that suit returns
     * to. A suit is a closed six-case enum, so this can never be absent.
     */
-  final case class FavorBank(suit: Suit) extends DecisionOptionRef {
+  final case class FavorBank(suit: Suit) extends DecisionOptionRef:
     val kind: String = "favor-bank"
     def wireId: String = suit.key
-  }
 
   /** Safe parse of the [[DecisionOptionRef.kind]]/[[DecisionOptionRef.wireId]]
     * pair from untrusted input: `None` for an unknown kind or an id that
@@ -122,7 +110,7 @@ object DecisionOptionRef {
     */
   def fromWire(kind: String, wireId: String): Option[DecisionOptionRef] =
     if (wireId.trim.isEmpty) None
-    else kind match {
+    else kind match
       case "button" => Some(Button(wireId))
       case "player" => Some(Player(PlayerId(wireId)))
       case "site" => Some(Site(SiteId(wireId)))
@@ -139,8 +127,6 @@ object DecisionOptionRef {
       case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
       case "favor-bank" => Suit.fromKey(wireId).map(FavorBank(_))
       case _ => None
-    }
-}
 
 /** One selectable option on a decision: its stable reference, plus whatever
   * display detail the action itself authors.
@@ -151,10 +137,9 @@ object DecisionOptionRef {
   * query cannot pair a button's label with a card, and so the projector can
   * dispatch on the option kind.
   */
-sealed trait DecisionOption extends Product with Serializable {
+sealed trait DecisionOption extends Product with Serializable:
   def ref: DecisionOptionRef
-}
-object DecisionOption {
+object DecisionOption:
   final case class Button(ref: DecisionOptionRef.Button, label: String)
       extends DecisionOption
   final case class Player(ref: DecisionOptionRef.Player) extends DecisionOption
@@ -177,9 +162,8 @@ object DecisionOption {
     * price never affects legality.
     */
   final case class Priced(option: DecisionOption, price: OptionPrice)
-      extends DecisionOption {
+      extends DecisionOption:
     def ref: DecisionOptionRef = option.ref
-  }
 
   /** An option carrying one short label a client draws as a chip: what kind of
     * thing the option is, as opposed to what choosing it costs. Wrapping for
@@ -188,15 +172,14 @@ object DecisionOption {
     * affects legality.
     */
   final case class Badged(option: DecisionOption, badge: String)
-      extends DecisionOption {
+      extends DecisionOption:
     def ref: DecisionOptionRef = option.ref
-  }
 
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so
     * a reference alone cannot present one.
     */
-  def forRef(ref: DecisionOptionRef): Option[DecisionOption] = ref match {
+  def forRef(ref: DecisionOptionRef): Option[DecisionOption] = ref match
     case _: DecisionOptionRef.Button => None
     case value: DecisionOptionRef.Player => Some(Player(value))
     case value: DecisionOptionRef.Site => Some(Site(value))
@@ -208,19 +191,16 @@ object DecisionOption {
     case value: DecisionOptionRef.Banner => Some(Banner(value))
     case value: DecisionOptionRef.Deck => Some(Deck(value))
     case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
-  }
-}
 
 /** What choosing an option costs the chooser, as a dry run of the choice found
   * it: favor and secrets paid (placed, or burnt to the shared bank) and
   * warbands sacrificed. Everything is a count of what leaves the chooser.
   */
 final case class OptionPrice(favor: Int = 0, secrets: Int = 0,
-    favorBurnt: Int = 0, secretsBurnt: Int = 0, warbands: Int = 0) {
+    favorBurnt: Int = 0, secretsBurnt: Int = 0, warbands: Int = 0):
   require(favor >= 0 && secrets >= 0 && favorBurnt >= 0 && secretsBurnt >= 0 &&
     warbands >= 0, "an option price is never negative")
   def isFree: Boolean = this == OptionPrice()
-}
 
 /** One named bucket a [[DecisionQuery.Partition]] spreads its options across.
   *
@@ -252,7 +232,7 @@ final case class DistributeSlot(ref: DecisionOptionRef, minimum: Int,
   * what lets one generic validator and one generic projector serve every
   * action. A new shape is a change to this file and to both of them.
   */
-sealed trait DecisionQuery extends Product with Serializable {
+sealed trait DecisionQuery extends Product with Serializable:
   /** What the panel asking this question calls itself, authored by the
     * action that declared the decision.
     *
@@ -273,8 +253,7 @@ sealed trait DecisionQuery extends Product with Serializable {
     * answer.
     */
   def heading: Option[String]
-}
-object DecisionQuery {
+object DecisionQuery:
   /** Pick exactly one of `options`. */
   final case class ChooseOne(options: Vector[DecisionOption],
       heading: Option[String] = None) extends DecisionQuery
@@ -328,12 +307,11 @@ object DecisionQuery {
   final case class Distribute(slots: Vector[DistributeSlot], minTotal: Int,
       maxTotal: Int, heading: Option[String], confirmLabel: String)
       extends DecisionQuery
-  object Distribute {
+  object Distribute:
     /** A distribution whose amounts must sum to exactly `total`. */
     def exactly(slots: Vector[DistributeSlot], total: Int,
         heading: Option[String], confirmLabel: String): Distribute =
       Distribute(slots, total, total, heading, confirmLabel)
-  }
 
   /** A negotiation deal, as a snapshot the action rebuilds from live state and
     * the recorded answers on every command: who is in it, everyone's current
@@ -346,7 +324,6 @@ object DecisionQuery {
       terms: Map[PlayerId, NegotiationTerms], accepted: Set[PlayerId],
       bounds: Map[PlayerId, NegotiationBounds], acceptors: Set[PlayerId],
       heading: Option[String] = None) extends DecisionQuery
-}
 
 /** One option assigned to one section in a [[DecisionAnswer.PartitionAnswer]].
   */
@@ -377,7 +354,7 @@ final case class DistributeAmount(ref: DecisionOptionRef, amount: Int)
   */
 sealed trait DecisionAnswer extends Product with Serializable
 
-object DecisionAnswer {
+object DecisionAnswer:
   /** Answer to a [[DecisionQuery.ChooseOne]]: the one option reference the
     * player selected.
     */
@@ -415,4 +392,3 @@ object DecisionAnswer {
 
   /** Answer to a [[DecisionQuery.Negotiate]]: declines, which ends it. */
   case object DeclineDeal extends DecisionAnswer
-}

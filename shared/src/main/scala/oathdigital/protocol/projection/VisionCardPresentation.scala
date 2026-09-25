@@ -2,7 +2,7 @@ package oathdigital.protocol.projection
 
 final case class VisionCardPresentation(name: String, rulesText: String)
 
-object VisionCardPresentation {
+object VisionCardPresentation:
   /** The gate every true Vision carries. The engine has always enforced it
     * (`VisionVictoryEligibility`); the text now says so.
     */
@@ -24,4 +24,3 @@ object VisionCardPresentation {
         "your site. If you take a banner, adjust its [favor]/[secret] as " +
         "shown by its right ribbon. Return the Conspiracy to the box.")
   ).toMap
-}

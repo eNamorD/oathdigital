@@ -12,7 +12,7 @@ import oathdigital.model._
   * a warband and every skull face keeps its two swords. A facedown Outriders is
   * revealed when it is chosen, as any plan's source is.
   */
-final case class Outriders private (cardId: DenizenId) extends BattlePlan {
+final case class Outriders private (cardId: DenizenId) extends BattlePlan:
   def id: PowerId = Outriders.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
@@ -26,11 +26,9 @@ final case class Outriders private (cardId: DenizenId) extends BattlePlan {
       Right(ready.game.current.rollOutcomes.get(CampaignIds.attackPool).toVector
         .map(_ => ModifyRollOutcome(CampaignIds.attackPool, Some(0),
           Some(AttackDieFace.score(CampaignBattle.attackFacesOf(ready))))))))))
-}
 
-object Outriders {
+object Outriders:
   val id: PowerId = PowerId("denizen.outriders")
 
   def forCatalog(catalog: ExecutableCatalog): Option[Outriders] =
     CatalogCards.denizen(catalog, id).map(new Outriders(_))
-}

@@ -1,6 +1,6 @@
 package oathdigital.model
 
-object TestGameFixtures {
+object TestGameFixtures:
   val playerId: PlayerId = PlayerId("player-red")
   val lineageId: LineageId = LineageId("red")
 
@@ -127,4 +127,3 @@ object TestGameFixtures {
 
   /** `game` seated at the table: see [[ReadyGames.of]]. */
   val ready: ReadyGame = ReadyGames.of(game)
-}

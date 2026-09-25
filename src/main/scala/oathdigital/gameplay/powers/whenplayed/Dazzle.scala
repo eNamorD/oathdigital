@@ -10,14 +10,13 @@ import oathdigital.model._
   * locked, so they stay.
   */
 final case class Dazzle private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = Dazzle.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
-  override def applicable(ctx: PowerCtx): Boolean = ctx.operation match {
+  override def applicable(ctx: PowerCtx): Boolean = ctx.operation match
     case CardPlayedFaceup(card, _) => card == cardId
     case _ => false
-  }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
@@ -26,16 +25,15 @@ final case class Dazzle private (cardId: DenizenId,
         new DiscardRestrictions(catalog, ctx.activePlayer))))))
 
   private def effects(ready: ReadyGame, actor: PlayerId)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val current = ready.game.current
     val region = current.players.find(_.player == actor).flatMap(_.pawnSite)
       .flatMap(current.map.regionOf)
     region.toRight(OathViolation.PawnSiteMissing(actor)).flatMap { origin =>
-      val destination = origin match {
+      val destination = origin match
         case Region.Cradle => Region.Provinces
         case Region.Provinces => Region.Hinterland
         case Region.Hinterland => Region.Cradle
-      }
       val candidates = current.map.inPlay.filter(site =>
         current.map.regionOf(site).contains(origin)).flatMap { siteId =>
         current.map.sites.get(siteId).toVector.flatMap(_.denizens.map(siteId -> _))
@@ -59,12 +57,9 @@ final case class Dazzle private (cardId: DenizenId,
         case _ => operations
       } }
     }
-  }
-}
 
-object Dazzle {
+object Dazzle:
   val id: PowerId = PowerId("denizen.dazzle")
   def forCatalog(catalog: ExecutableCatalog): Option[Dazzle] =
     catalog.denizens.find(_.powers.exists(_.id == id))
       .map(definition => new Dazzle(DenizenId(definition.id.value), catalog))
-}

@@ -8,7 +8,7 @@ import org.scalajs.dom
   * usurper limit describe the table, not the acting player's options, so
   * they sit with the board rather than in the action panel.
   */
-class PanelPlacementSuite extends munit.FunSuite {
+class PanelPlacementSuite extends munit.FunSuite:
   private def all(node: dom.Element, selector: String): Vector[dom.Element] =
     node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
@@ -43,46 +43,40 @@ class PanelPlacementSuite extends munit.FunSuite {
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
       new RecordingView("game", "red"))
 
-  test("the oath and its holder are listed in the shared bank") {
+  test("the oath and its holder are listed in the shared bank"):
     val line = one(world(projection()), ".shared-bank .oathkeeper-status")
       .getOrElse(fail("no oath line in the shared bank"))
     assertEquals(line.textContent, "Oathkeeper of Supremacy · Oathkeeper: unheld")
-  }
 
   /** The goal is projected, so the panel prints the oath actually in play
     * rather than the one the first game happens to start with.
     */
-  test("a goal other than supremacy is named as itself") {
+  test("a goal other than supremacy is named as itself"):
     assertEquals(one(world(projection(oathkeeper =
       Some(oath.copy(goal = "the-people", holderPlayerId = Some("Blue"))))),
       ".shared-bank .oathkeeper-status").map(_.textContent),
       Some("Oathkeeper of the People · Oathkeeper: Blue"))
-  }
 
-  test("the usurper notice sits under the round tracker, at the projected round") {
+  test("the usurper notice sits under the round tracker, at the projected round"):
     val notice = one(world(projection()), ".round-tracker .usurper-notice")
       .getOrElse(fail("no usurper notice"))
     assertEquals(notice.textContent, "Usurper locked until round 4")
     assertEquals(one(world(projection(trackState =
       Some(tracks.copy(limiterRound = 5)))), ".usurper-notice")
       .map(_.textContent), Some("Usurper locked until round 5"))
-  }
 
-  test("an unlimited usurper gets no notice") {
+  test("an unlimited usurper gets no notice"):
     assertEquals(all(world(projection(trackState =
       Some(tracks.copy(usurperLimited = false)))), ".usurper-notice"),
       Vector.empty)
-  }
 
   /** The player strip already carries the acting player's resources, and the
     * site's loose wealth is drawn on the site itself.
     */
-  test("the action panel carries neither the oath nor a second resource line") {
+  test("the action panel carries neither the oath nor a second resource line"):
     val panel = actions(projection())
     assertEquals(all(panel, ".oathkeeper-status"), Vector.empty)
     assertEquals(all(panel, ".resources"), Vector.empty)
     assertEquals(all(panel, ".site-resources"), Vector.empty)
     assert(!panel.textContent.contains("loose wealth"), panel.textContent)
     assert(!panel.textContent.contains("Usurper"), panel.textContent)
-  }
-}

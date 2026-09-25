@@ -10,7 +10,7 @@ import oathdigital.model._
   * be entered or a title may change is a fact about the turn they run in,
   * and a shape guard would read the same state the mutation reads.
   */
-private[operations] object TurnStateOperations {
+private[operations] object TurnStateOperations:
   import OperationError._
   import OperationStateAdapter.playerState
   import OperationStateWrites.updatePlayer
@@ -28,18 +28,17 @@ private[operations] object TurnStateOperations {
       amount: Int,
       supply: Map[PlayerId, Int]
   ): (Vector[OperationError], Map[PlayerId, Int]) =
-    playerState(ready, player) match {
+    playerState(ready, player) match
       case Left(error) => (Vector(error), supply)
       case Right(_) =>
         val current = supply.getOrElse(player, 0)
-        if (amount < 0) {
+        if (amount < 0)
           val required = -amount
           if (current >= required)
             (Vector.empty, supply.updated(player, current - required))
           else (Vector(InsufficientSupply(required, current)), supply)
-        } else (Vector.empty, supply.updated(player,
+        else (Vector.empty, supply.updated(player,
           math.min(SupplyTrack.Maximum, current + amount)))
-    }
 
   def visionsDrawnViolation(ready: ReadyGame): Vector[OperationError] =
     Option.when(ready.game.current.tracks.visionsDrawn == Int.MaxValue)(
@@ -49,13 +48,12 @@ private[operations] object TurnStateOperations {
   // Mutations
   // ------------------------------------------------------------------
 
-  def advanceVisionsDrawn(ready: ReadyGame): Either[OperationError, ReadyGame] = {
+  def advanceVisionsDrawn(ready: ReadyGame): Either[OperationError, ReadyGame] =
     // Overflow is the guard's (visionsDrawnViolation).
     val current = ready.game.current
     Right(ready.copy(game = ready.game.copy(current = current.copy(
       tracks = current.tracks.copy(
         visionsDrawn = current.tracks.visionsDrawn + 1)))))
-  }
 
   def recordCampaignResult(ready: ReadyGame, fact: CampaignResult): ReadyGame =
     ready.updateCurrent(_.copy(lastCampaignResult = Some(fact)))
@@ -77,7 +75,7 @@ private[operations] object TurnStateOperations {
     * validation belongs to a later task that defines underflow semantics).
     */
   def adjustDicePool(ready: ReadyGame, pool: PoolKey,
-      delta: Int): Either[OperationError, ReadyGame] = {
+      delta: Int): Either[OperationError, ReadyGame] =
     val pools = ready.game.current.rollPools
     val current = pools.get(pool).fold(0)(_.count)
     val next = current + delta
@@ -85,20 +83,18 @@ private[operations] object TurnStateOperations {
       s"dice pool '${pool.value}' count must not go below zero")
     Right(ready.updateCurrent(state => state.copy(
       rollPools = pools.updated(pool, DicePoolState(next)))))
-  }
 
   /** An upsert: a pool that never rolled starts from an empty outcome, so a
     * step that has no roll (a pool of zero dice is never rolled) can still
     * record a result. Fields left `None` are unchanged.
     */
   def modifyRollOutcome(ready: ReadyGame, pool: PoolKey,
-      skulls: Option[Int], score: Option[Int]): ReadyGame = {
+      skulls: Option[Int], score: Option[Int]): ReadyGame =
     val outcomes = ready.game.current.rollOutcomes
     val base = outcomes.getOrElse(pool, RollOutcome(pool, 0, Vector.empty, 0, 0))
     ready.updateCurrent(current => current.copy(rollOutcomes = outcomes.updated(
       pool, base.copy(skulls = skulls.getOrElse(base.skulls),
         score = score.getOrElse(base.score)))))
-  }
 
   /** A set add, so recording a use the turn already holds changes nothing.
     * The turn's used-power set is cleared wholesale when the turn advances,
@@ -135,4 +131,3 @@ private[operations] object TurnStateOperations {
       Left(InvalidTurnPhase(phase))
     else Right(ready.updateCurrent(current =>
       current.copy(turn = TurnState(player, phase, Set.empty))))
-}

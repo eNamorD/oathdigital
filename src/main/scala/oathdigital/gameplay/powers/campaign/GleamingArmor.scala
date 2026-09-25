@@ -25,7 +25,7 @@ import oathdigital.model._
   * players' faceup advisers.
   */
 final case class GleamingArmor private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = GleamingArmor.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -65,20 +65,17 @@ final case class GleamingArmor private (cardId: DenizenId,
     }))
 
   private def enemy(application: CampaignPlanApplication, holding: PlayerId)
-      : Boolean = application.side match {
+      : Boolean = application.side match
     case CampaignPlanSide.Defender => application.setup.actor == holding
     case CampaignPlanSide.Attacker =>
       application.setup.defender == CampaignDefender.Player(holding)
-  }
 
   /** Bandits hold no secrets, so a bandit's plan cannot pay the added cost. */
   private def unpayable: Operation = BuildOps((_, _) =>
     Left(OathViolation.InsufficientSecrets(1, 0)))
-}
 
-object GleamingArmor {
+object GleamingArmor:
   val id: PowerId = PowerId("denizen.gleaming-armor")
 
   def forCatalog(catalog: ExecutableCatalog): Option[GleamingArmor] =
     CatalogCards.denizen(catalog, id).map(new GleamingArmor(_, catalog))
-}

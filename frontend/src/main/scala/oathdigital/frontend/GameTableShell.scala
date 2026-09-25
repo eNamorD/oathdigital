@@ -4,12 +4,12 @@ import org.scalajs.dom
 import ServerUiSupport._
 
 /** Stable player-facing layout; renderer refreshes replace only panel contents. */
-private[frontend] final class GameTableShell(mount: dom.Element, developmentTools: Boolean = true) {
+private[frontend] final class GameTableShell(mount: dom.Element, developmentTools: Boolean = true):
   private val table = element("div", "game-table")
   while (mount.firstChild != null) mount.removeChild(mount.firstChild)
   mount.appendChild(table)
 
-  private class Pane(id: String, title: String) {
+  private class Pane(id: String, title: String):
     val node = element("section", s"game-pane pane-$id")
     node.setAttribute("aria-labelledby", s"$id-heading")
     val header = element("div", "pane-header")
@@ -23,7 +23,6 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     node.appendChild(header)
     node.appendChild(content)
     table.appendChild(node)
-  }
 
   private val players = new Pane("players", "Players")
   private val world = new Pane("world", "World Map")
@@ -74,11 +73,10 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   dev.appendChild(devHeader)
   dev.appendChild(devContent)
   mount.appendChild(dev)
-  private def setDev(open: Boolean): Unit = {
+  private def setDev(open: Boolean): Unit =
     if (open) dev.removeAttribute("hidden") else dev.setAttribute("hidden", "")
     devToggle.setAttribute("aria-expanded", open.toString)
     if (open) close.focus() else devToggle.focus()
-  }
   devToggle.onclick = _ => setDev(dev.hasAttribute("hidden"))
   close.onclick = _ => setDev(false)
   private val escape: dom.KeyboardEvent => Unit = e => {
@@ -86,16 +84,15 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   }
   dev.addEventListener("keydown", escape)
   private val inspector = new CardInspectionOverlay(mount)
-  CardInspection.onOpen {
+  CardInspection.onOpen:
     case CardInspection.Request.Card(card, origin) => inspector.show(card, origin)
     case CardInspection.Request.Text(title, lines, origin) =>
       inspector.showText(title, lines, origin)
-  }
   private var previousGame = ""
   private var previousDecision = ""
 
   def update(gameId: String, decisionKey: String, playerContent: dom.Element,
-      worldContent: dom.Element, actionContent: dom.Element, development: dom.Element): Unit = {
+      worldContent: dom.Element, actionContent: dom.Element, development: dom.Element): Unit =
     val changedGame = previousGame != gameId
     PanelContent.replace(players.content, playerContent, players.heading, changedGame)
     PanelContent.replace(mapContent, worldContent, world.heading)
@@ -105,20 +102,16 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     mapView.refresh(changedGame)
     previousGame = gameId
     previousDecision = decisionKey
-  }
 
-  def dispose(): Unit = {
+  def dispose(): Unit =
     mapView.dispose()
     dev.removeEventListener("keydown", escape)
     CardInspection.clear()
     inspector.dispose()
     table.remove()
     dev.remove()
-  }
-}
 
-private[frontend] object GameTableShell {
+private[frontend] object GameTableShell:
   /** Below this the summary lines are noise at map scale; the name is not. */
   private val CompactBelow = 0.6
   def compactAtScale(scale: Double): Boolean = scale < CompactBelow
-}

@@ -8,9 +8,8 @@ import oathdigital.model._
   * empty-card rule" as its usability, so a subclass writes only `build`.
   */
 abstract class PaidAction(idValue: String, override val cost: Cost)
-    extends PhasePower {
+    extends PhasePower:
   final val id: PowerId = PowerId(idValue)
   final def timing: PowerTiming = PowerTiming.Act
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = true
-}

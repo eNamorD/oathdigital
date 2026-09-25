@@ -4,7 +4,7 @@ import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
-class OperationExecutorSuite extends munit.FunSuite {
+class OperationExecutorSuite extends munit.FunSuite:
   private val blueId = PlayerId("player-blue")
   private val blueLineage = LineageId("blue")
   private val redForce = ForceKind.Exile(lineageId)
@@ -22,7 +22,7 @@ class OperationExecutorSuite extends munit.FunSuite {
     None
   )
 
-  private val ready = {
+  private val ready =
     val current = game.current.copy(
       players = game.current.players :+ bluePlayer,
       banners = game.current.banners.copy(
@@ -35,11 +35,10 @@ class OperationExecutorSuite extends munit.FunSuite {
         Vector.empty, Vector.empty)
     ))
     ReadyGames.of(game.copy(campaign = campaign, current = current))
-  }
 
   private val executor = new OperationExecutor
 
-  test("Visions Drawn advances once and rejects integer overflow") {
+  test("Visions Drawn advances once and rejects integer overflow"):
     val once = executor.execute(ready, AdvanceVisionsDrawn).toOption.get
     assertEquals(once.game.current.tracks.visionsDrawn,
       ready.game.current.tracks.visionsDrawn + 1)
@@ -47,20 +46,18 @@ class OperationExecutorSuite extends munit.FunSuite {
         visionsDrawn = Int.MaxValue)))
     assertEquals(rejectionCode(maximum, AdvanceVisionsDrawn),
       "visions-drawn-overflow")
-  }
 
   /** Rejection code for a single operation through the authoritative pipeline
     * with a permissive allowlist (shape checks only).
     */
   private def rejectionCode(state: ReadyGame, operation: CoreOperation): String =
     OperationPipeline.run(state, Vector(operation), OperationPolicy.Permissive)(
-      Right(_)).left.toOption.get match {
+      Right(_)).left.toOption.get match
       case oathdigital.model.OathViolation.CoreOperationRejected(code, _) =>
         code
       case other => fail(s"expected a CoreOperationRejected, got $other")
-    }
 
-  test("shadow comparison distinguishes parity rejection and mismatch") {
+  test("shadow comparison distinguishes parity rejection and mismatch"):
     val matching = OperationShadowEvolution.compare(ready, Right(ready))
     assert(matching.comparison.matchesAuthoritative)
 
@@ -81,24 +78,20 @@ class OperationExecutorSuite extends munit.FunSuite {
     assert(!mismatch.comparison.stateMatches)
     assert(!mismatch.comparison.cardIndexMatches)
     assertEquals(mismatch.authoritative, authoritative)
-  }
 
-  test("policy receives the semantic root before primitive execution") {
+  test("policy receives the semantic root before primitive execution"):
     var seen = Vector.empty[CoreOperation]
-    val rejecting = new OperationPolicy {
-      override def validate(state: ReadyGame, operation: CoreOperation): Either[OperationError, Unit] = {
+    val rejecting = new OperationPolicy:
+      override def validate(state: ReadyGame, operation: CoreOperation): Either[OperationError, Unit] =
         seen :+= operation
         Left(OperationError.RestrictedOperation("blocked by test policy"))
-      }
-    }
     val reveal = Reveal(adviser.id, Location.PlayArea(playerId))
 
     assert(OperationPipeline.run(ready, Vector(reveal), rejecting)(Right(_)).isLeft)
     assertEquals(seen, Vector(reveal))
     assertEquals(ready.game.current.players.head.advisers, Vector(adviser))
-  }
 
-  test("ordered batches apply staged state in order") {
+  test("ordered batches apply staged state in order"):
     val gain = Gain.Favor(playerId, Suit.Order, 2)
     val place = Move(
       Piece.Favor(3),
@@ -110,9 +103,8 @@ class OperationExecutorSuite extends munit.FunSuite {
 
     assertEquals(actor.board.favor, 0)
     assertEquals(result.game.current.map.sites(sites.head).tokens.favor, 3)
-  }
 
-  test("later failure returns no partial execution result") {
+  test("later failure returns no partial execution result"):
     val valid = Gain.Favor(playerId, Suit.Order, 1)
     val invalid = Move(
       Piece.Favor(99),
@@ -124,9 +116,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     assertEquals(ready.game.current.players.head.board.favor, 1)
     assertEquals(executor.executeAll(ready, Vector.empty),
       Left(OperationError.EmptyOperationBatch))
-  }
 
-  test("Draw removes a top prefix and preserves top-first hand order") {
+  test("Draw removes a top prefix and preserves top-first hand order"):
     val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
         worldDeck = Vector(worldDenizen, extraDenizen))))
     val draw = Draw(playerId, Vector(worldDenizen, extraDenizen),
@@ -136,9 +127,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     assertEquals(result.game.current.commonCards.worldDeck, Vector.empty)
     assertEquals(result.game.current.temporaryHands(playerId),
       Vector(worldDenizen, extraDenizen))
-  }
 
-  test("a drained temporary hand keeps its always-keyed empty vector") {
+  test("a drained temporary hand keeps its always-keyed empty vector"):
     val source = ready.updateCurrent(_.copy(
         commonCards = ready.game.current.commonCards.copy(
           worldDeck = ready.game.current.commonCards.worldDeck.filterNot(
@@ -157,9 +147,8 @@ class OperationExecutorSuite extends munit.FunSuite {
       Some(Vector.empty))
     assertEquals(result.game.current.commonCards.discard(Region.Cradle),
       Vector(worldDenizen))
-  }
 
-  test("deck and regional-discard stack conventions preserve insertion order") {
+  test("deck and regional-discard stack conventions preserve insertion order"):
     val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
         worldDeck = Vector(worldDenizen, extraDenizen))))
     def discard(id: DenizenId) = Move(
@@ -181,9 +170,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     )).toOption.get
     assertEquals(reordered.game.current.commonCards.worldDeck,
       Vector(extraDenizen, worldDenizen))
-  }
 
-  test("Play materializes IDs while unsupported Edifice materialization fails") {
+  test("Play materializes IDs while unsupported Edifice materialization fails"):
     val played = executor.execute(ready, Play(
       worldDenizen,
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
@@ -212,9 +200,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     )
     assert(executor.execute(ready, tokenLoss).left.toOption.get
       .isInstanceOf[OperationError.ConflictingDeltas])
-  }
 
-  test("Discard drains card resources from the pre-operation snapshot") {
+  test("Discard drains card resources from the pre-operation snapshot"):
     val discard = Discard.Denizen(
       siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)),
@@ -231,9 +218,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     assertEquals(result.banks.favor(Suit.Order), 6)
     assert(!result.game.current.map.sites(sites.head).denizens
       .exists(_.id == siteDenizen.id))
-  }
 
-  test("relic discard preserves composite secret orientation semantics") {
+  test("relic discard preserves composite secret orientation semantics"):
     val relic = siteRelic.copy(tokens = Tokens(0, 1))
     val source = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(sites(1),
@@ -249,9 +235,8 @@ class OperationExecutorSuite extends munit.FunSuite {
 
     assertEquals(result.game.current.setAsideRelics, Vector(relic.id))
     assertEquals(actor.board.faceUpSecrets -> actor.board.faceDownSecrets, 1 -> 1)
-  }
 
-  test("Bury can remove state from Atlas but Atlas insertion is ambiguous") {
+  test("Bury can remove state from Atlas but Atlas insertion is ambiguous"):
     val other = EdificeId("E2")
     val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
         edificeDeck = Vector(other))))
@@ -272,9 +257,8 @@ class OperationExecutorSuite extends munit.FunSuite {
       PositionedLocation(Location.Atlas)
     )
     assertEquals(rejectionCode(ready, ambiguous), "ambiguous-location")
-  }
 
-  test("Atlas cards support state mutation and site-scoped knowledge") {
+  test("Atlas cards support state mutation and site-scoped knowledge"):
     val storedSite = SiteId("S9")
     val atlasDenizen = DenizenState(
       DenizenId("D-atlas"), Orientation.FaceDown, Tokens(1, 0))
@@ -301,9 +285,8 @@ class OperationExecutorSuite extends munit.FunSuite {
       .contains(atlasRelic.id))
     assert(!peeked.knowledge.heldRelics.getOrElse(playerId, Vector.empty)
       .contains(atlasRelic.id))
-  }
 
-  test("Swap and Replace commit without invalid intermediate state") {
+  test("Swap and Replace commit without invalid intermediate state"):
     val swap = Swap(
       siteRelic.id,
       PositionedLocation(Location.Site(sites(1))),
@@ -324,9 +307,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     val replaced = executor.execute(ready, replace).toOption.get
     assertEquals(replaced.game.current.map.sites(sites.head).forces,
       SiteForces.Occupied(redForce, 1))
-  }
 
-  test("secret moves preserve orientation and reject ambiguous mixed sources") {
+  test("secret moves preserve orientation and reject ambiguous mixed sources"):
     val mixed = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
         case value if value.player == playerId => value.copy(board =
           value.board.copy(faceUpSecrets = 1, faceDownSecrets = 1))
@@ -345,9 +327,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     val actor = result.game.current.players.find(_.player == playerId).get
     assertEquals(actor.board.faceUpSecrets -> actor.board.faceDownSecrets, 0 -> 1)
     assertEquals(result.game.current.map.sites(sites.head).tokens.secrets, 1)
-  }
 
-  test("secret burn consumes only faceup secrets and never facedown") {
+  test("secret burn consumes only faceup secrets and never facedown"):
     def holder(faceUp: Int, faceDown: Int) = ready.copy(
       game = ready.game.copy(current = ready.game.current.copy(
         players = ready.game.current.players.map {
@@ -365,9 +346,8 @@ class OperationExecutorSuite extends munit.FunSuite {
       PositionedLocation(Location.PlayArea(playerId)))).isLeft)
     assert(executor.execute(holder(0, 0), Burn.secrets(1,
       PositionedLocation(Location.PlayArea(playerId)))).isLeft)
-  }
 
-  test("FlipSecrets and Peek update orientation and knowledge only") {
+  test("FlipSecrets and Peek update orientation and knowledge only"):
     val flipped = executor.execute(ready, FlipSecrets(
       playerId, 1, SecretSide.FaceUp, SecretSide.FaceDown
     )).toOption.get
@@ -379,9 +359,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     )).toOption.get
     assert(OperationStateAdapter.knows(peeked, playerId, siteRelic.id))
     assertEquals(peeked.game, ready.game)
-  }
 
-  test("Exchange, Sacrifice, Burn, and Reveal execute their primitive plans") {
+  test("Exchange, Sacrifice, Burn, and Reveal execute their primitive plans"):
     val exchange = Exchange(
       Give(Piece.Favor(1), playerId,
         Location.PlayArea(playerId), Location.PlayArea(blueId)),
@@ -426,9 +405,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     assert(revealed.game.current.players.find(_.player == playerId).get.advisers
       .collectFirst { case value: DenizenState if value.id == facedown.id => value }
       .exists(_.orientation == Orientation.FaceUp))
-  }
 
-  test("pawn banner and warband moves update their concrete storage") {
+  test("pawn banner and warband moves update their concrete storage"):
     val destination = ready.game.current.map.sites(sites(2))
     val movable = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(sites(2),
@@ -451,9 +429,8 @@ class OperationExecutorSuite extends munit.FunSuite {
     assertEquals(result.game.current.banners.peoplesFavor.holder, Some(blueId))
     assertEquals(result.game.current.map.sites(sites(2)).forces,
       SiteForces.Occupied(redForce, 2))
-  }
 
-  test("an unheld banner is claimed from the shared bank by a banner move") {
+  test("an unheld banner is claimed from the shared bank by a banner move"):
     val unheld = ready.updateCurrent(_.copy(banners = ready.game.current.banners.copy(
         peoplesFavor = ready.game.current.banners.peoplesFavor.copy(
           holder = None, favor = 2))))
@@ -465,16 +442,14 @@ class OperationExecutorSuite extends munit.FunSuite {
     // Claiming moves custody only; resources already on the unheld banner stay
     // tracked on the banner.
     assertEquals(result.game.current.banners.peoplesFavor.favor, 2)
-  }
 
-  test("a held banner cannot be claimed from the shared bank") {
+  test("a held banner cannot be claimed from the shared bank"):
     val claim = Move(Piece.Banner(Banner.PeoplesFavor),
       PositionedLocation(Location.SharedBank),
       PositionedLocation(Location.PlayArea(blueId)))
     assert(executor.executeAll(ready, Vector(claim)).isLeft)
-  }
 
-  test("transaction rejects direct-update failure and invariant corruption") {
+  test("transaction rejects direct-update failure and invariant corruption"):
     val operation = Gain.Favor(playerId, Suit.Order, 1)
     val failed = OperationPipeline.run(ready, Vector(operation),
       OperationPolicy.Permissive)(
@@ -483,16 +458,14 @@ class OperationExecutorSuite extends munit.FunSuite {
       Left(OathViolation.InvalidEventOrder("direct update failed")))
 
     val corrupt = OperationPipeline.run(ready, Vector(operation),
-      OperationPolicy.Permissive) {
+      OperationPolicy.Permissive):
       evolved => Right(evolved.updateCurrent(_.copy(commonCards =
           evolved.game.current.commonCards.copy(worldDeck =
             evolved.game.current.commonCards.worldDeck :+ worldDenizen))))
-    }
     assert(corrupt.left.toOption.get
       .isInstanceOf[OathViolation.CoreOperationRejected])
-  }
 
-  test("constructor failures become typed operation rejections") {
+  test("constructor failures become typed operation rejections"):
     val saturated = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
         case value if value.player == playerId => value.copy(
           board = value.board.copy(favor = Int.MaxValue))
@@ -507,20 +480,18 @@ class OperationExecutorSuite extends munit.FunSuite {
       Vector(Gain.Favor(playerId, Suit.Order, 1)),
       OperationPolicy.Permissive
     ) { evolved =>
-      val invalidPlayers = evolved.game.current.players.map {
+      val invalidPlayers = evolved.game.current.players.map:
         case value if value.player == playerId => value.copy(
           board = value.board.copy(favor = -1))
         case value => value
-      }
       Right(evolved.updateCurrent(_.copy(players = invalidPlayers)))
     }
     assert(transaction.left.toOption.exists {
       case OathViolation.CoreOperationRejected("invalid-description", _) => true
       case _ => false
     })
-  }
 
-  test("invalid initial inventory and missing bounded supply are rejected") {
+  test("invalid initial inventory and missing bounded supply are rejected"):
     val duplicate = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
         worldDeck = ready.game.current.commonCards.worldDeck :+ adviser.id)))
     val duplicateResult = OperationPipeline.run(duplicate,
@@ -538,5 +509,3 @@ class OperationExecutorSuite extends munit.FunSuite {
     assertEquals(missingResult.left.toOption.get
       .asInstanceOf[OathViolation.CoreOperationRejected].code,
       "unknown-warband-supply")
-  }
-}

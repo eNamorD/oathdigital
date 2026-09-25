@@ -7,27 +7,25 @@ import oathdigital.application.ProjectionScope._
 import oathdigital.model.{PlayerId, RelicId}
 import oathdigital.persistence.HsqldbDatabaseOwner
 
-class MembershipAuthorizationServiceSuite extends munit.FunSuite {
+class MembershipAuthorizationServiceSuite extends munit.FunSuite:
   private val ownerUser = UserId("owner-user")
   private val playerUser = UserId("player-user")
   private val spectatorUser = UserId("spectator-user")
   private val outsider = UserId("outsider-user")
 
-  test("pluggable authenticator returns a provider-neutral principal") {
-    val authenticator = new Authenticator[String] {
+  test("pluggable authenticator returns a provider-neutral principal"):
+    val authenticator = new Authenticator[String]:
       override def authenticate(credential: String) =
         if (credential == "test-credential")
           Right(AuthenticatedUser(playerUser))
         else Left(AuthenticationFailure.InvalidCredential("invalid"))
-    }
 
     assertEquals(
       authenticator.authenticate("test-credential"),
       Right(AuthenticatedUser(playerUser): AuthenticatedPrincipal)
     )
-  }
 
-  test("membership roles produce owner player spectator and nonmember access") {
+  test("membership roles produce owner player spectator and nonmember access"):
     withService { service =>
       assertEquals(
         service.resolve("game-1", AuthenticatedUser(ownerUser)),
@@ -54,9 +52,8 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
         Left(NotMember("game-2", playerUser))
       )
     }
-  }
 
-  test("bootstrap projection and command policies derive authority server-side") {
+  test("bootstrap projection and command policies derive authority server-side"):
     withService { service =>
       assert(service.authorizeBootstrap(
         "game-1", AuthenticatedUser(ownerUser)).isRight)
@@ -100,27 +97,24 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
         Left(Forbidden("command"))
       )
     }
-  }
 
-  test("identity storage failures remain distinct from nonmembership") {
-    val failing = new IdentityRepositoryStub {
+  test("identity storage failures remain distinct from nonmembership"):
+    val failing = new IdentityRepositoryStub:
       override def findMembership(gameId: String, userId: UserId): Either[IdentityFailure, Option[GameMembership]] =
         Left(IdentityFailure.StorageFailure("database unavailable"))
-    }
     assertEquals(
       new MembershipAuthorizationService(failing)
         .resolve("game", AuthenticatedUser(playerUser)),
       Left(StorageFailure("database unavailable"))
     )
-  }
 
   private def withService(
       test: MembershipAuthorizationService => Unit
-  ): Unit = {
+  ): Unit =
     val path = Files.createTempDirectory("oathdigital-authorization-")
       .resolve("database")
     val database = HsqldbDatabaseOwner.open(path).toOption.get
-    try {
+    try
       val identities = database.identities
       Vector(ownerUser, playerUser, spectatorUser, outsider)
         .foreach(user => identities.createUser(user, user.value, 0L))
@@ -145,10 +139,9 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
         2L
       )
       test(new MembershipAuthorizationService(identities))
-    } finally database.close()
-  }
+    finally database.close()
 
-  private abstract class IdentityRepositoryStub extends IdentityRepository {
+  private abstract class IdentityRepositoryStub extends IdentityRepository:
     private def unused[A]: Either[IdentityFailure, A] =
       fail("unexpected identity repository operation")
     override def createUser(id: UserId, name: String, now: Long): Either[IdentityFailure, Unit] = unused
@@ -169,5 +162,3 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
         now: Long
     ): Either[IdentityFailure, Unit] = unused
     override def resolveTrustedSeat(digest: SeatCodeDigest): Either[IdentityFailure, TrustedSeat] = unused
-  }
-}

@@ -31,7 +31,7 @@ import oathdigital.model.{Answered, CoreOperation, Decide, DecisionAnswer,
   * on a `ChooseOne`: they answer each option against the tree and report
   * what that answer would record.
   */
-object WalkerSimulation {
+object WalkerSimulation:
 
   /** What answering one option would record. `complete` is true when the tree
     * then finished and false when it parked at a further decision.
@@ -47,20 +47,18 @@ object WalkerSimulation {
 
   def run(tree: Operation, state: ReadyGame,
       powers: WalkerPowers): Either[OathViolation, Vector[CoreOperation]] =
-    guarded {
+    guarded:
       ProcedureWalker.restrictionViolations(tree, powers, state,
         state.game.current.turn.activePlayer)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
           WalkerDice.placeholder))
-        .flatMap {
+        .flatMap:
           case WalkerOutcome.Finished(_, events) =>
             Right(recordedOperations(events))
           case WalkerOutcome.Parked(_, _) => Left(
             OathViolation.InvalidEventOrder("a simulated walker tree parked; " +
               "only a tree that runs to the end has an outcome to simulate"))
-        }
-    }
 
   /** Whether `tree` could run now, as an [[oathdigital.gameplay.powerresolver.OfferHost]]
     * asks it of a plan, and the operations it would record: the same windows and
@@ -97,13 +95,13 @@ object WalkerSimulation {
     */
   def preview(tree: Operation, state: ReadyGame,
       powers: WalkerPowers): Either[OathViolation, Vector[PreviewedOption]] =
-    guarded {
+    guarded:
       ProcedureWalker.restrictionViolations(tree, powers, state,
         state.game.current.turn.activePlayer)
         .headOption.toLeft(())
         .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
           WalkerDice.placeholder))
-        .flatMap {
+        .flatMap:
           case WalkerOutcome.Parked(pending, events)
               if recordedOperations(events).isEmpty =>
             previewParked(state, tree, pending, powers)
@@ -113,8 +111,6 @@ object WalkerSimulation {
           case WalkerOutcome.Finished(_, _) => Left(
             OathViolation.InvalidEventOrder(
               "a previewed tree finished without parking on a decision"))
-        }
-    }
 
   /** Previews the decision `pending` is parked on: each `ChooseOne` option is
     * answered as the decision's owner, against a copy of the parked position,
@@ -123,34 +119,30 @@ object WalkerSimulation {
     */
   def previewParked(state: ReadyGame, tree: Operation, pending: PendingTree,
       powers: WalkerPowers): Either[OathViolation, Vector[PreviewedOption]] =
-    guarded {
+    guarded:
       ProcedureWalker.parkedDecide(state, tree, pending, powers)
         .toRight(OathViolation.InvalidEventOrder(
           "the walker is not parked on a decision"))
         .flatMap { decide =>
-          decide.query match {
+          decide.query match
             case DecisionQuery.ChooseOne(options, _) =>
               Right(options.map(option => PreviewedOption(option,
                 answer(state, tree, pending, powers, decide, option))))
             case _ => Left(OathViolation.InvalidEventOrder(
               s"decision ${decide.decisionId} is not a choose-one, so it " +
                 "cannot be previewed"))
-          }
         }
-    }
 
   private def answer(state: ReadyGame, tree: Operation, pending: PendingTree,
       powers: WalkerPowers, decide: Decide, option: DecisionOption)
-      : Either[OathViolation, PreviewOutcome] = guarded {
+      : Either[OathViolation, PreviewOutcome] = guarded:
     ProcedureWalker.resolve(state, tree, pending,
       Answered(decide.decisionId, DecisionAnswer.ChooseOneAnswer(option.ref),
-        decide.owner), powers, WalkerDice.placeholder).map {
+        decide.owner), powers, WalkerDice.placeholder).map:
       case WalkerOutcome.Finished(_, events) =>
         PreviewOutcome(recordedOperations(events), complete = true)
       case WalkerOutcome.Parked(_, events) =>
         PreviewOutcome(recordedOperations(events), complete = false)
-    }
-  }
 
   private def recordedOperations(events: Vector[OathEvent])
       : Vector[CoreOperation] = events.collect {
@@ -162,9 +154,7 @@ object WalkerSimulation {
   private def guarded[A](body: => Either[OathViolation, A])
       : Either[OathViolation, A] =
     try body
-    catch {
+    catch
       case error: IllegalArgumentException => Left(
         OathViolation.InvalidEventOrder(Option(error.getMessage)
           .getOrElse("invalid simulated walker position")))
-    }
-}

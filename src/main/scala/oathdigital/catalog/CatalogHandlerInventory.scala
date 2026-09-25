@@ -6,7 +6,7 @@ import java.security.MessageDigest
 /** Factual catalog power inventory. It records declared IDs and source faces;
   * it does not decide whether or when a power is active.
   */
-object CatalogHandlerInventory {
+object CatalogHandlerInventory:
   def handlerIds(catalog: ExecutableCatalog): Vector[String] =
     (catalog.denizens.flatMap(_.powers.map(_.id.value)) ++
       catalog.relics.flatMap(_.powers.map(_.id.value)) ++
@@ -39,4 +39,3 @@ object CatalogHandlerInventory {
     MessageDigest.getInstance("SHA-256")
       .digest(values.mkString("\n").getBytes(StandardCharsets.UTF_8))
       .map("%02x".format(_)).mkString
-}

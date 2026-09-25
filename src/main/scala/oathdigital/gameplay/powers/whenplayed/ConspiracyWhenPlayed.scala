@@ -22,15 +22,14 @@ import oathdigital.model._
   * The transform must fold to the same vector while the decision is parked: it
   * reads only state that nothing between the fold and the answer changes.
   */
-case object ConspiracyWhenPlayed extends ContributingPower {
+case object ConspiracyWhenPlayed extends ContributingPower:
   val id: PowerId = PowerId("vision.conspiracy")
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   val decisionId: String = "cardplay.conspiracy.target"
 
-  override def applicable(ctx: PowerCtx): Boolean = ctx.operation match {
+  override def applicable(ctx: PowerCtx): Boolean = ctx.operation match
     case CardPlayedFaceup(card, _) => card == VisionRules.Conspiracy
     case _ => false
-  }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
@@ -42,7 +41,7 @@ case object ConspiracyWhenPlayed extends ContributingPower {
     * actor's site, in seat order, relic slots before banners.
     */
   private def legalTargets(ready: ReadyGame, actor: PlayerId)
-      : Vector[DecisionOptionRef] = {
+      : Vector[DecisionOptionRef] =
     val current = ready.game.current
     val site = current.players.find(_.player == actor).flatMap(_.pawnSite)
     current.players.filter(other => other.player != actor &&
@@ -52,24 +51,21 @@ case object ConspiracyWhenPlayed extends ContributingPower {
         Banner.all.filter(banner => BannerRules.holder(current, banner)
           .contains(other.player)).map(banner => DecisionOptionRef.Banner(banner))
     }
-  }
 
   private def targetDecision(ready: ReadyGame, actor: PlayerId)
-      : Vector[Operation] = {
+      : Vector[Operation] =
     val options = legalTargets(ready, actor).flatMap(DecisionOption.forRef)
     if (options.isEmpty) Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(options,
       heading = Some("Conspiracy: choose an enemy asset to take")),
       window = Some(PowerWindow.ConspiracyTargetSelection)))
-  }
 
   private def effects(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val legal = legalTargets(ready, actor)
-    val chosen = pending.answered.collectFirst {
+    val chosen = pending.answered.collectFirst:
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
-    }
-    val taken: Either[OathViolation, Vector[CoreOperation]] = chosen match {
+    val taken: Either[OathViolation, Vector[CoreOperation]] = chosen match
       case Some(ref) if legal.contains(ref) => Right(take(ready, actor, ref))
       case Some(_) => Left(OathViolation.ConspiracyUnavailable(
         "the chosen target is no longer legal"))
@@ -77,24 +73,22 @@ case object ConspiracyWhenPlayed extends ContributingPower {
       // target window removed every one. The walker never skips a decision
       // that is asked, so nothing is taken.
       case None => Right(Vector.empty)
-    }
     taken.map(_ :+ removal(ready, actor))
-  }
 
   private def take(ready: ReadyGame, actor: PlayerId, ref: DecisionOptionRef)
-      : Vector[CoreOperation] = {
+      : Vector[CoreOperation] =
     val current = ready.game.current
     def banner(held: Banner, owner: PlayerId): CoreOperation = Move(
       Piece.Banner(held), PositionedLocation(Location.PlayArea(owner)),
       PositionedLocation(Location.PlayArea(actor)))
-    ref match {
+    ref match
       case DecisionOptionRef.RelicSlot(owner, slot) =>
         current.players.find(_.player == owner).flatMap(_.relics.lift(slot))
           .toVector.map(relic => Give(Piece.Card(relic.id), owner,
             Location.PlayArea(owner), Location.PlayArea(actor)))
       case DecisionOptionRef.Banner(held) =>
         BannerRules.holder(current, held).toVector.flatMap { owner =>
-          val leaving: Vector[CoreOperation] = held match {
+          val leaving: Vector[CoreOperation] = held match
             case Banner.PeoplesFavor => BannerRules.raidFavorReturn(
               ready.banks.favor, BannerRules.resources(current, held))
               .map(suit => Move(Piece.Favor(1),
@@ -104,20 +98,15 @@ case object ConspiracyWhenPlayed extends ContributingPower {
               val secrets = BannerRules.resources(current, held)
               Option.when(secrets > 0)(Burn.secrets(secrets,
                 PositionedLocation(Location.OnBanner(held)))).toVector
-          }
           leaving :+ banner(held, owner)
         }
       case _ => Vector.empty
-    }
-  }
 
   /** The card leaves the game from wherever the actor holds it. */
-  private def removal(ready: ReadyGame, actor: PlayerId): CoreOperation = {
+  private def removal(ready: ReadyGame, actor: PlayerId): CoreOperation =
     val inHand = ready.game.current.temporaryHands
       .getOrElse(actor, Vector.empty).contains(VisionRules.Conspiracy)
     Move(Piece.Card(VisionRules.Conspiracy),
       PositionedLocation(if (inHand) Location.Hand(actor)
         else Location.PlayArea(actor)),
       PositionedLocation(Location.SharedBank))
-  }
-}

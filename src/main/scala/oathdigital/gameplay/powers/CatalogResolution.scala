@@ -12,7 +12,7 @@ import oathdigital.model.{PowerId, PowerResolution}
   * must stay automatic. Phase powers and battle plans do not activate this
   * way either.
   */
-object CatalogResolution {
+object CatalogResolution:
   def printed(catalog: ExecutableCatalog, id: PowerId): Option[CatalogPower] =
     (catalog.denizens.flatMap(_.powers) ++ catalog.relics.flatMap(_.powers) ++
       catalog.edifices.flatMap(e => e.intact.powers ++ e.ruined.powers) ++
@@ -21,4 +21,3 @@ object CatalogResolution {
   def of(catalog: ExecutableCatalog, id: PowerId): PowerResolution =
     if (printed(catalog, id).exists(_.persistent)) PowerResolution.Automatic
     else PowerResolution.PlayerSelected
-}

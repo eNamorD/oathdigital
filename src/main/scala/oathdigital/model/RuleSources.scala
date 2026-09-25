@@ -3,31 +3,28 @@ package oathdigital.model
 /** Stable identity for a runtime rule source. PowerUseRef remains the narrower,
   * wire-compatible identity for use-limited powers.
   */
-sealed trait RuleSourceRef extends Product with Serializable {
+sealed trait RuleSourceRef extends Product with Serializable:
   def stableKey: String
-}
-object RuleSourceRef {
-  def parse(stableKey: String): Option[RuleSourceRef] = {
-    def splitTyped(prefix: String, kind: String) = {
+object RuleSourceRef:
+  def parse(stableKey: String): Option[RuleSourceRef] =
+    def splitTyped(prefix: String, kind: String) =
       val body = stableKey.stripPrefix(prefix)
       val marker = s":$kind:"
       val at = body.indexOf(marker)
       Option.when(stableKey.startsWith(prefix) && at >= 0)(
         body.take(at) -> body.drop(at + marker.length))
-    }
-    def splitLast(prefix: String) = {
+    def splitLast(prefix: String) =
       val body = stableKey.stripPrefix(prefix)
       val at = body.lastIndexOf(':')
       Option.when(stableKey.startsWith(prefix) && at >= 0)(
         body.take(at) -> body.drop(at + 1))
-    }
     if (stableKey.startsWith("site-card:"))
       splitTyped("site-card:", "denizen").map { case (site, id) =>
         SiteCard(SiteId(site), DenizenId(id))
       }.orElse(splitTyped("site-card:", "vision").map { case (site, id) =>
         SiteCard(SiteId(site), VisionId(id))
       })
-    else stableKey.split(":", 4).toVector match {
+    else stableKey.split(":", 4).toVector match
       case Vector("adviser", player, "denizen", id) =>
         Some(Adviser(PlayerId(player), DenizenId(id)))
       case Vector("adviser", player, "vision", id) =>
@@ -35,10 +32,9 @@ object RuleSourceRef {
       case _ if stableKey.startsWith("site:") => Some(Site(SiteId(
         stableKey.stripPrefix("site:"))))
       case _ if stableKey.startsWith("relic:") => stableKey
-        .stripPrefix("relic:").split(":", 2).toVector match {
+        .stripPrefix("relic:").split(":", 2).toVector match
           case Vector(player, id) => Some(Relic(PlayerId(player), RelicId(id)))
           case _ => None
-        }
       case _ if stableKey.startsWith("site-relic:") =>
         splitTyped("site-relic:", "relic").map { case (site, id) =>
           SiteRelic(SiteId(site), RelicId(s"relic:$id"))
@@ -54,47 +50,33 @@ object RuleSourceRef {
       case Vector("foundation", number) => scala.util.Try(number.toInt).toOption
         .flatMap(n => FoundationNumber.all.find(_.value == n)).map(Foundation.apply)
       case _ if stableKey.startsWith("legacy:") => stableKey
-        .stripPrefix("legacy:").split(":", 2).toVector match {
+        .stripPrefix("legacy:").split(":", 2).toVector match
           case Vector(lineage, id) => Some(Legacy(LineageId(lineage), LegacyId(id)))
           case _ => None
-        }
       case _ if stableKey.startsWith("game:") =>
         Some(GameRule(stableKey.stripPrefix("game:")))
       case _ => None
-    }
-  }
-  final case class Site(id: SiteId) extends RuleSourceRef {
+  final case class Site(id: SiteId) extends RuleSourceRef:
     def stableKey: String = s"site:${id.value}"
-  }
-  final case class SiteCard(siteId: SiteId, id: CardId) extends RuleSourceRef {
+  final case class SiteCard(siteId: SiteId, id: CardId) extends RuleSourceRef:
     def stableKey: String = s"site-card:${siteId.value}:${id.kind}:${id.value}"
-  }
-  final case class Adviser(playerId: PlayerId, id: CardId) extends RuleSourceRef {
+  final case class Adviser(playerId: PlayerId, id: CardId) extends RuleSourceRef:
     def stableKey: String = s"adviser:${playerId.value}:${id.kind}:${id.value}"
-  }
-  final case class Relic(playerId: PlayerId, id: RelicId) extends RuleSourceRef {
+  final case class Relic(playerId: PlayerId, id: RelicId) extends RuleSourceRef:
     def stableKey: String = s"relic:${playerId.value}:${id.value}"
-  }
-  final case class SiteRelic(siteId: SiteId, id: RelicId) extends RuleSourceRef {
+  final case class SiteRelic(siteId: SiteId, id: RelicId) extends RuleSourceRef:
     def stableKey: String = s"site-relic:${siteId.value}:${id.value}"
-  }
-  final case class Edifice(siteId: SiteId, id: EdificeId) extends RuleSourceRef {
+  final case class Edifice(siteId: SiteId, id: EdificeId) extends RuleSourceRef:
     def stableKey: String = s"edifice:${siteId.value}:${id.value}"
-  }
-  final case class Banner(id: String) extends RuleSourceRef {
+  final case class Banner(id: String) extends RuleSourceRef:
     def stableKey: String = s"banner:$id"
-  }
-  final case class Foundation(number: FoundationNumber) extends RuleSourceRef {
+  final case class Foundation(number: FoundationNumber) extends RuleSourceRef:
     def stableKey: String = s"foundation:${number.value}"
-  }
   final case class Legacy(lineageId: LineageId, id: LegacyId)
-      extends RuleSourceRef {
+      extends RuleSourceRef:
     def stableKey: String = s"legacy:${lineageId.value}:${id.value}"
-  }
-  final case class GameRule(id: String) extends RuleSourceRef {
+  final case class GameRule(id: String) extends RuleSourceRef:
     def stableKey: String = s"game:$id"
-  }
-}
 
 sealed trait RuleQueryContext extends Product with Serializable
 
@@ -105,12 +87,11 @@ final case class RuleActivation(
 )
 
 sealed trait RuleOutcome extends Product with Serializable
-object RuleOutcome {
+object RuleOutcome:
   case object Allow extends RuleOutcome
   final case class Block(violation: OathViolation) extends RuleOutcome
   final case class UnsupportedRelevantRule(handlerId: String)
       extends RuleOutcome
-}
 
 final case class ResolvedRule(
     activation: RuleActivation,

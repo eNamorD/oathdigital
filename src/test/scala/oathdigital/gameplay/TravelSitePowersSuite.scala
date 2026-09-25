@@ -10,12 +10,11 @@ import oathdigital.model._
   * Travel owns a walker tree. Every cost node has R25's real shape: a
   * windowed Sequence holding a bare payment leaf and its sibling pawn Move.
   */
-class TravelSitePowersSuite extends munit.FunSuite {
+class TravelSitePowersSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
-  private val baseReady = FirstGameSetupFixture.execute()._1 match {
+  private val baseReady = FirstGameSetupFixture.execute()._1 match
     case OathState.Ready(ready) => ready
     case other => fail(s"expected Ready state, got $other")
-  }
   private val actor = baseReady.game.current.turn.activePlayer
   private val powers = TravelSitePowers.forCatalog(catalog)
 
@@ -61,7 +60,7 @@ class TravelSitePowersSuite extends munit.FunSuite {
 
   private def transformedCost(ready: ReadyGame, source: SiteId,
       destination: SiteId, base: Int,
-      candidates: Vector[ContributingPower] = powers): Int = {
+      candidates: Vector[ContributingPower] = powers): Int =
     val node = costNode(source, destination, base)
     val byId = candidates.map(power => power.id -> power).toMap
     val transformed = gathered(ready, node, candidates = candidates)
@@ -70,7 +69,6 @@ class TravelSitePowersSuite extends munit.FunSuite {
       }
     transformed.collectFirst { case SpendSupply(_, amount, _) => amount }
       .getOrElse(fail("terrain transform removed payment"))
-  }
 
   /** The parity table, as numbers rather than as a call.
     *
@@ -82,7 +80,7 @@ class TravelSitePowersSuite extends munit.FunSuite {
     * something that no longer exists was never an option; keeping the numbers
     * it produced is the whole point of having run the comparison.
     */
-  test("terrain transforms reproduce the retired terrain fold's parity table") {
+  test("terrain transforms reproduce the retired terrain fold's parity table"):
     val routes = Vector(
       (plain, mountain, 2, 3),                        // Mountain adds 1
       (plain, island, 2, 4),                          // Island adds 2
@@ -96,9 +94,8 @@ class TravelSitePowersSuite extends munit.FunSuite {
       assertEquals(transformedCost(readyAt(source), source, destination, base),
         expected, s"route $source -> $destination")
     }
-  }
 
-  test("coast shouldIgnore removes destination add only on coast route") {
+  test("coast shouldIgnore removes destination add only on coast route"):
     val islandId = powerId(island, ".island")
     val coastRoute = costNode(coast, island, 2)
     val coastOrder = gathered(readyAt(coast), coastRoute).order
@@ -109,9 +106,8 @@ class TravelSitePowersSuite extends munit.FunSuite {
     val ordinaryOrder = gathered(readyAt(plain), ordinaryRoute).order
     assert(ordinaryOrder.contains(islandId),
       "ordinary-route destination Island must remain gathered")
-  }
 
-  test("each terrain transform changes cost from its no-power baseline") {
+  test("each terrain transform changes cost from its no-power baseline"):
     val cases = Vector(
       ("Mountain", plain, mountain, ".mountain"),
       ("Island", plain, island, ".island"),
@@ -126,21 +122,18 @@ class TravelSitePowersSuite extends munit.FunSuite {
       assertNotEquals(transformedCost(ready, source, destination, 2, terrainOnly), 2,
         s"$name transform must rewrite the payment")
     }
-  }
 
   private def passMap(source: SiteId, destination: SiteId,
       passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1))
-      : MapState = {
-    def state(id: SiteId, forces: SiteForces): SiteState = {
+      : MapState =
+    def state(id: SiteId, forces: SiteForces): SiteState =
       val definition = catalog.sites.find(_.id == id).get
       SiteState(forces, Vector.empty, Vector.empty, definition.startingResources)
-    }
     MapState(Vector(source), Vector(pass, destination), Vector.empty, Map(
       source -> state(source, SiteForces.Empty),
       pass -> state(pass, passForces),
       destination -> state(destination, SiteForces.Empty)
     ))
-  }
 
   private def eligibilityTree(source: SiteId, destination: SiteId): Sequence =
     Sequence(Vector(
@@ -150,16 +143,15 @@ class TravelSitePowersSuite extends munit.FunSuite {
     ), Some(PowerWindow.TravelActionEligibility))
 
   private def passViolation(ready: ReadyGame, tree: Operation)
-      : Option[OathViolation] = {
+      : Option[OathViolation] =
     val byId = powers.map(power => power.id -> power).toMap
     gathered(ready, tree, PowerWindow.TravelActionEligibility).restrictions
       .flatMap { case (id, restriction) =>
         restriction.fn(ctx(ready, PowerWindow.TravelActionEligibility, tree,
           byId(id)), tree)
       }.headOption
-  }
 
-  test("Narrow Pass restricts cross-region travel but permits coast route") {
+  test("Narrow Pass restricts cross-region travel but permits coast route"):
     val blockedDestination = otherPlain
     val blockedReady = readyAt(plain, passMap(plain, blockedDestination))
     assertEquals(passViolation(blockedReady,
@@ -168,9 +160,8 @@ class TravelSitePowersSuite extends munit.FunSuite {
 
     val coastReady = readyAt(coast, passMap(coast, island))
     assertEquals(passViolation(coastReady, eligibilityTree(coast, island)), None)
-  }
 
-  test("Narrow Pass fails closed when its ruler lineage is corrupt") {
+  test("Narrow Pass fails closed when its ruler lineage is corrupt"):
     val destination = otherPlain
     val unknownReady = readyAt(plain, passMap(plain, destination,
       SiteForces.Occupied(ForceKind.Exile(LineageId("missing")), 1)))
@@ -185,19 +176,15 @@ class TravelSitePowersSuite extends munit.FunSuite {
       assertEquals(passViolation(ready, eligibilityTree(plain, destination)),
         Some(OathViolation.TravelPassBlocked(pass, destination)))
     }
-  }
 
-  test("Walker catalog registers every Travel site contribution") {
+  test("Walker catalog registers every Travel site contribution"):
     val registered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
     assert(powers.map(_.id).toSet.subsetOf(registered))
-  }
 
-  test("unknown terrain-suffixed handlers never fabricate Travel powers") {
+  test("unknown terrain-suffixed handlers never fabricate Travel powers"):
     val fixturePower = PowerId("site.fixture-site.coast")
     val fixtureSite = catalog.sites.find(_.id == plain).get.copy(
       id = SiteId("site:fixture-site"), handlers = Vector(fixturePower.value))
     val augmented = catalog.copy(sites = catalog.sites :+ fixtureSite)
 
     assert(!TravelSitePowers.forCatalog(augmented).map(_.id).contains(fixturePower))
-  }
-}

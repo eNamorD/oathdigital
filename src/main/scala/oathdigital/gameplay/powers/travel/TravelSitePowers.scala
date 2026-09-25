@@ -4,27 +4,24 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model.{DecisionOptionRef, Location, Move, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerId, PowerWindow, RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply}
 
-private[travel] object TravelRoute {
+private[travel] object TravelRoute:
   final case class PawnMove(player: PlayerId, source: SiteId, destination: SiteId)
 
   def pawnMove(operation: Operation): Option[PawnMove] =
-    Operation.flatten(operation).collectFirst {
+    Operation.flatten(operation).collectFirst:
       case Move(Piece.Pawn(player), PositionedLocation(Location.Site(source), _),
           PositionedLocation(Location.Site(destination), _), _) =>
         PawnMove(player, source, destination)
-    }
 
   def adjustSupply(operations: Vector[Operation], actor: PlayerId)
       (rewrite: Int => Int): Vector[Operation] =
-    operations.map {
+    operations.map:
       case payment @ SpendSupply(player, amount, _) if player == actor =>
         payment.copy(amount = rewrite(amount))
       case operation => operation
-    }
-}
 
 final case class MountainSitePower(id: PowerId, site: SiteId)
-    extends ContributingPower {
+    extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.Site(site)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
@@ -32,10 +29,9 @@ final case class MountainSitePower(id: PowerId, site: SiteId)
         TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ + 1))))
   override def applicable(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(_.destination == site)
-}
 
 final case class IslandSitePower(id: PowerId, site: SiteId)
-    extends ContributingPower {
+    extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.Site(site)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
@@ -43,10 +39,9 @@ final case class IslandSitePower(id: PowerId, site: SiteId)
         TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ + 2))))
   override def applicable(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(_.destination == site)
-}
 
 final case class CoastSitePower(id: PowerId, site: SiteId,
-    coastOrIslandSites: Set[SiteId]) extends ContributingPower {
+    coastOrIslandSites: Set[SiteId]) extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.Site(site)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
@@ -55,15 +50,13 @@ final case class CoastSitePower(id: PowerId, site: SiteId,
   override def applicable(ctx: PowerCtx): Boolean = TravelRoute
     .pawnMove(ctx.operation).exists(route => route.source == site &&
       coastOrIslandSites.contains(route.destination))
-  override def shouldIgnore(other: ContributingPower): Boolean = other match {
+  override def shouldIgnore(other: ContributingPower): Boolean = other match
     case _: MountainSitePower | _: IslandSitePower => true
     case _ => false
-  }
-}
 
 final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     coastSites: Set[SiteId], coastOrIslandSites: Set[SiteId])
-    extends ContributingPower {
+    extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.Site(site)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelActionEligibility ->
@@ -71,7 +64,7 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     PowerWindow.CampaignTargetSelection ->
       Vector(OptionRestriction(campaignBlocked)))
 
-  override def applicable(ctx: PowerCtx): Boolean = ctx.window match {
+  override def applicable(ctx: PowerCtx): Boolean = ctx.window match
     // Per candidate, in `campaignBlocked`: nothing about the tree decides it.
     case PowerWindow.CampaignTargetSelection => true
     case _ => TravelRoute.pawnMove(ctx.operation).exists { route =>
@@ -83,7 +76,6 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
       } yield sourceRegion != destinationRegion && destinationRegion == passRegion &&
         route.destination != site).getOrElse(false)
     }
-  }
 
   /** Campaign: "If your pawn is outside this region, you cannot ... target
     * other sites in this region in campaigns, unless you have the consent of
@@ -93,7 +85,7 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     * pawn, relics and banners, never a site.
     */
   private def campaignBlocked(ctx: PowerCtx, ref: DecisionOptionRef)
-      : Option[OathViolation] = ref match {
+      : Option[OathViolation] = ref match
     case DecisionOptionRef.Site(target) =>
       val current = ctx.state.game.current
       val map = current.map
@@ -114,7 +106,6 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
         OathViolation.CampaignUnavailable(
           s"a Pass prevents targeting '${target.value}' from the pawn site"))
     case _ => None
-  }
 
   private def blocked(ctx: PowerCtx): Option[OathViolation] =
     TravelRoute.pawnMove(ctx.operation).flatMap { route =>
@@ -122,19 +113,17 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
       val coastRoute = coastSites.contains(route.source) &&
         coastOrIslandSites.contains(route.destination)
       if (coastRoute) None
-      else SiteRule.ruler(map.sites(site).forces, ctx.state.game.current.players) match {
+      else SiteRule.ruler(map.sites(site).forces, ctx.state.game.current.players) match
         case Right(SiteRuler.Player(player)) if player == route.player => None
         case Right(_) | Left(_) =>
           Some(OathViolation.TravelPassBlocked(site, route.destination))
-        }
     }
-}
 
 /** Catalog-bound site contributions for Travel's terrain rules. Static site
   * topology lives on the power objects; command state supplies only the
   * current route through PowerCtx.operation.
   */
-object TravelSitePowers {
+object TravelSitePowers:
   private enum Terrain { case Mountain, Island, Coast, NarrowPass }
   import Terrain._
   private final case class Supported(id: PowerId, terrain: Terrain)
@@ -158,27 +147,22 @@ object TravelSitePowers {
     Supported(PowerId("site.tidal-marshes.coast"), Coast)
   )
 
-  def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] = {
-    val present = supported.foldLeft(Vector.empty[(Supported, SiteId)]) {
+  def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
+    val present = supported.foldLeft(Vector.empty[(Supported, SiteId)]):
       (found, descriptor) =>
-        catalog.sites.find(_.handlers.contains(descriptor.id.value)) match {
+        catalog.sites.find(_.handlers.contains(descriptor.id.value)) match
           case Some(site) => found :+ (descriptor -> site.id)
           case None => found
-        }
-    }
     val coastSites = present.collect {
       case (Supported(_, Coast), site) => site
     }.toSet
     val coastOrIslandSites = present.collect {
       case (Supported(_, Coast | Island), site) => site
     }.toSet
-    present.map {
+    present.map:
       case (Supported(id, Mountain), site) => MountainSitePower(id, site)
       case (Supported(id, Island), site) => IslandSitePower(id, site)
       case (Supported(id, Coast), site) =>
         CoastSitePower(id, site, coastOrIslandSites)
       case (Supported(id, NarrowPass), site) =>
         NarrowPassSitePower(id, site, coastSites, coastOrIslandSites)
-    }
-  }
-}

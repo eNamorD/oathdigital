@@ -8,7 +8,7 @@ import ServerUiSupport._
   * nothing: it draws what `legalControls` names. The card is chosen at the
   * parked decision, not here.
   */
-private[frontend] object EconomyControls {
+private[frontend] object EconomyControls:
   private final case class Control(control: String, kind: String,
       label: String, command: GameCommand)
 
@@ -33,4 +33,3 @@ private[frontend] object EconomyControls {
         node.onclick = _ => submit(control.command)
         groups.appendKind(control.kind, node)
       }
-}

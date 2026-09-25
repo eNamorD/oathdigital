@@ -23,7 +23,7 @@ import oathdigital.model._
   * its giver holds, and against bandits the favor is given to the shared bank,
   * which burns it.
   */
-final case class StickyFire private (relicId: RelicId) extends BattlePlan {
+final case class StickyFire private (relicId: RelicId) extends BattlePlan:
   def id: PowerId = StickyFire.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] =
@@ -50,7 +50,7 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan {
 
   /** The killing and the favor, when the user said yes. */
   private def burn(use: PlanUse, user: PlayerId, result: CampaignResult)
-      : Operation = {
+      : Operation =
     val returned = returnedToDefender(use.ready, use.side, result)
     BuildOps((ready, pending) =>
       if (!PowerAnswers.one(pending, StickyFire.decisionId).contains(StickyFire.yes))
@@ -59,7 +59,6 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan {
         kills <- kills(ready, use.side, result, returned)
         gift = gives(use.side, user, result)
       } yield kills ++ gift)
-  }
 
   /** The warbands a victorious attacker's Conquest would give back to a player
     * defender: what stands at the targets now, before the losses kill it, less
@@ -69,18 +68,17 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan {
       result: CampaignResult): Int =
     if (side != CampaignPlanSide.Attacker || result.kind != CampaignKind.Conquest)
       0
-    else result.defender match {
+    else result.defender match
       case CampaignDefender.Player(_) =>
         val total = result.targetSites.flatMap(ready.game.current.map.sites.get)
           .map(_.forces).collect {
             case SiteForces.Occupied(_, count) => count }.sum
         total - total / 2
       case CampaignDefender.Bandits => 0
-    }
 
   private def kills(ready: ReadyGame, side: CampaignPlanSide,
       result: CampaignResult, returned: Int)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     def killed(player: PlayerId, amount: Int)
         : Either[OathViolation, Vector[CoreOperation]] =
       if (amount <= 0) Right(Vector.empty)
@@ -89,31 +87,25 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan {
         PositionedLocation(Location.PlayArea(player)))))
     def board(player: PlayerId): Int = ready.game.current.players
       .find(_.player == player).fold(0)(_.board.warbands)
-    (side, result.defender) match {
+    (side, result.defender) match
       case (CampaignPlanSide.Defender, _) =>
         killed(result.attacker, board(result.attacker))
       case (CampaignPlanSide.Attacker, CampaignDefender.Player(defender)) =>
-        result.kind match {
+        result.kind match
           case CampaignKind.Conquest => killed(defender, returned)
           case CampaignKind.Raid => killed(defender, board(defender))
-        }
       case (CampaignPlanSide.Attacker, CampaignDefender.Bandits) =>
         Right(Vector.empty)
-    }
-  }
 
   private def gives(side: CampaignPlanSide, user: PlayerId,
-      result: CampaignResult): Vector[CoreOperation] = {
-    val to: Location = (side, result.defender) match {
+      result: CampaignResult): Vector[CoreOperation] =
+    val to: Location = (side, result.defender) match
       case (CampaignPlanSide.Defender, _) => Location.PlayArea(result.attacker)
       case (_, CampaignDefender.Player(defender)) => Location.PlayArea(defender)
       case (_, CampaignDefender.Bandits) => Location.SharedBank
-    }
     Vector(Give(Piece.Favor(1), user, Location.PlayArea(user), to))
-  }
-}
 
-object StickyFire {
+object StickyFire:
   val id: PowerId = PowerId("relic.sticky-fire")
   /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "sticky-fire"
@@ -122,4 +114,3 @@ object StickyFire {
 
   def forCatalog(catalog: ExecutableCatalog): Option[StickyFire] =
     CatalogCards.relic(catalog, id).map(new StickyFire(_))
-}

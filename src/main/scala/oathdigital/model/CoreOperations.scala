@@ -12,35 +12,29 @@ package oathdigital.model
   * existing operation-batch vocabulary (`Vector[CoreOperation]`, policies,
   * executor) keeps accepting both leaves and composites.
   */
-sealed trait CoreOperation extends Operation {
+sealed trait CoreOperation extends Operation:
   def simultaneous: Boolean = false
   def required: Boolean = false
-}
 
-sealed trait PrimitiveOperation extends CoreOperation {
+sealed trait PrimitiveOperation extends CoreOperation:
   final override val children: Vector[Operation] = Vector(this)
-}
 
 sealed trait Piece extends Product with Serializable
-object Piece {
+object Piece:
   final case class Card(id: CardId) extends Piece
   final case class Banner(banner: oathdigital.model.Banner) extends Piece
   final case class Pawn(player: PlayerId) extends Piece
 
   sealed trait Counted extends Piece { def amount: Int }
-  final case class Favor(amount: Int) extends Counted {
+  final case class Favor(amount: Int) extends Counted:
     require(amount > 0, "favor amount must be positive")
-  }
-  final case class Secrets(amount: Int) extends Counted {
+  final case class Secrets(amount: Int) extends Counted:
     require(amount > 0, "secret amount must be positive")
-  }
-  final case class Warbands(kind: ForceKind, amount: Int) extends Counted {
+  final case class Warbands(kind: ForceKind, amount: Int) extends Counted:
     require(amount > 0, "warband amount must be positive")
-  }
-}
 
 sealed trait Location extends Product with Serializable
-object Location {
+object Location:
   final case class Hand(player: PlayerId) extends Location
   /** Player board and everything held around it, including Advisers. */
   final case class PlayArea(player: PlayerId) extends Location
@@ -58,12 +52,10 @@ object Location {
   case object Dispossessed extends Location
 
   private[model] def ownedBy(location: Location,
-      player: PlayerId): Boolean = location match {
+      player: PlayerId): Boolean = location match
     case Hand(owner) => owner == player
     case PlayArea(owner) => owner == player
     case _ => false
-  }
-}
 
 enum SecretSide { case FaceUp, FaceDown }
 
@@ -79,7 +71,7 @@ final case class Move(
     from: PositionedLocation,
     to: PositionedLocation,
     resultingOrientation: Option[Orientation] = None)
-    extends PrimitiveOperation {
+    extends PrimitiveOperation:
   require(from != to || (resultingOrientation.isDefined &&
       piece.isInstanceOf[Piece.Card] &&
       from.location == to.location &&
@@ -87,7 +79,6 @@ final case class Move(
     "a move must change location, stack position, or card role within a play area")
   require(resultingOrientation.isEmpty || piece.isInstanceOf[Piece.Card],
     "only cards have an orientation")
-}
 
 /** Looks at a card's front without changing its orientation or location. */
 final case class Peek(viewer: PlayerId, card: CardId,
@@ -101,33 +92,29 @@ final case class Flip(card: CardId, at: Location,
   * their current orientation unless followed by this operation.
   */
 final case class FlipSecrets(player: PlayerId, amount: Int,
-    from: SecretSide, to: SecretSide) extends PrimitiveOperation {
+    from: SecretSide, to: SecretSide) extends PrimitiveOperation:
   require(amount > 0, "secret amount must be positive")
   require(from != to, "secret flip must change side")
-}
 
 /** Gains Supply up to SupplyTrack.Maximum. */
 final case class GainSupply(player: PlayerId, amount: Int)
-    extends PrimitiveOperation {
+    extends PrimitiveOperation:
   require(amount > 0, "supply gain must be positive")
-}
 
 /** Spends Supply. Costs are required unless a power explicitly permits less. */
 final case class SpendSupply(player: PlayerId, amount: Int,
-    override val required: Boolean = true) extends PrimitiveOperation {
+    override val required: Boolean = true) extends PrimitiveOperation:
   require(amount > 0, "supply spend must be positive")
-}
 
 /** Moves favor or secrets to the shared bank. */
-sealed trait Burn extends CoreOperation {
+sealed trait Burn extends CoreOperation:
   def resource: Piece.Counted
   def from: PositionedLocation
 
   final lazy val move: Move = Move(resource, from,
     PositionedLocation(Location.SharedBank))
   final override lazy val children: Vector[Operation] = Vector(move)
-}
-object Burn {
+object Burn:
   def favor(amount: Int, from: PositionedLocation): Burn =
     ResourceBurn(Piece.Favor(amount), from)
 
@@ -136,38 +123,30 @@ object Burn {
 
   private final case class ResourceBurn(resource: Piece.Counted,
       from: PositionedLocation) extends Burn
-}
 
-sealed trait BuryableCard extends Product with Serializable {
+sealed trait BuryableCard extends Product with Serializable:
   def id: CardId
   def deck: CardDeck
-}
-object BuryableCard {
-  final case class Denizen(id: DenizenId) extends BuryableCard {
+object BuryableCard:
+  final case class Denizen(id: DenizenId) extends BuryableCard:
     override val deck: CardDeck = CardDeck.World
-  }
-  final case class Relic(id: RelicId) extends BuryableCard {
+  final case class Relic(id: RelicId) extends BuryableCard:
     override val deck: CardDeck = CardDeck.Relic
-  }
-  final case class Edifice(id: EdificeId) extends BuryableCard {
+  final case class Edifice(id: EdificeId) extends BuryableCard:
     override val deck: CardDeck = CardDeck.Edifice
-  }
-  final case class Vision(id: VisionId) extends BuryableCard {
+  final case class Vision(id: VisionId) extends BuryableCard:
     override val deck: CardDeck = CardDeck.World
-  }
-}
 
 /** Adds a denizen, relic, or edifice to the bottom of its matching deck.
   * Bury explicitly ignores the locked restriction.
   */
 final case class Bury(card: BuryableCard, from: PositionedLocation,
     override val required: Boolean = false)
-    extends PrimitiveOperation {
+    extends PrimitiveOperation:
   val to: PositionedLocation = PositionedLocation(
     Location.Deck(card.deck), StackPosition.Bottom)
-}
 
-object Bury {
+object Bury:
   /** A bury with the returns a discard makes: favor to the suit's bank and
     * secrets to the acting player, facedown. `Bury` alone returns nothing.
     * The returns come first because a card must carry no resources when it
@@ -177,42 +156,38 @@ object Bury {
     */
   def standard(card: BuryableCard, from: PositionedLocation,
       suit: Option[Suit], favor: Int, secrets: Int,
-      actingPlayer: PlayerId): Vector[CoreOperation] = {
+      actingPlayer: PlayerId): Vector[CoreOperation] =
     require(favor == 0 || suit.isDefined, "buried favor needs its suit bank")
     Discard.returns(card.id, suit, favor, secrets, actingPlayer) :+
       Bury(card, from)
-  }
-}
 
 sealed trait Discard extends CoreOperation
-object Discard {
+object Discard:
   /** Discards a denizen facedown to the specified regional pile and returns
     * all resources on it.
     */
   final case class Denizen(card: DenizenId, from: PositionedLocation,
       to: Region, suit: Suit, favor: Int,
       secrets: Int, actingPlayer: PlayerId,
-      override val required: Boolean = false) extends Discard {
+      override val required: Boolean = false) extends Discard:
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
 
     override val children: Vector[Operation] =
       discardWorld(card, from, to) ++
         returnedResources(card, suit, favor, secrets, actingPlayer)
-  }
 
   /** Visions carry no resources but otherwise use world-card discard rules. */
   final case class Vision(card: VisionId, from: PositionedLocation,
-      to: Region, override val required: Boolean = false) extends Discard {
+      to: Region, override val required: Boolean = false) extends Discard:
     override val children: Vector[Operation] =
       discardWorld(card, from, to)
-  }
 
   /** Only a ruined edifice can be discarded; intact edifices are locked. */
   final case class RuinedEdifice(card: EdificeId, from: PositionedLocation,
       suit: Suit, favor: Int, secrets: Int, actingPlayer: PlayerId,
       override val required: Boolean = false)
-      extends Discard {
+      extends Discard:
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
 
@@ -221,18 +196,16 @@ object Discard {
       PositionedLocation(Location.Deck(CardDeck.Edifice),
         StackPosition.Bottom))) ++
       returnedResources(card, suit, favor, secrets, actingPlayer)
-  }
 
   /** Sets a relic aside until Chronicle and takes its secrets facedown. */
   final case class Relic(card: RelicId, from: PositionedLocation, secrets: Int,
-      actingPlayer: PlayerId) extends Discard {
+      actingPlayer: PlayerId) extends Discard:
     require(secrets >= 0, "discarded secrets must be non-negative")
 
     override val children: Vector[Operation] = Vector(Move(
       Piece.Card(card), from,
       PositionedLocation(Location.SetAsideRelics))) ++
       returnedSecrets(card, secrets, actingPlayer)
-  }
 
   private def discardWorld(card: WorldCardId, from: PositionedLocation,
       destination: Region): Vector[Operation] = Vector(Move(
@@ -247,9 +220,8 @@ object Discard {
     (positiveMove(favor)(Piece.Favor.apply,
       PositionedLocation(Location.OnCard(card)),
       PositionedLocation(Location.FavorBank(suit.getOrElse(Suit.Arcane)))) ++
-      returnedSecrets(card, secrets, actingPlayer)).collect {
+      returnedSecrets(card, secrets, actingPlayer)).collect:
       case operation: CoreOperation => operation
-    }
 
   private def returnedResources(card: CardId, suit: Suit, favor: Int,
       secrets: Int, actingPlayer: PlayerId): Vector[Operation] =
@@ -272,14 +244,13 @@ object Discard {
       to: PositionedLocation): Vector[Operation] =
     if (amount == 0) Vector.empty
     else Vector(Move(piece(amount), from, to))
-}
 
 /** Takes known cards from the top of a prompted draw source, in top-first
   * order. The destination is intentionally supplied by the prompting rule.
   */
 final case class Draw(player: PlayerId, cards: Vector[CardId],
     source: Location, destination: Location)
-    extends CoreOperation {
+    extends CoreOperation:
   override val required: Boolean = true
   require(cards.nonEmpty, "draw must contain at least one card")
 
@@ -287,43 +258,37 @@ final case class Draw(player: PlayerId, cards: Vector[CardId],
     player, source, destination, sourcePosition = StackPosition.Top))
   override val children: Vector[Operation] =
     takes.flatMap(_.children)
-}
 
 /** Gives pieces in both directions. */
-final case class Exchange(give: Give, receive: Give) extends CoreOperation {
+final case class Exchange(give: Give, receive: Give) extends CoreOperation:
   override val required: Boolean = true
   require(give.giver != receive.giver,
     "exchange requires two different giving players")
 
   override val children: Vector[Operation] =
     give.children ++ receive.children
-}
 
 sealed trait Gain extends CoreOperation
-object Gain {
+object Gain:
   final case class Favor(player: PlayerId, suit: Suit, amount: Int)
-      extends Gain {
+      extends Gain:
     override val children: Vector[Operation] = Vector(Move(
       Piece.Favor(amount),
       PositionedLocation(Location.FavorBank(suit)),
       PositionedLocation(Location.PlayArea(player))))
-  }
 
-  final case class Secrets(player: PlayerId, amount: Int) extends Gain {
+  final case class Secrets(player: PlayerId, amount: Int) extends Gain:
     override val children: Vector[Operation] = Vector(Move(
       Piece.Secrets(amount),
       PositionedLocation(Location.SharedBank),
       PositionedLocation(Location.PlayArea(player))))
-  }
 
   final case class Warbands(player: PlayerId, kind: ForceKind, amount: Int)
-      extends Gain {
+      extends Gain:
     override val children: Vector[Operation] = Vector(Move(
       Piece.Warbands(kind, amount),
       PositionedLocation(Location.WarbandBank(kind)),
       PositionedLocation(Location.PlayArea(player))))
-  }
-}
 
 /** Moves a piece out of the giver's custody to the prompted destination.
   * Restrictions on Take do not prevent a Give operation.
@@ -331,26 +296,23 @@ object Gain {
 final case class Give(piece: Piece, giver: PlayerId,
     from: Location, to: Location,
     override val required: Boolean = false)
-    extends CoreOperation {
+    extends CoreOperation:
   require(Location.ownedBy(from, giver),
     "give source must belong to the giving player")
   val move: Move = Move(piece, PositionedLocation(from), PositionedLocation(to))
   override val children: Vector[Operation] = Vector(move)
-}
 
 /** A typed payment: `favor`/`secret` are placed at a destination card,
   * `favorBurnt`/`secretBurnt` leave play to the shared bank. All fields are
   * non-negative; an all-zero cost is legal and represents a free payment.
   */
 final case class Cost(favor: Int = 0, secret: Int = 0, favorBurnt: Int = 0,
-    secretBurnt: Int = 0) {
+    secretBurnt: Int = 0):
   require(favor >= 0 && secret >= 0 && favorBurnt >= 0 && secretBurnt >= 0,
     "costs must be non-negative")
-}
 
-object Cost {
+object Cost:
   val free: Cost = Cost(0, 0, 0, 0)
-}
 
 /** Pays a typed cost. The placed portions (`favor`/`secret`) move from the
   * player's play area to `placedAt`; the burnt portions leave play to the
@@ -367,7 +329,7 @@ object Cost {
   */
 final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost,
     intoOccupied: Boolean = false, matchingBank: Option[Suit] = None,
-    offTurn: Boolean = false) extends CoreOperation {
+    offTurn: Boolean = false) extends CoreOperation:
   require(!offTurn || cost.favor == 0 || matchingBank.isDefined,
     "an off-turn placed favor needs its matching bank")
   override val required: Boolean = true
@@ -398,17 +360,15 @@ final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost,
     if (amount == 0) Vector.empty
     else Vector(Move(Piece.Secrets(amount),
       PositionedLocation(Location.PlayArea(player)), PositionedLocation(to)))
-}
 
 /** Returns warbands to their matching bank. Imperial warbands use the
   * Chancellor's bank; bandits use the shared bandit bank.
   */
 final case class Kill(warbands: Piece.Warbands,
-    from: PositionedLocation) extends CoreOperation {
+    from: PositionedLocation) extends CoreOperation:
   override val children: Vector[Operation] = Vector(Move(
     warbands, from,
     PositionedLocation(Location.WarbandBank(warbands.kind))))
-}
 
 /** Places a prompted card at a site or in a player's play area, including
   * their Advisers.
@@ -416,7 +376,7 @@ final case class Kill(warbands: Piece.Warbands,
 final case class Play(card: CardId, from: PositionedLocation,
     destination: Location, orientation: Orientation,
     override val required: Boolean = false)
-    extends CoreOperation {
+    extends CoreOperation:
   require(destination match {
     case _: Location.Site | _: Location.PlayArea => true
     case _ => false
@@ -425,13 +385,12 @@ final case class Play(card: CardId, from: PositionedLocation,
   override val children: Vector[Operation] = Vector(Move(
     Piece.Card(card), from, PositionedLocation(destination),
     resultingOrientation = Some(orientation)))
-}
 
 /** Swaps warbands for a new color. This is distinct from kill and sacrifice. */
 final case class Replace(removed: Piece.Warbands,
     replacements: Piece.Warbands, at: PositionedLocation,
     override val required: Boolean = false)
-    extends CoreOperation {
+    extends CoreOperation:
   require(removed.amount == replacements.amount,
     "replace must exchange equal numbers of warbands")
   require(removed.kind != replacements.kind,
@@ -443,27 +402,24 @@ final case class Replace(removed: Piece.Warbands,
     Move(replacements,
       PositionedLocation(Location.WarbandBank(replacements.kind)), at))
   override val simultaneous: Boolean = true
-}
 
 /** Flips a card faceup without triggering When Played powers. */
 final case class Reveal(card: CardId, at: Location)
-    extends CoreOperation {
+    extends CoreOperation:
   override val children: Vector[Operation] =
     Vector(Flip(card, at, Orientation.FaceUp))
-}
 
 /** Kills a warband that belongs to the player issuing the instruction. */
 final case class Sacrifice(player: PlayerId,
     warbands: Piece.Warbands, from: PositionedLocation)
-    extends CoreOperation {
+    extends CoreOperation:
   private val kill = Kill(warbands, from)
   override val children: Vector[Operation] = kill.children
-}
 
 /** Swaps two cards by moving each one to the other's location. */
 final case class Swap(firstCard: CardId, firstLocation: PositionedLocation,
     secondCard: CardId, secondLocation: PositionedLocation)
-    extends CoreOperation {
+    extends CoreOperation:
   require(firstCard != secondCard, "swap requires two different cards")
   require(firstLocation != secondLocation,
     "swap requires two different locations")
@@ -474,19 +430,17 @@ final case class Swap(firstCard: CardId, firstLocation: PositionedLocation,
     Move(Piece.Card(secondCard), secondLocation, firstLocation)
   override val children: Vector[Operation] = Vector(first, second)
   override val simultaneous: Boolean = true
-}
 
 /** Moves a piece into the prompted player's custody. */
 final case class Take(piece: Piece, player: PlayerId,
     from: Location, to: Location,
     sourcePosition: StackPosition = StackPosition.Unspecified)
-    extends CoreOperation {
+    extends CoreOperation:
   require(Location.ownedBy(to, player),
     "take destination must belong to the taking player")
   val move: Move = Move(piece, PositionedLocation(from, sourcePosition),
     PositionedLocation(to))
   override val children: Vector[Operation] = Vector(move)
-}
 
 // ---------------------------------------------------------------------------
 // Walker leaves and composites.
@@ -575,9 +529,8 @@ final case class BeginTurn(player: PlayerId, phase: Phase)
     extends PrimitiveOperation
 
 /** Advances Visions Drawn by one after a world-deck Vision is drawn. */
-case object AdvanceVisionsDrawn extends PrimitiveOperation {
+case object AdvanceVisionsDrawn extends PrimitiveOperation:
   override val required: Boolean = true
-}
 
 /** Rolls `dice` drawn from `pool`; the pool count comes from state. `Parked`
   * (the default) parks the walker until the faces ride the next command;
@@ -622,12 +575,11 @@ final case class Decide(decisionId: String, owner: PlayerId,
     query: DecisionQuery,
     override val window: Option[PowerWindow] = None,
     coOwners: Vector[PlayerId] = Vector.empty)
-    extends PrimitiveOperation {
+    extends PrimitiveOperation:
   /** Everyone who may answer: `owner` first, then the co-owners, each once.
     * `owner` stays the primary owner, the addressee of continuations.
     */
   def owners: Vector[PlayerId] = (owner +: coOwners).distinct
-}
 
 /** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
   * `build(state, pending)` when it reaches the node and executes whatever
@@ -652,9 +604,8 @@ final case class BuildOps(
   * and replay applies recorded ops, never re-guarding.
   */
 final case class Repeat(guard: (ReadyGame, PendingTree) => Boolean,
-    body: Operation) extends CoreOperation {
+    body: Operation) extends CoreOperation:
   override val children: Vector[Operation] = Vector(body)
-}
 
 /** A composite whose children are chosen AT WALK TIME: the walker evaluates
   * `select(state, pending)` when it reaches the node and walks the returned
@@ -667,9 +618,8 @@ final case class Repeat(guard: (ReadyGame, PendingTree) => Boolean,
   * addressed by child index inside the branch, exactly like static children.
   */
 final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
-    extends CoreOperation {
+    extends CoreOperation:
   override val children: Vector[Operation] = Vector.empty
-}
 
 /** Runs `children` in order. The walker's sequence composite; `Repeat`,
   * `Sequence`, and `Branch` are the composites the walker consumes this slice.
@@ -681,25 +631,22 @@ final case class Sequence(override val children: Vector[Operation],
   * adviser. Powers supply its children; no hook is a delta.
   */
 final case class CardPlayedFaceup(card: WorldCardId, resultingSource: RuleSourceRef)
-    extends CoreOperation {
+    extends CoreOperation:
   override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayedFaceup)
   override val children: Vector[Operation] = Vector.empty
-}
 
 /** Semantic window for a card (a denizen or a Vision) placed facedown as an
   * adviser by `player`. A discard emits neither hook. Powers supply its
   * children; no hook is a delta.
   */
 final case class CardPlayedFacedown(card: WorldCardId, player: PlayerId)
-    extends CoreOperation {
+    extends CoreOperation:
   override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayedFacedown)
   override val children: Vector[Operation] = Vector.empty
-}
 
-object Sequence {
+object Sequence:
   /** Vararg builder so action trees read `Sequence(a, b)`
    *  instead of wrapping a vector by hand.
    */
   def apply(first: Operation, rest: Operation*): Sequence =
     new Sequence(first +: rest.toVector)
-}

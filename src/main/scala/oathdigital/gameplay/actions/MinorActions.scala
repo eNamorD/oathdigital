@@ -11,21 +11,20 @@ import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.model.{Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}
 
 sealed trait MinorActionCommand extends Product with Serializable
-object MinorActionCommand {
+object MinorActionCommand:
   final case class PeekSiteRelics(player: PlayerId) extends MinorActionCommand
   final case class RevealOwnedRelic(player: PlayerId, relic: RelicId)
       extends MinorActionCommand
   final case class MoveWarbands(player: PlayerId, toSite: Boolean, amount: Int)
       extends MinorActionCommand
-}
 
-object MinorActions {
+object MinorActions:
   private val operationAllowlist: OperationPolicy =
     MinorActionOperationPolicy
 
   def handle(catalog: ExecutableCatalog, state: OathState,
-      command: MinorActionCommand): Either[OathViolation, OathTransition] = {
-    val event = command match {
+      command: MinorActionCommand): Either[OathViolation, OathTransition] =
+    val event = command match
       case MinorActionCommand.PeekSiteRelics(player) => for {
         ready <- validateAct(catalog, state, player)
         at <- actorAtSite(ready, player)
@@ -48,10 +47,9 @@ object MinorActions {
         ready <- validateAct(catalog, state, player)
         at <- actorAtSite(ready, player)
         (actor, siteId, site) = at
-        occupied <- site.forces match {
+        occupied <- site.forces match
           case value: SiteForces.Occupied => Right(value)
           case SiteForces.Empty => Left(MinorActionUnavailable("the site has no warbands"))
-        }
         _ <- Either.cond(amount > 0, (),
           MinorActionUnavailable("warband amount must be positive"))
         _ <- if (toSite) for {
@@ -68,12 +66,10 @@ object MinorActions {
         } yield ()
       } yield WarbandsMoved(player, siteId, toSite, amount,
         actor.board.warbands, occupied.count)
-    }
     event.flatMap(e => transition(catalog, state, e))
-  }
 
   def evolve(catalog: ExecutableCatalog, state: OathState,
-      event: OathEvent): Either[OathViolation, OathState] = event match {
+      event: OathEvent): Either[OathViolation, OathState] = event match
     case e: SiteRelicsPeeked => for {
       ready <- validateAct(catalog, state, e.playerId)
       at <- actorAtSite(ready, e.playerId)
@@ -105,10 +101,9 @@ object MinorActions {
       ready <- validateAct(catalog, state, e.playerId)
       at <- actorAtSite(ready, e.playerId)
       (actor, siteId, site) = at
-      occupied <- site.forces match {
+      occupied <- site.forces match
         case value: SiteForces.Occupied => Right(value)
         case SiteForces.Empty => Left(MinorActionOutcomeMismatch("recorded site is empty"))
-      }
       _ <- Either.cond(siteId == e.siteId && actor.board.warbands == e.priorBoardWarbands &&
         occupied.count == e.priorSiteWarbands, (),
         MinorActionOutcomeMismatch("recorded prior warband facts changed"))
@@ -140,7 +135,6 @@ object MinorActions {
     } yield Ready(evolved)
 
     case _ => Left(InvalidEventOrder("MinorActions received a non-minor-action event"))
-  }
 
   private def actorAtSite(ready: ReadyGame, player: PlayerId) = for {
     actor <- ready.game.current.players.find(_.player == player)
@@ -175,10 +169,8 @@ object MinorActions {
     evolve(catalog, state, event).map(OathTransition(_, Vector(event),
       ActActionSelection(playerId(event))))
 
-  private def playerId(event: OathEvent): PlayerId = event match {
+  private def playerId(event: OathEvent): PlayerId = event match
     case value: SiteRelicsPeeked => value.playerId
     case value: OwnedRelicRevealed => value.playerId
     case value: WarbandsMoved => value.playerId
     case _ => throw new IllegalArgumentException("not a minor-action event")
-  }
-}

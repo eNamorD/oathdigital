@@ -1,7 +1,7 @@
 package oathdigital.model
 
 sealed trait DomainProblem extends Product with Serializable
-object DomainProblem {
+object DomainProblem:
   final case class WrongRegionSize(
       region: Region,
       expected: Int,
@@ -38,15 +38,14 @@ object DomainProblem {
   final case class MultipleChancellors(lineages: Vector[LineageId])
       extends DomainProblem
   final case class CardProblem(problem: CardIndexProblem) extends DomainProblem
-}
 
-object DomainValidation {
+object DomainValidation:
   import DomainProblem._
 
   def validate(
       game: OathGame,
       expectedCards: Set[CardId] = Set.empty
-  ): Vector[DomainProblem] = {
+  ): Vector[DomainProblem] =
     val problems = Vector.newBuilder[DomainProblem]
     val map = game.current.map
 
@@ -74,19 +73,17 @@ object DomainValidation {
       problems += ExtraSiteState(site)
     }
 
-    val atlasSites = game.campaign.atlas.entries.collect {
+    val atlasSites = game.campaign.atlas.entries.collect:
       case stored: AtlasEntry.StoredSite => stored.id
-    }
     atlasSites
       .groupBy(identity)
       .toVector
       .collect { case (site, occurrences) if occurrences.size > 1 => site }
       .sortBy(_.value)
       .foreach(site => problems += DuplicateAtlasSite(site))
-    (inPlay intersect atlasSites.toSet).toVector.sortBy(_.value).foreach {
+    (inPlay intersect atlasSites.toSet).toVector.sortBy(_.value).foreach:
       site =>
         problems += SiteInMapAndAtlas(site)
-    }
 
     FoundationNumber.all.foreach { number =>
       if (!game.campaign.foundations.contains(number))
@@ -109,9 +106,8 @@ object DomainValidation {
     game.current.players
       .groupBy(_.lineage)
       .toVector
-      .collect {
+      .collect:
         case (lineage, occurrences) if occurrences.size > 1 => lineage
-      }
       .sortBy(_.value)
       .foreach(lineage => problems += DuplicateLineage(lineage))
 
@@ -130,12 +126,11 @@ object DomainValidation {
     if (!playerIds.contains(game.current.turn.activePlayer))
       problems += UnknownActivePlayer(game.current.turn.activePlayer)
 
-    map.sites.toVector.sortBy(_._1.value).foreach {
+    map.sites.toVector.sortBy(_._1.value).foreach:
       case (site, SiteState(SiteForces.Occupied(ForceKind.Exile(lineage), _), _, _, _))
           if !game.campaign.lineages.contains(lineage) =>
         problems += UnknownForceLineage(site, lineage)
       case _ => ()
-    }
 
     game.current.banners.peoplesFavor.holder.foreach { holder =>
       if (!playerIds.contains(holder))
@@ -158,12 +153,9 @@ object DomainValidation {
     if (chancellors.size > 1)
       problems += MultipleChancellors(chancellors)
 
-    CardIndex.from(game, expectedCards) match {
+    CardIndex.from(game, expectedCards) match
       case Left(cardProblems) =>
         cardProblems.foreach(problem => problems += CardProblem(problem))
       case Right(_) => ()
-    }
 
     problems.result()
-  }
-}

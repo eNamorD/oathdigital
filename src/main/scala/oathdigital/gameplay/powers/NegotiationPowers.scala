@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model.PowerWindow
 
-object NegotiationPowers {
+object NegotiationPowers:
   private def handler = Vector(ReviewedHandler.automatic(PowerWindow.NegotiationOffer))
   object CouncilArbiter extends ReviewedPower("denizen.council-arbiter", None, handler)
   object DeedWriter extends ReviewedPower("denizen.deed-writer", None, handler)
@@ -15,4 +15,3 @@ object NegotiationPowers {
   object HighPriest extends ReviewedPower("legacy.high-priest", None, handler)
   val powers: Vector[Power] = Vector(CouncilArbiter, DeedWriter,
     TravelingNegotiator, E19Intact, E19Ruined, E21Intact, GrandScepter, HighPriest)
-}

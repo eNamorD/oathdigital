@@ -12,7 +12,7 @@ import oathdigital.model._
   * modelled (the legacy Campaign never modelled it either).
   */
 final case class VowOfPeaceContribution private (cardId: DenizenId)
-    extends ContributingPower {
+    extends ContributingPower:
   def id: PowerId = VowOfPeaceContribution.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
@@ -28,13 +28,11 @@ final case class VowOfPeaceContribution private (cardId: DenizenId)
         case _ => false
       }))(OathViolation.CampaignUnavailable(
         "Vow of Peace prevents its ruler from campaigning"))
-}
 
-object VowOfPeaceContribution {
+object VowOfPeaceContribution:
   val id: PowerId = PowerId("denizen.vow-of-peace")
 
   /** `None` when the catalog has no such card, for example a test stub. */
   def forCatalog(catalog: ExecutableCatalog): Option[VowOfPeaceContribution] =
     catalog.denizens.find(_.handlers.contains(id.value))
       .map(card => new VowOfPeaceContribution(DenizenId(card.id.value)))
-}

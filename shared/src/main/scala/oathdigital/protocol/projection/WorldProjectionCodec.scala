@@ -2,7 +2,7 @@ package oathdigital.protocol.projection
 
 import ProjectionCodecSupport._
 
-private[protocol] object WorldProjectionCodec {
+private[protocol] object WorldProjectionCodec:
   def encodePlayer(value: SetupPlayerProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "displayName" -> value.displayName,
     "role" -> value.role, "colorToken" -> value.color.key)
@@ -75,17 +75,15 @@ private[protocol] object WorldProjectionCodec {
   /** The wire keeps the flat shape older clients read: kind, ruler and colour
     * are each spelled out, and the decoder checks they name the same force.
     */
-  private def encodeForces(value: SiteForcesProjection): ujson.Value = {
-    val (kind, ruler, player, color) = value match {
+  private def encodeForces(value: SiteForcesProjection): ujson.Value =
+    val (kind, ruler, player, color) = value match
       case SiteForcesProjection.Exile(_, playerId, color, _) =>
         ("exile", "player", Some(playerId), color.key)
       case _: SiteForcesProjection.Imperial => ("imperial", "empire", None, "empire")
       case _: SiteForcesProjection.Bandit => ("bandit", "bandit", None, "bandit")
-    }
     ujson.Obj("forceKind" -> kind, "count" -> value.count, "rulerKind" -> ruler,
       "rulerPlayerId" -> stringOption(player), "label" -> value.label,
       "colorToken" -> color)
-  }
   private def decodeForces(raw: ujson.Value, path: String): Result[SiteForcesProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("forceKind", "count", "rulerKind", "rulerPlayerId",
@@ -191,4 +189,3 @@ private[protocol] object WorldProjectionCodec {
     } yield BannerProjection(key, face, holder, resources) }
   } yield PlayerBoardProjection(player, warbands, favor, up, down, committed, total, supply, pawn,
     advisers, relics, vision, banners)
-}

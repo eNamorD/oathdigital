@@ -16,7 +16,7 @@ import oathdigital.model._
   * offer that destination. The ruler is exempt.
   */
 final case class TollRoads private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = TollRoads.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -34,19 +34,16 @@ final case class TollRoads private (cardId: DenizenId,
     ruler <- TravelRulers.rulerOfCard(ctx.state, cardId)
     if TravelRulers.isEnemy(ruler, route.player)
     if TravelRulers.rulerOf(ctx.state, route.destination).contains(ruler)
-  } yield ruler match {
+  } yield ruler match
     case SiteRuler.Player(owner) => Give(Piece.Favor(TollRoads.Favor),
       route.player, Location.PlayArea(route.player),
       Location.PlayArea(owner), required = true)
     case _ => PayCost(route.player, Location.SharedBank,
       Cost(favorBurnt = TollRoads.Favor))
-  }
-}
 
-object TollRoads {
+object TollRoads:
   val id: PowerId = PowerId("denizen.toll-roads")
   val Favor: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[TollRoads] =
     CatalogCards.denizen(catalog, id).map(new TollRoads(_, catalog))
-}

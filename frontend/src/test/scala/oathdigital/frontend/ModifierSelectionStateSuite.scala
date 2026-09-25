@@ -5,7 +5,7 @@ import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse,
   PreviewModifier, PreviewTarget, ActorlessCommandCodec, ActorlessCommandRequest,
   ModifierInvocation}
 
-class ModifierSelectionStateSuite extends munit.FunSuite {
+class ModifierSelectionStateSuite extends munit.FunSuite:
   private val context = ModifierSelectionContext("g", "p", 4, "trade")
   private val first = PreviewModifier("adviser:p:denizen:a", "h.a", "A")
   private val second = PreviewModifier("site-card:s:denizen:b", "h.b", "B")
@@ -17,7 +17,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     * `modifierWorkflow` var alongside its other draft fields).
     */
   private def renderOrderingPanel(modifiers: Vector[PreviewModifier])
-      : org.scalajs.dom.Element = {
+      : org.scalajs.dom.Element =
     val response = MajorActionPreviewResponse(4L, "travel", modifiers,
       Vector.empty, Vector.empty)
     val selection = ModifierSelectionState.reconcile(None,
@@ -33,9 +33,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
         completed = false, actionSelectionOpen = true),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
       view)
-  }
 
-  test("selection preserves click order supports badges reorder toggle and keyboard") {
+  test("selection preserves click order supports badges reorder toggle and keyboard"):
     val empty = ModifierSelectionState.reconcile(None, context,
       Vector(first, second), "preview-1")
     val chosen = empty.toggle(second).keyboard(first, "Enter")
@@ -44,9 +43,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(chosen.moveEarlier(first).selected, Vector(first, second))
     assertEquals(chosen.keyboard(second, "ArrowUp").selected, Vector(second, first))
     assertEquals(chosen.toggle(second).selected, Vector(first))
-  }
 
-  test("game viewer sequence candidates and preview changes clear the draft") {
+  test("game viewer sequence candidates and preview changes clear the draft"):
     val selected = ModifierSelectionState.reconcile(None, context,
       Vector(first), "preview-1").toggle(first)
     assertEquals(ModifierSelectionState.reconcile(Some(selected), context,
@@ -57,9 +55,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       Vector(first, second), "preview-1").selected.isEmpty)
     assert(ModifierSelectionState.reconcile(Some(selected), context,
       Vector(first), "preview-2").selected.isEmpty)
-  }
 
-  test("targeted actions preview before commands while direct actions retain their stage") {
+  test("targeted actions preview before commands while direct actions retain their stage"):
     assertEquals(Vector("travel", "campaign-conquest", "campaign-raid",
       "play-facedown-adviser").flatMap(ModifierWorkflow.targeted).map(_._1),
       Vector("travel", "search"))
@@ -89,9 +86,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     // preview the server will answer.
     assertEquals(ModifierWorkflow.action(GameIntent.StartWalker("teleport", Vector.empty)),
       None)
-  }
 
-  test("modifier confirmation exposes preview-authorized targets without submitting") {
+  test("modifier confirmation exposes preview-authorized targets without submitting"):
     val action = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty),
         BoardTargetCandidate(BoardTargetRef.Site("b"), "B", Vector.empty)))
@@ -107,9 +103,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val authorized = ModifierWorkflow.targetAction("travel", response, Vector(action)).get
     assertEquals(authorized.candidates.map(_.target), Vector(BoardTargetRef.Site("b")))
     assert(authorized.explicitConfirm)
-  }
 
-  test("facedown adviser keeps ordered Search modifiers before owned target draft") {
+  test("facedown adviser keeps ordered Search modifiers before owned target draft"):
     val response = MajorActionPreviewResponse(4, "search", Vector(first),
       Vector.empty, Vector.empty)
     val selection = ModifierSelectionState.reconcile(None,
@@ -126,9 +121,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(targets.backFromTargets.map(_.selection.selected),
       Some(Vector(first)))
     assertEquals(targets.cancel, None)
-  }
 
-  test("zero modifiers skip ordering and a targeted action still requires explicit confirmation") {
+  test("zero modifiers skip ordering and a targeted action still requires explicit confirmation"):
     val target = BoardTargetCandidate(
       BoardTargetRef.Site("d1"), "D1", Vector.empty)
     val action = BoardTargetAction("travel", "Travel", 1, 1, false,
@@ -148,9 +142,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       .activate("travel").choose(target.target)
     assert(chosen.isInstanceOf[BoardSelectionResult.Updated])
     assert(chosen.asInstanceOf[BoardSelectionResult.Updated].state.canConfirm)
-  }
 
-  test("target Back restores ordering only when present and stale context clears flow") {
+  test("target Back restores ordering only when present and stale context clears flow"):
     val response = MajorActionPreviewResponse(4, "travel", Vector(first),
       Vector.empty, Vector.empty)
     val selected = ModifierSelectionState.reconcile(None, context,
@@ -166,10 +159,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       Some(targets))
     assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
     assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "other", 4), None)
-  }
 
   test("Recover uses the generic ordered modifier flow but submits as a " +
-      "walker command carrying Catacombs in its own modifiers field") {
+      "walker command carrying Catacombs in its own modifiers field"):
     val catacombs = PreviewModifier("site-card:site:a:denizen:201",
       "denizen.catacombs", "Catacombs")
     val response = MajorActionPreviewResponse(4, "recover", Vector(catacombs),
@@ -201,9 +193,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val decoded = ActorlessCommandCodec.decode(encoded).toOption.get
     assertEquals(decoded.intent, submitted)
     assertEquals(decoded.orderedModifiers, Vector.empty[ModifierInvocation])
-  }
 
-  test("a selected game-rule modifier such as Rowdy Pub invokes without throwing") {
+  test("a selected game-rule modifier such as Rowdy Pub invokes without throwing"):
     val rowdyPub = PreviewModifier("game:denizen.rowdy-pub", "denizen.rowdy-pub",
       "Rowdy Pub")
     val selection = ModifierSelectionState.reconcile(None,
@@ -216,10 +207,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(submitted, GameIntent.StartWalker("muster",
       Vector("denizen.rowdy-pub")))
     assertEquals(outer, Vector.empty[ModifierInvocation])
-  }
 
   test("submission leaves non-walker commands on the legacy ordered-modifiers " +
-      "channel untouched") {
+      "channel untouched"):
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       "denizen.some-power")
     val (submitted, outerModifiers) = ModifierWorkflow.submission(
@@ -228,9 +218,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(submitted,
       GameIntent.PeekSiteRelics)
     assertEquals(outerModifiers, Vector(invocation))
-  }
 
-  test("Search and facedown-adviser walker starts retain their card arguments") {
+  test("Search and facedown-adviser walker starts retain their card arguments"):
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       "denizen.some-power")
     Vector(
@@ -247,9 +236,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
           Vector("denizen.some-power"))
         assertEquals(outer, Vector.empty)
       }
-  }
 
-  test("a modifier option draws its card and names the action it modifies") {
+  test("a modifier option draws its card and names the action it modifies"):
     val card = CardDetails("denizen:vow-of-peace", "denizen", "Vow of Peace",
       orientation = Some("face-up"))
     val modifier = PreviewModifier("adviser:p1:denizen:vow-of-peace",
@@ -260,5 +248,3 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(panel.querySelector(".modifier-modifies").textContent,
       "Travel Modifier")
     assertEquals(panel.textContent.contains("denizen.vow-of-peace"), false)
-  }
-}

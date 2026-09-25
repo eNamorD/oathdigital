@@ -8,7 +8,7 @@ import oathdigital.model.TestGameFixtures._
 /** A `Repeat` around a `Branch` around a decision two players may answer: the
   * shape Negotiation's deal loop takes, exercised with a synthetic tree.
   */
-class CoOwnedDecideSuite extends munit.FunSuite {
+class CoOwnedDecideSuite extends munit.FunSuite:
   private val owner = playerId
   private val guest = PlayerId("player-blue")
   private val outsider = PlayerId("player-green")
@@ -33,18 +33,16 @@ class CoOwnedDecideSuite extends munit.FunSuite {
     Answered(shared.decisionId, ChooseOneAnswer(ref), by)
 
   private def parkedAt(outcome: Either[OathViolation, WalkerOutcome]): PendingTree =
-    outcome match {
+    outcome match
       case Right(WalkerOutcome.Parked(pending, _)) => pending
       case other => fail(s"expected a park, got $other")
-    }
 
-  test("owners lists the owner first and drops a repeated owner") {
+  test("owners lists the owner first and drops a repeated owner"):
     assertEquals(shared.owners, Vector(owner, guest))
     assertEquals(shared.copy(coOwners = Vector(owner, guest)).owners,
       Vector(owner, guest))
-  }
 
-  test("the park names every owner and one open decision") {
+  test("the park names every owner and one open decision"):
     val pending = parkedAt(ProcedureWalker.advance(ready, loop, None, noPowers))
     assertEquals(pending.at, Vector("0", "0", "0"))
     assertEquals(ProcedureWalker.openDecisions(ready, loop, pending, noPowers),
@@ -55,16 +53,14 @@ class CoOwnedDecideSuite extends munit.FunSuite {
       Some(owner))
     assertEquals(ProcedureWalker.parkedDecide(ready, loop, pending, noPowers),
       Some(shared))
-  }
 
-  test("a plain decision is awaited by its owner alone") {
+  test("a plain decision is awaited by its owner alone"):
     val plain = Sequence(shared.copy(coOwners = Vector.empty))
     val pending = parkedAt(ProcedureWalker.advance(ready, plain, None, noPowers))
     assertEquals(ProcedureWalker.awaitedPlayers(ready, plain, pending, noPowers),
       Set(owner))
-  }
 
-  test("owners answer in any order, the loop re-parks, and a stop finishes it") {
+  test("owners answer in any order, the loop re-parks, and a stop finishes it"):
     val first = parkedAt(ProcedureWalker.advance(ready, loop, None, noPowers))
     val second = parkedAt(ProcedureWalker.resolve(ready, loop, first,
       answer(guest, go), noPowers))
@@ -72,22 +68,17 @@ class CoOwnedDecideSuite extends munit.FunSuite {
       answer(owner, go), noPowers))
     assertEquals(third.at, Vector("0", "0", "0"))
     assertEquals(third.answered.map(_.by), Vector(guest, owner))
-    ProcedureWalker.resolve(ready, loop, third, answer(guest, stop), noPowers) match {
+    ProcedureWalker.resolve(ready, loop, third, answer(guest, stop), noPowers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(events.size, 1)
       case other => fail(s"expected the loop to finish, got $other")
-    }
-  }
 
-  test("a player who is neither owner nor co-owner is rejected") {
+  test("a player who is neither owner nor co-owner is rejected"):
     val pending = parkedAt(ProcedureWalker.advance(ready, loop, None, noPowers))
     assertEquals(ProcedureWalker.resolve(ready, loop, pending,
       answer(outsider, go), noPowers), Left(OathViolation.WrongPlayer(owner, outsider)))
-  }
 
-  test("an answer for a decision that is not open is rejected") {
+  test("an answer for a decision that is not open is rejected"):
     val pending = parkedAt(ProcedureWalker.advance(ready, loop, None, noPowers))
     val stale = Answered("other.decision", ChooseOneAnswer(go), guest)
     assert(ProcedureWalker.resolve(ready, loop, pending, stale, noPowers).isLeft)
-  }
-}

@@ -9,7 +9,7 @@ package oathdigital.protocol.projection
   */
 final case class OathkeeperPresentation(title: String, lines: Vector[String])
 
-object OathkeeperPresentation {
+object OathkeeperPresentation:
   private def successor(clause: String): String =
     s"Successor to the Chancellor: $clause"
 
@@ -28,4 +28,3 @@ object OathkeeperPresentation {
     * the four.
     */
   def title(goal: String): String = byGoal.get(goal).fold(goal)(_.title)
-}

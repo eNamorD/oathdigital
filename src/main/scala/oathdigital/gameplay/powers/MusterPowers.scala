@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model.PowerWindow
 
-object MusterPowers {
+object MusterPowers:
   private def economy = Vector(
     ReviewedHandler.selected(PowerWindow.MusterModifierSelection),
     ReviewedHandler.selected(PowerWindow.TradeModifierSelection))
@@ -36,4 +36,3 @@ object MusterPowers {
     Pressgangs, Curfew, KnightsErrant, GolemLegions, Defame, FriendlyFamiliar,
     OldSongs, VillageIdiot, SkilledMerchants, MovingMarket, MountedLibrary,
     CupOfPlenty, SpitefulMirror, E26Intact, Beloved)
-}

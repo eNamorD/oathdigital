@@ -3,14 +3,11 @@ package oathdigital.protocol.projection
 /** What a board-target action can select. Only sites remain: Travel and
   * the setup pawn placement are the whole of it.
   */
-sealed trait BoardTargetRefProjection extends Product with Serializable {
-  def stableKey: String = this match {
+sealed trait BoardTargetRefProjection extends Product with Serializable:
+  def stableKey: String = this match
     case BoardTargetRefProjection.Site(id) => s"site:$id"
-  }
-}
-object BoardTargetRefProjection {
+object BoardTargetRefProjection:
   final case class Site(siteId: String) extends BoardTargetRefProjection
-}
 final case class BoardTargetCandidateProjection(
     target: BoardTargetRefProjection,
     label: String,
@@ -25,20 +22,18 @@ final case class BoardTargetActionProjection(
     candidates: Vector[BoardTargetCandidateProjection],
     decisionId: Option[String] = None,
     explicitConfirm: Boolean = false
-) {
+):
   require(minimum >= 0, "selection minimum must be non-negative")
   require(maximum >= minimum, "selection maximum must include minimum")
   require(maximum <= 1, "a board-target action selects at most one target")
   require(maximum <= candidates.size,
     "selection maximum cannot exceed authorized candidates")
-}
 final case class CardResolutionProjection(
     kind: String,
     orientation: Option[String] = None,
     replacementRequired: Boolean = false,
-    replacementTargets: Vector[CardDetailsProjection] = Vector.empty) {
+    replacementTargets: Vector[CardDetailsProjection] = Vector.empty):
   def replacement: Option[CardDetailsProjection] = replacementTargets.headOption
-}
 final case class PendingCardDecisionProjection(
     decisionId: String,
     kind: String,
@@ -239,9 +234,8 @@ final case class WalkerWaitingProjection(playerId: String,
     coOwnerPlayerIds: Vector[String] = Vector.empty,
     deal: Option[NegotiationDealProjection] = None)
 final case class BannerProjection(key: String, face: String,
-    holderPlayerId: Option[String], resources: Int) {
+    holderPlayerId: Option[String], resources: Int):
   def banner: String = key
-}
 final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
     usurperLimited: Boolean, winnerPlayerId: Option[String],

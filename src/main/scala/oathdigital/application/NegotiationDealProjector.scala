@@ -12,10 +12,10 @@ import oathdigital.protocol.projection._
   * Only a participant gets the editing inputs, and never another player's.
   */
 private[application] final class NegotiationDealProjector(
-    presentation: GamePresentationProjector) {
+    presentation: GamePresentationProjector):
 
   def project(ready: ReadyGame, viewer: Option[PlayerId],
-      query: DecisionQuery.Negotiate): NegotiationDealProjection = {
+      query: DecisionQuery.Negotiate): NegotiationDealProjection =
     val current = ready.game.current
     val transfers = query.participants.flatMap { author =>
       val owner = current.players.find(_.player == author).get
@@ -35,11 +35,10 @@ private[application] final class NegotiationDealProjector(
         val visible = viewer.contains(author)
         def detail(id: CardId) = Option.when(visible)(presentation.cardDetails(
           id, Some(Orientation.FaceDown), hidden = false))
-        val (kind, card) = disclosure.information match {
+        val (kind, card) = disclosure.information match
           case NegotiationDisclosureRef.Adviser(_, id) => "adviser" -> detail(id)
           case NegotiationDisclosureRef.HeldRelic(_, id) => "held-relic" -> detail(id)
           case NegotiationDisclosureRef.SiteRelic(_, id) => "site-relic" -> detail(id)
-        }
         NegotiationDisclosureProjection(author.value,
           disclosure.recipient.value, kind, card)
       }
@@ -48,10 +47,9 @@ private[application] final class NegotiationDealProjector(
       query.participants.filter(query.accepted).map(_.value), transfers,
       disclosures, viewer.filter(query.participants.contains)
         .map(editing(ready, query, _)))
-  }
 
   private def editing(ready: ReadyGame, query: DecisionQuery.Negotiate,
-      viewer: PlayerId): NegotiationEditingProjection = {
+      viewer: PlayerId): NegotiationEditingProjection =
     val current = ready.game.current
     val player = current.players.find(_.player == viewer).get
     val own = query.bounds(viewer)
@@ -73,5 +71,3 @@ private[application] final class NegotiationDealProjector(
               hidden = false)))
       },
       query.acceptors.contains(viewer))
-  }
-}

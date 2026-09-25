@@ -7,7 +7,7 @@ final case class ServerRequestIdentity(
 )
 
 sealed trait ProjectionRoute
-object ProjectionRoute {
+object ProjectionRoute:
   final case class Display(
       projection: GameProjection,
       notice: Option[GameClientFailure]
@@ -17,31 +17,28 @@ object ProjectionRoute {
       request: ServerRequestIdentity,
       notice: Option[GameClientFailure]
   ) extends ProjectionRoute
-}
 
 sealed trait ServerConnectionState
-object ServerConnectionState {
+object ServerConnectionState:
   case object Connecting extends ServerConnectionState
   case object Connected extends ServerConnectionState
   final case class Disconnected(failure: GameClientFailure)
       extends ServerConnectionState
-}
 
 /** Invalidates every outstanding callback whenever the game or view changes. */
-final class ServerSessionCoordinator(initialGameId: String, initialPlayer: String) {
+final class ServerSessionCoordinator(initialGameId: String, initialPlayer: String):
   private var generation = 0L
   private var gameId = initialGameId
   private var playerId = initialPlayer
   private var connection: ServerConnectionState =
     ServerConnectionState.Connecting
 
-  def switchSession(game: String, player: String): ServerRequestIdentity = {
+  def switchSession(game: String, player: String): ServerRequestIdentity =
     generation += 1
     gameId = game
     playerId = player
     connection = ServerConnectionState.Connecting
     capture
-  }
 
   def reconnect(): ServerRequestIdentity = switchSession(gameId, playerId)
 
@@ -61,22 +58,20 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
 
   def recordSnapshotSuccess(request: ServerRequestIdentity): Boolean =
     if (!accepts(request)) false
-    else {
+    else
       connection = ServerConnectionState.Connected
       true
-    }
 
   def recordFailure(
       request: ServerRequestIdentity,
       failure: GameClientFailure
   ): Boolean =
     if (!accepts(request)) false
-    else {
+    else
       if (GameClientFailure.isTransient(failure))
         connection = ServerConnectionState.Disconnected(failure)
       else connection = ServerConnectionState.Connected
       true
-    }
 
   def route(
       request: ServerRequestIdentity,
@@ -84,9 +79,9 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
       notice: Option[GameClientFailure]
   ): Option[ProjectionRoute] =
     if (!accepts(request)) None
-    else {
+    else
       connection = ServerConnectionState.Connected
-      projection.activeParticipantId match {
+      projection.activeParticipantId match
       case Some(active) if active != playerId && !projection.ready =>
         Some(ProjectionRoute.ReloadForActivePlayer(
           projection,
@@ -94,6 +89,3 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
           notice
         ))
       case _ => Some(ProjectionRoute.Display(projection, notice))
-      }
-    }
-}

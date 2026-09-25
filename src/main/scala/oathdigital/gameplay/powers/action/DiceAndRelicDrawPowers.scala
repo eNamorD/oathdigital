@@ -7,8 +7,7 @@ import oathdigital.gameplay.powerresolver.PhasePower
   * through this one object so that later slices add their own group without
   * editing the same lines.
   */
-object DiceAndRelicDrawPowers {
+object DiceAndRelicDrawPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](GamblingHall, BoneDice, MurkyFountain, DowsingSticks,
       FaeMerchant.forCatalog(catalog))
-}

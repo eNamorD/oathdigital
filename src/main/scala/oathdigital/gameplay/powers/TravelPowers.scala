@@ -26,7 +26,7 @@ import oathdigital.model.{MajorActionType, PowerWindow}
   * each of those things directly, so none of that vocabulary survives to say
   * them a second way.
   */
-object TravelPowers {
+object TravelPowers:
   private val modifier = Some(MajorActionType.Travel)
   private def topology = Vector(ReviewedHandler.automatic(
     PowerWindow.TravelCost, implemented = true))
@@ -41,4 +41,3 @@ object TravelPowers {
     "site.mines.mountain", "site.narrow-pass.pass", "site.rocky-coast.coast",
     "site.sunken-isles.coast", "site.sunken-isles.island",
     "site.tidal-marshes.coast").map(TerrainPower.apply)
-}

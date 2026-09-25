@@ -7,7 +7,7 @@ import org.scalajs.dom
   * it renders only what the projected query declares: a row per slot, with
   * its label, a stepper and its maximum.
   */
-private[frontend] object DistributePanelRenderer {
+private[frontend] object DistributePanelRenderer:
   import ServerUiSupport.{ViewerPresentation, button, element, text}
 
   val AllTooltip = "Shift+click: all"
@@ -41,7 +41,7 @@ private[frontend] object DistributePanelRenderer {
     }
 
   private def row(slot: DecisionSlotState, draft: WalkerDistributeDraft,
-      canControl: Boolean, ui: ServerUiView): dom.Element = {
+      canControl: Boolean, ui: ServerUiView): dom.Element =
     val item = WalkerPartitionDraft.itemId(slot.option)
     val node = element("div", "distribute-slot")
     node.setAttribute("data-option-id", item)
@@ -55,10 +55,9 @@ private[frontend] object DistributePanelRenderer {
       shift => if (shift) draft.fill(item) else draft.increment(item)))
     node.appendChild(text("span", "distribute-maximum", s"max ${slot.maximum}"))
     node
-  }
 
   private def stepper(label: String, className: String, canControl: Boolean,
-      ui: ServerUiView, next: Boolean => WalkerDistributeDraft): dom.Element = {
+      ui: ServerUiView, next: Boolean => WalkerDistributeDraft): dom.Element =
     val control = button(label, className)
     control.setAttribute("title", AllTooltip)
     control.disabled = !canControl
@@ -67,5 +66,3 @@ private[frontend] object DistributePanelRenderer {
       ui.rerender()
     }
     control
-  }
-}

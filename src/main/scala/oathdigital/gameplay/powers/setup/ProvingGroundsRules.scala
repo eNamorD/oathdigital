@@ -11,7 +11,7 @@ import oathdigital.model._
   * `GreatMarketRules` for the `WhenExplored`/window-sharing rationale.
   */
 final case class ProvingGrounds private (edifice: EdificeId, catalog: ExecutableCatalog)
-    extends ContributingPower {
+    extends ContributingPower:
   def id: PowerId = ProvingGrounds.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
@@ -29,19 +29,16 @@ final case class ProvingGrounds private (edifice: EdificeId, catalog: Executable
     PlayerFacts.forceKind(ready, actor).map(kind =>
       Vector(Gain.Warbands(actor, kind, 3)))
 
-  def contributions: Map[PowerWindow, Vector[Contribution]] = {
+  def contributions: Map[PowerWindow, Vector[Contribution]] =
     val effect = Vector(Transform((ctx, ops) => at(ctx) match {
       case Some((actor, _)) => ops :+ BuildOps((ready, _) => build(ready, actor))
       case None => ops
     }))
     Map(PowerWindow.SetupPawnPlaced -> effect, PowerWindow.WhenExplored -> effect)
-  }
-}
-object ProvingGrounds {
+object ProvingGrounds:
   val id: PowerId = PowerId("edifice.e22.intact")
   def forCatalog(catalog: ExecutableCatalog): Option[ProvingGrounds] =
     CatalogCards.edifice(catalog, id).map(new ProvingGrounds(_, catalog))
-}
 
 /** Discards all OTHER denizens in this region -- edifices count as denizens
   * for this clause specifically (design spec table), and a discarded ruined
@@ -51,7 +48,7 @@ object ProvingGrounds {
   * first player" (SetupEnd has no single "you").
   */
 final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCatalog)
-    extends ContributingPower {
+    extends ContributingPower:
   def id: PowerId = EmptyGrounds.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
@@ -61,7 +58,7 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
   override def applicable(ctx: PowerCtx): Boolean = at(ctx.state).isDefined
 
   private def build(ready: ReadyGame, site: SiteId)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val current = ready.game.current
     val actor = ready.setup.firstPlayer
     current.map.regionOf(site).toRight(OathViolation.InvalidEventOrder(
@@ -71,14 +68,14 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
         current.map.regionOf(s).contains(region)).flatMap(s =>
         current.map.sites(s).denizens.map(s -> _))
         .filterNot { case (s, card) => s == site && card.id.value == edifice.value }
-      candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](Right(Vector.empty)) {
+      candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](Right(Vector.empty)):
         case (acc, (siteId, card)) => for {
           operations <- acc
           suit <- catalog.suitOf(card.id).toRight(card match {
             case denizen: DenizenState => OathViolation.UnknownWorldCard(denizen.id)
             case edifice: EdificeState => OathViolation.UnknownEdifice(edifice.id)
           })
-        } yield card match {
+        } yield card match
           case denizen: DenizenState => operations :+ Discard.Denizen(denizen.id,
             PositionedLocation(Location.Site(siteId)), destination, suit,
             denizen.tokens.favor, denizen.tokens.secrets, actor)
@@ -87,12 +84,9 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
               PositionedLocation(Location.Site(siteId)), suit,
               edifice.tokens.favor, edifice.tokens.secrets, actor)
           case _ => operations
-        }
-      }
     }
-  }
 
-  def contributions: Map[PowerWindow, Vector[Contribution]] = {
+  def contributions: Map[PowerWindow, Vector[Contribution]] =
     val effect = Vector(Transform((ctx, ops) => at(ctx.state) match {
       case Some(site) => ops :+ BuildOps((ready, _) => build(ready, site),
         restrictions = (ready, _) =>
@@ -100,10 +94,7 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
       case None => ops
     }))
     Map(PowerWindow.SetupEnd -> effect, PowerWindow.WhenExplored -> effect)
-  }
-}
-object EmptyGrounds {
+object EmptyGrounds:
   val id: PowerId = PowerId("edifice.e22.ruined")
   def forCatalog(catalog: ExecutableCatalog): Option[EmptyGrounds] =
     CatalogCards.edifice(catalog, id).map(new EmptyGrounds(_, catalog))
-}

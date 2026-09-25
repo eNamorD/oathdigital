@@ -11,14 +11,14 @@ import oathdigital.model._
 /** The rules half of the pending-walker invariant: over a parked walker,
   * neither a walker start nor any legacy `handle` overload runs.
   */
-class PendingWalkerRulesSuite extends munit.FunSuite {
+class PendingWalkerRulesSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
   private val pending = OathViolation.InvalidEventOrder(
     "a walker procedure is already pending")
 
-  private def leagueTreatyPark: OathState = {
+  private def leagueTreatyPark: OathState =
     val act = LeagueTreatyFixture.act
     val ruler = act.game.current.players.map(_.player)
       .find(_ != act.game.current.turn.activePlayer).get
@@ -28,9 +28,8 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
       ready.game.current.turn.activePlayer).toOption.get
     assert(parked.continue.isInstanceOf[OathContinue.AwaitingRestDecision])
     parked.state
-  }
 
-  private def silverTonguePark: OathState = {
+  private def silverTonguePark: OathState =
     val (ready, actor) = SilverTongueFixture.arranged(
       Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane, Suit.Nomad))
     val parked = rules.startWalker(Ready(ready), ActionRef.UsePower(SilverTongue.id),
@@ -38,12 +37,11 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
       .toOption.get
     assert(parked.continue.isInstanceOf[OathContinue.AwaitingPowerDecision])
     parked.state
-  }
 
   Vector("off-turn League Treaty" -> (() => leagueTreatyPark),
-    "Silver Tongue choice" -> (() => silverTonguePark)).foreach {
+    "Silver Tongue choice" -> (() => silverTonguePark)).foreach:
     case (name, park) =>
-      test(s"no walker start and no legacy handle runs over a parked $name") {
+      test(s"no walker start and no legacy handle runs over a parked $name"):
         val state = park()
         val ready = state.asInstanceOf[Ready].value
         val actor = ready.game.current.turn.activePlayer
@@ -57,6 +55,3 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
         ).foreach { case (family, result) =>
           assertEquals(result.left.toOption, Some(pending), family)
         }
-      }
-  }
-}

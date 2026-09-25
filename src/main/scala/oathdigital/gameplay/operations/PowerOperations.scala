@@ -7,7 +7,7 @@ import oathdigital.model._
 final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,
     siteId: SiteId, orientation: Orientation)
 
-object Costs {
+object Costs:
   def affordable(ready: ReadyGame, actor: PlayerId, placedAt: Location,
       cost: Cost, intoOccupied: Boolean = false): Boolean =
     plan(ready, actor, placedAt, cost, intoOccupied).isRight
@@ -47,22 +47,19 @@ object Costs {
       cost: Cost, intoOccupied: Boolean): Either[OathViolation, Unit] =
     if (cost.favor + cost.secret == 0) Right(())
     else
-      placedAt match {
+      placedAt match
         case Location.OnCard(id) if statefulCard(ready, id) =>
           Either.cond(intoOccupied || PayCostRules.isEmpty(ready, id), (),
             EconomyCardNotEmpty(id))
         case _ => Left(InvalidEventOrder(
           "placed cost portions require an existing token-bearing card"))
-      }
 
   private def statefulCard(ready: ReadyGame, id: CardId): Boolean =
     CardIndex.from(ready.game).toOption.exists { index =>
-      index.get(id).flatMap(_.state).exists {
+      index.get(id).flatMap(_.state).exists:
         case _: DenizenState | _: EdificeState | _: RelicState => true
         case _ => false
-      }
     }
-}
 
 /** Converts canonical power-event facts into glossary operations. Event-owned
   * handlers validate affordability, source identity, and placement legality
@@ -70,24 +67,22 @@ object Costs {
   * then re-checks the emitted batch atomically, so this adapter never needs
   * its own sufficiency audit.
   */
-object PowerOperationPlanner {
+object PowerOperationPlanner:
   def placement(placement: RelicPlacement): CoreOperation = Play(
     placement.relicId,
     PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
     Location.Site(placement.siteId),
     placement.orientation)
-}
 
-object DrawTopRelic {
+object DrawTopRelic:
   def plan(ready: ReadyGame): Either[OathViolation, RelicId] =
     ready.game.current.commonCards.relicDeck.headOption.toRight(
       RecoverUnavailable("relic deck is empty"))
   def validate(ready: ReadyGame, relic: RelicId): Either[OathViolation, Unit] =
     DrawTopRelic.plan(ready).flatMap(top => Either.cond(top == relic, (),
       RecoverOutcomeMismatch("relic is not the top of the relic deck")))
-}
 
-object PlaceRelicAtSite {
+object PlaceRelicAtSite:
   def plan(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       relic: RelicId, site: SiteId, orientation: Orientation)
       : Either[OathViolation, RelicPlacement] = for {
@@ -104,4 +99,3 @@ object PlaceRelicAtSite {
     _ <- Either.cond(site.relics.size < definition.relicSlots, (),
       RecoverUnavailable("site has no empty relic slot"))
   } yield ()
-}

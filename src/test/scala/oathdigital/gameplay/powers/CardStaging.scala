@@ -7,8 +7,8 @@ import oathdigital.model._
   * from the world deck or the relic deck only, but the first game also deals
   * cards to sites, regional discards and advisers.
   */
-object CardStaging {
-  def without(ready: ReadyGame, id: CardId): ReadyGame = ready.updateCurrent {
+object CardStaging:
+  def without(ready: ReadyGame, id: CardId): ReadyGame = ready.updateCurrent:
     current =>
       val cards = current.commonCards
       current.copy(
@@ -27,5 +27,3 @@ object CardStaging {
         map = current.map.copy(sites = current.map.sites.view.mapValues(site =>
           site.copy(denizens = site.denizens.filterNot(_.id == id),
             relics = site.relics.filterNot(_.id == id))).toMap))
-  }
-}

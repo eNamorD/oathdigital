@@ -17,7 +17,7 @@ import oathdigital.model._
   * draw, so it covers every card drawn whichever other extension ran.
   */
 final case class TruthfulHarp private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = TruthfulHarp.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -31,12 +31,10 @@ final case class TruthfulHarp private (cardId: RelicId,
       viewer <- ready.game.current.players.map(_.player).filter(_ != actor)
       card <- ready.game.current.temporaryHands.getOrElse(actor, Vector.empty)
     } yield Peek(viewer, card, Location.Hand(actor))))
-}
 
-object TruthfulHarp {
+object TruthfulHarp:
   val id: PowerId = PowerId("relic.truthful-harp")
   val More: Int = 2
 
   def forCatalog(catalog: ExecutableCatalog): Option[TruthfulHarp] =
     CatalogCards.relic(catalog, id).map(new TruthfulHarp(_, catalog))
-}

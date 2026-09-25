@@ -15,16 +15,15 @@ import oathdigital.application._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.protocol._
 
-class TrustedSeatRoutesSuite extends munit.FunSuite {
+class TrustedSeatRoutesSuite extends munit.FunSuite:
   /**
    * Generated games shuffle seating and make the first seat the first player.
    * Reversing the two requested seats makes p2 the deterministic first player.
    */
-  private val reversing: ChronicleRandomPort = new ChronicleRandomPort {
+  private val reversing: ChronicleRandomPort = new ChronicleRandomPort:
     def shuffle[A](values: Vector[A]): Vector[A] = values.reverse
-  }
 
-  test("trusted gateway projects only the seat and binds command identity") {
+  test("trusted gateway projects only the seat and binds command identity"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val begun = service.handle("trusted", 0L,
@@ -54,9 +53,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     assertEquals(service.load("trusted").toOption.flatten.get.nextSequence,
       accepted.nextSequence)
     assert(GameHttpWire.decodeCommand("""{"expectedNextSequence":2,"intent":{"type":"resolveWalker","playerId":"p3","decisionId":"setup.pawn-placement.p3","payload":{"kind":"choose-one","optionKind":"site","optionId":"S1"}}}""").isLeft)
-  }
 
-  test("trusted preview binds resolved actor and rejects a different game") {
+  test("trusted preview binds resolved actor and rejects a different game"):
     val repository = new InMemoryEventStreamRepository
     val (state, events) = execute()
     val oathdigital.model.OathState.Ready(ready) = state: @unchecked
@@ -77,9 +75,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     assertEquals(gateway.preview("other", TrustedSeat("preview", actor.value), request),
       Left(TrustedSeatFailure.Forbidden))
     assertEquals(service.load("preview").toOption.flatten.get.nextSequence, sequence)
-  }
 
-  test("creation returns ordered public links; exchange scopes an HttpOnly cookie and reloads private API") {
+  test("creation returns ordered public links; exchange scopes an HttpOnly cookie and reloads private API"):
     withServer() { (base, _) =>
       val client = HttpClient.newHttpClient()
       val created = create(client, base, "game-a")
@@ -133,9 +130,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
         assert(!body.contains("relicOrder"))
       }
     }
-  }
 
-  test("HTTPS public origin sets Secure even when the proxy connection uses HTTP") {
+  test("HTTPS public origin sets Secure even when the proxy connection uses HTTP"):
     withServer(Some("https://games.example.test")) { (base, _) =>
       val client = HttpClient.newHttpClient()
       val created = create(client, base, "tls")
@@ -145,9 +141,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
       assertEquals(exchanged.statusCode(), 303)
       assertCookie(exchanged.headers().firstValue("Set-Cookie").orElse(""), code, "/games/tls", secure = true)
     }
-  }
 
-  test("invalid links are generic and canonical pages recover absent, malformed, wrong-game and missing-game cookies") {
+  test("invalid links are generic and canonical pages recover absent, malformed, wrong-game and missing-game cookies"):
     withServer() { (base, runtime) =>
       val client = HttpClient.newHttpClient()
       val created = create(client, base, "private-game")
@@ -175,9 +170,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
       assertEquals(missing.statusCode(), 403)
       assertEquals(missing.body(), recovery.body())
     }
-  }
 
-  test("trusted endpoints reject queries and cross-origin mutations while accepting configured or missing Origin") {
+  test("trusted endpoints reject queries and cross-origin mutations while accepting configured or missing Origin"):
     withServer(Some("https://games.example.test")) { (base, _) =>
       val client = HttpClient.newHttpClient()
       val body = creationBody("origin-game")
@@ -210,9 +204,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
       assertEquals(send(client, base, "/games/origin-game/api/preview",
         Some(preview.dropRight(1) + ",\"playerId\":\"p1\"}"), cookie).statusCode(), 400)
     }
-  }
 
-  test("colon game IDs use the same encoded cookie redirect and API paths") {
+  test("colon game IDs use the same encoded cookie redirect and API paths"):
     withServer() { (base, _) =>
       val client = HttpClient.newHttpClient()
       val created = create(client, base, "alpha:one")
@@ -228,9 +221,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
       assertEquals(ujson.read(loaded.body())("gameId").str, "alpha:one")
       assertEquals(ujson.read(loaded.body())("viewerPlayerId").str, "p2")
     }
-  }
 
-  test("trailing game slash redirects to the same encoded canonical page") {
+  test("trailing game slash redirects to the same encoded canonical page"):
     withServer() { (base, _) =>
       val client = HttpClient.newHttpClient()
       Vector("alpha", "alpha:one").foreach { game =>
@@ -244,9 +236,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
         assertEquals(send(client, base, path, cookie = Some(cookie)).statusCode(), 200)
       }
     }
-  }
 
-  test("same-name cookies for two game paths coexist and restore each seat") {
+  test("same-name cookies for two game paths coexist and restore each seat"):
     withServer() { (base, _) =>
       val cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL)
       val client = HttpClient.newBuilder().cookieHandler(cookies).build()
@@ -264,9 +255,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
         assertEquals(ujson.read(loaded.body())("gameId").str, game)
       }
     }
-  }
 
-  test("seat links and cookies restore private seats after the runtime reopens") {
+  test("seat links and cookies restore private seats after the runtime reopens"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "trusted-seat-restart-test")
     val blocking = system.dispatchers.lookup(
@@ -277,20 +267,18 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
       ServerMode.TrustedAlpha, None, "test")
     val client = HttpClient.newHttpClient()
 
-    def openServer(): (ServerRuntime, akka.http.scaladsl.Http.ServerBinding, String) = {
+    def openServer(): (ServerRuntime, akka.http.scaladsl.Http.ServerBinding, String) =
       val runtime = ServerRuntime.open(database, catalogPath, reversing).toOption.get
       val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
         ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
       (runtime, binding, s"http://127.0.0.1:${binding.localAddress.getPort}")
-    }
 
-    def closeServer(runtime: ServerRuntime, binding: akka.http.scaladsl.Http.ServerBinding): Unit = {
+    def closeServer(runtime: ServerRuntime, binding: akka.http.scaladsl.Http.ServerBinding): Unit =
       Await.result(binding.terminate(5.seconds), 10.seconds)
       runtime.close()
-    }
 
     var current = openServer()
-    try {
+    try
       val created = create(client, current._3, "restart-game")
       val firstCode = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
       val secondCode = URI.create(created.seats(1).url).getPath.stripPrefix("/s/")
@@ -340,14 +328,12 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
         currentSequence.toDouble)
       assertEquals(send(client, current._3, api + "/commands", Some(command),
         Some(retainedCookie)).statusCode(), 200)
-    } finally {
+    finally
       closeServer(current._1, current._2)
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
-  test("storage failures never expose seat credentials in responses or log events") {
+  test("storage failures never expose seat credentials in responses or log events"):
     withServer() { (base, runtime) =>
       val client = HttpClient.newHttpClient()
       val created = create(client, base, "failure")
@@ -356,7 +342,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
         .asInstanceOf[ch.qos.logback.classic.Logger]
       val captured = new ch.qos.logback.core.read.ListAppender[ch.qos.logback.classic.spi.ILoggingEvent]
       captured.start(); logger.addAppender(captured)
-      try {
+      try
         runtime.close()
         Vector(s"/s/$code", "/games/failure", "/games/failure/api").foreach { path =>
           val failed = send(client, base, path, cookie = Some(s"oath_seat=$code"))
@@ -370,37 +356,33 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
           assertEquals(event.getThrowableProxy, null)
           assert(!Option(event.getArgumentArray).toVector.flatMap(_.toVector).mkString.contains(code))
         }
-      } finally { logger.detachAppender(captured); captured.stop() }
+      finally { logger.detachAppender(captured); captured.stop() }
     }
-  }
 
-  private def assertCookie(raw: String, code: String, path: String, secure: Boolean): Unit = {
+  private def assertCookie(raw: String, code: String, path: String, secure: Boolean): Unit =
     val attributes = raw.split(";\\s*").toSet
     val expected = Set(s"oath_seat=$code", s"Path=$path", "HttpOnly", "SameSite=Lax", "Max-Age=31536000")
     assertEquals(attributes, if (secure) expected + "Secure" else expected)
-  }
 
   private def creationBody(gameId: String): String = TrustedGameCreateRequestCodec.encode(
     TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
       BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue))))
 
-  private def create(client: HttpClient, base: String, gameId: String): TrustedGameCreateResponse = {
+  private def create(client: HttpClient, base: String, gameId: String): TrustedGameCreateResponse =
     val response = send(client, base, "/games", Some(creationBody(gameId)))
     assertEquals(response.statusCode(), 201, response.body())
     TrustedGameCreateResponseCodec.decode(response.body()).toOption.get
-  }
 
   private def send(client: HttpClient, base: String, path: String, body: Option[String] = None,
-      cookie: Option[String] = None, origin: Option[String] = None): JavaResponse[String] = {
+      cookie: Option[String] = None, origin: Option[String] = None): JavaResponse[String] =
     val builder = HttpRequest.newBuilder(URI.create(base + path))
     cookie.foreach(builder.header("Cookie", _))
     origin.foreach(builder.header("Origin", _))
     body.fold(builder.GET())(value => builder.header("Content-Type", "application/json")
       .POST(HttpRequest.BodyPublishers.ofString(value)))
     client.send(builder.build(), JavaResponse.BodyHandlers.ofString())
-  }
 
-  private def withServer(origin: Option[String] = None)(body: (String, ServerRuntime) => Unit): Unit = {
+  private def withServer(origin: Option[String] = None)(body: (String, ServerRuntime) => Unit): Unit =
     given system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "trusted-seat-route-test")
     val blocking = system.dispatchers.lookup(DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val database = Files.createTempDirectory("trusted-seat-routes-").resolve("database")
@@ -411,9 +393,6 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
       ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
     try body(s"http://127.0.0.1:${binding.localAddress.getPort}", runtime)
-    finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       runtime.close(); system.terminate(); Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
-}

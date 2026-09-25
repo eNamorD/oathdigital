@@ -2,14 +2,14 @@ package oathdigital.gameplay
 
 import oathdigital.model._
 
-class CoreOperationsSuite extends munit.FunSuite {
+class CoreOperationsSuite extends munit.FunSuite:
   private val red = PlayerId("red")
   private val blue = PlayerId("blue")
   private val redArea = Location.PlayArea(red)
   private val blueArea = Location.PlayArea(blue)
   private val site = Location.Site(SiteId("site:mine"))
 
-  test("operation requiredness distinguishes costs, draws, and optional effects") {
+  test("operation requiredness distinguishes costs, draws, and optional effects"):
     assert(!GainSupply(red, 1).required)
     assert(SpendSupply(red, 1).required)
     assert(!SpendSupply(red, 1, required = false).required)
@@ -27,9 +27,8 @@ class CoreOperationsSuite extends munit.FunSuite {
     assert(Replace(Piece.Warbands(ForceKind.Imperial, 1),
       Piece.Warbands(ForceKind.Bandit, 1), PositionedLocation(site),
       required = true).required)
-  }
 
-  test("Swap is two simultaneous reciprocal card moves") {
+  test("Swap is two simultaneous reciprocal card moves"):
     val first = DenizenId("denizen:first")
     val second = RelicId("relic:second")
     val firstLocation = PositionedLocation(redArea)
@@ -41,9 +40,8 @@ class CoreOperationsSuite extends munit.FunSuite {
       Move(Piece.Card(first), firstLocation, secondLocation),
       Move(Piece.Card(second), secondLocation, firstLocation)))
     assert(swap.simultaneous)
-  }
 
-  test("Bury is a distinct primitive with the matching deck bottom") {
+  test("Bury is a distinct primitive with the matching deck bottom"):
     val denizen = Bury(BuryableCard.Denizen(DenizenId("denizen:one")),
       PositionedLocation(site))
     val relic = Bury(BuryableCard.Relic(RelicId("relic:one")),
@@ -60,9 +58,8 @@ class CoreOperationsSuite extends munit.FunSuite {
       PositionedLocation(Location.Deck(CardDeck.Edifice),
         StackPosition.Bottom)))
     assertEquals(buries.flatMap(Operation.flatten), buries)
-  }
 
-  test("Discard routes cards and their resources by glossary rules") {
+  test("Discard routes cards and their resources by glossary rules"):
     val card = DenizenId("denizen:one")
     val discard = Discard.Denizen(card, PositionedLocation(site),
       to = Region.Provinces,
@@ -79,9 +76,8 @@ class CoreOperationsSuite extends munit.FunSuite {
         PositionedLocation(Location.OnCard(card)),
         PositionedLocation(redArea)),
       FlipSecrets(red, 1, SecretSide.FaceUp, SecretSide.FaceDown)))
-  }
 
-  test("Gain, burn, kill, sacrifice, and replace use the correct banks") {
+  test("Gain, burn, kill, sacrifice, and replace use the correct banks"):
     val exile = ForceKind.Exile(LineageId("red-lineage"))
     val gained = Operation.flatten(Gain.Secrets(red, 2)).head
     assertEquals(gained, Move(Piece.Secrets(2),
@@ -108,9 +104,8 @@ class CoreOperationsSuite extends munit.FunSuite {
         PositionedLocation(Location.WarbandBank(ForceKind.Imperial)),
         PositionedLocation(site))))
     assert(replace.simultaneous)
-  }
 
-  test("Exchange composes reciprocal Give operations") {
+  test("Exchange composes reciprocal Give operations"):
     val favor = Piece.Favor(1)
     val secret = Piece.Secrets(1)
     val give = Give(favor, red, redArea, blueArea)
@@ -124,9 +119,8 @@ class CoreOperationsSuite extends munit.FunSuite {
       Location.SharedBank)
     intercept[IllegalArgumentException](Exchange(give,
       Give(secret, red, redArea, blueArea)))
-  }
 
-  test("invalid operation descriptions fail at construction") {
+  test("invalid operation descriptions fail at construction"):
     intercept[IllegalArgumentException](Piece.Favor(0))
     intercept[IllegalArgumentException](Draw(red, Vector.empty,
       Location.Deck(CardDeck.World), redArea))
@@ -144,9 +138,8 @@ class CoreOperationsSuite extends munit.FunSuite {
       SecretSide.FaceUp, SecretSide.FaceDown))
     intercept[IllegalArgumentException](FlipSecrets(red, 1,
       SecretSide.FaceUp, SecretSide.FaceUp))
-  }
 
-  test("Draw is a top-first sequence of Take operations") {
+  test("Draw is a top-first sequence of Take operations"):
     val cards = Vector[CardId](DenizenId("denizen:first"),
       VisionId("vision:second"))
     val source = Location.Deck(CardDeck.World)
@@ -157,9 +150,8 @@ class CoreOperationsSuite extends munit.FunSuite {
     assertEquals(draw.takes, cards.map(card => Take(Piece.Card(card),
       red, source, destination, StackPosition.Top)))
     assertEquals(Operation.flatten(draw), draw.takes.flatMap(Operation.flatten))
-  }
 
-  test("every glossary composite retains its semantic root and primitive order") {
+  test("every glossary composite retains its semantic root and primitive order"):
     val card = DenizenId("denizen:root")
     val relic = RelicId("relic:root")
     val exile = ForceKind.Exile(LineageId("red-lineage"))
@@ -207,13 +199,10 @@ class CoreOperationsSuite extends munit.FunSuite {
       Move(Piece.Secrets(1), PositionedLocation(Location.OnCard(
         EdificeId("edifice:root"))), PositionedLocation(redArea)),
       FlipSecrets(red, 1, SecretSide.FaceUp, SecretSide.FaceDown)))
-  }
 
-  test("invalid descriptions can be converted to typed replay failures") {
+  test("invalid descriptions can be converted to typed replay failures"):
     val failure = OperationError.describe(Piece.Favor(0)).left.toOption.get
     assertEquals(failure.code, "invalid-description")
     assertEquals(failure.toViolation,
       OathViolation.CoreOperationRejected("invalid-description",
         "favor amount must be positive"))
-  }
-}

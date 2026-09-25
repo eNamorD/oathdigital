@@ -20,12 +20,11 @@ import oathdigital.model.Orientation
 final case class PlacementRules(
     faceupAdviserLimit: Int = PlacementRules.DefaultAdviserLimit,
     facedownAdviserLimit: Int = PlacementRules.DefaultAdviserLimit,
-    siteDiscardFirst: Boolean = false) {
+    siteDiscardFirst: Boolean = false):
 
-  def adviserLimit(orientation: Orientation): Int = orientation match {
+  def adviserLimit(orientation: Orientation): Int = orientation match
     case Orientation.FaceUp => faceupAdviserLimit
     case Orientation.FaceDown => facedownAdviserLimit
-  }
 
   /** Lowers both limits to at most `limit`. */
   def limitAdvisers(limit: Int): PlacementRules = copy(
@@ -38,9 +37,7 @@ final case class PlacementRules(
 
   /** Permits a discard before a play to a site. */
   def withSiteDiscardFirst: PlacementRules = copy(siteDiscardFirst = true)
-}
 
-object PlacementRules {
+object PlacementRules:
   val DefaultAdviserLimit: Int = 3
   val default: PlacementRules = PlacementRules()
-}

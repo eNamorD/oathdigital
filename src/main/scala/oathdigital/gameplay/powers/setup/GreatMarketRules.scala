@@ -10,7 +10,7 @@ import oathdigital.model._
   * will serve WHEN EXPLORED once an explore procedure exists to fire it;
   * nothing folds that window yet, so only the SETUP path runs or is tested.
   */
-sealed abstract class MarketRule extends ContributingPower {
+sealed abstract class MarketRule extends ContributingPower:
   def catalog: ExecutableCatalog
   def edifice: EdificeId
   protected def side: EdificeSide
@@ -25,17 +25,15 @@ sealed abstract class MarketRule extends ContributingPower {
   protected def build(ready: ReadyGame, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]]
 
-  final def contributions: Map[PowerWindow, Vector[Contribution]] = {
+  final def contributions: Map[PowerWindow, Vector[Contribution]] =
     val effect = Vector(Transform((ctx, ops) => at(ctx.state) match {
       case Some(site) => ops :+ BuildOps((ready, _) => build(ready, site))
       case None => ops
     }))
     Map(PowerWindow.SetupEnd -> effect, PowerWindow.WhenExplored -> effect)
-  }
-}
 
 final case class GreatMarket private (edifice: EdificeId, catalog: ExecutableCatalog)
-    extends MarketRule {
+    extends MarketRule:
   def id: PowerId = GreatMarket.id
   protected def side: EdificeSide = EdificeSide.Intact
 
@@ -44,23 +42,20 @@ final case class GreatMarket private (edifice: EdificeId, catalog: ExecutableCat
     suit <- catalog.suitOf(edifice).toRight(OathViolation.UnknownEdifice(edifice))
     region <- ready.game.current.map.regionOf(at).toRight(
       OathViolation.InvalidEventOrder(s"${at.value} is not in play"))
-  } yield {
+  } yield
     val current = ready.game.current
     val count = current.map.inPlay.filter(s => current.map.regionOf(s).contains(region))
       .flatMap(s => current.map.sites(s).denizens).size
     if (count == 0) Vector.empty
     else Vector(Move(Piece.Favor(count),
       PositionedLocation(Location.FavorBank(suit)), PositionedLocation(Location.Site(at))))
-  }
-}
-object GreatMarket {
+object GreatMarket:
   val id: PowerId = PowerId("edifice.e02.intact")
   def forCatalog(catalog: ExecutableCatalog): Option[GreatMarket] =
     CatalogCards.edifice(catalog, id).map(new GreatMarket(_, catalog))
-}
 
 final case class BanditMarket private (edifice: EdificeId, catalog: ExecutableCatalog)
-    extends MarketRule {
+    extends MarketRule:
   def id: PowerId = BanditMarket.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
@@ -76,9 +71,7 @@ final case class BanditMarket private (edifice: EdificeId, catalog: ExecutableCa
         Burn.favor(1, PositionedLocation(Location.FavorBank(bank))))
       placed ++ burned
     }
-}
-object BanditMarket {
+object BanditMarket:
   val id: PowerId = PowerId("edifice.e02.ruined")
   def forCatalog(catalog: ExecutableCatalog): Option[BanditMarket] =
     CatalogCards.edifice(catalog, id).map(new BanditMarket(_, catalog))
-}

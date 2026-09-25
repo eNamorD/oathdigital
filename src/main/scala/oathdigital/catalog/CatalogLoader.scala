@@ -9,7 +9,7 @@ import oathdigital.catalog.CatalogLoadError._
 import oathdigital.model.{CatalogRef, PowerId, SiteId, Suit, Tokens}
 import ujson.{Arr, Bool, Null, Obj, Str, Value}
 
-object CatalogLoader {
+object CatalogLoader:
   val SupportedSchemaVersion: String = "1.3.0"
   val RulesetId: String = "oath-new-foundations"
 
@@ -23,7 +23,7 @@ object CatalogLoader {
       request: CatalogLoadRequest
   ): Result[ExecutableCatalog] =
     try load(Files.readString(path, StandardCharsets.UTF_8), request)
-    catch {
+    catch
       case NonFatal(error) =>
         Left(
           Vector(
@@ -33,7 +33,6 @@ object CatalogLoader {
             )
           )
         )
-    }
 
   def load(json: String): Result[ExecutableCatalog] =
     load(json, CatalogLoadRequest())
@@ -46,7 +45,7 @@ object CatalogLoader {
 
   private def parse(json: String): Result[Value] =
     try Right(ujson.read(json))
-    catch {
+    catch
       case NonFatal(error) =>
         Left(
           Vector(
@@ -55,7 +54,6 @@ object CatalogLoader {
             )
           )
         )
-    }
 
   private def decode(
       value: Value,
@@ -109,11 +107,10 @@ object CatalogLoader {
       expected: Option[CatalogRef],
       actual: CatalogRef
   ): Result[Unit] =
-    expected match {
+    expected match
       case Some(value) if value != actual =>
         Left(Vector(IncompatibleCatalog("$.catalogVersion", value, actual)))
       case _ => Right(())
-    }
 
   private def decodeDenizen(obj: Obj, path: String): Result[DenizenDefinition] =
     for {
@@ -139,9 +136,9 @@ object CatalogLoader {
   private def decodeDenizenRestrictions(
       obj: Obj,
       path: String
-  ): Result[CardRestrictions] = {
+  ): Result[CardRestrictions] =
     val fieldPath = s"$path.restrictions"
-    obj.value.get("restrictions") match {
+    obj.value.get("restrictions") match
       case None => Left(Vector(MissingField(fieldPath)))
       case Some(Null) => Right(CardRestrictions.Unrestricted)
       case Some(values: Arr) =>
@@ -154,7 +151,7 @@ object CatalogLoader {
               )
             )
         }.toVector
-        collectResults(tokens).flatMap {
+        collectResults(tokens).flatMap:
           case Vector("site-only") => Right(CardRestrictions.SiteOnly)
           case Vector("adviser-only") => Right(CardRestrictions.AdviserOnly)
           case Vector("adviser-only", "locked") =>
@@ -163,7 +160,7 @@ object CatalogLoader {
             val allowed = Set("site-only", "adviser-only", "locked")
             values.zipWithIndex.find { case (value, _) =>
               !allowed.contains(value)
-            } match {
+            } match
               case Some((value, index)) =>
                 Left(
                   Vector(
@@ -183,12 +180,8 @@ object CatalogLoader {
                     )
                   )
                 )
-            }
-        }
       case Some(value) =>
         Left(Vector(WrongType(fieldPath, "null or array", typeName(value))))
-    }
-  }
 
   private def decodeRelic(obj: Obj, path: String): Result[RelicDefinition] =
     for {
@@ -201,12 +194,11 @@ object CatalogLoader {
       )
       name <- requiredString(obj, "name", path)
       roleValue <- requiredString(obj, "role", path)
-      role <- roleValue match {
+      role <- roleValue match
         case "ordinary" => Right(RelicRole.Ordinary)
         case "grand-scepter" => Right(RelicRole.GrandScepter)
         case other =>
           Left(Vector(InvalidValue(s"$path.role", s"unsupported role $other")))
-      }
       value <- requiredInt(obj, "value", path)
       defense <- requiredInt(obj, "defense", path)
       _ <- collectResults(
@@ -244,9 +236,9 @@ object CatalogLoader {
       obj: Obj,
       path: String,
       expected: CardRestrictions
-  ): Result[CardRestrictions] = {
+  ): Result[CardRestrictions] =
     val fieldPath = s"$path.restrictions"
-    (obj.value.get("restrictions"), expected) match {
+    (obj.value.get("restrictions"), expected) match
       case (None, _) => Left(Vector(MissingField(fieldPath)))
       case (Some(Null), CardRestrictions.Unrestricted) =>
         Right(CardRestrictions.Unrestricted)
@@ -261,8 +253,6 @@ object CatalogLoader {
           s"ruined edifice restrictions must be null, found ${typeName(value)}")))
       case (_, _) => Left(Vector(InvalidValue(fieldPath,
         "unsupported edifice restriction expectation")))
-    }
-  }
 
   private def decodeEdificeFace(
       obj: Obj,
@@ -392,12 +382,11 @@ object CatalogLoader {
     }
 
   private def requiredBoolean(obj: Obj, field: String, path: String)
-      : Result[Boolean] = obj.value.get(field) match {
+      : Result[Boolean] = obj.value.get(field) match
     case None => Left(Vector(MissingField(s"$path.$field")))
     case Some(Bool(value)) => Right(value)
     case Some(value) => Left(Vector(WrongType(s"$path.$field", "boolean",
       typeName(value))))
-  }
 
   private def decodeTokens(obj: Obj, path: String): Result[Tokens] =
     for {
@@ -411,14 +400,13 @@ object CatalogLoader {
       field: String,
       path: String
   ): Result[Option[Tokens]] =
-    obj.value.get(field) match {
+    obj.value.get(field) match
       case None => Left(Vector(MissingField(s"$path.$field")))
       case Some(Null) => Right(None)
       case Some(value) =>
         asObject(value, s"$path.$field")
           .flatMap(decodeTokens(_, s"$path.$field"))
           .map(Some(_))
-    }
 
   private def decodeArray[A](
       root: Obj,
@@ -433,7 +421,7 @@ object CatalogLoader {
       )
     }
 
-  private def validateUniqueIds(ids: Vector[DefinitionId]): Result[Unit] = {
+  private def validateUniqueIds(ids: Vector[DefinitionId]): Result[Unit] =
     val duplicates = ids.groupBy(_.value).collect {
       case (_, values) if values.size > 1 => values.head
     }.toVector.sortBy(_.value)
@@ -442,7 +430,6 @@ object CatalogLoader {
       Left(
         duplicates.map(id => DuplicateDefinitionId("$.components", id))
       )
-  }
 
   private def validateUniquePowerIds(
       denizens: Vector[DenizenDefinition],
@@ -450,7 +437,7 @@ object CatalogLoader {
       edifices: Vector[EdificeDefinition],
       legacies: Vector[LegacyDefinition],
       sites: Vector[SiteDefinition]
-  ): Result[Unit] = {
+  ): Result[Unit] =
     val rendered =
       denizens.zipWithIndex.flatMap { case (definition, i) =>
         definition.powers.zipWithIndex.map { case (power, j) =>
@@ -478,13 +465,11 @@ object CatalogLoader {
     }
     val firstPaths = scala.collection.mutable.Map.empty[PowerId, String]
     val errors = all.flatMap { case (id, path) =>
-      firstPaths.get(id) match {
+      firstPaths.get(id) match
         case Some(firstPath) => Some(DuplicatePowerId(path, id, firstPath))
         case None => firstPaths.update(id, path); None
-      }
     }
     if (errors.isEmpty) Right(()) else Left(errors)
-  }
 
   private def requirePattern(
       id: DefinitionId,
@@ -504,22 +489,20 @@ object CatalogLoader {
       field: String,
       path: String
   ): Result[Obj] =
-    obj.value.get(field) match {
+    obj.value.get(field) match
       case None => Left(Vector(MissingField(s"$path.$field")))
       case Some(value) => asObject(value, s"$path.$field")
-    }
 
   private def requiredArray(
       obj: Obj,
       field: String,
       path: String
   ): Result[Arr] =
-    obj.value.get(field) match {
+    obj.value.get(field) match
       case None => Left(Vector(MissingField(s"$path.$field")))
       case Some(value: Arr) => Right(value)
       case Some(value) =>
         Left(Vector(WrongType(s"$path.$field", "array", typeName(value))))
-    }
 
   private def requiredString(
       obj: Obj,
@@ -527,14 +510,13 @@ object CatalogLoader {
       path: String,
       allowBlank: Boolean = false
   ): Result[String] =
-    obj.value.get(field) match {
+    obj.value.get(field) match
       case None => Left(Vector(MissingField(s"$path.$field")))
       case Some(Str(value)) if allowBlank || value.trim.nonEmpty => Right(value)
       case Some(Str(_)) =>
         Left(Vector(InvalidValue(s"$path.$field", "must not be blank")))
       case Some(value) =>
         Left(Vector(WrongType(s"$path.$field", "string", typeName(value))))
-    }
 
   private def requiredStringArray(
       obj: Obj,
@@ -566,51 +548,46 @@ object CatalogLoader {
       field: String,
       path: String
   ): Result[Int] =
-    obj.value.get(field) match {
+    obj.value.get(field) match
       case None => Left(Vector(MissingField(s"$path.$field")))
       case Some(value) => asInt(value, s"$path.$field")
-    }
 
   private def optionalInt(
       obj: Obj,
       field: String,
       path: String
   ): Result[Option[Int]] =
-    obj.value.get(field) match {
+    obj.value.get(field) match
       case None => Left(Vector(MissingField(s"$path.$field")))
       case Some(Null) => Right(None)
       case Some(value) => asInt(value, s"$path.$field").map(Some(_))
-    }
 
   private def asObject(value: Value, path: String): Result[Obj] =
-    value match {
+    value match
       case obj: Obj => Right(obj)
       case other => Left(Vector(WrongType(path, "object", typeName(other))))
-    }
 
   private def asInt(value: Value, path: String): Result[Int] =
-    value match {
+    value match
       case ujson.Num(number)
           if number.isWhole && number >= Int.MinValue && number <= Int.MaxValue =>
         Right(number.toInt)
       case ujson.Num(_) =>
         Left(Vector(InvalidValue(path, "must be a 32-bit integer")))
       case other => Left(Vector(WrongType(path, "integer", typeName(other))))
-    }
 
   private def typeName(value: Value): String =
-    value match {
+    value match
       case _: Obj => "object"
       case _: Arr => "array"
       case _: Str => "string"
       case _: ujson.Num => "number"
       case _: ujson.Bool => "boolean"
       case Null => "null"
-    }
 
   private def construct[A](path: String, value: => A): Result[A] =
     try Right(value)
-    catch {
+    catch
       case NonFatal(error) =>
         Left(
           Vector(
@@ -620,13 +597,10 @@ object CatalogLoader {
             )
           )
         )
-    }
 
   private def collectResults[A](
       results: Vector[Result[A]]
-  ): Result[Vector[A]] = {
+  ): Result[Vector[A]] =
     val errors = results.flatMap(_.left.toOption.toVector.flatten)
     if (errors.nonEmpty) Left(errors)
     else Right(results.flatMap(_.toOption))
-  }
-}

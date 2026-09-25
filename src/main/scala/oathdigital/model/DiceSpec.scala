@@ -11,9 +11,8 @@ enum DiceKind { case Defense, Attack }
 final case class DiceSpec(die: DiceKind)
 
 /** How a `Roll` node gets its faces. */
-enum RollMode {
+enum RollMode:
   /** The walker parks and the faces ride a later `RollWalker` command. */
   case Parked
   /** The walker asks its dice source and keeps walking in the same command. */
   case Automatic
-}

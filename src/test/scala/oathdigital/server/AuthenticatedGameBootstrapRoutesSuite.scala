@@ -18,16 +18,15 @@ import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState
 
-class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
+class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
   /**
    * This suite asserts the bootstrapped plan keeps the exact participant
    * order and first player it was sent, so seating must not shuffle.
    */
-  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort {
+  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort:
     def shuffle[A](values: Vector[A]): Vector[A] = values
-  }
 
-  test("owner bootstrap uses exactly the provisioned player memberships") {
+  test("owner bootstrap uses exactly the provisioned player memberships"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-bootstrap-test")
     val blocking = system.dispatchers.lookup(
@@ -68,14 +67,13 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
     val csrfDigest = CsrfTokenDigest.fromBytes(
       SensitiveTokenDigest.sha256(csrfToken)
     ).toOption.get
-    val authenticator = new HttpSessionAuthenticator {
+    val authenticator = new HttpSessionAuthenticator:
       override def authenticate(request: AkkaRequest) =
         Future.successful(request.headers.find(_.name == "X-Test-User") match {
           case Some(header) => Right(AuthenticatedHttpSession(
             AuthenticatedUser(UserId(header.value)), csrfDigest))
           case None => Left(AuthenticationFailure.MissingCredential)
         })
-    }
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
         new AuthenticatedGameRoutes(
@@ -92,14 +90,13 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
     val client = HttpClient.newHttpClient()
     val valid = bootstrapBody(Vector("p2", "p3", "p1"), "p2")
 
-    try {
+    try
       assertEquals(post(client, base, None, "not-json").statusCode(), 401)
-      Vector(playerUsers.head._2, spectator, outsider, otherOwner).foreach {
+      Vector(playerUsers.head._2, spectator, outsider, otherOwner).foreach:
         user => assertEquals(
           post(client, base, Some(user.value), valid).statusCode(),
           403
         )
-      }
 
       val invalidSeats = Vector(
         bootstrapBody(Vector("p1", "p2"), "p1"),
@@ -176,13 +173,11 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
       assertEquals(storage.statusCode(), 500)
       assertEquals(ujson.read(storage.body())("error").str, "internal-error")
       assert(!storage.body().toLowerCase.contains("closed"))
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
       database.close()
-    }
-  }
 
   private def bootstrapBody(
       playerIds: Vector[String],
@@ -199,7 +194,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
     "firstPlayer" -> firstPlayer
   ))
 
-  private def assertNoHiddenPlan(body: String): Unit = {
+  private def assertNoHiddenPlan(body: String): Unit =
     Vector(
       "worldDeckOrder",
       "relicOrder",
@@ -208,7 +203,6 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
       "userId",
       "actor"
     ).foreach(field => assert(!body.contains(field)))
-  }
 
   private def post(
       client: HttpClient,
@@ -231,7 +225,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
       body: String,
       origin: Option[String],
       csrf: Option[String]
-  ) = {
+  ) =
     val builder = HttpRequest.newBuilder(URI.create(url))
       .header("Content-Type", "application/json")
     user.foreach(value => builder.header("X-Test-User", value))
@@ -241,10 +235,9 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
       builder.POST(HttpRequest.BodyPublishers.ofString(body)).build(),
       JavaResponse.BodyHandlers.ofString()
     )
-  }
 
   private final class CountingEventStreamRepository
-      extends EventStreamRepository {
+      extends EventStreamRepository:
     private val delegate = new InMemoryEventStreamRepository
     var appendCalls: Int = 0
 
@@ -253,9 +246,6 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
         gameId: String,
         expected: ExpectedStream,
         records: Vector[String]
-    ) = {
+    ) =
       appendCalls += 1
       delegate.append(gameId, expected, records)
-    }
-  }
-}

@@ -6,16 +6,15 @@ final case class SkippedOperation(requested: CoreOperation,
     reasons: Vector[OperationReason])
 
 final case class OperationRun(state: ReadyGame,
-    executed: Vector[CoreOperation], skipped: Vector[SkippedOperation]) {
+    executed: Vector[CoreOperation], skipped: Vector[SkippedOperation]):
   /** Legacy event reducers must not accept a different effect than recorded. */
   def expectEffects(requested: Vector[CoreOperation],
       detail: String): Either[OathViolation, ReadyGame] =
     if (executed == requested.map(OperationRun.canonical)) Right(state)
     else Left(OathViolation.InvalidEventOrder(detail))
-}
 
-object OperationRun {
-  def canonical(operation: CoreOperation): CoreOperation = operation match {
+object OperationRun:
+  def canonical(operation: CoreOperation): CoreOperation = operation match
     case value: SpendSupply => value.copy(required = true)
     case value: Discard.Denizen => value.copy(required = false)
     case value: Play => value.copy(required = false)
@@ -23,7 +22,6 @@ object OperationRun {
     case value: Give => value.copy(required = false)
     case value: PayCost => value.copy(offTurn = false)
     case other => other
-  }
 
   /** The cards this run took out of the game: every card whose executed move
     * ends at the shared bank. The pipeline's card-inventory check allows a
@@ -33,7 +31,6 @@ object OperationRun {
     case Move(Piece.Card(id), _, to, _) if to.location == Location.SharedBank =>
       id
   }.toSet
-}
 
 /** Sole public orchestrator of an operation batch. It folds each operation
   * through settlement, staged resolution ([[OperationResolution]], which
@@ -57,7 +54,7 @@ object OperationRun {
   * effect rejects the batch). The walker sets it for the `Move` children of a
   * required composite, which carry no flag of their own.
   */
-object OperationPipeline {
+object OperationPipeline:
   def run(
       ready: ReadyGame,
       operations: Vector[CoreOperation],
@@ -66,19 +63,19 @@ object OperationPipeline {
       requireAll: Boolean = false
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]
-  ): Either[OathViolation, OperationRun] = {
+  ): Either[OathViolation, OperationRun] =
     if (operations.isEmpty) Left(OperationError.EmptyOperationBatch.toViolation)
     else
       for {
         expected <- OperationStateInvariant.cardIds(ready)
           .left.map(_.toViolation)
         staged <- operations.foldLeft[Either[OathViolation, OperationRun]](
-          Right(OperationRun(ready, Vector.empty, Vector.empty))) {
+          Right(OperationRun(ready, Vector.empty, Vector.empty))):
           (result, operation) => result.flatMap { current =>
             PayCostSettlement.prepare(current.state, operation).flatMap { prepared =>
               OperationResolution.resolve(current.state, prepared, allowlist,
                 restrictions, requireAll)
-                .flatMap {
+                .flatMap:
                   case OperationResolution.Skip(reasons) =>
                     Right(current.copy(skipped = current.skipped :+
                       SkippedOperation(operation, reasons)))
@@ -88,10 +85,8 @@ object OperationPipeline {
                         state = state,
                         executed = current.executed :+
                           OperationRun.canonical(actual)))
-                }
             }
           }
-        }
         updated <- OperationError.describe(update(staged.state))
           .left.map(_.toViolation).flatMap(identity)
         // Decision 5: the invariant runs once after the module update, not
@@ -101,6 +96,3 @@ object OperationPipeline {
           expected -- OperationRun.boxed(staged.executed))
           .left.map(_.toViolation)
       } yield staged.copy(state = updated)
-  }
-
-}

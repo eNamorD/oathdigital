@@ -5,9 +5,9 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-class PowerOperationsSuite extends munit.FunSuite {
+class PowerOperationsSuite extends munit.FunSuite:
 
-  private def operationReady: (ReadyGame, PlayerState, SiteId, DenizenId) = {
+  private def operationReady: (ReadyGame, PlayerState, SiteId, DenizenId) =
     val base = FirstGameSetupFixture.initialReady
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
@@ -26,9 +26,8 @@ class PowerOperationsSuite extends munit.FunSuite {
       map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(siteId, site))))
     (ready, changedActor, siteId, denizenId)
-  }
 
-  test("Costs plans a PayCost that places favor and burns secrets atomically") {
+  test("Costs plans a PayCost that places favor and burns secrets atomically"):
     val (ready, actor, siteId, denizenId) = operationReady
     val placedAt = Location.OnCard(denizenId)
     val cost = Cost(favor = 2, secretBurnt = 1)
@@ -40,9 +39,8 @@ class PowerOperationsSuite extends munit.FunSuite {
     assertEquals(player.board.favor, 1)
     assertEquals(player.board.faceUpSecrets, 2)
     assertEquals(card.tokens, Tokens(favor = 2, secrets = 0))
-  }
 
-  test("Costs rejects malformed unaffordable and misplaced costs") {
+  test("Costs rejects malformed unaffordable and misplaced costs"):
     val (ready, actor, siteId, denizenId) = operationReady
     val placedAt = Location.OnCard(denizenId)
     intercept[IllegalArgumentException](Cost(favor = -1))
@@ -51,9 +49,8 @@ class PowerOperationsSuite extends munit.FunSuite {
     assert(Costs.plan(ready, actor.player,
       Location.OnCard(DenizenId("missing")),
       Cost(secret = 1)).isLeft)
-  }
 
-  test("Costs accepts a free cost and validates existence without duplicating access") {
+  test("Costs accepts a free cost and validates existence without duplicating access"):
     val (ready, actor, siteId, denizenId) = operationReady
     val free = Costs.plan(ready, actor.player, Location.OnCard(
       DenizenId("missing")), Cost.free).toOption.get
@@ -69,9 +66,8 @@ class PowerOperationsSuite extends munit.FunSuite {
           })))))
     assert(Costs.plan(facedown, actor.player, Location.OnCard(denizenId),
       Cost(secretBurnt = 1)).isRight)
-  }
 
-  test("DrawTopRelic and PlaceRelicAtSite preserve top-card and facedown rules") {
+  test("DrawTopRelic and PlaceRelicAtSite preserve top-card and facedown rules"):
     val (ready, actor, siteId, _) = operationReady
     val relic = DrawTopRelic.plan(ready).toOption.get
     assert(DrawTopRelic.validate(ready, RelicId("wrong")).isLeft)
@@ -91,9 +87,8 @@ class PowerOperationsSuite extends munit.FunSuite {
       Vector(RelicState(relic, Orientation.FaceDown, Tokens.empty)))
     assert(OperationPipeline.run(
       after, operations, allowlist)(Right(_)).isLeft)
-  }
 
-  test("power operation plans apply in order and fail without a partial result") {
+  test("power operation plans apply in order and fail without a partial result"):
     val (ready, actor, siteId, denizenId) = operationReady
     val payCost = Costs.plan(ready, actor.player, Location.OnCard(denizenId),
       Cost(secret = 1)).toOption.get
@@ -123,9 +118,8 @@ class PowerOperationsSuite extends munit.FunSuite {
       .board.faceUpSecrets, actor.board.faceUpSecrets)
     assert(OperationPipeline.run(ready, Vector.empty,
       OperationPolicy.Permissive)(Right(_)).isLeft)
-  }
 
-  test("PayCost executes placed and burnt portions atomically") {
+  test("PayCost executes placed and burnt portions atomically"):
     val (ready, actor, siteId, denizenId) = operationReady
     val placedAt = Location.OnCard(denizenId)
     val cost = Cost(favor = 1, secret = 1, favorBurnt = 1, secretBurnt = 1)
@@ -137,9 +131,8 @@ class PowerOperationsSuite extends munit.FunSuite {
     assertEquals(player.board.favor, actor.board.favor - 2)
     assertEquals(player.board.faceUpSecrets, actor.board.faceUpSecrets - 2)
     assertEquals(card.tokens, Tokens(favor = 1, secrets = 1))
-  }
 
-  test("a free PayCost is an inert no-op") {
+  test("a free PayCost is an inert no-op"):
     val (ready, actor, _, _) = operationReady
     val payCost = Costs.plan(ready, actor.player, Location.OnCard(
       DenizenId("irrelevant")), Cost.free).toOption.get
@@ -148,5 +141,3 @@ class PowerOperationsSuite extends munit.FunSuite {
       Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get.state
     assertEquals(after.game, ready.game)
     assertEquals(after.banks, ready.banks)
-  }
-}

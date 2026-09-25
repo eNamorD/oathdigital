@@ -42,7 +42,7 @@ private[application] final class WalkerDecisionProjector(
     walkerPowerCatalog: WalkerPowers,
     rebuildTree: WalkerDecisionProjector.TreeSource =
       WalkerDecisionProjector.declaredTree,
-    phasePowers: PhasePowers = PhasePowers.empty) {
+    phasePowers: PhasePowers = PhasePowers.empty):
   private val deals = new NegotiationDealProjector(presentation)
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
@@ -50,7 +50,7 @@ private[application] final class WalkerDecisionProjector(
       WalkerDecisionProjector.declaredTree, PhasePowerCatalog.default(catalog))
 
   private def parkedPosition(context: ScopedProjectionContext)
-      : Option[WalkerDecisionProjector.Parked] = {
+      : Option[WalkerDecisionProjector.Parked] =
     import WalkerDecisionProjector.Parked
     for {
       pending <- context.current.walkerPending
@@ -65,7 +65,6 @@ private[application] final class WalkerDecisionProjector(
       owners = ProcedureWalker.awaitedPlayers(context.ready, tree, pending,
         powers)
     } yield Parked(procedure, tree, pending, powers, awaited, owners)
-  }
 
   /** The full owner-private projection, for every owner of the parked
     * decision: the awaited player and any co-owners.
@@ -91,7 +90,7 @@ private[application] final class WalkerDecisionProjector(
     _ <- this.parked(parked.procedure, parked.tree, context.ready,
       parked.pending, parked.powers, parked.awaited, context.viewer,
       previewed = false)
-  } yield {
+  } yield
     val decide = ProcedureWalker.parkedDecide(context.ready, parked.tree,
       parked.pending, parked.powers)
     WalkerWaitingProjection(parked.awaited.value,
@@ -101,24 +100,22 @@ private[application] final class WalkerDecisionProjector(
         case negotiate: DecisionQuery.Negotiate =>
           deals.project(context.ready, context.viewer, negotiate)
       })
-  }
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
     tree(procedure, ready, activePlayer, args)
 
   private def tree(procedure: ProcedureRef, ready: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]) = procedure match {
+      args: Vector[DecisionOptionRef]) = procedure match
     case _: ActionRef.UsePower => WalkerProcedureRegistry.rebuild(procedure,
       catalog, ready, actor, args, phasePowers)
     case _ => rebuildTree(catalog, procedure, ready, actor, args)
-  }
 
   private def parked(procedure: ProcedureRef, tree: Operation,
       ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,
       awaited: PlayerId, viewer: Option[PlayerId], previewed: Boolean = true)
       : Option[WalkerDecisionProjection] =
-    ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
+    ProcedureWalker.parkedRoll(ready, tree, pending, powers) match
       // R18: a procedure whose entry declares no roll decision id has no
       // answer to "which id is this Roll park", so the accessor's typed
       // rejection is carried through as "there is nothing to project" --
@@ -154,7 +151,6 @@ private[application] final class WalkerDecisionProjector(
               answeredOptions = answeredOptions(ready, viewer, pending,
                 decide.decisionId)))
         }
-    }
 
   /** The decision's query as this viewer is offered it. For a procedure that
     * opts in (`Entry.requiresPlayableOption`), only the options its own
@@ -168,19 +164,17 @@ private[application] final class WalkerDecisionProjector(
       decide: Decide): (DecisionQuery, Map[DecisionOptionRef, Vector[String]]) =
     if (!WalkerProcedureRegistry.requiresPlayableOption(procedure))
       (decide.query, Map.empty)
-    else WalkerSimulation.previewParked(ready, tree, pending, powers) match {
+    else WalkerSimulation.previewParked(ready, tree, pending, powers) match
       case Left(_) => (decide.query, Map.empty)
       case Right(previewed) =>
         val accepted = previewed.flatMap(option => option.outcome.toOption
           .map(outcome => option.option -> outcome))
-        val query = decide.query match {
+        val query = decide.query match
           case one: DecisionQuery.ChooseOne =>
             one.copy(options = accepted.map(_._1))
           case other => other
-        }
         (query, accepted.map { case (option, outcome) =>
           option.ref -> OperationDetails.of(outcome.operations) }.toMap)
-    }
 
   /** Describes a declared query, or `None` when any single option's identity
     * cannot be presented.
@@ -204,22 +198,21 @@ private[application] final class WalkerDecisionProjector(
   private def queryProjection(ready: ReadyGame, viewer: Option[PlayerId],
       query: DecisionQuery,
       details: Map[DecisionOptionRef, Vector[String]])
-      : Option[DecisionQueryProjection] = {
+      : Option[DecisionQueryProjection] =
     // One index per projection, shared by every option: a Forge partition
     // asks about three denizens and a Recover pick about every site relic.
     val index = CardIndex.from(ready.game).toOption
     def described(options: Vector[DecisionOption])
-        : Option[Vector[DecisionOptionProjection]] = {
+        : Option[Vector[DecisionOptionProjection]] =
       val projected = options.flatMap(option => optionProjection(ready, viewer,
         index, option, details.getOrElse(option.ref, Vector.empty)))
       Option.when(projected.size == options.size)(projected)
-    }
     // The panel copy rides through untouched, exactly as the options do:
     // it is the action's own declaration, and the projector's whole job
     // here is to describe the transformed query rather than to author
     // anything. A query that declares none projects none, and the client
     // supplies its own generic fallback.
-    query match {
+    query match
       case DecisionQuery.ChooseOne(options, heading) =>
         described(options).map(DecisionQueryProjection("choose-one", _,
           heading = heading))
@@ -250,8 +243,6 @@ private[application] final class WalkerDecisionProjector(
                 DecisionSlotProjection(option, slot.minimum, slot.maximum,
                   slot.suggested) },
               minTotal = Some(minTotal), maxTotal = Some(maxTotal)))
-    }
-  }
 
   /** One option, as its stable reference plus display detail.
     *
@@ -272,13 +263,13 @@ private[application] final class WalkerDecisionProjector(
     */
   private[application] def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
       index: Option[CardIndex], option: DecisionOption,
-      details: Vector[String] = Vector.empty): Option[DecisionOptionProjection] = {
+      details: Vector[String] = Vector.empty): Option[DecisionOptionProjection] =
     val ref = option.ref
     def row(label: String, card: Option[CardDetailsProjection] = None,
         extra: Vector[String] = Vector.empty, badge: Option[String] = None) =
       Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card,
         details ++ extra, badge))
-    option match {
+    option match
       case DecisionOption.Priced(inner, price) => optionProjection(ready,
         viewer, index, inner, details ++ PriceDetails.of(price))
       // The badge is set after the wrapped option is described, so it survives
@@ -323,8 +314,6 @@ private[application] final class WalkerDecisionProjector(
         row(presentation.safeLabel(deck.id.key))
       case DecisionOption.FavorBank(bank) =>
         row(presentation.safeLabel(bank.suit.key))
-    }
-  }
 
   /** A card option's presentation, or `None` when the card is nowhere in
     * authoritative state OR is there but this viewer may not be told which
@@ -376,17 +365,16 @@ private[application] final class WalkerDecisionProjector(
     * the rest of the row is safe to skip reading.
     */
   private def subjectCards(ready: ReadyGame, viewer: Option[PlayerId],
-      decisionId: String): Vector[CardDetailsProjection] = {
+      decisionId: String): Vector[CardDetailsProjection] =
     val index = CardIndex.from(ready.game).toOption
     val prefixes = Vector("cardplay.place.", "cardplay.replace.")
     prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>
-      decisionId.stripPrefix(prefix).split("\\.", 2).toVector match {
+      decisionId.stripPrefix(prefix).split("\\.", 2).toVector match
         case Vector("denizen", value) => Vector(DenizenId(value): CardId)
         case Vector("vision", value) => Vector(VisionId(value): CardId)
         case _ => Vector.empty[CardId]
-      }
     }.map { id =>
-      index.flatMap(_.get(id)) match {
+      index.flatMap(_.get(id)) match
         case Some(located) =>
           val orientation = orientationOf(located.state)
           if (presentation.identifiesCard(ready, viewer, id, orientation,
@@ -394,9 +382,7 @@ private[application] final class WalkerDecisionProjector(
             presentation.cardDetails(id, orientation, hidden = false)
           else presentation.hiddenCard(presentation.cardKind(id))
         case None => presentation.hiddenCard(presentation.cardKind(id))
-      }
     }
-  }
 
   /** Every answer already recorded at `decisionId`, in answer order, described
     * the way the decision's own options are. See `answeredOptions`' doc on the
@@ -404,21 +390,19 @@ private[application] final class WalkerDecisionProjector(
     */
   private def answeredOptions(ready: ReadyGame, viewer: Option[PlayerId],
       pending: PendingTree, decisionId: String)
-      : Vector[DecisionOptionProjection] = {
+      : Vector[DecisionOptionProjection] =
     val index = CardIndex.from(ready.game).toOption
     pending.answered.collect {
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
     }.flatMap(DecisionOption.forRef)
       .flatMap(optionProjection(ready, viewer, index, _))
-  }
 
   private def orientationOf(state: Option[CardState]): Option[Orientation] =
-    state match {
+    state match
       case Some(DenizenState(_, orientation, _)) => Some(orientation)
       case Some(VisionState(_, orientation)) => Some(orientation)
       case Some(RelicState(_, orientation, _)) => Some(orientation)
       case _ => None
-    }
 
   /** The roll the parked decision declares it is about, with the faces
     * accumulated in that pool so far.
@@ -449,7 +433,7 @@ private[application] final class WalkerDecisionProjector(
     * same precedent for Campaign's dice. `DieFace` is open, so a face family
     * neither pool rolls spells as nothing rather than as a guess.
     */
-  private def faceName(value: DieFace): Vector[String] = value match {
+  private def faceName(value: DieFace): Vector[String] = value match
     case DefenseDieFace.Blank => Vector("blank")
     case DefenseDieFace.OneShield => Vector("one-shield")
     case DefenseDieFace.TwoShields => Vector("two-shields")
@@ -458,10 +442,8 @@ private[application] final class WalkerDecisionProjector(
     case AttackDieFace.OneSword => Vector("one-sword")
     case AttackDieFace.TwoSwordsSkull => Vector("two-swords-skull")
     case _ => Vector.empty
-  }
-}
 
-private[application] object WalkerDecisionProjector {
+private[application] object WalkerDecisionProjector:
   /** How this projector obtains the tree it resolves a parked position
     * against -- the projection-side twin of `OathRules.WalkerTreeSource`,
     * and injectable for the same reason that one is.
@@ -501,4 +483,3 @@ private[application] object WalkerDecisionProjector {
   private final case class Parked(procedure: ProcedureRef, tree: Operation,
       pending: PendingTree, powers: WalkerPowers, awaited: PlayerId,
       owners: Set[PlayerId])
-}

@@ -17,7 +17,7 @@ import oathdigital.serialization.GameEventWire
 import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,
   RoundEnded, WarExhaustionResolved}
 
-class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
+class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
   private given executionContext: ExecutionContext =
     ExecutionContext.global
 
@@ -43,11 +43,11 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
   private def seedSchemaVersions(
       path: Path,
       versions: Vector[Int]
-  ): Unit = {
+  ): Unit =
     val connection =
       DriverManager.getConnection(s"jdbc:hsqldb:file:${path.toAbsolutePath}",
         "SA", "")
-    try {
+    try
       val create = connection.createStatement()
       try create.execute(
         """CREATE TABLE schema_versions (
@@ -61,28 +61,26 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
           """INSERT INTO schema_versions
             |(version, applied_at_epoch_millis) VALUES (?, 0)""".stripMargin
         )
-        try {
+        try
           insert.setInt(1, version)
           insert.executeUpdate()
-        } finally insert.close()
+        finally insert.close()
       }
       val shutdown = connection.createStatement()
       try shutdown.execute("SHUTDOWN")
       finally shutdown.close()
-    } finally connection.close()
-  }
+    finally connection.close()
 
-  test("schema upgrades from version zero and initialization is idempotent") {
+  test("schema upgrades from version zero and initialization is idempotent"):
     val repository = open(databasePath("schema"))
-    try {
+    try
       assertEquals(repository.schemaVersion, Right(4))
       assertEquals(repository.initializeSchema(), Right(()))
       assertEquals(repository.initializeSchema(), Right(()))
       assertEquals(repository.schemaVersion, Right(4))
-    } finally repository.close()
-  }
+    finally repository.close()
 
-  test("rejects newer and non-contiguous schema ledgers and releases files") {
+  test("rejects newer and non-contiguous schema ledgers and releases files"):
     Vector(
       "newer" -> Vector(5),
       "gapped" -> Vector(0, 1)
@@ -97,15 +95,14 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         "SA",
         ""
       )
-      try {
+      try
         val shutdown = reopened.createStatement()
         try shutdown.execute("SHUTDOWN")
         finally shutdown.close()
-      } finally reopened.close()
+      finally reopened.close()
     }
-  }
 
-  test("rejects HSQLDB URL property delimiters in configured paths") {
+  test("rejects HSQLDB URL property delimiters in configured paths"):
     val unsafe = databasePath("unsafe").resolveSibling(
       "journal;shutdown=true"
     )
@@ -115,11 +112,10 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         "database path contains an unsafe HSQLDB URL delimiter"
       ))
     )
-  }
 
-  test("creates a stream and loads exact records in sequence order") {
+  test("creates a stream and loads exact records in sequence order"):
     val repository = open(databasePath("create"))
-    try {
+    try
       assertEquals(
         repository.append(
           "game-create",
@@ -151,12 +147,11 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         ),
         Right(RepositoryAppendResult.StreamNotFound)
       )
-    } finally repository.close()
-  }
+    finally repository.close()
 
-  test("appends an ordered multi-event batch atomically") {
+  test("appends an ordered multi-event batch atomically"):
     val repository = open(databasePath("batch"))
-    try {
+    try
       repository.append(
         "game-batch",
         ExpectedStream.MustNotExist,
@@ -174,10 +169,9 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         repository.load("game-batch").toOption.flatten.get.records,
         Vector("zero", "one", "two", "three")
       )
-    } finally repository.close()
-  }
+    finally repository.close()
 
-  test("persists and reloads exact Oathkeeper evaluation records") {
+  test("persists and reloads exact Oathkeeper evaluation records"):
     val path = databasePath("oathkeeper-reload")
     val events = Vector(
       UsurperFlipped(PlayerId("p2")),
@@ -195,18 +189,17 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
     finally first.close()
 
     val reloaded = open(path)
-    try {
+    try
       val stored = reloaded.load("oathkeeper").toOption.flatten.get
       assertEquals(stored.records, records)
       val decoded = GameEventWire.decodeStream(
         stored.records.mkString("[", ",", "]")).toOption.get
       assertEquals(decoded.map(_.event), events)
-    } finally reloaded.close()
-  }
+    finally reloaded.close()
 
-  test("sequence conflict writes no part of a proposed batch") {
+  test("sequence conflict writes no part of a proposed batch"):
     val repository = open(databasePath("conflict"))
-    try {
+    try
       repository.append(
         "game-conflict",
         ExpectedStream.MustNotExist,
@@ -224,22 +217,20 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         repository.load("game-conflict").toOption.flatten.get.records,
         Vector("zero")
       )
-    } finally repository.close()
-  }
+    finally repository.close()
 
-  test("concurrent creation race has one winner and no partial stream") {
+  test("concurrent creation race has one winner and no partial stream"):
     val repository = open(databasePath("create-race"))
-    try {
+    try
       val start = new CountDownLatch(1)
       val attempts = Vector("left", "right").map { record =>
-        Future {
+        Future:
           start.await()
           repository.append(
             "game-create-race",
             ExpectedStream.MustNotExist,
             Vector(record)
           )
-        }
       }
       start.countDown()
       val results = Await.result(Future.sequence(attempts), 20.seconds)
@@ -256,12 +247,11 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
           .toOption.flatten.get.records.size,
         1
       )
-    } finally repository.close()
-  }
+    finally repository.close()
 
-  test("concurrent same-position appends have one winner and one conflict") {
+  test("concurrent same-position appends have one winner and one conflict"):
     val repository = open(databasePath("append-race"))
-    try {
+    try
       repository.append(
         "game-append-race",
         ExpectedStream.MustNotExist,
@@ -269,14 +259,13 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
       )
       val start = new CountDownLatch(1)
       val attempts = Vector("left", "right").map { record =>
-        Future {
+        Future:
           start.await()
           repository.append(
             "game-append-race",
             ExpectedStream.AtNextSequence(1L),
             Vector(record)
           )
-        }
       }
       start.countDown()
       val results = Await.result(Future.sequence(attempts), 20.seconds)
@@ -293,12 +282,11 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
           .toOption.flatten.get.records.size,
         2
       )
-    } finally repository.close()
-  }
+    finally repository.close()
 
-  test("database failure rolls back stream creation and the entire batch") {
+  test("database failure rolls back stream creation and the entire batch"):
     val repository = open(databasePath("rollback"))
-    try {
+    try
       val result = repository.append(
         "game-rollback",
         ExpectedStream.MustNotExist,
@@ -306,10 +294,9 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
       )
       assert(result.left.toOption.nonEmpty)
       assertEquals(repository.load("game-rollback"), Right(None))
-    } finally repository.close()
-  }
+    finally repository.close()
 
-  test("close and reopen preserve the authoritative stream") {
+  test("close and reopen preserve the authoritative stream"):
     val path = databasePath("restart")
     val first = open(path)
     first.append(
@@ -320,7 +307,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
     first.close()
 
     val reopened = open(path)
-    try {
+    try
       assertEquals(
         reopened.load("game-restart").toOption.flatten.get.records,
         Vector("zero", "one")
@@ -333,7 +320,4 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         ),
         Right(RepositoryAppendResult.Appended(2L, 1))
       )
-    } finally reopened.close()
-  }
-
-}
+    finally reopened.close()

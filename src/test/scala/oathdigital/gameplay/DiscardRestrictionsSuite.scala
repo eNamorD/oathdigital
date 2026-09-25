@@ -11,7 +11,7 @@ import oathdigital.model._
   * modifier selected for the running action cannot be discarded, whichever
   * path discards them, and a card that can be discarded is unaffected.
   */
-class DiscardRestrictionsSuite extends munit.FunSuite {
+class DiscardRestrictionsSuite extends munit.FunSuite:
   import PlacementFixture._
 
   private val restrictions = new DiscardRestrictions(catalog,
@@ -38,49 +38,43 @@ class DiscardRestrictionsSuite extends munit.FunSuite {
   private def selecting(ready: ReadyGame, powers: PowerId*): ReadyGame =
     ready.updateCurrent(_.copy(walkerModifiers = powers.toVector))
 
-  test("a locked adviser cannot be discarded from play, and reports why") {
+  test("a locked adviser cannot be discarded from play, and reports why"):
     val ready = holding(initialReady, lockedCard)
     val reason = restrictions.reason(ready,
       discard(lockedCard, Location.PlayArea(actor))).get
     assertEquals(reason.code, "locked")
     assertEquals(reason.kind, OperationReasonKind.Impossible)
-  }
 
-  test("a locked adviser is locked only while it is faceup") {
+  test("a locked adviser is locked only while it is faceup"):
     val facedown = holding(initialReady, lockedCard, Orientation.FaceDown)
     assert(!refused(facedown, discard(lockedCard, Location.PlayArea(actor))))
-  }
 
-  test("a locked card drawn by a Search can still be discarded from the hand") {
+  test("a locked card drawn by a Search can still be discarded from the hand"):
     assert(!refused(initialReady, discard(lockedCard, Location.Hand(actor))))
-  }
 
-  test("an ordinary adviser can be discarded") {
+  test("an ordinary adviser can be discarded"):
     val card = plain(initialReady).head
     assert(!refused(holding(initialReady, card),
       discard(card, Location.PlayArea(actor))))
-  }
 
-  private def edificeAt(side: EdificeSide): (ReadyGame, SiteId) = {
+  private def edificeAt(side: EdificeSide): (ReadyGame, SiteId) =
     val card = plain(initialReady).head
     val (ready, _, site) = staged(card,
       Vector(EdificeState(hall, side, Tokens.empty)))
     (ruledByActor(ready, site), site)
-  }
 
   private def edificeDiscard(site: SiteId) = Discard.RuinedEdifice(hall,
     PositionedLocation(Location.Site(site)), catalog.suitOf(hall).get, 0, 0,
     actor)
 
-  test("an intact edifice is locked, and a ruined one is not") {
+  test("an intact edifice is locked, and a ruined one is not"):
     val (intact, site) = edificeAt(EdificeSide.Intact)
     assertEquals(restrictions.reason(intact, edificeDiscard(site)).map(_.code),
       Some("locked"))
     val (ruined, ruinedSite) = edificeAt(EdificeSide.Ruined)
     assert(!refused(ruined, edificeDiscard(ruinedSite)))
-  }
 
-  test("a modifier selected for the running action cannot be discarded") {
+  test("a modifier selected for the running action cannot be discarded"):
     val ready = holding(initialReady, wildCry)
     val operation = discard(wildCry, Location.PlayArea(actor))
     assert(!refused(ready, operation))
@@ -89,15 +83,13 @@ class DiscardRestrictionsSuite extends munit.FunSuite {
       Some("active-modifier"))
     // A different modifier selected leaves the card free.
     assert(!refused(selecting(ready, PowerId("denizen.tents")), operation))
-  }
 
-  test("a relic modifier selected for the running action cannot be discarded") {
+  test("a relic modifier selected for the running action cannot be discarded"):
     val relic = Discard.Relic(RelicId("R20"),
       PositionedLocation(Location.PlayArea(actor)), 0, actor)
     assert(!refused(initialReady, relic))
     assert(refused(selecting(initialReady,
       PowerId("relic.dragonskin-drum")), relic))
-  }
 
   // ---- The card-play path ----
 
@@ -110,7 +102,7 @@ class DiscardRestrictionsSuite extends munit.FunSuite {
     * of its cards, and the actor rules it.
     */
   private def fullHomeland(side: EdificeSide)
-      : (ReadyGame, DenizenId, Vector[DenizenId]) = {
+      : (ReadyGame, DenizenId, Vector[DenizenId]) =
     val hallSuit = catalog.suitOf(hall).get
     val cards = plain(initialReady)
     val card = cards.find(catalog.suitOf(_).contains(hallSuit)).get
@@ -120,15 +112,13 @@ class DiscardRestrictionsSuite extends munit.FunSuite {
     val (ready, _, _) = staged(card, fillers.map(denizen(_)) :+
       EdificeState(hall, side, Tokens.empty))
     (ruledByActor(ready, site), card, fillers)
-  }
 
-  test("a replacement can never be an intact edifice") {
+  test("a replacement can never be an intact edifice"):
     val (ready, card, fillers) = fullHomeland(EdificeSide.Intact)
     assertEquals(siteChoice(ready, card).replacements.toSet,
       fillers.toSet[CardId])
-  }
 
-  test("a ruined edifice can be the replacement, and is discarded, not buried") {
+  test("a ruined edifice can be the replacement, and is discarded, not buried"):
     val (ready, card, fillers) = fullHomeland(EdificeSide.Ruined)
     val choice = siteChoice(ready, card)
     assertEquals(choice.replacements.toSet, fillers.toSet[CardId] + hall)
@@ -137,9 +127,8 @@ class DiscardRestrictionsSuite extends munit.FunSuite {
       .toOption.get
     assert(planned.exists(_.isInstanceOf[Discard.RuinedEdifice]))
     assert(!planned.exists(_.isInstanceOf[Bury]))
-  }
 
-  test("a locked adviser is not offered as the replacement of a faceup adviser") {
+  test("a locked adviser is not offered as the replacement of a faceup adviser"):
     val card = plain(initialReady).head
     val extras = plain(initialReady).filter(_ != card).take(2)
     val (staged1, _, _) = staged(card, Vector.empty)
@@ -155,5 +144,3 @@ class DiscardRestrictionsSuite extends munit.FunSuite {
       CardPlay.Origin.TemporaryHand).find(_.placement ==
       SearchPlacement.Adviser(Orientation.FaceUp, None)).get
     assertEquals(faceup.replacements.toSet, extras.toSet[CardId])
-  }
-}

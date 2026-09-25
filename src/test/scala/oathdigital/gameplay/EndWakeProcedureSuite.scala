@@ -20,10 +20,10 @@ import oathdigital.model._
   * action: the player lands in Act action selection, and the Act action
   * boundary does NOT run on the way there.
   */
-class EndWakeProcedureSuite extends munit.FunSuite {
+class EndWakeProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
 
-  private def ready(sharedEnemy: Boolean = false): OathState = {
+  private def ready(sharedEnemy: Boolean = false): OathState =
     val value = initialReady
     val active = value.game.current.turn.activePlayer
     val activeSite = value.game.current.players.find(_.player == active)
@@ -34,17 +34,15 @@ class EndWakeProcedureSuite extends munit.FunSuite {
       else player
     }
     Ready(value.updateCurrent(_.copy(players = players)))
-  }
 
   private def endWake(state: OathState, actor: PlayerId) =
     rules.startWalker(state, PhaseTransitionRef.EndWake, actor)
 
-  private def activePlayer(state: OathState): PlayerId = {
+  private def activePlayer(state: OathState): PlayerId =
     val Ready(value) = state: @unchecked
     value.game.current.turn.activePlayer
-  }
 
-  test("ending Wake journals a phase change and enters Act action selection") {
+  test("ending Wake journals a phase change and enters Act action selection"):
     val state = ready(sharedEnemy = true)
     val active = activePlayer(state)
     val accepted = endWake(state, active).toOption.get
@@ -62,9 +60,8 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     assertEquals(value.game.current.turn.phase, Phase.Act)
     assertEquals(value.game.current.walkerPending, None)
     assertEquals(value.game.current.walkerProcedure, None)
-  }
 
-  test("ending Wake does not run the Act action boundary") {
+  test("ending Wake does not run the Act action boundary"):
     // The boundary runs only after a completed ACTION, decided by the
     // procedure reference's family (Task 8); End Wake is a phase transition,
     // not an action, so it never runs one -- whatever phase it starts or
@@ -90,9 +87,8 @@ class EndWakeProcedureSuite extends munit.FunSuite {
       case parked: WalkerParked
           if parked.procedure == TriggeredProcedureRef.Oathkeeper => ()
     }, Vector.empty)
-  }
 
-  test("ending Wake remains legal while another player has a revealed Vision") {
+  test("ending Wake remains legal while another player has a revealed Vision"):
     val state = ready()
     val active = activePlayer(state)
     val Ready(value) = state: @unchecked
@@ -108,14 +104,12 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     assertEquals(after.game.current.turn.phase, Phase.Act)
     assertEquals(after.game.current.players(other).revealedVision,
       Some(VisionState(VisionId("V1"), Orientation.FaceUp)))
-  }
 
-  test("ending Wake rejects a player who is not the active one") {
+  test("ending Wake rejects a player who is not the active one"):
     assert(endWake(ready(sharedEnemy = true), PlayerId("p1"))
       .left.toOption.get.isInstanceOf[WrongPlayer])
-  }
 
-  test("wrong phase and limited Oathkeeper Wake remains playable") {
+  test("wrong phase and limited Oathkeeper Wake remains playable"):
     val state = ready()
     val active = activePlayer(state)
     val ended = endWake(state, active).toOption.get.state
@@ -125,24 +119,21 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     val titled = Ready(value.updateCurrent(_.copy(title =
         OathkeeperState(Some(active), TitleSide.Oathkeeper))))
     assert(endWake(titled, active).isRight)
-  }
 
-  test("ending Wake selects nothing") {
+  test("ending Wake selects nothing"):
     val state = ready()
     val active = activePlayer(state)
     assert(rules.startWalker(state, PhaseTransitionRef.EndWake, active, Vector.empty,
       Vector(DecisionOptionRef.Button("favor"))).isLeft,
       "a start selection handed to End Wake must be rejected")
-  }
 
-  test("the declared tree is one phase change under no window") {
+  test("the declared tree is one phase change under no window"):
     val Ready(value) = ready(): @unchecked
     assertEquals(EndWakeProcedure.build(catalog, value,
       activePlayer(Ready(value)), Vector.empty),
       Right(Sequence(Vector(EnterPhase(Phase.Act)))))
-  }
 
-  test("what the projection offers is what the command accepts") {
+  test("what the projection offers is what the command accepts"):
     // The projector offers `endWake` unconditionally inside the Wake phase,
     // and the procedure gates on nothing the projector has not already
     // scoped. That is only true while both stay that way, which is what this
@@ -158,9 +149,8 @@ class EndWakeProcedureSuite extends munit.FunSuite {
       assertEquals(projection.legalControls.contains("endWake"),
         endWake(state, activePlayer(state)).isRight, "endWake")
     }
-  }
 
-  test("command evolution and replay are equal and corrupt index is exact") {
+  test("command evolution and replay are equal and corrupt index is exact"):
     val initial = ready()
     val active = activePlayer(initial)
     val ended = endWake(initial, active).toOption.get
@@ -180,5 +170,3 @@ class EndWakeProcedureSuite extends munit.FunSuite {
       })
     assertEquals(corrupt.left.toOption.get.index,
       (setupEvents.size + ended.events.size).toLong)
-  }
-}

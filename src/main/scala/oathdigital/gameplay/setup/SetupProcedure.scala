@@ -34,7 +34,7 @@ import oathdigital.model.OathViolation._
  * powers hook it with a `Transform` that adds their own operations: nothing
  * runs there yet.
  */
-object SetupProcedure {
+object SetupProcedure:
   val adviserKeepKey: String = "keep"
   val adviserDiscardKey: String = "discard"
 
@@ -48,7 +48,7 @@ object SetupProcedure {
     Either.cond(args.isEmpty, (),
       InvalidEventOrder("Setup selects nothing")).map(_ => tree(ready))
 
-  private def tree(ready: ReadyGame): Operation = {
+  private def tree(ready: ReadyGame): Operation =
     val participants = turnOrder(ready)
     val siteOptions = ready.game.current.map.inPlay.map(site =>
       DecisionOption.Site(DecisionOptionRef.Site(site)))
@@ -56,9 +56,8 @@ object SetupProcedure {
     val setupEnd = Sequence(Vector.empty, Some(PowerWindow.SetupEnd))
     Sequence(steps :+ setupEnd :+
       BeginTurn(participants.head.playerId, Phase.Wake))
-  }
 
-  private def turnOrder(ready: ReadyGame): Vector[FirstGameParticipant] = {
+  private def turnOrder(ready: ReadyGame): Vector[FirstGameParticipant] =
     val order = ready.game.current.players.map(_.player)
     val start = order.indexOf(ready.setup.firstPlayer)
     (order.drop(start) ++ order.take(start)).map { playerId =>
@@ -66,10 +65,9 @@ object SetupProcedure {
       FirstGameParticipant(playerId, player.lineage,
         ready.playerColors(playerId))
     }
-  }
 
   private def playerStep(ready: ReadyGame, participant: FirstGameParticipant,
-      siteOptions: Vector[DecisionOption.Site]): Operation = {
+      siteOptions: Vector[DecisionOption.Site]): Operation =
     val pawnId = pawnDecisionId(participant.playerId)
     val adviserId = adviserDecisionId(participant.playerId)
     val hand = ready.game.current.temporaryHands
@@ -90,7 +88,6 @@ object SetupProcedure {
           handOptions, heading = Some("Choose your starting adviser"),
           confirmLabel = Some("Confirm Adviser"))),
       BuildOps(chooseAdviser(participant.playerId, adviserId))))
-  }
 
   private def placePawn(player: PlayerId, decisionId: String)
       : (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]] =
@@ -100,12 +97,11 @@ object SetupProcedure {
 
   private def siteAnswer(pending: PendingTree, decisionId: String)
       : Either[OathViolation, SiteId] =
-    pending.answered.find(_.decisionId == decisionId).map(_.answer) match {
+    pending.answered.find(_.decisionId == decisionId).map(_.answer) match
       case Some(DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site))) =>
         Right(site)
       case _ => Left(InvalidEventOrder(
         s"no pawn-placement answer is recorded for $decisionId"))
-    }
 
   private def chooseAdviser(player: PlayerId, decisionId: String)
       : (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]] =
@@ -126,29 +122,24 @@ object SetupProcedure {
 
   private def adviserSelection(pending: PendingTree, decisionId: String)
       : Either[OathViolation, (DenizenId, Vector[DenizenId])] =
-    pending.answered.find(_.decisionId == decisionId).map(_.answer) match {
+    pending.answered.find(_.decisionId == decisionId).map(_.answer) match
       case Some(DecisionAnswer.PartitionAnswer(placements)) =>
         val kept = placements.filter(_.sectionKey == adviserKeepKey)
           .flatMap(value => denizen(value.option))
         val rejected = placements.filter(_.sectionKey == adviserDiscardKey)
           .flatMap(value => denizen(value.option))
-        kept match {
+        kept match
           case Vector(id) => Right(id -> rejected)
           case _ => Left(InvalidEventOrder(
             s"adviser-choice must keep exactly one card for $decisionId"))
-        }
       case _ => Left(InvalidEventOrder(
         s"no adviser-choice answer is recorded for $decisionId"))
-    }
 
-  private def denizen(ref: DecisionOptionRef): Option[DenizenId] = ref match {
+  private def denizen(ref: DecisionOptionRef): Option[DenizenId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)
     case _ => None
-  }
 
-  private def nextRegion(region: Region): Region = region match {
+  private def nextRegion(region: Region): Region = region match
     case Region.Cradle => Region.Provinces
     case Region.Provinces => Region.Hinterland
     case Region.Hinterland => Region.Cradle
-  }
-}

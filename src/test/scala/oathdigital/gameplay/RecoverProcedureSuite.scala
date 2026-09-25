@@ -20,7 +20,7 @@ import oathdigital.model._
   * facedown into the actor's play area.
   */
 class RecoverProcedureSuite extends munit.FunSuite
-    with WalkerRecordedOpsReducer {
+    with WalkerRecordedOpsReducer:
   /** Recover declares no window yet (Task 4), so every walk here states an
     * empty power source explicitly -- `advance`/`roll`/`resolve` have no
     * default, so a powered production walk can never be shadowed by a
@@ -44,7 +44,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     * exactly one facedown relic there (taken from the relic deck head, which
     * is removed to conserve card identity). Supply is full.
     */
-  private def recoverable: (ReadyGame, PlayerState, SiteId, RelicState, Int) = {
+  private def recoverable: (ReadyGame, PlayerState, SiteId, RelicState, Int) =
     val Ready(base) = execute()._1: @unchecked
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
@@ -68,7 +68,6 @@ class RecoverProcedureSuite extends munit.FunSuite
         map = base.game.current.map.copy(sites =
           base.game.current.map.sites.updated(siteId, site))))
     (ready, moved, siteId, relic, difficulty)
-  }
 
   /** Folds a Parked command's recorded events into the caller's state,
     * mirroring journal replay: RollPayload events re-derive and merge the
@@ -87,7 +86,7 @@ class RecoverProcedureSuite extends munit.FunSuite
   private val highRoll: Vector[DieFace] =
     Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields)
 
-  test("Recover eligibility ignores player role and altered Foundations") {
+  test("Recover eligibility ignores player role and altered Foundations"):
     val (base, actor, _, _, _) = recoverable
     val campaign = base.game.campaign
     val lineage = campaign.lineages(actor.lineage)
@@ -101,19 +100,17 @@ class RecoverProcedureSuite extends munit.FunSuite
       }))
 
     assert(RecoverProcedure.build(catalog, ready, actor.player).isRight)
-  }
 
   private def expectParked(outcome: Either[OathViolation, WalkerOutcome],
       at: Vector[String]): (PendingTree, Vector[OathEvent]) =
-    outcome match {
+    outcome match
       case Right(WalkerOutcome.Parked(pending, events)) =>
         assertEquals(pending.at, at)
         (pending, events)
       case other => fail(s"expected a Parked outcome at $at, got $other")
-    }
 
   test("Recover rolls its own dice: the walk parks on the choice, never on " +
-      "the roll") {
+      "the roll"):
     val (ready, actor, _, _, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
@@ -138,10 +135,9 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(relicPark.answered.size, 1)
     assertEquals(continueEvents.map(_.asInstanceOf[WalkerStepRecorded].payload)
       .collect { case roll: RollPayload => roll.faces }, Vector(highRoll))
-  }
 
   test("single-roll success parks the relic decision, then moves a facedown " +
-      "relic into the play area for one supply") {
+      "relic into the play area for one supply"):
     val (ready, actor, siteId, relic, _) = recoverable
     val pool = RecoverProcedure.recoverPool
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
@@ -169,10 +165,9 @@ class RecoverProcedureSuite extends munit.FunSuite
       ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor.player)
     val (finalState, resolveSteps) =
       ProcedureWalker.resolve(stateAtRelic, tree, relicPark, answer,
-      noPowers) match {
+      noPowers) match
         case Right(WalkerOutcome.Finished(treeless, events)) => (treeless, events)
         case other => fail(s"expected a Finished resolve, got $other")
-      }
 
     assertEquals(supplyOf(finalState, actor.player), SupplyTrack.Maximum - 1)
     assertEquals(finalState.game.current.map.sites(siteId).relics,
@@ -217,10 +212,9 @@ class RecoverProcedureSuite extends munit.FunSuite
       PositionedLocation(Location.Site(siteId)),
       PositionedLocation(Location.PlayArea(actor.player)),
       resultingOrientation = Some(Orientation.FaceDown))))
-  }
 
   test("multi-roll success: a failed roll parks Continue/Stop; Continue rolls " +
-      "again and the cumulative score reaches the difficulty") {
+      "again and the cumulative score reaches the difficulty"):
     val (ready, actor, siteId, relic, _) = recoverable
     val pool = RecoverProcedure.recoverPool
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
@@ -252,10 +246,9 @@ class RecoverProcedureSuite extends munit.FunSuite
     val answer = Answered(RecoverProcedure.relicDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor.player)
     val finalState = ProcedureWalker.resolve(stateAtRelic, tree, relicPark,
-      answer, noPowers) match {
+      answer, noPowers) match
       case Right(WalkerOutcome.Finished(treeless, _)) => treeless
       case other => fail(s"expected a Finished resolve, got $other")
-    }
 
     assertEquals(supplyOf(finalState, actor.player), SupplyTrack.Maximum - 2)
     assertEquals(finalState.game.current.rollOutcomes(pool).score,
@@ -271,10 +264,9 @@ class RecoverProcedureSuite extends munit.FunSuite
       .filter(_.payload.isInstanceOf[RollPayload])
       .map(_.payload.asInstanceOf[RollPayload])
     assertEquals(rollPayloads.map(_.faces), Vector(lowRoll, highRoll))
-  }
 
   test("stop after a failed roll ends the walk with no relic and one supply " +
-      "spent") {
+      "spent"):
     val (ready, actor, siteId, relic, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
@@ -287,11 +279,10 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stop = Answered(RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor.player)
     val (finalState, stopEvents) = ProcedureWalker.resolve(stateAtChoice, tree,
-      choicePark, stop, noPowers) match {
+      choicePark, stop, noPowers) match
       case Right(WalkerOutcome.Finished(treeless, events)) =>
         (treeless, events)
       case other => fail(s"expected a Finished stop, got $other")
-    }
 
     assertEquals(supplyOf(finalState, actor.player), SupplyTrack.Maximum - 1)
     assertEquals(finalState.game.current.players.find(
@@ -309,10 +300,9 @@ class RecoverProcedureSuite extends munit.FunSuite
         ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor.player))
     assertEquals(stopEvents.head.asInstanceOf[WalkerStepRecorded].ops,
       Vector.empty[CoreOperation])
-  }
 
   test("OperationPipeline rejects an unpaid next roll and a supply-zero " +
-      "initial roll") {
+      "initial roll"):
     val (ready, actor, siteId, _, _) = recoverable
     val poor = withSupply(ready, actor.player, 1)
     val tree = RecoverProcedure.build(catalog, poor, actor.player).toOption.get
@@ -329,12 +319,11 @@ class RecoverProcedureSuite extends munit.FunSuite
     val continue = Answered(RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player)
     ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
-      noPowers) match {
+      noPowers) match
       case Left(violation: OathViolation.CoreOperationRejected) =>
         assertEquals(violation.code, "insufficient-supply")
         assert(violation.detail.contains("1 exceeds the 0 available"))
       case other => fail(s"expected an InsufficientSupply rejection, got $other")
-    }
 
     // Build owns only Recover semantics, so zero supply still builds. The
     // generic operation pipeline rejects the first payment before Roll.
@@ -345,10 +334,9 @@ class RecoverProcedureSuite extends munit.FunSuite
       .left.toOption.get.isInstanceOf[OathViolation.CoreOperationRejected])
     assert(RecoverProcedure.rebuild(catalog, broke, actor.player).isRight,
       "resume derivation must preserve the legal Stop exit at zero supply")
-  }
 
   test("resolving the relic decision with a relic not facedown at the site is " +
-      "rejected") {
+      "rejected"):
     val (ready, actor, _, _, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
@@ -365,7 +353,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // site, never offered it -- not because a Recover-specific closure
     // checked the site a second time.
     ProcedureWalker.resolve(stateAtRelic, tree, relicPark, wrong,
-      noPowers) match {
+      noPowers) match
       case Left(violation: OathViolation.InvalidEventOrder) =>
         assert(violation.detail.contains(
           s"decision ${RecoverProcedure.relicDecisionId} does not offer the " +
@@ -373,11 +361,9 @@ class RecoverProcedureSuite extends munit.FunSuite
           s"violation detail '${violation.detail}' should name the decision " +
             "and the undeclared option")
       case other => fail(s"expected a wrong-relic rejection, got $other")
-    }
-  }
 
   test("a successful Recover with no facedown relic finishes without a " +
-      "relic decision") {
+      "relic decision"):
     val (ready, actor, siteId, _, _) = recoverable
     val reliclessSite =
       ready.game.current.map.sites(siteId).copy(relics = Vector.empty)
@@ -388,11 +374,10 @@ class RecoverProcedureSuite extends munit.FunSuite
       .toOption.get
     val (finalState, finalEvents) =
       ProcedureWalker.advance(relicless, tree, None, noPowers,
-          scripted(highRoll)) match {
+          scripted(highRoll)) match
         case Right(WalkerOutcome.Finished(treeless, events)) =>
           (treeless, events)
         case other => fail(s"expected relic-less Recover to finish, got $other")
-      }
 
     assertEquals(finalEvents.collect {
       case step: WalkerStepRecorded if step.payload.isInstanceOf[ChoicePayload] =>
@@ -400,7 +385,6 @@ class RecoverProcedureSuite extends munit.FunSuite
     }, Vector.empty)
     assertEquals(RecoverProcedure.actorFacedownRelics(finalState, actor.player),
       Vector.empty)
-  }
 
   /** Every node reachable from `node`, including `node` itself: a `Branch`
     * is resolved by evaluating `select(state, ...)` against `state` (the
@@ -410,23 +394,21 @@ class RecoverProcedureSuite extends munit.FunSuite
     * makes the branch select it.
     */
   private def allNodes(node: Operation, state: ReadyGame,
-      actor: PlayerId): Vector[Operation] = {
-    val nested = node match {
+      actor: PlayerId): Vector[Operation] =
+    val nested = node match
       case _: PrimitiveOperation => Vector.empty
       case branch: Branch =>
         branch.select(state, PendingTree(Vector.empty, Vector.empty))
           .flatMap(allNodes(_, state, actor))
       case _ => node.children.flatMap(allNodes(_, state, actor))
-    }
     node +: nested
-  }
 
   // -------------------------------------------------------------------------
   // The two declared queries: what the client is offered IS what the walker
   // accepts, because they are the same expression.
   // -------------------------------------------------------------------------
 
-  test("the continue/stop decision declares exactly two labelled buttons") {
+  test("the continue/stop decision declares exactly two labelled buttons"):
     val (ready, actor, _, _, _) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
@@ -444,10 +426,9 @@ class RecoverProcedureSuite extends munit.FunSuite
       DecisionOption.Button(DecisionOptionRef.Button("continue"), "Continue"),
       DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop")),
       heading = Some("Recover")))
-  }
 
   test("the relic decision declares one option per live facedown relic, and " +
-      "nothing else at the site") {
+      "nothing else at the site"):
     val (base, actor, siteId, relic, _) = recoverable
     // A second facedown relic, plus a faceup one and a relic at another site,
     // so the query has something to exclude rather than trivially matching.
@@ -491,10 +472,9 @@ class RecoverProcedureSuite extends munit.FunSuite
         ChooseOneAnswer(DecisionOptionRef.Relic(faceUp.id)), actor.player),
       noPowers).isLeft,
       "a faceup relic is not offered and must not be accepted")
-  }
 
   test("a continue answer submitted after the roll already succeeded is " +
-      "rejected because the rebuilt tree no longer declares that node") {
+      "rejected because the rebuilt tree no longer declares that node"):
     // This is what replaced Recover's deleted `validateChoice` closure: the
     // `Branch` omits the continue/stop node once the recovery has succeeded,
     // so a stale answer finds no matching `Decide` to resume at and is
@@ -511,7 +491,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stale = Answered(RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player)
     ProcedureWalker.resolve(stateAtRelic, tree, relicPark, stale,
-      noPowers) match {
+      noPowers) match
       case Left(violation: OathViolation.InvalidEventOrder) =>
         assert(violation.detail.contains(
           RecoverProcedure.choiceDecisionId) &&
@@ -519,16 +499,14 @@ class RecoverProcedureSuite extends munit.FunSuite
           s"violation detail '${violation.detail}' should name both the " +
             "submitted decision and the one actually parked")
       case other => fail(s"expected a stale-choice rejection, got $other")
-    }
 
     // Resuming at the choice node's own former path fails too: the rebuilt
     // tree selects no child there at all.
     assert(ProcedureWalker.resolve(stateAtRelic, tree,
       relicPark.copy(at = Vector("1", "0", "2", "0")), stale, noPowers).isLeft)
-  }
 
   test("the tree windows exactly its root, its pool-opening node, and its " +
-      "relic-moving node; every other node carries none") {
+      "relic-moving node; every other node carries none"):
     val (ready, actor, _, _, difficulty) = recoverable
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
     val pool = RecoverProcedure.recoverPool
@@ -558,5 +536,3 @@ class RecoverProcedureSuite extends munit.FunSuite
       "the head ModifyDicePool must carry RecoverBeforeFirstRoll")
     assert(windowed.count(_.isInstanceOf[BuildOps]) == 1,
       "exactly the relic-moving BuildOps must carry RecoverAfterRelic")
-  }
-}

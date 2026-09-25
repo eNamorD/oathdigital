@@ -11,8 +11,7 @@ import oathdigital.model._
   * fact of the state when the draw runs, not when the tree was built.
   */
 case object DowsingSticks extends PaidAction("relic.dowsing-sticks",
-    Cost(secret = 1, secretBurnt = 2)) {
+    Cost(secret = 1, secretBurnt = 2)):
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =
     Right(BuildOps((state, _) => Right(RelicDraws.takeTop(state, player))))
-}

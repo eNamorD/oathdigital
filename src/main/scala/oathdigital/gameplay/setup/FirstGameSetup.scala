@@ -2,7 +2,7 @@ package oathdigital.gameplay.setup
 
 import oathdigital.model.VisionId
 
-object FirstGameRulesData {
+object FirstGameRulesData:
   val visions: Vector[VisionId] = Vector(
     VisionId("vision:vision-of-sanctuary"),
     VisionId("vision:vision-of-rebellion"),
@@ -10,4 +10,3 @@ object FirstGameRulesData {
     VisionId("vision:conspiracy"),
     VisionId("vision:vision-of-conquest")
   )
-}

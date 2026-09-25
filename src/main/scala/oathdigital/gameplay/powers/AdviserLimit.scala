@@ -14,10 +14,9 @@ import oathdigital.model._
   * `PlacementRules.DefaultAdviserLimit` and the only power that lowers it is
   * Silver Tongue, through `SilverTongue.limitFor`.
   */
-object AdviserLimit {
+object AdviserLimit:
   val Default: Int = PlacementRules.DefaultAdviserLimit
 
   def of(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId): Int =
     SilverTongue.forCatalog(catalog).flatMap(_.limitFor(ready, player))
       .getOrElse(Default)
-}

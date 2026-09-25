@@ -7,7 +7,6 @@ import oathdigital.gameplay.powerresolver.PhasePower
   * [[oathdigital.gameplay.powers.PhasePowerCatalog]] through this one object,
   * like [[DiceAndRelicDrawPowers]] and [[TargetPowers]].
   */
-object MovementPowers {
+object MovementPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Whistle, MagicCarpet, new BrassHorse(catalog))
-}

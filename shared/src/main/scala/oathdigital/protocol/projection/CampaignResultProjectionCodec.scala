@@ -2,7 +2,7 @@ package oathdigital.protocol.projection
 
 import ProjectionCodecSupport._
 
-private[projection] object CampaignResultProjectionCodec {
+private[projection] object CampaignResultProjectionCodec:
   private val Fields = Set("attackerPlayerId", "kind", "defenderPlayerId",
     "targetSiteIds", "raidTargets", "force", "attackDice", "attackScore",
     "skullLosses", "sacrificed", "defenseDice", "defenseScore", "attackerWins")
@@ -38,4 +38,3 @@ private[projection] object CampaignResultProjectionCodec {
   } yield CampaignResultProjection(attacker, kind, defender, sites, raid, force,
     attackDice, attackScore, skulls, sacrificed, defenseDice, defenseScore,
     attackerWins)
-}

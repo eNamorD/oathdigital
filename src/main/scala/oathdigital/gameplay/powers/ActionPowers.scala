@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model.PowerWindow
 
-object ActionPowers {
+object ActionPowers:
   private def played = Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayedFaceup))
   private def playedDone = Vector(ReviewedHandler.automatic(
     PowerWindow.ActionCardPlayedFaceup, implemented = true))
@@ -65,4 +65,3 @@ object ActionPowers {
     RoyalAmbitions, Riots, BanditChief, ReliquaryRaid, BanditPrince, ARoundOfAle,
     FavoredSon, TownMeeting, AncientPact, SearchParty, CallForHelp,
     PeoplesFavorGrandCouncil, DarkestSecretFestival, AlteredFoundation)
-}

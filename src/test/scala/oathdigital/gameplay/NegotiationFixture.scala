@@ -9,15 +9,14 @@ import oathdigital.model.OathState.Ready
   * favor and one facedown relic each, the first player (the actor) in the Act
   * phase knowing one relic that lies at that site.
   */
-object NegotiationFixture {
+object NegotiationFixture:
   final case class Board(ready: ReadyGame, players: Vector[PlayerState],
       site: SiteId, actorRelic: RelicId, otherRelic: RelicId,
-      siteRelic: RelicId) {
+      siteRelic: RelicId):
     def actor: PlayerId = players.head.player
     def second: PlayerId = players(1).player
     def third: PlayerId = players(2).player
-  }
-  def board(): Board = {
+  def board(): Board =
     val Ready(base) = execute()._1: @unchecked
     val siteId = base.game.current.map.inPlay.find(id =>
       base.game.current.map.sites(id).relics.nonEmpty).get
@@ -39,14 +38,12 @@ object NegotiationFixture {
       base.knowledge.copy(siteRelics = Map(players.head.player ->
         Map(siteId -> Vector(siteRelic)))))
     Board(ready, players, siteId, relics.head, relics(1), siteRelic)
-  }
 
-  private def relocate(board: Board, who: Set[PlayerId]): Board = {
+  private def relocate(board: Board, who: Set[PlayerId]): Board =
     val elsewhere = board.ready.game.current.map.inPlay.find(_ != board.site).get
     board.copy(ready = board.ready.updateCurrent(current => current.copy(
       players = current.players.map(p =>
         if (who(p.player)) p.copy(pawnSite = Some(elsewhere)) else p))))
-  }
 
   /** The third player moves away, leaving the actor exactly one candidate. */
   def withThirdElsewhere(board: Board): Board = relocate(board, Set(board.third))
@@ -57,4 +54,3 @@ object NegotiationFixture {
 
   def player(ready: ReadyGame, id: PlayerId): PlayerState =
     ready.game.current.players.find(_.player == id).get
-}

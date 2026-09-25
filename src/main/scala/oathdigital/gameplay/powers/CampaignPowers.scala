@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model.{MajorActionType, PowerWindow}
 
-object CampaignPowers {
+object CampaignPowers:
   private val modifier = Some(MajorActionType.Campaign)
   object VowOfPeace extends ReviewedPower("denizen.vow-of-peace", modifier,
     Vector(ReviewedHandler.automatic(PowerWindow.CampaignBeforeTargets,
@@ -21,4 +21,3 @@ object CampaignPowers {
     Vector(ReviewedHandler.selected(PowerWindow.CampaignAttackerBattlePlans)))
   val powers: Vector[Power] = Vector(VowOfPeace, Outriders, BrassArmyCampaign,
     Watchdog, BagOfSiegeworks)
-}

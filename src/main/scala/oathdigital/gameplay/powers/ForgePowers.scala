@@ -2,6 +2,5 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver.Power
 
-object ForgePowers {
+object ForgePowers:
   val powers: Vector[Power] = Vector.empty
-}

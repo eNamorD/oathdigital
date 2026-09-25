@@ -16,7 +16,7 @@ import oathdigital.model._
   * the answer when it runs and pays only when the suits match.
   */
 final case class CupOfPlenty private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = CupOfPlenty.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
 
@@ -48,11 +48,9 @@ final case class CupOfPlenty private (cardId: RelicId,
     }
   } yield MusterSource.matching(catalog, ready, actor, suit) == 0)
     .getOrElse(false)
-}
 
-object CupOfPlenty {
+object CupOfPlenty:
   val id: PowerId = PowerId("relic.cup-of-plenty")
 
   def forCatalog(catalog: ExecutableCatalog): Option[CupOfPlenty] =
     CatalogCards.relic(catalog, id).map(new CupOfPlenty(_, catalog))
-}

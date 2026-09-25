@@ -11,7 +11,7 @@ import oathdigital.model._
   * card still being where the play started. Family Heirloom is the power with
   * such a question; these run it through the whole rules path.
   */
-class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite {
+class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
   private val heirloom = FamilyHeirloom.forCatalog(catalog).get.cardId
   private val take = DecisionAnswer.ChooseOneAnswer(FamilyHeirloom.keep)
   private val bottom = DecisionAnswer.ChooseOneAnswer(FamilyHeirloom.bottom)
@@ -23,7 +23,7 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite {
   private def relics(ready: ReadyGame) = PowerFixture.player(ready).relics
 
   test("a searched Family Heirloom played faceup asks its question and keeps " +
-      "the relic") {
+      "the relic"):
     val ready = staged(Vector(heirloom))
     val top = ready.game.current.commonCards.relicDeck.head
     val done = (for {
@@ -33,10 +33,9 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite {
       answered <- answer(placed, take)
     } yield answered).fold(error => fail(error.toString), value => value)
     assert(relics(after(done)).exists(_.id == top))
-  }
 
   test("a searched Family Heirloom played faceup can put the relic on the " +
-      "bottom of the deck") {
+      "bottom of the deck"):
     val ready = staged(Vector(heirloom))
     val top = ready.game.current.commonCards.relicDeck.head
     val done = (for {
@@ -47,10 +46,9 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite {
     } yield answered).fold(error => fail(error.toString), value => value)
     assert(!relics(after(done)).exists(_.id == top))
     assertEquals(after(done).game.current.commonCards.relicDeck.last, top)
-  }
 
   test("a facedown Family Heirloom played faceup asks its question and keeps " +
-      "the relic") {
+      "the relic"):
     val ready = PowerFixture.inPhase(PowerFixture.asAdviser(staged(Vector.empty),
       heirloom, Orientation.FaceDown), Phase.Act)
     val top = ready.game.current.commonCards.relicDeck.head
@@ -62,10 +60,9 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite {
       answered <- answer(placed, take)
     } yield answered).fold(error => fail(error.toString), value => value)
     assert(relics(after(done)).exists(_.id == top))
-  }
 
   test("a replacement is answered before the card is played, and the " +
-      "question after the play still resolves") {
+      "question after the play still resolves"):
     val fillers = denizensOf(Suit.Arcane).take(6)
     val full = fillers.foldLeft(staged(Vector(heirloom)))((ready, id) =>
       if (PowerFixture.player(ready).advisers.size >= 3) ready
@@ -85,5 +82,3 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite {
     assert(relics(after(done)).nonEmpty)
     assert(!PowerFixture.player(after(done)).advisers.exists(
       _.id == current.head))
-  }
-}

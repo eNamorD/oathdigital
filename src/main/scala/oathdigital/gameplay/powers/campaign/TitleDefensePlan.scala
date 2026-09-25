@@ -10,27 +10,23 @@ import oathdigital.model._
   * Like the rulebook's own rules it is always present, and it hooks the plan
   * window until the defender uses it.
   */
-final case class TitleDefensePlan private () extends BattlePlan {
+final case class TitleDefensePlan private () extends BattlePlan:
   def id: PowerId = TitleDefensePlan.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Button("title")
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
 
-  def plan(context: PlanContext): Option[CampaignPlanOffer] = {
+  def plan(context: PlanContext): Option[CampaignPlanOffer] =
     val title = context.ready.game.current.title
     context.user.filter(user => title.holder.contains(user) &&
       context.setup.defender == CampaignDefender.Player(user)).map { user =>
-      val dice = title.side match {
+      val dice = title.side match
         case TitleSide.Oathkeeper => 1
         case TitleSide.Usurper => 2
-      }
       CampaignPlanOffer(CampaignPlanSource.Title(user),
         s"${title.side} title: add $dice defense ${if (dice == 1) "die" else "dice"}",
         Vector.empty, Vector(CampaignPlanEffect.AddDefenseDice(dice)))
     }
-  }
-}
 
-object TitleDefensePlan {
+object TitleDefensePlan:
   val id: PowerId = PowerId("title.oathkeeper-defense")
   val plan: TitleDefensePlan = new TitleDefensePlan()
-}

@@ -5,7 +5,7 @@ import java.sql.Connection
 import slick.dbio.DBIO
 import slick.jdbc.HsqldbProfile.api._
 
-private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
+private[persistence] final class EventJournalSchema(nowMillis: () => Long):
   val TargetVersion: Int = 4
 
   val initialize: DBIO[Unit] =
@@ -37,7 +37,7 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
       4 -> createTrustedSeats
     )
 
-  private def createVersionLedger(connection: Connection): Unit = {
+  private def createVersionLedger(connection: Connection): Unit =
     val statement = connection.createStatement()
     try statement.execute(
       """CREATE TABLE IF NOT EXISTS schema_versions (
@@ -46,21 +46,19 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
         |)""".stripMargin
     )
     finally statement.close()
-  }
 
-  private def readVersions(connection: Connection): Vector[Int] = {
+  private def readVersions(connection: Connection): Vector[Int] =
     val statement = connection.createStatement()
-    try {
+    try
       val rows = statement.executeQuery(
         "SELECT version FROM schema_versions ORDER BY version ASC"
       )
       val versions = Vector.newBuilder[Int]
       while (rows.next()) versions += rows.getInt(1)
       versions.result()
-    } finally statement.close()
-  }
+    finally statement.close()
 
-  private def validateInstalled(versions: Vector[Int]): Unit = {
+  private def validateInstalled(versions: Vector[Int]): Unit =
     versions.lastOption.foreach { newest =>
       if (newest > TargetVersion)
         throw new IllegalStateException(
@@ -72,33 +70,30 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
       throw new IllegalStateException(
         s"schema version ledger must be contiguous from 1; found ${versions.mkString(",")}"
       )
-  }
 
-  private def validateExactTarget(versions: Vector[Int]): Unit = {
+  private def validateExactTarget(versions: Vector[Int]): Unit =
     val expected = (1 to TargetVersion).toVector
     if (versions != expected)
       throw new IllegalStateException(
         s"schema version ledger mismatch; expected ${expected.mkString(",")} " +
           s"but found ${versions.mkString(",")}"
       )
-  }
 
-  private def recordVersion(connection: Connection, version: Int): Unit = {
+  private def recordVersion(connection: Connection, version: Int): Unit =
     val statement = connection.prepareStatement(
       """INSERT INTO schema_versions (version, applied_at_epoch_millis)
         |VALUES (?, ?)""".stripMargin
     )
-    try {
+    try
       statement.setInt(1, version)
       statement.setLong(2, nowMillis())
       statement.executeUpdate()
       ()
-    } finally statement.close()
-  }
+    finally statement.close()
 
-  private def createEventJournal(connection: Connection): Unit = {
+  private def createEventJournal(connection: Connection): Unit =
     val statement = connection.createStatement()
-    try {
+    try
       statement.execute(
         """CREATE TABLE event_streams (
           |  game_id VARCHAR(255) PRIMARY KEY,
@@ -118,12 +113,11 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
           |    REFERENCES event_streams(game_id) ON DELETE CASCADE
           |)""".stripMargin
       )
-    } finally statement.close()
-  }
+    finally statement.close()
 
-  private def createIdentityFoundation(connection: Connection): Unit = {
+  private def createIdentityFoundation(connection: Connection): Unit =
     val statement = connection.createStatement()
-    try {
+    try
       statement.execute(
         """CREATE TABLE users (
           |  user_id VARCHAR(128) PRIMARY KEY,
@@ -190,12 +184,11 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
           |  )
           |)""".stripMargin
       )
-    } finally statement.close()
-  }
+    finally statement.close()
 
-  private def addSessionCsrfDigest(connection: Connection): Unit = {
+  private def addSessionCsrfDigest(connection: Connection): Unit =
     val statement = connection.createStatement()
-    try {
+    try
       statement.execute(
         "ALTER TABLE sessions ADD COLUMN csrf_token_digest BINARY(32)"
       )
@@ -203,12 +196,11 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
         """UPDATE sessions SET revoked_at_millis = created_at_millis
           |WHERE revoked_at_millis IS NULL""".stripMargin
       )
-    } finally statement.close()
-  }
+    finally statement.close()
 
-  private def createTrustedSeats(connection: Connection): Unit = {
+  private def createTrustedSeats(connection: Connection): Unit =
     val statement = connection.createStatement()
-    try {
+    try
       statement.execute(
         """CREATE TABLE trusted_seats (
           |  token_digest BINARY(32) PRIMARY KEY,
@@ -220,6 +212,4 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
           |    REFERENCES game_resources(game_id) ON DELETE CASCADE
           |)""".stripMargin
       )
-    } finally statement.close()
-  }
-}
+    finally statement.close()

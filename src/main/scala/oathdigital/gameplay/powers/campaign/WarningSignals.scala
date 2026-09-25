@@ -18,7 +18,7 @@ import oathdigital.model._
   * not the defender won.
   */
 final case class WarningSignals private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan {
+    catalog: ExecutableCatalog) extends BattlePlan:
   def id: PowerId = WarningSignals.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -34,7 +34,7 @@ final case class WarningSignals private (cardId: DenizenId,
 
   /** The board and each ruled site, with the warbands each holds now. */
   private def holdings(ready: ReadyGame, user: PlayerId)
-      : (Int, Vector[(SiteId, Int)]) = {
+      : (Int, Vector[(SiteId, Int)]) =
     val current = ready.game.current
     val board = current.players.find(_.player == user).fold(0)(_.board.warbands)
     val sites = current.map.inPlay.filter(site => CampaignSetup
@@ -44,7 +44,6 @@ final case class WarningSignals private (cardId: DenizenId,
         case _ => None
       })
     (board, sites)
-  }
 
   private def rearrange(user: PlayerId): Operation = Branch((ready, _) => {
     val (board, sites) = holdings(ready, user)
@@ -90,13 +89,11 @@ final case class WarningSignals private (cardId: DenizenId,
         changes.collect { case (site, delta) if delta > 0 =>
           move(site, delta, out = false) }
     }
-}
 
-object WarningSignals {
+object WarningSignals:
   val id: PowerId = PowerId("denizen.warning-signals")
   /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "warning-signals"
 
   def forCatalog(catalog: ExecutableCatalog): Option[WarningSignals] =
     CatalogCards.denizen(catalog, id).map(new WarningSignals(_, catalog))
-}

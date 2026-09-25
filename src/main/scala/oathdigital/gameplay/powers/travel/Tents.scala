@@ -15,7 +15,7 @@ import oathdigital.model._
   * removed only when it is.
   */
 final case class Tents private (cardId: DenizenId, catalog: ExecutableCatalog)
-    extends SelectedModifier {
+    extends SelectedModifier:
   def id: PowerId = Tents.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
   override def cost: Cost = Cost(favor = Tents.Favor)
@@ -35,12 +35,10 @@ final case class Tents private (cardId: DenizenId, catalog: ExecutableCatalog)
       source.nonEmpty &&
         source == TravelPayments.region(ctx.state, route.destination)
     }
-}
 
-object Tents {
+object Tents:
   val id: PowerId = PowerId("denizen.tents")
   val Favor: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[Tents] =
     CatalogCards.denizen(catalog, id).map(new Tents(_, catalog))
-}

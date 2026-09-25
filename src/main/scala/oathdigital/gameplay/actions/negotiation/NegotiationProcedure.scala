@@ -20,7 +20,7 @@ import oathdigital.model._
   * Nothing about the deal is stored: the guard, the query and the settlement
   * all read `PendingTree.answered` (see [[NegotiationDeal]]).
   */
-object NegotiationProcedure {
+object NegotiationProcedure:
   val decisionIds: Set[String] = NegotiationDeal.decisionIds
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
@@ -51,7 +51,7 @@ object NegotiationProcedure {
       s"walker procedure ${ActionRef.Negotiation.key} takes no start " +
         s"selection, got ${args.map(_.kind).mkString(", ")}"))
 
-  private def tree(state: ReadyGame, actor: PlayerId): Operation = {
+  private def tree(state: ReadyGame, actor: PlayerId): Operation =
     val candidates = NegotiationDeal.eligible(state, actor)
     val choose: Vector[Operation] =
       if (candidates.size < 2) Vector.empty
@@ -76,5 +76,3 @@ object NegotiationProcedure {
           window = Some(PowerWindow.NegotiationSettlement)))
         else Vector.empty
       })))
-  }
-}

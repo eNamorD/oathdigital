@@ -17,7 +17,7 @@ import oathdigital.model._
   * facedown adviser of another player is. The slot is read from live state, so
   * an answer cannot name a card that has since moved.
   */
-case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)) {
+case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
   val decisionId: String = "power.ivory-eye.adviser"
   private val Prefix = "adviser:"
 
@@ -33,31 +33,28 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)) {
     BuildOps((live, pending) => peek(live, player, pending)))))
 
   private final case class Target(owner: PlayerId, slot: Int,
-      card: WorldCardId) {
+      card: WorldCardId):
     def ref: DecisionOptionRef.Button = optionFor(owner, slot)
     def label: String = s"${owner.value}: facedown adviser ${slot + 1}"
-  }
 
   private def targets(ready: ReadyGame): Vector[Target] = for {
     player <- ready.game.current.players
     (adviser, slot) <- player.advisers.zipWithIndex
-    card <- adviser match {
+    card <- adviser match
       case DenizenState(id, Orientation.FaceDown, _) => Some(id: WorldCardId)
       case VisionState(id, Orientation.FaceDown) => Some(id: WorldCardId)
       case _ => None
-    }
   } yield Target(player.player, slot, card)
 
-  private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] = {
+  private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = targets(ready)
     if (found.isEmpty) Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
       found.map(t => DecisionOption.Button(t.ref, t.label)),
       heading = Some("Ivory Eye: peek at a facedown adviser"))))
-  }
 
   private def peek(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val found = targets(ready)
     if (found.isEmpty) Right(Vector.empty)
     else for {
@@ -66,5 +63,3 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)) {
       target <- found.find(_.ref == ref).toRight(OathViolation
         .InvalidEventOrder(s"${ref.wireId} is not a facedown adviser"))
     } yield Vector(Peek(actor, target.card, Location.PlayArea(target.owner)))
-  }
-}

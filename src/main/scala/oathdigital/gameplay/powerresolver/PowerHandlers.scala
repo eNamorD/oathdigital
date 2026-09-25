@@ -5,11 +5,10 @@ import oathdigital.model.{PowerResolution, PowerWindow}
 /** Total inspection function used by concise handler declarations. */
 final class PowerInspector private (
     private val run: PowerContext => PowerInspection
-) extends (PowerContext => PowerInspection) with Serializable {
+) extends (PowerContext => PowerInspection) with Serializable:
   def apply(context: PowerContext): PowerInspection = run(context)
-}
 
-object PowerInspector {
+object PowerInspector:
   private val inapplicable = PowerInspection(applicable = false)
 
   def apply(run: PowerContext => PowerInspection): PowerInspector =
@@ -22,9 +21,8 @@ object PowerInspector {
       : PowerInspector =
     new PowerInspector(context => run.applyOrElse(context,
       (_: PowerContext) => inapplicable))
-}
 
-object PowerHandlers {
+object PowerHandlers:
   def automatic(window: PowerWindow, implemented: Boolean = true)(
       inspect: PowerInspector): PowerHandler =
     FunctionalPowerHandler(window, PowerResolution.Automatic, implemented,
@@ -40,7 +38,5 @@ object PowerHandlers {
       resolution: PowerResolution,
       implemented: Boolean,
       inspectPower: PowerInspector
-  ) extends PowerHandler {
+  ) extends PowerHandler:
     def inspect(context: PowerContext): PowerInspection = inspectPower(context)
-  }
-}

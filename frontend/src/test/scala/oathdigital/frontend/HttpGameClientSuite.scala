@@ -10,16 +10,15 @@ import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   DecisionAnswerWire, DecisionPlacementWire, GameIntent, MajorActionPreviewRequest,
   ModifierInvocation}
 
-class HttpGameClientSuite extends FunSuite {
-  test("trusted colon game uses the encoded canonical cookie path") {
+class HttpGameClientSuite extends FunSuite:
+  test("trusted colon game uses the encoded canonical cookie path"):
     val transport = new StubTransport(Vector(Right(TransportResponse(200, projectionJson(1)))))
     new TrustedHttpGameClient(transport).load("alpha:one", "ignored").map { result =>
       assert(result.isRight)
       assertEquals(transport.requests.map(_._2).toVector, Vector("/games/alpha%3Aone/api"))
     }
-  }
 
-  test("trusted viewer identity round trips while old projections omit it") {
+  test("trusted viewer identity round trips while old projections omit it"):
     val old = GameJson.decodeProjection(projectionJson(1)).toOption.get
     assertEquals(old.viewerPlayerId, None)
     val json = oathdigital.protocol.projection.GameProjectionCodec.encode(
@@ -28,8 +27,7 @@ class HttpGameClientSuite extends FunSuite {
       Some("blue-exile"))
     assert(!oathdigital.protocol.projection.GameProjectionCodec.encode(old)
       .contains("viewerPlayerId"))
-  }
-  test("trusted client uses canonical cookie APIs and actorless bodies") {
+  test("trusted client uses canonical cookie APIs and actorless bodies"):
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, projectionJson(7))),
       Right(TransportResponse(200, """{"nextSequence":7,"action":"trade","modifiers":[],"ignoredRules":[],"targets":[]}""")),
@@ -53,9 +51,8 @@ class HttpGameClientSuite extends FunSuite {
         Right(ActorlessCommandRequest(7, GameIntent.RevealOwnedRelic("relic:a"))))
       assert(!transport.requests.toString.contains("seat-must-not-travel"))
     }
-  }
 
-  test("trusted conflict allows one reload without retry") {
+  test("trusted conflict allows one reload without retry"):
     val transport = new StubTransport(Vector(
       Right(TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}""")),
       Right(TransportResponse(200, projectionJson(8)))))
@@ -67,9 +64,8 @@ class HttpGameClientSuite extends FunSuite {
       assertEquals(loaded.toOption.get.nextSequence, 8L)
       assertEquals(transport.requests.map(_._1).toVector, Vector("POST", "GET"))
     }
-  }
 
-  test("production client previews and submits the same ordered modifiers") {
+  test("production client previews and submits the same ordered modifiers"):
     val previewJson = """{"nextSequence":7,"action":"trade","modifiers":[{"sourceKey":"adviser:red-exile:denizen:35","handlerId":"h.one","description":"First"},{"sourceKey":"site-card:site:a:denizen:36","handlerId":"h.two","description":"Second"}],"ignoredRules":[],"targets":[]}"""
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, previewJson)),
@@ -88,9 +84,8 @@ class HttpGameClientSuite extends FunSuite {
       val submitted = ActorlessCommandCodec.decode(transport.requests(1)._3.get).toOption.get
       assertEquals(submitted.orderedModifiers, ordered)
     }
-  }
 
-  test("a projected deal decodes for a spectator and a proposal encodes") {
+  test("a projected deal decodes for a spectator and a proposal encodes"):
     val card = """{"cardId":"R1","cardKind":"relic","name":"Old Crown","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":2,"defense":1,"hidden":false}"""
     val deal = s"""{"participantPlayerIds":["red-exile","blue-exile"],"acceptedPlayerIds":["blue-exile"],"transfers":[{"authorPlayerId":"red-exile","recipientPlayerId":"blue-exile","favor":2,"relicCount":1,"relics":[$card]}],"disclosures":[{"authorPlayerId":"blue-exile","recipientPlayerId":"red-exile","kind":"adviser","card":null}],"editing":null}"""
     val waiting = s"""{"playerId":"red-exile","heading":"Negotiation","coOwnerPlayerIds":["blue-exile"],"deal":$deal}"""
@@ -111,8 +106,7 @@ class HttpGameClientSuite extends FunSuite {
         ServerUiSupport.protocolNegotiationTerms(terms))))
     assert(encoded.contains("propose-terms"))
     assert(encoded.contains("\"relicIds\":[\"R1\"]"))
-  }
-  test("minor actions decode private state and encode typed controls") {
+  test("minor actions decode private state and encode typed controls"):
     val card = """{"cardId":"42","cardKind":"denizen","name":"Scout","suit":"nomad","restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":null,"defense":null,"hidden":false}"""
     val relic = """{"cardId":"R1","cardKind":"relic","name":"Old Crown","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":2,"defense":1,"hidden":false}"""
     val minor = s"""{"advisers":[{"card":$card,"placements":[{"kind":"play-adviser","orientation":null,"replacementRequired":false,"replacementTargets":[]},{"kind":"discard","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}],"canPeekSiteRelics":true,"facedownRelics":[$relic],"siteId":"site:a","maxBoardToSite":3,"maxSiteToBoard":2}"""
@@ -132,9 +126,8 @@ class HttpGameClientSuite extends FunSuite {
       "red-exile")).contains("peekSiteRelics"))
     assert(GameJson.encodeCommand(40, GameCommand.MoveWarbands(
       "red-exile", toSite = false, 2)).contains("\"amount\":2"))
-  }
 
-  test("an unclaimed banner projection decodes") {
+  test("an unclaimed banner projection decodes"):
     val json = projectionJson(sequence = 21, phase = "act-action-selection",
       ready = true, completed = true, choices = false).replace(
       "\"pendingCardDecision\":null",
@@ -144,9 +137,8 @@ class HttpGameClientSuite extends FunSuite {
     val decoded = GameJson.decodeProjection(json).toOption.get
     assertEquals(decoded.banners.head,
       BannerState("peoples-favor", "mob", None, 2))
-  }
 
-  test("projection decodes scoped Oathkeeper and Usurper victory status") {
+  test("projection decodes scoped Oathkeeper and Usurper victory status"):
     val json = projectionJson(sequence = 30, phase = "game-over",
       ready = true, completed = true, choices = false).replace(
       "\"pendingCardDecision\":null",
@@ -158,8 +150,7 @@ class HttpGameClientSuite extends FunSuite {
     assertEquals(decoded.oathkeeper, Some(OathkeeperStatus("supremacy",
       Some("red-exile"), "usurper", usurperLimited = false,
       Some("red-exile"), Some("usurper"))))
-  }
-  test("Recover walker commands encode decisions and private relic resolution") {
+  test("Recover walker commands encode decisions and private relic resolution"):
     assert(GameJson.encodeCommand(20, GameCommand.StartWalker("red", "recover"))
       .contains("\"type\":\"startWalker\""))
     assert(GameJson.encodeCommand(21, GameCommand.RollWalker("red", "recover"))
@@ -176,8 +167,7 @@ class HttpGameClientSuite extends FunSuite {
       DecisionAnswerWire.ChooseOneWire("relic", "relic:R1")))
     assert(take.contains("\"kind\":\"choose-one\""))
     assert(take.contains("\"optionId\":\"relic:R1\""))
-  }
-  test("Forge commands encode stable assignment targets without relic identity") {
+  test("Forge commands encode stable assignment targets without relic identity"):
     // Forge is a walker action (batch-1 Task 3): the start is a
     // `StartWalker` and the assignment answer a `ResolveWalker`, so the same
     // two guarantees this test always made -- the denizen target rides the
@@ -193,8 +183,7 @@ class HttpGameClientSuite extends FunSuite {
     assert(completed.contains("\"optionId\":\"denizen:1\""))
     assert(completed.contains("\"sectionKey\":\"pay-favor\""))
     assert(!completed.contains("relicId"))
-  }
-  test("Rest commands encode current sequence without an actor") {
+  test("Rest commands encode current sequence without an actor"):
     val begin = GameJson.encodeCommand(12L, GameCommand.BeginRest("red-exile"))
     val finish = GameJson.encodeCommand(13L, GameCommand.FinishRest("red-exile"))
     assert(begin.contains("\"type\":\"beginRest\""))
@@ -202,8 +191,7 @@ class HttpGameClientSuite extends FunSuite {
     assert(finish.contains("\"type\":\"finishRest\""))
     assert(!finish.contains("\"playerId\""))
     assert(finish.contains("\"intent\""))
-  }
-  test("pawn and adviser commands preserve explicit sequence and opaque IDs") {
+  test("pawn and adviser commands preserve explicit sequence and opaque IDs"):
     // Setup's pawn placement and adviser choice are generic walker decisions
     // now (2026-09-21 Chronicle design, slice 2): the client answers them
     // through `ResolveWalker`, the same as Recover's or Forge's, rather
@@ -260,9 +248,8 @@ class HttpGameClientSuite extends FunSuite {
           _.contains("\"expectedNextSequence\":2")
         ))
       }
-  }
 
-  test("Wake commands and action-selection projection are deterministic") {
+  test("Wake commands and action-selection projection are deterministic"):
     val wealth = GameJson.encodeCommand(
       8L,
       GameCommand.TakeWealth("red-exile", "favor")
@@ -301,9 +288,8 @@ class HttpGameClientSuite extends FunSuite {
     assert(projection.actionSelectionOpen)
     assertEquals(projection.actionFamilies, Vector("Search", "Travel"))
     assertEquals(projection.activePlayerResources.map(_.supply), Some(7))
-  }
 
-  test("Travel encodes destination and decodes authoritative legal costs") {
+  test("Travel encodes destination and decodes authoritative legal costs"):
     val command = GameJson.encodeCommand(10L,
       GameCommand.Travel("red-exile", "site:b"))
     assert(command.contains("\"type\":\"startWalker\""))
@@ -318,9 +304,8 @@ class HttpGameClientSuite extends FunSuite {
     assertEquals(GameJson.decodeProjection(json).toOption.get
       .legalTravelDestinations,
       Vector(LegalTravelDestination("site:b", 2)))
-  }
 
-  test("typed board-target actions decode sites and reject malformed refs") {
+  test("typed board-target actions decode sites and reject malformed refs"):
     val actions = """[{"actionKind":"travel","prompt":"Choose a destination","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site","siteId":"site:c"},"label":"Site C","details":[]}]}]"""
     val json = projectionJson(sequence = 10, choices = false)
       .replace("\"boardTargetActions\":[]",
@@ -335,9 +320,8 @@ class HttpGameClientSuite extends FunSuite {
     assert(GameJson.decodeProjection(json.replace("\"maximum\":1", "\"maximum\":2")).isLeft)
     assert(GameJson.decodeProjection(json.replace("\"autoActivate\":false,",
       "\"autoActivate\":false,\"requiredTargets\":[],")).isLeft)
-  }
 
-  test("Search start uses walker arguments and decodes legal sources") {
+  test("Search start uses walker arguments and decodes legal sources"):
     val begin = GameJson.encodeCommand(10L,
       GameCommand.BeginSearch("red-exile", "world", None))
     assert(begin.contains("\"type\":\"startWalker\""))
@@ -358,9 +342,8 @@ class HttpGameClientSuite extends FunSuite {
           oathdigital.protocol.DecisionPlacementWire("denizen", "denizen:a",
             "keep")))))
     assert(complete.contains("\"decisionId\":\"search.cards\""))
-  }
 
-  test("site detail decoder preserves populated and empty site projections") {
+  test("site detail decoder preserves populated and empty site projections"):
     val projection = GameJson.decodeProjection(
       projectionJson(sequence = 2)
     ).toOption.get
@@ -394,9 +377,8 @@ class HttpGameClientSuite extends FunSuite {
     val mismatchedColor = projectionJson(sequence = 2)
       .replace("\"colorToken\":\"red\"", "\"colorToken\":\"bandit\"")
     assert(GameJson.decodeProjection(mismatchedColor).isLeft)
-  }
 
-  test("409 is surfaced and caller refreshes without command retry") {
+  test("409 is surfaced and caller refreshes without command retry"):
     val transport = new StubTransport(Vector(
       Right(TransportResponse(
         409,
@@ -426,9 +408,8 @@ class HttpGameClientSuite extends FunSuite {
           Vector("POST", "GET")
         )
       }
-  }
 
-  test("existing game reload uses selected identity without creating history") {
+  test("existing game reload uses selected identity without creating history"):
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, projectionJson(sequence = 6)))
     ))
@@ -442,9 +423,8 @@ class HttpGameClientSuite extends FunSuite {
         None
       )))
     }
-  }
 
-  test("transient disconnect reconnects by GET at authoritative sequence") {
+  test("transient disconnect reconnects by GET at authoritative sequence"):
     val transport = new StubTransport(Vector(
       Left(GameClientFailure.NetworkFailure("offline")),
       Right(TransportResponse(200, projectionJson(sequence = 9)))
@@ -460,7 +440,7 @@ class HttpGameClientSuite extends FunSuite {
           ServerConnectionState.Disconnected
         ])
         val reconnect = coordinator.reconnect()
-        client.load(reconnect.gameId, reconnect.playerId).map {
+        client.load(reconnect.gameId, reconnect.playerId).map:
           case Right(authoritative) =>
             assertEquals(authoritative.nextSequence, 9L)
             assert(coordinator.route(reconnect, authoritative, None).nonEmpty)
@@ -469,15 +449,13 @@ class HttpGameClientSuite extends FunSuite {
               ServerConnectionState.Connected
             )
           case Left(failure) => fail(failure.message)
-        }
       case Right(_) => fail("expected initial disconnect")
     }.map { _ =>
       assertEquals(transport.requests.map(_._1).toVector, Vector("GET", "GET"))
       assert(!transport.requests.exists(_._1 == "POST"))
     }
-  }
 
-  test("reconnect generation rejects late load and command callbacks") {
+  test("reconnect generation rejects late load and command callbacks"):
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
     val oldLoad = coordinator.switchSession("game-1", "red-exile")
     val offline = GameClientFailure.RequestTimedOut("GET", "/api", 10000)
@@ -495,9 +473,8 @@ class HttpGameClientSuite extends FunSuite {
       None
     ), None)
     assert(coordinator.accepts(reconnect))
-  }
 
-  test("only transport failures produce disconnected state") {
+  test("only transport failures produce disconnected state"):
     val transient = Vector[GameClientFailure](
       GameClientFailure.NetworkFailure("offline"),
       GameClientFailure.RequestTimedOut("GET", "/api", 10000),
@@ -510,9 +487,8 @@ class HttpGameClientSuite extends FunSuite {
     assert(!GameClientFailure.isTransient(
       GameClientFailure.DecodeFailure("$", "bad projection")
     ))
-  }
 
-  test("malformed projection is a typed decode failure") {
+  test("malformed projection is a typed decode failure"):
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, """{"gameId":"game-1"}"""))
     ))
@@ -523,9 +499,8 @@ class HttpGameClientSuite extends FunSuite {
         assert(result.left.toOption.exists(
           _.isInstanceOf[GameClientFailure.DecodeFailure]
         )))
-  }
 
-  test("null, scalar, and malformed nested projections are decode failures") {
+  test("null, scalar, and malformed nested projections are decode failures"):
     val malformed = Vector(
       "null",
       "7",
@@ -546,9 +521,8 @@ class HttpGameClientSuite extends FunSuite {
         _.isInstanceOf[GameClientFailure.DecodeFailure]
       ), json)
     }
-  }
 
-  test("nextSequence is bounded to the largest JSON-safe integer") {
+  test("nextSequence is bounded to the largest JSON-safe integer"):
     val maximum = GameJson.decodeProjection(
       projectionJson(sequence = 1).replace(
         "\"nextSequence\":1",
@@ -566,15 +540,14 @@ class HttpGameClientSuite extends FunSuite {
     assert(unsafe.left.toOption.exists(
       _.isInstanceOf[GameClientFailure.DecodeFailure]
     ))
-  }
 
-  test("stale refresh routes through active-player selection with notice") {
+  test("stale refresh routes through active-player selection with notice"):
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
     val request = coordinator.switchSession("game-1", "red-exile")
     val stale = GameClientFailure.StalePosition("position changed")
     val refreshed = projection(activePlayer = "blue-exile")
 
-    coordinator.route(request, refreshed, Some(stale)) match {
+    coordinator.route(request, refreshed, Some(stale)) match
       case Some(ProjectionRoute.ReloadForActivePlayer(
             value,
             nextRequest,
@@ -584,10 +557,8 @@ class HttpGameClientSuite extends FunSuite {
         assertEquals(nextRequest.playerId, "blue-exile")
         assertEquals(notice, Some(stale))
       case other => fail(s"unexpected route: $other")
-    }
-  }
 
-  test("late callbacks from an old game or player selection are discarded") {
+  test("late callbacks from an old game or player selection are discarded"):
     val coordinator = new ServerSessionCoordinator("game-a", "red-exile")
     val oldGame = coordinator.switchSession("game-a", "red-exile")
     val newGame = coordinator.switchSession("game-b", "red-exile")
@@ -603,16 +574,14 @@ class HttpGameClientSuite extends FunSuite {
     val blueView = coordinator.switchSession("game-b", "blue-exile")
     assert(!coordinator.accepts(newGame))
     assert(coordinator.accepts(blueView))
-  }
 
-  test("transport timeout and abort are typed failures") {
+  test("transport timeout and abort are typed failures"):
     val timeout = GameClientFailure.RequestTimedOut("GET", "/api", 10000)
     val aborted = GameClientFailure.RequestAborted("POST", "/api")
     assert(timeout.message.contains("10000 ms"))
     assert(aborted.message.contains("aborted"))
-  }
 
-  test("projection contains scoped choices, no hidden plan, and Ready state") {
+  test("projection contains scoped choices, no hidden plan, and Ready state"):
     val json = projectionJson(
       sequence = 7,
       phase = "ready",
@@ -624,15 +593,13 @@ class HttpGameClientSuite extends FunSuite {
     assert(!json.contains("worldDeckOrder"))
     assert(!json.contains("relicOrder"))
 
-    GameJson.decodeProjection(json) match {
+    GameJson.decodeProjection(json) match
       case Right(projection) =>
         assert(projection.ready)
         assert(projection.completed)
         assertEquals(projection.phase, "ready")
         assertEquals(projection.pendingCardDecision, None)
       case Left(failure) => fail(failure.message)
-    }
-  }
 
   private def projectionJson(
       sequence: Long,
@@ -642,7 +609,7 @@ class HttpGameClientSuite extends FunSuite {
       ready: Boolean = false,
       completed: Boolean = false,
       choices: Boolean = true
-  ): String = {
+  ): String =
     val pendingDecision =
       if (choices)
         s"""{"decisionId":"search-draw-0-red-exile","kind":"search","actorPlayerId":"red-exile","prompt":"Choose adviser","instructions":[],"cards":[${cardJson(adviserId, "denizen", "Printed Adviser")}],"keepMinimum":1,"keepMaximum":1,"orderingRequired":false,"resolutionsByCard":{"$adviserId":[{"kind":"search","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}}"""
@@ -669,7 +636,6 @@ class HttpGameClientSuite extends FunSuite {
        |"boardTargetActions":[],
        |"pendingCardDecision":$pendingDecision
        |}""".stripMargin
-  }
 
   private def cardJson(id: String, kind: String, name: String): String =
     s"""{"cardId":"$id","cardKind":"$kind","name":"$name","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-up","hidden":false}"""
@@ -700,7 +666,7 @@ class HttpGameClientSuite extends FunSuite {
 
   private final class StubTransport(
       responses: Vector[Either[GameClientFailure, TransportResponse]]
-  ) extends JsonTransport {
+  ) extends JsonTransport:
     private val remaining = mutable.Queue(responses*)
     val requests =
       mutable.ArrayBuffer.empty[(String, String, Option[String])]
@@ -709,9 +675,6 @@ class HttpGameClientSuite extends FunSuite {
         method: String,
         url: String,
         body: Option[String]
-    ) = {
+    ) =
       requests += ((method, url, body))
       Future.successful(remaining.dequeue())
-    }
-  }
-}

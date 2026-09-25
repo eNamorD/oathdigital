@@ -10,7 +10,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerOutcome
 import oathdigital.model._
 
-class PeoplesFavorMobSuite extends munit.FunSuite {
+class PeoplesFavorMobSuite extends munit.FunSuite:
   import PowerFixture._
   import BannerFixture._
   import SearchFixture.{denizensOf, keep, place, rules, start}
@@ -50,25 +50,23 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
   private def siteCards(ready: ReadyGame): Vector[CardId] =
     ready.game.current.map.sites(home(ready)).denizens.map(_.id)
 
-  test("Mob is a registered persistent rule, so it is automatic") {
+  test("Mob is a registered persistent rule, so it is automatic"):
     val registered = WalkerPowerCatalog.default(catalog).powers
       .find(_.id == PeoplesFavorMob.id)
     assertEquals(registered.map(_.resolution), Some(PowerResolution.Automatic))
     assertEquals(PeoplesFavorMob.id.value, "banner.peoples-favor.mob")
-  }
 
   test("the source index lists Mob on the Mob face and the Grand Council's " +
-      "own power on the other") {
+      "own power on the other"):
     def favor(ready: ReadyGame) = oathdigital.gameplay.RuleSourceIndex
       .enumerate(catalog, ready).find(_.source ==
         RuleSourceRef.Banner(Banner.PeoplesFavor.key)).get
     assertEquals(favor(base).powerIds, Vector(PeoplesFavorMob.id))
     assertEquals(favor(holdingFavor(base, PeoplesFavorFace.GrandCouncil))
       .handlerIds, Vector("banner.peoples-favor.grand-council"))
-  }
 
   test("its holder is asked whether to discard a site card before a play " +
-      "to a site with room, and may decline") {
+      "to a site with room, and may decline"):
     val hearth = denizensOf(Suit.Hearth)
     val (kept, other) = (hearth(0), hearth(1))
     val ready = staged(Vector(kept, other))
@@ -80,17 +78,15 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
     assertEquals(siteCards(end), Vector[CardId](kept, other, played))
     assertEquals(PaidActionHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
-  }
 
-  test("an empty site has nothing to discard, so the holder is asked nothing") {
+  test("an empty site has nothing to discard, so the holder is asked nothing"):
     val done = toSite(staged(Vector.empty))
     assert(!asksToDiscard(done))
     assertEquals(siteCards(SearchFixture.after(done)),
       Vector[CardId](played))
-  }
 
   test("choosing a card discards it by the standard discard: facedown to the " +
-      "next region's pile, its favor to the bank, its secret to the holder") {
+      "next region's pile, its favor to the bank, its secret to the holder"):
     val kept = denizensOf(Suit.Hearth).head
     val ready = withCardTokens(staged(Vector(kept)), home(base), kept,
       Tokens(1, 1))
@@ -107,10 +103,9 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
       player(ready).board.faceDownSecrets + 1)
     assertEquals(PaidActionHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
-  }
 
   test("a full site with no matching homeland takes the play only with a " +
-      "discard, and only for the holder") {
+      "discard, and only for the holder"):
     val fillers = (denizensOf(Suit.Hearth) ++ denizensOf(Suit.Order))
       .take(capacity)
     assertEquals(fillers.size, capacity)
@@ -131,10 +126,9 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
       placed <- place(kept, played, "site")
     } yield placed
     assert(attempt.isLeft, "a full site accepts no play without Mob")
-  }
 
   test("nobody else is asked: not another holder, not the Grand Council face, " +
-      "not the other banner, not an unheld banner") {
+      "not the other banner, not an unheld banner"):
     val kept = denizensOf(Suit.Hearth).head
     val unheld: Vector[ReadyGame => ReadyGame] = Vector(
       holdingFavor(_, holder = Some(p1)),
@@ -148,9 +142,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
       assertEquals(siteCards(SearchFixture.after(done)),
         Vector[CardId](kept, played), s"case $index")
     }
-  }
 
-  test("an intact edifice is never offered for the discard: it is locked") {
+  test("an intact edifice is never offered for the discard: it is locked"):
     val kept = denizensOf(Suit.Hearth).head
     val hall = EdificeId("E16")
     val (built, who, site) = PlacementFixture.staged(played,
@@ -162,9 +155,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
       oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
       .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
     assertEquals(choice.replacements, Vector[CardId](kept))
-  }
 
-  test("a ruined edifice is offered: only an intact one is locked") {
+  test("a ruined edifice is offered: only an intact one is locked"):
     val kept = denizensOf(Suit.Hearth).head
     val hall = EdificeId("E16")
     val (built, who, site) = PlacementFixture.staged(played,
@@ -176,9 +168,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
       oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
       .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
     assertEquals(choice.replacements, Vector[CardId](kept, hall))
-  }
 
-  test("it applies to a facedown adviser played to a site as well") {
+  test("it applies to a facedown adviser played to a site as well"):
     val kept = denizensOf(Suit.Hearth).head
     val ready = asAdviser(staged(Vector(kept)), played, Orientation.FaceDown)
     val started = rules.startWalker(OathState.Ready(ready),
@@ -186,10 +177,9 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
       Vector(DecisionOptionRef.Denizen(played))).toOption.get
     val placed = place(started, played, "site").toOption.get
     assert(asksToDiscard(placed))
-  }
 
   test("it composes with Silver Tongue's limit of two advisers, both from " +
-      "the production walker powers") {
+      "the production walker powers"):
     val tongue = DenizenId("92")
     val hearth = denizensOf(Suit.Hearth)
     val (kept, adviser) = (hearth(0), hearth(1))
@@ -217,10 +207,9 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
     assertEquals(PlacementFixture.options(ready, tree, site.tree, powers).head,
       noDiscard)
     assert(powers.powers.exists(_.id == SilverTongue.id))
-  }
 
   test("it leaves a selected card's power alone: Welcoming Party still pays " +
-      "once, and the selected card itself cannot be the discard") {
+      "once, and the selected card itself cannot be the discard"):
     val party = DenizenId("50")
     val kept = denizensOf(Suit.Hearth).head
     val ready = atHome(staged(Vector(kept)), party)
@@ -239,5 +228,3 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
     assertEquals(player(end).board.favor, player(ready).board.favor + 2)
     assertEquals(hearth(end), hearth(ready) - 1)
     assertEquals(siteCards(end), Vector[CardId](party, played))
-  }
-}

@@ -6,15 +6,14 @@ import scala.scalajs.js
 // Pointer capture is implemented by supported browsers but absent from the
 // project's scalajs-dom Element facade.
 @js.native
-private[frontend] trait PointerCapture extends js.Object {
+private[frontend] trait PointerCapture extends js.Object:
   def setPointerCapture(id: Double): Unit = js.native
   def hasPointerCapture(id: Double): Boolean = js.native
   def releasePointerCapture(id: Double): Unit = js.native
-}
 
 /** Scales the existing DOM board while retaining native scroll and target access. */
 private[frontend] final class MapViewport(
-    viewport: dom.html.Div, content: dom.html.Div, onScale: Double => Unit) {
+    viewport: dom.html.Div, content: dom.html.Div, onScale: Double => Unit):
   private val surface = dom.document.createElement("div").asInstanceOf[dom.html.Div]
   surface.className = "map-surface"
   content.className = "map-content"
@@ -29,7 +28,7 @@ private[frontend] final class MapViewport(
   private def bounds = MapBounds(viewport.clientWidth, viewport.clientHeight,
     content.offsetWidth, content.offsetHeight)
 
-  private def paint(): Unit = {
+  private def paint(): Unit =
     val b = bounds
     surface.style.width = s"${math.max(b.viewWidth, b.contentWidth * state.scale)}px"
     surface.style.height = s"${math.max(b.viewHeight, b.contentHeight * state.scale)}px"
@@ -39,18 +38,15 @@ private[frontend] final class MapViewport(
     viewport.scrollLeft = state.left
     viewport.scrollTop = state.top
     onScale(state.scale)
-  }
 
-  def refresh(reset: Boolean): Unit = {
+  def refresh(reset: Boolean): Unit =
     if (reset) state = MapViewState()
     state = state.resize(bounds)
     paint()
-  }
   def reset(): Unit = refresh(reset = true)
-  def zoomBy(factor: Double): Unit = {
+  def zoomBy(factor: Double): Unit =
     state = state.panTo(viewport.scrollLeft, viewport.scrollTop, bounds).zoomBy(factor, bounds)
     paint()
-  }
 
   private val scroll: dom.Event => Unit = _ => {
     state = state.panTo(viewport.scrollLeft, viewport.scrollTop, bounds)
@@ -59,24 +55,21 @@ private[frontend] final class MapViewport(
     // Touch uses native overflow panning; controls retain native editing behavior.
     if (e.pointerType == "mouse" && e.button == 0 &&
         e.target.isInstanceOf[dom.Element] &&
-        e.target.asInstanceOf[dom.Element].closest("input,select,textarea") == null) {
+        e.target.asInstanceOf[dom.Element].closest("input,select,textarea") == null)
       suppressClick = false
       start = Some((e.clientX, e.clientY, viewport.scrollLeft, viewport.scrollTop))
-    }
   }
   private val move: dom.PointerEvent => Unit = e => start.foreach { case (x, y, left, top) =>
     if (e.buttons == 0) start = None
-    else if (dragging || math.hypot(e.clientX - x, e.clientY - y) > 6) {
-      if (!dragging) {
+    else if (dragging || math.hypot(e.clientX - x, e.clientY - y) > 6)
+      if (!dragging)
         capture.setPointerCapture(e.pointerId)
         dragging = true
         viewport.classList.add("map-dragging")
-      }
       e.preventDefault()
       viewport.scrollLeft = left - (e.clientX - x)
       viewport.scrollTop = top - (e.clientY - y)
       suppressClick = true
-    }
   }
   private val up: dom.PointerEvent => Unit = e => {
     if (capture.hasPointerCapture(e.pointerId)) capture.releasePointerCapture(e.pointerId)
@@ -85,19 +78,17 @@ private[frontend] final class MapViewport(
     viewport.classList.remove("map-dragging")
   }
   private val click: dom.MouseEvent => Unit = e => {
-    if (suppressClick && e.detail != 0) {
+    if (suppressClick && e.detail != 0)
       e.preventDefault()
       e.stopImmediatePropagation()
-    }
     suppressClick = false
   }
   private val key: dom.KeyboardEvent => Unit = e => {
-    if (e.target == viewport) e.key match {
+    if (e.target == viewport) e.key match
       case "+" | "=" => e.preventDefault(); zoomBy(1.25)
       case "-" => e.preventDefault(); zoomBy(0.8)
       case "0" => e.preventDefault(); reset()
       case _ => ()
-    }
   }
   private val observer = new dom.ResizeObserver((_, _) => refresh(reset = false))
   observer.observe(viewport)
@@ -110,7 +101,7 @@ private[frontend] final class MapViewport(
   viewport.addEventListener("click", click, true)
   viewport.addEventListener("keydown", key)
 
-  def dispose(): Unit = {
+  def dispose(): Unit =
     observer.disconnect()
     viewport.removeEventListener("scroll", scroll)
     viewport.removeEventListener("pointerdown", down)
@@ -119,5 +110,3 @@ private[frontend] final class MapViewport(
     viewport.removeEventListener("pointercancel", up)
     viewport.removeEventListener("click", click, true)
     viewport.removeEventListener("keydown", key)
-  }
-}

@@ -16,7 +16,7 @@ import oathdigital.model._
   * The power is usable only when a site qualifies.
   */
 case object WanderingFlameMove extends PaidAction(
-    "banner.darkest-secret.wandering-flame.move", Cost.free) {
+    "banner.darkest-secret.wandering-flame.move", Cost.free):
   val decisionId: String = "power.wandering-flame.site"
 
   override def usable(ready: ReadyGame, player: PlayerId,
@@ -34,20 +34,17 @@ case object WanderingFlameMove extends PaidAction(
         ready.game.current.map.sites.get(site).exists(_.tokens.secrets > 0)))
 
   private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
-    destinations(ready, player) match {
+    destinations(ready, player) match
       case sites if sites.size > 1 => Vector(PawnMoves.siteChoice(decisionId,
         player, sites, "Wandering Flame: choose the site to move your pawn to"))
       case _ => Vector.empty
-    }
 
   private def move(ready: ReadyGame, player: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
-    destinations(ready, player) match {
+    destinations(ready, player) match
       case Vector() => Right(Vector.empty)
       case Vector(only) => PawnMoves.relocate(ready, player, only)
       case sites => PawnMoves.chosenSite(pending, decisionId).flatMap(site =>
         if (sites.contains(site)) PawnMoves.relocate(ready, player, site)
         else Left(OathViolation.InvalidEventOrder(
           s"${site.value} holds no secret of its own")))
-    }
-}

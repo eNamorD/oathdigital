@@ -3,7 +3,7 @@ package oathdigital.gameplay.operations
 import oathdigital.model._
 
 /** `Flip`, `Reveal` and `Peek`: what a card shows and who knows it. */
-private[operations] object CardFaceOperations {
+private[operations] object CardFaceOperations:
   import OperationError._
   import OperationStateAdapter.{card, isDiscardLook, playerState}
   import OperationStateWrites.updateCardState
@@ -13,9 +13,9 @@ private[operations] object CardFaceOperations {
       id: CardId,
       at: Location,
       orientation: Orientation
-  ): Vector[OperationError] = card(ready, id, at) match {
+  ): Vector[OperationError] = card(ready, id, at) match
     case Left(error) => Vector(error)
-    case Right(located) => located.state match {
+    case Right(located) => located.state match
       case Some(_: DenizenState) | Some(_: VisionState) |
           Some(_: RelicState) => Vector.empty
       // Looking at a discarded card: it has no orientation state (a discard is
@@ -23,15 +23,13 @@ private[operations] object CardFaceOperations {
       case None if isDiscardLook(at, orientation) =>
         Vector.empty
       case _ => Vector(UnsupportedOrientation(id, at))
-    }
-  }
 
   def peekViolation(
       ready: ReadyGame,
       viewer: PlayerId,
       id: CardId,
       at: Location
-  ): Vector[OperationError] = playerState(ready, viewer) match {
+  ): Vector[OperationError] = playerState(ready, viewer) match
     case Left(error) => Vector(error)
     case Right(_) =>
       val kindViolation: Vector[OperationError] =
@@ -42,22 +40,19 @@ private[operations] object CardFaceOperations {
         case Left(error) => Vector(error)
         case Right(_) => Vector.empty
       })
-  }
 
   def flipCard(ready: ReadyGame, id: CardId, at: Location,
       orientation: Orientation): Either[OperationError, ReadyGame] = for {
     located <- card(ready, id, at)
-    updated <- located.state match {
+    updated <- located.state match
       case Some(_: DenizenState) | Some(_: VisionState) | Some(_: RelicState) =>
-        updateCardState(ready, id) {
+        updateCardState(ready, id):
           case value: DenizenState => value.copy(orientation = orientation)
           case value: VisionState => value.copy(orientation = orientation)
           case value: RelicState => value.copy(orientation = orientation)
           case value => value
-        }
       case None if isDiscardLook(at, orientation) => Right(ready)
       case _ => Left(UnsupportedOrientation(id, at))
-    }
   } yield updated
 
   def peek(ready: ReadyGame, viewer: PlayerId, id: CardId,
@@ -65,7 +60,7 @@ private[operations] object CardFaceOperations {
     // The card kind is the guard's (peekViolation).
     _ <- playerState(ready, viewer)
     located <- card(ready, id, at)
-  } yield located.location.container match {
+  } yield located.location.container match
     case CardContainer.Site(site, SiteCardArea.Relics) =>
       recordSiteRelicKnowledge(ready, viewer, site,
         id.asInstanceOf[RelicId])
@@ -81,7 +76,6 @@ private[operations] object CardFaceOperations {
         appendDistinct(ready.knowledge.advisers.getOrElse(viewer, Vector.empty),
           id.asInstanceOf[WorldCardId]))))
     case _ => ready
-  }
 
   private def appendDistinct[A](values: Vector[A], value: A): Vector[A] =
     if (values.contains(value)) values else values :+ value
@@ -91,10 +85,8 @@ private[operations] object CardFaceOperations {
       viewer: PlayerId,
       site: SiteId,
       relic: RelicId
-  ): ReadyGame = {
+  ): ReadyGame =
     val sites = ready.knowledge.siteRelics.getOrElse(viewer, Map.empty)
     ready.copy(knowledge = ready.knowledge.copy(siteRelics =
       ready.knowledge.siteRelics.updated(viewer, sites.updated(site,
         appendDistinct(sites.getOrElse(site, Vector.empty), relic)))))
-  }
-}

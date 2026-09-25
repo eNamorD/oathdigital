@@ -5,7 +5,7 @@ import oathdigital.gameplay.PowerRuntime
 import oathdigital.model._
 
 /** Pure Search source and cost rules shared by the walker and projections. */
-object SearchRules {
+object SearchRules:
   import OathViolation._
 
   def validateSupportedState(catalog: ExecutableCatalog,
@@ -13,7 +13,7 @@ object SearchRules {
     PowerRuntime.requireAudited(catalog)
 
   def cost(ready: ReadyGame, source: SearchSource,
-      origin: Region): Either[OathViolation, Int] = source match {
+      origin: Region): Either[OathViolation, Int] = source match
     case SearchSource.WorldDeck =>
       Right(ready.game.current.tracks.visionsDrawn match {
         case 0 => 2
@@ -22,7 +22,6 @@ object SearchRules {
       })
     case SearchSource.RegionalDiscard(region) if region == origin => Right(2)
     case SearchSource.RegionalDiscard(_) => Left(SearchSourceUnavailable(source))
-  }
 
   /** How many cards a Search draws before any power changes it. */
   val DrawSize: Int = 3
@@ -42,8 +41,6 @@ object SearchRules {
     }}
 
   extension [A](values: Vector[A])
-    private def takeThrough(stop: A => Boolean): Vector[A] = {
+    private def takeThrough(stop: A => Boolean): Vector[A] =
       val index = values.indexWhere(stop)
       if (index < 0) values else values.take(index + 1)
-    }
-}

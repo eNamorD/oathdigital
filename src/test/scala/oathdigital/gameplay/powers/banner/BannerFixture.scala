@@ -9,7 +9,7 @@ import oathdigital.model._
   * players: the actor (p2) at ancient-city, p1 at buried-giant and p3 at
   * broken-peaks. Both banners start unheld, on Mob and Wandering Flame.
   */
-object BannerFixture {
+object BannerFixture:
   import PowerFixture._
 
   val p1: PlayerId = PlayerId("p1")
@@ -76,4 +76,3 @@ object BannerFixture {
   def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
     events.collect { case step: oathdigital.gameplay.walker.WalkerStepRecorded =>
       step.ops }.flatten
-}

@@ -24,7 +24,7 @@ import oathdigital.model._
   * "Full" is the player's adviser limit, [[AdviserLimit.of]]: 3, or 2 for a
   * Silver Tongue holder.
   */
-final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower {
+final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   import HornedMask._
 
   def id: PowerId = HornedMask.id
@@ -55,28 +55,25 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower {
     .exists(_.restrictions == CardRestrictions.LockedAdviserOnly)
 
   private def discardable(ready: ReadyGame, actor: PlayerId)
-      : Vector[AdviserState] = advisers(ready, actor).filter {
+      : Vector[AdviserState] = advisers(ready, actor).filter:
     case d: DenizenState => !lockedAdviser(d.id)
     case _ => true
-  }
 
   private def takeable(ready: ReadyGame, actor: PlayerId): Vector[DenizenState] =
     if (full(ready, actor) && discardable(ready, actor).isEmpty) Vector.empty
     else site(ready, actor).toVector.flatMap(_._2.denizens.collect {
       case d: DenizenState => d })
 
-  private def ref(adviser: AdviserState): DecisionOptionRef = adviser match {
+  private def ref(adviser: AdviserState): DecisionOptionRef = adviser match
     case d: DenizenState => DecisionOptionRef.Denizen(d.id)
     case v: VisionState => DecisionOptionRef.Vision(v.id)
-  }
 
-  private def askDenizen(ready: ReadyGame, actor: PlayerId): Vector[Operation] = {
+  private def askDenizen(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = takeable(ready, actor)
     if (found.isEmpty) Vector.empty
     else Vector(Decide(denizenDecisionId, actor, DecisionQuery.ChooseOne(
       found.map(d => DecisionOption.Denizen(DecisionOptionRef.Denizen(d.id))),
       heading = Some("Horned Mask: take a denizen as a facedown adviser"))))
-  }
 
   private def askDiscard(ready: ReadyGame, actor: PlayerId,
       pending: PendingTree): Vector[Operation] =
@@ -87,7 +84,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower {
       heading = Some("Horned Mask: choose an adviser to discard"))))
 
   private def take(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val found = takeable(ready, actor)
     if (found.isEmpty) Right(Vector.empty)
     else for {
@@ -106,21 +103,19 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower {
       Take(Piece.Card(card.id), actor, Location.Site(siteId),
         Location.PlayArea(actor)),
       Flip(card.id, Location.PlayArea(actor), Orientation.FaceDown))
-  }
 
   /** The favor and secrets of the taken card, returned as a discard returns
     * them: favor to the card's suit bank, secrets to the actor facedown. It is
     * the returns half of `Bury.standard`.
     */
   private def returnsOf(card: DenizenState, site: SiteId, actor: PlayerId)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val suit = catalog.suitOf(card.id)
     if (card.tokens.favor > 0 && suit.isEmpty) Left(OathViolation
       .InvalidEventOrder(s"no suit is known for ${card.id.value}"))
     else Right(Bury.standard(BuryableCard.Denizen(card.id),
       PositionedLocation(Location.Site(site)), suit, card.tokens.favor,
       card.tokens.secrets, actor).filterNot(_.isInstanceOf[Bury]))
-  }
 
   private def discard(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] = for {
@@ -133,19 +128,16 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower {
       .flatMap(ready.game.current.map.regionOf).map(CardPlay.nextRegion)
       .toRight(OathViolation.PawnSiteMissing(actor))
     from = PositionedLocation(Location.PlayArea(actor))
-    operation <- chosen match {
+    operation <- chosen match
       case d: DenizenState => catalog.suitOf(d.id)
         .toRight(OathViolation.UnknownWorldCard(d.id)).map(suit =>
           Discard.Denizen(d.id, from, region, suit, d.tokens.favor,
             d.tokens.secrets, actor, required = true))
       case v: VisionState =>
         Right(Discard.Vision(v.id, from, region, required = true))
-    }
   } yield Vector[CoreOperation](operation)
-}
 
-object HornedMask {
+object HornedMask:
   val id: PowerId = PowerId("relic.horned-mask")
   val denizenDecisionId: String = "power.horned-mask.denizen"
   val discardDecisionId: String = "power.horned-mask.discard"
-}

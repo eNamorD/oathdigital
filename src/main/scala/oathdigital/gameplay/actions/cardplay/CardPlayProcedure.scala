@@ -7,7 +7,7 @@ import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
 /** Embeddable card-placement tree using CardPlay's pure operation planner. */
-object CardPlayProcedure {
+object CardPlayProcedure:
   enum Origin { case TemporaryHand, FacedownAdviser }
 
   private val discard = DecisionOptionRef.Button("discard")
@@ -22,13 +22,12 @@ object CardPlayProcedure {
   val noReplacement: DecisionOption = DecisionOption.Button(
     DecisionOptionRef.Button("replace:none"), "Discard nothing")
 
-  private def label(ref: DecisionOptionRef.Button): String = ref match {
+  private def label(ref: DecisionOptionRef.Button): String = ref match
     case `discard` => "Discard"
     case `site` => "Play at site"
     case `adviserFaceUp` => "Play faceup"
     case `adviserFaceDown` => "Play facedown"
     case other => other.key
-  }
 
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
@@ -45,20 +44,18 @@ object CardPlayProcedure {
       Origin.FacedownAdviser))
 
   private def facedownCard(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, WorldCardId] = args match {
+      : Either[OathViolation, WorldCardId] = args match
     case Vector(DecisionOptionRef.Denizen(id)) => Right(id)
     case Vector(DecisionOptionRef.Vision(id)) => Right(id)
     case _ => Left(OathViolation.InvalidEventOrder(
       "facedown-adviser play requires exactly one held card"))
-  }
 
   /** The placement subtree planned under one set of [[PlacementRules]]. */
   final class PlacementBody private[cardplay](val rules: PlacementRules,
-      childrenAt: PlacementRules => Vector[Operation]) extends Operation {
+      childrenAt: PlacementRules => Vector[Operation]) extends Operation:
     override val children: Vector[Operation] = childrenAt(rules)
     private[cardplay] def adjust(change: PlacementRules => PlacementRules)
         : PlacementBody = new PlacementBody(change(rules), childrenAt)
-  }
 
   /** Generic rules-aware placement seam. A power changes the rules its play is
     * planned under without placing its identity in the card-play code.
@@ -71,7 +68,7 @@ object CardPlayProcedure {
     */
   final class PlacementTree private[cardplay](val card: WorldCardId,
       childrenAt: PlacementRules => Vector[Operation])
-      extends Operation {
+      extends Operation:
     override val window: Option[PowerWindow] =
       Some(PowerWindow.SearchPlayAdviser)
     override val children: Vector[Operation] =
@@ -79,20 +76,18 @@ object CardPlayProcedure {
 
     def adjust(current: Vector[Operation])(
         change: PlacementRules => PlacementRules): Vector[Operation] =
-      current match {
+      current match
         case Vector(body: PlacementBody) => Vector(body.adjust(change))
         case _ => Vector(new PlacementBody(change(PlacementRules.default),
           childrenAt))
-      }
-  }
 
   /** Whether `card` is still at the origin the play started from. Once it is
     * not, the play has been made and the tree is settled from the answers.
     */
   private def heldAtOrigin(ready: ReadyGame, actor: PlayerId,
-      card: WorldCardId, origin: Origin): Boolean = {
+      card: WorldCardId, origin: Origin): Boolean =
     val player = ready.game.current.players.find(_.player == actor)
-    origin match {
+    origin match
       case Origin.TemporaryHand =>
         ready.game.current.temporaryHands.getOrElse(actor, Vector.empty).contains(card)
       case Origin.FacedownAdviser => player.exists(_.advisers.exists {
@@ -100,8 +95,6 @@ object CardPlayProcedure {
         case VisionState(id, Orientation.FaceDown) => id == card
         case _ => false
       })
-    }
-  }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       card: WorldCardId, origin: Origin): Either[OathViolation, Operation] =
@@ -121,20 +114,18 @@ object CardPlayProcedure {
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
       rules: PlacementRules)
-      : Vector[Operation] = {
-      val legacyOrigin = origin match {
+      : Vector[Operation] =
+      val legacyOrigin = origin match
         case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
         case Origin.FacedownAdviser => CardPlay.Origin.FacedownAdviser
-      }
       val held = heldAtOrigin(ready, actor, card, origin)
       val candidates = if (!held) Vector.empty else CardPlay.legalChoices(
         catalog, ready, actor, card, legacyOrigin, rules).map { choice =>
-        val ref = choice.placement match {
+        val ref = choice.placement match
           case SearchPlacement.Discard => discard
           case _: SearchPlacement.Site => site
           case SearchPlacement.Adviser(Orientation.FaceUp, _) => adviserFaceUp
           case SearchPlacement.Adviser(Orientation.FaceDown, _) => adviserFaceDown
-        }
         (ref, choice.placement,
           choice.replacements.map(id => replacementOption(id) -> id),
           choice.replacementOptional)
@@ -203,15 +194,14 @@ object CardPlayProcedure {
         }
       })
       Vector(choose, selected)
-  }
 
   /** The replacement's options are not read once the play is made, only that
     * the decision held its place in the tree. */
   private def settled(ref: DecisionOptionRef, card: WorldCardId,
       replaced: Boolean)
       : Option[(DecisionOptionRef, SearchPlacement,
-          Vector[(DecisionOption, CardId)], Boolean)] = {
-    val placement: Option[SearchPlacement] = ref match {
+          Vector[(DecisionOption, CardId)], Boolean)] =
+    val placement: Option[SearchPlacement] = ref match
       case `discard` => Some(SearchPlacement.Discard)
       case `site` => Some(SearchPlacement.Site(None))
       case `adviserFaceUp` =>
@@ -219,14 +209,12 @@ object CardPlayProcedure {
       case `adviserFaceDown` =>
         Some(SearchPlacement.Adviser(Orientation.FaceDown, None))
       case _ => None
-    }
     placement.map(value => (ref, value,
       if (replaced) Vector((noReplacement: DecisionOption) -> card)
       else Vector.empty,
       false))
-  }
 
-  private def replacementOption(id: CardId): DecisionOption = id match {
+  private def replacementOption(id: CardId): DecisionOption = id match
     case value: DenizenId =>
       DecisionOption.Denizen(DecisionOptionRef.Denizen(value))
     case value: VisionId =>
@@ -234,5 +222,3 @@ object CardPlayProcedure {
     case value => DecisionOption.Button(
       DecisionOptionRef.Button(s"replace:${value.kind}:${value.value}"),
       value.value)
-  }
-}

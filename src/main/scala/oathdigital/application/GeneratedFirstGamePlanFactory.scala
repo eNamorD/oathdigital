@@ -18,9 +18,9 @@ final class GeneratedFirstGamePlanFactory(
     catalog: ExecutableCatalog,
     random: ChronicleRandomPort = ChronicleRandomPort.random,
     policy: ShufflePolicy = ShufflePolicy.implementedFirst
-) extends FirstGamePlanFactory {
+) extends FirstGamePlanFactory:
   override def build(config: FirstGameBootstrapConfig)
-      : Either[BootstrapPlanFailure, FirstGamePlan] = {
+      : Either[BootstrapPlanFailure, FirstGamePlan] =
     val resolvedConfig = shuffledSeating(config)
     for {
       _ <- ReviewedPowerCatalog.requireAudited(catalog)
@@ -29,12 +29,9 @@ final class GeneratedFirstGamePlanFactory(
           PowerImplementationStatus.implemented(catalog), random, policy)
         .left.map(failure => BootstrapPlanFailure(failure.toString))
     } yield FirstGamePlan(chronicle, resolvedConfig)
-  }
 
   private def shuffledSeating(config: FirstGameBootstrapConfig)
-      : FirstGameBootstrapConfig = {
+      : FirstGameBootstrapConfig =
     val seats = random.shuffle(config.participants)
     seats.headOption.fold(config)(first =>
       FirstGameBootstrapConfig(seats, first.playerId))
-  }
-}

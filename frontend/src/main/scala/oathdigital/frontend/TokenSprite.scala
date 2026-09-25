@@ -10,7 +10,7 @@ import org.scalajs.dom
   * need. `currentColor` inside a `<symbol>` resolves against the referencing
   * `<use>`, so a class on the `<use>`'s owner colours the glyph.
   */
-private[frontend] object TokenSprite {
+private[frontend] object TokenSprite:
   private val Svg = "http://www.w3.org/2000/svg"
 
   /** token name -> (accessible name, path data). Order is the sprite order. */
@@ -77,7 +77,7 @@ private[frontend] object TokenSprite {
     * so callers need not track whether the document already has it.
     */
   def mount(root: dom.Element): Unit =
-    if (root.querySelector("svg.token-sprite") == null) {
+    if (root.querySelector("svg.token-sprite") == null)
       val sprite = dom.document.createElementNS(Svg, "svg")
       sprite.setAttribute("class", "token-sprite")
       sprite.setAttribute("aria-hidden", "true")
@@ -93,5 +93,3 @@ private[frontend] object TokenSprite {
         sprite.appendChild(symbol)
       }
       root.appendChild(sprite)
-    }
-}

@@ -7,7 +7,7 @@ enum PlayerCardArea { case Hand, Advisers, Relics, RevealedVision }
 enum LineageCardArea { case Legacies, StartingAdvisers }
 
 sealed trait CardContainer extends Product with Serializable
-object CardContainer {
+object CardContainer:
   final case class Deck(deck: CardDeck) extends CardContainer
   final case class RegionalDiscard(region: Region) extends CardContainer
   final case class Site(site: SiteId, area: SiteCardArea)
@@ -25,11 +25,9 @@ object CardContainer {
       site: SiteId,
       area: SiteCardArea
   ) extends CardContainer
-}
 
-final case class CardLocation(container: CardContainer, position: Int) {
+final case class CardLocation(container: CardContainer, position: Int):
   require(position >= 0, "card position must be non-negative")
-}
 
 final case class LocatedCard(
     id: CardId,
@@ -38,32 +36,30 @@ final case class LocatedCard(
 )
 
 sealed trait CardIndexProblem extends Product with Serializable
-object CardIndexProblem {
+object CardIndexProblem:
   final case class DuplicateCard(
       id: CardId,
       locations: Vector[CardLocation]
   ) extends CardIndexProblem
 
   final case class MissingCard(id: CardId) extends CardIndexProblem
-}
 
 /**
  * Derived reverse lookup over container-owned card state.
  *
  * It is intentionally not part of `OathGame` and must not be serialized.
  */
-final case class CardIndex private (byId: Map[CardId, LocatedCard]) {
+final case class CardIndex private (byId: Map[CardId, LocatedCard]):
   def get(id: CardId): Option[LocatedCard] = byId.get(id)
   def locationOf(id: CardId): Option[CardLocation] = get(id).map(_.location)
   def stateOf(id: CardId): Option[CardState] = get(id).flatMap(_.state)
   def ids: Set[CardId] = byId.keySet
-}
 
-object CardIndex {
+object CardIndex:
   def from(
       game: OathGame,
       expectedCards: Set[CardId] = Set.empty
-  ): Either[Vector[CardIndexProblem], CardIndex] = {
+  ): Either[Vector[CardIndexProblem], CardIndex] =
     val located = Vector.newBuilder[LocatedCard]
 
     def addId(
@@ -117,13 +113,12 @@ object CardIndex {
       )
     }
 
-    game.current.temporaryHands.toVector.sortBy(_._1.value).foreach {
+    game.current.temporaryHands.toVector.sortBy(_._1.value).foreach:
       case (player, cards) =>
         addIds(
           cards,
           CardContainer.Player(player, PlayerCardArea.Hand)
         )
-    }
 
     game.current.players.foreach { player =>
       addStates(
@@ -186,7 +181,7 @@ object CardIndex {
       )
     }
 
-    game.campaign.atlas.entries.zipWithIndex.foreach {
+    game.campaign.atlas.entries.zipWithIndex.foreach:
       case (stored: AtlasEntry.StoredSite, atlasPosition) =>
         addStates(
           stored.denizens,
@@ -205,18 +200,16 @@ object CardIndex {
           )
         )
       case (AtlasEntry.EmpireDivider, _) => ()
-    }
 
     val allLocated = located.result()
     val grouped = allLocated.groupBy(_.id)
     val duplicateProblems = grouped.toVector
-      .collect {
+      .collect:
         case (id, occurrences) if occurrences.size > 1 =>
           CardIndexProblem.DuplicateCard(
             id,
             occurrences.map(_.location)
           )
-      }
       .sortBy(_.id.value)
     val missingProblems = (expectedCards -- grouped.keySet).toVector
       .sortBy(id => (id.kind, id.value))
@@ -232,5 +225,3 @@ object CardIndex {
           }.toMap
         )
       )
-  }
-}

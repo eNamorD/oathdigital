@@ -13,7 +13,7 @@ import oathdigital.model.OathState.Ready
   * does, with fixed dice and a journal replay check. Shared by the slice 1b
   * suites.
   */
-object PaidActionHarness {
+object PaidActionHarness:
   import PowerFixture._
 
   /** Rules with every production phase power. Dice fail loudly unless given,
@@ -65,7 +65,7 @@ object PaidActionHarness {
     }
 
   /** The tokens on card `id` wherever it sits. */
-  def tokensOn(state: ReadyGame, id: CardId): Tokens = {
+  def tokensOn(state: ReadyGame, id: CardId): Tokens =
     val current = state.game.current
     val onSites = current.map.sites.values.flatMap(_.denizens.collect {
       case card: DenizenState if card.id == id => card.tokens
@@ -75,9 +75,7 @@ object PaidActionHarness {
       case relic if relic.id == id => relic.tokens
     })
     (onSites ++ held).head
-  }
 
   /** The actor's secrets, faceup and facedown together. */
   def secrets(state: ReadyGame): Int =
     player(state).board.faceUpSecrets + player(state).board.faceDownSecrets
-}

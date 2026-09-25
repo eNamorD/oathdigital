@@ -7,7 +7,7 @@ import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
 
 class FamilyHeirloomSuite extends munit.FunSuite
-    with WalkerRecordedOpsReducer {
+    with WalkerRecordedOpsReducer:
   import PowerFixture._
   import WhenPlayedHarness._
 
@@ -21,16 +21,14 @@ class FamilyHeirloomSuite extends munit.FunSuite
       FamilyHeirloom.decisionId, DecisionAnswer.ChooseOneAnswer(ref), actor),
       powers(power))
 
-  private def atChoice = {
+  private def atChoice =
     val first = parked(play(staged, power, card))
     (first, foldRecordedOps(staged, first.events, "the draw did not replay"))
-  }
 
-  test("Family Heirloom is in the default walker catalog") {
+  test("Family Heirloom is in the default walker catalog"):
     assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
-  }
 
-  test("the relic is drawn facedown to the player and the choice is theirs") {
+  test("the relic is drawn facedown to the player and the choice is theirs"):
     val (first, state) = atChoice
     assert(player(state).relics.exists(relic =>
       relic.id == top && relic.orientation == Orientation.FaceDown))
@@ -41,24 +39,21 @@ class FamilyHeirloomSuite extends munit.FunSuite
     assertEquals(decide.owner, actor)
     assertEquals(decide.query.asInstanceOf[DecisionQuery.ChooseOne].options
       .map(_.ref), Vector(FamilyHeirloom.keep, FamilyHeirloom.bottom))
-  }
 
-  test("taking it keeps the relic") {
+  test("taking it keeps the relic"):
     val (first, state) = atChoice
     val done = finished(answer(state, first.tree, FamilyHeirloom.keep))
     assert(player(done.treeless).relics.exists(_.id == top))
     assertEquals(replayed(staged, first.events ++ done.events), done.treeless)
-  }
 
-  test("putting it on the bottom returns it to the relic deck") {
+  test("putting it on the bottom returns it to the relic deck"):
     val (first, state) = atChoice
     val done = finished(answer(state, first.tree, FamilyHeirloom.bottom))
     assert(!player(done.treeless).relics.exists(_.id == top))
     assertEquals(done.treeless.game.current.commonCards.relicDeck.last, top)
     assertEquals(replayed(staged, first.events ++ done.events), done.treeless)
-  }
 
-  test("an empty relic deck does nothing and asks nothing") {
+  test("an empty relic deck does nothing and asks nothing"):
     val current = staged.game.current
     val emptied = staged.updateCurrent(_.copy(commonCards =
       current.commonCards.copy(relicDeck = Vector.empty)))
@@ -67,10 +62,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
     val done = finished(play(emptied, power, card))
     assertEquals(recorded(done.events), Vector.empty)
     assertEquals(player(done.treeless).relics, player(emptied).relics)
-  }
 
-  test("a choice that is not offered is rejected") {
+  test("a choice that is not offered is rejected"):
     val (first, state) = atChoice
     assert(answer(state, first.tree, DecisionOptionRef.Button("elsewhere")).isLeft)
-  }
-}

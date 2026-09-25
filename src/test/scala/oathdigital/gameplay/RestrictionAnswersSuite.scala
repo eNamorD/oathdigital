@@ -9,7 +9,7 @@ import oathdigital.model._
   * far, so a Restriction hooked inside a subtree that only exists once a
   * decision is answered is checked once it does.
   */
-class RestrictionAnswersSuite extends munit.FunSuite {
+class RestrictionAnswersSuite extends munit.FunSuite:
   private val actor = initialReady.game.current.turn.activePlayer
   private val nested = PowerWindow.CampaignActionEligibility
   private val ask = "test.ask"
@@ -17,12 +17,11 @@ class RestrictionAnswersSuite extends munit.FunSuite {
   private val no = DecisionOptionRef.Button("no")
   private val violation = OathViolation.CampaignUnavailable("the test forbids it")
 
-  private val forbidding: ContributingPower = new ContributingPower {
+  private val forbidding: ContributingPower = new ContributingPower:
     def id: PowerId = PowerId("test.forbidding")
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(nested -> Vector(Restriction((_: PowerCtx, _) => Some(violation))))
-  }
   private val powers = WalkerPowers(Vector(forbidding))
 
   /** A decision, then a subtree that exists only when it was answered "yes". */
@@ -41,38 +40,32 @@ class RestrictionAnswersSuite extends munit.FunSuite {
     ProcedureWalker.restrictionViolations(tree, powers, initialReady, actor,
       answers)
 
-  test("a Restriction inside a subtree the answers have not opened is not checked") {
+  test("a Restriction inside a subtree the answers have not opened is not checked"):
     assertEquals(violations(Vector.empty), Vector.empty[OathViolation])
     assertEquals(violations(answered(no)), Vector.empty[OathViolation])
-  }
 
-  test("once the answer opens the subtree its Restriction is checked") {
+  test("once the answer opens the subtree its Restriction is checked"):
     assertEquals(violations(answered(yes)), Vector[OathViolation](violation))
-  }
 
-  test("the answers default to none, so every existing caller is unchanged") {
+  test("the answers default to none, so every existing caller is unchanged"):
     assertEquals(ProcedureWalker.restrictionViolations(tree, powers,
       initialReady, actor), Vector.empty[OathViolation])
-  }
 
   // ---- What a Transform inserts ----
 
-  private val inserting: ContributingPower = new ContributingPower {
+  private val inserting: ContributingPower = new ContributingPower:
     def id: PowerId = PowerId("test.inserting")
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
       PowerWindow.MusterActionEligibility -> Vector(Transform((_, children) =>
         children :+ Sequence(Vector.empty, Some(nested)))))
-  }
   private val root: Operation =
     Sequence(Vector.empty, Some(PowerWindow.MusterActionEligibility))
 
-  test("a subtree a Transform inserts is checked too, not only the declared tree") {
+  test("a subtree a Transform inserts is checked too, not only the declared tree"):
     val without = WalkerPowers(Vector(forbidding))
     assertEquals(ProcedureWalker.restrictionViolations(root, without,
       initialReady, actor), Vector.empty[OathViolation])
     val both = WalkerPowers(Vector(forbidding, inserting))
     assertEquals(ProcedureWalker.restrictionViolations(root, both,
       initialReady, actor), Vector[OathViolation](violation))
-  }
-}

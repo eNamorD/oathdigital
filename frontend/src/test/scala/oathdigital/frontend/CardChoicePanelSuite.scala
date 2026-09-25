@@ -7,7 +7,7 @@ import org.scalajs.dom
   * lies, and the picking is a button of its own, so clicking the card still
   * means "show me this" everywhere in the game.
   */
-class CardChoicePanelSuite extends munit.FunSuite {
+class CardChoicePanelSuite extends munit.FunSuite:
   private def all(node: dom.Element, selector: String): Vector[dom.Element] =
     node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
@@ -25,14 +25,13 @@ class CardChoicePanelSuite extends munit.FunSuite {
   private def advisers(value: FacedownAdviserDraft): dom.Element =
     FacedownAdviserRenderer.render(value, new RecordingView("game", "red"))
 
-  test("every facedown adviser on offer is drawn face-up") {
+  test("every facedown adviser on offer is drawn face-up"):
     val panel = advisers(draft)
     assertEquals(faces(panel), Vector("Old Oak", "Bandits"))
     assertEquals(all(panel, ".card-face-down"), Vector.empty)
     assertEquals(all(panel, ".card-back-letter"), Vector.empty)
-  }
 
-  test("choosing is a button of its own, and says which card it picks") {
+  test("choosing is a button of its own, and says which card it picks"):
     val panel = advisers(draft)
     val choices = all(panel, ".facedown-adviser-choice")
     assertEquals(choices.map(_.getAttribute("aria-label")),
@@ -41,17 +40,15 @@ class CardChoicePanelSuite extends munit.FunSuite {
       Vector("false", "false"))
     assertEquals(all(advisers(draft.choose("a2")), ".facedown-adviser-choice")
       .map(_.getAttribute("aria-pressed")), Vector("false", "true"))
-  }
 
   /** One adviser is not a choice, so it gets no picker -- but it is still
     * the card the player is about to play, so it is still shown.
     */
-  test("a lone adviser is shown without a picker") {
+  test("a lone adviser is shown without a picker"):
     val panel = advisers(draft.copy(advisers = draft.advisers.take(1),
       selectedCardId = Some("a1")))
     assertEquals(faces(panel), Vector("Old Oak"))
     assertEquals(all(panel, ".facedown-adviser-choice"), Vector.empty)
-  }
 
   private val relicQuery = DecisionQueryState("choose-one",
     Vector(DecisionOptionState("relic", "relic:crown", "Ancient Crown",
@@ -62,7 +59,7 @@ class CardChoicePanelSuite extends munit.FunSuite {
           orientation = Some("face-down"), defense = Some(1))))),
     Vector.empty, heading = Some("Take a relic"))
 
-  private def recoverRelics(): dom.Element = {
+  private def recoverRelics(): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderRecoverPanel(
       GameProjection("game", 1L, "act", Some("red"), Vector.empty, Vector.empty,
@@ -73,9 +70,8 @@ class CardChoicePanelSuite extends munit.FunSuite {
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
       canControl = true, panel, new RecordingView("game", "red"))
     panel
-  }
 
-  test("a relic offered by Recover is drawn face-up, with its own take button") {
+  test("a relic offered by Recover is drawn face-up, with its own take button"):
     val panel = recoverRelics()
     assertEquals(faces(panel), Vector("Ancient Crown", "Brass Horn"))
     assertEquals(all(panel, ".card-face-down"), Vector.empty)
@@ -83,9 +79,8 @@ class CardChoicePanelSuite extends munit.FunSuite {
     assertEquals(takes.map(_.textContent), Vector("Take facedown", "Take facedown"))
     assertEquals(takes.map(_.getAttribute("aria-label")),
       Vector("Take Ancient Crown facedown", "Take Brass Horn facedown"))
-  }
 
-  test("taking a relic submits the option the button belongs to") {
+  test("taking a relic submits the option the button belongs to"):
     val ui = new RecordingView("game", "red")
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderRecoverPanel(
@@ -100,5 +95,3 @@ class CardChoicePanelSuite extends munit.FunSuite {
     assertEquals(ui.submitted.size, 1)
     assert(ui.submitted.head.toString.contains("relic:horn"),
       ui.submitted.head.toString)
-  }
-}

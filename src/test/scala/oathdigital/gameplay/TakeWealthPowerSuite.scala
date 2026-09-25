@@ -21,12 +21,11 @@ import oathdigital.model._
   * from matching nothing, and a restriction that matches nothing is
   * indistinguishable from a correct one in every green assertion.
   */
-class TakeWealthPowerSuite extends munit.FunSuite {
+class TakeWealthPowerSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
-  private val baseReady = FirstGameSetupFixture.execute()._1 match {
+  private val baseReady = FirstGameSetupFixture.execute()._1 match
     case OathState.Ready(ready) => ready
     case other => fail(s"expected Ready state, got $other")
-  }
   private val actor = baseReady.game.current.turn.activePlayer
   private val powers: Vector[ContributingPower] = Vector(TakeWealthLimit)
 
@@ -61,30 +60,26 @@ class TakeWealthPowerSuite extends munit.FunSuite {
     PowerCtx(state, actor, power.source, window, Vector.empty, node)
 
   private def violation(state: ReadyGame, node: Operation,
-      window: PowerWindow = PowerWindow.WakeTakeWealth): Option[OathViolation] = {
+      window: PowerWindow = PowerWindow.WakeTakeWealth): Option[OathViolation] =
     val byId = powers.map(power => power.id -> power).toMap
     ContributionCollector.gather(window, powers, ctx(state, window, node, _))
       .restrictions.flatMap { case (id, restriction) =>
         restriction.fn(ctx(state, window, node, byId(id)), node)
       }.headOption
-  }
 
-  test("the first take at a site this turn is unrestricted") {
+  test("the first take at a site this turn is unrestricted"):
     assertEquals(violation(ready(Some(site)), takeNode(site)), None)
-  }
 
-  test("a second take at the same site this turn is blocked") {
+  test("a second take at the same site this turn is blocked"):
     val used = TakeWealthLimit.useRef(site)
     assertEquals(violation(ready(Some(site), Set(used)), takeNode(site)),
       Some(OathViolation.PowerAlreadyUsed(used)))
-  }
 
-  test("a take at another site the same turn is unrestricted") {
+  test("a take at another site the same turn is unrestricted"):
     assertEquals(violation(ready(Some(otherSite),
       Set(TakeWealthLimit.useRef(site))), takeNode(otherSite)), None)
-  }
 
-  test("the limit lifts when the turn advances") {
+  test("the limit lifts when the turn advances"):
     // One state, one advance applied to it. Asserting the block first is what
     // keeps this from passing for the same reason the first test does; the
     // advance is modelled on `Rest`'s rather than driven through a whole
@@ -93,26 +88,23 @@ class TakeWealthPowerSuite extends munit.FunSuite {
     assert(violation(blocked, takeNode(site)).isDefined,
       "precondition: the site must be blocked before the turn advances")
     assertEquals(violation(advanceTurn(blocked), takeNode(site)), None)
-  }
 
-  test("a missing pawn site leaves the limit silent") {
+  test("a missing pawn site leaves the limit silent"):
     // Failing open here is deliberate: `PawnSiteMissing` is the action's own
     // start gate, and a restriction that invented a second spelling for it
     // would report the wrong reason for the rejection.
     assertEquals(violation(ready(None, Set(TakeWealthLimit.useRef(site))),
       takeNode(site)), None)
-  }
 
-  test("the limit speaks at no window other than Wake take-wealth") {
+  test("the limit speaks at no window other than Wake take-wealth"):
     // A restriction gathered anywhere else would reject unrelated actions the
     // moment their tree shares a window with this one.
     assertEquals(TakeWealthLimit.contributions.keySet,
       Set[PowerWindow](PowerWindow.WakeTakeWealth))
     assertEquals(violation(ready(Some(site), Set(TakeWealthLimit.useRef(site))),
       takeNode(site), PowerWindow.TravelCost), None)
-  }
 
-  test("the use ref is the one the procedure records") {
+  test("the use ref is the one the procedure records"):
     // The read side here and the write side `TakeWealthProcedure` declares
     // must name the same `PowerUseRef` or the limit never fires. Task 6
     // pinned this against the legacy `Wake.takeWealthPower`; Task 7 deleted
@@ -121,10 +113,7 @@ class TakeWealthPowerSuite extends munit.FunSuite {
     // literal, which is what keeps the two sides from drifting.
     assertEquals(TakeWealthLimit.useRef(site), PowerUseRef(PowerTiming.Wake,
       PowerSourceRef.Site(site), PowerId("site.take-wealth")))
-  }
 
-  test("the walker catalog registers the limit") {
+  test("the walker catalog registers the limit"):
     assert(WalkerPowerCatalog.default(catalog).powers.map(_.id)
       .contains(TakeWealthLimit.id))
-  }
-}

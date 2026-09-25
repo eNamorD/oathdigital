@@ -21,7 +21,7 @@ final class HsqldbDatabaseOwner private (
     database: Database,
     source: HikariDataSource,
     nowMillis: () => Long
-) extends AutoCloseable {
+) extends AutoCloseable:
   private val schema = new EventJournalSchema(nowMillis)
   private val closed = new AtomicBoolean(false)
   private val shutdowns = new AtomicInteger(0)
@@ -43,13 +43,12 @@ final class HsqldbDatabaseOwner private (
 
   private def run[A](operation: String)(action: DBIO[A]) =
     try Right(Await.result(database.run(action), Duration.Inf))
-    catch {
+    catch
       case NonFatal(error) =>
         Left(HsqldbEventStreamRepository.storageFailure(operation, error))
-    }
 
   override def close(): Unit =
-    if (closed.compareAndSet(false, true)) {
+    if (closed.compareAndSet(false, true))
       try Await.result(database.run(SimpleDBIO { context =>
         val statement = context.connection.createStatement()
         try {
@@ -59,14 +58,11 @@ final class HsqldbDatabaseOwner private (
         } finally statement.close()
       }), Duration.Inf)
       catch { case NonFatal(_) => () }
-      finally {
+      finally
         database.close()
         source.close()
-      }
-    }
-}
 
-object HsqldbDatabaseOwner {
+object HsqldbDatabaseOwner:
   private val ReopenAttempts = 2
   private val ReopenBackoffMillis = 50L
   private val ReopenDeadlineNanos = TimeUnit.SECONDS.toNanos(25L)
@@ -91,14 +87,13 @@ object HsqldbDatabaseOwner {
         () => System.nanoTime(),
         millis => Thread.sleep(millis),
         isTransientLockHeartbeat
-      ).left.map {
+      ).left.map:
         case ConnectionFailure(error) =>
           HsqldbEventStreamRepository.storageFailure("open database", error)
         case InitializationFailure(error) => error
-      }
     }
 
-  private def validatePath(path: Path): Either[RepositoryFailure, Path] = {
+  private def validatePath(path: Path): Either[RepositoryFailure, Path] =
     val normalized = path.toAbsolutePath.normalize
     if (normalized.toString.exists(character =>
       character == ';' || character == '\n' || character == '\r' ||
@@ -107,14 +102,13 @@ object HsqldbDatabaseOwner {
         "database path contains an unsafe HSQLDB URL delimiter"
       ))
     else Right(normalized)
-  }
 
   private def openAttempt(
       path: Path,
       nowMillis: () => Long
-  ): Either[OpenAttemptFailure, HsqldbDatabaseOwner] = {
+  ): Either[OpenAttemptFailure, HsqldbDatabaseOwner] =
     val source = new HikariDataSource()
-    try {
+    try
       source.setJdbcUrl(s"jdbc:hsqldb:file:$path")
       source.setDriverClassName("org.hsqldb.jdbc.JDBCDriver")
       source.setUsername("SA")
@@ -133,19 +127,16 @@ object HsqldbDatabaseOwner {
         source,
         nowMillis
       )
-      owner.initializeSchema() match {
+      owner.initializeSchema() match
         case Right(_) => Right(owner)
         case Left(error) =>
           owner.close()
           Left(InitializationFailure(error))
-      }
-    } catch {
+    catch
       case NonFatal(error) =>
         try source.close()
         catch { case NonFatal(_) => () }
         Left(ConnectionFailure(error))
-    }
-  }
 
   private[persistence] def retryTransientLock[A](
       attempt: () => Either[OpenAttemptFailure, A],
@@ -154,28 +145,24 @@ object HsqldbDatabaseOwner {
       nanoTime: () => Long,
       sleep: Long => Unit,
       retryable: Throwable => Boolean
-  ): Either[OpenAttemptFailure, A] = {
+  ): Either[OpenAttemptFailure, A] =
     @tailrec
-    def loop(attempts: Int): Either[OpenAttemptFailure, A] = {
+    def loop(attempts: Int): Either[OpenAttemptFailure, A] =
       val result = attempt()
-      result match {
+      result match
         case Left(ConnectionFailure(error))
             if attempts < maxAttempts && nanoTime() < deadlineNanos &&
               retryable(error) =>
           sleep(ReopenBackoffMillis)
           if (nanoTime() < deadlineNanos) loop(attempts + 1) else result
         case _ => result
-      }
-    }
     loop(1)
-  }
 
-  private[persistence] def isTransientLockHeartbeat(error: Throwable): Boolean = {
+  private[persistence] def isTransientLockHeartbeat(error: Throwable): Boolean =
     val chain = Iterator.iterate(Option(error))(_.flatMap(value =>
       Option(value.getCause))).takeWhile(_.nonEmpty).flatten.toVector
     isTransientLockHeartbeatChain(chain.map(value =>
       value.getClass.getName -> Option(value.getMessage).getOrElse("")))
-  }
 
   private[persistence] def isTransientLockHeartbeatChain(
       chain: Vector[(String, String)]
@@ -185,12 +172,11 @@ object HsqldbDatabaseOwner {
       chain.exists { case (_, message) =>
         message.contains("lockFile:") && message.contains("checkHeartbeat")
       }
-}
 
 /** Explicit standalone owner used by focused journal tests and tools. */
 final class OwnedHsqldbEventStreamRepository private (
     val owner: HsqldbDatabaseOwner
-) extends EventStreamRepository with AutoCloseable {
+) extends EventStreamRepository with AutoCloseable:
   private val adapter = owner.eventStreams
   override def load(gameId: String) = adapter.load(gameId)
   override def append(gameId: String, expected: ExpectedStream,
@@ -198,17 +184,15 @@ final class OwnedHsqldbEventStreamRepository private (
   def initializeSchema() = owner.initializeSchema()
   def schemaVersion = owner.schemaVersion
   override def close(): Unit = owner.close()
-}
 
-object OwnedHsqldbEventStreamRepository {
+object OwnedHsqldbEventStreamRepository:
   def open(path: Path): Either[RepositoryFailure, OwnedHsqldbEventStreamRepository] =
     HsqldbDatabaseOwner.open(path).map(new OwnedHsqldbEventStreamRepository(_))
-}
 
 /** Explicit standalone owner used by focused identity tests and tools. */
 final class OwnedHsqldbIdentityRepository private (
     val owner: HsqldbDatabaseOwner
-) extends IdentityRepository with AutoCloseable {
+) extends IdentityRepository with AutoCloseable:
   private val adapter = owner.identities
   override def createUser(id: UserId, name: String, now: Long) =
     adapter.createUser(id, name, now)
@@ -253,11 +237,9 @@ final class OwnedHsqldbIdentityRepository private (
     owner.schemaVersion.left.map(failure =>
       IdentityFailure.StorageFailure(failure.toString))
   override def close(): Unit = owner.close()
-}
 
-object OwnedHsqldbIdentityRepository {
+object OwnedHsqldbIdentityRepository:
   def open(path: Path): Either[IdentityFailure, OwnedHsqldbIdentityRepository] =
     HsqldbDatabaseOwner.open(path)
       .left.map(failure => IdentityFailure.StorageFailure(failure.toString))
       .map(new OwnedHsqldbIdentityRepository(_))
-}

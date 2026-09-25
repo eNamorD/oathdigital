@@ -1,6 +1,6 @@
 package oathdigital.presentation
 
-class VisualResolverSuite extends munit.FunSuite {
+class VisualResolverSuite extends munit.FunSuite:
   private val reference = ImageRef("theme/cards/vision")
   private val card = CardView(
     id = ViewId("card:vision"),
@@ -16,27 +16,24 @@ class VisualResolverSuite extends munit.FunSuite {
     accessibleLabel = AccessibleLabel("Vision")
   )
 
-  test("a confirmed matching image preserves its accessible label") {
+  test("a confirmed matching image preserves its accessible label"):
     assertEquals(
       VisualResolver.resolve(card, ImageLoadResult.Loaded(reference)),
       VisualInstruction.Image(reference, AccessibleLabel("Vision"))
     )
-  }
 
-  test("missing and failed images use the same deterministic placeholder") {
+  test("missing and failed images use the same deterministic placeholder"):
     assertEquals(VisualResolver.resolve(card, ImageLoadResult.NotRequested), placeholder)
     assertEquals(VisualResolver.resolve(card, ImageLoadResult.Failed(reference)), placeholder)
-  }
 
-  test("a stale loader result cannot substitute a different image") {
+  test("a stale loader result cannot substitute a different image"):
     val staleReference = ImageRef("theme/cards/different")
     assertEquals(
       VisualResolver.resolve(card, ImageLoadResult.Loaded(staleReference)),
       placeholder
     )
-  }
 
-  test("entities without an image reference always use their placeholder") {
+  test("entities without an image reference always use their placeholder"):
     val site = SiteView(
       id = ViewId("site:mine"),
       label = AccessibleLabel("The Mine"),
@@ -48,9 +45,8 @@ class VisualResolverSuite extends munit.FunSuite {
       VisualResolver.resolve(site, ImageLoadResult.Loaded(reference)),
       VisualInstruction.Placeholder("M", "The Mine", AccessibleLabel("The Mine"))
     )
-  }
 
-  test("board snapshots report IDs duplicated across entity types") {
+  test("board snapshots report IDs duplicated across entity types"):
     val sharedId = ViewId("entity:shared")
     val site = SiteView(
       sharedId,
@@ -75,5 +71,3 @@ class VisualResolverSuite extends munit.FunSuite {
     )
 
     assertEquals(board.duplicateIds, Set(sharedId))
-  }
-}

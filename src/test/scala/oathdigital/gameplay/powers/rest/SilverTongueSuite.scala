@@ -10,7 +10,7 @@ import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-class SilverTongueSuite extends munit.FunSuite {
+class SilverTongueSuite extends munit.FunSuite:
   import SilverTongueFixture._
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
@@ -20,7 +20,7 @@ class SilverTongueSuite extends munit.FunSuite {
   private def favor(state: OathState) = state.asInstanceOf[Ready].value.banks.favor
 
   test("one matching bank with favor gives one favor without a decision, " +
-      "once per turn, and runs the action boundary") {
+      "once per turn, and runs the action boundary"):
     val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane))
     val used = rules.startWalker(Ready(ready), use, actor, Vector.empty,
       Vector(source)).toOption.get
@@ -31,9 +31,8 @@ class SilverTongueSuite extends munit.FunSuite {
       SilverTongue.id)
     assertEquals(rules.startWalker(used.state, use, actor, Vector.empty,
       Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
-  }
 
-  test("several matching banks with favor ask the player to choose one of them") {
+  test("several matching banks with favor ask the player to choose one of them"):
     val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad),
       Set(Suit.Arcane, Suit.Nomad, Suit.Order))
     val choice = SilverTongue.choiceDecisionId(ready, actor)
@@ -50,9 +49,8 @@ class SilverTongueSuite extends munit.FunSuite {
     assertEquals(favor(taken.state)(Suit.Nomad), 2)
     assertEquals(favor(taken.state)(Suit.Arcane), 3)
     assertEquals(taken.continue, OathContinue.AwaitingRestAction(actor))
-  }
 
-  test("without matching favor Silver Tongue is not usable and Rest skips ahead") {
+  test("without matching favor Silver Tongue is not usable and Rest skips ahead"):
     val (ready, actor) = arranged(Vector(Suit.Arcane), Set(Suit.Nomad))
     assertEquals(PhasePowerProcedure.usable(catalog, ready, actor,
       PhasePowerCatalog.default(catalog)), Vector.empty)
@@ -62,9 +60,8 @@ class SilverTongueSuite extends munit.FunSuite {
       actor).toOption.get
     assert(rested.continue.isInstanceOf[OathContinue.AwaitingWakeAction],
       rested.continue.toString)
-  }
 
-  test("Silver Tongue requires replacement when a third adviser is played") {
+  test("Silver Tongue requires replacement when a third adviser is played"):
     val (base, actor) = arranged(Vector.empty, Set.empty)
     val current = base.game.current
     val ids = current.commonCards.worldDeck.collect { case id: DenizenId => id }
@@ -95,9 +92,8 @@ class SilverTongueSuite extends munit.FunSuite {
     val query = ProcedureWalker.parkedDecide(ready, tree, replacement, powers).get
     assert(query.query.asInstanceOf[DecisionQuery.ChooseOne].options.exists(
       _.ref == DecisionOptionRef.Denizen(second)))
-  }
 
-  test("playing Silver Tongue itself as a third adviser requires replacement") {
+  test("playing Silver Tongue itself as a third adviser requires replacement"):
     val (base, actor) = arranged(Vector.empty, Set.empty)
     val current = base.game.current
     val others = current.commonCards.worldDeck.collect {
@@ -127,5 +123,3 @@ class SilverTongueSuite extends munit.FunSuite {
       afterChoice.asInstanceOf[WalkerOutcome.Parked].tree, powers).get
     assert(replacement.query.asInstanceOf[DecisionQuery.ChooseOne].options
       .exists(_.ref == DecisionOptionRef.Denizen(others.head)))
-  }
-}

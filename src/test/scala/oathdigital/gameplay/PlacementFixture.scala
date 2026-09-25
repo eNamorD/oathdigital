@@ -11,11 +11,11 @@ import oathdigital.model._
 /** Staging and driving shared by the card-play placement suites. The powers
   * built here are test doubles: they change `PlacementRules` and nothing else.
   */
-object PlacementFixture {
+object PlacementFixture:
   /** A power that changes the rules every play is planned under. */
   def rulePower(name: String)(
       change: PlacementRules => PlacementRules): ContributingPower =
-    new ContributingPower {
+    new ContributingPower:
       def id: PowerId = PowerId(name)
       def source: RuleSourceRef = RuleSourceRef.GameRule(name)
       def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -25,7 +25,6 @@ object PlacementFixture {
               tree.adjust(ops)(change)
             case _ => ops
           })))
-    }
 
   val discardFirst: ContributingPower =
     rulePower("test.discard-first")(_.withSiteDiscardFirst)
@@ -34,10 +33,9 @@ object PlacementFixture {
 
   /** The unrestricted denizens still in the world deck. */
   def plain(ready: ReadyGame): Vector[DenizenId] =
-    ready.game.current.commonCards.worldDeck.collect {
+    ready.game.current.commonCards.worldDeck.collect:
       case id: DenizenId if catalog.denizens.exists(d => d.id.value == id.value &&
         d.restrictions == CardRestrictions.Unrestricted) => id
-    }
 
   def actorOf(ready: ReadyGame): PlayerState =
     ready.game.current.players.find(
@@ -51,7 +49,7 @@ object PlacementFixture {
     * inventory stays whole.
     */
   def staged(card: DenizenId, site: Vector[SiteDenizenState])
-      : (ReadyGame, PlayerId, SiteId) = {
+      : (ReadyGame, PlayerId, SiteId) =
     val base = initialReady
     val current = base.game.current
     val actor = actorOf(base)
@@ -69,7 +67,6 @@ object PlacementFixture {
       map = current.map.copy(sites = current.map.sites.updated(siteId,
         current.map.sites(siteId).copy(denizens = site))))),
       actor.player, siteId)
-  }
 
   /** The actor rules the pawn site, so a Hall of Ministers does not protect it. */
   def ruledByActor(ready: ReadyGame, site: SiteId): ReadyGame =
@@ -99,4 +96,3 @@ object PlacementFixture {
       powers: WalkerPowers): Vector[DecisionOptionRef] =
     ProcedureWalker.parkedDecide(ready, tree, pending, powers).get.query
       .asInstanceOf[DecisionQuery.ChooseOne].options.map(_.ref)
-}

@@ -23,13 +23,13 @@ final case class GatheredContributions(
   * Pure: reads only the `PowerCtx` values `ctxFor` produces and the powers
   * it is handed. No state mutation, no catalog lookups, no walker imports.
   */
-object ContributionCollector {
+object ContributionCollector:
 
   def gather(
       window: PowerWindow,
       powers: Vector[ContributingPower],
       ctxFor: ContributingPower => PowerCtx
-  ): GatheredContributions = {
+  ): GatheredContributions =
     // Step 1: discovery -- keep powers whose contributions declare this window.
     val discovered = powers.filter(_.contributions.contains(window))
 
@@ -57,12 +57,11 @@ object ContributionCollector {
     val offers = Vector.newBuilder[(PowerId, Offer)]
 
     ordered.foreach { power =>
-      power.contributions(window).foreach {
+      power.contributions(window).foreach:
         case transform: Transform => transforms += power.id -> transform
         case restriction: Restriction => restrictions += power.id -> restriction
         case option: OptionRestriction => optionRestrictions += power.id -> option
         case offer: Offer => offers += power.id -> offer
-      }
     }
 
     GatheredContributions(
@@ -72,5 +71,3 @@ object ContributionCollector {
       optionRestrictions = optionRestrictions.result(),
       offers = offers.result()
     )
-  }
-}

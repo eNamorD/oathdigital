@@ -9,7 +9,7 @@ import oathdigital.model._
   * the next options see the result. The `Repeat` ends on Finish, or when a pass
   * has nothing left to offer.
   */
-private[campaign] object CampaignPlanSteps {
+private[campaign] object CampaignPlanSteps:
   def attacker(catalog: ExecutableCatalog, actor: PlayerId): Operation =
     loop(catalog, actor, CampaignPlanSide.Attacker)
 
@@ -28,4 +28,3 @@ private[campaign] object CampaignPlanSteps {
     (_, pending) => !CampaignAnswers.finished(pending,
       CampaignIds.planDecision(side)),
     new CampaignPlanChoice(catalog, actor, side))
-}

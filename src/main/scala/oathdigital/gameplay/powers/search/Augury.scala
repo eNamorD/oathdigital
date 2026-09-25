@@ -10,19 +10,17 @@ import oathdigital.model._
   * Vision.
   */
 final case class Augury private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = Augury.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.SearchBeforeDraw -> Vector(Transform((_, operations) =>
       DrawExtension.extend(operations, Augury.More))))
-}
 
-object Augury {
+object Augury:
   val id: PowerId = PowerId("denizen.augury")
   val More: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[Augury] =
     CatalogCards.denizen(catalog, id).map(new Augury(_, catalog))
-}

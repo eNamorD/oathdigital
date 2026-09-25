@@ -9,7 +9,7 @@ final case class PlayerResourceSources(
     siteIds: Set[SiteId],
     siteCards: Vector[SiteDenizenState])
 
-object PlayerResourceSources {
+object PlayerResourceSources:
   def player(ready: ReadyGame, playerId: PlayerId): Either[String, PlayerState] =
     ready.game.current.players.find(_.player == playerId).toRight(
       s"unknown player ${playerId.value}")
@@ -32,4 +32,3 @@ object PlayerResourceSources {
     }, resolved.relics, sites, sites.toVector.sortBy(_.value).flatMap(id =>
       current.map.sites.get(id).toVector.flatMap(_.denizens)))
   }
-}

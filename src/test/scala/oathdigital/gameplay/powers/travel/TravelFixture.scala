@@ -18,7 +18,7 @@ import oathdigital.model.OathState.Ready
   * cradle to the provinces and within them, 4 from the cradle to the
   * hinterland.
   */
-object TravelFixture {
+object TravelFixture:
   import PowerFixture._
 
   val rules: OathRules = new OathRules(catalog,
@@ -36,7 +36,7 @@ object TravelFixture {
   /** The Act phase on the board. `source` is the active player's site; the
     * other players stand on the sites after it.
     */
-  def board(source: SiteId = plains.head, supply: Int = 7): ReadyGame = {
+  def board(source: SiteId = plains.head, supply: Int = 7): ReadyGame =
     val chosen = Vector(source, coast, plains(1), mountain, pass, plains(2),
       island, plains(3))
     val ids = (chosen.distinct ++ catalog.sites.map(_.id)
@@ -48,16 +48,14 @@ object TravelFixture {
         else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
         Vector.empty, Vector.empty, definition.startingResources)
     }.toMap
-    val players = base.game.current.players.zipWithIndex.map {
+    val players = base.game.current.players.zipWithIndex.map:
       case (player, index) => player.copy(
         pawnSite = Some(if (player.player == actor) source else ids(index + 1)),
         board = if (player.player == actor)
           player.board.copy(supply = SupplyTrack(supply)) else player.board)
-    }
     inPhase(base.updateCurrent(_.copy(players = players,
       map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states))),
       Phase.Act)
-  }
 
   /** The pass ruled by the actor, so a cross-region route past it is legal. */
   def passRuled(ready: ReadyGame): ReadyGame =
@@ -111,4 +109,3 @@ object TravelFixture {
     player(ready).advisers.collectFirst {
       case card: DenizenState if card.id == id => card.tokens
     }.get
-}

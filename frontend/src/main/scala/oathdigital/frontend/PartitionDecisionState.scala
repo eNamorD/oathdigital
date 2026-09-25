@@ -36,7 +36,7 @@ private[frontend] final case class PartitionDecisionState(
     sections: Vector[PartitionSection],
     items: Vector[String],
     contents: Map[String, Vector[String]]
-) {
+):
   def section(key: String): Option[PartitionSection] = sections.find(_.key == key)
 
   def itemsIn(key: String): Vector[String] = contents.getOrElse(key, Vector.empty)
@@ -76,7 +76,7 @@ private[frontend] final case class PartitionDecisionState(
     section(sectionKey).filter(_ => items.contains(item)).fold(this) { target =>
       val occupants = itemsIn(sectionKey).filterNot(_ == item)
       val full = target.maxAllowed.exists(occupants.size >= _)
-      sectionOf(item) match {
+      sectionOf(item) match
         case Some(from) if full && target.maxAllowed.contains(1) =>
           withSection(sectionKey, Vector(item))
             .withSection(from, occupants ++ itemsIn(from).filterNot(_ == item))
@@ -87,7 +87,6 @@ private[frontend] final case class PartitionDecisionState(
           from.filterNot(_ == sectionKey)
             .fold(this)(key => withSection(key, itemsIn(key).filterNot(_ == item)))
             .withSection(sectionKey, occupants.patch(index, Vector(item), 0))
-      }
     }
 
   /** Slides one item within the section holding it, clamped to that
@@ -115,9 +114,8 @@ private[frontend] final case class PartitionDecisionState(
 
   private def withSection(key: String, values: Vector[String])
       : PartitionDecisionState = copy(contents = contents.updated(key, values))
-}
 
-private[frontend] object PartitionDecisionState {
+private[frontend] object PartitionDecisionState:
   /** Opens by filling each section to its minimum in declared order, then
     * putting remaining items into the first section with capacity.
     *
@@ -128,12 +126,12 @@ private[frontend] object PartitionDecisionState {
     * correctly, since no arrangement of those items would satisfy them.
     */
   def filled(sections: Vector[PartitionSection], items: Vector[String])
-      : PartitionDecisionState = {
+      : PartitionDecisionState =
     val required = sections.flatMap(section =>
       Vector.fill(section.minRequired)(section.key))
     val slack = items.size - required.size
     val keys = if (slack <= 0) required.take(items.size)
-      else {
+      else
         val remaining = scala.collection.mutable.Map.empty[String, Int]
         required.foreach(key => remaining.update(key, remaining.getOrElse(key, 0) + 1))
         required ++ Vector.fill(slack)(()).map { _ =>
@@ -142,11 +140,8 @@ private[frontend] object PartitionDecisionState {
           remaining.update(key, remaining.getOrElse(key, 0) + 1)
           key
         }
-      }
     PartitionDecisionState(sections, items, items.zip(keys).groupBy(_._2)
       .map { case (key, placed) => key -> placed.map(_._1) })
-  }
-}
 
 /** A draft answer to a parked walker partition decision, adapted into the
   * shared interaction above.
@@ -162,7 +157,7 @@ private[frontend] final case class WalkerPartitionDraft(
     decisionId: String,
     query: DecisionQueryState,
     partition: PartitionDecisionState
-) {
+):
   def optionFor(item: String): Option[DecisionOptionState] =
     query.options.find(option => WalkerPartitionDraft.itemId(option) == item)
 
@@ -201,9 +196,8 @@ private[frontend] final case class WalkerPartitionDraft(
         case (item, sectionKey) => optionFor(item).map(option =>
           DecisionPlacementWire(option.kind, option.id, sectionKey))
       })))
-}
 
-private[frontend] object WalkerPartitionDraft {
+private[frontend] object WalkerPartitionDraft:
   /** The item identity a zone drags and an answer resolves back to an
     * option: the option's own reference pair, which a query guarantees is
     * unique within it.
@@ -230,4 +224,3 @@ private[frontend] object WalkerPartitionDraft {
                 section.maxAllowed)),
               query.options.map(itemId))))
       }
-}

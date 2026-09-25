@@ -6,7 +6,7 @@ import oathdigital.model._
   * card transfers that both a guard and a mutation read. Nothing here decides
   * legality.
   */
-private[operations] object OperationStateWrites {
+private[operations] object OperationStateWrites:
   import OperationError._
   import OperationStateAdapter.{playerState, siteState}
 
@@ -21,7 +21,7 @@ private[operations] object OperationStateWrites {
   )
 
   def cardTransfers(leaves: Vector[Operation]): Vector[CardTransfer] =
-    leaves.collect {
+    leaves.collect:
       case Move(piece: Piece.Card, from, to, orientation) =>
         CardTransfer(piece, from, to, orientation)
       case bury: Bury => CardTransfer(
@@ -30,17 +30,15 @@ private[operations] object OperationStateWrites {
         bury.to,
         resultingOrientation = None
       )
-    }
 
   def sequence[A](
       values: Vector[Either[OperationError, A]]
   ): Either[OperationError, Vector[A]] =
-    values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)) {
+    values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)):
       case (result, value) => for {
         accumulated <- result
         next <- value
       } yield accumulated :+ next
-    }
 
   def updateCommonCards(ready: ReadyGame)(
       f: CardZones => CardZones): Either[OperationError, ReadyGame] =
@@ -63,12 +61,11 @@ private[operations] object OperationStateWrites {
 
   def updateCardTokens(ready: ReadyGame, id: CardId)(
       f: Tokens => Tokens): Either[OperationError, ReadyGame] =
-    updateCardState(ready, id) {
+    updateCardState(ready, id):
       case value: DenizenState => value.copy(tokens = f(value.tokens))
       case value: EdificeState => value.copy(tokens = f(value.tokens))
       case value: RelicState => value.copy(tokens = f(value.tokens))
       case value => value
-    }
 
   def updateCardState(ready: ReadyGame, id: CardId)(
       f: CardState => CardState): Either[OperationError, ReadyGame] =
@@ -76,7 +73,7 @@ private[operations] object OperationStateWrites {
       index.get(id).toRight(UnknownCard(id)).flatMap { located =>
         located.state.toRight(IncompatibleLocation(Piece.Card(id),
           Location.OnCard(id))).flatMap { _ =>
-          located.location.container match {
+          located.location.container match
             case CardContainer.Player(player, PlayerCardArea.Advisers) =>
               updatePlayer(ready, player)(state => state.copy(advisers =
                 state.advisers.map(value => if (value.id == id)
@@ -100,7 +97,6 @@ private[operations] object OperationStateWrites {
             case atlas: CardContainer.AtlasSite =>
               updateAtlasCardState(ready, atlas, id, f)
             case _ => Left(IncompatibleLocation(Piece.Card(id), Location.OnCard(id)))
-          }
         }
       }
     }
@@ -110,43 +106,37 @@ private[operations] object OperationStateWrites {
       container: CardContainer.AtlasSite,
       id: CardId,
       f: CardState => CardState
-  ): Either[OperationError, ReadyGame] = {
+  ): Either[OperationError, ReadyGame] =
     val entries = ready.game.campaign.atlas.entries
     entries.lift(container.atlasPosition).collect {
       case stored: AtlasEntry.StoredSite => stored
     }.toRight(AmbiguousLocation(Location.Atlas,
       "stored Atlas site is unavailable")).flatMap { stored =>
-      val updated = container.area match {
+      val updated = container.area match
         case SiteCardArea.Denizens =>
-          stored.denizens.find(_.id == id).toRight(UnknownCard(id)).flatMap {
-            existing => f(existing) match {
+          stored.denizens.find(_.id == id).toRight(UnknownCard(id)).flatMap:
+            existing => f(existing) match
               case next: SiteDenizenState => Right(stored.copy(denizens =
                 stored.denizens.map(value =>
                   if (value.id == id) next else value)))
               case _ => Left(IncompatibleLocation(
                 Piece.Card(id), Location.OnCard(id)))
-            }
-          }
         case SiteCardArea.Relics =>
-          stored.relics.find(_.id == id).toRight(UnknownCard(id)).flatMap {
-            existing => f(existing) match {
+          stored.relics.find(_.id == id).toRight(UnknownCard(id)).flatMap:
+            existing => f(existing) match
               case next: RelicState => Right(stored.copy(relics =
                 stored.relics.map(value =>
                   if (value.id == id) next else value)))
               case _ => Left(IncompatibleLocation(
                 Piece.Card(id), Location.OnCard(id)))
-            }
-          }
-      }
       updated.map { next =>
         val atlas = AtlasState(entries.updated(container.atlasPosition, next))
         ready.copy(game = ready.game.copy(campaign =
           ready.game.campaign.copy(atlas = atlas)))
       }
     }
-  }
 
-  def semanticLocation(container: CardContainer): Location = container match {
+  def semanticLocation(container: CardContainer): Location = container match
     case CardContainer.Deck(deck) => Location.Deck(deck)
     case CardContainer.RegionalDiscard(region) => Location.RegionalDiscard(region)
     case CardContainer.Player(player, PlayerCardArea.Hand) => Location.Hand(player)
@@ -157,5 +147,3 @@ private[operations] object OperationStateWrites {
     case CardContainer.Dispossessed => Location.Dispossessed
     case _: CardContainer.AtlasSite => Location.Atlas
     case _ => Location.Atlas
-  }
-}

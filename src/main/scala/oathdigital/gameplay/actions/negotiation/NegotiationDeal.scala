@@ -6,7 +6,7 @@ import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, DeclineDe
 /** One deal, derived from the answers recorded so far. */
 final case class DealState(participants: Vector[PlayerId],
     terms: Map[PlayerId, NegotiationTerms], accepted: Set[PlayerId],
-    declined: Boolean) {
+    declined: Boolean):
   def hasSubstance: Boolean = terms.values.exists(t =>
     t.transfers.exists(x => x.favor > 0 || x.relics.nonEmpty) ||
       t.disclosures.nonEmpty)
@@ -14,7 +14,6 @@ final case class DealState(participants: Vector[PlayerId],
     participants.nonEmpty && accepted == participants.toSet
   def closed: Boolean = declined || unanimous
   def agreed: Boolean = !declined && unanimous && hasSubstance
-}
 
 /** The deal rules, pure: who may negotiate, what the answers so far amount
   * to, what each author may still offer, and what settling does. Nothing here
@@ -23,7 +22,7 @@ final case class DealState(participants: Vector[PlayerId],
   * command, which is safe because nothing that changes a bound can run while
   * a deal is open.
   */
-object NegotiationDeal {
+object NegotiationDeal:
   val negotiatorsDecisionId: String = "negotiation.negotiators"
   val dealDecisionId: String = "negotiation.deal"
   val decisionIds: Set[String] = Set(negotiatorsDecisionId, dealDecisionId)
@@ -32,40 +31,37 @@ object NegotiationDeal {
     * actor's pawn site. The one place that rule lives, asked when the tree is
     * built and (through the tree) when a later power widens it.
     */
-  def eligible(state: ReadyGame, actor: PlayerId): Vector[PlayerId] = {
+  def eligible(state: ReadyGame, actor: PlayerId): Vector[PlayerId] =
     val players = state.game.current.players
     players.find(_.player == actor).flatMap(_.pawnSite).toVector.flatMap(site =>
       players.collect {
         case other if other.player != actor && other.pawnSite.contains(site) =>
           other.player
       })
-  }
 
   /** Actor first, then the chosen players in table order. With no recorded
     * negotiator answer the one eligible candidate is the negotiator: the
     * tree omits the choice when there is only one.
     */
   def participants(state: ReadyGame, actor: PlayerId,
-      pending: PendingTree): Vector[PlayerId] = {
+      pending: PendingTree): Vector[PlayerId] =
     val picked = pending.answered.reverse.collectFirst {
       case Answered(`negotiatorsDecisionId`, ChooseManyAnswer(selected), _) =>
         selected.collect { case DecisionOptionRef.Player(id) => id }
     }.getOrElse(eligible(state, actor)).toSet
     actor +: state.game.current.players.map(_.player).filter(picked)
-  }
 
   def fold(participants: Vector[PlayerId],
       answered: Vector[Answered]): DealState =
     answered.filter(_.decisionId == dealDecisionId).foldLeft(DealState(
       participants, participants.map(_ -> NegotiationTerms()).toMap,
-      Set.empty, declined = false)) {
+      Set.empty, declined = false)):
       case (deal, Answered(_, ProposeTerms(terms), by)) =>
         deal.copy(terms = deal.terms.updated(by, terms), accepted = Set.empty)
       case (deal, Answered(_, AcceptDeal, by)) =>
         deal.copy(accepted = deal.accepted + by)
       case (deal, Answered(_, DeclineDeal, _)) => deal.copy(declined = true)
       case (deal, _) => deal
-    }
 
   def deal(state: ReadyGame, actor: PlayerId, pending: PendingTree): DealState =
     fold(participants(state, actor, pending), pending.answered)
@@ -84,27 +80,24 @@ object NegotiationDeal {
       heading = Some("Negotiation"))
 
   private def bounds(state: ReadyGame, author: PlayerId,
-      participants: Vector[PlayerId]): NegotiationBounds = {
+      participants: Vector[PlayerId]): NegotiationBounds =
     val player = state.game.current.players.find(_.player == author).get
     NegotiationBounds(participants.filter(_ != author), player.board.favor,
       player.relics.map(_.id), disclosable(state, player))
-  }
 
   /** What `author` may promise to reveal: their facedown advisers and held
     * relics, and site relics they know that are still at that site.
     */
   private def disclosable(state: ReadyGame,
-      player: PlayerState): Vector[NegotiationDisclosureRef] = {
-    val advisers = player.advisers.collect {
+      player: PlayerState): Vector[NegotiationDisclosureRef] =
+    val advisers = player.advisers.collect:
       case DenizenState(id, Orientation.FaceDown, _) =>
         NegotiationDisclosureRef.Adviser(player.player, id): NegotiationDisclosureRef
       case VisionState(id, Orientation.FaceDown) =>
         NegotiationDisclosureRef.Adviser(player.player, id): NegotiationDisclosureRef
-    }
-    val held = player.relics.collect {
+    val held = player.relics.collect:
       case relic if relic.orientation == Orientation.FaceDown =>
         NegotiationDisclosureRef.HeldRelic(player.player, relic.id): NegotiationDisclosureRef
-    }
     val known = state.knowledge.siteRelics.getOrElse(player.player, Map.empty)
       .toVector.sortBy(_._1.value).flatMap { case (site, ids) =>
         state.game.current.map.sites.get(site).toVector.flatMap(
@@ -112,7 +105,6 @@ object NegotiationDeal {
             NegotiationDisclosureRef.SiteRelic(site, relic.id): NegotiationDisclosureRef))
       }
     advisers ++ held ++ known
-  }
 
   /** What an agreed deal does: every disclosure records knowledge first, while
     * the cards are still where they were disclosed, then every transfer moves.
@@ -127,7 +119,7 @@ object NegotiationDeal {
     }.map(_ => knowledge(deal) ++ transfers(deal))
 
   private def affordable(state: ReadyGame, author: PlayerId,
-      terms: NegotiationTerms): Either[OathViolation, Unit] = {
+      terms: NegotiationTerms): Either[OathViolation, Unit] =
     val player = state.game.current.players.find(_.player == author).get
     val favor = terms.transfers.map(_.favor).sum
     for {
@@ -137,10 +129,9 @@ object NegotiationDeal {
         player.relics.exists(_.id == id)), (), OathViolation.NegotiationUnavailable(
         "an offered relic is no longer held by its author"))
     } yield ()
-  }
 
   private def knowledge(deal: DealState): Vector[CoreOperation] =
-    deal.participants.flatMap(deal.terms(_).disclosures).map {
+    deal.participants.flatMap(deal.terms(_).disclosures).map:
       case NegotiationDisclosure(recipient,
           NegotiationDisclosureRef.Adviser(owner, card)) =>
         Peek(recipient, card, Location.PlayArea(owner)): CoreOperation
@@ -150,7 +141,6 @@ object NegotiationDeal {
       case NegotiationDisclosure(recipient,
           NegotiationDisclosureRef.SiteRelic(site, relic)) =>
         Peek(recipient, relic, Location.Site(site)): CoreOperation
-    }
 
   private def transfers(deal: DealState): Vector[CoreOperation] =
     deal.participants.flatMap { author =>
@@ -164,4 +154,3 @@ object NegotiationDeal {
         favor ++ relics
       }
     }
-}

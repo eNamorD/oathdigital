@@ -27,7 +27,7 @@ import oathdigital.model._
   * compile here ("match may not be exhaustive") until it is given a real
   * arm.
   */
-private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
+private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
   this: GameEventJsonSupport =>
   import WireError._
 
@@ -48,7 +48,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     ModifyRollOutcome
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
-    operation match {
+    operation match
       case operation: CardOperation => encodeCardOperation(operation)
       case operation: PieceOperation => encodePieceOperation(operation)
       case operation: ResourceOperation => encodeResourceOperation(operation)
@@ -86,10 +86,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         throw UnencodableOperation(InvalidValue(
           "$.payload.ops", "a CardPlayed hook is a tree-control composite, " +
             "never a recorded delta"))
-    }
 
   private def encodeCardOperation(operation: CardOperation): ujson.Value =
-    operation match {
+    operation match
       case Peek(viewer, card, at) => ujson.Obj("kind" -> "peek",
         "viewerPlayerId" -> viewer.value, "card" -> encodeCardRef(card),
         "at" -> encodeLocation(at))
@@ -133,10 +132,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
           "firstLocation" -> encodePositionedLocation(firstLocation),
           "secondCard" -> encodeCardRef(secondCard),
           "secondLocation" -> encodePositionedLocation(secondLocation))
-    }
 
   private def encodePieceOperation(operation: PieceOperation): ujson.Value =
-    operation match {
+    operation match
       case Move(piece, from, to, orientation) => ujson.Obj(
         "kind" -> "move",
         "piece" -> encodePiece(piece),
@@ -177,10 +175,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
           "kind" -> "pay-cost", "playerId" -> player.value,
           "placedAt" -> encodeLocation(placedAt),
           "cost" -> encodeCost(cost)) ++ optional)
-    }
 
   private def encodeResourceOperation(operation: ResourceOperation): ujson.Value =
-    operation match {
+    operation match
       case SpendSupply(player, amount, _) => ujson.Obj(
         "kind" -> "spend-supply", "playerId" -> player.value,
         "amount" -> amount)
@@ -200,10 +197,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       case Gain.Warbands(player, kind, amount) => ujson.Obj(
         "kind" -> "gain-warbands", "playerId" -> player.value,
         "force" -> encodeForceKind(kind), "amount" -> amount)
-    }
 
   private def encodeTurnOperation(operation: TurnOperation): ujson.Value =
-    operation match {
+    operation match
       case AdvanceVisionsDrawn => ujson.Obj("kind" -> "advance-visions-drawn")
       case BeginTurn(player, phase) => ujson.Obj("kind" -> "begin-turn",
         "playerId" -> player.value, "phase" -> phase.key)
@@ -237,31 +233,27 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "kind" -> "modify-roll-outcome", "pool" -> pool.value,
         "skulls" -> skulls.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
         "score" -> score.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
-    }
 
-  private def encodePowerTiming(timing: PowerTiming): String = timing match {
+  private def encodePowerTiming(timing: PowerTiming): String = timing match
     case PowerTiming.Wake => "wake"
     case PowerTiming.Act => "act"
     case PowerTiming.Rest => "rest"
-  }
 
   private def decodePowerTiming(value: String,
-      path: String): Either[WireError, PowerTiming] = value match {
+      path: String): Either[WireError, PowerTiming] = value match
     case "wake" => Right(PowerTiming.Wake)
     case "act" => Right(PowerTiming.Act)
     case "rest" => Right(PowerTiming.Rest)
     case other => Left(InvalidValue(path, s"unknown power timing '$other'"))
-  }
 
   private def decodePowerCard(kind: String, id: String,
-      path: String): Either[WireError, CardId] = kind match {
+      path: String): Either[WireError, CardId] = kind match
     case "denizen" => Right(DenizenId(id))
     case "relic" => Right(RelicId(id))
     case "edifice" => Right(EdificeId(id))
     case "vision" => Right(VisionId(id))
     case "legacy" => Right(LegacyId(id))
     case other => Left(InvalidValue(path, s"unknown power source card '$other'"))
-  }
 
   private type DecodedOperation = PartialFunction[String, Either[WireError, CoreOperation]]
 
@@ -275,7 +267,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         s"$path.kind", s"unknown recorded walker operation '$other'")))
 
   private def decodeCardOperation(value: ujson.Value,
-      path: String): DecodedOperation = {
+      path: String): DecodedOperation =
     case "peek" => for {
       card <- decodeCardRef(value("card"), s"$path.card")
       at <- decodeLocation(value("at"), s"$path.at")
@@ -315,9 +307,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     } yield Discard.Relic(RelicId(value("card").str), from, secrets,
       PlayerId(value("actingPlayerId").str))
     case "draw" => for {
-      cards <- traverse(value("cards").arr.zipWithIndex.toVector) {
+      cards <- traverse(value("cards").arr.zipWithIndex.toVector):
         case (id, index) => decodeCardRef(id, s"$path.cards[$index]")
-      }
       _ <- Either.cond(cards.nonEmpty, (), InvalidValue(s"$path.cards",
         "draw must contain at least one card"))
       source <- decodeLocation(value("source"), s"$path.source")
@@ -327,11 +318,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       card <- decodeCardRef(value("card"), s"$path.card")
       from <- decodePositionedLocation(value("from"), s"$path.from")
       destination <- decodeLocation(value("destination"), s"$path.destination")
-      _ <- destination match {
+      _ <- destination match
         case _: Location.Site | _: Location.PlayArea => Right(())
         case other => Left(InvalidValue(s"$path.destination",
           s"play destination must be a site or a play area, got $other"))
-      }
       orientation <- decodeOrientation(value("orientation").str,
         s"$path.orientation")
     } yield Play(card, from, destination, orientation)
@@ -351,19 +341,17 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       _ <- Either.cond(firstLocation != secondLocation, (),
         InvalidValue(path, "swap requires two different locations"))
     } yield Swap(firstCard, firstLocation, secondCard, secondLocation)
-  }
 
   private def decodePieceOperation(value: ujson.Value,
-      path: String): DecodedOperation = {
+      path: String): DecodedOperation =
     case "move" => for {
       piece <- decodePiece(value("piece"), s"$path.piece")
       from <- decodePositionedLocation(value("from"), s"$path.from")
       to <- decodePositionedLocation(value("to"), s"$path.to")
-      orientation <- value("resultingOrientation") match {
+      orientation <- value("resultingOrientation") match
         case ujson.Null => Right(None)
         case other => decodeOrientation(other.str,
           s"$path.resultingOrientation").map(Some(_))
-      }
     } yield Move(piece, from, to, orientation)
     case "take" => for {
       piece <- decodePiece(value("piece"), s"$path.piece")
@@ -398,12 +386,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     case "burn" => for {
       resource <- decodePiece(value("resource"), s"$path.resource")
       from <- decodePositionedLocation(value("from"), s"$path.from")
-      burn <- resource match {
+      burn <- resource match
         case Piece.Favor(amount) => Right(Burn.favor(amount, from))
         case Piece.Secrets(amount) => Right(Burn.secrets(amount, from))
         case other => Left(InvalidValue(s"$path.resource",
           s"unsupported burn resource $other"))
-      }
     } yield burn
     case "give" => decodeGive(value, path)
     case "exchange" => for {
@@ -413,17 +400,15 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     case "pay-cost" => for {
       placedAt <- decodeLocation(value("placedAt"), s"$path.placedAt")
       cost <- decodeCost(value("cost"), s"$path.cost")
-      bank <- value.obj.get("matchingBank") match {
+      bank <- value.obj.get("matchingBank") match
         case None | Some(ujson.Null) => Right(None)
         case Some(raw) => decodeSuit(raw.str, s"$path.matchingBank").map(Some(_))
-      }
     } yield PayCost(PlayerId(value("playerId").str), placedAt, cost,
       intoOccupied = value.obj.get("intoOccupied").exists(_.bool),
       matchingBank = bank)
-  }
 
   private def decodeResourceOperation(value: ujson.Value,
-      path: String): DecodedOperation = {
+      path: String): DecodedOperation =
     case "spend-supply" => decodePositiveInt(value("amount"), s"$path.amount")
       .map(amount => SpendSupply(PlayerId(value("playerId").str), amount))
     case "gain-supply" => decodePositiveInt(value("amount"), s"$path.amount")
@@ -443,10 +428,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       force <- decodeForceKind(value("force"), s"$path.force")
       amount <- safeIntField(value.obj, "amount", path)
     } yield Gain.Warbands(PlayerId(value("playerId").str), force, amount)
-  }
 
   private def decodeTurnOperation(value: ujson.Value,
-      path: String): DecodedOperation = {
+      path: String): DecodedOperation =
     case "advance-visions-drawn" => Right(AdvanceVisionsDrawn)
     case "begin-turn" =>
       val key = value("phase").str
@@ -486,7 +470,6 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       skulls <- decodeOptionalSignedInt(value("skulls"), s"$path.skulls")
       score <- decodeOptionalSignedInt(value("score"), s"$path.score")
     } yield ModifyRollOutcome(PoolKey(value("pool").str), skulls, score)
-  }
 
   private def encodeGive(give: Give, kind: String): ujson.Value = ujson.Obj(
     "kind" -> kind, "piece" -> encodePiece(give.piece),
@@ -501,12 +484,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
   } yield Give(piece, PlayerId(value("giverPlayerId").str), from, to)
 
   private def asWarbands(piece: Piece,
-      path: String): Either[WireError, Piece.Warbands] = piece match {
+      path: String): Either[WireError, Piece.Warbands] = piece match
     case warbands: Piece.Warbands => Right(warbands)
     case other => Left(InvalidValue(path, s"expected warbands, found $other"))
-  }
 
-  private def encodeBuryableCard(card: BuryableCard): ujson.Value = card match {
+  private def encodeBuryableCard(card: BuryableCard): ujson.Value = card match
     case BuryableCard.Denizen(id) => ujson.Obj("kind" -> "denizen",
       "id" -> id.value)
     case BuryableCard.Relic(id) => ujson.Obj("kind" -> "relic",
@@ -515,53 +497,46 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       "id" -> id.value)
     case BuryableCard.Vision(id) => ujson.Obj("kind" -> "vision",
       "id" -> id.value)
-  }
 
   private def decodeBuryableCard(value: ujson.Value,
-      path: String): Either[WireError, BuryableCard] = value("kind").str match {
+      path: String): Either[WireError, BuryableCard] = value("kind").str match
     case "denizen" => Right(BuryableCard.Denizen(DenizenId(value("id").str)))
     case "relic" => Right(BuryableCard.Relic(RelicId(value("id").str)))
     case "edifice" => Right(BuryableCard.Edifice(EdificeId(value("id").str)))
     case "vision" => Right(BuryableCard.Vision(VisionId(value("id").str)))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown buryable card '$other'"))
-  }
 
-  private def encodeSecretSide(value: SecretSide): String = value match {
+  private def encodeSecretSide(value: SecretSide): String = value match
     case SecretSide.FaceUp => "face-up"
     case SecretSide.FaceDown => "face-down"
-  }
 
   private def decodeSecretSide(value: String,
-      path: String): Either[WireError, SecretSide] = value match {
+      path: String): Either[WireError, SecretSide] = value match
     case "face-up" => Right(SecretSide.FaceUp)
     case "face-down" => Right(SecretSide.FaceDown)
     case other => Left(InvalidValue(path, s"unknown secret side '$other'"))
-  }
 
-  private def encodeDiceKind(kind: DiceKind): String = kind match {
+  private def encodeDiceKind(kind: DiceKind): String = kind match
     case DiceKind.Defense => "defense"
     case DiceKind.Attack => "attack"
-  }
 
   private def decodeDiceKind(value: String,
-      path: String): Either[WireError, DiceKind] = value match {
+      path: String): Either[WireError, DiceKind] = value match
     case "defense" => Right(DiceKind.Defense)
     case "attack" => Right(DiceKind.Attack)
     case other => Left(InvalidValue(path, s"unknown dice kind '$other'"))
-  }
 
   private def decodeOptionalSignedInt(value: ujson.Value,
-      path: String): Either[WireError, Option[Int]] = value match {
+      path: String): Either[WireError, Option[Int]] = value match
     case ujson.Null => Right(None)
     case other => decodeSignedInt(other, path).map(Some(_))
-  }
 
   /** Total over `Piece` (I8), matching `encodeLocation`'s pattern: every
     * case is real data with a direct encoding, so there is no throwing arm
     * here at all.
     */
-  private def encodePiece(piece: Piece): ujson.Value = piece match {
+  private def encodePiece(piece: Piece): ujson.Value = piece match
     case Piece.Card(id) => ujson.Obj("kind" -> "card",
       "card" -> encodeCardRef(id))
     case Piece.Banner(banner) => ujson.Obj("kind" -> "banner",
@@ -574,10 +549,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       "amount" -> amount)
     case Piece.Warbands(force, amount) => ujson.Obj("kind" -> "warbands",
       "force" -> encodeForceKind(force), "amount" -> amount)
-  }
 
   private def decodePiece(value: ujson.Value,
-      path: String): Either[WireError, Piece] = value("kind").str match {
+      path: String): Either[WireError, Piece] = value("kind").str match
     case "card" => decodeCardRef(value("card"), s"$path.card").map(Piece.Card.apply)
     case "banner" => decodeBanner(value("banner").str, s"$path.banner")
       .map(Piece.Banner.apply)
@@ -596,21 +570,18 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     } yield warbands
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown recorded walker piece '$other'"))
-  }
 
-  private def encodeStackPosition(value: StackPosition): String = value match {
+  private def encodeStackPosition(value: StackPosition): String = value match
     case StackPosition.Unspecified => "unspecified"
     case StackPosition.Top => "top"
     case StackPosition.Bottom => "bottom"
-  }
 
   private def decodeStackPosition(value: String,
-      path: String): Either[WireError, StackPosition] = value match {
+      path: String): Either[WireError, StackPosition] = value match
     case "unspecified" => Right(StackPosition.Unspecified)
     case "top" => Right(StackPosition.Top)
     case "bottom" => Right(StackPosition.Bottom)
     case other => Left(InvalidValue(path, s"unknown stack position '$other'"))
-  }
 
   private def encodePositionedLocation(value: PositionedLocation): ujson.Value =
     ujson.Obj("location" -> encodeLocation(value.location),
@@ -634,7 +605,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     * enumeration test "every Location variant round-trips through the
     * walker codec" in `GameEventWireSuite`.
     */
-  private def encodeLocation(value: Location): ujson.Value = value match {
+  private def encodeLocation(value: Location): ujson.Value = value match
     case Location.Site(site) => ujson.Obj("kind" -> "site",
       "siteId" -> site.value)
     case Location.PlayArea(player) => ujson.Obj("kind" -> "play-area",
@@ -658,10 +629,9 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     case Location.Reliquary => ujson.Obj("kind" -> "reliquary")
     case Location.Atlas => ujson.Obj("kind" -> "atlas")
     case Location.Dispossessed => ujson.Obj("kind" -> "dispossessed")
-  }
 
   private def decodeLocation(value: ujson.Value,
-      path: String): Either[WireError, Location] = value("kind").str match {
+      path: String): Either[WireError, Location] = value("kind").str match
     case "site" => Right(Location.Site(SiteId(value("siteId").str)))
     case "play-area" =>
       Right(Location.PlayArea(PlayerId(value("playerId").str)))
@@ -687,7 +657,6 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     case "dispossessed" => Right(Location.Dispossessed)
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown recorded walker location '$other'"))
-  }
 
   private def encodeCardDeck(value: CardDeck): String = value.key
 
@@ -713,24 +682,21 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
   // Must not be named encodeOrientation: under Scala 3 a same-named private
   // method here was dispatched in place of GameEventJsonSupport's, which
   // broke encoding of Flip and Play operations.
-  private def orientationKey(value: Orientation): String = value match {
+  private def orientationKey(value: Orientation): String = value match
     case Orientation.FaceUp => "face-up"
     case Orientation.FaceDown => "face-down"
-  }
 
   private def decodeOrientation(value: String,
-      path: String): Either[WireError, Orientation] = value match {
+      path: String): Either[WireError, Orientation] = value match
     case "face-up" => Right(Orientation.FaceUp)
     case "face-down" => Right(Orientation.FaceDown)
     case other => Left(InvalidValue(path, s"unknown orientation '$other'"))
-  }
 
   protected final def decodeSignedInt(value: ujson.Value,
-      path: String): Either[WireError, Int] = value match {
+      path: String): Either[WireError, Int] = value match
     case ujson.Num(number) if number.isFinite && number == math.rint(number) &&
         number >= Int.MinValue && number <= Int.MaxValue => Right(number.toInt)
     case _ => Left(InvalidValue(path, "expected a signed 32-bit integer"))
-  }
 
   private def decodePositiveInt(value: ujson.Value,
       path: String): Either[WireError, Int] =
@@ -738,4 +704,3 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       if (amount > 0) Right(amount)
       else Left(InvalidValue(path, "expected a positive integer"))
     }
-}

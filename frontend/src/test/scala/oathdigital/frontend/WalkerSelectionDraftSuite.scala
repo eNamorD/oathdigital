@@ -3,7 +3,7 @@ package oathdigital.frontend
 import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
 
-class WalkerSelectionDraftSuite extends munit.FunSuite {
+class WalkerSelectionDraftSuite extends munit.FunSuite:
   private def site(id: String) = DecisionOptionState("site", id, id)
   private val many = DecisionQueryState("choose-many",
     Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
@@ -15,7 +15,7 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
   private def parked(id: String, query: DecisionQueryState) =
     Some(WalkerDecisionState("challenge", id, "decide", query = Some(query)))
 
-  test("a choose-many draft opens empty, toggles, and never exceeds its count") {
+  test("a choose-many draft opens empty, toggles, and never exceeds its count"):
     val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("challenge.ribbon-site", many)): @unchecked
     assertEquals(draft.selected, Vector.empty)
@@ -25,18 +25,16 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
     assert(two.canConfirm)
     assertEquals(two.toggle("site:b"), two)
     assertEquals(two.toggle("site:a").selected, Vector("site:c"))
-  }
 
-  test("a choose-many range confirms between its minimum and maximum") {
+  test("a choose-many range confirms between its minimum and maximum"):
     val range = many.copy(minimum = Some(1), maximum = Some(3))
     val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("negotiation.negotiators", range)): @unchecked
     assert(!draft.canConfirm)
     assert(draft.toggle("site:a").canConfirm)
     assert(draft.toggle("site:a").toggle("site:b").toggle("site:c").canConfirm)
-  }
 
-  test("an optional choose-many confirms an empty selection and submits it") {
+  test("an optional choose-many confirms an empty selection and submits it"):
     val optional = many.copy(minimum = Some(0), maximum = Some(3))
     val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("campaign.targets", optional)): @unchecked
@@ -46,9 +44,8 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
     assertEquals(draft.toggle("site:b").command, Some(Intent.ResolveWalker(
       "campaign.targets", DecisionAnswerWire.ChooseManyWire(
         Vector(DecisionOptionWire("site", "b"))))))
-  }
 
-  test("a choose-many draft submits its selection in declared option order") {
+  test("a choose-many draft submits its selection in declared option order"):
     val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("challenge.ribbon-site", many)): @unchecked
     assertEquals(draft.toggle("site:c").command, None)
@@ -56,9 +53,8 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
       Some(Intent.ResolveWalker("challenge.ribbon-site",
         DecisionAnswerWire.ChooseManyWire(Vector(DecisionOptionWire("site", "a"),
           DecisionOptionWire("site", "c"))))))
-  }
 
-  test("a choose-amount draft opens at the minimum and clamps to its range") {
+  test("a choose-amount draft opens at the minimum and clamps to its range"):
     val Some(draft: WalkerAmountDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("challenge.amount", amount)): @unchecked
     assertEquals(draft.amount, 3)
@@ -66,9 +62,8 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
     assertEquals(draft.choose(1).amount, 3)
     assertEquals(draft.choose(5).command, Some(Intent.ResolveWalker(
       "challenge.amount", DecisionAnswerWire.ChooseAmountWire(5))))
-  }
 
-  test("a draft opens at the amount the question suggests") {
+  test("a draft opens at the amount the question suggests"):
     // Campaign suggests the whole force: the common answer is committed by
     // default, and dialling it down is one click.
     val Some(draft: WalkerAmountDraft) = WalkerSelectionDraft.reconcile(None,
@@ -80,9 +75,8 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
       context, parked("campaign.force",
         amount.copy(suggested = Some(9)))): @unchecked
     assertEquals(clamped.amount, 6)
-  }
 
-  test("reconcile keeps a draft for the same decision and drops it otherwise") {
+  test("reconcile keeps a draft for the same decision and drops it otherwise"):
     val Some(first: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("challenge.ribbon-site", many)): @unchecked
     val edited = first.toggle("site:a")
@@ -95,5 +89,3 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
       parked("challenge.amount", amount)).map(_.getClass),
       Some(classOf[WalkerAmountDraft]))
     assertEquals(WalkerSelectionDraft.reconcile(Some(edited), context, None), None)
-  }
-}

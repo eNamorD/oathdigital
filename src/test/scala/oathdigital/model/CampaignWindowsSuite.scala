@@ -1,7 +1,7 @@
 package oathdigital.model
 
-class CampaignWindowsSuite extends munit.FunSuite {
-  test("the Campaign windows have stable keys and belong to the Campaign action") {
+class CampaignWindowsSuite extends munit.FunSuite:
+  test("the Campaign windows have stable keys and belong to the Campaign action"):
     Vector(
       PowerWindow.CampaignCost -> "campaign.cost",
       PowerWindow.CampaignKindSelection -> "campaign.kind-selection",
@@ -23,14 +23,12 @@ class CampaignWindowsSuite extends munit.FunSuite {
       PowerWindow.CampaignBeforeTargets -> "campaign.before-targets",
       PowerWindow.CampaignAttackerBattlePlans -> "campaign.attacker-battle-plans",
       PowerWindow.CampaignDefenderBattlePlans -> "campaign.defender-battle-plans",
-      PowerWindow.CampaignAfterOutcome -> "campaign.after-outcome").foreach {
+      PowerWindow.CampaignAfterOutcome -> "campaign.after-outcome").foreach:
       case (window, key) =>
         assertEquals(window.key, key)
         assertEquals(window.associatedMajorAction, Some(MajorActionType.Campaign))
-    }
-  }
 
-  test("every Campaign window key is distinct") {
+  test("every Campaign window key is distinct"):
     val keys = Vector(PowerWindow.CampaignCost, PowerWindow.CampaignKindSelection,
       PowerWindow.CampaignDefenderSelection, PowerWindow.CampaignTargetSelection,
       PowerWindow.CampaignForceSelection, PowerWindow.CampaignGatherPools,
@@ -40,5 +38,3 @@ class CampaignWindowsSuite extends munit.FunSuite {
       PowerWindow.CampaignPlacement, PowerWindow.CampaignRaidTransfer,
       PowerWindow.CampaignRaidRelocation).map(_.key)
     assertEquals(keys.distinct.size, keys.size)
-  }
-}

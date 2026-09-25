@@ -53,7 +53,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * to `OperationPipeline`; role, foundation state, and relic availability do
   * not gate Recover.
   */
-object RecoverProcedure {
+object RecoverProcedure:
   val recoverPool: PoolKey = PoolKey("recover")
   val choiceDecisionId: String = "recover.choice"
   val relicDecisionId: String = "recover.relic"
@@ -135,7 +135,7 @@ object RecoverProcedure {
 
   /** Tree closes only over command-stable actor, site, and difficulty. */
   private def tree(actor: PlayerId, siteId: SiteId,
-      difficulty: Int): Operation = {
+      difficulty: Int): Operation =
     def scoreOf(ready: ReadyGame): Int =
       ready.game.current.rollOutcomes.get(recoverPool).fold(0)(_.score)
 
@@ -148,10 +148,9 @@ object RecoverProcedure {
     val stopOption = DecisionOptionRef.Button("stop")
 
     def stopped(pending: PendingTree): Boolean =
-      pending.answered.lastOption.exists {
+      pending.answered.lastOption.exists:
         case Answered(_, ChooseOneAnswer(selected), _) => selected == stopOption
         case _ => false
-      }
 
     // No `validate` closure guards this node, and that is not a lost check.
     // Its whole body rejected a continue-or-stop answer once the recovery had
@@ -224,5 +223,3 @@ object RecoverProcedure {
       Repeat(repeatGuard, body),
       afterLoop
     ).copy(window = Some(PowerWindow.RecoverActionEligibility))
-  }
-}

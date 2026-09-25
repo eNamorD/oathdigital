@@ -11,7 +11,7 @@ import oathdigital.protocol.projection.{DecisionQueryProjection, PlayerBoardProj
 /** Staging and driving shared by the slice 1c suites. `PowerFixture` (slice
   * 1a) stays untouched so that parallel slices do not collide on it.
   */
-object TargetsFixture {
+object TargetsFixture:
   import PowerFixture._
 
   val rules = new OathRules(catalog,
@@ -49,13 +49,12 @@ object TargetsFixture {
       p.advisers :+ VisionState(card, orientation)))
 
   /** Puts `owner`'s advisers at the bottom of the world deck. */
-  def withoutAdvisers(ready: ReadyGame, owner: PlayerId): ReadyGame = {
+  def withoutAdvisers(ready: ReadyGame, owner: PlayerId): ReadyGame =
     val held = player(ready, owner).advisers.map(_.id).collect {
       case id: WorldCardId => id }
     updatePlayer(ready, owner)(_.copy(advisers = Vector.empty))
       .updateCurrent(c => c.copy(commonCards = c.commonCards.copy(
         worldDeck = c.commonCards.worldDeck ++ held)))
-  }
 
   def use(ready: ReadyGame, power: PhasePower, source: DecisionOptionRef)
       : Either[OathViolation, OathTransition] = rules.startWalker(
@@ -105,4 +104,3 @@ object TargetsFixture {
       : PlayerBoardProjection = projector.projectPublic("targets",
     LoadedGame(transition.state, 30L)).playerBoards
     .find(_.playerId == owner.value).get
-}

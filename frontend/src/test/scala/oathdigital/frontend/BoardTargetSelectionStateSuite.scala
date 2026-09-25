@@ -1,13 +1,13 @@
 package oathdigital.frontend
 
-class BoardTargetSelectionStateSuite extends munit.FunSuite {
+class BoardTargetSelectionStateSuite extends munit.FunSuite:
   private val siteA = BoardTargetCandidate(BoardTargetRef.Site("a"), "A",
     Vector("2 Supply"))
   private val siteB = BoardTargetCandidate(BoardTargetRef.Site("b"), "B",
     Vector.empty)
   private val context = BoardSelectionContext("game", "red", 4)
 
-  test("automatic setup selection cannot cancel and single choice submits") {
+  test("automatic setup selection cannot cancel and single choice submits"):
     val action = BoardTargetAction("place-pawn", "Choose", 1, 1,
       autoActivate = true, Vector(siteA))
     val state = BoardTargetSelectionState.reconcile(None, context, Vector(action))
@@ -15,9 +15,8 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(state.cancel, state)
     assertEquals(state.choose(siteA.target),
       BoardSelectionResult.Submit(action, Vector(siteA.target)))
-  }
 
-  test("optional modes activate cancel and ignore unauthorized targets") {
+  test("optional modes activate cancel and ignore unauthorized targets"):
     val action = BoardTargetAction("travel", "Travel", 1, 1,
       autoActivate = false, Vector(siteA))
     val initial = BoardTargetSelectionState.reconcile(None, context, Vector(action))
@@ -26,9 +25,8 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(active.activeActionKind, Some("travel"))
     assertEquals(active.cancel.activeAction, None)
     assertEquals(active.choose(siteB.target), BoardSelectionResult.Updated(active))
-  }
 
-  test("restoring projected actions after preview cancellation permits another action") {
+  test("restoring projected actions after preview cancellation permits another action"):
     val travel = BoardTargetAction("travel", "Travel", 1, 1,
       autoActivate = false, Vector(siteA))
     val other = BoardTargetCandidate(BoardTargetRef.Site("c"), "C",
@@ -45,9 +43,8 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(restored.activeAction, Some(challenge))
     assertEquals(restored.choose(other.target),
       BoardSelectionResult.Submit(challenge, Vector(other.target)))
-  }
 
-  test("explicit-confirm target mode requires confirmation and supports cancel") {
+  test("explicit-confirm target mode requires confirmation and supports cancel"):
     val action = BoardTargetAction("travel", "Travel", 1, 1,
       autoActivate = false, Vector(siteA), explicitConfirm = true)
     val active = BoardTargetSelectionState.reconcile(None, context,
@@ -57,9 +54,8 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assert(selected.canConfirm)
     assertEquals(selected.confirm.map(_.targets), Some(Vector(siteA.target)))
     assertEquals(selected.cancel.activeAction, None)
-  }
 
-  test("state clears on sequence player game candidate or action changes") {
+  test("state clears on sequence player game candidate or action changes"):
     val action = BoardTargetAction("travel", "Travel", 1, 1,
       autoActivate = false, Vector(siteA, siteB), explicitConfirm = true)
     val selected = BoardTargetSelectionState.reconcile(None, context,
@@ -75,5 +71,3 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(BoardTargetSelectionState.reconcile(Some(selected), context,
       Vector(action.copy(maximum = 1, candidates = Vector(siteA)))).selectedKeys,
       Set.empty[String])
-  }
-}

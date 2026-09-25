@@ -11,7 +11,7 @@ import oathdigital.model._
   * bandit defender uses it from a site Bandits rule, without choosing. A Raid
   * targets no site, so it never applies to one.
   */
-final case class Watchdog private (cardId: DenizenId) extends BattlePlan {
+final case class Watchdog private (cardId: DenizenId) extends BattlePlan:
   def id: PowerId = Watchdog.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -21,11 +21,9 @@ final case class Watchdog private (cardId: DenizenId) extends BattlePlan {
     else context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Watchdog: add 1 defense die", Vector.empty,
       Vector(CampaignPlanEffect.AddDefenseDice(1))))
-}
 
-object Watchdog {
+object Watchdog:
   val id: PowerId = PowerId("denizen.watchdog")
 
   def forCatalog(catalog: ExecutableCatalog): Option[Watchdog] =
     CatalogCards.denizen(catalog, id).map(new Watchdog(_))
-}

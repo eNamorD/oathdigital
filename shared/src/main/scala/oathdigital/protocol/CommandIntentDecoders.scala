@@ -1,12 +1,12 @@
 package oathdigital.protocol
 
-private[protocol] object CommandIntentDecoders {
+private[protocol] object CommandIntentDecoders:
   import CommandJsonSupport._
   import GameIntent._
   import ProtocolDecodeFailure._
 
   def decode(kind: String, value: ujson.Obj, path: String)
-      : Either[ProtocolDecodeFailure, GameIntent] = kind match {
+      : Either[ProtocolDecodeFailure, GameIntent] = kind match
     case "endWake" => empty(value, path, EndWake)
     case "beginRest" => empty(value, path, BeginRest)
     case "finishRest" => empty(value, path, FinishRest)
@@ -15,11 +15,10 @@ private[protocol] object CommandIntentDecoders {
       power <- string(value, "powerId", path)
       source <- field(value, "source", path).flatMap(raw =>
         CommandNestedCodecs.decodeStartArgsWire(ujson.Arr(raw), s"$path.source"))
-        .flatMap {
+        .flatMap:
           case Vector(one) => Right(one)
           case _ => Left(InvalidValue(s"$path.source",
             "expected one power source"))
-        }
     } yield UsePower(power, source)
     case "peekSiteRelics" => empty(value, path, PeekSiteRelics)
     case "revealOwnedRelic" => one(value, path, "relicId")(RevealOwnedRelic.apply)
@@ -34,11 +33,10 @@ private[protocol] object CommandIntentDecoders {
       modifiers <- field(value, "modifiers", path).flatMap(strings(_, s"$path.modifiers"))
       // Optional and empty by default: every walker procedure but Travel
       // selects nothing before it starts.
-      startArgs <- value.value.get("startArgs") match {
+      startArgs <- value.value.get("startArgs") match
         case None => Right(Vector.empty[WalkerStartArgWire])
         case Some(args) => CommandNestedCodecs.decodeStartArgsWire(args,
           s"$path.startArgs")
-      }
     } yield StartWalker(action, modifiers, startArgs)
     case "rollWalker" => one(value, path, "pool")(RollWalker.apply)
     case "resolveWalker" => for {
@@ -48,9 +46,7 @@ private[protocol] object CommandIntentDecoders {
         CommandNestedCodecs.decodeDecisionAnswerWire(_, s"$path.payload"))
     } yield ResolveWalker(id, payload)
     case other => Left(InvalidValue(s"$path.type", s"unknown intent type '$other'"))
-  }
 
   private def empty(value: ujson.Obj, path: String, result: GameIntent) = exact(value, Set("type"), path).map(_ => result)
   private def one(value: ujson.Obj, path: String, name: String)(f: String => GameIntent) =
     exact(value, Set("type", name), path).flatMap(_ => string(value, name, path)).map(f)
-}

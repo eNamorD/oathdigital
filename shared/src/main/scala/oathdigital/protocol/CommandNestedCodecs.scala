@@ -1,6 +1,6 @@
 package oathdigital.protocol
 
-private[protocol] object CommandNestedCodecs {
+private[protocol] object CommandNestedCodecs:
   import CommandJsonSupport._
   import ProtocolDecodeFailure._
 
@@ -49,7 +49,7 @@ private[protocol] object CommandNestedCodecs {
         } yield WalkerStartArgWire(kind, id) }
     })
 
-  def encodeDecisionAnswerWire(value: DecisionAnswerWire): ujson.Obj = value match {
+  def encodeDecisionAnswerWire(value: DecisionAnswerWire): ujson.Obj = value match
     case DecisionAnswerWire.ChooseOneWire(kind, id) =>
       ujson.Obj("kind" -> "choose-one", "optionKind" -> kind, "optionId" -> id)
     case DecisionAnswerWire.PartitionWire(placements) =>
@@ -72,7 +72,6 @@ private[protocol] object CommandNestedCodecs {
       ujson.Obj("kind" -> "propose-terms", "terms" -> encodeNegotiation(terms))
     case DecisionAnswerWire.AcceptDealWire => ujson.Obj("kind" -> "accept-deal")
     case DecisionAnswerWire.DeclineDealWire => ujson.Obj("kind" -> "decline-deal")
-  }
 
   def decodeDecisionAnswerWire(value: ujson.Value, path: String)
       : Either[ProtocolDecodeFailure, DecisionAnswerWire] = obj(value, path).flatMap { root =>
@@ -147,11 +146,10 @@ private[protocol] object CommandNestedCodecs {
       amount <- field(row, "amount", path).flatMap(integer(_, s"$path.amount"))
     } yield DistributeAmountWire(optionKind, optionId, amount) }
 
-  private def encodeInformation(value: NegotiationInformation): ujson.Obj = value match {
+  private def encodeInformation(value: NegotiationInformation): ujson.Obj = value match
     case NegotiationInformation.Adviser(owner, card) => ujson.Obj("kind" -> "adviser", "ownerPlayerId" -> owner, "card" -> world(card))
     case NegotiationInformation.HeldRelic(owner, relic) => ujson.Obj("kind" -> "held-relic", "ownerPlayerId" -> owner, "relicId" -> relic)
     case NegotiationInformation.SiteRelic(site, relic) => ujson.Obj("kind" -> "site-relic", "siteId" -> site, "relicId" -> relic)
-  }
   private def decodeTransfer(value: ujson.Value, path: String) = obj(value, path).flatMap { row => for {
     _ <- exact(row, Set("recipientPlayerId", "favor", "relicIds"), path)
     recipient <- string(row, "recipientPlayerId", path)
@@ -174,4 +172,3 @@ private[protocol] object CommandNestedCodecs {
   private def decodeWorld(value: ujson.Value, path: String) = obj(value, path).flatMap { row => for {
     _ <- exact(row, Set("kind", "id"), path); kind <- string(row, "kind", path); id <- string(row, "id", path)
   } yield WorldCard(kind, id) }
-}

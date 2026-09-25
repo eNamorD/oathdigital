@@ -20,14 +20,13 @@ import oathdigital.model.{Answered, CoreOperation, OathState, OathViolation, Pen
   * `ProcedureWalker.applyRecorded` remains the public entry point and
   * delegates here, so no caller learns that this file exists.
   */
-private[walker] object WalkerReplay {
+private[walker] object WalkerReplay:
 
   def applyRecorded(state: OathState,
-      event: WalkerEvent): Either[OathViolation, OathState] = state match {
+      event: WalkerEvent): Either[OathViolation, OathState] = state match
     case OathState.Ready(ready) => applyRecordedReady(ready, event)
       .map(OathState.Ready.apply)
     case _ => Left(OathViolation.GameNotStarted)
-  }
 
   /** Applies the recorded operations the way the pipeline ran them: a `PayCost`
     * whose payer is not the active player settles at once, so the recorded
@@ -35,14 +34,13 @@ private[walker] object WalkerReplay {
     */
   private def executeRecorded(ready: ReadyGame, ops: Vector[CoreOperation])
       : Either[OathViolation, ReadyGame] =
-    ops.foldLeft[Either[OathViolation, ReadyGame]](Right(ready)) {
+    ops.foldLeft[Either[OathViolation, ReadyGame]](Right(ready)):
       (result, operation) => result.flatMap(state =>
         PayCostSettlement.prepare(state, operation).flatMap(prepared =>
           new OperationExecutor().execute(state, prepared).left.map(_.toViolation)))
-    }
 
   private def applyRecordedReady(ready: ReadyGame,
-      event: WalkerEvent): Either[OathViolation, ReadyGame] = {
+      event: WalkerEvent): Either[OathViolation, ReadyGame] =
     def invalid(detail: String) = Left(OathViolation.InvalidEventOrder(detail))
     def validateStep(step: WalkerStepRecorded)
         : Either[OathViolation, Unit] =
@@ -61,7 +59,7 @@ private[walker] object WalkerReplay {
             pending.at.mkString(".")))
     } yield pending
 
-    event match {
+    event match
       // `contributions` is deliberately unmatched (`_`) below: replay applies
       // `ops` only and must never consult which powers produced them (spec
       // decision 5) -- see `WalkerStepRecorded.contributions`'s doc.
@@ -98,7 +96,7 @@ private[walker] object WalkerReplay {
         _ <- Either.cond(at.nonEmpty && at.forall(segment =>
           segment.nonEmpty && segment.forall(_.isDigit)), (),
           OathViolation.InvalidEventOrder("invalid durable walker park path"))
-        _ <- ready.game.current.walkerProcedure match {
+        _ <- ready.game.current.walkerProcedure match
           case Some(existing) => for {
             _ <- Either.cond(existing == procedure, (),
               OathViolation.InvalidEventOrder(
@@ -115,15 +113,13 @@ private[walker] object WalkerReplay {
                   "recorded start"))
           } yield ()
           case None => Right(())
-        }
-        _ <- ready.game.current.walkerPending match {
+        _ <- ready.game.current.walkerPending match
           case Some(existing) => Either.cond(existing.answered == answered, (),
             OathViolation.InvalidEventOrder(
               "durable walker park answers do not match recorded choices"))
           case None => Either.cond(answered.isEmpty, (),
             OathViolation.InvalidEventOrder(
               "initial durable walker park has unexpected answers"))
-        }
       } yield ready.copy(game = ready.game.copy(current =
         ready.game.current.copy(
           walkerPending = Some(PendingTree(at, answered)),
@@ -137,13 +133,12 @@ private[walker] object WalkerReplay {
         // that started it, so nothing set `walkerProcedure` (Forge at a
         // single-resource site is exactly that). The completion still names
         // the procedure, and the clear below is a no-op either way.
-        _ <- ready.game.current.walkerProcedure match {
+        _ <- ready.game.current.walkerProcedure match
           case Some(existing) => Either.cond(existing == procedure, (),
             OathViolation.InvalidEventOrder(
               s"walker completion ${procedure.key} does not match " +
                 existing.key))
           case None => Right(())
-        }
       } yield ready.copy(game = ready.game.copy(current =
         ready.game.current.copy(
           walkerPending = None,
@@ -157,10 +152,7 @@ private[walker] object WalkerReplay {
         invalid(s"unsupported recorded walker payload ${step.payload.productPrefix}")
       case other =>
         invalid(s"unsupported walker event ${other.productPrefix}")
-    }
-  }
 
   private def validNodeId(nodeId: String): Boolean =
     nodeId.nonEmpty && nodeId.split('.').forall(segment =>
       segment.nonEmpty && segment.forall(_.isDigit))
-}

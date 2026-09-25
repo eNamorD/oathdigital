@@ -17,7 +17,7 @@ import oathdigital.model._
   * needs the card's suit to return favor.
   */
 final case class CrystalVial(catalog: ExecutableCatalog)
-    extends PaidAction(CrystalVial.id.value, CrystalVial.price) {
+    extends PaidAction(CrystalVial.id.value, CrystalVial.price):
   import CrystalVial._
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -25,7 +25,7 @@ final case class CrystalVial(catalog: ExecutableCatalog)
     Branch((live, _) => ask(live, player)),
     BuildOps((live, pending) => bury(live, player, pending)))))
 
-  private def candidates(ready: ReadyGame, actor: PlayerId): Vector[Candidate] = {
+  private def candidates(ready: ReadyGame, actor: PlayerId): Vector[Candidate] =
     val current = ready.game.current
     val advisers = current.players.find(_.player == actor).toVector
       .flatMap(_.advisers.map {
@@ -42,18 +42,16 @@ final case class CrystalVial(catalog: ExecutableCatalog)
           BuryableCard.Edifice(e.id), Location.Site(site), e.tokens)
       }))
     advisers ++ here
-  }
 
-  private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] = {
+  private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = candidates(ready, actor)
     if (found.isEmpty) Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
       found.flatMap(c => DecisionOption.forRef(c.ref)), heading = Some(
         "Crystal Vial: bury an adviser of yours or a card at your site"))))
-  }
 
   private def bury(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val found = candidates(ready, actor)
     if (found.isEmpty) Right(Vector.empty)
     else for {
@@ -67,14 +65,11 @@ final case class CrystalVial(catalog: ExecutableCatalog)
           s"no suit is known for ${chosen.card.id.value}"))
     } yield Bury.standard(chosen.card, PositionedLocation(chosen.from), suit,
       chosen.tokens.favor, chosen.tokens.secrets, actor)
-  }
-}
 
-object CrystalVial {
+object CrystalVial:
   val id: PowerId = PowerId("relic.crystal-vial")
   val price: Cost = Cost(secret = 1, secretBurnt = 1)
   val decisionId: String = "power.crystal-vial.card"
 
   private[action] final case class Candidate(ref: DecisionOptionRef,
       card: BuryableCard, from: Location, tokens: Tokens)
-}

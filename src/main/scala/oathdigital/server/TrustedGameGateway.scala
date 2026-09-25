@@ -6,15 +6,14 @@ import oathdigital.protocol._
 import oathdigital.protocol.projection.GameProjection
 
 sealed trait TrustedSeatFailure extends Product with Serializable
-object TrustedSeatFailure {
+object TrustedSeatFailure:
   case object Forbidden extends TrustedSeatFailure
   case object InvalidIntent extends TrustedSeatFailure
   case object StorageFailure extends TrustedSeatFailure
   final case class Application(error: GameApplicationError) extends TrustedSeatFailure
-}
 
 /** TrustedSeat is resolved from a credential before crossing this boundary. */
-final class TrustedGameGateway(service: GameApplicationService, projector: GameProjector) {
+final class TrustedGameGateway(service: GameApplicationService, projector: GameProjector):
   import TrustedSeatFailure._
 
   private def actor(gameId: String, seat: TrustedSeat): Either[TrustedSeatFailure, PlayerId] =
@@ -55,4 +54,3 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
     accepted.ignored.map(v => PreviewIgnoredRule(
       v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
     MajorActionPreviewTargets.from(projection, request, accepted.targets))
-}

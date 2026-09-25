@@ -3,22 +3,20 @@ package oathdigital.frontend
 import org.scalajs.dom
 import ServerUiSupport._
 
-private[frontend] object WorldBoardRenderer {
- def players(value: GameProjection, ui: ServerUiView): dom.Element = {
+private[frontend] object WorldBoardRenderer:
+ def players(value: GameProjection, ui: ServerUiView): dom.Element =
    playerBoards(value, ui)
- }
 
  /** A resource as its glyph and its count, with the sentence the words used
    * to carry kept as the accessible name.
    */
  private def counted(token: String, value: String,
-     accessible: String): dom.Element = {
+     accessible: String): dom.Element =
    val node = element("span", "resource")
    node.setAttribute("aria-label", accessible)
    node.appendChild(RulesTextRenderer.glyph(token))
    node.appendChild(dom.document.createTextNode(value))
    node
- }
 
  /** Turn order read from the viewer's own seat. The seating vector is
    * already the cyclic turn order, so anchoring it on the viewer gives who
@@ -30,7 +28,7 @@ private[frontend] object WorldBoardRenderer {
    viewer.map(id => players.indexWhere(_.playerId == id)).filter(_ > 0)
      .fold(players)(at => players.drop(at) ++ players.take(at))
 
- def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element = {
+ def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element =
    val panel = element("section", "panel player-boards")
    // The seat the client holds, not the projection's viewer: a trusted
    // session adopts its seat from that viewer before it renders and refuses
@@ -40,10 +38,9 @@ private[frontend] object WorldBoardRenderer {
      .foreach { player =>
      val section = element("section", "player-board")
      section.setAttribute("data-player-id", player.playerId)
-     if (value.activeParticipantId.contains(player.playerId)) {
+     if (value.activeParticipantId.contains(player.playerId))
        section.classList.add("player-board-active")
        section.setAttribute("aria-label", s"${player.displayName}, active player")
-     }
      // One line for who and what they hold: the pane is a strip across the
      // top of the table, so every line it spends is a line of card.
      val identity = element("h3", "player-identity")
@@ -103,13 +100,12 @@ private[frontend] object WorldBoardRenderer {
      panel.appendChild(section)
    }
    panel
- }
 
  def world(
      value: GameProjection,
      presentation: ViewerPresentation,
      ui: ServerUiView
- ): dom.Element = {
+ ): dom.Element =
    import ui._
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
@@ -127,12 +123,11 @@ private[frontend] object WorldBoardRenderer {
    val regions = element("div", "regions")
    value.world.foreach { region =>
      val section = element("section", "region")
-     val name = region.regionId match {
+     val name = region.regionId match
        case "cradle" => "Cradle"
        case "provinces" => "Provinces"
        case "hinterland" => "Hinterland"
        case other => other
-     }
      section.setAttribute("aria-label", name)
      section.appendChild(text("h3", "region-label", name))
      section.appendChild(pileDisplay("Discard", region.discardCount,
@@ -169,10 +164,9 @@ private[frontend] object WorldBoardRenderer {
        pawnOption.foreach { option =>
          control.setAttribute("role", "button")
          control.setAttribute("tabindex", "0")
-         def choose(): Unit = if (canControl) pawnPlacement.foreach {
+         def choose(): Unit = if (canControl) pawnPlacement.foreach:
            case (decision, _) =>
              submitCommand(WalkerPanelSupport.resolveChooseOneCommand(decision, option))
-         }
          control.addEventListener("click", (_: dom.Event) => choose())
          control.addEventListener("keydown", (event: dom.Event) => {
            val key = event.asInstanceOf[dom.KeyboardEvent].key
@@ -204,12 +198,11 @@ private[frontend] object WorldBoardRenderer {
    panel.appendChild(favorBanks(value))
    panel.appendChild(sharedBank(value, ui))
    panel
- }
 
  private[frontend] final case class RoundSegment(path: String, labelX: Double,
      labelY: Double, markerX: Double, markerY: Double)
 
- private[frontend] def roundSegment(round: Int): RoundSegment = {
+ private[frontend] def roundSegment(round: Int): RoundSegment =
    val center = 100.0; val outer = 88.0; val inner = 49.0
    val start = Math.toRadians(-90.0 + (round - 1) * 45.0 + 2.0)
    val end = Math.toRadians(-90.0 + round * 45.0 - 2.0)
@@ -228,10 +221,9 @@ private[frontend] object WorldBoardRenderer {
      s"L ${n(innerEndX)} ${n(innerEndY)} " +
      s"A ${n(inner)} ${n(inner)} 0 0 0 ${n(innerStartX)} ${n(innerStartY)} Z",
      labelX, labelY, markerX, markerY)
- }
 
  private def roundTracker(value: GameProjection,
-     track: oathdigital.protocol.projection.GameTracksProjection): dom.Element = {
+     track: oathdigital.protocol.projection.GameTracksProjection): dom.Element =
    val section = element("section", "round-tracker")
    section.setAttribute("aria-label", s"Round ${track.round} of 8; " +
      s"Visions Drawn ${track.visionsDrawn}; first player ${track.firstPlayerId}")
@@ -253,13 +245,12 @@ private[frontend] object WorldBoardRenderer {
      label.setAttribute("text-anchor", "middle"); label.setAttribute("dominant-baseline", "middle")
      label.textContent = round.toString
      group.appendChild(path); group.appendChild(label)
-     if (track.usurperLimited && round == track.limiterRound) {
+     if (track.usurperLimited && round == track.limiterRound)
        val marker = dom.document.createElementNS("http://www.w3.org/2000/svg", "text")
        marker.setAttribute("x", segment.markerX.toString)
        marker.setAttribute("y", segment.markerY.toString)
        marker.setAttribute("text-anchor", "middle"); marker.setAttribute("class", "limiter-marker")
        marker.textContent = "◆"; group.appendChild(marker)
-     }
      svg.appendChild(group)
    }
    section.appendChild(svg)
@@ -271,9 +262,8 @@ private[frontend] object WorldBoardRenderer {
      section.appendChild(text("p", "usurper-notice",
        s"Usurper locked until round ${track.limiterRound}"))
    section
- }
 
- private def favorBanks(value: GameProjection): dom.Element = {
+ private def favorBanks(value: GameProjection): dom.Element =
    val banks = element("div", "favor-banks")
    banks.setAttribute("aria-label", "Favor banks")
    value.favorBanks.foreach { bank =>
@@ -286,9 +276,8 @@ private[frontend] object WorldBoardRenderer {
      banks.appendChild(box)
    }
    banks
- }
 
- private def sharedBank(value: GameProjection, ui: ServerUiView): dom.Element = {
+ private def sharedBank(value: GameProjection, ui: ServerUiView): dom.Element =
    val section = element("section", "shared-bank")
    section.appendChild(text("h3", "", "Shared Bank"))
    value.oathkeeper.foreach(oath =>
@@ -302,5 +291,3 @@ private[frontend] object WorldBoardRenderer {
          s"resources ${banner.resources}"))
    }
    section
- }
-}

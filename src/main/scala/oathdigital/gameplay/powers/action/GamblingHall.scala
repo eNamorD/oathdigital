@@ -14,7 +14,7 @@ import oathdigital.model._
   * optional, so it reduces to what the bank holds.
   */
 case object GamblingHall extends PaidAction("denizen.gambling-hall",
-    Cost(favor = 2)) {
+    Cost(favor = 2)):
   val Dice: Int = 4
   val pool: PoolKey = PoolKey("gambling-hall")
   val decisionId: String = "gambling-hall.bank"
@@ -41,7 +41,7 @@ case object GamblingHall extends PaidAction("denizen.gambling-hall",
       heading = Some(bankHeading(total))))
 
   private def take(state: ReadyGame, player: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val total = RollResults.score(state, pool)
     if (total <= 0) Right(Vector.empty)
     else pending.answered.collectFirst {
@@ -50,5 +50,3 @@ case object GamblingHall extends PaidAction("denizen.gambling-hall",
     }.toRight(OathViolation.InvalidEventOrder(
       "no Gambling Hall bank is recorded")).map(suit =>
       Vector(Gain.Favor(player, suit, total)))
-  }
-}

@@ -64,7 +64,7 @@ import oathdigital.model.DecisionAnswer.PartitionAnswer
   * cost; nothing else about the catalog reaches the tree, which closes over
   * the actor and that cost alone.
   */
-object ForgeProcedure {
+object ForgeProcedure:
   val assignmentDecisionId: String = "forge.assignment"
 
   /** Forge spends exactly one Supply to start, whatever the printed cost. */
@@ -173,7 +173,7 @@ object ForgeProcedure {
     * which relic is on top of the deck -- is read off `ready` when the node
     * it belongs to runs.
     */
-  private def tree(actor: PlayerId, cost: Tokens): Operation = {
+  private def tree(actor: PlayerId, cost: Tokens): Operation =
     val total = cost.favor + cost.secrets
 
     val sections = Vector(
@@ -206,14 +206,13 @@ object ForgeProcedure {
     // and `OperationPipeline` validates the whole batch atomically.
     def payment(denizen: DenizenId,
         sectionKey: String): Either[OathViolation, CoreOperation] =
-      sectionKey match {
+      sectionKey match
         case `favorSectionKey` =>
           Right(PayCost(actor, Location.OnCard(denizen), Cost(favor = 1)))
         case `secretSectionKey` =>
           Right(PayCost(actor, Location.OnCard(denizen), Cost(secret = 1)))
         case other => Left(OathViolation.InvalidEventOrder(
           s"$assignmentDecisionId has no section '$other'"))
-      }
 
     def payments(denizens: Vector[(DenizenId, String)])
         : Either[OathViolation, Vector[CoreOperation]] =
@@ -232,29 +231,27 @@ object ForgeProcedure {
       */
     def answeredPayments(pending: PendingTree)
         : Either[OathViolation, Vector[CoreOperation]] =
-      pending.answered.lastOption match {
+      pending.answered.lastOption match
         case Some(Answered(_, PartitionAnswer(placements), _)) =>
           placements.foldLeft[Either[OathViolation,
               Vector[(DenizenId, String)]]](Right(Vector.empty)) {
             case (result, placement) => for {
               rows <- result
-              denizen <- placement.option match {
+              denizen <- placement.option match
                 case DecisionOptionRef.Denizen(id) => Right(id)
                 case other => Left(OathViolation.InvalidEventOrder(
                   s"$assignmentDecisionId placed a non-denizen option $other"))
-              }
             } yield rows :+ (denizen -> placement.sectionKey)
           }.flatMap(payments)
         case _ => Left(OathViolation.InvalidEventOrder(
           "no Forge assignment answer is recorded"))
-      }
 
     /** The determined split, for a site printing three of one resource:
       * every eligible target takes that resource, so there is nothing to
       * read out of an answer and no answer was ever asked for.
       */
     def determinedPayments(ready: ReadyGame)
-        : Either[OathViolation, Vector[CoreOperation]] = {
+        : Either[OathViolation, Vector[CoreOperation]] =
       val targets = eligibleTargets(ready, actor)
       val sectionKey =
         if (cost.favor > 0) favorSectionKey else secretSectionKey
@@ -262,7 +259,6 @@ object ForgeProcedure {
         s"site offers ${targets.size} Forge targets but the printed cost " +
           s"needs $total"))
       else payments(targets.map(_.denizenId -> sectionKey))
-    }
 
     // `SpendSupply` carries no window of its own, so the payment is a
     // BuildOps whose window is the hook point (see this object's doc).
@@ -284,5 +280,3 @@ object ForgeProcedure {
       else Vector(paySupply, forgeRelic)
 
     Sequence(nodes).copy(window = Some(PowerWindow.ForgeActionEligibility))
-  }
-}

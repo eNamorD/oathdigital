@@ -10,12 +10,12 @@ final case class AuthenticatedRouteMountConfiguration(
     publicOrigin: String
 )
 
-object AuthenticatedRouteMountConfiguration {
+object AuthenticatedRouteMountConfiguration:
   def fromOptions(
       sessionCookieName: Option[String],
       publicOrigin: Option[String]
   ): Either[String, Option[AuthenticatedRouteMountConfiguration]] =
-    (sessionCookieName, publicOrigin) match {
+    (sessionCookieName, publicOrigin) match
       case (None, None) => Right(None)
       case (Some(cookie), Some(origin)) if cookie.trim.nonEmpty &&
           origin.trim.nonEmpty =>
@@ -23,17 +23,15 @@ object AuthenticatedRouteMountConfiguration {
       case _ => Left(
         "authenticated routes require both session cookie name and public origin"
       )
-    }
-}
 
-object ServerRoutes {
+object ServerRoutes:
   def route(
       runtime: ServerRuntime,
       blockingExecutionContext: ExecutionContext,
       config: ServerConfig,
       readiness: ServerReadiness,
       nowMillis: () => Long = () => System.currentTimeMillis()
-  ): Route = {
+  ): Route =
     val publicOrigin = config.publicBaseUrl.getOrElse(
       new java.net.URI("http", null, config.host, config.port, null, null, null))
     // Development mode binds only to loopback, so a browser may reach it through
@@ -46,7 +44,7 @@ object ServerRoutes {
     val trustedSeats = new TrustedSeatRoutes(runtime.identities,
       runtime.trustedGameProvisioning, runtime.trustedGame, publicOrigin,
       blockingExecutionContext, loopbackAliases).route
-    val application = config.mode match {
+    val application = config.mode match
       case ServerMode.Development =>
         // The development start page creates games through the same trusted
         // provisioning as trusted-alpha mode, so both get the generated setup.
@@ -71,7 +69,4 @@ object ServerRoutes {
         }
       case ServerMode.TrustedAlpha =>
         trustedSeats ~ ProductionFrontendRoutes.route
-    }
     HealthRoutes.route(readiness) ~ application
-  }
-}

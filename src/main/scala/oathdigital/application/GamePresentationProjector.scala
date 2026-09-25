@@ -8,7 +8,7 @@ import oathdigital.protocol.projection._
 
 private[application] final class GamePresentationProjector(
     catalog: ExecutableCatalog
-) {
+):
   // A card is implemented only once every power it declares is implemented
   // (see PowerImplementationStatus); a card with no declared power has
   // nothing to fall back on, so it reads as not yet implemented rather than
@@ -35,14 +35,12 @@ private[application] final class GamePresentationProjector(
   def relicLabel(id: RelicId): String = catalog.relics.find(
     _.id.value == id.value).map(_.name).getOrElse(safeLabel(id.value))
   def edificeLabel(id: EdificeId, side: EdificeSide): String =
-    edificeNames.get(id).fold(safeLabel(id.value)) {
-      case (intact, ruined) => side match {
+    edificeNames.get(id).fold(safeLabel(id.value)):
+      case (intact, ruined) => side match
         case EdificeSide.Intact => intact
         case EdificeSide.Ruined => ruined
-      }
-    }
 
-  private[application] def edificeCardDetails(value: EdificeState): CardDetailsProjection = {
+  private[application] def edificeCardDetails(value: EdificeState): CardDetailsProjection =
     val definition = edificesById.get(value.id.value)
     val face = definition.map(e => value.side match {
       case EdificeSide.Intact => e.intact
@@ -57,7 +55,6 @@ private[application] final class GamePresentationProjector(
         case EdificeSide.Ruined => "ruined"
       }), favor = value.tokens.favor, secrets = value.tokens.secrets,
       implemented = face.exists(cardImplemented))
-  }
 
   def setupPlayers(participants: Vector[FirstGameParticipant]) =
     participants.map { participant =>
@@ -83,7 +80,7 @@ private[application] final class GamePresentationProjector(
     region("hinterland", material.map.hinterland, material.map.sites,
       material.commonCards.discard(Region.Hinterland)))
 
-  def readyWorld(ready: ReadyGame, viewer: Option[PlayerId]) = {
+  def readyWorld(ready: ReadyGame, viewer: Option[PlayerId]) =
     val current = ready.game.current
     Vector(
       region("cradle", current.map.cradle, current.map.sites,
@@ -92,7 +89,6 @@ private[application] final class GamePresentationProjector(
         current.commonCards.discard(Region.Provinces), Some(ready), viewer),
       region("hinterland", current.map.hinterland, current.map.sites,
         current.commonCards.discard(Region.Hinterland), Some(ready), viewer))
-  }
 
   private def region(id: String, sites: Vector[SiteId],
       states: Map[SiteId, SiteState] = Map.empty,
@@ -104,7 +100,7 @@ private[application] final class GamePresentationProjector(
       discard.lastOption.map(cardKind))
 
   private def siteProjection(siteId: SiteId, state: Option[SiteState],
-      ready: Option[ReadyGame], viewer: Option[PlayerId]): SetupSiteProjection = {
+      ready: Option[ReadyGame], viewer: Option[PlayerId]): SetupSiteProjection =
     val definition = siteDefinitions.get(siteId)
     SetupSiteProjection(siteId.value, siteLabel(siteId),
       state.fold(0)(_.tokens.favor), state.fold(0)(_.tokens.secrets),
@@ -144,14 +140,13 @@ private[application] final class GamePresentationProjector(
         }
         case SiteForces.Empty => None
       }))
-  }
 
   private def forceProjection(forces: SiteForces.Occupied,
-      ready: ReadyGame): SiteForcesProjection = {
+      ready: ReadyGame): SiteForcesProjection =
     val ruler = SiteRule.ruler(forces, ready.game.current.players).fold(
       error => throw new IllegalStateException(s"invalid site ruler mapping: $error"),
       identity)
-    forces.kind match {
+    forces.kind match
       case ForceKind.Exile(_) =>
         val SiteRuler.Player(playerId) = ruler: @unchecked
         val color = ready.playerColors.getOrElse(playerId,
@@ -163,10 +158,8 @@ private[application] final class GamePresentationProjector(
         SiteForcesProjection.Imperial(forces.count, "Imperial Warbands")
       case ForceKind.Bandit =>
         SiteForcesProjection.Bandit(forces.count, "Bandit Warbands")
-    }
-  }
 
-  def playerBoards(ready: ReadyGame, viewer: Option[PlayerId]) = {
+  def playerBoards(ready: ReadyGame, viewer: Option[PlayerId]) =
     val players = ready.game.current.players
     val start = viewer.flatMap(id => Option(players.indexWhere(_.player == id))
       .filter(_ >= 0)).getOrElse(0)
@@ -198,7 +191,6 @@ private[application] final class GamePresentationProjector(
           Some(card.orientation), hidden = false)),
         banners(ready).filter(_.holderPlayerId.contains(player.player.value)))
     }
-  }
 
   private def withTokens(details: CardDetailsProjection,
       tokens: Tokens): CardDetailsProjection =
@@ -213,7 +205,7 @@ private[application] final class GamePresentationProjector(
       player.pawnSite.map(_.value),
       player.advisers.map(card => hiddenCard(cardKind(card.id))), Vector.empty, None))
 
-  def banners(ready: ReadyGame): Vector[BannerProjection] = {
+  def banners(ready: ReadyGame): Vector[BannerProjection] =
     val current = ready.game.current
     Vector(
       BannerProjection("peoples-favor", current.banners.peoplesFavor.active match {
@@ -226,7 +218,6 @@ private[application] final class GamePresentationProjector(
         case DarkestSecretFace.Festival => "festival"
       }, current.banners.darkestSecret.holder.map(_.value),
         current.banners.darkestSecret.secrets))
-  }
 
   /** `private[application]`, not `private`: `WalkerDecisionProjector`
     * (Task 5) is this redaction's third consumer, alongside [[playerBoards]]
@@ -275,13 +266,13 @@ private[application] final class GamePresentationProjector(
     *    rejected by its container rather than by being facedown.
     */
   def identifiesCard(ready: ReadyGame, viewer: Option[PlayerId], id: CardId,
-      orientation: Option[Orientation], container: CardContainer): Boolean = {
+      orientation: Option[Orientation], container: CardContainer): Boolean =
     // Known-faceup, never merely "not facedown". A card whose container
     // holds no state at all -- a deck, a discard, a temporary hand -- has NO
     // orientation, and reading that absence as public is how such a card
     // would slip through a clause meant for a board slot.
     val faceup = orientation.contains(Orientation.FaceUp)
-    container match {
+    container match
       case CardContainer.Site(_, SiteCardArea.Denizens) => true
       case CardContainer.Site(site, SiteCardArea.Relics) =>
         faceup || viewer.exists(player =>
@@ -299,8 +290,6 @@ private[application] final class GamePresentationProjector(
         faceup || viewer.exists(player => player == owner ||
           knownToViewer(ready, player, id, area))
       case _ => false
-    }
-  }
 
   private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
     ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
@@ -310,28 +299,24 @@ private[application] final class GamePresentationProjector(
     * [[identifiesCard]] settles it on ownership alone.
     */
   private def knownToViewer(ready: ReadyGame, player: PlayerId, id: CardId,
-      area: PlayerCardArea): Boolean = area match {
+      area: PlayerCardArea): Boolean = area match
     case PlayerCardArea.Relics =>
       ready.knowledge.heldRelics.getOrElse(player, Vector.empty).contains(id)
     case _ => ready.knowledge.advisers.getOrElse(player, Vector.empty)
       .exists(_.value == id.value)
-  }
 
-  def adviserOrientation(card: AdviserState): Orientation = card match {
+  def adviserOrientation(card: AdviserState): Orientation = card match
     case value: DenizenState => value.orientation
     case value: VisionState => value.orientation
-  }
-  def orientationName(value: Orientation): String = value match {
+  def orientationName(value: Orientation): String = value match
     case Orientation.FaceUp => "face-up"
     case Orientation.FaceDown => "face-down"
-  }
-  def cardKind(card: CardId): String = card match {
+  def cardKind(card: CardId): String = card match
     case _: VisionId => "vision"
     case _ => "denizen"
-  }
 
   def cardDetails(id: CardId, orientation: Option[Orientation],
-      hidden: Boolean): CardDetailsProjection = id match {
+      hidden: Boolean): CardDetailsProjection = id match
     case value: DenizenId => catalog.denizens.find(_.id.value == value.value).fold(
       CardDetailsProjection(value.value, "denizen", worldCardLabel(value),
         orientation = orientation.map(orientationName), hidden = hidden)) { d =>
@@ -356,22 +341,19 @@ private[application] final class GamePresentationProjector(
     }
     case other => CardDetailsProjection(other.value, other.getClass.getSimpleName,
       safeLabel(other.value), orientation = orientation.map(orientationName), hidden = hidden)
-  }
 
-  private def restrictionName(value: CardRestrictions): String = value match {
+  private def restrictionName(value: CardRestrictions): String = value match
     case CardRestrictions.Unrestricted => "unrestricted"
     case CardRestrictions.Locked => "locked"
     case CardRestrictions.SiteOnly => "site-only"
     case CardRestrictions.AdviserOnly => "adviser-only"
     case CardRestrictions.LockedAdviserOnly => "locked-adviser-only"
-  }
   def safeLabel(id: String): String = id.split(":").lastOption.getOrElse(id)
     .split("-").map(_.capitalize).mkString(" ")
-  private def worldCardLabel(id: WorldCardId): String = id match {
+  private def worldCardLabel(id: WorldCardId): String = id match
     case value: DenizenId => denizenLabel(value)
     case value: VisionId => safeLabel(value.value)
-  }
-  private def sitePower(handler: String): SitePowerProjection = {
+  private def sitePower(handler: String): SitePowerProjection =
     val kind = handler.split('.').lastOption.getOrElse(handler)
     val known = Map(
       "coast" -> ("Coast", "Travel along the Coast route."),
@@ -380,8 +362,5 @@ private[application] final class GamePresentationProjector(
       "island" -> ("Island", "Travel here follows Island travel rules."),
       "pass" -> ("Pass", "Travel through the Pass is restricted."),
       "plains" -> ("Plains", "This site has the Plains site power."))
-    known.get(kind).fold(SitePowerProjection(kind, safeLabel(kind), None)) {
+    known.get(kind).fold(SitePowerProjection(kind, safeLabel(kind), None)):
       case (label, description) => SitePowerProjection(kind, label, Some(description))
-    }
-  }
-}

@@ -12,7 +12,7 @@ import oathdigital.model._
   * sacrifice or placement limit changes. The relic's other power, the pawn-move
   * restriction, is not part of this plan.
   */
-final case class BrassArmy private (relicId: RelicId) extends BattlePlan {
+final case class BrassArmy private (relicId: RelicId) extends BattlePlan:
   def id: PowerId = BrassArmy.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
@@ -21,12 +21,10 @@ final case class BrassArmy private (relicId: RelicId) extends BattlePlan {
     context.relic(relicId).map(source => CampaignPlanOffer(source,
       "Brass Army: add 4 attack dice", Vector(CampaignPlanCost.Secret(1)),
       Vector(CampaignPlanEffect.AddAttackDice(BrassArmy.Dice))))
-}
 
-object BrassArmy {
+object BrassArmy:
   val id: PowerId = PowerId("relic.brass-army.campaign")
   val Dice: Int = 4
 
   def forCatalog(catalog: ExecutableCatalog): Option[BrassArmy] =
     CatalogCards.relic(catalog, id).map(new BrassArmy(_))
-}

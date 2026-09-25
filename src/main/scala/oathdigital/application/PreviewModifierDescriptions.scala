@@ -28,7 +28,7 @@ import oathdigital.protocol.PreviewModifier
   * there rather than from a field the trait does not have.
   */
 private[application] final class PreviewModifierDescriptions(
-    catalog: ExecutableCatalog, presentation: GamePresentationProjector) {
+    catalog: ExecutableCatalog, presentation: GamePresentationProjector):
 
   def describe(ready: ReadyGame, actor: PlayerId, action: ActionKind,
       powers: Vector[ContributingPower],
@@ -72,28 +72,24 @@ private[application] final class PreviewModifierDescriptions(
     * candidate, so the lookup cannot reveal one.
     */
   private def printedOn(ready: ReadyGame, actor: PlayerId, handlerId: String)
-      : Option[CardId] = {
+      : Option[CardId] =
     val holders = RuleSourceIndex.enumerate(catalog, ready)
       .filter(_.powerIds.exists(_.value == handlerId))
-    val own = holders.map(_.source).collectFirst {
+    val own = holders.map(_.source).collectFirst:
       case RuleSourceRef.Adviser(`actor`, id) => id
       case RuleSourceRef.Relic(`actor`, id) => id: CardId
-    }
     def public = holders.filter(_.face != RuleSourceFace.FaceDown)
       .flatMap((holder: IndexedRuleSource) => cardOf(holder.source))
       .headOption
     own.orElse(public)
-  }
 
   /** The card a rule source is printed on. A banner face, a foundation and a
     * game rule have none.
     */
-  private def cardOf(source: RuleSourceRef): Option[CardId] = source match {
+  private def cardOf(source: RuleSourceRef): Option[CardId] = source match
     case RuleSourceRef.Adviser(_, id) => Some(id)
     case RuleSourceRef.SiteCard(_, id) => Some(id)
     case RuleSourceRef.Relic(_, id) => Some(id)
     case RuleSourceRef.SiteRelic(_, id) => Some(id)
     case RuleSourceRef.Edifice(_, id) => Some(id)
     case _ => None
-  }
-}

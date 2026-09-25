@@ -25,7 +25,7 @@ import oathdigital.model.{OathViolation, ReadyGame, Region, SiteId}
   *    about the printed Travel action, and `OathViolation.UnsupportedTravelState`
   *    went with them.
   */
-object TravelRules {
+object TravelRules:
 
   /** The printed Supply cost of moving between the regions holding `source`
     * and `destination`, before any power shapes it.
@@ -34,7 +34,7 @@ object TravelRules {
     * the site the pawn already stands on is `SameTravelSite`, not a free move.
     */
   def cost(catalog: ExecutableCatalog, ready: ReadyGame, source: SiteId,
-      destination: SiteId): Either[OathViolation, Int] = {
+      destination: SiteId): Either[OathViolation, Int] =
     val map = ready.game.current.map
     for {
       from <- map.regionOf(source).toRight(SiteNotInPlay(source))
@@ -43,7 +43,7 @@ object TravelRules {
       _ <- catalog.sites.find(_.id == source).toRight(SiteNotInPlay(source))
       _ <- catalog.sites.find(_.id == destination)
         .toRight(SiteNotInPlay(destination))
-    } yield (from, to) match {
+    } yield (from, to) match
       case (Region.Cradle, Region.Cradle) => 1
       case (Region.Cradle, Region.Provinces) => 2
       case (Region.Cradle, Region.Hinterland) => 4
@@ -51,6 +51,3 @@ object TravelRules {
       case (Region.Hinterland, Region.Cradle) => 4
       case (Region.Hinterland, Region.Provinces) => 2
       case (Region.Hinterland, Region.Hinterland) => 3
-    }
-  }
-}

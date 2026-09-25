@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
-class GossipSuite extends munit.FunSuite {
+class GossipSuite extends munit.FunSuite:
   import PowerFixture._
   import SearchFixture._
 
@@ -25,64 +25,55 @@ class GossipSuite extends munit.FunSuite {
   private def discordBank(ready: ReadyGame): Int =
     ready.banks.favor.getOrElse(Suit.Discord, 0)
 
-  test("Gossip is a registered persistent rule, so it is automatic") {
+  test("Gossip is a registered persistent rule, so it is automatic"):
     val power = Gossip.forCatalog(catalog).get
     assertEquals(power.cardId, gossip)
     assertEquals(power.resolution, PowerResolution.Automatic)
     assert(WalkerPowerCatalogHas.gossip)
-  }
 
   test("another player's facedown play gains the holder 1 favor from the " +
-      "Discord bank") {
+      "Discord bank"):
     val ready = held(plain)
     val done = play(ready, Vector.empty, plain.head, "adviser-facedown")
     val after = SearchFixture.after(done)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
     assertEquals(discordBank(after), discordBank(ready) - 1)
     assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
-  }
 
-  test("a facedown Vision counts too") {
+  test("a facedown Vision counts too"):
     val ready = held(Vector(VisionRules.Faith))
     val after = SearchFixture.after(play(ready, Vector.empty,
       VisionRules.Faith, "adviser-facedown"))
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
-  }
 
-  test("a faceup play and a discard gain nothing") {
+  test("a faceup play and a discard gain nothing"):
     val ready = held(plain)
     Vector("site", "adviser-faceup", "discard").foreach { button =>
       val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
         button))
       assertEquals(favor(after, holder), favor(ready, holder), button)
     }
-  }
 
-  test("the holder's own facedown play gains nothing") {
+  test("the holder's own facedown play gains nothing"):
     val ready = asAdviser(SearchFixture.staged(plain), gossip)
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-facedown"))
     assertEquals(favor(after, actor), favor(ready, actor))
     assertEquals(discordBank(after), discordBank(ready))
-  }
 
-  test("a facedown Gossip is not active") {
+  test("a facedown Gossip is not active"):
     val ready = held(plain, Orientation.FaceDown)
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-facedown"))
     assertEquals(favor(after, holder), favor(ready, holder))
-  }
 
-  test("an empty Discord bank gives nothing") {
+  test("an empty Discord bank gives nothing"):
     val ready = held(plain).copy(banks = base.banks.copy(favor =
       base.banks.favor.updated(Suit.Discord, 0)))
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-facedown"))
     assertEquals(favor(after, holder), favor(ready, holder))
-  }
 
-  private object WalkerPowerCatalogHas {
+  private object WalkerPowerCatalogHas:
     def gossip: Boolean = oathdigital.gameplay.powers.WalkerPowerCatalog
       .default(catalog).powers.exists(_.id == Gossip.id)
-  }
-}

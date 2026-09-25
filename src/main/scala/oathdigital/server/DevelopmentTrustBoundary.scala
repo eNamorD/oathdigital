@@ -1,6 +1,6 @@
 package oathdigital.server
 
-object DevelopmentTrustBoundary {
+object DevelopmentTrustBoundary:
   val MaximumIdentifierLength: Int = 128
   private val SafeIdentifier = "^[A-Za-z0-9][A-Za-z0-9._:-]*$".r
 
@@ -23,7 +23,7 @@ object DevelopmentTrustBoundary {
     else Right(value)
 
   def validateLoopbackHost(host: String): Either[String, String] =
-    host.trim.toLowerCase match {
+    host.trim.toLowerCase match
       case "127.0.0.1" => Right("127.0.0.1")
       case "localhost" => Right("localhost")
       case "::1" => Right("::1")
@@ -32,5 +32,3 @@ object DevelopmentTrustBoundary {
           "unauthenticated development routes require a loopback host " +
             "(127.0.0.1, localhost, or ::1)"
         )
-    }
-}

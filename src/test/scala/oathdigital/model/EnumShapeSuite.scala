@@ -1,7 +1,7 @@
 package oathdigital.model
 
-class EnumShapeSuite extends munit.FunSuite {
-  test("enum cases keep their names, keys and hand-written order") {
+class EnumShapeSuite extends munit.FunSuite:
+  test("enum cases keep their names, keys and hand-written order"):
     assertEquals(Suit.Order.toString, "Order")
     assertEquals(Suit.Order.productPrefix, "Order")
     assertEquals(Suit.Order.key, "order")
@@ -15,5 +15,3 @@ class EnumShapeSuite extends munit.FunSuite {
     assertEquals(PhaseTransitionRef.EndWake.family, "phase-transition")
     assertEquals(PhaseTransitionRef.EndWake.key, "end-wake")
     assertEquals(TriggeredProcedureRef.all.map(_.key), Vector("oathkeeper", "setup"))
-  }
-}

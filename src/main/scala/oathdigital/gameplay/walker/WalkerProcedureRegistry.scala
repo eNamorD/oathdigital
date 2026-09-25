@@ -31,7 +31,7 @@ import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, ActionKind, 
   * procedure's start gates while resume reconstructs an already-started
   * tree without them.
   */
-object WalkerProcedureRegistry {
+object WalkerProcedureRegistry:
 
   /** `fallbackKind` (I4) is the [[oathdigital.model.ActionKind]] `OathRules.startWalker`
     * runs `PowerRuntime.ignored` fallback-diagnostics against for this
@@ -461,11 +461,10 @@ object WalkerProcedureRegistry {
   private def lookup(procedure: ProcedureRef,
       registrations: Map[ProcedureRef, Entry],
       powers: PhasePowers = PhasePowers.empty): Either[OathViolation, Entry] =
-    procedure match {
+    procedure match
       case ActionRef.UsePower(id) => Right(usePowerEntry(id, powers))
       case _ => registrations.get(procedure).toRight(OathViolation
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
-    }
 
   /** `procedure`'s [[oathdigital.model.ActionKind]] for the `PowerRuntime.ignored`
     * fallback diagnostics `OathRules.startWalker` records alongside the
@@ -551,4 +550,3 @@ object WalkerProcedureRegistry {
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
   def requiresPlayableOption(procedure: ProcedureRef): Boolean =
     lookup(procedure, entries).exists(_.requiresPlayableOption)
-}

@@ -108,7 +108,7 @@ private final case class AnswerResume(answer: Answered,
     rolls: Vector[Vector[DieFace]] = Vector.empty) extends Resume
 
 class WalkerReplayDriftSuite extends munit.FunSuite
-    with WalkerRecordedOpsReducer {
+    with WalkerRecordedOpsReducer:
   /** The power source BOTH tracks walk with. It is a named value rather than
     * a default on the walker's entry points precisely so this suite cannot
     * drift into checking an unpowered walk while production walks with
@@ -125,15 +125,14 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     * must gather the same contributions on both tracks, or you are testing
     * your test harness rather than the engine."
     */
-  private val catacombsPowers: WalkerPowers = {
+  private val catacombsPowers: WalkerPowers =
     val selected = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector(CatacombsContribution.id))
     assert(selected.powers.nonEmpty,
       "fixture catalog must declare the Catacombs card for this drift case")
     selected
-  }
 
-  private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) = {
+  private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) =
     val Ready(base) = execute()._1: @unchecked
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
@@ -155,7 +154,6 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         map = base.game.current.map.copy(sites =
           base.game.current.map.sites.updated(siteId, site))))
     (ready, active.player, siteId, relic)
-  }
 
   private val lowRoll: Vector[DieFace] =
     Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)
@@ -163,29 +161,25 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields)
 
   private def runResume(resume: Resume, state: ReadyGame, tree: Operation,
-      pending: Option[PendingTree], powers: WalkerPowers): WalkerOutcome = {
+      pending: Option[PendingTree], powers: WalkerPowers): WalkerOutcome =
     // A fresh source per invocation, because every command here is run
     // twice -- once on the live state, once on the replayed one -- and both
     // runs must see the same faces in the same order.
     val dice = WalkerDiceFixture.scripted(resume.rolls*)
-    val result = resume match {
+    val result = resume match
       case _: StartWalk =>
         ProcedureWalker.advance(state, tree, None, powers, dice)
       case AnswerResume(answer, _) => ProcedureWalker.resolve(state, tree,
         pending.getOrElse(fail("resolve() resume requires a pending park")),
         answer, powers, dice)
-    }
     result.fold(violation => fail(s"walker step $resume failed: $violation"),
       identity)
-  }
 
-  private def opsOf(outcome: WalkerOutcome): Vector[CoreOperation] = {
-    val events = outcome match {
+  private def opsOf(outcome: WalkerOutcome): Vector[CoreOperation] =
+    val events = outcome match
       case WalkerOutcome.Parked(_, evs) => evs
       case WalkerOutcome.Finished(_, evs) => evs
-    }
     events.collect { case s: WalkerStepRecorded => s.ops }.flatten
-  }
 
   /** Folds one command's recorded steps into the "live" state track via the
     * shared `WalkerRecordedOpsReducer` (also used by `RecoverProcedureSuite`
@@ -211,26 +205,23 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     * itself is never invoked here.
     */
   private def replayCommand(state: OathState,
-      outcome: WalkerOutcome, procedure: ProcedureRef): OathState = {
+      outcome: WalkerOutcome, procedure: ProcedureRef): OathState =
     val stepEvents = (outcome match {
       case WalkerOutcome.Parked(_, evs) => evs
       case WalkerOutcome.Finished(_, evs) => evs
     }).map(_.asInstanceOf[WalkerEvent])
-    val fact: WalkerEvent = outcome match {
+    val fact: WalkerEvent = outcome match
       case WalkerOutcome.Parked(pending, _) =>
         WalkerParked(procedure, pending.at, pending.answered,
           Vector.empty, Vector.empty)
       case WalkerOutcome.Finished(_, _) =>
         WalkerCompleted(procedure)
-    }
     (stepEvents :+ fact).foldLeft(state) { (current, event) =>
-      ProcedureWalker.applyRecorded(current, event) match {
+      ProcedureWalker.applyRecorded(current, event) match
         case Right(updated) => updated
         case Left(violation) =>
           fail(s"replay-track applyRecorded of $event failed: $violation")
-      }
     }
-  }
 
   /** Drives `script` to completion. At every command it independently
     * rebuilds the tree from, and re-walks, the replay-reconstructed state
@@ -246,10 +237,10 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         if (starting) RecoverProcedure.build(catalog, state,
           state.game.current.turn.activePlayer).toOption.get
         else RecoverProcedure.rebuild(catalog, state,
-          state.game.current.turn.activePlayer).toOption.get): WalkerOutcome = {
+          state.game.current.turn.activePlayer).toOption.get): WalkerOutcome =
     def go(remaining: Vector[Resume], liveState: ReadyGame,
         livePending: Option[PendingTree], replayState: OathState,
-        starting: Boolean): WalkerOutcome = {
+        starting: Boolean): WalkerOutcome =
       val resume = remaining.head
 
       val liveTree = tree(liveState, starting)
@@ -268,37 +259,32 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
       val nextReplayState = replayCommand(replayState, liveOutcome, procedure)
 
-      (liveOutcome, remaining.tail) match {
+      (liveOutcome, remaining.tail) match
         case (WalkerOutcome.Finished(_, _), _) => liveOutcome
         case (WalkerOutcome.Parked(pending, events), rest) if rest.nonEmpty =>
           go(rest, foldLive(liveState, events), Some(pending),
             nextReplayState, starting = false)
         case (parked, _) => parked
-      }
-    }
 
     go(script, ready, None, OathState.Ready(ready), starting = true)
-  }
 
-  test("drift check: single-roll success (advance -> resolve)") {
+  test("drift check: single-roll success (advance -> resolve)"):
     val (ready, actor, siteId, relic) = recoverable
     val finished = assertNoDrift(ready,
       Vector(StartWalk(Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
       walkerPowers)
-    finished match {
+    finished match
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(siteId).relics,
           Vector.empty)
         assertEquals(treeless.game.current.players.find(_.player == actor)
           .get.relics.map(_.id), Vector(relic.id))
       case other => fail(s"expected a Finished outcome, got $other")
-    }
-  }
 
   test("drift check: multi-roll success (fail parks Continue/Stop, Continue " +
-      "rolls again to a cumulative success)") {
+      "rolls again to a cumulative success)"):
     val (ready, actor, _, relic) = recoverable
     val finished = assertNoDrift(ready,
       Vector(StartWalk(Vector(lowRoll)),
@@ -308,40 +294,36 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
       walkerPowers)
-    finished match {
+    finished match
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
           .get.relics.map(_.id), Vector(relic.id))
       case other => fail(s"expected a Finished outcome, got $other")
-    }
-  }
 
-  test("drift check: stop after a failed roll ends the walk with no relic") {
+  test("drift check: stop after a failed roll ends the walk with no relic"):
     val (ready, actor, siteId, relic) = recoverable
     val finished = assertNoDrift(ready,
       Vector(StartWalk(Vector(lowRoll)),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))),
       walkerPowers)
-    finished match {
+    finished match
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
           .get.relics, Vector.empty)
         assertEquals(treeless.game.current.map.sites(siteId).relics,
           Vector(relic))
       case other => fail(s"expected a Finished outcome, got $other")
-    }
-  }
 
   test("drift check: Catacombs-modified Recover (advance -> resolve) " +
-      "-- the first corpus entry where a power changed the tree") {
+      "-- the first corpus entry where a power changed the tree"):
     val fixture = CatacombsContributionSuite.reliclessSite()
     val finished = assertNoDrift(fixture.ready,
       Vector(StartWalk(Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
           ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic)),
           fixture.actor))), catacombsPowers)
-    finished match {
+    finished match
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(fixture.site).relics,
           Vector.empty)
@@ -349,10 +331,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
           _.player == fixture.actor).get.relics.map(_.id),
           Vector(fixture.topRelic))
       case other => fail(s"expected a Finished outcome, got $other")
-    }
-  }
 
-  test("drift check: an Oathkeeper tie parks for the holder and resolves") {
+  test("drift check: an Oathkeeper tie parks for the holder and resolves"):
     val active = OathkeeperFixture.base.game.current.turn.activePlayer
     val holder = OathkeeperFixture.players.find(_ != active).get
     val leaders = OathkeeperFixture.players.filterNot(_ == holder).take(2)
@@ -367,11 +347,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         OathkeeperProcedure.recipientDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Player(leaders(1))), holder))),
       walkerPowers, TriggeredProcedureRef.Oathkeeper, oathkeeperTree)
-    finished match {
+    finished match
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.title,
           OathkeeperState(Some(leaders(1)), TitleSide.Oathkeeper))
       case other => fail(s"expected the tie to finish, got $other")
-    }
-  }
-}

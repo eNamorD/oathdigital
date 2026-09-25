@@ -13,7 +13,7 @@ import oathdigital.model._
   * the actor rules, or be an adviser. The relic goes to the card's own site,
   * or to the pawn's site for an adviser. */
 final case class CatacombsContribution private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = CatacombsContribution.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -42,12 +42,10 @@ final case class CatacombsContribution private (cardId: DenizenId,
       PositionedLocation(Location.Site(siteId)),
       resultingOrientation = Some(Orientation.FaceDown)),
     Costs.onCard(actor, cardId, Cost(secret = 1), catalog)))
-}
 
-object CatacombsContribution {
+object CatacombsContribution:
   val id: PowerId = PowerId("denizen.catacombs")
   // None if the catalog has no such card (e.g. a test stub).
   def forCatalog(catalog: ExecutableCatalog): Option[CatacombsContribution] =
     catalog.denizens.find(_.powers.exists(_.id == id))
       .map(d => new CatacombsContribution(DenizenId(d.id.value), catalog))
-}

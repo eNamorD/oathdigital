@@ -11,7 +11,7 @@ import oathdigital.model.{MajorActionType, PowerWindow}
   * remain catalog entries only so the audited-power inventory stays complete,
   * with no handler of their own yet.
   */
-object RecoverPowers {
+object RecoverPowers:
   private val modifier = Some(MajorActionType.Recover)
 
   object RelicWorship extends ReviewedPower("denizen.relic-worship", modifier,
@@ -26,4 +26,3 @@ object RecoverPowers {
 
   val powers: Vector[Power] = Vector(RelicWorship, E13Ruined, E17Intact,
     E17Ruined)
-}

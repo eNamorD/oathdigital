@@ -20,7 +20,7 @@ import oathdigital.model._
   * only because this dispatcher is their sole caller. Call [[mutate]], never
   * a family directly: a family entered on its own runs with no guard.
   */
-private[gameplay] object OperationApplication {
+private[gameplay] object OperationApplication:
   import OperationError._
 
   /** All shape violations for one operation against `ready`, aggregated. */
@@ -44,17 +44,14 @@ private[gameplay] object OperationApplication {
   private def violations(
       ready: ReadyGame,
       operation: CoreOperation
-  ): Vector[OperationError] = {
+  ): Vector[OperationError] =
     val leaves = Operation.flatten(operation)
-    val favorMoves = leaves.collect {
+    val favorMoves = leaves.collect:
       case move @ Move(_: Piece.Favor, _, _, _) => move
-    }
-    val secretMoves = leaves.collect {
+    val secretMoves = leaves.collect:
       case move @ Move(_: Piece.Secrets, _, _, _) => move
-    }
-    val warbandMoves = leaves.collect {
+    val warbandMoves = leaves.collect:
       case move @ Move(_: Piece.Warbands, _, _, _) => move
-    }
     val (secretReasons, plannedSecrets) =
       ResourceOperations.planSecrets(ready, secretMoves)
 
@@ -72,12 +69,11 @@ private[gameplay] object OperationApplication {
       ready, leaves)
     accumulated ++= nonMoveViolations(ready, leaves, plannedSecrets)
     accumulated.result()
-  }
 
   private def applyFamilies(
       ready: ReadyGame,
       operation: CoreOperation
-  ): Either[OperationError, ReadyGame] = {
+  ): Either[OperationError, ReadyGame] =
     val leaves = Operation.flatten(operation)
     for {
       resources <- ResourceOperations.applyCountedMoves(ready, leaves)
@@ -86,22 +82,18 @@ private[gameplay] object OperationApplication {
       cards <- CardMovementOperations.applyCardMoves(pieces, leaves)
       finished <- applyNonMoveLeaves(cards, leaves)
     } yield finished
-  }
 
   private def reason(error: OperationError,
-      operation: CoreOperation): OperationReason = {
-    val impossible = error match {
+      operation: CoreOperation): OperationReason =
+    val impossible = error match
       case _: InsufficientSupply => true
-      case InsufficientPieces(piece, _, _) => operation match {
+      case InsufficientPieces(piece, _, _) => operation match
         case _: Discard | _: PayCost => false
         case _ => piece.isInstanceOf[Piece.Counted]
-      }
       case _ => false
-    }
     OperationReason(error.code, error.detail,
       if (impossible) OperationReasonKind.Impossible
       else OperationReasonKind.Invalid)
-  }
 
   private final case class RunningBoards(
       faceUp: Map[PlayerId, Int],
@@ -109,31 +101,27 @@ private[gameplay] object OperationApplication {
       supply: Map[PlayerId, Int]
   )
 
-  private object RunningBoards {
+  private object RunningBoards:
     def initial(
         ready: ReadyGame,
         planned: Option[Vector[(Move, OperationSecretPlanner.SecretSplit)]]
-    ): RunningBoards = {
+    ): RunningBoards =
       val boards = ready.game.current.players.iterator.map { player =>
         (player.player, (player.board.faceUpSecrets,
           player.board.faceDownSecrets, player.board.supply.supply))
       }.toMap
-      val deltas = planned match {
+      val deltas = planned match
         case None => Map.empty[PlayerId, (Int, Int)]
-        case Some(values) => values.foldLeft(Map.empty[PlayerId, (Int, Int)]) {
+        case Some(values) => values.foldLeft(Map.empty[PlayerId, (Int, Int)]):
           case (accumulated, (move, split)) =>
-            val fromAdjusted = move.from.location match {
+            val fromAdjusted = move.from.location match
               case Location.PlayArea(player) => addDelta(accumulated, player,
                 -split.faceUp, -split.faceDown)
               case _ => accumulated
-            }
-            move.to.location match {
+            move.to.location match
               case Location.PlayArea(player) => addDelta(fromAdjusted, player,
                 split.faceUp, split.faceDown)
               case _ => fromAdjusted
-            }
-        }
-      }
       RunningBoards(
         faceUp = boards.iterator.map { case (player, (up, _, _)) =>
           player -> (up + deltas.getOrElse(player, (0, 0))._1)
@@ -145,28 +133,25 @@ private[gameplay] object OperationApplication {
           player -> value
         }.toMap
       )
-    }
 
     private def addDelta(
         deltas: Map[PlayerId, (Int, Int)],
         player: PlayerId,
         faceUp: Int,
         faceDown: Int
-    ): Map[PlayerId, (Int, Int)] = {
+    ): Map[PlayerId, (Int, Int)] =
       val current = deltas.getOrElse(player, (0, 0))
       deltas.updated(player, (current._1 + faceUp, current._2 + faceDown))
-    }
-  }
 
   private def nonMoveViolations(
       ready: ReadyGame,
       leaves: Vector[Operation],
       plannedSecrets: Option[Vector[(Move,
         OperationSecretPlanner.SecretSplit)]]
-  ): Vector[OperationError] = {
+  ): Vector[OperationError] =
     val initial = RunningBoards.initial(ready, plannedSecrets)
     val (reasons, _) = leaves.foldLeft[(Vector[OperationError],
-      RunningBoards)]((Vector.empty, initial)) {
+      RunningBoards)]((Vector.empty, initial)):
       case ((result, state), Flip(id, at, orientation)) =>
         (result ++ CardFaceOperations.flipViolation(ready, id, at, orientation),
           state)
@@ -188,15 +173,13 @@ private[gameplay] object OperationApplication {
       case ((result, state), AdvanceVisionsDrawn) =>
         (result ++ TurnStateOperations.visionsDrawnViolation(ready), state)
       case ((result, state), _) => (result, state)
-    }
     reasons
-  }
 
   private def applyNonMoveLeaves(
       ready: ReadyGame,
       leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] =
-    leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
+    leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)):
       case (result, Flip(id, at, orientation)) =>
         result.flatMap(CardFaceOperations.flipCard(_, id, at, orientation))
       case (result, FlipSecrets(player, amount, from, to)) =>
@@ -225,5 +208,3 @@ private[gameplay] object OperationApplication {
       case (result, BeginTurn(player, phase)) =>
         result.flatMap(TurnStateOperations.beginTurn(_, player, phase))
       case (result, _) => result
-    }
-}

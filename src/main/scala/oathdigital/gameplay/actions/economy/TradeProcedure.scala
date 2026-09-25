@@ -11,10 +11,10 @@ import oathdigital.model._
   * of them burnt, and yields secrets. Both spend one Supply and both draw on
   * the `trade.source` decision.
   */
-object TradeProcedure {
+object TradeProcedure:
   val decisionId: String = "trade.source"
 
-  private def kind(resource: TradeResource): EconomyTree.Kind = resource match {
+  private def kind(resource: TradeResource): EconomyTree.Kind = resource match
     case TradeResource.Favor => EconomyTree.Kind(decisionId,
       "Choose a card to Trade for favor", PowerWindow.TradeActionEligibility,
       PowerWindow.TradeSourceSelection, PowerWindow.TradeCost,
@@ -27,17 +27,15 @@ object TradeProcedure {
       PowerWindow.TradeGain, Cost(favor = 1, favorBurnt = 1),
       (actor, _, matching, _) =>
         Option.when(matching > 0)(Gain.Secrets(actor, matching)))
-  }
 
   def resourceOf(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, TradeResource] = args match {
+      : Either[OathViolation, TradeResource] = args match
     case Vector(DecisionOptionRef.Button("favor")) => Right(TradeResource.Favor)
     case Vector(DecisionOptionRef.Button("secret")) => Right(TradeResource.Secret)
     case other => Left(OathViolation.InvalidEventOrder(
       "trade takes exactly one resource button, favor or secret, as its start " +
         s"selection, got ${other.map(ref => s"${ref.kind}/${ref.wireId}")
           .mkString(", ")}"))
-  }
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
@@ -56,4 +54,3 @@ object TradeProcedure {
     EconomyTree.build(catalog, state, actor, kind(resource))
       .flatMap(WalkerSimulation.preview(_, state, powers))
       .getOrElse(Vector.empty)
-}

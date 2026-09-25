@@ -17,7 +17,7 @@ import oathdigital.application.{
   StoredEventStream
 }
 
-object HsqldbEventStreamRepository {
+object HsqldbEventStreamRepository:
   private[persistence] def storageFailure(
       operation: String,
       error: Throwable
@@ -27,7 +27,6 @@ object HsqldbEventStreamRepository {
         error.getClass.getSimpleName
       )}"
     )
-}
 
 /**
  * File-backed HSQLDB journal for opaque versioned event-envelope JSON.
@@ -38,7 +37,7 @@ object HsqldbEventStreamRepository {
  */
 final class HsqldbEventStreamRepository private[persistence] (
     database: Database
-) extends EventStreamRepository {
+) extends EventStreamRepository:
   import HsqldbEventStreamRepository._
   import RepositoryAppendResult._
 
@@ -90,25 +89,23 @@ final class HsqldbEventStreamRepository private[persistence] (
       gameId: String,
       expected: ExpectedStream,
       records: Vector[String]
-  ): RepositoryAppendResult = {
+  ): RepositoryAppendResult =
     val actual = lockNextSequence(connection, gameId)
-    expected match {
+    expected match
       case ExpectedStream.MustNotExist =>
-        actual match {
+        actual match
           case Some(_) => StreamAlreadyExists
           case None =>
-            try {
+            try
               insertStream(connection, gameId)
-            } catch {
+            catch
               case error: SQLException if isConstraintViolation(error) =>
                 return StreamAlreadyExists
-            }
             insertEntries(connection, gameId, 0L, records)
             updateNextSequence(connection, gameId, records.size.toLong)
             Appended(0L, records.size)
-        }
       case ExpectedStream.AtNextSequence(wanted) =>
-        actual match {
+        actual match
           case None => StreamNotFound
           case Some(current) if current != wanted =>
             SequenceConflict(wanted, current)
@@ -120,49 +117,44 @@ final class HsqldbEventStreamRepository private[persistence] (
               current + records.size.toLong
             )
             Appended(current, records.size)
-        }
-    }
-  }
 
   private def lockNextSequence(
       connection: Connection,
       gameId: String
-  ): Option[Long] = {
+  ): Option[Long] =
     val statement = connection.prepareStatement(
       """SELECT next_sequence
         |FROM event_streams
         |WHERE game_id = ?
         |FOR UPDATE""".stripMargin
     )
-    try {
+    try
       statement.setString(1, gameId)
       val rows = statement.executeQuery()
       if (rows.next()) Some(rows.getLong(1)) else None
-    } finally statement.close()
-  }
+    finally statement.close()
 
-  private def insertStream(connection: Connection, gameId: String): Unit = {
+  private def insertStream(connection: Connection, gameId: String): Unit =
     val statement = connection.prepareStatement(
       "INSERT INTO event_streams (game_id, next_sequence) VALUES (?, 0)"
     )
-    try {
+    try
       statement.setString(1, gameId)
       statement.executeUpdate()
       ()
-    } finally statement.close()
-  }
+    finally statement.close()
 
   private def insertEntries(
       connection: Connection,
       gameId: String,
       firstSequence: Long,
       records: Vector[String]
-  ): Unit = {
+  ): Unit =
     val statement = connection.prepareStatement(
       """INSERT INTO event_entries (game_id, sequence, envelope_json)
         |VALUES (?, ?, ?)""".stripMargin
     )
-    try {
+    try
       records.zipWithIndex.foreach { case (record, offset) =>
         statement.setString(1, gameId)
         statement.setLong(2, firstSequence + offset)
@@ -171,25 +163,23 @@ final class HsqldbEventStreamRepository private[persistence] (
       }
       if (records.nonEmpty) statement.executeBatch()
       ()
-    } finally statement.close()
-  }
+    finally statement.close()
 
   private def updateNextSequence(
       connection: Connection,
       gameId: String,
       nextSequence: Long
-  ): Unit = {
+  ): Unit =
     val statement = connection.prepareStatement(
       "UPDATE event_streams SET next_sequence = ? WHERE game_id = ?"
     )
-    try {
+    try
       statement.setLong(1, nextSequence)
       statement.setString(2, gameId)
       if (statement.executeUpdate() != 1)
         throw new SQLException(s"stream '$gameId' disappeared during append")
       ()
-    } finally statement.close()
-  }
+    finally statement.close()
 
   private def isConstraintViolation(error: SQLException): Boolean =
     Option(error.getSQLState).exists(_.startsWith("23"))
@@ -198,8 +188,5 @@ final class HsqldbEventStreamRepository private[persistence] (
       operation: String
   )(action: slick.dbio.DBIO[A]): Either[RepositoryFailure, A] =
     try Right(Await.result(database.run(action), Duration.Inf))
-    catch {
+    catch
       case NonFatal(error) => Left(storageFailure(operation, error))
-    }
-
-}

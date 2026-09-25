@@ -22,7 +22,7 @@ import oathdigital.model._
   * Legacy computed the gain from the state before the cost, and no cost feeds
   * a gain input, so it is built from the state at the `Branch`.
   */
-private[economy] object EconomyTree {
+private[economy] object EconomyTree:
 
   /** What differs between Muster and the two Trades. */
   final case class Kind(
@@ -92,10 +92,8 @@ private[economy] object EconomyTree {
       Some(kind.gain)))
 
   private def answered(pending: PendingTree, decisionId: String)
-      : Option[DecisionOptionRef] = pending.answered.collectFirst {
+      : Option[DecisionOptionRef] = pending.answered.collectFirst:
     case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
-  }
 
   private def fail(error: OathViolation): Operation =
     BuildOps((_, _) => Left(error))
-}

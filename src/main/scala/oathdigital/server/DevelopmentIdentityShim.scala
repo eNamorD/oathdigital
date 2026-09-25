@@ -11,12 +11,11 @@ import oathdigital.application.{
 final case class DevelopmentIdentityHeader(userId: Option[String])
 
 sealed trait DevelopmentIdentityShimError extends Product with Serializable
-object DevelopmentIdentityShimError {
+object DevelopmentIdentityShimError:
   final case class NonLoopbackBinding(message: String)
       extends DevelopmentIdentityShimError
-}
 
-object DevelopmentIdentityShim {
+object DevelopmentIdentityShim:
   val HeaderName: String = "X-Oath-Dev-User"
 
   def configure(
@@ -32,11 +31,11 @@ object DevelopmentIdentityShim {
       .map(_ => Some(new DevelopmentHeaderAuthenticator))
 
   private final class DevelopmentHeaderAuthenticator
-      extends Authenticator[DevelopmentIdentityHeader] {
+      extends Authenticator[DevelopmentIdentityHeader]:
     override def authenticate(
         credential: DevelopmentIdentityHeader
     ): Either[AuthenticationFailure, AuthenticatedPrincipal] =
-      credential.userId match {
+      credential.userId match
         case None => Left(AuthenticationFailure.MissingCredential)
         case Some(value) =>
           DevelopmentTrustBoundary
@@ -44,6 +43,3 @@ object DevelopmentIdentityShim {
             .left.map(error =>
               AuthenticationFailure.InvalidCredential(error.message))
             .map(valid => AuthenticatedUser(UserId(valid)))
-      }
-  }
-}

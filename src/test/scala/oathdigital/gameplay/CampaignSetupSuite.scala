@@ -5,20 +5,19 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 
-class CampaignSetupSuite extends munit.FunSuite {
+class CampaignSetupSuite extends munit.FunSuite:
   private def pending(answers: (String, DecisionAnswer)*) = PendingTree(
     Vector("0"), answers.toVector.map { case (id, a) =>
       Answered(id, a, PlayerId("actor")) })
 
-  test("legal kinds follow the pawn site's ruler and the enemy pawns") {
+  test("legal kinds follow the pawn site's ruler and the enemy pawns"):
     val b = board()
     assertEquals(CampaignSetup.legalKinds(b.ready, b.actor),
       Vector(CampaignKind.Conquest))
     assertEquals(CampaignSetup.legalKinds(withEnemyAtOrigin(b).ready, b.actor),
       Vector(CampaignKind.Conquest, CampaignKind.Raid))
-  }
 
-  test("a player never conquers their own site") {
+  test("a player never conquers their own site"):
     val b = board()
     val lineage = b.player(b.actor).lineage
     val own = b.ready.updateCurrent(current => current.copy(map =
@@ -26,9 +25,8 @@ class CampaignSetupSuite extends munit.FunSuite {
         current.map.sites(b.origin).copy(forces =
           SiteForces.Occupied(ForceKind.Exile(lineage), 1))))))
     assertEquals(CampaignSetup.conquestDefender(own, b.actor), None)
-  }
 
-  test("the setup is the mandatory site plus the answered extras, in map order, with the force") {
+  test("the setup is the mandatory site plus the answered extras, in map order, with the force"):
     val b = board(extras = 2)
     val last = DecisionOptionRef.Site(b.extras.last)
     val first = DecisionOptionRef.Site(b.extras.head)
@@ -39,9 +37,8 @@ class CampaignSetupSuite extends munit.FunSuite {
     assertEquals(setup.defender, CampaignDefender.Bandits)
     assertEquals(setup.targetSites, b.origin +: b.extras)
     assertEquals(setup.force, 4)
-  }
 
-  test("a Raid setup is the pawn first, then the chosen relic and banner in canonical order") {
+  test("a Raid setup is the pawn first, then the chosen relic and banner in canonical order"):
     val b = withEnemyAtOrigin(board())
     val relic = RelicId("r-raid")
     val armed = b.ready.updateCurrent(current => current.copy(
@@ -60,9 +57,8 @@ class CampaignSetupSuite extends munit.FunSuite {
       CampaignRaidTarget.Pawn(b.other), CampaignRaidTarget.Relic(b.other, relic),
       CampaignRaidTarget.Banner(b.other, Banner.PeoplesFavor)))
     assertEquals(setup.defender, CampaignDefender.Player(b.other))
-  }
 
-  test("Raid target options are the defender's faceup relics and held banners only") {
+  test("Raid target options are the defender's faceup relics and held banners only"):
     val b = withEnemyAtOrigin(board())
     val up = RelicState(RelicId("r-up"), Orientation.FaceUp, Tokens.empty)
     val down = RelicState(RelicId("r-down"), Orientation.FaceDown, Tokens.empty)
@@ -75,10 +71,7 @@ class CampaignSetupSuite extends munit.FunSuite {
       CampaignDefender.Player(b.other)), Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(up.id)),
       DecisionOption.Banner(DecisionOptionRef.Banner(Banner.DarkestSecret))))
-  }
 
-  test("there is no setup before the force is answered") {
+  test("there is no setup before the force is answered"):
     val b = board()
     assertEquals(CampaignSetup.setup(b.ready, b.actor, pending()), None)
-  }
-}

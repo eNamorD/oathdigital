@@ -4,7 +4,7 @@ import oathdigital.gameplay.actions.BannerRules
 import oathdigital.model._
 
 /** Decision ids and pool keys of the Campaign procedure. */
-object CampaignIds {
+object CampaignIds:
   val kind = "campaign.kind"
   val defender = "campaign.defender"
   val targets = "campaign.targets"
@@ -20,10 +20,9 @@ object CampaignIds {
     defenderPlan, sacrifice, placement, relocation, planSacrifice)
 
   /** The decision a side's plan window asks. */
-  def planDecision(side: CampaignPlanSide): String = side match {
+  def planDecision(side: CampaignPlanSide): String = side match
     case CampaignPlanSide.Attacker => attackerPlan
     case CampaignPlanSide.Defender => defenderPlan
-  }
 
   val attackPool: PoolKey = PoolKey("campaign.attack")
   val defensePool: PoolKey = PoolKey("campaign.defense")
@@ -31,7 +30,6 @@ object CampaignIds {
 
   /** The option that ends a plan window. */
   val finish: DecisionOptionRef.Button = DecisionOptionRef.Button("finish")
-}
 
 /** What a Campaign's early answers say. `targetSites` is the mandatory origin
   * plus the answered additions in map order (Conquest); `raidTargets` is the
@@ -41,7 +39,7 @@ final case class CampaignSetup(actor: PlayerId, kind: CampaignKind,
     origin: SiteId, defender: CampaignDefender, targetSites: Vector[SiteId],
     raidTargets: Vector[CampaignRaidTarget], force: Int)
 
-object CampaignSetup {
+object CampaignSetup:
   private def playerOf(ready: ReadyGame, id: PlayerId): Option[PlayerState] =
     ready.game.current.players.find(_.player == id)
 
@@ -57,11 +55,10 @@ object CampaignSetup {
   def defenderAt(ready: ReadyGame, site: SiteId): Option[CampaignDefender] =
     ready.game.current.map.sites.get(site).flatMap(state =>
       SiteRule.ruler(state.forces, ready.game.current.players).toOption)
-      .flatMap {
+      .flatMap:
         case SiteRuler.Bandits => Some(CampaignDefender.Bandits)
         case SiteRuler.Player(player) => Some(CampaignDefender.Player(player))
         case _ => None
-      }
 
   def conquestDefender(ready: ReadyGame, actor: PlayerId)
       : Option[CampaignDefender] =
@@ -81,12 +78,11 @@ object CampaignSetup {
         CampaignKind.Raid: CampaignKind)).flatten
 
   def kindOptions(ready: ReadyGame, actor: PlayerId): Vector[DecisionOption] =
-    legalKinds(ready, actor).map {
+    legalKinds(ready, actor).map:
       case CampaignKind.Conquest => DecisionOption.Button(
         DecisionOptionRef.Button("conquest"), "Conquest")
       case CampaignKind.Raid => DecisionOption.Button(
         DecisionOptionRef.Button("raid"), "Raid")
-    }
 
   def defenderOptions(ready: ReadyGame, actor: PlayerId): Vector[DecisionOption] =
     raidDefenders(ready, actor).map(id =>
@@ -96,9 +92,9 @@ object CampaignSetup {
     * order; a Raid's faceup relics and held banners of the defender.
     */
   def targetOptions(ready: ReadyGame, actor: PlayerId, kind: CampaignKind,
-      defender: CampaignDefender): Vector[DecisionOption] = {
+      defender: CampaignDefender): Vector[DecisionOption] =
     val current = ready.game.current
-    (kind, defender) match {
+    (kind, defender) match
       case (CampaignKind.Conquest, _) =>
         val origin = originOf(ready, actor)
         current.map.inPlay.filter(site => !origin.contains(site) &&
@@ -113,8 +109,6 @@ object CampaignSetup {
                 DecisionOptionRef.Banner(banner)): DecisionOption)
         }
       case _ => Vector.empty
-    }
-  }
 
   /** The chosen kind: the answer, or the only legal kind when the decision was
     * omitted.
@@ -127,14 +121,13 @@ object CampaignSetup {
     })
 
   def defenderOf(ready: ReadyGame, actor: PlayerId, pending: PendingTree,
-      kind: CampaignKind): Option[CampaignDefender] = kind match {
+      kind: CampaignKind): Option[CampaignDefender] = kind match
     case CampaignKind.Conquest => conquestDefender(ready, actor)
     case CampaignKind.Raid => CampaignAnswers.raidDefender(pending)
       .orElse(raidDefenders(ready, actor) match {
         case Vector(only) => Some(only)
         case _ => None
       }).map(CampaignDefender.Player(_))
-  }
 
   /** The complete setup, once the force is answered. */
   def setup(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
@@ -143,19 +136,18 @@ object CampaignSetup {
     origin <- originOf(ready, actor)
     defender <- defenderOf(ready, actor, pending, kind)
     force <- CampaignAnswers.force(pending)
-  } yield {
+  } yield
     val picked = CampaignAnswers.targets(pending)
-    kind match {
+    kind match
       case CampaignKind.Conquest =>
         val extras = picked.collect { case DecisionOptionRef.Site(id) => id }.toSet
         CampaignSetup(actor, kind, origin, defender, origin +:
           ready.game.current.map.inPlay.filter(site =>
             site != origin && extras(site)), Vector.empty, force)
       case CampaignKind.Raid =>
-        val id = defender match {
+        val id = defender match
           case CampaignDefender.Player(player) => player
           case CampaignDefender.Bandits => actor
-        }
         val relics = picked.collect {
           case DecisionOptionRef.Relic(relic) =>
             CampaignRaidTarget.Relic(id, relic): CampaignRaidTarget }
@@ -166,41 +158,34 @@ object CampaignSetup {
           CampaignRaidTarget.canonical(
             Vector[CampaignRaidTarget](CampaignRaidTarget.Pawn(id)) ++
               relics ++ banners), force)
-    }
-  }
-}
 
 /** Readers over the answers recorded so far. The latest answer to a decision
   * wins, which is what a `Repeat` that re-asks one decision id relies on.
   */
-object CampaignAnswers {
+object CampaignAnswers:
   private def latest(pending: PendingTree, id: String): Option[DecisionAnswer] =
     pending.answered.reverse.collectFirst { case Answered(`id`, answer, _) => answer }
 
   def kind(pending: PendingTree): Option[CampaignKind] =
     latest(pending, CampaignIds.kind).collect {
       case DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button(key)) => key
-    }.flatMap {
+    }.flatMap:
       case "conquest" => Some(CampaignKind.Conquest)
       case "raid" => Some(CampaignKind.Raid)
       case _ => None
-    }
 
   def raidDefender(pending: PendingTree): Option[PlayerId] =
-    latest(pending, CampaignIds.defender).collect {
+    latest(pending, CampaignIds.defender).collect:
       case DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Player(id)) => id
-    }
 
   def targets(pending: PendingTree): Vector[DecisionOptionRef] =
-    latest(pending, CampaignIds.targets).toVector.flatMap {
+    latest(pending, CampaignIds.targets).toVector.flatMap:
       case DecisionAnswer.ChooseManyAnswer(selected) => selected
       case _ => Vector.empty
-    }
 
   def force(pending: PendingTree): Option[Int] =
-    latest(pending, CampaignIds.force).collect {
+    latest(pending, CampaignIds.force).collect:
       case DecisionAnswer.ChooseAmountAnswer(amount) => amount
-    }
 
   def sacrificed(pending: PendingTree): Int =
     latest(pending, CampaignIds.sacrifice).collect {
@@ -209,10 +194,9 @@ object CampaignAnswers {
 
   /** Every source picked in `decisionId` so far, in order, without Finish. */
   def picks(pending: PendingTree, decisionId: String): Vector[DecisionOptionRef] =
-    pending.answered.collect {
+    pending.answered.collect:
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _)
           if ref != CampaignIds.finish => ref
-    }
 
   def finished(pending: PendingTree, decisionId: String): Boolean =
     latest(pending, decisionId).contains(
@@ -222,25 +206,20 @@ object CampaignAnswers {
     * several with a distribution.
     */
   def placements(pending: PendingTree, targets: Vector[SiteId])
-      : Vector[(SiteId, Int)] = latest(pending, CampaignIds.placement) match {
+      : Vector[(SiteId, Int)] = latest(pending, CampaignIds.placement) match
     case Some(DecisionAnswer.ChooseAmountAnswer(count)) =>
       targets.headOption.toVector.map(_ -> count)
-    case Some(DecisionAnswer.DistributeAnswer(amounts)) => amounts.collect {
+    case Some(DecisionAnswer.DistributeAnswer(amounts)) => amounts.collect:
       case DistributeAmount(DecisionOptionRef.Site(site), count) => site -> count
-    }
     case _ => Vector.empty
-  }
 
   /** The latest source picked in `decisionId`, or `None` when the latest answer
     * was Finish or there is none.
     */
   def lastPick(pending: PendingTree, decisionId: String): Option[DecisionOptionRef] =
-    latest(pending, decisionId).collect {
+    latest(pending, decisionId).collect:
       case DecisionAnswer.ChooseOneAnswer(ref) if ref != CampaignIds.finish => ref
-    }
 
   def relocation(pending: PendingTree): Option[SiteId] =
-    latest(pending, CampaignIds.relocation).collect {
+    latest(pending, CampaignIds.relocation).collect:
       case DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)) => site
-    }
-}

@@ -6,7 +6,7 @@ import oathdigital.model.PowerWindow
 /** Reviewed Rest classifications and their procedure-specific callables.
   * League Treaty is audited through its walker contribution and catalog handler.
   */
-object RestPowers {
+object RestPowers:
   private def rest = Vector(ReviewedHandler.automatic(PowerWindow.RestStart))
 
   object Naysayers extends ReviewedPower("denizen.naysayers", None, rest)
@@ -23,4 +23,3 @@ object RestPowers {
 
   val powers: Vector[Power] = Vector(Naysayers, SilverTongue, Insomnia,
     VowOfObedience, VowOfPoverty)
-}

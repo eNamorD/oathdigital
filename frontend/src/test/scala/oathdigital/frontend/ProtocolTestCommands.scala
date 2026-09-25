@@ -6,7 +6,7 @@ import oathdigital.protocol.{GameIntent => Intent, _}
   * Keeping actor parameters here makes existing assertions prove that identity
   * never reaches the encoded payload.
   */
-private[frontend] object GameCommand {
+private[frontend] object GameCommand:
   // Take Wealth starts on the generic walker (batch-1 Task 7): the resource
   // rides the start selection as a button, not an intent of its own.
   def TakeWealth(actor: String, resource: String) =
@@ -30,4 +30,3 @@ private[frontend] object GameCommand {
   def RollWalker(actor: String, pool: String) = Intent.RollWalker(pool)
   def ResolveWalker(actor: String, id: String, payload: DecisionAnswerWire) =
     Intent.ResolveWalker(id, payload)
-}

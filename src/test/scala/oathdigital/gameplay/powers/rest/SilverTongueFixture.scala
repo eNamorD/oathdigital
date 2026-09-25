@@ -6,7 +6,7 @@ import oathdigital.model._
 /** Silver Tongue arranged in the Rest phase, shared by its own suite, the
   * projection suite and the pending-walker invariant (Task 13).
   */
-object SilverTongueFixture {
+object SilverTongueFixture:
   val tongue: DenizenId = DenizenId("92")
 
   def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get
@@ -17,7 +17,7 @@ object SilverTongueFixture {
     * with capacity is emptied so the action boundary visibly refills it.
     */
   def arranged(siteSuits: Vector[Suit], stocked: Set[Suit])
-      : (ReadyGame, PlayerId) = {
+      : (ReadyGame, PlayerId) =
     val ready = initialReady
     val current = ready.game.current
     val actor = current.turn.activePlayer
@@ -61,5 +61,3 @@ object SilverTongueFixture {
               case _ => false
             }).toMap))))
     (state, actor)
-  }
-}

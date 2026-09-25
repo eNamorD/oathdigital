@@ -21,7 +21,7 @@ import oathdigital.model._
   * empty Hearth bank gives nothing.
   */
 final case class WelcomingParty private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = WelcomingParty.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -30,17 +30,14 @@ final case class WelcomingParty private (cardId: DenizenId,
       children :+ Gain.Favor(ctx.activePlayer, Suit.Hearth,
         WelcomingParty.Favor))))
 
-  override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match {
+  override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match
     case CardPlayedFaceup(card: DenizenId, _) => card != cardId &&
       ctx.procedure.contains(ActionRef.Search)
     case _ => false
-  }
-}
 
-object WelcomingParty {
+object WelcomingParty:
   val id: PowerId = PowerId("denizen.welcoming-party")
   val Favor: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[WelcomingParty] =
     CatalogCards.denizen(catalog, id).map(new WelcomingParty(_, catalog))
-}

@@ -11,13 +11,13 @@ import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.{GameProjection, NegotiationDealProjection}
 
 /** What each viewer of a parked deal is shown. */
-class NegotiationDealProjectionSuite extends munit.FunSuite {
+class NegotiationDealProjectionSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val projector = new GameProjector(catalog)
   private val dealId = NegotiationDeal.dealDecisionId
 
   private def parkedDeal(b: Board, terms: Option[NegotiationTerms] = None,
-      who: Vector[PlayerId] = Vector.empty): OathState = {
+      who: Vector[PlayerId] = Vector.empty): OathState =
     val started = rules.startWalker(Ready(b.ready), ActionRef.Negotiation,
       b.actor).getOrElse(fail("Negotiation must start"))
     val chosen = rules.resolveWalker(started.state, b.actor,
@@ -26,7 +26,6 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
           .map(DecisionOptionRef.Player(_)))).getOrElse(fail("negotiators"))
     terms.fold(chosen.state)(value => rules.resolveWalker(chosen.state, b.actor,
       dealId, ProposeTerms(value)).getOrElse(fail("terms")).state)
-  }
 
   private def view(state: OathState, viewer: PlayerId): GameProjection =
     projector.project("negotiation", LoadedGame(state, 30), viewer)
@@ -36,7 +35,7 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
       .orElse(projection.walkerWaiting.flatMap(_.deal))
       .getOrElse(fail("the deal must be projected"))
 
-  test("the actor and every co-owner get the full decision with editing inputs") {
+  test("the actor and every co-owner get the full decision with editing inputs"):
     val b = NegotiationFixture.board()
     val state = parkedDeal(b)
     Vector(b.actor, b.second, b.third).foreach { viewer =>
@@ -50,9 +49,8 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
       assert(!editing.canAccept)
       assert(projection.legalControls.contains("resolveWalkerDecision"))
     }
-  }
 
-  test("a player outside the deal and the public view see it read-only") {
+  test("a player outside the deal and the public view see it read-only"):
     val b = NegotiationFixture.board()
     val state = parkedDeal(b, who = Vector(b.second))
     val outsider = view(state, b.third)
@@ -67,9 +65,8 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
     val public = projector.projectPublic("negotiation", LoadedGame(state, 30))
     assertEquals(deal(public).editing, None)
     assertEquals(public.walkerDecision, None)
-  }
 
-  test("terms show amounts to everyone but hide identities from everyone but their author") {
+  test("terms show amounts to everyone but hide identities from everyone but their author"):
     val b = NegotiationFixture.board()
     val terms = NegotiationTerms(
       Vector(NegotiationTransfer(b.second, 3, Vector(b.actorRelic))),
@@ -92,9 +89,8 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
       assertEquals(seen.disclosures.head.recipientPlayerId, b.second.value)
       assertEquals(seen.disclosures.head.card, None)
     }
-  }
 
-  test("acceptances and the right to accept are projected") {
+  test("acceptances and the right to accept are projected"):
     val b = NegotiationFixture.board()
     val proposed = parkedDeal(b, Some(NegotiationTerms(
       Vector(NegotiationTransfer(b.second, 1, Vector.empty)))), Vector(b.second))
@@ -105,24 +101,21 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
     assertEquals(seen.acceptedPlayerIds, Vector(b.second.value))
     assert(!deal(view(accepted, b.second)).editing.exists(_.canAccept))
     assert(deal(view(accepted, b.actor)).editing.exists(_.canAccept))
-  }
 
-  test("the start control is offered while a candidate exists and not once parked") {
+  test("the start control is offered while a candidate exists and not once parked"):
     val b = NegotiationFixture.board()
     assert(view(Ready(b.ready), b.actor).legalControls.contains("beginNegotiation"))
     assert(!view(Ready(NegotiationFixture.isolated(b).ready), b.actor)
       .legalControls.contains("beginNegotiation"))
     assert(!view(parkedDeal(b), b.actor).legalControls.contains("beginNegotiation"))
-  }
 
-  test("Negotiation is offered as a start control, not as a board-target selection") {
+  test("Negotiation is offered as a start control, not as a board-target selection"):
     val b = NegotiationFixture.board()
     val projection = view(Ready(b.ready), b.actor)
     assert(projection.legalControls.contains("beginNegotiation"))
     assert(!projection.boardTargetActions.exists(_.actionKind == "negotiation"))
-  }
 
-  test("a faceup relic in a transfer is shown to every viewer, public included") {
+  test("a faceup relic in a transfer is shown to every viewer, public included"):
     val b = NegotiationFixture.board()
     val faceUp = b.copy(ready = b.ready.updateCurrent(current => current.copy(
       players = current.players.map(p => if (p.player == b.actor)
@@ -137,5 +130,3 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
     views.foreach(projection => assertEquals(
       deal(projection).transfers.head.relics.map(_.cardId),
       Vector(b.actorRelic.value)))
-  }
-}

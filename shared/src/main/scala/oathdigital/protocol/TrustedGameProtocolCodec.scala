@@ -3,27 +3,25 @@ package oathdigital.protocol
 import scala.util.control.NonFatal
 import ProtocolDecodeFailure._
 
-private[protocol] object TrustedGameCodecFields {
+private[protocol] object TrustedGameCodecFields:
   def parse[A](json: String)(decode: ujson.Value => Either[ProtocolDecodeFailure, A])
       : Either[ProtocolDecodeFailure, A] =
     try decode(ujson.read(json))
     catch { case NonFatal(_) => Left(MalformedJson("$", "malformed JSON")) }
 
   def exact(raw: ujson.Value, keys: Vector[String], path: String)
-      : Either[ProtocolDecodeFailure, ujson.Obj] = raw match {
+      : Either[ProtocolDecodeFailure, ujson.Obj] = raw match
     case obj: ujson.Obj =>
       obj.value.keys.find(!keys.contains(_)).map(key =>
         Left(UnexpectedField(s"$path.$key"))).getOrElse(
         keys.find(!obj.value.contains(_)).map(key =>
           Left(MissingField(s"$path.$key"))).getOrElse(Right(obj)))
     case _ => Left(ExpectedObject(path))
-  }
 
   def text(obj: ujson.Obj, key: String, path: String)
-      : Either[ProtocolDecodeFailure, String] = obj(key) match {
+      : Either[ProtocolDecodeFailure, String] = obj(key) match
     case ujson.Str(value) if value.trim.nonEmpty => Right(value)
     case _ => Left(InvalidValue(s"$path.$key", "expected a non-blank string"))
-  }
 
   def identifier(obj: ujson.Obj, key: String, path: String)
       : Either[ProtocolDecodeFailure, String] = text(obj, key, path).flatMap { value =>
@@ -33,19 +31,16 @@ private[protocol] object TrustedGameCodecFields {
 
   def array[A](raw: ujson.Value, path: String)(
       decode: (ujson.Value, String) => Either[ProtocolDecodeFailure, A])
-      : Either[ProtocolDecodeFailure, Vector[A]] = raw match {
+      : Either[ProtocolDecodeFailure, Vector[A]] = raw match
     case values: ujson.Arr => values.value.zipWithIndex.foldLeft[
-        Either[ProtocolDecodeFailure, Vector[A]]](Right(Vector.empty)) {
+        Either[ProtocolDecodeFailure, Vector[A]]](Right(Vector.empty)):
       case (done, (value, index)) => for {
         acc <- done
         next <- decode(value, s"$path[$index]")
       } yield acc :+ next
-    }
     case _ => Left(InvalidValue(path, "expected array"))
-  }
-}
 
-object TrustedGameCreateRequestCodec {
+object TrustedGameCreateRequestCodec:
   import TrustedGameCodecFields._
 
   def encode(request: TrustedGameCreateRequest): String = ujson.write(ujson.Obj(
@@ -69,9 +64,8 @@ object TrustedGameCreateRequestCodec {
         participants.map(_.playerId).distinct.size == participants.size, (),
         InvalidValue("$.participants", "requires unique player IDs and at least one participant"))
     } yield TrustedGameCreateRequest(game, participants) }
-}
 
-object TrustedGameCreateResponseCodec {
+object TrustedGameCreateResponseCodec:
   import TrustedGameCodecFields._
 
   def encode(response: TrustedGameCreateResponse): String = ujson.write(ujson.Obj(
@@ -91,4 +85,3 @@ object TrustedGameCreateResponseCodec {
       _ <- Either.cond(seats.nonEmpty && seats.map(_.playerId).distinct.size == seats.size,
         (), InvalidValue("$.seats", "requires unique player IDs and at least one seat"))
     } yield TrustedGameCreateResponse(game, seats) }
-}

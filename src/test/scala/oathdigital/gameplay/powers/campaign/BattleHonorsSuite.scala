@@ -8,7 +8,7 @@ import oathdigital.model._
 /** Battle Honors: a free plan for either side that gains two favor from the Order
   * bank if its user wins, as much as the bank holds.
   */
-class BattleHonorsSuite extends munit.FunSuite {
+class BattleHonorsSuite extends munit.FunSuite:
   private val card = cardWith("denizen.battle-honors")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
 
@@ -20,12 +20,11 @@ class BattleHonorsSuite extends munit.FunSuite {
 
   private def attacking: Board = withAdviser(board(), card, Orientation.FaceUp)
 
-  private def defending: Board = {
+  private def defending: Board =
     val base = againstPlayer(board())
     withAdviserFor(base, base.other, card, Orientation.FaceUp)
-  }
 
-  test("an attacker that wins gains two favor from the Order bank") {
+  test("an attacker that wins gains two favor from the Order bank"):
     val b = attacking
     val bank = orderBank(asState(b))
     val done = commit(rules(winning), b, 4)
@@ -34,24 +33,21 @@ class BattleHonorsSuite extends munit.FunSuite {
       _.attackerWins), Some(true))
     assertEquals(favor(done.state, b.actor), favor(asState(b), b.actor) + 2)
     assertEquals(orderBank(done.state), bank - 2)
-  }
 
-  test("an attacker that loses gains nothing") {
+  test("an attacker that loses gains nothing"):
     val b = attacking
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finish
     assertEquals(favor(done.state, b.actor), favor(asState(b), b.actor))
-  }
 
-  test("choosing it costs nothing and changes no dice") {
+  test("choosing it costs nothing and changes no dice"):
     val b = attacking
     val run = commit(rules(winning), b, 4)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(!picked.since(run).exists(op => op.isInstanceOf[PayCost] ||
       op.isInstanceOf[ModifyDicePool]))
-  }
 
-  test("a defender that wins gains two favor, and one that loses gains nothing") {
+  test("a defender that wins gains two favor, and one that loses gains nothing"):
     val b = defending
     val won = commit(rules(losing), b, 4)
       .pick(b.other, CampaignIds.defenderPlan, ref).finish
@@ -61,9 +57,8 @@ class BattleHonorsSuite extends munit.FunSuite {
     val lost = commit(rules(winning), b, 4)
       .pick(b.other, CampaignIds.defenderPlan, ref).finish
     assertEquals(favor(lost.state, b.other), favor(asState(b), b.other))
-  }
 
-  test("an Order bank with one favor gives one") {
+  test("an Order bank with one favor gives one"):
     val b0 = attacking
     val b = b0.copy(ready = b0.ready.copy(banks = b0.ready.banks.copy(
       favor = b0.ready.banks.favor.updated(Suit.Order, 1))))
@@ -71,14 +66,12 @@ class BattleHonorsSuite extends munit.FunSuite {
       .pick(b.actor, CampaignIds.attackerPlan, ref).finish
     assertEquals(favor(done.state, b.actor), favor(asState(b), b.actor) + 1)
     assertEquals(orderBank(done.state), 0)
-  }
 
-  private def banditHolds: Board = {
+  private def banditHolds: Board =
     val two = board(extras = 1)
     withSiteCard(two, two.extras.head, card)
-  }
 
-  test("a bandit defender that wins gains two favor, settled into the shared bank, without choosing") {
+  test("a bandit defender that wins gains two favor, settled into the shared bank, without choosing"):
     val b = banditHolds
     val bank = orderBank(asState(b))
     val run = commit(rules(losing), b, 2)
@@ -89,24 +82,20 @@ class BattleHonorsSuite extends munit.FunSuite {
       _.attackerWins), Some(false))
     assertEquals(orderBank(done.state), bank - 2)
     assertEquals(favor(done.state, b.actor), favor(asState(b), b.actor))
-  }
 
-  test("a bandit defender that loses gains nothing") {
+  test("a bandit defender that loses gains nothing"):
     val b = banditHolds
     val bank = orderBank(asState(b))
     val done = commit(rules(winning), b, 4).finish
     assertEquals(ready(done.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(true))
     assertEquals(orderBank(done.state), bank)
-  }
 
-  test("the gain is best-effort for bandits too") {
+  test("the gain is best-effort for bandits too"):
     val b0 = banditHolds
     val b = b0.copy(ready = b0.ready.copy(banks = b0.ready.banks.copy(
       favor = b0.ready.banks.favor.updated(Suit.Order, 1))))
     val done = commit(rules(losing), b, 2).finish
     assertEquals(orderBank(done.state), 0)
-  }
 
   private def asState(b: Board): OathState = OathState.Ready(b.ready)
-}

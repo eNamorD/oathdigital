@@ -5,10 +5,10 @@ import oathdigital.model.{EdificeId, EdificeSide, EdificeState, Tokens, VisionId
 
 /** Card presentation must echo the authoritative printed text, independent
   * of which plan factory derived the game. */
-class GamePresentationProjectorPrintedFacesSuite extends munit.FunSuite {
+class GamePresentationProjectorPrintedFacesSuite extends munit.FunSuite:
   private val projector = new GamePresentationProjector(catalog)
 
-  test("every Vision card detail uses the authoritative printed presentation") {
+  test("every Vision card detail uses the authoritative printed presentation"):
     val ids = Vector("vision:vision-of-conquest", "vision:vision-of-sanctuary",
       "vision:vision-of-rebellion", "vision:vision-of-faith", "vision:conspiracy")
     ids.foreach { id =>
@@ -17,9 +17,8 @@ class GamePresentationProjectorPrintedFacesSuite extends munit.FunSuite {
       assertEquals(details.name, expected.name)
       assertEquals(details.rulesText, Some(expected.rulesText))
     }
-  }
 
-  test("edifice card details use intact and ruined catalog face text") {
+  test("edifice card details use intact and ruined catalog face text"):
     val definition = catalog.edifices.head
     val id = EdificeId(definition.id.value)
     Vector(EdificeSide.Intact -> definition.intact,
@@ -32,5 +31,3 @@ class GamePresentationProjectorPrintedFacesSuite extends munit.FunSuite {
         case EdificeSide.Ruined => "unrestricted"
       }))
     }
-  }
-}

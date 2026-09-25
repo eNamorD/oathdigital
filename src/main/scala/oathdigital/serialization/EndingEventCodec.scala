@@ -7,16 +7,15 @@ private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
   import GameEventWire._
   import WireError._
 
-  protected final val endingDiscriminator: PartialFunction[OathEvent, String] = {
+  protected final val endingDiscriminator: PartialFunction[OathEvent, String] =
       case _: RoundEnded => RoundEndedType
       case _: WarExhaustionResolved => WarExhaustionResolvedType
       case _: BanditsRefilled => BanditsRefilledType
       case _: UsurperFlipped => UsurperFlippedType
       case _: UsurperVictory => UsurperVictoryType
       case _: VisionVictory => VisionVictoryType
-  }
 
-  protected final val endingEncoder: PartialFunction[OathEvent, ujson.Value] = {
+  protected final val endingEncoder: PartialFunction[OathEvent, ujson.Value] =
       case RoundEnded(completed, next) => ujson.Obj(
         "completedRound" -> completed,
         "nextRound" -> next.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
@@ -33,27 +32,24 @@ private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
       case UsurperVictory(player) => ujson.Obj("playerId" -> player.value)
       case VisionVictory(player, vision) => ujson.Obj(
         "playerId" -> player.value, "visionId" -> vision.value)
-  }
 
   protected final def endingDecode(eventType: String, payload: ujson.Value,
-      path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] = {
-    val decoder: PartialFunction[String, Either[WireError, OathEvent]] = {
+      path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] =
+    val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
         case RoundEndedType => for {
           completed <- safeIntField(payload.obj, "completedRound", path)
-          next <- payload("nextRound") match {
+          next <- payload("nextRound") match
             case ujson.Null => Right(None)
             case value => safeInt(value, s"$path.nextRound").map(Some(_))
-          }
         } yield RoundEnded(completed, next)
         case WarExhaustionResolvedType => for {
-          kind <- payload("victoryKind").str match {
+          kind <- payload("victoryKind").str match
             case "usurper" => Right(VictoryKind.Usurper)
             case "visionary" => Right(VictoryKind.Visionary)
             case "oathkeeper" => Right(VictoryKind.Oathkeeper)
             case "random-selection" => Right(VictoryKind.RandomSelection)
             case other => Left(InvalidValue(s"$path.victoryKind",
               s"unknown victory kind $other"))
-          }
         } yield WarExhaustionResolved(PlayerId(payload("winnerPlayerId").str),
           kind, payload("visionId") match {
             case ujson.Null => None
@@ -70,7 +66,5 @@ private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
           Right(UsurperVictory(PlayerId(payload("playerId").str)))
         case VisionVictoryType => Right(VisionVictory(
           PlayerId(payload("playerId").str), VisionId(payload("visionId").str)))
-    }
     decoder.lift(eventType)
-  }
 }

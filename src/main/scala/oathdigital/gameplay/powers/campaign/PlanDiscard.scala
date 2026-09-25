@@ -16,14 +16,14 @@ import oathdigital.model._
   *
   * Like every discard of a card in play, it attaches `DiscardRestrictions`.
   */
-object PlanDiscard {
+object PlanDiscard:
   def denizen(catalog: ExecutableCatalog, user: PlayerId, card: DenizenId)
       : Operation = BuildOps((ready, _) => operations(catalog, ready, user, card),
     restrictions = (_, _) => Vector(new DiscardRestrictions(catalog, user)))
 
   private def operations(catalog: ExecutableCatalog, ready: ReadyGame,
       user: PlayerId, card: DenizenId)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val current = ready.game.current
     val player = current.players.find(_.player == user)
     val pawnRegion = player.flatMap(_.pawnSite).flatMap(current.map.regionOf)
@@ -37,7 +37,7 @@ object PlanDiscard {
           (PositionedLocation(Location.Site(site)), held.tokens,
             current.map.regionOf(site))
       })
-    (asAdviser ++ atSite).headOption match {
+    (asAdviser ++ atSite).headOption match
       case None => Right(Vector.empty)
       case Some((from, tokens, region)) => for {
         own <- region.toRight(OathViolation.PawnSiteMissing(user))
@@ -45,6 +45,3 @@ object PlanDiscard {
       } yield Vector[CoreOperation](Discard.Denizen(card, from,
         CardPlay.nextRegion(own), suit, tokens.favor, tokens.secrets, user,
         required = true))
-    }
-  }
-}

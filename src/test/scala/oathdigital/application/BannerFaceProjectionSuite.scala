@@ -11,7 +11,7 @@ import oathdigital.protocol.{GameIntent, WalkerStartArgWire}
   * name and a text, their `usePower` control is legal for the holder only,
   * and the client's source (a banner) binds back to the engine's source.
   */
-class BannerFaceProjectionSuite extends munit.FunSuite {
+class BannerFaceProjectionSuite extends munit.FunSuite:
   import PowerFixture.{actor, base, inPhase}
   import BannerFixture._
 
@@ -23,7 +23,7 @@ class BannerFaceProjectionSuite extends munit.FunSuite {
   private def holding: ReadyGame = inPhase(TargetsFixture.withSecrets(
     withSiteSecrets(holdingFlame(base), brokenPeaks, 1), actor, 1, 0), Phase.Act)
 
-  test("the holder is shown both Wandering Flame powers, named, with a text") {
+  test("the holder is shown both Wandering Flame powers, named, with a text"):
     val projected = projector.project("flame", LoadedGame(Ready(holding), 30L),
       actor)
     assertEquals(projected.phasePowers.map(p =>
@@ -33,10 +33,9 @@ class BannerFaceProjectionSuite extends munit.FunSuite {
     assert(projected.phasePowers.forall(_.rulesText.trim.nonEmpty))
     assert(projected.legalControls.contains(s"usePower:$move:darkest-secret"))
     assert(projected.legalControls.contains(s"usePower:$place:darkest-secret"))
-  }
 
   test("a power with nothing to do is not projected: Move needs a secret-" +
-      "bearing site, and the place power needs a faceup secret") {
+      "bearing site, and the place power needs a faceup secret"):
     def shown(ready: ReadyGame) = projector.project("flame",
       LoadedGame(Ready(ready), 30L), actor)
     val noSite = inPhase(TargetsFixture.withSecrets(
@@ -48,9 +47,8 @@ class BannerFaceProjectionSuite extends munit.FunSuite {
       withoutSiteSecrets(holdingFlame(base)), actor, 0, 2), Phase.Act)
     assertEquals(shown(neither).phasePowers, Vector.empty)
     assert(!shown(neither).legalControls.exists(_.startsWith("usePower:")))
-  }
 
-  test("another player, and the Festival face, are shown neither") {
+  test("another player, and the Festival face, are shown neither"):
     val other = base.game.current.players.map(_.player).find(_ != actor).get
     val theirs = projector.project("flame", LoadedGame(Ready(holding), 30L),
       other)
@@ -60,14 +58,11 @@ class BannerFaceProjectionSuite extends munit.FunSuite {
       holdingFlame(base, DarkestSecretFace.Festival), brokenPeaks, 1), Phase.Act)
     assertEquals(projector.project("flame", LoadedGame(Ready(festival), 30L),
       actor).phasePowers, Vector.empty)
-  }
 
-  test("the client's banner source binds to the engine's banner source") {
+  test("the client's banner source binds to the engine's banner source"):
     assertEquals(GameIntentMapper.bind(actor, GameIntent.UsePower(move,
       WalkerStartArgWire("banner", "darkest-secret"))),
       Right(GameCommand.UsePower(actor, WanderingFlameMove.id,
         DecisionOptionRef.Banner(Banner.DarkestSecret))))
     assert(GameIntentMapper.bind(actor, GameIntent.UsePower(move,
       WalkerStartArgWire("banner", "no-such-banner"))).isLeft)
-  }
-}

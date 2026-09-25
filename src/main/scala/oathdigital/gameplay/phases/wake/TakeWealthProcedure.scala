@@ -32,7 +32,7 @@ import oathdigital.model._
   * sketched both as `BuildOps`; deferring a value already in hand would only
   * hide it from anything that reads the tree.
   */
-object TakeWealthProcedure {
+object TakeWealthProcedure:
 
   /** Fresh start and resume build the same tree. Take Wealth declares no
     * `Decide` and no `Roll`, so it finishes inside the command that starts it
@@ -99,7 +99,7 @@ object TakeWealthProcedure {
     * over an uninterpreted vector and knows nothing about what Wake wants.
     */
   private def resourceOf(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, WakeResource] = args match {
+      : Either[OathViolation, WakeResource] = args match
     case Vector(DecisionOptionRef.Button(key)) =>
       WakeResource.fromKey(key).toRight(OathViolation.InvalidEventOrder(
         s"take wealth does not recognise the resource '$key'"))
@@ -108,23 +108,19 @@ object TakeWealthProcedure {
     case other => Left(OathViolation.InvalidEventOrder(
       "take wealth takes exactly one resource as its start selection, got " +
         other.map(ref => s"${ref.kind}/${ref.wireId}").mkString(", ")))
-  }
 
   private def noEnemyPawn(ready: ReadyGame, actor: PlayerId, site: SiteId)
-      : Either[OathViolation, Unit] = {
-    val enemies = ready.game.current.players.collect {
+      : Either[OathViolation, Unit] =
+    val enemies = ready.game.current.players.collect:
       case other if other.player != actor && other.pawnSite.contains(site) =>
         other.player
-    }
     Either.cond(enemies.isEmpty, (),
       OathViolation.EnemyPawnBlocksTakeWealth(site, enemies))
-  }
 
   private def available(tokens: Tokens, resource: WakeResource): Boolean =
-    resource match {
+    resource match
       case WakeResource.Favor => tokens.favor > 0
       case WakeResource.Secret => tokens.secrets > 0
-    }
 
   /** Tree closes only over command-stable actor, site and resource. The use
     * record is a leaf of the action rather than a side effect beside it, so
@@ -138,8 +134,6 @@ object TakeWealthProcedure {
     RecordPowerUse(TakeWealthLimit.useRef(site))),
     Some(PowerWindow.WakeTakeWealth))
 
-  private def piece(resource: WakeResource): Piece = resource match {
+  private def piece(resource: WakeResource): Piece = resource match
     case WakeResource.Favor => Piece.Favor(1)
     case WakeResource.Secret => Piece.Secrets(1)
-  }
-}

@@ -12,7 +12,7 @@ import ServerUiSupport._
   * the card out from under a reader mid-sentence, which is the interruption
   * this whole design exists to remove.
   */
-private[frontend] final class CardInspectionOverlay(root: dom.Element) {
+private[frontend] final class CardInspectionOverlay(root: dom.Element):
   private val node = element("aside", "card-overlay").asInstanceOf[dom.html.Element]
   node.setAttribute("hidden", "")
   node.setAttribute("role", "dialog")
@@ -29,7 +29,7 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
 
   def isOpen: Boolean = !node.hasAttribute("hidden")
 
-  def show(card: CardDetails, origin: dom.html.Element): Unit = {
+  def show(card: CardDetails, origin: dom.html.Element): Unit =
     clear()
     node.setAttribute("aria-label", "Card details")
     // Inspection reads a card, so a card the viewer is allowed to read is
@@ -38,7 +38,6 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
       if (card.hidden) card else card.copy(orientation = Some("face-up"))))
     if (!card.hidden) body.appendChild(details(card))
     open(origin)
-  }
 
   /** The overlay over something that is not a card: a title and its printed
     * lines. The Oath is one of these -- it is a state of the game with a
@@ -46,7 +45,7 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
     * card face on the table that nothing can be played from.
     */
   def showText(title: String, lines: Vector[String],
-      origin: dom.html.Element): Unit = {
+      origin: dom.html.Element): Unit =
     clear()
     // Named for what it shows: it is not a card, so "Card details" would
     // misname it.
@@ -57,26 +56,23 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
       .foreach(panel.appendChild))
     body.appendChild(panel)
     open(origin)
-  }
 
   private def clear(): Unit =
     while (body.firstChild != null) body.removeChild(body.firstChild)
 
-  private def open(origin: dom.html.Element): Unit = {
+  private def open(origin: dom.html.Element): Unit =
     opener = Some(origin)
     node.removeAttribute("hidden")
     close.focus()
-  }
 
-  def hide(): Unit = {
+  def hide(): Unit =
     node.setAttribute("hidden", "")
     // The opener can have been rebuilt away by a poll while the overlay was
     // open; focusing a detached node silently does nothing, so guard instead.
     opener.filter(dom.document.contains).foreach(_.focus())
     opener = None
-  }
 
-  private def details(card: CardDetails): dom.Element = {
+  private def details(card: CardDetails): dom.Element =
     val panel = element("div", "card-overlay-details")
     panel.appendChild(text("h3", "card-overlay-name", card.name))
     val properties = element("dl", "card-overlay-properties")
@@ -87,13 +83,12 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
       Option.when(card.favor > 0)("Favor" -> card.favor.toString),
       Option.when(card.secrets > 0)("Secrets" -> card.secrets.toString),
       card.relicValue.map(v => "Relic value" -> v.toString),
-      card.defense.map(v => "Defense" -> v.toString)).flatten.foreach {
+      card.defense.map(v => "Defense" -> v.toString)).flatten.foreach:
       case (label, value) =>
         val item = element("div", "card-overlay-property")
         item.appendChild(text("dt", "", label))
         item.appendChild(text("dd", "", value))
         properties.appendChild(item)
-    }
     if (properties.childNodes.length > 0) panel.appendChild(properties)
     card.rulesText.foreach { value =>
       val rules = element("div", "card-overlay-rules")
@@ -103,7 +98,6 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
     if (!card.implemented)
       panel.appendChild(text("p", "card-unimplemented-badge", "Unimplemented"))
     panel
-  }
 
   private val dismiss: dom.MouseEvent => Unit = event =>
     // A click anywhere on the overlay dismisses it, except inside the card
@@ -116,9 +110,7 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element) {
   node.addEventListener("click", dismiss)
   node.addEventListener("keydown", escape)
 
-  def dispose(): Unit = {
+  def dispose(): Unit =
     node.removeEventListener("click", dismiss)
     node.removeEventListener("keydown", escape)
     node.remove()
-  }
-}

@@ -7,7 +7,7 @@ import oathdigital.model.TestGameFixtures._
 /** Task 2 spec: walker leaves (Decide/Repeat) and PendingTree/pool state are
   * constructible and readable from a ReadyGame's CurrentGameState.
   */
-class WalkerStateSuite extends munit.FunSuite {
+class WalkerStateSuite extends munit.FunSuite:
   private val actor = playerId
   private val decide = Decide(
     decisionId = "recover.choice",
@@ -18,7 +18,7 @@ class WalkerStateSuite extends munit.FunSuite {
 
   private val baseReady = ReadyGames.of(game)
 
-  test("a walker PendingTree with a dice pool slot stores in state and reads back") {
+  test("a walker PendingTree with a dice pool slot stores in state and reads back"):
     // Legacy game state carries neither walkerPending nor pools by default.
     assert(baseReady.game.current.walkerPending.isEmpty)
     assert(baseReady.game.current.rollPools.isEmpty)
@@ -44,18 +44,14 @@ class WalkerStateSuite extends munit.FunSuite {
       Vector(actor))
     assertEquals(ready.game.current.rollPools(PoolKey("recover")),
       DicePoolState(2))
-  }
 
-  test("a Decide leaf flattens to itself") {
+  test("a Decide leaf flattens to itself"):
     assertEquals(Operation.flatten(decide), Vector(decide))
-  }
 
-  test("a Repeat composite flattens to its body's leaves regardless of guard") {
+  test("a Repeat composite flattens to its body's leaves regardless of guard"):
     // Guard is evaluated by the walker only; the accessor always descends.
     val body = PayCost(actor, Location.OnCard(DenizenId("pay:target")),
       Cost(favor = 1, secret = 1))
     val repeat = Repeat((_: ReadyGame, _: PendingTree) => false, body)
     assertEquals(Operation.flatten(repeat), Operation.flatten(body))
     assertEquals(Operation.flatten(repeat).size, 2)
-  }
-}

@@ -23,7 +23,7 @@ import oathdigital.model._
   * The source is a game rule rather than a site: taking wealth is a standing
   * Wake-phase option in the rulebook, not a power printed on any site.
   */
-case object TakeWealthLimit extends ContributingPower {
+case object TakeWealthLimit extends ContributingPower:
   val id: PowerId = PowerId("site.take-wealth")
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
@@ -50,4 +50,3 @@ case object TakeWealthLimit extends ContributingPower {
       .flatMap(_.pawnSite).map(useRef)
       .filter(ctx.state.game.current.turn.usedPowers.contains)
       .map(OathViolation.PowerAlreadyUsed.apply)
-}

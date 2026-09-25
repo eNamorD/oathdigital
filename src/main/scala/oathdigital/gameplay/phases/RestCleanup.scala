@@ -23,13 +23,13 @@ final case class RestCleanupPlan(
     returnedFavor: Map[Suit, Int],
     returnedSecrets: Int)
 
-object RestCleanupPlan {
+object RestCleanupPlan:
   def derive(catalog: ExecutableCatalog, ready: ReadyGame,
-      playerId: PlayerId): Either[String, RestCleanupPlan] = {
+      playerId: PlayerId): Either[String, RestCleanupPlan] =
     PlayerResourceSources.player(ready, playerId).flatMap { _ =>
       val resources = InPlayCardResources.discover(ready)
       val denizenCards = resources.denizens.foldLeft[
-        Either[String, Vector[RestCleanupCard]]](Right(Vector.empty)) {
+        Either[String, Vector[RestCleanupCard]]](Right(Vector.empty)):
         case (result, card) => result.flatMap { accumulated =>
           if (card.tokens.favor == 0) Right(accumulated :+ RestCleanupCard(
             card.id, None, 0, card.tokens.secrets))
@@ -39,21 +39,16 @@ object RestCleanupPlan {
               card.tokens.favor, card.tokens.secrets)
           }
         }
-      }
       denizenCards.map { denizens =>
         val relicCards = resources.relics.map(relic => RestCleanupCard(
           relic.id, None, 0, relic.tokens.secrets))
         val cards = denizens ++ relicCards
-        val returnedFavor = cards.foldLeft(Map.empty[Suit, Int]) {
-          case (banks, card) => card.suit match {
+        val returnedFavor = cards.foldLeft(Map.empty[Suit, Int]):
+          case (banks, card) => card.suit match
             case Some(suit) if card.favor > 0 =>
               banks.updated(suit, banks.getOrElse(suit, 0) + card.favor)
             case _ => banks
-          }
-        }
         RestCleanupPlan(cards, returnedFavor,
           cards.iterator.map(_.secrets).sum)
       }
     }
-  }
-}

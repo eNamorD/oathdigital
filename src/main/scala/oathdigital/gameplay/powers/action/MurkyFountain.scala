@@ -16,12 +16,12 @@ import oathdigital.model._
   * a tree that never parks.
   */
 case object MurkyFountain extends PaidAction("edifice.e15.ruined",
-    Cost(secret = 1)) {
+    Cost(secret = 1)):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("murky-fountain")
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
-      : Either[OathViolation, Operation] = source match {
+      : Either[OathViolation, Operation] = source match
     case DecisionOptionRef.Edifice(id) =>
       if (!atPawnSite(ready, player, id)) Right(Sequence(Vector.empty))
       else Right(Sequence(Vector(
@@ -30,16 +30,13 @@ case object MurkyFountain extends PaidAction("edifice.e15.ruined",
         BuildOps((state, _) => Right(outcome(state, player))))))
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not an edifice source"))
-  }
 
   private def atPawnSite(ready: ReadyGame, player: PlayerId, id: EdificeId)
       : Boolean = PowerAccess.siteOf(ready, player, id)
     .exists(PowerAccess.pawnSite(ready, player).contains)
 
   private def outcome(state: ReadyGame, player: PlayerId)
-      : Vector[CoreOperation] = {
+      : Vector[CoreOperation] =
     val total = RollResults.score(state, pool)
     if (total > 0) Vector(GainSupply(player, total))
     else Vector(EnterPhase(Phase.Rest))
-  }
-}

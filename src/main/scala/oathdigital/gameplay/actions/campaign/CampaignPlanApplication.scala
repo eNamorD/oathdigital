@@ -26,7 +26,7 @@ import oathdigital.model._
   */
 final class CampaignPlanApplication(catalog: ExecutableCatalog,
     val setup: CampaignSetup, val side: CampaignPlanSide,
-    val offered: OfferedPlan) extends Operation {
+    val offered: OfferedPlan) extends Operation:
   def source: CampaignPlanSource = offered.offer.source
   /** The player who uses the plan; `None` for a bandit defender. */
   def user: Option[PlayerId] = CampaignPlans.userOf(setup, side)
@@ -48,7 +48,7 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
     else Vector(ModifyDicePool(CampaignPlans.appliedMarker(
       CampaignPlans.refOf(source)), 1))
 
-  private def reveal(ready: ReadyGame): Vector[Operation] = source match {
+  private def reveal(ready: ReadyGame): Vector[Operation] = source match
     case CampaignPlanSource.Adviser(player, id) if ready.game.current.players
         .find(_.player == player).exists(_.advisers.exists {
           case held: DenizenState =>
@@ -58,9 +58,8 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
         PositionedLocation(Location.PlayArea(player)),
         resultingOrientation = Some(Orientation.FaceUp)))
     case _ => Vector.empty
-  }
 
-  private def pay: Vector[Operation] = {
+  private def pay: Vector[Operation] =
     val costs = offered.offer.costs
     def total(pick: PartialFunction[CampaignPlanCost, Int]): Int =
       costs.collect(pick).sum
@@ -70,18 +69,15 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
       favorBurnt = total { case CampaignPlanCost.FavorBurnt(count) => count },
       secretBurnt = total { case CampaignPlanCost.SecretBurnt(count) => count })
     if (cost == Cost.free) Vector.empty
-    else user match {
+    else user match
       case None => Vector.empty
-      case Some(player) => CampaignPlans.cardOf(source) match {
+      case Some(player) => CampaignPlans.cardOf(source) match
         case Some(card) => Vector(payment(Costs.onCard(player, card, cost,
           catalog, intoOccupied = true)))
         case None if cost.favor + cost.secret == 0 =>
           Vector(payment(PayCost(player, Location.PlayArea(player), cost)))
         case None => Vector(refuse(
           "the title has no card to place a plan's cost on"))
-      }
-    }
-  }
 
   /** The payment runs as a batch, not as the composite's own moves, so that
     * the pipeline settles it at once when its payer is not the active player.
@@ -96,7 +92,7 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
     * each target site the defender rules and holds a warband on.
     */
   private def sacrificeFrom(ready: ReadyGame, player: PlayerId)
-      : Vector[Location] = setup.kind match {
+      : Vector[Location] = setup.kind match
     case CampaignKind.Raid => ready.game.current.players
       .find(_.player == player).filter(_.board.warbands > 0)
       .map(_ => Location.PlayArea(player): Location).toVector
@@ -107,14 +103,13 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
           case SiteForces.Occupied(_, count) => count > 0
           case SiteForces.Empty => false
         })).map(site => Location.Site(site): Location)
-  }
 
   private def sacrifice(ready: ReadyGame): Vector[Operation] =
     if (!offered.offer.costs.contains(CampaignPlanCost.SacrificeWarband))
       Vector.empty
-    else user match {
+    else user match
       case Some(player) if side == CampaignPlanSide.Defender =>
-        sacrificeFrom(ready, player) match {
+        sacrificeFrom(ready, player) match
           case Vector() => Vector(refuse(
             "the plan needs a warband in the defender's force to sacrifice"))
           case Vector(only) => Vector(kill(ready, player, only))
@@ -127,29 +122,25 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
               .toRight(OathViolation.InvalidEventOrder(
                 "no site is chosen for the plan's sacrifice"))
               .flatMap(site => killOps(state, player, Location.Site(site)))))
-        }
       case _ => Vector(refuse(
         "only a player defender can pay a warband sacrifice"))
-    }
 
   private def kill(ready: ReadyGame, player: PlayerId, from: Location)
       : Operation = BuildOps((state, _) => killOps(state, player, from))
 
   private def killOps(ready: ReadyGame, player: PlayerId, from: Location)
-      : Either[OathViolation, Vector[CoreOperation]] = {
-    val kind = from match {
+      : Either[OathViolation, Vector[CoreOperation]] =
+    val kind = from match
       case Location.Site(site) => ready.game.current.map.sites.get(site)
         .map(_.forces).collect { case SiteForces.Occupied(force, _) => force }
       case _ => ready.game.current.players.find(_.player == player)
         .map(p => ForceKind.Exile(p.lineage))
-    }
     kind.toRight(OathViolation.InvalidEventOrder(
       "the plan's sacrifice has no warband to kill")).map(force =>
       Vector[CoreOperation](Sacrifice(player, Piece.Warbands(force, 1),
         PositionedLocation(from))))
-  }
 
-  private def effect(effect: CampaignPlanEffect): Operation = effect match {
+  private def effect(effect: CampaignPlanEffect): Operation = effect match
     case CampaignPlanEffect.AddAttackDice(count) =>
       ModifyDicePool(CampaignIds.attackPool, count)
     case CampaignPlanEffect.RemoveAttackDice(count) =>
@@ -157,14 +148,10 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
     case CampaignPlanEffect.AddDefenseDice(count) =>
       ModifyDicePool(CampaignIds.defensePool, count)
     case CampaignPlanEffect.Run(operations) => Sequence(operations)
-  }
-}
 
 /** Reads of the choices a plan's own decisions recorded. */
-private[campaign] object PlanAnswers {
+private[campaign] object PlanAnswers:
   def site(pending: PendingTree): Option[SiteId] = pending.answered.reverse
-    .collectFirst {
+    .collectFirst:
       case Answered(CampaignIds.planSacrifice,
           DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)), _) => site
-    }
-}

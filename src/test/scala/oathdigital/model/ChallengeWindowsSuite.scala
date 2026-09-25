@@ -1,7 +1,7 @@
 package oathdigital.model
 
-class ChallengeWindowsSuite extends munit.FunSuite {
-  test("Challenge windows carry the Challenge major action and stable keys") {
+class ChallengeWindowsSuite extends munit.FunSuite:
+  test("Challenge windows carry the Challenge major action and stable keys"):
     val windows = Vector(
       PowerWindow.ChallengeBannerSelection -> "challenge.banner-selection",
       PowerWindow.ChallengeAmountSelection -> "challenge.amount-selection",
@@ -12,9 +12,8 @@ class ChallengeWindowsSuite extends munit.FunSuite {
       assertEquals(window.key, key)
       assertEquals(window.associatedMajorAction, Some(MajorActionType.Challenge))
     }
-  }
 
-  test("Place Banner Resource windows are not tied to a major action") {
+  test("Place Banner Resource windows are not tied to a major action"):
     val windows = Vector(
       PowerWindow.PlaceBannerResourceEligibility ->
         "place-banner-resource.eligibility",
@@ -28,5 +27,3 @@ class ChallengeWindowsSuite extends munit.FunSuite {
       assertEquals(window.key, key)
       assertEquals(window.associatedMajorAction, None)
     }
-  }
-}

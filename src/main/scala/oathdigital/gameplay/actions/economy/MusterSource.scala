@@ -11,7 +11,7 @@ import oathdigital.model._
 final case class MusterSource(card: CardId, suit: Suit, origin: RuleSourceRef,
     option: DecisionOption)
 
-object MusterSource {
+object MusterSource:
 
   /** The sources the base rule offers: the token-free cards at the actor's
     * pawn site, in site order.
@@ -51,28 +51,24 @@ object MusterSource {
   def matching(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       suit: Suit): Int =
     state.game.current.players.find(_.player == actor).toVector
-      .flatMap(_.advisers).count {
+      .flatMap(_.advisers).count:
         case DenizenState(id, Orientation.FaceUp, _) =>
           catalog.suitOf(id).contains(suit)
         case _ => false
-      }
 
-  private def cardIdOf(ref: DecisionOptionRef): Option[CardId] = ref match {
+  private def cardIdOf(ref: DecisionOptionRef): Option[CardId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)
     case DecisionOptionRef.Edifice(id) => Some(id)
     case _ => None
-  }
 
   private def pawnSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
 
   private def sourceOf(siteId: SiteId, card: SiteDenizenState,
-      suit: Suit): MusterSource = card match {
+      suit: Suit): MusterSource = card match
     case value: DenizenState => MusterSource(value.id, suit,
       RuleSourceRef.SiteCard(siteId, value.id),
       DecisionOption.Denizen(DecisionOptionRef.Denizen(value.id)))
     case value: EdificeState => MusterSource(value.id, suit,
       RuleSourceRef.Edifice(siteId, value.id),
       DecisionOption.Edifice(DecisionOptionRef.Edifice(value.id)))
-  }
-}

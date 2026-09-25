@@ -3,21 +3,18 @@ package oathdigital.gameplay.operations
 import oathdigital.model._
 
 sealed trait AvailableQuantity extends Product with Serializable
-object AvailableQuantity {
-  final case class Finite(value: Int) extends AvailableQuantity {
+object AvailableQuantity:
+  final case class Finite(value: Int) extends AvailableQuantity:
     require(value >= 0, "available quantity must be non-negative")
-  }
   case object Unbounded extends AvailableQuantity
-}
-final case class SecretInventory(faceUp: Int, faceDown: Int) {
+final case class SecretInventory(faceUp: Int, faceDown: Int):
   require(faceUp >= 0, "faceup secrets must be non-negative")
   require(faceDown >= 0, "facedown secrets must be non-negative")
-}
 
 /** Read-only bridge between semantic operation locations and nested game state.
   * Mutation and transactional preflight belong to migration phase 3.
   */
-object OperationStateAdapter {
+object OperationStateAdapter:
   import AvailableQuantity._
   import OperationError._
 
@@ -47,34 +44,30 @@ object OperationStateAdapter {
       ready: ReadyGame,
       piece: Piece,
       at: Location
-  ): Either[OperationError, AvailableQuantity] = piece match {
+  ): Either[OperationError, AvailableQuantity] = piece match
     case Piece.Card(id) => card(ready, id, at).map(_ => Finite(1))
     case Piece.Favor(_) => favor(ready, at).map(Finite.apply)
-    case Piece.Secrets(_) => at match {
+    case Piece.Secrets(_) => at match
       case Location.SharedBank => Right(Unbounded)
       case _ => secrets(ready, at).map(value => Finite(value.faceUp + value.faceDown))
-    }
     case Piece.Warbands(kind, _) => warbands(ready, kind, at).map(Finite.apply)
-    case Piece.Pawn(player) => at match {
+    case Piece.Pawn(player) => at match
       case Location.Site(site) => playerState(ready, player).map { state =>
         Finite(state.pawnSite.count(_ == site))
       }
       case _ => Left(IncompatibleLocation(piece, at))
-    }
-    case Piece.Banner(banner) => at match {
+    case Piece.Banner(banner) => at match
       case Location.PlayArea(player) => playerState(ready, player).map { _ =>
         Finite(bannerHolder(ready, banner).count(_ == player))
       }
       case Location.SharedBank =>
         Right(Finite(if (bannerHolder(ready, banner).isEmpty) 1 else 0))
       case _ => Left(IncompatibleLocation(piece, at))
-    }
-  }
 
   def secrets(
       ready: ReadyGame,
       at: Location
-  ): Either[OperationError, SecretInventory] = at match {
+  ): Either[OperationError, SecretInventory] = at match
     case Location.PlayArea(player) => playerState(ready, player).map { state =>
       SecretInventory(state.board.faceUpSecrets, state.board.faceDownSecrets)
     }
@@ -87,7 +80,6 @@ object OperationStateAdapter {
     case Location.OnBanner(Banner.DarkestSecret) => Right(SecretInventory(
       ready.game.current.banners.darkestSecret.secrets, 0))
     case _ => Left(IncompatibleLocation(Piece.Secrets(1), at))
-  }
 
   def knows(ready: ReadyGame, viewer: PlayerId, card: CardId): Boolean =
     ready.knowledge.advisers.getOrElse(viewer, Vector.empty).contains(card) ||
@@ -96,7 +88,7 @@ object OperationStateAdapter {
         .valuesIterator.exists(_.contains(card))
 
   private def favor(ready: ReadyGame,
-      at: Location): Either[OperationError, Int] = at match {
+      at: Location): Either[OperationError, Int] = at match
     case Location.PlayArea(player) => playerState(ready, player).map(_.board.favor)
     case Location.Site(site) => siteState(ready, site).map(_.tokens.favor)
     case Location.OnCard(id) => cardTokens(ready, id).map(_.favor)
@@ -104,23 +96,19 @@ object OperationStateAdapter {
       Right(ready.game.current.banners.peoplesFavor.favor)
     case Location.FavorBank(suit) => Right(ready.banks.favor.getOrElse(suit, 0))
     case _ => Left(IncompatibleLocation(Piece.Favor(1), at))
-  }
 
   private def warbands(ready: ReadyGame, kind: ForceKind,
-      at: Location): Either[OperationError, Int] = at match {
+      at: Location): Either[OperationError, Int] = at match
     case Location.PlayArea(player) => playerState(ready, player).flatMap { state =>
       Either.cond(playerForceKind(ready, state).contains(kind),
         state.board.warbands, IncompatibleLocation(Piece.Warbands(kind, 1), at))
     }
-    case Location.Site(site) => siteState(ready, site).map {
-      _.forces match {
+    case Location.Site(site) => siteState(ready, site).map:
+      _.forces match
         case SiteForces.Occupied(`kind`, count) => count
         case _ => 0
-      }
-    }
     case Location.WarbandBank(`kind`) => warbandsInBank(ready, kind)
     case _ => Left(IncompatibleLocation(Piece.Warbands(kind, 1), at))
-  }
 
   private def cardTokens(
       ready: ReadyGame,
@@ -146,16 +134,15 @@ object OperationStateAdapter {
   private def warbandsInBank(
       ready: ReadyGame,
       kind: ForceKind
-  ): Either[OperationError, Int] = {
+  ): Either[OperationError, Int] =
     val onBoards = ready.game.current.players.iterator.map { player =>
       if (playerForceKind(ready, player).contains(kind)) player.board.warbands
       else 0
     }.sum
     val atSites = ready.game.current.map.sites.valuesIterator.map {
-      _.forces match {
+      _.forces match
         case SiteForces.Occupied(`kind`, count) => count
         case _ => 0
-      }
     }.sum
     val inPlay = onBoards + atSites
 
@@ -164,7 +151,6 @@ object OperationStateAdapter {
         Either.cond(inPlay <= supply, supply - inPlay,
           InvalidWarbandInventory(kind, supply, inPlay))
       }
-  }
 
   private def playerForceKind(
       ready: ReadyGame,
@@ -172,13 +158,12 @@ object OperationStateAdapter {
   ): Option[ForceKind] = PlayerForceKind.of(ready, player)
 
   private[operations] def bannerHolder(ready: ReadyGame, banner: Banner): Option[PlayerId] =
-    banner match {
+    banner match
       case Banner.PeoplesFavor => ready.game.current.banners.peoplesFavor.holder
       case Banner.DarkestSecret => ready.game.current.banners.darkestSecret.holder
-    }
 
   private def matches(container: CardContainer, location: Location): Boolean =
-    (container, location) match {
+    (container, location) match
       case (CardContainer.Deck(left), Location.Deck(right)) =>
         left == right
       case (CardContainer.RegionalDiscard(left), Location.RegionalDiscard(right)) =>
@@ -193,5 +178,3 @@ object OperationStateAdapter {
       case (CardContainer.Dispossessed, Location.Dispossessed) => true
       case (_: CardContainer.AtlasSite, Location.Atlas) => true
       case _ => false
-    }
-}

@@ -7,13 +7,11 @@ import ServerUiSupport._
   * while its dry run starts, so this layer decides nothing: it draws what
   * `legalControls` names. The negotiators are chosen at the parked decision.
   */
-private[frontend] object NegotiationControls {
+private[frontend] object NegotiationControls:
   def render(value: GameProjection, canControl: Boolean, groups: ActionSections,
       submit: GameCommand => Unit): Unit =
-    if (value.legalControls.contains("beginNegotiation")) {
+    if (value.legalControls.contains("beginNegotiation"))
       val node = button("Negotiate", "act-action negotiation-action")
       node.disabled = !canControl
       node.onclick = _ => submit(GameCommand.StartWalker("negotiation", Vector.empty))
       groups.appendKind("negotiation", node)
-    }
-}

@@ -29,7 +29,7 @@ import oathdigital.model._
   * active modifier); the refusal itself is exact.
   */
 final class DiscardRestrictions(catalog: ExecutableCatalog,
-    actor: PlayerId) extends OperationRestriction {
+    actor: PlayerId) extends OperationRestriction:
   private val hallPower = PowerId("edifice.e16.intact")
 
   override def reason(ready: ReadyGame,
@@ -40,7 +40,7 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
     Some(OperationReason(code, detail, OperationReasonKind.Impossible))
 
   private def lockedReason(ready: ReadyGame, operation: CoreOperation)
-      : Option[OperationReason] = operation match {
+      : Option[OperationReason] = operation match
     case value: Discard.Denizen if inPlay(value.from.location) =>
       if (faceup(ready, value.card, value.from.location) &&
           catalog.denizens.find(_.id.value == value.card.value)
@@ -56,19 +56,17 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
     case value: Discard.Relic if inPlay(value.from.location) =>
       active(ready, value.card)
     case _ => None
-  }
 
   /** Only a card in play is locked. A card drawn by a Search and discarded from
     * the temporary hand is not.
     */
-  private def inPlay(from: Location): Boolean = from match {
+  private def inPlay(from: Location): Boolean = from match
     case _: Location.Site | _: Location.PlayArea => true
     case _ => false
-  }
 
   /** A denizen at a site is always faceup. An adviser is as it is held. */
   private def faceup(ready: ReadyGame, card: DenizenId, from: Location)
-      : Boolean = from match {
+      : Boolean = from match
     case Location.PlayArea(owner) => ready.game.current.players
       .find(_.player == owner).exists(_.advisers.exists {
         case held: DenizenState =>
@@ -76,7 +74,6 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
         case _ => false
       })
     case _ => true
-  }
 
   /** `card` prints a power selected for the running action. */
   private def active(ready: ReadyGame, card: CardId): Option[OperationReason] =
@@ -93,7 +90,7 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
         .map(card => RelicId(card.id.value): CardId))
 
   private def intact(ready: ReadyGame, card: EdificeId,
-      from: Location): Boolean = from match {
+      from: Location): Boolean = from match
     case Location.Site(site) => ready.game.current.map.sites.get(site)
       .exists(_.denizens.exists {
         case edifice: EdificeState =>
@@ -101,17 +98,15 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
         case _ => false
       })
     case _ => false
-  }
 
   private def hallReason(ready: ReadyGame, operation: CoreOperation)
-      : Option[OperationReason] = {
-    val source = operation match {
+      : Option[OperationReason] =
+    val source = operation match
       case value: Discard.Denizen => Some(value.from.location)
       case value: Discard.Vision => Some(value.from.location)
       case value: Discard.RuinedEdifice => Some(value.from.location)
       case value: Discard.Relic => Some(value.from.location)
       case _ => None
-    }
     source.collect { case Location.Site(site) => site }.flatMap { site =>
       val current = ready.game.current
       val actorSide = current.players.find(_.player == actor).flatMap { player =>
@@ -128,16 +123,13 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
         if SiteRule.enemies(sourceSide, ruler)
         if current.map.sites.exists { case (_, state) =>
           SiteRule.ruler(state.forces, current.players).toOption.contains(ruler) &&
-            state.denizens.exists {
+            state.denizens.exists:
               case edifice: EdificeState if edifice.side == EdificeSide.Intact =>
                 catalog.edifices.find(_.id.value == edifice.id.value)
                   .exists(_.intact.powers.exists(_.id == hallPower))
               case _ => false
-            }
         }
       } yield OperationReason("discard-immune",
         s"cards at site ${site.value} cannot be discarded by ${actor.value}",
         OperationReasonKind.Impossible)
     }
-  }
-}

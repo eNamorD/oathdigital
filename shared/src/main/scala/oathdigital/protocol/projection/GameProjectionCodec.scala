@@ -8,7 +8,7 @@ import ProjectionCodecSupport._
 import WorldProjectionCodec._
 import ActionProjectionCodec._
 
-object GameProjectionCodec {
+object GameProjectionCodec:
   private val Fields = Set(
     "gameId", "nextSequence", "phase", "activeParticipantId", "players", "world",
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
@@ -28,7 +28,7 @@ object GameProjectionCodec {
     catch { case NonFatal(error) => Left(MalformedJson("$",
       Option(error.getMessage).getOrElse("malformed JSON"))) }
 
-  private[projection] def encodeValue(value: GameProjection): ujson.Value = {
+  private[projection] def encodeValue(value: GameProjection): ujson.Value =
     val result = ujson.Obj(
     "gameId" -> value.gameId, "nextSequence" -> ujson.Num(value.nextSequence.toDouble),
     "phase" -> value.phase, "activeParticipantId" -> stringOption(value.activeParticipantId),
@@ -81,7 +81,6 @@ object GameProjectionCodec {
     "restSupplyGain" -> intOption(value.restSupplyGain))
     value.viewerPlayerId.foreach(player => result("viewerPlayerId") = ujson.Str(player))
     result
-  }
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -181,4 +180,3 @@ object GameProjectionCodec {
     key <- string(v, "banner", path); face <- string(v, "face", path)
     holder <- optionalString(v, "holderPlayerId", path); resources <- int(v, "resources", path)
   } yield BannerProjection(key, face, holder, resources)
-}

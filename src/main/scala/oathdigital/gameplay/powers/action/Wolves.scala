@@ -12,7 +12,7 @@ import oathdigital.model._
   * The decision is a plain `Decide`: its options are the players, which the
   * cost does not change, so `build` and `rebuild` derive the same query.
   */
-case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)) {
+case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)):
   val decisionId: String = "power.wolves.board"
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -27,12 +27,10 @@ case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)) {
       : Either[OathViolation, Vector[CoreOperation]] = for {
     ref <- PowerAnswers.one(pending, decisionId)
       .toRight(PowerAnswers.missing(decisionId))
-    board <- ref match {
+    board <- ref match
       case DecisionOptionRef.Player(id) => PlayerFacts.player(ready, id)
       case other => Left(OathViolation.InvalidEventOrder(
         s"${other.kind}/${other.wireId} is not a player board"))
-    }
     kind <- PlayerFacts.forceKind(ready, board.player)
   } yield Vector(Kill(Piece.Warbands(kind, 1),
     PositionedLocation(Location.PlayArea(board.player))))
-}

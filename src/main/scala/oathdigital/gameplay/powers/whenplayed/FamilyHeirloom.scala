@@ -16,11 +16,11 @@ import oathdigital.model._
   * parked decision on resume.
   */
 final case class FamilyHeirloom private (cardId: DenizenId)
-    extends WhenPlayedPower {
+    extends WhenPlayedPower:
   import FamilyHeirloom._
   def id: PowerId = FamilyHeirloom.id
 
-  def effect(ctx: PowerCtx): Vector[Operation] = {
+  def effect(ctx: PowerCtx): Vector[Operation] =
     val actor = ctx.activePlayer
     Vector(Repeat(
       (ready, pending) => !asked(pending) &&
@@ -34,10 +34,8 @@ final case class FamilyHeirloom private (cardId: DenizenId)
           heading = Some("Family Heirloom: take the relic you drew, or put it " +
             "on the bottom of the relic deck"))),
         BuildOps((ready, pending) => settle(ready, actor, pending))))))
-  }
-}
 
-object FamilyHeirloom {
+object FamilyHeirloom:
   val id: PowerId = PowerId("denizen.family-heirloom")
   val decisionId: String = "cardplay.family-heirloom.keep"
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
@@ -58,9 +56,9 @@ object FamilyHeirloom {
 
   private def settle(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
-    pending.answered.collectFirst {
+    pending.answered.collectFirst:
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
-    } match {
+    match
       case Some(`bottom`) => for {
         held <- PlayerFacts.player(ready, actor)
         drawn <- held.relics.lastOption.toRight(OathViolation.InvalidEventOrder(
@@ -70,5 +68,3 @@ object FamilyHeirloom {
       case Some(`keep`) => Right(Vector.empty)
       case _ => Left(OathViolation.InvalidEventOrder(
         "no Family Heirloom choice is recorded"))
-    }
-}

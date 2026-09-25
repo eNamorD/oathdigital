@@ -8,7 +8,7 @@ import oathdigital.model._
   * tree has to say what the dice show before the walk starts rather than
   * handing faces to a parked roll afterwards.
   */
-object WalkerDiceFixture {
+object WalkerDiceFixture:
   /** Nothing scored, whatever the pool holds: a Recover roll that fails and
     * leaves the player the continue-or-stop choice.
     */
@@ -32,11 +32,9 @@ object WalkerDiceFixture {
     * repeat of the last roll, so a walk that rolls more often than the test
     * meant fails instead of passing on borrowed faces.
     */
-  def scripted(rolls: Vector[DieFace]*): WalkerDice = {
+  def scripted(rolls: Vector[DieFace]*): WalkerDice =
     val queue = scala.collection.mutable.Queue(rolls*)
     (_, _) =>
       if (queue.isEmpty) Left(OathViolation.InvalidEventOrder(
         "the scripted dice source ran out of rolls"))
       else Right(queue.dequeue())
-  }
-}

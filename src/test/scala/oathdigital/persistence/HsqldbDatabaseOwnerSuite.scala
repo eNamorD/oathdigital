@@ -10,7 +10,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import oathdigital.application._
 import oathdigital.application.MembershipRole.Player
 
-class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
+class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
   private given executionContext: ExecutionContext =
     ExecutionContext.global
 
@@ -22,43 +22,41 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
     HsqldbDatabaseOwner.open(databasePath)
       .fold(error => fail(s"database open failed: $error"), identity)
 
-  test("schema ledger records applied-at times from the injected clock") {
+  test("schema ledger records applied-at times from the injected clock"):
     val databasePath = path("clock")
     HsqldbDatabaseOwner.open(databasePath, () => 1234L)
       .fold(error => fail(s"database open failed: $error"), identity).close()
 
     val connection = DriverManager.getConnection(
       s"jdbc:hsqldb:file:${databasePath.toAbsolutePath}", "SA", "")
-    try {
+    try
       val rows = connection.createStatement().executeQuery(
         "SELECT version, applied_at_epoch_millis FROM schema_versions " +
           "ORDER BY version")
       val ledger = Iterator.continually(rows).takeWhile(_.next())
         .map(row => row.getInt(1) -> row.getLong(2)).toVector
       assertEquals(ledger, Vector(1 -> 1234L, 2 -> 1234L, 3 -> 1234L, 4 -> 1234L))
-    } finally connection.close()
-  }
+    finally connection.close()
 
-  test("one owner serves identity and journal adapters concurrently") {
+  test("one owner serves identity and journal adapters concurrently"):
     val owner = open(path("concurrent"))
     val identity = owner.identities
     val journal = owner.eventStreams
-    try {
+    try
       assert(!classOf[AutoCloseable].isAssignableFrom(identity.getClass))
       assert(!classOf[AutoCloseable].isAssignableFrom(journal.getClass))
       identity.createUser(UserId("owner"), "Owner", 0L)
       identity.createGame("game-shared", UserId("owner"), 1L)
 
       val start = new CountDownLatch(1)
-      val journalOperation = Future {
+      val journalOperation = Future:
           start.await()
           journal.append(
             "game-shared",
             ExpectedStream.MustNotExist,
             Vector("zero", "one")
           )
-        }
-      val identityOperation = Future {
+      val identityOperation = Future:
           start.await()
           identity.createUser(UserId("player"), "Player", 2L)
             .flatMap(_ => identity.addMembership(
@@ -70,7 +68,6 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
               ),
               3L
             ))
-        }
       start.countDown()
       assert(Await.result(journalOperation, 20.seconds).isRight)
       assert(Await.result(identityOperation, 20.seconds).isRight)
@@ -80,10 +77,9 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
       )
       assert(identity.findMembership("game-shared", UserId("player"))
         .toOption.flatten.nonEmpty)
-    } finally owner.close()
-  }
+    finally owner.close()
 
-  test("coordinated close is idempotent and one reopen reconstructs both stores") {
+  test("coordinated close is idempotent and one reopen reconstructs both stores"):
     val databasePath = path("reopen")
     val first = open(databasePath)
     first.identities.createUser(UserId("owner"), "Owner", 0L)
@@ -98,7 +94,7 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
     assertEquals(first.shutdownCount, 1)
 
     val reopened = open(databasePath)
-    try {
+    try
       assertEquals(
         reopened.eventStreams.load("game-reopen")
           .toOption.flatten.get.records,
@@ -113,10 +109,9 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
           None
         )))
       )
-    } finally reopened.close()
-  }
+    finally reopened.close()
 
-  test("reopen retry is limited to the exact lock-heartbeat failure") {
+  test("reopen retry is limited to the exact lock-heartbeat failure"):
     val exactChain = Vector(
       "java.sql.SQLException" -> "Database lock acquisition failure",
       "org.hsqldb.persist.LockFile$LockHeldExternallyException" ->
@@ -175,9 +170,8 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
       retryable = _ => true
     )
     assertEquals(attempts, 1)
-  }
 
-  test("reopen retry returns the first success and rechecks the deadline after backoff") {
+  test("reopen retry returns the first success and rechecks the deadline after backoff"):
     val failure = HsqldbDatabaseOwner.ConnectionFailure(
       new RuntimeException("transient"))
 
@@ -233,5 +227,3 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
     assertEquals(attempts, 1)
     assertEquals(sleeps, 1)
     assert(!clock.hasNext)
-  }
-}

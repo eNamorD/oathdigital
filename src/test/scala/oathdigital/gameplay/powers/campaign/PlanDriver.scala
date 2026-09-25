@@ -17,7 +17,7 @@ import oathdigital.model.OathState.Ready
   * against two bandit or player warbands is won by four swords and lost by four
   * hollow ones.
   */
-object PlanDriver {
+object PlanDriver:
   private def dice(attack: AttackDieFace): WalkerDice = (kind, count) =>
     Right(kind match {
       case DiceKind.Attack => Vector.fill(count)(attack: DieFace)
@@ -27,10 +27,9 @@ object PlanDriver {
   val winning: WalkerDice = dice(AttackDieFace.OneSword)
   val losing: WalkerDice = dice(AttackDieFace.HollowSword)
 
-  def ready(state: OathState): ReadyGame = state match {
+  def ready(state: OathState): ReadyGame = state match
     case Ready(value) => value
     case other => throw new IllegalStateException(s"not a ready game: $other")
-  }
 
   def player(state: OathState, id: PlayerId): PlayerState =
     ready(state).game.current.players.find(_.player == id).get
@@ -40,7 +39,7 @@ object PlanDriver {
 
   /** A Campaign in progress: the transition it reached and every event so far. */
   final case class Run(game: OathRules, transition: OathTransition,
-      events: Vector[OathEvent]) {
+      events: Vector[OathEvent]):
     def state: OathState = transition.state
     def continue: OathContinue = transition.continue
 
@@ -60,20 +59,18 @@ object PlanDriver {
       answer(who, id, ChooseOneAnswer(ref))
 
     /** The parked decision's query, as `actor`'s Campaign builds it. */
-    def query(actor: PlayerId): DecisionQuery = {
+    def query(actor: PlayerId): DecisionQuery =
       val current = ready(state)
       val tree = CampaignProcedure.rebuild(catalog, current, actor, Vector.empty)
         .toOption.get
       ProcedureWalker.openDecisions(current, tree,
         current.game.current.walkerPending.get,
         WalkerPowerCatalog.default(catalog)).head.query
-    }
 
     /** The options the parked choice offers. */
-    def options(actor: PlayerId): Vector[DecisionOption] = query(actor) match {
+    def options(actor: PlayerId): Vector[DecisionOption] = query(actor) match
       case DecisionQuery.ChooseOne(options, _) => options
       case _ => Vector.empty
-    }
 
     def offered(actor: PlayerId): Vector[DecisionOptionRef] =
       options(actor).map(_.ref)
@@ -85,24 +82,21 @@ object PlanDriver {
     /** Finishes every plan window, sacrifices nothing and places nothing, until
       * the Campaign ends or asks something else.
       */
-    def finish: Run = continue match {
-      case OathContinue.AwaitingCampaignDecision(who, DecisionId(id)) => id match {
+    def finish: Run = continue match
+      case OathContinue.AwaitingCampaignDecision(who, DecisionId(id)) => id match
         case CampaignIds.attackerPlan | CampaignIds.defenderPlan =>
           answer(who, id, ChooseOneAnswer(CampaignIds.finish)).finish
         case CampaignIds.sacrifice | CampaignIds.placement =>
           answer(who, id, ChooseAmountAnswer(0)).finish
         case _ => this
-      }
       case _ => this
-    }
-  }
 
   /** Starts a Campaign, chooses a Raid when asked and `raid` is set, answers the
     * optional targets (when asked) and the force.
     */
   def commit(game: OathRules, b: Board, force: Int,
       targets: Vector[DecisionOptionRef] = Vector.empty,
-      raid: Boolean = false): Run = {
+      raid: Boolean = false): Run =
     val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
       .fold(error => throw new IllegalStateException(s"no start: $error"),
         identity)
@@ -116,5 +110,3 @@ object PlanDriver {
         kind.answer(b.actor, CampaignIds.targets, ChooseManyAnswer(targets))
       else kind
     asked.answer(b.actor, CampaignIds.force, ChooseAmountAnswer(force))
-  }
-}

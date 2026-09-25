@@ -14,7 +14,7 @@ import oathdigital.application._
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.CatalogRef
 
-class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
+class GameTrustBoundaryRoutesSuite extends munit.FunSuite:
   private val catalog = ExecutableCatalog(
     "test",
     CatalogRef("test", "1"),
@@ -25,14 +25,14 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
     Vector.empty
   )
 
-  test("route validates identity actor and internal-error boundaries") {
+  test("route validates identity actor and internal-error boundaries"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "trust-boundary-route-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
     )
     val secret = "internal-database-password-and-path"
-    val repository = new EventStreamRepository {
+    val repository = new EventStreamRepository:
       override def load(gameId: String): Either[RepositoryFailure, Option[StoredEventStream]] =
         Left(RepositoryFailure.StorageFailure(secret))
       override def append(
@@ -40,7 +40,6 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
           expected: ExpectedStream,
           records: Vector[String]
       ): Either[RepositoryFailure, RepositoryAppendResult] = Left(RepositoryFailure.StorageFailure(secret))
-    }
     val gateway = new GameServerGateway(
       new GameApplicationService(catalog, repository),
       new GameProjector(catalog)
@@ -54,7 +53,7 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
     val base = s"http://127.0.0.1:${binding.localAddress.getPort}"
     val client = HttpClient.newHttpClient()
 
-    try {
+    try
       Vector(
         s"$base/api/dev/first-games/%20?playerId=p1",
         s"$base/api/dev/first-games/game?playerId=bad!",
@@ -99,12 +98,10 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
       assertEquals(internal.statusCode(), 500)
       assertEquals(ujson.read(internal.body())("error").str, "internal-error")
       assert(!internal.body().contains(secret))
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
   private def get(client: HttpClient, url: String): JavaResponse[String] =
     client.send(
@@ -123,4 +120,3 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
         .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
       JavaResponse.BodyHandlers.ofString()
     )
-}

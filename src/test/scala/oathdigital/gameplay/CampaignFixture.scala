@@ -13,16 +13,15 @@ import oathdigital.model.OathState.Ready
   * sites are also Bandit-ruled and every other site is empty and unruled; no
   * site holds a denizen. The other player stands elsewhere.
   */
-object CampaignFixture {
+object CampaignFixture:
   final case class Board(ready: ReadyGame, actor: PlayerId, other: PlayerId,
-      origin: SiteId) {
+      origin: SiteId):
     def player(id: PlayerId): PlayerState =
       ready.game.current.players.find(_.player == id).get
     def extras: Vector[SiteId] = ready.game.current.map.inPlay.filter(site =>
       site != origin && ready.game.current.map.sites(site).forces ==
         SiteForces.Occupied(ForceKind.Bandit, 2))
-  }
-  def board(extras: Int = 0, warbands: Int = 5, supply: Int = 7): Board = {
+  def board(extras: Int = 0, warbands: Int = 5, supply: Int = 7): Board =
     val Ready(base) = execute()._1: @unchecked
     val current = base.game.current
     val inPlay = current.map.inPlay
@@ -43,10 +42,9 @@ object CampaignFixture {
         if (ruled(id)) SiteForces.Occupied(ForceKind.Bandit, 2)
         else SiteForces.Empty)
     }
-    def bandits(forces: SiteForces): Int = forces match {
+    def bandits(forces: SiteForces): Int = forces match
       case SiteForces.Occupied(ForceKind.Bandit, count) => count
       case _ => 0
-    }
     val delta = current.map.sites.values.map(s => bandits(s.forces)).sum -
       sites.values.map(s => bandits(s.forces)).sum
     val ready = base.updateCurrent(_.copy(players = players,
@@ -55,7 +53,6 @@ object CampaignFixture {
       base.banks.copy(warbandSupply = base.banks.warbandSupply.updated(
         ForceKind.Bandit, base.banks.warbandSupply.getOrElse(ForceKind.Bandit, 0) + delta)))
     Board(ready, activeId, otherId, origin)
-  }
 
   /** The other player joins the actor at `origin`, so a Raid is legal. */
   def withEnemyAtOrigin(b: Board): Board = b.copy(ready = b.ready.updateCurrent(
@@ -89,14 +86,13 @@ object CampaignFixture {
   /** Dice that return exactly these faces, and fail loudly on a wrong count. */
   def dice(attack: Vector[AttackDieFace] = Vector.empty,
       defense: Vector[DefenseDieFace] = Vector.empty): WalkerDice =
-    (kind, count) => kind match {
+    (kind, count) => kind match
       case DiceKind.Attack => Either.cond(attack.size == count, attack,
         OathViolation.InvalidEventOrder(
           s"test dice: ${attack.size} attack faces for a pool of $count"))
       case DiceKind.Defense => Either.cond(defense.size == count, defense,
         OathViolation.InvalidEventOrder(
           s"test dice: ${defense.size} defense faces for a pool of $count"))
-    }
 
   /** Takes a card out of every zone, so placing it keeps the card index valid. */
   private def scrub(ready: ReadyGame, card: String): ReadyGame =
@@ -154,7 +150,7 @@ object CampaignFixture {
     p.copy(board = p.board.copy(faceUpSecrets = faceUp)))
 
   /** The origin becomes ruled by the other player, who holds the title. */
-  def againstPlayer(b: Board): Board = {
+  def againstPlayer(b: Board): Board =
     val lineage = b.player(b.other).lineage
     b.copy(ready = b.ready.updateCurrent(current => current.copy(
       map = current.map.copy(sites = current.map.sites.updated(b.origin,
@@ -162,7 +158,6 @@ object CampaignFixture {
           SiteForces.Occupied(ForceKind.Exile(lineage), 2)))),
       title = current.title.copy(holder = Some(b.other),
         side = TitleSide.Oathkeeper))))
-  }
 
   /** The actor rules `site`, holding it with two warbands of their own. */
   def actorRules(b: Board, site: SiteId): Board = b.copy(ready =
@@ -186,7 +181,7 @@ object CampaignFixture {
     * a facedown relic, three facedown advisers (one a Conspiracy), both banners
     * and 5 favor; the actor has 4 warbands.
     */
-  def raidBoard(defenderWarbands: Int = 3): (Board, RelicId) = {
+  def raidBoard(defenderWarbands: Int = 3): (Board, RelicId) =
     val b = withEnemyAtOrigin(board(warbands = 4))
     // A relic that prints no battle plan, so the defender is offered none.
     val plans = Set("relic.sticky-fire", "relic.fearsome-shield",
@@ -218,5 +213,3 @@ object CampaignFixture {
         darkestSecret = current.banners.darkestSecret.copy(
           holder = Some(b.other), secrets = 2))))
     (b.copy(ready = ready), relic)
-  }
-}

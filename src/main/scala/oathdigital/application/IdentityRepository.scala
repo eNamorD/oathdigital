@@ -1,39 +1,35 @@
 package oathdigital.application
 
 opaque type UserId = String
-object UserId {
+object UserId:
   def apply(value: String): UserId = value
   def unapply(id: UserId): Some[String] = Some(id)
   extension (id: UserId) def value: String = id
-}
 final case class ExternalIdentity(provider: String, subject: String)
 
 final case class SessionTokenDigest private (bytes: Vector[Byte])
-object SessionTokenDigest {
+object SessionTokenDigest:
   val Length: Int = 32
 
   def fromBytes(bytes: Vector[Byte]): Either[String, SessionTokenDigest] =
     if (bytes.size == Length) Right(new SessionTokenDigest(bytes))
     else Left(s"session token digest must contain exactly $Length bytes")
-}
 
 final case class CsrfTokenDigest private (bytes: Vector[Byte])
-object CsrfTokenDigest {
+object CsrfTokenDigest:
   val Length: Int = 32
 
   def fromBytes(bytes: Vector[Byte]): Either[String, CsrfTokenDigest] =
     if (bytes.size == Length) Right(new CsrfTokenDigest(bytes))
     else Left(s"CSRF token digest must contain exactly $Length bytes")
-}
 
 final case class SeatCodeDigest private (bytes: Vector[Byte])
-object SeatCodeDigest {
+object SeatCodeDigest:
   val Length: Int = 32
 
   def fromBytes(bytes: Vector[Byte]): Either[String, SeatCodeDigest] =
     if (bytes.size == Length) Right(new SeatCodeDigest(bytes))
     else Left(s"seat code digest must contain exactly $Length bytes")
-}
 
 final case class TrustedSeat(gameId: String, playerId: String)
 
@@ -58,7 +54,7 @@ final case class GameMembership(
 )
 
 sealed trait IdentityFailure extends Product with Serializable
-object IdentityFailure {
+object IdentityFailure:
   final case class DuplicateUser(userId: UserId) extends IdentityFailure
   final case class UserNotFound(userId: UserId) extends IdentityFailure
   final case class DuplicateExternalIdentity(identity: ExternalIdentity)
@@ -79,9 +75,8 @@ object IdentityFailure {
   case object TrustedSeatNotFound extends IdentityFailure
   final case class InvalidTrustedSeat(message: String) extends IdentityFailure
   final case class StorageFailure(message: String) extends IdentityFailure
-}
 
-trait IdentityRepository {
+trait IdentityRepository:
   def createUser(userId: UserId, displayName: String, nowMillis: Long)
       : Either[IdentityFailure, Unit]
   def linkExternalIdentity(
@@ -126,4 +121,3 @@ trait IdentityRepository {
   def resolveTrustedSeat(
       digest: SeatCodeDigest
   ): Either[IdentityFailure, TrustedSeat]
-}

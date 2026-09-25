@@ -10,7 +10,7 @@ import oathdigital.protocol.projection.{GameProjection, GameProjectionCodec}
 
 final case class HttpInputError(path: String, message: String)
 
-object GameHttpWire {
+object GameHttpWire:
   def decodeBootstrap(json: String): Either[HttpInputError,
       FirstGameBootstrapRequest] =
     FirstGameBootstrapCodec.decode(json).left.map(inputError)
@@ -26,4 +26,3 @@ object GameHttpWire {
 
   private[server] def inputError(error: ProtocolDecodeFailure): HttpInputError =
     HttpInputError(error.path, error.message)
-}

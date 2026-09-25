@@ -16,7 +16,7 @@ final case class DesktopLaunch(
  * The double-click launch profile. Only active when `OATH_LAUNCH=desktop`;
  * it fills in unset values and leaves validation to `ServerConfig.parse`.
  */
-object DesktopLaunchProfile {
+object DesktopLaunchProfile:
   val LaunchVariable = "OATH_LAUNCH"
   private val Wildcard = "0.0.0.0"
   private val DefaultPort = "8080"
@@ -35,7 +35,7 @@ object DesktopLaunchProfile {
       fallbackHome: String,
       detectLanAddress: () => Option[String]
   ): Either[String, Option[DesktopLaunch]] =
-    environment.get(LaunchVariable) match {
+    environment.get(LaunchVariable) match
       case None => Right(None)
       case Some("desktop") =>
         val appData =
@@ -48,7 +48,6 @@ object DesktopLaunchProfile {
           _ <- createDataFolder(launch)
         } yield Some(launch.copy(warnings = templateWarning.toVector))
       case Some(_) => Left(s"$LaunchVariable: must be desktop when set")
-    }
 
   def resolve(
       arguments: Array[String],
@@ -56,7 +55,7 @@ object DesktopLaunchProfile {
       settings: Map[String, String],
       appData: Path,
       detectLanAddress: () => Option[String]
-  ): Either[String, DesktopLaunch] = {
+  ): Either[String, DesktopLaunch] =
     def flagValue(key: String): Option[String] = Flags.get(key).flatMap { flag =>
       val index = arguments.lastIndexOf(flag)
       if (index >= 0 && index + 1 < arguments.length) Some(arguments(index + 1))
@@ -67,21 +66,19 @@ object DesktopLaunchProfile {
 
     val openBrowser = environment.get("OATH_OPEN_BROWSER")
       .orElse(settings.get("OATH_OPEN_BROWSER"))
-      .getOrElse("true").trim.toLowerCase match {
+      .getOrElse("true").trim.toLowerCase match
         case "true" => Right(true)
         case "false" => Right(false)
         case _ => Left("OATH_OPEN_BROWSER: must be true or false")
-      }
 
     openBrowser.map { open =>
       val port = higher("OATH_PORT").map(_.trim).getOrElse(DefaultPort)
       val host = higher("OATH_HOST").map(_.trim).getOrElse(Wildcard)
       val (address, lanDetectionFailed) =
         if (higher("OATH_PUBLIC_BASE_URL").nonEmpty) (Map.empty[String, String], false)
-        else if (host == Wildcard) detectLanAddress() match {
+        else if (host == Wildcard) detectLanAddress() match
           case Some(lan) => (Map("OATH_PUBLIC_BASE_URL" -> s"http://$lan:$port"), false)
           case None => (Map("OATH_HOST" -> "127.0.0.1"), true)
-        }
         else if (Loopback.contains(host.toLowerCase)) (Map.empty[String, String], false)
         else (Map("OATH_PUBLIC_BASE_URL" -> s"http://${bracketed(host)}:$port"), false)
 
@@ -101,21 +98,17 @@ object DesktopLaunchProfile {
         Vector.empty
       )
     }
-  }
 
   private def createDataFolder(launch: DesktopLaunch): Either[String, Unit] =
-    launch.environment.get("OATH_DATABASE_PATH") match {
+    launch.environment.get("OATH_DATABASE_PATH") match
       case None => Right(())
       case Some(databasePath) =>
         val folder = Paths.get(databasePath).toAbsolutePath.normalize.getParent
-        try {
+        try
           Files.createDirectories(folder)
           Right(())
-        } catch {
+        catch
           case NonFatal(_) => Left(s"cannot create data folder $folder")
-        }
-    }
 
   private def bracketed(host: String): String =
     if (host.contains(":") && !host.startsWith("[")) s"[$host]" else host
-}

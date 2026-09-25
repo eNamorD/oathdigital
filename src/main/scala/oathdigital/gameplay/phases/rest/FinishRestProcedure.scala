@@ -19,14 +19,14 @@ import oathdigital.model._
   * holds for the whole procedure: nothing before `BeginTurn` leaves Rest, so
   * resume rebuilds through the same function.
   */
-object FinishRestProcedure {
+object FinishRestProcedure:
   val ExileSupply: SupplyRules = SupplyRules(SupplyTrack.Maximum, Vector(
     SupplyRefreshBand(InclusiveIntRange(9, Int.MaxValue), 6),
     SupplyRefreshBand(InclusiveIntRange(4, 8), 5),
     SupplyRefreshBand(InclusiveIntRange(0, 3), 4)))
 
   def gate(catalog: ExecutableCatalog, ready: ReadyGame,
-      player: PlayerId): Either[OathViolation, ReadyGame] = {
+      player: PlayerId): Either[OathViolation, ReadyGame] =
     val current = ready.game.current
     if (current.result.nonEmpty) Left(GameEnded)
     else if (current.turn.activePlayer != player)
@@ -35,7 +35,6 @@ object FinishRestProcedure {
       Left(WrongPhase(Phase.Rest, current.turn.phase))
     else BeginRestProcedure.validateSupportedState(catalog, ready)
       .map(_ => ready)
-  }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
@@ -58,28 +57,25 @@ object FinishRestProcedure {
       .left.map(UnsupportedRestState.apply)
     player <- ready.game.current.players.find(_.player == resting)
       .toRight(UnsupportedRestState(s"unknown resting player $resting"))
-  } yield {
+  } yield
     val from = (id: CardId) => PositionedLocation(Location.OnCard(id))
-    val favor = plan.cards.collect {
+    val favor = plan.cards.collect:
       case card if card.suit.nonEmpty && card.favor > 0 =>
         Move(Piece.Favor(card.favor), from(card.id),
           PositionedLocation(Location.FavorBank(card.suit.get)))
-    }
-    val secrets = plan.cards.collect {
+    val secrets = plan.cards.collect:
       case card if card.secrets > 0 => Move(Piece.Secrets(card.secrets),
         from(card.id), PositionedLocation(Location.PlayArea(resting)))
-    }
     val reveal = Vector(player.board.faceDownSecrets).filter(_ > 0).map(count =>
       FlipSecrets(resting, count, SecretSide.FaceDown, SecretSide.FaceUp))
     favor ++ secrets ++ reveal
-  }
 
   /** The warbands the resting player's own bank holds right now -- the one
     * count both the Supply band and its preview are read from, so neither
     * can be derived a different way and disagree with the other.
     */
   private def bankedWarbands(ready: ReadyGame, player: PlayerState)
-      : Either[OathViolation, Int] = {
+      : Either[OathViolation, Int] =
     val kind = ForceKind.Exile(player.lineage)
     ready.banks.warbandSupply.get(kind)
       .toRight(UnsupportedRestState(s"no bounded warband supply for $kind"))
@@ -91,7 +87,6 @@ object FinishRestProcedure {
           }.sum
         math.max(0, supply - player.board.warbands - siteWarbands)
       }
-  }
 
   private def restingPlayer(ready: ReadyGame, resting: PlayerId)
       : Either[OathViolation, PlayerState] =
@@ -132,26 +127,22 @@ object FinishRestProcedure {
       : Either[OathViolation, Vector[CoreOperation]] = for {
     player <- restingPlayer(ready, resting)
     refreshed <- supplyAfterRest(ready, resting)
-  } yield {
+  } yield
     val change = refreshed - player.board.supply.supply
     if (change > 0) Vector(GainSupply(resting, change))
     else if (change < 0) Vector(SpendSupply(resting, -change))
     else Vector.empty
-  }
 
   private def beginNextTurn(ready: ReadyGame, resting: PlayerId)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val order = turnOrder(ready)
     val index = order.indexOf(resting)
     if (index < 0) Left(UnsupportedRestState(s"$resting is not in turn order"))
     else if (index == order.size - 1)
       Right(Vector(BeginTurn(order.head, Phase.RoundEnd)))
     else Right(Vector(BeginTurn(order(index + 1), Phase.Wake)))
-  }
 
-  def turnOrder(ready: ReadyGame): Vector[PlayerId] = {
+  def turnOrder(ready: ReadyGame): Vector[PlayerId] =
     val participants = ready.game.current.players.map(_.player)
     val index = participants.indexOf(ready.setup.firstPlayer)
     participants.drop(index) ++ participants.take(index)
-  }
-}

@@ -15,7 +15,7 @@ import oathdigital.model._
   * decision was asked. It returns any secrets on the relic to their holder.
   */
 final case class FaeMerchant private (scepters: Set[RelicId])
-    extends PaidAction("denizen.fae-merchant", Cost(secret = 1)) {
+    extends PaidAction("denizen.fae-merchant", Cost(secret = 1)):
   import FaeMerchant._
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
@@ -37,9 +37,9 @@ final case class FaeMerchant private (scepters: Set[RelicId])
       .map(_.id).filterNot(scepters)
 
   private def putBack(state: ReadyGame, player: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val chosen: Either[OathViolation, Option[RelicId]] =
-      candidates(state, player) match {
+      candidates(state, player) match
         case Vector() => Right(None)
         case Vector(only) => Right(Some(only))
         case _ => pending.answered.collectFirst {
@@ -47,7 +47,6 @@ final case class FaeMerchant private (scepters: Set[RelicId])
               DecisionOptionRef.Relic(id)), _) => id
         }.toRight(OathViolation.InvalidEventOrder(
           "no Fae Merchant relic is recorded")).map(Some(_))
-      }
     for {
       pick <- chosen
       held <- PlayerFacts.player(state, player)
@@ -57,10 +56,8 @@ final case class FaeMerchant private (scepters: Set[RelicId])
         PositionedLocation(Location.PlayArea(player)), None, 0, secrets,
         player)
     }
-  }
-}
 
-object FaeMerchant {
+object FaeMerchant:
   val decisionId: String = "fae-merchant.relic"
   val id: PowerId = PowerId("denizen.fae-merchant")
 
@@ -68,4 +65,3 @@ object FaeMerchant {
   def forCatalog(catalog: ExecutableCatalog): FaeMerchant = new FaeMerchant(
     catalog.relics.filter(_.role == RelicRole.GrandScepter)
       .map(relic => RelicId(relic.id.value)).toSet)
-}

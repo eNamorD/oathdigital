@@ -10,15 +10,15 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 
-class HealthRoutesSuite extends munit.FunSuite {
-  test("liveness stays live while readiness follows lifecycle state") {
+class HealthRoutesSuite extends munit.FunSuite:
+  test("liveness stays live while readiness follows lifecycle state"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "health-routes-test")
     val readiness = ServerReadiness.starting("test-version")
     val binding = bind(HealthRoutes.route(readiness))
     val client = HttpClient.newHttpClient()
 
-    try {
+    try
       assertHealth(
         get(client, binding, "/health/live"),
         200,
@@ -53,22 +53,19 @@ class HealthRoutesSuite extends munit.FunSuite {
         503,
         "{\"status\":\"not-ready\",\"version\":\"test-version\"}"
       )
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
-    }
-  }
 
   private def assertHealth(
       response: JavaResponse[String],
       status: Int,
       body: String
-  ): Unit = {
+  ): Unit =
     assertEquals(response.statusCode(), status)
     assertEquals(response.body(), body)
     assertEquals(response.headers().firstValue("Cache-Control").get(), "no-store")
-  }
 
   private def bind(route: akka.http.scaladsl.server.Route)(using
       system: ActorSystem[Nothing]
@@ -88,4 +85,3 @@ class HealthRoutesSuite extends munit.FunSuite {
       )).GET().build(),
       JavaResponse.BodyHandlers.ofString()
     )
-}

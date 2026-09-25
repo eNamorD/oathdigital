@@ -11,7 +11,7 @@ import oathdigital.model._
   * exile-only and handler-inventory checks stay here because Rest's cleanup
   * and Supply bands are reviewed only for that game.
   */
-object BeginRestProcedure {
+object BeginRestProcedure:
   private val ExpectedHandlerInventory =
     "5fc88b0d9622a3f523722c288ea7a78d0ec09b7ce191bdabc7f471139ec85898"
 
@@ -21,7 +21,7 @@ object BeginRestProcedure {
       validateSupportedState(catalog, ready).map(_ => ready))
 
   def validateSupportedState(catalog: ExecutableCatalog,
-      ready: ReadyGame): Either[OathViolation, Unit] = {
+      ready: ReadyGame): Either[OathViolation, Unit] =
     val game = ready.game
     val actual = CatalogHandlerInventory.structuralFingerprint(catalog)
     val missing = game.current.players.iterator
@@ -35,7 +35,6 @@ object BeginRestProcedure {
     else if (actual != ExpectedHandlerInventory)
       Left(UnsupportedRoundEndCatalogInventory(ExpectedHandlerInventory, actual))
     else Right(())
-  }
 
   /** One leaf, so it finishes in the command that starts it; resume never
     * reaches this.
@@ -46,4 +45,3 @@ object BeginRestProcedure {
       "Begin Rest selects nothing"))
     _ <- validateBegin(catalog, OathState.Ready(ready), player)
   } yield Sequence(Vector(EnterPhase(Phase.Rest)))
-}

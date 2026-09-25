@@ -16,7 +16,7 @@ import org.scalajs.dom
   * a richer interaction over an option the engine declared, not an
   * independent judgement about who is eligible.
   */
-private[frontend] object WalkerPanelSupport {
+private[frontend] object WalkerPanelSupport:
   import ServerUiSupport.{ViewerPresentation, button, element, text}
 
   /** Which control the panel should render for a parked walker decision.
@@ -50,7 +50,7 @@ private[frontend] object WalkerPanelSupport {
   private[frontend] val stopOptionKey = "stop"
 
   private[frontend] sealed trait RecoverWalkerStep
-  private[frontend] object RecoverWalkerStep {
+  private[frontend] object RecoverWalkerStep:
     /** A Roll park asks nothing, so it has no query behind it -- and that is
       * why its heading is the one Recover string still written here.
       */
@@ -63,7 +63,6 @@ private[frontend] object WalkerPanelSupport {
     /** The projected relic query, the same way. */
     final case class Relic(query: DecisionQueryState)
         extends RecoverWalkerStep
-  }
 
   /** A decide park's projected choose-one query, or `None` when the
     * projection carries no query -- which the engine does on purpose when an
@@ -77,14 +76,13 @@ private[frontend] object WalkerPanelSupport {
   private[frontend] def recoverWalkerStep(decision: WalkerDecisionState)
       : Option[RecoverWalkerStep] =
     if (decision.action != "recover") None
-    else decision.kind match {
+    else decision.kind match
       case "roll" => decision.pool.map(RecoverWalkerStep.Roll.apply)
       case "decide" if decision.decisionId == recoverChoiceDecisionId =>
         chooseOneQuery(decision).map(RecoverWalkerStep.Choice.apply)
       case "decide" if decision.decisionId == recoverRelicDecisionId =>
         chooseOneQuery(decision).map(RecoverWalkerStep.Relic.apply)
       case _ => None
-    }
 
   /** The answer for any projected choose-one option, built from the option's
     * own `kind`/`id` pair. One builder serves Recover's buttons and its
@@ -102,24 +100,22 @@ private[frontend] object WalkerPanelSupport {
     * asked for once there are faces: before the first roll the totals line
     * already says the target.
     */
-  private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String = {
+  private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
     val total =
       if (outcome.pool == "recover") s"${outcome.score} shields so far"
       else s"${poolLabel(outcome.pool)} ${outcome.score}"
     s"Rolled ${outcome.faces.mkString(", ")} -- $total" +
       outcome.target.fold("")(target => s" (need $target)") +
       outcome.detail.map(", " + _).mkString + "."
-  }
 
   /** What a roll is called in a total line. A pool key is a wire string, so an
     * unknown one is printed as it arrives rather than guessed at.
     */
-  private[frontend] def poolLabel(pool: String): String = pool match {
+  private[frontend] def poolLabel(pool: String): String = pool match
     case "recover" => "Shields"
     case "campaign.attack" => "Attack"
     case "campaign.defense" => "Defense"
     case other => other
-  }
 
   /** The public line shown to every viewer a parked walker position is NOT
     * waiting on (Task 5): who it awaits, and the question's heading when it
@@ -152,10 +148,10 @@ private[frontend] object WalkerPanelSupport {
     */
   private[frontend] def renderRecoverPanel(value: GameProjection,
       presentation: ViewerPresentation, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit = {
+      panel: dom.Element, ui: ServerUiView): Unit =
     value.walkerDecision.filter(_ => presentation.showGameplayControls)
         .flatMap(decision => recoverWalkerStep(decision).map(decision -> _))
-        .foreach {
+        .foreach:
       case (decision, RecoverWalkerStep.Roll(pool)) =>
         // The one heading still written here. A Roll park is not a `Decide`
         // -- it asks no question, carries a synthetic decision id and has no
@@ -208,8 +204,6 @@ private[frontend] object WalkerPanelSupport {
           relics.appendChild(choice)
         }
         panel.appendChild(relics)
-    }
-  }
 
   /** A choose-one decision no action-specific panel claims. Recover keeps its
     * own panel for its richer copy; Setup's pawn placement is answered by
@@ -246,15 +240,14 @@ private[frontend] object WalkerPanelSupport {
         // The card the question is about. A placement asks about a card that
         // is neither an option nor in the temporary hand, so without this the
         // player answers about a card they cannot see.
-        if (decision.subjectCards.nonEmpty) {
+        if (decision.subjectCards.nonEmpty)
           val subjects = element("div", "decision-subject")
           decision.subjectCards.foreach(card =>
             subjects.appendChild(CardFace.render(card)))
           panel.appendChild(subjects)
-        }
         // What this loop has already applied. A `Repeat` re-asks with the
         // chosen answers removed, so the panel otherwise reads as resetting.
-        if (decision.answeredOptions.nonEmpty) {
+        if (decision.answeredOptions.nonEmpty)
           val played = element("div", "plans-played")
           played.appendChild(text("h3", "", "Plans played"))
           val list = element("ul", "")
@@ -262,7 +255,6 @@ private[frontend] object WalkerPanelSupport {
             list.appendChild(text("li", "", option.label)))
           played.appendChild(list)
           panel.appendChild(played)
-        }
         query.options.foreach { option =>
           val label = if (option.kind == "player")
             value.players.find(_.playerId == option.id).map(_.displayName)
@@ -291,7 +283,7 @@ private[frontend] object WalkerPanelSupport {
           // Gated on the badge, not merely on the card: Muster, Search, Forge
           // and other choose-one queries also offer cards, and those keep
           // their labelled text button.
-          option.card.filter(_ => option.badge.nonEmpty) match {
+          option.card.filter(_ => option.badge.nonEmpty) match
             case Some(card) =>
               val choice = element("div", "card-choice")
               choice.appendChild(CardFace.render(
@@ -299,7 +291,6 @@ private[frontend] object WalkerPanelSupport {
               choice.appendChild(choose)
               panel.appendChild(choice)
             case None => panel.appendChild(choose)
-          }
           if (option.details.nonEmpty) panel.appendChild(text("p",
             "walker-choice-details", option.details.mkString(" · ")))
         }
@@ -308,11 +299,10 @@ private[frontend] object WalkerPanelSupport {
   /** The three battle-plan chips, so a side reads as a colour as well as a
     * word. An unknown badge gets the neutral class rather than none.
     */
-  private def badgeClass(badge: String): String = badge match {
+  private def badgeClass(badge: String): String = badge match
     case "Attack Plan" => "plan-side-attack"
     case "Defense Plan" => "plan-side-defense"
     case _ => "plan-side-both"
-  }
 
   /** The faces as the symbols printed on them, then one line of totals: what
     * the roll came to, the number it is measured against where there is one,
@@ -321,7 +311,7 @@ private[frontend] object WalkerPanelSupport {
   private[frontend] def rollFeedback(decision: WalkerDecisionState,
       panel: dom.Element): Unit =
     decision.rollOutcome.foreach { outcome =>
-      if (outcome.faces.nonEmpty) {
+      if (outcome.faces.nonEmpty)
         val row = element("p", "walker-roll-faces")
         // A paragraph may not carry a name of its own; as an image the row
         // is read as the one sentence the glyphs add up to.
@@ -329,7 +319,6 @@ private[frontend] object WalkerPanelSupport {
         row.setAttribute("aria-label", rollOutcomeSummary(outcome))
         row.appendChild(DieFace.roll(outcome.faces))
         panel.appendChild(row)
-      }
       val parts = Vector(s"${poolLabel(outcome.pool)} ${outcome.score}") ++
         outcome.target.map(target => s"need $target") ++ outcome.detail
       panel.appendChild(text("p", "walker-roll-totals", parts.mkString(" · ")))
@@ -429,7 +418,7 @@ private[frontend] object WalkerPanelSupport {
 
   private def partitionZone(section: DecisionSectionState,
       query: DecisionQueryState, draft: WalkerPartitionDraft,
-      ui: ServerUiView): dom.Element = {
+      ui: ServerUiView): dom.Element =
     val zone = element("section", "decision-zone partition-zone")
     zone.setAttribute("data-section-key", section.key)
     zone.appendChild(text("h3", "", section.label))
@@ -453,11 +442,10 @@ private[frontend] object WalkerPanelSupport {
         .getData("text/plain"), section.key, ui)
     })
     zone
-  }
 
   private def partitionOption(option: DecisionOptionState,
       section: DecisionSectionState, query: DecisionQueryState,
-      draft: WalkerPartitionDraft, ui: ServerUiView): dom.Element = {
+      draft: WalkerPartitionDraft, ui: ServerUiView): dom.Element =
     val item = WalkerPartitionDraft.itemId(option)
     val node = element("article", "decision-option")
     node.setAttribute("draggable", "true")
@@ -512,7 +500,6 @@ private[frontend] object WalkerPanelSupport {
       }
     node.appendChild(reorder)
     node
-  }
 
   private def moveOption(draft: WalkerPartitionDraft, item: String,
       sectionKey: String, ui: ServerUiView): Unit =
@@ -520,8 +507,6 @@ private[frontend] object WalkerPanelSupport {
 
   private def update(moved: WalkerPartitionDraft, draft: WalkerPartitionDraft,
       ui: ServerUiView): Unit =
-    if (moved != draft) {
+    if (moved != draft)
       ui.currentWalkerPartition = Some(moved)
       ui.rerender()
-    }
-}

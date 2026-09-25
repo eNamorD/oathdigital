@@ -9,7 +9,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
 import oathdigital.model._
 
 /** Search's draw and card-selection tree; placement is the shared subtree. */
-object SearchProcedure {
+object SearchProcedure:
   val cardDecisionId: String = "search.cards"
   val keepKey: String = "keep"
   val discardKey: String = "discard"
@@ -22,24 +22,21 @@ object SearchProcedure {
     actorRegion(ready, actor).toOption.toVector.flatMap { origin =>
       Vector(SearchSource.WorldDeck,
         SearchSource.RegionalDiscard(origin)).flatMap { source =>
-        val startArg = source match {
+        val startArg = source match
           case SearchSource.WorldDeck => "search:world"
           case SearchSource.RegionalDiscard(region) =>
             s"search:regional-discard:${region.key}"
-        }
         build(catalog, ready, actor, Vector(DecisionOptionRef.Button(startArg)))
           .toOption.filter(tree => ProcedureWalker.restrictionViolations(
             tree, powers, ready, actor).isEmpty)
           .flatMap(tree => ProcedureWalker.advance(ready, tree, None, powers)
             .toOption).flatMap { outcome =>
-            val steps = outcome match {
+            val steps = outcome match
               case WalkerOutcome.Parked(_, events) => events
               case WalkerOutcome.Finished(_, events) => events
-            }
             steps.collect { case step: WalkerStepRecorded => step.ops }
-              .flatten.collectFirst {
+              .flatten.collectFirst:
                 case SpendSupply(`actor`, amount, _) => source -> amount
-              }
           }
       }
     }
@@ -67,7 +64,7 @@ object SearchProcedure {
     sourceOf(args).map(tree(catalog, actor, _))
 
   def sourceOf(args: Vector[DecisionOptionRef])
-      : Either[OathViolation, SearchSource] = args match {
+      : Either[OathViolation, SearchSource] = args match
     case Vector(DecisionOptionRef.Button("search:world")) =>
       Right(SearchSource.WorldDeck)
     case Vector(DecisionOptionRef.Button(key))
@@ -77,10 +74,9 @@ object SearchProcedure {
         .toRight(OathViolation.InvalidEventOrder("unknown Search region"))
     case _ => Left(OathViolation.InvalidEventOrder(
       "Search requires exactly one source selection"))
-  }
 
   private def tree(catalog: ExecutableCatalog, actor: PlayerId,
-      source: SearchSource): Operation = {
+      source: SearchSource): Operation =
     val cost = BuildOps((ready, _) => for {
       origin <- actorRegion(ready, actor)
       amount <- SearchRules.cost(ready, source, origin)
@@ -136,7 +132,6 @@ object SearchProcedure {
 
     Sequence(Vector(cost, draw, query, placement),
       Some(PowerWindow.SearchActionEligibility))
-  }
 
   private def actorRegion(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Region] =
@@ -144,22 +139,19 @@ object SearchProcedure {
       .flatMap(ready.game.current.map.regionOf)
       .toRight(OathViolation.PawnSiteMissing(actor))
 
-  private def option(card: WorldCardId): DecisionOption = card match {
+  private def option(card: WorldCardId): DecisionOption = card match
     case id: DenizenId => DecisionOption.Denizen(DecisionOptionRef.Denizen(id))
     case id: VisionId => DecisionOption.Vision(DecisionOptionRef.Vision(id))
-  }
 
-  private def card(ref: DecisionOptionRef): Option[WorldCardId] = ref match {
+  private def card(ref: DecisionOptionRef): Option[WorldCardId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)
     case DecisionOptionRef.Vision(id) => Some(id)
     case _ => None
-  }
 
   private def answered(pending: PendingTree): Option[Vector[DecisionPlacement]] =
-    pending.answered.collectFirst {
+    pending.answered.collectFirst:
       case Answered(`cardDecisionId`,
           DecisionAnswer.PartitionAnswer(placements), _) => placements
-    }
 
   private def selectedCards(ready: ReadyGame, pending: PendingTree,
       actor: PlayerId): Vector[WorldCardId] =
@@ -168,7 +160,7 @@ object SearchProcedure {
 
   private def selected(ready: ReadyGame, pending: PendingTree,
       actor: PlayerId): Either[OathViolation,
-        (WorldCardId, Vector[WorldCardId])] = {
+        (WorldCardId, Vector[WorldCardId])] =
     val cards = selectedCards(ready, pending, actor)
     if (cards.size == 1) Right(cards.head -> Vector.empty)
     else answered(pending).toRight(OathViolation.SearchChoiceMismatch(
@@ -177,14 +169,11 @@ object SearchProcedure {
         .flatMap(value => card(value.option))
       val discarded = placements.filter(_.sectionKey == discardKey)
         .flatMap(value => card(value.option))
-      kept match {
+      kept match
         case Vector(value) => Right(value -> discarded)
         case _ => Left(OathViolation.SearchChoiceMismatch(
           "Search must keep exactly one card"))
-      }
     }
-  }
 
   private def fail(error: OathViolation): Operation =
     BuildOps((_, _) => Left(error))
-}

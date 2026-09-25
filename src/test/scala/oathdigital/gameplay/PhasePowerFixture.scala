@@ -7,21 +7,20 @@ import oathdigital.model._
 /** A synthetic phase power on the active player's faceup adviser, shared
   * by the engine suite and the projection suite (Task 11).
   */
-object PhasePowerFixture {
+object PhasePowerFixture:
   final case class TestPower(id: PowerId, timing: PowerTiming,
       tree: PlayerId => Operation = _ => BuildOps((_, _) => Right(Vector.empty)),
       override val cost: Cost = Cost.free)
-      extends PhasePower {
+      extends PhasePower:
     def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef) = true
     def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Either[OathViolation, Operation] =
       Right(tree(player))
-  }
 
   /** The active player holds one faceup adviser with a catalog power, and a
     * site with capacity has no force, so the action boundary visibly refills
     * bandits.
     */
-  val (base, actor, card, powerId) = {
+  val (base, actor, card, powerId) =
     val ready = initialReady
     val current = ready.game.current
     val actor = current.turn.activePlayer
@@ -45,8 +44,6 @@ object PhasePowerFixture {
           if ids.nonEmpty => ids.head
     }.get
     (arranged, actor, card, powerId)
-  }
 
   def inPhase(phase: Phase) = base.updateCurrent(_.copy(turn = TurnState(actor, phase, Set.empty)))
   val source = DecisionOptionRef.Denizen(card)
-}

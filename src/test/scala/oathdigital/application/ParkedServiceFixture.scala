@@ -20,14 +20,14 @@ import oathdigital.serialization.GameEventWire
   * arranging `WalkerStepRecorded` delta that moves it into place: the same
   * replay path production uses, as the off-turn Oathkeeper reload test does.
   */
-object ParkedServiceFixture {
+object ParkedServiceFixture:
   val treatyCard: DenizenId = DenizenId("237")
   val silverTongueCard: DenizenId = DenizenId("92")
 
   def setUp(service: GameApplicationService, gameId: String,
       placementSites: Vector[SiteId] = sites,
       setupChronicle: Chronicle = chronicle,
-      setupOrders: SetupOrders = orders): GameAccepted = {
+      setupOrders: SetupOrders = orders): GameAccepted =
     var accepted = service.handle(gameId, 0L,
       GameCommand.Begin(setupChronicle, setupOrders))
       .fold(error => throw new AssertionError(error.toString), identity)
@@ -59,7 +59,6 @@ object ParkedServiceFixture {
           .toOption.get
       }
     accepted
-  }
 
   /** `cards`, in order, become the top of the world deck. A card already
     * dealt by setup swaps places with the card it displaces, and the world
@@ -67,37 +66,33 @@ object ParkedServiceFixture {
     * of visions -- the same production splice, not a duplicate of it.
     */
   def withWorldDeckTop(baseChronicle: Chronicle, baseOrders: SetupOrders,
-      cards: Vector[DenizenId]): (Chronicle, SetupOrders) = {
+      cards: Vector[DenizenId]): (Chronicle, SetupOrders) =
     val dealt = 6 + baseOrders.participants.size * 3
     val targets = (dealt until dealt + cards.size).toSet
-    val worldDeck = cards.zipWithIndex.foldLeft(baseChronicle.worldDeck) {
+    val worldDeck = cards.zipWithIndex.foldLeft(baseChronicle.worldDeck):
       case (current, (card, offset)) =>
         val target = dealt + offset
         val existing = current.indexOf(card)
-        val at = if (existing >= 0) existing else {
+        val at = if (existing >= 0) existing else
           val suit = catalog.denizens.find(_.id.value == card.value).get.suit
           current.indices.find(index => !targets(index) &&
             !cards.contains(current(index)) && catalog.denizens.exists(denizen =>
               denizen.id.value == current(index).value &&
                 denizen.suit == suit)).get
-        }
         current.updated(target, card).updated(at, current(target))
-    }
     val newChronicle = baseChronicle.copy(worldDeck = worldDeck)
     val config = FirstGameBootstrapConfig(baseOrders.participants,
       baseOrders.firstPlayer)
     (newChronicle, ChronicleFirstGamePlan.dealOrder(newChronicle, config))
-  }
 
   /** Journals one arranging delta at `at`, the stream's next sequence. */
   def seed(repository: InMemoryEventStreamRepository, gameId: String, at: Long,
-      ops: Vector[CoreOperation]): Unit = {
+      ops: Vector[CoreOperation]): Unit =
     val arrange = WalkerStepRecorded("0", DeltaRecorded(OperationApplied(
       s"arrange the $gameId fixture")), ops, Vector.empty)
     val record = ujson.write(GameEventWire.encodeEvent(gameId, catalogRef, at,
       arrange).toOption.get)
     repository.append(gameId, ExpectedStream.AtNextSequence(at), Vector(record))
-  }
 
   def topOfWorldDeck(card: DenizenId, to: Location,
       orientation: Orientation = Orientation.FaceUp): Move =
@@ -105,11 +100,10 @@ object ParkedServiceFixture {
       StackPosition.Top), PositionedLocation(to), Some(orientation))
 
   def cleared(ready: oathdigital.model.ReadyGame, site: SiteId)
-      : Vector[CoreOperation] = ready.game.current.map.sites(site).forces match {
+      : Vector[CoreOperation] = ready.game.current.map.sites(site).forces match
     case SiteForces.Occupied(kind, count) => Vector(Kill(Piece.Warbands(kind,
       count), PositionedLocation(Location.Site(site))))
     case SiteForces.Empty => Vector.empty
-  }
 
   /** League Treaty on the first cradle site, ruled by an off-turn player's
     * warband and holding 2 favor of its own suit. The active player ends
@@ -118,7 +112,7 @@ object ParkedServiceFixture {
     */
   def leagueTreatyPark(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, gameId: String)
-      : (GameAccepted, PlayerId, PlayerId) = {
+      : (GameAccepted, PlayerId, PlayerId) =
     val (seededChronicle, seededOrders) = withWorldDeckTop(chronicle, orders,
       Vector(treatyCard))
     val setup = setUp(service, gameId, setupChronicle = seededChronicle,
@@ -149,25 +143,23 @@ object ParkedServiceFixture {
       case _ => false
     }, s"expected the ruler's Rest decision, got ${parked.continue}")
     (parked, active, ruler)
-  }
 
   /** Defense dice that always come up blank. A Recover started with these
     * fails its roll, so it parks on the continue-or-stop choice instead of
     * landing wherever a random port would send it.
     */
-  val failingDice: CampaignDicePort = new CampaignDicePort {
+  val failingDice: CampaignDicePort = new CampaignDicePort:
     def rollAttack(count: Int): Vector[AttackDieFace] =
       Vector.fill(count)(AttackDieFace.HollowSword)
     def rollDefense(count: Int): Vector[DefenseDieFace] =
       Vector.fill(count)(DefenseDieFace.Blank)
-  }
 
   /** A Recover parked in Act on its continue-or-stop choice, at the first
     * catalog site Recover can target. `service` must roll `failingDice`, or
     * the walk lands somewhere else.
     */
   def recoverChoicePark(service: GameApplicationService, gameId: String)
-      : (GameAccepted, PlayerId, Vector[PlayerId]) = {
+      : (GameAccepted, PlayerId, Vector[PlayerId]) =
     val recoverSite = catalog.sites.find(site =>
       site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
         site.relicSlots > 0 &&
@@ -185,14 +177,13 @@ object ParkedServiceFixture {
     assert(parked.continue == OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.choiceDecisionId)), parked.continue.toString)
     (parked, actor, orders.participants.map(_.playerId))
-  }
 
   /** The off-turn Oathkeeper tie from the service suite: the holder must
     * pick between two tied leaders after the active player's Travel.
     */
   def oathkeeperTiePark(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, gameId: String)
-      : (GameAccepted, PlayerId, PlayerId, PlayerId) = {
+      : (GameAccepted, PlayerId, PlayerId, PlayerId) =
     val setup = setUp(service, gameId)
     val Ready(base) = setup.state: @unchecked
     val active = base.game.current.turn.activePlayer
@@ -227,7 +218,6 @@ object ParkedServiceFixture {
     assert(parked.continue == OathContinue.AwaitingOathkeeperRecipient(holder,
       DecisionId(OathkeeperProcedure.recipientDecisionId)), parked.continue.toString)
     (parked, active, holder, leaders(1))
-  }
 
   /** Silver Tongue as the active player's faceup adviser, with two faceup
     * denizens of different suits at their pawn site. Every favor bank starts
@@ -237,7 +227,7 @@ object ParkedServiceFixture {
     */
   def silverTonguePark(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, gameId: String)
-      : (GameAccepted, PlayerId, Suit) = {
+      : (GameAccepted, PlayerId, Suit) =
     val bySuit = catalog.denizens.map(d => DenizenId(d.id.value) -> d.suit)
       .filterNot { case (id, _) => id == silverTongueCard || id == treatyCard }
     val first = bySuit.head
@@ -268,5 +258,3 @@ object ParkedServiceFixture {
     assert(parked.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
       parked.continue.toString)
     (parked, active, first._2)
-  }
-}

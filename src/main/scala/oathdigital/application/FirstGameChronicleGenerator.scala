@@ -4,12 +4,11 @@ import oathdigital.catalog.{ExecutableCatalog, RelicRole}
 import oathdigital.model._
 
 sealed trait ChronicleGeneratorFailure extends Product with Serializable
-object ChronicleGeneratorFailure {
+object ChronicleGeneratorFailure:
   final case class WrongSiteCount(actual: Int) extends ChronicleGeneratorFailure
   final case class TooFewSuitDenizens(suit: Suit, implemented: Int, unimplemented: Int)
       extends ChronicleGeneratorFailure
   final case class InvariantViolated(detail: String) extends ChronicleGeneratorFailure
-}
 
 /**
  * Produces a random first-game Chronicle (2026-09-21 Chronicle design, "The
@@ -25,7 +24,7 @@ object ChronicleGeneratorFailure {
  * implemented-first by `policy`. `implemented` is the per-power answer
  * `ImplementedCardCatalog` reads. Self-validates the counts before returning.
  */
-object FirstGameChronicleGenerator {
+object FirstGameChronicleGenerator:
   import ChronicleGeneratorFailure._
 
   def generate(catalog: ExecutableCatalog, implemented: PowerId => Boolean,
@@ -49,7 +48,7 @@ object FirstGameChronicleGenerator {
 
   private def atlasBox(catalog: ExecutableCatalog, implemented: PowerId => Boolean,
       random: ChronicleRandomPort)
-      : Either[ChronicleGeneratorFailure, Vector[StoredSite]] = {
+      : Either[ChronicleGeneratorFailure, Vector[StoredSite]] =
     val sites = catalog.sites.map(_.id)
     if (sites.size != 24) Left(WrongSiteCount(sites.size))
     else Right(random.shuffle(sites).map { siteId =>
@@ -59,7 +58,6 @@ object FirstGameChronicleGenerator {
           StoredSite(siteId, Vector(edificeForHomeland(catalog, implemented, suit)))
       }
     })
-  }
 
   /** The suit's implemented edifice when it has one; otherwise the lowest-id
     * edifice of that suit, so a Homeland always carries an edifice card even
@@ -77,10 +75,10 @@ object FirstGameChronicleGenerator {
     * and the next 2 unimplemented ones are dispossessed. */
   private def denizenPools(catalog: ExecutableCatalog,
       implementedPower: PowerId => Boolean, random: ChronicleRandomPort)
-      : Either[ChronicleGeneratorFailure, (Vector[DenizenId], Vector[DenizenId])] = {
+      : Either[ChronicleGeneratorFailure, (Vector[DenizenId], Vector[DenizenId])] =
     val implemented = ImplementedCardCatalog.denizens(catalog, implementedPower)
     Suit.all.foldLeft[Either[ChronicleGeneratorFailure,
-        (Vector[DenizenId], Vector[DenizenId])]](Right(Vector.empty -> Vector.empty)) {
+        (Vector[DenizenId], Vector[DenizenId])]](Right(Vector.empty -> Vector.empty)):
       (acc, suit) =>
       acc.flatMap { case (worldPool, dispossessedPool) =>
         val suited = catalog.denizens.filter(_.suit == suit)
@@ -90,15 +88,12 @@ object FirstGameChronicleGenerator {
         val filler = PerSuit - chosenImpl.size
         if (unimpl.size < filler + DispossessedPerSuit)
           Left(TooFewSuitDenizens(suit, impl.size, unimpl.size))
-        else {
+        else
           val shuffledUnimpl = random.shuffle(unimpl)
           Right((worldPool ++ chosenImpl ++ shuffledUnimpl.take(filler),
             dispossessedPool ++
               shuffledUnimpl.slice(filler, filler + DispossessedPerSuit)))
-        }
       }
-    }
-  }
 
   private def homelandSuit(catalog: ExecutableCatalog, siteId: SiteId): Option[Suit] =
     catalog.sites.find(_.id == siteId).get.handlers.collectFirst {
@@ -107,7 +102,7 @@ object FirstGameChronicleGenerator {
     }.flatMap(Suit.fromKey)
 
   private def validate(catalog: ExecutableCatalog, chronicle: Chronicle)
-      : Either[ChronicleGeneratorFailure, Unit] = {
+      : Either[ChronicleGeneratorFailure, Unit] =
     val suitOf = catalog.denizens.map(d => DenizenId(d.id.value) -> d.suit).toMap
     def perSuitCount(ids: Vector[DenizenId]): Map[Suit, Int] =
       Suit.all.map(suit => suit -> ids.count(id => suitOf.get(id).contains(suit))).toMap
@@ -129,5 +124,3 @@ object FirstGameChronicleGenerator {
     else if ((chronicle.worldDeck.toSet intersect chronicle.dispossessed.toSet).nonEmpty)
       Left(InvariantViolated("world deck and dispossessed must not overlap"))
     else Right(())
-  }
-}
