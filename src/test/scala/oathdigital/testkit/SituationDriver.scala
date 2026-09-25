@@ -5,6 +5,7 @@ import oathdigital.application.{DefenseDicePort, EventStreamRepository,
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.MinorActionCommand
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
@@ -40,22 +41,33 @@ sealed trait SituationDriver:
   /** Issues `steps` in order. After each step, every park it caused is
     * answered -- a Roll park by rolling the parked pool with the adapter's
     * dice, a decision by [[answers]] -- until nothing is parked; except that
-    * with `settle = false` the last step's parks are left in place. Anything
-    * that cannot go on fails the test naming the step and the decision.
+    * with `settle = false` the last step's parks are left in place. With no
+    * steps and `settle = true`, the park `from` already holds is answered.
+    * Anything that cannot go on fails the test, at the caller's location,
+    * naming the step and the decision.
+    *
+    * A decision is always answered as the player it awaits, its primary
+    * owner: a co-owner's answer (a Negotiation deal's acceptor, say) is a
+    * `ResolveWalker` step the test issues itself.
     */
-  final def run(from: Situation, steps: Seq[Step], settle: Boolean)
-      : Situation =
-    steps.zipWithIndex.foldLeft(from) { case (situation, (step, index)) =>
-      def failed(detail: String): Nothing = munit.Assertions.fail(
-        s"step $index ($step): $detail")
-      val stepped = apply(situation, step)
-        .fold(violation => failed(s"rejected: $violation"), identity)
-      if !settle && index == steps.size - 1 then stepped
-      else answerParks(stepped, failed)
+  final def run(from: Situation, steps: Seq[Step], settle: Boolean)(
+      using munit.Location): Situation =
+    if steps.isEmpty then
+      if settle then answerParks(from, detail => munit.Assertions.fail(
+        s"settling: $detail"))
+      else from
+    else steps.zipWithIndex.foldLeft(from) {
+      case (situation, (step, index)) =>
+        def failed(detail: String): Nothing = munit.Assertions.fail(
+          s"step $index ($step): $detail")
+        val stepped = apply(situation, step)
+          .fold(violation => failed(s"rejected: $violation"), identity)
+        if !settle && index == steps.size - 1 then stepped
+        else answerParks(stepped, failed)
     }
 
-  private def answerParks(from: Situation, failed: String => Nothing)
-      : Situation =
+  private def answerParks(from: Situation, failed: String => Nothing)(
+      using munit.Location): Situation =
     var situation = from
     var answered = 0
     var parked = parkedNode(situation.state).fold(failed, identity)
@@ -68,10 +80,15 @@ sealed trait SituationDriver:
           GameCommand.RollWalker(awaiting, pool)
         case ParkedNode.Decision(procedure, decide, awaiting) =>
           val park = Park(decide, situation.ready, awaiting, procedure)
-          val answer = answers.applyOrElse(park, _ => failed(
-            s"no answer for ${decide.decisionId} " +
-              s"(${decide.query.getClass.getSimpleName}) of $procedure " +
-              s"awaiting $awaiting"))
+          val form = decide.query.getClass.getSimpleName
+          val answer =
+            try answers.applyOrElse(park, _ => failed(
+              s"no answer for ${decide.decisionId} ($form) of $procedure " +
+                s"awaiting $awaiting"))
+            // A munit failure is an Error and passes through as it is.
+            catch case error: Exception =>
+              failed(s"answering ${decide.decisionId} ($form) of " +
+                s"$procedure awaiting $awaiting threw $error")
           GameCommand.ResolveWalker(awaiting,
             TreeDecision(decide.decisionId, answer))
       situation = apply(situation, Step.Command(resume)).fold(violation =>
@@ -92,16 +109,21 @@ object SituationDriver:
     WalkerStepRecorded("0", DeltaRecorded(OperationApplied(label)), ops,
       Vector.empty)
 
-  /** Calls `OathRules` directly, dispatching each command exactly as
-    * `GameApplicationService.applyCommand` does. Search needs no draw port
-    * here: the service only checks its port against `SearchRules.draw`. An
-    * `Arrange` is applied through `OathRules.evolve`, the replay path.
+  /** Calls `OathRules` directly, accepting exactly the commands
+    * `GameApplicationService.applyCommand` accepts and dispatching them the
+    * same way; a rejection's wording may differ. Search needs no draw port
+    * here: the service only checks its port against `SearchRules.draw`.
+    * `WithModifiers` is not supported, since checking its modifiers is the
+    * service's. An `Arrange` is applied through `OathRules.evolve`, the
+    * replay path.
     */
   final case class Rules(catalog: ExecutableCatalog, walkerPowers: WalkerPowers,
       phasePowers: PhasePowers, walkerDice: WalkerDice,
-      defenseDice: DefenseDicePort, answers: Answers)
+      defenseDice: DefenseDicePort,
+      warExhaustion: WarExhaustionRandomPort, answers: Answers)
       extends SituationDriver:
     private val rules = new OathRules(catalog,
+      warExhaustionRandomPort = warExhaustion,
       walkerPowerCatalog = walkerPowers, phasePowerCatalog = phasePowers,
       walkerDice = walkerDice)
 
@@ -114,6 +136,9 @@ object SituationDriver:
 
     protected def apply(from: Situation, step: Step)
         : Either[String, Situation] = step match
+      case Step.Command(_: GameCommand.WithModifiers) => Left(
+        "the rules adapter does not check ordered modifiers; issue " +
+          "WithModifiers through the journaled adapter")
       case Step.Command(command) => transition(from.state, command)
         .left.map(_.toString).map(result => advanced(from, result.state,
           result.events))
@@ -129,7 +154,8 @@ object SituationDriver:
 
     private def transition(state: OathState, command: GameCommand)
         : Either[OathViolation, OathTransition] = command match
-      case GameCommand.WithModifiers(inner, _) => transition(state, inner)
+      case command: GameCommand.WithModifiers => Left(
+        OathViolation.InvalidModifierInvocation(s"unsupported: $command"))
       case GameCommand.Begin(chronicle, orders) =>
         rules.beginGame(state, chronicle, orders)
       case GameCommand.StartWalker(procedure, start) =>
@@ -199,5 +225,8 @@ object SituationDriver:
             Vector(ujson.write(record))).left.map(_.toString)
           loaded <- service.load(gameId).left.map(_.toString)
             .flatMap(_.toRight(s"no stream $gameId after arranging"))
+          _ <- Either.cond(loaded.nextSequence == from.nextSequence + 1, (),
+            s"arranging at ${from.nextSequence} left the stream at " +
+              s"${loaded.nextSequence}")
         yield Situation(loaded.state, from.events :+ event,
           loaded.nextSequence, this)

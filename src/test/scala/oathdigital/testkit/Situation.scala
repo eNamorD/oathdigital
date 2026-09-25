@@ -4,6 +4,7 @@ import oathdigital.application.{CampaignDicePort, DefenseDicePort,
   EventStreamRepository, GameCommand, GameApplicationService,
   InMemoryEventStreamRepository}
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -55,14 +56,16 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
     case other => munit.Assertions.fail(s"expected a ready game, got $other")
 
   /** Issues each step and answers every parked decision it causes, the last
-    * step's included: the result is not parked. */
-  def after(steps: (GameCommand | Step)*): Situation =
+    * step's included: the result is not parked. With no steps, answers the
+    * park this situation holds. */
+  def after(steps: (GameCommand | Step)*)(using munit.Location): Situation =
     driver.run(this, steps.map(Step.of), settle = true)
 
   /** Issues each step, answering every park but the last step's own: the
     * result is parked where that step stopped, for `ParkedDecisionAssertions`
     * to read. */
-  def parkedAfter(steps: (GameCommand | Step)*): Situation =
+  def parkedAfter(steps: (GameCommand | Step)*)(using munit.Location)
+      : Situation =
     driver.run(this, steps.map(Step.of), settle = false)
 
   /** Continue under `overrides` layered over [[Situation.defaultAnswer]],
@@ -72,11 +75,12 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
 
   /** Writes this situation's events into `repository` as `gameId`'s whole
     * stream, the way a journal written by real play would hold them. */
-  def seedInto(repository: InMemoryEventStreamRepository, gameId: String)
-      : Unit =
+  def seedInto(repository: InMemoryEventStreamRepository, gameId: String)(
+      using munit.Location): Unit =
     repository.seed(gameId, events.zipWithIndex.map { case (event, index) =>
       ujson.write(GameEventWire.encodeEvent(gameId, driver.catalog.ref,
-        index.toLong, event).toOption.get)
+        index.toLong, event).fold(error => munit.Assertions.fail(
+          s"event $index ($event) does not encode: $error"), identity))
     })
 
 object Situation:
@@ -115,25 +119,29 @@ object Situation:
         park.ready.game.current.players.count(_.pawnSite.nonEmpty))))
 
   /** Drives `OathRules` directly: nothing is journaled. The rules are built
-    * from the ports and power catalogs given, and the same power catalogs
-    * rebuild each park. */
+    * from the ports and power catalogs given, with `OathRules`' own defaults,
+    * and the same power catalogs rebuild each park. */
   def rules(catalog: ExecutableCatalog,
       walkerPowers: WalkerPowers = WalkerPowers.empty,
       phasePowers: PhasePowers = PhasePowers.empty,
       walkerDice: WalkerDice = WalkerDice.unavailable,
-      defenseDice: DefenseDicePort = DefenseDicePort.random): SituationDriver =
+      defenseDice: DefenseDicePort = DefenseDicePort.random,
+      warExhaustion: WarExhaustionRandomPort = WarExhaustionRandomPort.random)
+      : SituationDriver =
     SituationDriver.Rules(catalog, walkerPowers, phasePowers, walkerDice,
-      defenseDice, defaultAnswer)
+      defenseDice, warExhaustion, defaultAnswer)
 
   /** The rules adapter over the rules `GameApplicationService` builds
-    * (`GameApplicationService.scala:87-91`), so it agrees with the journaled
-    * adapter given the same input and dice. */
+    * (`GameApplicationService.scala:85-90`), so it agrees with the journaled
+    * adapter given the same input and ports. */
   def serviceRules(catalog: ExecutableCatalog,
       campaignDice: CampaignDicePort = CampaignDicePort.random,
-      defenseDice: DefenseDicePort = DefenseDicePort.random): SituationDriver =
+      defenseDice: DefenseDicePort = DefenseDicePort.random,
+      warExhaustion: WarExhaustionRandomPort = WarExhaustionRandomPort.random)
+      : SituationDriver =
     rules(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog),
-      CampaignDicePort.walkerDice(campaignDice), defenseDice)
+      CampaignDicePort.walkerDice(campaignDice), defenseDice, warExhaustion)
 
   /** Drives `service` as `gameId`, which must hold no stream yet, and
     * arranges through `repository`, which must be the service's own.
@@ -156,17 +164,20 @@ object Situation:
   /** Setup complete: the first player's Wake. */
   def wake(driver: SituationDriver,
       chronicle: Chronicle = FirstGameSetupFixture.chronicle,
-      orders: SetupOrders = FirstGameSetupFixture.orders): Situation =
+      orders: SetupOrders = FirstGameSetupFixture.orders)(
+      using munit.Location): Situation =
     start(driver).after(GameCommand.Begin(chronicle, orders))
 
   /** `actor`'s Wake ended: the first player's Act. */
   def act(driver: SituationDriver, actor: PlayerId,
       chronicle: Chronicle = FirstGameSetupFixture.chronicle,
-      orders: SetupOrders = FirstGameSetupFixture.orders): Situation =
+      orders: SetupOrders = FirstGameSetupFixture.orders)(
+      using munit.Location): Situation =
     wake(driver, chronicle, orders).after(GameCommand.EndWake(actor))
 
   /** `actor`'s Act ended, stopped at the Rest action. */
   def rest(driver: SituationDriver, actor: PlayerId,
       chronicle: Chronicle = FirstGameSetupFixture.chronicle,
-      orders: SetupOrders = FirstGameSetupFixture.orders): Situation =
+      orders: SetupOrders = FirstGameSetupFixture.orders)(
+      using munit.Location): Situation =
     act(driver, actor, chronicle, orders).after(GameCommand.BeginRest(actor))

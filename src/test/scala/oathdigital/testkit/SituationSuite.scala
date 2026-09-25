@@ -1,8 +1,8 @@
 package oathdigital.testkit
 
 import oathdigital.application.{CampaignDicePort, GameApplicationService,
-  GameCommand, StartPayload,
-  InMemoryEventStreamRepository}
+  GameCommand, InMemoryEventStreamRepository, ParkedServiceFixture,
+  StartPayload}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -49,8 +49,19 @@ class SituationSuite extends munit.FunSuite:
 
   test("the rules and journaled adapters reach the same game for the same " +
       "steps"):
+    // An arranged Oathkeeper, then the first player's Wake and a Search of
+    // the world deck with every park answered by default: the Arrange, the
+    // draw and the card play all cross the adapters' seams.
     val (driver, repository) = journaled("agree")
-    val steps = Vector(GameCommand.EndWake(orders.firstPlayer))
+    val actor = orders.firstPlayer
+    val other = FirstGameSetupFixture.initialReady.game.current.players
+      .map(_.player).find(player => player != actor && !FirstGameSetupFixture
+        .initialReady.game.current.title.holder.contains(player)).get
+    val steps = Vector[GameCommand | Step](
+      Step.Arrange(Vector(SetOathkeeper(Some(other)))),
+      GameCommand.EndWake(actor),
+      GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
     val byRules = Situation.wake(Situation.serviceRules(catalog, blankDice))
       .after(steps*)
     val byJournal = Situation.wake(driver).after(steps*)
@@ -88,6 +99,7 @@ class SituationSuite extends munit.FunSuite:
       val arranged = situation.after(Step.Arrange(Vector(
         SetOathkeeper(Some(holder)))))
       assertEquals(arranged.events.size, situation.events.size + 1)
+      assertEquals(arranged.nextSequence, situation.nextSequence + 1)
       assertEquals(arranged.ready.game.current.title.holder, Some(holder))
     val wokenByJournal = Situation.wake(driver)
     val before = recordCount(repository, "arrange")
@@ -99,19 +111,27 @@ class SituationSuite extends munit.FunSuite:
       "the way ParkedServiceFixture does"):
     // ParkedServiceFixture.recoverChoicePark's board, under the rules the
     // service builds and dice that fail every Recover roll.
-    val recoverSite = catalog.sites.find(site =>
-      site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
-        site.relicSlots > 0 &&
-        !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverChronicle = chronicle.copy(atlasBox =
-      chronicle.atlasBox.find(_.site == recoverSite).get +:
-        chronicle.atlasBox.filterNot(_.site == recoverSite))
     val actor = orders.firstPlayer
     val driver = Situation.serviceRules(catalog, blankDice).withAnswers(
-      Situation.pawnsAt(recoverChronicle.atlasBox.take(8).map(_.site)))
-    val parked = Situation.wake(driver, recoverChronicle, orders)
+      Situation.pawnsAt(ParkedServiceFixture.recoverSites))
+    val parked = Situation.wake(driver, ParkedServiceFixture.recoverChronicle,
+      orders)
       .parkedAfter(GameCommand.EndWake(actor),
         GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
     new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog)).assertParked(parked.state,
         ActionRef.Recover, RecoverProcedure.choiceDecisionId, actor)
+
+  test("after with no steps answers the park a situation holds"):
+    val parked = Situation.start(Situation.rules(catalog))
+      .parkedAfter(GameCommand.Begin(chronicle, orders))
+    val woken = parked.withAnswers(Situation.pawnsAt(sites)).after()
+    assertEquals(woken.ready, FirstGameSetupFixture.initialReady)
+
+  test("the rules adapter refuses ordered modifiers rather than skip their " +
+      "check"):
+    val failure = intercept[AssertionError](
+      FirstGameSetupFixture.initialSituation().after(GameCommand.WithModifiers(
+        GameCommand.EndWake(orders.firstPlayer), Vector.empty)))
+    assert(failure.getMessage.contains("journaled adapter"),
+      failure.getMessage)

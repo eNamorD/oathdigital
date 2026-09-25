@@ -138,20 +138,26 @@ object ParkedServiceFixture:
     def rollDefense(count: Int): Vector[DefenseDieFace] =
       Vector.fill(count)(DefenseDieFace.Blank)
 
+  /** The Chronicle with the first catalog site Recover can target in the
+    * first atlas slot, so the first player's pawn starts there, and the
+    * sites in play under it in atlas order. */
+  lazy val recoverChronicle: Chronicle =
+    val recoverSite = catalog.sites.find(site =>
+      site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
+        site.relicSlots > 0 &&
+        !site.handlers.exists(_.contains(".homeland-"))).get.id
+    chronicle.copy(atlasBox =
+      chronicle.atlasBox.find(_.site == recoverSite).get +:
+        chronicle.atlasBox.filterNot(_.site == recoverSite))
+  lazy val recoverSites: Vector[SiteId] =
+    recoverChronicle.atlasBox.take(8).map(_.site)
+
   /** A Recover parked in Act on its continue-or-stop choice, at the first
     * catalog site Recover can target. `service` must roll `failingDice`, or
     * the walk lands somewhere else.
     */
   def recoverChoicePark(service: GameApplicationService, gameId: String)
       : (GameAccepted, PlayerId, Vector[PlayerId]) =
-    val recoverSite = catalog.sites.find(site =>
-      site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
-        site.relicSlots > 0 &&
-        !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverChronicle = chronicle.copy(atlasBox =
-      chronicle.atlasBox.find(_.site == recoverSite).get +:
-        chronicle.atlasBox.filterNot(_.site == recoverSite))
-    val recoverSites = recoverChronicle.atlasBox.take(8).map(_.site)
     val actor = orders.firstPlayer
     val act = woken(Situation.journaled(service, catalog, gameId),
       recoverSites, recoverChronicle, orders).after(GameCommand.EndWake(actor))
