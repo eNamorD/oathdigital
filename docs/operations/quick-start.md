@@ -47,6 +47,113 @@ to change the port or the address, or to turn off the browser opening.
 Seat links contain the address. If the host's network address changes, for
 example after joining a different network, players need the new address.
 
+## Playing over the Internet (plain HTTP, trusted group)
+
+This section lets players outside your home network join by opening an IP
+address. It is a deliberate shortcut for a small group who trust each other. It
+is not the arrangement these docs recommend for Internet use, which is HTTPS at
+a reverse proxy (see [network and browser guidance](network-and-browser.md)).
+
+What plain HTTP costs you:
+
+- Nothing is encrypted. Anyone on the network path between a player and the
+  host can read that player's seat link and use it to take the seat. A seat link
+  is a bearer credential, so send each one over a private channel and only to
+  its player.
+- The seat cookie is not marked `Secure`. That flag is only set for an
+  `https://` public base URL.
+- The port is open to the whole Internet, so anyone who finds the address can
+  reach the game-creation page. Games and seats are still separate, and only
+  seat links grant control, but there is no password on the page itself. Close
+  the port when you are done playing.
+
+You do not need any of this for players on your own network. Use the steps
+above and share the LAN address instead.
+
+### Host setup
+
+1. **Check that your home connection has a public address.** On the host, look
+   up "what is my IP" in a browser, then compare it with the WAN or Internet
+   address on your router's status page. If they differ, or the router shows a
+   private-looking address such as `10.x.x.x` or `100.64.x.x`, your provider
+   shares one public address between customers (CGNAT) and port forwarding
+   cannot work. Ask the provider for a public address, or host on a cloud
+   machine instead.
+2. **Give the host a fixed LAN address.** In the router's settings, reserve the
+   host's current private address for it (often called a DHCP reservation or IP
+   allocation). Otherwise the port forward stops working when the address
+   changes. Routers often list devices by name, and computers that hide their
+   name can all appear as "Mac" or similar, so pick the entry by its address
+   or MAC address. Many computers also use a private, changing Wi-Fi address
+   that makes a reservation stop matching. On macOS, set **System Settings ›
+   Wi-Fi › Details… › Private Wi-Fi address** to **Fixed**, then reserve the
+   MAC address the router shows afterwards. Windows has an equivalent "Random
+   hardware addresses" setting for each network.
+3. **Set the public address.** The first start of a Start file creates
+   `oathdigital.properties` in the app-data folder (see the
+   [desktop launch profile](configuration.md#desktop-launch-profile)). Remove
+   the leading `#` from the `OATH_PUBLIC_BASE_URL` line and set it to the
+   public address from step 1, keeping `http://` and the port:
+
+   ```properties
+   OATH_PUBLIC_BASE_URL=http://203.0.113.7:8080
+   ```
+
+   Restart the server. Seat links and request checks use this exact address.
+   If it does not match what players type, their requests are rejected.
+4. **Forward the port.** In the router, forward **TCP** port 8080 to the host's
+   reserved LAN address, port 8080. Choose TCP only, because the server does not
+   use UDP. Some routers need two steps: first define a custom service for the
+   port, then map that service to the host device. Check that the mapping
+   appears in the list afterwards. Do not enable UPnP to do this automatically.
+   The host's firewall may ask about incoming connections; if it does, allow
+   them. It did not on the macOS test machine. If outside players still cannot
+   connect, check the host firewall for a rule on port 8080.
+5. **Test from outside your network.** Use a phone on cellular data, with Wi-Fi
+   off. Open `http://<public-address>:8080/health/ready`. It should report
+   success. If it does not, recheck steps 3 and 4.
+6. **Create the game through the public address.** The server accepts game
+   creation and game commands only from the exact public base URL. A page
+   opened at `http://localhost:8080` or at the host's LAN address will load, but
+   creating a game or making a move from it is refused with
+   `csrf-validation-failed`. So the game has to be created, and played, from
+   the public address.
+
+   Many home routers cannot reliably loop a connection from the inside back to
+   their own public address. On the test router, requests from the host to the
+   public address mostly timed out. If the public address does not load on the
+   host, create the game from a device outside your network, such as the phone
+   from step 5. Then continue with
+   [Create and distribute seats](#create-and-distribute-seats).
+
+### Players on the host's own network
+
+A seat link contains the public address. A player on the host's own network
+can open the link and reach the game page through the host's LAN address, but
+their moves are refused for the reason above, and the public address may not
+load from inside the network at all. This includes the host. Have every player,
+including the host, play from a device outside the network, such as a phone on
+cellular data or on a hotspot. A cloud machine (below) has no such limit.
+
+Remove the port forward, or stop the server, whenever nobody is playing.
+
+### Cloud machine instead of a home connection
+
+A cloud virtual machine avoids steps 1, 2, and 4, because it already has a
+public address. Open TCP port 8080 to the Internet in the provider's firewall
+or security group, install the Linux or universal archive, and start it with the
+same `OATH_HOST=0.0.0.0` and `OATH_PUBLIC_BASE_URL=http://<public-address>:8080`
+values shown in the [advanced section](#linux). Stop or delete the machine when
+you are finished.
+
+### Moving to HTTPS
+
+A domain name is the simplest step up: it costs a few dollars a year, and a
+reverse proxy such as Caddy or NGINX can then obtain a certificate and serve
+HTTPS. Follow the [HTTPS reverse proxy](network-and-browser.md#https-reverse-proxy)
+instructions, including the log redaction checks they require, before
+inviting players over HTTPS.
+
 ## Advanced: all-platform archive and OCI image
 
 The sections below need a terminal. Use them for other computers, servers, or
@@ -125,9 +232,10 @@ $env:OATH_DATABASE_PATH = 'C:\OathDigitalData\alpha-1\database'
 
 Replace `192.168.1.20` with the host's private LAN address. For host-only use,
 omit `OATH_HOST` and set or omit the public base URL as described in
-[runtime configuration](configuration.md). For Internet exposure, do not use
-these direct HTTP examples; use the HTTPS arrangement in
-[network and browser guidance](network-and-browser.md).
+[runtime configuration](configuration.md). For Internet exposure, prefer the
+HTTPS arrangement in [network and browser guidance](network-and-browser.md).
+For a small trusted group, [plain HTTP over the Internet](#playing-over-the-internet-plain-http-trusted-group)
+is possible, with the risks listed there.
 
 Press Ctrl-C once to stop an archive process. Wait for the process to exit and
 the `Oath Digital database closed` log line before backing up or moving data.

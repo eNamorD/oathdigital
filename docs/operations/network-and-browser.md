@@ -69,7 +69,11 @@ The [alpha acceptance record](alpha-acceptance.md) requires a second physical
 machine; a second tab on the host is not LAN evidence.
 
 Plain HTTP is suitable only for a private trusted LAN whose users and network
-are trusted. Internet exposure requires HTTPS at a trusted reverse proxy.
+are trusted. Internet exposure requires HTTPS at a trusted reverse proxy. A
+small trusted group that accepts the seat-link exposure can knowingly use plain
+HTTP over the Internet; the
+[quick start](quick-start.md#playing-over-the-internet-plain-http-trusted-group)
+describes that setup and its risks.
 
 ## HTTPS reverse proxy
 
