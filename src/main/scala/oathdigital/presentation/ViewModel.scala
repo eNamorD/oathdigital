@@ -1,8 +1,14 @@
 package oathdigital.presentation
 
 /** Stable, serialization-friendly identity for a presented game object. */
-final case class ViewId(value: String) {
-  require(value.trim.nonEmpty, "view ID must not be blank")
+opaque type ViewId = String
+object ViewId {
+  def apply(value: String): ViewId = {
+    require(value.trim.nonEmpty, "view ID must not be blank")
+    value
+  }
+  def unapply(id: ViewId): Some[String] = Some(id)
+  extension (id: ViewId) def value: String = id
 }
 
 /** Text exposed visually and to assistive technology. */

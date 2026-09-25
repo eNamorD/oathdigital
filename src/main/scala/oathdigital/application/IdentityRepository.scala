@@ -1,6 +1,11 @@
 package oathdigital.application
 
-final case class UserId(value: String)
+opaque type UserId = String
+object UserId {
+  def apply(value: String): UserId = value
+  def unapply(id: UserId): Some[String] = Some(id)
+  extension (id: UserId) def value: String = id
+}
 final case class ExternalIdentity(provider: String, subject: String)
 
 final case class SessionTokenDigest private (bytes: Vector[Byte])
