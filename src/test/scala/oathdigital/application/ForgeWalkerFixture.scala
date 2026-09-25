@@ -4,8 +4,10 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model.OathState.Ready
 
 /** The one real board a walker Forge can be driven to, shared by every
@@ -20,6 +22,13 @@ import oathdigital.model.OathState.Ready
   * Forge worth anything.
   */
 object ForgeWalkerFixture extends munit.Assertions:
+
+  /** The parked decision, as this fixture rebuilds it: the same catalog and
+    * power catalogs `GameApplicationService` builds its rules with
+    * (`GameApplicationService.scala:87-90`).
+    */
+  private val parkedAssertions = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
   /** Every Forge in this fixture is preceded by a conquest, and a conquest
     * needs dice. These always come up the same way so the board the Forge
@@ -100,8 +109,8 @@ object ForgeWalkerFixture extends munit.Assertions:
       GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
       .fold(error => fail(s"Campaign fixture rejected: $error"), identity)
     // Other bandit-ruled sites are optional targets: take none.
-    if accepted.continue == OathContinue.AwaitingCampaignDecision(actor,
-        DecisionId(CampaignIds.targets)) then
+    if parkedAssertions.parkedDecision(accepted.state).map(_.decision)
+        .contains(CampaignIds.targets) then
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.targets,
           ChooseManyAnswer(Vector.empty)))).toOption.get
@@ -111,9 +120,8 @@ object ForgeWalkerFixture extends munit.Assertions:
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.sacrifice,
         ChooseAmountAnswer(2)))).toOption.get
-    accepted.continue match
-      case OathContinue.AwaitingCampaignDecision(_, decision)
-          if decision.value == CampaignIds.placement =>
+    parkedAssertions.parkedDecision(accepted.state).map(_.decision) match
+      case Some(CampaignIds.placement) =>
         accepted = service.handle(gameId, accepted.nextSequence,
           GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.placement,
             ChooseAmountAnswer(1)))).toOption.get

@@ -5,12 +5,21 @@ import oathdigital.model.PlayerColor
 import java.nio.file.{Files, Path}
 import java.sql.{Connection, DriverManager}
 import oathdigital.application._
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, chronicle,
   orders, participants}
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.protocol._
 
 class TrustedGameProvisioningSuite extends munit.FunSuite:
+  /** The parked decision, as this suite rebuilds it: the same catalog and
+    * power catalogs `GameApplicationService` builds its rules with
+    * (`GameApplicationService.scala:87-90`).
+    */
+  private val parkedAssertions = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+
   private val request = TrustedGameCreateRequest("trusted-game", Vector(
     BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
     BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue)))
@@ -151,7 +160,8 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       .handle("prepared", 0L, GameCommand.Begin(chronicle, dealt)).toOption.get
     assertEquals(prepared.state, accepted.state)
     assertEquals(prepared.events, accepted.events)
-    assertEquals(prepared.continue, accepted.continue)
+    assertEquals(parkedAssertions.parkedDecision(prepared.state),
+      parkedAssertions.parkedDecision(accepted.state))
     assertEquals(prepared.records, journal.load("prepared").toOption.flatten.get.records)
 
   test("store rejects invalid seat and record input without throwing or persisting rows"):

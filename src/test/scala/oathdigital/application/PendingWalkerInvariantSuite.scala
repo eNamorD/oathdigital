@@ -3,7 +3,9 @@ package oathdigital.application
 import java.nio.file.{Files, Paths}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
@@ -14,6 +16,13 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   */
 class PendingWalkerInvariantSuite extends munit.FunSuite:
   private val relic = relics.head
+
+  /** The parked decision, as this suite rebuilds it: the same catalog and
+    * power catalogs `GameApplicationService` builds its rules with
+    * (`GameApplicationService.scala:87-90`).
+    */
+  private val parkedAssertions = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
   /** One instance of every `GameCommand` constructor, bound to `actor`. */
   private def everyCommand(actor: PlayerId): Vector[GameCommand] = Vector(
@@ -93,9 +102,9 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     val service = new GameApplicationService(catalog, repository)
     val (parked, _, ruler) = ParkedServiceFixture.leagueTreatyPark(service,
       repository, "invariant-league-treaty")
-    val OathContinue.AwaitingRestDecision(_, decision) = parked.continue: @unchecked
+    val decision = parkedAssertions.parkedDecision(parked.state).get.decision
     assertOnlyItsResume(service, repository, "invariant-league-treaty", parked,
-      everyone, GameCommand.ResolveWalker(ruler, TreeDecision(decision.value,
+      everyone, GameCommand.ResolveWalker(ruler, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.Button("decline")))))
 
   test("over a Silver Tongue bank choice in Rest, only its answer is accepted"):
@@ -103,7 +112,7 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     val service = new GameApplicationService(catalog, repository)
     val (parked, active, bank) = ParkedServiceFixture.silverTonguePark(service,
       repository, "invariant-silver-tongue")
-    val OathContinue.AwaitingPowerDecision(_, decision) = parked.continue: @unchecked
+    val decision = parkedAssertions.parkedDecision(parked.state).get.decision
     assertOnlyItsResume(service, repository, "invariant-silver-tongue", parked,
-      everyone, GameCommand.ResolveWalker(active, TreeDecision(decision.value,
+      everyone, GameCommand.ResolveWalker(active, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.FavorBank(bank)))))

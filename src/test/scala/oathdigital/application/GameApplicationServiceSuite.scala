@@ -10,11 +10,11 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
-  WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
+  WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.WalkerDiceFixture
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}
@@ -34,6 +34,13 @@ import oathdigital.gameplay.OathRules
 class GameApplicationServiceSuite extends munit.FunSuite:
   private val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
     _.id.value == "denizen.catacombs")).get.id.value)
+
+  /** The parked decision, as this suite rebuilds it: the same catalog and
+    * power catalogs `GameApplicationService` builds its rules with
+    * (`GameApplicationService.scala:87-90`).
+    */
+  private val parkedAssertions = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
   /** `target` swapped into the in-play 8, whether or not it was already one
     * of the fixture's own 8 sites: the actual map (not merely the client's
@@ -74,9 +81,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val reloaded = new GameApplicationService(catalog, repository)
       .load("game-league-treaty").toOption.flatten.get
     assertEquals(reloaded.state, parked.state)
-    val OathContinue.AwaitingRestDecision(_, decision) = parked.continue: @unchecked
+    val decision = parkedAssertions.parkedDecision(parked.state).get.decision
     val decline = GameCommand.ResolveWalker(_: PlayerId, TreeDecision(
-      decision.value, ChooseOneAnswer(DecisionOptionRef.Button("decline"))))
+      decision, ChooseOneAnswer(DecisionOptionRef.Button("decline"))))
     assert(service.handle("game-league-treaty", parked.nextSequence,
       decline(active)).isLeft)
     val finished = service.handle("game-league-treaty", parked.nextSequence,
@@ -164,8 +171,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(walkerDice.calls, 1)
     assertEquals(atRelic.game.current.walkerProcedure, Some(ActionRef.Recover))
     assert(atRelic.game.current.walkerPending.nonEmpty)
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRelic(actor,
-      DecisionId(RecoverProcedure.relicDecisionId)))
 
     walkerService.handle("walker-recover", started.nextSequence,
       GameCommand.PeekSiteRelics(actor)) match
@@ -186,7 +191,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
           ChooseOneAnswer(DecisionOptionRef.Relic(relic))))).toOption.get
     val Ready(afterWalker) = finished.state: @unchecked
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
-    assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
+    parkedAssertions.assertResumed(finished.state, Phase.Act, actor)
     assert(afterWalker.game.current.walkerPending.isEmpty)
     assert(afterWalker.game.current.walkerProcedure.isEmpty)
     assertEquals(afterWalker.game.current.rollPools,
@@ -264,8 +269,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       .toOption.get
     assert(started.events.nonEmpty)
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRelic(actor,
-      DecisionId(RecoverProcedure.relicDecisionId)))
+    parkedAssertions.assertParked(started.state, ActionRef.Recover,
+      RecoverProcedure.relicDecisionId, actor)
 
   test("walker Continue answer and the roll it buys survive reload"):
     val recoverSite = catalog.sites.find(site =>
@@ -286,8 +291,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val failed = service.handle("walker-continue", act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
     assertEquals(dice.calls, 1)
-    assertEquals(failed.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.choiceDecisionId)))
+    parkedAssertions.assertParked(failed.state, ActionRef.Recover,
+      RecoverProcedure.choiceDecisionId, actor)
     // Continue buys two more dice and rolls them inside the same command,
     // which fails again and parks the same choice: the continuation names
     // the parked node's own decision id either way.
@@ -295,8 +300,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue"))))).toOption.get
     assertEquals(dice.calls, 2)
-    assertEquals(continued.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.choiceDecisionId)))
+    parkedAssertions.assertParked(continued.state, ActionRef.Recover,
+      RecoverProcedure.choiceDecisionId, actor)
     val Ready(ready) = continued.state: @unchecked
     assertEquals(ready.game.current.walkerPending.toVector.flatMap(_.answered),
       Vector(Answered(RecoverProcedure.choiceDecisionId,
@@ -354,8 +359,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val Ready(walkerAfterFirst) = walkerFirst.state: @unchecked
     assertEquals(walkerAfterFirst.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 1)
-    assertEquals(walkerFirst.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.choiceDecisionId)))
+    parkedAssertions.assertParked(walkerFirst.state, ActionRef.Recover,
+      RecoverProcedure.choiceDecisionId, actor)
     val walkerFirstReloaded = new GameApplicationService(catalog,
       walkerRepository).load("walker-cross-roll-doubler").toOption.flatten.get
     assertEquals(walkerFirstReloaded.state, walkerFirst.state)
@@ -373,8 +378,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val Ready(walkerAfterSecond) = walkerSecond.state: @unchecked
     assertEquals(walkerAfterSecond.game.current.rollOutcomes(
       RecoverProcedure.recoverPool).score, 2)
-    assertEquals(walkerSecond.continue, OathContinue.AwaitingRecoverRelic(actor,
-      DecisionId(RecoverProcedure.relicDecisionId)))
+    parkedAssertions.assertParked(walkerSecond.state, ActionRef.Recover,
+      RecoverProcedure.relicDecisionId, actor)
     val walkerSecondReloaded = new GameApplicationService(catalog,
       walkerRepository).load("walker-cross-roll-doubler").toOption.flatten.get
     assertEquals(walkerSecondReloaded.state, walkerSecond.state)
@@ -527,8 +532,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       beforePlayer.board.faceUpSecrets - 1)
     // Catacombs put the relic there and the start's own roll won it, so the
     // command parks on taking it.
-    assertEquals(started.continue, OathContinue.AwaitingRecoverRelic(actor,
-      DecisionId(RecoverProcedure.relicDecisionId)))
+    parkedAssertions.assertParked(started.state, ActionRef.Recover,
+      RecoverProcedure.relicDecisionId, actor)
 
     // Replay from the journal alone reproduces the same state: the ops did
     // not merely encode, they decode back to the operations that built it.
@@ -800,6 +805,12 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // the PARKED flow a real end-to-end run: the site, its denizens and
     // every other rule stay exactly as shipped.
     val forgeCatalog = mixedForgeCostCatalog
+    // This test's own board runs under the mixed-cost override, not the
+    // shared fixture `catalog`, so its parked decision must be rebuilt
+    // against that same override -- `parkedAssertions` (built on `catalog`)
+    // would rebuild the unmodified, unparked tree instead.
+    val parkedAssertions = new ParkedDecisionAssertions(forgeCatalog,
+      WalkerPowerCatalog.default(forgeCatalog), PhasePowerCatalog.default(forgeCatalog))
     val service = new GameApplicationService(forgeCatalog, repository,
       campaignDicePort = blankCampaignDice)
     val gameId = "game-walker-forge"
@@ -819,8 +830,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
       .fold(error => fail(s"walker Forge start rejected: $error"), identity)
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(started.continue, OathContinue.AwaitingForgeAssignment(actor,
-      DecisionId(ForgeProcedure.assignmentDecisionId)))
+    parkedAssertions.assertParked(started.state, ActionRef.Forge,
+      ForgeProcedure.assignmentDecisionId, actor)
     val Ready(parked) = started.state: @unchecked
     assertEquals(parked.game.current.walkerProcedure, Some(ActionRef.Forge))
     assertEquals(parked.game.current.players.find(_.player == actor).get
@@ -970,7 +981,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // never asked to confirm a split it could not have got wrong.
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     assert(!finished.events.exists(_.isInstanceOf[WalkerParked]))
-    assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
+    parkedAssertions.assertResumed(finished.state, Phase.Act, actor)
     val Ready(after) = finished.state: @unchecked
     assert(after.game.current.walkerPending.isEmpty)
     assert(after.game.current.walkerProcedure.isEmpty)
@@ -1071,7 +1082,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // The phase did not end with the action: a completed Wake action returns
     // its player to Wake, and the limit it recorded survives the reload below.
     assertEquals(afterTake.game.current.turn.phase, Phase.Wake)
-    assertEquals(wealth.continue, OathContinue.AwaitingWakeAction(active))
     val ended = service.handle(
       "game-wake",
       wealth.nextSequence,
@@ -1190,7 +1200,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       case WalkerStepRecorded(_, ChoicePayload(_, _, by), _, _) => by == holder
       case _ => false
     }, "the recorded choice must be answered by the holder")
-    assertEquals(resolved.continue, OathContinue.ActActionSelection(active))
+    parkedAssertions.assertResumed(resolved.state, Phase.Act, active)
     val Ready(afterResolved) = resolved.state: @unchecked
     assertEquals(afterResolved.game.current.title,
       OathkeeperState(Some(leaderB), TitleSide.Oathkeeper))
@@ -1212,8 +1222,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       GameCommand.EndWake(active)).toOption.get
     val started = service.handle("game-walker-economy", ended.nextSequence,
       GameCommand.StartWalker(ActionRef.Muster, StartPayload(active))).toOption.get
-    assertEquals(started.continue, OathContinue.AwaitingEconomyDecision(active,
-      DecisionId(MusterProcedure.decisionId)))
+    parkedAssertions.assertParked(started.state, ActionRef.Muster,
+      MusterProcedure.decisionId, active)
     val mustered = service.handle("game-walker-economy", started.nextSequence,
       GameCommand.ResolveWalker(active, TreeDecision(MusterProcedure.decisionId,
         ChooseOneAnswer(DecisionOptionRef.Edifice(edificeId))))).toOption.get

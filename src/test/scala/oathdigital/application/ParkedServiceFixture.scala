@@ -3,12 +3,14 @@ package oathdigital.application
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.powers.rest.SilverTongue
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
-import oathdigital.gameplay.walker.{WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked,
+  WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.serialization.GameEventWire
@@ -23,6 +25,13 @@ import oathdigital.serialization.GameEventWire
 object ParkedServiceFixture:
   val treatyCard: DenizenId = DenizenId("237")
   val silverTongueCard: DenizenId = DenizenId("92")
+
+  /** The parked decision, as these fixtures rebuild it: the same catalog and
+    * power catalogs `GameApplicationService` builds its rules with
+    * (`GameApplicationService.scala:87-90`).
+    */
+  private val parkedAssertions = new ParkedDecisionAssertions(catalog,
+    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
   def setUp(service: GameApplicationService, gameId: String,
       placementSites: Vector[SiteId] = sites,
@@ -138,10 +147,9 @@ object ParkedServiceFixture:
       GameCommand.EndWake(active)).toOption.get
     val parked = service.handle(gameId, act.nextSequence,
       GameCommand.BeginRest(active)).toOption.get
-    assert(parked.continue match {
-      case OathContinue.AwaitingRestDecision(owner, _) => owner == ruler
-      case _ => false
-    }, s"expected the ruler's Rest decision, got ${parked.continue}")
+    parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
+      LeagueTreatyContribution.destinationDecisionId(base, active, site,
+        treatyCard), ruler)
     (parked, active, ruler)
 
   /** Defense dice that always come up blank. A Recover started with these
@@ -174,8 +182,8 @@ object ParkedServiceFixture:
       GameCommand.EndWake(actor)).toOption.get
     val parked = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
-    assert(parked.continue == OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.choiceDecisionId)), parked.continue.toString)
+    parkedAssertions.assertParked(parked.state, ActionRef.Recover,
+      RecoverProcedure.choiceDecisionId, actor)
     (parked, actor, orders.participants.map(_.playerId))
 
   /** The off-turn Oathkeeper tie from the service suite: the holder must
@@ -215,8 +223,8 @@ object ParkedServiceFixture:
       case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
       case _ => false
     }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
-    assert(parked.continue == OathContinue.AwaitingOathkeeperRecipient(holder,
-      DecisionId(OathkeeperProcedure.recipientDecisionId)), parked.continue.toString)
+    parkedAssertions.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
+      OathkeeperProcedure.recipientDecisionId, holder)
     (parked, active, holder, leaders(1))
 
   /** Silver Tongue as the active player's faceup adviser, with two faceup
@@ -250,11 +258,11 @@ object ParkedServiceFixture:
       GameCommand.EndWake(active)).toOption.get
     val resting = service.handle(gameId, act.nextSequence,
       GameCommand.BeginRest(active)).toOption.get
-    assert(resting.continue == OathContinue.AwaitingRestAction(active),
-      resting.continue.toString)
+    parkedAssertions.assertResumed(resting.state, Phase.Rest, active)
     val parked = service.handle(gameId, resting.nextSequence,
       GameCommand.UsePower(active, SilverTongue.id,
         DecisionOptionRef.Denizen(silverTongueCard))).toOption.get
-    assert(parked.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
-      parked.continue.toString)
+    val Ready(restingReady) = resting.state: @unchecked
+    parkedAssertions.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
+      SilverTongue.choiceDecisionId(restingReady, active), active)
     (parked, active, first._2)
