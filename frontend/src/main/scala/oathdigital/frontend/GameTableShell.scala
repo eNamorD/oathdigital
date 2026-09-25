@@ -51,7 +51,7 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   fit.onclick = _ => mapView.reset()
   Vector(out, zoomLabel, in, fit).foreach(zoomControls.appendChild)
   world.header.appendChild(zoomControls)
-  world.content.setAttribute("aria-label", "World Map contents. Scroll or drag to pan; plus and minus to zoom; zero to fit.")
+  world.content.setAttribute("aria-label", "World Map contents. Drag to pan; wheel, plus and minus to zoom; zero to fit.")
 
   private val devToggle = button("Dev tools", "dev-toggle")
   devToggle.setAttribute("aria-controls", "development-panel")

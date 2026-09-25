@@ -54,3 +54,29 @@ The site a viewer has picked on the board for the parked decision and not yet
 confirmed. A viewer has at most one, and only for a decision that asks to be
 confirmed.
 _Avoid_: pending selection, staged choice, highlighted site
+
+### Action pane
+
+**Act-action control**:
+A control offered to a viewer for starting a major or minor action, listed by
+the projection as legal for them. It starts an action; it never answers a
+parked decision.
+_Avoid_: button, action button, command
+
+### Table session
+
+**Draft set**:
+Everything a viewer has staged at the table and not yet sent: the board
+draft, the partition, distribute and selection drafts, the picked board
+targets, the modifier order, and the facedown adviser pick. A viewer has
+exactly one, bound to one game, seat and position; it empties when any of
+those change.
+_Avoid_: session state, UI state, pending selections, the drafts
+
+**Modifier flow**:
+The steps a viewer walks between choosing a major action and sending it:
+previewing the action, ordering the modifiers it offers, and picking its
+targets. A viewer is in at most one at a time, and leaves it by sending,
+cancelling, backing out, or a failed preview.
+_Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of
+the flow)

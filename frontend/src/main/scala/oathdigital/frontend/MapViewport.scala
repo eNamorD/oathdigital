@@ -11,7 +11,9 @@ private[frontend] trait PointerCapture extends js.Object:
   def hasPointerCapture(id: Double): Boolean = js.native
   def releasePointerCapture(id: Double): Unit = js.native
 
-/** Scales the existing DOM board while retaining native scroll and target access. */
+/** Scales the existing DOM board while retaining native scroll and target access.
+  * The pane still scrolls underneath, for the drag and the keys, but its
+  * scrollbar is hidden and the wheel zooms instead. */
 private[frontend] final class MapViewport(
     viewport: dom.html.Div, content: dom.html.Div, onScale: Double => Unit):
   private val surface = dom.document.createElement("div").asInstanceOf[dom.html.Div]
@@ -47,13 +49,26 @@ private[frontend] final class MapViewport(
   def zoomBy(factor: Double): Unit =
     state = state.panTo(viewport.scrollLeft, viewport.scrollTop, bounds).zoomBy(factor, bounds)
     paint()
+  private def zoomAt(factor: Double, clientX: Double, clientY: Double): Unit =
+    val rect = viewport.getBoundingClientRect()
+    state = state.panTo(viewport.scrollLeft, viewport.scrollTop, bounds)
+      .zoomAt(factor, clientX - rect.left, clientY - rect.top, bounds)
+    paint()
 
   private val scroll: dom.Event => Unit = _ => {
     state = state.panTo(viewport.scrollLeft, viewport.scrollTop, bounds)
   }
+  // The wheel zooms and never scrolls: the map is one draggable surface, like
+  // the Arcs map, and its scrollbar is hidden. A trackpad pinch arrives as a
+  // wheel with ctrl held, and left alone would zoom the whole page.
+  private val wheel: dom.WheelEvent => Unit = e => {
+    e.preventDefault()
+    zoomAt(MapViewState.wheelFactor(e.deltaY, e.deltaMode, e.ctrlKey, viewport.clientHeight),
+      e.clientX, e.clientY)
+  }
   private val down: dom.PointerEvent => Unit = e => {
     // Touch uses native overflow panning; controls retain native editing behavior.
-    if e.pointerType == "mouse" && e.button == 0 &&
+    if (e.pointerType == "mouse" || e.pointerType == "pen") && e.button == 0 &&
         e.target.isInstanceOf[dom.Element] &&
         e.target.asInstanceOf[dom.Element].closest("input,select,textarea") == null then
       suppressClick = false
@@ -94,6 +109,8 @@ private[frontend] final class MapViewport(
   observer.observe(viewport)
   observer.observe(content)
   viewport.addEventListener("scroll", scroll)
+  viewport.addEventListener("wheel", wheel, js.Dynamic.literal(passive = false)
+    .asInstanceOf[dom.EventListenerOptions])
   viewport.addEventListener("pointerdown", down)
   viewport.addEventListener("pointermove", move)
   viewport.addEventListener("pointerup", up)
@@ -104,6 +121,7 @@ private[frontend] final class MapViewport(
   def dispose(): Unit =
     observer.disconnect()
     viewport.removeEventListener("scroll", scroll)
+    viewport.removeEventListener("wheel", wheel)
     viewport.removeEventListener("pointerdown", down)
     viewport.removeEventListener("pointermove", move)
     viewport.removeEventListener("pointerup", up)

@@ -57,3 +57,35 @@ class MapViewStateSuite extends FunSuite:
     assert(!GameTableShell.compactAtScale(0.6))
     assert(!GameTableShell.compactAtScale(0.71))
     assert(!GameTableShell.compactAtScale(1.0))
+
+  test("zoom at an anchor keeps the world point under the anchor fixed"):
+    val fitted = MapViewState().resize(bounds)
+    val corner = fitted.zoomAt(2, 0, 0, bounds)
+    assertEquals(corner.scale, 1.0)
+    assertEquals(corner.left, 0.0)
+    assertEquals(corner.top, 0.0)
+    val far = fitted.zoomAt(2, 500, 300, bounds)
+    assertEquals(far.left, 500.0)
+    assertEquals(far.top, 300.0)
+
+  test("zoom at the viewport centre is the button zoom"):
+    val fitted = MapViewState().resize(bounds)
+    assertEquals(fitted.zoomAt(2, 250, 150, bounds), fitted.zoomBy(2, bounds))
+
+  test("one wheel notch is one button step in either delta mode"):
+    assertEqualsDouble(MapViewState.wheelFactor(-100, 0, pinch = false, 300), 1.25, 1e-9)
+    assertEqualsDouble(MapViewState.wheelFactor(100, 0, pinch = false, 300), 0.8, 1e-9)
+    assertEqualsDouble(MapViewState.wheelFactor(-3, 1, pinch = false, 300), 1.25, 1e-9)
+    assertEqualsDouble(MapViewState.wheelFactor(-1, 2, pinch = false, 300), 1.25, 1e-9)
+    assertEqualsDouble(MapViewState.wheelFactor(0, 0, pinch = false, 300), 1.0, 1e-9)
+
+  test("a wheel flick is clamped to one step and a small delta is a fraction of one"):
+    assertEqualsDouble(MapViewState.wheelFactor(-100000, 0, pinch = false, 300), 1.25, 1e-9)
+    assertEqualsDouble(MapViewState.wheelFactor(100000, 0, pinch = false, 300), 0.8, 1e-9)
+    val half = MapViewState.wheelFactor(-50, 0, pinch = false, 300)
+    assert(half > 1.0 && half < 1.25, half.toString)
+
+  test("a trackpad pinch delta is small, so it counts five times"):
+    assertEqualsDouble(MapViewState.wheelFactor(-20, 0, pinch = true, 300), 1.25, 1e-9)
+    assertEqualsDouble(MapViewState.wheelFactor(4, 0, pinch = true, 300),
+      MapViewState.wheelFactor(20, 0, pinch = false, 300), 1e-9)

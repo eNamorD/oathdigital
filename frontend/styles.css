@@ -640,8 +640,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   border: 1px solid #7c694b; border-radius: 4px; padding: 4px 9px;
   min-width: 32px; min-height: 30px; font-size: .78rem; }
 .zoom-label { font-size: .72rem; color: #c0b398; min-width: 35px; text-align: center; }
+/* One draggable surface, like the Arcs map: the wheel zooms, the drag pans,
+   and the scrollbar that native overflow would draw is hidden. */
 .pane-world > .pane-content { padding: 0; background: #191c17; position: relative;
-  touch-action: pan-x pan-y; }
+  touch-action: pan-x pan-y; scrollbar-width: none; }
+.pane-world > .pane-content::-webkit-scrollbar { display: none; }
 .map-surface { position: relative; overflow: hidden; }
 /* Pinned, never inherited: the map is additionally transform-scaled, so an
    inherited font-size change would compound with that invisibly. */
