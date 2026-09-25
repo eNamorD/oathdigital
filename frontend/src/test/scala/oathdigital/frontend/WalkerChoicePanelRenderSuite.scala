@@ -25,7 +25,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     * matched: the surface carries the decision and its query.
     */
   private def draw(decision: WalkerDecisionState,
-      ui: RecordingView = new RecordingView("game", "red")): dom.Element =
+      ui: RecordingControls = new RecordingControls()): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
       Surface.ChooseOne(decision, decision.query.get), table,
@@ -43,7 +43,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       Vector("1 Supply · +2 warbands"))
 
   test("choosing an option submits the generic answer for its kind and id"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = draw(parked, ui)
     all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
     assertEquals(ui.submitted,
@@ -114,7 +114,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       Some(card), badge = Some("Attack Plan"))
     val query = DecisionQueryState("choose-one", Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
       "decide", query = Some(query)), ui)
     var inspected = Vector.empty[CardInspection.Request]

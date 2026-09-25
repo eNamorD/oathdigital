@@ -30,7 +30,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
         None, playerId = "p"),
       ParkedDecision.Routed(None, None), canControl = true,
       SessionDrafts.empty.copy(modifiers = Some(workflow)),
-      new RecordingView("g", "p")).element
+      new RecordingControls()).element
 
   test("selection preserves click order supports badges reorder toggle and keyboard"):
     val empty = ModifierSelectionState.reconcile(None, context,

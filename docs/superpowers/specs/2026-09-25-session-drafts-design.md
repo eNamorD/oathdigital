@@ -1,7 +1,6 @@
 # Session Drafts
 
-> Status: design approved in conversation on 2026-09-25; written spec awaiting
-review. This is a behavior-preserving architecture slice with two stated
+> Status: implemented 2026-09-25 (seven commits, this plan). This is a behavior-preserving architecture slice with two stated
 exceptions (see "Behavior changes"). It is candidate D of the 2026-09-22
 architecture review, taken as option 1 of three; option 3 (decomposing
 `ServerModeUi.start`) is the recorded follow-up.

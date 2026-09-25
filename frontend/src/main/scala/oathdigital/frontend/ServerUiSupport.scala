@@ -4,25 +4,6 @@ import oathdigital.protocol.{GameIntent => GameCommand, _}
 import org.scalajs.dom
 import scala.scalajs.js
 
-/** Transitional: the session as the renderers still see it. Every member
-  * below the `ActionControls` line leaves in its own task; the trait itself
-  * goes in the last one.
-  */
-private[frontend] trait ServerUiView extends ActionControls:
-  def currentBoardSelection: Option[BoardTargetSelectionState]
-  def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit
-  def currentWalkerPartition: Option[WalkerPartitionDraft]
-  def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit
-  def currentWalkerDistribution: Option[WalkerDistributeDraft]
-  def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]): Unit
-  def currentWalkerSelection: Option[WalkerSelectionDraft]
-  def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]): Unit
-  def currentWalkerBoard: Option[WalkerBoardDraft]
-  def currentWalkerBoard_=(value: Option[WalkerBoardDraft]): Unit
-  def currentModifierWorkflow: Option[ModifierWorkflow]
-  def currentFacedownAdviserDraft: Option[FacedownAdviserDraft]
-  def canControl: Boolean
-  def rerender(): Unit
 private[frontend] object ServerUiSupport:
   private[frontend] def secretSummaryLabel(available: Int, total: Int,
       facedown: Int, committed: Int): String =

@@ -29,7 +29,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
     WorldBoardRenderer.world(value, None,
       ServerUiSupport.viewerPresentation(value, "red"), canControl = true,
       SessionDrafts.empty.copy(context = Some(context), boardTargets = targets),
-      new RecordingView("game", "red"))
+      new RecordingControls())
 
   /** The row is drawn empty rather than left out, so the cards under it start
     * at the same height on a site nobody stands on as on one they do.

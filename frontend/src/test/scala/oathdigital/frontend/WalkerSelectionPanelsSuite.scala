@@ -28,7 +28,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     WalkerSelectionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(decision(id, query)))
 
-  private def render(ui: RecordingView, draft: Option[WalkerSelectionDraft],
+  private def render(ui: RecordingControls, draft: Option[WalkerSelectionDraft],
       id: String, query: DecisionQueryState, canControl: Boolean = true,
       rollOutcome: Option[WalkerRollOutcomeState] = None): dom.Element =
     val panel = dom.document.createElement("div")
@@ -43,7 +43,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     found(0).asInstanceOf[dom.Element]
 
   test("choose-many renders a toggle per option and confirms only at the count"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val draft = opened("challenge.ribbon-site", many)
     assertEquals(one(render(ui, draft, "challenge.ribbon-site", many), "h2")
       .textContent, "Choose sites")
@@ -65,7 +65,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
         DecisionOptionWire("site", "c"))))))
 
   test("choose-amount renders a dropdown over its range and submits the choice"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = render(ui, opened("challenge.amount", amount),
       "challenge.amount", amount)
     val select = one(panel, "select.walker-amount").asInstanceOf[dom.html.Select]
@@ -81,7 +81,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
       DecisionAnswerWire.ChooseAmountWire(5))))
 
   test("a viewer who cannot control sees disabled controls"):
-    val panel = render(new RecordingView("game", "red"),
+    val panel = render(new RecordingControls(),
       opened("challenge.amount", amount), "challenge.amount", amount,
       canControl = false)
     assert(one(panel, "select.walker-amount").asInstanceOf[dom.html.Select].disabled)
@@ -93,7 +93,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     val sacrifice = DecisionQueryState("choose-amount", Vector.empty,
       heading = Some("Sacrifice up to 2 warbands for one attack each"),
       confirmLabel = Some("Sacrifice"), minimum = Some(0), maximum = Some(2))
-    val panel = render(new RecordingView("game", "red"),
+    val panel = render(new RecordingControls(),
       opened("campaign.sacrifice", sacrifice), "campaign.sacrifice", sacrifice,
       rollOutcome = Some(outcome))
     one(panel, ".walker-roll-faces .die-faces")
@@ -108,6 +108,6 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(panel.textContent.contains("two swords and a skull"), false)
 
   test("a choose-amount no roll belongs beside draws no roll"):
-    val panel = render(new RecordingView("game", "red"),
+    val panel = render(new RecordingControls(),
       opened("challenge.amount", amount), "challenge.amount", amount)
     assertEquals(panel.querySelectorAll(".walker-roll-totals").length, 0)

@@ -24,7 +24,7 @@ class ActionPanePromptSuite extends munit.FunSuite:
       : ActionDecisionRenderer.ActionPane =
     ActionDecisionRenderer.actionsPanel(value, presentation,
       ParkedDecision.Routed(None, None), canControl = true, drafts,
-      new RecordingView("game", "red"))
+      new RecordingControls())
   private def scraped(element: dom.Element): String =
     Option(element.querySelector(".selection-instruction,.modifier-confirm"))
       .map(_.textContent).getOrElse("")

@@ -76,7 +76,7 @@ object ServerModeUi:
           // Routed once per render: both panes read the same answer.
           val routed = ParkedDecision.route(value, presentation)
           val pane = ActionDecisionRenderer.actionsPanel(value, presentation,
-            routed, ui.canControl, drafts, ui)
+            routed, controlsAvailable, drafts, ui)
           actionContent.appendChild(pane.element)
           val decisionKey = Vector(selectedPlayer, value.phase,
             value.activeParticipantId.getOrElse(""),
@@ -88,7 +88,7 @@ object ServerModeUi:
           (WorldBoardRenderer.players(value, selectedPlayer),
             WorldBoardRenderer.world(value, routed.surface.collect {
               case board: ParkedDecision.Surface.Board => board
-            }, presentation, ui.canControl, drafts, ui), decisionKey)
+            }, presentation, controlsAvailable, drafts, ui), decisionKey)
       val development = element("div", "development-content")
       if !fixedSeat then
         development.appendChild(DevelopmentRenderer.controls(session))
@@ -350,24 +350,7 @@ object ServerModeUi:
       def reconnectSession() = reconnect()
       def createGame() = newGame()
 
-    lazy val ui: ServerUiView = new ServerUiView:
-      def currentBoardSelection = drafts.boardTargets
-      def currentBoardSelection_=(value: Option[BoardTargetSelectionState]) =
-        drafts = drafts.copy(boardTargets = value)
-      def currentWalkerPartition = drafts.partition
-      def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]) =
-        drafts = drafts.copy(partition = value)
-      def currentWalkerDistribution = drafts.distribute
-      def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) =
-        drafts = drafts.copy(distribute = value)
-      def currentWalkerSelection = drafts.selection
-      def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]) =
-        drafts = drafts.copy(selection = value)
-      def currentWalkerBoard = drafts.board
-      def currentWalkerBoard_=(value: Option[WalkerBoardDraft]) =
-        drafts = drafts.copy(board = value)
-      def currentModifierWorkflow = drafts.modifiers
-      def currentFacedownAdviserDraft = drafts.facedownAdviser
+    lazy val ui: ActionControls = new ActionControls:
       def stage(draft: Draft) =
         drafts = drafts.staged(draft)
         render()
@@ -404,8 +387,6 @@ object ServerModeUi:
         render()
       def submitTargetCommand(command: GameCommand) =
         completeTargetCommand(command)
-      def canControl = controlsAvailable
-      def rerender() = render()
       def submitCommand(command: GameCommand) = submit(command)
       def handleSelection(result: BoardSelectionResult) = handleBoardSelection(result)
 

@@ -26,7 +26,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
   private def spectator(value: NegotiationDealState): Surface.Negotiate =
     Surface.Negotiate(value, None)
 
-  private def render(surface: Surface.Negotiate, ui: RecordingView,
+  private def render(surface: Surface.Negotiate, ui: RecordingControls,
       canControl: Boolean = true, playerId: String = "red"): dom.Element =
     val panel = dom.document.createElement("div")
     NegotiationDealPanel.render(surface, playerId, canControl, panel, ui)
@@ -38,7 +38,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     found(0).asInstanceOf[dom.Element]
 
   test("every term the owner edits is labelled and on its own row"):
-    val panel = render(owner(deal()), new RecordingView("game", "red"))
+    val panel = render(owner(deal()), new RecordingControls())
     val rows = panel.querySelectorAll(".negotiation-item").toVector
       .map(_.asInstanceOf[dom.Element])
     // One row for the favor box, one for the relic on offer.
@@ -50,7 +50,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     assertEquals(rows(1).querySelectorAll("input[type=checkbox]").length, 1)
 
   test("an owner sees the deal and can save, accept and decline"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = render(owner(deal()), ui)
     assertEquals(one(panel, "h2").textContent, "Negotiation")
     assertEquals(one(panel, ".negotiation-status").textContent,
@@ -73,7 +73,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
       Intent.ResolveWalker("negotiation.deal", DecisionAnswerWire.DeclineDealWire)))
 
   test("accept is disabled until the engine says this player may accept"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = render(owner(deal(canAccept = false)), ui)
     assert(one(panel, ".negotiation-accept").asInstanceOf[dom.html.Button].disabled)
     assert(!one(panel, ".negotiation-decline").asInstanceOf[dom.html.Button].disabled)
@@ -81,7 +81,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     assert(one(blocked, ".negotiation-save").asInstanceOf[dom.html.Button].disabled)
 
   test("a spectator sees the deal read-only, with no inputs or buttons"):
-    val ui = new RecordingView("game", "green")
+    val ui = new RecordingControls()
     val panel = render(spectator(deal(editing = false)), ui, playerId = "green")
     assertEquals(one(panel, ".negotiation-status").textContent,
       "red: reviewing · blue: accepted")
@@ -103,7 +103,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
       Vector(adviser), Vector.empty, canAccept = false),
       Vector(NegotiationTransferState("red", "blue", 0, 1, Vector(relic))),
       Vector(NegotiationDisclosureState("red", "yellow", "adviser", Some(adviser))))
-    val panel = render(owner(deal), new RecordingView("game", "red"))
+    val panel = render(owner(deal), new RecordingControls())
     assert(box(panel, "Offer Relic One to blue").checked)
     assert(!box(panel, "Offer Relic One to yellow").checked)
     assert(box(panel,
@@ -114,7 +114,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
   test("offering a relic to one recipient clears it for another"):
     val deal = threeWay(NegotiationEditingState(3, Vector(relic), Vector.empty,
       Vector.empty, canAccept = false))
-    val panel = render(owner(deal), new RecordingView("game", "red"))
+    val panel = render(owner(deal), new RecordingControls())
     val blue = box(panel, "Offer Relic One to blue")
     val yellow = box(panel, "Offer Relic One to yellow")
     blue.checked = true
@@ -135,7 +135,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
         siteRelic)), canAccept = false)
     val deal = NegotiationDealState(Vector("red", "blue"), Vector.empty,
       Vector.empty, Vector.empty, Some(editing))
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = render(owner(deal), ui)
     val labels = panel.querySelectorAll("input[type=checkbox]").toVector
       .map(_.getAttribute("aria-label")).filter(_.startsWith("Promise"))

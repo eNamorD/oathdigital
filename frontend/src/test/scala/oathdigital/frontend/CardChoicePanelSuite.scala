@@ -25,7 +25,7 @@ class CardChoicePanelSuite extends munit.FunSuite:
 
   private def advisers(value: FacedownAdviserDraft): dom.Element =
     FacedownAdviserRenderer.render(value, canControl = true,
-      new RecordingView("game", "red"))
+      new RecordingControls())
 
   test("every facedown adviser on offer is drawn face-up"):
     val panel = advisers(draft)
@@ -69,7 +69,7 @@ class CardChoicePanelSuite extends munit.FunSuite:
     Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
     completed = false)
 
-  private def recoverRelics(ui: RecordingView = new RecordingView("game", "red"))
+  private def recoverRelics(ui: RecordingControls = new RecordingControls())
       : dom.Element =
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderRecoverPanel(relicPark, table, canControl = true,
@@ -86,7 +86,7 @@ class CardChoicePanelSuite extends munit.FunSuite:
       Vector("Take Ancient Crown facedown", "Take Brass Horn facedown"))
 
   test("taking a relic submits the option the button belongs to"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = recoverRelics(ui)
     all(panel, ".recover-relic-choice").last.asInstanceOf[dom.html.Element].click()
     assertEquals(ui.submitted.size, 1)

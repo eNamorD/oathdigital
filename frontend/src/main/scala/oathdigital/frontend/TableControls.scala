@@ -7,7 +7,7 @@ import oathdigital.protocol.{GameIntent => GameCommand, PreviewModifier}
   * its drafts as values and never asks the session for them.
   */
 private[frontend] trait TableControls:
-  /** Replaces one slot of the draft set and rerenders. */
+  /** Replaces one slot of the draft set and redraws the table. */
   def stage(draft: Draft): Unit
   def submitCommand(command: GameCommand): Unit
   def handleSelection(result: BoardSelectionResult): Unit

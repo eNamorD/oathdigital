@@ -37,7 +37,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     * can read the tree and then re-render it from what a click staged
     * (`ui.drafts.partition`) the way the session would.
     */
-  private def render(ui: RecordingView, draft: Option[WalkerPartitionDraft],
+  private def render(ui: RecordingControls, draft: Option[WalkerPartitionDraft],
       canControl: Boolean = true,
       decision: WalkerDecisionState = parked): dom.Element =
     val panel = dom.document.createElement("div")
@@ -46,7 +46,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
       canControl, panel, ui)
     panel
 
-  private def view(): RecordingView = new RecordingView("game", "red")
+  private def view(): RecordingControls = new RecordingControls()
 
   private def opened(): Option[WalkerPartitionDraft] =
     WalkerPartitionDraft.reconcile(None,

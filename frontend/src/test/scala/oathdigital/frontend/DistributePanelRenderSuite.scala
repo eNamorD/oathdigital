@@ -24,7 +24,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
     WalkerDistributeDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(parked))
 
-  private def render(ui: RecordingView, draft: Option[WalkerDistributeDraft],
+  private def render(ui: RecordingControls, draft: Option[WalkerDistributeDraft],
       canControl: Boolean = true): dom.Element =
     val panel = dom.document.createElement("div")
     DistributePanelRenderer.render(Surface.Distribute(parked, query), draft,
@@ -44,7 +44,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
       bubbles = true, shiftKey = shift).asInstanceOf[dom.MouseEventInit]))
 
   test("the panel renders one row per slot at its suggested amount"):
-    val panel = render(new RecordingView("game", "red"), opened())
+    val panel = render(new RecordingControls(), opened())
     assertEquals(one(panel, "h2").textContent, "League Treaty")
     assertEquals(amount(panel, "favor-bank:arcane"), "2")
     assertEquals(amount(panel, "favor-bank:nomad"), "0")
@@ -56,7 +56,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
       .getAttribute("title"), "Shift+click: all")
 
   test("a plain click steps by one and a Shift+click drains or fills"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     def staged(): dom.Element = render(ui, ui.drafts.distribute)
     click(one(render(ui, opened()),
       """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
@@ -70,7 +70,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
     assert(ui.staged.size >= 3)
 
   test("confirm is enabled exactly when nothing remains and submits the amounts"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     click(one(render(ui, opened()),
       """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
     val short = render(ui, ui.drafts.distribute)
@@ -88,7 +88,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
         DistributeAmountWire("favor-bank", "nomad", 1))))))
 
   test("a viewer who cannot control sees disabled steppers and confirm"):
-    val panel = render(new RecordingView("game", "red"), opened(),
+    val panel = render(new RecordingControls(), opened(),
       canControl = false)
     assert(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-increment""")
       .asInstanceOf[dom.html.Button].disabled)
@@ -101,7 +101,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
   private val rangedParked = parked.copy(query = Some(rangedQuery))
 
   test("a range shows its minimum and confirms anywhere inside it"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val draft = WalkerDistributeDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(rangedParked))
     def draw(from: Option[WalkerDistributeDraft]): dom.Element =
