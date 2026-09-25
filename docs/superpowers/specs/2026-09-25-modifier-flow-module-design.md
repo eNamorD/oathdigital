@@ -1,6 +1,6 @@
 # Modifier Flow Module
 
-> Status: implemented 2026-09-25 (four commits, this plan). This is a behavior-preserving
+> Status: implemented 2026-09-25 (five commits, this plan). This is a behavior-preserving
 architecture slice with no stated exceptions. It is the first move of the
 session-drafts spec's option 3 (`2026-09-25-session-drafts-design.md`,
 "Follow-up"); session identity and polling are the second move and get their

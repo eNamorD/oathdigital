@@ -114,7 +114,28 @@ class ModifierFlowSuite extends munit.FunSuite:
       assertEquals(host.failures, Vector(error))
       assertEquals(host.currentDrafts, before)
       assertEquals(host.sent, Vector.empty)
+      assertEquals(host.redraws, 1)
     }
+
+  test("the drafts are read when the preview lands, not when it is sent"):
+    val (host, ui) = flow()
+    ui.submitCommand(recover)
+    val pick = FacedownAdviserDraft.initial(context, minor).map(_.choose("a2"))
+    host.currentDrafts = bound.copy(facedownAdviser = pick)
+    host.answer(Right(response("recover", Vector(modifier)))).map { _ =>
+      assertEquals(host.currentDrafts.facedownAdviser, pick)
+      assertEquals(host.currentDrafts.modifiers.map(_.stage),
+        Some(ModifierWorkflowStage.Ordering))
+    }
+
+  test("with no projection displayed, neither entry previews or sends"):
+    val (host, ui) = flow()
+    host.displayedProjection = None
+    ui.submitCommand(recover)
+    ui.beginTargetedMajorAction("travel")
+    assertEquals(host.previews, Vector.empty)
+    assertEquals(host.sent, Vector.empty)
+    assertEquals(host.currentDrafts, bound)
 
   test("a targeted travel restarts the flow, then enters Ordering when modifiers are offered"):
     val stale = workflow("recover", Some(recover), None, ModifierWorkflowStage.Ordering)
@@ -130,6 +151,20 @@ class ModifierFlowSuite extends munit.FunSuite:
       assertEquals(opened.stage, ModifierWorkflowStage.Ordering)
       assertEquals(opened.command, None)
       assertEquals(opened.actionKind, Some("travel"))
+      assertEquals(host.redraws, 1)
+    }
+
+  test("a failed targeted preview fails and leaves the restarted drafts"):
+    val (host, ui) = flow(bound.copy(
+      facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
+    ui.beginTargetedMajorAction("travel")
+    val restarted = host.currentDrafts
+    val error = GameClientFailure.NetworkFailure("down")
+    host.answer(Left(error)).map { _ =>
+      assertEquals(host.currentDrafts, restarted)
+      assertEquals(host.currentDrafts.facedownAdviser, None)
+      assertEquals(host.currentDrafts.boardTargets, bound.boardTargets.map(_.cancel))
+      assertEquals(host.failures, Vector(error))
       assertEquals(host.redraws, 1)
     }
 
@@ -193,6 +228,7 @@ class ModifierFlowSuite extends munit.FunSuite:
       assertEquals(host.currentDrafts.facedownAdviser, None)
       assertEquals(host.currentDrafts.boardTargets, bound.boardTargets)
       assertEquals(host.failures, Vector(error))
+      assertEquals(host.redraws, 1)
     }
 
   test("confirming with nothing in flight does nothing"):
@@ -259,17 +295,23 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(idle.redraws, 0)
 
   test("toggle, move and choose apply their step and redraw"):
-    val ordering = workflow("recover", Some(recover), None,
-      ModifierWorkflowStage.Ordering, chosen = false)
+    val second = PreviewModifier("adviser:p:denizen:b", "h.b", "B")
+    val ordering = ModifierWorkflow.fromPreview(Some(recover), None, Map.empty,
+      response("recover", Vector(modifier, second)), None,
+      ModifierSelectionContext("game", "red", 9, "recover"))
     val (host, ui) = flow(bound.copy(modifiers = Some(ordering),
       facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
+    def selected = host.currentDrafts.modifiers.map(_.selection.selected)
     ui.toggleModifier(modifier)
-    assertEquals(host.currentDrafts.modifiers.map(_.selection.selected), Some(Vector(modifier)))
-    ui.moveModifier(modifier, 1)
-    assertEquals(host.currentDrafts.modifiers.map(_.selection.selected), Some(Vector(modifier)))
+    ui.toggleModifier(second)
+    assertEquals(selected, Some(Vector(modifier, second)))
+    ui.moveModifier(second, -1)
+    assertEquals(selected, Some(Vector(second, modifier)))
+    ui.moveModifier(second, 1)
+    assertEquals(selected, Some(Vector(modifier, second)))
     ui.chooseFacedownAdviser("a2")
     assertEquals(host.currentDrafts.facedownAdviser.flatMap(_.selectedCardId), Some("a2"))
-    assertEquals(host.redraws, 3)
+    assertEquals(host.redraws, 5)
 
   test("stage replaces one slot and redraws"):
     val (host, ui) = flow()
