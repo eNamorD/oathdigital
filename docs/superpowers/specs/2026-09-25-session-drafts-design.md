@@ -1,6 +1,6 @@
 # Session Drafts
 
-> Status: implemented 2026-09-25 (seven commits, this plan). This is a behavior-preserving architecture slice with two stated
+> Status: implemented 2026-09-25 (seven commits, this plan). This is a behavior-preserving architecture slice with three stated
 exceptions (see "Behavior changes"). It is candidate D of the 2026-09-22
 architecture review, taken as option 1 of three; option 3 (decomposing
 `ServerModeUi.start`) is the recorded follow-up.
@@ -65,6 +65,7 @@ enum FlowExit:
   case Completed
   case Cancelled(restored: Option[BoardTargetSelectionState])
   case TargetsLeft
+  case OrderingLeft
 ```
 
 `reconcile` is today's seven reconcile calls with the context built once and
@@ -79,7 +80,7 @@ observable outcome is the same, no draft survives). `ModifierWorkflow.reconcile`
 `Draft` case because no panel writes them; the modifier flow does, through
 commands.
 
-`leave` applies one of five named exits from the modifier flow:
+`leave` applies one of six named exits from the modifier flow:
 
 | exit | `modifiers` | `facedownAdviser` | `boardTargets` |
 | --- | --- | --- | --- |
@@ -88,6 +89,12 @@ commands.
 | `Completed` | `None` | `None` | `None` |
 | `Cancelled(restored)` | `None` | `None` | `restored` |
 | `TargetsLeft` | `.flatMap(_.backFromTargets)` | `None` | `None` |
+| `OrderingLeft` | `None` | kept | kept |
+
+`OrderingLeft` is leaving the ordering stage with no targets stage after it.
+It serves two sites: a successful Confirm in `confirmModifierSelection` that
+submits the command directly, and Back from the ordering panel
+(`backFromModifiers`). Only the workflow goes; every other slot is kept.
 
 `Cancelled` carries the restored board-target state because computing it
 needs the projection's `boardTargetActions`; the caller builds it exactly as
@@ -136,7 +143,7 @@ presentation, `canControl`, and the narrowest sink.
 | `DistributePanelRenderer` | distribute draft, `rerender`, `submit` | `drafts.distribute`, `controls` |
 | `WalkerSelectionPanels` | selection draft, `rerender`, `submit` | `drafts.selection`, `controls` |
 | `NegotiationDealPanel` | `playerId`, `submit` | `presentation.playerId`, `controls.submit` |
-| `WorldBoardRenderer.world` | board targets, board draft, `gameId`, `playerId`, `handleSelection`, `submit`, `rerender` | `drafts.boardTargets`, `drafts.board`, `drafts.context`, `presentation.playerId`, `controls` |
+| `WorldBoardRenderer.world` | board targets, board draft, `gameId`, `playerId`, `handleSelection`, `submit`, `rerender` | `drafts.boardTargets`, `drafts.board`, `drafts.context`, `controls` |
 | `WorldBoardRenderer.players` | `playerId` | `presentation.playerId` |
 | `ActionDecisionRenderer.actionsPanel` | 16 members | `(value, presentation, routed, canControl, drafts, controls: ActionControls)` |
 | `FacedownAdviserRenderer` | 4 members | `(draft, canControl, controls: ActionControls)` |
@@ -161,12 +168,14 @@ submits its command. Rendered output and submitted commands are unchanged.
   `drafts = drafts.reconcile(BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence), displayed)`.
 - `ReloadForActivePlayer`, `loadExisting` and the `StalePosition` branch of
   `submitTransport` assign `drafts = SessionDrafts.empty`.
-- The five flow-exit sites call `drafts = drafts.leave(FlowExit.X)`:
-  `startTargetedFlow` → `Restarted`; the `confirmModifierSelection` error
-  branch → `Failed`; `completeTargetCommand` → `Completed`; `cancelModifiers`
-  and `cancelTargetAction` → `Cancelled(restored)` (they are already the same
-  reset, since `ModifierWorkflow.cancel` is `None` unconditionally);
-  `backFromTargets` → `TargetsLeft`.
+- The flow-exit sites call `drafts = drafts.leave(FlowExit.X)`, one of six
+  exits: `startTargetedFlow` → `Restarted`; the `confirmModifierSelection`
+  error branch → `Failed`; `completeTargetCommand` → `Completed`;
+  `cancelModifiers` and `cancelTargetAction` → `Cancelled(restored)` (they
+  are already the same reset, since `ModifierWorkflow.cancel` is `None`
+  unconditionally); `backFromTargets` → `TargetsLeft`; the
+  `confirmModifierSelection` direct-submit branch and `backFromModifiers` →
+  `OrderingLeft`.
 - Flow entries and steps (`submit` and `startTargetedFlow` setting
   `modifiers`; `activatePreviewTargets` setting `modifiers`, `facedownAdviser`
   and `boardTargets` together; `toggleModifier`, `moveModifier` and
@@ -198,7 +207,8 @@ moves.
 
 ## Behavior changes
 
-Two, both ruled on 2026-09-25 as "clear all":
+Three. The first two were ruled on 2026-09-25 as "clear all"; the third was
+ruled in at the final review:
 
 1. **Seat change** (`ReloadForActivePlayer`). Today clears board targets,
    modifiers and the facedown pick; the four walker drafts survive until the
@@ -210,10 +220,19 @@ Two, both ruled on 2026-09-25 as "clear all":
    only; if the same game, seat and position reload, the walker drafts and
    facedown pick survive. After: every draft is cleared. A half-built draft
    does not survive a reload of the same position.
+3. **Choose-amount select.** Today the select writes the chosen amount into
+   the selection draft on change, without a redraw, and Confirm submits that
+   draft. After: nothing is staged on change, and Confirm reads the control.
+   If a render happens between the change and Confirm (a non-stale submit
+   error, the development raw event-log load, a reconnect), the select is
+   rebuilt at the reconciled amount instead of the chosen one, and the viewer
+   picks again. It was ruled in because staging on change would now go
+   through `stage`, which redraws the pane: a redraw on every change is a new
+   observable of its own.
 
 The `StalePosition` branch also assigns `empty`, but that is unobservable:
 the reload lands on a new sequence, every reconciler filters on
-`draft.context == context`, and no render runs in between.
+`draft.context == context`, and no snapshot render runs in between.
 
 ## Verification
 
