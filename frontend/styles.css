@@ -658,10 +658,18 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   display: none; }
 .map-content .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .map-content .sites { grid-template-columns: 1fr; }
-.map-content .region { background: #272b21; padding: 12px; }
-.map-content .region:nth-child(2) { background: #2c2822; }
-.map-content .region:nth-child(3) { background: #222b28; }
-.map-content .region-label { color: #dac99f; font-family: Georgia, serif; font-size: 1.15rem; }
+/* The board's three regions each have their own light, in board order:
+   Cradle green, Provinces teal-blue, Hinterland orange-red. Painted deep
+   enough that cream text still reads on them, with each frame cut from its
+   own hue, so the map is the one place the table shows the board's colour. */
+.map-content .region { background: #213a24; border-color: #3d5f40; padding: 12px; }
+.map-content .region:nth-child(2) { background: #1d3441; border-color: #3a5b6d; }
+.map-content .region:nth-child(3) { background: #46261a; border-color: #7a4a35; }
+/* The region's name is its title, set like the board's brushed lettering:
+   large, mixed case, and the brightest text on the map. */
+.map-content .region-label { margin: 0 0 10px; color: #fff2d6;
+  font-family: Georgia, serif; font-size: 1.6rem; font-weight: 800;
+  letter-spacing: 0.01em; text-transform: none; }
 .map-dragging, .map-dragging * { cursor: grabbing !important; user-select: none !important; }
 .pane-actions .pane-content { font-size: .9rem; }
 .pane-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

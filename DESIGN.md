@@ -25,10 +25,12 @@ colors:
   line-mid: "#88775d"
   line-dim: "#40382c"
   line-pane: "#443c30"
-  region-cradle: "#272b21"
-  region-provinces: "#2c2822"
-  region-hinterland: "#222b28"
-  region-label: "#dac99f"
+  region-cradle: "#213a24"
+  region-cradle-line: "#3d5f40"
+  region-provinces: "#1d3441"
+  region-provinces-line: "#3a5b6d"
+  region-hinterland: "#46261a"
+  region-hinterland-line: "#7a4a35"
   selection: "#8ecbff"
   selection-fill: "#243442"
   facedown: "#2a2333"
@@ -191,11 +193,12 @@ The implementation today is that world seen on a dark table. Surfaces are warm
 near-blacks and browns, text is cream, and the accent is brass. The color of
 the board lives in the pieces: suit and token colors were sampled from the
 owner's reference images and pulled apart by eye so the three warm suits stay
-distinct; the three map regions carry a green, brown and teal tint that echoes
-the board's three-region shift; site names are set in Georgia like the board's
-titles. The surfaces themselves are not yet painted. A later pass may move
-them toward the board's cream panels and saturated regions; this document
-records the incumbent, and names the board as the direction.
+distinct; the three map regions are painted in the board's own light, Cradle
+green, Provinces teal-blue, Hinterland orange-red, deep enough for cream text;
+region and site names are set in Georgia like the board's titles. The panes
+around the map are not painted. A later pass may move them toward the board's
+cream panels; this document records the incumbent, and names the board as the
+direction.
 
 The system is dense and instrumental. Four fixed panes with 4px gutters, no
 page chrome, uppercase pane labels, and no motion anywhere: state is shown by
@@ -275,9 +278,11 @@ reused for UI meaning.
 - **Site** (`site`): a site on the world map, the most raised board surface.
 - **Raised** (`raised`) and **Pressed** (`pressed`): small controls, and the
   fill an option takes when hovered or pressed.
-- **Region tints**: Cradle (`region-cradle`) green, Provinces
-  (`region-provinces`) brown, Hinterland (`region-hinterland`) teal; **Region
-  Label** (`region-label`) is a pale brass for their Georgia titles.
+- **Region tints**: Cradle (`region-cradle`) deep green, Provinces
+  (`region-provinces`) deep teal-blue, Hinterland (`region-hinterland`) deep
+  orange-red, in board order, each framed by a line cut from its own hue
+  (`region-*-line`). These are the one place a UI surface carries the board's
+  color; site boxes on them stay in the neutral ramp so cards read.
 - **Lines**: `line` for sites, cards, zones and dividers; `line-mid` for
   decision options, empty slots and inputs; `line-dim` for regions, player
   boards and action groups; `line-pane` for pane headers.
@@ -297,7 +302,8 @@ reused for UI meaning.
 ### Named Rules
 **The Pieces Carry the Color Rule.** Saturated color belongs to suits,
 tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only
-UI accents are brass and selection blue.
+UI accents are brass and selection blue. The three map regions are the one
+exception, and they carry the board's colors, not new ones.
 
 **The Shape First Rule.** Every suit, token and die has its own glyph. Color
 only keeps them from blurring; it never carries meaning alone.
@@ -319,8 +325,9 @@ hand-brushed titles; Inter never tries to be decorative.
 - **Display** (400, 2.5rem, Georgia): the page `h1` on the host page.
   `clamp(1.8rem, 9vw, 2.5rem)` under 760px.
 - **Headline** (800, 1.08rem, Georgia): site names on the map, centered in
-  the site heading. Region labels use Georgia at 1.15rem in Region Label
-  color. The card overlay name is Georgia 1.5em, 800, Bright Cream.
+  the site heading. Region titles on the map are Georgia 1.6rem, 800, mixed
+  case, Bright Cream: the brightest text on the map, like the board's brushed
+  lettering. The card overlay name is Georgia 1.5em, 800, Bright Cream.
 - **Title** (750, 0.8rem, uppercase, 0.06em, Inter): pane headings in Brass
   Label. Under 620px: 0.72rem, 0.025em.
 - **Body** (400, 0.9rem in the action pane, 0.86rem/1.45 for site details,
@@ -529,7 +536,7 @@ with drawn "·" separators in Ink Separator. Cards on a board render at 0.78em.
 ### Do:
 - **Do** keep saturated color on the pieces: suits, tokens, dice, players,
   plan sides. Keep UI surfaces in the warm neutral ramp with brass as the
-  accent.
+  accent; the three painted map regions are the only colored surfaces.
 - **Do** give every new token or suit its own glyph in `TokenSprite` before
   giving it a color.
 - **Do** size cards through the container's font size (`ex`-based

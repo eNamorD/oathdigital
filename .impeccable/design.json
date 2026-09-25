@@ -29,10 +29,12 @@
       "line-mid": { "role": "neutral", "displayName": "Line Mid", "canonical": "#88775d" },
       "line-dim": { "role": "neutral", "displayName": "Line Dim", "canonical": "#40382c" },
       "line-pane": { "role": "neutral", "displayName": "Line Pane", "canonical": "#443c30" },
-      "region-cradle": { "role": "neutral", "displayName": "Cradle Tint", "canonical": "#272b21" },
-      "region-provinces": { "role": "neutral", "displayName": "Provinces Tint", "canonical": "#2c2822" },
-      "region-hinterland": { "role": "neutral", "displayName": "Hinterland Tint", "canonical": "#222b28" },
-      "region-label": { "role": "neutral", "displayName": "Region Label", "canonical": "#dac99f" },
+      "region-cradle": { "role": "neutral", "displayName": "Cradle Green", "canonical": "#213a24" },
+      "region-cradle-line": { "role": "neutral", "displayName": "Cradle Line", "canonical": "#3d5f40" },
+      "region-provinces": { "role": "neutral", "displayName": "Provinces Teal", "canonical": "#1d3441" },
+      "region-provinces-line": { "role": "neutral", "displayName": "Provinces Line", "canonical": "#3a5b6d" },
+      "region-hinterland": { "role": "neutral", "displayName": "Hinterland Orange-Red", "canonical": "#46261a" },
+      "region-hinterland-line": { "role": "neutral", "displayName": "Hinterland Line", "canonical": "#7a4a35" },
       "token-favor": { "role": "tertiary", "displayName": "Favor", "canonical": "#e4ba5a" },
       "token-favor-burnt": { "role": "tertiary", "displayName": "Burnt Favor", "canonical": "#a28a5a" },
       "token-secret": { "role": "tertiary", "displayName": "Secret", "canonical": "#66a8d8" },
@@ -174,7 +176,7 @@
   ],
   "narrative": {
     "northStar": "The Painted World",
-    "overview": "The source is the physical board: an illustrated map where every region is a place with its own light, the Cradle green, the Provinces teal-blue, the Hinterland orange-red, with chalk-brush titles, thick white card frames, gold favor coins, blue secret books, and bright player colors laid on top. It is colorful and playful, and at the same time evocative of place and history. Oath Digital's job is to put that world on a screen for players who already know it, so every piece should be recognized before it is read.\n\nThe implementation today is that world seen on a dark table. Surfaces are warm near-blacks and browns, text is cream, and the accent is brass. The color of the board lives in the pieces: suit and token colors were sampled from the owner's reference images and pulled apart by eye so the three warm suits stay distinct; the three map regions carry a green, brown and teal tint that echoes the board's three-region shift; site names are set in Georgia like the board's titles. The surfaces themselves are not yet painted. A later pass may move them toward the board's cream panels and saturated regions; this document records the incumbent, and names the board as the direction.\n\nThe system is dense and instrumental. Four fixed panes with 4px gutters, no page chrome, uppercase pane labels, and no motion anywhere: state is shown by border color, an inset ring, or an outline, and the stylesheet reserves borders at rest so hover and focus never reflow the board. Components are physical and legible: bordered chips, pills, face-shaped dice, cards with the real card ratio. They are read at a glance on the board and studied on the overlay. The system rejects generic dark SaaS (grey dark mode, blue-purple gradients, glass), fantasy ornament (parchment textures, scrollwork, blackletter, fake-depth drop shadows) and cartoon game-UI chrome (gloss, bevels, glowing borders beyond the target and focus rings).",
+    "overview": "The source is the physical board: an illustrated map where every region is a place with its own light, the Cradle green, the Provinces teal-blue, the Hinterland orange-red, with chalk-brush titles, thick white card frames, gold favor coins, blue secret books, and bright player colors laid on top. It is colorful and playful, and at the same time evocative of place and history. Oath Digital's job is to put that world on a screen for players who already know it, so every piece should be recognized before it is read.\n\nThe implementation today is that world seen on a dark table. Surfaces are warm near-blacks and browns, text is cream, and the accent is brass. The color of the board lives in the pieces: suit and token colors were sampled from the owner's reference images and pulled apart by eye so the three warm suits stay distinct; the three map regions are painted in the board's own light, Cradle green, Provinces teal-blue, Hinterland orange-red, deep enough for cream text; region and site names are set in Georgia like the board's titles. The panes around the map are not painted. A later pass may move them toward the board's cream panels; this document records the incumbent, and names the board as the direction.\n\nThe system is dense and instrumental. Four fixed panes with 4px gutters, no page chrome, uppercase pane labels, and no motion anywhere: state is shown by border color, an inset ring, or an outline, and the stylesheet reserves borders at rest so hover and focus never reflow the board. Components are physical and legible: bordered chips, pills, face-shaped dice, cards with the real card ratio. They are read at a glance on the board and studied on the overlay. The system rejects generic dark SaaS (grey dark mode, blue-purple gradients, glass), fantasy ornament (parchment textures, scrollwork, blackletter, fake-depth drop shadows) and cartoon game-UI chrome (gloss, bevels, glowing borders beyond the target and focus rings).",
     "keyCharacteristics": [
       "The board's pieces are the color; the table is warm dark.",
       "Suits are told apart by glyph shape first, color second.",
@@ -184,7 +186,7 @@
       "Cards keep the physical 1:1.4 ratio; relics are square."
     ],
     "rules": [
-      { "name": "The Pieces Carry the Color Rule", "body": "Saturated color belongs to suits, tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only UI accents are brass and selection blue.", "section": "colors" },
+      { "name": "The Pieces Carry the Color Rule", "body": "Saturated color belongs to suits, tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only UI accents are brass and selection blue. The three map regions are the one exception, and they carry the board's colors, not new ones.", "section": "colors" },
       { "name": "The Shape First Rule", "body": "Every suit, token and die has its own glyph. Color only keeps them from blurring; it never carries meaning alone.", "section": "colors" },
       { "name": "The One Cool Rule", "body": "Selection blue is the only cool UI color, and it means \"selected\". Do not use it for links, information or decoration.", "section": "colors" },
       { "name": "The Font-Size Handle Rule", "body": "Cards are sized in ex, never in px per context. To make cards smaller on a player board or larger on the overlay, change the container's font size and let the card follow.", "section": "typography" },
@@ -193,7 +195,7 @@
       { "name": "The No-Reflow Rule", "body": "Every hover, focus and selection treatment fits in space reserved at rest: transparent borders, inset rings, negative-offset outlines. Nothing grows.", "section": "elevation" }
     ],
     "dos": [
-      "Do keep saturated color on the pieces: suits, tokens, dice, players, plan sides. Keep UI surfaces in the warm neutral ramp with brass as the accent.",
+      "Do keep saturated color on the pieces: suits, tokens, dice, players, plan sides. Keep UI surfaces in the warm neutral ramp with brass as the accent; the three painted map regions are the only colored surfaces.",
       "Do give every new token or suit its own glyph in TokenSprite before giving it a color.",
       "Do size cards through the container's font size (ex-based --card-w), never with a per-context pixel width.",
       "Do reserve space for every state at rest: transparent borders, inset rings, negative-offset outlines.",
