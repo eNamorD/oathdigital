@@ -1,5 +1,6 @@
 package oathdigital.model
 
+import oathdigital.application.UserId
 import oathdigital.catalog.DefinitionId
 
 class OpaqueIdSuite extends munit.FunSuite {
@@ -29,5 +30,11 @@ class OpaqueIdSuite extends munit.FunSuite {
     assertEquals(DefinitionId("denizen.coast").value, "denizen.coast")
     intercept[IllegalArgumentException](DefinitionId(" "))
     assertEquals(DefinitionId("x").toString, "x")
+  }
+
+  test("UserId wraps any string and prints raw") {
+    val UserId(raw) = UserId("u-1")
+    assertEquals(raw, "u-1")
+    assertEquals(UserId("u-1").toString, "u-1")
   }
 }
