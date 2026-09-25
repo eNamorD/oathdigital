@@ -4,11 +4,9 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.setup.SetupProcedure
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
-import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Situation
 
 /** The one real board a walker Forge can be driven to, shared by every
   * suite that needs one.
@@ -47,22 +45,22 @@ object ForgeWalkerFixture extends munit.Assertions:
       if site.id != siteId then site
       else site.copy(forgeRequirements = Some(Tokens(2, 1)))))
 
-  /** Drives a real, journalled game to the point where `p2` can start a
-    * Forge: a ruled site with a printed Forge cost, exactly three empty
-    * faceup denizens on it, supply in hand and a non-empty relic deck.
+  /** Drives a real, journalled game to the point where the first player can
+    * start a Forge: a ruled site with a printed Forge cost, exactly three
+    * empty faceup denizens on it, supply in hand and a non-empty relic deck.
     *
     * Returns the accepted position to start from, the actor, and the site.
     */
   def forgeReadyGame(service: GameApplicationService, gameId: String,
       cat: oathdigital.catalog.ExecutableCatalog = catalog)
       : (GameAccepted, PlayerId, SiteId) =
-    // The parked decision, as this fixture rebuilds it: the catalog and
-    // power catalogs `GameApplicationService` builds its rules with
-    // (`GameApplicationService.scala:87-90`) -- `cat`, not the module's
-    // default `catalog`, since `parkedForge` drives this under
-    // `mixedForgeCostCatalog`.
-    val parkedAssertions = new ParkedDecisionAssertions(cat,
-      WalkerPowerCatalog.default(cat), PhasePowerCatalog.default(cat))
+    val (ready, actor, forgeSite) = forgeReady(service, gameId, cat)
+    (GameAccepted(ready.state, ready.events, ready.nextSequence), actor,
+      forgeSite)
+
+  private def forgeReady(service: GameApplicationService, gameId: String,
+      cat: oathdigital.catalog.ExecutableCatalog)
+      : (Situation, PlayerId, SiteId) =
     // Every homeland site restricts which denizens may be played there, and
     // this fixture plays three in, so the site has to be a non-homeland one.
     val forgeSite = cat.sites.find(site => site.forgeRequirements.nonEmpty &&
@@ -77,93 +75,55 @@ object ForgeWalkerFixture extends munit.Assertions:
         chronicle.atlasBox.filterNot(_.site == forgeSite))
     val forgeOrders = orders.copy(
       worldDeckOrder = sitePlayable ++ orders.worldDeckOrder.filterNot(sitePlayable.contains))
-    var accepted = service.handle(gameId, 0L,
-      GameCommand.Begin(forgeChronicle, forgeOrders)).toOption.get
-    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
+    // The first player's pawn goes to the Forge site.
     val orderedSites = forgeSite +: forgeChronicle.atlasBox.take(8)
       .map(_.site).filterNot(_ == forgeSite)
-    order.zipWithIndex.foreach { case (playerId, index) =>
-      val destination = orderedSites(index)
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ResolveWalker(playerId, TreeDecision(
-          SetupProcedure.pawnDecisionId(playerId),
-          ChooseOneAnswer(DecisionOptionRef.Site(destination))))).toOption.get
-      val Ready(placedReady) = accepted.state: @unchecked
-      val denizens = placedReady.game.current.temporaryHands(playerId)
-        .collect { case id: DenizenId => id }
-      val adviser = denizens.head
-      val rejected = denizens.tail
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ResolveWalker(playerId, TreeDecision(
-          SetupProcedure.adviserDecisionId(playerId),
-          PartitionAnswer(
-            DecisionPlacement(DecisionOptionRef.Denizen(adviser),
-              SetupProcedure.adviserKeepKey) +:
-            rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
-              SetupProcedure.adviserDiscardKey)))))).toOption.get
-    }
-    val actor = PlayerId("p2")
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
+    val actor = forgeOrders.firstPlayer
+    val woken = Situation.wake(Situation.journaled(service, cat, gameId)
+      .withAnswers(Situation.pawnsAt(orderedSites)), forgeChronicle,
+      forgeOrders)
+    // A conquest of the Forge site: the other bandit-ruled sites are
+    // optional targets, and none is taken.
+    val campaigned = woken.withAnswers {
+      case park if park.decisionId == CampaignIds.targets =>
+        ChooseManyAnswer(Vector.empty)
+      case park if park.decisionId == CampaignIds.force => ChooseAmountAnswer(3)
+      case park if park.decisionId == CampaignIds.sacrifice =>
+        ChooseAmountAnswer(2)
+      case park if park.decisionId == CampaignIds.placement =>
+        ChooseAmountAnswer(1)
+    }.after(GameCommand.EndWake(actor),
       GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
-      .fold(error => fail(s"Campaign fixture rejected: $error"), identity)
-    // Other bandit-ruled sites are optional targets: take none.
-    if parkedAssertions.parkedDecision(accepted.state).map(_.decision)
-        .contains(CampaignIds.targets) then
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.targets,
-          ChooseManyAnswer(Vector.empty)))).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.force,
-        ChooseAmountAnswer(3)))).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.sacrifice,
-        ChooseAmountAnswer(2)))).toOption.get
-    parkedAssertions.parkedDecision(accepted.state).map(_.decision) match
-      case Some(CampaignIds.placement) =>
-        accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.placement,
-            ChooseAmountAnswer(1)))).toOption.get
-      case _ => ()
 
-    def searchOne(): Unit =
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
-          Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
-        .fold(error => fail(s"Search fixture rejected: $error"), identity)
-      val Ready(pendingReady) = accepted.state: @unchecked
-      val drawn = pendingReady.game.current.temporaryHands(actor)
-      val kept = drawn.find(card => CardPlay.plannedOperations(cat,
-        pendingReady, actor, card, SearchPlacement.Site(None),
-        CardPlay.Origin.TemporaryHand).isRight)
-        .getOrElse(fail(s"no site-playable card in prepared draw $drawn"))
-      if drawn.size > 1 then
-        val choices = drawn.map(card => DecisionPlacement(card match {
+    // Each Search keeps the first drawn card playable at the site and plays
+    // it there.
+    val searching = campaigned.withAnswers {
+      case park if park.decisionId == SearchProcedure.cardDecisionId =>
+        val drawn = park.ready.game.current.temporaryHands(actor)
+        val kept = drawn.find(card => CardPlay.plannedOperations(cat,
+          park.ready, actor, card, SearchPlacement.Site(None),
+          CardPlay.Origin.TemporaryHand).isRight)
+          .getOrElse(fail(s"no site-playable card in prepared draw $drawn"))
+        PartitionAnswer(drawn.map(card => DecisionPlacement(card match {
           case id: DenizenId => DecisionOptionRef.Denizen(id)
           case id: VisionId => DecisionOptionRef.Vision(id)
-        }, if card == kept then "keep" else "discard"))
-        accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
-            DecisionAnswer.PartitionAnswer(choices)))).toOption.get
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.ResolveWalker(actor, TreeDecision(
-          s"cardplay.place.${kept.kind}.${kept.value}",
-          DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("site")))))
-        .toOption.get
-    searchOne(); searchOne()
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginRest(actor)).toOption.get
-    Vector(PlayerId("p3"), PlayerId("p1")).foreach { player =>
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.EndWake(player)).toOption.get
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.BeginRest(player)).toOption.get
+        }, if card == kept then "keep" else "discard")))
+      case park if park.decisionId.startsWith("cardplay.place.") =>
+        ChooseOneAnswer(DecisionOptionRef.Button("site"))
     }
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
-    searchOne()
-    (accepted, actor, forgeSite)
+    val search = GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
+      Vector.empty, Vector(DecisionOptionRef.Button("search:world"))))
+    // Two Searches, then a round of the others' turns back to the actor, and
+    // a third Search.
+    @annotation.tailrec
+    def roundTo(situation: Situation): Situation =
+      val active = situation.ready.game.current.turn.activePlayer
+      if active == actor then situation
+      else roundTo(situation.after(GameCommand.EndWake(active),
+        GameCommand.BeginRest(active)))
+    val ready = roundTo(searching.after(search, search,
+      GameCommand.BeginRest(actor))).after(GameCommand.EndWake(actor), search)
+    (ready, actor, forgeSite)
 
   /** The position a mixed-cost Forge PARKS from: the fixture board above,
     * reached under [[mixedForgeCostCatalog]], plus the `StartWalker` that
@@ -178,9 +138,9 @@ object ForgeWalkerFixture extends munit.Assertions:
     val forgeCatalog = mixedForgeCostCatalog
     val service = new GameApplicationService(forgeCatalog,
       new InMemoryEventStreamRepository, campaignDicePort = blankCampaignDice)
-    val (ready, actor, forgeSite) = forgeReadyGame(service, gameId,
-      forgeCatalog)
-    val started = service.handle(gameId, ready.nextSequence,
+    val (ready, actor, forgeSite) = forgeReady(service, gameId, forgeCatalog)
+    val started = ready.parkedAfter(
       GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
-      .fold(error => fail(s"walker Forge start rejected: $error"), identity)
-    (forgeCatalog, started, actor, forgeSite)
+    (forgeCatalog, GameAccepted(started.state,
+      started.events.drop(ready.events.size), started.nextSequence), actor,
+      forgeSite)
