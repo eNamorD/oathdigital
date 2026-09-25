@@ -35,7 +35,9 @@ class PanelPlacementSuite extends munit.FunSuite:
       oathkeeper = oathkeeper, tracks = trackState)
 
   private def world(value: GameProjection): dom.Element =
-    WorldBoardRenderer.world(value, None, new RecordingView("game", "red"))
+    WorldBoardRenderer.world(value, None,
+      ServerUiSupport.viewerPresentation(value, "red"), canControl = true,
+      SessionDrafts.empty, new RecordingView("game", "red"))
 
   private def actions(value: GameProjection): dom.Element =
     ActionDecisionRenderer.actionsPanel(value,

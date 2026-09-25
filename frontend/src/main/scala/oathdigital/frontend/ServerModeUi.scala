@@ -99,13 +99,13 @@ object ServerModeUi:
             value.walkerDecision.map(_.decisionId).getOrElse(""),
             boardSelectionState.flatMap(_.activeActionKind).getOrElse(""),
             modifierWorkflow.map(_.stage.toString).getOrElse(""), prompt).mkString("|")
-          (WorldBoardRenderer.players(value, ui),
+          (WorldBoardRenderer.players(value, selectedPlayer),
             WorldBoardRenderer.world(value, routed.surface.collect {
               case board: ParkedDecision.Surface.Board => board
-            }, ui), decisionKey)
+            }, presentation, ui.canControl, currentDrafts, ui), decisionKey)
       val development = element("div", "development-content")
       if !fixedSeat then
-        development.appendChild(DevelopmentRenderer.controls(ui))
+        development.appendChild(DevelopmentRenderer.controls(session))
         if projection.nonEmpty then
           development.appendChild(DevelopmentRenderer.rawEventLog(rawEvents))
       val attention = s"$decision|${coordinator.connectionState}|${failure.map(_.message)}"
@@ -393,11 +393,17 @@ object ServerModeUi:
           completeTargetCommand(command)
         }
 
-    lazy val ui: ServerUiView = new ServerUiView:
+    lazy val session: SessionControls = new SessionControls:
       def currentGameId = gameId
       def currentPlayerId = selectedPlayer
       def displayedProjection = projection
-      def sessionCoordinator = coordinator
+      def connectionState = coordinator.connectionState
+      def loadSession(id: String, playerId: String) = loadExisting(id, playerId)
+      def reconnectSession() = reconnect()
+      def createGame() = newGame()
+
+    lazy val ui: ServerUiView = new ServerUiView:
+      def currentPlayerId = selectedPlayer
       def currentBoardSelection = boardSelectionState
       def currentBoardSelection_=(value: Option[BoardTargetSelectionState]) = boardSelectionState = value
       def currentWalkerPartition = walkerPartitionDraft
@@ -453,9 +459,6 @@ object ServerModeUi:
         render()
       def submitCommand(command: GameCommand) = submit(command)
       def handleSelection(result: BoardSelectionResult) = handleBoardSelection(result)
-      def loadSession(id: String, playerId: String) = loadExisting(id, playerId)
-      def reconnectSession() = reconnect()
-      def createGame() = newGame()
 
     polling = Some(new SnapshotPollingCoordinator(
       new BrowserPollClock,

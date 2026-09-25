@@ -13,14 +13,15 @@ class SuitGlyphSuite extends munit.FunSuite:
       .map(_.asInstanceOf[dom.Element].getAttribute("class"))
 
   test("the shared banks print each suit's symbol before its count"):
-    val panel = WorldBoardRenderer.world(
-      GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-        Vector.empty, Vector.empty, Vector.empty, ready = true,
-        completed = false,
-        favorBanks = Vector(FavorBankState("arcane", 3),
-          FavorBankState("nomad", 0))),
-      None, new RecordingView("game", "red"))
+    val value = GameProjection("game", 1L, "act", Some("red"),
+      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
+      Vector.empty, Vector.empty, Vector.empty, ready = true,
+      completed = false,
+      favorBanks = Vector(FavorBankState("arcane", 3),
+        FavorBankState("nomad", 0)))
+    val panel = WorldBoardRenderer.world(value, None,
+      ServerUiSupport.viewerPresentation(value, "red"), canControl = true,
+      SessionDrafts.empty, new RecordingView("game", "red"))
     val banks = panel.querySelectorAll(".favor-bank").toVector
       .map(_.asInstanceOf[dom.Element])
     assertEquals(banks.map(_.textContent), Vector("Arcane: 3", "Nomad: 0"))

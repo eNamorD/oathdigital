@@ -27,7 +27,7 @@ class PlayerBoardSuite extends munit.FunSuite:
       Vector.empty,
       Vector(GamePawn("red", "site:woods")), Vector.empty, ready = true,
       completed = false, playerBoards = Vector(board), supplyMaximum = 7),
-    new RecordingView("game", "red"))
+    "red")
 
   test("name, role and resources share one line, and the location is gone"):
     val node = render()
@@ -62,7 +62,7 @@ class PlayerBoardSuite extends munit.FunSuite:
             orientation = Some("face-up"))),
           revealedVision = Some(CardDetails("v1", "vision", "Vision",
             orientation = Some("face-up")))))),
-      new RecordingView("game", "red"))
+      "red")
     assertEquals(all(node, ".board-cards").size, 1)
     assertEquals(all(node, ".board-cards .card-face").map(_.getAttribute("class")),
       Vector("card-face card-face-denizen", "card-face card-face-relic"))
@@ -82,7 +82,7 @@ class PlayerBoardSuite extends munit.FunSuite:
         board.copy(playerId = "blue")),
       oathkeeper = Some(OathkeeperStatus("supremacy", Some("blue"), side,
         usurperLimited = true, winnerPlayerId = None))),
-    new RecordingView("game", "red"))
+    "red")
 
   test("the Oathkeeper badge sits on its holder's line only"):
     val node = titled("oathkeeper")
@@ -131,7 +131,7 @@ class PlayerBoardSuite extends munit.FunSuite:
         GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,
           Vector.empty, Vector.empty, ready = true, completed = false,
           viewerPlayerId = viewer),
-        new RecordingView("game", seat)), ".player-board")
+        seat), ".player-board")
         .map(_.getAttribute("data-player-id"))
     assertEquals(strip(Some("white"), "white"), Vector("white", "red", "blue"))
     // A development session holds a seat but is named by no viewer.
@@ -156,7 +156,7 @@ class PlayerBoardSuite extends munit.FunSuite:
         Vector.empty, Vector.empty, Vector.empty, ready = true,
         completed = false, playerBoards = Vector(playerBoard),
         oathkeeper = oathkeeper),
-      new RecordingView("game", "red"))
+      "red")
 
   test("the title and the Vision sit in their own row, not among the cards"):
     val vision = CardDetails("vision:vision-of-faith", "vision",

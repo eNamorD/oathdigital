@@ -4,8 +4,8 @@ import org.scalajs.dom
 import ServerUiSupport._
 
 private[frontend] object FacedownAdviserRenderer:
-  def render(draft: FacedownAdviserDraft, ui: ServerUiView): dom.Element =
-    import ui._
+  def render(draft: FacedownAdviserDraft, canControl: Boolean,
+      controls: ActionControls): dom.Element =
     val panel = element("section", "facedown-adviser-draft")
     panel.appendChild(text("h2", "", "Play facedown adviser"))
     val choosing = draft.advisers.size > 1
@@ -25,7 +25,7 @@ private[frontend] object FacedownAdviserRenderer:
         choose.setAttribute("aria-label", s"Choose ${adviser.card.name}")
         choose.setAttribute("aria-pressed",
           draft.selectedCardId.contains(adviser.card.cardId).toString)
-        choose.onclick = _ => chooseFacedownAdviser(adviser.card.cardId)
+        choose.onclick = _ => controls.chooseFacedownAdviser(adviser.card.cardId)
         choice.appendChild(choose)
       options.appendChild(choice)
     }
@@ -33,9 +33,9 @@ private[frontend] object FacedownAdviserRenderer:
     draft.selected.foreach { _ =>
       val start = button("Choose placement", "facedown-adviser-start")
       start.disabled = !canControl
-      start.onclick = _ => draft.command.foreach(submitTargetCommand)
+      start.onclick = _ => draft.command.foreach(controls.submitTargetCommand)
       panel.appendChild(start)
     }
     val cancel = button("Cancel action", "modifier-cancel")
-    cancel.onclick = _ => cancelTargetAction(); panel.appendChild(cancel)
+    cancel.onclick = _ => controls.cancelTargetAction(); panel.appendChild(cancel)
     panel

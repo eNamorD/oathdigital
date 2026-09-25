@@ -24,7 +24,8 @@ class CardChoicePanelSuite extends munit.FunSuite:
     Vector(adviser("a1", "Old Oak"), adviser("a2", "Bandits")), None)
 
   private def advisers(value: FacedownAdviserDraft): dom.Element =
-    FacedownAdviserRenderer.render(value, new RecordingView("game", "red"))
+    FacedownAdviserRenderer.render(value, canControl = true,
+      new RecordingView("game", "red"))
 
   test("every facedown adviser on offer is drawn face-up"):
     val panel = advisers(draft)

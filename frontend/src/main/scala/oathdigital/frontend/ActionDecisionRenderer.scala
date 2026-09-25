@@ -148,7 +148,7 @@ private[frontend] object ActionDecisionRenderer:
          cancelModifiers(); panel.appendChild(cancel)
      else if currentFacedownAdviserDraft.nonEmpty then
        panel.appendChild(FacedownAdviserRenderer.render(
-         currentFacedownAdviserDraft.get, ui))
+         currentFacedownAdviserDraft.get, canControl, ui))
      else if selection.nonEmpty then
        val action = selection.get
        panel.appendChild(text("p", "selection-instruction", action.prompt))

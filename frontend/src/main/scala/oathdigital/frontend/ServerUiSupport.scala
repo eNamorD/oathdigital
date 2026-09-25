@@ -9,10 +9,7 @@ import scala.scalajs.js
   * goes in the last one.
   */
 private[frontend] trait ServerUiView extends ActionControls:
-  def currentGameId: String
   def currentPlayerId: String
-  def displayedProjection: Option[GameProjection]
-  def sessionCoordinator: ServerSessionCoordinator
   def currentBoardSelection: Option[BoardTargetSelectionState]
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit
   def currentWalkerPartition: Option[WalkerPartitionDraft]
@@ -27,9 +24,6 @@ private[frontend] trait ServerUiView extends ActionControls:
   def currentFacedownAdviserDraft: Option[FacedownAdviserDraft]
   def canControl: Boolean
   def rerender(): Unit
-  def loadSession(gameId: String, playerId: String): Unit
-  def reconnectSession(): Unit
-  def createGame(): Unit
 private[frontend] object ServerUiSupport:
   private[frontend] def secretSummaryLabel(available: Int, total: Int,
       facedown: Int, committed: Int): String =

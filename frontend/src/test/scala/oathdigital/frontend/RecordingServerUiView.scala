@@ -42,11 +42,7 @@ private[frontend] class RecordingView(gameId: String, playerId: String)
   def rerender(): Unit = rerenders += 1
   def submitCommand(command: Intent): Unit = submitted :+= command
 
-  def currentGameId: String = gameId
   def currentPlayerId: String = playerId
-  def displayedProjection: Option[GameProjection] = None
-  val sessionCoordinator: ServerSessionCoordinator =
-    new ServerSessionCoordinator(gameId, playerId)
   var boardSelection: Option[BoardTargetSelectionState] = None
   def currentBoardSelection: Option[BoardTargetSelectionState] = boardSelection
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit =
@@ -66,6 +62,3 @@ private[frontend] class RecordingView(gameId: String, playerId: String)
   def submitTargetCommand(command: Intent): Unit = ()
   def canControl: Boolean = true
   def handleSelection(result: BoardSelectionResult): Unit = ()
-  def loadSession(gameId: String, playerId: String): Unit = ()
-  def reconnectSession(): Unit = ()
-  def createGame(): Unit = ()
