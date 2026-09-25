@@ -1,6 +1,6 @@
 # Session Drafts
 
-> Status: implemented 2026-09-25 (seven commits, this plan). This is a behavior-preserving architecture slice with three stated
+> Status: implemented 2026-09-25 (nine commits, this plan). This is a behavior-preserving architecture slice with three stated
 exceptions (see "Behavior changes"). It is candidate D of the 2026-09-22
 architecture review, taken as option 1 of three; option 3 (decomposing
 `ServerModeUi.start`) is the recorded follow-up.
@@ -98,7 +98,7 @@ submits the command directly, and Back from the ordering panel
 
 `Cancelled` carries the restored board-target state because computing it
 needs the projection's `boardTargetActions`; the caller builds it exactly as
-`restoreBoardTargetActions` does today. `Failed` and `Completed` differ only
+`restoredTargets` in `ServerModeUi` does. `Failed` and `Completed` differ only
 on `boardTargets`, and that difference is observable on a non-stale submit
 error (the board keeps or loses its highlight), so they stay separate.
 
