@@ -27,9 +27,9 @@ class ActionOptionRowSuite extends munit.FunSuite:
         minorActions = Some(MinorActionsState(Vector.empty,
           canPeekSiteRelics = true, Vector.empty, Some("site:a"), 2, 1))),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
-        None),
-      ParkedDecision.Routed(None, None),
-      new RecordingView("game", "red"))
+        None, playerId = "red"),
+      ParkedDecision.Routed(None, None), canControl = true, SessionDrafts.empty,
+      new RecordingControls()).element
 
   private def rows(group: String,
       of: dom.Element = panel()): Vector[dom.Element] = of

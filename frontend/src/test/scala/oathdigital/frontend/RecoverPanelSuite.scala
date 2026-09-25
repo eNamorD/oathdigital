@@ -22,7 +22,7 @@ class RecoverPanelSuite extends munit.FunSuite:
       GameProjection("game", 1L, "act", Some("red"), Vector.empty, Vector.empty,
         Vector.empty, Vector.empty, ready = true, completed = false,
         activePlayerResources = Some(ActivePlayerResources(0, 0, 0, 0, 0, supply))),
-      canControl = true, panel, new RecordingView("game", "red"))
+      canControl = true, panel, new RecordingControls())
     panel
 
   private val choiceQuery = DecisionQueryState("choose-one",

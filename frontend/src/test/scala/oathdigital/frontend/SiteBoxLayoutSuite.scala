@@ -22,18 +22,24 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
       Vector(GameRegion("cradle", Vector(site))), pawns, Vector.empty,
       ready = true, completed = false)
 
-  private def world(value: GameProjection, ui: ServerUiView): dom.Element =
-    WorldBoardRenderer.world(value, None, ui)
+  private val context = BoardSelectionContext("game", "red", 1L)
+
+  private def world(value: GameProjection,
+      targets: Option[BoardTargetSelectionState] = None): dom.Element =
+    WorldBoardRenderer.world(value, None,
+      canControl = true,
+      SessionDrafts.empty.copy(context = Some(context), boardTargets = targets),
+      new RecordingControls())
 
   /** The row is drawn empty rather than left out, so the cards under it start
     * at the same height on a site nobody stands on as on one they do.
     */
   test("a site nobody stands on still draws its pawn row"):
-    val empty = all(world(projection(), new RecordingView("game", "red")), ".site-pawns")
+    val empty = all(world(projection()), ".site-pawns")
     assertEquals(empty.size, 1)
     assertEquals(empty.head.childNodes.length, 0)
-    val occupied = all(world(projection(Vector(GamePawn("red", "site:woods"))),
-      new RecordingView("game", "red")), ".site-pawns")
+    val occupied = all(world(projection(Vector(GamePawn("red", "site:woods")))),
+      ".site-pawns")
     assertEquals(occupied.size, 1)
     assert(occupied.head.textContent.contains("Red"), occupied.head.textContent)
 
@@ -41,14 +47,12 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
     * so choosing an action cannot push the board about.
     */
   test("the travel supply badge hangs off the site, not inside its details"):
-    val ui = new RecordingView("game", "red")
-    ui.boardSelection = Some(BoardTargetSelectionState(
-      BoardSelectionContext("game", "red", 1L),
+    val targets = BoardTargetSelectionState(context,
       Vector(BoardTargetAction("travel", "Choose a destination", 1, 1,
         autoActivate = true, Vector(BoardTargetCandidate(
           BoardTargetRef.Site("site:woods"), "Deep Woods", Vector("Supply 2"))))),
-      Some("travel"), Set.empty))
-    val node = world(projection(), ui)
+      Some("travel"), Set.empty)
+    val node = world(projection(), Some(targets))
     val badges = all(node, ".target-detail-badge")
     assertEquals(badges.size, 1)
     assertEquals(badges.head.parentNode.asInstanceOf[dom.Element]

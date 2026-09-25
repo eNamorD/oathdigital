@@ -10,11 +10,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
   private val first = PreviewModifier("adviser:p:denizen:a", "h.a", "A")
   private val second = PreviewModifier("site-card:s:denizen:b", "h.b", "B")
 
-  /** Reaches the `currentModifierWorkflow.exists(_.ordering)` branch of
-    * `ActionDecisionRenderer.actionsPanel` -- no fixture in this suite drove
-    * that branch before this test, since `RecordingView.currentModifierWorkflow`
-    * was hardcoded `None` (see `RecordingServerUiView.scala`, now a settable
-    * `modifierWorkflow` var alongside its other draft fields).
+  /** Reaches the `drafts.modifiers.exists(_.ordering)` branch of
+    * `ActionDecisionRenderer.actionsPanel`.
     */
   private def renderOrderingPanel(modifiers: Vector[PreviewModifier])
       : org.scalajs.dom.Element =
@@ -24,15 +21,16 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       context.copy(action = "travel"), modifiers, "ordering-preview")
     val workflow = ModifierWorkflow(None, Some("travel"), Map.empty, response,
       selection, ModifierWorkflowStage.Ordering)
-    val view = new RecordingView("g", "p")
-    view.modifierWorkflow = Some(workflow)
     ActionDecisionRenderer.actionsPanel(
       GameProjection("g", 4L, "act", Some("p"),
         Vector(GamePlayer("p", "P", "exile", PlayerColor.Red)),
         Vector.empty, Vector.empty, Vector.empty, ready = true,
         completed = false, actionSelectionOpen = true),
-      ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
-      ParkedDecision.Routed(None, None), view)
+      ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
+        None, playerId = "p"),
+      ParkedDecision.Routed(None, None), canControl = true,
+      SessionDrafts.empty.copy(modifiers = Some(workflow)),
+      new RecordingControls()).element
 
   test("selection preserves click order supports badges reorder toggle and keyboard"):
     val empty = ModifierSelectionState.reconcile(None, context,
@@ -155,10 +153,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assertEquals(targets.cancel, None)
     assertEquals(targets.copy(preview = response.copy(modifiers = Vector.empty))
       .backFromTargets, None)
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 4),
-      Some(targets))
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "other", 4), None)
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "p", 4)), Some(targets))
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "p", 5)), None)
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "other", 4)), None)
 
   test("Recover uses the generic ordered modifier flow but submits as a " +
       "walker command carrying Catacombs in its own modifiers field"):
@@ -177,7 +177,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assert(workflow.ordering)
     val targets = workflow.showTargets(response)
     assert(targets.backFromTargets.exists(_.ordering))
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "p", 5)), None)
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       catacombs.handlerId)
     assertEquals(selection.invocations, Vector(invocation))

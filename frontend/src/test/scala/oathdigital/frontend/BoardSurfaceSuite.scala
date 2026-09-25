@@ -44,14 +44,20 @@ class BoardSurfaceSuite extends munit.FunSuite:
   private def surface(confirm: Boolean): Surface.Board =
     Surface.Board(decision, query, confirm)
 
-  private def world(ui: RecordingView, board: Option[Surface.Board] =
-      Some(surface(confirm = true))): dom.Element =
-    WorldBoardRenderer.world(projection(), board, ui)
+  private def world(ui: RecordingControls, board: Option[Surface.Board] =
+      Some(surface(confirm = true)), draft: Option[WalkerBoardDraft] = None,
+      targets: Option[BoardTargetSelectionState] = None): dom.Element =
+    WorldBoardRenderer.world(projection(), board, canControl = true,
+      SessionDrafts.empty.copy(context = Some(context), board = draft,
+        boardTargets = targets), ui)
 
-  private def pane(ui: RecordingView, board: Surface.Board): dom.Element =
+  private def pane(ui: RecordingControls, board: Surface.Board,
+      draft: Option[WalkerBoardDraft] = None): dom.Element =
     val panel = dom.document.createElement("div")
-    ParkedDecision.render(projection(), Routed(Some(board), None),
-      canControl = true, panel, ui)
+    ParkedDecision.render(projection(),
+      ServerUiSupport.viewerPresentation(projection(), "red"),
+      Routed(Some(board), None), canControl = true, panel,
+      SessionDrafts.empty.copy(context = Some(context), board = draft), ui)
     panel
 
   private def one(root: dom.Element, selector: String): dom.Element =
@@ -70,75 +76,72 @@ class BoardSurfaceSuite extends munit.FunSuite:
     node.dispatchEvent(new dom.KeyboardEvent("keydown", js.Dynamic.literal(
       bubbles = true, key = key).asInstanceOf[dom.KeyboardEventInit]))
 
-  /** Records what the board-selection path chooses, which `RecordingView`
+  /** Records what the board-selection path chooses, which `RecordingControls`
     * drops.
     */
-  private final class SelectingView extends RecordingView("game", "red"):
+  private final class SelectingView extends RecordingControls:
     var chosen: Vector[BoardSelectionResult] = Vector.empty
     override def handleSelection(result: BoardSelectionResult): Unit =
       chosen :+= result
 
   test("a click on a card inside a site reads the card, not the site"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     click(one(world(ui), "button.card-face"))
-    assertEquals(ui.board, None)
+    assertEquals(ui.staged, Vector.empty)
     assertEquals(ui.submitted, Vector.empty)
 
   test("Enter on a card inside a site does not pick the site"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     press(one(world(ui), "button.card-face"), "Enter")
-    assertEquals(ui.board, None)
+    assertEquals(ui.staged, Vector.empty)
     assertEquals(ui.submitted, Vector.empty)
 
   test("a card click inside a board-selection target does not choose it"):
     val ui = new SelectingView
-    ui.boardSelection = Some(BoardTargetSelectionState(context,
+    val targets = BoardTargetSelectionState(context,
       Vector(BoardTargetAction("travel", "Choose a destination", 1, 1,
         autoActivate = true, Vector(BoardTargetCandidate(
           BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))),
-      Some("travel"), Set.empty))
-    val root = world(ui, board = None)
+      Some("travel"), Set.empty)
+    val root = world(ui, board = None, targets = Some(targets))
     click(one(root, "button.card-face"))
     assertEquals(ui.chosen, Vector.empty)
     click(site(root, "Deep Woods"))
     assertEquals(ui.chosen.size, 1)
 
   test("with confirm, a site click drafts the pick and submits nothing"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     click(site(world(ui), "Deep Woods"))
-    assertEquals(ui.board, Some(woodsDraft))
+    assertEquals(ui.drafts.board, Some(woodsDraft))
     assertEquals(ui.submitted, Vector.empty)
-    assertEquals(ui.rerenders, 1)
+    assertEquals(ui.staged.size, 1)
 
   test("a second click on the drafted site clears the draft"):
-    val ui = new RecordingView("game", "red")
-    ui.board = Some(woodsDraft)
-    click(site(world(ui), "Deep Woods"))
-    assertEquals(ui.board, None)
+    val ui = new RecordingControls()
+    click(site(world(ui, draft = Some(woodsDraft)), "Deep Woods"))
+    assertEquals(ui.staged, Vector(Draft.Board(None)))
 
   test("a click on another site moves the draft"):
-    val ui = new RecordingView("game", "red")
-    ui.board = Some(woodsDraft)
-    click(site(world(ui), "Ancient City"))
-    assertEquals(ui.board, Some(woodsDraft.copy(option = cityOption)))
+    val ui = new RecordingControls()
+    click(site(world(ui, draft = Some(woodsDraft)), "Ancient City"))
+    assertEquals(ui.drafts.board, Some(woodsDraft.copy(option = cityOption)))
 
   test("the drafted site is drawn selected"):
-    val ui = new RecordingView("game", "red")
-    ui.board = Some(woodsDraft)
-    val root = world(ui)
+    val ui = new RecordingControls()
+    val root = world(ui, draft = Some(woodsDraft))
     assert(site(root, "Deep Woods").getAttribute("class")
       .contains("board-target-selected"))
     assertEquals(site(root, "Deep Woods").getAttribute("aria-pressed"), "true")
     assertEquals(site(root, "Ancient City").getAttribute("aria-pressed"), "false")
 
   test("without confirm, a site click submits at once"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     click(site(world(ui, Some(surface(confirm = false))), "Deep Woods"))
     assertEquals(ui.submitted, Vector(placeAtWoods))
-    assertEquals(ui.board, None)
+    assertEquals(ui.staged, Vector.empty)
 
   test("the pane's Confirm waits for a draft, then submits it"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val empty = pane(ui, surface(confirm = true))
     assertEquals(one(empty, "h2").textContent, "Choose your starting site")
     assertEquals(one(empty, ".board-draft").textContent,
@@ -146,8 +149,7 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assert(one(empty, ".walker-board-confirm")
       .asInstanceOf[dom.html.Button].disabled)
 
-    ui.board = Some(woodsDraft)
-    val drafted = pane(ui, surface(confirm = true))
+    val drafted = pane(ui, surface(confirm = true), Some(woodsDraft))
     assertEquals(one(drafted, ".board-draft").textContent, "Deep Woods")
     val confirm = one(drafted, ".walker-board-confirm")
       .asInstanceOf[dom.html.Button]
@@ -156,7 +158,7 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assertEquals(ui.submitted, Vector(placeAtWoods))
 
   test("without confirm, the pane offers no Confirm button"):
-    val ui = new RecordingView("game", "red")
+    val ui = new RecordingControls()
     val panel = pane(ui, surface(confirm = false))
     assertEquals(panel.querySelectorAll(".walker-board-confirm").length, 0)
     assertEquals(one(panel, ".board-draft").textContent,

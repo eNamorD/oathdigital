@@ -13,21 +13,21 @@ private[frontend] object WalkerSelectionPanels:
     * says which draft shape to expect, and a draft of another shape (which
     * `WalkerSelectionDraft.reconcile` never builds) renders nothing.
     */
-  def render(surface: ParkedDecision.Surface.Selection, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
-    val draft = ui.currentWalkerSelection
-      .filter(_.decisionId == surface.decision.decisionId)
+  def render(surface: ParkedDecision.Surface.Selection,
+      selection: Option[WalkerSelectionDraft], canControl: Boolean,
+      panel: dom.Element, controls: TableControls): Unit =
+    val draft = selection.filter(_.decisionId == surface.decision.decisionId)
     surface.form match
       case DecisionForm.ChooseMany => draft
         .collect { case many: WalkerChooseManyDraft => many }
-        .foreach(renderMany(surface.query, _, canControl, panel, ui))
+        .foreach(renderMany(surface.query, _, canControl, panel, controls))
       case DecisionForm.ChooseAmount => draft
         .collect { case amount: WalkerAmountDraft => amount }
         .foreach(renderAmount(surface.decision, surface.query, _, canControl,
-          panel, ui))
+          panel, controls))
 
   private def renderMany(query: DecisionQueryState, draft: WalkerChooseManyDraft,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
+      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     panel.appendChild(text("p", "walker-many-instruction",
       if query.minimum == query.maximum then s"Choose ${query.minimum.getOrElse(0)}."
@@ -39,26 +39,23 @@ private[frontend] object WalkerSelectionPanels:
       toggle.setAttribute("data-option-id", item)
       toggle.setAttribute("aria-pressed", draft.selected.contains(item).toString)
       toggle.disabled = !canControl
-      toggle.onclick = _ => {
-        ui.currentWalkerSelection = Some(draft.toggle(item))
-        ui.rerender()
-      }
+      toggle.onclick = _ => controls.stage(Draft.Selection(draft.toggle(item)))
       rows.appendChild(toggle)
     }
     panel.appendChild(rows)
     val confirm = button(WalkerPanelSupport.partitionConfirmLabel(query),
       "walker-many-confirm")
     confirm.disabled = !canControl || !draft.canConfirm
-    confirm.onclick = _ => draft.command.foreach(ui.submitCommand)
+    confirm.onclick = _ => draft.command.foreach(controls.submitCommand)
     panel.appendChild(confirm)
 
-  /** A dropdown over the range. The change handler updates the draft without a
-    * rerender, so the open control keeps focus; the confirm handler reads the
-    * latest draft at click time.
+  /** A dropdown over the range. Nothing is staged on change: the select
+    * itself holds the chosen amount, and `choose` clamps into the range the
+    * select was built from, so confirm reads the control and submits.
     */
   private def renderAmount(decision: WalkerDecisionState,
       query: DecisionQueryState, draft: WalkerAmountDraft,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
+      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     // The roll first, then what it came to, then the question about it: the
     // sacrifice question is only answerable by reading the attack.
     WalkerPanelSupport.rollFeedback(decision, panel)
@@ -76,13 +73,11 @@ private[frontend] object WalkerSelectionPanels:
     }
     select.value = draft.amount.toString
     select.disabled = !canControl
-    select.onchange = _ => select.value.toIntOption.foreach(value =>
-      ui.currentWalkerSelection = Some(draft.choose(value)))
     panel.appendChild(select)
     val confirm = button(WalkerPanelSupport.partitionConfirmLabel(query),
       "walker-amount-confirm")
     confirm.disabled = !canControl || !draft.canConfirm
-    confirm.onclick = _ => ui.currentWalkerSelection.collect {
-      case latest: WalkerAmountDraft => latest
-    }.flatMap(_.command).foreach(ui.submitCommand)
+    confirm.onclick = _ => select.value.toIntOption
+      .flatMap(value => draft.choose(value).command)
+      .foreach(controls.submitCommand)
     panel.appendChild(confirm)

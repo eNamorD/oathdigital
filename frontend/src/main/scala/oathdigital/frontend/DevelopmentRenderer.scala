@@ -4,8 +4,8 @@ import org.scalajs.dom
 import ServerUiSupport._
 
 private[frontend] object DevelopmentRenderer:
- def controls(ui: ServerUiView): dom.Element =
-   import ui._
+ def controls(session: SessionControls): dom.Element =
+   import session._
    val bar = element("div", "debug-toolbar")
    bar.appendChild(text(
      "span",
@@ -29,7 +29,7 @@ private[frontend] object DevelopmentRenderer:
    val load = button("Load existing game", "load-game")
    load.onclick = _ => loadSession(input.value, currentPlayerId)
    bar.appendChild(load)
-   sessionCoordinator.connectionState match
+   connectionState match
      case ServerConnectionState.Disconnected(_) =>
        val retry = button("Reconnect", "reconnectSession")
        retry.setAttribute(

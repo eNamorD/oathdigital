@@ -4,8 +4,8 @@ import org.scalajs.dom
 import ServerUiSupport._
 
 private[frontend] object WorldBoardRenderer:
- def players(value: GameProjection, ui: ServerUiView): dom.Element =
-   playerBoards(value, ui)
+ def players(value: GameProjection, playerId: String): dom.Element =
+   playerBoards(value, playerId)
 
  /** A resource as its glyph and its count, with the sentence the words used
    * to carry kept as the accessible name.
@@ -28,13 +28,13 @@ private[frontend] object WorldBoardRenderer:
    viewer.map(id => players.indexWhere(_.playerId == id)).filter(_ > 0)
      .fold(players)(at => players.drop(at) ++ players.take(at))
 
- def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element =
+ def playerBoards(value: GameProjection, playerId: String): dom.Element =
    val panel = element("section", "panel player-boards")
    // The seat the client holds, not the projection's viewer: a trusted
    // session adopts its seat from that viewer before it renders and refuses
    // to display a projection that disagrees with it (`ServerModeUi.store`),
    // so this is the one answer that is right in both modes.
-   seatOrder(value.players, Some(ui.currentPlayerId).filter(_.nonEmpty))
+   seatOrder(value.players, Some(playerId).filter(_.nonEmpty))
      .foreach { player =>
      val section = element("section", "player-board")
      section.setAttribute("data-player-id", player.playerId)
@@ -133,15 +133,16 @@ private[frontend] object WorldBoardRenderer:
    * the start, as the legacy first-game event machine's place-pawn
    * board-target command did before Task 6 folded Setup onto the generic
    * walker. A surface that asks for confirmation drafts the pick
-   * (`ui.currentWalkerBoard`) for the pane's Confirm button instead of
+   * (`drafts.board`) for the pane's Confirm button instead of
    * submitting it.
    */
  def world(
      value: GameProjection,
      board: Option[ParkedDecision.Surface.Board],
-     ui: ServerUiView
+     canControl: Boolean,
+     drafts: SessionDrafts,
+     controls: TableControls
  ): dom.Element =
-   import ui._
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
    panel.appendChild(text("h2", "", "The World"))
@@ -162,12 +163,12 @@ private[frontend] object WorldBoardRenderer:
      val sites = element("div", "sites")
      region.sites.foreach { site =>
        val siteTarget = BoardTargetRef.Site(site.siteId)
-       val candidate = currentBoardSelection.flatMap(
+       val candidate = drafts.boardTargets.flatMap(
          _.activeAction.flatMap(_.candidates.find(_.target == siteTarget)))
        val siteOption = board.flatMap(_.query.options.find(option =>
          option.kind == "site" && option.id == site.siteId))
-       val isSelected = currentBoardSelection.exists(_.selected(siteTarget)) ||
-         siteOption.exists(option => currentWalkerBoard.exists(_.option == option))
+       val isSelected = drafts.boardTargets.exists(_.selected(siteTarget)) ||
+         siteOption.exists(option => drafts.board.exists(_.option == option))
        val control = element("article", siteTargetClasses(
          candidate.nonEmpty || siteOption.nonEmpty, isSelected))
        control.setAttribute("aria-label", site.label)
@@ -175,18 +176,18 @@ private[frontend] object WorldBoardRenderer:
        if candidate.nonEmpty || siteOption.nonEmpty then
          control.setAttribute("aria-pressed", isSelected.toString)
        candidate.foreach { _ =>
-         pickable(control, () => currentBoardSelection.foreach(state =>
-           handleSelection(state.choose(siteTarget))))
+         pickable(control, () => drafts.boardTargets.foreach(state =>
+           controls.handleSelection(state.choose(siteTarget))))
        }
        siteOption.foreach { option =>
          pickable(control, () => if canControl then board.foreach { surface =>
            if surface.confirm then
-             currentWalkerBoard = WalkerBoardDraft.toggle(currentWalkerBoard,
-               BoardSelectionContext(currentGameId, currentPlayerId,
-                 value.nextSequence), surface.decision.decisionId,
-               surface.query, option)
-             rerender()
-           else submitCommand(WalkerPanelSupport.resolveChooseOneCommand(
+             // No context means no bound session (a seat change's interim
+             // frame); a pick then stages nothing, as the spec rules.
+             drafts.context.foreach(context => controls.stage(Draft.Board(
+               WalkerBoardDraft.toggle(drafts.board, context,
+                 surface.decision.decisionId, surface.query, option))))
+           else controls.submitCommand(WalkerPanelSupport.resolveChooseOneCommand(
              surface.decision, option))
          })
        }
@@ -213,7 +214,7 @@ private[frontend] object WorldBoardRenderer:
    }
    panel.appendChild(regions)
    panel.appendChild(favorBanks(value))
-   panel.appendChild(sharedBank(value, ui))
+   panel.appendChild(sharedBank(value))
    panel
 
  private[frontend] final case class RoundSegment(path: String, labelX: Double,
@@ -294,7 +295,7 @@ private[frontend] object WorldBoardRenderer:
    }
    banks
 
- private def sharedBank(value: GameProjection, ui: ServerUiView): dom.Element =
+ private def sharedBank(value: GameProjection): dom.Element =
    val section = element("section", "shared-bank")
    section.appendChild(text("h3", "", "Shared Bank"))
    value.oathkeeper.foreach(oath =>

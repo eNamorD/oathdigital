@@ -14,11 +14,12 @@ private[frontend] object NegotiationDealPanel:
   private final case class DisclosureOffer(kind: String, card: CardDetails,
       siteId: Option[String])
 
-  def render(surface: ParkedDecision.Surface.Negotiate, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
+  def render(surface: ParkedDecision.Surface.Negotiate, playerId: String,
+      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     summary(surface.deal, panel)
     surface.editor.foreach { case (decisionId, editing) =>
-      editor(decisionId, surface.deal, editing, canControl, panel, ui)
+      editor(decisionId, surface.deal, editing, playerId, canControl, panel,
+        controls)
     }
 
   private def summary(deal: NegotiationDealState, panel: dom.Element): Unit =
@@ -62,9 +63,8 @@ private[frontend] object NegotiationDealPanel:
     row
 
   private def editor(decisionId: String, deal: NegotiationDealState,
-      editing: NegotiationEditingState, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
-    val me = ui.currentPlayerId
+      editing: NegotiationEditingState, me: String, canControl: Boolean,
+      panel: dom.Element, controls: TableControls): Unit =
     val favors = scala.collection.mutable.ArrayBuffer.empty[(String, dom.html.Input)]
     val relics = scala.collection.mutable.ArrayBuffer.empty[
       (String, String, dom.html.Input)]
@@ -117,17 +117,17 @@ private[frontend] object NegotiationDealPanel:
         Option.when(offer.kind != "site-relic")(me), offer.siteId,
         Option.when(offer.kind == "adviser")(offer.card.cardKind),
         offer.card.cardId) }.toVector)
-      ui.submitCommand(GameCommand.ResolveWalker(decisionId,
+      controls.submitCommand(GameCommand.ResolveWalker(decisionId,
         DecisionAnswerWire.ProposeTermsWire(protocolNegotiationTerms(terms))))
     }
     panel.appendChild(save)
     val accept = button("Accept Current Deal", "negotiation-accept")
     accept.disabled = !canControl || !editing.canAccept
-    accept.onclick = _ => ui.submitCommand(GameCommand.ResolveWalker(
+    accept.onclick = _ => controls.submitCommand(GameCommand.ResolveWalker(
       decisionId, DecisionAnswerWire.AcceptDealWire))
     panel.appendChild(accept)
     val decline = button("End/Decline", "negotiation-decline")
     decline.disabled = !canControl
-    decline.onclick = _ => ui.submitCommand(GameCommand.ResolveWalker(
+    decline.onclick = _ => controls.submitCommand(GameCommand.ResolveWalker(
       decisionId, DecisionAnswerWire.DeclineDealWire))
     panel.appendChild(decline)
