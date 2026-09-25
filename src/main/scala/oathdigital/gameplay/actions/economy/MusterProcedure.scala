@@ -9,7 +9,7 @@ import oathdigital.model._
   * Supply, and gain a warband for each matching adviser plus one. Takes no
   * start selection; the card is the `muster.source` decision.
   */
-object MusterProcedure {
+object MusterProcedure:
   val decisionId: String = "muster.source"
 
   /** Every decision a Muster or a power inside it asks starts with this. */
@@ -38,4 +38,3 @@ object MusterProcedure {
     build(catalog, state, actor)
       .flatMap(WalkerSimulation.preview(_, state, powers))
       .getOrElse(Vector.empty)
-}

@@ -11,7 +11,7 @@ import oathdigital.model.OathState.Ready
   * to hold as an adviser. Denizens with an Economy power are excluded so a
   * power cannot change the arithmetic under test.
   */
-object EconomyFixture {
+object EconomyFixture:
   private val economic = Set("73", "76", "40", "42", "176", "177", "193",
     "196", "81", "144", "6", "119", "120", "199", "102", "224",
     "229", "231", "238", "241", "248")
@@ -28,7 +28,7 @@ object EconomyFixture {
   def act(tokens: Tokens = Tokens.empty, favor: Int = 4,
       secrets: Int = 2, supply: Int = 7,
       advisers: Vector[AdviserState] = Vector.empty,
-      bank: Int = 5, boardWarbands: Int = 3): ReadyGame = {
+      bank: Int = 5, boardWarbands: Int = 3): ReadyGame =
     val Ready(initial) = execute()._1: @unchecked
     val activeId = initial.game.current.turn.activePlayer
     val active = initial.game.current.players.find(_.player == activeId).get
@@ -45,30 +45,27 @@ object EconomyFixture {
           initial.game.current.commonCards.worldDeck.filterNot(inserted)),
         map = initial.game.current.map.copy(sites =
           initial.game.current.map.sites.updated(siteId, site)),
-        players = initial.game.current.players.map(p => if (p.player != activeId) p
+        players = initial.game.current.players.map(p => if p.player != activeId then p
           else p.copy(board = p.board.copy(favor = favor,
             faceUpSecrets = secrets, supply = SupplyTrack(supply),
             warbands = boardWarbands), advisers = advisers)))))
-  }
 
   def player(ready: ReadyGame): PlayerState = ready.game.current.players.find(
     _.player == ready.game.current.turn.activePlayer).get
 
   /** The actor's site holds only the Hallowed Spring edifice, on `side`. */
-  def spring(ready: ReadyGame, side: EdificeSide): ReadyGame = {
+  def spring(ready: ReadyGame, side: EdificeSide): ReadyGame =
     val actor = player(ready)
     val siteId = actor.pawnSite.get
-    val withoutSpring = ready.game.current.map.sites.map {
+    val withoutSpring = ready.game.current.map.sites.map:
       case (id, site) => id -> site.copy(
         denizens = site.denizens.filterNot(_.id == springId))
-    }
     ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites = withoutSpring.updated(
         siteId, ready.game.current.map.sites(siteId).copy(denizens = Vector(
           EdificeState(springId, side, Tokens.empty))))),
       commonCards = ready.game.current.commonCards.copy(edificeDeck =
         ready.game.current.commonCards.edificeDeck.filterNot(_ == springId))))
-  }
 
   def matchingAdviser: AdviserState =
     DenizenState(matchingId, Orientation.FaceUp, Tokens.empty)
@@ -77,7 +74,7 @@ object EconomyFixture {
     * exactly what Golem Legions will do; only the acceptance rule stops it
     * today.
     */
-  final case class AddAdviserSource(id: PowerId) extends ContributingPower {
+  final case class AddAdviserSource(id: PowerId) extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.Banner("test")
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(PowerWindow.MusterSourceSelection -> Vector(Transform((_, operations) =>
@@ -91,13 +88,10 @@ object EconomyFixture {
           }
           case other => other
         })))
-  }
 
   /** Removes the payment from a Muster's cost window, keeping the Supply. */
-  final case class FreePayment(id: PowerId) extends ContributingPower {
+  final case class FreePayment(id: PowerId) extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.Banner("test")
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(PowerWindow.MusterCost -> Vector(Transform((_, operations) =>
         operations.filterNot(_.isInstanceOf[PayCost]))))
-  }
-}

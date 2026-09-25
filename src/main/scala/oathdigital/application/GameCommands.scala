@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.model._
 
 sealed trait GameCommand extends Product with Serializable
-object GameCommand {
+object GameCommand:
   final case class WithModifiers(command: GameCommand,
       ordered: Vector[OrderedRuleInvocation]) extends GameCommand
   final case class Begin(chronicle: Chronicle, orders: SetupOrders)
@@ -32,7 +32,6 @@ object GameCommand {
   final case class FinishRest(playerId: PlayerId) extends GameCommand
   final case class UsePower(playerId: PlayerId, power: PowerId,
       source: DecisionOptionRef) extends GameCommand
-}
 
 /** Generic action-start data. Action-specific starts may widen this family
   * when another walker procedure needs more than its actor.

@@ -16,7 +16,7 @@ import oathdigital.model._
   * the answer when it runs and pays only when the suits match.
   */
 final case class CupOfPlenty private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = CupOfPlenty.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
 
@@ -30,7 +30,7 @@ final case class CupOfPlenty private (cardId: RelicId,
 
   private def unlessFree(actor: PlayerId, pay: SpendSupply): Operation =
     BuildOps((ready, pending) => Right(
-      if (differs(ready, actor, pending)) Vector.empty
+      if differs(ready, actor, pending) then Vector.empty
       else Vector[CoreOperation](pay)))
 
   /** Whether the card traded with matches none of the faceup advisers. The suit
@@ -39,20 +39,18 @@ final case class CupOfPlenty private (cardId: RelicId,
     * not yet hold.
     */
   private def differs(ready: ReadyGame, actor: PlayerId,
-      pending: PendingTree): Boolean = (for {
+      pending: PendingTree): Boolean = (for
     ref <- PowerAnswers.one(pending, TradeProcedure.decisionId)
     suit <- ref match {
       case DecisionOptionRef.Denizen(id) => catalog.suitOf(id)
       case DecisionOptionRef.Edifice(id) => catalog.suitOf(id)
       case _ => None
     }
-  } yield MusterSource.matching(catalog, ready, actor, suit) == 0)
+  yield MusterSource.matching(catalog, ready, actor, suit) == 0)
     .getOrElse(false)
-}
 
-object CupOfPlenty {
+object CupOfPlenty:
   val id: PowerId = PowerId("relic.cup-of-plenty")
 
   def forCatalog(catalog: ExecutableCatalog): Option[CupOfPlenty] =
     CatalogCards.relic(catalog, id).map(new CupOfPlenty(_, catalog))
-}

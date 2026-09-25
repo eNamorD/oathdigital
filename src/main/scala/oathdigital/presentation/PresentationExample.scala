@@ -4,7 +4,7 @@ package oathdigital.presentation
  * Compile-checked usage example. A UI adapter can map these instructions to
  * HTML, canvas, native widgets, or plain text without changing the game engine.
  */
-object PresentationExample {
+object PresentationExample:
   val site: SiteView = SiteView(
     id = ViewId("site:cradle"),
     label = AccessibleLabel("The Cradle"),
@@ -34,4 +34,3 @@ object PresentationExample {
     VisualResolver.resolve(pawn, ImageLoadResult.NotRequested)
   val failedImage: VisualInstruction =
     VisualResolver.resolve(site, ImageLoadResult.Failed(ImageRef("theme/site/cradle")))
-}

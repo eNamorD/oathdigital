@@ -17,39 +17,36 @@ import oathdigital.model._
   * in either order. It replaces the count of Visions drawn along with the cards,
   * because a longer draw may reach a Vision the printed one did not.
   */
-private[search] object DrawExtension {
+private[search] object DrawExtension:
 
   def extend(operations: Vector[Operation], more: Int): Vector[Operation] =
-    operations.map {
+    operations.map:
       case node: BuildOps if node.window.contains(PowerWindow.SearchBeforeDraw) =>
         node.copy(build = (ready, pending) =>
           node.build(ready, pending).flatMap(extended(ready, more)))
       case other => other
-    }
 
   private def extended(ready: ReadyGame, more: Int)(
       operations: Vector[CoreOperation])
       : Either[OathViolation, Vector[CoreOperation]] =
-    operations.collectFirst { case draw: Draw => draw } match {
+    operations.collectFirst { case draw: Draw => draw } match
       case None => Right(operations)
-      case Some(draw) => for {
-        source <- sourceOf(draw.source)
-        origin <- ready.game.current.players.find(_.player == draw.player)
-          .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
-          .toRight(OathViolation.PawnSiteMissing(draw.player))
-        cards <- SearchRules.draw(ready, source, origin,
-          extra = draw.cards.size + more - SearchRules.DrawSize)
-      } yield Vector[CoreOperation](draw.copy(cards = cards)) ++
-        Option.when(source == SearchSource.WorldDeck &&
-          cards.exists(_.isInstanceOf[VisionId]))(AdvanceVisionsDrawn)
-    }
+      case Some(draw) =>
+        for
+          source <- sourceOf(draw.source)
+          origin <- ready.game.current.players.find(_.player == draw.player)
+            .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
+            .toRight(OathViolation.PawnSiteMissing(draw.player))
+          cards <- SearchRules.draw(ready, source, origin,
+            extra = draw.cards.size + more - SearchRules.DrawSize)
+        yield Vector[CoreOperation](draw.copy(cards = cards)) ++
+          Option.when(source == SearchSource.WorldDeck &&
+            cards.exists(_.isInstanceOf[VisionId]))(AdvanceVisionsDrawn)
 
   private def sourceOf(location: Location)
-      : Either[OathViolation, SearchSource] = location match {
+      : Either[OathViolation, SearchSource] = location match
     case Location.Deck(CardDeck.World) => Right(SearchSource.WorldDeck)
     case Location.RegionalDiscard(region) =>
       Right(SearchSource.RegionalDiscard(region))
     case other => Left(OathViolation.InvalidEventOrder(
       s"a Search draws from a world deck or a regional discard, not $other"))
-  }
-}

@@ -6,13 +6,12 @@ import oathdigital.protocol.projection._
 private[application] final case class ScopedProjectionContext(
     ready: ReadyGame,
     viewer: Option[PlayerId]
-) {
+):
   val current = ready.game.current
   val active: PlayerState = current.players.find(
     _.player == current.turn.activePlayer).get
   val activeSite: Option[SiteState] = active.pawnSite.flatMap(current.map.sites.get)
   val viewerIsActive: Boolean = viewer.contains(active.player)
-}
 
 private[application] final case class LegalProjection(
     controls: Vector[String],

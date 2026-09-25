@@ -13,7 +13,7 @@ import oathdigital.model._
   * adviser orientations and checks the resulting area after the card play.
   */
 final case class SilverTongue private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends PhasePower with ContributingPower {
+    catalog: ExecutableCatalog) extends PhasePower with ContributingPower:
   import SilverTongue._
 
   def id: PowerId = SilverTongue.id
@@ -24,7 +24,7 @@ final case class SilverTongue private (cardId: DenizenId,
       source: DecisionOptionRef): Boolean = stocked(ready, player).nonEmpty
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
-      : Either[OathViolation, Operation] = {
+      : Either[OathViolation, Operation] =
     val choice = choiceDecisionId(ready, player)
     Right(Branch((state, _) => stocked(state, player) match {
       case Vector(only) => Vector(take(player, _ => Right(only)))
@@ -38,7 +38,6 @@ final case class SilverTongue private (cardId: DenizenId,
         }.toRight(OathViolation.InvalidEventOrder(
           s"no Silver Tongue bank is recorded for $choice"))))
     }))
-  }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
@@ -62,7 +61,7 @@ final case class SilverTongue private (cardId: DenizenId,
   private def limitGuard(actor: PlayerId): Operation = BuildOps((state, _) => {
     val count = state.game.current.players.find(
       _.player == actor).fold(0)(_.advisers.size)
-    if (limitFor(state, actor).forall(count <= _)) Right(Vector.empty)
+    if limitFor(state, actor).forall(count <= _) then Right(Vector.empty)
     else Left(OathViolation.InvalidEventOrder(
       s"${actor.value} holds Silver Tongue and can have only two advisers"))
   })
@@ -76,7 +75,7 @@ final case class SilverTongue private (cardId: DenizenId,
   /** Suits of faceup denizens and edifices at the player's pawn site whose
     * bank holds favor, in suit order.
     */
-  private def stocked(ready: ReadyGame, player: PlayerId): Vector[Suit] = {
+  private def stocked(ready: ReadyGame, player: PlayerId): Vector[Suit] =
     val current = ready.game.current
     val cards = current.players.find(_.player == player).flatMap(_.pawnSite)
       .flatMap(current.map.sites.get).toVector.flatMap(_.denizens.collect {
@@ -85,16 +84,14 @@ final case class SilverTongue private (cardId: DenizenId,
       })
     val suits = cards.flatMap(catalog.suitOf(_)).toSet
     Suit.all.filter(suit => suits(suit) && ready.banks.favor.getOrElse(suit, 0) > 0)
-  }
 
   private def take(player: PlayerId,
       suit: PendingTree => Either[OathViolation, Suit]): Operation =
     BuildOps((_, pending) => suit(pending).map(bank => Vector(Move(
       Piece.Favor(1), PositionedLocation(Location.FavorBank(bank)),
       PositionedLocation(Location.PlayArea(player))))))
-}
 
-object SilverTongue {
+object SilverTongue:
   val id: PowerId = PowerId("denizen.silver-tongue")
   /** How many advisers the holder may have, in either orientation. */
   val HolderLimit: Int = 2
@@ -104,5 +101,3 @@ object SilverTongue {
 
   def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =
     s"silver-tongue-${ready.game.current.tracks.round}-${player.value}"
-
-}

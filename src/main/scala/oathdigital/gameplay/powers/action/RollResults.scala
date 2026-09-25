@@ -6,7 +6,7 @@ import oathdigital.model.{PoolKey, ReadyGame}
   * rolled reads as zero, so a `BuildOps` that runs after a skipped roll needs
   * no case of its own.
   */
-private[action] object RollResults {
+private[action] object RollResults:
   /** Shields for a defense roll, swords for an attack roll, scored by
     * `DefenseDieFace.score` and `AttackDieFace.score` when the roll was
     * recorded.
@@ -17,4 +17,3 @@ private[action] object RollResults {
   /** Skull faces rolled in an attack pool. */
   def skulls(ready: ReadyGame, pool: PoolKey): Int =
     ready.game.current.rollOutcomes.get(pool).fold(0)(_.skulls)
-}

@@ -42,12 +42,11 @@ val BoardTargetAction = protocol.projection.BoardTargetActionProjection
 type CardResolution = protocol.projection.CardResolutionProjection
 val CardResolution = protocol.projection.CardResolutionProjection
 type MinorAdviserPlacement = protocol.projection.CardResolutionProjection
-object MinorAdviserPlacement {
+object MinorAdviserPlacement:
   def apply(kind: String,
       replacement: Option[CardDetails] = None): MinorAdviserPlacement =
     protocol.projection.CardResolutionProjection(kind, None,
       replacement.nonEmpty, replacement.toVector)
-}
 type PendingCardDecision = protocol.projection.PendingCardDecisionProjection
 val PendingCardDecision = protocol.projection.PendingCardDecisionProjection
 type DecisionQueryState = protocol.projection.DecisionQueryProjection

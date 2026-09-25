@@ -38,7 +38,7 @@ import oathdigital.model._
   * kit adds the payment to them. Its resolution is read from the catalog
   * (`persistent: false` is selected).
   */
-trait SelectedModifier extends ContributingPower {
+trait SelectedModifier extends ContributingPower:
   def catalog: ExecutableCatalog
   /** The card the power is printed on. */
   def cardId: CardId
@@ -53,27 +53,25 @@ trait SelectedModifier extends ContributingPower {
   final override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
-  final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] = {
+  final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] =
     val payments: Map[PowerWindow, Vector[Contribution]] =
-      if (cost == Cost.free) Map.empty
+      if cost == Cost.free then Map.empty
       else actions.map(action => SelectedModifier.eligibility(action) ->
         Vector[Contribution](Transform((ctx, operations) =>
           payment(ctx.activePlayer) +: operations))).toMap
     (payments.keySet ++ effects.keySet).map(window => window ->
       (payments.getOrElse(window, Vector.empty) ++
         effects.getOrElse(window, Vector.empty))).toMap
-  }
 
   /** Whether the power applies at the node it is hooked on. */
   def appliesAt(ctx: PowerCtx): Boolean = true
 
   final override def applicable(ctx: PowerCtx): Boolean =
-    SelectedModifier.selectionAction(ctx.window) match {
+    SelectedModifier.selectionAction(ctx.window) match
       case Some(action) => actions(action) &&
         selectable(ctx.state, ctx.activePlayer)
       case None => SelectedModifier.isEligibility(ctx.window) ||
         appliesAt(ctx)
-    }
 
   /** The player may use the card, and can pay for it. */
   def selectable(ready: ReadyGame, actor: PlayerId): Boolean =
@@ -82,14 +80,13 @@ trait SelectedModifier extends ContributingPower {
 
   final override def selectionPayments(ready: ReadyGame, actor: PlayerId)
       : Vector[CoreOperation] =
-    if (cost == Cost.free) Vector.empty else Vector(payment(actor))
+    if cost == Cost.free then Vector.empty else Vector(payment(actor))
 
   /** The payment, required, placed onto the card as `PayCost` places it. */
   protected final def payment(actor: PlayerId): CoreOperation =
     Costs.onCard(actor, cardId, cost, catalog)
-}
 
-object SelectedModifier {
+object SelectedModifier:
   private val selection: Map[PowerWindow, MajorActionType] = Map(
     PowerWindow.SearchModifierSelection -> MajorActionType.Search,
     PowerWindow.TravelModifierSelection -> MajorActionType.Travel,
@@ -122,4 +119,3 @@ object SelectedModifier {
 
   def isEligibility(window: PowerWindow): Boolean =
     eligibilityWindows.valuesIterator.contains(window)
-}

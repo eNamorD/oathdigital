@@ -8,7 +8,7 @@ import oathdigital.model.{OathContinue, OathTransition, OathViolation}
 /** Round end after the last player's Rest, moved unchanged from
   * `Rest.finishRound`.
   */
-object TurnBoundary {
+object TurnBoundary:
   def finishRound(catalog: ExecutableCatalog, transition: OathTransition,
       randomPort: WarExhaustionRandomPort)
       : Either[OathViolation, OathTransition] =
@@ -27,4 +27,3 @@ object TurnBoundary {
           }
         case (failure @ Left(_), _) => failure
       })
-}

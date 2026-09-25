@@ -6,12 +6,11 @@ import oathdigital.model.PowerResolution._
 import oathdigital.model.PowerWindow._
 import oathdigital.model.{MajorActionType, PlayerId, PowerId, PowerResolution, PowerWindow, RuleSourceRef, SiteId}
 
-private object PowerResolverSuiteFixtures {
+private object PowerResolverSuiteFixtures:
   final case class RecoverFacts(actor: PlayerId, emptySlot: Boolean)
       extends PowerFacts
-}
 
-class PowerResolverSuite extends munit.FunSuite {
+class PowerResolverSuite extends munit.FunSuite:
   import PowerResolverSuiteFixtures._
 
   private val sourceA = RuleSourceRef.Site(SiteId("a"))
@@ -26,45 +25,40 @@ class PowerResolverSuite extends munit.FunSuite {
   private val never: PowerContext => PowerInspection = _ =>
     PowerInspection(applicable = false)
   private val recover: PowerContext => PowerInspection = context =>
-    context.facts match {
+    context.facts match
       case facts: RecoverFacts => PowerInspection(facts.emptySlot,
         eligiblePlayer = Some(facts.actor), decisionPlayer = Some(facts.actor))
       case _ => PowerInspection(applicable = false)
-    }
 
   private def power(id: String, windows: Vector[PowerWindow],
       inspect: PowerContext => PowerInspection = always,
       implemented: Boolean = true,
       resolution: PowerResolution = PlayerSelected,
-      modifier: Option[MajorActionType] = None): Power = {
+      modifier: Option[MajorActionType] = None): Power =
     val inspector = PowerInspector(inspect)
     TestPower(PowerId(id), modifier, windows.map(window => resolution match {
       case Automatic => PowerHandlers.automatic(window, implemented)(inspector)
       case PlayerSelected => PowerHandlers.selected(window, implemented)(inspector)
     }))
-  }
 
-  test("major action vocabulary contains only selectable major actions") {
+  test("major action vocabulary contains only selectable major actions"):
     assertEquals(MajorActionType.all.map(_.key), Vector("search", "travel",
       "campaign", "muster", "trade", "forge", "recover", "challenge"))
-  }
 
-  test("PowerId enforces the catalog stable identity vocabulary exactly") {
+  test("PowerId enforces the catalog stable identity vocabulary exactly"):
     assertEquals(PowerId("denizen.catacombs").value, "denizen.catacombs")
     Vector("", "catacombs", " denizen.catacombs", "denizen.catacombs ",
       "Denizen.catacombs", "denizen.catacombs_clause", "denizen..catacombs")
       .foreach(value => intercept[IllegalArgumentException](PowerId(value)))
-  }
 
-  test("windows expose typed major-action associations independent of keys") {
+  test("windows expose typed major-action associations independent of keys"):
     assertEquals(SearchModifierSelection.associatedMajorAction, Some(Search))
     assertEquals(RecoverEligibility.associatedMajorAction, Some(Recover))
     assertEquals(ChallengeActionEligibility.associatedMajorAction, Some(Challenge))
     assertEquals(RestStart.associatedMajorAction, None)
     assertEquals(NegotiationOffer.associatedMajorAction, None)
-  }
 
-  test("powers require non-empty unique windows and typed modifier consistency") {
+  test("powers require non-empty unique windows and typed modifier consistency"):
     intercept[IllegalArgumentException](PowerRegistry(power("test.empty", Vector.empty)))
     intercept[IllegalArgumentException](PowerRegistry(power("test.duplicate",
       Vector(RecoverEligibility, RecoverEligibility))))
@@ -75,9 +69,8 @@ class PowerResolverSuite extends munit.FunSuite {
     assertEquals(power("test.right", Vector(RecoverActionEligibility,
       RecoverModifierSelection, RecoverEligibility), modifier = Some(Recover))
       .modifier, Some(Recover))
-  }
 
-  test("resolver routing uses only the precise window and ignores modifier metadata") {
+  test("resolver routing uses only the precise window and ignores modifier metadata"):
     val withModifier = power("test.with-modifier", Vector(RecoverEligibility),
       recover, modifier = Some(Recover))
     val withoutModifier = power("test.without-modifier",
@@ -90,9 +83,8 @@ class PowerResolverSuite extends munit.FunSuite {
     assertEquals(resolver.resolve(RecoverEligibility, sources, facts).toOption.get
       .offered.map(_.powerId), Vector(PowerId("test.with-modifier"),
         PowerId("test.without-modifier")))
-  }
 
-  test("typed facts reach inspectors and inapplicable implemented powers disappear") {
+  test("typed facts reach inspectors and inapplicable implemented powers disappear"):
     val applicable = power("test.applicable", Vector(RecoverEligibility), recover)
     val inapplicable = power("test.inapplicable", Vector(RecoverEligibility), never)
     val resolver = new PowerResolver(PowerRegistry(applicable, inapplicable))
@@ -103,9 +95,8 @@ class PowerResolverSuite extends munit.FunSuite {
     assertEquals(result.offered.map(_.powerId), Vector(PowerId("test.applicable")))
     assertEquals(result.offered.head.inspection.eligiblePlayer, Some(actor))
     assertEquals(result.offered.head.inspection.decisionPlayer, Some(actor))
-  }
 
-  test("fallback diagnoses only applicable unimplemented automatic powers") {
+  test("fallback diagnoses only applicable unimplemented automatic powers"):
     val selected = power("test.selected", Vector(RestStart),
       implemented = false)
     val applicableAutomatic = power("test.applicable-automatic",
@@ -124,9 +115,8 @@ class PowerResolverSuite extends munit.FunSuite {
       Vector(PowerId("test.implemented-automatic")))
     assertEquals(result.diagnostics.map(_.powerId),
       Vector(PowerId("test.applicable-automatic")))
-  }
 
-  test("resolution order is stable source identity then typed power ID") {
+  test("resolution order is stable source identity then typed power ID"):
     val alpha = power("test.alpha", Vector(RecoverEligibility), recover)
     val beta = power("test.beta", Vector(RecoverEligibility), recover)
     val facts = RecoverFacts(PlayerId("p1"), emptySlot = true)
@@ -137,9 +127,8 @@ class PowerResolverSuite extends munit.FunSuite {
     assertEquals(result.offered.map(i => i.source.stableKey -> i.powerId), Vector(
       "site:a" -> PowerId("test.beta"), "site:z" -> PowerId("test.alpha"),
       "site:z" -> PowerId("test.beta")))
-  }
 
-  test("registry rejects duplicates and unknown abilities fail before routing") {
+  test("registry rejects duplicates and unknown abilities fail before routing"):
     val first = power("test.same", Vector(RestStart))
     val second = power("test.same", Vector(RestEnd))
     intercept[IllegalArgumentException](PowerRegistry(first, second))
@@ -147,9 +136,8 @@ class PowerResolverSuite extends munit.FunSuite {
     val sources = Vector(sourceA -> Vector(PowerId("test.unknown")))
     assert(resolver.validateSources(sources).isLeft)
     assert(resolver.resolve(RestStart, sources, NoFacts).isLeft)
-  }
 
-  test("one power may use different resolution modes at distinct windows") {
+  test("one power may use different resolution modes at distinct windows"):
     val inspector = PowerInspector(always)
     val multi = TestPower(PowerId("test.multi"), None, Vector(
       PowerHandlers.automatic(RestStart)(inspector),
@@ -160,13 +148,11 @@ class PowerResolverSuite extends munit.FunSuite {
       .automatic.map(_.powerId), Vector(multi.id))
     assertEquals(resolver.resolve(RestEnd, sources, NoFacts).toOption.get
       .offered.map(_.powerId), Vector(multi.id))
-  }
 
-  test("partial inspectors safely reject unrelated facts and factory modes persist") {
-    val inspector = PowerInspector.partial {
+  test("partial inspectors safely reject unrelated facts and factory modes persist"):
+    val inspector = PowerInspector.partial:
       case PowerContext(_, _, facts: RecoverFacts) =>
         PowerInspection(facts.emptySlot, Some(facts.actor), Some(facts.actor))
-    }
     val automatic = PowerHandlers.automatic(RecoverEligibility)(inspector)
     val selected = PowerHandlers.selected(RecoverModifierSelection,
       implemented = false)(inspector)
@@ -178,5 +164,3 @@ class PowerResolverSuite extends munit.FunSuite {
       NoFacts)), PowerInspection(applicable = false))
     assert(automatic.inspect(PowerContext(RecoverEligibility, sourceA,
       RecoverFacts(PlayerId("p1"), emptySlot = true))).applicable)
-  }
-}

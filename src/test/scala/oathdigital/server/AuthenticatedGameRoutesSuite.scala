@@ -22,8 +22,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.{DenizenId, PlayerId}
 import oathdigital.model.OathState
 
-class AuthenticatedGameRoutesSuite extends munit.FunSuite {
-  test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders") {
+class AuthenticatedGameRoutesSuite extends munit.FunSuite:
+  test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders"):
     given system: ActorSystem[Nothing] = ActorSystem[Nothing](
       Behaviors.empty, "authenticated-negotiation-route-test")
     val blocking = system.dispatchers.lookup(
@@ -62,12 +62,11 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       Some(other.player.value)), 0L)
     val csrfDigest = CsrfTokenDigest.fromBytes(SensitiveTokenDigest.sha256("c" * 43))
       .toOption.get
-    val authenticator = new HttpSessionAuthenticator {
+    val authenticator = new HttpSessionAuthenticator:
       override def authenticate(request: AkkaRequest): Future[Either[AuthenticationFailure, AuthenticatedHttpSession]] = Future.successful(
         request.headers.find(_.name == "X-Test-User").map(header =>
           Right(AuthenticatedHttpSession(AuthenticatedUser(UserId(header.value)),
             csrfDigest))).getOrElse(Left(AuthenticationFailure.MissingCredential)))
-    }
     val gateway = new AuthenticatedGameGateway(new GameApplicationService(catalog,
       repository), new GameProjector(catalog),
       new MembershipAuthorizationService(identities), identities,
@@ -79,7 +78,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val base = s"http://127.0.0.1:${binding.localAddress.getPort}" +
       s"/api/authenticated/first-games/$gameId"
     val client = HttpClient.newHttpClient()
-    try {
+    try
       def sequenceOf(response: java.net.http.HttpResponse[String]): Long =
         ujson.read(response.body())("nextSequence").num.toLong
       var sequence = allEvents.size.toLong
@@ -92,13 +91,12 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
         "action" -> "negotiation", "modifiers" -> ujson.Arr(),
         "startArgs" -> ujson.Arr()))
       assertEquals(begin.statusCode(), 200, begin.body()); sequence = sequenceOf(begin)
-      if (ujson.read(begin.body())("walkerDecision")("decisionId").str ==
-          "negotiation.negotiators") {
+      if ujson.read(begin.body())("walkerDecision")("decisionId").str ==
+          "negotiation.negotiators" then
         val chosen = send(actorUser, answer("negotiation.negotiators",
           ujson.Obj("kind" -> "choose-many", "options" -> ujson.Arr(ujson.Obj(
             "optionKind" -> "player", "optionId" -> other.player.value)))))
         assertEquals(chosen.statusCode(), 200, chosen.body()); sequence = sequenceOf(chosen)
-      }
       val outsiderAttempt = send(outsider, answer("negotiation.deal",
         ujson.Obj("kind" -> "decline-deal")))
       assertEquals(outsiderAttempt.statusCode(), 403)
@@ -115,14 +113,12 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       assertEquals(decline.statusCode(), 200, decline.body())
       assert(ujson.read(decline.body())("walkerDecision").isNull)
     
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate(); Await.result(system.whenTerminated, 10.seconds)
       database.close()
-    }
-  }
 
-  test("authenticated routes derive projection scope and command actor") {
+  test("authenticated routes derive projection scope and command actor"):
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-route-test")
     val blocking = system.dispatchers.lookup(
@@ -159,14 +155,13 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val csrfDigest = CsrfTokenDigest.fromBytes(
       SensitiveTokenDigest.sha256(csrfToken)
     ).toOption.get
-    val authenticator = new HttpSessionAuthenticator {
+    val authenticator = new HttpSessionAuthenticator:
       override def authenticate(request: AkkaRequest) =
         Future.successful(request.headers.find(_.name == "X-Test-User") match {
           case Some(header) => Right(AuthenticatedHttpSession(
             AuthenticatedUser(UserId(header.value)), csrfDigest))
           case None => Left(AuthenticationFailure.MissingCredential)
         })
-    }
     val gateway = new AuthenticatedGameGateway(
       service,
       new GameProjector(catalog),
@@ -189,7 +184,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       "/api/authenticated/first-games/auth-game"
     val client = HttpClient.newHttpClient()
 
-    try {
+    try
       assertEquals(get(client, base, None).statusCode(), 401)
       assertEquals(get(client, base, Some(outsider.value)).statusCode(), 403)
       assertEquals(get(client, base + "?playerId=p2", Some(p2User.value))
@@ -282,26 +277,22 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
         "internal-error"
       )
       assert(!storage.body().toLowerCase.contains("closed"))
-    } finally {
+    finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
       database.close()
-    }
-  }
 
-  private def assertNoHiddenPlan(body: String): Unit = {
+  private def assertNoHiddenPlan(body: String): Unit =
     assert(!ujson.read(body).obj.contains("viewerPlayerId"))
     assert(!body.contains("worldDeckOrder"))
     assert(!body.contains("relicOrder"))
     assert(!body.contains("denizenOrder"))
-  }
 
-  private def get(client: HttpClient, url: String, user: Option[String]) = {
+  private def get(client: HttpClient, url: String, user: Option[String]) =
     val builder = HttpRequest.newBuilder(URI.create(url)).GET()
     user.foreach(value => builder.header("X-Test-User", value))
     client.send(builder.build(), JavaResponse.BodyHandlers.ofString())
-  }
 
   private def resolveWalkerBody(sequence: Long, decisionId: String,
       optionKind: String, optionId: String): String =
@@ -332,4 +323,3 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       .header("Content-Type", "application/json")
       .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
       JavaResponse.BodyHandlers.ofString())
-}

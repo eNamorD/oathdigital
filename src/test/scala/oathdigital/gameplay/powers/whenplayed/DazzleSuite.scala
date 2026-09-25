@@ -7,9 +7,9 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 
-class DazzleSuite extends munit.FunSuite {
+class DazzleSuite extends munit.FunSuite:
 
-  test("Dazzle discards Hearth and Order site cards from the actor region") {
+  test("Dazzle discards Hearth and Order site cards from the actor region"):
     val base = initialReady
     val actor = base.game.current.turn.activePlayer
     val dazzle = catalog.denizens.find(_.powers.exists(
@@ -27,13 +27,13 @@ class DazzleSuite extends munit.FunSuite {
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(id =>
           id == dazzle || targets.contains(id))),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = p.advisers :+ DenizenState(dazzle,
           Orientation.FaceUp, Tokens.empty)) else p),
       map = current.map.copy(sites = current.map.sites.updated(siteId,
         site.copy(denizens = site.denizens ++ targets.zipWithIndex.map {
           case (id, index) => DenizenState(id, Orientation.FaceUp,
-            if (index == 0) Tokens(1, 0) else Tokens.empty)
+            if index == 0 then Tokens(1, 0) else Tokens.empty)
         }))))))
     val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
     val power = Dazzle.forCatalog(catalog).get
@@ -52,9 +52,8 @@ class DazzleSuite extends munit.FunSuite {
     assertEquals(PowerRuntime.ignoredAtSource(catalog, prepared, actor,
       ActionKind.WhenPlayed, RuleSourceRef.Adviser(actor, dazzle)),
       Right(Vector.empty))
-  }
 
-  test("Dazzle skips a rule-immune target and still discards another") {
+  test("Dazzle skips a rule-immune target and still discards another"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -82,7 +81,7 @@ class DazzleSuite extends munit.FunSuite {
         DenizenState(targets(1), Orientation.FaceUp, Tokens.empty),
         EdificeState(hall, EdificeSide.Intact, Tokens.empty)))
     val prepared = base.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = p.advisers :+ DenizenState(dazzle,
           Orientation.FaceUp, Tokens.empty)) else p),
       commonCards = current.commonCards.copy(
@@ -102,9 +101,8 @@ class DazzleSuite extends munit.FunSuite {
       step.ops }.flatten
     assertEquals(ops.collect { case value: Discard.Denizen => value.card },
       Vector(targets.head))
-  }
 
-  test("Dazzle rejects a site denizen absent from the catalog") {
+  test("Dazzle rejects a site denizen absent from the catalog"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -121,9 +119,8 @@ class DazzleSuite extends munit.FunSuite {
     val hook = CardPlayedFaceup(dazzleId, RuleSourceRef.Adviser(actor, dazzleId))
     assert(ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(dazzle))).isLeft)
-  }
 
-  test("Dazzle discards ruined Hearth and Order edifices, not intact ones or other suits") {
+  test("Dazzle discards ruined Hearth and Order edifices, not intact ones or other suits"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -141,7 +138,7 @@ class DazzleSuite extends munit.FunSuite {
       commonCards = c.commonCards.copy(
         worldDeck = c.commonCards.worldDeck.filterNot(_ == dazzle),
         edificeDeck = c.commonCards.edificeDeck.filterNot(placed)),
-      players = c.players.map(p => if (p.player != actor) p else
+      players = c.players.map(p => if p.player != actor then p else
         p.copy(advisers = p.advisers :+ DenizenState(dazzle,
           Orientation.FaceUp, Tokens.empty))),
       map = c.map.copy(sites = c.map.sites.updated(home,
@@ -160,9 +157,8 @@ class DazzleSuite extends munit.FunSuite {
     assert(remaining.contains(intactHearth), "an intact edifice is locked")
     assert(remaining.contains(ruinedBeast), "another suit is not discarded")
     assertEquals(after.commonCards.edificeDeck.lastOption, Some(ruinedHearth))
-  }
 
-  test("Dazzle leaves other suits and other regions alone") {
+  test("Dazzle leaves other suits and other regions alone"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -188,7 +184,7 @@ class DazzleSuite extends munit.FunSuite {
       val cleared = c.copy(
         commonCards = c.commonCards.copy(worldDeck =
           c.commonCards.worldDeck.filterNot(placed)),
-        players = c.players.map(p => if (p.player != actor) p else
+        players = c.players.map(p => if p.player != actor then p else
           p.copy(advisers = p.advisers :+ DenizenState(dazzle,
             Orientation.FaceUp, Tokens.empty))))
       add(add(add(cleared, home, beast), home, near), away, faraway)
@@ -202,5 +198,3 @@ class DazzleSuite extends munit.FunSuite {
     assert(at(home, beast), "a Beast card in the region is not discarded")
     assert(!at(home, near), "a Hearth card in the region is discarded")
     assert(at(away, faraway), "a Hearth card in another region is not discarded")
-  }
-}

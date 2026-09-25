@@ -9,7 +9,7 @@ import oathdigital.model.TestGameFixtures._
   * operation the live pipeline would have refused is refused on replay too,
   * instead of applying with the guard skipped.
   */
-class WalkerReplayGuardSuite extends munit.FunSuite {
+class WalkerReplayGuardSuite extends munit.FunSuite:
   private val held = ready.updateCurrent(current => current.copy(
     commonCards = current.commonCards.copy(
       worldDeck = current.commonCards.worldDeck.filterNot(_ == worldDenizen)),
@@ -24,21 +24,18 @@ class WalkerReplayGuardSuite extends munit.FunSuite {
     DeltaRecorded(DeltaMeaning.OperationApplied("discard")), Vector(operation),
     Vector.empty)
 
-  test("a recorded discard with a stack position replays") {
+  test("a recorded discard with a stack position replays"):
     val replayed = ProcedureWalker.applyRecorded(OathState.Ready(held),
       step(discard(StackPosition.Top)))
     val OathState.Ready(after) = replayed.toOption.get: @unchecked
     assertEquals(after.game.current.commonCards.discard(Region.Cradle),
       Vector(worldDenizen))
     assertEquals(after.game.current.temporaryHands(playerId), Vector.empty)
-  }
 
   test("a recorded discard without a stack position is rejected on replay " +
-      "instead of losing the card") {
+      "instead of losing the card"):
     val replayed = ProcedureWalker.applyRecorded(OathState.Ready(held),
       step(discard(StackPosition.Unspecified)))
     assertEquals(replayed, Left(OathViolation.CoreOperationRejected(
       "invalid-stack-position",
       "stack destination must specify top or bottom")))
-  }
-}

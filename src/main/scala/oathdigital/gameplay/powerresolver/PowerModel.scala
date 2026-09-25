@@ -17,21 +17,19 @@ case object NoFacts extends PowerFacts
 final case class PowerContext(window: PowerWindow, source: RuleSourceRef,
     facts: PowerFacts)
 
-trait PowerHandler extends Serializable {
+trait PowerHandler extends Serializable:
   def window: PowerWindow
   def resolution: PowerResolution
   def inspect(context: PowerContext): PowerInspection
   def implemented: Boolean
-}
 
-trait Power extends Serializable {
+trait Power extends Serializable:
   def id: PowerId
   def modifier: Option[MajorActionType]
   def handlers: Vector[PowerHandler]
-}
 
-object Power {
-  def validate(power: Power): Unit = {
+object Power:
+  def validate(power: Power): Unit =
     require(power.handlers.nonEmpty, s"power ${power.id} must declare a handler")
     val windows = power.handlers.map(_.window)
     require(windows.distinct.size == windows.size,
@@ -39,8 +37,6 @@ object Power {
     power.modifier.foreach { action => require(windows.forall(
       _.associatedMajorAction.contains(action)),
       s"power ${power.id} modifier ${action.key} contradicts its windows") }
-  }
-}
 
 final case class PowerInvocation(source: RuleSourceRef, powerId: PowerId,
     inspection: PowerInspection)
@@ -55,7 +51,6 @@ final case class PowerResolutionResult(
 )
 
 sealed trait PowerResolverError extends Product with Serializable
-object PowerResolverError {
+object PowerResolverError:
   final case class UnknownAbility(source: RuleSourceRef, powerId: PowerId)
       extends PowerResolverError
-}

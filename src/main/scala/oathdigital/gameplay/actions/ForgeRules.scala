@@ -6,19 +6,19 @@ import oathdigital.gameplay._
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.operations.Costs
 
-object ForgeRules {
+object ForgeRules:
   /** The complete pre-release component corpus was audited against CR p.25 / NF
     * p.14 and contains no handler that changes the base Forge procedure. The
     * exact handler vocabulary is pinned: an added/changed handler makes active
     * component powers conservative blockers until explicitly re-audited.
     */
   def validate(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerState,
-      siteId: SiteId): Either[OathViolation, (Vector[SiteDenizenTarget], Tokens)] = {
+      siteId: SiteId): Either[OathViolation, (Vector[SiteDenizenTarget], Tokens)] =
     val game = ready.game
     val definition = catalog.sites.find(_.id == siteId)
     val site = game.current.map.sites.get(siteId)
     PowerRuntime.requireAudited(catalog).flatMap { _ =>
-      for {
+      for
         s <- site.toRight(SiteNotInPlay(siteId))
         ruled <- SiteRule.ruledBy(s.forces, game.current.players, player.player)
           .left.map(x => ForgeUnavailable(s"cannot derive site ruler: $x"))
@@ -40,7 +40,5 @@ object ForgeRules {
         _ <- Costs.plan(ready, player.player,
           Location.OnCard(empty.head.denizenId),
           Cost(favor = cost.favor, secret = cost.secrets))
-      } yield empty -> cost
+      yield empty -> cost
     }
-  }
-}

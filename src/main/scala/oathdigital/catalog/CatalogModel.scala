@@ -4,24 +4,20 @@ import oathdigital.model.{CardId, CatalogRef, PowerId, SiteId, Suit, SupplyRules
   Tokens, VisionId}
 
 opaque type DefinitionId = String
-object DefinitionId {
-  def apply(value: String): DefinitionId = {
+object DefinitionId:
+  def apply(value: String): DefinitionId =
     require(value.trim.nonEmpty, "catalog definition ID must not be blank")
     value
-  }
   def unapply(id: DefinitionId): Some[String] = Some(id)
   extension (id: DefinitionId) def value: String = id
-}
 
-final case class CatalogPower(id: PowerId, persistent: Boolean, rulesText: String) {
+final case class CatalogPower(id: PowerId, persistent: Boolean, rulesText: String):
   require(rulesText.trim.nonEmpty, "power rules text must not be blank")
-}
 
-trait CatalogPoweredDefinition {
+trait CatalogPoweredDefinition:
   def powers: Vector[CatalogPower]
   final def handlers: Vector[String] = powers.map(_.id.value)
   final def rulesText: String = powers.map(_.rulesText).mkString("\n\n")
-}
 
 final case class DenizenDefinition(
     id: DefinitionId,
@@ -92,12 +88,11 @@ final case class ExecutableCatalog(
     setupCards: Vector[SetupCardDefinition] = Vector.empty,
     supplyBoards: Vector[SupplyBoardDefinition] = Vector.empty,
     visions: Vector[VisionDefinition] = Vector.empty
-) {
+):
   /** Suit of a denizen or edifice; other card kinds have none. */
   def suitOf(id: CardId): Option[Suit] =
     denizens.find(_.id.value == id.value).map(_.suit)
       .orElse(edifices.find(_.id.value == id.value).map(_.suit))
-}
 
 /**
  * Compatibility request shape. Runtime catalogs are now loaded atomically,
@@ -110,11 +105,10 @@ final case class CatalogSelection(
     visions: Boolean = false
 )
 
-object CatalogSelection {
+object CatalogSelection:
   val MetadataOnly: CatalogSelection = CatalogSelection()
   val SetupFoundation: CatalogSelection =
     CatalogSelection(setupCards = true, supplyBoards = true)
-}
 
 final case class CatalogLoadRequest(
     selection: CatalogSelection = CatalogSelection.MetadataOnly,
@@ -127,67 +121,56 @@ final case class SetupCardDefinition(step: Int)
 final case class SupplyBoardDefinition(rules: SupplyRules)
 final case class VisionDefinition(id: VisionId)
 
-sealed trait CatalogLoadError extends Product with Serializable {
+sealed trait CatalogLoadError extends Product with Serializable:
   def path: String
   def message: String
-}
 
-object CatalogLoadError {
-  final case class InvalidJson(detail: String) extends CatalogLoadError {
+object CatalogLoadError:
+  final case class InvalidJson(detail: String) extends CatalogLoadError:
     override val path: String = "$"
     override val message: String = detail
-  }
 
   final case class FileReadFailed(pathValue: String, detail: String)
-      extends CatalogLoadError {
+      extends CatalogLoadError:
     override val path: String = pathValue
     override val message: String = detail
-  }
 
-  final case class MissingField(path: String) extends CatalogLoadError {
+  final case class MissingField(path: String) extends CatalogLoadError:
     override val message: String = "required field is missing"
-  }
 
   final case class WrongType(path: String, expected: String, actual: String)
-      extends CatalogLoadError {
+      extends CatalogLoadError:
     override val message: String = s"expected $expected, found $actual"
-  }
 
   final case class InvalidValue(path: String, detail: String)
-      extends CatalogLoadError {
+      extends CatalogLoadError:
     override val message: String = detail
-  }
 
   final case class UnsupportedSchemaVersion(
       path: String,
       expected: String,
       actual: String
-  ) extends CatalogLoadError {
+  ) extends CatalogLoadError:
     override val message: String =
       s"expected schema $expected, found $actual"
-  }
 
   final case class IncompatibleCatalog(
       path: String,
       expected: CatalogRef,
       actual: CatalogRef
-  ) extends CatalogLoadError {
+  ) extends CatalogLoadError:
     override val message: String =
       s"expected ${expected.ruleset}@${expected.version}, " +
         s"found ${actual.ruleset}@${actual.version}"
-  }
 
   final case class DuplicateDefinitionId(path: String, id: DefinitionId)
-      extends CatalogLoadError {
+      extends CatalogLoadError:
     override val message: String = s"duplicate definition ID ${id.value}"
-  }
 
   final case class DuplicatePowerId(
       path: String,
       id: PowerId,
       firstPath: String
-  ) extends CatalogLoadError {
+  ) extends CatalogLoadError:
     override val message: String =
       s"duplicate power ID ${id.value}; first declared at $firstPath"
-  }
-}

@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters._
   * file that attaches the restrictions, or carry the restrictions itself. A new
   * discarding file fails this suite until it is added on purpose.
   */
-class DiscardRestrictionsCoverageSuite extends munit.FunSuite {
+class DiscardRestrictionsCoverageSuite extends munit.FunSuite:
   private val root = Paths.get("src/main/scala/oathdigital")
   private val discards =
     """Discard\.(Denizen|Vision|RuinedEdifice)\(""".r
@@ -30,7 +30,7 @@ class DiscardRestrictionsCoverageSuite extends munit.FunSuite {
     .filter(_.toString.endsWith(".scala")).map(p => root.relativize(p).toString)
     .toVector
 
-  test("every file that discards a card in play attaches DiscardRestrictions") {
+  test("every file that discards a card in play attaches DiscardRestrictions"):
     val building = sources.filter(path => !path.startsWith("model/") &&
       !path.startsWith("serialization/") && discards.findFirstIn(read(path)).nonEmpty)
     assert(building.nonEmpty)
@@ -39,12 +39,9 @@ class DiscardRestrictionsCoverageSuite extends munit.FunSuite {
       !read(attached).contains("DiscardRestrictions")
     }
     assertEquals(unguarded, Vector.empty[String])
-  }
 
-  test("CardPlay's callers that build a play attach them") {
+  test("CardPlay's callers that build a play attach them"):
     assert(read("gameplay/actions/CardPlay.scala")
       .contains("new DiscardRestrictions"))
     assert(read("gameplay/actions/cardplay/CardPlayProcedure.scala")
       .contains("new DiscardRestrictions"))
-  }
-}

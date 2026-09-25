@@ -3,10 +3,10 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.campaign.CampaignBattle
 import oathdigital.model._
 
-class CampaignBattleSuite extends munit.FunSuite {
+class CampaignBattleSuite extends munit.FunSuite:
   import AttackDieFace._
 
-  test("a skull costs a warband and its swords only when the warband can be paid") {
+  test("a skull costs a warband and its swords only when the warband can be paid"):
     assertEquals(CampaignBattle.attackResult(Vector(OneSword, OneSword), 2,
       ignoreSkulls = false), (2, 0))
     assertEquals(CampaignBattle.attackResult(Vector(TwoSwordsSkull, OneSword), 2,
@@ -17,22 +17,17 @@ class CampaignBattleSuite extends munit.FunSuite {
       TwoSwordsSkull), 1, ignoreSkulls = false), (2, 1))
     assertEquals(CampaignBattle.attackResult(Vector(TwoSwordsSkull,
       TwoSwordsSkull), 0, ignoreSkulls = false), (0, 0))
-  }
 
-  test("Outriders ignores every skull and keeps every sword") {
+  test("Outriders ignores every skull and keeps every sword"):
     assertEquals(CampaignBattle.attackResult(Vector(TwoSwordsSkull,
       TwoSwordsSkull), 1, ignoreSkulls = true), (4, 0))
-  }
 
-  test("hollow swords score one per pair") {
+  test("hollow swords score one per pair"):
     assertEquals(CampaignBattle.attackResult(Vector(HollowSword, HollowSword,
       HollowSword), 3, ignoreSkulls = false), (1, 0))
-  }
 
-  test("the sacrifice heading is the prompt alone -- the dice are glyphs") {
+  test("the sacrifice heading is the prompt alone -- the dice are glyphs"):
     assertEquals(CampaignBattle.sacrificeHeading(1),
       "Sacrifice up to 1 warband for one attack each")
     assertEquals(CampaignBattle.sacrificeHeading(2),
       "Sacrifice up to 2 warbands for one attack each")
-  }
-}

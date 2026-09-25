@@ -12,15 +12,13 @@ package oathdigital.model
   * journal tag and the identity half of a `DecisionOptionRef.Deck` on the
   * command wire.
   */
-enum CardDeck(val key: String) {
+enum CardDeck(val key: String):
   case World extends CardDeck("world")
   case Relic extends CardDeck("relic")
   case Edifice extends CardDeck("edifice")
   case Legacy extends CardDeck("legacy")
-}
-object CardDeck {
+object CardDeck:
   val all: Vector[CardDeck] = Vector(World, Relic, Edifice, Legacy)
 
   /** Safe parse for untrusted (wire) input, mirroring `Suit.fromKey`. */
   def fromKey(value: String): Option[CardDeck] = all.find(_.key == value)
-}

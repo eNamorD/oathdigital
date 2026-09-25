@@ -10,7 +10,7 @@ import oathdigital.model._
 /** Drives a When Played power through its `CardPlayed` hook, the way the
   * Dazzle and Conspiracy suites do.
   */
-object WhenPlayedHarness {
+object WhenPlayedHarness:
   def hook(card: DenizenId): CardPlayedFaceup =
     CardPlayedFaceup(card, RuleSourceRef.Adviser(actor, card))
 
@@ -36,4 +36,3 @@ object WhenPlayedHarness {
   def replayed(from: ReadyGame, events: Vector[OathEvent]): ReadyGame =
     OperationPipeline.run(from, recorded(events),
       OperationPolicy.Permissive)(Right(_)).toOption.get.state
-}

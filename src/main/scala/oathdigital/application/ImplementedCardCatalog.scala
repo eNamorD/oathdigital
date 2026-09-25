@@ -12,7 +12,7 @@ import oathdigital.model.{DenizenId, EdificeId, PowerId, RelicId, Suit}
  * stubs declared unimplemented, and it has no entry for a power that only
  * the walker or phase catalogs implement.
  */
-object ImplementedCardCatalog {
+object ImplementedCardCatalog:
   def denizens(catalog: ExecutableCatalog,
       implemented: PowerId => Boolean): Set[DenizenId] =
     catalog.denizens.collect {
@@ -42,4 +42,3 @@ object ImplementedCardCatalog {
   private def fullyImplemented(powers: Vector[CatalogPower],
       implemented: PowerId => Boolean): Boolean =
     powers.forall(power => implemented(power.id))
-}

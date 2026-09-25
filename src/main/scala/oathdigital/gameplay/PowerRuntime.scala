@@ -10,7 +10,7 @@ import oathdigital.model.{IgnoredRuleDiagnostic, ActionKind, OathViolation, Orde
   * command/event protocol. Matching and applicability are owned exclusively by
   * PowerResolver; these methods only translate established public shapes.
   */
-object PowerRuntime {
+object PowerRuntime:
   def requireAudited(catalog: ExecutableCatalog): Either[OathViolation, Unit] =
     ReviewedPowerCatalog.requireAudited(catalog)
 
@@ -33,20 +33,19 @@ object PowerRuntime {
   private def resolve(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, powerWindow: PowerWindow,
       only: Option[RuleSourceRef] = None)
-      : Either[OathViolation, PowerResolutionResult] = for {
+      : Either[OathViolation, PowerResolutionResult] = for
     resolver <- ReviewedPowerCatalog.resolver(catalog)
     sources = ReviewedPowerCatalog.sources(catalog, ready)
       .filter(value => only.forall(_ == value._1))
     result <- resolver.resolve(powerWindow, sources,
-      ReviewedPowerCatalog.facts(catalog, ready, actor)).left.map {
+      ReviewedPowerCatalog.facts(catalog, ready, actor)).left.map:
       case PowerResolverError.UnknownAbility(source, id) =>
         OathViolation.UnsupportedRuleCatalog(
           ReviewedPowerCatalog.AuditedCatalogFingerprint,
           s"unclassified-handler:${source.stableKey}:${id.value}")
-    }
-  } yield result
+  yield result
 
-  private def window(action: ActionKind): PowerWindow = action match {
+  private def window(action: ActionKind): PowerWindow = action match
     case ActionKind.Search => PowerWindow.SearchModifierSelection
     case ActionKind.Travel => PowerWindow.TravelModifierSelection
     case ActionKind.Campaign => PowerWindow.CampaignModifierSelection
@@ -60,13 +59,12 @@ object PowerRuntime {
     case ActionKind.Wake => PowerWindow.WakeBoundary
     case ActionKind.ActionBoundary => PowerWindow.ActionAfterMajorAction
     case ActionKind.Negotiation => PowerWindow.NegotiationOffer
-  }
 
   private def diagnostic(action: ActionKind, value: PowerDiagnostic) =
     IgnoredRuleDiagnostic(value.source, value.powerId.value, action,
       timing(value.window), value.reason)
 
-  private def timing(window: PowerWindow): RuleTiming = window match {
+  private def timing(window: PowerWindow): RuleTiming = window match
     case PowerWindow.RecoverBeforeFirstRoll => RuleTiming.Persistent
     case PowerWindow.CampaignAttackerBattlePlans |
         PowerWindow.CampaignDefenderBattlePlans => RuleTiming.BattlePlan
@@ -76,5 +74,3 @@ object PowerRuntime {
         PowerWindow.WakeBoundary | PowerWindow.ActionAfterMajorAction =>
       RuleTiming.Trigger
     case _ => RuleTiming.Start
-  }
-}

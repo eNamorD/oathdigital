@@ -6,7 +6,7 @@ import oathdigital.model._
 /** Staging shared by the batch-1 power suites. Every method keeps the card
   * inventory whole: a card leaves the place it came from when it is placed.
   */
-object PowerFixture {
+object PowerFixture:
   val base: ReadyGame = initialReady
   val actor: PlayerId = base.game.current.turn.activePlayer
 
@@ -16,7 +16,7 @@ object PowerFixture {
 
   def updateActor(ready: ReadyGame)(f: PlayerState => PlayerState): ReadyGame =
     ready.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == actor) f(p) else p)))
+      if p.player == actor then f(p) else p)))
 
   def withBoard(ready: ReadyGame)(
       f: PlayerBoardState => PlayerBoardState): ReadyGame =
@@ -59,14 +59,14 @@ object PowerFixture {
         map = c.map.copy(sites = c.map.sites.map { case (site, state) =>
           site -> state.copy(relics = state.relics.filterNot(_.id == id)) }))
       cleared.copy(players = cleared.players.map(p =>
-        if (p.player != actor) p
+        if p.player != actor then p
         else p.copy(relics = p.relics :+
           RelicState(id, orientation, Tokens.empty))))
     }
 
   /** An edifice from the edifice deck, placed at `site` on `side`. */
   def withEdifice(ready: ReadyGame, id: EdificeId, side: EdificeSide,
-      site: SiteId): ReadyGame = {
+      site: SiteId): ReadyGame =
     require(ready.game.current.commonCards.edificeDeck.contains(id),
       s"${id.value} is not in the edifice deck")
     ready.updateCurrent(c => c.copy(
@@ -75,19 +75,17 @@ object PowerFixture {
       map = c.map.copy(sites = c.map.sites.updated(site,
         c.map.sites(site).copy(denizens = c.map.sites(site).denizens :+
           EdificeState(id, side, Tokens.empty))))))
-  }
 
   /** Warbands of `kind` still in the bank: the printed supply less every
     * board and site.
     */
-  def warbandBank(ready: ReadyGame, kind: ForceKind): Int = {
+  def warbandBank(ready: ReadyGame, kind: ForceKind): Int =
     val current = ready.game.current
     val boards = current.players.filter(p =>
       PlayerForceKind.of(ready, p).contains(kind)).map(_.board.warbands).sum
     val sites = current.map.sites.values.map(_.forces).collect {
       case SiteForces.Occupied(`kind`, count) => count }.sum
     ready.banks.warbandSupply(kind) - boards - sites
-  }
 
   /** Moves warbands from the bank onto the actor's board until the bank
     * holds `left`.
@@ -95,4 +93,3 @@ object PowerFixture {
   def leaveInBank(ready: ReadyGame, kind: ForceKind, left: Int): ReadyGame =
     withBoard(ready)(board => board.copy(
       warbands = board.warbands + warbandBank(ready, kind) - left))
-}

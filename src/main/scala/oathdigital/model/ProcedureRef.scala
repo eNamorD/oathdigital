@@ -9,10 +9,9 @@ package oathdigital.model
   * alongside it so a decoder can reject a reference read back under the
   * wrong family (Task 4).
   */
-sealed trait ProcedureRef extends Product with Serializable {
+sealed trait ProcedureRef extends Product with Serializable:
   def key: String
   def family: String
-}
 
 /** A procedure a command can name to start. Both members below extend this;
   * a [[TriggeredProcedureRef]] does not, so `StartWalker` -- typed to take a
@@ -30,7 +29,7 @@ sealed trait ActionRef extends StartableRef { final def family = "action" }
   * change is a state write, but they are not actions: no action boundary
   * runs after one, whichever phase it lands in.
   */
-enum PhaseTransitionRef(val key: String) extends StartableRef {
+enum PhaseTransitionRef(val key: String) extends StartableRef:
   final def family: String = "phase-transition"
 
   /** Batch-1 Task 7 moved End Wake here from `ActionRef`: the action
@@ -43,13 +42,12 @@ enum PhaseTransitionRef(val key: String) extends StartableRef {
   case BeginRest extends PhaseTransitionRef("begin-rest")
   /** Cleans up, refreshes Supply and hands the turn over. */
   case FinishRest extends PhaseTransitionRef("finish-rest")
-}
 
 /** A procedure the engine starts on its own. No command can name one --
   * `StartableRef` excludes this family -- and no boundary runs after one.
   * Oathkeeper (Task 7) is the first: the action boundary starts it.
   */
-enum TriggeredProcedureRef(val key: String) extends ProcedureRef {
+enum TriggeredProcedureRef(val key: String) extends ProcedureRef:
   final def family: String = "triggered"
 
   /** Every change of the Oathkeeper title holder at an action boundary. */
@@ -57,13 +55,11 @@ enum TriggeredProcedureRef(val key: String) extends ProcedureRef {
   /** Runs once, right after `GameStarted` evolves (2026-09-21 Chronicle
     * design, slice 2, "Setup on the walker"). No client command starts it. */
   case Setup extends TriggeredProcedureRef("setup")
-}
 
-object ActionRef {
+object ActionRef:
   case object Search extends ActionRef { val key = "search" }
-  case object PlayFacedownAdviser extends ActionRef {
+  case object PlayFacedownAdviser extends ActionRef:
     val key = "play-facedown-adviser"
-  }
   case object Recover extends ActionRef { val key = "recover" }
   case object Forge extends ActionRef { val key = "forge" }
   case object Travel extends ActionRef { val key = "travel" }
@@ -71,18 +67,16 @@ object ActionRef {
   case object Muster extends ActionRef { val key = "muster" }
   case object Trade extends ActionRef { val key = "trade" }
   case object Challenge extends ActionRef { val key = "challenge" }
-  case object PlaceBannerResource extends ActionRef {
+  case object PlaceBannerResource extends ActionRef:
     val key = "place-banner-resource"
-  }
   case object Negotiation extends ActionRef { val key = "negotiation" }
   case object Campaign extends ActionRef { val key = "campaign" }
 
   /** Uses one phase power. Parameterized, so `all` cannot list it; the key
     * parses directly.
     */
-  final case class UsePower(power: PowerId) extends ActionRef {
+  final case class UsePower(power: PowerId) extends ActionRef:
     val key: String = s"${UsePower.Prefix}${power.value}"
-  }
   object UsePower { private[model] val Prefix = "use-power:" }
 
   /** A key here that also names a [[oathdigital.model.ActionKind]]
@@ -110,17 +104,14 @@ object ActionRef {
 
   def fromKey(key: String): Option[ActionRef] =
     all.find(_.key == key).orElse(usePower(key))
-}
 
-object PhaseTransitionRef {
+object PhaseTransitionRef:
   val all: Vector[PhaseTransitionRef] = Vector(EndWake, BeginRest, FinishRest)
-}
 
-object TriggeredProcedureRef {
+object TriggeredProcedureRef:
   val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup)
-}
 
-object StartableRef {
+object StartableRef:
   /** Finite references are listed in `all`; parameterized use-power keys
     * parse directly.
     */
@@ -128,9 +119,8 @@ object StartableRef {
 
   def fromKey(key: String): Option[StartableRef] =
     all.find(_.key == key).orElse(ActionRef.usePower(key))
-}
 
-object ProcedureRef {
+object ProcedureRef:
   val all: Vector[ProcedureRef] = StartableRef.all ++ TriggeredProcedureRef.all
 
   /** Resolves a reference from the wire/journal spelling of both its family
@@ -143,4 +133,3 @@ object ProcedureRef {
   def fromFamilyKey(family: String, key: String): Option[ProcedureRef] =
     all.find(ref => ref.family == family && ref.key == key)
       .orElse(ActionRef.usePower(key).filter(_.family == family))
-}

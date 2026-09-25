@@ -8,12 +8,10 @@ import oathdigital.model.{OathViolation, WalkerEvent}
   * exhaustively. A walker event type it does not know must be rejected with
   * a typed violation, not a `MatchError`.
   */
-class OathRulesEvolveSuite extends munit.FunSuite {
+class OathRulesEvolveSuite extends munit.FunSuite:
   private case object UnregisteredWalkerEvent extends WalkerEvent
 
-  test("an unregistered walker event evolves to a typed violation") {
+  test("an unregistered walker event evolves to a typed violation"):
     val result = new OathRules(catalog).evolve(Ready(freshReady), UnregisteredWalkerEvent)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "unsupported walker event: UnregisteredWalkerEvent")))
-  }
-}

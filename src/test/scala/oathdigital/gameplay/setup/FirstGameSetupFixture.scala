@@ -16,7 +16,7 @@ import oathdigital.model.OathState._
   * unrelated procedure suite (Recover, Travel, Negotiation, Forge, ...)
   * builds its own fixture on top of.
   */
-object FirstGameSetupFixture {
+object FirstGameSetupFixture:
   val catalogRef =
     CatalogRef("oath-new-foundations", "2026.08.29-pre5")
   val catalog: ExecutableCatalog =
@@ -49,22 +49,20 @@ object FirstGameSetupFixture {
     * the full 60-card world deck this slice's "cheat" policy calls for
     * (2026-09-21 Chronicle design, "Since only ~30 denizens are
     * implemented right now"). */
-  val denizens: Vector[DenizenId] = oathdigital.model.Suit.all.sortBy(_.key).flatMap {
+  val denizens: Vector[DenizenId] = oathdigital.model.Suit.all.sortBy(_.key).flatMap:
     suit =>
       catalog.denizens.filter(_.suit == suit).take(10)
         .map(d => DenizenId(d.id.value))
-  }
   val relics: Vector[RelicId] = catalog.relics
     .filter(_.role == RelicRole.Ordinary)
     .map(r => RelicId(r.id.value))
   val homelandEdifices: Vector[(SiteId, EdificeId)] = sites.flatMap { siteId =>
-    catalog.sites.find(_.id == siteId).get.handlers.collectFirst {
+    catalog.sites.find(_.id == siteId).get.handlers.collectFirst:
       case handler if handler.contains(".homeland-") =>
         val suit = Suit.fromKey(
           handler.substring(handler.indexOf(".homeland-") + 10)).get
         val edifice = catalog.edifices.find(_.suit == suit).get
         siteId -> EdificeId(edifice.id.value)
-    }
   }
   private val edificesBySite = homelandEdifices.toMap
 
@@ -97,7 +95,7 @@ object FirstGameSetupFixture {
     * Lands on `Phase.Wake` with the returned real event history.
     */
   def execute(placementSites: Vector[SiteId] = sites)
-      : (OathState, Vector[OathEvent]) = {
+      : (OathState, Vector[OathEvent]) =
     val rules = new OathRules(catalog)
     val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
     var transition = rules.beginGame(OathState.NoGame, chronicle, orders).toOption.get
@@ -110,11 +108,10 @@ object FirstGameSetupFixture {
         .toOption.get
       state = transition.state
       events = events ++ transition.events
-      val hand = state match {
+      val hand = state match
         case Ready(ready) =>
           ready.game.current.temporaryHands.getOrElse(playerId, Vector.empty)
         case _ => Vector.empty
-      }
       val denizens = hand.collect { case id: DenizenId => id }
       val adviser = denizens.head
       val rejected = denizens.filterNot(_ == adviser)
@@ -130,25 +127,20 @@ object FirstGameSetupFixture {
       events = events ++ transition.events
     }
     (state, events)
-  }
 
   /** The game `execute()` sets up. Immutable, so suites share one. */
-  lazy val initialReady: ReadyGame = {
+  lazy val initialReady: ReadyGame =
     val Ready(value) = execute()._1: @unchecked
     value
-  }
-}
 
 /** Splices the five fixed Vision identities into the fixture's implemented
   * denizens the same way `ChronicleFirstGamePlan.dealOrder` (Task 6) splices
   * them into a generated Chronicle's world deck -- kept local to the test
   * fixture so it has no production dependency of its own.
   */
-private object ChronicleFixtureDealOrder {
-  def dealOrder(denizens: Vector[DenizenId], participantCount: Int): Vector[WorldCardId] = {
+private object ChronicleFixtureDealOrder:
+  def dealOrder(denizens: Vector[DenizenId], participantCount: Int): Vector[WorldCardId] =
     val remaining = denizens.drop(6 + participantCount * 3)
     remaining.take(10) ++ FirstGameRulesData.visions.take(2) ++
       remaining.slice(10, 25) ++ FirstGameRulesData.visions.drop(2) ++
       remaining.drop(25)
-  }
-}

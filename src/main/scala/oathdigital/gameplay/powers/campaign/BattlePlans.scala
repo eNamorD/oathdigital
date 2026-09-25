@@ -8,10 +8,9 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * whose card is absent from `catalog` is omitted, and the title's defense,
   * which no card prints, is always present.
   */
-object BattlePlans {
+object BattlePlans:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Vector[ContributingPower](TitleDefensePlan.plan) ++
       Outriders.forCatalog(catalog).toVector ++
       BrassArmy.forCatalog(catalog).toVector ++
       Watchdog.forCatalog(catalog).toVector
-}

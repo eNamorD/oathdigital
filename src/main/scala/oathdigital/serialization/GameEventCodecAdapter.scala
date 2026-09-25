@@ -4,7 +4,7 @@ import oathdigital.application.{DecodedGameEvent, EventCodecFailure, GameEventCo
 import oathdigital.model.CatalogRef
 import oathdigital.model.OathEvent
 
-final class GameEventCodecAdapter extends GameEventCodec {
+final class GameEventCodecAdapter extends GameEventCodec:
   def decodeStream(json: String) = GameEventWire.decodeStream(json)
     .left.map(toFailure)
     .map(_.map(value => DecodedGameEvent(value.gameId, value.sequence,
@@ -21,4 +21,3 @@ final class GameEventCodecAdapter extends GameEventCodec {
     value.productIterator.collectFirst {
       case path: String if path.startsWith("$") => path
     }.getOrElse("$")
-}

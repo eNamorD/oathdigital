@@ -10,7 +10,7 @@ import oathdigital.model.OathState.Ready
 /** Shared staging and reading for the suites of the rules that keep a player
   * from being targeted.
   */
-object TargetingFixture {
+object TargetingFixture:
   val rules: OathRules = CampaignFixture.rules(powers = true)
   val fortress: EdificeId = EdificeId("E28")
   val circlet: RelicId = RelicId("R15")
@@ -42,26 +42,25 @@ object TargetingFixture {
 
   def pawnAt(state: ReadyGame, player: PlayerId, site: SiteId): ReadyGame =
     state.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == player) p.copy(pawnSite = Some(site)) else p)))
+      if p.player == player then p.copy(pawnSite = Some(site)) else p)))
 
   /** `player` holds the relic, faceup or facedown. */
   def holds(state: ReadyGame, player: PlayerId, relic: RelicId,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
     CardStaging.without(state, relic).updateCurrent(c => c.copy(players =
-      c.players.map(p => if (p.player == player) p.copy(relics = p.relics :+
+      c.players.map(p => if p.player == player then p.copy(relics = p.relics :+
         RelicState(relic, orientation, Tokens.empty)) else p)))
 
   /** `player` holds a faceup adviser of `suit`. */
-  def adviserOf(state: ReadyGame, player: PlayerId, suit: Suit): ReadyGame = {
+  def adviserOf(state: ReadyGame, player: PlayerId, suit: Suit): ReadyGame =
     val card = DenizenId(catalog.denizens.find(_.suit == suit).get.id.value)
     CardStaging.without(state, card).updateCurrent(c => c.copy(players =
-      c.players.map(p => if (p.player == player) p.copy(advisers = p.advisers :+
+      c.players.map(p => if p.player == player then p.copy(advisers = p.advisers :+
         DenizenState(card, Orientation.FaceUp, Tokens.empty)) else p)))
-  }
 
   /** The options of the decision a parked walk of `procedure` is waiting on. */
   def optionsAt(transition: OathTransition, procedure: ProcedureRef)
-      : Vector[DecisionOptionRef] = {
+      : Vector[DecisionOptionRef] =
     val state = ready(transition)
     val current = state.game.current
     val tree = WalkerProcedureRegistry.rebuild(procedure, catalog, state,
@@ -69,14 +68,11 @@ object TargetingFixture {
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       current.walkerModifiers)
     ProcedureWalker.parkedDecide(state, tree, current.walkerPending.get, powers)
-      .get.query match {
+      .get.query match
       case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
       case many: DecisionQuery.ChooseMany => many.options.map(_.ref)
       case other => throw new AssertionError(s"unexpected query $other")
-    }
-  }
 
   def start(state: ReadyGame, procedure: ActionRef, actor: PlayerId)
       : Either[OathViolation, OathTransition] =
     rules.startWalker(Ready(state), procedure, actor)
-}

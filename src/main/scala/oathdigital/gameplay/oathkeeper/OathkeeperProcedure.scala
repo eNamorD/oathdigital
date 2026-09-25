@@ -17,15 +17,15 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * accepted while this parks, so the outcome cannot change under it. No window:
   * nothing may transform a title change until a real power needs to.
   */
-object OathkeeperProcedure {
+object OathkeeperProcedure:
   val recipientDecisionId: String = "oathkeeper.recipient"
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
       "the Oathkeeper procedure selects nothing, got " +
         args.map(ref => s"${ref.kind}/${ref.wireId}").mkString(", ")))
-    tree <- OathkeeperRules.outcome(state) match {
+    tree <- OathkeeperRules.outcome(state) match
       case OathkeeperOutcome.NoChange => Left(OathViolation.InvalidEventOrder(
         "no Oathkeeper change to perform"))
       case OathkeeperOutcome.Transfer(holder) =>
@@ -44,6 +44,4 @@ object OathkeeperProcedure {
           case _ => Left(OathViolation.InvalidEventOrder(
             "no Oathkeeper recipient answer is recorded"))
         }))))
-    }
-  } yield tree
-}
+  yield tree

@@ -25,7 +25,7 @@ import oathdigital.model._
   * listed.
   */
 final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
-    val side: CampaignPlanSide) extends OfferHost {
+    val side: CampaignPlanSide) extends OfferHost:
   override val window: Option[PowerWindow] = Some(side match {
     case CampaignPlanSide.Attacker => PowerWindow.CampaignAttackerBattlePlans
     case CampaignPlanSide.Defender => PowerWindow.CampaignDefenderBattlePlans
@@ -33,7 +33,7 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
   override val children: Vector[Operation] = Vector.empty
 
   def expand(offers: Vector[OfferedPlan], pass: OfferHost.Pass)
-      : Vector[Operation] = {
+      : Vector[Operation] =
     val pending = PendingTree(Vector.empty, pass.answered)
     CampaignSetup.setup(pass.state, actor, pending).fold(
       Vector.empty[Operation])(setup => CampaignPlans.userOf(setup, side) match {
@@ -41,7 +41,6 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       case Some(user) => userPass(setup, user, CampaignPlans.sorted(offers),
         pending, pass)
     })
-  }
 
   private def applicationOf(setup: CampaignSetup, offered: OfferedPlan)
       : CampaignPlanApplication =
@@ -58,7 +57,7 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
 
   private def userPass(setup: CampaignSetup, user: PlayerId,
       offers: Vector[OfferedPlan], pending: PendingTree, pass: OfferHost.Pass)
-      : Vector[Operation] = {
+      : Vector[Operation] =
     val decisionId = CampaignIds.planDecision(side)
     val chosen = CampaignAnswers.picks(pending, decisionId)
     val listed = offers.filterNot(offered =>
@@ -66,9 +65,9 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       .flatMap(offered => pass.applies(applicationOf(setup, offered)).toOption
         .map(operations => PlanPrice.priced(CampaignPlans.optionOf(offered),
           offered.offer, operations)))
-    if (listed.isEmpty && !pass.resuming) Vector.empty
+    if listed.isEmpty && !pass.resuming then Vector.empty
     else Vector[Operation](
-      Branch((_, _) => if (listed.isEmpty) Vector.empty
+      Branch((_, _) => if listed.isEmpty then Vector.empty
         else Vector(decision(decisionId, user, listed))),
       Branch((_, tree) => CampaignAnswers.lastPick(tree, decisionId) match {
         case None => Vector.empty
@@ -80,7 +79,6 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
               "a chosen Campaign battle plan is no longer available"))))
         }
       }))
-  }
 
   private def decision(id: String, user: PlayerId,
       listed: Vector[DecisionOption]): Decide = Decide(id, user,
@@ -91,4 +89,3 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       case CampaignPlanSide.Defender =>
         "Defender: choose a battle plan, or finish"
     })))
-}

@@ -1,9 +1,9 @@
 package oathdigital.model
 
-class DomainValidationSuite extends munit.FunSuite {
+class DomainValidationSuite extends munit.FunSuite:
   import TestGameFixtures._
 
-  test("campaign maps retain their structural identities and required slots") {
+  test("campaign maps retain their structural identities and required slots"):
     val wrongId = LineageId("wrong-state-id")
     val invalid = game.copy(
       campaign = game.campaign.copy(
@@ -18,9 +18,8 @@ class DomainValidationSuite extends munit.FunSuite {
     assert(
       problems.contains(DomainProblem.LineageKeyMismatch(lineageId, wrongId))
     )
-  }
 
-  test("a site definition occupies only one place in the world") {
+  test("a site definition occupies only one place in the world"):
     val duplicateStoredSite = AtlasEntry.StoredSite(
       sites.head,
       Vector.empty,
@@ -36,9 +35,8 @@ class DomainValidationSuite extends munit.FunSuite {
 
     assert(problems.contains(DomainProblem.DuplicateAtlasSite(sites.head)))
     assert(problems.contains(DomainProblem.SiteInMapAndAtlas(sites.head)))
-  }
 
-  test("holders and Exile forces reference current aggregate identities") {
+  test("holders and Exile forces reference current aggregate identities"):
     val absentPlayer = PlayerId("absent-player")
     val absentLineage = LineageId("absent-lineage")
     val occupied = game.current.map.sites(sites.head).copy(
@@ -73,9 +71,8 @@ class DomainValidationSuite extends munit.FunSuite {
       problems.contains(DomainProblem.UnknownDarkestSecretHolder(absentPlayer))
     )
     assert(problems.contains(DomainProblem.UnknownTitleHolder(absentPlayer)))
-  }
 
-  test("duplicate identity problems have deterministic ID order") {
+  test("duplicate identity problems have deterministic ID order"):
     val alpha = player.copy(
       player = PlayerId("alpha"),
       advisers = Vector.empty
@@ -101,5 +98,3 @@ class DomainValidationSuite extends munit.FunSuite {
         DomainProblem.DuplicatePlayer(PlayerId("zeta"))
       )
     )
-  }
-}

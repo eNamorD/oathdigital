@@ -9,7 +9,7 @@ import oathdigital.model.{MajorActionType, PowerWindow, RuleSourceRef, Sequence}
   * five decision-10 steps in isolation, with hand-built fixture powers --
   * no catalog, no walker.
   */
-class ContributionCollectorSuite extends munit.FunSuite {
+class ContributionCollectorSuite extends munit.FunSuite:
 
   private val ready = FirstGameSetupFixture.initialReady
 
@@ -37,7 +37,7 @@ class ContributionCollectorSuite extends munit.FunSuite {
       applicableFlag: Boolean = true,
       ignore: Set[String] = Set.empty
   ): ContributingPower =
-    new ContributingPower {
+    new ContributingPower:
       def id: PowerId = PowerId(idValue)
       def source: RuleSourceRef = RuleSourceRef.GameRule(sourceKey)
       override def priority: Int = priorityValue
@@ -46,7 +46,6 @@ class ContributionCollectorSuite extends munit.FunSuite {
       override def applicable(ctx: PowerCtx): Boolean = applicableFlag
       override def shouldIgnore(other: ContributingPower): Boolean =
         ignore(other.id.value)
-    }
 
   private val window = PowerWindow.RecoverEligibility
   private val otherWindow = PowerWindow.RecoverBeforeFirstRoll
@@ -58,7 +57,7 @@ class ContributionCollectorSuite extends munit.FunSuite {
   private def ignoresTravelModifiers(
       idValue: String, sourceKey: String,
       contribs: Vector[Contribution]): ContributingPower =
-    new ContributingPower {
+    new ContributingPower:
       def id: PowerId = PowerId(idValue)
       def source: RuleSourceRef = RuleSourceRef.GameRule(sourceKey)
       def contributions: Map[PowerWindow, Vector[Contribution]] =
@@ -66,9 +65,8 @@ class ContributionCollectorSuite extends munit.FunSuite {
       override def shouldIgnore(other: ContributingPower): Boolean =
         other.contributions.keys.flatMap(_.associatedMajorAction)
           .exists(_ == MajorActionType.Travel)
-    }
 
-  test("a power may ignore candidates by classification, not only by name") {
+  test("a power may ignore candidates by classification, not only by name"):
     val ignorerTransform = Transform((_, ops) => ops)
     val travelTransform = Transform((_, ops) => ops)
     val plainTransform = Transform((_, ops) => ops)
@@ -90,9 +88,8 @@ class ContributionCollectorSuite extends munit.FunSuite {
     assertEquals(gathered.transforms, Vector(
       PowerId("power.ignorer") -> ignorerTransform,
       PowerId("power.plain") -> plainTransform))
-  }
 
-  test("a power that does not declare the window is not gathered") {
+  test("a power that does not declare the window is not gathered"):
     val declaresElsewhere = fixturePower(
       "power.elsewhere", "a", Set(otherWindow),
       Vector(Transform((_, ops) => ops)))
@@ -102,9 +99,8 @@ class ContributionCollectorSuite extends munit.FunSuite {
 
     assertEquals(gathered.order, Vector.empty[PowerId])
     assertEquals(gathered.transforms, Vector.empty)
-  }
 
-  test("a power whose applicable returns false is not gathered") {
+  test("a power whose applicable returns false is not gathered"):
     val inapplicable = fixturePower(
       "power.inapplicable", "a", Set(window),
       Vector(Transform((_, ops) => ops)),
@@ -115,9 +111,8 @@ class ContributionCollectorSuite extends munit.FunSuite {
 
     assertEquals(gathered.order, Vector.empty[PowerId])
     assertEquals(gathered.transforms, Vector.empty)
-  }
 
-  test("A ignores B: B's transform is absent, A's is present") {
+  test("A ignores B: B's transform is absent, A's is present"):
     val transformA = Transform((_, ops) => ops)
     val transformB = Transform((_, ops) => ops)
     val powerA = fixturePower(
@@ -130,9 +125,8 @@ class ContributionCollectorSuite extends munit.FunSuite {
 
     assertEquals(gathered.order, Vector(PowerId("power.a")))
     assertEquals(gathered.transforms, Vector(PowerId("power.a") -> transformA))
-  }
 
-  test("A ignores B and B ignores C: B and C are both dropped (no transitivity)") {
+  test("A ignores B and B ignores C: B and C are both dropped (no transitivity)"):
     val transformA = Transform((_, ops) => ops)
     val transformB = Transform((_, ops) => ops)
     val transformC = Transform((_, ops) => ops)
@@ -153,9 +147,8 @@ class ContributionCollectorSuite extends munit.FunSuite {
     // against C, and incorrectly keep C.
     assertEquals(gathered.order, Vector(PowerId("power.a")))
     assertEquals(gathered.transforms, Vector(PowerId("power.a") -> transformA))
-  }
 
-  test("two powers with interleaved sort keys produce transforms in sortKey order") {
+  test("two powers with interleaved sort keys produce transforms in sortKey order"):
     val transformBravoA = Transform((_, ops) => ops)
     val transformAlphaZ = Transform((_, ops) => ops)
     // "power.a" carries the larger stableKey ("bravo"); "power.z" carries
@@ -173,9 +166,8 @@ class ContributionCollectorSuite extends munit.FunSuite {
       PowerId("power.z") -> transformAlphaZ,
       PowerId("power.a") -> transformBravoA
     ))
-  }
 
-  test("a power declaring both a Transform and a Restriction lands one in each output, id once") {
+  test("a power declaring both a Transform and a Restriction lands one in each output, id once"):
     val transform = Transform((_, ops) => ops)
     val restriction = Restriction((_, _) => None)
     val power = fixturePower(
@@ -187,5 +179,3 @@ class ContributionCollectorSuite extends munit.FunSuite {
     assertEquals(gathered.transforms, Vector(PowerId("power.both") -> transform))
     assertEquals(gathered.restrictions, Vector(PowerId("power.both") -> restriction))
     assertEquals(gathered.order, Vector(PowerId("power.both")))
-  }
-}

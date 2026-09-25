@@ -8,17 +8,15 @@ import oathdigital.model._
   * clamps at the track maximum.
   */
 final case class FaithfulFriend private (cardId: DenizenId)
-    extends WhenPlayedPower {
+    extends WhenPlayedPower:
   def id: PowerId = FaithfulFriend.id
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     Vector(GainSupply(ctx.activePlayer, FaithfulFriend.Supply))
-}
 
-object FaithfulFriend {
+object FaithfulFriend:
   val id: PowerId = PowerId("denizen.faithful-friend")
   val Supply: Int = 4
 
   def forCatalog(catalog: ExecutableCatalog): Option[FaithfulFriend] =
     WhenPlayedPower.cardOf(catalog, id).map(new FaithfulFriend(_))
-}

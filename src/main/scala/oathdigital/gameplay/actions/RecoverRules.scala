@@ -9,10 +9,8 @@ import oathdigital.model._
   * legacy-command knowledge of its own -- just the rules every caller needs
   * to agree on.
   */
-object RecoverRules {
+object RecoverRules:
   def difficulty(catalog: ExecutableCatalog, site: SiteId): Option[Int] =
     catalog.sites.find(_.id == site).flatMap(_.recoverDifficulty)
 
   def score(faces: Vector[DefenseDieFace]): Int = DefenseDieFace.score(faces)
-
-}

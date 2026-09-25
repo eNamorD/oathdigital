@@ -14,15 +14,14 @@ import oathdigital.model._
   * decide which cards may go (an intact edifice and a locked card may not).
   * A full site that would refuse the play accepts it with a discard.
   */
-object PeoplesFavorMob extends ContributingPower {
+object PeoplesFavorMob extends ContributingPower:
   val id: PowerId = PowerId("banner.peoples-favor.mob")
   def source: RuleSourceRef = RuleSourceRef.Banner(Banner.PeoplesFavor.key)
 
   /** The player plays a card while holding the banner, Mob face up. */
-  override def applicable(ctx: PowerCtx): Boolean = {
+  override def applicable(ctx: PowerCtx): Boolean =
     val favor = ctx.state.game.current.banners.peoplesFavor
     favor.active == PeoplesFavorFace.Mob && favor.holder.contains(ctx.activePlayer)
-  }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
@@ -31,4 +30,3 @@ object PeoplesFavorMob extends ContributingPower {
           tree.adjust(children)(_.withSiteDiscardFirst)
         case _ => children
       })))
-}

@@ -33,17 +33,16 @@ import oathdigital.model._
   * its registry entry's `fallbackKind` -- and declaring it here would invite
   * powers to transform a phase change.
   */
-object EndWakeProcedure {
+object EndWakeProcedure:
 
   /** Fresh start and resume build the same tree. End Wake declares one leaf,
     * so it finishes inside the command that starts it and a resume never
     * reaches this.
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateReady(OathState.Ready(state), activePlayer)
     _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
       "ending Wake selects nothing, got " +
         args.map(ref => s"${ref.kind}/${ref.wireId}").mkString(", ")))
-  } yield Sequence(Vector(EnterPhase(Phase.Act)))
-}
+  yield Sequence(Vector(EnterPhase(Phase.Act)))

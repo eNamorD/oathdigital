@@ -13,7 +13,7 @@ import oathdigital.model._
   * the actor rules, or be an adviser. The relic goes to the card's own site,
   * or to the pawn's site for an adviser. */
 final case class CatacombsContribution private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower {
+    catalog: ExecutableCatalog) extends ContributingPower:
   def id: PowerId = CatacombsContribution.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -29,25 +29,23 @@ final case class CatacombsContribution private (cardId: DenizenId,
       Transform((ctx, ops) => place(ctx.activePlayer) +: ops)))
   // Mirrors the legacy capacity guard: no generic execution path enforces
   // `relicSlots` for a card Move (PowerOperations.PlaceRelicAtSite:93).
-  private def place(actor: PlayerId): Operation = BuildOps((ready, _) => for {
+  private def place(actor: PlayerId): Operation = BuildOps((ready, _) => for
     siteId <- PowerAccess.siteOf(ready, actor, cardId)
       .toRight(OathViolation.PawnSiteMissing(actor))
     _ <- Either.cond(catalog.sites.find(_.id == siteId).exists(d =>
       ready.game.current.map.sites.get(siteId).fold(0)(_.relics.size) < d.relicSlots),
       (), OathViolation.RecoverUnavailable("site has no empty relic slot"))
     relic <- ready.game.current.commonCards.relicDeck.headOption.toRight(OathViolation.RecoverUnavailable("relic deck is empty"))
-  } yield Vector[CoreOperation](
+  yield Vector[CoreOperation](
     Move(Piece.Card(relic),
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
       PositionedLocation(Location.Site(siteId)),
       resultingOrientation = Some(Orientation.FaceDown)),
     Costs.onCard(actor, cardId, Cost(secret = 1), catalog)))
-}
 
-object CatacombsContribution {
+object CatacombsContribution:
   val id: PowerId = PowerId("denizen.catacombs")
   // None if the catalog has no such card (e.g. a test stub).
   def forCatalog(catalog: ExecutableCatalog): Option[CatacombsContribution] =
     catalog.denizens.find(_.powers.exists(_.id == id))
       .map(d => new CatacombsContribution(DenizenId(d.id.value), catalog))
-}

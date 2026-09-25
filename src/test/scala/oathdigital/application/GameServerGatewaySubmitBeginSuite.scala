@@ -15,19 +15,18 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
   * has been derived; this exercises persistence and redaction independent
   * of how that Chronicle was derived. This suite asserts the exact
   * requested first player, so seating must not shuffle. */
-class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
+class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
   // GeneratedFirstGamePlanFactory always makes the head of the (possibly
   // shuffled) seating the first player, ignoring the requested
   // `firstPlayer` -- so with an identity shuffle, "p2" must already be
   // first in `participants` to end up first here.
-  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort {
+  private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort:
     def shuffle[A](values: Vector[A]): Vector[A] = values
-  }
   private val config = FirstGameBootstrapConfig(
-    participants.sortBy(p => if (p.playerId == PlayerId("p2")) 0 else 1),
+    participants.sortBy(p => if p.playerId == PlayerId("p2") then 0 else 1),
     PlayerId("p2"))
 
-  test("beginning a game persists normal v2 history and returns redacted projection") {
+  test("beginning a game persists normal v2 history and returns redacted projection"):
     val plan = new GeneratedFirstGamePlanFactory(catalog, unshuffled)
       .build(config).toOption.get
     val dealt = ChronicleFirstGamePlan.dealOrder(plan.chronicle, plan.resolvedConfig)
@@ -90,7 +89,7 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
       .foreach(relic => assert(!json.contains(relic.id.value)))
 
     val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    try {
+    try
       val loaded = new GameApplicationService(catalog, reopened)
         .load("bootstrap-game").toOption.flatten.get
       assertEquals(loaded.nextSequence, 2L)
@@ -102,6 +101,4 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite {
       // sees who it is waiting on.
       assert(publicProjection.walkerDecision.isEmpty)
       assertEquals(publicProjection.walkerWaiting.map(_.playerId), Some("p2"))
-    } finally reopened.close()
-  }
-}
+    finally reopened.close()

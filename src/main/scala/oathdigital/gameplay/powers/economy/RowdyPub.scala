@@ -14,7 +14,7 @@ import oathdigital.model._
   * the source. The gain is best-effort like the base gain.
   */
 final case class RowdyPub private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = RowdyPub.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
 
@@ -23,17 +23,15 @@ final case class RowdyPub private (cardId: DenizenId,
       operations :+ bonus(ctx.activePlayer))))
 
   private def bonus(actor: PlayerId): Operation = BuildOps((ready, pending) =>
-    if (PowerAnswers.one(pending, MusterProcedure.decisionId)
-        .contains(DecisionOptionRef.Denizen(cardId)))
+    if PowerAnswers.one(pending, MusterProcedure.decisionId)
+        .contains(DecisionOptionRef.Denizen(cardId)) then
       PlayerFacts.forceKind(ready, actor).map(kind =>
         Vector[CoreOperation](Gain.Warbands(actor, kind, RowdyPub.Warbands)))
     else Right(Vector.empty))
-}
 
-object RowdyPub {
+object RowdyPub:
   val id: PowerId = PowerId("denizen.rowdy-pub")
   val Warbands: Int = 1
 
   def forCatalog(catalog: ExecutableCatalog): Option[RowdyPub] =
     CatalogCards.denizen(catalog, id).map(new RowdyPub(_, catalog))
-}

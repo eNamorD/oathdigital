@@ -11,7 +11,7 @@ import oathdigital.model._
   * one option cannot be presented, so this is what proves a facedown relic in
   * the owner's own play area is nameable to the owner.
   */
-class DicePowerDecisionProjectionSuite extends munit.FunSuite {
+class DicePowerDecisionProjectionSuite extends munit.FunSuite:
   import PaidActionHarness._
 
   private val projector = new WalkerDecisionProjector(catalog,
@@ -23,7 +23,7 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite {
     ScopedProjectionContext(state, Some(state.game.current.players.map(_.player)
       .find(_ != actor).get)))
 
-  test("Gambling Hall offers the owner all six favor banks") {
+  test("Gambling Hall offers the owner all six favor banks"):
     val hall = DenizenId("93")
     val ready0 = act(withBoard(atHome(base, hall))(_.copy(favor = 3)))
     val rules0 = rules(defenseDice(DefenseDieFace.OneShield,
@@ -37,9 +37,8 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite {
       Vector("favor-bank"))
     assertEquals(projection.query.get.options.size, Suit.all.size)
     assertEquals(other(parked), None)
-  }
 
-  test("Fae Merchant names both eligible relics to its owner, including the facedown one just taken") {
+  test("Fae Merchant names both eligible relics to its owner, including the facedown one just taken"):
     val fae = DenizenId("180")
     val held = RelicId("R08")
     val ready0 = act(withBoard(withRelic(atHome(base, fae), held))(
@@ -53,5 +52,3 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite {
       top.value))
     assert(projection.query.get.options.forall(_.card.exists(!_.hidden)))
     assertEquals(other(parked), None)
-  }
-}

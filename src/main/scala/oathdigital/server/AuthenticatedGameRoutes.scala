@@ -20,7 +20,7 @@ import oathdigital.protocol.{ActorlessCommandRequest, FirstGameBootstrapRequest,
 import oathdigital.protocol.projection.GameProjection
 
 sealed trait AuthenticatedGameFailure extends Product with Serializable
-object AuthenticatedGameFailure {
+object AuthenticatedGameFailure:
   final case class Authorization(error: AuthorizationFailure)
       extends AuthenticatedGameFailure
   final case class Application(error: GameApplicationError)
@@ -31,7 +31,6 @@ object AuthenticatedGameFailure {
       extends AuthenticatedGameFailure
   final case class InvalidIntent(error: GameIntentMappingFailure)
       extends AuthenticatedGameFailure
-}
 
 final class AuthenticatedGameGateway(
     service: GameApplicationService,
@@ -39,7 +38,7 @@ final class AuthenticatedGameGateway(
     authorization: MembershipAuthorizationService,
     identities: IdentityRepository,
     planFactory: FirstGamePlanFactory
-) {
+):
   import AuthenticatedGameFailure._
 
   def load(
@@ -49,17 +48,15 @@ final class AuthenticatedGameGateway(
     authorization.authorizeProjection(gameId, principal)
       .left.map(Authorization.apply)
       .flatMap { access =>
-        service.load(gameId).left.map(Application.apply).flatMap {
+        service.load(gameId).left.map(Application.apply).flatMap:
           case None => Left(Application(
             GameApplicationError.StreamNotFound(gameId)
           ))
-          case Some(loaded) => access.scope match {
+          case Some(loaded) => access.scope match
             case ProjectionScope.PlayerPrivate(playerId) =>
               Right(projector.project(gameId, loaded, playerId))
             case ProjectionScope.PublicOnly =>
               Right(projector.projectPublic(gameId, loaded))
-          }
-        }
       }
 
   def submit(
@@ -86,7 +83,7 @@ final class AuthenticatedGameGateway(
       request: MajorActionPreviewRequest)
       : Either[AuthenticatedGameFailure, MajorActionPreviewResponse] =
     authorization.authorizeCommand(gameId, principal).left.map(Authorization.apply)
-      .flatMap { actor => for {
+      .flatMap { actor => for
         action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
           InvalidIntent(GameIntentMappingFailure("$.action", "unknown major action")))
         selected <- GameIntentMapper.bindModifiers(actor.access.playerId,
@@ -99,7 +96,7 @@ final class AuthenticatedGameGateway(
             oathdigital.model.OathViolation.InvalidModifierInvocation(
               "major-action preview is unavailable in this phase"))))
         _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application.apply)
-      } yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
+      yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
         request.action, accepted.modifiers,
         Vector.empty, MajorActionPreviewTargets.from(projection, request,
           accepted.targets)) }
@@ -112,7 +109,7 @@ final class AuthenticatedGameGateway(
     authorization.authorizeBootstrap(gameId, principal)
       .left.map(Authorization.apply)
       .flatMap { _ =>
-        identities.listMemberships(gameId).left.map(Identity.apply).flatMap {
+        identities.listMemberships(gameId).left.map(Identity.apply).flatMap:
           memberships =>
             val config = FirstGameBootstrapMapper.map(request)
             validateSeats(memberships, config).flatMap { _ =>
@@ -129,39 +126,36 @@ final class AuthenticatedGameGateway(
                   LoadedGame(accepted.state, accepted.nextSequence)
                 ))
             }
-        }
       }
 
   private def validateSeats(
       memberships: Vector[GameMembership],
       config: FirstGameBootstrapConfig
-  ): Either[AuthenticatedGameFailure, Unit] = {
+  ): Either[AuthenticatedGameFailure, Unit] =
     val playerMemberships = memberships.filter(_.role == MembershipRole.Player)
     val provisionedSeats = playerMemberships.flatMap(_.playerId)
     val requestedSeats = config.participants.map(_.playerId.value)
-    if (provisionedSeats.size != playerMemberships.size ||
-        provisionedSeats.distinct.size != provisionedSeats.size)
+    if provisionedSeats.size != playerMemberships.size ||
+        provisionedSeats.distinct.size != provisionedSeats.size then
       Left(BootstrapConfiguration("provisioned player memberships are invalid"))
-    else if (requestedSeats.distinct.size != requestedSeats.size)
+    else if requestedSeats.distinct.size != requestedSeats.size then
       Left(BootstrapConfiguration("participant player IDs must be unique"))
-    else if (requestedSeats.toSet != provisionedSeats.toSet)
+    else if requestedSeats.toSet != provisionedSeats.toSet then
       Left(BootstrapConfiguration(
         "participants must exactly match provisioned player memberships"
       ))
-    else if (!provisionedSeats.contains(config.firstPlayer.value))
+    else if !provisionedSeats.contains(config.firstPlayer.value) then
       Left(BootstrapConfiguration(
         "first player must be a provisioned player membership"
       ))
     else Right(())
-  }
-}
 
 final class AuthenticatedGameRoutes(
     authenticator: HttpSessionAuthenticator,
     csrfProtection: SameOriginCsrfProtection,
     gateway: AuthenticatedGameGateway,
     blockingExecutionContext: ExecutionContext
-) {
+):
   private val logger = LoggerFactory.getLogger(
     classOf[AuthenticatedGameRoutes]
   )
@@ -169,7 +163,7 @@ final class AuthenticatedGameRoutes(
   val route: Route =
     pathPrefix("api" / "authenticated" / "first-games" / Segment) { gameId =>
       extractRequest { request =>
-        onComplete(authenticator.authenticate(request)) {
+        onComplete(authenticator.authenticate(request)):
           case Success(Left(AuthenticationFailure.StorageFailure(message))) =>
             logger.error("Session authentication storage failure: {}", message)
             complete(response(
@@ -192,7 +186,7 @@ final class AuthenticatedGameRoutes(
           case Success(Right(session)) =>
             val principal = session.principal
             parameterMap { query =>
-              if (query.nonEmpty)
+              if query.nonEmpty then
                 complete(response(
                   StatusCodes.BadRequest,
                   "malformed-request",
@@ -201,7 +195,7 @@ final class AuthenticatedGameRoutes(
               else DevelopmentTrustBoundary.validateIdentifier(
                 gameId,
                 "$.gameId"
-              ) match {
+              ) match
                 case Left(error) => complete(response(
                   StatusCodes.BadRequest,
                   "malformed-request",
@@ -209,15 +203,14 @@ final class AuthenticatedGameRoutes(
                 ))
                 case Right(validGameId) =>
                   pathEndOrSingleSlash {
-                    get {
+                    get:
                       completeAsync(gateway.load(validGameId, principal))
-                    }
                   } ~ path("commands") {
-                    post {
-                      if (!csrfProtection.validate(request, session))
+                    post:
+                      if !csrfProtection.validate(request, session) then
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
-                        AuthenticatedGameHttpWire.decodeCommand(body) match {
+                        AuthenticatedGameHttpWire.decodeCommand(body) match
                           case Left(error) => complete(response(
                             StatusCodes.BadRequest,
                             "malformed-request",
@@ -226,28 +219,24 @@ final class AuthenticatedGameRoutes(
                           case Right(command) => completeAsync(
                             gateway.submit(validGameId, principal, command)
                           )
-                        }
                       }
-                    }
                   } ~ path("preview") {
-                    post {
-                      if (!csrfProtection.validate(request, session))
+                    post:
+                      if !csrfProtection.validate(request, session) then
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
-                        oathdigital.protocol.MajorActionPreviewCodec.decode(body) match {
+                        oathdigital.protocol.MajorActionPreviewCodec.decode(body) match
                           case Left(error) => complete(response(StatusCodes.BadRequest,
                             "malformed-request", s"${error.path}: ${error.message}"))
                           case Right(preview) => completePreview(
                             gateway.preview(validGameId, principal, preview))
-                        }
                       }
-                    }
-                  } ~ path("bootstrap") {
-                    post {
-                      if (!csrfProtection.validate(request, session))
+                  } ~ path("bootstrap"):
+                    post:
+                      if !csrfProtection.validate(request, session) then
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
-                        AuthenticatedGameHttpWire.decodeBootstrap(body) match {
+                        AuthenticatedGameHttpWire.decodeBootstrap(body) match
                           case Left(error) => complete(response(
                             StatusCodes.BadRequest,
                             "malformed-request",
@@ -256,31 +245,25 @@ final class AuthenticatedGameRoutes(
                           case Right(bootstrap) => completeAsync(
                             gateway.bootstrap(validGameId, principal, bootstrap)
                           )
-                        }
                       }
-                    }
-                  }
-              }
             }
-        }
       }
     }
 
   private def completePreview(operation: => Either[AuthenticatedGameFailure,
       MajorActionPreviewResponse]): Route =
-    onComplete(Future(operation)(using blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)):
       case Success(Right(value)) => complete(HttpResponse(StatusCodes.OK,
         entity = HttpEntity(ContentTypes.`application/json`,
           oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
       case Success(Left(error)) =>
         val (status, code, message, internal) = publicError(error)
-        if (internal) logger.error("Authenticated preview failure: {}", error)
+        if internal then logger.error("Authenticated preview failure: {}", error)
         complete(response(status, code, message))
       case Failure(error) =>
         logger.error("Unhandled authenticated preview failure", error)
         complete(response(StatusCodes.InternalServerError, "internal-error",
           "the server could not complete the request"))
-    }
 
   private def csrfFailure: HttpResponse = response(
     StatusCodes.Forbidden,
@@ -291,7 +274,7 @@ final class AuthenticatedGameRoutes(
   private def completeAsync(
       operation: => Either[AuthenticatedGameFailure, GameProjection]
   ): Route =
-    onComplete(Future(operation)(using blockingExecutionContext)) {
+    onComplete(Future(operation)(using blockingExecutionContext)):
       case Success(Right(projection)) => complete(HttpResponse(
         StatusCodes.OK,
         entity = HttpEntity(
@@ -301,7 +284,7 @@ final class AuthenticatedGameRoutes(
       ))
       case Success(Left(error)) =>
         val (status, code, message, internal) = publicError(error)
-        if (internal) logger.error("Authenticated game failure: {}", error)
+        if internal then logger.error("Authenticated game failure: {}", error)
         complete(response(status, code, message))
       case Failure(error) =>
         logger.error("Unhandled authenticated game route failure", error)
@@ -310,11 +293,10 @@ final class AuthenticatedGameRoutes(
           "internal-error",
           "the server could not complete the request"
         ))
-    }
 
   private def publicError(
       failure: AuthenticatedGameFailure
-  ): (StatusCode, String, String, Boolean) = failure match {
+  ): (StatusCode, String, String, Boolean) = failure match
     case AuthenticatedGameFailure.Authorization(
           _: AuthorizationFailure.NotMember) =>
       (StatusCodes.Forbidden, "forbidden", "access is denied", false)
@@ -337,7 +319,7 @@ final class AuthenticatedGameRoutes(
     case AuthenticatedGameFailure.InvalidIntent(_) =>
       (StatusCodes.BadRequest, "malformed-request",
         "the command contains an invalid domain identifier", false)
-    case AuthenticatedGameFailure.Application(error) => error match {
+    case AuthenticatedGameFailure.Application(error) => error match
       case _: GameApplicationError.StreamNotFound =>
         (StatusCodes.NotFound, "stream-not-found",
           "the requested game does not exist", false)
@@ -356,8 +338,6 @@ final class AuthenticatedGameRoutes(
       case _ =>
         (StatusCodes.InternalServerError, "internal-error",
           "the server could not complete the request", true)
-    }
-  }
 
   private def response(
       status: StatusCode,
@@ -370,4 +350,3 @@ final class AuthenticatedGameRoutes(
       GameHttpWire.encodeError(code, message)
     )
   )
-}

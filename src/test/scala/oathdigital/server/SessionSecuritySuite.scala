@@ -12,11 +12,11 @@ import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader}
 import oathdigital.application._
 import oathdigital.persistence.HsqldbDatabaseOwner
 
-class SessionSecuritySuite extends munit.FunSuite {
+class SessionSecuritySuite extends munit.FunSuite:
   private val cookieName = "oath_session"
   private val csrfToken = "c" * 43
 
-  test("session cookie authentication collapses expected failures to invalid") {
+  test("session cookie authentication collapses expected failures to invalid"):
     val database = HsqldbDatabaseOwner.open(
       Files.createTempDirectory("session-auth-").resolve("database")
     ).toOption.get
@@ -34,7 +34,7 @@ class SessionSecuritySuite extends munit.FunSuite {
     identities.createSession(session(expired, user, 140L, None))
     identities.createSession(session(revoked, user, 300L, Some(120L)))
 
-    try {
+    try
       assertEquals(authenticate(authenticator, HttpRequest()),
         Left(AuthenticationFailure.MissingCredential))
       val malformed = authenticate(authenticator, requestWithCookie("short"))
@@ -60,22 +60,19 @@ class SessionSecuritySuite extends munit.FunSuite {
           .digest,
         sessionDigest(valid)
       )
-    } finally database.close()
-  }
+    finally database.close()
 
-  test("database session resolution runs on the supplied blocking executor") {
+  test("database session resolution runs on the supplied blocking executor"):
     @volatile var resolutionThread = ""
-    val repository = new IdentityRepositoryStub {
-      override def resolveSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, StoredSession] = {
+    val repository = new IdentityRepositoryStub:
+      override def resolveSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, StoredSession] =
         resolutionThread = Thread.currentThread().getName
         Left(IdentityFailure.SessionNotFound)
-      }
-    }
     val executor = Executors.newSingleThreadExecutor { runnable =>
       new Thread(runnable, "session-auth-blocking-test")
     }
     val blocking = ExecutionContext.fromExecutor(executor)
-    try {
+    try
       val result = authenticate(
         new SessionCookieAuthenticator(
           repository, cookieName, () => 0L, blocking),
@@ -83,13 +80,11 @@ class SessionSecuritySuite extends munit.FunSuite {
       )
       assert(result.isLeft)
       assertEquals(resolutionThread, "session-auth-blocking-test")
-    } finally {
+    finally
       executor.shutdown()
       executor.awaitTermination(5L, TimeUnit.SECONDS)
-    }
-  }
 
-  test("same-origin CSRF validation uses fixed token digests") {
+  test("same-origin CSRF validation uses fixed token digests"):
     val digest = CsrfTokenDigest.fromBytes(
       SensitiveTokenDigest.sha256(csrfToken)).toOption.get
     val session = AuthenticatedHttpSession(
@@ -112,12 +107,10 @@ class SessionSecuritySuite extends munit.FunSuite {
       Vector.fill(32)(1.toByte), Vector.fill(32)(1.toByte)))
     assert(!SensitiveTokenDigest.constantTimeEquals(
       Vector.fill(32)(1.toByte), Vector.fill(32)(2.toByte)))
-    intercept[IllegalArgumentException] {
+    intercept[IllegalArgumentException]:
       new SameOriginCsrfProtection("http://localhost.evil.example")
-    }
-  }
 
-  test("CSRF public origins allow HTTPS and explicit loopback HTTP only") {
+  test("CSRF public origins allow HTTPS and explicit loopback HTTP only"):
     Vector(
       "https://oath.example",
       "http://localhost:8080",
@@ -142,7 +135,6 @@ class SessionSecuritySuite extends munit.FunSuite {
         origin
       )
     }
-  }
 
   private def session(
       rawToken: String,
@@ -173,7 +165,7 @@ class SessionSecuritySuite extends munit.FunSuite {
       request: HttpRequest
   ) = Await.result(authenticator.authenticate(request), 5.seconds)
 
-  private abstract class IdentityRepositoryStub extends IdentityRepository {
+  private abstract class IdentityRepositoryStub extends IdentityRepository:
     private def unused[A]: Either[IdentityFailure, A] =
       fail("unexpected identity repository operation")
     override def createUser(id: UserId, name: String, now: Long): Either[IdentityFailure, Unit] = unused
@@ -194,5 +186,3 @@ class SessionSecuritySuite extends munit.FunSuite {
         now: Long
     ): Either[IdentityFailure, Unit] = unused
     override def resolveTrustedSeat(digest: SeatCodeDigest): Either[IdentityFailure, TrustedSeat] = unused
-  }
-}

@@ -7,13 +7,12 @@ import oathdigital.model._
   */
 final case class InPlayCardResources(
     denizens: Vector[SiteDenizenState],
-    relics: Vector[RelicState]) {
+    relics: Vector[RelicState]):
   def secrets: Int = denizens.map(_.tokens.secrets).sum +
     relics.map(_.tokens.secrets).sum
-}
 
-object InPlayCardResources {
-  def discover(ready: ReadyGame): InPlayCardResources = {
+object InPlayCardResources:
+  def discover(ready: ReadyGame): InPlayCardResources =
     val current = ready.game.current
     val playerDenizens = current.players.flatMap(_.advisers.collect {
       case value: DenizenState => value
@@ -25,5 +24,3 @@ object InPlayCardResources {
       current.map.sites.get(id).toVector.flatMap(_.relics))
     InPlayCardResources(playerDenizens ++ siteDenizens,
       playerRelics ++ siteRelics)
-  }
-}

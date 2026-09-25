@@ -3,7 +3,7 @@ package oathdigital.model
 import oathdigital.model._
 
 sealed trait OathContinue extends Product with Serializable
-object OathContinue {
+object OathContinue:
   final case class AwaitingSetupPawn(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingSetupAdviser(playerId: PlayerId, decision: DecisionId)
@@ -49,7 +49,6 @@ object OathContinue {
   final case class AwaitingOathkeeperRecipient(playerId: PlayerId,
       decision: DecisionId) extends OathContinue
   final case class GameFinished(winner: PlayerId) extends OathContinue
-}
 
 final case class OathTransition(
     state: OathState,

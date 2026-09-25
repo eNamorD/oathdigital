@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.model._
 
-private[gameplay] object StateBasedOperationPolicy extends OperationPolicy {
+private[gameplay] object StateBasedOperationPolicy extends OperationPolicy:
   override def validate(
       ready: ReadyGame,
       operation: CoreOperation
@@ -25,4 +25,3 @@ private[gameplay] object StateBasedOperationPolicy extends OperationPolicy {
     OperationError.RestrictedOperation(
       "state-based semantic root is not permitted")
   )
-}

@@ -12,14 +12,13 @@ sealed trait OathEvent extends Product with Serializable
   * would forbid — mirroring the `Operation` root decision in Task 1.
   */
 trait WalkerEvent extends OathEvent
-object OathEvent {
+object OathEvent:
   final case class IgnoredRulesRecorded(
       playerId: PlayerId,
       action: ActionKind,
       diagnostics: Vector[IgnoredRuleDiagnostic]
-  ) extends OathEvent {
+  ) extends OathEvent:
     require(diagnostics.nonEmpty, "ignored-rule event must not be empty")
-  }
   /** Replaces `FirstGameStarted` (2026-09-21 Chronicle design, slice 2,
     * "Setup from a Chronicle"). `chronicle` is the between-game record;
     * `orders` is the concrete per-game deal Setup actually deals from --
@@ -51,7 +50,6 @@ object OathEvent {
   final case class UsurperVictory(playerId: PlayerId) extends OathEvent
   final case class VisionVictory(playerId: PlayerId, visionId: VisionId)
       extends OathEvent
-}
 
 enum TradeResource { case Favor, Secret }
 
@@ -60,12 +58,10 @@ enum TradeResource { case Favor, Secret }
   * procedure that reads a selection and the one that builds one cannot spell
   * it differently -- see `TakeWealthProcedure.selection`/`resourceOf`.
   */
-enum WakeResource(val key: String) {
+enum WakeResource(val key: String):
   case Favor extends WakeResource("favor")
   case Secret extends WakeResource("secret")
-}
-object WakeResource {
+object WakeResource:
   val all: Vector[WakeResource] = Vector(Favor, Secret)
 
   def fromKey(key: String): Option[WakeResource] = all.find(_.key == key)
-}

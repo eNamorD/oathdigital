@@ -8,7 +8,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.TestGameFixtures._
 
-object ProcedureWalkerSuite {
+object ProcedureWalkerSuite:
   val continueOption: DecisionOptionRef.Button =
     DecisionOptionRef.Button("continue")
   val stopOption: DecisionOptionRef.Button = DecisionOptionRef.Button("stop")
@@ -21,9 +21,8 @@ object ProcedureWalkerSuite {
     * walker's generic wiring with a tree it builds itself.
     */
   final case class WindowedNode(hook: PowerWindow,
-      override val children: Vector[Operation]) extends Operation {
+      override val children: Vector[Operation]) extends Operation:
     override def window: Option[PowerWindow] = Some(hook)
-  }
 
   /** A minimal `ContributingPower` contributing exactly one `Transform` at
     * one window -- enough to prove the walker's gather/fold wiring without
@@ -32,39 +31,35 @@ object ProcedureWalkerSuite {
   final case class TestTransformPower(id: PowerId, hook: PowerWindow,
       fn: (PowerCtx, Vector[Operation]) => Vector[Operation],
       override val resolution: PowerResolution = PowerResolution.Automatic)
-      extends ContributingPower {
+      extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Transform(fn)))
-  }
 
   /** A `ContributingPower` with an arbitrary contribution map, for the cases
     * that need one power speaking at two windows.
     */
   final case class TestPower(id: PowerId,
       contributions: Map[PowerWindow, Vector[Contribution]])
-      extends ContributingPower {
+      extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  }
 
   /** A minimal `ContributingPower` contributing exactly one `Restriction` at
     * one window.
     */
   final case class TestRestrictionPower(id: PowerId, hook: PowerWindow,
       fn: (PowerCtx, Operation) => Option[OathViolation])
-      extends ContributingPower {
+      extends ContributingPower:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Restriction(fn)))
-  }
-}
 
 /** Task 3 spec: ProcedureWalker auto-walks delta leaves (recording one
   * `WalkerStepRecorded` per executed leaf), parks at Decide/Roll, honors
   * Repeat(guard, body) with pure command-time guards, and never re-executes or
   * re-records a delta that already ran.
   */
-class ProcedureWalkerSuite extends munit.FunSuite {
+class ProcedureWalkerSuite extends munit.FunSuite:
   private val actor: PlayerId = playerId
 
   /** Every walk entry point states its power source explicitly -- there is
@@ -85,14 +80,13 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   /** Legal ready state: supply full, pawn on S1; S3 cleared so a pawn Move
     * there is unambiguously legal (mirrors the OperationExecutorSuite fixture).
     */
-  private val ready: ReadyGame = {
+  private val ready: ReadyGame =
     val base = ReadyGames.of(game)
     val destination = base.game.current.map.sites(sites(2)).copy(
       forces = SiteForces.Empty)
     base.updateCurrent(_.copy(
       map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(sites(2), destination))))
-  }
 
   private val move: Move = Move(Piece.Pawn(actor),
     PositionedLocation(Location.Site(sites.head)),
@@ -110,65 +104,57 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     */
   private def applyEvents(state: ReadyGame, events: Vector[OathEvent]): ReadyGame =
     events.foldLeft(state) { (current, event) =>
-      val recorded = event match {
+      val recorded = event match
         case step: WalkerStepRecorded => step
         case other => fail(s"expected a WalkerStepRecorded, got $other")
-      }
       OperationPipeline.run(current, recorded.ops,
         OperationPolicy.Permissive)(Right(_)).toOption.get.state
     }
 
-  test("fresh walk of a legal delta pair finishes and records one event per leaf") {
+  test("fresh walk of a legal delta pair finishes and records one event per leaf"):
     val tree: Operation = Sequence(move, adjust)
 
     val (finalState, events) = ProcedureWalker.advance(ready, tree, None,
-        noPowers) match {
+        noPowers) match
       case Right(WalkerOutcome.Finished(state, recorded)) => (state, recorded)
       case other => fail(s"expected a Finished walk, got $other")
-    }
 
     assertEquals(pawnSiteOf(finalState), Some(sites(2)))
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
     assertEquals(events.size, 2)
-    val recorded = events.map {
+    val recorded = events.map:
       case step: WalkerStepRecorded => step
       case other => fail(s"expected a WalkerStepRecorded, got $other")
-    }
     assertEquals(recorded.map(_.nodeId), Vector("0", "1"))
     assertEquals(recorded.map(_.ops), Vector(
       Vector[CoreOperation](move), Vector[CoreOperation](adjust)))
     recorded.foreach(step => assert(step.ops.nonEmpty))
     // Re-applying each recorded ops batch reproduces the walked state.
     assertEquals(applyEvents(ready, events), finalState)
-  }
 
-  test("all-skipped BuildOps records no delta step") {
+  test("all-skipped BuildOps records no delta step"):
     val empty = ready.copy(banks = ready.banks.copy(favor =
       ready.banks.favor.updated(Suit.Order, 0)))
     val tree = BuildOps((_, _) =>
       Right(Vector(Gain.Favor(actor, Suit.Order, 1))))
-    ProcedureWalker.advance(empty, tree, None, noPowers) match {
+    ProcedureWalker.advance(empty, tree, None, noPowers) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(state, empty)
         assertEquals(events, Vector.empty)
       case other => fail(s"expected a Finished walk, got $other")
-    }
-  }
 
-  test("BuildOps records actual reduced count") {
+  test("BuildOps records actual reduced count"):
     val six = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(6)))
       }))
     val tree = BuildOps((_, _) => Right(Vector(GainSupply(actor, 3))))
-    ProcedureWalker.advance(six, tree, None, noPowers) match {
+    ProcedureWalker.advance(six, tree, None, noPowers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
           Vector(Vector[CoreOperation](GainSupply(actor, 1))))
       case other => fail(s"expected a Finished walk, got $other")
-    }
-  }
 
-  test("BuildOps filters immune discard and replays the legal discard") {
+  test("BuildOps filters immune discard and replays the legal discard"):
     val first = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, 1, 0, actor)
@@ -181,14 +167,13 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       map = current.map.copy(sites = current.map.sites.updated(sites(1),
         current.map.sites(sites(1)).copy(denizens = Vector(
           DenizenState(worldDenizen, Orientation.FaceUp, Tokens.empty)))))))
-    val immunity = new OperationRestriction {
+    val immunity = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation) =
         Option.when(operation == first)(OperationReason("immune",
           "first card cannot be discarded", OperationReasonKind.Impossible))
-    }
     val tree = Sequence(Vector(BuildOps((_, _) => Right(Vector(first, second)),
       restrictions = (_, _) => Vector(immunity))))
-    ProcedureWalker.advance(source, tree, None, noPowers) match {
+    ProcedureWalker.advance(source, tree, None, noPowers) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
           Vector(Vector[CoreOperation](second)))
@@ -199,30 +184,25 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         }
         assertEquals(replay, Right(OathState.Ready(state)))
       case other => fail(s"expected a Finished walk, got $other")
-    }
-  }
 
-  test("optional immune-only discard records nothing; required discard rejects") {
+  test("optional immune-only discard records nothing; required discard rejects"):
     val discard = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, 1, 0, actor)
-    val immunity = new OperationRestriction {
+    val immunity = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation): Option[OperationReason] =
         Some(OperationReason("immune", "site card cannot be discarded",
           OperationReasonKind.Impossible))
-    }
     def tree(operation: CoreOperation): Operation = Sequence(Vector(
       BuildOps((_, _) => Right(Vector(operation)),
         restrictions = (_, _) => Vector(immunity))))
-    ProcedureWalker.advance(ready, tree(discard), None, noPowers) match {
+    ProcedureWalker.advance(ready, tree(discard), None, noPowers) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(state, ready)
         assertEquals(events, Vector.empty)
       case other => fail(s"expected a Finished walk, got $other")
-    }
     assert(ProcedureWalker.advance(ready,
       tree(discard.copy(required = true)), None, noPowers).isLeft)
-  }
 
   // `required` lives on the composite (PayCost, Draw, Exchange, a required
   // Play/Replace/Discard), but the walker walks a composite's `Move` children
@@ -231,7 +211,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   private val tooMuchFavor: Int =
     ready.game.current.players.find(_.player == actor).get.board.favor + 1
 
-  test("a required composite in the tree rejects when it cannot fully execute") {
+  test("a required composite in the tree rejects when it cannot fully execute"):
     val payment = PayCost(actor, Location.SharedBank,
       Cost(favorBurnt = tooMuchFavor))
     assert(payment.required)
@@ -242,45 +222,39 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // The same payment as a batch item was already strict.
     assert(ProcedureWalker.advance(ready,
       BuildOps((_, _) => Right(Vector(payment))), None, noPowers).isLeft)
-  }
 
-  test("a required composite that can execute records its children and finishes") {
+  test("a required composite that can execute records its children and finishes"):
     val payment = PayCost(actor, Location.SharedBank, Cost(favorBurnt = 1))
-    ProcedureWalker.advance(ready, Sequence(payment), None, noPowers) match {
+    ProcedureWalker.advance(ready, Sequence(payment), None, noPowers) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
           Vector(payment.children.collect { case child: Move => child }))
         assertEquals(state.game.current.players.find(_.player == actor).get
           .board.favor, tooMuchFavor - 2)
       case other => fail(s"expected a Finished walk, got $other")
-    }
-  }
 
-  test("an optional composite still shrinks best-effort") {
+  test("an optional composite still shrinks best-effort"):
     val gain = Gain.Favor(actor, Suit.Order, 99)
-    ProcedureWalker.advance(ready, Sequence(gain), None, noPowers) match {
+    ProcedureWalker.advance(ready, Sequence(gain), None, noPowers) match
       case Right(WalkerOutcome.Finished(state, _)) =>
         assert(state.game.current.players.find(_.player == actor).get
           .board.favor > tooMuchFavor - 1)
       case other => fail(s"expected a Finished walk, got $other")
-    }
-  }
 
-  test("a Decide at the head parks with no events, then the answered resume finishes") {
+  test("a Decide at the head parks with no events, then the answered resume finishes"):
     val tree: Operation = Sequence(decide, adjust)
 
-    val parked = ProcedureWalker.advance(ready, tree, None, noPowers) match {
+    val parked = ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) =>
         assertEquals(pending.at, Vector("0"))
         assertEquals(pending.answered, Vector.empty[Answered])
         assertEquals(events, Vector.empty[OathEvent])
         pending
       case other => fail(s"expected a park at the Decide, got $other")
-    }
 
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
-    ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match {
+    ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
         assertEquals(events.last.asInstanceOf[WalkerStepRecorded].ops,
@@ -288,16 +262,13 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
         assert(finalState.game.current.walkerPending.isEmpty)
       case other => fail(s"expected the answered resume to finish, got $other")
-    }
-  }
 
   /** Walks `tree` to its first Decide park and hands back the park. */
   private def parkAtDecide(tree: Operation)
       : (PendingTree, Vector[OathEvent]) =
-    ProcedureWalker.advance(ready, tree, None, noPowers) match {
+    ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
       case other => fail(s"expected a park at the Decide, got $other")
-    }
 
   // -------------------------------------------------------------------------
   // Generic decision resolution: the walker accepts exactly what a node's
@@ -305,7 +276,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   // -------------------------------------------------------------------------
 
   test("a Decide accepts exactly its declared options and rejects an " +
-      "undeclared reference") {
+      "undeclared reference"):
     val tree: Operation = Sequence(decide, adjust)
     val (pending, _) = parkAtDecide(tree)
 
@@ -322,9 +293,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       Left(OathViolation.InvalidEventOrder(
         "decision recover.choice does not offer the selected option"))
         : Either[OathViolation, WalkerOutcome])
-  }
 
-  test("a Decide rejects an answer of the wrong shape for its query") {
+  test("a Decide rejects an answer of the wrong shape for its query"):
     val tree: Operation = Sequence(decide, adjust)
     val (pending, _) = parkAtDecide(tree)
 
@@ -335,10 +305,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       Left(OathViolation.InvalidEventOrder(
         "decision recover.choice expects a single-choice answer"))
         : Either[OathViolation, WalkerOutcome])
-  }
 
   test("a malformed query is rejected as a contract failure before the " +
-      "submitted answer is even looked at") {
+      "submitted answer is even looked at"):
     // An empty option set, and a partition whose single section takes every
     // option: both are queries no answer could make meaningful, so the
     // rejection names the query rather than the submission.
@@ -361,10 +330,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
           s"decision recover.choice $detail"))
           : Either[OathViolation, WalkerOutcome])
     }
-  }
 
   test("a Decide answered by anyone but its owner is rejected as " +
-      "the wrong player") {
+      "the wrong player"):
     val tree: Operation = Sequence(decide, adjust)
     val (pending, _) = parkAtDecide(tree)
     val intruder = PlayerId("intruder")
@@ -375,10 +343,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       noPowers),
       Left(OathViolation.WrongPlayer(actor, intruder))
         : Either[OathViolation, WalkerOutcome])
-  }
 
   test("a partition Decide accepts a complete legal placement and rejects " +
-      "one that starves a section") {
+      "one that starves a section"):
     val options = Vector("a", "b", "c").map(key =>
       DecisionOption.Button(DecisionOptionRef.Button(key), key.toUpperCase))
     val node = Decide("split", actor, DecisionQuery.Partition(
@@ -400,27 +367,23 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       Left(OathViolation.InvalidEventOrder(
         "decision split leaves section 'left' below its minimum of 2"))
         : Either[OathViolation, WalkerOutcome])
-  }
 
-  test("a Roll leaf parks too (faces ride a later command; Task 4 wires them)") {
+  test("a Roll leaf parks too (faces ride a later command; Task 4 wires them)"):
     val roll = Roll(PoolKey("recover"), DiceSpec(DiceKind.Defense))
     val tree: Operation = Sequence(roll, adjust)
 
-    ProcedureWalker.advance(ready, tree, None, noPowers) match {
+    ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) =>
         assertEquals(pending.at, Vector("0"))
         assertEquals(events, Vector.empty[OathEvent])
       case other => fail(s"expected a park at the Roll, got $other")
-    }
-  }
 
   test("auto-deltas executed before a park are recorded in the Parked events") {    val tree: Operation = Sequence(adjust, decide)
 
     val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
-        noPowers) match {
+        noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
       case other => fail(s"expected a park after the auto-delta, got $other")
-    }
     assertEquals(parked.at, Vector("1"))
     assertEquals(parked.answered, Vector.empty[Answered])
     assertEquals(parkEvents.size, 1)
@@ -432,17 +395,16 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
     ProcedureWalker.resolve(parkedState, tree, parked, answer,
-        noPowers) match {
+        noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 1)
         assert(events.head.asInstanceOf[WalkerStepRecorded]
           .payload.isInstanceOf[ChoicePayload])
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
       case other => fail(s"expected the answered resume to finish, got $other")
-    }
   }
 
-  test("Repeat re-runs its body while the pure guard holds and records every pass") {
+  test("Repeat re-runs its body while the pure guard holds and records every pass"):
     // Pure state-based guard: full supply 7 loops while >= 5, so three body
     // passes run (7 -> 6 -> 5 -> 4), then the guard fails and the walk
     // continues past the Repeat into the trailing SpendSupply.
@@ -451,30 +413,26 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val tree: Operation = Sequence(Repeat(guard, adjust), adjust)
 
     val (finalState, events) = ProcedureWalker.advance(ready, tree, None,
-        noPowers) match {
+        noPowers) match
       case Right(WalkerOutcome.Finished(state, recorded)) => (state, recorded)
       case other => fail(s"expected a Finished repeat walk, got $other")
-    }
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 4)
     assertEquals(events.size, 4)
     assertEquals(events.collect {
       case step: WalkerStepRecorded => step.ops
     }, Vector.fill(4)(Vector[CoreOperation](adjust)))
-  }
 
-  test("Repeat whose guard is false from the start walks nothing") {
+  test("Repeat whose guard is false from the start walks nothing"):
     val tree: Operation = Repeat((_: ReadyGame, _: PendingTree) => false, adjust)
 
     val (finalState, events) = ProcedureWalker.advance(ready, tree, None,
-        noPowers) match {
+        noPowers) match
       case Right(WalkerOutcome.Finished(state, recorded)) => (state, recorded)
       case other => fail(s"expected a Finished skipped repeat, got $other")
-    }
     assertEquals(events, Vector.empty[OathEvent])
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum)
-  }
 
-  test("a park inside a Repeat body resumes at the same body point") {
+  test("a park inside a Repeat body resumes at the same body point"):
     // Guard holds only at full supply; the body Decide parks before the delta
     // runs, so answering the decision and resuming completes the pass, drops
     // supply below the guard, and exits the Repeat — the delta executes once.
@@ -482,29 +440,26 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       (state, _) => supplyOf(state) >= SupplyTrack.Maximum
     val tree: Operation = Sequence(Repeat(guard, Sequence(decide, adjust)))
 
-    val parked = ProcedureWalker.advance(ready, tree, None, noPowers) match {
+    val parked = ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) =>
         // Repeat (child 0) > body (child 0) > Decide (child 0).
         assertEquals(pending.at, Vector("0", "0", "0"))
         assertEquals(events, Vector.empty[OathEvent])
         pending
       case other => fail(s"expected a park inside the Repeat body, got $other")
-    }
 
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
-    ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match {
+    ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
         assertEquals(events.last.asInstanceOf[WalkerStepRecorded].ops,
           Vector[CoreOperation](adjust))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
       case other => fail(s"expected the resumed repeat to finish, got $other")
-    }
-  }
 
   test("plain advance re-parks a repeated Decide even when an older pass " +
-      "answered the same decision ID") {
+      "answered the same decision ID"):
     val olderAnswer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
     val pending = PendingTree(Vector("0", "0", "0"), Vector(olderAnswer))
@@ -512,30 +467,26 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       (_: ReadyGame, _: PendingTree) => true,
       Sequence(decide, adjust)))
 
-    ProcedureWalker.advance(ready, tree, Some(pending), noPowers) match {
+    ProcedureWalker.advance(ready, tree, Some(pending), noPowers) match
       case Right(WalkerOutcome.Parked(reparked, events)) =>
         assertEquals(reparked.at, pending.at)
         assertEquals(reparked.answered, Vector(olderAnswer))
         assertEquals(events, Vector.empty[OathEvent])
       case other => fail(s"expected a re-park at the repeated Decide, got $other")
-    }
-  }
 
-  test("Finished clears stored pending trees and dice pools from the resulting state") {
+  test("Finished clears stored pending trees and dice pools from the resulting state"):
     val dirty = ready.updateCurrent(_.copy(
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty)),
         rollPools = Map(PoolKey("recover") -> DicePoolState(3))))
 
     val (finalState, events) = ProcedureWalker.advance(dirty, adjust, None,
-        noPowers) match {
+        noPowers) match
       case Right(WalkerOutcome.Finished(state, recorded)) => (state, recorded)
       case other => fail(s"expected a Finished clear walk, got $other")
-    }
     assertEquals(events.size, 1)
     assert(finalState.game.current.walkerPending.isEmpty)
     assertEquals(finalState.game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
-  }
 
   // -------------------------------------------------------------------------
   // Task 4: Roll node flow — faces ride the roll() command, count from state.
@@ -549,11 +500,10 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     * pool count set by a preceding ModifyDicePool is visible to roll().
     */
   private def parkAtRoll(tree: Operation): (PendingTree, ReadyGame) =
-    ProcedureWalker.advance(ready, tree, None, noPowers) match {
+    ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) =>
         (pending, applyEvents(ready, events))
       case other => fail(s"expected a park at the Roll, got $other")
-    }
 
   private def expectRollViolation(
       state: ReadyGame,
@@ -562,15 +512,14 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       faces: Vector[DieFace],
       detailContains: String
   ): Unit =
-    ProcedureWalker.roll(state, tree, pending, faces, noPowers) match {
+    ProcedureWalker.roll(state, tree, pending, faces, noPowers) match
       case Left(violation: OathViolation.InvalidEventOrder) =>
         assert(violation.detail.contains(detailContains),
           s"violation detail '${violation.detail}' should contain " +
             s"'$detailContains'")
       case other => fail(s"expected an InvalidEventOrder rejection, got $other")
-    }
 
-  test("a Roll park reports the pool and required count after auto pool deltas") {
+  test("a Roll park reports the pool and required count after auto pool deltas"):
     val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
 
     val (pending, parkedState) = parkAtRoll(tree)
@@ -580,9 +529,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       Map(recoverPool -> DicePoolState(2)))
     assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending,
       noPowers), Some((recoverPool, 2)))
-  }
 
-  test("malformed and overflowing Roll paths return typed failures") {
+  test("malformed and overflowing Roll paths return typed failures"):
     val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
     val (_, parkedState) = parkAtRoll(tree)
     val paths = Vector(Vector("not-a-node"), Vector("999999999999999999999"))
@@ -596,15 +544,14 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         .left.toOption
         .exists(_.isInstanceOf[OathViolation.InvalidEventOrder]))
     }
-  }
 
-  test("roll() writes the RollOutcome and records one RollPayload event, then finishes") {
+  test("roll() writes the RollOutcome and records one RollPayload event, then finishes"):
     val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
     val faces: Vector[DieFace] = Vector(DefenseDieFace.OneShield,
       DefenseDieFace.Doubler)
     val (pending, parkedState) = parkAtRoll(tree)
 
-    ProcedureWalker.roll(parkedState, tree, pending, faces, noPowers) match {
+    ProcedureWalker.roll(parkedState, tree, pending, faces, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         val expectedScore = DefenseDieFace.score(faces.collect {
           case face: DefenseDieFace => face
@@ -612,55 +559,48 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         assertEquals(finalState.game.current.rollOutcomes(recoverPool),
           RollOutcome(recoverPool, 2, faces, skulls = 0, score = expectedScore))
         assertEquals(events.size, 1)
-        val step = events.head match {
+        val step = events.head match
           case recorded: WalkerStepRecorded => recorded
           case other => fail(s"expected a WalkerStepRecorded, got $other")
-        }
         assertEquals(step.payload, RollPayload(recoverPool, faces))
         assertEquals(step.ops, Vector.empty[CoreOperation])
         assert(finalState.game.current.walkerPending.isEmpty)
         assertEquals(finalState.game.current.rollPools,
           Map.empty[PoolKey, DicePoolState])
       case other => fail(s"expected the roll to finish the tree, got $other")
-    }
-  }
 
-  test("roll() rejects a face count that differs from the pool count") {
+  test("roll() rejects a face count that differs from the pool count"):
     val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
     val (pending, parkedState) = parkAtRoll(tree)
 
     expectRollViolation(parkedState, tree, pending,
       Vector.fill(3)(DefenseDieFace.Blank),
       s"rolled 3 dice for pool $recoverPool but pool count is 2")
-  }
 
-  test("roll() rejects a non-DefenseDieFace mixed into a defense roll") {
+  test("roll() rejects a non-DefenseDieFace mixed into a defense roll"):
     val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
     val faces: Vector[DieFace] = Vector(DefenseDieFace.OneShield,
       AttackDieFace.HollowSword)
     val (pending, parkedState) = parkAtRoll(tree)
 
     expectRollViolation(parkedState, tree, pending, faces, "non-defense")
-  }
 
-  test("roll() accepts an Attack roll and derives skulls and score from its faces") {
+  test("roll() accepts an Attack roll and derives skulls and score from its faces"):
     val attackPool = PoolKey("campaign.attack")
     val tree: Operation = Sequence(ModifyDicePool(attackPool, 4),
       Roll(attackPool, DiceSpec(DiceKind.Attack)))
     val faces: Vector[DieFace] = Vector(AttackDieFace.TwoSwordsSkull,
       AttackDieFace.OneSword, AttackDieFace.HollowSword, AttackDieFace.HollowSword)
     val (pending, parkedState) = parkAtRoll(tree)
-    ProcedureWalker.roll(parkedState, tree, pending, faces, noPowers) match {
+    ProcedureWalker.roll(parkedState, tree, pending, faces, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(finalState.game.current.rollOutcomes(attackPool),
           RollOutcome(attackPool, 4, faces, skulls = 1, score = 4))
         assertEquals(events.head.asInstanceOf[WalkerStepRecorded].payload,
           RollPayload(attackPool, faces))
       case other => fail(s"expected the attack roll to finish the tree, got $other")
-    }
-  }
 
-  test("roll() rejects a defense face mixed into an attack roll") {
+  test("roll() rejects a defense face mixed into an attack roll"):
     val attackPool = PoolKey("campaign.attack")
     val tree: Operation = Sequence(ModifyDicePool(attackPool, 2),
       Roll(attackPool, DiceSpec(DiceKind.Attack)))
@@ -668,16 +608,15 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     expectRollViolation(parkedState, tree, pending,
       Vector[DieFace](AttackDieFace.HollowSword, DefenseDieFace.Blank),
       "non-attack")
-  }
 
-  test("roll() continues auto-walking deltas after the Roll and records both events") {
+  test("roll() continues auto-walking deltas after the Roll and records both events"):
     val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll,
       adjust)
     val faces: Vector[DieFace] = Vector(DefenseDieFace.OneShield,
       DefenseDieFace.OneShield)
     val (pending, parkedState) = parkAtRoll(tree)
 
-    ProcedureWalker.roll(parkedState, tree, pending, faces, noPowers) match {
+    ProcedureWalker.roll(parkedState, tree, pending, faces, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
         assertEquals(events.size, 2)
@@ -690,23 +629,19 @@ class ProcedureWalkerSuite extends munit.FunSuite {
           DefenseDieFace.score(Vector(DefenseDieFace.OneShield,
             DefenseDieFace.OneShield)))
       case other => fail(s"expected the roll to finish the tree, got $other")
-    }
-  }
 
-  test("roll() on a Decide park is rejected, not silently re-parked") {
+  test("roll() on a Decide park is rejected, not silently re-parked"):
     val tree: Operation = Sequence(decide, adjust)
     val (pending, _) = parkAtRoll(tree)
     assertEquals(pending.at, Vector("0"))
 
     ProcedureWalker.roll(ready, tree, pending, Vector.empty[DieFace],
-        noPowers) match {
+        noPowers) match
       case Left(violation: OathViolation.InvalidEventOrder) =>
         assert(violation.detail.contains("expected a Roll"),
           s"violation detail '${violation.detail}' should mention the Roll " +
             "expectation")
       case other => fail(s"expected a Left on a non-Roll park, got $other")
-    }
-  }
 
   // -------------------------------------------------------------------------
   // Task 3: power contributions -- gather/fold at a windowed node, inherited
@@ -720,7 +655,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   private val testWindow: PowerWindow = PowerWindow.RecoverModifierSelection
   private val otherWindow: PowerWindow = PowerWindow.RecoverBeforeFirstRoll
 
-  test("CardPlayed visits existing played-card window without recording hook") {
+  test("CardPlayed visits existing played-card window without recording hook"):
     val hook = CardPlayedFaceup(adviser.id,
       RuleSourceRef.Adviser(actor, adviser.id))
     assertEquals(hook.children, Vector.empty[Operation])
@@ -732,27 +667,24 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     assertEquals(supplyOf(state), SupplyTrack.Maximum - 1)
     assertEquals(steps.map(_.ops), Vector(Vector[CoreOperation](
       SpendSupply(actor, 1))))
-  }
 
   private def transformPower(id: String, hook: PowerWindow)(
       fn: (PowerCtx, Vector[Operation]) => Vector[Operation])
       : ProcedureWalkerSuite.TestTransformPower =
     ProcedureWalkerSuite.TestTransformPower(PowerId(id), hook, fn)
 
-  private def recordedStep(event: OathEvent): WalkerStepRecorded = event match {
+  private def recordedStep(event: OathEvent): WalkerStepRecorded = event match
     case step: WalkerStepRecorded => step
     case other => fail(s"expected a WalkerStepRecorded, got $other")
-  }
 
   private def finishedSteps(outcome: Either[OathViolation, WalkerOutcome])
-      : (ReadyGame, Vector[WalkerStepRecorded]) = outcome match {
+      : (ReadyGame, Vector[WalkerStepRecorded]) = outcome match
     case Right(WalkerOutcome.Finished(state, events)) =>
       (state, events.map(recordedStep))
     case other => fail(s"expected a Finished walk, got $other")
-  }
 
   test("a windowed composite records one event per folded child at the " +
-      "child's own node id, whether or not a transform fired") {
+      "child's own node id, whether or not a transform fired"):
     val powerId = PowerId("test.prepend-move")
     val power = transformPower(powerId.value, testWindow)((_, ops) => move +: ops)
     val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
@@ -777,10 +709,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     assertEquals(steps.map(_.contributions), Vector.fill(2)(Vector(powerId)))
     assertEquals(pawnSiteOf(finalState), Some(sites(2)))
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
-  }
 
   test("a Repeat of plain deltas inside a windowed composite still loops and " +
-      "still evaluates its guard every pass") {
+      "still evaluates its guard every pass"):
     // Every leaf under the fold is a plain delta, so a batching collapse that
     // classified the folded vector by flattening it would run the body ONCE
     // with the guard never evaluated -- the loop silently gone.
@@ -805,10 +736,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       Vector("0.0", "0.1.0", "0.1.0", "0.1.0"))
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 3)
     assertEquals(pawnSiteOf(finalState), Some(sites(2)))
-  }
 
   test("a Branch inside a windowed composite still has select called and its " +
-      "selection walked") {
+      "selection walked"):
     // `Branch.children` is statically empty, so a batching collapse that
     // flattened the folded vector would drop the branch entirely.
     var selects = 0
@@ -829,10 +759,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     assertEquals(steps.map(_.nodeId), Vector("0.0", "0.1.0"))
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
     assertEquals(pawnSiteOf(finalState), Some(sites(2)))
-  }
 
   test("a windowed leaf whose transform yields a Decide parks at it, and the " +
-      "resume applies the same fold") {
+      "resume applies the same fold"):
     val powerId = PowerId("test.pay-before-decide")
     val power = transformPower(powerId.value, testWindow)(
       (_, ops) => adjust +: ops)
@@ -844,10 +773,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // the walk parks on the Decide the transform left in place (this raised a
     // contract violation before the folded vector was walked as children).
     val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
-        powers) match {
+        powers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
       case other => fail(s"expected a park at the folded Decide, got $other")
-    }
     assertEquals(parked.at, Vector("0", "1"))
     assertEquals(parkEvents.size, 1)
     val paid = recordedStep(parkEvents.head)
@@ -860,7 +788,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
-    ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match {
+    ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 1)
         val step = recordedStep(events.head)
@@ -869,11 +797,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         assertEquals(step.contributions, Vector(powerId))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
       case other => fail(s"expected the answered resume to finish, got $other")
-    }
-  }
 
   test("a leaf records every enclosing window's contributions, its own " +
-      "window's included, de-duplicated") {
+      "window's included, de-duplicated"):
     val outerId = PowerId("test.outer")
     val innerId = PowerId("test.inner")
     val keep: (PowerCtx, Vector[Operation]) => Vector[Operation] =
@@ -891,10 +817,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val tree: Operation = Sequence(windowed)
 
     val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
-        powers) match {
+        powers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
       case other => fail(s"expected a park at the hooked Decide, got $other")
-    }
     // A leaf with no window of its own records the enclosing composite's
     // gather order.
     assertEquals(recordedStep(parkEvents.head).contributions, Vector(outerId))
@@ -903,7 +828,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
-    ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match {
+    ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         // The leaf's own window gathers `outer` a second time and `inner` for
         // the first: inherited order first, own order after, first occurrence
@@ -911,22 +836,18 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         assertEquals(recordedStep(events.head).contributions,
           Vector(outerId, innerId))
       case other => fail(s"expected the answered resume to finish, got $other")
-    }
-  }
 
-  test("a node with no window records contributions as Vector.empty") {
+  test("a node with no window records contributions as Vector.empty"):
     val tree: Operation = Sequence(adjust)
 
-    ProcedureWalker.advance(ready, tree, None, noPowers) match {
+    ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(events.size, 1)
         assertEquals(recordedStep(events.head).contributions,
           Vector.empty[PowerId])
       case other => fail(s"expected a Finished walk, got $other")
-    }
-  }
 
-  test("a Restriction violation rejects the command with no events appended") {
+  test("a Restriction violation rejects the command with no events appended"):
     val violation: OathViolation = OathViolation.InvalidEventOrder(
       "test restriction forbids this action")
     val power = ProcedureWalkerSuite.TestRestrictionPower(
@@ -946,10 +867,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       violations.headOption.toLeft(()).flatMap(_ =>
         ProcedureWalker.advance(ready, tree, None, powers))
     assertEquals(command, Left(violation))
-  }
 
   test("a Restriction declared inside a Branch's selected children is " +
-      "collected") {
+      "collected"):
     // `Branch.children` is statically empty, so a traversal that read it
     // would never see this window at all.
     val violation: OathViolation = OathViolation.InvalidEventOrder(
@@ -962,10 +882,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     assertEquals(ProcedureWalker.restrictionViolations(tree,
       WalkerPowers(Vector(power)), ready, actor), Vector(violation))
-  }
 
   test("replay of contributions-carrying events reaches the same state as " +
-      "the live walk when no powers are present at replay") {
+      "the live walk when no powers are present at replay"):
     val powerId = PowerId("test.prepend-move")
     val power = transformPower(powerId.value, testWindow)((_, ops) => move +: ops)
     val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
@@ -981,12 +900,10 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // reach the SAME state even though no power is available to replay:
     // `contributions` is an audit fact, not a replay input.
     val replayed = steps.foldLeft[Either[OathViolation, OathState]](
-        Right(OathState.Ready(ready))) {
+        Right(OathState.Ready(ready))):
       case (Right(state), event) => ProcedureWalker.applyRecorded(state, event)
       case (left, _) => left
-    }
     assertEquals(replayed, Right(OathState.Ready(finalState)))
-  }
 
   // -------------------------------------------------------------------------
   // Fix-round ruling J: `leafAt`/`resolveAt` (behind `parkedRoll`/
@@ -1001,7 +918,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   // -------------------------------------------------------------------------
 
   test("parkedDecide resolves an inserting transform's shifted index, not " +
-      "the windowed composite's declared (unfolded) children") {
+      "the windowed composite's declared (unfolded) children"):
     val powerId = PowerId("test.insert-before-decide-park")
     val power = transformPower(powerId.value, testWindow)((_, ops) => adjust +: ops)
     // Declared children of `windowed` are `Vector(decide)` -- one element, at
@@ -1014,10 +931,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // index 1 ("0.1"), one deeper than the declared "0.0" -- the exact shape
     // Task 5's first inserting power (Catacombs, at the root window) produces.
     val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
-        powers) match {
+        powers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
       case other => fail(s"expected a park at the folded Decide, got $other")
-    }
     assertEquals(parked.at, Vector("0", "1"))
     assertEquals(parkEvents.size, 1)
 
@@ -1033,10 +949,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       powers), Some(decide))
     assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, parked,
       powers), None)
-  }
 
   test("parkedRoll resolves an inserting transform's shifted index on a " +
-      "windowed composite whose folded Roll sits one index deeper") {
+      "windowed composite whose folded Roll sits one index deeper"):
     val powerId = PowerId("test.insert-before-roll-park")
     val power = transformPower(powerId.value, testWindow)((_, ops) => adjust +: ops)
     // Declared children are `Vector(ModifyDicePool(...), defenseRoll)` -- the
@@ -1049,10 +964,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // Folded: [adjust, ModifyDicePool, Roll] -- the Roll now sits at folded
     // index 2, not its declared index 1.
     val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
-        powers) match {
+        powers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
       case other => fail(s"expected a park at the folded Roll, got $other")
-    }
     assertEquals(parked.at, Vector("0", "2"))
     assertEquals(parkEvents.size, 2)
 
@@ -1065,5 +979,3 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       powers), Some((recoverPool, 2)))
     assertEquals(ProcedureWalker.parkedDecide(parkedState, tree, parked,
       powers), None)
-  }
-}

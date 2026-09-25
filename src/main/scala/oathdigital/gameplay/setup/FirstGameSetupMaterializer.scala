@@ -3,13 +3,13 @@ package oathdigital.gameplay.setup
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 
-final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
+final class FirstGameSetupMaterializer(catalog: ExecutableCatalog):
   private val sitesById = catalog.sites.map(site => site.id -> site).toMap
   private val edificesById = catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap
 
   def materialize(plan: FirstGameSetupPlan,
       placements: Vector[PawnPlacement],
-      adviserChoices: Vector[(PlayerId, DenizenId)]): FirstGameSetupMaterial = {
+      adviserChoices: Vector[(PlayerId, DenizenId)]): FirstGameSetupMaterial =
     val placementMap = placements.map(p => p.playerId -> p.siteId).toMap
     val adviserMap = adviserChoices.toMap
     val relicsBySite = assignRelics(plan)
@@ -20,7 +20,7 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
       plan.orderedSites.slice(5, 8),
       plan.orderedSites.map { siteId =>
         val definition = sitesById(siteId)
-        val forces = if (definition.capacity == 0) SiteForces.Empty
+        val forces = if definition.capacity == 0 then SiteForces.Empty
           else SiteForces.Occupied(ForceKind.Bandit, definition.capacity)
         val denizens = edifices.get(siteId).toVector.map(id =>
           EdificeState(id, EdificeSide.Ruined, Tokens.empty))
@@ -48,14 +48,12 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
       GameTracks(1, 0, usurperLimited = true), favorBanks(plan),
       temporaryHands = plan.participants.map(p =>
         p.playerId -> handFor(plan, p.playerId)).toMap)
-  }
 
-  def handFor(plan: FirstGameSetupPlan, playerId: PlayerId): Vector[DenizenId] = {
+  def handFor(plan: FirstGameSetupPlan, playerId: PlayerId): Vector[DenizenId] =
     val index = plan.participants.indexWhere(_.playerId == playerId)
     plan.denizenOrder.slice(6 + index * 3, 9 + index * 3)
-  }
 
-  private def assignRelics(plan: FirstGameSetupPlan): Map[SiteId, Vector[RelicId]] = {
+  private def assignRelics(plan: FirstGameSetupPlan): Map[SiteId, Vector[RelicId]] =
     var offset = 0
     plan.orderedSites.map { site =>
       val count = sitesById(site).relicSlots
@@ -63,40 +61,34 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
       offset += count
       site -> assigned
     }.toMap
-  }
 
   private def initialDiscards(plan: FirstGameSetupPlan,
       placements: Map[PlayerId, SiteId],
-      choices: Map[PlayerId, DenizenId]): Map[Region, Vector[WorldCardId]] = {
+      choices: Map[PlayerId, DenizenId]): Map[Region, Vector[WorldCardId]] =
     val seeded = Map[Region, Vector[WorldCardId]](
       Region.Cradle -> plan.denizenOrder.slice(0, 2),
       Region.Provinces -> plan.denizenOrder.slice(2, 4),
       Region.Hinterland -> plan.denizenOrder.slice(4, 6))
     plan.participants.foldLeft(seeded) { (discards, participant) =>
-      (placements.get(participant.playerId), choices.get(participant.playerId)) match {
+      (placements.get(participant.playerId), choices.get(participant.playerId)) match
         case (Some(site), Some(choice)) =>
           val rejected = handFor(plan, participant.playerId).filterNot(_ == choice)
-          val destination = regionOf(plan, site) match {
+          val destination = regionOf(plan, site) match
             case Region.Cradle => Region.Provinces
             case Region.Provinces => Region.Hinterland
             case Region.Hinterland => Region.Cradle
-          }
           discards.updated(destination, discards(destination) ++ rejected)
         case _ => discards
-      }
     }
-  }
 
   private def regionOf(plan: FirstGameSetupPlan, site: SiteId): Region =
-    if (plan.orderedSites.take(2).contains(site)) Region.Cradle
-    else if (plan.orderedSites.slice(2, 5).contains(site)) Region.Provinces
+    if plan.orderedSites.take(2).contains(site) then Region.Cradle
+    else if plan.orderedSites.slice(2, 5).contains(site) then Region.Provinces
     else Region.Hinterland
 
-  private def favorBanks(plan: FirstGameSetupPlan): Map[Suit, Int] = {
-    val bonus = if (plan.participants.size >= 5) 1 else 0
+  private def favorBanks(plan: FirstGameSetupPlan): Map[Suit, Int] =
+    val bonus = if plan.participants.size >= 5 then 1 else 0
     val edificeSuits = plan.homelandEdifices.map { case (_, id) =>
       edificesById(id).suit
     }
     Suit.all.map(suit => suit -> (3 + bonus + edificeSuits.count(_ == suit))).toMap
-  }
-}

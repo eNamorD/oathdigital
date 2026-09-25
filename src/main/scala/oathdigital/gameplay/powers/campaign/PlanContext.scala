@@ -13,7 +13,7 @@ import oathdigital.model._
   * the sites Bandits rule and holds nothing else.
   */
 final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
-    side: CampaignPlanSide) {
+    side: CampaignPlanSide):
   /** The player who would use the plan; `None` for a bandit defender. */
   def user: Option[PlayerId] = CampaignPlans.userOf(setup, side)
 
@@ -57,12 +57,11 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
 
   /** An edifice on the given face at a site the user rules. */
   def edifice(id: EdificeId, face: EdificeSide)
-      : Option[CampaignPlanSource.SiteEdifice] = sitesRuled.collectFirst {
+      : Option[CampaignPlanSource.SiteEdifice] = sitesRuled.collectFirst:
     case (site, state) if state.denizens.exists {
       case card: EdificeState => card.id == id && card.side == face
       case _ => false
     } => CampaignPlanSource.SiteEdifice(site, id)
-  }
 
   /** Whether the plan's user has their pawn at `site`. */
   def pawnAt(site: SiteId): Boolean = user.exists(player =>
@@ -75,9 +74,8 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
   /** Whether any target of a Conquest is in `region`. A Raid targets no site. */
   def targetsIn(region: Region): Boolean = setup.targetSites.exists(site =>
     ready.game.current.map.regionOf(site).contains(region))
-}
 
-object PlanContext {
+object PlanContext:
   /** The context of the plan window `ctx` is gathered for; `None` at any other
     * window, or before the Campaign's force is known.
     */
@@ -89,7 +87,6 @@ object PlanContext {
     case _ => None
   }).flatMap(side => CampaignSetup.setup(ctx.state, ctx.activePlayer,
     PendingTree(ctx.nodePath, ctx.answered)).map(PlanContext(ctx.state, _, side)))
-}
 
 /** A plan that was used, as a later window sees it. `result` is the Campaign's
   * recorded result once the outcome is known (the windows from the losses on),
@@ -97,21 +94,18 @@ object PlanContext {
   * board.
   */
 final case class PlanUse(side: CampaignPlanSide, actor: PlayerId,
-    result: Option[CampaignResult], ready: ReadyGame) {
+    result: Option[CampaignResult], ready: ReadyGame):
   /** The player who used the plan; `None` for a bandit defender. */
-  def user: Option[PlayerId] = side match {
+  def user: Option[PlayerId] = side match
     case CampaignPlanSide.Attacker => Some(actor)
-    case CampaignPlanSide.Defender => result.map(_.defender).collect {
+    case CampaignPlanSide.Defender => result.map(_.defender).collect:
       case CampaignDefender.Player(player) => player
-    }
-  }
 
   /** Whether the plan's user won. `None` before the outcome is known. */
   def won: Option[Boolean] = result.map(_.attackerWins == (
     side == CampaignPlanSide.Attacker))
-}
 
-object PlanUse {
+object PlanUse:
   /** The plan named by `ref`, if it was used on one of `sides` in this
     * Campaign: chosen by a player, or applied by a bandit defender, which the
     * application recorded (`CampaignPlans.appliedMarker`). `afterOutcome` says
@@ -119,7 +113,7 @@ object PlanUse {
     */
   def chosen(ready: ReadyGame, pending: PendingTree, actor: PlayerId,
       ref: DecisionOptionRef, sides: Set[CampaignPlanSide],
-      afterOutcome: Boolean): Option[PlanUse] = {
+      afterOutcome: Boolean): Option[PlanUse] =
     val picked = sides.toVector.find(side => CampaignAnswers.picks(pending,
       CampaignIds.planDecision(side)).contains(ref))
     val banditApplied = Option.when(sides(CampaignPlanSide.Defender) &&
@@ -128,5 +122,3 @@ object PlanUse {
     picked.orElse(banditApplied).map(side => PlanUse(side, actor,
       Option.when(afterOutcome)(ready.game.current.lastCampaignResult)
         .flatten.filter(_.attacker == actor), ready))
-  }
-}

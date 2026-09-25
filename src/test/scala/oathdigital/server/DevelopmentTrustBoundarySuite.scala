@@ -1,7 +1,7 @@
 package oathdigital.server
 
-class DevelopmentTrustBoundarySuite extends munit.FunSuite {
-  test("development server binding accepts only explicit loopback hosts") {
+class DevelopmentTrustBoundarySuite extends munit.FunSuite:
+  test("development server binding accepts only explicit loopback hosts"):
     Vector("127.0.0.1", "localhost", "::1").foreach { host =>
       assert(DevelopmentTrustBoundary.validateLoopbackHost(host).isRight)
     }
@@ -10,9 +10,8 @@ class DevelopmentTrustBoundarySuite extends munit.FunSuite {
         .validateLoopbackHost(host).left.toOption.get
       assert(error.contains("loopback"))
     }
-  }
 
-  test("development identifiers enforce length and safe characters") {
+  test("development identifiers enforce length and safe characters"):
     assert(DevelopmentTrustBoundary
       .validateIdentifier("game-1:branch_a", "$.gameId").isRight)
     assertEquals(
@@ -26,5 +25,3 @@ class DevelopmentTrustBoundarySuite extends munit.FunSuite {
     ).isLeft)
     assert(DevelopmentTrustBoundary
       .validateIdentifier("player/../../bad", "$.playerId").isLeft)
-  }
-}

@@ -25,20 +25,18 @@ final case class CardDetailsProjection(
 final case class SiteCardProjection(
     cardId: String,
     label: String,
-    details: Option[CardDetailsProjection] = None) {
+    details: Option[CardDetailsProjection] = None):
   def denizenId: String = cardId
-}
 final case class SiteRelicsProjection(facedownCount: Int,
     knownRelics: Vector[CardDetailsProjection] = Vector.empty)
 final case class ForgeCostProjection(favor: Int, secrets: Int)
 /** Whose warbands hold a site. One case per kind of force, so a force, its
   * ruler and its colour cannot disagree.
   */
-sealed trait SiteForcesProjection extends Product with Serializable {
+sealed trait SiteForcesProjection extends Product with Serializable:
   def count: Int
   def label: String
-}
-object SiteForcesProjection {
+object SiteForcesProjection:
   final case class Exile(count: Int, rulerPlayerId: String,
       color: oathdigital.model.PlayerColor,
       label: String) extends SiteForcesProjection
@@ -46,7 +44,6 @@ object SiteForcesProjection {
       extends SiteForcesProjection
   final case class Bandit(count: Int, label: String)
       extends SiteForcesProjection
-}
 final case class SetupSiteProjection(
     siteId: String,
     label: String,

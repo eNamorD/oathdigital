@@ -11,10 +11,10 @@ import oathdigital.model._
   * same Recover procedure builder as command execution, and relic availability
   * does not gate the action.
   */
-class RecoverEligibilitySuite extends munit.FunSuite {
+class RecoverEligibilitySuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
 
-  private def baseReady: (ReadyGame, PlayerState, SiteId) = {
+  private def baseReady: (ReadyGame, PlayerState, SiteId) =
     val Ready(base) = execute()._1: @unchecked
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
@@ -25,15 +25,14 @@ class RecoverEligibilitySuite extends munit.FunSuite {
     val ready = base.updateCurrent(_.copy(
       turn = base.game.current.turn.copy(phase = Phase.Act),
       players = base.game.current.players.map(p =>
-        if (p.player == active.player) moved else p)))
+        if p.player == active.player then moved else p)))
     (ready, moved, siteId)
-  }
 
   private def legalControls(ready: ReadyGame, actor: PlayerId): Vector[String] =
     projector.project("recover-eligibility", LoadedGame(Ready(ready), 1), actor)
       .legalControls
 
-  test("beginRecover is offered when a facedown relic already sits at the site") {
+  test("beginRecover is offered when a facedown relic already sits at the site"):
     val (base, active, siteId) = baseReady
     val relic = RelicState(base.game.current.commonCards.relicDeck.head,
       Orientation.FaceDown, Tokens.empty)
@@ -46,9 +45,8 @@ class RecoverEligibilitySuite extends munit.FunSuite {
 
     assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
     assert(legalControls(ready, active.player).contains("beginRecover"))
-  }
 
-  test("beginRecover is offered at an empty site once Catacombs is face-up there") {
+  test("beginRecover is offered at an empty site once Catacombs is face-up there"):
     val (base, active0, siteId) = baseReady
     val definition = catalog.denizens.find(_.powers.exists(
       _.id.value == "denizen.catacombs")).get
@@ -58,7 +56,7 @@ class RecoverEligibilitySuite extends munit.FunSuite {
       denizens = Vector(DenizenState(cardId, Orientation.FaceUp, Tokens.empty)))
     val ready = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
-        if (p.player == active.player) active else p),
+        if p.player == active.player then active else p),
       commonCards = base.game.current.commonCards.copy(
         worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == cardId),
         regionalDiscards = base.game.current.commonCards.regionalDiscards.map {
@@ -69,9 +67,8 @@ class RecoverEligibilitySuite extends munit.FunSuite {
 
     assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
     assert(legalControls(ready, active.player).contains("beginRecover"))
-  }
 
-  test("beginRecover is offered without a relic or Catacombs") {
+  test("beginRecover is offered without a relic or Catacombs"):
     val (base, active, siteId) = baseReady
     val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
       _.id.value == "denizen.catacombs")).get.id.value)
@@ -86,16 +83,13 @@ class RecoverEligibilitySuite extends munit.FunSuite {
 
     assert(ready.game.current.map.sites(siteId).relics.isEmpty)
     assert(legalControls(ready, active.player).contains("beginRecover"))
-  }
 
-  test("beginRecover is not offered without the Supply to pay for it") {
+  test("beginRecover is not offered without the Supply to pay for it"):
     val (base, active, _) = baseReady
     def withSupply(supply: Int) = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
-        if (p.player == active.player)
+        if p.player == active.player then
           p.copy(board = p.board.copy(supply = SupplyTrack(supply)))
         else p)))
     assert(legalControls(withSupply(1), active.player).contains("beginRecover"))
     assert(!legalControls(withSupply(0), active.player).contains("beginRecover"))
-  }
-}

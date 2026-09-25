@@ -3,10 +3,10 @@ package oathdigital.server
 import java.net.URI
 import java.nio.file.Paths
 
-class ServerConfigSuite extends munit.FunSuite {
+class ServerConfigSuite extends munit.FunSuite:
   private val version = "0.1.0-alpha.1"
 
-  test("defaults produce loopback development configuration") {
+  test("defaults produce loopback development configuration"):
     val config = parse(Array.empty, Map.empty)
 
     assertEquals(config.host, "127.0.0.1")
@@ -20,9 +20,8 @@ class ServerConfigSuite extends munit.FunSuite {
     assertEquals(config.mode, ServerMode.Development)
     assertEquals(config.authenticatedRouteMount, None)
     assertEquals(config.version, version)
-  }
 
-  test("environment configures every runtime value") {
+  test("environment configures every runtime value"):
     val config = parse(
       Array.empty,
       Map(
@@ -53,9 +52,8 @@ class ServerConfigSuite extends munit.FunSuite {
         "https://play.example.com"
       ))
     )
-  }
 
-  test("CLI values take precedence over environment values") {
+  test("CLI values take precedence over environment values"):
     val result = ServerConfig.parse(
       Array("--host", "0.0.0.0", "--port", "9090"),
       Map(
@@ -75,9 +73,8 @@ class ServerConfigSuite extends munit.FunSuite {
     assertEquals(config.port, 9090)
     assertEquals(config.mode, ServerMode.TrustedAlpha)
     assertEquals(config.version, "0.1.0-alpha.1")
-  }
 
-  test("CLI overrides each environment-backed option") {
+  test("CLI overrides each environment-backed option"):
     val config = parse(
       Array(
         "--host", "localhost",
@@ -117,9 +114,8 @@ class ServerConfigSuite extends munit.FunSuite {
         "http://localhost:9090"
       ))
     )
-  }
 
-  test("authenticated route configuration requires cookie and origin together") {
+  test("authenticated route configuration requires cookie and origin together"):
     val partialConfigurations = Vector(
       Array("--session-cookie-name", "oath_session"),
       Array("--authenticated-public-origin", "http://localhost:8080")
@@ -153,9 +149,8 @@ class ServerConfigSuite extends munit.FunSuite {
         "authenticated routes require both session cookie name and public origin"
       ))
     }
-  }
 
-  test("authenticated public origin enforces the CSRF origin policy") {
+  test("authenticated public origin enforces the CSRF origin policy"):
     Vector(
       "https://play.example.com",
       "http://localhost:8080",
@@ -190,9 +185,8 @@ class ServerConfigSuite extends munit.FunSuite {
       assertEquals(errors.size, 1)
       assert(errors.head.startsWith("--authenticated-public-origin:"))
     }
-  }
 
-  test("unknown options and missing values return usage for every error") {
+  test("unknown options and missing values return usage for every error"):
     val errors = ServerConfig.parse(
       Array("--mystery", "value", "--port", "--mode"),
       Map.empty,
@@ -204,9 +198,8 @@ class ServerConfigSuite extends munit.FunSuite {
     assert(errors(1).startsWith("missing value for --mode"))
     assert(errors(2).startsWith("unknown option --mystery"))
     errors.foreach(error => assert(error.contains(ServerConfig.usage)))
-  }
 
-  test("syntax and validation errors share canonical option order") {
+  test("syntax and validation errors share canonical option order"):
     val errors = ServerConfig.parse(
       Array(
         "--mode",
@@ -221,9 +214,8 @@ class ServerConfigSuite extends munit.FunSuite {
     assert(errors(0).startsWith("--host:"))
     assert(errors(1).startsWith("--port:"))
     assert(errors(2).startsWith("missing value for --mode"))
-  }
 
-  test("invalid values return all errors in stable option order") {
+  test("invalid values return all errors in stable option order"):
     val errors = ServerConfig.parse(
       Array(
         "--mode", "production",
@@ -245,9 +237,8 @@ class ServerConfigSuite extends munit.FunSuite {
       "--catalog-path",
       "--mode"
     ))
-  }
 
-  test("ports must be decimal integers from 1 through 65535") {
+  test("ports must be decimal integers from 1 through 65535"):
     Vector("", "zero", "0", "-1", "65536").foreach { value =>
       val error = ServerConfig.parse(
         Array("--port", value),
@@ -259,9 +250,8 @@ class ServerConfigSuite extends munit.FunSuite {
     Vector("1", "65535").foreach { value =>
       assertEquals(parse(Array("--port", value)).port, value.toInt)
     }
-  }
 
-  test("bind host must be a non-blank host without whitespace") {
+  test("bind host must be a non-blank host without whitespace"):
     Vector("", " ", "bad host", "host/path").foreach { host =>
       val errors = ServerConfig.parse(
         Array("--host", host, "--mode", "trusted-alpha",
@@ -271,9 +261,8 @@ class ServerConfigSuite extends munit.FunSuite {
       ).left.toOption.get
       assert(errors.exists(_.startsWith("--host:")), clues(host, errors))
     }
-  }
 
-  test("paths are absolute and normalized and malformed paths are errors") {
+  test("paths are absolute and normalized and malformed paths are errors"):
     val config = parse(Array(
       "--database-path", "var/data/../database",
       "--catalog-path", "docs/catalog/../catalog.json"
@@ -295,9 +284,8 @@ class ServerConfigSuite extends munit.FunSuite {
     assertEquals(errors.map(_.takeWhile(_ != ':')), Vector(
       "--database-path", "--catalog-path"
     ))
-  }
 
-  test("runtime mode accepts only development and trusted-alpha") {
+  test("runtime mode accepts only development and trusted-alpha"):
     assertEquals(parse(Array("--mode", "development")).mode,
       ServerMode.Development)
     assertEquals(parse(Array(
@@ -309,9 +297,8 @@ class ServerConfigSuite extends munit.FunSuite {
       Array("--mode", "production"), Map.empty, version
     ).left.toOption.get
     assert(errors.exists(_.startsWith("--mode:")))
-  }
 
-  test("development mode rejects non-loopback bind hosts") {
+  test("development mode rejects non-loopback bind hosts"):
     Vector("0.0.0.0", "192.168.1.10", "example.com").foreach { host =>
       val errors = ServerConfig.parse(
         Array("--host", host), Map.empty, version
@@ -319,9 +306,8 @@ class ServerConfigSuite extends munit.FunSuite {
       assert(errors.exists(error =>
         error.startsWith("--host:") && error.contains("loopback")))
     }
-  }
 
-  test("trusted-alpha requires a public base URL for non-loopback binding") {
+  test("trusted-alpha requires a public base URL for non-loopback binding"):
     val errors = ServerConfig.parse(
       Array("--mode", "trusted-alpha", "--host", "0.0.0.0"),
       Map.empty,
@@ -330,9 +316,8 @@ class ServerConfigSuite extends munit.FunSuite {
 
     assert(errors.exists(error =>
       error.startsWith("--public-base-url:") && error.contains("required")))
-  }
 
-  test("trusted-alpha permits loopback without a public base URL") {
+  test("trusted-alpha permits loopback without a public base URL"):
     Vector("127.0.0.1", "localhost", "::1").foreach { host =>
       val config = parse(Array(
         "--mode", "trusted-alpha", "--host", host
@@ -340,9 +325,8 @@ class ServerConfigSuite extends munit.FunSuite {
       assertEquals(config.host, host)
       assertEquals(config.publicBaseUrl, None)
     }
-  }
 
-  test("public base URL is an absolute HTTP or HTTPS origin") {
+  test("public base URL is an absolute HTTP or HTTPS origin"):
     Vector(
       "https://play.example.com",
       "http://192.168.1.20:9090",
@@ -370,7 +354,6 @@ class ServerConfigSuite extends munit.FunSuite {
       assert(errors.exists(_.startsWith("--public-base-url:")),
         clues(value, errors))
     }
-  }
 
   private def parse(
       arguments: Array[String],
@@ -378,4 +361,3 @@ class ServerConfigSuite extends munit.FunSuite {
   ): ServerConfig = ServerConfig
     .parse(arguments, environment, version)
     .fold(errors => fail(errors.mkString("; ")), identity)
-}

@@ -14,21 +14,21 @@ import oathdigital.model._
   * amount are decided before any resource moves, so both read the board as
   * the player sees it; the ribbon and the payment are built when reached.
   */
-object ChallengeProcedure {
+object ChallengeProcedure:
   val bannerDecisionId: String = "challenge.banner"
   val amountDecisionId: String = "challenge.amount"
   val decisionIds: Set[String] =
     Set(bannerDecisionId, amountDecisionId, ChallengeRibbon.siteDecisionId)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- PowerRuntime.requireAudited(catalog)
     _ <- supportedFaces(state)
     _ <- Either.cond(legalBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.Challenge.key))
-  } yield tree(actor)
+  yield tree(actor)
 
   /** Whether Challenge could start now: the gates pass and the first walk
     * (the Supply cost, up to the banner decision) is accepted.
@@ -47,7 +47,7 @@ object ChallengeProcedure {
     * site, and strictly more relevant faceup resources than the banner holds.
     * Supply is a cost owned by `SpendSupply`, not a fact about a banner.
     */
-  def legalBanners(state: ReadyGame, actor: PlayerId): Vector[Banner] = {
+  def legalBanners(state: ReadyGame, actor: PlayerId): Vector[Banner] =
     val current = state.game.current
     current.players.find(_.player == actor).toVector.flatMap { player =>
       Banner.all.filter { banner =>
@@ -59,7 +59,6 @@ object ChallengeProcedure {
             BannerRules.resources(current, banner)
       }
     }
-  }
 
   private def noStartArgs(args: Vector[DecisionOptionRef])
       : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
@@ -70,12 +69,11 @@ object ChallengeProcedure {
   /** The ribbon rules below are the printed ones for People's Favor `Mob` and
     * Darkest Secret `WanderingFlame` only.
     */
-  private def supportedFaces(state: ReadyGame): Either[OathViolation, Unit] = {
+  private def supportedFaces(state: ReadyGame): Either[OathViolation, Unit] =
     val banners = state.game.current.banners
     Either.cond(banners.peoplesFavor.active == PeoplesFavorFace.Mob &&
       banners.darkestSecret.active == DarkestSecretFace.WanderingFlame, (),
       OathViolation.UnsupportedBannerState("unsupported active banner face"))
-  }
 
   private def tree(actor: PlayerId): Operation = Sequence(Vector[Operation](
     Sequence(Vector[Operation](SpendSupply(actor, 1)),
@@ -91,21 +89,19 @@ object ChallengeProcedure {
     Some(PowerWindow.ChallengeActionEligibility))
 
   private def amountDecision(ready: ReadyGame, actor: PlayerId,
-      banner: Banner): Operation = {
+      banner: Banner): Operation =
     val current = ready.game.current
     val prior = BannerRules.resources(current, banner)
     val own = current.players.find(_.player == actor)
       .fold(0)(BannerRules.playerResources(_, banner))
-    val unit = banner match {
+    val unit = banner match
       case Banner.PeoplesFavor => "favor"
       case Banner.DarkestSecret => "secrets"
-    }
     Decide(amountDecisionId, actor, DecisionQuery.ChooseAmount(prior + 1,
       math.max(prior + 1, own),
       Some(s"Place more than $prior $unit to take ${banner.key}"),
       "Take banner"),
       window = Some(PowerWindow.ChallengeAmountSelection))
-  }
 
   /** Reached only after both answers exist. Selecting reads the two answers
     * and the banner's holder, which no earlier step changes; the ribbon and
@@ -113,10 +109,10 @@ object ChallengeProcedure {
     */
   private def effects(ready: ReadyGame, actor: PlayerId,
       pending: PendingTree): Vector[Operation] =
-    (for {
+    (for
       banner <- bannerOf(pending)
       amount <- amountOf(pending)
-    } yield Vector[Operation](
+    yield Vector[Operation](
       Sequence(ChallengeRibbon.steps(actor, banner),
         Some(PowerWindow.ChallengeRibbon)),
       Sequence(Vector[Operation](payment(actor, banner, amount),
@@ -141,14 +137,11 @@ object ChallengeProcedure {
       PositionedLocation(Location.PlayArea(actor)))
 
   private def bannerOf(pending: PendingTree): Option[Banner] =
-    pending.answered.collectFirst {
+    pending.answered.collectFirst:
       case Answered(`bannerDecisionId`, DecisionAnswer.ChooseOneAnswer(
           DecisionOptionRef.Banner(banner)), _) => banner
-    }
 
   private def amountOf(pending: PendingTree): Option[Int] =
-    pending.answered.collectFirst {
+    pending.answered.collectFirst:
       case Answered(`amountDecisionId`, DecisionAnswer.ChooseAmountAnswer(n), _) =>
         n
-    }
-}

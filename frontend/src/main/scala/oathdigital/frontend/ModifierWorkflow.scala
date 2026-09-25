@@ -10,7 +10,7 @@ private[frontend] final case class ModifierWorkflow(
     baseParameters: Map[String, String],
     preview: MajorActionPreviewResponse,
     selection: ModifierSelectionState,
-    stage: ModifierWorkflowStage) {
+    stage: ModifierWorkflowStage):
   def ordering: Boolean = stage == ModifierWorkflowStage.Ordering
   def hadModifierStage: Boolean = preview.modifiers.nonEmpty
   def showTargets(response: MajorActionPreviewResponse): ModifierWorkflow =
@@ -18,9 +18,8 @@ private[frontend] final case class ModifierWorkflow(
   def backFromTargets: Option[ModifierWorkflow] = Option.when(hadModifierStage)(
     copy(stage = ModifierWorkflowStage.Ordering))
   def cancel: Option[ModifierWorkflow] = None
-}
 
-private[frontend] object ModifierWorkflow {
+private[frontend] object ModifierWorkflow:
   /** The `ActionRef` wire keys registered on the generic walker, as plain
     * strings for the same reason `ServerUiSupport` spells Recover's
     * decision ids out: `ActionRef` lives in the JVM-only engine sources the
@@ -40,14 +39,13 @@ private[frontend] object ModifierWorkflow {
     targetedActions.get(actionKind)
 
   def reconcile(previous: Option[ModifierWorkflow], gameId: String,
-      playerId: String, sequence: Long): Option[ModifierWorkflow] = previous.filter {
+      playerId: String, sequence: Long): Option[ModifierWorkflow] = previous.filter:
     workflow =>
       val context = workflow.selection.context
       context.gameId == gameId && context.playerId == playerId &&
         context.sequence == sequence
-  }
 
-  def action(command: GameIntent): Option[(String, Map[String, String])] = command match {
+  def action(command: GameIntent): Option[(String, Map[String, String])] = command match
     // Every action registered on the walker offers its modifiers through
     // `StartWalker`; an unregistered key must NOT be swept in, since the
     // server would reject the preview for an action it does not know.
@@ -56,7 +54,6 @@ private[frontend] object ModifierWorkflow {
     case GameIntent.StartWalker("play-facedown-adviser", _, _) =>
       Some("search" -> Map("procedure" -> "facedown-adviser"))
     case _ => None
-  }
 
   /** The command actually transmitted once modifier ordering is confirmed.
     * `StartWalker`'s own `modifiers` field is the walker command surface's
@@ -72,7 +69,7 @@ private[frontend] object ModifierWorkflow {
     * path the engine actually accepts.
     */
   def submission(command: GameIntent, invocations: Vector[ModifierInvocation])
-      : (GameIntent, Vector[ModifierInvocation]) = command match {
+      : (GameIntent, Vector[ModifierInvocation]) = command match
     // The start argument survives the fold untouched: an action that is both
     // walker-registered and board-targeted (Travel, batch-1 Task 5) picks its
     // target in the stage AFTER modifier ordering, so by the time this runs
@@ -83,10 +80,9 @@ private[frontend] object ModifierWorkflow {
       GameIntent.StartWalker(action, invocations.map(_.handlerId),
         startArgs) -> Vector.empty
     case other => other -> invocations
-  }
 
   def targetAction(actionKind: String, response: MajorActionPreviewResponse,
-      actions: Vector[BoardTargetAction]): Option[BoardTargetAction] = {
+      actions: Vector[BoardTargetAction]): Option[BoardTargetAction] =
     val authorized = response.targets.map(_.key).toSet
     actions.find(_.actionKind == actionKind).map { action =>
       val candidates = action.candidates.filter(candidate => authorized(
@@ -95,5 +91,3 @@ private[frontend] object ModifierWorkflow {
         maximum = math.min(action.maximum, candidates.size), candidates = candidates,
         explicitConfirm = true)
     }
-  }
-}

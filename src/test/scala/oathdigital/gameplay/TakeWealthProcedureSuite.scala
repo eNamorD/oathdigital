@@ -17,16 +17,15 @@ import oathdigital.model._
   * needs, without a second definition of "a Wake board with a takeable
   * resource" drifting from this one.
   */
-object TakeWealthFixture extends munit.Assertions {
+object TakeWealthFixture extends munit.Assertions:
   val favorArg: Vector[DecisionOptionRef] = Vector(
     DecisionOptionRef.Button("favor"))
   val secretArg: Vector[DecisionOptionRef] = Vector(
     DecisionOptionRef.Button("secret"))
 
-  private def freshBase: ReadyGame = {
+  private def freshBase: ReadyGame =
     val value = initialReady
     value
-  }
 
   /** The active player's pawn site holds `favor`/`secrets`; `sharedEnemy`
     * parks another player's pawn on it. Mirrors `WakeSuite`'s board so the
@@ -37,12 +36,12 @@ object TakeWealthFixture extends munit.Assertions {
     * game already `ruled` for a tie.
     */
   def wakeReady(from: ReadyGame = freshBase, favor: Int = 1, secrets: Int = 1,
-      sharedEnemy: Boolean = false): ReadyGame = {
+      sharedEnemy: Boolean = false): ReadyGame =
     val current = from.game.current
     val actor = current.turn.activePlayer
     val site = current.players.find(_.player == actor).flatMap(_.pawnSite).get
     val players = current.players.map { player =>
-      if (sharedEnemy && player.player != actor) player.copy(
+      if sharedEnemy && player.player != actor then player.copy(
         pawnSite = Some(site))
       else player
     }
@@ -50,7 +49,6 @@ object TakeWealthFixture extends munit.Assertions {
       players = players,
       map = current.map.copy(sites = current.map.sites.updated(site,
         current.map.sites(site).copy(tokens = Tokens(favor, secrets))))))
-  }
 
   private def actor(ready: ReadyGame): PlayerId =
     ready.game.current.turn.activePlayer
@@ -65,7 +63,6 @@ object TakeWealthFixture extends munit.Assertions {
       args: Vector[DecisionOptionRef] = favorArg): OathTransition =
     take(rules, ready, args).fold(error => fail(s"take rejected: $error"),
       identity)
-}
 
 /** Take Wealth on the generic walker (batch 1, Tasks 7-8).
   *
@@ -76,7 +73,7 @@ object TakeWealthFixture extends munit.Assertions {
   * (Task 8), not the phase it ran in. Both facts are asserted here, not
   * inferred.
   */
-class TakeWealthProcedureSuite extends munit.FunSuite {
+class TakeWealthProcedureSuite extends munit.FunSuite:
   private val powers: WalkerPowers = WalkerPowerCatalog.default(catalog)
   private def rules = new OathRules(catalog, walkerPowerCatalog = powers)
 
@@ -106,12 +103,11 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
     TakeWealthFixture.accepted(rules, ready, args)
 
   private def after(transition: OathTransition): ReadyGame =
-    transition.state match {
+    transition.state match
       case Ready(value) => value
       case other => fail(s"expected Ready, got $other")
-    }
 
-  test("a take moves the favor, records its use and stays in Wake") {
+  test("a take moves the favor, records its use and stays in Wake"):
     val ready = wake()
     val site = pawnSite(ready)
     val before = board(ready).favor
@@ -128,17 +124,15 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
       Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
     assertEquals(state.game.current.walkerPending, None)
     assertEquals(state.game.current.walkerProcedure, None)
-  }
 
-  test("a take moves a face-up secret") {
+  test("a take moves a face-up secret"):
     val ready = wake()
     val before = board(ready).faceUpSecrets
     val state = after(accepted(ready, secretArg))
     assertEquals(board(state).faceUpSecrets, before + 1)
     assertEquals(state.game.current.map.sites(pawnSite(ready)).tokens.secrets, 0)
-  }
 
-  test("a completed Take Wealth runs the action boundary and stays in Wake") {
+  test("a completed Take Wealth runs the action boundary and stays in Wake"):
     // An empty site with capacity makes the boundary observable; the
     // precondition proves it has something to do here.
     val base = wake()
@@ -154,35 +148,30 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
     val result = accepted(ready)
     assertEquals(result.events.collect { case event: BanditsRefilled => event }.size, 1)
     assertEquals(result.continue, AwaitingWakeAction(ready.game.current.turn.activePlayer))
-  }
 
-  test("a second take at the same site this turn is blocked") {
+  test("a second take at the same site this turn is blocked"):
     val ready = wake(favor = 2)
     val once = after(accepted(ready))
     assert(take(once).left.toOption.get.isInstanceOf[PowerAlreadyUsed],
       "the once-per-turn restriction must reject the second take")
-  }
 
-  test("a take outside the Wake phase is rejected") {
+  test("a take outside the Wake phase is rejected"):
     val ready = wake()
     val inAct = ready.updateCurrent(_.copy(turn = ready.game.current.turn.copy(
         phase = Phase.Act)))
     assertEquals(take(inAct).left.toOption.get,
       WrongPhase(Phase.Wake, Phase.Act): OathViolation)
-  }
 
-  test("an enemy pawn at the site blocks the take") {
+  test("an enemy pawn at the site blocks the take"):
     assert(take(wake(sharedEnemy = true)).left.toOption.get
       .isInstanceOf[EnemyPawnBlocksTakeWealth])
-  }
 
-  test("the requested resource must be present at the site") {
+  test("the requested resource must be present at the site"):
     val ready = wake(favor = 0)
     assertEquals(take(ready).left.toOption.get,
       ResourceUnavailable(pawnSite(ready), WakeResource.Favor): OathViolation)
-  }
 
-  test("the start selection must name exactly one known resource") {
+  test("the start selection must name exactly one known resource"):
     val ready = wake()
     Vector(
       Vector.empty[DecisionOptionRef],
@@ -193,9 +182,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
       assert(take(ready, args).isLeft,
         s"start selection $args must be rejected")
     }
-  }
 
-  test("the start selection spelling is one definition in both directions") {
+  test("the start selection spelling is one definition in both directions"):
     // The literals here are the wire spelling a client must send. `selection`
     // is what the projection and any future preview build from, `resourceOf`
     // is what the command reads, and both now read `WakeResource.key` -- so
@@ -205,9 +193,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
     WakeResource.all.foreach { resource =>
       assertEquals(WakeResource.fromKey(resource.key), Some(resource))
     }
-  }
 
-  test("the candidates are exactly the resources the command accepts") {
+  test("the candidates are exactly the resources the command accepts"):
     // `candidates` is the gameplay-owned answer the projector consumes, so
     // it is proved against the command directly rather than only through the
     // projection below.
@@ -219,9 +206,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
         WakeResource.all.filter(resource => take(ready,
           TakeWealthProcedure.selection(resource)).isRight))
     }
-  }
 
-  test("what the projection offers is what the command accepts") {
+  test("what the projection offers is what the command accepts"):
     // Ported from `WakeSuite`, and extended with the case the legacy pair
     // could not drift on but this one could: the offer is now the procedure's
     // own `candidates`, so a site already taken from this turn disappears
@@ -240,9 +226,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
       assertEquals(projection.legalControls.contains("takeSecret"),
         take(ready, secretArg).isRight, "takeSecret")
     }
-  }
 
-  test("the declared tree is the take and its use record under one window") {
+  test("the declared tree is the take and its use record under one window"):
     val ready = wake()
     val site = pawnSite(ready)
     assertEquals(TakeWealthProcedure.build(catalog, ready, actor(ready),
@@ -251,9 +236,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
           Location.PlayArea(actor(ready))),
         RecordPowerUse(TakeWealthLimit.useRef(site))),
       Some(PowerWindow.WakeTakeWealth))))
-  }
 
-  test("the recorded operations are the resource move and the use record") {
+  test("the recorded operations are the resource move and the use record"):
     val ready = wake()
     val site = pawnSite(ready)
     val recorded = accepted(ready).events.collect {
@@ -263,5 +247,3 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
       Move(Piece.Favor(1), PositionedLocation(Location.Site(site)),
         PositionedLocation(Location.PlayArea(actor(ready)))),
       RecordPowerUse(TakeWealthLimit.useRef(site))))
-  }
-}

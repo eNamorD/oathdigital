@@ -9,7 +9,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 
-class ConspiracyWhenPlayedSuite extends munit.FunSuite {
+class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   private val powers = WalkerPowers(Vector(ConspiracyWhenPlayed))
   private val conspiracy = VisionRules.Conspiracy
   private val placeId = s"cardplay.place.${conspiracy.kind}.${conspiracy.value}"
@@ -26,7 +26,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
       shared: Boolean = true,
       origin: CardPlayProcedure.Origin = CardPlayProcedure.Origin.TemporaryHand)
       (edit: (ReadyGame, PlayerId) => ReadyGame = (ready, _) => ready)
-      : Staged = {
+      : Staged =
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -35,9 +35,9 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     val fromHand = origin == CardPlayProcedure.Origin.TemporaryHand
     val staged = base.updateCurrent(_.copy(
       players = current.players.map { player =>
-        if (player.player == enemy) player.copy(
-          pawnSite = if (shared) site else None, relics = relics)
-        else if (player.player == actor && !fromHand) player.copy(advisers =
+        if player.player == enemy then player.copy(
+          pawnSite = if shared then site else None, relics = relics)
+        else if player.player == actor && !fromHand then player.copy(advisers =
           player.advisers :+ VisionState(conspiracy, Orientation.FaceDown))
         else player
       },
@@ -46,11 +46,10 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
         darkestSecret = current.banners.darkestSecret.copy(holder = None)),
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(_ == conspiracy)),
-      temporaryHands = if (fromHand)
+      temporaryHands = if fromHand then
         current.temporaryHands.updated(actor, Vector(conspiracy))
       else current.temporaryHands))
     Staged(edit(staged, enemy), actor, enemy, origin)
-  }
 
   private def treeFor(f: Staged): Operation = (f.origin match {
     case CardPlayProcedure.Origin.TemporaryHand =>
@@ -75,11 +74,10 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
   /** Plays Conspiracy faceup and returns the tree with the position parked on
     * the target decision.
     */
-  private def atTarget(f: Staged): (Operation, PendingTree) = {
+  private def atTarget(f: Staged): (Operation, PendingTree) =
     val tree = treeFor(f)
     val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
     (tree, parked(answer(f, tree, place, placeId, faceup)))
-  }
 
   private def targetOptions(f: Staged, tree: Operation, at: PendingTree) =
     ProcedureWalker.parkedDecide(f.ready, tree, at, powers).map(decide =>
@@ -96,12 +94,11 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
   private def player(ready: ReadyGame, id: PlayerId): PlayerState =
     ready.game.current.players.find(_.player == id).get
 
-  test("the default walker catalog carries the Conspiracy power") {
+  test("the default walker catalog carries the Conspiracy power"):
     assert(WalkerPowerCatalog.default(catalog).powers
       .contains(ConspiracyWhenPlayed))
-  }
 
-  test("Conspiracy takes an opaque relic slot and leaves the game") {
+  test("Conspiracy takes an opaque relic slot and leaves the game"):
     val relic = RelicState(RelicId("conspiracy-relic"), Orientation.FaceDown,
       Tokens.empty)
     val f = fixture(Vector(relic))()
@@ -117,10 +114,9 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     assertEquals(after.game.current.temporaryHands(f.actor), Vector.empty)
     assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
     assertEquals(replayed(f, done), after)
-  }
 
   test("Conspiracy taking the Peoples Favor returns its favor in the " +
-      "least-bank order and takes the banner") {
+      "least-bank order and takes the banner"):
     val f = fixture()((ready, enemy) => {
       val current = ready.game.current
       ready.copy(banks = ready.banks.copy(favor = ready.banks.favor.map {
@@ -138,17 +134,15 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(f.actor))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 0)
     assertEquals(after.banks.favor.values.sum, f.ready.banks.favor.values.sum + 2)
-    val returned = recorded(done).collect {
+    val returned = recorded(done).collect:
       case Move(Piece.Favor(1), _,
           PositionedLocation(Location.FavorBank(suit), _), _) => suit
-    }
     assertEquals(returned, BannerRules.raidFavorReturn(f.ready.banks.favor, 2))
     assertEquals(after.game.current.temporaryHands(f.actor), Vector.empty)
     assertEquals(replayed(f, done), after)
-  }
 
   test("Conspiracy taking the Darkest Secret burns every secret and takes " +
-      "the banner") {
+      "the banner"):
     val f = fixture()((ready, enemy) => {
       val current = ready.game.current
       ready.updateCurrent(_.copy(banners = current.banners.copy(darkestSecret =
@@ -170,9 +164,8 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     // a site.
     assertEquals(siteSecrets(after), siteSecrets(f.ready))
     assertEquals(replayed(f, done), after)
-  }
 
-  test("with no legal target Conspiracy asks nothing and only leaves the game") {
+  test("with no legal target Conspiracy asks nothing and only leaves the game"):
     val f = fixture(shared = false)()
     val tree = treeFor(f)
     val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
@@ -183,9 +176,8 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     assertEquals(recorded(done), Vector[CoreOperation](Move(
       Piece.Card(conspiracy), PositionedLocation(Location.Hand(f.actor)),
       PositionedLocation(Location.SharedBank))))
-  }
 
-  test("a target the current state does not offer is rejected at the decision") {
+  test("a target the current state does not offer is rejected at the decision"):
     val relics = Vector("first", "second").map(id => RelicState(
       RelicId(s"conspiracy-$id"), Orientation.FaceDown, Tokens.empty))
     val f = fixture(relics)()
@@ -199,9 +191,8 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
       assert(answer(f, tree, at, ConspiracyWhenPlayed.decisionId, ref).isLeft,
         ref.toString)
     }
-  }
 
-  test("discarding a Conspiracy does not play it") {
+  test("discarding a Conspiracy does not play it"):
     val relic = RelicState(RelicId("kept-relic"), Orientation.FaceDown,
       Tokens.empty)
     val f = fixture(Vector(relic))()
@@ -212,10 +203,9 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     assert(player(done.treeless, f.enemy).relics.exists(_.id == relic.id))
     assert(CardIndex.from(done.treeless.game).toOption.get.ids
       .contains(conspiracy))
-  }
 
   test("a Conspiracy played from a facedown adviser takes its target and " +
-      "leaves the revealed Vision alone") {
+      "leaves the revealed Vision alone"):
     val relic = RelicState(RelicId("facedown-route-relic"), Orientation.FaceDown,
       Tokens.empty)
     val f = fixture(Vector(relic),
@@ -232,5 +222,3 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     assertEquals(player(after, f.actor).revealedVision, revealedBefore)
     assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
     assertEquals(replayed(f, done), after)
-  }
-}

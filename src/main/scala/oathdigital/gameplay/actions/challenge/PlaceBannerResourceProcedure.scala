@@ -10,7 +10,7 @@ import oathdigital.model._
   * faceup secrets from their own board onto it, for no Supply. Takes no start
   * selection; the banner and the amount are decisions.
   */
-object PlaceBannerResourceProcedure {
+object PlaceBannerResourceProcedure:
   val bannerDecisionId: String = "place-banner-resource.banner"
   val amountDecisionId: String = "place-banner-resource.amount"
   val decisionIds: Set[String] = Set(bannerDecisionId, amountDecisionId)
@@ -23,13 +23,13 @@ object PlaceBannerResourceProcedure {
       BannerRules.displayName(banner)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- PowerRuntime.requireAudited(catalog)
     _ <- Either.cond(heldBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.PlaceBannerResource.key))
-  } yield tree(actor)
+  yield tree(actor)
 
   /** Whether Place Banner Resource could start now. */
   def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
@@ -42,12 +42,11 @@ object PlaceBannerResourceProcedure {
     noStartArgs(args).map(_ => tree(actor))
 
   /** Banners the actor holds and could put at least one resource on. */
-  def heldBanners(state: ReadyGame, actor: PlayerId): Vector[Banner] = {
+  def heldBanners(state: ReadyGame, actor: PlayerId): Vector[Banner] =
     val current = state.game.current
     current.players.find(_.player == actor).toVector.flatMap(player =>
       Banner.all.filter(banner => BannerRules.holder(current, banner)
         .contains(actor) && BannerRules.playerResources(player, banner) > 0))
-  }
 
   private def noStartArgs(args: Vector[DecisionOptionRef])
       : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
@@ -67,10 +66,10 @@ object PlaceBannerResourceProcedure {
     Some(PowerWindow.PlaceBannerResourceEligibility))
 
   private def placement(actor: PlayerId, pending: PendingTree): Vector[Operation] =
-    (for {
+    (for
       banner <- bannerOf(pending)
       amount <- amountOf(pending)
-    } yield Vector[Operation](Sequence(Vector[Operation](Move(banner match {
+    yield Vector[Operation](Sequence(Vector[Operation](Move(banner match {
       case Banner.PeoplesFavor => Piece.Favor(amount)
       case Banner.DarkestSecret => Piece.Secrets(amount)
     }, PositionedLocation(Location.PlayArea(actor)),
@@ -80,23 +79,19 @@ object PlaceBannerResourceProcedure {
         "Place Banner Resource reached its move without a banner and an amount")))))
 
   private def amountDecision(ready: ReadyGame, actor: PlayerId,
-      banner: Banner): Operation = {
+      banner: Banner): Operation =
     val own = ready.game.current.players.find(_.player == actor)
       .fold(0)(BannerRules.playerResources(_, banner))
     Decide(amountDecisionId, actor, DecisionQuery.ChooseAmount(1,
       math.max(1, own), Some(amountHeading(banner)), "Place resources"),
       window = Some(PowerWindow.PlaceBannerResourceAmountSelection))
-  }
 
   private def bannerOf(pending: PendingTree): Option[Banner] =
-    pending.answered.collectFirst {
+    pending.answered.collectFirst:
       case Answered(`bannerDecisionId`, DecisionAnswer.ChooseOneAnswer(
           DecisionOptionRef.Banner(banner)), _) => banner
-    }
 
   private def amountOf(pending: PendingTree): Option[Int] =
-    pending.answered.collectFirst {
+    pending.answered.collectFirst:
       case Answered(`amountDecisionId`, DecisionAnswer.ChooseAmountAnswer(n), _) =>
         n
-    }
-}

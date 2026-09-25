@@ -91,11 +91,10 @@ final case class Offer(
   * the same offers again against a later state, and must give the node the same
   * shape as when it parked, even if nothing is left to offer.
   */
-trait OfferHost extends Operation {
+trait OfferHost extends Operation:
   def expand(offers: Vector[OfferedPlan], pass: OfferHost.Pass): Vector[Operation]
-}
 
-object OfferHost {
+object OfferHost:
   /** What the walker tells a host about this fold.
     *
     * `applies` dry-runs an operation through the same windows the walk uses.
@@ -106,7 +105,6 @@ object OfferHost {
   final case class Pass(state: ReadyGame, answered: Vector[Answered],
       resuming: Boolean,
       applies: Operation => Either[OathViolation, Vector[CoreOperation]])
-}
 
 /** One object per power (spec decision 8). No engine code lives in a power --
   * only the windows it hooks and the contributions it offers there.
@@ -119,7 +117,7 @@ object OfferHost {
   * power that never expects to be player-chosen (the common case for a
   * "must"/"cannot" rule) declares nothing extra.
   */
-trait ContributingPower {
+trait ContributingPower:
   def id: PowerId
   def source: RuleSourceRef
   def priority: Int = 0
@@ -146,13 +144,11 @@ trait ContributingPower {
   def ignores(ctx: PowerCtx, other: ContributingPower): Boolean =
     shouldIgnore(other)
   def resolution: PowerResolution = PowerResolution.Automatic
-}
 
-object ContributingPower {
+object ContributingPower:
 
   /** The single deterministic ordering used everywhere contributions are
     * chained (spec decision 10c).
     */
   def sortKey(power: ContributingPower): (Int, String, String) =
     (power.priority, power.source.stableKey, power.id.value)
-}

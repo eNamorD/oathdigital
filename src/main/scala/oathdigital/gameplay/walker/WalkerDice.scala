@@ -8,11 +8,10 @@ import oathdigital.model.{AttackDieFace, DefenseDieFace, DiceKind, DieFace,
   * application service's dice port. Replay never asks: it applies the faces
   * recorded in the `RollPayload`.
   */
-trait WalkerDice {
+trait WalkerDice:
   def roll(kind: DiceKind, count: Int): Either[OathViolation, Vector[DieFace]]
-}
 
-object WalkerDice {
+object WalkerDice:
   /** The default: fails loudly, so a walk that reaches an automatic roll
     * without a source is a typed violation and never a silent roll.
     */
@@ -28,4 +27,3 @@ object WalkerDice {
       case DiceKind.Attack => AttackDieFace.HollowSword: DieFace
       case DiceKind.Defense => DefenseDieFace.Blank: DieFace
     }))
-}

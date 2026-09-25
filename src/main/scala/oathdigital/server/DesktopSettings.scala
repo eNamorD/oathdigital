@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /** The desktop profile's optional per-user settings file. */
-object DesktopSettings {
+object DesktopSettings:
   val Keys: Vector[String] = Vector(
     "OATH_HOST",
     "OATH_PORT",
@@ -42,27 +42,25 @@ object DesktopSettings {
   ).mkString("\n")
 
   def load(file: Path): Either[String, Map[String, String]] =
-    if (!Files.exists(file)) Right(Map.empty)
+    if !Files.exists(file) then Right(Map.empty)
     else
-      try {
+      try
         val properties = new Properties()
         val reader = Files.newBufferedReader(file, UTF_8)
         try properties.load(reader)
         finally reader.close()
         val values = properties.stringPropertyNames.asScala.toVector.sorted
           .map(key => key -> properties.getProperty(key).trim)
-        values.map(_._1).find(key => !Keys.contains(key)) match {
+        values.map(_._1).find(key => !Keys.contains(key)) match
           case Some(unknown) => Left(s"$file: unknown setting $unknown")
           case None => Right(values.filter(_._2.nonEmpty).toMap)
-        }
-      } catch {
+      catch
         case NonFatal(_) => Left(s"$file: cannot read settings file")
-      }
 
   def writeTemplateIfMissing(file: Path): Option[String] =
-    if (Files.exists(file)) None
+    if Files.exists(file) then None
     else
-      try {
+      try
         Files.createDirectories(file.getParent)
         Files.write(
           file,
@@ -71,8 +69,6 @@ object DesktopSettings {
           StandardOpenOption.WRITE
         )
         None
-      } catch {
+      catch
         case NonFatal(error) =>
           Some(s"could not create settings file $file: ${error.getMessage}")
-      }
-}

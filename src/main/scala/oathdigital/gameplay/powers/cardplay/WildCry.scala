@@ -15,7 +15,7 @@ import oathdigital.model._
   * it holds.
   */
 final case class WildCry private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = WildCry.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -23,23 +23,20 @@ final case class WildCry private (cardId: DenizenId,
     PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
       children ++ effects(ctx.activePlayer))))
 
-  override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match {
+  override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match
     case CardPlayedFaceup(card: DenizenId, _) =>
       card != cardId && catalog.suitOf(card).contains(Suit.Beast)
     case _ => false
-  }
 
   private def effects(actor: PlayerId): Vector[Operation] = Vector(
     GainSupply(actor, WildCry.Supply),
     BuildOps((ready, _) => PlayerFacts.forceKind(ready, actor).map(kind =>
       Vector(Gain.Warbands(actor, kind, WildCry.Warbands)))))
-}
 
-object WildCry {
+object WildCry:
   val id: PowerId = PowerId("denizen.wild-cry")
   val Supply: Int = 1
   val Warbands: Int = 2
 
   def forCatalog(catalog: ExecutableCatalog): Option[WildCry] =
     CatalogCards.denizen(catalog, id).map(new WildCry(_, catalog))
-}

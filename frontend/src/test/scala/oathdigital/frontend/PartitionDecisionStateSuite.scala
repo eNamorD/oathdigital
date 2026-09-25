@@ -7,7 +7,7 @@ import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
   * sections carry their own keys, labels and minima, and the confirmation
   * predicate is computed from those minima alone.
   */
-class PartitionDecisionStateSuite extends munit.FunSuite {
+class PartitionDecisionStateSuite extends munit.FunSuite:
   private val sections = Vector(
     PartitionSection("left", "Left", 2),
     PartitionSection("right", "Right", 1))
@@ -15,15 +15,14 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
   private val opening = PartitionDecisionState.filled(sections, items)
 
   test("the opening draft fills each section to its declared minimum in " +
-      "declared order") {
+      "declared order"):
     assertEquals(opening.itemsIn("left"), Vector("a", "b"))
     assertEquals(opening.itemsIn("right"), Vector("c"))
     assertEquals(opening.placements,
       Vector("a" -> "left", "b" -> "left", "c" -> "right"))
     assert(opening.canConfirm)
-  }
 
-  test("an item moved into a section leaves the one it came from") {
+  test("an item moved into a section leaves the one it came from"):
     val moved = opening.moveTo("a", "right")
     assertEquals(moved.itemsIn("left"), Vector("b"))
     assertEquals(moved.itemsIn("right"), Vector("c", "a"))
@@ -34,17 +33,15 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
     // An item is not in the business of moving to where it already is.
     assertEquals(moved.moveTo("a", "right"), moved)
     assertEquals(moved.moveTo("missing", "left"), moved)
-  }
 
-  test("a minimum not yet met blocks confirmation") {
+  test("a minimum not yet met blocks confirmation"):
     val short = opening.moveTo("c", "left")
     assertEquals(short.itemsIn("right"), Vector.empty)
     assert(!short.minimaMet)
     assert(!short.canConfirm)
     assert(short.moveTo("b", "right").canConfirm)
-  }
 
-  test("every item must be placed exactly once before confirmation") {
+  test("every item must be placed exactly once before confirmation"):
     val unplaced = opening.copy(
       contents = opening.contents.updated("left", Vector("a")))
     assert(!unplaced.complete)
@@ -53,10 +50,9 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
       contents = opening.contents.updated("right", Vector("c", "a")))
     assert(!duplicated.complete)
     assert(!duplicated.canConfirm)
-  }
 
   test("a single-slot section swaps its occupant back, a wider full one " +
-      "refuses the move") {
+      "refuses the move"):
     val single = PartitionDecisionState(Vector(
       PartitionSection("keep", "Keep", 1, Some(1)),
       PartitionSection("rest", "Rest", 0)), items, Map("rest" -> items))
@@ -73,9 +69,8 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
     val full = pair.moveTo("a", "keep").moveTo("b", "keep")
     assertEquals(full.itemsIn("keep"), Vector("a", "b"))
     assertEquals(full.moveTo("c", "keep"), full)
-  }
 
-  test("ordering within a section survives placement and shifting") {
+  test("ordering within a section survives placement and shifting"):
     val listed = PartitionDecisionState(
       Vector(PartitionSection("all", "All", 0)), items, Map("all" -> items))
     assertEquals(listed.placeBefore("c", "all", Some("b")).itemsIn("all"),
@@ -88,9 +83,8 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
     assertEquals(listed.shift("a", 1).itemsIn("all"), Vector("b", "a", "c"))
     assertEquals(listed.shift("a", -1), listed)
     assertEquals(listed.shift("c", 4).itemsIn("all"), Vector("a", "b", "c"))
-  }
 
-  test("submitted placements follow the player's within-section order") {
+  test("submitted placements follow the player's within-section order"):
     val draft = PartitionDecisionState(Vector(
       PartitionSection("keep", "Keep", 1, Some(1)),
       PartitionSection("discard", "Discard", 0)), items, Map("discard" -> items))
@@ -98,16 +92,14 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
       .placeBefore("c", "discard", Some("b"))
     assertEquals(draft.placements,
       Vector("a" -> "keep", "c" -> "discard", "b" -> "discard"))
-  }
 
-  test("filled draft places slack outside a full section") {
+  test("filled draft places slack outside a full section"):
     val draft = PartitionDecisionState.filled(Vector(
       PartitionSection("keep", "Keep", 1, Some(1)),
       PartitionSection("discard", "Discard", 0)), items)
     assertEquals(draft.itemsIn("keep"), Vector("a"))
     assertEquals(draft.itemsIn("discard"), Vector("b", "c"))
     assert(draft.canConfirm)
-  }
 
   /** The walker half: a parked partition decision adapted into the same
     * interaction, answered generically.
@@ -122,7 +114,7 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
   private val context = BoardSelectionContext("game", "red", 9)
 
   test("a confirmed draft names each projected option exactly once in its " +
-      "own section") {
+      "own section"):
     val draft = WalkerPartitionDraft.reconcile(None, context, Some(parked)).get
     assertEquals(draft.optionsIn("pay-favor").map(_.id),
       Vector("denizen:1", "denizen:2"))
@@ -132,9 +124,8 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
         DecisionPlacementWire("denizen", "denizen:1", "pay-favor"),
         DecisionPlacementWire("denizen", "denizen:2", "pay-favor"),
         DecisionPlacementWire("denizen", "denizen:3", "pay-secret"))))))
-  }
 
-  test("a draft below a projected minimum refuses to answer at all") {
+  test("a draft below a projected minimum refuses to answer at all"):
     val draft = WalkerPartitionDraft.reconcile(None, context, Some(parked)).get
     val short = draft.move(WalkerPartitionDraft.itemId(query.options(2)),
       "pay-favor")
@@ -148,5 +139,3 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
         DecisionPlacementWire("denizen", "denizen:2", "pay-favor"),
         DecisionPlacementWire("denizen", "denizen:3", "pay-favor"),
         DecisionPlacementWire("denizen", "denizen:1", "pay-secret"))))))
-  }
-}

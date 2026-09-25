@@ -24,7 +24,7 @@ import oathdigital.model._
   *  - `cardRef` is how the plan's source is named in a decision, which is how a
   *    later window learns the plan was chosen.
   */
-trait BattlePlan extends ContributingPower {
+trait BattlePlan extends ContributingPower:
   /** How the plan's source is named in the plan decision. */
   def cardRef: DecisionOptionRef
   /** The sides of the Campaign that may use the plan. */
@@ -44,36 +44,31 @@ trait BattlePlan extends ContributingPower {
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   final override def resolution: PowerResolution = PowerResolution.Automatic
 
-  final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] = {
+  final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] =
     val offers: Map[PowerWindow, Vector[Contribution]] = sides.toVector.map {
       side => BattlePlan.windowOf(side) -> Vector[Contribution](Offer(ctx =>
         PlanContext.of(ctx).filter(_.side == side).flatMap(plan)
           .map(_.copy(sides = sides))))
     }.toMap
-    val afterwards: Map[PowerWindow, Vector[Contribution]] = later.map {
+    val afterwards: Map[PowerWindow, Vector[Contribution]] = later.map:
       case (window, build) => window -> Vector[Contribution](Transform(
         (ctx, children) => children :+ Branch((ready, pending) =>
           PlanUse.chosen(ready, pending, ctx.activePlayer, cardRef, sides,
             BattlePlan.outcomeKnown(window)).fold(Vector.empty[Operation])(build))))
-    }
-    val around: Map[PowerWindow, Vector[Contribution]] = wrapping.map {
+    val around: Map[PowerWindow, Vector[Contribution]] = wrapping.map:
       case (window, wrap) => window -> Vector[Contribution](Transform(
         (ctx, children) => PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath,
           ctx.answered), ctx.activePlayer, cardRef, sides,
           BattlePlan.outcomeKnown(window)).fold(children)(wrap(_, children))))
-    }
     (offers.keySet ++ afterwards.keySet ++ around.keySet).map(window =>
       window -> (offers.getOrElse(window, Vector.empty) ++
         afterwards.getOrElse(window, Vector.empty) ++
         around.getOrElse(window, Vector.empty))).toMap
-  }
-}
 
-object BattlePlan {
-  def windowOf(side: CampaignPlanSide): PowerWindow = side match {
+object BattlePlan:
+  def windowOf(side: CampaignPlanSide): PowerWindow = side match
     case CampaignPlanSide.Attacker => PowerWindow.CampaignAttackerBattlePlans
     case CampaignPlanSide.Defender => PowerWindow.CampaignDefenderBattlePlans
-  }
 
   /** The windows walked after `RecordCampaignResult`, where the recorded result
     * is this Campaign's. The root is the last of them.
@@ -83,4 +78,3 @@ object BattlePlan {
     PowerWindow.CampaignRaidRelocation, PowerWindow.CampaignActionEligibility)
 
   def outcomeKnown(window: PowerWindow): Boolean = afterOutcome(window)
-}

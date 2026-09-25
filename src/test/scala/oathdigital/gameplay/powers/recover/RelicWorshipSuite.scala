@@ -11,7 +11,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
-class RelicWorshipSuite extends munit.FunSuite {
+class RelicWorshipSuite extends munit.FunSuite:
   private def rulesRolling(dice: WalkerDice): OathRules = new OathRules(
     catalog, walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     walkerDice = dice)
@@ -28,17 +28,16 @@ class RelicWorshipSuite extends munit.FunSuite {
     * a faceup adviser, with `secrets` faceup secrets and 4 Supply.
     */
   private def staged(secrets: Int = 2)
-      : (ReadyGame, CatacombsContributionSuite.Fixture) = {
+      : (ReadyGame, CatacombsContributionSuite.Fixture) =
     val withRelic = CatacombsContributionSuite.relicSite()
     val ready = PowerFixture.withBoard(PowerFixture.asAdviser(CardStaging
       .without(withRelic.ready, worship), worship))(board => board.copy(
       faceUpSecrets = secrets, supply = SupplyTrack(4)))
     (ready, withRelic.copy(ready = ready))
-  }
 
   /** A whole Recover that succeeds and takes the site's relic. */
   private def recover(ready: ReadyGame, selected: Vector[PowerId],
-      site: CatacombsContributionSuite.Fixture): (Vector[OathEvent], ReadyGame) = {
+      site: CatacombsContributionSuite.Fixture): (Vector[OathEvent], ReadyGame) =
     val actor = PowerFixture.actor
     val started = rules.startWalker(Ready(ready), ActionRef.Recover, actor,
       selected).toOption.get
@@ -48,20 +47,18 @@ class RelicWorshipSuite extends munit.FunSuite {
       RecoverProcedure.relicDecisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Relic(relic))).toOption.get
     (started.events ++ done.events, done.state.asInstanceOf[Ready].value)
-  }
 
   private def me(ready: ReadyGame): PlayerState = PowerFixture.player(ready)
 
-  test("Relic Worship is a registered selected Recover modifier that costs a secret") {
+  test("Relic Worship is a registered selected Recover modifier that costs a secret"):
     val power = RelicWorship.forCatalog(catalog).get
     assertEquals(power.cardId, worship)
     assertEquals(power.actions, Set[MajorActionType](MajorActionType.Recover))
     assertEquals(power.cost, Cost(secret = 1))
     assertEquals(power.resolution, PowerResolution.PlayerSelected)
-  }
 
   test("after recovering a relic the player pays a secret onto the card and " +
-      "gains 2 Supply") {
+      "gains 2 Supply"):
     val (ready, site) = staged()
     val (events, result) = recover(ready, modifiers, site)
     assertEquals(me(result).relics.size, me(ready).relics.size + 1)
@@ -79,17 +76,15 @@ class RelicWorshipSuite extends munit.FunSuite {
         step.ops.exists(_.isInstanceOf[ModifyDicePool])
       case _ => false
     }))
-  }
 
-  test("without the selection nothing is paid and nothing is gained") {
+  test("without the selection nothing is paid and nothing is gained"):
     val (ready, site) = staged()
     val (_, result) = recover(ready, Vector.empty, site)
     assertEquals(me(result).board.faceUpSecrets, 2)
     assertEquals(me(result).board.supply.supply, 4 - 1)
-  }
 
   test("a Recover that ends without a relic has still paid the secret, and " +
-      "gains nothing") {
+      "gains nothing"):
     val (ready, _) = staged()
     val actor = PowerFixture.actor
     val started = failing.startWalker(Ready(ready), ActionRef.Recover, actor,
@@ -106,25 +101,22 @@ class RelicWorshipSuite extends munit.FunSuite {
     val result = stopped.state.asInstanceOf[Ready].value
     assertEquals(me(result).board.faceUpSecrets, 1)
     assertEquals(me(result).board.supply.supply, 4 - 1)
-  }
 
   test("Catacombs and Relic Worship with one faceup secret are refused at " +
-      "selection, and accepted with two") {
+      "selection, and accepted with two"):
     val catacombs = PowerId("denizen.catacombs")
-    def attempt(secrets: Int) = {
+    def attempt(secrets: Int) =
       val fixture = CatacombsContributionSuite.reliclessSite(secrets)
       val ready = PowerFixture.asAdviser(CardStaging.without(fixture.ready,
         worship), worship)
       rules.startWalker(Ready(ready), ActionRef.Recover, PowerFixture.actor,
         Vector(catacombs, RelicWorship.id))
-    }
     val refused = attempt(1)
     assert(refused.left.toOption.exists(_.toString.contains(
       "cannot all be paid together")), refused.toString)
     assert(attempt(2).isRight)
-  }
 
-  test("it cannot be selected without a faceup secret, or onto an occupied card") {
+  test("it cannot be selected without a faceup secret, or onto an occupied card"):
     val (broke, _) = staged(secrets = 0)
     assert(rules.startWalker(Ready(broke), ActionRef.Recover, PowerFixture.actor,
       modifiers).isLeft)
@@ -137,11 +129,8 @@ class RelicWorshipSuite extends munit.FunSuite {
       }))
     assert(rules.startWalker(Ready(occupied), ActionRef.Recover,
       PowerFixture.actor, modifiers).isLeft)
-  }
 
-  test("a Recover with the card in reach records no ignored-rule diagnostic") {
+  test("a Recover with the card in reach records no ignored-rule diagnostic"):
     val (ready, site) = staged()
     val (events, _) = recover(ready, Vector.empty, site)
     assert(!events.exists(_.isInstanceOf[OathEvent.IgnoredRulesRecorded]))
-  }
-}

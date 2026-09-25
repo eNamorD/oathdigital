@@ -6,9 +6,8 @@ import oathdigital.model._
   * 2 Supply.
   */
 case object WaysideInn extends PaidAction("denizen.wayside-inn",
-    Cost(favor = 1)) {
+    Cost(favor = 1)):
   val Supply: Int = 2
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(GainSupply(player, Supply))
-}

@@ -6,7 +6,7 @@ import oathdigital.protocol.projection.CampaignResultProjection
 /** The last Campaign's result. Everything in it is public, so it takes no
   * viewer.
   */
-private[application] object CampaignResultProjector {
+private[application] object CampaignResultProjector:
   def project(ready: ReadyGame): Option[CampaignResultProjection] =
     ready.game.current.lastCampaignResult.map { result =>
       CampaignResultProjection(result.attacker.value, result.kind.key,
@@ -23,16 +23,13 @@ private[application] object CampaignResultProjector {
   // The wire spellings, duplicated because the application layer may not
   // import the serialization layer (see `faceName` in
   // `WalkerDecisionProjector`).
-  private def attackFace(face: AttackDieFace): String = face match {
+  private def attackFace(face: AttackDieFace): String = face match
     case AttackDieFace.HollowSword => "hollow-sword"
     case AttackDieFace.OneSword => "one-sword"
     case AttackDieFace.TwoSwordsSkull => "two-swords-skull"
-  }
 
-  private def defenseFace(face: DefenseDieFace): String = face match {
+  private def defenseFace(face: DefenseDieFace): String = face match
     case DefenseDieFace.Blank => "blank"
     case DefenseDieFace.OneShield => "one-shield"
     case DefenseDieFace.TwoShields => "two-shields"
     case DefenseDieFace.Doubler => "doubler"
-  }
-}

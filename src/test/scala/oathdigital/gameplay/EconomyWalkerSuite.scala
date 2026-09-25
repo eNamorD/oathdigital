@@ -11,7 +11,7 @@ import oathdigital.model.OathViolation.NoPlayableOption
 /** Muster and Trade through the rules, as a client drives them: start, park on
   * the source decision, answer.
   */
-class EconomyWalkerSuite extends munit.FunSuite {
+class EconomyWalkerSuite extends munit.FunSuite:
   import EconomyFixture._
 
   private val rules = new OathRules(catalog)
@@ -28,12 +28,11 @@ class EconomyWalkerSuite extends munit.FunSuite {
     rules.resolveWalker(state, actor, decisionId,
       DecisionAnswer.ChooseOneAnswer(ref))
 
-  private def ready(state: OathState): ReadyGame = state match {
+  private def ready(state: OathState): ReadyGame = state match
     case Ready(value) => value
     case other => fail(s"expected a ready game, got $other")
-  }
 
-  test("starting Muster parks on the source decision and changes nothing yet") {
+  test("starting Muster parks on the source decision and changes nothing yet"):
     val board = act()
     val actor = player(board).player
     val started = start(board).getOrElse(fail("a legal Muster must start"))
@@ -45,9 +44,8 @@ class EconomyWalkerSuite extends munit.FunSuite {
     assert(parked.game.current.walkerPending.nonEmpty)
     assertEquals(player(parked).board.favor, 4)
     assertEquals(player(parked).board.supply.supply, 7)
-  }
 
-  test("answering the source decision pays, gains and completes the action") {
+  test("answering the source decision pays, gains and completes the action"):
     val board = act(advisers = Vector(matchingAdviser))
     val actor = player(board).player
     val started = start(board).toOption.get
@@ -63,10 +61,9 @@ class EconomyWalkerSuite extends munit.FunSuite {
       case WalkerCompleted(ActionRef.Muster) => true
       case _ => false
     })
-  }
 
   test("the action boundary starts the Oathkeeper procedure within the " +
-      "answering command") {
+      "answering command"):
     val initial = act()
     val actor = player(initial).player
     val leader = initial.game.current.players.map(_.player).find(_ != actor).get
@@ -78,9 +75,8 @@ class EconomyWalkerSuite extends munit.FunSuite {
       WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
     assertEquals(ready(accepted.state).game.current.title,
       OathkeeperState(Some(leader), TitleSide.Oathkeeper))
-  }
 
-  test("Trade carries its resource as the start selection through the park") {
+  test("Trade carries its resource as the start selection through the park"):
     Vector(favor -> "favor", secret -> "secret").foreach { case (args, name) =>
       val board = act(advisers = Vector(matchingAdviser))
       val actor = player(board).player
@@ -93,26 +89,23 @@ class EconomyWalkerSuite extends munit.FunSuite {
         .getOrElse(fail(s"Trade for $name must complete"))
       assertEquals(ready(accepted.state).game.current.walkerPending, None)
     }
-  }
 
-  test("a start with nothing playable is rejected before anything is persisted") {
+  test("a start with nothing playable is rejected before anything is persisted"):
     assertEquals(start(act(favor = 0)).left.toOption,
       Some(NoPlayableOption("muster")))
     assertEquals(start(act(secrets = 0), ActionRef.Trade, favor).left.toOption,
       Some(NoPlayableOption("trade")))
     assertEquals(start(act(supply = 0)).left.toOption,
       Some(NoPlayableOption("muster")))
-  }
 
-  test("a start with no token-free card, or a wrong selection, is rejected") {
+  test("a start with no token-free card, or a wrong selection, is rejected"):
     assert(start(act(tokens = Tokens(0, 1))).isLeft)
     assert(start(act(), ActionRef.Muster, favor).isLeft)
     assert(start(act(), ActionRef.Trade).isLeft)
     assert(start(act(), ActionRef.Trade,
       Vector(DecisionOptionRef.Button("gold"))).isLeft)
-  }
 
-  test("only the actor can answer, and only with an offered card") {
+  test("only the actor can answer, and only with an offered card"):
     val board = act(advisers = Vector(matchingAdviser))
     val actor = player(board).player
     val other = board.game.current.players.map(_.player).find(_ != actor).get
@@ -121,17 +114,15 @@ class EconomyWalkerSuite extends munit.FunSuite {
     assert(answer(started.state, actor, MusterProcedure.decisionId,
       DecisionOptionRef.Denizen(matchingId)).isLeft)
     assert(answer(started.state, actor, MusterProcedure.decisionId, card).isRight)
-  }
 
-  test("a lineage with no warband supply cannot Muster") {
+  test("a lineage with no warband supply cannot Muster"):
     val board = act()
     val actor = player(board)
     val malformed = board.copy(banks = board.banks.copy(warbandSupply =
       board.banks.warbandSupply - ForceKind.Exile(actor.lineage)))
     assert(start(malformed).isLeft)
-  }
 
-  test("an unimplemented optional Economy power does not block a base Trade") {
+  test("an unimplemented optional Economy power does not block a base Trade"):
     val board = spring(act(), EdificeSide.Intact)
     val actor = player(board).player
     val started = start(board, ActionRef.Trade, secret)
@@ -139,5 +130,3 @@ class EconomyWalkerSuite extends munit.FunSuite {
     val finished = answer(started.state, actor, TradeProcedure.decisionId,
       DecisionOptionRef.Edifice(springId))
     assert(finished.isRight, finished.toString)
-  }
-}

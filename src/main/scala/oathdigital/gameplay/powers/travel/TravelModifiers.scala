@@ -7,11 +7,10 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * power whose card is absent from `catalog` is omitted. Terrain is
   * [[TravelSitePowers]].
   */
-object TravelModifiers {
+object TravelModifiers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Tents.forCatalog(catalog).toVector ++
       ForestPaths.forCatalog(catalog).toVector ++
       DragonskinDrum.forCatalog(catalog).toVector ++
       TollRoads.forCatalog(catalog).toVector ++
       GraspingVines.forCatalog(catalog).toVector
-}

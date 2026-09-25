@@ -11,7 +11,7 @@ import oathdigital.model._
   * burnt to the shared bank, and nothing is placed on the relic. A defender with
   * fewer than two faceup secrets cannot pay, and the plan is not offered.
   */
-final case class FearsomeShield private (relicId: RelicId) extends BattlePlan {
+final case class FearsomeShield private (relicId: RelicId) extends BattlePlan:
   def id: PowerId = FearsomeShield.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -21,11 +21,9 @@ final case class FearsomeShield private (relicId: RelicId) extends BattlePlan {
       "Fearsome Shield: burn 2 secrets for 2 defense dice",
       Vector(CampaignPlanCost.SecretBurnt(2)),
       Vector(CampaignPlanEffect.AddDefenseDice(2))))
-}
 
-object FearsomeShield {
+object FearsomeShield:
   val id: PowerId = PowerId("relic.fearsome-shield")
 
   def forCatalog(catalog: ExecutableCatalog): Option[FearsomeShield] =
     CatalogCards.relic(catalog, id).map(new FearsomeShield(_))
-}

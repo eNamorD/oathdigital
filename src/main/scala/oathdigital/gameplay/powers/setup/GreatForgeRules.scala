@@ -8,7 +8,7 @@ import oathdigital.model._
 /** E06, both faces (2026-09-21 Chronicle design, "Setup powers"). See
   * `GreatMarketRules` for the `WhenExplored`/window-sharing rationale.
   */
-sealed abstract class ForgeRule extends ContributingPower {
+sealed abstract class ForgeRule extends ContributingPower:
   def catalog: ExecutableCatalog
   def edifice: EdificeId
   protected def side: EdificeSide
@@ -16,44 +16,40 @@ sealed abstract class ForgeRule extends ContributingPower {
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   private def at(ctx: PowerCtx): Option[(PlayerId, SiteId)] =
-    for {
+    for
       edificeSite <- EdificeSetupSupport.siteOf(ctx.state, edifice, side)
       placement <- EdificeSetupSupport.pawnPlacement(ctx)
       if placement._2 == edificeSite
-    } yield placement
+    yield placement
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx).isDefined
 
   protected def build(ready: ReadyGame, actor: PlayerId, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]]
 
-  final def contributions: Map[PowerWindow, Vector[Contribution]] = {
+  final def contributions: Map[PowerWindow, Vector[Contribution]] =
     val effect = Vector(Transform((ctx, ops) => at(ctx) match {
       case Some((actor, site)) => ops :+ BuildOps((ready, _) =>
         build(ready, actor, site))
       case None => ops
     }))
     Map(PowerWindow.SetupPawnPlaced -> effect, PowerWindow.WhenExplored -> effect)
-  }
-}
 
 final case class GreatForge private (edifice: EdificeId, catalog: ExecutableCatalog)
-    extends ForgeRule {
+    extends ForgeRule:
   def id: PowerId = GreatForge.id
   protected def side: EdificeSide = EdificeSide.Intact
 
   protected def build(ready: ReadyGame, actor: PlayerId, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] =
     Right(RelicDraws.takeTop(ready, actor))
-}
-object GreatForge {
+object GreatForge:
   val id: PowerId = PowerId("edifice.e06.intact")
   def forCatalog(catalog: ExecutableCatalog): Option[GreatForge] =
     CatalogCards.edifice(catalog, id).map(new GreatForge(_, catalog))
-}
 
 final case class BrokenForge private (edifice: EdificeId, catalog: ExecutableCatalog)
-    extends ForgeRule {
+    extends ForgeRule:
   def id: PowerId = BrokenForge.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
@@ -66,9 +62,7 @@ final case class BrokenForge private (edifice: EdificeId, catalog: ExecutableCat
         .flatMap(s => current.map.sites(s).relics.map(relic => Discard.Relic(
           relic.id, PositionedLocation(Location.Site(s)), relic.tokens.secrets, actor)))
     }
-}
-object BrokenForge {
+object BrokenForge:
   val id: PowerId = PowerId("edifice.e06.ruined")
   def forCatalog(catalog: ExecutableCatalog): Option[BrokenForge] =
     CatalogCards.edifice(catalog, id).map(new BrokenForge(_, catalog))
-}

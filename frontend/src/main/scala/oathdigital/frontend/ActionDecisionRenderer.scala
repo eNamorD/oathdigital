@@ -1,14 +1,14 @@
 package oathdigital.frontend
 import oathdigital.protocol.{GameIntent => GameCommand, _}; import org.scalajs.dom
 import ServerUiSupport._
-private[frontend] object ActionDecisionRenderer {
- def status(value: GameProjection, ui: ServerUiView): dom.Element = {
+private[frontend] object ActionDecisionRenderer:
+ def status(value: GameProjection, ui: ServerUiView): dom.Element =
    import ui._
    val node = element("div", "status")
    val presentation = viewerPresentation(value, currentPlayerId)
-   presentation.procedureStatus match {
+   presentation.procedureStatus match
      case Some(message) => node.textContent = message
-     case None => presentation.waitingForPlayerId match {
+     case None => presentation.waitingForPlayerId match
      case Some(playerId) =>
        node.appendChild(dom.document.createTextNode("Waiting for "))
        node.appendChild(playerReference(value, playerId))
@@ -37,17 +37,13 @@ private[frontend] object ActionDecisionRenderer {
        node.appendChild(dom.document.createTextNode(
          s"${value.phase}; active participant: "
        ))
-       value.activeParticipantId match {
+       value.activeParticipantId match
          case Some(playerId) =>
            node.appendChild(playerReference(value, playerId))
          case None => node.appendChild(dom.document.createTextNode("none"))
-       }
-     }
-   }
    node
- }
  def actionsPanel(value: GameProjection, presentation: ViewerPresentation,
-     ui: ServerUiView): dom.Element = {
+     ui: ServerUiView): dom.Element =
    import ui._
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
@@ -61,7 +57,7 @@ private[frontend] object ActionDecisionRenderer {
    // draw, a Vision in flight. The projection drops the preview once a
    // decision offers the same cards, so nothing here has to know which
    // action put them there.
-   if (value.temporaryHandPreview.nonEmpty) {
+   if value.temporaryHandPreview.nonEmpty then
      val preview = element("section", "temporary-hand-preview")
      preview.appendChild(text("h3", "", "Cards in hand"))
      val cards = element("div", "decision-cards")
@@ -69,11 +65,10 @@ private[frontend] object ActionDecisionRenderer {
        cards.appendChild(CardFace.render(card)))
      preview.appendChild(cards)
      panel.appendChild(preview)
-   }
    // The oath and the usurper limit describe the table, so they are drawn
    // with the board; the acting player's resources are on their own board
    // already, and a site's loose wealth is drawn on the site.
-   if (value.phase == "wake" && presentation.showGameplayControls) {
+   if value.phase == "wake" && presentation.showGameplayControls then
      takeWealthActions(value, currentPlayerId).foreach { action =>
        val control = button(action.label, "wake-action")
        control.disabled = !canControl
@@ -86,17 +81,15 @@ private[frontend] object ActionDecisionRenderer {
        !value.legalControls.contains("endWake")
      end.onclick = _ => submitCommand(GameCommand.EndWake)
      panel.appendChild(end)
-   }
-   if (!value.actionSelectionOpen && presentation.showGameplayControls) {
+   if !value.actionSelectionOpen && presentation.showGameplayControls then
      currentBoardSelection.flatMap(_.activeAction).foreach { action =>
        panel.appendChild(text("p", "selection-instruction", action.prompt))
        panel.appendChild(text("p", "selection-cardinality",
          cardinalityInstruction(action)))
      }
-   }
-   if (showActActionControls(value, presentation)) {
+   if showActActionControls(value, presentation) then
      val selection = currentBoardSelection.flatMap(_.activeAction)
-     if (currentModifierWorkflow.exists(_.ordering)) {
+     if currentModifierWorkflow.exists(_.ordering) then
        val workflow = currentModifierWorkflow.get
        panel.appendChild(text("h2", "", s"Order ${actionLabel(workflow.preview.action)} modifiers"))
        panel.appendChild(text("p", "modifier-instruction", "Choose optional modifiers in " +
@@ -127,12 +120,11 @@ private[frontend] object ActionDecisionRenderer {
              s"${actionLabel(modifier.modifies.getOrElse(workflow.preview.action))} Modifier"))
          }
          choose.onclick = _ => toggleModifier(modifier)
-         choose.onkeydown = event => event.key match {
+         choose.onkeydown = event => event.key match
            case "Enter" | " " => event.preventDefault(); toggleModifier(modifier)
            case "ArrowUp" => event.preventDefault(); moveModifier(modifier, -1)
            case "ArrowDown" => event.preventDefault(); moveModifier(modifier, 1)
            case _ => ()
-         }
          row.appendChild(choose)
          ordinal.foreach { number =>
            val badge = text("span", "modifier-ordinal", number.toString); badge
@@ -152,79 +144,71 @@ private[frontend] object ActionDecisionRenderer {
        panel.appendChild(back)
        val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
          cancelModifiers(); panel.appendChild(cancel)
-    } else if (currentFacedownAdviserDraft.nonEmpty) {
-      panel.appendChild(FacedownAdviserRenderer.render(
-        currentFacedownAdviserDraft.get, ui))
-     } else if (selection.nonEmpty) {
+     else if currentFacedownAdviserDraft.nonEmpty then
+       panel.appendChild(FacedownAdviserRenderer.render(
+         currentFacedownAdviserDraft.get, ui))
+     else if selection.nonEmpty then
        val action = selection.get
        panel.appendChild(text("p", "selection-instruction", action.prompt))
        panel.appendChild(text("p", "selection-cardinality",
          cardinalityInstruction(action)))
-       if (!action.autoActivate) {
+       if !action.autoActivate then
          val cancel = button("Cancel", "cancel-board-selection")
          cancel.onclick = _ => cancelTargetAction()
          panel.appendChild(cancel)
          currentModifierWorkflow.foreach { workflow =>
-           val back = button(if (workflow.hadModifierStage) "Back to modifiers"
+           val back = button(if workflow.hadModifierStage then "Back to modifiers"
              else "Back to actions", "back-board-selection")
            back.onclick = _ => backFromTargets(); panel.appendChild(back)
          }
-       }
-       if (action.explicitConfirm) {
+       if action.explicitConfirm then
          val confirm = button("Confirm selection", "confirm-board-selection")
          confirm.disabled = !canControl ||
            !currentBoardSelection.exists(_.canConfirm)
          confirm.onclick = _ => currentBoardSelection.flatMap(_.confirm)
            .foreach(handleSelection)
          panel.appendChild(confirm)
-       }
-     } else {
+     else
        val groups = new ActionSections; value.legalSearchSources.foreach { source =>
-         val label = source.kind match {
+         val label = source.kind match
            case "world" => s"Search world deck (${source.supplyCost} Supply)"
            case _ => s"Search ${source.region.getOrElse("regional")} discard " +
              s"(${source.supplyCost} Supply)"
-         }
          val search = button(label, "act-action search-action")
          search.disabled = !canControl || !presentation.showGameplayControls
-         val key = source.kind match {
+         val key = source.kind match
            case "world" => "search:world"
            case _ => s"search:regional-discard:${source.region.getOrElse("")}"
-         }
          search.onclick = _ => submitCommand(GameCommand.StartWalker(
            "search", Vector.empty, Vector(WalkerStartArgWire("button", key))))
          groups.appendKind("search", search)
        }
-       if (value.legalControls.contains("beginRecover")) {
+       if value.legalControls.contains("beginRecover") then
          val recover = button("Recover (1 Supply)", "act-action recover-action")
          recover.disabled = !canControl
          recover.onclick = _ => submitCommand(GameCommand.StartWalker("recover", Vector.empty))
          groups.appendKind("recover", recover)
-       }
-       if (value.legalControls.contains("beginForge")) {
+       if value.legalControls.contains("beginForge") then
          val forge = button("Forge (1 Supply)", "act-action forge-action")
          forge.disabled = !canControl
          forge.onclick = _ => submitCommand(
            GameCommand.StartWalker("forge", Vector.empty))
          groups.appendKind("forge", forge)
-       }
        EconomyControls.render(value, canControl, groups, submitCommand)
        BannerControls.render(value, canControl, groups, submitCommand)
        NegotiationControls.render(value, canControl, groups, submitCommand)
        CampaignControls.render(value, canControl, groups, submitCommand)
        value.minorActions.foreach { minor =>
-         if (facedownAdviserLaunchCount(minor) == 1) {
+         if facedownAdviserLaunchCount(minor) == 1 then
            val play = button("Play facedown adviser", "minor-adviser-launch")
            play.disabled = !canControl
            play.onclick = _ => beginTargetedMajorAction("play-facedown-adviser")
            groups.appendKind("facedown-adviser", play)
-         }
-         if (minor.canPeekSiteRelics) {
+         if minor.canPeekSiteRelics then
            val peek = button("Peek at relics at your site", "minor-peek-relics")
            peek.disabled = !canControl
            peek.onclick = _ => submitCommand(GameCommand.PeekSiteRelics)
            groups.appendKind("peek-site-relics", peek)
-         }
          minor.facedownRelics.foreach { relic =>
            val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
            reveal.disabled = !canControl
@@ -234,7 +218,7 @@ private[frontend] object ActionDecisionRenderer {
          Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
            .filter(_._2 > 0).foreach { case (toSite, maximum) =>
              val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
-             label.textContent = if (toSite) "Warbands board to site "
+             label.textContent = if toSite then "Warbands board to site "
                else "Warbands site to board "
              val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
              amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
@@ -257,17 +241,15 @@ private[frontend] object ActionDecisionRenderer {
            !presentation.showGameplayControls ||
            (action.candidates.isEmpty && action.minimum > 0)
          control.onclick = _ => {
-           if (action.minimum == 0 && action.maximum == 0)
+           if action.minimum == 0 && action.maximum == 0 then
              commandForSelection(action, Vector.empty, currentPlayerId).foreach(submitCommand)
-           else {
-             if (ModifierWorkflow.targeted(action.actionKind).nonEmpty)
+           else
+             if ModifierWorkflow.targeted(action.actionKind).nonEmpty then
                beginTargetedMajorAction(action.actionKind)
-             else {
+             else
                currentBoardSelection = currentBoardSelection.map(
                  _.activate(action.actionKind))
                rerender()
-             }
-           }
          }
          groups.appendKind(action.actionKind, control)
        }
@@ -275,7 +257,7 @@ private[frontend] object ActionDecisionRenderer {
        groups.appendTo(panel)
        panel.appendChild(text("p", "informational",
          "Other normal action families are not yet implemented."))
-       if (value.legalControls.contains("beginRest")) {
+       if value.legalControls.contains("beginRest") then
          // What Rest returns before the track's ceiling takes its cut, so
          // the number doubles as the Supply this Act may still spend for
          // free. A band that returns nothing says nothing.
@@ -285,9 +267,6 @@ private[frontend] object ActionDecisionRenderer {
          rest.disabled = !canControl
          rest.onclick = _ => submitCommand(GameCommand.BeginRest)
          panel.appendChild(rest)
-       }
-     }
-   }
    WalkerPanelSupport.renderRecoverPanel(value, presentation, canControl,
      panel, ui)
    WalkerPanelSupport.renderChooseOnePanel(value, presentation, canControl,
@@ -299,9 +278,9 @@ private[frontend] object ActionDecisionRenderer {
    WalkerSelectionPanels.render(value, presentation, canControl, panel, ui)
    WalkerPanelSupport.renderWaitingNotice(value, panel)
    CampaignResultPanel.render(value, panel)
-   if (value.phase == "rest" && presentation.showGameplayControls) {
+   if value.phase == "rest" && presentation.showGameplayControls then
      PhasePowerButtons.render(value, canControl, panel, submitCommand)
-     if (PhasePowerButtons.showsFinishRest(value)) {
+     if PhasePowerButtons.showsFinishRest(value) then
        panel.appendChild(text("p", "informational",
          "Finish Rest to return card resources, reveal secrets, refresh " +
            "Supply, and wake the next player."))
@@ -309,8 +288,4 @@ private[frontend] object ActionDecisionRenderer {
        finish.disabled = !canControl
        finish.onclick = _ => submitCommand(GameCommand.FinishRest)
        panel.appendChild(finish)
-     }
-   }
    panel
- }
-}

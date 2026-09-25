@@ -12,7 +12,7 @@ import oathdigital.model._
   * has no pawn, so it applies when the site is targeted, without choosing.
   */
 final case class ToweringRampart private (edificeId: EdificeId)
-    extends BattlePlan {
+    extends BattlePlan:
   def id: PowerId = ToweringRampart.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Edifice(edificeId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -23,11 +23,9 @@ final case class ToweringRampart private (edificeId: EdificeId)
       .map(source => CampaignPlanOffer(source,
         "Towering Rampart: add 2 defense dice", Vector.empty,
         Vector(CampaignPlanEffect.AddDefenseDice(2))))
-}
 
-object ToweringRampart {
+object ToweringRampart:
   val id: PowerId = PowerId("edifice.e20.intact")
 
   def forCatalog(catalog: ExecutableCatalog): Option[ToweringRampart] =
     CatalogCards.edifice(catalog, id).map(new ToweringRampart(_))
-}

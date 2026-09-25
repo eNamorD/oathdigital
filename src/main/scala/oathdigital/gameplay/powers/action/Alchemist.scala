@@ -14,7 +14,7 @@ import oathdigital.model._
   * same condition from live state.
   */
 case object Alchemist extends PaidAction("denizen.alchemist",
-    Cost(secret = 1, secretBurnt = 1)) {
+    Cost(secret = 1, secretBurnt = 1)):
   val Favor: Int = 4
   val decisionId: String = "power.alchemist.banks"
 
@@ -31,25 +31,22 @@ case object Alchemist extends PaidAction("denizen.alchemist",
   private def choosing(banks: Vector[(Suit, Int)]): Boolean =
     banks.size >= 2 && banks.map(_._2).sum > Favor
 
-  private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] = {
+  private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
     val banks = stocked(ready)
-    if (!choosing(banks)) Vector.empty
+    if !choosing(banks) then Vector.empty
     else Vector(Decide(decisionId, player, DecisionQuery.Distribute.exactly(
       banks.map { case (suit, stock) => DistributeSlot(
         DecisionOptionRef.FavorBank(suit), 0, math.min(stock, Favor), None) },
       total = Favor,
       heading = Some("Alchemist: take 4 favor from any banks"),
       confirmLabel = "Take favor")))
-  }
 
   private def gain(ready: ReadyGame, player: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = {
+      : Either[OathViolation, Vector[CoreOperation]] =
     val banks = stocked(ready)
-    if (!choosing(banks)) Right(banks.map { case (suit, stock) =>
+    if !choosing(banks) then Right(banks.map { case (suit, stock) =>
       Gain.Favor(player, suit, math.min(stock, Favor)) })
     else PowerAnswers.distribution(pending, decisionId)
       .toRight(PowerAnswers.missing(decisionId)).map(_.collect {
         case DistributeAmount(DecisionOptionRef.FavorBank(suit), n) if n > 0 =>
           Gain.Favor(player, suit, n) })
-  }
-}

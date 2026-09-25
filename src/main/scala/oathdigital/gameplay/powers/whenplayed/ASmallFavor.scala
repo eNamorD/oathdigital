@@ -9,18 +9,16 @@ import oathdigital.model._
   * optional, so it is capped by what the warband bank still holds.
   */
 final case class ASmallFavor private (cardId: DenizenId)
-    extends WhenPlayedPower {
+    extends WhenPlayedPower:
   def id: PowerId = ASmallFavor.id
 
   def effect(ctx: PowerCtx): Vector[Operation] = Vector(BuildOps((ready, _) =>
     PlayerFacts.forceKind(ready, ctx.activePlayer).map(kind => Vector(
       Gain.Warbands(ctx.activePlayer, kind, ASmallFavor.Warbands)))))
-}
 
-object ASmallFavor {
+object ASmallFavor:
   val id: PowerId = PowerId("denizen.a-small-favor")
   val Warbands: Int = 4
 
   def forCatalog(catalog: ExecutableCatalog): Option[ASmallFavor] =
     WhenPlayedPower.cardOf(catalog, id).map(new ASmallFavor(_))
-}

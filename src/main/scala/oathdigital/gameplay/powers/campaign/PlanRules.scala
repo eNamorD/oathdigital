@@ -9,9 +9,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * added cost on the enemy's plans). A power whose card is absent from `catalog`
   * is omitted.
   */
-object PlanRules {
+object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     StickyFire.forCatalog(catalog).toVector ++
       WarningSignals.forCatalog(catalog).toVector ++
       GleamingArmor.forCatalog(catalog).toVector
-}

@@ -8,7 +8,7 @@ import scala.scalajs.js
 /** The Distribute panel at the DOM: rows, steppers, Shift+click and the
   * confirm button's enablement, all read off the rendered tree.
   */
-class DistributePanelRenderSuite extends munit.FunSuite {
+class DistributePanelRenderSuite extends munit.FunSuite:
   private def bank(id: String, label: String) =
     DecisionOptionState("favor-bank", id, label)
   private val query = DecisionQueryState("distribute", Vector.empty,
@@ -26,24 +26,21 @@ class DistributePanelRenderSuite extends munit.FunSuite {
   private val presentation = ServerUiSupport.ViewerPresentation(
     showGameplayControls = true, None, None)
 
-  private def opened(): RecordingView = {
+  private def opened(): RecordingView =
     val ui = new RecordingView("game", "red")
     ui.currentWalkerDistribution = WalkerDistributeDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(parked))
     ui
-  }
 
-  private def render(ui: RecordingView, canControl: Boolean = true): dom.Element = {
+  private def render(ui: RecordingView, canControl: Boolean = true): dom.Element =
     val panel = dom.document.createElement("div")
     DistributePanelRenderer.render(projection, presentation, canControl, panel, ui)
     panel
-  }
 
-  private def one(root: dom.Element, selector: String): dom.Element = {
+  private def one(root: dom.Element, selector: String): dom.Element =
     val found = root.querySelectorAll(selector)
     assertEquals(found.length, 1, s"expected exactly one $selector")
     found(0).asInstanceOf[dom.Element]
-  }
 
   private def amount(panel: dom.Element, item: String): String =
     one(panel, s"""[data-option-id="$item"] .distribute-amount""").textContent
@@ -52,7 +49,7 @@ class DistributePanelRenderSuite extends munit.FunSuite {
     element.dispatchEvent(new dom.MouseEvent("click", js.Dynamic.literal(
       bubbles = true, shiftKey = shift).asInstanceOf[dom.MouseEventInit]))
 
-  test("the panel renders one row per slot at its suggested amount") {
+  test("the panel renders one row per slot at its suggested amount"):
     val panel = render(opened())
     assertEquals(one(panel, "h2").textContent, "League Treaty")
     assertEquals(amount(panel, "favor-bank:arcane"), "2")
@@ -63,9 +60,8 @@ class DistributePanelRenderSuite extends munit.FunSuite {
       .getAttribute("title"), "Shift+click: all")
     assertEquals(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-decrement""")
       .getAttribute("title"), "Shift+click: all")
-  }
 
-  test("a plain click steps by one and a Shift+click drains or fills") {
+  test("a plain click steps by one and a Shift+click drains or fills"):
     val ui = opened()
     click(one(render(ui), """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
     assertEquals(amount(render(ui), "favor-bank:arcane"), "1")
@@ -76,9 +72,8 @@ class DistributePanelRenderSuite extends munit.FunSuite {
       shift = true)
     assertEquals(amount(render(ui), "favor-bank:nomad"), "2")
     assert(ui.rerenders >= 3)
-  }
 
-  test("confirm is enabled exactly when nothing remains and submits the amounts") {
+  test("confirm is enabled exactly when nothing remains and submits the amounts"):
     val ui = opened()
     click(one(render(ui), """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
     val short = render(ui)
@@ -93,14 +88,12 @@ class DistributePanelRenderSuite extends munit.FunSuite {
       "rest.league-treaty.distribution", DecisionAnswerWire.DistributeWire(Vector(
         DistributeAmountWire("favor-bank", "arcane", 1),
         DistributeAmountWire("favor-bank", "nomad", 1))))))
-  }
 
-  test("a viewer who cannot control sees disabled steppers and confirm") {
+  test("a viewer who cannot control sees disabled steppers and confirm"):
     val panel = render(opened(), canControl = false)
     assert(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-increment""")
       .asInstanceOf[dom.html.Button].disabled)
     assert(one(panel, ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
-  }
 
   private val rangedQuery = query.copy(slots = Vector(
     DecisionSlotState(bank("arcane", "Arcane"), 0, 3, None),
@@ -108,21 +101,18 @@ class DistributePanelRenderSuite extends munit.FunSuite {
     minTotal = Some(1), maxTotal = Some(3))
   private val rangedParked = parked.copy(query = Some(rangedQuery))
 
-  test("a range shows its minimum and confirms anywhere inside it") {
+  test("a range shows its minimum and confirms anywhere inside it"):
     val ui = new RecordingView("game", "red")
     ui.currentWalkerDistribution = WalkerDistributeDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(rangedParked))
     val ranged = projection.copy(walkerDecision = Some(rangedParked))
-    def draw(): dom.Element = {
+    def draw(): dom.Element =
       val panel = dom.document.createElement("div")
       DistributePanelRenderer.render(ranged, presentation, true, panel, ui)
       panel
-    }
     assertEquals(one(draw(), ".distribute-minimum").textContent,
       "At least 1 must be placed")
     assert(one(draw(), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
     click(one(draw(), """[data-option-id="favor-bank:arcane"] .distribute-increment"""))
     assert(!one(draw(), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
     assertEquals(one(draw(), ".distribute-remaining").textContent, "Remaining: 2")
-  }
-}

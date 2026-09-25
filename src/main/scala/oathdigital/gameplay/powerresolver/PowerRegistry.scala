@@ -7,7 +7,7 @@ final class PowerRegistry private (
     private val auditedIds: Set[PowerId],
     private val byId: Map[PowerId, Power],
     private val byWindow: Map[PowerWindow, Vector[(Power, PowerHandler)]]
-) {
+):
   def lookup(id: PowerId): Option[Power] = byId.get(id)
   def handler(id: PowerId, window: PowerWindow): Option[PowerHandler] =
     byId.get(id).flatMap(_.handlers.find(_.window == window))
@@ -15,15 +15,13 @@ final class PowerRegistry private (
 
   def at(window: PowerWindow): Vector[(Power, PowerHandler)] =
     byWindow.getOrElse(window, Vector.empty)
-}
 
-object PowerRegistry {
-  def apply(entries: Power*): PowerRegistry = {
+object PowerRegistry:
+  def apply(entries: Power*): PowerRegistry =
     withAudited(entries.map(_.id).toSet, entries*)
-  }
 
   def withAudited(auditedIds: Set[PowerId], entries: Power*)
-      : PowerRegistry = {
+      : PowerRegistry =
     entries.foreach(Power.validate)
     val ids = entries.map(_.id)
     require(ids.distinct.size == ids.size, "registered power IDs must be unique")
@@ -37,5 +35,3 @@ object PowerRegistry {
     new PowerRegistry(auditedIds,
       ordered.map(power => power.id -> power).toMap,
       windows)
-  }
-}

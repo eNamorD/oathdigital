@@ -1,10 +1,10 @@
 package oathdigital.protocol
 
-private[protocol] object CommandIntentCodec {
+private[protocol] object CommandIntentCodec:
   import GameIntent._
   import CommandJsonSupport._
 
-  def encode(intent: GameIntent): ujson.Obj = intent match {
+  def encode(intent: GameIntent): ujson.Obj = intent match
     case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
     case FinishRest => tagged("finishRest")
@@ -21,7 +21,6 @@ private[protocol] object CommandIntentCodec {
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
       "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))
-  }
 
   def decode(value: ujson.Value, path: String): Either[ProtocolDecodeFailure, GameIntent] =
     obj(value, path).flatMap { value =>
@@ -31,4 +30,3 @@ private[protocol] object CommandIntentCodec {
 
   private def tagged(kind: String, values: (String, ujson.Value)*): ujson.Obj =
     ujson.Obj.from(("type" -> ujson.Str(kind)) +: values)
-}

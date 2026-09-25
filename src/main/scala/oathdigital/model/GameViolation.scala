@@ -3,7 +3,7 @@ package oathdigital.model
 import oathdigital.model._
 
 sealed trait OathViolation extends Product with Serializable
-object OathViolation {
+object OathViolation:
   final case class CoreOperationRejected(code: String, detail: String)
       extends OathViolation
   final case class UnsupportedRuleCatalog(expected: String, actual: String)
@@ -108,4 +108,3 @@ object OathViolation {
       extends OathViolation
   final case class InvalidAggregate(problems: Vector[DomainProblem])
       extends OathViolation
-}

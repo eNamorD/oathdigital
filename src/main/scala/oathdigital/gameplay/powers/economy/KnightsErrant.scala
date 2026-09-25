@@ -29,7 +29,7 @@ import oathdigital.model._
   * are restricted as usual.
   */
 final case class KnightsErrant private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier {
+    catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = KnightsErrant.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
 
@@ -42,28 +42,26 @@ final case class KnightsErrant private (cardId: DenizenId,
         case _ => false
       })))
 
-  override def appliesAt(ctx: PowerCtx): Boolean = ctx.window match {
+  override def appliesAt(ctx: PowerCtx): Boolean = ctx.window match
     case PowerWindow.CampaignCost =>
       ctx.procedure.contains(ActionRef.Muster)
     case _ => true
-  }
 
   private def offer(actor: PlayerId): Operation = Branch((ready, _) =>
-    if (CampaignSetup.legalKinds(ready, actor).isEmpty) Vector.empty
+    if CampaignSetup.legalKinds(ready, actor).isEmpty then Vector.empty
     else Vector(Decide(KnightsErrant.decisionId, actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(KnightsErrant.campaignOption, "Campaign"),
         DecisionOption.Button(KnightsErrant.declineOption, "Do not campaign")),
       heading = Some("Knights Errant: campaign for no Supply?")))))
 
   private def campaign(actor: PlayerId): Operation = Branch((ready, pending) =>
-    if (!PowerAnswers.one(pending, KnightsErrant.decisionId)
-        .contains(KnightsErrant.campaignOption)) Vector.empty
+    if !PowerAnswers.one(pending, KnightsErrant.decisionId)
+        .contains(KnightsErrant.campaignOption) then Vector.empty
     else CampaignProcedure.rebuild(catalog, ready, actor, Vector.empty)
       .fold(error => Vector[Operation](BuildOps((_, _) => Left(error))),
         tree => Vector(tree)))
-}
 
-object KnightsErrant {
+object KnightsErrant:
   val id: PowerId = PowerId("denizen.knights-errant")
   /** Under the `muster.` prefix, which the Muster's continuation recognises. */
   val decisionId: String = "muster.knights-errant.campaign"
@@ -74,4 +72,3 @@ object KnightsErrant {
 
   def forCatalog(catalog: ExecutableCatalog): Option[KnightsErrant] =
     CatalogCards.denizen(catalog, id).map(new KnightsErrant(_, catalog))
-}

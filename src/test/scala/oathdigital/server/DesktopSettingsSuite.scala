@@ -3,7 +3,7 @@ package oathdigital.server
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 
-class DesktopSettingsSuite extends munit.FunSuite {
+class DesktopSettingsSuite extends munit.FunSuite:
   private val directory = FunFixture[Path](
     setup = _ => Files.createTempDirectory("oathdigital-settings"),
     teardown = path => deleteRecursively(path)
@@ -55,12 +55,9 @@ class DesktopSettingsSuite extends munit.FunSuite {
   private def write(dir: Path, content: String): Path =
     Files.write(dir.resolve("oathdigital.properties"), content.getBytes(UTF_8))
 
-  private def deleteRecursively(path: Path): Unit = {
-    if (Files.isDirectory(path)) {
+  private def deleteRecursively(path: Path): Unit =
+    if Files.isDirectory(path) then
       val children = Files.list(path)
       try children.toArray.foreach(child => deleteRecursively(child.asInstanceOf[Path]))
       finally children.close()
-    }
     Files.deleteIfExists(path)
-  }
-}

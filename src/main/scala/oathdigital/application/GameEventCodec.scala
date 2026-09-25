@@ -14,16 +14,13 @@ final case class DecodedGameEvent(
 )
 
 /** Application-owned persisted-event boundary with representation-free values. */
-trait GameEventCodec {
+trait GameEventCodec:
   def decodeStream(json: String): Either[EventCodecFailure, Vector[DecodedGameEvent]]
   def encodeEvent(gameId: String, catalog: CatalogRef, sequence: Long,
       event: OathEvent): Either[EventCodecFailure, String]
-}
 
-object GameEventCodec {
-  lazy val default: GameEventCodec = {
+object GameEventCodec:
+  lazy val default: GameEventCodec =
     val providers = java.util.ServiceLoader.load(classOf[GameEventCodec]).iterator()
-    if (providers.hasNext) providers.next()
+    if providers.hasNext then providers.next()
     else throw new IllegalStateException("no GameEventCodec adapter is installed")
-  }
-}

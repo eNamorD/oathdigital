@@ -13,8 +13,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
 
-class GameEventWireSuite extends munit.FunSuite {
-  test("recorded Visions Drawn advancement round trips without an amount") {
+class GameEventWireSuite extends munit.FunSuite:
+  test("recorded Visions Drawn advancement round trips without an amount"):
     val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
       DeltaMeaning.OperationApplied("vision")), Vector(AdvanceVisionsDrawn),
       Vector.empty)
@@ -30,8 +30,7 @@ class GameEventWireSuite extends munit.FunSuite {
       OperationPolicy.Permissive)(Right(_)).toOption.get.state
     assertEquals(replayed.game.current.tracks.visionsDrawn,
       base.game.current.tracks.visionsDrawn + 1)
-  }
-  test("reduced optional spend is canonical in memory and on the wire") {
+  test("reduced optional spend is canonical in memory and on the wire"):
     import oathdigital.model.TestGameFixtures.{playerId, ready => base}
     val one = base.updateCurrent(_.copy(players = base.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(1)))
@@ -45,9 +44,8 @@ class GameEventWireSuite extends munit.FunSuite {
       .toOption.get
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     assert(!ujson.read(encoded)("payload")("ops")(0).obj.contains("required"))
-  }
 
-  test("a recorded move of a Vision to the shared bank round trips and replays") {
+  test("a recorded move of a Vision to the shared bank round trips and replays"):
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -68,9 +66,8 @@ class GameEventWireSuite extends munit.FunSuite {
     val replayed = OperationPipeline.run(prepared, decoded.ops,
       OperationPolicy.Permissive)(Right(_)).toOption.get.state
     assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
-  }
 
-  test("ignored-rule diagnostics round trip durable source timing and reason") {
+  test("ignored-rule diagnostics round trip durable source timing and reason"):
     val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
       ActionKind.Rest, Vector(IgnoredRuleDiagnostic(
         RuleSourceRef.Adviser(PlayerId("red"), DenizenId("insomnia")),
@@ -78,8 +75,7 @@ class GameEventWireSuite extends munit.FunSuite {
         "reviewed-unimplemented-pre-alpha-fallback")))
     val encoded = GameEventWire.encodeEvent("g", catalog.ref, 0, event).toOption.get
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-  }
-  test("v13 round ending and War Exhaustion preserve outcome and random domain") {
+  test("v13 round ending and War Exhaustion preserve outcome and random domain"):
     val p1 = PlayerId("p1")
     val p2 = PlayerId("p2")
     val events = Vector[OathEvent](RoundEnded(8, None),
@@ -92,17 +88,15 @@ class GameEventWireSuite extends munit.FunSuite {
       assertEquals(decoded.formatVersion, GameEventWire.FormatVersion)
       assertEquals(decoded.event, event)
     }
-  }
-  test("a Vision victory event round trips") {
+  test("a Vision victory event round trips"):
     val events = Vector[OathEvent](OathEvent.VisionVictory(PlayerId("red"),
       VisionId("vision:vision-of-faith")))
     val encoded = GameEventWire.encodeStream("visions", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
 
-  test("v10 minor actions preserve private identities and prior force facts") {
+  test("v10 minor actions preserve private identities and prior force facts"):
     val events = Vector[OathEvent](
       OathEvent.SiteRelicsPeeked(PlayerId("red"), SiteId("site:a"),
         Vector(RelicId("R1"), RelicId("R2"))),
@@ -115,9 +109,8 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
       Vector.fill(events.size)(1))
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
 
-  test("a choose-many answer round trips through the journal") {
+  test("a choose-many answer round trips through the journal"):
     val player = PlayerId("red")
     val answer = DecisionAnswer.ChooseManyAnswer(Vector(
       DecisionOptionRef.Site(SiteId("a")), DecisionOptionRef.Site(SiteId("c"))))
@@ -128,9 +121,8 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
 
-  test("a choose-amount answer round trips through the journal") {
+  test("a choose-amount answer round trips through the journal"):
     val player = PlayerId("red")
     val events = Vector[OathEvent](WalkerStepRecorded("2",
       ChoicePayload("challenge.amount", DecisionAnswer.ChooseAmountAnswer(4),
@@ -139,9 +131,8 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
 
-  test("walker choice steps round trip the negotiation answers") {
+  test("walker choice steps round trip the negotiation answers"):
     val red = PlayerId("red"); val blue = PlayerId("blue")
     val terms = NegotiationTerms(
       Vector(NegotiationTransfer(blue, 2, Vector(RelicId("r1")))),
@@ -160,10 +151,9 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
 
   test("every generic walker decision answer round trips on the step and on " +
-      "the park") {
+      "the park"):
     // The answer fact rides a walker `ChoicePayload` and the parked
     // `answered` vector, so both directions of `DecisionAnswerCodec` are
     // reached by any journalled walker procedure.
@@ -200,10 +190,9 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
 
   test("a procedure reference round-trips with its family, and a reference " +
-      "under the wrong family or an unknown family is rejected") {
+      "under the wrong family or an unknown family is rejected"):
     val events = Vector[OathEvent](
       WalkerParked(PhaseTransitionRef.EndWake, Vector("0"), Vector.empty,
         Vector.empty, Vector.empty),
@@ -234,9 +223,8 @@ class GameEventWireSuite extends munit.FunSuite {
       assert(GameEventWire.decodeStream(tampered).isLeft,
         s"end-wake under family '$family' must not decode")
     }
-  }
 
-  test("every option reference kind round trips through a recorded answer") {
+  test("every option reference kind round trips through a recorded answer"):
     val player = PlayerId("red")
     val refs = Vector[DecisionOptionRef](
       DecisionOptionRef.Button("continue"),
@@ -259,10 +247,9 @@ class GameEventWireSuite extends munit.FunSuite {
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
       events)
-  }
 
   test("a journalled answer carrying a deleted legacy tag is rejected with a " +
-      "typed decode failure") {
+      "typed decode failure"):
     val player = PlayerId("red")
     val event: OathEvent = WalkerStepRecorded("1",
       ChoicePayload("recover.choice",
@@ -276,9 +263,8 @@ class GameEventWireSuite extends munit.FunSuite {
       assert(GameEventWire.decodeStream(ujson.write(mutated)).isLeft,
         s"a '$tag' answer must not decode")
     }
-  }
 
-  test("walker delta events round-trip independent semantic facts") {
+  test("walker delta events round-trip independent semantic facts"):
     val player = PlayerId("red")
     val pool = PoolKey("recover")
     val relic = RelicId("R1")
@@ -307,9 +293,8 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("step")("meaning")("kind").str).toVector,
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
-  }
 
-  test("a journalled phase change round-trips the phase it names") {
+  test("a journalled phase change round-trips the phase it names"):
     // `EnterPhase` is only ever declared with `Act` today (End Wake is its
     // one caller), so a codec that ignored the value and decoded `Act`
     // unconditionally would pass every other test in the tree. Rest is used
@@ -321,10 +306,9 @@ class GameEventWireSuite extends munit.FunSuite {
       .toOption.get
     assertEquals(encoded("payload")("ops")(0)("phase").str, "rest")
     assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
-  }
 
   test("Catacombs' recorded batch round-trips: a relic move off the top of " +
-      "the relic deck and a cost placed on a card") {
+      "the relic deck and a cost placed on a card"):
     // The exact op vector `CatacombsContribution` builds. Encoding it used to
     // throw on `Location.Deck` and again on `PayCost`, which the append path
     // turned into a codec failure -- so `StartWalker` + Catacombs, the only
@@ -355,9 +339,8 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ops(0)("from")("position").str, "top")
     assertEquals(ops(1)("placedAt")("card")("id").str, "catacombs")
     assertEquals(ops(1)("cost")("secret").num, 1d)
-  }
 
-  test("every Location variant round-trips through the walker codec") {
+  test("every Location variant round-trips through the walker codec"):
     // `encodeLocation` is total over the sealed hierarchy, so this list is
     // the whole of it. Keeping the list exhaustive is what makes the
     // compiler's totality check meaningful on the decode side too: a new
@@ -401,10 +384,9 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
       locations.map(_.getClass.getSimpleName).distinct.size)
-  }
 
   test("an unknown walker location kind, deck or negative cost decodes to a " +
-      "typed WireError") {
+      "typed WireError"):
     val player = PlayerId("red")
     val event: OathEvent = WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
@@ -425,9 +407,8 @@ class GameEventWireSuite extends munit.FunSuite {
       assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft,
         s"expected a typed WireError for ${ujson.write(injected)}")
     }
-  }
 
-  test("a WalkerStepRecorded carrying two contribution ids round-trips") {
+  test("a WalkerStepRecorded carrying two contribution ids round-trips"):
     val pool = PoolKey("recover")
     val event: OathEvent = WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.DicePoolModified(pool, 2)),
@@ -440,10 +421,9 @@ class GameEventWireSuite extends munit.FunSuite {
       Vector(event))
     assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
       .map(_.str).toVector, Vector("power.one", "power.two"))
-  }
 
   test("an unencodable walker step payload returns a typed WireError, " +
-      "not a thrown exception") {
+      "not a thrown exception"):
     // WalkerStepPayload is intentionally open (WalkerEvents.scala) so a
     // later action's payload can't be exhaustively matched at compile time.
     // A shape this codec doesn't know must fail the append path as a
@@ -451,13 +431,11 @@ class GameEventWireSuite extends munit.FunSuite {
     case object UnknownStepPayload extends WalkerStepPayload
     val event = WalkerStepRecorded("0", UnknownStepPayload,
       Vector.empty, Vector.empty)
-    GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
+    GameEventWire.encodeEvent("walker", catalogRef, 0, event) match
       case Left(_) => ()
       case Right(value) => fail(s"expected a WireError, got $value")
-    }
-  }
 
-  test("every CoreOperation variant round-trips through the walker codec") {
+  test("every CoreOperation variant round-trips through the walker codec"):
     // `encodeOperation`/`encodePiece` are total over the sealed hierarchy
     // (I8), exactly like `encodeLocation` above -- this list is every
     // `CoreOperation` case EXCEPT the five walker tree-control nodes
@@ -556,9 +534,8 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct.size,
       operations.map(_.getClass.getSimpleName).distinct.size)
-  }
 
-  test("a walker roll payload round-trips attack and defense faces") {
+  test("a walker roll payload round-trips attack and defense faces"):
     val events = Vector[OathEvent](
       WalkerStepRecorded("1", RollPayload(PoolKey("campaign.attack"),
         Vector(AttackDieFace.HollowSword, AttackDieFace.OneSword,
@@ -576,9 +553,8 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("step").obj.contains("automatic")).toVector,
       Vector(false, true))
-  }
 
-  test("every Piece variant round-trips through the walker codec") {
+  test("every Piece variant round-trips through the walker codec"):
     // `encodePiece` is fully total (I8): unlike `encodeOperation`, it has no
     // throwing arm at all, so this list is the whole of `Piece`. `Take`
     // carries a bare `Piece`, so it exercises each variant the same way
@@ -607,10 +583,9 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("piece")("kind").str).toVector.distinct.size,
       pieces.map(_.getClass.getSimpleName).distinct.size)
-  }
 
   test("a walker tree-control node can never be recorded, and surfaces a " +
-      "typed WireError instead of an opaque exception") {
+      "typed WireError instead of an opaque exception"):
     // Decide/BuildOps/Repeat/Branch/Sequence are `encodeOperation`'s five
     // documented exceptions to totality (I8): three close over a Scala
     // function value with no data representation, and none can legally
@@ -631,15 +606,13 @@ class GameEventWireSuite extends munit.FunSuite {
       val event: OathEvent = WalkerStepRecorded("0",
         WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("bad")),
         Vector(node), Vector.empty)
-      GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
+      GameEventWire.encodeEvent("walker", catalogRef, 0, event) match
         case Left(_: WireError) => ()
         case Right(value) => fail(s"expected a typed WireError for $node, " +
           s"got $value")
-      }
     }
-  }
 
-  test("v2 serialized replay equals command state and preserves ordering") {
+  test("v2 serialized replay equals command state and preserves ordering"):
     val (commandState, events) = execute()
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
@@ -669,9 +642,8 @@ class GameEventWireSuite extends munit.FunSuite {
       new EventReplayEngine(new OathRules(catalog)).replay(replayRecords),
       Right(commandState)
     )
-  }
 
-  test("v2 rejects non-contiguous order") {
+  test("v2 rejects non-contiguous order"):
     val events = execute()._2
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
@@ -688,9 +660,8 @@ class GameEventWireSuite extends munit.FunSuite {
         .get
         .isInstanceOf[WireError.InvalidSequence]
     )
-  }
 
-  test("decoded v2 streams reject duplicate missing and out-of-order positions") {
+  test("decoded v2 streams reject duplicate missing and out-of-order positions"):
     Vector(
       Vector(0L, 0L) -> WireError.InvalidSequence("$[1].sequence", 1L, 0L),
       Vector(0L, 2L) -> WireError.InvalidSequence("$[1].sequence", 1L, 2L),
@@ -706,9 +677,8 @@ class GameEventWireSuite extends munit.FunSuite {
         Left(expected)
       )
     }
-  }
 
-  test("malformed unsupported and unknown v2 envelopes fail explicitly") {
+  test("malformed unsupported and unknown v2 envelopes fail explicitly"):
     assert(GameEventWire.decodeStream("{").left.toOption.get
       .isInstanceOf[WireError.MalformedJson])
 
@@ -728,9 +698,8 @@ class GameEventWireSuite extends munit.FunSuite {
         "scala.internal.Event"
       ))
     )
-  }
 
-  test("single-event and batch writers preserve nonzero absolute sequences") {
+  test("single-event and batch writers preserve nonzero absolute sequences"):
     val single = GameEventWire
       .encodeEvent("game", catalogRef, 41L, OathEvent.BanditsRefilled(Vector.empty))
       .toOption
@@ -752,9 +721,8 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.sequence), Vector(41L, 42L))
     assertEquals(decoded.map(_.event), events)
-  }
 
-  test("mixed contiguous v2 setup and v3 gameplay records round trip") {
+  test("mixed contiguous v2 setup and v3 gameplay records round trip"):
     val setupEvents = execute()._2
     // Any two v3 gameplay events serve. They used to be the Wake phase's
     // own; the Wake phase no longer has any, since both taking wealth and
@@ -780,9 +748,8 @@ class GameEventWireSuite extends munit.FunSuite {
       "mixed", catalogRef, 8L, gameplay.head).toOption.get
     wrongVersion("formatVersion") = 2
     assert(GameEventWire.decode(wrongVersion).isLeft)
-  }
 
-  test("current state-based Usurper events round trip") {
+  test("current state-based Usurper events round trip"):
     val events = Vector[OathEvent](
       UsurperFlipped(PlayerId("p2")),
       UsurperVictory(PlayerId("p2")))
@@ -793,9 +760,8 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(encoded.map(_("formatVersion").num.toInt), Vector.fill(2)(1))
     assertEquals(encoded.map(value => GameEventWire.decode(value).toOption.get.event),
       events)
-  }
 
-  test("GameStarted round trips its Chronicle and dealt SetupOrders") {
+  test("GameStarted round trips its Chronicle and dealt SetupOrders"):
     val event = OathEvent.GameStarted(chronicle, orders)
     val encoded = GameEventWire.encodeEvent("goal", catalogRef, 0L, event)
       .toOption.get
@@ -811,9 +777,8 @@ class GameEventWireSuite extends munit.FunSuite {
       case WireError.InvalidValue(path, _) => path.endsWith(".kind")
       case _ => false
     })
-  }
 
-  test("format version and sequence reject fractional and nonfinite numbers") {
+  test("format version and sequence reject fractional and nonfinite numbers"):
     Vector(2.9, Double.NaN, Double.PositiveInfinity).foreach { number =>
       val value = completedValue()
       value("formatVersion") = ujson.Num(number)
@@ -836,9 +801,8 @@ class GameEventWireSuite extends munit.FunSuite {
         Left(WireError.WrongType("$.sequence", "expected an integer"))
       )
     }
-  }
 
-  test("numeric boundaries reject negatives and unsafe integer overflow") {
+  test("numeric boundaries reject negatives and unsafe integer overflow"):
     val rangeMessage =
       s"must be between 0 and ${GameEventWire.MaxSafeSequence} inclusive"
 
@@ -898,11 +862,9 @@ class GameEventWireSuite extends munit.FunSuite {
       GameEventWire.decode(boundary).toOption.get.sequence,
       GameEventWire.MaxSafeSequence
     )
-  }
 
   private def completedValue(): ujson.Value =
     GameEventWire
       .encodeEvent("game", catalogRef, 0L, OathEvent.BanditsRefilled(Vector.empty))
       .toOption
       .get
-}
