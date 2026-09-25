@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Production Scala files stay at or below 800 lines (`BackendArchitectureSuite` "all production Scala files stay bounded"). This plan only shortens production files.
-- Files under `gameplay/walker` and `gameplay/operations` must not contain any power's name as a lowercase substring (`BackendArchitectureSuite` "a walker power imports no engine, and the engine never learns its name"). `ParkedDecisionAssertions` lives under `gameplay/walker` in the test tree and is bound by the same rule: do not name a power in it, in its comments, or in its suite's fixtures.
+- Files under `src/main/.../gameplay/walker` and `src/main/.../gameplay/operations` must not contain any power's name as a lowercase substring (`BackendArchitectureSuite` "a walker power imports no engine, and the engine never learns its name"). The scan covers `src/main` only. `ParkedDecisionAssertions.scala` sits in the test tree and is therefore not scanned, but it is engine-adjacent: keep power names out of the module itself. Its SUITE may name a power where a test genuinely needs one.
 - **No production behaviour changes.** No rejection code or detail string, no operation order, no walker event, no wire shape, no protocol DTO, no frontend edit. If a step appears to require one, stop and report it.
 - **A failing strengthened assertion is a discovered defect, not a rewrite error.** Several negatives get stronger in Task 3 and Task 5. If one fails, record what it revealed, stop the task, and report it for a separate change. Do not weaken the assertion to make it pass.
 - Commit messages: Conventional Commits, `refactor(walker): ...` unless noted. End every commit message with the trailer line `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>` — this plan's trailer overrides a worker's own model trailer.
@@ -261,20 +261,14 @@ shape is preserved:
 ```scala
   /** Whether the run is parked on `id`, awaiting `who`. */
   def awaits(run: Run, who: PlayerId, id: String): Boolean =
-    parked.parkedDecision(run.state).contains(
-      ParkedDecisionFacts(ActionRef.Campaign, id, who, Set(who)))
-```
-
-Do not assert the procedure as `ActionRef.Campaign` unconditionally: Knights
-Errant runs a Campaign inside a Muster, so `MercenariesSuite` and the suites
-that stage through Muster park under `ActionRef.Muster`. Read the procedure
-from the facts instead and assert only `decision` and `awaiting`:
-
-```scala
-  def awaits(run: Run, who: PlayerId, id: String): Boolean =
     parked.parkedDecision(run.state).exists(facts =>
       facts.decision == id && facts.awaiting == who)
 ```
+
+Do not pin the procedure to `ActionRef.Campaign` here: Knights Errant runs a
+Campaign inside a Muster, so a legitimate park in this family can sit under
+`ActionRef.Muster`. The direct `assertParked` call sites still name the
+procedure; this predicate asserts the decision and the owner.
 
 Delete `def continue: OathContinue` from `Run`.
 
@@ -438,8 +432,10 @@ Step 1 and need no second edit.
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.*"`
 Expected: PASS.
 
-Run: `./sbtw "testOnly oathdigital.gameplay.CoOwnedDecideSuite oathdigital.gameplay.CatacombsContributionSuite"`
+Run: `./sbtw "testOnly oathdigital.gameplay.CoOwnedDecideSuite oathdigital.gameplay.CatacombsContributionSuite oathdigital.application.BannerFaceProjectionSuite"`
 Expected: PASS — these never mention the type and must not need an edit.
+`BannerFaceProjectionSuite` is outside the `gameplay.powers` package but
+imports `TargetsFixture`, so it is the one consumer the package run misses.
 
 - [ ] **Step 6: Commit**
 
