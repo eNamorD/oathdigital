@@ -186,6 +186,7 @@ private[frontend] final class TableSession(
               if coordinator.accepts(request) =>
             drafts = SessionDrafts.empty
             failure = Some(stale)
+            redraw()
             client.load(gameId, selectedPlayer).foreach:
               refreshed => accept(request, refreshed, Some(stale))
           case other => accept(request, other)

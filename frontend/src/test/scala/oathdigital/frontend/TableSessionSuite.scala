@@ -288,6 +288,20 @@ class TableSessionSuite extends munit.FunSuite:
       }
     }
 
+  /** Spec, Fix 1. */
+  test("a stale-position submit redraws before the reload lands"):
+    displayed(2).flatMap { fixture =>
+      fixture.session.send(GameCommand.BeginRest, Vector.empty)
+      val before = fixture.redraws
+      val stale = GameClientFailure.StalePosition("moved")
+      fixture.client.answerSubmit(Left(stale))
+      settle().map { _ =>
+        assertEquals(fixture.redraws, before + 1)
+        assertEquals(fixture.session.shownFailure, Some(stale))
+        assertEquals(fixture.session.viewedDrafts, SessionDrafts.empty)
+      }
+    }
+
   test("the flow's preview carries the session's game and seat"):
     displayed(2).map { fixture =>
       val request = MajorActionPreviewRequest(2L, "recover", Map.empty)
