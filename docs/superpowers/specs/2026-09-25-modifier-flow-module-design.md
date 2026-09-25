@@ -191,6 +191,10 @@ old context, and the next `reconcile` drops it because
 `ModifierWorkflow.reconcile` filters on the selection's context. `send` is
 guarded inside `submitTransport` by `coordinator.accepts`. This slice keeps
 the preview path unguarded. Known, covered by reconcile, and out of scope.
+Superseded for session-identity changes by the table-session spec's Fix 2:
+the host now drops a preview response that lands under another identity. A
+response from an older position under the same identity is still left to
+reconcile.
 
 ## Behavior changes
 

@@ -82,6 +82,12 @@ in the flow; a flow exit takes them out of it.
 _Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of
 the flow)
 
+**Table session**:
+One viewer's live connection to one game from one seat. It knows the
+position on display, holds the viewer's draft set, and says whether the
+viewer can act; changing the game or the seat starts a new one.
+_Avoid_: server session, connection, client state
+
 ### Game
 
 **First-game input**:

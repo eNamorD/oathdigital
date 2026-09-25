@@ -1,6 +1,6 @@
 # Table Session
 
-> Status: designed 2026-09-25, not yet planned. This is the second and last
+> Status: implemented 2026-09-25 (five commits, this plan). This is the second and last
 move of the session-drafts spec's option 3 (`2026-09-25-session-drafts-design.md`,
 "Follow-up"; `2026-09-25-modifier-flow-module-design.md` was the first). Two
 moves are behavior-preserving; two declared fixes follow them.
