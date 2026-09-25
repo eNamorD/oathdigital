@@ -61,10 +61,12 @@ private[frontend] object CardFace:
     else
       summary(card).foreach(node.appendChild)
 
-    // Unclaimed everywhere: `BoardTargetRefProjection` has only a `Site` case,
-    // and decision panels select by drag, by the move-option buttons, or by
-    // the plus/minus steppers -- never by clicking a card. So a click can mean
-    // inspect, in every context, with nothing to disambiguate against.
+    // A click means inspect, in every context. Decision panels select by
+    // drag, by the move-option buttons, or by the plus/minus steppers, never
+    // by clicking a card. The one clickable ancestor a card sits in, a site
+    // box on the board, ignores events that came from a card
+    // (`WorldBoardRenderer.onCard`); the card itself does not stop them, so
+    // an ancestor that wants to know a card was clicked still can.
     node.onclick = _ => CardInspection.open(card, node)
     node
 

@@ -5,11 +5,12 @@ import oathdigital.protocol.{GameIntent => Intent, PreviewModifier}
 /** A `ServerUiView` that records submissions and rerenders instead of
   * touching a server, shared by the walker panel render suites.
   */
-private[frontend] final class RecordingView(gameId: String, playerId: String)
+private[frontend] class RecordingView(gameId: String, playerId: String)
     extends ServerUiView:
   var partition: Option[WalkerPartitionDraft] = None
   var distribution: Option[WalkerDistributeDraft] = None
   var selection: Option[WalkerSelectionDraft] = None
+  var board: Option[WalkerBoardDraft] = None
   var submitted: Vector[Intent] = Vector.empty
   var rerenders: Int = 0
 
@@ -22,6 +23,9 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
   def currentWalkerSelection: Option[WalkerSelectionDraft] = selection
   def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]): Unit =
     selection = value
+  def currentWalkerBoard: Option[WalkerBoardDraft] = board
+  def currentWalkerBoard_=(value: Option[WalkerBoardDraft]): Unit =
+    board = value
   def rerender(): Unit = rerenders += 1
   def submitCommand(command: Intent): Unit = submitted :+= command
 

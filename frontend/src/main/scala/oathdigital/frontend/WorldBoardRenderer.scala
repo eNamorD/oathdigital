@@ -101,16 +101,44 @@ private[frontend] object WorldBoardRenderer:
    }
    panel
 
- /** `pawnPlacement` is the board's one surface for a parked decision
-   * (`ParkedDecision.Surface.PawnPlacement`): Setup's pawn-placement Decide
-   * is answered by clicking the site directly on the board, as the legacy
-   * first-game event machine's place-pawn board-target command did before
-   * Task 6 folded Setup onto the generic walker, rather than through the
-   * generic choose-one button panel.
+ /** True for a click or key press that landed on a card inside a site. A
+   * card face is a button of its own that opens the inspector, and its
+   * events bubble up to the site box; reading a card must not also pick the
+   * site. Only real cards count: a facedown or empty slot is part of the
+   * box.
+   */
+ private def onCard(event: dom.Event): Boolean =
+   event.target.isInstanceOf[dom.Element] &&
+     event.target.asInstanceOf[dom.Element].closest("button.card-face") != null
+
+ /** Makes `control` answer a click, Enter or Space with `choose`, except
+   * when the event came from a card inside it.
+   */
+ private def pickable(control: dom.Element, choose: () => Unit): Unit =
+   control.setAttribute("role", "button")
+   control.setAttribute("tabindex", "0")
+   control.addEventListener("click", (event: dom.Event) =>
+     if !onCard(event) then choose())
+   control.addEventListener("keydown", (event: dom.Event) => {
+     val key = event.asInstanceOf[dom.KeyboardEvent].key
+     if (key == "Enter" || key == " ") && !onCard(event) then
+       event.preventDefault()
+       choose()
+   })
+
+ /** `board` is the board's one surface for a parked decision
+   * (`ParkedDecision.Surface.Board`): a choose-one whose site options are
+   * answered by clicking the site directly on the board rather than through
+   * the generic choose-one button panel. Setup's pawn placement did so from
+   * the start, as the legacy first-game event machine's place-pawn
+   * board-target command did before Task 6 folded Setup onto the generic
+   * walker. A surface that asks for confirmation drafts the pick
+   * (`ui.currentWalkerBoard`) for the pane's Confirm button instead of
+   * submitting it.
    */
  def world(
      value: GameProjection,
-     pawnPlacement: Option[ParkedDecision.Surface.PawnPlacement],
+     board: Option[ParkedDecision.Surface.Board],
      ui: ServerUiView
  ): dom.Element =
    import ui._
@@ -136,39 +164,30 @@ private[frontend] object WorldBoardRenderer:
        val siteTarget = BoardTargetRef.Site(site.siteId)
        val candidate = currentBoardSelection.flatMap(
          _.activeAction.flatMap(_.candidates.find(_.target == siteTarget)))
-       val isSelected = currentBoardSelection.exists(_.selected(siteTarget))
-       val pawnOption = pawnPlacement.flatMap(_.query.options.find(option =>
+       val siteOption = board.flatMap(_.query.options.find(option =>
          option.kind == "site" && option.id == site.siteId))
+       val isSelected = currentBoardSelection.exists(_.selected(siteTarget)) ||
+         siteOption.exists(option => currentWalkerBoard.exists(_.option == option))
        val control = element("article", siteTargetClasses(
-         candidate.nonEmpty || pawnOption.nonEmpty, isSelected))
+         candidate.nonEmpty || siteOption.nonEmpty, isSelected))
        control.setAttribute("aria-label", site.label)
        control.setAttribute("data-target-ref", siteTarget.stableKey)
-       candidate.foreach { _ =>
-         control.setAttribute("role", "button")
-         control.setAttribute("tabindex", "0")
+       if candidate.nonEmpty || siteOption.nonEmpty then
          control.setAttribute("aria-pressed", isSelected.toString)
-         control.addEventListener("click", (_: dom.Event) =>
-           currentBoardSelection.foreach(state =>
-             handleSelection(state.choose(siteTarget))))
-         control.addEventListener("keydown", (event: dom.Event) => {
-           val key = event.asInstanceOf[dom.KeyboardEvent].key
-           if key == "Enter" || key == " " then {
-             event.preventDefault()
-             currentBoardSelection.foreach(state =>
-               handleSelection(state.choose(siteTarget)))
-           }
-         })
+       candidate.foreach { _ =>
+         pickable(control, () => currentBoardSelection.foreach(state =>
+           handleSelection(state.choose(siteTarget))))
        }
-       pawnOption.foreach { option =>
-         control.setAttribute("role", "button")
-         control.setAttribute("tabindex", "0")
-         def choose(): Unit = if canControl then pawnPlacement.foreach(surface =>
-           submitCommand(WalkerPanelSupport.resolveChooseOneCommand(
-             surface.decision, option)))
-         control.addEventListener("click", (_: dom.Event) => choose())
-         control.addEventListener("keydown", (event: dom.Event) => {
-           val key = event.asInstanceOf[dom.KeyboardEvent].key
-           if key == "Enter" || key == " " then { event.preventDefault(); choose() }
+       siteOption.foreach { option =>
+         pickable(control, () => if canControl then board.foreach { surface =>
+           if surface.confirm then
+             currentWalkerBoard = WalkerBoardDraft.toggle(currentWalkerBoard,
+               BoardSelectionContext(currentGameId, currentPlayerId,
+                 value.nextSequence), surface.decision.decisionId,
+               surface.query, option)
+             rerender()
+           else submitCommand(WalkerPanelSupport.resolveChooseOneCommand(
+             surface.decision, option))
          })
        }
        control.appendChild(siteHeading(site))

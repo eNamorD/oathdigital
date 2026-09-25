@@ -115,13 +115,13 @@ class ParkedDecisionSuite extends munit.FunSuite:
     assertEquals(routeOf(parked("muster", "muster.source",
       query("choose-one"), kind = "roll")).surface, None)
 
-  test("Setup's pawn placement routes to the board, not the button panel"):
+  test("Setup's pawn placement routes to the board, confirmed from the pane"):
     val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
     val pawnQuery = DecisionQueryState("choose-one", Vector(site),
       heading = Some("Choose your starting site"))
     val pawn = parked("setup", "setup.pawn-placement.p1", pawnQuery)
     assertEquals(routeOf(pawn).surface,
-      Some(Surface.PawnPlacement(pawn, pawnQuery)))
+      Some(Surface.Board(pawn, pawnQuery, confirm = true)))
 
   test("a viewer without gameplay controls sees no control surface, only " +
       "a deal's summary"):
