@@ -80,3 +80,19 @@ targets. A viewer is in at most one at a time, and leaves it by sending,
 cancelling, backing out, or a failed preview.
 _Avoid_: preview flow, targeting flow, modifier stage (a stage is one step of
 the flow)
+
+### Game
+
+**First-game input**:
+Everything a game begins from before anyone plays: the Chronicle, the seated
+participants and the recorded shuffle orders. Two games with the same input
+begin identically.
+_Avoid_: setup fixture, setup data, bootstrap
+
+**Situation**:
+A game reached by real play from a first-game input: every command issued and
+every parked decision answered along the way, in order. Named situations are
+Wake (Setup complete), Act (a player's Wake ended) and Rest (a player's Act
+ended); any other is described by the steps that reach it.
+_Avoid_: position (a journal sequence number), fixture, snapshot, initial
+game, setup state
