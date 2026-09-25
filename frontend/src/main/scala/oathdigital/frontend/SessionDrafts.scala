@@ -19,7 +19,7 @@ private[frontend] final case class SessionDrafts(
     distribute: Option[WalkerDistributeDraft],
     selection: Option[WalkerSelectionDraft],
     board: Option[WalkerBoardDraft],
-    modifiers: Option[ModifierWorkflow],
+    modifiers: Option[ModifierFlowDraft],
     facedownAdviser: Option[FacedownAdviserDraft]):
 
   /** The set after a snapshot: each slot asked to carry over what still
@@ -39,7 +39,7 @@ private[frontend] final case class SessionDrafts(
         projection.walkerDecision),
       board = WalkerBoardDraft.reconcile(board, context,
         projection.walkerDecision),
-      modifiers = ModifierWorkflow.reconcile(modifiers, context),
+      modifiers = ModifierFlowDraft.reconcile(modifiers, context),
       facedownAdviser = FacedownAdviserDraft.reconcile(facedownAdviser,
         context, projection.minorActions))
 
@@ -76,20 +76,20 @@ private[frontend] final case class SessionDrafts(
     * the context, and this only applies it.
     */
   def step(value: FlowStep): SessionDrafts = value match
-    case FlowStep.Ordering(workflow) => copy(modifiers = Some(workflow))
-    case FlowStep.Targets(workflow, TargetsEntry.Facedown(pick)) =>
-      copy(modifiers = Some(workflow), facedownAdviser = pick, boardTargets = None)
-    case FlowStep.Targets(workflow, TargetsEntry.Board(targets)) =>
-      copy(modifiers = Some(workflow), boardTargets = Some(targets))
-    case FlowStep.Targets(workflow, TargetsEntry.NoTargets) =>
-      copy(modifiers = Some(workflow))
+    case FlowStep.Ordering(draft) => copy(modifiers = Some(draft))
+    case FlowStep.Targets(draft, TargetsEntry.Facedown(pick)) =>
+      copy(modifiers = Some(draft), facedownAdviser = pick, boardTargets = None)
+    case FlowStep.Targets(draft, TargetsEntry.Board(targets)) =>
+      copy(modifiers = Some(draft), boardTargets = Some(targets))
+    case FlowStep.Targets(draft, TargetsEntry.NoTargets) =>
+      copy(modifiers = Some(draft))
     case FlowStep.Toggle(modifier) =>
-      copy(modifiers = modifiers.map(workflow =>
-        workflow.copy(selection = workflow.selection.toggle(modifier))))
+      copy(modifiers = modifiers.map(draft =>
+        draft.copy(selection = draft.selection.toggle(modifier))))
     case FlowStep.Move(modifier, delta) =>
-      copy(modifiers = modifiers.map(workflow => workflow.copy(selection =
-        if delta < 0 then workflow.selection.moveEarlier(modifier)
-        else workflow.selection.moveLater(modifier))))
+      copy(modifiers = modifiers.map(draft => draft.copy(selection =
+        if delta < 0 then draft.selection.moveEarlier(modifier)
+        else draft.selection.moveLater(modifier))))
     case FlowStep.ChooseFacedown(cardId) =>
       copy(facedownAdviser = facedownAdviser.map(_.choose(cardId)))
 
@@ -98,7 +98,7 @@ private[frontend] object SessionDrafts:
     SessionDrafts(None, None, None, None, None, None, None, None)
 
 /** A draft a panel or the board can stage. There is no case for the
-  * modifier workflow or the facedown pick: no panel writes them; the modifier
+  * modifier flow draft or the facedown pick: no panel writes them; the modifier
   * flow does, through its commands. `Board` carries an `Option` because a
   * second click on the picked site clears the pick, and that clear is a
   * stage like any other.
@@ -123,7 +123,7 @@ private[frontend] enum FlowExit:
   case TargetsLeft
   /** Leaving the ordering stage with no targets stage after it: Confirm
     * submitted the command directly, or Back left the ordering panel. Only
-    * the workflow goes; the facedown pick and the board targets stay.
+    * the flow draft goes; the facedown pick and the board targets stay.
     */
   case OrderingLeft
 
@@ -132,13 +132,13 @@ private[frontend] enum FlowExit:
   * steps a panel's controls take. Only `ModifierFlow` applies these.
   */
 private[frontend] enum FlowStep:
-  case Ordering(workflow: ModifierWorkflow)
-  case Targets(workflow: ModifierWorkflow, entry: TargetsEntry)
+  case Ordering(draft: ModifierFlowDraft)
+  case Targets(draft: ModifierFlowDraft, entry: TargetsEntry)
   case Toggle(value: PreviewModifier)
   case Move(value: PreviewModifier, delta: Int)
   case ChooseFacedown(cardId: String)
 
-/** What entering the Targets stage opens beside the workflow: the facedown
+/** What entering the Targets stage opens beside the flow draft: the facedown
   * pick (and no board targets), one activated board action, or nothing when
   * the preview names no target action the board knows.
   */

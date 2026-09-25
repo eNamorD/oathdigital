@@ -32,6 +32,6 @@ class NegotiationControlsSuite extends munit.FunSuite:
     assert(render(Vector("beginNegotiation"), canControl = false)._1
       .forall(_.disabled))
 
-  test("Negotiation does not start through the modifier workflow"):
-    assertEquals(ModifierWorkflow.action(
+  test("Negotiation does not start through the modifier flow"):
+    assertEquals(ModifierFlowDraft.action(
       GameIntent.StartWalker("negotiation", Vector.empty)), None)

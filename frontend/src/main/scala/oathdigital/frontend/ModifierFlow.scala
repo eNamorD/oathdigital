@@ -47,7 +47,7 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
     host.replaceDrafts(drafts.leave(value))
     host.redraw()
 
-  private def submit(command: GameCommand): Unit = ModifierWorkflow.action(command) match
+  private def submit(command: GameCommand): Unit = ModifierFlowDraft.action(command) match
     case None => host.send(command, Vector.empty)
     case Some((action, parameters)) => host.displayedProjection.foreach { current =>
       val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
@@ -55,65 +55,65 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
         case Right(response) if response.modifiers.isEmpty =>
           host.send(command, Vector.empty)
         case Right(response) =>
-          step(FlowStep.Ordering(ModifierWorkflow.fromPreview(Some(command), None,
+          step(FlowStep.Ordering(ModifierFlowDraft.fromPreview(Some(command), None,
             parameters, response, drafts.modifiers.map(_.selection),
             selectionContext(current.nextSequence, action))))
         case Left(error) => host.fail(error)
     }
 
-  private def enterTargets(workflow: ModifierWorkflow,
+  private def enterTargets(draft: ModifierFlowDraft,
       response: MajorActionPreviewResponse): Unit = for
     current <- host.displayedProjection
     context <- drafts.context
-    actionKind <- workflow.actionKind
+    actionKind <- draft.actionKind
   do
     val entry: TargetsEntry = if actionKind == "play-facedown-adviser" then
       TargetsEntry.Facedown(current.minorActions.flatMap(
         FacedownAdviserDraft.initial(context, _)))
-    else ModifierWorkflow.targetAction(actionKind, response,
+    else ModifierFlowDraft.targetAction(actionKind, response,
       current.boardTargetActions).fold[TargetsEntry](TargetsEntry.NoTargets)(action =>
       TargetsEntry.Board(BoardTargetSelectionState.reconcile(None, context,
         Vector(action)).activate(actionKind)))
-    step(FlowStep.Targets(workflow.showTargets(response), entry))
+    step(FlowStep.Targets(draft.showTargets(response), entry))
 
   private def startTargetedFlow(actionKind: String): Unit = for
     current <- host.displayedProjection
-    (action, parameters) <- ModifierWorkflow.targeted(actionKind)
+    (action, parameters) <- ModifierFlowDraft.targeted(actionKind)
   do
     host.replaceDrafts(drafts.leave(FlowExit.Restarted))
     val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
     host.preview(request).foreach:
       case Right(response) =>
-        val workflow = ModifierWorkflow.fromPreview(None, Some(actionKind),
+        val draft = ModifierFlowDraft.fromPreview(None, Some(actionKind),
           parameters, response, drafts.modifiers.map(_.selection),
           selectionContext(current.nextSequence, action))
-        if workflow.ordering then step(FlowStep.Ordering(workflow))
-        else enterTargets(workflow, response)
+        if draft.ordering then step(FlowStep.Ordering(draft))
+        else enterTargets(draft, response)
       case Left(error) => host.fail(error)
 
-  private def confirmModifierSelection(): Unit = drafts.modifiers.foreach { workflow =>
-    val request = MajorActionPreviewRequest(workflow.selection.context.sequence,
-      workflow.selection.context.action, workflow.baseParameters,
-      workflow.selection.invocations)
+  private def confirmModifierSelection(): Unit = drafts.modifiers.foreach { draft =>
+    val request = MajorActionPreviewRequest(draft.selection.context.sequence,
+      draft.selection.context.action, draft.baseParameters,
+      draft.selection.invocations)
     host.preview(request).foreach:
-      case Right(response) => workflow.command match
+      case Right(response) => draft.command match
         case Some(command) =>
           host.replaceDrafts(drafts.leave(FlowExit.OrderingLeft))
-          val (submitted, modifiers) = ModifierWorkflow.submission(command,
-            workflow.selection.invocations)
+          val (submitted, modifiers) = ModifierFlowDraft.submission(command,
+            draft.selection.invocations)
           host.send(submitted, modifiers)
-        case None => enterTargets(workflow, response)
+        case None => enterTargets(draft, response)
       case Left(error) =>
         host.replaceDrafts(drafts.leave(FlowExit.Failed))
         host.fail(error)
   }
 
   private def completeTargetCommand(command: GameCommand): Unit =
-    drafts.modifiers.filter(_.stage == ModifierWorkflowStage.Targets) match
-      case Some(workflow) =>
+    drafts.modifiers.filter(_.stage == ModifierFlowStage.Targets) match
+      case Some(draft) =>
         host.replaceDrafts(drafts.leave(FlowExit.Completed))
-        val (submitted, modifiers) = ModifierWorkflow.submission(command,
-          workflow.selection.invocations)
+        val (submitted, modifiers) = ModifierFlowDraft.submission(command,
+          draft.selection.invocations)
         host.send(submitted, modifiers)
       case None => submit(command)
 

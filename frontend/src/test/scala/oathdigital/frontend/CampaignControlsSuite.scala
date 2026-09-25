@@ -32,6 +32,6 @@ class CampaignControlsSuite extends munit.FunSuite:
     assert(render(Vector("beginCampaign"), canControl = false)._1.forall(_.disabled))
     assertEquals(ServerUiSupport.actionCategory("campaign"), "major")
 
-  test("Campaign does not start through the modifier workflow"):
-    assertEquals(ModifierWorkflow.action(
+  test("Campaign does not start through the modifier flow"):
+    assertEquals(ModifierFlowDraft.action(
       GameIntent.StartWalker("campaign", Vector.empty)), None)

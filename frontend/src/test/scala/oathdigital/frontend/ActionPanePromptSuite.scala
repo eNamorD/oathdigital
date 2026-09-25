@@ -39,14 +39,14 @@ class ActionPanePromptSuite extends munit.FunSuite:
     assertEquals(result.prompt, scraped(result.element))
 
   test("the prompt is the modifier confirm while ordering"):
-    val workflow = ModifierWorkflow(None, Some("travel"), Map.empty,
+    val draft = ModifierFlowDraft(None, Some("travel"), Map.empty,
       MajorActionPreviewResponse(1L, "travel", Vector.empty, Vector.empty,
         Vector.empty),
       ModifierSelectionState.reconcile(None,
         ModifierSelectionContext("game", "red", 1L, "travel"), Vector.empty, "p"),
-      ModifierWorkflowStage.Ordering)
+      ModifierFlowStage.Ordering)
     val result = pane(projection(open = true),
-      SessionDrafts.empty.copy(modifiers = Some(workflow)))
+      SessionDrafts.empty.copy(modifiers = Some(draft)))
     assertEquals(result.prompt, "Confirm modifier order")
     assertEquals(result.prompt, scraped(result.element))
 

@@ -101,13 +101,13 @@ private[frontend] object ActionDecisionRenderer:
    if showActActionControls(value, presentation) then
      val selection = drafts.boardTargets.flatMap(_.activeAction)
      if drafts.modifiers.exists(_.ordering) then
-       val workflow = drafts.modifiers.get
-       panel.appendChild(text("h2", "", s"Order ${actionLabel(workflow.preview.action)} modifiers"))
+       val draft = drafts.modifiers.get
+       panel.appendChild(text("h2", "", s"Order ${actionLabel(draft.preview.action)} modifiers"))
        panel.appendChild(text("p", "modifier-instruction", "Choose optional modifiers in " +
          "resolution order. Numbered badges show that order."))
-       workflow.selection.candidates.foreach { modifier =>
+       draft.selection.candidates.foreach { modifier =>
          val row = element("div", "modifier-option")
-         val ordinal = workflow.selection.ordinal(modifier)
+         val ordinal = draft.selection.ordinal(modifier)
          val choose = button(ordinal.fold(modifier.description)(n =>
            s"$n. ${modifier.description}"), "modifier-toggle")
          choose.setAttribute("aria-pressed", ordinal.nonEmpty.toString); choose
@@ -128,7 +128,7 @@ private[frontend] object ActionDecisionRenderer:
            face.tabIndex = -1
            choose.appendChild(face)
            choose.appendChild(text("span", "modifier-modifies",
-             s"${actionLabel(modifier.modifies.getOrElse(workflow.preview.action))} Modifier"))
+             s"${actionLabel(modifier.modifies.getOrElse(draft.preview.action))} Modifier"))
          }
          choose.onclick = _ => toggleModifier(modifier)
          choose.onkeydown = event => event.key match
@@ -144,7 +144,7 @@ private[frontend] object ActionDecisionRenderer:
            earlier.disabled = number == 1; earlier.onclick = _ =>
              moveModifier(modifier, -1); row.appendChild(earlier)
            val later = button("Later", "modifier-later")
-           later.disabled = number == workflow.selection.selected.size
+           later.disabled = number == draft.selection.selected.size
            later.onclick = _ => moveModifier(modifier, 1); row.appendChild(later)
          }
          panel.appendChild(row)
@@ -169,8 +169,8 @@ private[frontend] object ActionDecisionRenderer:
          val cancel = button("Cancel", "cancel-board-selection")
          cancel.onclick = _ => cancelTargetAction()
          panel.appendChild(cancel)
-         drafts.modifiers.foreach { workflow =>
-           val back = button(if workflow.hadModifierStage then "Back to modifiers"
+         drafts.modifiers.foreach { draft =>
+           val back = button(if draft.hadModifierStage then "Back to modifiers"
              else "Back to actions", "back-board-selection")
            back.onclick = _ => backFromTargets(); panel.appendChild(back)
          }
@@ -258,7 +258,7 @@ private[frontend] object ActionDecisionRenderer:
              commandForSelection(action, Vector.empty, presentation.playerId)
                .foreach(submitCommand)
            else
-             if ModifierWorkflow.targeted(action.actionKind).nonEmpty then
+             if ModifierFlowDraft.targeted(action.actionKind).nonEmpty then
                beginTargetedMajorAction(action.actionKind)
              else
                drafts.boardTargets.foreach(state =>

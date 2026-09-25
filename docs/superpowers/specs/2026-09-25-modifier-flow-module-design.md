@@ -169,8 +169,9 @@ Two unifications, both equal to today with one preview in flight:
   in `submit` because `submit` only builds a workflow in the branch where
   `response.modifiers` is non-empty.
 
-`ModifierWorkflow` keeps its name. Renaming it to match the glossary
-(`ModifierFlowDraft`) is a mechanical follow-up commit, not this slice.
+`ModifierWorkflow` keeps its name in this slice. The follow-up commit after
+it renamed it to `ModifierFlowDraft` (and `ModifierWorkflowStage` to
+`ModifierFlowStage`) to match the glossary; this spec keeps the old names.
 
 ## `ServerModeUi` after the slice
 

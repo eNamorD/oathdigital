@@ -30,13 +30,13 @@ class ModifierFlowSuite extends munit.FunSuite:
   private def response(action: String, modifiers: Vector[PreviewModifier]) =
     MajorActionPreviewResponse(9L, action, modifiers, Vector.empty, Vector.empty)
   private def bound: SessionDrafts = SessionDrafts.empty.reconcile(context, projection)
-  /** A workflow the flow would have opened for `action`, with `modifier`
+  /** A flow draft the flow would have opened for `action`, with `modifier`
     * offered and (when `chosen`) selected.
     */
-  private def workflow(action: String, command: Option[GameCommand],
-      actionKind: Option[String], stage: ModifierWorkflowStage,
-      chosen: Boolean = true): ModifierWorkflow =
-    val fresh = ModifierWorkflow.fromPreview(command, actionKind, Map.empty,
+  private def draft(action: String, command: Option[GameCommand],
+      actionKind: Option[String], stage: ModifierFlowStage,
+      chosen: Boolean = true): ModifierFlowDraft =
+    val fresh = ModifierFlowDraft.fromPreview(command, actionKind, Map.empty,
       response(action, Vector(modifier)), None,
       ModifierSelectionContext("game", "red", 9, action))
     val selected = if chosen then fresh.selection.toggle(modifier) else fresh.selection
@@ -92,12 +92,12 @@ class ModifierFlowSuite extends munit.FunSuite:
     }
 
   test("a major action whose preview offers modifiers enters Ordering and carries the previous selection"):
-    val previous = workflow("recover", Some(recover), None, ModifierWorkflowStage.Ordering)
+    val previous = draft("recover", Some(recover), None, ModifierFlowStage.Ordering)
     val (host, ui) = flow(bound.copy(modifiers = Some(previous)))
     ui.submitCommand(recover)
     host.answer(Right(response("recover", Vector(modifier)))).map { _ =>
       val opened = host.currentDrafts.modifiers.get
-      assertEquals(opened.stage, ModifierWorkflowStage.Ordering)
+      assertEquals(opened.stage, ModifierFlowStage.Ordering)
       assertEquals(opened.command, Some(recover))
       assertEquals(opened.actionKind, None)
       assertEquals(opened.selection.selected, Vector(modifier))
@@ -125,7 +125,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     host.answer(Right(response("recover", Vector(modifier)))).map { _ =>
       assertEquals(host.currentDrafts.facedownAdviser, pick)
       assertEquals(host.currentDrafts.modifiers.map(_.stage),
-        Some(ModifierWorkflowStage.Ordering))
+        Some(ModifierFlowStage.Ordering))
     }
 
   test("with no projection displayed, neither entry previews or sends"):
@@ -138,7 +138,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.currentDrafts, bound)
 
   test("a targeted travel restarts the flow, then enters Ordering when modifiers are offered"):
-    val stale = workflow("recover", Some(recover), None, ModifierWorkflowStage.Ordering)
+    val stale = draft("recover", Some(recover), None, ModifierFlowStage.Ordering)
     val (host, ui) = flow(bound.copy(modifiers = Some(stale),
       facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
     ui.beginTargetedMajorAction("travel")
@@ -148,7 +148,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "travel", Map.empty)))
     host.answer(Right(response("travel", Vector(modifier)))).map { _ =>
       val opened = host.currentDrafts.modifiers.get
-      assertEquals(opened.stage, ModifierWorkflowStage.Ordering)
+      assertEquals(opened.stage, ModifierFlowStage.Ordering)
       assertEquals(opened.command, None)
       assertEquals(opened.actionKind, Some("travel"))
       assertEquals(host.redraws, 1)
@@ -172,7 +172,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     val (host, ui) = flow()
     ui.beginTargetedMajorAction("travel")
     host.answer(Right(response("travel", Vector.empty))).map { _ =>
-      assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierWorkflowStage.Targets))
+      assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierFlowStage.Targets))
       assertEquals(host.currentDrafts.boardTargets.flatMap(_.activeActionKind), Some("travel"))
       assertEquals(host.currentDrafts.boardTargets.map(_.actions.map(_.actionKind)),
         Some(Vector("travel")))
@@ -185,7 +185,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "search",
       Map("procedure" -> "facedown-adviser"))))
     host.answer(Right(response("search", Vector.empty))).map { _ =>
-      assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierWorkflowStage.Targets))
+      assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierFlowStage.Targets))
       assertEquals(host.currentDrafts.facedownAdviser.map(_.advisers.map(_.card.cardId)),
         Some(Vector("a1", "a2")))
       assertEquals(host.currentDrafts.boardTargets, None)
@@ -193,7 +193,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     }
 
   test("confirming with a command leaves Ordering and sends the folded submission without a redraw"):
-    val ordering = workflow("recover", Some(recover), None, ModifierWorkflowStage.Ordering)
+    val ordering = draft("recover", Some(recover), None, ModifierFlowStage.Ordering)
     val (host, ui) = flow(bound.copy(modifiers = Some(ordering)))
     ui.confirmModifiers()
     assertEquals(host.previews, Vector(MajorActionPreviewRequest(9L, "recover",
@@ -206,11 +206,11 @@ class ModifierFlowSuite extends munit.FunSuite:
     }
 
   test("confirming without a command enters Targets"):
-    val ordering = workflow("travel", None, Some("travel"), ModifierWorkflowStage.Ordering)
+    val ordering = draft("travel", None, Some("travel"), ModifierFlowStage.Ordering)
     val (host, ui) = flow(bound.copy(modifiers = Some(ordering)))
     ui.confirmModifiers()
     host.answer(Right(response("travel", Vector(modifier)))).map { _ =>
-      assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierWorkflowStage.Targets))
+      assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierFlowStage.Targets))
       assertEquals(host.currentDrafts.modifiers.map(_.selection.selected), Some(Vector(modifier)))
       assertEquals(host.currentDrafts.boardTargets.flatMap(_.activeActionKind), Some("travel"))
       assertEquals(host.sent, Vector.empty)
@@ -218,7 +218,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     }
 
   test("a failed confirm preview leaves Failed and fails"):
-    val ordering = workflow("recover", Some(recover), None, ModifierWorkflowStage.Ordering)
+    val ordering = draft("recover", Some(recover), None, ModifierFlowStage.Ordering)
     val (host, ui) = flow(bound.copy(modifiers = Some(ordering),
       facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
     ui.confirmModifiers()
@@ -238,7 +238,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.redraws, 0)
 
   test("a target command in Targets leaves Completed and sends the folded submission"):
-    val targets = workflow("travel", None, Some("travel"), ModifierWorkflowStage.Targets)
+    val targets = draft("travel", None, Some("travel"), ModifierFlowStage.Targets)
     val (host, ui) = flow(bound.copy(modifiers = Some(targets)))
     val command = GameCommand.StartWalker("travel", Vector.empty)
     ui.submitTargetCommand(command)
@@ -256,7 +256,7 @@ class ModifierFlowSuite extends munit.FunSuite:
 
   test("cancelling from either stage leaves Cancelled with the restored board targets"):
     val restored = BoardTargetSelectionState.restore(context, Vector(travel))
-    val targets = workflow("travel", None, Some("travel"), ModifierWorkflowStage.Targets)
+    val targets = draft("travel", None, Some("travel"), ModifierFlowStage.Targets)
     val start = bound.copy(modifiers = Some(targets),
       facedownAdviser = FacedownAdviserDraft.initial(context, minor),
       boardTargets = bound.boardTargets.map(_.copy(selectedKeys = Set("site:site:woods"))))
@@ -271,8 +271,8 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(second.currentDrafts, first.currentDrafts)
     assertEquals(second.redraws, 1)
 
-  test("backing out of Ordering leaves only the workflow"):
-    val ordering = workflow("recover", Some(recover), None, ModifierWorkflowStage.Ordering)
+  test("backing out of Ordering leaves only the flow draft"):
+    val ordering = draft("recover", Some(recover), None, ModifierFlowStage.Ordering)
     val pick = FacedownAdviserDraft.initial(context, minor)
     val (host, ui) = flow(bound.copy(modifiers = Some(ordering), facedownAdviser = pick))
     ui.backFromModifiers()
@@ -281,11 +281,11 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.redraws, 1)
 
   test("backing out of Targets returns to Ordering, and is a no-op with no flow"):
-    val targets = workflow("travel", None, Some("travel"), ModifierWorkflowStage.Targets)
+    val targets = draft("travel", None, Some("travel"), ModifierFlowStage.Targets)
     val (host, ui) = flow(bound.copy(modifiers = Some(targets),
       facedownAdviser = FacedownAdviserDraft.initial(context, minor)))
     ui.backFromTargets()
-    assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierWorkflowStage.Ordering))
+    assertEquals(host.currentDrafts.modifiers.map(_.stage), Some(ModifierFlowStage.Ordering))
     assertEquals(host.currentDrafts.facedownAdviser, None)
     assertEquals(host.currentDrafts.boardTargets, None)
     assertEquals(host.redraws, 1)
@@ -296,7 +296,7 @@ class ModifierFlowSuite extends munit.FunSuite:
 
   test("toggle, move and choose apply their step and redraw"):
     val second = PreviewModifier("adviser:p:denizen:b", "h.b", "B")
-    val ordering = ModifierWorkflow.fromPreview(Some(recover), None, Map.empty,
+    val ordering = ModifierFlowDraft.fromPreview(Some(recover), None, Map.empty,
       response("recover", Vector(modifier, second)), None,
       ModifierSelectionContext("game", "red", 9, "recover"))
     val (host, ui) = flow(bound.copy(modifiers = Some(ordering),
@@ -321,7 +321,7 @@ class ModifierFlowSuite extends munit.FunSuite:
     assertEquals(host.redraws, 1)
 
   test("a board selection update stages the targets and a submit completes the command"):
-    val targets = workflow("travel", None, Some("travel"), ModifierWorkflowStage.Targets)
+    val targets = draft("travel", None, Some("travel"), ModifierFlowStage.Targets)
     val (host, ui) = flow(bound.copy(modifiers = Some(targets)))
     val activated = host.currentDrafts.boardTargets.get.copy(selectedKeys = Set("site:site:woods"))
     ui.handleSelection(BoardSelectionResult.Updated(activated))
