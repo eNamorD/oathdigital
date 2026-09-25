@@ -31,13 +31,21 @@ class SituationSuite extends munit.FunSuite:
       gameId: String): Int =
     repository.load(gameId).toOption.flatten.get.records.size
 
-  test("wake under the fixture's rules equals initialReady"):
-    val situation = Situation.wake(Situation.rules(catalog,
-      answers = Situation.pawnsAt(sites) orElse Situation.defaultAnswer))
-    val (state, events) = FirstGameSetupFixture.execute()
-    assertEquals(situation.state, state)
-    assertEquals(situation.events, events)
-    assertEquals(situation.ready, FirstGameSetupFixture.initialReady)
+  test("wake is the fixture's first game: the first player in Wake, pawns " +
+      "on the first sites and one adviser each"):
+    // Before FirstGameSetupFixture delegated to it, this compared `wake`
+    // with the fixture's own hand-written walk, state and events alike.
+    val ready = Situation.wake(Situation.rules(catalog,
+      answers = Situation.pawnsAt(sites) orElse Situation.defaultAnswer)).ready
+    val current = ready.game.current
+    assertEquals(ready, FirstGameSetupFixture.initialReady)
+    assertEquals((current.turn.phase, current.turn.activePlayer),
+      (Phase.Wake, orders.firstPlayer))
+    assertEquals(current.players.find(_.player == orders.firstPlayer)
+      .flatMap(_.pawnSite), Some(sites.head))
+    assertEquals(current.players.flatMap(_.pawnSite).toSet,
+      sites.take(orders.participants.size).toSet)
+    assert(current.players.forall(_.advisers.size == 1), current.players)
 
   test("the rules and journaled adapters reach the same game for the same " +
       "steps"):

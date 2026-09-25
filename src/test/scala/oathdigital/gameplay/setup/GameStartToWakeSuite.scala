@@ -3,8 +3,8 @@ package oathdigital.gameplay.setup
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Situation
 
 class GameStartToWakeSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
@@ -20,34 +20,10 @@ class GameStartToWakeSuite extends munit.FunSuite:
       SetupProcedure.pawnDecisionId(orders.firstPlayer), orders.firstPlayer)
 
   test("driving every player's two decisions ends in Wake with the recorded seating"):
-    var state: OathState = OathState.NoGame
-    var transition = rules.beginGame(state, chronicle, orders).toOption.get
-    state = transition.state
+    val ready = Situation.wake(Situation.rules(catalog), chronicle, orders)
+      .ready
 
-    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
-    order.foreach { playerId =>
-      transition = rules.resolveWalker(state, playerId,
-        SetupProcedure.pawnDecisionId(playerId),
-        ChooseOneAnswer(DecisionOptionRef.Site(
-          FirstGameSetupFixture.sites(order.indexOf(playerId))))).toOption.get
-      state = transition.state
-      val Ready(placedReady) = state: @unchecked
-      val denizens = placedReady.game.current.temporaryHands(playerId)
-        .collect { case id: DenizenId => id }
-      val adviser = denizens.head
-      val rejected = denizens.filterNot(_ == adviser)
-      transition = rules.resolveWalker(state, playerId,
-        SetupProcedure.adviserDecisionId(playerId),
-        DecisionAnswer.PartitionAnswer(
-          DecisionPlacement(DecisionOptionRef.Denizen(adviser),
-            SetupProcedure.adviserKeepKey) +:
-          rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
-            SetupProcedure.adviserDiscardKey)))).toOption.get
-      state = transition.state
-    }
-
-    parked.assertResumed(transition.state, Phase.Wake, orders.firstPlayer)
-    val Ready(ready) = state: @unchecked
+    parked.assertResumed(Ready(ready), Phase.Wake, orders.firstPlayer)
     assertEquals(ready.game.current.players.count(_.pawnSite.nonEmpty),
       orders.participants.size)
     assertEquals(ready.game.current.players.count(_.advisers.size == 1),

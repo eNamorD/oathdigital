@@ -3,9 +3,9 @@ package oathdigital.gameplay.setup
 import java.nio.file.Paths
 
 import oathdigital.catalog._
-import oathdigital.gameplay.OathRules
 import oathdigital.model._
 import oathdigital.model.OathState._
+import oathdigital.testkit.Situation
 
 /** Shared fixture for the whole gameplay test suite: a real catalog, three
   * Exile participants, and a Chronicle-shaped input for `GameStartRules`
@@ -88,45 +88,17 @@ object FirstGameSetupFixture:
   def freshReady: ReadyGame =
     GameStartRules.evolve(catalog, chronicle, orders).toOption.get
 
-  /** Drives `OathRules.beginGame` through every player's two Setup
-    * decisions, in turn order starting at `orders.firstPlayer`, answering
-    * each with the same choice the deleted `FirstGameSetupRules`-based
-    * fixture made: the next in-play site, then the first card in hand.
-    * Lands on `Phase.Wake` with the returned real event history.
+  /** Setup driven by `OathRules` from this first-game input, the n-th pawn
+    * placed at `placementSites(n)` and every adviser choice keeping the
+    * first card in hand: [[oathdigital.testkit.Situation.wake]] under the
+    * fixture's rules. Lands on `Phase.Wake` with the real event history.
     */
   def execute(placementSites: Vector[SiteId] = sites)
       : (OathState, Vector[OathEvent]) =
-    val rules = new OathRules(catalog)
-    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
-    var transition = rules.beginGame(OathState.NoGame, chronicle, orders).toOption.get
-    var state = transition.state
-    var events = transition.events
-    order.zipWithIndex.foreach { case (playerId, index) =>
-      val pawnDecision = SetupProcedure.pawnDecisionId(playerId)
-      transition = rules.resolveWalker(state, playerId, pawnDecision,
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(placementSites(index))))
-        .toOption.get
-      state = transition.state
-      events = events ++ transition.events
-      val hand = state match
-        case Ready(ready) =>
-          ready.game.current.temporaryHands.getOrElse(playerId, Vector.empty)
-        case _ => Vector.empty
-      val denizens = hand.collect { case id: DenizenId => id }
-      val adviser = denizens.head
-      val rejected = denizens.filterNot(_ == adviser)
-      val adviserDecision = SetupProcedure.adviserDecisionId(playerId)
-      transition = rules.resolveWalker(state, playerId, adviserDecision,
-        DecisionAnswer.PartitionAnswer(
-          DecisionPlacement(DecisionOptionRef.Denizen(adviser),
-            SetupProcedure.adviserKeepKey) +:
-          rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
-            SetupProcedure.adviserDiscardKey))))
-        .toOption.get
-      state = transition.state
-      events = events ++ transition.events
-    }
-    (state, events)
+    val woken = Situation.wake(Situation.rules(catalog,
+      answers = Situation.pawnsAt(placementSites) orElse
+        Situation.defaultAnswer), chronicle, orders)
+    (woken.state, woken.events)
 
   /** The game `execute()` sets up. Immutable, so suites share one. */
   lazy val initialReady: ReadyGame =
