@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, ActionKind, OathContinue, OathViolation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId}
+import oathdigital.model.{ActionRef, DecisionOptionRef, ActionKind, OathViolation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId}
 
 /** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -47,6 +47,11 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "no walker procedure registered for recover")))
 
+  /** This is the registration gate. `OathRulesWalker.parkedContinue` used to
+    * reject an unregistered continuation at command time, inside a running
+    * game; with that gone, a procedure reachable but absent from `entries`
+    * fails here instead, before anything runs.
+    */
   test("the production entries register every procedure reference"):
     assertEquals(WalkerProcedureRegistry.entries.keySet, ProcedureRef.all.toSet)
 
@@ -103,18 +108,11 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     * `fallbackKind` or `modifierWindow` here is a silent misrouting, not a
     * failure.
     */
-  test("the Forge entry declares Forge's own kind, modifier window and continuation"):
+  test("the Forge entry declares Forge's own kind and modifier window"):
     val entry = WalkerProcedureRegistry.entries(ActionRef.Forge)
     assertEquals(entry.fallbackKind, Some(ActionKind.Forge))
     assertEquals(entry.modifierWindow, Some(PowerWindow.ForgeModifierSelection))
     assertEquals(entry.rollDecisionId, None)
-    val actor = PlayerId("p1")
-    val decision = DecisionId("forge-1")
-    assertEquals(WalkerProcedureRegistry.continuationFor(ActionRef.Forge,
-      ForgeProcedure.assignmentDecisionId, actor, decision),
-      Right(Some(OathContinue.AwaitingForgeAssignment(actor, decision))))
-    assertEquals(WalkerProcedureRegistry.continuationFor(ActionRef.Forge,
-      "recover.relic", actor, decision), Right(None))
 
   /** The Travel entry's own facts, asserted as a whole for the same reason
     * Forge's are. Travel is the only entry whose builders take a start
@@ -122,35 +120,22 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     * Travel has is a fact about the route, so a resume must re-check exactly
     * what a start checked.
     */
-  test("the Travel entry declares Travel's own kind and no park of any shape"):
+  test("the Travel entry declares Travel's own kind and rolls nothing"):
     val entry = WalkerProcedureRegistry.entries(ActionRef.Travel)
     assertEquals(entry.fallbackKind, Some(ActionKind.Travel))
     assertEquals(entry.modifierWindow, Some(PowerWindow.TravelModifierSelection))
     assertEquals(entry.rollDecisionId, None)
-    // A flat tree parks nowhere, so no decision id of any spelling maps to a
-    // continuation.
-    Vector("travel", "walker.travel.roll", "recover.relic").foreach { id =>
-      assertEquals(WalkerProcedureRegistry.continuationFor(ActionRef.Travel, id,
-        PlayerId("p1"), DecisionId("d1")), Right(None))
-    }
 
-  test("Begin Rest records Rest diagnostics; Finish Rest records none and " +
-      "parks as a generic Rest decision"):
+  test("Begin Rest records Rest diagnostics and Finish Rest records none"):
     assertEquals(WalkerProcedureRegistry.fallbackKind(
       PhaseTransitionRef.BeginRest), Right(Some(ActionKind.Rest)))
     assertEquals(WalkerProcedureRegistry.fallbackKind(
       PhaseTransitionRef.FinishRest), Right(None))
-    assertEquals(WalkerProcedureRegistry.continuationFor(
-      PhaseTransitionRef.FinishRest, "any", actor, DecisionId("d")),
-      Right(Some(OathContinue.AwaitingRestDecision(actor, DecisionId("d")))))
 
-  test("every use-power reference is registered and parks as a power decision"):
+  test("every use-power reference is registered"):
     val use = ActionRef.UsePower(PowerId("denizen.anything"))
     assert(WalkerProcedureRegistry.isRegistered(use))
     assertEquals(WalkerProcedureRegistry.fallbackKind(use), Right(None))
-    assertEquals(WalkerProcedureRegistry.continuationFor(use, "any", actor,
-      DecisionId("d")),
-      Right(Some(OathContinue.AwaitingPowerDecision(actor, DecisionId("d")))))
 
   /** An action that selects nothing at its start must REJECT a selection, not
     * ignore one.
