@@ -30,29 +30,59 @@ final class ParkedDecisionAssertions(
     phasePowerCatalog: PhasePowers = PhasePowers.empty)
     extends munit.Assertions:
 
-  /** `None` when nothing is parked. */
-  def parkedDecision(state: OathState): Option[ParkedDecisionFacts] =
+  /** `None` exactly when nothing is parked: the state is not `Ready`, or it
+    * is and `walkerPending` is empty -- the same fact `WalkerCompleted`
+    * clears alongside `walkerProcedure` and `OathRules.unlessWalkerPending`
+    * reads to mean "no walker is pending" (fix-round 1 ruling). Anything
+    * else that keeps this from reporting the park -- a rebuild failure, a
+    * position resolving to neither a `Decide` nor a `Roll`, a Roll park
+    * whose procedure declares no roll decision id, or no awaited player --
+    * is `walkerPending` being SET while the module cannot explain it, and
+    * fails loudly instead: silently returning `None` there would let a
+    * broken rebuild masquerade as "not parked" for every
+    * `assertNotParked`/`assertResumed` call site, exactly the silent
+    * weakening this module exists to prevent.
+    */
+  def parkedDecision(state: OathState)(using munit.Location)
+      : Option[ParkedDecisionFacts] =
     state match
       case Ready(ready) =>
         val current = ready.game.current
-        for
-          procedure <- current.walkerProcedure
-          pending <- current.walkerPending
-          tree <- WalkerProcedureRegistry.rebuild(procedure, catalog, ready,
-            current.turn.activePlayer, current.walkerStartArgs,
-            phasePowerCatalog).toOption
-          powers = WalkerPowers.selected(walkerPowerCatalog,
-            current.walkerModifiers)
-          // A Roll park holds no Decide, so its id is the one the procedure
-          // declares -- the same resolution the projector makes.
-          decision <- ProcedureWalker.parkedDecide(ready, tree, pending, powers)
-            .map(_.decisionId)
-            .orElse(ProcedureWalker.parkedRoll(ready, tree, pending, powers)
-              .flatMap(_ =>
-                WalkerProcedureRegistry.rollDecisionId(procedure).toOption))
-          awaiting <- ProcedureWalker.awaitedPlayer(ready, tree, pending, powers)
-        yield ParkedDecisionFacts(procedure, decision, awaiting,
-          ProcedureWalker.awaitedPlayers(ready, tree, pending, powers))
+        current.walkerPending match
+          case None => None
+          case Some(pending) =>
+            val at = pending.at.mkString(".")
+            val procedure = current.walkerProcedure.getOrElse(fail(
+              s"a walker is pending at '$at' but no walkerProcedure is " +
+                "recorded"))
+            val tree = WalkerProcedureRegistry.rebuild(procedure, catalog,
+                ready, current.turn.activePlayer, current.walkerStartArgs,
+                phasePowerCatalog) match
+              case Right(tree) => tree
+              case Left(violation) => fail(
+                s"could not rebuild $procedure's tree to read the park at " +
+                  s"'$at': $violation")
+            val powers = WalkerPowers.selected(walkerPowerCatalog,
+              current.walkerModifiers)
+            // A Roll park holds no Decide, so its id is the one the
+            // procedure declares -- the same resolution the projector makes.
+            val decision = ProcedureWalker.parkedDecide(ready, tree, pending,
+                powers).map(_.decisionId)
+              .orElse(ProcedureWalker.parkedRoll(ready, tree, pending, powers)
+                .map(_ => WalkerProcedureRegistry.rollDecisionId(procedure) match
+                  case Right(id) => id
+                  case Left(violation) => fail(
+                    s"a Roll parked at '$at' of $procedure, which declares " +
+                      s"no roll decision id: $violation")))
+              .getOrElse(fail(
+                s"a walker is pending at '$at' of $procedure but it " +
+                  "resolves to neither a Decide nor a Roll"))
+            val awaiting = ProcedureWalker.awaitedPlayer(ready, tree, pending,
+                powers).getOrElse(fail(
+              s"a walker is pending at '$at' of $procedure on '$decision' " +
+                "but no player is awaited"))
+            Some(ParkedDecisionFacts(procedure, decision, awaiting,
+              ProcedureWalker.awaitedPlayers(ready, tree, pending, powers)))
       case _ => None
 
   /** The game is parked on `decision` of `procedure`, awaiting `awaiting`.

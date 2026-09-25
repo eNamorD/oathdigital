@@ -115,6 +115,42 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
       .assertParked(started.state, ActionRef.Recover,
         RecoverProcedure.choiceDecisionId, owner)
 
+  // Fix-round 1 finding: `parkedDecision` must fail, not silently report
+  // "not parked", when `walkerPending` is set but the module cannot explain
+  // it -- otherwise a rebuild that quietly stops working would turn every
+  // `assertNotParked`/`assertResumed` call site into an assertion that
+  // passes unconditionally. Reuses the off-turn park from the previous
+  // test, but reads it with an assertions instance that does NOT carry the
+  // inserting power: `WalkerProcedureRegistry.rebuild` still succeeds (it
+  // is the same real Recover tree), but folding with no powers puts no
+  // off-turn Decide at index 0 -- the stored `walkerPending.at` path (which
+  // pointed at the inserted node) instead resolves to Recover's own
+  // `ModifyDicePool` leaf, neither a Decide nor a Roll.
+  test("a park the module cannot read fails, rather than reporting not " +
+      "parked"):
+    val (ready, actor) = recoverable
+    val owner = ready.game.current.players.map(_.player)
+      .find(_ != actor).get
+    val insertOwned = ProcedureWalkerSuite.TestTransformPower(
+      PowerId("test.insert-owned-decide-unread"),
+      PowerWindow.RecoverActionEligibility,
+      (_, ops) => Decide(
+        decisionId = RecoverProcedure.choiceDecisionId,
+        owner = owner,
+        query = DecisionQuery.ChooseOne(Vector(
+          DecisionOption.Button(ProcedureWalkerSuite.continueOption,
+            "Continue")))) +: ops)
+    val powers = WalkerPowers(Vector(insertOwned))
+    val rules = new OathRules(catalog, walkerPowerCatalog = powers,
+      walkerDice = WalkerDiceFixture.blanks)
+    val started = rules.startWalker(Ready(ready), ActionRef.Recover,
+        actor) match
+      case Right(transition) => transition
+      case other => fail(s"expected the owned-decide start to run, got $other")
+    // No walkerPowerCatalog here: the rebuild succeeds but folds in nothing.
+    intercept[munit.FailException]:
+      new ParkedDecisionAssertions(catalog).assertNotParked(started.state)
+
   test("a completed action is not parked"):
     val (ready, actor) = recoverable
     val rules = new OathRules(catalog, walkerDice = WalkerDiceFixture.shields)
