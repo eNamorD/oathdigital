@@ -22,7 +22,7 @@ class ServerRoutesSuite extends munit.FunSuite {
     assert(AuthenticatedRouteMountConfiguration.fromOptions(
       None, Some("https://oath.example")).isLeft)
 
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "server-routes-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
@@ -77,7 +77,7 @@ class ServerRoutesSuite extends munit.FunSuite {
   }
 
   test("trusted-alpha serves production frontend without development routes") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "trusted-alpha-routes-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
@@ -116,7 +116,7 @@ class ServerRoutesSuite extends munit.FunSuite {
   }
 
   test("development mode creates games like trusted-alpha and opens them in the dev API") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "development-create-routes-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
@@ -172,7 +172,7 @@ class ServerRoutesSuite extends munit.FunSuite {
     version = "test-version"
   )
 
-  private def bind(route: akka.http.scaladsl.server.Route)(implicit
+  private def bind(route: akka.http.scaladsl.server.Route)(using
       system: ActorSystem[Nothing]
   ) = Await.result(
     Http().newServerAt("127.0.0.1", 0).bind(route),

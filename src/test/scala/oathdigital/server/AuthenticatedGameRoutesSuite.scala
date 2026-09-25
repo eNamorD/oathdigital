@@ -24,7 +24,7 @@ import oathdigital.model.OathState
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite {
   test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders") {
-    implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](
+    given system: ActorSystem[Nothing] = ActorSystem[Nothing](
       Behaviors.empty, "authenticated-negotiation-route-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
@@ -123,7 +123,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
   }
 
   test("authenticated routes derive projection scope and command actor") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-route-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")

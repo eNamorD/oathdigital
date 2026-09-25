@@ -267,7 +267,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
   }
 
   test("seat links and cookies restore private seats after the runtime reopens") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "trusted-seat-restart-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
@@ -401,7 +401,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
   }
 
   private def withServer(origin: Option[String] = None)(body: (String, ServerRuntime) => Unit): Unit = {
-    implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "trusted-seat-route-test")
+    given system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "trusted-seat-route-test")
     val blocking = system.dispatchers.lookup(DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val database = Files.createTempDirectory("trusted-seat-routes-").resolve("database")
     val catalogPath = Paths.get("docs/catalog/new-foundations-component-catalog.json")

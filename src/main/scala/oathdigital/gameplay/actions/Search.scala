@@ -41,11 +41,9 @@ object SearchRules {
           .take(DrawSize + extra)
     }}
 
-  private implicit final class TakeThrough[A](private val values: Vector[A])
-      extends AnyVal {
-    def takeThrough(stop: A => Boolean): Vector[A] = {
+  extension [A](values: Vector[A])
+    private def takeThrough(stop: A => Boolean): Vector[A] = {
       val index = values.indexWhere(stop)
       if (index < 0) values else values.take(index + 1)
     }
-  }
 }

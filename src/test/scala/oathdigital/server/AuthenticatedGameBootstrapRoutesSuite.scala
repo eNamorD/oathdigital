@@ -28,7 +28,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
   }
 
   test("owner bootstrap uses exactly the provisioned player memberships") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-bootstrap-test")
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")

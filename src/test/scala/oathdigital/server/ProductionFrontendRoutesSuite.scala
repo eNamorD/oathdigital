@@ -13,7 +13,7 @@ import akka.http.scaladsl.server.Route
 
 class ProductionFrontendRoutesSuite extends munit.FunSuite {
   test("serves the packaged shell and assets with production cache policy") {
-    implicit val system: ActorSystem[Nothing] =
+    given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "production-frontend-routes-test")
     val binding = bind(ProductionFrontendRoutes.route)
     val client = HttpClient.newHttpClient()
@@ -49,7 +49,7 @@ class ProductionFrontendRoutesSuite extends munit.FunSuite {
     }
   }
 
-  private def bind(route: Route)(implicit system: ActorSystem[Nothing]) =
+  private def bind(route: Route)(using system: ActorSystem[Nothing]) =
     Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(route),
       10.seconds
