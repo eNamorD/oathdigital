@@ -152,9 +152,9 @@ private[frontend] object ActionDecisionRenderer {
        panel.appendChild(back)
        val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
          cancelModifiers(); panel.appendChild(cancel)
-    } else if (currentFacedownAdviserDraft.nonEmpty) {
-      panel.appendChild(FacedownAdviserRenderer.render(
-        currentFacedownAdviserDraft.get, ui))
+     } else if (currentFacedownAdviserDraft.nonEmpty) {
+       panel.appendChild(FacedownAdviserRenderer.render(
+         currentFacedownAdviserDraft.get, ui))
      } else if (selection.nonEmpty) {
        val action = selection.get
        panel.appendChild(text("p", "selection-instruction", action.prompt))
