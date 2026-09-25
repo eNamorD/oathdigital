@@ -135,11 +135,8 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
   * current route through PowerCtx.operation.
   */
 object TravelSitePowers {
-  private sealed trait Terrain
-  private case object Mountain extends Terrain
-  private case object Island extends Terrain
-  private case object Coast extends Terrain
-  private case object NarrowPass extends Terrain
+  private enum Terrain { case Mountain, Island, Coast, NarrowPass }
+  import Terrain._
   private final case class Supported(id: PowerId, terrain: Terrain)
 
   /** Explicit reviewed Travel handlers. A catalog may contain unrelated or

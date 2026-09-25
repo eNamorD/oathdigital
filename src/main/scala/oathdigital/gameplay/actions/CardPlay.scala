@@ -11,11 +11,7 @@ import oathdigital.model._
   * Every card, favor, or edifice change is expressed as core operations.
   */
 object CardPlay {
-  sealed trait Origin extends Product with Serializable
-  object Origin {
-    case object FacedownAdviser extends Origin
-    case object TemporaryHand extends Origin
-  }
+  enum Origin { case FacedownAdviser, TemporaryHand }
 
   /** One legal placement. `replacements` are the cards the play may discard
     * first. They are required when the placement is otherwise impossible, and
