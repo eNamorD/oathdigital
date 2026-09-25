@@ -36,14 +36,14 @@ object TravelRules:
   def cost(catalog: ExecutableCatalog, ready: ReadyGame, source: SiteId,
       destination: SiteId): Either[OathViolation, Int] =
     val map = ready.game.current.map
-    for {
+    for
       from <- map.regionOf(source).toRight(SiteNotInPlay(source))
       to <- map.regionOf(destination).toRight(SiteNotInPlay(destination))
       _ <- Either.cond(source != destination, (), SameTravelSite(source))
       _ <- catalog.sites.find(_.id == source).toRight(SiteNotInPlay(source))
       _ <- catalog.sites.find(_.id == destination)
         .toRight(SiteNotInPlay(destination))
-    } yield (from, to) match
+    yield (from, to) match
       case (Region.Cradle, Region.Cradle) => 1
       case (Region.Cradle, Region.Provinces) => 2
       case (Region.Cradle, Region.Hinterland) => 4

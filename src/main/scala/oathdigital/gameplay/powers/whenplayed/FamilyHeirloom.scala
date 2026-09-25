@@ -59,12 +59,13 @@ object FamilyHeirloom:
     pending.answered.collectFirst:
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
     match
-      case Some(`bottom`) => for {
-        held <- PlayerFacts.player(ready, actor)
-        drawn <- held.relics.lastOption.toRight(OathViolation.InvalidEventOrder(
-          "no drawn relic to put back"))
-      } yield Vector(Bury(BuryableCard.Relic(drawn.id),
-        PositionedLocation(Location.PlayArea(actor))))
+      case Some(`bottom`) =>
+        for
+          held <- PlayerFacts.player(ready, actor)
+          drawn <- held.relics.lastOption.toRight(OathViolation.InvalidEventOrder(
+            "no drawn relic to put back"))
+        yield Vector(Bury(BuryableCard.Relic(drawn.id),
+          PositionedLocation(Location.PlayArea(actor))))
       case Some(`keep`) => Right(Vector.empty)
       case _ => Left(OathViolation.InvalidEventOrder(
         "no Family Heirloom choice is recorded"))

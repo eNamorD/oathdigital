@@ -63,7 +63,7 @@ class BoneDiceSuite extends munit.FunSuite:
     assert(!usableIds(noSecret).contains(BoneDice.id))
     assert(use(rules(), noSecret, BoneDice.id, source).isLeft)
     val occupied = staged().updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player != actor) p else p.copy(relics = p.relics.map(r =>
+      if p.player != actor then p else p.copy(relics = p.relics.map(r =>
         r.copy(tokens = Tokens(0, 1)))))))
     assert(!usableIds(occupied).contains(BoneDice.id))
     val facedown = staged(orientation = Orientation.FaceDown)

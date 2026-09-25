@@ -249,7 +249,7 @@ object ProcedureWalker:
   def awaitedPlayers(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Set[PlayerId] =
     val open = openDecisions(state, action, pending, powers)
-    if (open.nonEmpty) open.flatMap(_.owners).toSet
+    if open.nonEmpty then open.flatMap(_.owners).toSet
     else parkedRoll(state, action, pending, powers)
       .map(_ => Set(state.game.current.turn.activePlayer)).getOrElse(Set.empty)
 
@@ -357,7 +357,7 @@ object ProcedureWalker:
       case core: CoreOperation => core.required
       case _ => false
     walkFolded(composite.window, composite, composite.children, ctx, path, cursor,
-      resume, if (required) hooks.copy(strict = true) else hooks)
+      resume, if required then hooks.copy(strict = true) else hooks)
 
   /** A `Branch` has no static children: its `select` chooses the children to
     * walk at walk time, and a resume cursor addresses the selected vector the
@@ -402,12 +402,12 @@ object ProcedureWalker:
       */
     def passes(current: WalkCtx): Either[OathViolation, Step] =
       val guardTree = PendingTree(at = path, answered = current.answered)
-      if (!repeat.guard(current.state, guardTree)) Right(Done(current))
+      if !repeat.guard(current.state, guardTree) then Right(Done(current))
       else pass(current, None)
 
     // A resume re-enters the pass that already started (its guard was true at
     // pass time): finish its remainder, then keep looping whole passes.
-    if (cursor.isEmpty) passes(ctx) else pass(ctx, cursor)
+    if cursor.isEmpty then passes(ctx) else pass(ctx, cursor)
 
   /** A leaf whose `window` is `Some(w)` folds `Vector(leaf)` through the
     * gathered transforms and walks the result as its children -- the same
@@ -439,7 +439,7 @@ object ProcedureWalker:
       strict: Boolean): Either[OathViolation, Step] =
     cursor match
       case Some(remaining) =>
-        if (remaining.nonEmpty)
+        if remaining.nonEmpty then
           contractViolation(
             s"resume path $remaining overruns leaf ${leafLabel(leaf)}")
         else resume match
@@ -516,7 +516,7 @@ object ProcedureWalker:
   private def continue(children: Vector[Operation], index: Int, ctx: WalkCtx,
       path: Vector[String], cursorAt: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] =
-    if (index >= children.size) Right(Done(ctx))
+    if index >= children.size then Right(Done(ctx))
     else
       walk(children(index), ctx, path :+ index.toString, cursorAt, resume,
         hooks).flatMap:
@@ -540,7 +540,7 @@ object ProcedureWalker:
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
     val tree = PendingTree(at = path, answered = ctx.answered)
     build.build(ctx.state, tree).flatMap { ops =>
-      if (ops.isEmpty) Right(ctx)
+      if ops.isEmpty then Right(ctx)
       else recordBatch(ops, contributions, ctx, path, leafLabel(build),
         build.restrictions(ctx.state, tree))
     }
@@ -562,8 +562,8 @@ object ProcedureWalker:
     OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
       restrictions, requireAll)(
       Right(_)).map { updated =>
-      val nodeId = if (path.isEmpty) label else path.mkString(".")
-      val events = if (updated.executed.isEmpty) ctx.events else
+      val nodeId = if path.isEmpty then label else path.mkString(".")
+      val events = if updated.executed.isEmpty then ctx.events else
         ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId,
           payload = WalkerStepPayload.DeltaRecorded(
@@ -600,15 +600,15 @@ object ProcedureWalker:
   private def answerDecide(decide: Decide, ctx: WalkCtx,
       path: Vector[String], answer: Answered,
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
-    for {
+    for
       _ <- Either.cond(decide.owners.contains(answer.by), (),
         OathViolation.WrongPlayer(decide.owner, answer.by))
       _ <- DecisionQueries.wellFormed(decide.decisionId, decide.query)
       _ <- DecisionQueries.accepts(decide.decisionId, decide.query,
         answer.answer, answer.by)
-    } yield
+    yield
       val nodeId =
-        if (path.isEmpty) leafLabel(decide) else path.mkString(".")
+        if path.isEmpty then leafLabel(decide) else path.mkString(".")
       ctx.copy(
         answered = ctx.answered :+ answer,
         events = ctx.events :+ WalkerStepRecorded(
@@ -626,7 +626,7 @@ object ProcedureWalker:
       automatic: Boolean = false): Either[OathViolation, WalkCtx] =
     WalkerRolls.outcomeFor(roll, ctx.state, faces).map { outcome =>
       val nodeId =
-        if (path.isEmpty) leafLabel(roll) else path.mkString(".")
+        if path.isEmpty then leafLabel(roll) else path.mkString(".")
       ctx.copy(
         state = WalkerRolls.write(ctx.state, outcome),
         events = ctx.events :+ WalkerStepRecorded(
@@ -642,6 +642,6 @@ object ProcedureWalker:
   private def runAutomaticRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
     val count = WalkerRolls.poolCount(ctx.state, roll.pool)
-    if (count == 0) Right(ctx)
+    if count == 0 then Right(ctx)
     else ctx.dice.roll(roll.dice.die, count).flatMap(faces =>
       recordRoll(roll, ctx, path, faces, contributions, automatic = true))

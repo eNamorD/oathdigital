@@ -32,7 +32,7 @@ class DiscardRestrictionsSuite extends munit.FunSuite:
   private def holding(ready: ReadyGame, card: DenizenId,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
     CardStaging.without(ready, card).updateCurrent(c => c.copy(players =
-      c.players.map(p => if (p.player == actor) p.copy(advisers = p.advisers :+
+      c.players.map(p => if p.player == actor then p.copy(advisers = p.advisers :+
         DenizenState(card, orientation, Tokens.empty)) else p)))
 
   private def selecting(ready: ReadyGame, powers: PowerId*): ReadyGame =
@@ -137,7 +137,7 @@ class DiscardRestrictionsSuite extends munit.FunSuite:
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(id =>
           extras.contains(id) || id == lockedCard)),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = (extras :+ lockedCard).map(id => DenizenState(id,
           Orientation.FaceDown, Tokens.empty))) else p)))
     val faceup = CardPlay.legalChoices(catalog, full, actor, card,

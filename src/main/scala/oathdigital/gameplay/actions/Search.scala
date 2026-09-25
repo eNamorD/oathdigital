@@ -43,4 +43,4 @@ object SearchRules:
   extension [A](values: Vector[A])
     private def takeThrough(stop: A => Boolean): Vector[A] =
       val index = values.indexWhere(stop)
-      if (index < 0) values else values.take(index + 1)
+      if index < 0 then values else values.take(index + 1)

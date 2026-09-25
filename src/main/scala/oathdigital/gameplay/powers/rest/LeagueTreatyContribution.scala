@@ -35,7 +35,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
 
   private def treaty(ready: ReadyGame): Option[Treaty] =
     val current = ready.game.current
-    for {
+    for
       site <- current.map.inPlay.find(id => current.map.sites.get(id).exists(
         _.denizens.exists {
           case DenizenState(`cardId`, Orientation.FaceUp, _) => true
@@ -56,7 +56,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
         }
       }
       if holdings.nonEmpty
-    } yield Treaty(site, ruler, holdings)
+    yield Treaty(site, ruler, holdings)
 
   private def inserted(ready: ReadyGame, rester: PlayerId,
       treaty: Treaty): Vector[Operation] =
@@ -100,7 +100,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
       cards.foldLeft((treaty.favorOf(suit) - kept.getOrElse(suit, 0),
           Vector.empty[CoreOperation])) { case ((left, ops), holding) =>
         val taken = math.min(left, holding.favor)
-        (left - taken, if (taken == 0) ops else ops :+ Move(Piece.Favor(taken),
+        (left - taken, if taken == 0 then ops else ops :+ Move(Piece.Favor(taken),
           PositionedLocation(Location.OnCard(holding.card)),
           PositionedLocation(Location.FavorBank(bank))))
       }._2

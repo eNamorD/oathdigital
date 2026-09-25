@@ -18,10 +18,10 @@ object DesktopConsole:
         s"  Data folder:   ${config.databasePath.getParent}",
         s"  Settings:      ${launch.settingsFile}"
       ) ++
-        (if (launch.lanDetectionFailed)
+        (if launch.lanDetectionFailed then
            Vector("No local network address found. Set OATH_PUBLIC_BASE_URL in the settings file.")
          else Vector.empty) ++
-        (if (config.publicBaseUrl.nonEmpty)
+        (if config.publicBaseUrl.nonEmpty then
            Vector("Seat links contain this address. If it changes, players need the new address.")
          else Vector.empty) :+
         "Close this window or press Ctrl-C to stop."
@@ -34,8 +34,8 @@ object DesktopConsole:
 
   def browserCommand(osName: String, url: String): Vector[String] =
     val os = osName.toLowerCase
-    if (os.startsWith("mac")) Vector("open", url)
-    else if (os.startsWith("windows")) Vector("cmd", "/c", "start", "", url)
+    if os.startsWith("mac") then Vector("open", url)
+    else if os.startsWith("windows") then Vector("cmd", "/c", "start", "", url)
     else Vector("xdg-open", url)
 
   def openBrowser(

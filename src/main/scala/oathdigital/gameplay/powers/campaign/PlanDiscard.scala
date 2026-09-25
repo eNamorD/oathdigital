@@ -39,9 +39,10 @@ object PlanDiscard:
       })
     (asAdviser ++ atSite).headOption match
       case None => Right(Vector.empty)
-      case Some((from, tokens, region)) => for {
-        own <- region.toRight(OathViolation.PawnSiteMissing(user))
-        suit <- catalog.suitOf(card).toRight(OathViolation.UnknownWorldCard(card))
-      } yield Vector[CoreOperation](Discard.Denizen(card, from,
-        CardPlay.nextRegion(own), suit, tokens.favor, tokens.secrets, user,
-        required = true))
+      case Some((from, tokens, region)) =>
+        for
+          own <- region.toRight(OathViolation.PawnSiteMissing(user))
+          suit <- catalog.suitOf(card).toRight(OathViolation.UnknownWorldCard(card))
+        yield Vector[CoreOperation](Discard.Denizen(card, from,
+          CardPlay.nextRegion(own), suit, tokens.favor, tokens.secrets, user,
+          required = true))

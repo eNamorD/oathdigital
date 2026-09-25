@@ -24,14 +24,14 @@ object NegotiationProcedure:
   val decisionIds: Set[String] = NegotiationDeal.decisionIds
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- PowerRuntime.requireAudited(catalog)
     _ <- Either.cond(NegotiationDeal.eligible(state, actor).nonEmpty, (),
       OathViolation.NegotiationUnavailable(
         "no other player has a pawn at your site"))
-  } yield tree(state, actor)
+  yield tree(state, actor)
 
   /** Whether Negotiation could start now: the gates pass and the first walk
     * (up to the first decision) is accepted.
@@ -54,7 +54,7 @@ object NegotiationProcedure:
   private def tree(state: ReadyGame, actor: PlayerId): Operation =
     val candidates = NegotiationDeal.eligible(state, actor)
     val choose: Vector[Operation] =
-      if (candidates.size < 2) Vector.empty
+      if candidates.size < 2 then Vector.empty
       else Vector(Decide(NegotiationDeal.negotiatorsDecisionId, actor,
         DecisionQuery.ChooseMany(1, candidates.size, candidates.map(id =>
           DecisionOption.Player(DecisionOptionRef.Player(id))),
@@ -71,7 +71,7 @@ object NegotiationProcedure:
         })),
       Branch((ready, pending) => {
         val deal = NegotiationDeal.deal(ready, actor, pending)
-        if (deal.agreed) Vector[Operation](BuildOps(
+        if deal.agreed then Vector[Operation](BuildOps(
           (state, _) => NegotiationDeal.settle(state, deal),
           window = Some(PowerWindow.NegotiationSettlement)))
         else Vector.empty

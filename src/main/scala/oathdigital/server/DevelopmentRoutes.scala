@@ -22,7 +22,7 @@ object DevelopmentRoutes:
       blockingExecutionContext
     ).route
 
-    if (!serveFrontend) api
+    if !serveFrontend then api
     else
       api ~
         respondWithHeader(DevelopmentAssetCacheControl):

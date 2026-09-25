@@ -65,16 +65,16 @@ object DecisionQueries:
       query: DecisionQuery): Either[OathViolation, Unit] = query match
     case DecisionQuery.ChooseOne(options, _) =>
       val refs = options.map(_.ref)
-      for {
+      for
         _ <- require(refs.nonEmpty, decisionId, "declares no options")
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
-      } yield ()
+      yield ()
 
     case DecisionQuery.Negotiate(participants, terms, accepted, bounds,
         acceptors, _) =>
       val members = participants.toSet
-      for {
+      for
         _ <- require(participants.size >= 2 &&
           participants.distinct.size == participants.size, decisionId,
           "declares fewer than two distinct participants")
@@ -84,11 +84,11 @@ object DecisionQueries:
           "declares terms for players outside the deal")
         _ <- require(accepted.subsetOf(members) && acceptors.subsetOf(members),
           decisionId, "declares an acceptance from outside the deal")
-      } yield ()
+      yield ()
 
     case DecisionQuery.ChooseMany(min, max, options, _) =>
       val refs = options.map(_.ref)
-      for {
+      for
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
         _ <- require(max >= 1, decisionId, "declares no selection to make")
@@ -99,11 +99,11 @@ object DecisionQueries:
         _ <- require(!(min == max && max == refs.size), decisionId,
           "declares a selection that already takes every option, leaving " +
             "nothing to decide")
-      } yield ()
+      yield ()
 
     case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel,
         suggested) =>
-      for {
+      for
         _ <- require(heading.exists(_.trim.nonEmpty), decisionId,
           "declares no heading")
         _ <- require(confirmLabel.trim.nonEmpty, decisionId,
@@ -114,12 +114,12 @@ object DecisionQueries:
         // would propose an answer the same query rejects.
         _ <- require(suggested.forall(value => value >= min && value <= max),
           decisionId, s"suggests ${suggested.getOrElse(0)} outside $min..$max")
-      } yield ()
+      yield ()
 
     case DecisionQuery.Partition(sections, options, _, _) =>
       val refs = options.map(_.ref)
       val keys = sections.map(_.key)
-      for {
+      for
         _ <- require(refs.nonEmpty, decisionId, "declares no options")
         _ <- require(sections.size >= 2, decisionId,
           "declares fewer than two sections")
@@ -149,7 +149,7 @@ object DecisionQueries:
         _ <- require(sections.count(_.maxAllowed.forall(_ > 0)) >= 2,
           decisionId, "declares fewer than two sections that can take " +
             "options, leaving nothing to decide")
-      } yield ()
+      yield ()
 
     case DecisionQuery.Distribute(slots, minTotal, maxTotal, heading,
         confirmLabel) =>
@@ -158,7 +158,7 @@ object DecisionQueries:
       val maximums = slots.map(_.maximum.toLong).sum
       val variableSlots = slots.count(s => s.minimum < s.maximum)
       val suggested = slots.flatMap(_.suggested)
-      for {
+      for
         _ <- require(heading.exists(_.trim.nonEmpty), decisionId,
           "declares no heading")
         _ <- require(confirmLabel.trim.nonEmpty, decisionId,
@@ -186,12 +186,12 @@ object DecisionQueries:
           "declares fewer than two variable slots, leaving nothing to decide")
         _ <- require(suggested.isEmpty || suggested.size == slots.size,
           decisionId, "suggests amounts for some slots but not all")
-        _ <- if (suggested.isEmpty) Right(())
+        _ <- if suggested.isEmpty then Right(())
           else acceptsDistribution(decisionId, slots, minTotal, maxTotal,
               slots.zip(suggested).map { case (s, n) => DistributeAmount(s.ref, n) })
             .fold(_ => reject(decisionId,
               "suggests a distribution it would not accept"), Right(_))
-      } yield ()
+      yield ()
 
   /** Check on a submitted answer: the failure here is a bad or stale
     * submission, not a bug in the tree.
@@ -215,16 +215,16 @@ object DecisionQueries:
 
     case DecisionQuery.ChooseMany(min, max, options, _) => answer match
       case DecisionAnswer.ChooseManyAnswer(selected) =>
-        for {
+        for
           _ <- require(selected.forall(options.map(_.ref).contains),
             decisionId, "does not offer a selected option")
           _ <- require(selected.distinct.size == selected.size, decisionId,
             "selects an option more than once")
           _ <- require(selected.size >= min && selected.size <= max,
             decisionId,
-            if (min == max) s"selects ${selected.size} options instead of $min"
+            if min == max then s"selects ${selected.size} options instead of $min"
             else s"selects ${selected.size} options outside $min..$max")
-        } yield ()
+        yield ()
       case _ =>
         reject(decisionId, "expects a multiple-choice answer")
 
@@ -267,7 +267,7 @@ object DecisionQueries:
     val declared = slots.map(_.ref)
     val named = amounts.map(_.ref)
     val sum = amounts.map(_.amount.toLong).sum
-    for {
+    for
       _ <- require(named.forall(declared.contains), decisionId,
         "does not offer a distributed option")
       _ <- require(named.distinct.size == named.size, decisionId,
@@ -281,10 +281,10 @@ object DecisionQueries:
         case None => Right(())
       _ <- require(sum >= minTotal.toLong && sum <= maxTotal.toLong,
         decisionId,
-        if (minTotal == maxTotal)
+        if minTotal == maxTotal then
           s"distributes an amount other than its total of $maxTotal"
         else s"distributes an amount outside $minTotal..$maxTotal")
-    } yield ()
+    yield ()
 
   private def acceptsTerms(decisionId: String, participants: Vector[PlayerId],
       bounds: Map[PlayerId, NegotiationBounds], by: PlayerId,
@@ -295,7 +295,7 @@ object DecisionQueries:
         val recipients = terms.transfers.map(_.recipient) ++
           terms.disclosures.map(_.recipient)
         val relics = terms.transfers.flatMap(_.relics)
-        for {
+        for
           _ <- require(recipients.forall(own.recipients.contains), decisionId,
             "offers terms to a player outside the deal")
           _ <- require(terms.transfers.map(_.favor.toLong).sum <=
@@ -307,7 +307,7 @@ object DecisionQueries:
           _ <- require(terms.disclosures.map(_.information)
             .forall(own.disclosures.contains), decisionId,
             "promises a disclosure its author cannot make")
-        } yield ()
+        yield ()
 
   private def acceptsPartition(decisionId: String,
       sections: Map[String, oathdigital.model.DecisionSection],
@@ -315,7 +315,7 @@ object DecisionQueries:
       placements: Vector[oathdigital.model.DecisionPlacement])
       : Either[OathViolation, Unit] =
     val placed = placements.map(_.option)
-    for {
+    for
       _ <- require(placed.forall(declared.contains), decisionId,
         "does not offer a placed option")
       _ <- placements.map(_.sectionKey).find(!sections.contains(_)) match
@@ -338,14 +338,14 @@ object DecisionQueries:
             s"puts section '${section.key}' above its maximum of " +
               section.maxAllowed.get)
           case None => Right(())
-    } yield ()
+    yield ()
 
   private def label(ref: DecisionOptionRef): String =
     s"${ref.kind}/${ref.wireId}"
 
   private def require(condition: Boolean, decisionId: String,
       detail: String): Either[OathViolation, Unit] =
-    if (condition) Right(()) else reject(decisionId, detail)
+    if condition then Right(()) else reject(decisionId, detail)
 
   private def reject(decisionId: String,
       detail: String): Either[OathViolation, Unit] =

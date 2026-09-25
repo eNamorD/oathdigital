@@ -30,7 +30,7 @@ final case class CupOfPlenty private (cardId: RelicId,
 
   private def unlessFree(actor: PlayerId, pay: SpendSupply): Operation =
     BuildOps((ready, pending) => Right(
-      if (differs(ready, actor, pending)) Vector.empty
+      if differs(ready, actor, pending) then Vector.empty
       else Vector[CoreOperation](pay)))
 
   /** Whether the card traded with matches none of the faceup advisers. The suit
@@ -39,14 +39,14 @@ final case class CupOfPlenty private (cardId: RelicId,
     * not yet hold.
     */
   private def differs(ready: ReadyGame, actor: PlayerId,
-      pending: PendingTree): Boolean = (for {
+      pending: PendingTree): Boolean = (for
     ref <- PowerAnswers.one(pending, TradeProcedure.decisionId)
     suit <- ref match {
       case DecisionOptionRef.Denizen(id) => catalog.suitOf(id)
       case DecisionOptionRef.Edifice(id) => catalog.suitOf(id)
       case _ => None
     }
-  } yield MusterSource.matching(catalog, ready, actor, suit) == 0)
+  yield MusterSource.matching(catalog, ready, actor, suit) == 0)
     .getOrElse(false)
 
 object CupOfPlenty:

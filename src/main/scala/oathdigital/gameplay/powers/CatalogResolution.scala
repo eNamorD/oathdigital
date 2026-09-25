@@ -19,5 +19,5 @@ object CatalogResolution:
       catalog.legacies.flatMap(_.powers)).find(_.id == id)
 
   def of(catalog: ExecutableCatalog, id: PowerId): PowerResolution =
-    if (printed(catalog, id).exists(_.persistent)) PowerResolution.Automatic
+    if printed(catalog, id).exists(_.persistent) then PowerResolution.Automatic
     else PowerResolution.PlayerSelected

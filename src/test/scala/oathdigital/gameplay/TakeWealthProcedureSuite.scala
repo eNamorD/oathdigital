@@ -41,7 +41,7 @@ object TakeWealthFixture extends munit.Assertions:
     val actor = current.turn.activePlayer
     val site = current.players.find(_.player == actor).flatMap(_.pawnSite).get
     val players = current.players.map { player =>
-      if (sharedEnemy && player.player != actor) player.copy(
+      if sharedEnemy && player.player != actor then player.copy(
         pawnSite = Some(site))
       else player
     }

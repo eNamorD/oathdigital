@@ -16,7 +16,7 @@ class OperationResolutionSuite extends munit.FunSuite:
 
   test("optional spend shrinks but required spend rejects"):
     val oneSupply = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
-        if (player.player == playerId) player.copy(board = player.board.copy(
+        if player.player == playerId then player.copy(board = player.board.copy(
           supply = SupplyTrack(1))) else player
       }))
     assertEquals(OperationResolution.resolve(oneSupply,

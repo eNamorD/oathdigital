@@ -30,11 +30,11 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           payload("relics").arr.toVector.map(value => RelicId(value.str))))
         case OwnedRelicRevealedType => Right(OwnedRelicRevealed(
           PlayerId(payload("playerId").str), RelicId(payload("relicId").str)))
-        case WarbandsMovedType => for {
+        case WarbandsMovedType => for
           amount <- safeIntField(payload.obj, "amount", path)
           board <- safeIntField(payload.obj, "priorBoardWarbands", path)
           atSite <- safeIntField(payload.obj, "priorSiteWarbands", path)
-        } yield WarbandsMoved(PlayerId(payload("playerId").str),
+        yield WarbandsMoved(PlayerId(payload("playerId").str),
           SiteId(payload("siteId").str), payload("toSite").bool, amount, board, atSite)
     decoder.lift(eventType)
 }

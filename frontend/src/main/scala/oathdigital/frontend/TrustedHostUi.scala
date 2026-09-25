@@ -97,8 +97,8 @@ private[frontend] object TrustedHostUi:
     def refresh(): Unit =
       val full = rows.size >= MaxPlayers
       toggle.disabled = full || taken.size == LineageColors.size
-      limit.textContent = if (full) s"Maximum $MaxPlayers players" else ""
-      if (toggle.disabled) closeMenu()
+      limit.textContent = if full then s"Maximum $MaxPlayers players" else ""
+      if toggle.disabled then closeMenu()
     def addRow(color: PlayerColor): Unit =
       val node = element("li", s"host-player host-player-${color.key}")
       node.appendChild(swatch(color))
@@ -125,7 +125,7 @@ private[frontend] object TrustedHostUi:
 
     toggle.onclick = event => {
       event.preventDefault()
-      if (menu.hasAttribute("hidden")) openMenu() else closeMenu()
+      if menu.hasAttribute("hidden") then openMenu() else closeMenu()
     }
     menu.asInstanceOf[dom.html.Element].onkeydown = event => {
       val current = options.indexWhere(_ == dom.document.activeElement)
@@ -143,10 +143,10 @@ private[frontend] object TrustedHostUi:
     val create = button("Create game", "create-trusted-game")
     create.setAttribute("type", "submit")
     def submit(): Unit =
-      if (create.disabled) return
+      if create.disabled then return
       val ids = rows.map(_.input.value.trim)
       val problem =
-        if (rows.size < MinPlayers) Some(s"Need at least $MinPlayers players.")
+        if rows.size < MinPlayers then Some(s"Need at least $MinPlayers players.")
         else rows.zip(ids).collectFirst {
           case (row, id) if !validPlayerId(id) =>
             s"${name(row.color)} player ID must start with a letter or digit and use only " +
@@ -165,10 +165,10 @@ private[frontend] object TrustedHostUi:
       transport.request("POST", "/games", Some(TrustedGameCreateRequestCodec.encode(request)))
         .foreach { result =>
           val decoded = result.flatMap { response =>
-            if (response.status >= 200 && response.status < 300)
+            if response.status >= 200 && response.status < 300 then
               TrustedGameCreateResponseCodec.decode(response.body).left.map(error =>
                 GameClientFailure.DecodeFailure(error.path, error.message))
-            else if (response.status == 409)
+            else if response.status == 409 then
               gameId = freshGameId()
               Left(GameClientFailure.HttpFailure(409, "game-already-exists",
                 "That game ID was already taken. A new one was generated; select Create game again."))
@@ -198,7 +198,7 @@ private[frontend] object TrustedHostUi:
                   link.focus(); link.select()
                   status.textContent = "Link selected. Copy it to share with its player."
                   val clipboard = dom.window.navigator.asInstanceOf[js.Dynamic].selectDynamic("clipboard")
-                  if (!js.isUndefined(clipboard) && clipboard != null)
+                  if !js.isUndefined(clipboard) && clipboard != null then
                     clipboard.writeText(seat.url).asInstanceOf[js.Promise[Unit]].toFuture.foreach { _ =>
                       status.textContent = s"Copied seat link for ${seat.playerId}."
                     }

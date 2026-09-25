@@ -33,7 +33,7 @@ class SupplyAdjustSuite extends munit.FunSuite:
 
   private def withSupply(player: PlayerId, value: Int): ReadyGame =
     val fixed = ready.game.current.players.map(existing =>
-      if (existing.player != player) existing
+      if existing.player != player then existing
       else existing.copy(board = existing.board.copy(
         supply = SupplyTrack(value))))
     ready.updateCurrent(_.copy(players = fixed))

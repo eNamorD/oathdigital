@@ -23,7 +23,7 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
   private val unshuffled: ChronicleRandomPort = new ChronicleRandomPort:
     def shuffle[A](values: Vector[A]): Vector[A] = values
   private val config = FirstGameBootstrapConfig(
-    participants.sortBy(p => if (p.playerId == PlayerId("p2")) 0 else 1),
+    participants.sortBy(p => if p.playerId == PlayerId("p2") then 0 else 1),
     PlayerId("p2"))
 
   test("beginning a game persists normal v2 history and returns redacted projection"):

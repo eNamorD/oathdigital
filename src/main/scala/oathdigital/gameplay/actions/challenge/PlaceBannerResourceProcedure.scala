@@ -23,13 +23,13 @@ object PlaceBannerResourceProcedure:
       BannerRules.displayName(banner)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- PowerRuntime.requireAudited(catalog)
     _ <- Either.cond(heldBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.PlaceBannerResource.key))
-  } yield tree(actor)
+  yield tree(actor)
 
   /** Whether Place Banner Resource could start now. */
   def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
@@ -66,10 +66,10 @@ object PlaceBannerResourceProcedure:
     Some(PowerWindow.PlaceBannerResourceEligibility))
 
   private def placement(actor: PlayerId, pending: PendingTree): Vector[Operation] =
-    (for {
+    (for
       banner <- bannerOf(pending)
       amount <- amountOf(pending)
-    } yield Vector[Operation](Sequence(Vector[Operation](Move(banner match {
+    yield Vector[Operation](Sequence(Vector[Operation](Move(banner match {
       case Banner.PeoplesFavor => Piece.Favor(amount)
       case Banner.DarkestSecret => Piece.Secrets(amount)
     }, PositionedLocation(Location.PlayArea(actor)),

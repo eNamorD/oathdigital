@@ -41,7 +41,7 @@ class GreatMarketRulesSuite extends munit.FunSuite:
     // bandit-ruled, keeping the arithmetic below unambiguous.
     val withBandits = staged.updateCurrent(c => c.copy(map = c.map.copy(
       sites = c.map.sites.map { case (s, state) =>
-        s -> (if (s == banditSite) state.copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1))
+        s -> (if s == banditSite then state.copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1))
               else state.copy(forces = SiteForces.Empty))
       })))
     val marketSuit = FirstGameSetupFixture.catalog.suitOf(edifice).get
@@ -49,4 +49,4 @@ class GreatMarketRulesSuite extends munit.FunSuite:
     val finished = finish(withBandits)
     assertEquals(finished.game.current.map.sites(banditSite).tokens.favor, 1)
     Suit.all.foreach(suit => assertEquals(finished.banks.favor(suit),
-      startingBank(suit) - (if (suit == marketSuit) 2 else 1)))
+      startingBank(suit) - (if suit == marketSuit then 2 else 1)))

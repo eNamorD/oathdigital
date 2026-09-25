@@ -52,7 +52,7 @@ final class HsqldbEventStreamRepository private[persistence] (
         try {
           stream.setString(1, gameId)
           val streamRows = stream.executeQuery()
-          if (!streamRows.next()) None
+          if !streamRows.next() then None
           else {
             val storedGameId = streamRows.getString(1)
             val entries = context.connection.prepareStatement(
@@ -65,7 +65,7 @@ final class HsqldbEventStreamRepository private[persistence] (
               entries.setString(1, storedGameId)
               val rows = entries.executeQuery()
               val records = Vector.newBuilder[String]
-              while (rows.next()) records += rows.getString(1)
+              while rows.next() do records += rows.getString(1)
               Some(StoredEventStream(storedGameId, records.result()))
             } finally entries.close()
           }
@@ -131,7 +131,7 @@ final class HsqldbEventStreamRepository private[persistence] (
     try
       statement.setString(1, gameId)
       val rows = statement.executeQuery()
-      if (rows.next()) Some(rows.getLong(1)) else None
+      if rows.next() then Some(rows.getLong(1)) else None
     finally statement.close()
 
   private def insertStream(connection: Connection, gameId: String): Unit =
@@ -161,7 +161,7 @@ final class HsqldbEventStreamRepository private[persistence] (
         statement.setString(3, record)
         statement.addBatch()
       }
-      if (records.nonEmpty) statement.executeBatch()
+      if records.nonEmpty then statement.executeBatch()
       ()
     finally statement.close()
 
@@ -176,7 +176,7 @@ final class HsqldbEventStreamRepository private[persistence] (
     try
       statement.setLong(1, nextSequence)
       statement.setString(2, gameId)
-      if (statement.executeUpdate() != 1)
+      if statement.executeUpdate() != 1 then
         throw new SQLException(s"stream '$gameId' disappeared during append")
       ()
     finally statement.close()

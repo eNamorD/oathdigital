@@ -26,9 +26,9 @@ private[frontend] final case class WalkerChooseManyDraft(
     * removes a selected one; adding past the maximum changes nothing.
     */
   def toggle(item: String): WalkerChooseManyDraft =
-    if (selected.contains(item)) copy(selected = selected.filterNot(_ == item))
-    else if (selected.size < maximum &&
-      query.options.exists(WalkerPartitionDraft.itemId(_) == item))
+    if selected.contains(item) then copy(selected = selected.filterNot(_ == item))
+    else if selected.size < maximum &&
+      query.options.exists(WalkerPartitionDraft.itemId(_) == item) then
       copy(selected = selected :+ item)
     else this
 
@@ -71,7 +71,7 @@ private[frontend] object WalkerSelectionDraft:
         previous.filter(draft => draft.context == context &&
             draft.decisionId == decisionId && draft.query == query)
           .getOrElse(
-            if (query.form == "choose-many")
+            if query.form == "choose-many" then
               WalkerChooseManyDraft(context, decisionId, query, Vector.empty)
             else {
               // Where the question says to open, clamped to its own range so

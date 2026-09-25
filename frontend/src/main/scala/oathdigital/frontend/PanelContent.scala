@@ -14,7 +14,7 @@ private[frontend] object PanelContent:
         .map(n.getAttribute).mkString("|")).getOrElse("")
     Vector(node.tagName, node.getAttribute("type"), node.getAttribute("aria-label"),
       node.getAttribute("name"), target,
-      if (node.tagName == "INPUT" || node.tagName == "TEXTAREA") "" else node.textContent)
+      if node.tagName == "INPUT" || node.tagName == "TEXTAREA" then "" else node.textContent)
       .mkString("|")
 
   def replace(root: dom.Element, next: dom.Element, heading: dom.html.Element,
@@ -31,7 +31,7 @@ private[frontend] object PanelContent:
         case _ => None
       (id, index, value)
     }
-    while (root.firstChild != null) root.removeChild(root.firstChild)
+    while root.firstChild != null do root.removeChild(root.firstChild)
     root.appendChild(next)
     focused.foreach { case (id, index, value) =>
       candidates(root).filter(n => identity(n) == id).lift(index) match
@@ -44,5 +44,5 @@ private[frontend] object PanelContent:
           node.focus()
         case None => heading.focus()
     }
-    root.scrollLeft = if (resetScroll) 0 else x
-    root.scrollTop = if (resetScroll) 0 else y
+    root.scrollLeft = if resetScroll then 0 else x
+    root.scrollTop = if resetScroll then 0 else y

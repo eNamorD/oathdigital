@@ -28,14 +28,14 @@ object CampaignProcedure:
     decisionId.startsWith(decisionPrefix)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- PowerRuntime.requireAudited(catalog)
     _ <- Either.cond(CampaignSetup.legalKinds(state, actor).nonEmpty, (),
       OathViolation.CampaignUnavailable("Campaign needs a ruled pawn site to " +
         "Conquest or a co-located enemy pawn to Raid"))
-  } yield tree(catalog, state, actor)
+  yield tree(catalog, state, actor)
 
   /** Whether Campaign could start now: the gates pass and the first walk (the
     * Supply cost, up to the first decision) is accepted, restrictions
@@ -107,8 +107,8 @@ object CampaignProcedure:
         val skulls = ready.game.current.rollOutcomes
           .get(CampaignIds.attackPool).fold(0)(_.skulls)
         Some(WalkerRollFeedback(CampaignIds.attackPool, detail =
-          if (skulls == 0) Vector.empty
-          else Vector(s"$skulls skull loss${if (skulls == 1) "" else "es"}")))
+          if skulls == 0 then Vector.empty
+          else Vector(s"$skulls skull loss${if skulls == 1 then "" else "es"}")))
       case CampaignIds.placement | CampaignIds.relocation =>
         Some(WalkerRollFeedback(CampaignIds.defensePool))
       case _ => None
@@ -137,7 +137,7 @@ object CampaignProcedure:
   /** Omitted when exactly one kind is legal. */
   private def kindStep(actor: PlayerId): Operation = Branch((ready, _) => {
     val kinds = CampaignSetup.kindOptions(ready, actor)
-    if (kinds.size < 2) Vector.empty
+    if kinds.size < 2 then Vector.empty
     else Vector(Decide(CampaignIds.kind, actor, DecisionQuery.ChooseOne(kinds,
       heading = Some("Choose a Campaign")),
       window = Some(PowerWindow.CampaignKindSelection)))
@@ -145,11 +145,11 @@ object CampaignProcedure:
 
   /** A Raid only, and only when several enemy pawns stand here. */
   private def defenderStep(actor: PlayerId): Operation = Branch((ready, pending) =>
-    if (!CampaignSetup.kindOf(ready, actor, pending)
-        .contains(CampaignKind.Raid)) Vector.empty
+    if !CampaignSetup.kindOf(ready, actor, pending)
+        .contains(CampaignKind.Raid) then Vector.empty
     else {
       val defenders = CampaignSetup.defenderOptions(ready, actor)
-      if (defenders.size < 2) Vector.empty
+      if defenders.size < 2 then Vector.empty
       else Vector(Decide(CampaignIds.defender, actor, DecisionQuery.ChooseOne(
         defenders, heading = Some("Choose whom to Raid")),
         window = Some(PowerWindow.CampaignDefenderSelection)))
@@ -157,12 +157,12 @@ object CampaignProcedure:
 
   /** The optional additions to the mandatory target. */
   private def targetsStep(actor: PlayerId): Operation = Branch((ready, pending) =>
-    (for {
+    (for
       kind <- CampaignSetup.kindOf(ready, actor, pending)
       defender <- CampaignSetup.defenderOf(ready, actor, pending, kind)
       options = CampaignSetup.targetOptions(ready, actor, kind, defender)
       if options.nonEmpty
-    } yield Vector[Operation](Decide(CampaignIds.targets, actor,
+    yield Vector[Operation](Decide(CampaignIds.targets, actor,
       DecisionQuery.ChooseMany(0, options.size, options, heading = Some(kind match {
         case CampaignKind.Conquest =>
           "Also target these sites ruled by the same defender"

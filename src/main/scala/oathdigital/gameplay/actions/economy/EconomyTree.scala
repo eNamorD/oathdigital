@@ -39,13 +39,13 @@ private[economy] object EconomyTree:
     * every site, and the audited catalog.
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      kind: Kind): Either[OathViolation, Operation] = for {
+      kind: Kind): Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
       .toRight(OathViolation.PawnSiteMissing(actor))
     _ <- siteRulers(state)
     _ <- PowerRuntime.requireAudited(catalog)
-  } yield tree(catalog, state, actor, kind)
+  yield tree(catalog, state, actor, kind)
 
   /** Every site's forces must name a ruler the game can identify. Legacy
     * Economy refused a board where one did not, and nothing else rejects an
@@ -72,14 +72,14 @@ private[economy] object EconomyTree:
 
   private def afterSource(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, kind: Kind, ref: DecisionOptionRef)
-      : Either[OathViolation, Vector[Operation]] = for {
+      : Either[OathViolation, Vector[Operation]] = for
     source <- MusterSource.resolve(catalog, ready, actor, ref)
     player <- ready.game.current.players.find(_.player == actor)
       .toRight(OathViolation.PawnSiteMissing(actor))
     force <- PlayerForceKind.of(ready, player).toRight(
       OathViolation.UnsupportedEconomyState(
         s"no warband kind for lineage ${player.lineage.value}"))
-  } yield Vector[Operation](
+  yield Vector[Operation](
     // The payment is a required `PayCost`, so an unaffordable one rejects
     // rather than shrinking, and the preview drops the option. Both operations
     // are the window's own children, so a power that changes or removes the

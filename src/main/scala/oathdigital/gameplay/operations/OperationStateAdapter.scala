@@ -61,7 +61,7 @@ object OperationStateAdapter:
         Finite(bannerHolder(ready, banner).count(_ == player))
       }
       case Location.SharedBank =>
-        Right(Finite(if (bannerHolder(ready, banner).isEmpty) 1 else 0))
+        Right(Finite(if bannerHolder(ready, banner).isEmpty then 1 else 0))
       case _ => Left(IncompatibleLocation(piece, at))
 
   def secrets(
@@ -136,7 +136,7 @@ object OperationStateAdapter:
       kind: ForceKind
   ): Either[OperationError, Int] =
     val onBoards = ready.game.current.players.iterator.map { player =>
-      if (playerForceKind(ready, player).contains(kind)) player.board.warbands
+      if playerForceKind(ready, player).contains(kind) then player.board.warbands
       else 0
     }.sum
     val atSites = ready.game.current.map.sites.valuesIterator.map {

@@ -18,17 +18,17 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
     this(catalog, walkerDecisions, PhasePowerCatalog.default(catalog))
 
   def project(context: ScopedProjectionContext): Vector[PhasePowerProjection] =
-    if (!context.viewerIsActive) Vector.empty
+    if !context.viewerIsActive then Vector.empty
     else
       val index = CardIndex.from(context.ready.game).toOption
       PhasePowerProcedure.usable(catalog, context.ready, context.active.player,
         powers).flatMap { usable =>
-        for {
+        for
           (name, power) <- printed(usable.source, usable.power.id)
           option <- DecisionOption.forRef(usable.ref)
           source <- walkerDecisions.optionProjection(context.ready,
             context.viewer, index, option)
-        } yield PhasePowerProjection(usable.power.id.value, source, name,
+        yield PhasePowerProjection(usable.power.id.value, source, name,
           power.rulesText)
       }
 

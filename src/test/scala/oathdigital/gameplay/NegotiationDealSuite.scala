@@ -108,7 +108,7 @@ class NegotiationDealSuite extends munit.FunSuite:
   test("settlement is refused when an author can no longer afford their terms"):
     val terms = NegotiationTerms(Vector(NegotiationTransfer(p, 3, Vector.empty)))
     val broke = b.ready.updateCurrent(current => current.copy(players =
-      current.players.map(pl => if (pl.player == a)
+      current.players.map(pl => if pl.player == a then
         pl.copy(board = pl.board.copy(favor = 1)) else pl)))
     assertEquals(NegotiationDeal.settle(broke,
       fold(said(a, ProposeTerms(terms)))), Left(InsufficientFavor(3, 1)))

@@ -36,7 +36,7 @@ final class SnapshotPollingCoordinator(
   private var timerGeneration = 0L
 
   def resume(request: ServerRequestIdentity): Unit =
-    if (!running || !current.contains(request))
+    if !running || !current.contains(request) then
       invalidateTimer()
       current = Some(request)
       inFlight = false
@@ -50,18 +50,18 @@ final class SnapshotPollingCoordinator(
 
   def visibilityChanged(isHidden: Boolean): Unit =
     hidden = isHidden
-    if (running && !inFlight)
+    if running && !inFlight then
       invalidateTimer()
-      if (hidden) scheduleNext() else beginPoll()
+      if hidden then scheduleNext() else beginPoll()
 
   def complete(
       request: ServerRequestIdentity,
       continuePolling: Boolean
   ): Boolean =
-    if (!running || !inFlight || !current.contains(request)) false
+    if !running || !inFlight || !current.contains(request) then false
     else
       inFlight = false
-      if (continuePolling) scheduleNext()
+      if continuePolling then scheduleNext()
       else running = false
       true
 
@@ -69,17 +69,17 @@ final class SnapshotPollingCoordinator(
   def hasInFlightPoll: Boolean = inFlight
 
   private def scheduleNext(): Unit =
-    if (running && !inFlight && scheduled.isEmpty)
+    if running && !inFlight && scheduled.isEmpty then
         val expectedTimerGeneration = timerGeneration
         scheduled = Some(clock.schedule(
-        if (hidden) hiddenIntervalMillis else visibleIntervalMillis
+        if hidden then hiddenIntervalMillis else visibleIntervalMillis
         )(() =>
-          if (expectedTimerGeneration == timerGeneration) beginPoll()
+          if expectedTimerGeneration == timerGeneration then beginPoll()
         ))
 
   private def beginPoll(): Unit =
     scheduled = None
-    if (running && !inFlight) current.foreach { request =>
+    if running && !inFlight then current.foreach { request =>
       inFlight = true
       requestPoll(request)
     }

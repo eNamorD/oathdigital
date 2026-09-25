@@ -82,17 +82,17 @@ object GameProjectionCodec:
     value.viewerPlayerId.foreach(player => result("viewerPlayerId") = ujson.Str(player))
     result
 
-  private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
+  private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for
     value <- obj(raw, path); _ <- exact(value, Fields, path)
     game <- string(value, "gameId", path); sequence <- long(value, "nextSequence", path)
     phase <- string(value, "phase", path); active <- optionalString(value, "activeParticipantId", path)
     playerRaws <- array(value, "players", path); players <- traverse(playerRaws, s"$path.players")(decodePlayer)
     regionRaws <- array(value, "world", path); world <- traverse(regionRaws, s"$path.world")(decodeRegion)
     pawnRaws <- array(value, "pawnLocations", path)
-    pawns <- traverse(pawnRaws, s"$path.pawnLocations") { (raw, child) => for {
+    pawns <- traverse(pawnRaws, s"$path.pawnLocations") { (raw, child) => for
       row <- obj(raw, child); _ <- exact(row, Set("playerId", "siteId"), child)
       player <- string(row, "playerId", child); site <- string(row, "siteId", child)
-    } yield PawnLocationProjection(player, site) }
+    yield PawnLocationProjection(player, site) }
     controls <- strings(value, "legalControls", path); ready <- bool(value, "ready", path)
     completed <- bool(value, "completed", path)
     resources <- optionalAbsent(value, "activePlayerResources", path)(decodeResources)
@@ -116,17 +116,17 @@ object GameProjectionCodec:
     banners <- traverse(bannerRaws, s"$path.banners")(decodeBanner)
     minor <- optionalAbsent(value, "minorActions", path)(decodeMinor)
     bankRaws <- default(value, "favorBanks", path, Vector.empty[ujson.Value])(array)
-    banks <- traverse(bankRaws, s"$path.favorBanks") { (raw, child) => for {
+    banks <- traverse(bankRaws, s"$path.favorBanks") { (raw, child) => for
       row <- obj(raw, child); _ <- exact(row, Set("suit", "count"), child)
       suit <- string(row, "suit", child); count <- int(row, "count", child)
-    } yield FavorBankProjection(suit, count) }
-    tracks <- optionalAbsent(value, "tracks", path) { (raw, child) => for {
+    yield FavorBankProjection(suit, count) }
+    tracks <- optionalAbsent(value, "tracks", path) { (raw, child) => for
       row <- obj(raw, child); _ <- exact(row, Set("round", "visionsDrawn",
         "usurperLimited", "limiterRound", "firstPlayerId"), child)
       round <- int(row, "round", child); visions <- int(row, "visionsDrawn", child)
       limited <- bool(row, "usurperLimited", child); limiter <- int(row, "limiterRound", child)
       first <- string(row, "firstPlayerId", child)
-    } yield GameTracksProjection(round, visions, limited, limiter, first) }
+    yield GameTracksProjection(round, visions, limited, limiter, first) }
     relicDeck <- intOr(value, "relicDeckCount", path, 0)
     previewRaws <- default(value, "temporaryHandPreview", path,
       Vector.empty[ujson.Value])(array)
@@ -140,7 +140,7 @@ object GameProjectionCodec:
     viewer <- optionalAbsent(value, "viewerPlayerId", path)(string)
     supplyMaximum <- intOr(value, "supplyMaximum", path, 0)
     restGain <- optionalAbsent(value, "restSupplyGain", path)(int)
-  } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
+  yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, actions, pending,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
@@ -148,35 +148,35 @@ object GameProjectionCodec:
     walkerDecision, walkerWaiting, phasePowers, lastCampaign, viewer,
     supplyMaximum, restGain)
 
-  private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
+  private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",
       "committedSecrets", "totalSecrets", "supply"), path)
     favor <- int(v, "favor", path); up <- int(v, "faceUpSecrets", path)
     down <- int(v, "faceDownSecrets", path)
     committed <- int(v, "committedSecrets", path)
     total <- int(v, "totalSecrets", path); supply <- int(v, "supply", path)
-  } yield ActivePlayerResourcesProjection(favor, up, down, committed, total, supply)
-  private def decodeSiteResources(raw: ujson.Value, path: String): Result[CurrentSiteResourcesProjection] = for {
+  yield ActivePlayerResourcesProjection(favor, up, down, committed, total, supply)
+  private def decodeSiteResources(raw: ujson.Value, path: String): Result[CurrentSiteResourcesProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("siteId", "favor", "secrets"), path)
     site <- string(v, "siteId", path); favor <- int(v, "favor", path); secrets <- int(v, "secrets", path)
-  } yield CurrentSiteResourcesProjection(site, favor, secrets)
-  private def decodeDestination(raw: ujson.Value, path: String): Result[LegalTravelDestinationProjection] = for {
+  yield CurrentSiteResourcesProjection(site, favor, secrets)
+  private def decodeDestination(raw: ujson.Value, path: String): Result[LegalTravelDestinationProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("siteId", "supplyCost"), path)
     site <- string(v, "siteId", path); cost <- int(v, "supplyCost", path)
-  } yield LegalTravelDestinationProjection(site, cost)
-  private def decodeSearchSource(raw: ujson.Value, path: String): Result[LegalSearchSourceProjection] = for {
+  yield LegalTravelDestinationProjection(site, cost)
+  private def decodeSearchSource(raw: ujson.Value, path: String): Result[LegalSearchSourceProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("kind", "region", "supplyCost"), path)
     kind <- string(v, "kind", path); region <- optionalString(v, "region", path)
     cost <- int(v, "supplyCost", path)
-  } yield LegalSearchSourceProjection(kind, region, cost)
-  private def decodeOathkeeper(raw: ujson.Value, path: String): Result[OathkeeperProjection] = for {
+  yield LegalSearchSourceProjection(kind, region, cost)
+  private def decodeOathkeeper(raw: ujson.Value, path: String): Result[OathkeeperProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("goal", "holderPlayerId", "side", "usurperLimited", "winnerPlayerId", "winnerVictoryKind"), path)
     goal <- string(v, "goal", path); holder <- optionalString(v, "holderPlayerId", path)
     side <- string(v, "side", path); limited <- bool(v, "usurperLimited", path)
     winner <- optionalString(v, "winnerPlayerId", path); kind <- optionalString(v, "winnerVictoryKind", path)
-  } yield OathkeeperProjection(goal, holder, side, limited, winner, kind)
-  private def decodeBanner(raw: ujson.Value, path: String): Result[BannerProjection] = for {
+  yield OathkeeperProjection(goal, holder, side, limited, winner, kind)
+  private def decodeBanner(raw: ujson.Value, path: String): Result[BannerProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("banner", "face", "holderPlayerId", "resources"), path)
     key <- string(v, "banner", path); face <- string(v, "face", path)
     holder <- optionalString(v, "holderPlayerId", path); resources <- int(v, "resources", path)
-  } yield BannerProjection(key, face, holder, resources)
+  yield BannerProjection(key, face, holder, resources)

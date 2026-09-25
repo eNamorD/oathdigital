@@ -16,11 +16,11 @@ sealed abstract class ForgeRule extends ContributingPower:
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   private def at(ctx: PowerCtx): Option[(PlayerId, SiteId)] =
-    for {
+    for
       edificeSite <- EdificeSetupSupport.siteOf(ctx.state, edifice, side)
       placement <- EdificeSetupSupport.pawnPlacement(ctx)
       if placement._2 == edificeSite
-    } yield placement
+    yield placement
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx).isDefined
 

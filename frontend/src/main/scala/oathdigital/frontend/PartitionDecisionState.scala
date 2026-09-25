@@ -63,7 +63,7 @@ private[frontend] final case class PartitionDecisionState(
     * offered.
     */
   def moveTo(item: String, sectionKey: String): PartitionDecisionState =
-    if (sectionOf(item).contains(sectionKey)) this
+    if sectionOf(item).contains(sectionKey) then this
     else placeBefore(item, sectionKey, None)
 
   /** Places one item into a declared section, before `before` when that
@@ -97,7 +97,7 @@ private[frontend] final case class PartitionDecisionState(
       val current = itemsIn(key)
       val from = current.indexOf(item)
       val to = math.max(0, math.min(current.size - 1, from + delta))
-      if (from == to) this
+      if from == to then this
       else withSection(key, current.patch(from, Nil, 1).patch(to, Vector(item), 0))
     }
 
@@ -130,7 +130,7 @@ private[frontend] object PartitionDecisionState:
     val required = sections.flatMap(section =>
       Vector.fill(section.minRequired)(section.key))
     val slack = items.size - required.size
-    val keys = if (slack <= 0) required.take(items.size)
+    val keys = if slack <= 0 then required.take(items.size)
       else
         val remaining = scala.collection.mutable.Map.empty[String, Int]
         required.foreach(key => remaining.update(key, remaining.getOrElse(key, 0) + 1))

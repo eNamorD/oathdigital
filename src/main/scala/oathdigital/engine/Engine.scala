@@ -39,7 +39,7 @@ final class InMemoryEventJournal[E] extends EventJournal[E]:
       events: Vector[E]
   ): EventAppendResult[E] = synchronized:
     val actualIndex = records.size.toLong
-    if (expectedIndex != actualIndex)
+    if expectedIndex != actualIndex then
       EventAppendResult.Conflict(expectedIndex, actualIndex)
     else
       val appended = events.zipWithIndex.map { case (event, offset) =>

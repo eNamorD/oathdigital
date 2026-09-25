@@ -73,7 +73,7 @@ final class InMemoryEventStreamRepository extends EventStreamRepository:
         val expectedSequence =
           expected.asInstanceOf[AtNextSequence].value
         val actual = current.size.toLong
-        if (expectedSequence != actual)
+        if expectedSequence != actual then
           Right(SequenceConflict(expectedSequence, actual))
         else
           streams += gameId -> (current ++ records)

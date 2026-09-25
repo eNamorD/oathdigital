@@ -16,11 +16,11 @@ final case class ProvingGrounds private (edifice: EdificeId, catalog: Executable
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   private def at(ctx: PowerCtx): Option[(PlayerId, SiteId)] =
-    for {
+    for
       edificeSite <- EdificeSetupSupport.siteOf(ctx.state, edifice, EdificeSide.Intact)
       placement <- EdificeSetupSupport.pawnPlacement(ctx)
       if placement._2 == edificeSite
-    } yield placement
+    yield placement
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx).isDefined
 
@@ -69,13 +69,13 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
         current.map.sites(s).denizens.map(s -> _))
         .filterNot { case (s, card) => s == site && card.id.value == edifice.value }
       candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](Right(Vector.empty)):
-        case (acc, (siteId, card)) => for {
+        case (acc, (siteId, card)) => for
           operations <- acc
           suit <- catalog.suitOf(card.id).toRight(card match {
             case denizen: DenizenState => OathViolation.UnknownWorldCard(denizen.id)
             case edifice: EdificeState => OathViolation.UnknownEdifice(edifice.id)
           })
-        } yield card match
+        yield card match
           case denizen: DenizenState => operations :+ Discard.Denizen(denizen.id,
             PositionedLocation(Location.Site(siteId)), destination, suit,
             denizen.tokens.favor, denizen.tokens.secrets, actor)

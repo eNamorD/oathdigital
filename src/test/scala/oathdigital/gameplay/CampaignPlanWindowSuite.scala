@@ -386,7 +386,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       val g = rulesWith(plans, swords)
       val (_, forced) = committed(g, b, force = 4)
       val next =
-        if (chooses) pick(g, forced, b.actor, CampaignIds.attackerPlan,
+        if chooses then pick(g, forced, b.actor, CampaignIds.attackerPlan,
           denizen(orderCard))
         else pick(g, forced, b.actor, CampaignIds.attackerPlan,
           CampaignIds.finish)

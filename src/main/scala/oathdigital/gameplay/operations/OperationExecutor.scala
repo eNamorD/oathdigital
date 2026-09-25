@@ -55,7 +55,7 @@ final class OperationExecutor:
       ready: ReadyGame,
       operations: Vector[CoreOperation]
   ): Either[OperationError, ReadyGame] =
-    if (operations.isEmpty) Left(OperationError.EmptyOperationBatch)
+    if operations.isEmpty then Left(OperationError.EmptyOperationBatch)
     else
       operations.foldLeft[Either[OperationError, ReadyGame]](Right(ready)):
         (result, operation) => result.flatMap(staged => execute(staged, operation))
@@ -70,7 +70,7 @@ private[operations] object OperationStateInvariant:
       ready: ReadyGame,
       expectedCards: Set[CardId]
   ): Either[OperationError, Unit] =
-    for {
+    for
       actual <- cardIds(ready)
       _ <- Either.cond(
         actual == expectedCards,
@@ -81,7 +81,7 @@ private[operations] object OperationStateInvariant:
       _ <- Either.cond(problems.isEmpty, (), InvalidPostState(problems))
       _ <- validateOrientations(ready)
       _ <- validateWarbands(ready)
-    } yield ()
+    yield ()
 
   private def validateOrientations(
       ready: ReadyGame

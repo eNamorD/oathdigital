@@ -32,7 +32,7 @@ private[serialization] object NegotiationTermsCodec:
 
   def decode(value: ujson.Value, path: String)
       : Either[WireError, NegotiationTerms] = try
-    for {
+    for
       transfers <- traverse(value("transfers").arr.toVector) { row =>
         val raw = row("favor").num
         Either.cond(raw.isValidInt, raw.toInt, InvalidValue(
@@ -57,7 +57,7 @@ private[serialization] object NegotiationTermsCodec:
         decoded.map(NegotiationDisclosure(
           PlayerId(row("recipientPlayerId").str), _))
       }
-    } yield NegotiationTerms(transfers, disclosures)
+    yield NegotiationTerms(transfers, disclosures)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid Negotiation terms"))) }
 

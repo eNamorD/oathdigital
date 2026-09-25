@@ -27,8 +27,8 @@ final class PowerResolver(registry: PowerRegistry):
         registry.handler(id, window).toRight(UnknownAbility(source, id)).map { handler =>
           val inspection = handler.inspect(
             PowerContext(window, source, facts))
-          if (!inspection.applicable) current
-          else if (handler.implemented) handler.resolution match
+          if !inspection.applicable then current
+          else if handler.implemented then handler.resolution match
                 case PlayerSelected => current.copy(offered = current.offered :+
                   PowerInvocation(source, id, inspection))
                 case Automatic => current.copy(automatic = current.automatic :+

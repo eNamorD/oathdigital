@@ -52,7 +52,7 @@ private[application] final class WalkerDecisionProjector(
   private def parkedPosition(context: ScopedProjectionContext)
       : Option[WalkerDecisionProjector.Parked] =
     import WalkerDecisionProjector.Parked
-    for {
+    for
       pending <- context.current.walkerPending
       procedure <- context.current.walkerProcedure
       tree <- rebuild(context.ready, procedure,
@@ -64,18 +64,18 @@ private[application] final class WalkerDecisionProjector(
         powers)
       owners = ProcedureWalker.awaitedPlayers(context.ready, tree, pending,
         powers)
-    } yield Parked(procedure, tree, pending, powers, awaited, owners)
+    yield Parked(procedure, tree, pending, powers, awaited, owners)
 
   /** The full owner-private projection, for every owner of the parked
     * decision: the awaited player and any co-owners.
     */
   def project(context: ScopedProjectionContext)
-      : Option[WalkerDecisionProjection] = for {
+      : Option[WalkerDecisionProjection] = for
     parked <- parkedPosition(context)
     if context.viewer.exists(parked.owners.contains)
     projection <- this.parked(parked.procedure, parked.tree, context.ready,
       parked.pending, parked.powers, parked.awaited, context.viewer)
-  } yield projection
+  yield projection
 
   /** The public "who is this waiting on" projection, for every viewer
     * except the awaited player -- Task 5's counterpart to `project`. Built
@@ -84,13 +84,13 @@ private[application] final class WalkerDecisionProjector(
     * who is.
     */
   def waiting(context: ScopedProjectionContext)
-      : Option[WalkerWaitingProjection] = for {
+      : Option[WalkerWaitingProjection] = for
     parked <- parkedPosition(context)
     if !context.viewer.exists(parked.owners.contains)
     _ <- this.parked(parked.procedure, parked.tree, context.ready,
       parked.pending, parked.powers, parked.awaited, context.viewer,
       previewed = false)
-  } yield
+  yield
     val decide = ProcedureWalker.parkedDecide(context.ready, parked.tree,
       parked.pending, parked.powers)
     WalkerWaitingProjection(parked.awaited.value,
@@ -139,7 +139,7 @@ private[application] final class WalkerDecisionProjector(
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
         .flatMap { decide =>
           val (query, details) =
-            if (previewed) playable(procedure, ready, tree, pending, powers,
+            if previewed then playable(procedure, ready, tree, pending, powers,
               decide)
             else (decide.query, Map.empty[DecisionOptionRef, Vector[String]])
           queryProjection(ready, viewer, query, details).map(projected =>
@@ -162,7 +162,7 @@ private[application] final class WalkerDecisionProjector(
   private def playable(procedure: ProcedureRef, ready: ReadyGame,
       tree: Operation, pending: PendingTree, powers: WalkerPowers,
       decide: Decide): (DecisionQuery, Map[DecisionOptionRef, Vector[String]]) =
-    if (!WalkerProcedureRegistry.requiresPlayableOption(procedure))
+    if !WalkerProcedureRegistry.requiresPlayableOption(procedure) then
       (decide.query, Map.empty)
     else WalkerSimulation.previewParked(ready, tree, pending, powers) match
       case Left(_) => (decide.query, Map.empty)
@@ -278,10 +278,10 @@ private[application] final class WalkerDecisionProjector(
         viewer, index, inner, details).map(_.copy(badge = Some(badge)))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
-        if (ready.game.current.players.exists(_.player == player.id))
+        if ready.game.current.players.exists(_.player == player.id) then
           row(presentation.safeLabel(player.id.value)) else None
       case DecisionOption.Site(site) =>
-        if (ready.game.current.map.sites.contains(site.id))
+        if ready.game.current.map.sites.contains(site.id) then
           row(presentation.siteLabel(site.id)) else None
       case DecisionOption.Denizen(denizen) =>
         card(ready, viewer, index, denizen.id)
@@ -298,8 +298,8 @@ private[application] final class WalkerDecisionProjector(
         }.flatMap(state => row(presentation.edificeLabel(state.id, state.side),
           Some(presentation.edificeCardDetails(state))))
       case DecisionOption.RelicSlot(slot) =>
-        if (ready.game.current.players.find(_.player == slot.owner)
-            .exists(_.relics.isDefinedAt(slot.slot)))
+        if ready.game.current.players.find(_.player == slot.owner)
+            .exists(_.relics.isDefinedAt(slot.slot)) then
           row(s"${presentation.safeLabel(slot.owner.value)} facedown relic")
         else None
       case DecisionOption.Banner(held) =>
@@ -377,8 +377,8 @@ private[application] final class WalkerDecisionProjector(
       index.flatMap(_.get(id)) match
         case Some(located) =>
           val orientation = orientationOf(located.state)
-          if (presentation.identifiesCard(ready, viewer, id, orientation,
-              located.location.container))
+          if presentation.identifiesCard(ready, viewer, id, orientation,
+              located.location.container) then
             presentation.cardDetails(id, orientation, hidden = false)
           else presentation.hiddenCard(presentation.cardKind(id))
         case None => presentation.hiddenCard(presentation.cardKind(id))

@@ -13,10 +13,10 @@ private[gameplay] object OathLifecycle:
       case NoGame => Left(GameNotStarted)
       case Ready(ready) =>
         val current = ready.game.current
-        if (current.result.nonEmpty) Left(GameEnded)
-        else if (current.turn.activePlayer != playerId)
+        if current.result.nonEmpty then Left(GameEnded)
+        else if current.turn.activePlayer != playerId then
           Left(WrongPlayer(current.turn.activePlayer, playerId))
-        else if (current.turn.phase != Phase.Wake)
+        else if current.turn.phase != Phase.Wake then
           Left(WrongPhase(Phase.Wake, current.turn.phase))
         else Right(ready)
 
@@ -27,12 +27,12 @@ private[gameplay] object OathLifecycle:
     case NoGame => Left(GameNotStarted)
     case Ready(ready) =>
       val current = ready.game.current
-      if (current.result.nonEmpty) Left(GameEnded)
-      else if (current.turn.activePlayer != playerId)
+      if current.result.nonEmpty then Left(GameEnded)
+      else if current.turn.activePlayer != playerId then
         Left(WrongPlayer(current.turn.activePlayer, playerId))
-      else if (current.turn.phase != Phase.Act)
+      else if current.turn.phase != Phase.Act then
         Left(WrongPhase(Phase.Act, current.turn.phase))
-      else if (current.walkerPending.nonEmpty)
+      else if current.walkerPending.nonEmpty then
         Left(InvalidEventOrder(
           "a walker procedure is pending; legacy actions are blocked"))
       else Right(ready)

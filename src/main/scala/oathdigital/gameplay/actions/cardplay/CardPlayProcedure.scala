@@ -31,11 +31,11 @@ object CardPlayProcedure:
 
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Operation] = for {
+      : Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
     card <- facedownCard(args)
     tree <- build(catalog, ready, actor, card, Origin.FacedownAdviser)
-  } yield tree
+  yield tree
 
   def rebuildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
@@ -98,7 +98,7 @@ object CardPlayProcedure:
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       card: WorldCardId, origin: Origin): Either[OathViolation, Operation] =
-    if (!heldAtOrigin(ready, actor, card, origin)) Left(
+    if !heldAtOrigin(ready, actor, card, origin) then Left(
       OathViolation.InvalidSearchPlacement(
         "card is not held at the selected origin"))
     else Right(unchecked(catalog, ready, actor, card, origin))
@@ -119,7 +119,7 @@ object CardPlayProcedure:
         case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
         case Origin.FacedownAdviser => CardPlay.Origin.FacedownAdviser
       val held = heldAtOrigin(ready, actor, card, origin)
-      val candidates = if (!held) Vector.empty else CardPlay.legalChoices(
+      val candidates = if !held then Vector.empty else CardPlay.legalChoices(
         catalog, ready, actor, card, legacyOrigin, rules).map { choice =>
         val ref = choice.placement match
           case SearchPlacement.Discard => discard
@@ -135,7 +135,7 @@ object CardPlayProcedure:
       // were given does not work. It may still be held as a facedown adviser
       // -- that is how an Exile keeps a Vision to reveal later, and how
       // Conspiracy is later played faceup from the Advisers area.
-      val offered = if (!card.isInstanceOf[VisionId]) candidates
+      val offered = if !card.isInstanceOf[VisionId] then candidates
         else candidates.filter(pair => pair._1 != site)
       val options = offered.map { case (ref, _, _, _) =>
         DecisionOption.Button(ref, label(ref))
@@ -153,23 +153,23 @@ object CardPlayProcedure:
         // Once the card has left its origin the choices can no longer be
         // planned: the tree is settled from the answers instead, keeping the
         // shape it had when the decisions were asked.
-        val chosen = if (held) offered.find(pair => ref.contains(pair._1))
+        val chosen = if held then offered.find(pair => ref.contains(pair._1))
         else ref.flatMap(settled(_, card, replaced))
         chosen.toVector.flatMap {
           case (_, placement, replacements, optional) =>
-            val choice = if (replacements.isEmpty) Vector.empty else Vector(
+            val choice = if replacements.isEmpty then Vector.empty else Vector(
               Decide(replacementId, actor, DecisionQuery.ChooseOne(
-                (if (optional) Vector(noReplacement) else Vector.empty) ++
+                (if optional then Vector(noReplacement) else Vector.empty) ++
                   replacements.map(_._1),
                 heading = Some("Choose a card to discard"))))
             val apply = BuildOps((state, pending) => {
-              val chosen = if (replacements.isEmpty) Right(placement)
+              val chosen = if replacements.isEmpty then Right(placement)
               else pending.answered.collectFirst {
                 case Answered(`replacementId`,
                     DecisionAnswer.ChooseOneAnswer(value), _) => value
               }.toRight(OathViolation.InvalidSearchPlacement(
                 "replacement was not selected")).flatMap { value =>
-                if (optional && value == noReplacement.ref) Right(placement)
+                if optional && value == noReplacement.ref then Right(placement)
                 else replacements.find(_._1.ref == value).map(_._2)
                   .toRight(OathViolation.InvalidSearchPlacement(
                     "replacement was not selected")).map { id => placement match {
@@ -210,7 +210,7 @@ object CardPlayProcedure:
         Some(SearchPlacement.Adviser(Orientation.FaceDown, None))
       case _ => None
     placement.map(value => (ref, value,
-      if (replaced) Vector((noReplacement: DecisionOption) -> card)
+      if replaced then Vector((noReplacement: DecisionOption) -> card)
       else Vector.empty,
       false))
 

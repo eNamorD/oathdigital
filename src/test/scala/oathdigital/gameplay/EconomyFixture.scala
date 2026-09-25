@@ -45,7 +45,7 @@ object EconomyFixture:
           initial.game.current.commonCards.worldDeck.filterNot(inserted)),
         map = initial.game.current.map.copy(sites =
           initial.game.current.map.sites.updated(siteId, site)),
-        players = initial.game.current.players.map(p => if (p.player != activeId) p
+        players = initial.game.current.players.map(p => if p.player != activeId then p
           else p.copy(board = p.board.copy(favor = favor,
             faceUpSecrets = secrets, supply = SupplyTrack(supply),
             warbands = boardWarbands), advisers = advisers)))))

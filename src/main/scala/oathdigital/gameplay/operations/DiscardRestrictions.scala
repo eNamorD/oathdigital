@@ -42,14 +42,14 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
   private def lockedReason(ready: ReadyGame, operation: CoreOperation)
       : Option[OperationReason] = operation match
     case value: Discard.Denizen if inPlay(value.from.location) =>
-      if (faceup(ready, value.card, value.from.location) &&
+      if faceup(ready, value.card, value.from.location) &&
           catalog.denizens.find(_.id.value == value.card.value)
           .exists(d => d.restrictions == CardRestrictions.LockedAdviserOnly ||
-            d.restrictions == CardRestrictions.Locked))
+            d.restrictions == CardRestrictions.Locked) then
         refuse("locked", s"${value.card.value} is locked and cannot be discarded")
       else active(ready, value.card)
     case value: Discard.RuinedEdifice =>
-      if (intact(ready, value.card, value.from.location))
+      if intact(ready, value.card, value.from.location) then
         refuse("locked",
           s"${value.card.value} is an intact edifice and cannot be discarded")
       else None
@@ -77,8 +77,8 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
 
   /** `card` prints a power selected for the running action. */
   private def active(ready: ReadyGame, card: CardId): Option[OperationReason] =
-    if (ready.game.current.walkerModifiers.exists(power =>
-        printedBy(power).contains(card)))
+    if ready.game.current.walkerModifiers.exists(power =>
+        printedBy(power).contains(card)) then
       refuse("active-modifier", s"${card.value} is a modifier selected for " +
         "this action and cannot be discarded")
     else None
@@ -111,13 +111,13 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
       val current = ready.game.current
       val actorSide = current.players.find(_.player == actor).flatMap { player =>
         ready.game.campaign.lineages.get(player.lineage).map { lineage =>
-          if (lineage.role.isImperial) SiteRuler.Empire
+          if lineage.role.isImperial then SiteRuler.Empire
           else SiteRuler.Player(actor)
         }
       }
       val targetRuler = current.map.sites.get(site).flatMap(state =>
         SiteRule.ruler(state.forces, current.players).toOption)
-      for {
+      for
         sourceSide <- actorSide
         ruler <- targetRuler
         if SiteRule.enemies(sourceSide, ruler)
@@ -129,7 +129,7 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
                   .exists(_.intact.powers.exists(_.id == hallPower))
               case _ => false
         }
-      } yield OperationReason("discard-immune",
+      yield OperationReason("discard-immune",
         s"cards at site ${site.value} cannot be discarded by ${actor.value}",
         OperationReasonKind.Impossible)
     }

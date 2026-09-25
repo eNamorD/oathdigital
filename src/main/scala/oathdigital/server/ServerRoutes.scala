@@ -37,7 +37,7 @@ object ServerRoutes:
     // Development mode binds only to loopback, so a browser may reach it through
     // any loopback alias; accept those origins on the same port.
     val loopbackAliases =
-      if (config.mode == ServerMode.Development && config.publicBaseUrl.isEmpty)
+      if config.mode == ServerMode.Development && config.publicBaseUrl.isEmpty then
         Seq("localhost", "127.0.0.1", "[::1]").map(host =>
           new java.net.URI(s"http://$host:${config.port}"))
       else Nil

@@ -60,7 +60,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
     case _ => true
 
   private def takeable(ready: ReadyGame, actor: PlayerId): Vector[DenizenState] =
-    if (full(ready, actor) && discardable(ready, actor).isEmpty) Vector.empty
+    if full(ready, actor) && discardable(ready, actor).isEmpty then Vector.empty
     else site(ready, actor).toVector.flatMap(_._2.denizens.collect {
       case d: DenizenState => d })
 
@@ -70,15 +70,15 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
 
   private def askDenizen(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = takeable(ready, actor)
-    if (found.isEmpty) Vector.empty
+    if found.isEmpty then Vector.empty
     else Vector(Decide(denizenDecisionId, actor, DecisionQuery.ChooseOne(
       found.map(d => DecisionOption.Denizen(DecisionOptionRef.Denizen(d.id))),
       heading = Some("Horned Mask: take a denizen as a facedown adviser"))))
 
   private def askDiscard(ready: ReadyGame, actor: PlayerId,
       pending: PendingTree): Vector[Operation] =
-    if (!full(ready, actor) ||
-        PowerAnswers.one(pending, denizenDecisionId).isEmpty) Vector.empty
+    if !full(ready, actor) ||
+        PowerAnswers.one(pending, denizenDecisionId).isEmpty then Vector.empty
     else Vector(Decide(discardDecisionId, actor, DecisionQuery.ChooseOne(
       discardable(ready, actor).flatMap(a => DecisionOption.forRef(ref(a))),
       heading = Some("Horned Mask: choose an adviser to discard"))))
@@ -86,8 +86,8 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   private def take(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val found = takeable(ready, actor)
-    if (found.isEmpty) Right(Vector.empty)
-    else for {
+    if found.isEmpty then Right(Vector.empty)
+    else for
       answered <- PowerAnswers.one(pending, denizenDecisionId)
         .toRight(PowerAnswers.missing(denizenDecisionId))
       card <- found.find(d => DecisionOptionRef.Denizen(d.id) == answered)
@@ -96,10 +96,10 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
       siteId <- site(ready, actor).map(_._1)
         .toRight(OathViolation.PawnSiteMissing(actor))
       discards <-
-        if (full(ready, actor)) discard(ready, actor, pending)
+        if full(ready, actor) then discard(ready, actor, pending)
         else Right(Vector.empty[CoreOperation])
       returns <- returnsOf(card, siteId, actor)
-    } yield discards ++ returns ++ Vector[CoreOperation](
+    yield discards ++ returns ++ Vector[CoreOperation](
       Take(Piece.Card(card.id), actor, Location.Site(siteId),
         Location.PlayArea(actor)),
       Flip(card.id, Location.PlayArea(actor), Orientation.FaceDown))
@@ -111,14 +111,14 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   private def returnsOf(card: DenizenState, site: SiteId, actor: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     val suit = catalog.suitOf(card.id)
-    if (card.tokens.favor > 0 && suit.isEmpty) Left(OathViolation
+    if card.tokens.favor > 0 && suit.isEmpty then Left(OathViolation
       .InvalidEventOrder(s"no suit is known for ${card.id.value}"))
     else Right(Bury.standard(BuryableCard.Denizen(card.id),
       PositionedLocation(Location.Site(site)), suit, card.tokens.favor,
       card.tokens.secrets, actor).filterNot(_.isInstanceOf[Bury]))
 
   private def discard(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = for {
+      : Either[OathViolation, Vector[CoreOperation]] = for
     answered <- PowerAnswers.one(pending, discardDecisionId)
       .toRight(PowerAnswers.missing(discardDecisionId))
     chosen <- discardable(ready, actor).find(ref(_) == answered)
@@ -135,7 +135,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
             d.tokens.secrets, actor, required = true))
       case v: VisionState =>
         Right(Discard.Vision(v.id, from, region, required = true))
-  } yield Vector[CoreOperation](operation)
+  yield Vector[CoreOperation](operation)
 
 object HornedMask:
   val id: PowerId = PowerId("relic.horned-mask")

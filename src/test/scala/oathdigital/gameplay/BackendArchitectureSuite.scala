@@ -20,7 +20,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     val result = GameplayTransition(OathState.NoGame, events,
       OathContinue.AwaitingWakeAction(PlayerId("p1"))) { (state, _) =>
       applied += 1
-      if (applied == 1) Right(state) else Left(violation)
+      if applied == 1 then Right(state) else Left(violation)
     }
     assertEquals(result, Left(violation))
     assertEquals(applied, 2)
@@ -64,7 +64,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     val (siteId, relic) = base.game.current.map.inPlay.iterator.flatMap(id =>
       base.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
     val players = base.game.current.players.map(player =>
-      if (player.player == actor) player.copy(pawnSite = Some(siteId)) else player)
+      if player.player == actor then player.copy(pawnSite = Some(siteId)) else player)
     val site = base.game.current.map.sites(siteId)
     val faceup = relic.copy(orientation = Orientation.FaceUp)
     val changed = base.updateCurrent(_.copy(

@@ -41,13 +41,13 @@ private[frontend] final case class DistributeDecisionState(
     slot(item).fold(this) { bounds =>
       val step = math.min(by, math.min(remaining,
         bounds.maximum - amount(item)))
-      if (step <= 0) this else set(item, amount(item) + step)
+      if step <= 0 then this else set(item, amount(item) + step)
     }
 
   private def lower(item: String, by: Int): DistributeDecisionState =
     slot(item).fold(this) { bounds =>
       val step = math.min(by, amount(item) - bounds.minimum)
-      if (step <= 0) this else set(item, amount(item) - step)
+      if step <= 0 then this else set(item, amount(item) - step)
     }
 
   private def slot(item: String): Option[DistributeSlotBounds] =

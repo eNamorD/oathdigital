@@ -56,7 +56,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     val players = base.game.current.players.map(_.player)
     val relicLeader = players(1)
     val withRelics = base.game.current.players.map { player =>
-      if (player.player == relicLeader) player.copy(relics = Vector(
+      if player.player == relicLeader then player.copy(relics = Vector(
         RelicState(RelicId("qualification-relic"), Orientation.FaceDown,
           Tokens.empty)))
       else player
@@ -95,7 +95,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     assertEquals(OathkeeperRules.outcome(protection), OathkeeperOutcome.NoChange)
 
     val tiedPlayers = players.zipWithIndex.map { case (player, index) =>
-      if (index < 2) player.copy(relics = Vector(RelicState(
+      if index < 2 then player.copy(relics = Vector(RelicState(
         RelicId(s"tied-relic-$index"), Orientation.FaceDown, Tokens.empty)))
       else player
     }
@@ -162,13 +162,13 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     val cases = Vector(
       VisionRules.Conquest -> prepared(Vector(Some(active))),
       VisionRules.Sanctuary -> base.updateCurrent(_.copy(players = base.game.current.players.map(p =>
-          if (p.player == active) p.copy(relics = Vector(relic)) else p))),
+          if p.player == active then p.copy(relics = Vector(relic)) else p))),
       VisionRules.Rebellion -> bannerState(Banner.PeoplesFavor),
       VisionRules.Faith -> bannerState(Banner.DarkestSecret)
     )
     cases.foreach { case (vision, state0) =>
       val state = state0.updateCurrent(_.copy(
-        players = state0.game.current.players.map(p => if (p.player == active)
+        players = state0.game.current.players.map(p => if p.player == active then
           p.copy(revealedVision = Some(VisionState(vision, Orientation.FaceUp))) else p),
         tracks = state0.game.current.tracks.copy(visionsDrawn = 3)))
       assertEquals(StateBasedEvaluation.visionAtWake(Ready(state)),
@@ -183,7 +183,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     val active = base.game.current.turn.activePlayer
     val qualifying = prepared(Vector(Some(active)), holder = Some(active), limited = false)
     val withVision = qualifying.updateCurrent(_.copy(players = qualifying.game.current.players.map(p =>
-        if (p.player == active) p.copy(revealedVision = Some(VisionState(
+        if p.player == active then p.copy(revealedVision = Some(VisionState(
           VisionRules.Conquest, Orientation.FaceUp))) else p), tracks =
         qualifying.game.current.tracks.copy(visionsDrawn = 3)))
     assertEquals(StateBasedEvaluation.atWake(Ready(withVision)),
@@ -244,14 +244,14 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
           peoplesFavor = base.game.current.banners.peoplesFavor.copy(
             holder = Some(players(0)))))),
       VisionRules.Sanctuary -> base.updateCurrent(_.copy(players = base.game.current.players.map(p =>
-          if (p.player == players(0)) p.copy(relics = Vector(relic)) else p))),
+          if p.player == players(0) then p.copy(relics = Vector(relic)) else p))),
       VisionRules.Faith -> base.updateCurrent(_.copy(banners = base.game.current.banners.copy(
           darkestSecret = base.game.current.banners.darkestSecret.copy(
             holder = Some(players(0))))))
     )
     cases.foreach { case (vision, state0) =>
       val state = state0.updateCurrent(_.copy(players = state0.game.current.players.map(p =>
-          if (p.player == players(0)) p.copy(revealedVision = Some(
+          if p.player == players(0) then p.copy(revealedVision = Some(
             VisionState(vision, Orientation.FaceUp))) else p), tracks =
           state0.game.current.tracks.copy(visionsDrawn = 3)))
       assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(state)), _.head).toOption.get.last,
@@ -279,7 +279,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     val player = base.game.current.players.head.player
     val qualified = prepared(Vector(Some(player)), round = 8)
     def withCount(count: Int, holder: Option[PlayerId]) = qualified.updateCurrent(_.copy(
-        players = qualified.game.current.players.map(p => if (p.player == player)
+        players = qualified.game.current.players.map(p => if p.player == player then
           p.copy(revealedVision = Some(VisionState(VisionRules.Conquest,
             Orientation.FaceUp))) else p),
         tracks = qualified.game.current.tracks.copy(visionsDrawn = count),

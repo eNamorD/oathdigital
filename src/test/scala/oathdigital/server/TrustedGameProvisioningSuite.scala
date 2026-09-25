@@ -58,7 +58,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       try
         val result = statement.executeQuery("SELECT token_digest, created_at_millis FROM trusted_seats ORDER BY player_id")
         var index = 0
-        while (result.next())
+        while result.next() do
           assertEquals(result.getBytes(1).toVector, codes(index).digest.bytes)
           assertEquals(result.getLong(2), 1234L)
           index += 1

@@ -7,6 +7,6 @@ package oathdigital.model
 object PlayerForceKind:
   def of(ready: ReadyGame, player: PlayerState): Option[ForceKind] =
     ready.game.campaign.lineages.get(player.lineage).map { lineage =>
-      if (lineage.role.isImperial) ForceKind.Imperial
+      if lineage.role.isImperial then ForceKind.Imperial
       else ForceKind.Exile(player.lineage)
     }

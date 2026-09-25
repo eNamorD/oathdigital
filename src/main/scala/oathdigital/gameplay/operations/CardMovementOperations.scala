@@ -39,8 +39,8 @@ private[operations] object CardMovementOperations:
   private def sourcePositionViolation(
       positioned: PositionedLocation
   ): Option[OperationError] =
-    if (isStack(positioned.location)) None
-    else if (positioned.position == StackPosition.Unspecified) None
+    if isStack(positioned.location) then None
+    else if positioned.position == StackPosition.Unspecified then None
     else Some(InvalidStackPosition(
       positioned.location,
       "non-stack source cannot specify top or bottom"
@@ -49,13 +49,13 @@ private[operations] object CardMovementOperations:
   private def destinationPositionViolation(
       positioned: PositionedLocation
   ): Option[OperationError] =
-    if (isStack(positioned.location))
-      if (positioned.position != StackPosition.Unspecified) None
+    if isStack(positioned.location) then
+      if positioned.position != StackPosition.Unspecified then None
       else Some(InvalidStackPosition(
         positioned.location,
         "stack destination must specify top or bottom"
       ))
-    else if (positioned.position == StackPosition.Unspecified) None
+    else if positioned.position == StackPosition.Unspecified then None
     else Some(InvalidStackPosition(
       positioned.location,
       "non-stack destination cannot specify top or bottom"
@@ -76,9 +76,9 @@ private[operations] object CardMovementOperations:
   ): Vector[OperationError] =
     val all = cardTransfers(leaves)
     val duplicate: Vector[OperationError] =
-      if (all.map(_.piece.id).groupBy(identity).exists {
+      if all.map(_.piece.id).groupBy(identity).exists {
         case (_, occurrences) => occurrences.size > 1
-      }) Vector(ConflictingDeltas(
+      } then Vector(ConflictingDeltas(
         "one operation moves the same card more than once"))
       else Vector.empty
 
@@ -112,7 +112,7 @@ private[operations] object CardMovementOperations:
                 case StackPosition.Unspecified => cards.contains(id)
                 case StackPosition.Top => cards.headOption.contains(id)
                 case StackPosition.Bottom => cards.lastOption.contains(id)
-              if (valid) (None, cards.filterNot(_ == id))
+              if valid then (None, cards.filterNot(_ == id))
               else (Some(InvalidStackPosition(
                 value.transfer.from.location,
                 "card does not match requested stack position"
@@ -128,19 +128,19 @@ private[operations] object CardMovementOperations:
     val destination = transfer.to.location
     destination match
       case Location.Deck(deck) =>
-        if (cardDeck(id).contains(deck)) None
+        if cardDeck(id).contains(deck) then None
         else Some(InvalidDestination(transfer.piece, destination))
       case _: Location.RegionalDiscard =>
-        if (id.isInstanceOf[WorldCardId]) None
+        if id.isInstanceOf[WorldCardId] then None
         else Some(InvalidDestination(transfer.piece, destination))
       case _: Location.Hand =>
-        if (id.isInstanceOf[WorldCardId]) None
+        if id.isInstanceOf[WorldCardId] then None
         else Some(InvalidDestination(transfer.piece, destination))
       case Location.Reliquary | Location.SetAsideRelics =>
-        if (id.isInstanceOf[RelicId]) None
+        if id.isInstanceOf[RelicId] then None
         else Some(InvalidDestination(transfer.piece, destination))
       case Location.Dispossessed =>
-        if (id.isInstanceOf[WorldCardId]) None
+        if id.isInstanceOf[WorldCardId] then None
         else Some(InvalidDestination(transfer.piece, destination))
       case _: Location.Site => id match
         case _: DenizenId | _: EdificeId | _: RelicId =>
@@ -199,8 +199,8 @@ private[operations] object CardMovementOperations:
       leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] =
     val transfers = cardTransfers(leaves)
-    if (transfers.isEmpty) Right(ready)
-    else for {
+    if transfers.isEmpty then Right(ready)
+    else for
       index <- CardIndex.from(ready.game).left.map(InvalidCardIndex.apply)
       removedCards <- sequence(transfers.map { transfer =>
         val id = transfer.piece.id
@@ -214,7 +214,7 @@ private[operations] object CardMovementOperations:
         Right(without)) { case (result, (move, located)) =>
         result.flatMap(insertCard(_, move, located))
       }
-    } yield inserted
+    yield inserted
 
   private def removeCard(
       ready: ReadyGame,
@@ -280,19 +280,21 @@ private[operations] object CardMovementOperations:
     val adjustedState = adjustCardOrientation(original.state,
       transfer.resultingOrientation, id, transfer.to.location)
     transfer.to.location match
-      case Location.Deck(deck) => for {
-        _ <- ensureEmptyTokens(original.state, id)
-        updated <- insertDeck(ready, deck, id, transfer.to.position)
-      } yield updated
-      case Location.RegionalDiscard(region) => for {
-        _ <- ensureEmptyTokens(original.state, id)
-      } yield ready.updateCurrent { current =>
-        val cards = current.commonCards
-        val existing = cards.discard(region)
-        val inserted = insertStack(existing, id.asInstanceOf[WorldCardId],
-          transfer.to.position, topAtHead = false)
-        current.copy(commonCards = cards.copy(regionalDiscards =
-          cards.regionalDiscards.updated(region, inserted)))
+      case Location.Deck(deck) =>
+        for
+          _ <- ensureEmptyTokens(original.state, id)
+          updated <- insertDeck(ready, deck, id, transfer.to.position)
+        yield updated
+      case Location.RegionalDiscard(region) =>
+        for
+          _ <- ensureEmptyTokens(original.state, id)
+        yield ready.updateCurrent { current =>
+          val cards = current.commonCards
+          val existing = cards.discard(region)
+          val inserted = insertStack(existing, id.asInstanceOf[WorldCardId],
+            transfer.to.position, topAtHead = false)
+          current.copy(commonCards = cards.copy(regionalDiscards =
+            cards.regionalDiscards.updated(region, inserted)))
       }
       case Location.Hand(player) => ensureEmptyTokens(original.state, id).map:
         _ => ready.updateCurrent { current =>

@@ -14,12 +14,13 @@ case object MagicWaterskin extends PaidAction("relic.magic-waterskin",
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match
-    case DecisionOptionRef.Relic(id) => for {
-      held <- PlayerFacts.player(ready, player)
-      relic <- held.relics.find(_.id == id).toRight(
-        OathViolation.InvalidEventOrder(s"${id.value} is not held by ${player.value}"))
-    } yield Sequence(Bury.standard(BuryableCard.Relic(id),
-      PositionedLocation(Location.PlayArea(player)), None, 0,
-      relic.tokens.secrets, player) :+ GainSupply(player, Supply))
+    case DecisionOptionRef.Relic(id) =>
+      for
+        held <- PlayerFacts.player(ready, player)
+        relic <- held.relics.find(_.id == id).toRight(
+          OathViolation.InvalidEventOrder(s"${id.value} is not held by ${player.value}"))
+      yield Sequence(Bury.standard(BuryableCard.Relic(id),
+        PositionedLocation(Location.PlayArea(player)), None, 0,
+        relic.tokens.secrets, player) :+ GainSupply(player, Supply))
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not a relic source"))

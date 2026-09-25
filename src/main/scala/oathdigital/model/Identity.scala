@@ -41,7 +41,7 @@ object PowerId:
   /** Safe parse for untrusted (e.g. wire) input: `None` rather than throwing
    * when `value` does not satisfy the stable power ID shape. */
   def fromValue(value: String): Option[PowerId] =
-    if (value.matches(pattern)) Some(value) else None
+    if value.matches(pattern) then Some(value) else None
 
 final case class CatalogRef(ruleset: String, version: String):
   IdentityValidation.nonBlank("ruleset", ruleset)
@@ -70,7 +70,7 @@ object RelicId:
   /** Safe parse for untrusted (e.g. wire) input: `None` rather than throwing
    * when `value` is blank. Mirrors `PowerId.fromValue`. */
   def fromValue(value: String): Option[RelicId] =
-    if (value.trim.nonEmpty) Some(RelicId(value)) else None
+    if value.trim.nonEmpty then Some(RelicId(value)) else None
 
 final case class EdificeId(value: String) extends CardId:
   IdentityValidation.nonBlank("edifice ID", value)

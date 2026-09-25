@@ -43,7 +43,7 @@ final class GameServerGateway(
 ):
   def preview(gameId: String, requestingPlayer: PlayerId,
       request: MajorActionPreviewRequest)
-      : Either[GameApplicationError, MajorActionPreviewResponse] = for {
+      : Either[GameApplicationError, MajorActionPreviewResponse] = for
     action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
       GameApplicationError.BootstrapFailure("unknown major action"))
     selected <- GameIntentMapper.bindModifiers(requestingPlayer,
@@ -57,7 +57,7 @@ final class GameServerGateway(
       oathdigital.model.OathViolation.InvalidModifierInvocation(
         "major-action preview is unavailable for this actor or phase")))
     _ <- MajorActionPreviewTargets.validate(projection, request)
-  } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
+  yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
     accepted.modifiers, accepted.ignored.map(v => PreviewIgnoredRule(
       v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
     MajorActionPreviewTargets.from(projection, request, accepted.targets))
@@ -230,7 +230,7 @@ final class GameRoutes(
         ))
       case Success(Left(error)) =>
         val (status, code, message, internal) = publicError(error)
-        if (internal)
+        if internal then
           logger.error("Internal first-game application failure: {}", error)
         complete(jsonResponse(status, code, message))
       case Failure(error) =>
@@ -271,13 +271,13 @@ final class GameRoutes(
       gameId: String,
       playerId: String
   ): Either[HttpInputError, (String, String)] =
-    for {
+    for
       game <- DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId")
       player <- DevelopmentTrustBoundary.validateIdentifier(
         playerId,
         "$.playerId"
       )
-    } yield game -> player
+    yield game -> player
 
   private def inputError(error: HttpInputError): HttpResponse =
     jsonResponse(

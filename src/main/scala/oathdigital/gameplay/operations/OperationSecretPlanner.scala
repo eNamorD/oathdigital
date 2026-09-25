@@ -33,7 +33,7 @@ private[operations] object OperationSecretPlanner:
       source: Location,
       indexed: Vector[(Move, Int)]
   ): Either[OperationError, Vector[(Int, Move, SecretSplit)]] =
-    if (source == Location.SharedBank)
+    if source == Location.SharedBank then
       Right(indexed.map { case (move, index) =>
         val amount = move.piece.asInstanceOf[Piece.Secrets].amount
         (index, move, SecretSplit(amount, 0))
@@ -56,13 +56,13 @@ private[operations] object OperationSecretPlanner:
       val availableFaceDown = inventory.faceDown.toLong
       val availableTotal = availableFaceUp + availableFaceDown
 
-      if (mandatoryFaceUp > availableFaceUp)
+      if mandatoryFaceUp > availableFaceUp then
         Left(InsufficientPieces(
           Piece.Secrets(clampPositive(mandatoryFaceUp)),
           source,
           clampNonNegative(availableFaceUp)
         ))
-      else if (total > availableTotal)
+      else if total > availableTotal then
         Left(InsufficientPieces(
           Piece.Secrets(clampPositive(total)),
           source,
@@ -97,9 +97,9 @@ private[operations] object OperationSecretPlanner:
       maximumFaceUp: Long
   ): Either[OperationError, Vector[(Int, Move, SecretSplit)]] =
     val movedAmount = clampPositive(total)
-    if (minimumFaceUp > maximumFaceUp)
+    if minimumFaceUp > maximumFaceUp then
       Left(InsufficientPieces(Piece.Secrets(movedAmount), source, 0))
-    else if (minimumFaceUp != maximumFaceUp)
+    else if minimumFaceUp != maximumFaceUp then
       Left(AmbiguousSecretOrientation(source, movedAmount))
     else
       val faceUp = minimumFaceUp
@@ -136,7 +136,7 @@ private[operations] object OperationSecretPlanner:
       values: Vector[Either[OperationError, A]]
   ): Either[OperationError, Vector[A]] =
     values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)):
-      case (result, value) => for {
+      case (result, value) => for
         accumulated <- result
         next <- value
-      } yield accumulated :+ next
+      yield accumulated :+ next

@@ -20,7 +20,7 @@ class PowerAccessSuite extends munit.FunSuite:
       c.map.sites.updated(far, c.map.sites(far).copy(forces = forces)))))
   private def viaBoard(update: PlayerState => PlayerState): ReadyGame =
     base.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == actor) update(p) else p)))
+      if p.player == actor then update(p) else p)))
 
   private def siteCard(site: SiteId, state: ReadyGame) = PowerAccess.accessible(
     RuleSourceRef.SiteCard(site, card), RuleSourceFace.FaceUp, state, actor)

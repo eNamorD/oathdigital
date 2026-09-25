@@ -49,7 +49,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
     val legal = legalActions.project(context, projectedPhasePowers)
     val pending = pendingProjector.project(context)
     val site = context.activeSite
-    val controls = if (current.result.nonEmpty) Vector.empty else legal.controls
+    val controls = if current.result.nonEmpty then Vector.empty else legal.controls
 
     GameProjection(
       gameId, sequence, pending.phase, Some(current.turn.activePlayer.value),
@@ -72,8 +72,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
           state.tokens.secrets))),
       actionSelectionOpen = current.result.isEmpty &&
         current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
-      actionFamilies = if (current.result.isEmpty && current.turn.phase == Phase.Act &&
-        current.walkerPending.isEmpty)
+      actionFamilies = if current.result.isEmpty && current.turn.phase == Phase.Act &&
+        current.walkerPending.isEmpty then
         Vector("Search", "Travel", "Campaign", "Muster", "Trade", "Forge",
           "Recover", "Challenge", "Minor Actions") else Vector.empty,
       legalTravelDestinations = legal.travel,
@@ -125,7 +125,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
     val hand = context.viewer.toVector.flatMap(viewer =>
       context.current.temporaryHands.getOrElse(viewer, Vector.empty))
     val offered = decision.toVector.flatMap(offeredCards)
-    if (hand.exists(card => offered.contains(card.value))) Vector.empty
+    if hand.exists(card => offered.contains(card.value)) then Vector.empty
     else hand.map(card => presentation.cardDetails(card,
       Some(Orientation.FaceUp), hidden = false))
 

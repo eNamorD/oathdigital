@@ -63,7 +63,8 @@ private[gameplay] trait OathRulesWalker:
       case Ready(ready) if ready.game.current.result.nonEmpty => Left(GameEnded)
       case Ready(ready) =>
         val activePlayer = ready.game.current.turn.activePlayer
-        def run = for {
+        def run =
+          for
             _ <- requireActivePlayer(ready, requester)
             _ <- validateModifiers(ready, activePlayer, procedure, modifiers)
             powers = walkerPowers(ready, activePlayer, modifiers)
@@ -75,7 +76,7 @@ private[gameplay] trait OathRulesWalker:
             _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
             transition <- walkerTransition(state, procedure, tree,
               outcome, powers, modifiers, startArgs)
-          } yield transition
+          yield transition
         WalkerProcedureRegistry.fallbackKind(procedure).flatMap:
           case Some(kind) => withFallback(state, activePlayer, kind)(run)
           case None => run
@@ -107,7 +108,7 @@ private[gameplay] trait OathRulesWalker:
       case Ready(ready) =>
         val activePlayer = ready.game.current.turn.activePlayer
         val powers = walkerPowers(ready, activePlayer, Vector.empty)
-        for {
+        for
           tree <- buildWalker(procedure, ready, activePlayer, Vector.empty,
             starting = true)
           _ <- checkRestrictions(tree, powers, ready, activePlayer)
@@ -115,7 +116,7 @@ private[gameplay] trait OathRulesWalker:
             walkerDice))
           started <- walkerTransition(transition.state, procedure, tree,
             outcome, powers, Vector.empty, Vector.empty)
-        } yield started.copy(events = transition.events ++ started.events)
+        yield started.copy(events = transition.events ++ started.events)
       case _ => Right(transition)
 
   /** The single place (Task 4) that turns `walkerPowerCatalog` plus the
@@ -217,7 +218,7 @@ private[gameplay] trait OathRulesWalker:
     val payments = walkerPowerCatalog.powers
       .filter(power => modifiers.contains(power.id))
       .flatMap(_.selectionPayments(ready, actor))
-    if (payments.isEmpty) Right(())
+    if payments.isEmpty then Right(())
     else OperationPipeline.run(ready, payments, OperationPolicy.Permissive)(
       Right(_)).left.map(violation => InvalidEventOrder(
       "the selected modifiers cannot all be paid together: " +
@@ -269,7 +270,7 @@ private[gameplay] trait OathRulesWalker:
       case _ => Right(())
     }).flatMap(_ => resumeWalker(state) {
       case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
-      for {
+      for
         parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending,
           powers).toRight(InvalidEventOrder(
             "current walker position is not a Roll park")))
@@ -280,7 +281,7 @@ private[gameplay] trait OathRulesWalker:
           powers, walkerDice))
         transition <- walkerTransition(state, procedure, tree, outcome,
           powers, modifiers, startArgs)
-      } yield transition
+      yield transition
     })
 
   /** Rejects a requester who is not the active player. Starting a procedure
@@ -313,23 +314,24 @@ private[gameplay] trait OathRulesWalker:
       (ReadyGame, ProcedureRef, Operation, PendingTree, WalkerPowers,
         Vector[PowerId], Vector[DecisionOptionRef])] =
     state match
-    case Ready(ready) => for {
-      procedure <- ready.game.current.walkerProcedure.toRight(
-        InvalidEventOrder("no walker procedure is pending"))
-      pending <- ready.game.current.walkerPending.toRight(
-        InvalidEventOrder("no walker position is pending"))
-      // No phase gate: only resume commands are accepted while a walker is
-      // pending, so nothing else can change the phase, and the procedure's
-      // own build passed its phase gates at start.
-      activePlayer = ready.game.current.turn.activePlayer
-      startArgs = ready.game.current.walkerStartArgs
-      tree <- buildWalker(procedure, ready, activePlayer, startArgs,
-        starting = false)
-      modifiers = ready.game.current.walkerModifiers
-      powers = walkerPowers(ready, activePlayer, modifiers)
-      _ <- checkRestrictions(tree, powers, ready, activePlayer,
-        pending.answered)
-    } yield (ready, procedure, tree, pending, powers, modifiers, startArgs)
+    case Ready(ready) =>
+      for
+        procedure <- ready.game.current.walkerProcedure.toRight(
+          InvalidEventOrder("no walker procedure is pending"))
+        pending <- ready.game.current.walkerPending.toRight(
+          InvalidEventOrder("no walker position is pending"))
+        // No phase gate: only resume commands are accepted while a walker is
+        // pending, so nothing else can change the phase, and the procedure's
+        // own build passed its phase gates at start.
+        activePlayer = ready.game.current.turn.activePlayer
+        startArgs = ready.game.current.walkerStartArgs
+        tree <- buildWalker(procedure, ready, activePlayer, startArgs,
+          starting = false)
+        modifiers = ready.game.current.walkerModifiers
+        powers = walkerPowers(ready, activePlayer, modifiers)
+        _ <- checkRestrictions(tree, powers, ready, activePlayer,
+          pending.answered)
+      yield (ready, procedure, tree, pending, powers, modifiers, startArgs)
     case _ => Left(GameNotStarted)
 
   private def buildWalker(procedure: ProcedureRef, ready: ReadyGame,
@@ -352,13 +354,13 @@ private[gameplay] trait OathRulesWalker:
   private def requirePlayableOption(procedure: ProcedureRef, ready: ReadyGame,
       tree: Operation, outcome: WalkerOutcome, powers: WalkerPowers)
       : Either[OathViolation, Unit] =
-    if (!WalkerProcedureRegistry.requiresPlayableOption(procedure)) Right(())
+    if !WalkerProcedureRegistry.requiresPlayableOption(procedure) then Right(())
     else outcome match
       case WalkerOutcome.Parked(pending, events) =>
-        if (events.exists {
+        if events.exists {
           case step: WalkerStepRecorded => step.ops.nonEmpty
           case _ => false
-        }) Left(InvalidEventOrder(s"${procedure.key} runs operations before " +
+        } then Left(InvalidEventOrder(s"${procedure.key} runs operations before " +
           "its first decision, so its start cannot be previewed"))
         else WalkerSimulation.previewParked(ready, tree, pending, powers)
           .flatMap(options => Either.cond(options.exists(_.outcome.isRight), (),
@@ -386,7 +388,7 @@ private[gameplay] trait OathRulesWalker:
       // from the state after `steps` land, not from this command's pre-walk
       // snapshot — a stale-state Branch.select would silently resolve to the
       // wrong node or none at all.
-      for {
+      for
         afterSteps <- foldEvents(state, steps)
         liveReady <- afterSteps match
           case Ready(live) => Right(live)
@@ -394,23 +396,23 @@ private[gameplay] trait OathRulesWalker:
             "walker park did not resolve to a Ready state"))
         continue <- parkedContinue(liveReady, tree, pending, powers, procedure)
         finalState <- evolve(afterSteps, fact)
-      } yield OathTransition(finalState, steps :+ fact, continue)
+      yield OathTransition(finalState, steps :+ fact, continue)
 
     case WalkerOutcome.Finished(treeless, steps) =>
       val turn = treeless.game.current.turn
       val continued =
-        if (runsTurnBoundary(procedure))
+        if runsTurnBoundary(procedure) then
           Right(OathContinue.AwaitingWakeAction(turn.activePlayer))
         else continuationIn(turn.phase, turn.activePlayer)
       continued.flatMap(continue => GameplayTransition(state,
           steps :+ WalkerCompleted(procedure), continue)(evolve)
         .flatMap(recordCardPlayFallback(_, procedure, steps))
         .flatMap(transition =>
-          if (runsActionBoundary(procedure)) completeAction(transition)
-          else if (runsTurnBoundary(procedure)) turnBoundary(transition)
+          if runsActionBoundary(procedure) then completeAction(transition)
+          else if runsTurnBoundary(procedure) then turnBoundary(transition)
           else Right(transition))
         .flatMap(transition =>
-          if (procedure == PhaseTransitionRef.BeginRest) autoFinishRest(transition)
+          if procedure == PhaseTransitionRef.BeginRest then autoFinishRest(transition)
           else Right(transition)))
 
   /** Diagnostics for unimplemented WHEN PLAYED handlers follow the recorded
@@ -420,8 +422,8 @@ private[gameplay] trait OathRulesWalker:
   private def recordCardPlayFallback(transition: OathTransition,
       procedure: ProcedureRef, steps: Vector[OathEvent])
       : Either[OathViolation, OathTransition] =
-    if (procedure != ActionRef.Search &&
-        procedure != ActionRef.PlayFacedownAdviser) Right(transition)
+    if procedure != ActionRef.Search &&
+        procedure != ActionRef.PlayFacedownAdviser then Right(transition)
     else transition.state match
       case Ready(ready) =>
         val actor = ready.game.current.turn.activePlayer
@@ -441,7 +443,7 @@ private[gameplay] trait OathRulesWalker:
             .map(found ++ _)
           case (failure @ Left(_), _) => failure
         }.map { diagnostics =>
-          if (diagnostics.isEmpty) transition
+          if diagnostics.isEmpty then transition
           else transition.copy(events = transition.events :+
             OathEvent.IgnoredRulesRecorded(actor, ActionKind.WhenPlayed,
               diagnostics))

@@ -42,20 +42,20 @@ object TargetingFixture:
 
   def pawnAt(state: ReadyGame, player: PlayerId, site: SiteId): ReadyGame =
     state.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == player) p.copy(pawnSite = Some(site)) else p)))
+      if p.player == player then p.copy(pawnSite = Some(site)) else p)))
 
   /** `player` holds the relic, faceup or facedown. */
   def holds(state: ReadyGame, player: PlayerId, relic: RelicId,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
     CardStaging.without(state, relic).updateCurrent(c => c.copy(players =
-      c.players.map(p => if (p.player == player) p.copy(relics = p.relics :+
+      c.players.map(p => if p.player == player then p.copy(relics = p.relics :+
         RelicState(relic, orientation, Tokens.empty)) else p)))
 
   /** `player` holds a faceup adviser of `suit`. */
   def adviserOf(state: ReadyGame, player: PlayerId, suit: Suit): ReadyGame =
     val card = DenizenId(catalog.denizens.find(_.suit == suit).get.id.value)
     CardStaging.without(state, card).updateCurrent(c => c.copy(players =
-      c.players.map(p => if (p.player == player) p.copy(advisers = p.advisers :+
+      c.players.map(p => if p.player == player then p.copy(advisers = p.advisers :+
         DenizenState(card, Orientation.FaceUp, Tokens.empty)) else p)))
 
   /** The options of the decision a parked walk of `procedure` is waiting on. */

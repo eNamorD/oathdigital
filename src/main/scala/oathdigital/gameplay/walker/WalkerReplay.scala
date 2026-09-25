@@ -48,7 +48,7 @@ private[walker] object WalkerReplay:
         OathViolation.InvalidEventOrder(
           s"invalid walker node id '${step.nodeId}'"))
     def validateParkedStep(step: WalkerStepRecorded)
-        : Either[OathViolation, PendingTree] = for {
+        : Either[OathViolation, PendingTree] = for
       _ <- validateStep(step)
       pending <- ready.game.current.walkerPending.toRight(
         OathViolation.InvalidEventOrder(
@@ -57,96 +57,99 @@ private[walker] object WalkerReplay:
         OathViolation.InvalidEventOrder(
           s"walker step ${step.nodeId} does not match pending position " +
             pending.at.mkString(".")))
-    } yield pending
+    yield pending
 
     event match
       // `contributions` is deliberately unmatched (`_`) below: replay applies
       // `ops` only and must never consult which powers produced them (spec
       // decision 5) -- see `WalkerStepRecorded.contributions`'s doc.
       case step @ WalkerStepRecorded(_, RollPayload(pool, faces, automatic), ops, _) =>
-        for {
-          _ <- if (automatic) validateStep(step)
+        for
+          _ <- if automatic then validateStep(step)
             else validateParkedStep(step).map(_ => ())
           _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
             "recorded RollPayload must not contain operations"))
           outcome <- WalkerRolls.outcomeForRecorded(ready, pool, faces)
-        } yield WalkerRolls.write(ready, outcome)
+        yield WalkerRolls.write(ready, outcome)
 
       case step @ WalkerStepRecorded(_,
           ChoicePayload(decisionId, payload, by), ops, _) =>
-        for {
+        for
           pending <- validateParkedStep(step)
           _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
             "recorded ChoicePayload must not contain operations"))
           answered = pending.copy(answered = pending.answered :+
             Answered(decisionId, payload, by))
-        } yield ready.copy(game = ready.game.copy(current =
+        yield ready.copy(game = ready.game.copy(current =
           ready.game.current.copy(walkerPending = Some(answered))))
 
       case step @ WalkerStepRecorded(_,
           _: WalkerStepPayload.DeltaRecorded, ops, _) =>
-        for {
+        for
           _ <- validateStep(step)
           _ <- Either.cond(ops.nonEmpty, (), OathViolation.InvalidEventOrder(
             "recorded delta step must contain operations"))
           updated <- executeRecorded(ready, ops)
-        } yield updated
+        yield updated
 
-      case WalkerParked(procedure, at, answered, modifiers, startArgs) => for {
-        _ <- Either.cond(at.nonEmpty && at.forall(segment =>
-          segment.nonEmpty && segment.forall(_.isDigit)), (),
-          OathViolation.InvalidEventOrder("invalid durable walker park path"))
-        _ <- ready.game.current.walkerProcedure match
-          case Some(existing) => for {
-            _ <- Either.cond(existing == procedure, (),
+      case WalkerParked(procedure, at, answered, modifiers, startArgs) =>
+        for
+          _ <- Either.cond(at.nonEmpty && at.forall(segment =>
+            segment.nonEmpty && segment.forall(_.isDigit)), (),
+            OathViolation.InvalidEventOrder("invalid durable walker park path"))
+          _ <- ready.game.current.walkerProcedure match
+            case Some(existing) =>
+              for
+                _ <- Either.cond(existing == procedure, (),
+                  OathViolation.InvalidEventOrder(
+                    s"walker procedure ${procedure.key} does not match " +
+                      existing.key))
+                _ <- Either.cond(ready.game.current.walkerModifiers == modifiers, (),
+                  OathViolation.InvalidEventOrder(
+                    "durable walker park modifiers do not match the recorded " +
+                      "selection"))
+                _ <- Either.cond(
+                  ready.game.current.walkerStartArgs == startArgs, (),
+                  OathViolation.InvalidEventOrder(
+                    "durable walker park start selections do not match the " +
+                      "recorded start"))
+              yield ()
+            case None => Right(())
+          _ <- ready.game.current.walkerPending match
+            case Some(existing) => Either.cond(existing.answered == answered, (),
               OathViolation.InvalidEventOrder(
-                s"walker procedure ${procedure.key} does not match " +
+                "durable walker park answers do not match recorded choices"))
+            case None => Either.cond(answered.isEmpty, (),
+              OathViolation.InvalidEventOrder(
+                "initial durable walker park has unexpected answers"))
+        yield ready.copy(game = ready.game.copy(current =
+          ready.game.current.copy(
+            walkerPending = Some(PendingTree(at, answered)),
+            walkerProcedure = Some(procedure),
+            walkerModifiers = modifiers,
+            walkerStartArgs = startArgs)))
+
+      case WalkerCompleted(procedure) =>
+        for
+          // No active procedure means the walk never parked: a tree that
+          // declares no Decide and no Roll runs to the end inside the command
+          // that started it, so nothing set `walkerProcedure` (Forge at a
+          // single-resource site is exactly that). The completion still names
+          // the procedure, and the clear below is a no-op either way.
+          _ <- ready.game.current.walkerProcedure match
+            case Some(existing) => Either.cond(existing == procedure, (),
+              OathViolation.InvalidEventOrder(
+                s"walker completion ${procedure.key} does not match " +
                   existing.key))
-            _ <- Either.cond(ready.game.current.walkerModifiers == modifiers, (),
-              OathViolation.InvalidEventOrder(
-                "durable walker park modifiers do not match the recorded " +
-                  "selection"))
-            _ <- Either.cond(
-              ready.game.current.walkerStartArgs == startArgs, (),
-              OathViolation.InvalidEventOrder(
-                "durable walker park start selections do not match the " +
-                  "recorded start"))
-          } yield ()
-          case None => Right(())
-        _ <- ready.game.current.walkerPending match
-          case Some(existing) => Either.cond(existing.answered == answered, (),
-            OathViolation.InvalidEventOrder(
-              "durable walker park answers do not match recorded choices"))
-          case None => Either.cond(answered.isEmpty, (),
-            OathViolation.InvalidEventOrder(
-              "initial durable walker park has unexpected answers"))
-      } yield ready.copy(game = ready.game.copy(current =
-        ready.game.current.copy(
-          walkerPending = Some(PendingTree(at, answered)),
-          walkerProcedure = Some(procedure),
-          walkerModifiers = modifiers,
-          walkerStartArgs = startArgs)))
-
-      case WalkerCompleted(procedure) => for {
-        // No active procedure means the walk never parked: a tree that
-        // declares no Decide and no Roll runs to the end inside the command
-        // that started it, so nothing set `walkerProcedure` (Forge at a
-        // single-resource site is exactly that). The completion still names
-        // the procedure, and the clear below is a no-op either way.
-        _ <- ready.game.current.walkerProcedure match
-          case Some(existing) => Either.cond(existing == procedure, (),
-            OathViolation.InvalidEventOrder(
-              s"walker completion ${procedure.key} does not match " +
-                existing.key))
-          case None => Right(())
-      } yield ready.copy(game = ready.game.copy(current =
-        ready.game.current.copy(
-          walkerPending = None,
-          walkerProcedure = None,
-          walkerModifiers = Vector.empty,
-          walkerStartArgs = Vector.empty,
-          rollPools = Map.empty,
-          rollOutcomes = Map.empty)))
+            case None => Right(())
+        yield ready.copy(game = ready.game.copy(current =
+          ready.game.current.copy(
+            walkerPending = None,
+            walkerProcedure = None,
+            walkerModifiers = Vector.empty,
+            walkerStartArgs = Vector.empty,
+            rollPools = Map.empty,
+            rollOutcomes = Map.empty)))
 
       case step: WalkerStepRecorded =>
         invalid(s"unsupported recorded walker payload ${step.payload.productPrefix}")

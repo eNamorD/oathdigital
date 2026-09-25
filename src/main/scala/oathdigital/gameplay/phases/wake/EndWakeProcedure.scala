@@ -40,9 +40,9 @@ object EndWakeProcedure:
     * reaches this.
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateReady(OathState.Ready(state), activePlayer)
     _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
       "ending Wake selects nothing, got " +
         args.map(ref => s"${ref.kind}/${ref.wireId}").mkString(", ")))
-  } yield Sequence(Vector(EnterPhase(Phase.Act)))
+  yield Sequence(Vector(EnterPhase(Phase.Act)))

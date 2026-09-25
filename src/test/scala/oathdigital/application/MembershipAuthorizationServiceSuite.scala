@@ -16,7 +16,7 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
   test("pluggable authenticator returns a provider-neutral principal"):
     val authenticator = new Authenticator[String]:
       override def authenticate(credential: String) =
-        if (credential == "test-credential")
+        if credential == "test-credential" then
           Right(AuthenticatedUser(playerUser))
         else Left(AuthenticationFailure.InvalidCredential("invalid"))
 

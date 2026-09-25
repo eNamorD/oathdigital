@@ -91,7 +91,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val actorIndex = orders.participants.indexWhere(_.playerId == PlayerId("p2"))
     val adviserIndex = 6 + actorIndex * 3
     val oldIndex = chronicle.worldDeck.indexWhere(_.value == catacombsId.value)
-    val order = if (oldIndex < 0) chronicle.worldDeck.updated(adviserIndex, catacombsId)
+    val order = if oldIndex < 0 then chronicle.worldDeck.updated(adviserIndex, catacombsId)
       else chronicle.worldDeck.updated(adviserIndex, catacombsId)
         .updated(oldIndex, chronicle.worldDeck(adviserIndex))
     val worldDeckChronicle = chronicle.copy(worldDeck = order)
@@ -602,7 +602,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       _.handlers.contains("denizen.revelation")).get.id.value)
     def place(order: Vector[DenizenId], index: Int, id: DenizenId) =
       val current = order.indexWhere(_.value == id.value)
-      if (current < 0) order.updated(index, id)
+      if current < 0 then order.updated(index, id)
       else order.updated(index, id).updated(current, order(index))
     val p2Index = 6 + orders.participants.indexWhere(_.playerId == PlayerId("p2")) * 3
     val poweredWorldDeck = place(chronicle.worldDeck, p2Index, whenPlayedPower)
@@ -617,17 +617,17 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       poweredChronicle, poweredOrders)
     var played = Set.empty[PlayerId]
     var safety = 0
-    while ({
+    while {
       val Ready(ready) = accepted.state: @unchecked
       ready.game.current.result.isEmpty
-    })
+    } do
       safety += 1
       assert(safety <= 24, "all-Exile game should finish after eight rounds")
       val Ready(wake) = accepted.state: @unchecked
       val actor = wake.game.current.turn.activePlayer
       accepted = service.handle("powered-playability", accepted.nextSequence,
         GameCommand.EndWake(actor)).toOption.get
-      if (!played(actor))
+      if !played(actor) then
         val Ready(act) = accepted.state: @unchecked
         val adviser = act.game.current.players.find(_.player == actor).get.advisers.head.id
           .asInstanceOf[WorldCardId]
@@ -1054,7 +1054,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val siteId = ready.game.current.players.find(_.player == active)
       .flatMap(_.pawnSite).get
     val site = ready.game.current.map.sites(siteId)
-    val resource = if (site.tokens.favor > 0) "favor" else "secret"
+    val resource = if site.tokens.favor > 0 then "favor" else "secret"
 
     val wealth = service.handle("game-wake", setup.nextSequence,
       GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active,
@@ -1265,7 +1265,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(reloaded.state, started.state)
     val Ready(afterDraw) = reloaded.state: @unchecked
     val drawn = afterDraw.game.current.temporaryHands(actor)
-    val chosen = if (drawn.size == 1) started else
+    val chosen = if drawn.size == 1 then started else
       def ref(card: WorldCardId): DecisionOptionRef = card match
         case id: DenizenId => DecisionOptionRef.Denizen(id)
         case id: VisionId => DecisionOptionRef.Vision(id)
@@ -1503,7 +1503,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(worldTop(Vector.empty), None)
     own.world.flatMap(_.sites).foreach { projected =>
       val source = catalog.sites.find(_.id.value == projected.siteId).get
-      if (source.capacity == 3)
+      if source.capacity == 3 then
         assertEquals(projected.recoverDifficulty, None)
         assertEquals(projected.forgeCost.map(cost =>
           Tokens(cost.favor, cost.secrets)), source.forgeRequirements)
@@ -1874,7 +1874,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       .fold(error => fail(s"Negotiation must start: $error"), identity)
     val Ready(afterTravel) = traveled.state: @unchecked
     val opened =
-      if (NegotiationDeal.eligible(afterTravel, actor).size < 2) started
+      if NegotiationDeal.eligible(afterTravel, actor).size < 2 then started
       else service.handle(gameId, started.nextSequence,
         GameCommand.ResolveWalker(actor, TreeDecision(
           NegotiationDeal.negotiatorsDecisionId, ChooseManyAnswer(

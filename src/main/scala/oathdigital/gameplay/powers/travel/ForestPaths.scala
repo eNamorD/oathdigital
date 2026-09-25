@@ -29,7 +29,7 @@ final case class ForestPaths private (cardId: DenizenId,
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      if (beastAtDestination(ctx))
+      if beastAtDestination(ctx) then
         TravelPayments.withoutSupply(operations, ctx.activePlayer)
       else operations)),
     PowerWindow.TravelActionEligibility ->

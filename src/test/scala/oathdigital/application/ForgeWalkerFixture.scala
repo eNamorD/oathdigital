@@ -42,7 +42,7 @@ object ForgeWalkerFixture extends munit.Assertions:
     val siteId = catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
       !site.handlers.exists(_.contains(".homeland-"))).get.id
     catalog.copy(sites = catalog.sites.map(site =>
-      if (site.id != siteId) site
+      if site.id != siteId then site
       else site.copy(forgeRequirements = Some(Tokens(2, 1)))))
 
   /** Drives a real, journalled game to the point where `p2` can start a
@@ -100,8 +100,8 @@ object ForgeWalkerFixture extends munit.Assertions:
       GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
       .fold(error => fail(s"Campaign fixture rejected: $error"), identity)
     // Other bandit-ruled sites are optional targets: take none.
-    if (accepted.continue == OathContinue.AwaitingCampaignDecision(actor,
-        DecisionId(CampaignIds.targets)))
+    if accepted.continue == OathContinue.AwaitingCampaignDecision(actor,
+        DecisionId(CampaignIds.targets)) then
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.targets,
           ChooseManyAnswer(Vector.empty)))).toOption.get
@@ -130,11 +130,11 @@ object ForgeWalkerFixture extends munit.Assertions:
         pendingReady, actor, card, SearchPlacement.Site(None),
         CardPlay.Origin.TemporaryHand).isRight)
         .getOrElse(fail(s"no site-playable card in prepared draw $drawn"))
-      if (drawn.size > 1)
+      if drawn.size > 1 then
         val choices = drawn.map(card => DecisionPlacement(card match {
           case id: DenizenId => DecisionOptionRef.Denizen(id)
           case id: VisionId => DecisionOptionRef.Vision(id)
-        }, if (card == kept) "keep" else "discard"))
+        }, if card == kept then "keep" else "discard"))
         accepted = service.handle(gameId, accepted.nextSequence,
           GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
             DecisionAnswer.PartitionAnswer(choices)))).toOption.get

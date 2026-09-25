@@ -79,10 +79,10 @@ object RuleSourceIndex:
         case edifice: EdificeState =>
           catalog.edifices.find(_.id.value == edifice.id.value).toVector.map:
             definition =>
-              val face = if (edifice.side == EdificeSide.Intact)
+              val face = if edifice.side == EdificeSide.Intact then
                 definition.intact else definition.ruined
               IndexedRuleSource(RuleSourceRef.Edifice(siteId, edifice.id),
-                ids(face.powers), if (edifice.side == EdificeSide.Intact)
+                ids(face.powers), if edifice.side == EdificeSide.Intact then
                   RuleSourceFace.Intact else RuleSourceFace.Ruined)
       val relics = current.map.sites(siteId).relics.flatMap { relic =>
         catalog.relics.find(_.id.value == relic.id.value).toVector.map(
@@ -113,7 +113,7 @@ object RuleSourceIndex:
           catalog.legacies.find(_.id.value == legacy.id.value).toVector.map(
             definition => IndexedRuleSource(
               RuleSourceRef.Legacy(lineageId, legacy.id), ids(definition.powers),
-              if (legacy.active) RuleSourceFace.Active else RuleSourceFace.Inactive))
+              if legacy.active then RuleSourceFace.Active else RuleSourceFace.Inactive))
         }
       }
     val banners = Vector(

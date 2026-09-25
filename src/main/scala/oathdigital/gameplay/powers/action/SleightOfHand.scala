@@ -37,7 +37,7 @@ case object SleightOfHand extends PaidAction("denizen.sleight-of-hand",
 
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = targets(ready, actor)
-    if (found.isEmpty) Vector.empty
+    if found.isEmpty then Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
       found.map(p => DecisionOption.Player(DecisionOptionRef.Player(p.player))),
       heading = Some(
@@ -46,21 +46,21 @@ case object SleightOfHand extends PaidAction("denizen.sleight-of-hand",
   private def steal(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val found = targets(ready, actor)
-    if (found.isEmpty) Right(Vector.empty)
-    else for {
+    if found.isEmpty then Right(Vector.empty)
+    else for
       ref <- PowerAnswers.one(pending, decisionId)
         .toRight(PowerAnswers.missing(decisionId))
       target <- found.find(p => DecisionOptionRef.Player(p.player) == ref)
         .toRight(OathViolation.InvalidEventOrder(
           s"${ref.wireId} is not a legal Sleight of Hand target"))
-    } yield take(actor, target)
+    yield take(actor, target)
 
   private def take(actor: PlayerId, target: PlayerState)
       : Vector[CoreOperation] =
     val one = Take(Piece.Secrets(1), actor, Location.PlayArea(target.player),
       Location.PlayArea(actor))
     val faceDown = target.board.faceDownSecrets
-    if (target.board.faceUpSecrets > 0 && faceDown > 0) Vector(
+    if target.board.faceUpSecrets > 0 && faceDown > 0 then Vector(
       FlipSecrets(target.player, faceDown, SecretSide.FaceDown,
         SecretSide.FaceUp),
       one,

@@ -52,7 +52,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val actor = base.game.current.turn.activePlayer
     val moved = atSite.fold(base.game.current.players)(site =>
       base.game.current.players.map(player =>
-        if (player.player == actor) player.copy(pawnSite = Some(site))
+        if player.player == actor then player.copy(pawnSite = Some(site))
         else player))
     val ready: ReadyGame = base.updateCurrent(_.copy(
         players = moved,
@@ -274,7 +274,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       Tokens.empty)
     val placed = base.copy(ready = base.ready.updateCurrent(_.copy(
       players = current.players.map(player =>
-        if (player.player == enemy.player) player.copy(relics = Vector(relic))
+        if player.player == enemy.player then player.copy(relics = Vector(relic))
         else player),
       banners = current.banners.copy(
         peoplesFavor = current.banners.peoplesFavor.copy(
@@ -548,7 +548,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
     val withAdviser = context.copy(ready = context.ready.updateCurrent(
       current => current.copy(players = current.players.map(player =>
-        if (player.player == actor) player.copy(advisers = player.advisers :+
+        if player.player == actor then player.copy(advisers = player.advisers :+
           DenizenState(facedownAdviserCard, Orientation.FaceDown, Tokens.empty))
         else player))))
     (withAdviser, actor)

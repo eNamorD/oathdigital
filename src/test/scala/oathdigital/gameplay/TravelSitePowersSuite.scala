@@ -38,7 +38,7 @@ class TravelSitePowersSuite extends munit.FunSuite:
     baseReady.updateCurrent(_.copy(
       map = map,
       players = baseReady.game.current.players.map { player =>
-        if (player.player == actor) player.copy(pawnSite = Some(source))
+        if player.player == actor then player.copy(pawnSite = Some(source))
         else player
       }))
 
@@ -116,7 +116,7 @@ class TravelSitePowersSuite extends munit.FunSuite:
     cases.foreach { case (name, source, destination, suffix) =>
       val ready = readyAt(source)
       val terrainOnly = powers.filter(_.id == powerId(
-        if (name == "Coast") source else destination, suffix))
+        if name == "Coast" then source else destination, suffix))
       assertEquals(transformedCost(ready, source, destination, 2, Vector.empty), 2,
         s"$name baseline must remain the unmodified payment")
       assertNotEquals(transformedCost(ready, source, destination, 2, terrainOnly), 2,

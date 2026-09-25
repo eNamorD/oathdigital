@@ -59,11 +59,11 @@ object CatalogLoader:
       value: Value,
       request: CatalogLoadRequest
   ): Result[ExecutableCatalog] =
-    for {
+    for
       root <- asObject(value, "$")
       schemaVersion <- requiredString(root, "schemaVersion", "$")
       _ <-
-        if (schemaVersion == SupportedSchemaVersion) Right(())
+        if schemaVersion == SupportedSchemaVersion then Right(())
         else
           Left(
             Vector(
@@ -93,7 +93,7 @@ object CatalogLoader:
           sites.map(site => DefinitionId(site.id.value))
       )
       _ <- validateUniquePowerIds(denizens, relics, edifices, legacies, sites)
-    } yield ExecutableCatalog(
+    yield ExecutableCatalog(
       schemaVersion,
       ref,
       denizens.sortBy(_.id.value),
@@ -113,7 +113,7 @@ object CatalogLoader:
       case _ => Right(())
 
   private def decodeDenizen(obj: Obj, path: String): Result[DenizenDefinition] =
-    for {
+    for
       id <- decodeDefinitionId(obj, path)
       _ <- requirePattern(
         id,
@@ -125,7 +125,7 @@ object CatalogLoader:
       suit <- decodeSuit(obj, path)
       restrictions <- decodeDenizenRestrictions(obj, path)
       powers <- decodePowers(obj, path)
-    } yield DenizenDefinition(
+    yield DenizenDefinition(
       id,
       name,
       suit,
@@ -184,7 +184,7 @@ object CatalogLoader:
         Left(Vector(WrongType(fieldPath, "null or array", typeName(value))))
 
   private def decodeRelic(obj: Obj, path: String): Result[RelicDefinition] =
-    for {
+    for
       id <- decodeDefinitionId(obj, path)
       _ <- requirePattern(
         id,
@@ -208,10 +208,10 @@ object CatalogLoader:
         )
       ).map(_ => ())
       powers <- decodePowers(obj, path)
-    } yield RelicDefinition(id, name, role, value, defense, powers)
+    yield RelicDefinition(id, name, role, value, defense, powers)
 
   private def decodeEdifice(obj: Obj, path: String): Result[EdificeDefinition] =
-    for {
+    for
       id <- decodeDefinitionId(obj, path)
       _ <- requirePattern(
         id,
@@ -220,7 +220,7 @@ object CatalogLoader:
         s"$path.id"
       )
       suit <- decodeSuit(obj, path)
-      _ <- if (obj.value.contains("restrictions"))
+      _ <- if obj.value.contains("restrictions") then
         Left(Vector(InvalidValue(s"$path.restrictions",
           "edifice restrictions belong on each face")))
       else Right(())
@@ -230,7 +230,7 @@ object CatalogLoader:
       ruinedObject <- requiredObject(obj, "ruined", path)
       ruined <- decodeEdificeFace(ruinedObject, s"$path.ruined",
         CardRestrictions.Unrestricted)
-    } yield EdificeDefinition(id, suit, intact, ruined)
+    yield EdificeDefinition(id, suit, intact, ruined)
 
   private def decodeEdificeRestrictions(
       obj: Obj,
@@ -259,14 +259,14 @@ object CatalogLoader:
       path: String,
       expectedRestrictions: CardRestrictions
   ): Result[EdificeFaceDefinition] =
-    for {
+    for
       name <- requiredString(obj, "name", path)
       restrictions <- decodeEdificeRestrictions(obj, path, expectedRestrictions)
       powers <- decodePowers(obj, path)
-    } yield EdificeFaceDefinition(name, restrictions, powers)
+    yield EdificeFaceDefinition(name, restrictions, powers)
 
   private def decodeLegacy(obj: Obj, path: String): Result[LegacyDefinition] =
-    for {
+    for
       id <- decodeDefinitionId(obj, path)
       _ <- requirePattern(
         id,
@@ -276,13 +276,13 @@ object CatalogLoader:
       )
       name <- requiredString(obj, "name", path)
       powers <- decodePowers(obj, path)
-    } yield LegacyDefinition(id, name, powers)
+    yield LegacyDefinition(id, name, powers)
 
   private def decodeSite(obj: Obj, path: String): Result[SiteDefinition] =
-    for {
+    for
       idValue <- requiredString(obj, "id", path)
       _ <-
-        if (idValue.startsWith("site:")) Right(())
+        if idValue.startsWith("site:") then Right(())
         else Left(Vector(InvalidValue(s"$path.id", "expected site: prefix")))
       id <- construct(s"$path.id", SiteId(idValue))
       name <- requiredString(obj, "name", path)
@@ -303,7 +303,7 @@ object CatalogLoader:
       startingResources <- decodeTokens(resources, s"$path.startingResources")
       forgeRequirements <- optionalTokens(obj, "forgeRequirements", path)
       _ <-
-        if (capacity == 3 == forgeRequirements.nonEmpty) Right(())
+        if capacity == 3 == forgeRequirements.nonEmpty then Right(())
         else
           Left(
             Vector(
@@ -314,7 +314,7 @@ object CatalogLoader:
             )
           )
       handlers <- decodeHandlers(obj, path, allowEmpty = true)
-    } yield SiteDefinition(
+    yield SiteDefinition(
       id,
       name,
       defense,
@@ -347,35 +347,35 @@ object CatalogLoader:
       val invalid = handlers.filterNot(
         _.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+")
       )
-      if (invalid.nonEmpty)
+      if invalid.nonEmpty then
         Left(
           invalid.map(value =>
             InvalidValue(s"$path.handlers", s"invalid handler key $value")
           )
         )
-      else if (!allowEmpty && handlers.isEmpty)
+      else if !allowEmpty && handlers.isEmpty then
         Left(Vector(InvalidValue(s"$path.handlers", "must not be empty")))
       else Right(handlers)
     }
 
   private def decodePowers(obj: Obj, path: String): Result[Vector[CatalogPower]] =
     requiredArray(obj, "powers", path).flatMap { values =>
-      if (values.value.isEmpty)
+      if values.value.isEmpty then
         Left(Vector(InvalidValue(s"$path.powers", "must not be empty")))
       else collectResults(values.value.zipWithIndex.map { case (value, index) =>
         val powerPath = s"$path.powers[$index]"
-        asObject(value, powerPath).flatMap { power => for {
+        asObject(value, powerPath).flatMap { power => for
           id <- requiredString(power, "id", powerPath)
           persistent <- requiredBoolean(power, "persistent", powerPath)
           rulesText <- requiredString(power, "rulesText", powerPath)
           powerId <- construct(s"$powerPath.id", PowerId(id))
           result <- construct(powerPath, CatalogPower(powerId, persistent, rulesText))
-        } yield result }
+        yield result }
       }.toVector).flatMap { powers =>
         val duplicates = powers.groupBy(_.id).collect {
           case (id, matches) if matches.size > 1 => id
         }.toVector.sortBy(_.value)
-        if (duplicates.isEmpty) Right(powers)
+        if duplicates.isEmpty then Right(powers)
         else Left(duplicates.map(id => InvalidValue(s"$path.powers",
           s"duplicate power ID ${id.value}")))
       }
@@ -389,11 +389,11 @@ object CatalogLoader:
       typeName(value))))
 
   private def decodeTokens(obj: Obj, path: String): Result[Tokens] =
-    for {
+    for
       favor <- requiredInt(obj, "favor", path)
       secrets <- requiredInt(obj, "secrets", path)
       tokens <- construct(path, Tokens(favor, secrets))
-    } yield tokens
+    yield tokens
 
   private def optionalTokens(
       obj: Obj,
@@ -425,7 +425,7 @@ object CatalogLoader:
     val duplicates = ids.groupBy(_.value).collect {
       case (_, values) if values.size > 1 => values.head
     }.toVector.sortBy(_.value)
-    if (duplicates.isEmpty) Right(())
+    if duplicates.isEmpty then Right(())
     else
       Left(
         duplicates.map(id => DuplicateDefinitionId("$.components", id))
@@ -469,7 +469,7 @@ object CatalogLoader:
         case Some(firstPath) => Some(DuplicatePowerId(path, id, firstPath))
         case None => firstPaths.update(id, path); None
     }
-    if (errors.isEmpty) Right(()) else Left(errors)
+    if errors.isEmpty then Right(()) else Left(errors)
 
   private def requirePattern(
       id: DefinitionId,
@@ -477,11 +477,11 @@ object CatalogLoader:
       expected: String,
       path: String
   ): Result[Unit] =
-    if (id.value.matches(pattern)) Right(())
+    if id.value.matches(pattern) then Right(())
     else Left(Vector(InvalidValue(path, s"expected $expected")))
 
   private def nonNegative(value: Int, path: String): Result[Unit] =
-    if (value >= 0) Right(())
+    if value >= 0 then Right(())
     else Left(Vector(InvalidValue(path, "must be non-negative")))
 
   private def requiredObject(
@@ -602,5 +602,5 @@ object CatalogLoader:
       results: Vector[Result[A]]
   ): Result[Vector[A]] =
     val errors = results.flatMap(_.left.toOption.toVector.flatten)
-    if (errors.nonEmpty) Left(errors)
+    if errors.nonEmpty then Left(errors)
     else Right(results.flatMap(_.toOption))

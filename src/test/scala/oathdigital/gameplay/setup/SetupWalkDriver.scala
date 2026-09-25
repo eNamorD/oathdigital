@@ -15,7 +15,7 @@ object SetupWalkDriver extends WalkerRecordedOpsReducer with munit.Assertions:
       : ReadyGame =
     var state = ready
     var outcome = ProcedureWalker.advance(state, tree, None, powers).toOption.get
-    while (outcome.isInstanceOf[WalkerOutcome.Parked])
+    while outcome.isInstanceOf[WalkerOutcome.Parked] do
       val WalkerOutcome.Parked(pending, events) = outcome: @unchecked
       state = foldRecordedOps(state, events, "setup walk failed")
       val decide = ProcedureWalker.parkedDecide(state, tree, pending, powers).get

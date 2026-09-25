@@ -16,7 +16,7 @@ class PayCostSuite extends munit.FunSuite:
     base.updateCurrent(c => c.copy(
       commonCards = c.commonCards.copy(worldDeck =
         c.commonCards.worldDeck.filterNot(_ == denizen)),
-      players = c.players.map(p => if (p.player != actor) p else
+      players = c.players.map(p => if p.player != actor then p else
         p.copy(board = p.board.copy(favor = 3, faceUpSecrets = 3))),
       map = c.map.copy(sites = c.map.sites.updated(siteId,
         c.map.sites(siteId).copy(denizens = Vector(DenizenState(denizen,

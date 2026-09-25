@@ -42,11 +42,11 @@ object DesktopLaunchProfile:
           DesktopPaths.appDataDirectory(osName, environment, fallbackHome)
         val settingsFile = DesktopPaths.settingsFile(appData)
         val templateWarning = DesktopSettings.writeTemplateIfMissing(settingsFile)
-        for {
+        for
           settings <- DesktopSettings.load(settingsFile)
           launch <- resolve(arguments, environment, settings, appData, detectLanAddress)
           _ <- createDataFolder(launch)
-        } yield Some(launch.copy(warnings = templateWarning.toVector))
+        yield Some(launch.copy(warnings = templateWarning.toVector))
       case Some(_) => Left(s"$LaunchVariable: must be desktop when set")
 
   def resolve(
@@ -58,7 +58,7 @@ object DesktopLaunchProfile:
   ): Either[String, DesktopLaunch] =
     def flagValue(key: String): Option[String] = Flags.get(key).flatMap { flag =>
       val index = arguments.lastIndexOf(flag)
-      if (index >= 0 && index + 1 < arguments.length) Some(arguments(index + 1))
+      if index >= 0 && index + 1 < arguments.length then Some(arguments(index + 1))
       else None
     }
     def higher(key: String): Option[String] =
@@ -75,11 +75,11 @@ object DesktopLaunchProfile:
       val port = higher("OATH_PORT").map(_.trim).getOrElse(DefaultPort)
       val host = higher("OATH_HOST").map(_.trim).getOrElse(Wildcard)
       val (address, lanDetectionFailed) =
-        if (higher("OATH_PUBLIC_BASE_URL").nonEmpty) (Map.empty[String, String], false)
-        else if (host == Wildcard) detectLanAddress() match
+        if higher("OATH_PUBLIC_BASE_URL").nonEmpty then (Map.empty[String, String], false)
+        else if host == Wildcard then detectLanAddress() match
           case Some(lan) => (Map("OATH_PUBLIC_BASE_URL" -> s"http://$lan:$port"), false)
           case None => (Map("OATH_HOST" -> "127.0.0.1"), true)
-        else if (Loopback.contains(host.toLowerCase)) (Map.empty[String, String], false)
+        else if Loopback.contains(host.toLowerCase) then (Map.empty[String, String], false)
         else (Map("OATH_PUBLIC_BASE_URL" -> s"http://${bracketed(host)}:$port"), false)
 
       val defaults = Map(
@@ -111,4 +111,4 @@ object DesktopLaunchProfile:
           case NonFatal(_) => Left(s"cannot create data folder $folder")
 
   private def bracketed(host: String): String =
-    if (host.contains(":") && !host.startsWith("[")) s"[$host]" else host
+    if host.contains(":") && !host.startsWith("[") then s"[$host]" else host

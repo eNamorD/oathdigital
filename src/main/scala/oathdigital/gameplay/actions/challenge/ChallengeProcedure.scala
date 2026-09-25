@@ -21,14 +21,14 @@ object ChallengeProcedure:
     Set(bannerDecisionId, amountDecisionId, ChallengeRibbon.siteDecisionId)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
     _ <- PowerRuntime.requireAudited(catalog)
     _ <- supportedFaces(state)
     _ <- Either.cond(legalBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.Challenge.key))
-  } yield tree(actor)
+  yield tree(actor)
 
   /** Whether Challenge could start now: the gates pass and the first walk
     * (the Supply cost, up to the banner decision) is accepted.
@@ -109,10 +109,10 @@ object ChallengeProcedure:
     */
   private def effects(ready: ReadyGame, actor: PlayerId,
       pending: PendingTree): Vector[Operation] =
-    (for {
+    (for
       banner <- bannerOf(pending)
       amount <- amountOf(pending)
-    } yield Vector[Operation](
+    yield Vector[Operation](
       Sequence(ChallengeRibbon.steps(actor, banner),
         Some(PowerWindow.ChallengeRibbon)),
       Sequence(Vector[Operation](payment(actor, banner, amount),

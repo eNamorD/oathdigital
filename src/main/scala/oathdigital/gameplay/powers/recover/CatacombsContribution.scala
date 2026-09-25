@@ -29,14 +29,14 @@ final case class CatacombsContribution private (cardId: DenizenId,
       Transform((ctx, ops) => place(ctx.activePlayer) +: ops)))
   // Mirrors the legacy capacity guard: no generic execution path enforces
   // `relicSlots` for a card Move (PowerOperations.PlaceRelicAtSite:93).
-  private def place(actor: PlayerId): Operation = BuildOps((ready, _) => for {
+  private def place(actor: PlayerId): Operation = BuildOps((ready, _) => for
     siteId <- PowerAccess.siteOf(ready, actor, cardId)
       .toRight(OathViolation.PawnSiteMissing(actor))
     _ <- Either.cond(catalog.sites.find(_.id == siteId).exists(d =>
       ready.game.current.map.sites.get(siteId).fold(0)(_.relics.size) < d.relicSlots),
       (), OathViolation.RecoverUnavailable("site has no empty relic slot"))
     relic <- ready.game.current.commonCards.relicDeck.headOption.toRight(OathViolation.RecoverUnavailable("relic deck is empty"))
-  } yield Vector[CoreOperation](
+  yield Vector[CoreOperation](
     Move(Piece.Card(relic),
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
       PositionedLocation(Location.Site(siteId)),

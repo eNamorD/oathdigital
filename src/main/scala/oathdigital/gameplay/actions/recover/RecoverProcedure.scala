@@ -106,14 +106,14 @@ object RecoverProcedure:
 
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId)
-      : Either[OathViolation, Operation] = for {
+      : Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(oathdigital.model.OathState.Ready(state),
       activePlayer)
     siteId <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-  } yield tree(activePlayer, siteId, difficulty)
+  yield tree(activePlayer, siteId, difficulty)
 
   /** Whether Recover could start now: the gates pass and the first walk (the
     * Supply cost, up to the first roll) is accepted, so a player without the
@@ -126,12 +126,12 @@ object RecoverProcedure:
 
   /** Rebuilds the same command-local tree for an already-started Recover. */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] = for {
+      activePlayer: PlayerId): Either[OathViolation, Operation] = for
     siteId <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-  } yield tree(activePlayer, siteId, difficulty)
+  yield tree(activePlayer, siteId, difficulty)
 
   /** Tree closes only over command-stable actor, site, and difficulty. */
   private def tree(actor: PlayerId, siteId: SiteId,
@@ -189,7 +189,7 @@ object RecoverProcedure:
       SpendSupply(actor, supplyCost),
       Roll(recoverPool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
       Branch((ready, _) =>
-        if (succeeded(ready)) Vector.empty else Vector(choiceDecide)))
+        if succeeded(ready) then Vector.empty else Vector(choiceDecide)))
 
     val repeatGuard: (ReadyGame, PendingTree) => Boolean =
       (ready, pending) => !succeeded(ready) && !stopped(pending)
@@ -206,7 +206,7 @@ object RecoverProcedure:
     // absent from the rebuilt query, so the answer naming it is rejected.
     val afterLoop = Branch((ready, _) => {
       val relics = actorFacedownRelics(ready, actor)
-      if (succeeded(ready) && relics.nonEmpty)
+      if succeeded(ready) && relics.nonEmpty then
         Vector(Decide(
           decisionId = relicDecisionId,
           owner = actor,

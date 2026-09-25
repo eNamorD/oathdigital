@@ -15,7 +15,7 @@ class WalkerPreviewSuite extends munit.FunSuite:
     val base = initialReady
     val actor = base.game.current.turn.activePlayer
     val players = base.game.current.players.map(player =>
-      if (player.player == actor)
+      if player.player == actor then
         player.copy(board = player.board.copy(supply = SupplyTrack(amount)))
       else player)
     (base.updateCurrent(_.copy(players = players)), actor)

@@ -37,7 +37,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
             LoadedGame(Ready(inPhase(shown)), 30L), actor)
           val legal = shown == phase
           assertEquals(projected.phasePowers.map(_.powerId),
-            if (legal) Vector(powerId.value) else Vector.empty,
+            if legal then Vector(powerId.value) else Vector.empty,
             s"$timing power in $shown")
           assertEquals(projected.legalControls.contains(control), legal,
             s"$timing power in $shown")
@@ -52,7 +52,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       r => r.id.value == id.value && r.powers.nonEmpty)).get
     val held = base.updateCurrent(_.copy(
       turn = TurnState(actor, Phase.Act, Set.empty),
-      players = current.players.map(p => if (p.player != actor) p else
+      players = current.players.map(p => if p.player != actor then p else
         p.copy(relics = p.relics :+ RelicState(relic, Orientation.FaceUp,
           Tokens.empty))),
       commonCards = current.commonCards.copy(relicDeck =
@@ -82,12 +82,12 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     val printed = catalog.denizens.find(_.id.value == card.value).get.powers
       .find(_.id == powerId).get
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
-      if (e.id == edifice.id) e.copy(
+      if e.id == edifice.id then e.copy(
         intact = e.intact.copy(powers = e.intact.powers :+ printed)) else e))
     val home = current.players.find(_.player == actor).get.pawnSite.get
     val state = base.updateCurrent(c => c.copy(
       turn = TurnState(actor, Phase.Act, Set.empty),
-      players = c.players.map(p => if (p.player != actor) p else
+      players = c.players.map(p => if p.player != actor then p else
         p.copy(advisers = Vector.empty)),
       // The adviser card returns to the deck so the card inventory stays whole.
       commonCards = c.commonCards.copy(

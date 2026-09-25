@@ -39,6 +39,6 @@ private[powers] object ReviewedHandler:
 
   def automatic(window: PowerWindow, implemented: Boolean = false,
       active: Boolean = true): PowerHandler = PowerHandlers.automatic(window,
-    implemented)(if (active) reviewed else inactive)
+    implemented)(if active then reviewed else inactive)
   def selected(window: PowerWindow, implemented: Boolean = false): PowerHandler =
     PowerHandlers.selected(window, implemented)(reviewed)

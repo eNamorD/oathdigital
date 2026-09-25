@@ -28,7 +28,7 @@ case object WanderingFlamePlace extends PaidAction(
   private def place(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     PawnMoves.pawnSite(ready, player).map { here =>
-      if (faceUpSecrets(ready, player) == 0) Vector.empty
+      if faceUpSecrets(ready, player) == 0 then Vector.empty
       else Vector(Move(Piece.Secrets(1),
         PositionedLocation(Location.PlayArea(player)),
         PositionedLocation(Location.Site(here))))

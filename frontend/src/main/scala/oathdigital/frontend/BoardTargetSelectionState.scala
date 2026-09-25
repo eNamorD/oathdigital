@@ -35,8 +35,8 @@ private[frontend] final case class BoardTargetSelectionState(
       BoardSelectionResult.Submit(action, Vector(target))
     case Some(action) if action.candidates.exists(_.target == target) =>
       val key = target.stableKey
-      val next = if (selectedKeys.contains(key)) selectedKeys - key
-      else if (selectedKeys.size < action.maximum) selectedKeys + key
+      val next = if selectedKeys.contains(key) then selectedKeys - key
+      else if selectedKeys.size < action.maximum then selectedKeys + key
       else selectedKeys
       BoardSelectionResult.Updated(copy(selectedKeys = next))
     case _ => BoardSelectionResult.Updated(this)
@@ -49,11 +49,11 @@ private[frontend] final case class BoardTargetSelectionState(
       selectedKeys.size >= action.minimum &&
       selectedKeys.size <= action.maximum)
 
-  def confirm: Option[BoardSelectionResult.Submit] = for {
+  def confirm: Option[BoardSelectionResult.Submit] = for
     action <- activeAction if canConfirm
     targets = action.candidates.collect:
       case candidate if selected(candidate.target) => candidate.target
-  } yield BoardSelectionResult.Submit(action, targets)
+  yield BoardSelectionResult.Submit(action, targets)
 
 
 private[frontend] object BoardTargetSelectionState:

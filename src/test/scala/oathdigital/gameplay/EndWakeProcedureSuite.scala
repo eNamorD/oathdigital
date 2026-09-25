@@ -29,7 +29,7 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     val activeSite = value.game.current.players.find(_.player == active)
       .flatMap(_.pawnSite).get
     val players = value.game.current.players.map { player =>
-      if (sharedEnemy && player.player != active)
+      if sharedEnemy && player.player != active then
         player.copy(pawnSite = Some(activeSite))
       else player
     }

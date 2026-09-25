@@ -23,7 +23,7 @@ case object MurkyFountain extends PaidAction("edifice.e15.ruined",
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match
     case DecisionOptionRef.Edifice(id) =>
-      if (!atPawnSite(ready, player, id)) Right(Sequence(Vector.empty))
+      if !atPawnSite(ready, player, id) then Right(Sequence(Vector.empty))
       else Right(Sequence(Vector(
         ModifyDicePool(pool, Dice),
         Roll(pool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
@@ -38,5 +38,5 @@ case object MurkyFountain extends PaidAction("edifice.e15.ruined",
   private def outcome(state: ReadyGame, player: PlayerId)
       : Vector[CoreOperation] =
     val total = RollResults.score(state, pool)
-    if (total > 0) Vector(GainSupply(player, total))
+    if total > 0 then Vector(GainSupply(player, total))
     else Vector(EnterPhase(Phase.Rest))

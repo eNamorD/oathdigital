@@ -33,7 +33,7 @@ case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free):
 
   private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
     val takers = PawnMoves.atOtherSites(ready, player)
-    if (takers.isEmpty) Vector.empty
+    if takers.isEmpty then Vector.empty
     else Vector(Decide(fateDecisionId, player, DecisionQuery.ChooseOne(
       DecisionOption.Button(discard, "Discard Magic Carpet") +:
         takers.map(taker => DecisionOption.Player(
@@ -43,12 +43,12 @@ case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free):
 
   private def settle(ready: ReadyGame, player: PlayerId, carpet: RelicId,
       pending: PendingTree): Either[OathViolation, Vector[CoreOperation]] =
-    for {
+    for
       held <- PlayerFacts.player(ready, player)
       relic <- held.relics.find(_.id == carpet).toRight(
         OathViolation.InvalidEventOrder(
           s"${carpet.value} is not held by ${player.value}"))
-    } yield PowerAnswers.one(pending, fateDecisionId) match
+    yield PowerAnswers.one(pending, fateDecisionId) match
       case Some(DecisionOptionRef.Player(taker)) => Vector[CoreOperation](
         Give(Piece.Card(carpet), player, Location.PlayArea(player),
           Location.PlayArea(taker)))

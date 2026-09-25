@@ -35,7 +35,7 @@ class RecoverProcedureSuite extends munit.FunSuite
       amount: Int): ReadyGame =
     state.updateCurrent(_.copy(
       players = state.game.current.players.map(p =>
-        if (p.player == player)
+        if p.player == player then
           p.copy(board = p.board.copy(supply = SupplyTrack(amount)))
         else p)))
 
@@ -64,7 +64,7 @@ class RecoverProcedureSuite extends munit.FunSuite
         commonCards = base.game.current.commonCards.copy(
           relicDeck = base.game.current.commonCards.relicDeck.tail),
         players = base.game.current.players.map(p =>
-          if (p.player == active.player) moved else p),
+          if p.player == active.player then moved else p),
         map = base.game.current.map.copy(sites =
           base.game.current.map.sites.updated(siteId, site))))
     (ready, moved, siteId, relic, difficulty)

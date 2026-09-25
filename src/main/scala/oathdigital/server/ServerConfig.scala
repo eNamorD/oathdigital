@@ -122,7 +122,7 @@ object ServerConfig:
       }
       .map(_._1._2)
 
-    if (errors.nonEmpty) Left(errors)
+    if errors.nonEmpty then Left(errors)
     else
       Right(ServerConfig(
         host.toOption.get,
@@ -140,26 +140,26 @@ object ServerConfig:
       values: Map[String, String] = Map.empty,
       errors: Vector[(String, String)] = Vector.empty
   ): (Map[String, String], Vector[(String, String)]) =
-    if (remaining.isEmpty) (values, errors)
+    if remaining.isEmpty then (values, errors)
     else
       val argument = remaining.head
       val hasValue = remaining.lengthCompare(1) > 0 &&
         !remaining(1).startsWith("--")
-      if (SupportedOptions.contains(argument) && hasValue)
+      if SupportedOptions.contains(argument) && hasValue then
         parseArguments(
           remaining.drop(2),
           values.updated(argument, remaining(1)),
           errors
         )
-      else if (SupportedOptions.contains(argument))
+      else if SupportedOptions.contains(argument) then
         parseArguments(
           remaining.tail,
           values,
           errors :+ argument -> s"missing value for $argument. $usage"
         )
-      else if (argument.startsWith("--"))
+      else if argument.startsWith("--") then
         parseArguments(
-          remaining.drop(if (hasValue) 2 else 1),
+          remaining.drop(if hasValue then 2 else 1),
           values,
           errors :+ argument -> s"unknown option $argument. $usage"
         )
@@ -217,7 +217,7 @@ object ServerConfig:
       .fromOptions(sessionCookieName, publicOrigin)
       .left.map { message =>
         val option =
-          if (sessionCookieName.forall(_.trim.isEmpty))
+          if sessionCookieName.forall(_.trim.isEmpty) then
             "--session-cookie-name"
           else "--authenticated-public-origin"
         option -> s"$option: $message"
@@ -253,7 +253,7 @@ object ServerConfig:
       option: String,
       value: String
   ): Either[String, Path] =
-    if (value.trim.isEmpty) Left(s"$option: must not be blank")
+    if value.trim.isEmpty then Left(s"$option: must not be blank")
     else
       try Right(Paths.get(value).toAbsolutePath.normalize)
       catch

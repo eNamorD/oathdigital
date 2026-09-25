@@ -216,7 +216,7 @@ object CardIndex:
       .map(CardIndexProblem.MissingCard.apply)
     val problems = duplicateProblems ++ missingProblems
 
-    if (problems.nonEmpty) Left(problems)
+    if problems.nonEmpty then Left(problems)
     else
       Right(
         CardIndex(

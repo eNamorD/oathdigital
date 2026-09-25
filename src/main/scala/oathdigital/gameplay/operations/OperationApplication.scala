@@ -75,13 +75,13 @@ private[gameplay] object OperationApplication:
       operation: CoreOperation
   ): Either[OperationError, ReadyGame] =
     val leaves = Operation.flatten(operation)
-    for {
+    for
       resources <- ResourceOperations.applyCountedMoves(ready, leaves)
       pieces <- BoardControlOperations.applyPawnAndBannerMoves(
         resources, leaves)
       cards <- CardMovementOperations.applyCardMoves(pieces, leaves)
       finished <- applyNonMoveLeaves(cards, leaves)
-    } yield finished
+    yield finished
 
   private def reason(error: OperationError,
       operation: CoreOperation): OperationReason =
@@ -92,7 +92,7 @@ private[gameplay] object OperationApplication:
         case _ => piece.isInstanceOf[Piece.Counted]
       case _ => false
     OperationReason(error.code, error.detail,
-      if (impossible) OperationReasonKind.Impossible
+      if impossible then OperationReasonKind.Impossible
       else OperationReasonKind.Invalid)
 
   private final case class RunningBoards(

@@ -20,7 +20,7 @@ class PowerOperationsSuite extends munit.FunSuite:
       favor = 3, faceUpSecrets = 3))
     val ready = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
-        if (p.player == actor.player) changedActor else p),
+        if p.player == actor.player then changedActor else p),
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(_ == denizenId)),
       map = base.game.current.map.copy(sites =

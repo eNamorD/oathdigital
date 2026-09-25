@@ -76,7 +76,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val shared = withEnemyAtOrigin(board())
     val b = shared.copy(ready = shared.ready.updateCurrent(current =>
       current.copy(players = current.players.map(p =>
-        if (p.player == shared.other) p.copy(relics = Vector(RelicState(
+        if p.player == shared.other then p.copy(relics = Vector(RelicState(
           RelicId("r-raid"), Orientation.FaceUp, Tokens.empty))) else p))))
     val started = start(b).toOption.get
     assertEquals(started.continue, OathContinue.AwaitingCampaignDecision(b.actor,
@@ -163,7 +163,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val held = RelicId(bag.id.value)
     // The relic leaves the deck and any site, so the card index stays valid.
     val holding = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => if (p.player == b.actor) p.copy(
+      players = current.players.map(p => if p.player == b.actor then p.copy(
         relics = Vector(RelicState(held, Orientation.FaceUp, Tokens.empty)))
       else p),
       commonCards = current.commonCards.copy(relicDeck =
@@ -179,7 +179,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val b = board()
     val vow = catalog.denizens.find(_.handlers.contains("denizen.vow-of-peace")).get
     val holding = b.ready.updateCurrent(current => current.copy(players =
-      current.players.map(p => if (p.player == b.actor) p.copy(advisers = Vector(
+      current.players.map(p => if p.player == b.actor then p.copy(advisers = Vector(
         DenizenState(DenizenId(vow.id.value), Orientation.FaceUp, Tokens.empty)))
       else p)))
     val withPowers = rules(powers = true)

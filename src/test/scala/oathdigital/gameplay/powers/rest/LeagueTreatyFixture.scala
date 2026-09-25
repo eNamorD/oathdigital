@@ -47,7 +47,7 @@ object LeagueTreatyFixture:
       })
       val treaty = Vector(DenizenState(treatyCard, Orientation.FaceUp,
         Tokens.empty)).filter(_ => id == site)
-      id -> (if (id == site) emptied.copy(forces = ruler.fold[SiteForces](
+      id -> (if id == site then emptied.copy(forces = ruler.fold[SiteForces](
           SiteForces.Occupied(ForceKind.Bandit, 1))(owner =>
           SiteForces.Occupied(ForceKind.Exile(lineage(owner)), 1)),
           denizens = treaty ++ placed.getOrElse(id, Vector.empty))

@@ -38,7 +38,7 @@ object CampaignBattle:
   def attackResult(faces: Vector[AttackDieFace], force: Int,
       ignoreSkulls: Boolean): (Int, Int) =
     val rolled = AttackDieFace.skulls(faces)
-    if (ignoreSkulls) AttackDieFace.score(faces) -> 0
+    if ignoreSkulls then AttackDieFace.score(faces) -> 0
     else
       val payable = math.min(rolled, force)
       (AttackDieFace.score(faces) - (rolled - payable) * 2) -> payable
@@ -97,7 +97,7 @@ object CampaignBattle:
     * them here again would print the same facts twice, once as words.
     */
   def sacrificeHeading(max: Int): String =
-    s"Sacrifice up to $max warband${if (max == 1) "" else "s"} for one attack each"
+    s"Sacrifice up to $max warband${if max == 1 then "" else "s"} for one attack each"
 
   /** The durable record of this battle, built from the recorded outcomes and
     * the answers, before any warband dies.
@@ -129,11 +129,11 @@ object CampaignBattle:
       .map { attacker =>
         val survivors = result.force - result.skullLosses - result.sacrificed
         val deaths = result.skullLosses + result.sacrificed +
-          (if (result.attackerWins) 0 else survivors / 2)
+          (if result.attackerWins then 0 else survivors / 2)
         val own: Vector[CoreOperation] = Option.when(deaths > 0)(Kill(
           Piece.Warbands(ForceKind.Exile(attacker.lineage), deaths),
           PositionedLocation(Location.PlayArea(result.attacker)))).toVector
-        own ++ (if (!result.attackerWins) Vector.empty
+        own ++ (if !result.attackerWins then Vector.empty
           else result.kind match {
             case CampaignKind.Conquest => conquestLosses(ready, result)
             case CampaignKind.Raid => raidBoardLosses(ready, result)

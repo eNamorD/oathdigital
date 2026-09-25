@@ -39,7 +39,7 @@ class TakeWealthPowerSuite extends munit.FunSuite:
     baseReady.updateCurrent(_.copy(
         turn = baseReady.game.current.turn.copy(usedPowers = used),
         players = baseReady.game.current.players.map { player =>
-          if (player.player == actor) player.copy(pawnSite = pawn)
+          if player.player == actor then player.copy(pawnSite = pawn)
           else player
         }))
 

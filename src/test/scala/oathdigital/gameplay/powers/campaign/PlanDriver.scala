@@ -102,11 +102,11 @@ object PlanDriver:
         identity)
     val run = Run(game, started, started.events)
     val kind =
-      if (run.continue == awaits(b.actor, CampaignIds.kind)) run.pick(b.actor,
-        CampaignIds.kind, DecisionOptionRef.Button(if (raid) "raid" else "conquest"))
+      if run.continue == awaits(b.actor, CampaignIds.kind) then run.pick(b.actor,
+        CampaignIds.kind, DecisionOptionRef.Button(if raid then "raid" else "conquest"))
       else run
     val asked =
-      if (kind.continue == awaits(b.actor, CampaignIds.targets))
+      if kind.continue == awaits(b.actor, CampaignIds.targets) then
         kind.answer(b.actor, CampaignIds.targets, ChooseManyAnswer(targets))
       else kind
     asked.answer(b.actor, CampaignIds.force, ChooseAmountAnswer(force))

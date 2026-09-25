@@ -46,7 +46,7 @@ final case class CircletOfCommand private (cardId: RelicId,
     case decide: Decide => decide.query match
       case one: DecisionQuery.ChooseOne =>
         val options = one.options.filterNot(option => shields(ctx, option.ref))
-        if (options.isEmpty) Vector.empty
+        if options.isEmpty then Vector.empty
         else Vector(decide.copy(query = one.copy(options = options)))
       case _ => Vector(decide)
     case other => Vector(other)

@@ -177,7 +177,7 @@ class GameRoutesSuite extends munit.FunSuite:
       response: JavaHttpResponse[String]
   ): Option[String] =
     val value = response.headers().firstValue("Cache-Control")
-    if (value.isPresent) Some(value.get()) else None
+    if value.isPresent then Some(value.get()) else None
 
   private def post(
       client: HttpClient,

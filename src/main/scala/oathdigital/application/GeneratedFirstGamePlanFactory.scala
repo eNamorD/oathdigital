@@ -22,13 +22,13 @@ final class GeneratedFirstGamePlanFactory(
   override def build(config: FirstGameBootstrapConfig)
       : Either[BootstrapPlanFailure, FirstGamePlan] =
     val resolvedConfig = shuffledSeating(config)
-    for {
+    for
       _ <- ReviewedPowerCatalog.requireAudited(catalog)
         .left.map(violation => BootstrapPlanFailure(violation.toString))
       chronicle <- FirstGameChronicleGenerator.generate(catalog,
           PowerImplementationStatus.implemented(catalog), random, policy)
         .left.map(failure => BootstrapPlanFailure(failure.toString))
-    } yield FirstGamePlan(chronicle, resolvedConfig)
+    yield FirstGamePlan(chronicle, resolvedConfig)
 
   private def shuffledSeating(config: FirstGameBootstrapConfig)
       : FirstGameBootstrapConfig =

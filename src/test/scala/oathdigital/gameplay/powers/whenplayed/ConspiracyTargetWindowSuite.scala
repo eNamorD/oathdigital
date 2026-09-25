@@ -25,7 +25,7 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
     val site = player(base).pawnSite
     base.updateCurrent(_.copy(
       players = current.players.map(p =>
-        if (p.player == enemy) p.copy(pawnSite = site,
+        if p.player == enemy then p.copy(pawnSite = site,
           relics = relics.map(RelicState(_, Orientation.FaceUp, Tokens.empty)))
         else p),
       banners = current.banners.copy(
@@ -49,7 +49,7 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
             case decide: Decide => decide.query match {
               case one: DecisionQuery.ChooseOne =>
                 val options = one.options.filter(o => keep(o.ref))
-                if (options.isEmpty) Vector.empty
+                if options.isEmpty then Vector.empty
                 else Vector(decide.copy(query = one.copy(options = options)))
               case _ => Vector(decide)
             }

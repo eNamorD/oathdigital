@@ -18,7 +18,7 @@ class PayCostSettlementSuite extends munit.FunSuite:
     base.updateCurrent(c => c.copy(
       commonCards = c.commonCards.copy(worldDeck =
         c.commonCards.worldDeck.filterNot(_ == denizen)),
-      players = c.players.map(p => if (p.player != payer) p else
+      players = c.players.map(p => if p.player != payer then p else
         p.copy(board = p.board.copy(favor = 3, faceUpSecrets = 3,
           faceDownSecrets = 0))),
       map = c.map.copy(sites = c.map.sites.updated(siteId,
@@ -75,7 +75,7 @@ class PayCostSettlementSuite extends munit.FunSuite:
 
   test("the active player's payment still rests on the card"):
     val start = arranged().updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player != active) p else
+      if p.player != active then p else
         p.copy(board = p.board.copy(favor = 3, faceUpSecrets = 3)))))
     val done = run(start, PayCost(active, Location.OnCard(denizen),
       Cost(favor = 1, secret = 1), matchingBank = Some(suit))).toOption.get

@@ -47,13 +47,13 @@ object TravelProcedure:
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Operation] = for {
+      : Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
     destination <- destinationOf(args)
     source <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
     base <- TravelRules.cost(catalog, state, source, destination)
-  } yield tree(activePlayer, source, destination, base)
+  yield tree(activePlayer, source, destination, base)
 
   /** The destination Travel's start selection names, or a typed rejection.
     *

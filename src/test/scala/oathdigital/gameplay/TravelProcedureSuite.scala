@@ -43,16 +43,16 @@ class TravelProcedureSuite extends munit.FunSuite:
     val states = ids.map { id =>
       val definition = catalog.sites.find(_.id == id).get
       id -> SiteState(
-        if (id == pass) passForces
-        else if (definition.capacity == 0) SiteForces.Empty
+        if id == pass then passForces
+        else if definition.capacity == 0 then SiteForces.Empty
         else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
         Vector.empty, Vector.empty, definition.startingResources)
     }.toMap
     val active = initial.game.current.turn.activePlayer
     val players = initial.game.current.players.zipWithIndex.map:
       case (player, index) => player.copy(
-        pawnSite = Some(if (player.player == active) source else ids(index + 1)),
-        board = if (player.player == active)
+        pawnSite = Some(if player.player == active then source else ids(index + 1)),
+        board = if player.player == active then
           player.board.copy(supply = SupplyTrack(supply)) else player.board)
     initial.updateCurrent(_.copy(
       players = players,

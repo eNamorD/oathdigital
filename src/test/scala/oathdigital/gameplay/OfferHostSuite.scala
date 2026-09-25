@@ -40,7 +40,7 @@ class OfferHostSuite extends munit.FunSuite:
 
   private def low(state: ReadyGame): ReadyGame = state.updateCurrent(current =>
     current.copy(players = current.players.map(p =>
-      if (p.player == actor) p.copy(board = p.board.copy(supply = SupplyTrack(1)))
+      if p.player == actor then p.copy(board = p.board.copy(supply = SupplyTrack(1)))
       else p)))
 
   test("a host is handed the offers of the powers hooked at its window, in power order"):

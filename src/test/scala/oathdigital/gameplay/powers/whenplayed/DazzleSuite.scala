@@ -27,13 +27,13 @@ class DazzleSuite extends munit.FunSuite:
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(id =>
           id == dazzle || targets.contains(id))),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = p.advisers :+ DenizenState(dazzle,
           Orientation.FaceUp, Tokens.empty)) else p),
       map = current.map.copy(sites = current.map.sites.updated(siteId,
         site.copy(denizens = site.denizens ++ targets.zipWithIndex.map {
           case (id, index) => DenizenState(id, Orientation.FaceUp,
-            if (index == 0) Tokens(1, 0) else Tokens.empty)
+            if index == 0 then Tokens(1, 0) else Tokens.empty)
         }))))))
     val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
     val power = Dazzle.forCatalog(catalog).get
@@ -81,7 +81,7 @@ class DazzleSuite extends munit.FunSuite:
         DenizenState(targets(1), Orientation.FaceUp, Tokens.empty),
         EdificeState(hall, EdificeSide.Intact, Tokens.empty)))
     val prepared = base.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = p.advisers :+ DenizenState(dazzle,
           Orientation.FaceUp, Tokens.empty)) else p),
       commonCards = current.commonCards.copy(
@@ -138,7 +138,7 @@ class DazzleSuite extends munit.FunSuite:
       commonCards = c.commonCards.copy(
         worldDeck = c.commonCards.worldDeck.filterNot(_ == dazzle),
         edificeDeck = c.commonCards.edificeDeck.filterNot(placed)),
-      players = c.players.map(p => if (p.player != actor) p else
+      players = c.players.map(p => if p.player != actor then p else
         p.copy(advisers = p.advisers :+ DenizenState(dazzle,
           Orientation.FaceUp, Tokens.empty))),
       map = c.map.copy(sites = c.map.sites.updated(home,
@@ -184,7 +184,7 @@ class DazzleSuite extends munit.FunSuite:
       val cleared = c.copy(
         commonCards = c.commonCards.copy(worldDeck =
           c.commonCards.worldDeck.filterNot(placed)),
-        players = c.players.map(p => if (p.player != actor) p else
+        players = c.players.map(p => if p.player != actor then p else
           p.copy(advisers = p.advisers :+ DenizenState(dazzle,
             Orientation.FaceUp, Tokens.empty))))
       add(add(add(cleared, home, beast), home, near), away, faraway)

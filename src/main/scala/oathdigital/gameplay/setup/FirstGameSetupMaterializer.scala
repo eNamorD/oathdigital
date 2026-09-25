@@ -20,7 +20,7 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog):
       plan.orderedSites.slice(5, 8),
       plan.orderedSites.map { siteId =>
         val definition = sitesById(siteId)
-        val forces = if (definition.capacity == 0) SiteForces.Empty
+        val forces = if definition.capacity == 0 then SiteForces.Empty
           else SiteForces.Occupied(ForceKind.Bandit, definition.capacity)
         val denizens = edifices.get(siteId).toVector.map(id =>
           EdificeState(id, EdificeSide.Ruined, Tokens.empty))
@@ -82,12 +82,12 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog):
     }
 
   private def regionOf(plan: FirstGameSetupPlan, site: SiteId): Region =
-    if (plan.orderedSites.take(2).contains(site)) Region.Cradle
-    else if (plan.orderedSites.slice(2, 5).contains(site)) Region.Provinces
+    if plan.orderedSites.take(2).contains(site) then Region.Cradle
+    else if plan.orderedSites.slice(2, 5).contains(site) then Region.Provinces
     else Region.Hinterland
 
   private def favorBanks(plan: FirstGameSetupPlan): Map[Suit, Int] =
-    val bonus = if (plan.participants.size >= 5) 1 else 0
+    val bonus = if plan.participants.size >= 5 then 1 else 0
     val edificeSuits = plan.homelandEdifices.map { case (_, id) =>
       edificesById(id).suit
     }

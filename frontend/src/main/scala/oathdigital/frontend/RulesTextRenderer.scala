@@ -43,10 +43,10 @@ private[frontend] object RulesTextRenderer:
       val isBold = found.group(1) != null
       val validBoundary = isBold || found.start == 0 ||
         !isWordChar(value.charAt(found.start - 1))
-      if (validBoundary)
+      if validBoundary then
         tokenise(value.substring(cursor, found.start), into)
-        val inner = if (isBold) found.group(1) else found.group(2)
-        val wrapper = ServerUiSupport.element(if (isBold) "strong" else "em", "")
+        val inner = if isBold then found.group(1) else found.group(2)
+        val wrapper = ServerUiSupport.element(if isBold then "strong" else "em", "")
         tokenise(inner, wrapper)
         into.appendChild(wrapper)
         cursor = found.end
@@ -59,7 +59,7 @@ private[frontend] object RulesTextRenderer:
   private def tokenise(value: String, into: dom.Element): Unit =
     var cursor = 0
     Token.findAllMatchIn(value).foreach { found =>
-      if (TokenSprite.isToken(found.group(1)))
+      if TokenSprite.isToken(found.group(1)) then
         append(value.substring(cursor, found.start), into)
         into.appendChild(glyph(found.group(1)))
         cursor = found.end
@@ -67,4 +67,4 @@ private[frontend] object RulesTextRenderer:
     append(value.substring(cursor), into)
 
   private def append(value: String, into: dom.Element): Unit =
-    if (value.nonEmpty) into.appendChild(dom.document.createTextNode(value))
+    if value.nonEmpty then into.appendChild(dom.document.createTextNode(value))

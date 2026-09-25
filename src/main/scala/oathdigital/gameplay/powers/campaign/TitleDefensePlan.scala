@@ -23,7 +23,7 @@ final case class TitleDefensePlan private () extends BattlePlan:
         case TitleSide.Oathkeeper => 1
         case TitleSide.Usurper => 2
       CampaignPlanOffer(CampaignPlanSource.Title(user),
-        s"${title.side} title: add $dice defense ${if (dice == 1) "die" else "dice"}",
+        s"${title.side} title: add $dice defense ${if dice == 1 then "die" else "dice"}",
         Vector.empty, Vector(CampaignPlanEffect.AddDefenseDice(dice)))
     }
 

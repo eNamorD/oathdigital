@@ -42,7 +42,7 @@ class CardPlayHooksSuite extends munit.FunSuite:
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(_ == card)),
       temporaryHands = current.temporaryHands.updated(actor, Vector(card)),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(board = p.board.copy(supply = SupplyTrack(startSupply))) else p))),
       actor)
 
@@ -110,7 +110,7 @@ class CardPlayHooksSuite extends munit.FunSuite:
     val ready = base.updateCurrent(_.copy(
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(_ == card)),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(board = p.board.copy(supply = SupplyTrack(startSupply)),
           advisers = p.advisers :+ DenizenState(card, Orientation.FaceDown,
             Tokens.empty)) else p)))

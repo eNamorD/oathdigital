@@ -420,7 +420,7 @@ class CatalogLoaderSuite extends munit.FunSuite:
     val unknown = restricted("[\"elsewhere\"]")
     val wrongType = restricted("[1]")
 
-    for (json <- Vector(empty, lockedAlone))
+    for json <- Vector(empty, lockedAlone) do
       assert(
         CatalogLoader.load(json).left.toOption.get.exists {
           case InvalidValue(path, _) => path == "$.denizens[0].restrictions"

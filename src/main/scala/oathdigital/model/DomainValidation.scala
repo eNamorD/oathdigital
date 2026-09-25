@@ -54,7 +54,7 @@ object DomainValidation:
       (Region.Provinces: Region, 3, map.provinces.size),
       (Region.Hinterland: Region, 3, map.hinterland.size)
     ).foreach { case (region, expected, actual) =>
-      if (actual != expected)
+      if actual != expected then
         problems += WrongRegionSize(region, expected, actual)
     }
 
@@ -86,14 +86,14 @@ object DomainValidation:
         problems += SiteInMapAndAtlas(site)
 
     FoundationNumber.all.foreach { number =>
-      if (!game.campaign.foundations.contains(number))
+      if !game.campaign.foundations.contains(number) then
         problems += MissingFoundation(number)
     }
 
     game.campaign.lineages.toVector
       .sortBy(_._1.value)
       .foreach { case (key, lineage) =>
-        if (key != lineage.id)
+        if key != lineage.id then
           problems += LineageKeyMismatch(key, lineage.id)
       }
 
@@ -112,10 +112,10 @@ object DomainValidation:
       .foreach(lineage => problems += DuplicateLineage(lineage))
 
     game.current.players.foreach { player =>
-      if (!game.campaign.lineages.contains(player.lineage))
+      if !game.campaign.lineages.contains(player.lineage) then
         problems += UnknownPlayerLineage(player.player, player.lineage)
       player.pawnSite.foreach { site =>
-        if (!inPlay.contains(site))
+        if !inPlay.contains(site) then
           problems += PawnOutsideMap(player.player, site)
       }
     }
@@ -123,7 +123,7 @@ object DomainValidation:
     val playerIds = game.current.players.iterator.map(_.player).toSet
     (game.current.temporaryHands.keySet -- playerIds).toVector
       .sortBy(_.value).foreach(player => problems += UnknownTemporaryHandOwner(player))
-    if (!playerIds.contains(game.current.turn.activePlayer))
+    if !playerIds.contains(game.current.turn.activePlayer) then
       problems += UnknownActivePlayer(game.current.turn.activePlayer)
 
     map.sites.toVector.sortBy(_._1.value).foreach:
@@ -133,15 +133,15 @@ object DomainValidation:
       case _ => ()
 
     game.current.banners.peoplesFavor.holder.foreach { holder =>
-      if (!playerIds.contains(holder))
+      if !playerIds.contains(holder) then
         problems += UnknownPeoplesFavorHolder(holder)
     }
     game.current.banners.darkestSecret.holder.foreach { holder =>
-      if (!playerIds.contains(holder))
+      if !playerIds.contains(holder) then
         problems += UnknownDarkestSecretHolder(holder)
     }
     game.current.title.holder.foreach { holder =>
-      if (!playerIds.contains(holder))
+      if !playerIds.contains(holder) then
         problems += UnknownTitleHolder(holder)
     }
 
@@ -150,7 +150,7 @@ object DomainValidation:
       .map(_.id)
       .toVector
       .sortBy(_.value)
-    if (chancellors.size > 1)
+    if chancellors.size > 1 then
       problems += MultipleChancellors(chancellors)
 
     CardIndex.from(game, expectedCards) match

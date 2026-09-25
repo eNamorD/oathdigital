@@ -29,10 +29,10 @@ class RampartSuite extends munit.FunSuite:
         extra, current.map.sites(extra).copy(forces = SiteForces.Occupied(
           ForceKind.Exile(lineage), 2)))))))
     val staged = withEdifice(ruled, extra, edifice, face)
-    if (!pawnThere) staged
+    if !pawnThere then staged
     else staged.copy(ready = staged.ready.updateCurrent(current => current.copy(
       players = current.players.map(p =>
-        if (p.player == staged.other) p.copy(pawnSite = Some(extra)) else p))))
+        if p.player == staged.other then p.copy(pawnSite = Some(extra)) else p))))
 
   private val edificeRef: DecisionOptionRef =
     DecisionOptionRef.Edifice(EdificeId(edifice))

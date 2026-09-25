@@ -10,7 +10,7 @@ import ServerUiSupport._
 private[frontend] object NegotiationControls:
   def render(value: GameProjection, canControl: Boolean, groups: ActionSections,
       submit: GameCommand => Unit): Unit =
-    if (value.legalControls.contains("beginNegotiation"))
+    if value.legalControls.contains("beginNegotiation") then
       val node = button("Negotiate", "act-action negotiation-action")
       node.disabled = !canControl
       node.onclick = _ => submit(GameCommand.StartWalker("negotiation", Vector.empty))

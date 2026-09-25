@@ -32,7 +32,7 @@ object PhasePowerFixture:
     val empty = current.map.inPlay.find(id =>
       catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
     val arranged = ready.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player != actor) p else
+      players = current.players.map(p => if p.player != actor then p else
         p.copy(advisers = Vector(DenizenState(card, Orientation.FaceUp,
           Tokens.empty)))),
       map = current.map.copy(sites = current.map.sites.updated(empty,

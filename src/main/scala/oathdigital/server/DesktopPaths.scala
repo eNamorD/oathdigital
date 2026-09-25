@@ -11,9 +11,9 @@ object DesktopPaths:
   ): Path =
     val home = nonBlank(environment, "HOME").getOrElse(fallbackHome)
     val os = osName.toLowerCase
-    if (os.startsWith("mac"))
+    if os.startsWith("mac") then
       Paths.get(home, "Library", "Application Support", "OathDigital")
-    else if (os.startsWith("windows"))
+    else if os.startsWith("windows") then
       nonBlank(environment, "LOCALAPPDATA")
         .map(Paths.get(_, "OathDigital"))
         .getOrElse(Paths.get(home, "AppData", "Local", "OathDigital"))

@@ -48,15 +48,15 @@ final case class KnightsErrant private (cardId: DenizenId,
     case _ => true
 
   private def offer(actor: PlayerId): Operation = Branch((ready, _) =>
-    if (CampaignSetup.legalKinds(ready, actor).isEmpty) Vector.empty
+    if CampaignSetup.legalKinds(ready, actor).isEmpty then Vector.empty
     else Vector(Decide(KnightsErrant.decisionId, actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(KnightsErrant.campaignOption, "Campaign"),
         DecisionOption.Button(KnightsErrant.declineOption, "Do not campaign")),
       heading = Some("Knights Errant: campaign for no Supply?")))))
 
   private def campaign(actor: PlayerId): Operation = Branch((ready, pending) =>
-    if (!PowerAnswers.one(pending, KnightsErrant.decisionId)
-        .contains(KnightsErrant.campaignOption)) Vector.empty
+    if !PowerAnswers.one(pending, KnightsErrant.decisionId)
+        .contains(KnightsErrant.campaignOption) then Vector.empty
     else CampaignProcedure.rebuild(catalog, ready, actor, Vector.empty)
       .fold(error => Vector[Operation](BuildOps((_, _) => Left(error))),
         tree => Vector(tree)))

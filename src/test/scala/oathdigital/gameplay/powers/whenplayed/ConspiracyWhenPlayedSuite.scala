@@ -35,9 +35,9 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     val fromHand = origin == CardPlayProcedure.Origin.TemporaryHand
     val staged = base.updateCurrent(_.copy(
       players = current.players.map { player =>
-        if (player.player == enemy) player.copy(
-          pawnSite = if (shared) site else None, relics = relics)
-        else if (player.player == actor && !fromHand) player.copy(advisers =
+        if player.player == enemy then player.copy(
+          pawnSite = if shared then site else None, relics = relics)
+        else if player.player == actor && !fromHand then player.copy(advisers =
           player.advisers :+ VisionState(conspiracy, Orientation.FaceDown))
         else player
       },
@@ -46,7 +46,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
         darkestSecret = current.banners.darkestSecret.copy(holder = None)),
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(_ == conspiracy)),
-      temporaryHands = if (fromHand)
+      temporaryHands = if fromHand then
         current.temporaryHands.updated(actor, Vector(conspiracy))
       else current.temporaryHands))
     Staged(edit(staged, enemy), actor, enemy, origin)

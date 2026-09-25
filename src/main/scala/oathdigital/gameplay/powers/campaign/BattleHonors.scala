@@ -26,7 +26,7 @@ final case class BattleHonors private (cardId: DenizenId) extends BattlePlan:
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
-      if (!use.won.contains(true)) Vector.empty
+      if !use.won.contains(true) then Vector.empty
       else Vector(use.user.fold[Operation](toBandits)(
         Gain.Favor(_, Suit.Order, BattleHonors.Favor)))))
 

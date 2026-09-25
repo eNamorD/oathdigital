@@ -75,7 +75,7 @@ private[walker] object WalkerPowerGather:
       restrictions: Vector[(PowerId, OptionRestriction)],
       ctxFor: ContributingPower => PowerCtx,
       byId: Map[PowerId, ContributingPower]): Vector[Operation] =
-    if (restrictions.isEmpty) ops
+    if restrictions.isEmpty then ops
     else
       val permitted = permits(restrictions, ctxFor, byId)
       ops.flatMap:
@@ -84,7 +84,7 @@ private[walker] object WalkerPowerGather:
             one.copy(options = one.options.filter(o => permitted(o.ref)))))
           case many: DecisionQuery.ChooseMany =>
             val options = many.options.filter(o => permitted(o.ref))
-            if (many.min == 0 && options.isEmpty) Vector.empty
+            if many.min == 0 && options.isEmpty then Vector.empty
             else Vector(decide.copy(query = many.copy(
               min = math.min(many.min, options.size),
               max = math.min(many.max, options.size), options = options)))
@@ -107,7 +107,7 @@ private[walker] object WalkerPowerGather:
       val verdicts = refs.map(ref => restrictions.flatMap {
         case (id, restriction) => restriction.fn(ctx(byId(id)), ref)
       }.headOption)
-      if (verdicts.forall(_.nonEmpty)) verdicts.head.toVector else Vector.empty
+      if verdicts.forall(_.nonEmpty) then verdicts.head.toVector else Vector.empty
     }
 
   /** Collects every restriction violation from every windowed node in
@@ -203,7 +203,7 @@ private[walker] object WalkerPowerGather:
       case Some(segment) => segment.toIntOption.flatMap { index =>
         val (children, nextGathered) = foldedChildrenAt(state, pending,
           powers, node, consumed, gathered)
-        if (index >= 0 && index < children.size)
+        if index >= 0 && index < children.size then
           resolveAt(state, pending, powers, children(index), remaining.tail,
             consumed :+ segment, nextGathered)
         else None
@@ -267,7 +267,7 @@ private[walker] object WalkerPowerGather:
 private[walker] final case class WalkerHooks(inherited: Vector[PowerId],
     gathered: Set[PowerWindow], strict: Boolean = false):
   def withOrder(order: Vector[PowerId]): WalkerHooks =
-    if (order.isEmpty) this
+    if order.isEmpty then this
     else copy(inherited = (inherited ++ order).distinct)
 
 private[walker] object WalkerHooks:

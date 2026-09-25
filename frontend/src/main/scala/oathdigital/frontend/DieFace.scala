@@ -35,7 +35,7 @@ private[frontend] object DieFace:
     symbols.get(value) match
       case Some(glyphs) =>
         glyphs.foreach(glyph => node.appendChild(RulesTextRenderer.glyph(glyph)))
-        if (value == "doubler")
+        if value == "doubler" then
           node.appendChild(dom.document.createTextNode("×2"))
       // A face this client does not know is printed as itself rather than
       // dropped, the same way an unknown rules token stays literal.

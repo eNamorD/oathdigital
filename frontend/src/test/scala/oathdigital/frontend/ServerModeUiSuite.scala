@@ -174,7 +174,7 @@ class ServerModeUiSuite extends FunSuite:
     val transport = new JsonTransport:
       def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += method -> url
-        val json = if (url.contains("/events")) """{"events":[]}"""
+        val json = if url.contains("/events") then """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", "")
         scala.concurrent.Future.successful(Right(TransportResponse(200, json)))
     Main.start(browser.mount, "/", trustedAlpha = false, transport)
@@ -232,7 +232,7 @@ class ServerModeUiSuite extends FunSuite:
     val transport = new JsonTransport:
       def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         scala.concurrent.Future.successful(Right(TransportResponse(200,
-          if (url.contains("/events")) """{"events":[]}"""
+          if url.contains("/events") then """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", ""))))
     Main.start(browser.mount, "/", trustedAlpha = false, transport, navigate = opened += _)
     browser.settle.map { _ =>
@@ -273,7 +273,7 @@ class ServerModeUiSuite extends FunSuite:
     val transport = new JsonTransport:
       def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += 1
-        scala.concurrent.Future.successful(Right(if (requests == 1)
+        scala.concurrent.Future.successful(Right(if requests == 1 then
           TransportResponse(200, trustedProjection) else TransportResponse(403,
             """{"error":"forbidden","message":"denied"}""")))
     Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
@@ -301,7 +301,7 @@ class ServerModeUiSuite extends FunSuite:
         def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
           requests += method -> url
           scala.concurrent.Future.successful(Right(TransportResponse(200,
-            if (requests.size == 1) active else replacement)))
+            if requests.size == 1 then active else replacement)))
       Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
       browser.settle.flatMap { _ =>
         val oldControl = browser.byClass("wake-action").head.asInstanceOf[scala.scalajs.js.Dynamic]
@@ -330,11 +330,11 @@ class ServerModeUiSuite extends FunSuite:
     var commands = 0
     val transport = new JsonTransport:
       def request(method: String, url: String, body: Option[String]) =
-        if (method == "POST") { commands += 1; pending.future }
+        if method == "POST" then { commands += 1; pending.future }
         else
           loads += 1
-          scala.concurrent.Future.successful(Right(if (loads == 1) TransportResponse(200, active)
-            else if (status == 200) TransportResponse(200, active.replace("\"viewerPlayerId\":\"blue\"",
+          scala.concurrent.Future.successful(Right(if loads == 1 then TransportResponse(200, active)
+            else if status == 200 then TransportResponse(200, active.replace("\"viewerPlayerId\":\"blue\"",
               "\"viewerPlayerId\":\"red\""))
             else TransportResponse(status, """{"error":"forbidden","message":"denied"}""")))
     Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)

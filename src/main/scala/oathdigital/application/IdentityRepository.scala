@@ -12,7 +12,7 @@ object SessionTokenDigest:
   val Length: Int = 32
 
   def fromBytes(bytes: Vector[Byte]): Either[String, SessionTokenDigest] =
-    if (bytes.size == Length) Right(new SessionTokenDigest(bytes))
+    if bytes.size == Length then Right(new SessionTokenDigest(bytes))
     else Left(s"session token digest must contain exactly $Length bytes")
 
 final case class CsrfTokenDigest private (bytes: Vector[Byte])
@@ -20,7 +20,7 @@ object CsrfTokenDigest:
   val Length: Int = 32
 
   def fromBytes(bytes: Vector[Byte]): Either[String, CsrfTokenDigest] =
-    if (bytes.size == Length) Right(new CsrfTokenDigest(bytes))
+    if bytes.size == Length then Right(new CsrfTokenDigest(bytes))
     else Left(s"CSRF token digest must contain exactly $Length bytes")
 
 final case class SeatCodeDigest private (bytes: Vector[Byte])
@@ -28,7 +28,7 @@ object SeatCodeDigest:
   val Length: Int = 32
 
   def fromBytes(bytes: Vector[Byte]): Either[String, SeatCodeDigest] =
-    if (bytes.size == Length) Right(new SeatCodeDigest(bytes))
+    if bytes.size == Length then Right(new SeatCodeDigest(bytes))
     else Left(s"seat code digest must contain exactly $Length bytes")
 
 final case class TrustedSeat(gameId: String, playerId: String)

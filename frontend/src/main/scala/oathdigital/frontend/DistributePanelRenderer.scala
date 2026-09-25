@@ -48,11 +48,11 @@ private[frontend] object DistributePanelRenderer:
     node.appendChild(slot.option.card.fold[dom.Element](
       text("span", "distribute-label", slot.option.label))(CardFace.render))
     node.appendChild(stepper("−", "distribute-decrement", canControl, ui,
-      shift => if (shift) draft.drain(item) else draft.decrement(item)))
+      shift => if shift then draft.drain(item) else draft.decrement(item)))
     node.appendChild(text("span", "distribute-amount",
       draft.state.amount(item).toString))
     node.appendChild(stepper("+", "distribute-increment", canControl, ui,
-      shift => if (shift) draft.fill(item) else draft.increment(item)))
+      shift => if shift then draft.fill(item) else draft.increment(item)))
     node.appendChild(text("span", "distribute-maximum", s"max ${slot.maximum}"))
     node
 

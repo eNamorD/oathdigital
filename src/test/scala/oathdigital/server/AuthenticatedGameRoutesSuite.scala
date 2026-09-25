@@ -91,8 +91,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
         "action" -> "negotiation", "modifiers" -> ujson.Arr(),
         "startArgs" -> ujson.Arr()))
       assertEquals(begin.statusCode(), 200, begin.body()); sequence = sequenceOf(begin)
-      if (ujson.read(begin.body())("walkerDecision")("decisionId").str ==
-          "negotiation.negotiators")
+      if ujson.read(begin.body())("walkerDecision")("decisionId").str ==
+          "negotiation.negotiators" then
         val chosen = send(actorUser, answer("negotiation.negotiators",
           ujson.Obj("kind" -> "choose-many", "options" -> ujson.Arr(ujson.Obj(
             "optionKind" -> "player", "optionId" -> other.player.value)))))

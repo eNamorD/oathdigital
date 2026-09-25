@@ -8,14 +8,14 @@ object DevelopmentTrustBoundary:
       value: String,
       path: String
   ): Either[HttpInputError, String] =
-    if (value.trim.isEmpty)
+    if value.trim.isEmpty then
       Left(HttpInputError(path, "must not be blank"))
-    else if (value.length > MaximumIdentifierLength)
+    else if value.length > MaximumIdentifierLength then
       Left(HttpInputError(
         path,
         s"must be at most $MaximumIdentifierLength characters"
       ))
-    else if (SafeIdentifier.findFirstIn(value).isEmpty)
+    else if SafeIdentifier.findFirstIn(value).isEmpty then
       Left(HttpInputError(
         path,
         "contains unsupported characters"

@@ -8,7 +8,7 @@ import oathdigital.model._
 private[campaign] object CampaignConquest:
   def steps(actor: PlayerId, result: CampaignResult): Vector[Operation] =
     val survivors = result.force - result.skullLosses - result.sacrificed
-    if (survivors <= 0) Vector.empty
+    if survivors <= 0 then Vector.empty
     else Vector(Sequence(Vector[Operation](
       Decide(CampaignIds.placement, actor, query(result, survivors)),
       BuildOps((ready, pending) => placements(ready, actor, result, pending))),
@@ -17,7 +17,7 @@ private[campaign] object CampaignConquest:
   private def query(result: CampaignResult, survivors: Int): DecisionQuery =
     result.targetSites match
       case Vector(_) => DecisionQuery.ChooseAmount(0, survivors,
-        Some(s"Place up to $survivors surviving warband${if (survivors == 1) "" else "s"} " +
+        Some(s"Place up to $survivors surviving warband${if survivors == 1 then "" else "s"} " +
           "on the conquered site; the rest stay on your board"), "Place warbands")
       case sites => DecisionQuery.Distribute(sites.map(site => DistributeSlot(
         DecisionOptionRef.Site(site), 0, survivors, None)), 0, survivors,

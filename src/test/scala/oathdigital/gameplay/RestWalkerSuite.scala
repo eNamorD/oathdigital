@@ -82,7 +82,7 @@ class RestWalkerSuite extends munit.FunSuite:
     val definition = catalog.denizens.find(_.handlers.contains(
       "denizen.naysayers")).get
     val advised = act.updateCurrent(_.copy(
-      players = act.game.current.players.map(p => if (p.player != actor) p
+      players = act.game.current.players.map(p => if p.player != actor then p
         else p.copy(advisers = Vector(DenizenState(DenizenId(definition.id.value),
           Orientation.FaceUp, Tokens.empty))))))
     val rested = rest(Ready(advised), actor).toOption.get

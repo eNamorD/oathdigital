@@ -11,7 +11,7 @@ private[frontend] final case class MapBounds(
 private[frontend] final case class MapViewState(
     scale: Double = 1, fit: Boolean = true, left: Double = 0, top: Double = 0):
   def resize(bounds: MapBounds): MapViewState =
-    val next = if (fit) copy(scale = bounds.fitScale, left = 0, top = 0)
+    val next = if fit then copy(scale = bounds.fitScale, left = 0, top = 0)
       else copy(scale = math.max(bounds.fitScale, scale))
     next.panTo(next.left, next.top, bounds)
 

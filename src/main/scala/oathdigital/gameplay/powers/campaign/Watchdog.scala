@@ -17,7 +17,7 @@ final case class Watchdog private (cardId: DenizenId) extends BattlePlan:
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
-    if (!context.targetsIn(Region.Cradle)) None
+    if !context.targetsIn(Region.Cradle) then None
     else context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Watchdog: add 1 defense die", Vector.empty,
       Vector(CampaignPlanEffect.AddDefenseDice(1))))

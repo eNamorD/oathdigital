@@ -75,7 +75,7 @@ private[frontend] object WalkerPanelSupport:
 
   private[frontend] def recoverWalkerStep(decision: WalkerDecisionState)
       : Option[RecoverWalkerStep] =
-    if (decision.action != "recover") None
+    if decision.action != "recover" then None
     else decision.kind match
       case "roll" => decision.pool.map(RecoverWalkerStep.Roll.apply)
       case "decide" if decision.decisionId == recoverChoiceDecisionId =>
@@ -102,7 +102,7 @@ private[frontend] object WalkerPanelSupport:
     */
   private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
     val total =
-      if (outcome.pool == "recover") s"${outcome.score} shields so far"
+      if outcome.pool == "recover" then s"${outcome.score} shields so far"
       else s"${poolLabel(outcome.pool)} ${outcome.score}"
     s"Rolled ${outcome.faces.mkString(", ")} -- $total" +
       outcome.target.fold("")(target => s" (need $target)") +
@@ -175,8 +175,8 @@ private[frontend] object WalkerPanelSupport:
         query.options.foreach { option =>
           val spendsSupply = option.id == continueOptionKey
           val (label, className) =
-            if (spendsSupply) ("Roll two more dice (1 Supply)", "recover-add")
-            else if (option.id == stopOptionKey) ("Stop Recover", "recover-stop")
+            if spendsSupply then ("Roll two more dice (1 Supply)", "recover-add")
+            else if option.id == stopOptionKey then ("Stop Recover", "recover-stop")
             else (option.label, "recover-choice")
           val control = button(label, className)
           control.disabled = !canControl || (spendsSupply && !hasSupply)
@@ -213,8 +213,8 @@ private[frontend] object WalkerPanelSupport:
     */
   private[frontend] def chooseOneStep(decision: WalkerDecisionState)
       : Option[DecisionQueryState] =
-    if (decision.action == "recover" || decision.kind != "decide" ||
-        decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix)) None
+    if decision.action == "recover" || decision.kind != "decide" ||
+        decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix) then None
     else chooseOneQuery(decision)
 
   /** The pawn-placement Decide's own choose-one query, or `None` for any
@@ -223,7 +223,7 @@ private[frontend] object WalkerPanelSupport:
     */
   private[frontend] def pawnPlacementStep(decision: WalkerDecisionState)
       : Option[DecisionQueryState] =
-    if (decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix))
+    if decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix) then
       chooseOneQuery(decision)
     else None
 
@@ -240,14 +240,14 @@ private[frontend] object WalkerPanelSupport:
         // The card the question is about. A placement asks about a card that
         // is neither an option nor in the temporary hand, so without this the
         // player answers about a card they cannot see.
-        if (decision.subjectCards.nonEmpty)
+        if decision.subjectCards.nonEmpty then
           val subjects = element("div", "decision-subject")
           decision.subjectCards.foreach(card =>
             subjects.appendChild(CardFace.render(card)))
           panel.appendChild(subjects)
         // What this loop has already applied. A `Repeat` re-asks with the
         // chosen answers removed, so the panel otherwise reads as resetting.
-        if (decision.answeredOptions.nonEmpty)
+        if decision.answeredOptions.nonEmpty then
           val played = element("div", "plans-played")
           played.appendChild(text("h3", "", "Plans played"))
           val list = element("ul", "")
@@ -256,14 +256,14 @@ private[frontend] object WalkerPanelSupport:
           played.appendChild(list)
           panel.appendChild(played)
         query.options.foreach { option =>
-          val label = if (option.kind == "player")
+          val label = if option.kind == "player" then
             value.players.find(_.playerId == option.id).map(_.displayName)
               .getOrElse(option.label)
           else option.label
           val choose = button(label, "walker-choice")
           // A favor bank is named by its suit, and a suit is read as its
           // symbol everywhere else on the table.
-          if (option.kind == "favor-bank")
+          if option.kind == "favor-bank" then
             choose.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
               choose.firstChild)
           option.badge.foreach { badge =>
@@ -291,7 +291,7 @@ private[frontend] object WalkerPanelSupport:
               choice.appendChild(choose)
               panel.appendChild(choice)
             case None => panel.appendChild(choose)
-          if (option.details.nonEmpty) panel.appendChild(text("p",
+          if option.details.nonEmpty then panel.appendChild(text("p",
             "walker-choice-details", option.details.mkString(" · ")))
         }
       }
@@ -311,7 +311,7 @@ private[frontend] object WalkerPanelSupport:
   private[frontend] def rollFeedback(decision: WalkerDecisionState,
       panel: dom.Element): Unit =
     decision.rollOutcome.foreach { outcome =>
-      if (outcome.faces.nonEmpty)
+      if outcome.faces.nonEmpty then
         val row = element("p", "walker-roll-faces")
         // A paragraph may not carry a name of its own; as an image the row
         // is read as the one sentence the glyphs add up to.
@@ -425,7 +425,7 @@ private[frontend] object WalkerPanelSupport:
     zone.appendChild(text("p", "decision-zone-helper",
       s"At least ${section.minRequired}."))
     val held = draft.optionsIn(section.key)
-    if (ordered(section, held.size))
+    if ordered(section, held.size) then
       zone.appendChild(text("p", "decision-zone-order",
         s"${section.label} happens in the order shown."))
     // Own row: a zone that holds heading and options together measures as
@@ -507,6 +507,6 @@ private[frontend] object WalkerPanelSupport:
 
   private def update(moved: WalkerPartitionDraft, draft: WalkerPartitionDraft,
       ui: ServerUiView): Unit =
-    if (moved != draft)
+    if moved != draft then
       ui.currentWalkerPartition = Some(moved)
       ui.rerender()

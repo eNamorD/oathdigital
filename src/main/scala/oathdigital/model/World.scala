@@ -55,10 +55,10 @@ object SiteRule:
 
   def sameRuler(left: SiteForces, right: SiteForces,
       players: Vector[PlayerState]): Either[SiteRuleError, Boolean] =
-    for {
+    for
       leftRuler <- ruler(left, players)
       rightRuler <- ruler(right, players)
-    } yield leftRuler != Unruled && leftRuler == rightRuler
+    yield leftRuler != Unruled && leftRuler == rightRuler
 
   def enemies(left: SiteRuler, right: SiteRuler): Boolean =
     left != Unruled && right != Unruled && left != right
@@ -79,9 +79,9 @@ final case class MapState(
   def inPlay: Vector[SiteId] = cradle ++ provinces ++ hinterland
 
   def regionOf(site: SiteId): Option[Region] =
-    if (cradle.contains(site)) Some(Region.Cradle)
-    else if (provinces.contains(site)) Some(Region.Provinces)
-    else if (hinterland.contains(site)) Some(Region.Hinterland)
+    if cradle.contains(site) then Some(Region.Cradle)
+    else if provinces.contains(site) then Some(Region.Provinces)
+    else if hinterland.contains(site) then Some(Region.Hinterland)
     else None
 
   def hinterward: Vector[SiteId] = inPlay
@@ -150,7 +150,7 @@ final case class AtlasState(entries: Vector[AtlasEntry]):
 
     var removedSites = 0
     var position = 0
-    while (position < source.size && removedSites < numSites)
+    while position < source.size && removedSites < numSites do
       source(position) match
         case _: AtlasEntry.StoredSite => removedSites += 1
         case AtlasEntry.EmpireDivider => ()

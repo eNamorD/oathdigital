@@ -9,7 +9,7 @@ private[frontend] object FacedownAdviserRenderer:
     val panel = element("section", "facedown-adviser-draft")
     panel.appendChild(text("h2", "", "Play facedown adviser"))
     val choosing = draft.advisers.size > 1
-    if (choosing)
+    if choosing then
       panel.appendChild(text("p", "decision-instruction",
         "Choose the facedown adviser to resolve."))
     // The cards are the player's own, so they are drawn face-up whichever way
@@ -20,7 +20,7 @@ private[frontend] object FacedownAdviserRenderer:
       val choice = element("div", "card-choice")
       choice.appendChild(CardFace.render(
         adviser.card.copy(orientation = Some("face-up"))))
-      if (choosing)
+      if choosing then
         val choose = button("Choose", "facedown-adviser-choice")
         choose.setAttribute("aria-label", s"Choose ${adviser.card.name}")
         choose.setAttribute("aria-pressed",

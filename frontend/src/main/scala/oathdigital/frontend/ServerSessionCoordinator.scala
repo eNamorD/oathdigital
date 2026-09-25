@@ -57,7 +57,7 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
     accepts(request) && incomingNextSequence > displayedNextSequence
 
   def recordSnapshotSuccess(request: ServerRequestIdentity): Boolean =
-    if (!accepts(request)) false
+    if !accepts(request) then false
     else
       connection = ServerConnectionState.Connected
       true
@@ -66,9 +66,9 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
       request: ServerRequestIdentity,
       failure: GameClientFailure
   ): Boolean =
-    if (!accepts(request)) false
+    if !accepts(request) then false
     else
-      if (GameClientFailure.isTransient(failure))
+      if GameClientFailure.isTransient(failure) then
         connection = ServerConnectionState.Disconnected(failure)
       else connection = ServerConnectionState.Connected
       true
@@ -78,7 +78,7 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
       projection: GameProjection,
       notice: Option[GameClientFailure]
   ): Option[ProjectionRoute] =
-    if (!accepts(request)) None
+    if !accepts(request) then None
     else
       connection = ServerConnectionState.Connected
       projection.activeParticipantId match

@@ -22,5 +22,5 @@ trait GameEventCodec:
 object GameEventCodec:
   lazy val default: GameEventCodec =
     val providers = java.util.ServiceLoader.load(classOf[GameEventCodec]).iterator()
-    if (providers.hasNext) providers.next()
+    if providers.hasNext then providers.next()
     else throw new IllegalStateException("no GameEventCodec adapter is installed")

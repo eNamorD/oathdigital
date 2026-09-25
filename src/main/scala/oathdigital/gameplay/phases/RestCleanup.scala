@@ -31,7 +31,7 @@ object RestCleanupPlan:
       val denizenCards = resources.denizens.foldLeft[
         Either[String, Vector[RestCleanupCard]]](Right(Vector.empty)):
         case (result, card) => result.flatMap { accumulated =>
-          if (card.tokens.favor == 0) Right(accumulated :+ RestCleanupCard(
+          if card.tokens.favor == 0 then Right(accumulated :+ RestCleanupCard(
             card.id, None, 0, card.tokens.secrets))
           else catalog.suitOf(card.id).toRight(
             s"cannot attribute favor on ${card.id.value} to a suit").map { suit =>

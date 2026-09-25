@@ -46,10 +46,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
       case WalkerStepRecordedType => decodeStepRecorded(payload, path)
       case WalkerParkedType => decodeParked(payload, path)
-      case WalkerCompletedType => for {
+      case WalkerCompletedType => for
         procedure <- decodeProcedure(payload("procedure"),
           s"$path.procedure")
-      } yield WalkerCompleted(procedure)
+      yield WalkerCompleted(procedure)
     decoder.lift(eventType)
 
   private def encodeAnswered(answered: Answered): ujson.Value = ujson.Obj(
@@ -58,9 +58,9 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     "byPlayerId" -> answered.by.value)
 
   private def decodeAnswered(value: ujson.Value,
-      path: String): Either[WireError, Answered] = for {
+      path: String): Either[WireError, Answered] = for
     answer <- DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
-  } yield Answered(value("decisionId").str, answer,
+  yield Answered(value("decisionId").str, answer,
     PlayerId(value("byPlayerId").str))
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
@@ -80,7 +80,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
             case other => throw new IllegalArgumentException(
               s"unsupported walker die face $other")
           }))
-        if (automatic) encoded("automatic") = ujson.True
+        if automatic then encoded("automatic") = ujson.True
         encoded
       case other => throw new IllegalArgumentException(
         s"unsupported walker step payload $other")
@@ -127,7 +127,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
         DicePoolModified(PoolKey(value("pool").str), delta))
     case "supply-spent" =>
       decodeSignedInt(value("amount"), s"$path.amount").flatMap { amount =>
-        if (amount > 0) Right(SupplySpent(
+        if amount > 0 then Right(SupplySpent(
           PlayerId(value("playerId").str), amount))
         else Left(InvalidValue(s"$path.amount", "must be positive"))
       }
@@ -155,26 +155,26 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       s"unknown walker procedure '$family/$key'"))
 
   private def decodeStepRecorded(value: ujson.Value,
-      path: String): Either[WireError, OathEvent] = try for {
+      path: String): Either[WireError, OathEvent] = try for
     step <- decodeStepPayload(value("step"), s"$path.step")
     ops <- traverse(value("ops").arr.zipWithIndex.toVector):
       case (operation, index) => decodeOperation(operation, s"$path.ops[$index]")
     contributions = value("contributions").arr.toVector.map(id =>
       PowerId(id.str))
-  } yield WalkerStepRecorded(
+  yield WalkerStepRecorded(
     value("nodeId").str, step, ops, contributions)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker step"))) }
 
   private def decodeParked(value: ujson.Value,
-      path: String): Either[WireError, OathEvent] = try for {
+      path: String): Either[WireError, OathEvent] = try for
     procedure <- decodeProcedure(value("procedure"), s"$path.procedure")
     answered <- traverse(value("answered").arr.zipWithIndex.toVector):
       case (answer, index) => decodeAnswered(answer,
         s"$path.answered[$index]")
     modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
     startArgs <- decodeStartArgs(value, s"$path.startArgs")
-  } yield WalkerParked(procedure,
+  yield WalkerParked(procedure,
     value("at").arr.toVector.map(_.str), answered, modifiers, startArgs)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }

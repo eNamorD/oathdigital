@@ -42,7 +42,7 @@ class CampaignSetupSuite extends munit.FunSuite:
     val b = withEnemyAtOrigin(board())
     val relic = RelicId("r-raid")
     val armed = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => if (p.player == b.other) p.copy(
+      players = current.players.map(p => if p.player == b.other then p.copy(
         relics = Vector(RelicState(relic, Orientation.FaceUp, Tokens.empty)))
       else p),
       banners = current.banners.copy(peoplesFavor =
@@ -63,7 +63,7 @@ class CampaignSetupSuite extends munit.FunSuite:
     val up = RelicState(RelicId("r-up"), Orientation.FaceUp, Tokens.empty)
     val down = RelicState(RelicId("r-down"), Orientation.FaceDown, Tokens.empty)
     val armed = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => if (p.player == b.other)
+      players = current.players.map(p => if p.player == b.other then
         p.copy(relics = Vector(up, down)) else p),
       banners = current.banners.copy(darkestSecret =
         current.banners.darkestSecret.copy(holder = Some(b.other)))))

@@ -54,7 +54,7 @@ object ActorlessCommandCodec:
     val value = ujson.Obj(
       "expectedNextSequence" -> ujson.Num(request.expectedNextSequence.toDouble),
       "intent" -> CommandIntentCodec.encode(request.intent))
-    if (request.orderedModifiers.nonEmpty) value("orderedModifiers") = ujson.Arr.from(
+    if request.orderedModifiers.nonEmpty then value("orderedModifiers") = ujson.Arr.from(
       request.orderedModifiers.map(v => ujson.Obj(
         "sourceKind" -> v.sourceKind, "sourceId" -> v.sourceId,
         "contextId" -> v.contextId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
@@ -68,39 +68,40 @@ object ActorlessCommandCodec:
 
   def decodeValue(value: ujson.Value)
       : Either[ProtocolDecodeFailure, ActorlessCommandRequest] = value match
-    case root: ujson.Obj => for {
-      _ <- exact(root, Set("expectedNextSequence", "intent", "orderedModifiers"), "$")
-      sequenceValue <- root.value.get("expectedNextSequence")
-        .toRight(MissingField("$.expectedNextSequence"))
-      sequence <- sequenceValue match
-        case ujson.Num(number) if number.isWhole && number >= 0 &&
-            number <= MaxSafeInteger => Right(number.toLong)
-        case _ => Left(InvalidValue("$.expectedNextSequence",
-          "expected a non-negative safe integer"))
-      intentValue <- root.value.get("intent").toRight(MissingField("$.intent"))
-      intent <- CommandIntentCodec.decode(intentValue, "$.intent")
-      modifiers <- root.value.get("orderedModifiers") match
-        case None => Right(Vector.empty)
-        case Some(value: ujson.Arr) => value.value.toVector.zipWithIndex.foldLeft[
-          Either[ProtocolDecodeFailure, Vector[ModifierInvocation]]](Right(Vector.empty)):
-          case (Right(acc), (obj: ujson.Obj, index)) => for {
-            _ <- exact(obj, Set("sourceKind", "sourceId", "contextId", "handlerId"),
-              s"$$.orderedModifiers[$index]")
-            kind <- requiredString(obj, "sourceKind", index)
-            id <- requiredString(obj, "sourceId", index)
-            context <- obj.value.get("contextId") match
-              case Some(ujson.Str(v)) if v.nonEmpty => Right(Some(v))
-              case Some(ujson.Null) => Right(None)
-              case _ => Left(InvalidValue(s"$$.orderedModifiers[$index].contextId",
-                "expected non-empty string or null"))
-            handler <- requiredString(obj, "handlerId", index)
-          } yield acc :+ ModifierInvocation(kind, id, context, handler)
-          case (Right(_), (_, index)) => Left(ExpectedObject(s"$$.orderedModifiers[$index]"))
-          case (left @ Left(_), _) => left
-        case Some(_) => Left(InvalidValue("$.orderedModifiers", "expected array"))
-      _ <- if (modifiers.distinct.size == modifiers.size) Right(()) else
-        Left(InvalidValue("$.orderedModifiers", "duplicate modifier invocation"))
-    } yield ActorlessCommandRequest(sequence, intent, modifiers)
+    case root: ujson.Obj =>
+      for
+        _ <- exact(root, Set("expectedNextSequence", "intent", "orderedModifiers"), "$")
+        sequenceValue <- root.value.get("expectedNextSequence")
+          .toRight(MissingField("$.expectedNextSequence"))
+        sequence <- sequenceValue match
+          case ujson.Num(number) if number.isWhole && number >= 0 &&
+              number <= MaxSafeInteger => Right(number.toLong)
+          case _ => Left(InvalidValue("$.expectedNextSequence",
+            "expected a non-negative safe integer"))
+        intentValue <- root.value.get("intent").toRight(MissingField("$.intent"))
+        intent <- CommandIntentCodec.decode(intentValue, "$.intent")
+        modifiers <- root.value.get("orderedModifiers") match
+          case None => Right(Vector.empty)
+          case Some(value: ujson.Arr) => value.value.toVector.zipWithIndex.foldLeft[
+            Either[ProtocolDecodeFailure, Vector[ModifierInvocation]]](Right(Vector.empty)):
+            case (Right(acc), (obj: ujson.Obj, index)) => for
+              _ <- exact(obj, Set("sourceKind", "sourceId", "contextId", "handlerId"),
+                s"$$.orderedModifiers[$index]")
+              kind <- requiredString(obj, "sourceKind", index)
+              id <- requiredString(obj, "sourceId", index)
+              context <- obj.value.get("contextId") match
+                case Some(ujson.Str(v)) if v.nonEmpty => Right(Some(v))
+                case Some(ujson.Null) => Right(None)
+                case _ => Left(InvalidValue(s"$$.orderedModifiers[$index].contextId",
+                  "expected non-empty string or null"))
+              handler <- requiredString(obj, "handlerId", index)
+            yield acc :+ ModifierInvocation(kind, id, context, handler)
+            case (Right(_), (_, index)) => Left(ExpectedObject(s"$$.orderedModifiers[$index]"))
+            case (left @ Left(_), _) => left
+          case Some(_) => Left(InvalidValue("$.orderedModifiers", "expected array"))
+        _ <- if modifiers.distinct.size == modifiers.size then Right(()) else
+          Left(InvalidValue("$.orderedModifiers", "duplicate modifier invocation"))
+      yield ActorlessCommandRequest(sequence, intent, modifiers)
     case _ => Left(ExpectedObject("$"))
 
   private def exact(obj: ujson.Obj, expected: Set[String], path: String)

@@ -102,12 +102,12 @@ object ForgeProcedure:
     * a finished game itself (Task 8), so every action start must refuse one.
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] = for {
+      activePlayer: PlayerId): Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
     player <- actorState(state, activePlayer)
     siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(activePlayer))
     facts <- ForgeRules.validate(catalog, state, player, siteId)
-  } yield tree(activePlayer, facts._2)
+  yield tree(activePlayer, facts._2)
 
   /** Rebuilds the same command-local tree for an already-started Forge.
     *
@@ -120,11 +120,11 @@ object ForgeProcedure:
     * cost the decision's section minima come from.
     */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      activePlayer: PlayerId): Either[OathViolation, Operation] = for {
+      activePlayer: PlayerId): Either[OathViolation, Operation] = for
     siteId <- actorSite(state, activePlayer).toRight(
       OathViolation.PawnSiteMissing(activePlayer))
     cost <- printedCost(catalog, siteId)
-  } yield tree(activePlayer, cost)
+  yield tree(activePlayer, cost)
 
   private def actorState(state: ReadyGame,
       actor: PlayerId): Either[OathViolation, PlayerState] =
@@ -218,10 +218,10 @@ object ForgeProcedure:
         : Either[OathViolation, Vector[CoreOperation]] =
       denizens.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
         Right(Vector.empty)) { case (result, (denizen, sectionKey)) =>
-        for {
+        for
           operations <- result
           operation <- payment(denizen, sectionKey)
-        } yield operations :+ operation
+        yield operations :+ operation
       }
 
     /** The answered split, for a site whose printed cost names both
@@ -235,13 +235,13 @@ object ForgeProcedure:
         case Some(Answered(_, PartitionAnswer(placements), _)) =>
           placements.foldLeft[Either[OathViolation,
               Vector[(DenizenId, String)]]](Right(Vector.empty)) {
-            case (result, placement) => for {
+            case (result, placement) => for
               rows <- result
               denizen <- placement.option match
                 case DecisionOptionRef.Denizen(id) => Right(id)
                 case other => Left(OathViolation.InvalidEventOrder(
                   s"$assignmentDecisionId placed a non-denizen option $other"))
-            } yield rows :+ (denizen -> placement.sectionKey)
+            yield rows :+ (denizen -> placement.sectionKey)
           }.flatMap(payments)
         case _ => Left(OathViolation.InvalidEventOrder(
           "no Forge assignment answer is recorded"))
@@ -254,8 +254,8 @@ object ForgeProcedure:
         : Either[OathViolation, Vector[CoreOperation]] =
       val targets = eligibleTargets(ready, actor)
       val sectionKey =
-        if (cost.favor > 0) favorSectionKey else secretSectionKey
-      if (targets.size != total) Left(OathViolation.ForgeUnavailable(
+        if cost.favor > 0 then favorSectionKey else secretSectionKey
+      if targets.size != total then Left(OathViolation.ForgeUnavailable(
         s"site offers ${targets.size} Forge targets but the printed cost " +
           s"needs $total"))
       else payments(targets.map(_.denizenId -> sectionKey))
@@ -266,17 +266,17 @@ object ForgeProcedure:
       SpendSupply(actor, supplyCost))),
       window = Some(PowerWindow.ForgeCost))
 
-    val forgeRelic = BuildOps((ready, pending) => for {
-      placed <- if (parks(cost)) answeredPayments(pending)
+    val forgeRelic = BuildOps((ready, pending) => for
+      placed <- if parks(cost) then answeredPayments(pending)
         else determinedPayments(ready)
       relic <- ready.game.current.commonCards.relicDeck.headOption.toRight(
         OathViolation.ForgeUnavailable("relic deck is empty"))
-    } yield placed :+ Play(relic,
+    yield placed :+ Play(relic,
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
       Location.PlayArea(actor), Orientation.FaceDown))
 
     val nodes: Vector[Operation] =
-      if (parks(cost)) Vector(paySupply, assignmentDecide, forgeRelic)
+      if parks(cost) then Vector(paySupply, assignmentDecide, forgeRelic)
       else Vector(paySupply, forgeRelic)
 
     Sequence(nodes).copy(window = Some(PowerWindow.ForgeActionEligibility))

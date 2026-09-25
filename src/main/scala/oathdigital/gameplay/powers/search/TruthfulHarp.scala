@@ -27,10 +27,10 @@ final case class TruthfulHarp private (cardId: RelicId,
         reveal(ctx.activePlayer))))
 
   private def reveal(actor: PlayerId): Operation = BuildOps((ready, _) => Right(
-    for {
+    for
       viewer <- ready.game.current.players.map(_.player).filter(_ != actor)
       card <- ready.game.current.temporaryHands.getOrElse(actor, Vector.empty)
-    } yield Peek(viewer, card, Location.Hand(actor))))
+    yield Peek(viewer, card, Location.Hand(actor))))
 
 object TruthfulHarp:
   val id: PowerId = PowerId("relic.truthful-harp")

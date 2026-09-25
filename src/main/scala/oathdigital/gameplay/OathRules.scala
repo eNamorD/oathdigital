@@ -62,7 +62,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
   ): Either[OathViolation, OathState] =
     event match
       case recorded: IgnoredRulesRecorded => state match
-        case Ready(ready) => (if (recorded.action == ActionKind.WhenPlayed)
+        case Ready(ready) => (if recorded.action == ActionKind.WhenPlayed then
           recorded.diagnostics.map(_.source).distinct.foldLeft[
             Either[OathViolation, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
               case (Right(found), source) => PowerRuntime.ignoredAtSource(
@@ -109,13 +109,13 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       : Either[OathViolation, OathTransition] = state match
     case NoGame =>
       val event = GameStarted(chronicle, orders)
-      for {
+      for
         started <- GameplayTransition(state, Vector(event),
           OathContinue.AwaitingSetupPawn(orders.firstPlayer,
             DecisionId(oathdigital.gameplay.setup.SetupProcedure
               .pawnDecisionId(orders.firstPlayer))))(evolve)
         withSetup <- startTriggered(started, TriggeredProcedureRef.Setup)
-      } yield withSetup
+      yield withSetup
     case _ => Left(GameAlreadyExists)
 
   protected def completeAction(transition: OathTransition)
@@ -156,7 +156,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         val actor = ready.game.current.turn.activePlayer
         PowerRuntime.ignored(catalog, ready, actor,
           ActionKind.ActionBoundary).map { diagnostics =>
-          if (diagnostics.isEmpty) transition else transition.copy(events =
+          if diagnostics.isEmpty then transition else transition.copy(events =
             transition.events :+ IgnoredRulesRecorded(actor,
               ActionKind.ActionBoundary, diagnostics))
         }
@@ -169,7 +169,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     state match
       case Ready(ready) => PowerRuntime.ignored(catalog, ready, actor, action)
         .flatMap { diagnostics => operation.map { transition =>
-          if (diagnostics.isEmpty) transition
+          if diagnostics.isEmpty then transition
           else transition.copy(events = IgnoredRulesRecorded(actor, action,
             diagnostics) +: transition.events)
         }}
@@ -186,7 +186,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     val prepared = transition.state match
       case Ready(ready) => PowerRuntime.ignored(catalog, ready,
         ready.game.current.turn.activePlayer, ActionKind.Wake).map { diagnostics =>
-        if (diagnostics.isEmpty) transition else transition.copy(events =
+        if diagnostics.isEmpty then transition else transition.copy(events =
           transition.events :+ IgnoredRulesRecorded(
             ready.game.current.turn.activePlayer, ActionKind.Wake, diagnostics))
       }
@@ -231,7 +231,7 @@ object OathRules:
     */
   val declaredWalkerTree: WalkerTreeSource =
     (catalog, procedure, ready, actor, args, starting) =>
-      if (starting) WalkerProcedureRegistry.build(procedure, catalog, ready,
+      if starting then WalkerProcedureRegistry.build(procedure, catalog, ready,
         actor, args)
       else WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor,
         args)

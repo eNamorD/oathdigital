@@ -25,7 +25,7 @@ class RecoverEligibilitySuite extends munit.FunSuite:
     val ready = base.updateCurrent(_.copy(
       turn = base.game.current.turn.copy(phase = Phase.Act),
       players = base.game.current.players.map(p =>
-        if (p.player == active.player) moved else p)))
+        if p.player == active.player then moved else p)))
     (ready, moved, siteId)
 
   private def legalControls(ready: ReadyGame, actor: PlayerId): Vector[String] =
@@ -56,7 +56,7 @@ class RecoverEligibilitySuite extends munit.FunSuite:
       denizens = Vector(DenizenState(cardId, Orientation.FaceUp, Tokens.empty)))
     val ready = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
-        if (p.player == active.player) active else p),
+        if p.player == active.player then active else p),
       commonCards = base.game.current.commonCards.copy(
         worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == cardId),
         regionalDiscards = base.game.current.commonCards.regionalDiscards.map {
@@ -88,7 +88,7 @@ class RecoverEligibilitySuite extends munit.FunSuite:
     val (base, active, _) = baseReady
     def withSupply(supply: Int) = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
-        if (p.player == active.player)
+        if p.player == active.player then
           p.copy(board = p.board.copy(supply = SupplyTrack(supply)))
         else p)))
     assert(legalControls(withSupply(1), active.player).contains("beginRecover"))

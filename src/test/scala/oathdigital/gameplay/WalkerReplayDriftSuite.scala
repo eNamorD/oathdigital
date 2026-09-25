@@ -150,7 +150,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         commonCards = base.game.current.commonCards.copy(
           relicDeck = base.game.current.commonCards.relicDeck.tail),
         players = base.game.current.players.map(p =>
-          if (p.player == active.player) moved else p),
+          if p.player == active.player then moved else p),
         map = base.game.current.map.copy(sites =
           base.game.current.map.sites.updated(siteId, site))))
     (ready, active.player, siteId, relic)
@@ -234,7 +234,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       script: Vector[Resume], powers: WalkerPowers,
       procedure: ProcedureRef = ActionRef.Recover,
       tree: (ReadyGame, Boolean) => Operation = (state, starting) =>
-        if (starting) RecoverProcedure.build(catalog, state,
+        if starting then RecoverProcedure.build(catalog, state,
           state.game.current.turn.activePlayer).toOption.get
         else RecoverProcedure.rebuild(catalog, state,
           state.game.current.turn.activePlayer).toOption.get): WalkerOutcome =

@@ -112,15 +112,15 @@ private[application] final class LegalActionProjector(
     val ordinaryAct = context.viewerIsActive &&
       context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty
-    val travelFacts = if (ordinaryAct) travelCandidates(context)
+    val travelFacts = if ordinaryAct then travelCandidates(context)
       else Vector.empty[(SiteId, Int)]
     LegalProjection(
       controls(context, minor, projectedPhasePowers),
       travelFacts.map { case (site, cost) =>
         LegalTravelDestinationProjection(site.value, cost)
       },
-      if (ordinaryAct) legalSearch(context) else Vector.empty,
-      if (ordinaryAct) boardTargetActions(context, travelFacts)
+      if ordinaryAct then legalSearch(context) else Vector.empty,
+      if ordinaryAct then boardTargetActions(context, travelFacts)
       else Vector.empty,
       minor)
 
@@ -129,9 +129,9 @@ private[application] final class LegalActionProjector(
       projectedPhasePowers: Vector[PhasePowerProjection]): Vector[String] =
     val current = context.current
     val active = context.active
-    if (current.result.nonEmpty) Vector.empty
-    else if (current.walkerPending.nonEmpty) walkerControls(context)
-    else if (!context.viewerIsActive) Vector.empty
+    if current.result.nonEmpty then Vector.empty
+    else if current.walkerPending.nonEmpty then walkerControls(context)
+    else if !context.viewerIsActive then Vector.empty
     else current.turn.phase match
         case Phase.Act => Vector(
           Option.when(BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
@@ -231,7 +231,7 @@ private[application] final class LegalActionProjector(
     }, context.activeSite.exists(_.relics.nonEmpty), active.relics.filter(
       _.orientation == Orientation.FaceDown).map(r => presentation.cardDetails(r.id,
       Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),
-      if (ruled) active.board.warbands else 0, math.max(0, siteWarbands - 1))
+      if ruled then active.board.warbands else 0, math.max(0, siteWarbands - 1))
 
   private def boardTargetActions(context: ScopedProjectionContext,
       travelFacts: Vector[(SiteId, Int)]) =

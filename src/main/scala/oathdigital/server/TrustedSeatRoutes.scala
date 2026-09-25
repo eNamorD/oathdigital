@@ -57,7 +57,7 @@ final class TrustedSeatRoutes(
       } } }
     } ~ pathPrefix("games" / Segment) { gameId =>
       noQuery:
-        if (DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId").isLeft) complete(malformed)
+        if DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId").isLeft then complete(malformed)
         else extractRequest { request =>
           pathEnd {
             get:
@@ -108,18 +108,18 @@ final class TrustedSeatRoutes(
     RawHeader("Location", canonicalPath(gameId))
 
   private def noQuery(inner: => Route): Route = parameterMap { parameters =>
-    if (parameters.nonEmpty) complete(malformed) else inner
+    if parameters.nonEmpty then complete(malformed) else inner
   }
 
   private def sameOrigin(inner: => Route): Route = extractRequest { request =>
     val origins = request.headers.filter(_.is("origin")).map(_.value)
-    if (origins.isEmpty || (origins.size == 1 && originMatches(origins.head))) inner
+    if origins.isEmpty || (origins.size == 1 && originMatches(origins.head)) then inner
     else complete(error(StatusCodes.Forbidden, "csrf-validation-failed", "request origin is invalid"))
   }
 
   private def originMatches(raw: String): Boolean = Try(new URI(raw)).toOption.exists { origin =>
-    def port(uri: URI): Int = if (uri.getPort >= 0) uri.getPort
-      else if (uri.getScheme.equalsIgnoreCase("https")) 443 else 80
+    def port(uri: URI): Int = if uri.getPort >= 0 then uri.getPort
+      else if uri.getScheme.equalsIgnoreCase("https") then 443 else 80
     origin.isAbsolute && origin.getHost != null && origin.getRawUserInfo == null &&
       origin.getRawQuery == null && origin.getRawFragment == null &&
       Option(origin.getRawPath).forall(_.isEmpty) &&

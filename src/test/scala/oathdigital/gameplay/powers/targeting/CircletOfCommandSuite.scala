@@ -30,7 +30,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
       attacker: Boolean = false): Vector[DecisionOptionRef] =
     val (b, _) = raidBoard()
     val held = circletSide.fold(b.ready)(side =>
-      holds(b.ready, if (attacker) b.actor else b.other, circlet, side))
+      holds(b.ready, if attacker then b.actor else b.other, circlet, side))
     val started = start(held, ActionRef.Campaign, b.actor).toOption.get
     val kind = rules.resolveWalker(started.state, b.actor, CampaignIds.kind, raid)
       .toOption.get
@@ -94,7 +94,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
     val site = PowerFixture.player(base).pawnSite
     val staged = CardStaging.without(CardStaging.without(base, conspiracy), other)
       .updateCurrent(c => c.copy(
-        players = c.players.map(p => if (p.player == enemy)
+        players = c.players.map(p => if p.player == enemy then
           p.copy(pawnSite = site) else p),
         banners = c.banners.copy(
           peoplesFavor = c.banners.peoplesFavor.copy(holder = Some(enemy)),

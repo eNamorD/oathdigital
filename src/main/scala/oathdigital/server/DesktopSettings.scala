@@ -42,7 +42,7 @@ object DesktopSettings:
   ).mkString("\n")
 
   def load(file: Path): Either[String, Map[String, String]] =
-    if (!Files.exists(file)) Right(Map.empty)
+    if !Files.exists(file) then Right(Map.empty)
     else
       try
         val properties = new Properties()
@@ -58,7 +58,7 @@ object DesktopSettings:
         case NonFatal(_) => Left(s"$file: cannot read settings file")
 
   def writeTemplateIfMissing(file: Path): Option[String] =
-    if (Files.exists(file)) None
+    if Files.exists(file) then None
     else
       try
         Files.createDirectories(file.getParent)

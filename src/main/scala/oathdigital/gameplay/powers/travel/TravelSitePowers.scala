@@ -69,11 +69,11 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     case PowerWindow.CampaignTargetSelection => true
     case _ => TravelRoute.pawnMove(ctx.operation).exists { route =>
       val map = ctx.state.game.current.map
-      (for {
+      (for
         sourceRegion <- map.regionOf(route.source)
         destinationRegion <- map.regionOf(route.destination)
         passRegion <- map.regionOf(site)
-      } yield sourceRegion != destinationRegion && destinationRegion == passRegion &&
+      yield sourceRegion != destinationRegion && destinationRegion == passRegion &&
         route.destination != site).getOrElse(false)
     }
 
@@ -89,13 +89,13 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     case DecisionOptionRef.Site(target) =>
       val current = ctx.state.game.current
       val map = current.map
-      val outside = for {
+      val outside = for
         pawn <- current.players.find(_.player == ctx.activePlayer)
           .flatMap(_.pawnSite)
         pawnRegion <- map.regionOf(pawn)
         targetRegion <- map.regionOf(target)
         passRegion <- map.regionOf(site)
-      } yield pawnRegion != targetRegion && targetRegion == passRegion &&
+      yield pawnRegion != targetRegion && targetRegion == passRegion &&
         target != site
       val ruledByActor = map.sites.get(site).exists(pass =>
         SiteRule.ruler(pass.forces, current.players) match {
@@ -112,7 +112,7 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
       val map = ctx.state.game.current.map
       val coastRoute = coastSites.contains(route.source) &&
         coastOrIslandSites.contains(route.destination)
-      if (coastRoute) None
+      if coastRoute then None
       else SiteRule.ruler(map.sites(site).forces, ctx.state.game.current.players) match
         case Right(SiteRuler.Player(player)) if player == route.player => None
         case Right(_) | Left(_) =>

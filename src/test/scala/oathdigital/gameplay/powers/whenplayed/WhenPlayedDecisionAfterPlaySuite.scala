@@ -26,24 +26,24 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       "the relic"):
     val ready = staged(Vector(heirloom))
     val top = ready.game.current.commonCards.relicDeck.head
-    val done = (for {
+    val done = (for
       started <- start(ready)
       chosen <- keep(started, heirloom)
       placed <- place(chosen, heirloom, "adviser-faceup")
       answered <- answer(placed, take)
-    } yield answered).fold(error => fail(error.toString), value => value)
+    yield answered).fold(error => fail(error.toString), value => value)
     assert(relics(after(done)).exists(_.id == top))
 
   test("a searched Family Heirloom played faceup can put the relic on the " +
       "bottom of the deck"):
     val ready = staged(Vector(heirloom))
     val top = ready.game.current.commonCards.relicDeck.head
-    val done = (for {
+    val done = (for
       started <- start(ready)
       chosen <- keep(started, heirloom)
       placed <- place(chosen, heirloom, "adviser-faceup")
       answered <- answer(placed, bottom)
-    } yield answered).fold(error => fail(error.toString), value => value)
+    yield answered).fold(error => fail(error.toString), value => value)
     assert(!relics(after(done)).exists(_.id == top))
     assertEquals(after(done).game.current.commonCards.relicDeck.last, top)
 
@@ -52,20 +52,20 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
     val ready = PowerFixture.inPhase(PowerFixture.asAdviser(staged(Vector.empty),
       heirloom, Orientation.FaceDown), Phase.Act)
     val top = ready.game.current.commonCards.relicDeck.head
-    val done = (for {
+    val done = (for
       started <- rules.startWalker(OathState.Ready(ready),
         ActionRef.PlayFacedownAdviser, PowerFixture.actor, Vector.empty,
         Vector(DecisionOptionRef.Denizen(heirloom)))
       placed <- place(started, heirloom, "adviser-faceup")
       answered <- answer(placed, take)
-    } yield answered).fold(error => fail(error.toString), value => value)
+    yield answered).fold(error => fail(error.toString), value => value)
     assert(relics(after(done)).exists(_.id == top))
 
   test("a replacement is answered before the card is played, and the " +
       "question after the play still resolves"):
     val fillers = denizensOf(Suit.Arcane).take(6)
     val full = fillers.foldLeft(staged(Vector(heirloom)))((ready, id) =>
-      if (PowerFixture.player(ready).advisers.size >= 3) ready
+      if PowerFixture.player(ready).advisers.size >= 3 then ready
       else PowerFixture.asAdviser(ready, id))
     val current = PowerFixture.player(full).advisers.map(_.id)
     val started = start(full).toOption.get

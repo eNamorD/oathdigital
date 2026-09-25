@@ -29,12 +29,12 @@ final case class TollRoads private (cardId: DenizenId,
   override def applicable(ctx: PowerCtx): Boolean = toll(ctx).nonEmpty
 
   /** The payment this Travel owes, if it owes one. */
-  private def toll(ctx: PowerCtx): Option[CoreOperation] = for {
+  private def toll(ctx: PowerCtx): Option[CoreOperation] = for
     route <- TravelRoute.pawnMove(ctx.operation)
     ruler <- TravelRulers.rulerOfCard(ctx.state, cardId)
     if TravelRulers.isEnemy(ruler, route.player)
     if TravelRulers.rulerOf(ctx.state, route.destination).contains(ruler)
-  } yield ruler match
+  yield ruler match
     case SiteRuler.Player(owner) => Give(Piece.Favor(TollRoads.Favor),
       route.player, Location.PlayArea(route.player),
       Location.PlayArea(owner), required = true)

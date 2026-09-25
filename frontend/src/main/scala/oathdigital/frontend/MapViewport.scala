@@ -40,7 +40,7 @@ private[frontend] final class MapViewport(
     onScale(state.scale)
 
   def refresh(reset: Boolean): Unit =
-    if (reset) state = MapViewState()
+    if reset then state = MapViewState()
     state = state.resize(bounds)
     paint()
   def reset(): Unit = refresh(reset = true)
@@ -53,16 +53,16 @@ private[frontend] final class MapViewport(
   }
   private val down: dom.PointerEvent => Unit = e => {
     // Touch uses native overflow panning; controls retain native editing behavior.
-    if (e.pointerType == "mouse" && e.button == 0 &&
+    if e.pointerType == "mouse" && e.button == 0 &&
         e.target.isInstanceOf[dom.Element] &&
-        e.target.asInstanceOf[dom.Element].closest("input,select,textarea") == null)
+        e.target.asInstanceOf[dom.Element].closest("input,select,textarea") == null then
       suppressClick = false
       start = Some((e.clientX, e.clientY, viewport.scrollLeft, viewport.scrollTop))
   }
   private val move: dom.PointerEvent => Unit = e => start.foreach { case (x, y, left, top) =>
-    if (e.buttons == 0) start = None
-    else if (dragging || math.hypot(e.clientX - x, e.clientY - y) > 6)
-      if (!dragging)
+    if e.buttons == 0 then start = None
+    else if dragging || math.hypot(e.clientX - x, e.clientY - y) > 6 then
+      if !dragging then
         capture.setPointerCapture(e.pointerId)
         dragging = true
         viewport.classList.add("map-dragging")
@@ -72,19 +72,19 @@ private[frontend] final class MapViewport(
       suppressClick = true
   }
   private val up: dom.PointerEvent => Unit = e => {
-    if (capture.hasPointerCapture(e.pointerId)) capture.releasePointerCapture(e.pointerId)
+    if capture.hasPointerCapture(e.pointerId) then capture.releasePointerCapture(e.pointerId)
     start = None
     dragging = false
     viewport.classList.remove("map-dragging")
   }
   private val click: dom.MouseEvent => Unit = e => {
-    if (suppressClick && e.detail != 0)
+    if suppressClick && e.detail != 0 then
       e.preventDefault()
       e.stopImmediatePropagation()
     suppressClick = false
   }
   private val key: dom.KeyboardEvent => Unit = e => {
-    if (e.target == viewport) e.key match
+    if e.target == viewport then e.key match
       case "+" | "=" => e.preventDefault(); zoomBy(1.25)
       case "-" => e.preventDefault(); zoomBy(0.8)
       case "0" => e.preventDefault(); reset()

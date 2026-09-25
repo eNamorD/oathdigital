@@ -20,8 +20,8 @@ private[application] final class PendingProjector(
 
   private def phase(context: ScopedProjectionContext,
       walkerDecision: Option[WalkerDecisionProjection]): String =
-    if (context.current.result.nonEmpty) "game-over"
-    else if (context.current.walkerPending.nonEmpty)
+    if context.current.result.nonEmpty then "game-over"
+    else if context.current.walkerPending.nonEmpty then
       // The label is keyed off the parked procedure's own wire key (Task 8)
       // instead of a hardcoded "recover-*" literal, so a second procedure
       // parked on the walker reports its own phase rather than borrowing

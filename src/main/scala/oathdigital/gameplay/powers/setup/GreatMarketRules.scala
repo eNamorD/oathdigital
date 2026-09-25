@@ -38,15 +38,15 @@ final case class GreatMarket private (edifice: EdificeId, catalog: ExecutableCat
   protected def side: EdificeSide = EdificeSide.Intact
 
   protected def build(ready: ReadyGame, at: SiteId)
-      : Either[OathViolation, Vector[CoreOperation]] = for {
+      : Either[OathViolation, Vector[CoreOperation]] = for
     suit <- catalog.suitOf(edifice).toRight(OathViolation.UnknownEdifice(edifice))
     region <- ready.game.current.map.regionOf(at).toRight(
       OathViolation.InvalidEventOrder(s"${at.value} is not in play"))
-  } yield
+  yield
     val current = ready.game.current
     val count = current.map.inPlay.filter(s => current.map.regionOf(s).contains(region))
       .flatMap(s => current.map.sites(s).denizens).size
-    if (count == 0) Vector.empty
+    if count == 0 then Vector.empty
     else Vector(Move(Piece.Favor(count),
       PositionedLocation(Location.FavorBank(suit)), PositionedLocation(Location.Site(at))))
 object GreatMarket:

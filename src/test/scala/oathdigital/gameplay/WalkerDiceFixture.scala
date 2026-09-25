@@ -35,6 +35,6 @@ object WalkerDiceFixture:
   def scripted(rolls: Vector[DieFace]*): WalkerDice =
     val queue = scala.collection.mutable.Queue(rolls*)
     (_, _) =>
-      if (queue.isEmpty) Left(OathViolation.InvalidEventOrder(
+      if queue.isEmpty then Left(OathViolation.InvalidEventOrder(
         "the scripted dice source ran out of rolls"))
       else Right(queue.dequeue())

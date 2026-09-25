@@ -53,7 +53,7 @@ private[operations] object BoardControlOperations:
         case Left(error) => (Vector(error), state)
         case Right(_) =>
           val located = state.pawnSites.getOrElse(player, None)
-          if (located.nonEmpty)
+          if located.nonEmpty then
             (Vector(MissingPiece(Piece.Pawn(player), from)), state)
           else siteState(ready, destination) match
             case Left(error) => (Vector(error), state)
@@ -64,7 +64,7 @@ private[operations] object BoardControlOperations:
         case Left(error) => (Vector(error), state)
         case Right(_) =>
           val located = state.pawnSites.getOrElse(player, None)
-          if (!located.contains(source))
+          if !located.contains(source) then
             (Vector(MissingPiece(Piece.Pawn(player), from)), state)
           else siteState(ready, destination) match
             case Left(error) => (Vector(error), state)
@@ -85,7 +85,7 @@ private[operations] object BoardControlOperations:
         case Left(error) => (Vector(error), state)
         case Right(_) =>
           val holder = state.bannerHolders.getOrElse(banner, None)
-          if (!holder.contains(source))
+          if !holder.contains(source) then
             (Vector(MissingPiece(Piece.Banner(banner), from)), state)
           else (Vector.empty, state.copy(
             bannerHolders = state.bannerHolders.updated(banner,
@@ -95,7 +95,7 @@ private[operations] object BoardControlOperations:
         case Left(error) => (Vector(error), state)
         case Right(_) =>
           val holder = state.bannerHolders.getOrElse(banner, None)
-          if (holder.isEmpty)
+          if holder.isEmpty then
             (Vector.empty, state.copy(
               bannerHolders = state.bannerHolders.updated(banner,
                 Some(destination))))

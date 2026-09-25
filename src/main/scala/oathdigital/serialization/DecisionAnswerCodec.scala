@@ -79,11 +79,11 @@ private[serialization] object DecisionAnswerCodec:
           case (entry, index) =>
             val entryPath = s"$path.amounts[$index]"
             val raw = entry("amount").num
-            for {
+            for
               ref <- decodeRef(entry("option"), s"$entryPath.option")
               amount <- Either.cond(raw.isValidInt, raw.toInt,
                 InvalidValue(s"$entryPath.amount", s"amount '$raw' is not an integer"))
-            } yield DistributeAmount(ref, amount)
+            yield DistributeAmount(ref, amount)
         }.map(DecisionAnswer.DistributeAnswer.apply)
       case ProposeTermsTag => NegotiationTermsCodec.decode(value("terms"),
         s"$path.terms").map(DecisionAnswer.ProposeTerms.apply)

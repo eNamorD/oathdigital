@@ -9,7 +9,7 @@ private[protocol] object CommandJsonSupport:
   def exact(value: ujson.Obj, fields: Set[String], path: String)
       : Either[ProtocolDecodeFailure, Unit] =
     value.value.keys.find(!fields.contains(_)).map { name =>
-      if (Set("playerId", "actor", "actorId", "actorPlayerId").contains(name))
+      if Set("playerId", "actor", "actorId", "actorPlayerId").contains(name) then
         Left(ActorInjection(s"$path.$name"))
       else Left(UnexpectedField(s"$path.$name"))
     }.getOrElse(Right(()))
@@ -53,6 +53,6 @@ private[protocol] object CommandJsonSupport:
 
   def rejectActorFields(value: ujson.Obj, path: String): Either[ProtocolDecodeFailure, Unit] =
     val forbidden = Set("actor", "actorId", "actorPlayerId") ++
-      (if (path == "$.intent") Set("playerId") else Set.empty[String])
+      (if path == "$.intent" then Set("playerId") else Set.empty[String])
     value.value.keys.find(forbidden.contains)
       .map(name => Left(ActorInjection(s"$path.$name"))).getOrElse(Right(()))

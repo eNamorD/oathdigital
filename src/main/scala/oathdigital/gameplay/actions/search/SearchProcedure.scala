@@ -42,7 +42,7 @@ object SearchProcedure:
     }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
     source <- sourceOf(args)
     _ <- SearchRules.validateSupportedState(catalog, ready)
@@ -56,7 +56,7 @@ object SearchProcedure:
     cards <- SearchRules.draw(ready, source, origin)
     _ <- Either.cond(cards.nonEmpty, (),
       OathViolation.SearchSourceUnavailable(source))
-  } yield tree(catalog, actor, source)
+  yield tree(catalog, actor, source)
 
   /** Resume never re-runs the start-only source and empty-hand gates. */
   def rebuild(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
@@ -77,18 +77,18 @@ object SearchProcedure:
 
   private def tree(catalog: ExecutableCatalog, actor: PlayerId,
       source: SearchSource): Operation =
-    val cost = BuildOps((ready, _) => for {
+    val cost = BuildOps((ready, _) => for
       origin <- actorRegion(ready, actor)
       amount <- SearchRules.cost(ready, source, origin)
-    } yield Vector(SpendSupply(actor, amount)),
+    yield Vector(SpendSupply(actor, amount)),
       window = Some(PowerWindow.SearchCost))
 
-    val draw = BuildOps((ready, _) => for {
+    val draw = BuildOps((ready, _) => for
       origin <- actorRegion(ready, actor)
       cards <- SearchRules.draw(ready, source, origin)
       _ <- Either.cond(cards.nonEmpty, (),
         OathViolation.SearchSourceUnavailable(source))
-    } yield {
+    yield {
       val location = source match {
         case SearchSource.WorldDeck => Location.Deck(CardDeck.World)
         case SearchSource.RegionalDiscard(region) =>
@@ -101,7 +101,7 @@ object SearchProcedure:
 
     val query = Branch((ready, pending) => {
       val cards = selectedCards(ready, pending, actor)
-      if (cards.size < 2) Vector.empty
+      if cards.size < 2 then Vector.empty
       else Vector(Decide(cardDecisionId, actor, DecisionQuery.Partition(
         Vector(DecisionSection(keepKey, "Keep", 1, Some(1)),
           DecisionSection(discardKey, "Discard", 0)),
@@ -117,12 +117,12 @@ object SearchProcedure:
           val removeOthers = BuildOps((state, _) =>
             discarded.foldLeft[Either[OathViolation,
                 Vector[CoreOperation]]](Right(Vector.empty)) {
-              case (acc, card) => for {
+              case (acc, card) => for
                 previous <- acc
                 operations <- CardPlay.plannedOperations(catalog, state,
                   actor, card, SearchPlacement.Discard,
                   CardPlay.Origin.TemporaryHand)
-              } yield previous ++ operations
+              yield previous ++ operations
             })
           val cardTree = CardPlayProcedure.unchecked(catalog, ready, actor, kept,
             CardPlayProcedure.Origin.TemporaryHand)
@@ -162,7 +162,7 @@ object SearchProcedure:
       actor: PlayerId): Either[OathViolation,
         (WorldCardId, Vector[WorldCardId])] =
     val cards = selectedCards(ready, pending, actor)
-    if (cards.size == 1) Right(cards.head -> Vector.empty)
+    if cards.size == 1 then Right(cards.head -> Vector.empty)
     else answered(pending).toRight(OathViolation.SearchChoiceMismatch(
       "Search card selection is missing")).flatMap { placements =>
       val kept = placements.filter(_.sectionKey == keepKey)

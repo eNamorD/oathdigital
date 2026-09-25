@@ -20,7 +20,7 @@ import oathdigital.model.OathViolation._
 object GameStartRules:
   def evolve(catalog: ExecutableCatalog, chronicle: Chronicle,
       orders: SetupOrders): Either[OathViolation, ReadyGame] =
-    for {
+    for
       plan <- buildPlan(catalog, chronicle, orders)
       material = new FirstGameSetupMaterializer(catalog)
         .materialize(plan, Vector.empty, Vector.empty)
@@ -50,13 +50,13 @@ object GameStartRules:
           material.tracks, None, material.temporaryHands))
       problems = DomainValidation.validate(game)
       _ <- Either.cond(problems.isEmpty, (), InvalidAggregate(problems))
-    } yield ReadyGame.start(game,
+    yield ReadyGame.start(game,
       plan.participants.map(p => p.playerId -> p.color).toMap,
       orders.firstPlayer, material.favorBanks)
 
   private def buildPlan(catalog: ExecutableCatalog, chronicle: Chronicle,
       orders: SetupOrders): Either[OathViolation, FirstGameSetupPlan] =
-    for {
+    for
       _ <- Either.cond(chronicle.world.isEmpty, (),
         UnsupportedChronicle("a non-empty world requires the Empire"))
       _ <- Either.cond(chronicle.atlasBox.size >= 8, (),
@@ -76,7 +76,7 @@ object GameStartRules:
         chronicle.relicDeck.size >= inPlay.map(s => relicSlots(catalog, s.site)).sum,
         (), UnsupportedChronicle("not enough relics to fill site slots"))
       _ <- validateParticipants(orders)
-    } yield FirstGameSetupPlan(orders.participants, orders.firstPlayer,
+    yield FirstGameSetupPlan(orders.participants, orders.firstPlayer,
       inPlay.map(_.site), chronicle.worldDeck, orders.worldDeckOrder,
       chronicle.relicDeck, homelands)
 
@@ -94,25 +94,25 @@ object GameStartRules:
     val atlasEdifices = chronicle.atlasBox.flatMap(_.items)
       .collect { case id: EdificeId => id }
 
-    if (atlasSites.exists(id => !siteIds.contains(id)))
+    if atlasSites.exists(id => !siteIds.contains(id)) then
       Left(UnsupportedChronicle(
         s"unknown atlas site ${atlasSites.find(id => !siteIds.contains(id)).get.value}"))
-    else if (duplicate(atlasSites).nonEmpty)
+    else if duplicate(atlasSites).nonEmpty then
       Left(UnsupportedChronicle(
         s"duplicate atlas site ${duplicate(atlasSites).get.value}"))
-    else if (atlasEdifices.exists(id => !edificeIds.contains(id)))
+    else if atlasEdifices.exists(id => !edificeIds.contains(id)) then
       Left(UnsupportedChronicle(s"unknown edifice " +
         s"${atlasEdifices.find(id => !edificeIds.contains(id)).get.value}"))
-    else if (chronicle.worldDeck.exists(id => !denizenIds.contains(id)))
+    else if chronicle.worldDeck.exists(id => !denizenIds.contains(id)) then
       Left(UnsupportedChronicle(s"unknown denizen " +
         s"${chronicle.worldDeck.find(id => !denizenIds.contains(id)).get.value}"))
-    else if (duplicate(chronicle.worldDeck).nonEmpty)
+    else if duplicate(chronicle.worldDeck).nonEmpty then
       Left(UnsupportedChronicle(
         s"duplicate world-deck denizen ${duplicate(chronicle.worldDeck).get.value}"))
-    else if (chronicle.relicDeck.exists(id => !relicIds.contains(id)))
+    else if chronicle.relicDeck.exists(id => !relicIds.contains(id)) then
       Left(UnsupportedChronicle(s"unknown relic " +
         s"${chronicle.relicDeck.find(id => !relicIds.contains(id)).get.value}"))
-    else if (duplicate(chronicle.relicDeck).nonEmpty)
+    else if duplicate(chronicle.relicDeck).nonEmpty then
       Left(UnsupportedChronicle(
         s"duplicate relic ${duplicate(chronicle.relicDeck).get.value}"))
     else Right(())
@@ -122,14 +122,14 @@ object GameStartRules:
     val playerIds = orders.participants.map(_.playerId)
     val lineageIds = orders.participants.map(_.lineageId)
     val colors = orders.participants.map(_.color)
-    if (orders.participants.isEmpty) Left(ParticipantsEmpty)
-    else if (duplicate(playerIds).nonEmpty)
+    if orders.participants.isEmpty then Left(ParticipantsEmpty)
+    else if duplicate(playerIds).nonEmpty then
       Left(DuplicatePlayer(duplicate(playerIds).get))
-    else if (duplicate(lineageIds).nonEmpty)
+    else if duplicate(lineageIds).nonEmpty then
       Left(DuplicateLineage(duplicate(lineageIds).get))
-    else if (duplicate(colors).nonEmpty)
+    else if duplicate(colors).nonEmpty then
       Left(DuplicateColor(duplicate(colors).get))
-    else if (!playerIds.contains(orders.firstPlayer))
+    else if !playerIds.contains(orders.firstPlayer) then
       Left(UnknownFirstPlayer(orders.firstPlayer))
     else Right(())
 

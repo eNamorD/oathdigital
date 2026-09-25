@@ -38,7 +38,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     val base = ready
     val actor = base.game.current.turn.activePlayer
     val players = base.game.current.players.map { player =>
-      if (player.player == actor) player.copy(board = player.board.copy(
+      if player.player == actor then player.copy(board = player.board.copy(
         supply = player.board.supply.copy(supply = 0))) else player
     }
     val initial = base.updateCurrent(_.copy(players = players))
@@ -75,7 +75,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     val OathState.Ready(afterDraw) = started.state: @unchecked
     val drawn = afterDraw.game.current.temporaryHands(actor)
     assert(drawn.nonEmpty)
-    val afterSelection = if (drawn.size == 1) started else
+    val afterSelection = if drawn.size == 1 then started else
       val placements = Vector(DecisionPlacement(ref(drawn.head),
         SearchProcedure.keepKey)) ++ drawn.tail.map(card =>
         DecisionPlacement(ref(card), SearchProcedure.discardKey))
@@ -100,7 +100,7 @@ class SearchProcedureSuite extends munit.FunSuite:
     assert(deck.contains(vision))
     val initial = base.updateCurrent(_.copy(
       players = current.players.map(player =>
-        if (player.player == actor) player else player.copy(pawnSite = None)),
+        if player.player == actor then player else player.copy(pawnSite = None)),
       commonCards = current.commonCards.copy(worldDeck =
         Vector(vision) ++ deck.filterNot(_ == vision))))
     val withPowers = new OathRules(catalog,

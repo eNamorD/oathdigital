@@ -45,10 +45,10 @@ private[serialization] trait GameEventJsonSupport:
       "items" -> ujson.Arr.from(site.items.map(encodeCardId)))
 
   protected final def decodeStoredSite(value: ujson.Value, path: String)
-      : Either[WireError, StoredSite] = for {
+      : Either[WireError, StoredSite] = for
     items <- traverse(value("items").arr.zipWithIndex.toVector):
       case (item, index) => decodeCardId(item, s"$path.items[$index]")
-  } yield StoredSite(SiteId(value("site").str), items)
+  yield StoredSite(SiteId(value("site").str), items)
 
   protected final def encodeFoundationState(
       number: FoundationNumber, state: FoundationState): ujson.Value =
@@ -61,7 +61,7 @@ private[serialization] trait GameEventJsonSupport:
         state.alterationSources.toVector.map(_.value)))
 
   protected final def decodeFoundationState(value: ujson.Value, path: String)
-      : Either[WireError, (FoundationNumber, FoundationState)] = for {
+      : Either[WireError, (FoundationNumber, FoundationState)] = for
     number <- FoundationNumber.all.find(_.value == value("number").num.toInt)
       .toRight(InvalidValue(s"$path.number",
         s"unknown Foundation number ${value("number")}"))
@@ -70,7 +70,7 @@ private[serialization] trait GameEventJsonSupport:
       case "altered" => Right(FoundationFace.Altered)
       case other => Left(InvalidValue(s"$path.face",
         s"unknown Foundation face '$other'"))
-  } yield number -> FoundationState(face,
+  yield number -> FoundationState(face,
     value("alterationSources").arr.toVector.map(v => LegacyId(v.str)).toSet)
 
   protected final def encodeAdviserState(adviser: AdviserState): ujson.Value =
@@ -85,10 +85,11 @@ private[serialization] trait GameEventJsonSupport:
 
   protected final def decodeAdviserState(value: ujson.Value, path: String)
       : Either[WireError, AdviserState] = value("kind").str match
-    case "denizen" => for {
-      orientation <- decodeOrientation(value("orientation"), s"$path.orientation")
-      tokens <- decodeTokens(value("tokens"), s"$path.tokens")
-    } yield DenizenState(DenizenId(value("id").str), orientation, tokens)
+    case "denizen" =>
+      for
+        orientation <- decodeOrientation(value("orientation"), s"$path.orientation")
+        tokens <- decodeTokens(value("tokens"), s"$path.tokens")
+      yield DenizenState(DenizenId(value("id").str), orientation, tokens)
     case "vision" => decodeOrientation(value("orientation"), s"$path.orientation")
       .map(orientation => VisionState(VisionId(value("id").str), orientation))
     case kind => Left(InvalidValue(s"$path.kind", s"unknown adviser kind '$kind'"))
@@ -115,14 +116,14 @@ private[serialization] trait GameEventJsonSupport:
     ujson.Obj("id" -> lineage.id.value,
       "previousPlayer" -> lineage.previousPlayer.fold[ujson.Value](
         ujson.Null)(id => ujson.Str(id.value)),
-      "role" -> (if (lineage.role.isImperial) "citizen" else "exile"),
+      "role" -> (if lineage.role.isImperial then "citizen" else "exile"),
       "legacies" -> ujson.Arr.from(lineage.legacies.map(legacy =>
         ujson.Obj("id" -> legacy.id.value, "active" -> legacy.active))),
       "startingAdvisers" -> ujson.Arr.from(
         lineage.startingAdvisers.map(encodeAdviserState)))
 
   protected final def decodeLineageState(value: ujson.Value, path: String)
-      : Either[WireError, LineageState] = for {
+      : Either[WireError, LineageState] = for
     role <- value("role").str match
       case "exile" => Right(Role.Exile)
       case "citizen" => Right(Role.Citizen)
@@ -132,7 +133,7 @@ private[serialization] trait GameEventJsonSupport:
     startingAdvisers <- traverse(value("startingAdvisers").arr.zipWithIndex.toVector):
       case (adviser, index) =>
         decodeAdviserState(adviser, s"$path.startingAdvisers[$index]")
-  } yield LineageState(LineageId(value("id").str),
+  yield LineageState(LineageId(value("id").str),
     value("previousPlayer") match {
       case ujson.Null => None
       case id => Some(PlayerId(id.str))
@@ -152,7 +153,7 @@ private[serialization] trait GameEventJsonSupport:
     )
 
   protected final def decodeChronicle(value: ujson.Value, path: String)
-      : Either[WireError, Chronicle] = for {
+      : Either[WireError, Chronicle] = for
     atlasBox <- traverse(value("atlasBox").arr.zipWithIndex.toVector):
       case (site, index) => decodeStoredSite(site, s"$path.atlasBox[$index]")
     world <- traverse(value("world").arr.zipWithIndex.toVector):
@@ -161,7 +162,7 @@ private[serialization] trait GameEventJsonSupport:
       case (entry, index) => decodeFoundationState(entry, s"$path.foundations[$index]")
     lineages <- traverse(value("lineages").arr.zipWithIndex.toVector):
       case (lineage, index) => decodeLineageState(lineage, s"$path.lineages[$index]")
-  } yield Chronicle(atlasBox, world,
+  yield Chronicle(atlasBox, world,
     value("worldDeck").arr.toVector.map(v => DenizenId(v.str)),
     value("relicDeck").arr.toVector.map(v => RelicId(v.str)),
     value("dispossessed").arr.toVector.map(v => DenizenId(v.str)),
@@ -185,7 +186,7 @@ private[serialization] trait GameEventJsonSupport:
   protected final def decodeSetupOrders(value: ujson.Value, path: String)
       : Either[WireError, SetupOrders] = try
     val obj = value.obj
-    for {
+    for
       participants <- traverse(obj("participants").arr.zipWithIndex.toVector):
         case (participant, index) =>
           val color = participant("color").str
@@ -196,7 +197,7 @@ private[serialization] trait GameEventJsonSupport:
             LineageId(participant("lineageId").str), _))
       worldDeckOrder <- traverse(obj("worldDeckOrder").arr.zipWithIndex.toVector):
         case (item, index) => decodeWorldCardId(item, s"$path.worldDeckOrder[$index]")
-    } yield SetupOrders(participants, PlayerId(obj("firstPlayer").str),
+    yield SetupOrders(participants, PlayerId(obj("firstPlayer").str),
       worldDeckOrder, obj("relicOrder").arr.toVector.map(v => RelicId(v.str)))
   catch
     case NonFatal(error) =>
@@ -251,7 +252,7 @@ private[serialization] trait GameEventJsonSupport:
     requiredField(obj, "formatVersion", path)
       .flatMap(value => safeInteger(value, s"$path.formatVersion"))
       .flatMap { value =>
-        if (value <= Int.MaxValue.toLong) Right(value.toInt)
+        if value <= Int.MaxValue.toLong then Right(value.toInt)
         else
           Left(
             InvalidValue(
@@ -277,7 +278,7 @@ private[serialization] trait GameEventJsonSupport:
   protected final def safeInt(value: ujson.Value, path: String)
       : Either[WireError, Int] =
     safeInteger(value, path).flatMap { number =>
-      if (number <= Int.MaxValue.toLong) Right(number.toInt)
+      if number <= Int.MaxValue.toLong then Right(number.toInt)
       else Left(InvalidValue(path,
         s"must be between 0 and ${Int.MaxValue} inclusive"))
     }
@@ -310,7 +311,7 @@ private[serialization] trait GameEventJsonSupport:
       sequence: Long,
       path: String
   ): Either[WireError, Unit] =
-    if (sequence >= 0 && sequence <= GameEventWire.MaxSafeSequence) Right(())
+    if sequence >= 0 && sequence <= GameEventWire.MaxSafeSequence then Right(())
     else
       Left(
         InvalidValue(
@@ -448,7 +449,7 @@ private[serialization] trait GameEventJsonSupport:
       "kind" -> "site", "replace" -> replace.fold[ujson.Value](ujson.Null)(encodeCardRef))
     case SearchPlacement.Adviser(orientation, replace) => ujson.Obj(
       "kind" -> "adviser",
-      "orientation" -> (if (orientation == Orientation.FaceUp) "face-up" else "face-down"),
+      "orientation" -> (if orientation == Orientation.FaceUp then "face-up" else "face-down"),
       "replace" -> replace.fold[ujson.Value](ujson.Null)(encodeCardRef))
 
   protected final def decodeSearchPlacement(value: ujson.Value, path: String)
@@ -459,13 +460,14 @@ private[serialization] trait GameEventJsonSupport:
     try value("kind").str match
       case "discard" => Right(SearchPlacement.Discard)
       case "site" => replacement.map(SearchPlacement.Site.apply)
-      case "adviser" => for {
-        orientation <- value("orientation").str match
-          case "face-up" => Right(Orientation.FaceUp)
-          case "face-down" => Right(Orientation.FaceDown)
-          case other => Left(InvalidValue(s"$path.orientation", s"unknown orientation '$other'"))
-        replace <- replacement
-      } yield SearchPlacement.Adviser(orientation, replace)
+      case "adviser" =>
+        for
+          orientation <- value("orientation").str match
+            case "face-up" => Right(Orientation.FaceUp)
+            case "face-down" => Right(Orientation.FaceDown)
+            case other => Left(InvalidValue(s"$path.orientation", s"unknown orientation '$other'"))
+          replace <- replacement
+        yield SearchPlacement.Adviser(orientation, replace)
       case other => Left(InvalidValue(s"$path.kind", s"unknown placement '$other'"))
     catch { case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid Search placement"))) }

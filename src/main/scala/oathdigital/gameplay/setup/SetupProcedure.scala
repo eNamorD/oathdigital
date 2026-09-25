@@ -105,14 +105,14 @@ object SetupProcedure:
 
   private def chooseAdviser(player: PlayerId, decisionId: String)
       : (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]] =
-    (ready, pending) => for {
+    (ready, pending) => for
       selection <- adviserSelection(pending, decisionId)
       (chosen, rejected) = selection
       pawnSite <- ready.game.current.players.find(_.player == player)
         .flatMap(_.pawnSite).toRight(PawnSiteMissing(player))
       region <- ready.game.current.map.regionOf(pawnSite)
         .toRight(InvalidEventOrder(s"${pawnSite.value} is not in play"))
-    } yield Move(Piece.Card(chosen), PositionedLocation(Location.Hand(player)),
+    yield Move(Piece.Card(chosen), PositionedLocation(Location.Hand(player)),
         PositionedLocation(Location.PlayArea(player)),
         resultingOrientation = Some(Orientation.FaceDown)) +:
       rejected.map(id => Move(Piece.Card(id),

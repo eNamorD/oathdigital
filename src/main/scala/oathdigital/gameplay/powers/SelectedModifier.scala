@@ -55,7 +55,7 @@ trait SelectedModifier extends ContributingPower:
 
   final override lazy val contributions: Map[PowerWindow, Vector[Contribution]] =
     val payments: Map[PowerWindow, Vector[Contribution]] =
-      if (cost == Cost.free) Map.empty
+      if cost == Cost.free then Map.empty
       else actions.map(action => SelectedModifier.eligibility(action) ->
         Vector[Contribution](Transform((ctx, operations) =>
           payment(ctx.activePlayer) +: operations))).toMap
@@ -80,7 +80,7 @@ trait SelectedModifier extends ContributingPower:
 
   final override def selectionPayments(ready: ReadyGame, actor: PlayerId)
       : Vector[CoreOperation] =
-    if (cost == Cost.free) Vector.empty else Vector(payment(actor))
+    if cost == Cost.free then Vector.empty else Vector(payment(actor))
 
   /** The payment, required, placed onto the card as `PayCost` places it. */
   protected final def payment(actor: PlayerId): CoreOperation =

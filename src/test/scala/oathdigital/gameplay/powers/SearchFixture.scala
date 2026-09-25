@@ -68,7 +68,7 @@ object SearchFixture:
   def keep(from: OathTransition, kept: WorldCardId)
       : Either[OathViolation, OathTransition] =
     val drawn = after(from).game.current.temporaryHands(actor)
-    if (drawn.size == 1) Right(from.copy(events = Vector.empty))
+    if drawn.size == 1 then Right(from.copy(events = Vector.empty))
     else rules.resolveWalker(from.state, actor, SearchProcedure.cardDecisionId,
       DecisionAnswer.PartitionAnswer(DecisionPlacement(refOf(kept),
         SearchProcedure.keepKey) +: drawn.filterNot(_ == kept).map(card =>
@@ -85,11 +85,11 @@ object SearchFixture:
     * those of the whole Search, so a replay can start from `ready`.
     */
   def play(ready: ReadyGame, modifiers: Vector[PowerId], kept: WorldCardId,
-      button: String): OathTransition = (for {
+      button: String): OathTransition = (for
     started <- start(ready, modifiers)
     chosen <- keep(started, kept)
     placed <- place(chosen, kept, button)
-  } yield placed.copy(events = started.events ++ chosen.events ++
+  yield placed.copy(events = started.events ++ chosen.events ++
     placed.events)).fold(error => throw new AssertionError(error.toString),
     identity)
 
@@ -98,11 +98,11 @@ object SearchFixture:
     * action.
     */
   def playFacedown(ready: ReadyGame, modifiers: Vector[PowerId],
-      card: DenizenId, button: String): OathTransition = (for {
+      card: DenizenId, button: String): OathTransition = (for
     started <- rules.startWalker(Ready(ready), ActionRef.PlayFacedownAdviser,
       actor, modifiers, Vector(DecisionOptionRef.Denizen(card)))
     placed <- place(started, card, button)
-  } yield placed.copy(events = started.events ++ placed.events)).fold(
+  yield placed.copy(events = started.events ++ placed.events)).fold(
     error => throw new AssertionError(error.toString), identity)
 
   /** Answers the replacement decision of a play with `chosen`. */

@@ -28,11 +28,11 @@ final class BrassHorse(catalog: ExecutableCatalog)
     BuildOps((state, pending) => place(state, player, pending)))))
 
   private def region(ready: ReadyGame, player: PlayerId)
-      : Either[OathViolation, Region] = for {
+      : Either[OathViolation, Region] = for
     site <- PawnMoves.pawnSite(ready, player)
     found <- ready.game.current.map.regionOf(site).toRight(
       OathViolation.InvalidEventOrder(s"${site.value} is in no region"))
-  } yield found
+  yield found
 
   private def top(ready: ReadyGame, region: Region): Option[WorldCardId] =
     ready.game.current.commonCards.discard(region).lastOption
@@ -46,14 +46,14 @@ final class BrassHorse(catalog: ExecutableCatalog)
     * revealed. A Vision has no suit.
     */
   private def destinations(ready: ReadyGame, player: PlayerId)
-      : Either[OathViolation, Vector[SiteId]] = for {
+      : Either[OathViolation, Vector[SiteId]] = for
     here <- PawnMoves.pawnSite(ready, player)
     found <- region(ready, player)
-  } yield
+  yield
     val others = PawnMoves.sitesOtherThan(ready, here)
     val matching = top(ready, found).flatMap(catalog.suitOf).toVector
       .flatMap(suit => others.filter(holds(ready, _, suit)))
-    if (matching.nonEmpty) matching else others
+    if matching.nonEmpty then matching else others
 
   private def reveal(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =

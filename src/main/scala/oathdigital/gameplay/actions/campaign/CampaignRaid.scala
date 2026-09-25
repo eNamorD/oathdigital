@@ -39,7 +39,7 @@ private[campaign] object CampaignRaid:
   def transfer(ready: ReadyGame, result: CampaignResult)
       : Either[OathViolation, Vector[CoreOperation]] =
     val current = ready.game.current
-    for {
+    for
       defenderId <- result.defender match
         case CampaignDefender.Player(player) => Right(player)
         case CampaignDefender.Bandits => Left(OathViolation.InvalidEventOrder(
@@ -50,7 +50,7 @@ private[campaign] object CampaignRaid:
         OathViolation.PawnSiteMissing(result.attacker))
       region <- current.map.regionOf(origin).toRight(
         OathViolation.InvalidEventOrder("the Raid's origin has no region"))
-    } yield
+    yield
       val attacker = result.attacker
       val relics = result.raidTargets.collect {
         case CampaignRaidTarget.Relic(_, id) => id }
@@ -100,11 +100,11 @@ private[campaign] object CampaignRaid:
       relicTakes ++ bannerOps ++ discards ++ setAside ++ burn ++ boxed
 
   private def relocate(ready: ReadyGame, defender: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = for {
+      : Either[OathViolation, Vector[CoreOperation]] = for
     origin <- ready.game.current.players.find(_.player == defender)
       .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(defender))
     destination <- CampaignAnswers.relocation(pending).toRight(
       OathViolation.InvalidEventOrder("the Raid's relocation was not answered"))
-  } yield Vector[CoreOperation](Move(Piece.Pawn(defender),
+  yield Vector[CoreOperation](Move(Piece.Pawn(defender),
     PositionedLocation(Location.Site(origin)),
     PositionedLocation(Location.Site(destination))))

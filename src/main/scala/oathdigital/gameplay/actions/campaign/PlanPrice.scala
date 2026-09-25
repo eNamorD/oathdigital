@@ -24,7 +24,7 @@ private[campaign] object PlanPrice:
       case (price, FlipSecrets(_, amount, SecretSide.FaceUp, SecretSide.FaceDown)) =>
         price.copy(secrets = price.secrets + amount)
       case (price, _) => price
-    if (offer.costs.contains(CampaignPlanCost.SacrificeWarband))
+    if offer.costs.contains(CampaignPlanCost.SacrificeWarband) then
       paid.copy(warbands = 1)
     else paid
 
@@ -32,4 +32,4 @@ private[campaign] object PlanPrice:
   def priced(option: DecisionOption, offer: CampaignPlanOffer,
       operations: Vector[CoreOperation]): DecisionOption =
     val price = of(offer, operations)
-    if (price.isFree) option else DecisionOption.Priced(option, price)
+    if price.isFree then option else DecisionOption.Priced(option, price)

@@ -134,7 +134,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val ready = built.updateCurrent(_.copy(
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(held.contains)),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = held.map(id => DenizenState(id,
           Orientation.FaceDown, Tokens.empty))) else p)))
     val both = WalkerPowers(Vector(discardFirst, limitTwo))

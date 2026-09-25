@@ -37,7 +37,7 @@ object MovementFixture:
 
   def withRelicTokens(ready: ReadyGame, id: RelicId, tokens: Tokens)
       : ReadyGame = updateActor(ready)(p => p.copy(relics = p.relics.map(r =>
-    if (r.id == id) r.copy(tokens = tokens) else r)))
+    if r.id == id then r.copy(tokens = tokens) else r)))
 
   /** Replaces a regional discard pile. The old pile goes back under the world
     * deck and a new card leaves it if it is there, so the inventory stays

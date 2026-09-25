@@ -18,7 +18,7 @@ object ForgeRules:
     val definition = catalog.sites.find(_.id == siteId)
     val site = game.current.map.sites.get(siteId)
     PowerRuntime.requireAudited(catalog).flatMap { _ =>
-      for {
+      for
         s <- site.toRight(SiteNotInPlay(siteId))
         ruled <- SiteRule.ruledBy(s.forces, game.current.players, player.player)
           .left.map(x => ForgeUnavailable(s"cannot derive site ruler: $x"))
@@ -40,5 +40,5 @@ object ForgeRules:
         _ <- Costs.plan(ready, player.player,
           Location.OnCard(empty.head.denizenId),
           Cost(favor = cost.favor, secret = cost.secrets))
-      } yield empty -> cost
+      yield empty -> cost
     }

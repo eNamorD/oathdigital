@@ -29,12 +29,12 @@ object SeatCode:
     new SeatCode(Base64.getUrlEncoder.withoutPadding.encodeToString(bytes))
 
   def parse(raw: String): Either[String, SeatCode] =
-    if (raw == null || !Pattern.pattern.matcher(raw).matches()) Left(InvalidCode)
+    if raw == null || !Pattern.pattern.matcher(raw).matches() then Left(InvalidCode)
     else
       try
         val bytes = Base64.getUrlDecoder.decode(raw)
-        if (bytes.length != ByteLength ||
-            Base64.getUrlEncoder.withoutPadding.encodeToString(bytes) != raw)
+        if bytes.length != ByteLength ||
+            Base64.getUrlEncoder.withoutPadding.encodeToString(bytes) != raw then
           Left(InvalidCode)
         else Right(new SeatCode(raw))
       catch

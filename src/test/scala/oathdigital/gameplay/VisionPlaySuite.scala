@@ -44,7 +44,7 @@ class VisionPlaySuite extends munit.FunSuite:
     val actor = current.turn.activePlayer
     val deck = current.commonCards.worldDeck
     val initial = base.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player == actor) p.copy(
+      players = current.players.map(p => if p.player == actor then p.copy(
         revealedVision = revealed.map(id =>
           VisionState(id, Orientation.FaceUp))) else p),
       commonCards = current.commonCards.copy(worldDeck =
@@ -98,7 +98,7 @@ class VisionPlaySuite extends munit.FunSuite:
     val deck = current.commonCards.worldDeck
     val initial = base.updateCurrent(_.copy(
       players = current.players.map(p =>
-        if (p.player == enemy) p.copy(pawnSite = site) else p),
+        if p.player == enemy then p.copy(pawnSite = site) else p),
       banners = current.banners.copy(
         peoplesFavor = current.banners.peoplesFavor.copy(holder = Some(enemy)),
         darkestSecret = current.banners.darkestSecret.copy(holder = None)),
@@ -145,7 +145,7 @@ class VisionPlaySuite extends munit.FunSuite:
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(id =>
           id == old || id == revealed)),
-      players = current.players.map(p => if (p.player == actor) p.copy(
+      players = current.players.map(p => if p.player == actor then p.copy(
         advisers = p.advisers :+ VisionState(revealed, Orientation.FaceDown),
         revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p)))
     val before = player(staged, actor)
@@ -174,7 +174,7 @@ class VisionPlaySuite extends munit.FunSuite:
     val actor = current.turn.activePlayer
     val staged = base.updateCurrent(_.copy(
       players = current.players.map(p =>
-        if (p.player == actor) p.copy(advisers = p.advisers :+
+        if p.player == actor then p.copy(advisers = p.advisers :+
           VisionState(conspiracy, Orientation.FaceDown))
         else p.copy(pawnSite = None)),
       commonCards = current.commonCards.copy(worldDeck =

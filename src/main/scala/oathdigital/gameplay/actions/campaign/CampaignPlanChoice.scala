@@ -65,9 +65,9 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       .flatMap(offered => pass.applies(applicationOf(setup, offered)).toOption
         .map(operations => PlanPrice.priced(CampaignPlans.optionOf(offered),
           offered.offer, operations)))
-    if (listed.isEmpty && !pass.resuming) Vector.empty
+    if listed.isEmpty && !pass.resuming then Vector.empty
     else Vector[Operation](
-      Branch((_, _) => if (listed.isEmpty) Vector.empty
+      Branch((_, _) => if listed.isEmpty then Vector.empty
         else Vector(decision(decisionId, user, listed))),
       Branch((_, tree) => CampaignAnswers.lastPick(tree, decisionId) match {
         case None => Vector.empty

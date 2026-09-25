@@ -32,7 +32,7 @@ class ForgeRulesSuite extends munit.FunSuite:
       turn = base.game.current.turn.copy(phase = Phase.Act),
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
-      players = base.game.current.players.map(p => if (p.player == actor.player) moved else p),
+      players = base.game.current.players.map(p => if p.player == actor.player then moved else p),
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(siteId, site))))
     val targets = ids.map(SiteDenizenTarget(siteId, _))
     (ready, moved, siteId, targets, ready.game.current.commonCards.relicDeck.head)
@@ -44,7 +44,7 @@ class ForgeRulesSuite extends munit.FunSuite:
         deck: Vector[RelicId] = ready.game.current.commonCards.relicDeck) =
       val p = actor.copy(board = actor.board.copy(supply = SupplyTrack(supply)))
       val r = ready.updateCurrent(_.copy(
-        players = ready.game.current.players.map(x => if (x.player == actor.player) p else x),
+        players = ready.game.current.players.map(x => if x.player == actor.player then p else x),
         map = ready.game.current.map.copy(sites = ready.game.current.map.sites.updated(siteId, s)),
         commonCards = ready.game.current.commonCards.copy(relicDeck = deck)))
       ForgeRules.validate(catalog, r, p, siteId)
@@ -63,7 +63,7 @@ class ForgeRulesSuite extends munit.FunSuite:
         faceUpSecrets = secrets))
       val r = ready.updateCurrent(_.copy(
         players = ready.game.current.players.map(x =>
-          if (x.player == actor.player) p else x)))
+          if x.player == actor.player then p else x)))
       ForgeRules.validate(catalog, r, p, siteId)
 
     assert(withResources(cost.favor, cost.secrets).isRight,
@@ -72,27 +72,27 @@ class ForgeRulesSuite extends munit.FunSuite:
     // A Forge that starts unable to pay would spend Supply, walk to its last
     // node and fail there with nothing recoverable, so the gate is a start
     // gate rather than a completion check.
-    if (cost.favor > 0)
+    if cost.favor > 0 then
       assert(withResources(cost.favor - 1, cost.secrets).left.toOption.get
         .isInstanceOf[InsufficientFavor])
-    if (cost.secrets > 0)
+    if cost.secrets > 0 then
       assert(withResources(cost.favor, cost.secrets - 1).left.toOption.get
         .isInstanceOf[InsufficientSecrets])
 
     // Facedown secrets are not spendable, so they do not fund a Forge.
     val hidden = actor.copy(board = actor.board.copy(favor = cost.favor,
       faceUpSecrets = 0, faceDownSecrets = cost.secrets + 3))
-    if (cost.secrets > 0)
+    if cost.secrets > 0 then
       val r = ready.updateCurrent(_.copy(
         players = ready.game.current.players.map(x =>
-          if (x.player == actor.player) hidden else x)))
+          if x.player == actor.player then hidden else x)))
       assert(ForgeRules.validate(catalog, r, hidden, siteId).isLeft)
 
   test("unknown active handler outside the audited vocabulary blocks safely"):
     val (ready, actor, site, targets, _) = forgeable
     val active = targets.head.denizenId
     val altered = catalog.copy(denizens = catalog.denizens.map { definition =>
-      if (definition.id.value != active.value) definition
+      if definition.id.value != active.value then definition
       else definition.copy(powers = definition.powers :+ CatalogPower(
         PowerId("denizen.future-forge-interaction"), persistent = false, "Future power."))
     })

@@ -16,7 +16,7 @@ class OperationVocabularySuite extends munit.FunSuite:
 
   test("a default Give shrinks to what the giver holds and a required Give rejects"):
     val funded = base.updateCurrent(_.copy(players = current.players.map(p =>
-      if (p.player == actor) p.copy(board = p.board.copy(favor = 1)) else p)))
+      if p.player == actor then p.copy(board = p.board.copy(favor = 1)) else p)))
     def give(required: Boolean) = Give(Piece.Favor(3), actor,
       Location.PlayArea(actor), Location.PlayArea(other), required)
 
@@ -38,7 +38,7 @@ class OperationVocabularySuite extends munit.FunSuite:
     val held = base.updateCurrent(c => c.copy(
       commonCards = c.commonCards.copy(worldDeck =
         c.commonCards.worldDeck.filterNot(_ == vision)),
-      players = c.players.map(p => if (p.player != actor) p else
+      players = c.players.map(p => if p.player != actor then p else
         p.copy(advisers = Vector(VisionState(vision, Orientation.FaceDown))))))
     val buried = run(held, Bury(BuryableCard.Vision(vision),
       PositionedLocation(Location.PlayArea(actor)))).toOption.get.state
@@ -87,7 +87,7 @@ class OperationVocabularySuite extends munit.FunSuite:
   test("a Give to the shared bank moves the favor out of the giver's hands, " +
       "which is how giving to Bandits is modelled"):
     val funded = base.updateCurrent(_.copy(players = current.players.map(p =>
-      if (p.player == actor) p.copy(board = p.board.copy(favor = 2)) else p)))
+      if p.player == actor then p.copy(board = p.board.copy(favor = 2)) else p)))
     val gave = run(funded, Give(Piece.Favor(1), actor,
       Location.PlayArea(actor), Location.SharedBank)).toOption.get
     assertEquals(gave.state.game.current.players.find(_.player == actor).get

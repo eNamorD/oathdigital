@@ -17,7 +17,7 @@ private[frontend] object CardFace:
     * built. Visions share it rather than earn a ratio used by one case.
     */
   def boxClass(cardKind: String): String =
-    if (cardKind == "relic") "card-face-relic" else "card-face-denizen"
+    if cardKind == "relic" then "card-face-relic" else "card-face-denizen"
 
   /** Safe on a card the viewer cannot identify: a denizen back and a vision
     * back differ physically, so which one this is stays public even when the
@@ -36,19 +36,19 @@ private[frontend] object CardFace:
     val node = dom.document.createElement("button").asInstanceOf[dom.html.Button]
     node.`type` = "button"
     node.className = Vector("card-face", boxClass(card.cardKind),
-      if (faceDown(card)) "card-face-down" else "",
-      if (faceDown(card) && !card.hidden) "card-face-knowable" else "",
-      if (card.implemented) "" else "card-face-unimplemented")
+      if faceDown(card) then "card-face-down" else "",
+      if faceDown(card) && !card.hidden then "card-face-knowable" else "",
+      if card.implemented then "" else "card-face-unimplemented")
       .filter(_.nonEmpty).mkString(" ")
     node.setAttribute("data-card-id", card.cardId)
     node.setAttribute("aria-label",
-      if (card.hidden) card.name
-      else if (card.implemented) card.name
+      if card.hidden then card.name
+      else if card.implemented then card.name
       else s"${card.name} (unimplemented)")
 
-    if (card.hidden)
+    if card.hidden then
       node.appendChild(text("span", "card-back-letter", backLetter(card.cardKind)))
-    else if (faceDown(card))
+    else if faceDown(card) then
       // Knowable: the back is what shows at rest; the summary is revealed by
       // CSS on hover only, inside the same box, so nothing moves.
       node.appendChild(text("span", "card-back-letter", backLetter(card.cardKind)))
@@ -80,8 +80,8 @@ private[frontend] object CardFace:
       header.appendChild(RulesTextRenderer.glyph(s"suit-$value")))
     header.appendChild(text("span", "card-name", card.name))
     val tokens = element("span", "card-tokens")
-    if (card.favor > 0) counted("favor", card.favor).foreach(tokens.appendChild)
-    if (card.secrets > 0) counted("secret", card.secrets).foreach(tokens.appendChild)
+    if card.favor > 0 then counted("favor", card.favor).foreach(tokens.appendChild)
+    if card.secrets > 0 then counted("secret", card.secrets).foreach(tokens.appendChild)
     // Defense is rolled against, so it is drawn as the dice that roll it. It
     // rides the header's right end rather than floating over the corner: a
     // name long enough to wrap would otherwise run under the dice. The

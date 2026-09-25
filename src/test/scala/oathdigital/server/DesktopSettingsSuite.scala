@@ -56,7 +56,7 @@ class DesktopSettingsSuite extends munit.FunSuite:
     Files.write(dir.resolve("oathdigital.properties"), content.getBytes(UTF_8))
 
   private def deleteRecursively(path: Path): Unit =
-    if (Files.isDirectory(path))
+    if Files.isDirectory(path) then
       val children = Files.list(path)
       try children.toArray.foreach(child => deleteRecursively(child.asInstanceOf[Path]))
       finally children.close()

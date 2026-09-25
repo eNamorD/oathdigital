@@ -23,7 +23,7 @@ class CampaignPowersSuite extends munit.FunSuite:
 
   private def holding(orientation: Orientation, holder: PlayerId): ReadyGame =
     initial.updateCurrent(current => current.copy(players = current.players.map(
-      player => if (player.player == holder) player.copy(advisers = Vector(
+      player => if player.player == holder then player.copy(advisers = Vector(
         DenizenState(DenizenId(vowCard.id.value), orientation, Tokens.empty)))
       else player)))
 
@@ -53,7 +53,7 @@ class CampaignPowersSuite extends munit.FunSuite:
     val states = ordered.map { id =>
       val definition = catalog.sites.find(_.id == id).get
       id -> SiteState(
-        if (definition.capacity == 0) SiteForces.Empty
+        if definition.capacity == 0 then SiteForces.Empty
         else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
         Vector.empty, Vector.empty, definition.startingResources)
     }.toMap
@@ -61,7 +61,7 @@ class CampaignPowersSuite extends munit.FunSuite:
   private def withPawnAt(site: SiteId, map: MapState = passMap): ReadyGame =
     initial.updateCurrent(current => current.copy(map = map,
       players = current.players.map(player =>
-        if (player.player == actor) player.copy(pawnSite = Some(site))
+        if player.player == actor then player.copy(pawnSite = Some(site))
         else player)))
 
   private val passPower = TravelSitePowers.forCatalog(catalog).collectFirst {

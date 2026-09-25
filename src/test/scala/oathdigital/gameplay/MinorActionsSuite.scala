@@ -32,7 +32,7 @@ class MinorActionsSuite extends munit.FunSuite:
       forces = SiteForces.Occupied(ForceKind.Exile(active.lineage), 3),
       denizens = Vector.empty)
     val current = base.game.current.copy(
-      players = base.game.current.players.map(p => if (p.player == active.player) active else p),
+      players = base.game.current.players.map(p => if p.player == active.player then active else p),
       map = base.game.current.map.copy(sites = base.game.current.map.sites.map {
         case (id, _) if id == siteId => id -> site
         case (id, value) => id -> value.copy(relics = value.relics.filterNot(_.id == heldRelic))
@@ -64,11 +64,11 @@ class MinorActionsSuite extends munit.FunSuite:
       toSite: Boolean,
       amount: Int
   ): ReadyGame =
-    val boardDelta = if (toSite) -amount else amount
+    val boardDelta = if toSite then -amount else amount
     val siteDelta = -boardDelta
     val current = ready.game.current
     val players = current.players.map { player =>
-      if (player.player == playerId) player.copy(board = player.board.copy(
+      if player.player == playerId then player.copy(board = player.board.copy(
         warbands = player.board.warbands + boardDelta))
       else player
     }
@@ -225,7 +225,7 @@ class MinorActionsSuite extends munit.FunSuite:
       DenizenState(powered, Orientation.FaceUp, Tokens.empty)))
     val changed = base.updateCurrent(_.copy(
       players = base.game.current.players.map(player =>
-        if (player.player == other.player) other else player)))
+        if player.player == other.player then other else player)))
     val source = RuleSourceRef.Adviser(other.player, powered)
     val expected = PowerRuntime.ignoredAtSource(catalog, changed, other.player,
       ActionKind.WhenPlayed, source).toOption.get
@@ -242,7 +242,7 @@ class MinorActionsSuite extends munit.FunSuite:
     val modified = base.updateCurrent(_.copy(
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(_ == locked)),
-      players = base.game.current.players.map(p => if (p.player == actor.player)
+      players = base.game.current.players.map(p => if p.player == actor.player then
         p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceDown, Tokens.empty))) else p)))
     val started = rules.startWalker(Ready(modified), ActionRef.PlayFacedownAdviser,
       actor.player, startArgs = Vector(DecisionOptionRef.Denizen(locked)))
@@ -251,7 +251,7 @@ class MinorActionsSuite extends munit.FunSuite:
       s"cardplay.place.denizen.${locked.value}",
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))).isRight)
     val faceup = modified.updateCurrent(_.copy(
-      players = modified.game.current.players.map(p => if (p.player == actor.player)
+      players = modified.game.current.players.map(p => if p.player == actor.player then
         p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceUp, Tokens.empty))) else p)))
     assert(oathdigital.gameplay.actions.cardplay.CardPlayProcedure.buildFacedown(
       catalog, faceup, actor.player, Vector(DecisionOptionRef.Denizen(locked))).isLeft)

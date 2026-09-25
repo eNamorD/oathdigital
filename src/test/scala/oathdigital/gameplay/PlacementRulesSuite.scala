@@ -59,7 +59,7 @@ class PlacementRulesSuite extends munit.FunSuite:
     val ready = staged1.updateCurrent(_.copy(
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(held.contains)),
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = held.map(id => DenizenState(id,
           Orientation.FaceDown, Tokens.empty))) else p)))
     val tree = build(ready, actor, card)
@@ -81,7 +81,7 @@ class PlacementRulesSuite extends munit.FunSuite:
   test("Silver Tongue and the adviser-limit read agree on the limit"):
     val tongue = SilverTongue.forCatalog(catalog).get
     val held = base.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == actorOf(base).player) p.copy(advisers = p.advisers :+
+      if p.player == actorOf(base).player then p.copy(advisers = p.advisers :+
         DenizenState(tongue.cardId, Orientation.FaceUp, Tokens.empty)) else p)))
     val player = actorOf(held).player
     assertEquals(tongue.limitFor(held, player), Some(SilverTongue.HolderLimit))

@@ -48,7 +48,7 @@ final class HsqldbDatabaseOwner private (
         Left(HsqldbEventStreamRepository.storageFailure(operation, error))
 
   override def close(): Unit =
-    if (closed.compareAndSet(false, true))
+    if closed.compareAndSet(false, true) then
       try Await.result(database.run(SimpleDBIO { context =>
         val statement = context.connection.createStatement()
         try {
@@ -95,9 +95,9 @@ object HsqldbDatabaseOwner:
 
   private def validatePath(path: Path): Either[RepositoryFailure, Path] =
     val normalized = path.toAbsolutePath.normalize
-    if (normalized.toString.exists(character =>
+    if normalized.toString.exists(character =>
       character == ';' || character == '\n' || character == '\r' ||
-        character == '\u0000'))
+        character == '\u0000') then
       Left(RepositoryFailure.InvalidConfiguration(
         "database path contains an unsafe HSQLDB URL delimiter"
       ))
@@ -154,7 +154,7 @@ object HsqldbDatabaseOwner:
             if attempts < maxAttempts && nanoTime() < deadlineNanos &&
               retryable(error) =>
           sleep(ReopenBackoffMillis)
-          if (nanoTime() < deadlineNanos) loop(attempts + 1) else result
+          if nanoTime() < deadlineNanos then loop(attempts + 1) else result
         case _ => result
     loop(1)
 

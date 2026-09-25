@@ -31,7 +31,7 @@ class MagicWaterskinSuite extends munit.FunSuite:
 
   test("a secret on the relic returns to its holder facedown"):
     val ready = staged().updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player != actor) p else p.copy(relics = p.relics.map(r =>
+      if p.player != actor then p else p.copy(relics = p.relics.map(r =>
         r.copy(tokens = Tokens(0, 1)))))))
     val used = use(ready).toOption.get.state.asInstanceOf[Ready].value
     assertEquals(player(used).board.faceDownSecrets,

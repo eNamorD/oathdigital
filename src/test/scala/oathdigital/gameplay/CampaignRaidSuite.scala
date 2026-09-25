@@ -100,7 +100,7 @@ class CampaignRaidSuite extends munit.FunSuite:
     assert(third.nonEmpty, "the fixture needs a third player")
     val crowded = b.copy(ready = b.ready.updateCurrent(current => current.copy(
       players = current.players.map(p =>
-        if (third.contains(p.player)) p.copy(pawnSite = Some(b.origin)) else p))))
+        if third.contains(p.player) then p.copy(pawnSite = Some(b.origin)) else p))))
     val game = rules()
     val started = game.startWalker(Ready(crowded.ready), ActionRef.Campaign,
       b.actor).toOption.get

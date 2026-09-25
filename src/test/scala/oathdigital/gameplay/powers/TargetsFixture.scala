@@ -24,7 +24,7 @@ object TargetsFixture:
   def updatePlayer(ready: ReadyGame, id: PlayerId)(
       f: PlayerState => PlayerState): ReadyGame =
     ready.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == id) f(p) else p)))
+      if p.player == id then f(p) else p)))
 
   def withSecrets(ready: ReadyGame, id: PlayerId, faceUp: Int,
       faceDown: Int): ReadyGame = updatePlayer(ready, id)(p => p.copy(

@@ -21,13 +21,13 @@ class IvoryEyeSuite extends munit.FunSuite:
     player(ready, owner).advisers.head.id
   private def known(ready: ReadyGame, viewer: PlayerId): Vector[WorldCardId] =
     ready.knowledge.advisers.getOrElse(viewer, Vector.empty)
-  private def facedown(ready: ReadyGame) = for {
+  private def facedown(ready: ReadyGame) = for
     p <- ready.game.current.players
     (adviser, slot) <- p.advisers.zipWithIndex
     if (adviser match {
       case d: DenizenState => d.orientation == Orientation.FaceDown
       case v: VisionState => v.orientation == Orientation.FaceDown })
-  } yield IvoryEye.optionFor(p.player, slot)
+  yield IvoryEye.optionFor(p.player, slot)
   private def peekAt(owner: PlayerId, slot: Int) =
     pick(IvoryEye.optionFor(owner, slot))
 

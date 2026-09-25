@@ -83,7 +83,7 @@ class FaeMerchantSuite extends munit.FunSuite:
 
   test("a secret on the relic put back returns to its holder facedown"):
     val ready0 = staged(Vector(held1)).updateCurrent(c => c.copy(players =
-      c.players.map(p => if (p.player != actor) p else p.copy(relics =
+      c.players.map(p => if p.player != actor then p else p.copy(relics =
         p.relics.map(r => r.copy(tokens = Tokens(0, 1)))))))
     val rules0 = rules()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get

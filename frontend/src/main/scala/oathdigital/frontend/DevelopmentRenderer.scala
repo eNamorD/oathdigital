@@ -53,7 +53,7 @@ private[frontend] object DevelopmentRenderer:
    panel.appendChild(text("h2", "", "Raw authoritative event log"))
    panel.appendChild(text("p", "warning",
      "Development only. Raw authoritative events may reveal hidden outcomes."))
-   if (rawEvents.isEmpty) panel.appendChild(text("p", "empty-state", "No events."))
+   if rawEvents.isEmpty then panel.appendChild(text("p", "empty-state", "No events."))
    val list = element("ol", "events")
    rawEvents.foreach { event =>
      val item = element("li", "raw-event")

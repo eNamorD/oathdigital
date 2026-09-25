@@ -33,7 +33,7 @@ object PowerRuntime:
   private def resolve(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, powerWindow: PowerWindow,
       only: Option[RuleSourceRef] = None)
-      : Either[OathViolation, PowerResolutionResult] = for {
+      : Either[OathViolation, PowerResolutionResult] = for
     resolver <- ReviewedPowerCatalog.resolver(catalog)
     sources = ReviewedPowerCatalog.sources(catalog, ready)
       .filter(value => only.forall(_ == value._1))
@@ -43,7 +43,7 @@ object PowerRuntime:
         OathViolation.UnsupportedRuleCatalog(
           ReviewedPowerCatalog.AuditedCatalogFingerprint,
           s"unclassified-handler:${source.stableKey}:${id.value}")
-  } yield result
+  yield result
 
   private def window(action: ActionKind): PowerWindow = action match
     case ActionKind.Search => PowerWindow.SearchModifierSelection

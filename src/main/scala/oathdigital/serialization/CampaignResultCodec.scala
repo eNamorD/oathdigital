@@ -36,7 +36,7 @@ private[serialization] trait CampaignResultCodec:
 
   protected final def decodeCampaignResult(value: ujson.Value, path: String)
       : Either[WireError, CampaignResult] = try
-    for {
+    for
       kind <- decodeCampaignKind(value("campaignKind"), s"$path.campaignKind")
       defender <- value("defender")("kind").str match
         case "bandits" => Right(CampaignDefender.Bandits)
@@ -53,7 +53,7 @@ private[serialization] trait CampaignResultCodec:
       defenseFaces <- traverse(value("defenseFaces").arr.toVector.zipWithIndex):
         case (entry, index) =>
           decodeDefenseFace(entry.str, s"$path.defenseFaces[$index]")
-    } yield CampaignResult(PlayerId(value("attackerPlayerId").str), kind,
+    yield CampaignResult(PlayerId(value("attackerPlayerId").str), kind,
       defender, value("targetSiteIds").arr.toVector.map(v => SiteId(v.str)),
       raidTargets, value("force").num.toInt, attackFaces,
       value("attackScore").num.toInt, value("skullLosses").num.toInt,

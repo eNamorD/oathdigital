@@ -51,8 +51,8 @@ object OathServer:
       config.databasePath.toAbsolutePath.normalize.toString,
       config.catalogPath.toAbsolutePath.normalize.toString
     )
-    if (config.mode == ServerMode.TrustedAlpha &&
-        config.authenticatedRouteMount.isDefined)
+    if config.mode == ServerMode.TrustedAlpha &&
+        config.authenticatedRouteMount.isDefined then
       system.log.warn(
         "Authenticated route options are ignored in trusted-alpha mode; " +
           "session cookie name and authenticated public origin apply to " +
@@ -120,7 +120,7 @@ object OathServer:
         launch.foreach { desktop =>
           System.out.print(DesktopConsole.banner(config, desktop))
           System.out.flush()
-          if (desktop.openBrowser)
+          if desktop.openBrowser then
             DesktopConsole.openBrowser(
               osName,
               DesktopConsole.browserUrl(config),

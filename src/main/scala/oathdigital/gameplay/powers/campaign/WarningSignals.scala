@@ -48,7 +48,7 @@ final case class WarningSignals private (cardId: DenizenId,
   private def rearrange(user: PlayerId): Operation = Branch((ready, _) => {
     val (board, sites) = holdings(ready, user)
     val total = board + sites.map(_._2).sum
-    if (sites.isEmpty || total == 0) Vector.empty
+    if sites.isEmpty || total == 0 then Vector.empty
     else {
       val room = total - (sites.size - 1)
       val slots = DistributeSlot(DecisionOptionRef.Player(user), 0, total,
@@ -80,9 +80,9 @@ final case class WarningSignals private (cardId: DenizenId,
       }}
       def move(site: SiteId, count: Int, out: Boolean): CoreOperation =
         Move(Piece.Warbands(kind, count),
-          PositionedLocation(if (out) Location.Site(site)
+          PositionedLocation(if out then Location.Site(site)
             else Location.PlayArea(user)),
-          PositionedLocation(if (out) Location.PlayArea(user)
+          PositionedLocation(if out then Location.PlayArea(user)
             else Location.Site(site)))
       changes.collect { case (site, delta) if delta < 0 =>
         move(site, -delta, out = true) } ++

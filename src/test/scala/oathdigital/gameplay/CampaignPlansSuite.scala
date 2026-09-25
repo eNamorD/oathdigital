@@ -60,7 +60,7 @@ class CampaignPlansSuite extends munit.FunSuite:
     val b = board()
     val elsewhere = b.copy(ready = withAdviser(b, outridersCard,
       Orientation.FaceUp).ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => if (p.player == b.actor)
+      players = current.players.map(p => if p.player == b.actor then
         p.copy(advisers = Vector.empty) else p.copy(advisers = Vector(
         DenizenState(DenizenId(outridersCard), Orientation.FaceUp,
           Tokens.empty)))))))
@@ -110,7 +110,7 @@ class CampaignPlansSuite extends munit.FunSuite:
     val b = againstPlayer(board())
     val held = b.copy(ready = withAdviser(b, watchdogCard, Orientation.FaceUp)
       .ready.updateCurrent(current => current.copy(players = current.players.map(
-        p => if (p.player == b.other) p.copy(advisers = Vector(DenizenState(
+        p => if p.player == b.other then p.copy(advisers = Vector(DenizenState(
           DenizenId(watchdogCard), Orientation.FaceUp, Tokens.empty)))
         else p.copy(advisers = Vector.empty)))))
     assertEquals(watchdog.plan(defending(held)).map(_.source),

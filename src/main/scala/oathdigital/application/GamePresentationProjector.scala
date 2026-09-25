@@ -118,13 +118,13 @@ private[application] final class GamePresentationProjector(
         }
         SiteCardProjection(denizen.id.value, label, details)
       },
-      SiteRelicsProjection(state.fold(0)(_.relics.size), for {
+      SiteRelicsProjection(state.fold(0)(_.relics.size), for
         game <- ready.toVector
         player <- viewer.toVector
         known <- game.knowledge.siteRelics.getOrElse(player, Map.empty)
           .getOrElse(siteId, Vector.empty)
         relic <- state.toVector.flatMap(_.relics).filter(_.id == known)
-      } yield cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)),
+      yield cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)),
       definition.fold(0)(_.defense),
       definition.flatMap(site => Option.when(site.forgeRequirements.isEmpty)(
         site.recoverDifficulty).flatten),
@@ -174,8 +174,8 @@ private[application] final class GamePresentationProjector(
         secrets.committed, secrets.totalSecrets,
         player.board.supply.supply, player.pawnSite.map(_.value),
         player.advisers.map(card =>
-          if (identifies(card.id, adviserOrientation(card),
-              PlayerCardArea.Advisers))
+          if identifies(card.id, adviserOrientation(card),
+              PlayerCardArea.Advisers) then
             withTokens(cardDetails(card.id, Some(adviserOrientation(card)),
               hidden = false), card match {
                 case value: DenizenState => value.tokens
@@ -183,7 +183,7 @@ private[application] final class GamePresentationProjector(
               })
           else hiddenCard(cardKind(card.id))),
         player.relics.map(card =>
-          if (identifies(card.id, card.orientation, PlayerCardArea.Relics))
+          if identifies(card.id, card.orientation, PlayerCardArea.Relics) then
             withTokens(cardDetails(card.id, Some(card.orientation),
               hidden = false), card.tokens)
           else hiddenCard("relic")),

@@ -15,8 +15,8 @@ private[frontend] final case class ModifierSelectionState(
     selected: Vector[PreviewModifier]
 ):
   def toggle(value: PreviewModifier): ModifierSelectionState =
-    if (!candidates.contains(value)) this
-    else if (selected.contains(value)) copy(selected = selected.filterNot(_ == value))
+    if !candidates.contains(value) then this
+    else if selected.contains(value) then copy(selected = selected.filterNot(_ == value))
     else copy(selected = selected :+ value)
 
   def moveEarlier(value: PreviewModifier): ModifierSelectionState = move(value, -1)
@@ -77,7 +77,7 @@ private[frontend] final case class ModifierSelectionState(
   private def move(value: PreviewModifier, delta: Int) =
     val index = selected.indexOf(value)
     val next = index + delta
-    if (index < 0 || next < 0 || next >= selected.size) this
+    if index < 0 || next < 0 || next >= selected.size then this
     else copy(selected = selected.updated(index, selected(next)).updated(next, value))
 
 private[frontend] object ModifierSelectionState:

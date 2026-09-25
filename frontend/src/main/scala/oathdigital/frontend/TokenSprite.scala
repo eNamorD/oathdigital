@@ -77,7 +77,7 @@ private[frontend] object TokenSprite:
     * so callers need not track whether the document already has it.
     */
   def mount(root: dom.Element): Unit =
-    if (root.querySelector("svg.token-sprite") == null)
+    if root.querySelector("svg.token-sprite") == null then
       val sprite = dom.document.createElementNS(Svg, "svg")
       sprite.setAttribute("class", "token-sprite")
       sprite.setAttribute("aria-hidden", "true")

@@ -62,10 +62,10 @@ object StateBasedEvaluation:
     val order = ready.game.current.players.map(_.player)
     val firstIndex = order.indexOf(ready.setup.firstPlayer)
     val turnOrder = order.drop(firstIndex) ++ order.take(firstIndex)
-    if (current.turn.phase != Phase.RoundEnd ||
-        current.turn.activePlayer != turnOrder.head)
+    if current.turn.phase != Phase.RoundEnd ||
+        current.turn.activePlayer != turnOrder.head then
       Left(InvalidEventOrder("round ending requires the completed round's final Rest"))
-    else if (current.tracks.round < 8)
+    else if current.tracks.round < 8 then
       Right(Vector(RoundEnded(current.tracks.round,
         Some(current.tracks.round + 1))))
     else
@@ -135,10 +135,10 @@ object StateBasedEvaluation:
           val players = ready.game.current.players.map(_.player)
           val firstIndex = players.indexOf(ready.setup.firstPlayer)
           val first = (players.drop(firstIndex) ++ players.take(firstIndex)).head
-          if (ready.game.current.turn.phase != Phase.RoundEnd ||
-              ready.game.current.turn.activePlayer != first)
+          if ready.game.current.turn.phase != Phase.RoundEnd ||
+              ready.game.current.turn.activePlayer != first then
             Left(InvalidEventOrder("round-end event is outside the round-end procedure"))
-          else if (recorded != expected) Left(InvalidEventOrder(
+          else if recorded != expected then Left(InvalidEventOrder(
             s"round-end mismatch: expected $expected, recorded $recorded"))
           else update(state)(current => current.copy(
             tracks = current.tracks.copy(
@@ -175,8 +175,8 @@ object StateBasedEvaluation:
   private def expectedWarExhaustion(state: OathState)
       : Either[OathViolation, ExpectedWarExhaustion] = supported(state).flatMap { ready =>
     val current = ready.game.current
-    if (current.tracks.round != 8 || current.result.nonEmpty ||
-        current.turn.phase != Phase.WarExhaustion)
+    if current.tracks.round != 8 || current.result.nonEmpty ||
+        current.turn.phase != Phase.WarExhaustion then
       Left(InvalidEventOrder("War Exhaustion is only resolved after round eight"))
     else endRoundWinner(current, ready.setup.firstPlayer)
   }

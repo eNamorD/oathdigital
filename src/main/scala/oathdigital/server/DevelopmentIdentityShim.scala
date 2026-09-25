@@ -25,7 +25,7 @@ object DevelopmentIdentityShim:
     DevelopmentIdentityShimError,
     Option[Authenticator[DevelopmentIdentityHeader]]
   ] =
-    if (!enabled) Right(None)
+    if !enabled then Right(None)
     else DevelopmentTrustBoundary.validateLoopbackHost(validatedBindHost)
       .left.map(DevelopmentIdentityShimError.NonLoopbackBinding.apply)
       .map(_ => Some(new DevelopmentHeaderAuthenticator))

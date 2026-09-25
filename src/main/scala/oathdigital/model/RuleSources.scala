@@ -18,7 +18,7 @@ object RuleSourceRef:
       val at = body.lastIndexOf(':')
       Option.when(stableKey.startsWith(prefix) && at >= 0)(
         body.take(at) -> body.drop(at + 1))
-    if (stableKey.startsWith("site-card:"))
+    if stableKey.startsWith("site-card:") then
       splitTyped("site-card:", "denizen").map { case (site, id) =>
         SiteCard(SiteId(site), DenizenId(id))
       }.orElse(splitTyped("site-card:", "vision").map { case (site, id) =>

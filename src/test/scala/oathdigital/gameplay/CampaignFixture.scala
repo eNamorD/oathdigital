@@ -32,14 +32,14 @@ object CampaignFixture:
     val activeId = current.turn.activePlayer
     val otherId = current.players.map(_.player).find(_ != activeId).get
     val players = current.players.map { player =>
-      if (player.player == activeId) player.copy(pawnSite = Some(origin),
+      if player.player == activeId then player.copy(pawnSite = Some(origin),
         board = player.board.copy(warbands = warbands,
           supply = SupplyTrack(supply)))
       else player.copy(pawnSite = Some(elsewhere))
     }
     val sites = current.map.sites.map { case (id, site) =>
       id -> site.copy(denizens = Vector.empty, forces =
-        if (ruled(id)) SiteForces.Occupied(ForceKind.Bandit, 2)
+        if ruled(id) then SiteForces.Occupied(ForceKind.Bandit, 2)
         else SiteForces.Empty)
     }
     def bandits(forces: SiteForces): Int = forces match
@@ -57,7 +57,7 @@ object CampaignFixture:
   /** The other player joins the actor at `origin`, so a Raid is legal. */
   def withEnemyAtOrigin(b: Board): Board = b.copy(ready = b.ready.updateCurrent(
     current => current.copy(players = current.players.map(p =>
-      if (p.player == b.other) p.copy(pawnSite = Some(b.origin)) else p))))
+      if p.player == b.other then p.copy(pawnSite = Some(b.origin)) else p))))
 
   /** Battle plans are powers, so a Campaign runs with the walker power catalog
     * unless a suite asks for none.
@@ -65,7 +65,7 @@ object CampaignFixture:
   def rules(dice: WalkerDice = WalkerDice.unavailable,
       powers: Boolean = true): OathRules = new OathRules(catalog,
     walkerPowerCatalog =
-      if (powers) WalkerPowerCatalog.default(catalog) else WalkerPowers.empty,
+      if powers then WalkerPowerCatalog.default(catalog) else WalkerPowers.empty,
     walkerDice = dice)
 
   /** Rules with exactly these walker powers, for a suite that tests the plan
@@ -116,7 +116,7 @@ object CampaignFixture:
 
   def replacePlayer(b: Board, id: PlayerId)(f: PlayerState => PlayerState)
       : Board = b.copy(ready = b.ready.updateCurrent(current => current.copy(
-    players = current.players.map(p => if (p.player == id) f(p) else p))))
+    players = current.players.map(p => if p.player == id then f(p) else p))))
 
   def withAdviserFor(b: Board, player: PlayerId, card: String,
       orientation: Orientation, tokens: Tokens = Tokens.empty): Board =
@@ -190,7 +190,7 @@ object CampaignFixture:
       .id.value)
     val ready = b.ready.updateCurrent(current => current.copy(
       players = current.players.map(p =>
-        if (p.player == b.other) p.copy(
+        if p.player == b.other then p.copy(
           board = p.board.copy(warbands = defenderWarbands, favor = 5),
           advisers = Vector(
             DenizenState(DenizenId("raid-facedown-denizen"), Orientation.FaceDown,

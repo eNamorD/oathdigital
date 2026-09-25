@@ -117,10 +117,10 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     validateSequence(startSequence, "$[*].sequence").flatMap { _ =>
       traverse(events.zipWithIndex) { case (record, position) =>
         val expected =
-          if (startSequence > MaxSafeSequence - position.toLong)
+          if startSequence > MaxSafeSequence - position.toLong then
             None
           else Some(startSequence + position.toLong)
-        if (!expected.contains(record.index))
+        if !expected.contains(record.index) then
           Left(
             InvalidSequence(
               s"$$[$position].sequence",
@@ -158,10 +158,10 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   ): Either[WireError, GameEventEnvelope] =
     value match
       case obj: ujson.Obj =>
-        for {
+        for
           version <- formatVersionField(obj, path)
           _ <-
-            if (version == FormatVersion)
+            if version == FormatVersion then
               Right(())
             else
               Left(
@@ -173,7 +173,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
               )
           gameId <- stringField(obj, "gameId", path)
           _ <-
-            if (gameId.trim.nonEmpty) Right(())
+            if gameId.trim.nonEmpty then Right(())
             else Left(InvalidValue(s"$path.gameId", "gameId must not be blank"))
           sequence <- safeIntegerField(obj, "sequence", path)
           refValue <- requiredField(obj, "catalog", path)
@@ -186,7 +186,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             s"$path.payload",
             ref
           )
-        } yield GameEventEnvelope(
+        yield GameEventEnvelope(
           version,
           gameId,
           sequence,
@@ -227,9 +227,9 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   private def validateEnvelope(
       envelope: GameEventEnvelope
   ): Either[WireError, Unit] =
-    for {
+    for
       _ <-
-        if (envelope.formatVersion == FormatVersion) Right(())
+        if envelope.formatVersion == FormatVersion then Right(())
         else
           Left(
             UnsupportedFormatVersion(
@@ -239,11 +239,11 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             )
           )
       _ <-
-        if (envelope.gameId.trim.nonEmpty) Right(())
+        if envelope.gameId.trim.nonEmpty then Right(())
         else Left(InvalidValue("$.gameId", "gameId must not be blank"))
       _ <- validateSequence(envelope.sequence, "$.sequence")
       _ <-
-        if (envelope.eventType == discriminator(envelope.event)) Right(())
+        if envelope.eventType == discriminator(envelope.event) then Right(())
         else
           Left(
             InvalidValue(
@@ -252,7 +252,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
             )
           )
       _ <- validateEventCatalog(envelope.event, envelope.catalog, "$")
-    } yield ()
+    yield ()
 
   private val discriminatorDispatch = lifecycleDiscriminator
     .orElse(actionDiscriminator)

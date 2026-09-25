@@ -36,11 +36,11 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan:
 
   override def wrapping
       : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignLosses -> ((use, losses) => (for {
+    PowerWindow.CampaignLosses -> ((use, losses) => (for
       user <- use.user
       result <- use.result
       if use.won.contains(true)
-    } yield ask(user) +: (losses :+ burn(use, user, result))).getOrElse(losses)))
+    yield ask(user) +: (losses :+ burn(use, user, result))).getOrElse(losses)))
 
   private def ask(user: PlayerId): Operation = Decide(StickyFire.decisionId, user,
     DecisionQuery.ChooseOne(Vector(
@@ -53,12 +53,12 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan:
       : Operation =
     val returned = returnedToDefender(use.ready, use.side, result)
     BuildOps((ready, pending) =>
-      if (!PowerAnswers.one(pending, StickyFire.decisionId).contains(StickyFire.yes))
+      if !PowerAnswers.one(pending, StickyFire.decisionId).contains(StickyFire.yes) then
         Right(Vector.empty)
-      else for {
+      else for
         kills <- kills(ready, use.side, result, returned)
         gift = gives(use.side, user, result)
-      } yield kills ++ gift)
+      yield kills ++ gift)
 
   /** The warbands a victorious attacker's Conquest would give back to a player
     * defender: what stands at the targets now, before the losses kill it, less
@@ -66,7 +66,7 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan:
     */
   private def returnedToDefender(ready: ReadyGame, side: CampaignPlanSide,
       result: CampaignResult): Int =
-    if (side != CampaignPlanSide.Attacker || result.kind != CampaignKind.Conquest)
+    if side != CampaignPlanSide.Attacker || result.kind != CampaignKind.Conquest then
       0
     else result.defender match
       case CampaignDefender.Player(_) =>
@@ -81,7 +81,7 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan:
       : Either[OathViolation, Vector[CoreOperation]] =
     def killed(player: PlayerId, amount: Int)
         : Either[OathViolation, Vector[CoreOperation]] =
-      if (amount <= 0) Right(Vector.empty)
+      if amount <= 0 then Right(Vector.empty)
       else PlayerFacts.forceKind(ready, player).map(kind => Vector(Kill(
         Piece.Warbands(kind, amount),
         PositionedLocation(Location.PlayArea(player)))))

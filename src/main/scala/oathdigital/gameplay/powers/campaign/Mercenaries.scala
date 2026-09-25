@@ -34,7 +34,7 @@ final case class Mercenaries private (cardId: DenizenId,
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
-      if (!use.won.contains(false)) Vector.empty
+      if !use.won.contains(false) then Vector.empty
       else use.user.toVector.map(PlanDiscard.denizen(catalog, _, cardId))))
 
 object Mercenaries:

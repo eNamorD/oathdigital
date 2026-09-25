@@ -16,29 +16,31 @@ object GameIntentMapper:
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
-      case Intent.UsePower(value, source) => for {
-        power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
-          "$.intent.powerId", s"invalid power id '$value'"))
-        ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
-      } yield actor.usePower(power, ref)
+      case Intent.UsePower(value, source) =>
+        for
+          power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
+            "$.intent.powerId", s"invalid power id '$value'"))
+          ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
+        yield actor.usePower(power, ref)
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
       case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
-      case Intent.StartWalker(value, modifiers, startArgs) => for {
-        ref <- actionRef(value)
-        ids <- traverse(modifiers.zipWithIndex)(powerId.tupled)
-        args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
-      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
+      case Intent.StartWalker(value, modifiers, startArgs) =>
+        for
+          ref <- actionRef(value)
+          ids <- traverse(modifiers.zipWithIndex)(powerId.tupled)
+          args <- traverse(startArgs.zipWithIndex)(walkerStartArg.tupled)
+        yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
 
   def bind(actorId: PlayerId, intent: Intent,
       modifiers: Vector[ModifierInvocation]): Result[GameCommand] =
-    for {
+    for
       command <- bind(actorId, intent)
       ordered <- traverse(modifiers)(modifier(actorId, _))
-    } yield if (ordered.isEmpty) command else GameCommand.WithModifiers(command, ordered)
+    yield if ordered.isEmpty then command else GameCommand.WithModifiers(command, ordered)
 
   def bindModifiers(actorId: PlayerId, modifiers: Vector[ModifierInvocation])
       : Result[Vector[OrderedRuleInvocation]] = traverse(modifiers)(modifier(actorId, _))

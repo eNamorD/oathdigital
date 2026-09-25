@@ -27,10 +27,10 @@ private[operations] object ResourceOperations:
       case _ => None
     described.toVector.flatMap { case (cardId, favor, secrets) =>
       val at = Location.OnCard(cardId)
-      val counts = for {
+      val counts = for
         actualFavor <- quantity(ready, Piece.Favor(1), at)
         actualSecrets <- quantity(ready, Piece.Secrets(1), at)
-      } yield (actualFavor, actualSecrets)
+      yield (actualFavor, actualSecrets)
       counts match
         case Right((AvailableQuantity.Finite(actualFavor),
             AvailableQuantity.Finite(actualSecrets)))
@@ -106,7 +106,7 @@ private[operations] object ResourceOperations:
   ): Vector[OperationError] = available match
     case AvailableQuantity.Unbounded => Vector.empty
     case AvailableQuantity.Finite(value) =>
-      if (value >= requested) Vector.empty
+      if value >= requested then Vector.empty
       else Vector(InsufficientPieces(piece, location, value))
 
   /** Threads the running faceup and facedown counts through one operation's
@@ -128,7 +128,7 @@ private[operations] object ResourceOperations:
         val available = from match
           case SecretSide.FaceUp => faceUp.getOrElse(player, 0)
           case SecretSide.FaceDown => faceDown.getOrElse(player, 0)
-        if (available < amount)
+        if available < amount then
           (Vector(InsufficientPieces(Piece.Secrets(amount),
             Location.PlayArea(player), available)), faceUp, faceDown)
         else
@@ -155,7 +155,7 @@ private[operations] object ResourceOperations:
       case move @ Move(_: Piece.Secrets, _, _, _) => move
     val warbandMoves = leaves.collect:
       case move @ Move(_: Piece.Warbands, _, _, _) => move
-    for {
+    for
       plannedSecrets <- OperationSecretPlanner.plan(ready, secretMoves)
       withoutFavor <- favorMoves.foldLeft[Either[OperationError, ReadyGame]](
         Right(ready)) { (result, move) =>
@@ -187,7 +187,7 @@ private[operations] object ResourceOperations:
           val piece = move.piece.asInstanceOf[Piece.Warbands]
           result.flatMap(adjustWarbands(_, piece.kind, move.to.location,
             piece.amount))
-    } yield withWarbands
+    yield withWarbands
 
   private def adjustFavor(
       ready: ReadyGame,
@@ -274,7 +274,7 @@ private[operations] object ResourceOperations:
             case SiteForces.Occupied(_, count) => count
           val next = current + delta
           updateSite(ready, site)(_.copy(forces =
-            if (next == 0) SiteForces.Empty
+            if next == 0 then SiteForces.Empty
             else SiteForces.Occupied(kind, next)))
     }
     case _ => Left(IncompatibleLocation(Piece.Warbands(kind, math.max(1,

@@ -22,7 +22,7 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       b.actor).getOrElse(fail("Negotiation must start"))
     val chosen = rules.resolveWalker(started.state, b.actor,
       NegotiationDeal.negotiatorsDecisionId, ChooseManyAnswer(
-        (if (who.isEmpty) Vector(b.second, b.third) else who)
+        (if who.isEmpty then Vector(b.second, b.third) else who)
           .map(DecisionOptionRef.Player(_)))).getOrElse(fail("negotiators"))
     terms.fold(chosen.state)(value => rules.resolveWalker(chosen.state, b.actor,
       dealId, ProposeTerms(value)).getOrElse(fail("terms")).state)
@@ -118,7 +118,7 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
   test("a faceup relic in a transfer is shown to every viewer, public included"):
     val b = NegotiationFixture.board()
     val faceUp = b.copy(ready = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => if (p.player == b.actor)
+      players = current.players.map(p => if p.player == b.actor then
         p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceUp)))
         else p))))
     val terms = NegotiationTerms(Vector(NegotiationTransfer(b.second, 1,

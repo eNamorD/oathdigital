@@ -14,7 +14,7 @@ class PlayerSecretSummarySuite extends munit.FunSuite:
     val site = actor.pawnSite.get
     val definition = catalog.denizens.head
     base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p => if (p.player == actor.player)
+      players = base.game.current.players.map(p => if p.player == actor.player then
         p.copy(board = p.board.copy(faceUpSecrets = available,
           faceDownSecrets = facedown), advisers = Vector.empty, relics = Vector.empty)
         else p),
@@ -56,7 +56,7 @@ class PlayerSecretSummarySuite extends munit.FunSuite:
     val card = DenizenState(DenizenId(catalog.denizens.head.id.value),
       Orientation.FaceUp, Tokens(0, 1))
     val corrupt = base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p => if (p.player == inactive.player)
+      players = base.game.current.players.map(p => if p.player == inactive.player then
         p.copy(advisers = Vector(card)) else p)))
     assertEquals(PlayerSecretSummary.derive(corrupt,
       actor.player).toOption.get.committed, 1)
@@ -68,7 +68,7 @@ class PlayerSecretSummarySuite extends munit.FunSuite:
     val relic = RelicState(RelicId(catalog.relics.head.id.value),
       Orientation.FaceUp, Tokens(0, 2))
     val corrupt = base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p => if (p.player == inactive.player)
+      players = base.game.current.players.map(p => if p.player == inactive.player then
         p.copy(relics = Vector(relic)) else p)))
     assertEquals(PlayerSecretSummary.derive(corrupt,
       actor.player).toOption.get.committed, 2)

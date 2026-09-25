@@ -26,7 +26,7 @@ object NegotiationFixture:
     val players = base.game.current.players.zipWithIndex.map { case (p, index) =>
       p.copy(pawnSite = Some(siteId), board = p.board.copy(favor = 5),
         relics = Vector(RelicState(relics(index), Orientation.FaceDown,
-          if (index == 0) Tokens(0, 1) else Tokens.empty)))
+          if index == 0 then Tokens(0, 1) else Tokens.empty)))
     }
     val current = base.game.current.copy(players = players,
       map = base.game.current.map.copy(sites = base.game.current.map.sites.map {
@@ -43,7 +43,7 @@ object NegotiationFixture:
     val elsewhere = board.ready.game.current.map.inPlay.find(_ != board.site).get
     board.copy(ready = board.ready.updateCurrent(current => current.copy(
       players = current.players.map(p =>
-        if (who(p.player)) p.copy(pawnSite = Some(elsewhere)) else p))))
+        if who(p.player) then p.copy(pawnSite = Some(elsewhere)) else p))))
 
   /** The third player moves away, leaving the actor exactly one candidate. */
   def withThirdElsewhere(board: Board): Board = relocate(board, Set(board.third))

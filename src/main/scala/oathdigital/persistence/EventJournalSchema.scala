@@ -54,26 +54,26 @@ private[persistence] final class EventJournalSchema(nowMillis: () => Long):
         "SELECT version FROM schema_versions ORDER BY version ASC"
       )
       val versions = Vector.newBuilder[Int]
-      while (rows.next()) versions += rows.getInt(1)
+      while rows.next() do versions += rows.getInt(1)
       versions.result()
     finally statement.close()
 
   private def validateInstalled(versions: Vector[Int]): Unit =
     versions.lastOption.foreach { newest =>
-      if (newest > TargetVersion)
+      if newest > TargetVersion then
         throw new IllegalStateException(
           s"schema version $newest is newer than supported version $TargetVersion"
         )
     }
     val expected = (1 to versions.size).toVector
-    if (versions != expected)
+    if versions != expected then
       throw new IllegalStateException(
         s"schema version ledger must be contiguous from 1; found ${versions.mkString(",")}"
       )
 
   private def validateExactTarget(versions: Vector[Int]): Unit =
     val expected = (1 to TargetVersion).toVector
-    if (versions != expected)
+    if versions != expected then
       throw new IllegalStateException(
         s"schema version ledger mismatch; expected ${expected.mkString(",")} " +
           s"but found ${versions.mkString(",")}"

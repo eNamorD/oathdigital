@@ -35,7 +35,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     val site = PowerFixture.home(ready)
     ready.updateCurrent(c => c.copy(map = c.map.copy(sites = c.map.sites.updated(
       site, c.map.sites(site).copy(forces =
-        if (campaignLegal) SiteForces.Occupied(ForceKind.Bandit, 2)
+        if campaignLegal then SiteForces.Occupied(ForceKind.Bandit, 2)
         else SiteForces.Empty)))))
 
   private def ready(transition: OathTransition): ReadyGame =
@@ -78,7 +78,7 @@ class KnightsErrantSuite extends munit.FunSuite:
 
   /** Answers the optional-targets decision with none, if it is asked. */
   private def toForce(transition: OathTransition): OathTransition =
-    if (parkedOn(transition) == CampaignIds.targets)
+    if parkedOn(transition) == CampaignIds.targets then
       answer(transition, CampaignIds.targets, ChooseManyAnswer(Vector.empty))
     else transition
 

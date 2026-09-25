@@ -21,7 +21,7 @@ final class TrustedGameProvisioning(
   def create(request: TrustedGameCreateRequest, publicBaseUrl: String)
       : Either[TrustedGameFailure, TrustedGameCreateResponse] =
     try
-      for {
+      for
         valid <- TrustedGameCreateRequestCodec.decode(TrustedGameCreateRequestCodec.encode(request))
           .left.map(_ => InvalidRequest)
         origin <- validatedOrigin(publicBaseUrl)
@@ -41,7 +41,7 @@ final class TrustedGameProvisioning(
           case TrustedGameStoreFailure.CodeCollision => CodeCollision
           case TrustedGameStoreFailure.InvalidInput => InvalidRequest
           case TrustedGameStoreFailure.StorageFailure => StorageFailure
-      } yield TrustedGameCreateResponse(valid.gameId, codes.map { case (player, code) =>
+      yield TrustedGameCreateResponse(valid.gameId, codes.map { case (player, code) =>
         TrustedSeatLink(player, s"$origin/s/${code.raw}") })
     catch { case NonFatal(_) => Left(StorageFailure) }
 
@@ -50,14 +50,14 @@ final class TrustedGameProvisioning(
     var used = Set.empty[SeatCodeDigest]
     val seats = Vector.newBuilder[(String, SeatCode)]
     val remaining = participants.iterator
-    while (remaining.hasNext)
+    while remaining.hasNext do
       val participant = remaining.next()
       var selected = Option.empty[SeatCode]
       var attempts = 0
-      while (selected.isEmpty && attempts < 8)
+      while selected.isEmpty && attempts < 8 do
         val code = generateCode()
         attempts += 1
-        if (!used.contains(code.digest)) selected = Some(code)
+        if !used.contains(code.digest) then selected = Some(code)
       selected match
         case None => return Left(CodeCollision)
         case Some(code) =>

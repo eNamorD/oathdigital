@@ -53,7 +53,7 @@ private[challenge] object ChallengeRibbon:
     val current = ready.game.current
     val remaining = BannerRules.resources(current, Banner.DarkestSecret)
     val tied = BannerRules.leastSites(current, Vector.empty)
-    if (remaining >= tied.size)
+    if remaining >= tied.size then
       Vector(BuildOps((_, _) => Right(tied.map(place))))
     else Vector(
       // No window on this Decide: the enclosing `ChallengeRibbon` sequence

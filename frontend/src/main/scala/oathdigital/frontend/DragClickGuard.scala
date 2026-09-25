@@ -22,12 +22,12 @@ private[frontend] object DragClickGuard:
     })
     node.addEventListener("mousemove", (event: dom.MouseEvent) =>
       start.foreach { case (x, y) =>
-        if (math.hypot(event.clientX - x, event.clientY - y) > Threshold)
+        if math.hypot(event.clientX - x, event.clientY - y) > Threshold then
           suppress = true
       })
     node.addEventListener("dragstart", (_: dom.Event) => suppress = true)
     node.addEventListener("click", (event: dom.Event) => {
-      if (suppress) { event.preventDefault(); event.stopImmediatePropagation() }
+      if suppress then { event.preventDefault(); event.stopImmediatePropagation() }
       suppress = false
       start = None
     }, true)

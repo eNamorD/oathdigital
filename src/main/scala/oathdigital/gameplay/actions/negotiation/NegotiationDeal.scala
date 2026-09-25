@@ -74,7 +74,7 @@ object NegotiationDeal:
     DecisionQuery.Negotiate(deal.participants, deal.terms, deal.accepted,
       deal.participants.map(author => author ->
         bounds(state, author, deal.participants)).toMap,
-      if (deal.hasSubstance && !deal.declined)
+      if deal.hasSubstance && !deal.declined then
         deal.participants.filterNot(deal.accepted).toSet
       else Set.empty[PlayerId],
       heading = Some("Negotiation"))
@@ -122,13 +122,13 @@ object NegotiationDeal:
       terms: NegotiationTerms): Either[OathViolation, Unit] =
     val player = state.game.current.players.find(_.player == author).get
     val favor = terms.transfers.map(_.favor).sum
-    for {
+    for
       _ <- Either.cond(favor <= player.board.favor, (),
         OathViolation.InsufficientFavor(favor, player.board.favor))
       _ <- Either.cond(terms.transfers.flatMap(_.relics).forall(id =>
         player.relics.exists(_.id == id)), (), OathViolation.NegotiationUnavailable(
         "an offered relic is no longer held by its author"))
-    } yield ()
+    yield ()
 
   private def knowledge(deal: DealState): Vector[CoreOperation] =
     deal.participants.flatMap(deal.terms(_).disclosures).map:

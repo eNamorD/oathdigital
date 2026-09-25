@@ -31,16 +31,17 @@ private[search] object DrawExtension:
       : Either[OathViolation, Vector[CoreOperation]] =
     operations.collectFirst { case draw: Draw => draw } match
       case None => Right(operations)
-      case Some(draw) => for {
-        source <- sourceOf(draw.source)
-        origin <- ready.game.current.players.find(_.player == draw.player)
-          .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
-          .toRight(OathViolation.PawnSiteMissing(draw.player))
-        cards <- SearchRules.draw(ready, source, origin,
-          extra = draw.cards.size + more - SearchRules.DrawSize)
-      } yield Vector[CoreOperation](draw.copy(cards = cards)) ++
-        Option.when(source == SearchSource.WorldDeck &&
-          cards.exists(_.isInstanceOf[VisionId]))(AdvanceVisionsDrawn)
+      case Some(draw) =>
+        for
+          source <- sourceOf(draw.source)
+          origin <- ready.game.current.players.find(_.player == draw.player)
+            .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
+            .toRight(OathViolation.PawnSiteMissing(draw.player))
+          cards <- SearchRules.draw(ready, source, origin,
+            extra = draw.cards.size + more - SearchRules.DrawSize)
+        yield Vector[CoreOperation](draw.copy(cards = cards)) ++
+          Option.when(source == SearchSource.WorldDeck &&
+            cards.exists(_.isInstanceOf[VisionId]))(AdvanceVisionsDrawn)
 
   private def sourceOf(location: Location)
       : Either[OathViolation, SearchSource] = location match

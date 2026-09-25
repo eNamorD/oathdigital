@@ -86,7 +86,7 @@ class RestSuite extends munit.FunSuite:
         map = withRelics.game.current.map.copy(sites =
           withRelics.game.current.map.sites.updated(siteId, site)),
         players = withRelics.game.current.players.map { player =>
-          if (player.player != actor.player) player
+          if player.player != actor.player then player
           else player.copy(
             board = player.board.copy(faceDownSecrets = 2,
               supply = SupplyTrack(1)),
@@ -157,10 +157,10 @@ class RestSuite extends munit.FunSuite:
           forces = SiteForces.Occupied(ForceKind.Bandit, 1),
           denizens = Vector(outsideCard), relics = Vector(siteRelic)))),
       players = withRelics.game.current.players.map { p =>
-        if (p.player == actor.player)
+        if p.player == actor.player then
           p.copy(board = p.board.copy(faceDownSecrets = 2), advisers = Vector(adviser),
             relics = Vector(relic))
-        else if (p.player == otherBefore.player)
+        else if p.player == otherBefore.player then
           p.copy(advisers = Vector(otherAdviser), relics = Vector(otherRelic))
         else p
       }))
@@ -203,7 +203,7 @@ class RestSuite extends munit.FunSuite:
       val rested = rest(state, player).toOption.get
       events ++= rested.events
       state = rested.state
-      if (player != order.last)
+      if player != order.last then
         val woke = rules.startWalker(state, PhaseTransitionRef.EndWake,
           state.asInstanceOf[Ready].value.game.current.turn.activePlayer).toOption.get
         events ++= woke.events
@@ -235,7 +235,7 @@ class RestSuite extends munit.FunSuite:
       base.game.current.copy(commonCards = base.game.current.commonCards.copy(
         worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == unrelated)),
         players = base.game.current.players.map { player =>
-        if (player.player != base.game.current.turn.activePlayer) player
+        if player.player != base.game.current.turn.activePlayer then player
         else player.copy(advisers = Vector(DenizenState(
           unrelated, Orientation.FaceUp, Tokens.empty)))
       })))
@@ -253,7 +253,7 @@ class RestSuite extends munit.FunSuite:
       val adviser = DenizenState(DenizenId(definition.id.value),
         Orientation.FaceUp, Tokens.empty)
       val state = base.updateCurrent(_.copy(
-        players = base.game.current.players.map(p => if (p.player == actor.player)
+        players = base.game.current.players.map(p => if p.player == actor.player then
           p.copy(advisers = Vector(adviser)) else p)))
       val accepted = rest(Ready(state), actor.player).toOption.get
       val recorded = accepted.events.head.asInstanceOf[IgnoredRulesRecorded]

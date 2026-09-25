@@ -20,11 +20,11 @@ final class HsqldbTrustedGameStore private[persistence] (database: Database)
   override def create(gameId: String, seats: Vector[(SeatCodeDigest, String)],
       preparedRecords: Vector[String], nowMillis: Long)
       : Either[TrustedGameStoreFailure, Unit] =
-    if (seats.isEmpty || preparedRecords.isEmpty ||
+    if seats.isEmpty || preparedRecords.isEmpty ||
         seats.exists { case (_, player) => player == null || player.trim.isEmpty } ||
-        seats.map(_._2).distinct.size != seats.size)
+        seats.map(_._2).distinct.size != seats.size then
       return Left(InvalidInput)
-    if (seats.map(_._1).distinct.size != seats.size) return Left(CodeCollision)
+    if seats.map(_._1).distinct.size != seats.size then return Left(CodeCollision)
 
     val transaction = SimpleDBIO[Unit] { context =>
       val connection = context.connection

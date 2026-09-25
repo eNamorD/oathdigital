@@ -28,8 +28,8 @@ private[frontend] object NegotiationDealPanel:
   private def summary(deal: NegotiationDealState, panel: dom.Element): Unit =
     panel.appendChild(text("h2", "", "Negotiation"))
     panel.appendChild(text("p", "negotiation-status",
-      deal.participantPlayerIds.map(id => s"$id: ${if (deal.acceptedPlayerIds
-        .contains(id)) "accepted" else "reviewing"}").mkString(" · ")))
+      deal.participantPlayerIds.map(id => s"$id: ${if deal.acceptedPlayerIds
+        .contains(id) then "accepted" else "reviewing"}").mkString(" · ")))
     deal.transfers.foreach(t => panel.appendChild(text("p", "negotiation-transfer",
       s"${t.authorPlayerId} gives ${t.recipientPlayerId}: ${t.favor} favor, " +
         s"${t.relicCount} relic(s)")))
@@ -57,7 +57,7 @@ private[frontend] object NegotiationDealPanel:
       before: Boolean): dom.Element =
     val row = dom.document.createElement("label").asInstanceOf[dom.html.Label]
     row.className = "negotiation-item"
-    if (before)
+    if before then
       row.appendChild(text("span", "negotiation-item-label", caption))
       row.appendChild(control)
     else
@@ -89,7 +89,7 @@ private[frontend] object NegotiationDealPanel:
         check.checked = deal.transfers.exists(t => t.authorPlayerId == me &&
           t.recipientPlayerId == recipient && t.relics.exists(_.cardId == relic.cardId))
         // A relic goes to one recipient at most.
-        check.onchange = _ => if (check.checked) relics.foreach:
+        check.onchange = _ => if check.checked then relics.foreach:
           case (other, otherRelic, otherCheck)
               if other != recipient && otherRelic == relic.cardId =>
             otherCheck.checked = false

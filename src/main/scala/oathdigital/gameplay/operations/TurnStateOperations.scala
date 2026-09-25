@@ -32,9 +32,9 @@ private[operations] object TurnStateOperations:
       case Left(error) => (Vector(error), supply)
       case Right(_) =>
         val current = supply.getOrElse(player, 0)
-        if (amount < 0)
+        if amount < 0 then
           val required = -amount
-          if (current >= required)
+          if current >= required then
             (Vector.empty, supply.updated(player, current - required))
           else (Vector(InsufficientSupply(required, current)), supply)
         else (Vector.empty, supply.updated(player,
@@ -63,7 +63,7 @@ private[operations] object TurnStateOperations:
     // Sufficiency is the guard's (supplyViolation).
     playerState(ready, player).flatMap { state =>
       val current = state.board.supply.supply
-      val next = if (amount < 0) current + amount
+      val next = if amount < 0 then current + amount
         else math.min(SupplyTrack.Maximum, current + amount)
       updatePlayer(ready, player)(value => value.copy(
         board = value.board.copy(supply = SupplyTrack(next))))
@@ -125,9 +125,9 @@ private[operations] object TurnStateOperations:
 
   def beginTurn(ready: ReadyGame, player: PlayerId,
       phase: Phase): Either[OperationError, ReadyGame] =
-    if (!ready.game.current.players.exists(_.player == player))
+    if !ready.game.current.players.exists(_.player == player) then
       Left(UnknownPlayer(player))
-    else if (phase != Phase.Wake && phase != Phase.RoundEnd)
+    else if phase != Phase.Wake && phase != Phase.RoundEnd then
       Left(InvalidTurnPhase(phase))
     else Right(ready.updateCurrent(current =>
       current.copy(turn = TurnState(player, phase, Set.empty))))

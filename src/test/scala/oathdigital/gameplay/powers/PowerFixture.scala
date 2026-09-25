@@ -16,7 +16,7 @@ object PowerFixture:
 
   def updateActor(ready: ReadyGame)(f: PlayerState => PlayerState): ReadyGame =
     ready.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == actor) f(p) else p)))
+      if p.player == actor then f(p) else p)))
 
   def withBoard(ready: ReadyGame)(
       f: PlayerBoardState => PlayerBoardState): ReadyGame =
@@ -59,7 +59,7 @@ object PowerFixture:
         map = c.map.copy(sites = c.map.sites.map { case (site, state) =>
           site -> state.copy(relics = state.relics.filterNot(_.id == id)) }))
       cleared.copy(players = cleared.players.map(p =>
-        if (p.player != actor) p
+        if p.player != actor then p
         else p.copy(relics = p.relics :+
           RelicState(id, orientation, Tokens.empty))))
     }

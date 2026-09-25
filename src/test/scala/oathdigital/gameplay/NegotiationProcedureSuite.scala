@@ -146,7 +146,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val proposed = say(deal.state, b.actor, gift(b.second, 3)).toOption.get
     val theirs = say(proposed.state, b.second, AcceptDeal).toOption.get
     val broke = Ready(ready(theirs.state).updateCurrent(current =>
-      current.copy(players = current.players.map(p => if (p.player == b.actor)
+      current.copy(players = current.players.map(p => if p.player == b.actor then
         p.copy(board = p.board.copy(favor = 1)) else p))))
     assertEquals(say(broke, b.actor, AcceptDeal).left.toOption,
       Some(OathViolation.InsufficientFavor(3, 1)))
@@ -195,7 +195,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val definition = catalog.denizens.find(
       _.handlers.contains("denizen.council-arbiter")).get
     val powered = b.ready.updateCurrent(current => current.copy(players =
-      current.players.map(p => if (p.player == b.actor) p.copy(advisers =
+      current.players.map(p => if p.player == b.actor then p.copy(advisers =
         Vector(DenizenState(DenizenId(definition.id.value), Orientation.FaceUp,
           Tokens.empty))) else p)))
     val started = start(b.copy(ready = powered)).getOrElse(
@@ -220,8 +220,8 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val started = rules.startWalker(traveled.state, ActionRef.Negotiation, actor)
       .getOrElse(fail("Negotiation must start"))
     val chosen =
-      if (started.continue == OathContinue.AwaitingNegotiation(actor,
-          DecisionId(negotiators)))
+      if started.continue == OathContinue.AwaitingNegotiation(actor,
+          DecisionId(negotiators)) then
         choose(started.state, actor, other).getOrElse(fail("negotiators"))
       else started
     val terms = ProposeTerms(NegotiationTerms(disclosures = Vector(

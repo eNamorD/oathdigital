@@ -22,7 +22,7 @@ final case class Tents private (cardId: DenizenId, catalog: ExecutableCatalog)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      if (sameRegion(ctx))
+      if sameRegion(ctx) then
         TravelPayments.withoutSupply(operations, ctx.activePlayer)
       else operations)))
 

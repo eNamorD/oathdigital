@@ -44,7 +44,7 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
     * plan from this record.
     */
   private def marker: Vector[Operation] =
-    if (user.nonEmpty) Vector.empty
+    if user.nonEmpty then Vector.empty
     else Vector(ModifyDicePool(CampaignPlans.appliedMarker(
       CampaignPlans.refOf(source)), 1))
 
@@ -68,7 +68,7 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
       secret = total { case CampaignPlanCost.Secret(count) => count },
       favorBurnt = total { case CampaignPlanCost.FavorBurnt(count) => count },
       secretBurnt = total { case CampaignPlanCost.SecretBurnt(count) => count })
-    if (cost == Cost.free) Vector.empty
+    if cost == Cost.free then Vector.empty
     else user match
       case None => Vector.empty
       case Some(player) => CampaignPlans.cardOf(source) match
@@ -105,7 +105,7 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
         })).map(site => Location.Site(site): Location)
 
   private def sacrifice(ready: ReadyGame): Vector[Operation] =
-    if (!offered.offer.costs.contains(CampaignPlanCost.SacrificeWarband))
+    if !offered.offer.costs.contains(CampaignPlanCost.SacrificeWarband) then
       Vector.empty
     else user match
       case Some(player) if side == CampaignPlanSide.Defender =>

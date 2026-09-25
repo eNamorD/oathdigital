@@ -54,10 +54,10 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
       resume: GameCommand): Unit =
     def records = repository.load(gameId).toOption.flatten.get.records
     val before = records
-    for {
+    for
       player <- players
       command <- everyCommand(player)
-    } assert(service.handle(gameId, parked.nextSequence, command).isLeft,
+    do assert(service.handle(gameId, parked.nextSequence, command).isLeft,
       s"$command by $player must be refused over a parked walker")
     assertEquals(records, before, "a refused command must append nothing")
     val resumed = service.handle(gameId, parked.nextSequence, resume)

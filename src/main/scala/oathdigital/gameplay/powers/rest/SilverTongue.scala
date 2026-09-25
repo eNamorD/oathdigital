@@ -61,7 +61,7 @@ final case class SilverTongue private (cardId: DenizenId,
   private def limitGuard(actor: PlayerId): Operation = BuildOps((state, _) => {
     val count = state.game.current.players.find(
       _.player == actor).fold(0)(_.advisers.size)
-    if (limitFor(state, actor).forall(count <= _)) Right(Vector.empty)
+    if limitFor(state, actor).forall(count <= _) then Right(Vector.empty)
     else Left(OathViolation.InvalidEventOrder(
       s"${actor.value} holds Silver Tongue and can have only two advisers"))
   })

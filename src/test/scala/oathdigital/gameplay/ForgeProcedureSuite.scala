@@ -65,7 +65,7 @@ class ForgeProcedureSuite extends munit.FunSuite
         commonCards = base.game.current.commonCards.copy(worldDeck =
           base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
         players = base.game.current.players.map(p =>
-          if (p.player == actor.player) moved else p),
+          if p.player == actor.player then moved else p),
         map = base.game.current.map.copy(sites =
           base.game.current.map.sites.updated(siteId, site))))
     Forgeable(ready, moved, siteId, ids.map(SiteDenizenTarget(siteId, _)),
@@ -85,7 +85,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       update: PlayerState => PlayerState): ReadyGame =
     state.updateCurrent(_.copy(
       players = state.game.current.players.map(p =>
-        if (p.player == player) update(p) else p)))
+        if p.player == player then update(p) else p)))
 
   private def withSupply(state: ReadyGame, player: PlayerId,
       amount: Int): ReadyGame = mapPlayer(state, player)(p =>
@@ -118,7 +118,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   private def expectedPayment(actor: PlayerId, denizen: DenizenId,
       section: String): CoreOperation =
     PayCost(actor, Location.OnCard(denizen),
-      if (section == ForgeProcedure.favorSectionKey) Cost(favor = 1)
+      if section == ForgeProcedure.favorSectionKey then Cost(favor = 1)
       else Cost(secret = 1))
 
 
@@ -199,7 +199,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("P1: build rejects a printed cost that does not total three resources"):
     val f = forgeable
     val altered = catalog.copy(sites = catalog.sites.map(definition =>
-      if (definition.id != f.siteId) definition
+      if definition.id != f.siteId then definition
       else definition.copy(forgeRequirements = Some(Tokens(1, 1)))))
     assertEquals(rejects(ForgeProcedure.build(altered, f.ready, f.actor.player)),
       OathViolation.ForgeUnavailable(
@@ -315,7 +315,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     Vector(Tokens(3, 0), Tokens(0, 3)).foreach { printed =>
       val base = forgeable
       val altered = catalog.copy(sites = catalog.sites.map(definition =>
-        if (definition.id != base.siteId) definition
+        if definition.id != base.siteId then definition
         else definition.copy(forgeRequirements = Some(printed))))
       val f = base.copy(cost = printed)
       assert(!ForgeProcedure.parks(f.cost), s"${f.cost} should not park")
@@ -331,7 +331,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       val (finalState, steps) = expectFinished(
         ProcedureWalker.advance(f.ready, tree, None, noPowers))
       val section =
-        if (f.cost.favor > 0) ForgeProcedure.favorSectionKey
+        if f.cost.favor > 0 then ForgeProcedure.favorSectionKey
         else ForgeProcedure.secretSectionKey
       assertEquals(steps.map(_.nodeId), Vector("0.0", "1"))
       assertEquals(steps(1).ops, f.targets.map(target =>
@@ -343,7 +343,7 @@ class ForgeProcedureSuite extends munit.FunSuite
         finalState.game.current.map.sites(f.siteId).denizens.collect {
           case d: DenizenState => d.tokens },
         Vector.fill(3)(
-          if (f.cost.favor > 0) Tokens(1, 0) else Tokens(0, 1)))
+          if f.cost.favor > 0 then Tokens(1, 0) else Tokens(0, 1)))
       assert(finalState.game.current.walkerPending.isEmpty)
     }
 
@@ -377,7 +377,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     // resources", now stated by the query rather than by a Forge closure.
     val shortSection = legal.head.sectionKey
     val starved = legal.updated(0, legal.head.copy(sectionKey =
-      if (shortSection == ForgeProcedure.favorSectionKey)
+      if shortSection == ForgeProcedure.favorSectionKey then
         ForgeProcedure.secretSectionKey
       else ForgeProcedure.favorSectionKey))
     assert(rejection(resolveWith(f, atPark, tree, pending, starved))
@@ -509,7 +509,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(finalState.game.current.map.sites(f.siteId).denizens.collect {
       case denizen: DenizenState => denizen.tokens
     }, reversed.map(section =>
-      if (section == ForgeProcedure.favorSectionKey) Tokens(1, 0)
+      if section == ForgeProcedure.favorSectionKey then Tokens(1, 0)
       else Tokens(0, 1)))
 
 

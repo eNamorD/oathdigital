@@ -26,8 +26,8 @@ class MarbleFountainsSuite extends munit.FunSuite:
     val far = base.game.current.map.inPlay.toVector.sortBy(_.value)
       .find(_ != site).get
     val placed = withEdifice(base, fountains, side,
-      if (pawnAtEdifice) site else far)
-    val ruled = if (pawnAtEdifice) placed else placed.updateCurrent(c =>
+      if pawnAtEdifice then site else far)
+    val ruled = if pawnAtEdifice then placed else placed.updateCurrent(c =>
       c.copy(map = c.map.copy(sites = c.map.sites.updated(far,
         c.map.sites(far).copy(forces = SiteForces.Occupied(kind, 1))))))
     inPhase(withBoard(ruled)(_.copy(supply = SupplyTrack(1))), Phase.Wake)

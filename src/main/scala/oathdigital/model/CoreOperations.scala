@@ -232,7 +232,7 @@ object Discard:
 
   private def returnedSecrets(card: CardId, amount: Int,
       actingPlayer: PlayerId): Vector[Operation] =
-    if (amount == 0) Vector.empty
+    if amount == 0 then Vector.empty
     else Vector(
       Move(Piece.Secrets(amount), PositionedLocation(Location.OnCard(card)),
         PositionedLocation(Location.PlayArea(actingPlayer))),
@@ -242,7 +242,7 @@ object Discard:
   private def positiveMove(amount: Int)(piece: Int => Piece,
       from: PositionedLocation,
       to: PositionedLocation): Vector[Operation] =
-    if (amount == 0) Vector.empty
+    if amount == 0 then Vector.empty
     else Vector(Move(piece(amount), from, to))
 
 /** Takes known cards from the top of a prompted draw source, in top-first
@@ -341,23 +341,23 @@ final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost,
   // The cost.favor > 0 guard matters: matchingBank.get is evaluated eagerly
   // as an argument, and matchingBank may be None for a zero favor.
   private def placedFavor: Vector[Operation] =
-    if (offTurn && cost.favor > 0)
+    if offTurn && cost.favor > 0 then
       favorMove(cost.favor, Location.FavorBank(matchingBank.get))
     else favorMove(cost.favor, placedAt)
 
   private def placedSecrets: Vector[Operation] =
-    if (cost.secret == 0) Vector.empty
-    else if (offTurn) Vector(FlipSecrets(player, cost.secret,
+    if cost.secret == 0 then Vector.empty
+    else if offTurn then Vector(FlipSecrets(player, cost.secret,
       SecretSide.FaceUp, SecretSide.FaceDown))
     else secretMove(cost.secret, placedAt)
 
   private def favorMove(amount: Int, to: Location): Vector[Operation] =
-    if (amount == 0) Vector.empty
+    if amount == 0 then Vector.empty
     else Vector(Move(Piece.Favor(amount),
       PositionedLocation(Location.PlayArea(player)), PositionedLocation(to)))
 
   private def secretMove(amount: Int, to: Location): Vector[Operation] =
-    if (amount == 0) Vector.empty
+    if amount == 0 then Vector.empty
     else Vector(Move(Piece.Secrets(amount),
       PositionedLocation(Location.PlayArea(player)), PositionedLocation(to)))
 

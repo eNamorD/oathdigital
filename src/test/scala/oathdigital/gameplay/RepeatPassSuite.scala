@@ -12,7 +12,7 @@ class RepeatPassSuite extends munit.FunSuite:
   private val actor = initialReady.game.current.turn.activePlayer
   private val low: ReadyGame = initialReady.updateCurrent(current =>
     current.copy(players = current.players.map(p =>
-      if (p.player == actor) p.copy(board = p.board.copy(supply = SupplyTrack(1)))
+      if p.player == actor then p.copy(board = p.board.copy(supply = SupplyTrack(1)))
       else p)))
 
   private def supply(state: ReadyGame): Int = state.game.current.players

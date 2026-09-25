@@ -19,7 +19,7 @@ private[walker] object WalkerRolls:
     */
   private def derive(faces: Vector[DieFace]): (Int, Int) =
     val attack = faces.collect { case face: AttackDieFace => face }
-    if (attack.nonEmpty)
+    if attack.nonEmpty then
       (AttackDieFace.skulls(attack), AttackDieFace.score(attack))
     else (0, DefenseDieFace.score(faces.collect {
       case face: DefenseDieFace => face
@@ -35,7 +35,7 @@ private[walker] object WalkerRolls:
       : Either[OathViolation, RollOutcome] =
     val pool = roll.pool
     val count = poolCount(state, pool)
-    for {
+    for
       _ <- Either.cond(faces.size == count, (), invalid(
         s"rolled ${faces.size} dice for pool $pool but pool count is $count"))
       _ <- roll.dice.die match
@@ -45,7 +45,7 @@ private[walker] object WalkerRolls:
         case DiceKind.Attack => Either.cond(
           faces.forall(_.isInstanceOf[AttackDieFace]), (), invalid(
             s"attack roll for pool $pool received a non-attack die face"))
-    } yield
+    yield
       val (skulls, score) = derive(faces)
       RollOutcome(pool, count, faces, skulls, score)
 
@@ -54,7 +54,7 @@ private[walker] object WalkerRolls:
     * one family.
     */
   def outcomeForRecorded(state: ReadyGame, pool: PoolKey,
-      faces: Vector[DieFace]): Either[OathViolation, RollOutcome] = for {
+      faces: Vector[DieFace]): Either[OathViolation, RollOutcome] = for
     count <- state.game.current.rollPools.get(pool).map(_.count).toRight(
       invalid(s"recorded roll references missing pool ${pool.value}"))
     _ <- Either.cond(faces.size == count, (), invalid(
@@ -62,7 +62,7 @@ private[walker] object WalkerRolls:
     _ <- Either.cond(faces.forall(_.isInstanceOf[DefenseDieFace]) ||
       faces.forall(_.isInstanceOf[AttackDieFace]), (), invalid(
       "recorded roll mixes attack and defense faces"))
-  } yield
+  yield
     val (skulls, score) = derive(faces)
     RollOutcome(pool, count, faces, skulls, score)
 

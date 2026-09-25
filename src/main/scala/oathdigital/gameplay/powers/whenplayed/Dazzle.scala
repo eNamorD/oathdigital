@@ -39,13 +39,13 @@ final case class Dazzle private (cardId: DenizenId,
         current.map.sites.get(siteId).toVector.flatMap(_.denizens.map(siteId -> _))
       }
       candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
-        Right(Vector.empty)) { case (acc, (siteId, card)) => for {
+        Right(Vector.empty)) { case (acc, (siteId, card)) => for
         operations <- acc
         suit <- catalog.suitOf(card.id).toRight(card match {
           case denizen: DenizenState => OathViolation.UnknownWorldCard(denizen.id)
           case edifice: EdificeState => OathViolation.UnknownEdifice(edifice.id)
         })
-      } yield if (suit != Suit.Hearth && suit != Suit.Order) operations
+      yield if suit != Suit.Hearth && suit != Suit.Order then operations
       else card match {
         case denizen: DenizenState => operations :+ Discard.Denizen(denizen.id,
           PositionedLocation(Location.Site(siteId)), destination, suit,

@@ -83,7 +83,7 @@ class OperationMutationSuite extends munit.FunSuite:
 
   test("a pawn may move from the player area to a site once, with no prior site"):
     val unplaced = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
-      player => if (player.player == playerId) player.copy(pawnSite = None) else player
+      player => if player.player == playerId then player.copy(pawnSite = None) else player
     }))
     val result = new OperationExecutor().executeAll(unplaced, Vector(
       Move(Piece.Pawn(playerId),

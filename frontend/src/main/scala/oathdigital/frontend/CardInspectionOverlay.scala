@@ -35,8 +35,8 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     // Inspection reads a card, so a card the viewer is allowed to read is
     // turned over here. One the viewer cannot identify has nothing to turn.
     body.appendChild(CardFace.render(
-      if (card.hidden) card else card.copy(orientation = Some("face-up"))))
-    if (!card.hidden) body.appendChild(details(card))
+      if card.hidden then card else card.copy(orientation = Some("face-up"))))
+    if !card.hidden then body.appendChild(details(card))
     open(origin)
 
   /** The overlay over something that is not a card: a title and its printed
@@ -58,7 +58,7 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     open(origin)
 
   private def clear(): Unit =
-    while (body.firstChild != null) body.removeChild(body.firstChild)
+    while body.firstChild != null do body.removeChild(body.firstChild)
 
   private def open(origin: dom.html.Element): Unit =
     opener = Some(origin)
@@ -89,23 +89,23 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
         item.appendChild(text("dt", "", label))
         item.appendChild(text("dd", "", value))
         properties.appendChild(item)
-    if (properties.childNodes.length > 0) panel.appendChild(properties)
+    if properties.childNodes.length > 0 then panel.appendChild(properties)
     card.rulesText.foreach { value =>
       val rules = element("div", "card-overlay-rules")
       RulesTextRenderer.powers(value).foreach(rules.appendChild)
       panel.appendChild(rules)
     }
-    if (!card.implemented)
+    if !card.implemented then
       panel.appendChild(text("p", "card-unimplemented-badge", "Unimplemented"))
     panel
 
   private val dismiss: dom.MouseEvent => Unit = event =>
     // A click anywhere on the overlay dismisses it, except inside the card
     // itself -- selecting rules text should not close what you are reading.
-    if (event.target == node || event.target == close) hide()
+    if event.target == node || event.target == close then hide()
 
   private val escape: dom.KeyboardEvent => Unit = event =>
-    if (event.key == "Escape" && isOpen) { event.preventDefault(); hide() }
+    if event.key == "Escape" && isOpen then { event.preventDefault(); hide() }
 
   node.addEventListener("click", dismiss)
   node.addEventListener("keydown", escape)

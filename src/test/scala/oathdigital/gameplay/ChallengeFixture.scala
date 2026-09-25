@@ -27,7 +27,7 @@ object ChallengeFixture:
           secrets = resources))
     val value = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
-        if (p.player == actor.player) actor else p),
+        if p.player == actor.player then actor else p),
       banners = banners, turn = base.game.current.turn.copy(phase = Phase.Act)))
     value -> actor
 
@@ -44,7 +44,7 @@ object ChallengeFixture:
     val elsewhere = ready.game.current.map.inPlay.find(id =>
       !actor.pawnSite.contains(id))
     val moved = rival.copy(pawnSite =
-      if (colocated) actor.pawnSite else elsewhere)
+      if colocated then actor.pawnSite else elsewhere)
     val banners = banner match
       case Banner.PeoplesFavor => ready.game.current.banners.copy(peoplesFavor =
         ready.game.current.banners.peoplesFavor.copy(holder = Some(rival.player),
@@ -53,12 +53,12 @@ object ChallengeFixture:
         ready.game.current.banners.darkestSecret.copy(holder = Some(rival.player),
           secrets = resources))
     ready.updateCurrent(_.copy(banners = banners, players =
-      ready.game.current.players.map(p => if (p.player == rival.player) moved else p)))
+      ready.game.current.players.map(p => if p.player == rival.player then moved else p)))
 
   /** Every in-play site holds `others` secrets except the named ones. */
   def withSiteSecrets(ready: ReadyGame, secrets: Map[SiteId, Int],
       others: Int = 10): ReadyGame = ready.updateCurrent(current =>
     current.copy(map = current.map.copy(sites = current.map.sites.map {
-      case (id, site) => id -> (if (!current.map.inPlay.contains(id)) site
+      case (id, site) => id -> (if !current.map.inPlay.contains(id) then site
         else site.copy(tokens = Tokens(0, secrets.getOrElse(id, others))))
     })))

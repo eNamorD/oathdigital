@@ -109,7 +109,7 @@ object DecisionOptionRef:
     * accessors are abstract.
     */
   def fromWire(kind: String, wireId: String): Option[DecisionOptionRef] =
-    if (wireId.trim.isEmpty) None
+    if wireId.trim.isEmpty then None
     else kind match
       case "button" => Some(Button(wireId))
       case "player" => Some(Player(PlayerId(wireId)))

@@ -43,7 +43,7 @@ object ParkedServiceFixture:
         val Ready(placedReady) = accepted.state: @unchecked
         val denizens = placedReady.game.current.temporaryHands(playerId)
           .collect { case id: DenizenId => id }
-        if (denizens.isEmpty) throw new AssertionError(
+        if denizens.isEmpty then throw new AssertionError(
           s"no denizen in $playerId's hand: " +
             placedReady.game.current.temporaryHands(playerId))
         val adviser = denizens.head
@@ -73,7 +73,7 @@ object ParkedServiceFixture:
       case (current, (card, offset)) =>
         val target = dealt + offset
         val existing = current.indexOf(card)
-        val at = if (existing >= 0) existing else
+        val at = if existing >= 0 then existing else
           val suit = catalog.denizens.find(_.id.value == card.value).get.suit
           current.indices.find(index => !targets(index) &&
             !cards.contains(current(index)) && catalog.denizens.exists(denizen =>

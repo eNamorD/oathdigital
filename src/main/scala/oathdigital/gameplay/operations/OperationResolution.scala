@@ -51,7 +51,7 @@ object OperationResolution:
       reasons: Vector[OperationReason]): Either[OathViolation, Result] =
     counted(requested) match
       case None =>
-        if (reasons.isEmpty) Right(Execute(requested))
+        if reasons.isEmpty then Right(Execute(requested))
         else Right(Skip(reasons))
       case Some((maximum, rebuild)) =>
         val capped = requested match
@@ -60,20 +60,20 @@ object OperationResolution:
               math.max(0, SupplyTrack.Maximum - p.board.supply.supply))
           case ModifyDicePool(pool, delta, _) =>
             val current = ready.game.current.rollPools.get(pool).fold(0)(_.count)
-            if (delta < 0) math.max(0, current)
+            if delta < 0 then math.max(0, current)
             else math.max(0, Int.MaxValue - current)
           case _ => maximum
         val upper = math.min(maximum, capped)
-        if (upper == maximum && reasons.isEmpty)
+        if upper == maximum && reasons.isEmpty then
           Right(Execute(requested))
-        else if (upper == 0)
-          Right(Skip(if (reasons.nonEmpty) reasons else Vector(
+        else if upper == 0 then
+          Right(Skip(if reasons.nonEmpty then reasons else Vector(
             OperationReason("no-available-count", "no counted effect is available",
               OperationReasonKind.Impossible))))
         else
           var low = 0
           var high = upper
-          while (low < high)
+          while low < high do
             val mid = low + (high - low + 1) / 2
             val candidate = rebuild(mid)
             val candidateReasons = resolvedReasons(ready, candidate, restrictions)
@@ -81,7 +81,7 @@ object OperationResolution:
               case Some(reason) => return Left(rejection(reason))
               case None if candidateReasons.isEmpty => low = mid
               case None => high = mid - 1
-          if (low == 0) Right(Skip(reasons))
+          if low == 0 then Right(Skip(reasons))
           else Right(Execute(rebuild(low)))
 
   private def counted(operation: CoreOperation): Option[(Int, Int => CoreOperation)] =
@@ -115,9 +115,9 @@ object OperationResolution:
         value.copy(removed = value.removed.copy(amount = n),
           replacements = value.replacements.copy(amount = n))))
       case value: ModifyDicePool if value.delta != 0 =>
-        Some((if (value.delta == Int.MinValue) Int.MaxValue
+        Some((if value.delta == Int.MinValue then Int.MaxValue
           else math.abs(value.delta)) -> ((n: Int) =>
-          value.copy(delta = if (value.delta < 0) -n else n)))
+          value.copy(delta = if value.delta < 0 then -n else n)))
       case _ => None
 
   private def countedPiece(piece: Piece): Option[(Int, Int => Piece)] = piece match

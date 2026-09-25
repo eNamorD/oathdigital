@@ -23,8 +23,8 @@ final case class RowdyPub private (cardId: DenizenId,
       operations :+ bonus(ctx.activePlayer))))
 
   private def bonus(actor: PlayerId): Operation = BuildOps((ready, pending) =>
-    if (PowerAnswers.one(pending, MusterProcedure.decisionId)
-        .contains(DecisionOptionRef.Denizen(cardId)))
+    if PowerAnswers.one(pending, MusterProcedure.decisionId)
+        .contains(DecisionOptionRef.Denizen(cardId)) then
       PlayerFacts.forceKind(ready, actor).map(kind =>
         Vector[CoreOperation](Gain.Warbands(actor, kind, RowdyPub.Warbands)))
     else Right(Vector.empty))

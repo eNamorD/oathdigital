@@ -83,7 +83,7 @@ final class AuthenticatedGameGateway(
       request: MajorActionPreviewRequest)
       : Either[AuthenticatedGameFailure, MajorActionPreviewResponse] =
     authorization.authorizeCommand(gameId, principal).left.map(Authorization.apply)
-      .flatMap { actor => for {
+      .flatMap { actor => for
         action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
           InvalidIntent(GameIntentMappingFailure("$.action", "unknown major action")))
         selected <- GameIntentMapper.bindModifiers(actor.access.playerId,
@@ -96,7 +96,7 @@ final class AuthenticatedGameGateway(
             oathdigital.model.OathViolation.InvalidModifierInvocation(
               "major-action preview is unavailable in this phase"))))
         _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application.apply)
-      } yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
+      yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
         request.action, accepted.modifiers,
         Vector.empty, MajorActionPreviewTargets.from(projection, request,
           accepted.targets)) }
@@ -135,16 +135,16 @@ final class AuthenticatedGameGateway(
     val playerMemberships = memberships.filter(_.role == MembershipRole.Player)
     val provisionedSeats = playerMemberships.flatMap(_.playerId)
     val requestedSeats = config.participants.map(_.playerId.value)
-    if (provisionedSeats.size != playerMemberships.size ||
-        provisionedSeats.distinct.size != provisionedSeats.size)
+    if provisionedSeats.size != playerMemberships.size ||
+        provisionedSeats.distinct.size != provisionedSeats.size then
       Left(BootstrapConfiguration("provisioned player memberships are invalid"))
-    else if (requestedSeats.distinct.size != requestedSeats.size)
+    else if requestedSeats.distinct.size != requestedSeats.size then
       Left(BootstrapConfiguration("participant player IDs must be unique"))
-    else if (requestedSeats.toSet != provisionedSeats.toSet)
+    else if requestedSeats.toSet != provisionedSeats.toSet then
       Left(BootstrapConfiguration(
         "participants must exactly match provisioned player memberships"
       ))
-    else if (!provisionedSeats.contains(config.firstPlayer.value))
+    else if !provisionedSeats.contains(config.firstPlayer.value) then
       Left(BootstrapConfiguration(
         "first player must be a provisioned player membership"
       ))
@@ -186,7 +186,7 @@ final class AuthenticatedGameRoutes(
           case Success(Right(session)) =>
             val principal = session.principal
             parameterMap { query =>
-              if (query.nonEmpty)
+              if query.nonEmpty then
                 complete(response(
                   StatusCodes.BadRequest,
                   "malformed-request",
@@ -207,7 +207,7 @@ final class AuthenticatedGameRoutes(
                       completeAsync(gateway.load(validGameId, principal))
                   } ~ path("commands") {
                     post:
-                      if (!csrfProtection.validate(request, session))
+                      if !csrfProtection.validate(request, session) then
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
                         AuthenticatedGameHttpWire.decodeCommand(body) match
@@ -222,7 +222,7 @@ final class AuthenticatedGameRoutes(
                       }
                   } ~ path("preview") {
                     post:
-                      if (!csrfProtection.validate(request, session))
+                      if !csrfProtection.validate(request, session) then
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
                         oathdigital.protocol.MajorActionPreviewCodec.decode(body) match
@@ -233,7 +233,7 @@ final class AuthenticatedGameRoutes(
                       }
                   } ~ path("bootstrap"):
                     post:
-                      if (!csrfProtection.validate(request, session))
+                      if !csrfProtection.validate(request, session) then
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
                         AuthenticatedGameHttpWire.decodeBootstrap(body) match
@@ -258,7 +258,7 @@ final class AuthenticatedGameRoutes(
           oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
       case Success(Left(error)) =>
         val (status, code, message, internal) = publicError(error)
-        if (internal) logger.error("Authenticated preview failure: {}", error)
+        if internal then logger.error("Authenticated preview failure: {}", error)
         complete(response(status, code, message))
       case Failure(error) =>
         logger.error("Unhandled authenticated preview failure", error)
@@ -284,7 +284,7 @@ final class AuthenticatedGameRoutes(
       ))
       case Success(Left(error)) =>
         val (status, code, message, internal) = publicError(error)
-        if (internal) logger.error("Authenticated game failure: {}", error)
+        if internal then logger.error("Authenticated game failure: {}", error)
         complete(response(status, code, message))
       case Failure(error) =>
         logger.error("Unhandled authenticated game route failure", error)

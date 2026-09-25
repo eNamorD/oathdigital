@@ -25,7 +25,7 @@ case object GamblingHall extends PaidAction("denizen.gambling-hall",
     Roll(pool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
     Branch((state, _) => {
       val total = RollResults.score(state, pool)
-      if (total > 0) Vector(choice(player, total)) else Vector.empty
+      if total > 0 then Vector(choice(player, total)) else Vector.empty
     }),
     BuildOps((state, pending) => take(state, player, pending)))))
 
@@ -43,7 +43,7 @@ case object GamblingHall extends PaidAction("denizen.gambling-hall",
   private def take(state: ReadyGame, player: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val total = RollResults.score(state, pool)
-    if (total <= 0) Right(Vector.empty)
+    if total <= 0 then Right(Vector.empty)
     else pending.answered.collectFirst {
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(
           DecisionOptionRef.FavorBank(suit)), _) => suit

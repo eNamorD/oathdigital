@@ -27,7 +27,7 @@ class FortressRulesSuite extends munit.FunSuite:
   private def fortified(side: EdificeSide, ruled: Boolean): Board =
     val b = withEnemyAtOrigin(board(warbands = 4))
     val staged = fortressAt(b.ready, side, b.origin)
-    b.copy(ready = if (ruled) ruledBy(staged, b.origin, b.other)
+    b.copy(ready = if ruled then ruledBy(staged, b.origin, b.other)
       else unruled(staged, b.origin))
 
   private def startOf(b: Board) = start(b.ready, ActionRef.Campaign, b.actor)
@@ -137,7 +137,7 @@ class FortressRulesSuite extends munit.FunSuite:
     val enemy = ChallengeFixture.enemy(held).player
     val site = playerOf(held, actor).pawnSite.get
     val staged = fortressAt(held, side, site)
-    val ready = if (ruled) ruledBy(staged, site, enemy) else staged
+    val ready = if ruled then ruledBy(staged, site, enemy) else staged
     optionsAt(start(ready, ActionRef.Challenge, actor).toOption.get,
       ActionRef.Challenge)
 

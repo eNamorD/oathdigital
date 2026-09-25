@@ -49,13 +49,13 @@ class PhasePowerSuite extends munit.FunSuite:
     val printed = catalog.denizens.find(_.id.value == card.value).get
       .powers.find(_.id == powerId).get
     val twice = catalog.copy(denizens = catalog.denizens.map(d =>
-      if (d.id.value == second.value) d.copy(powers = d.powers :+ printed)
+      if d.id.value == second.value then d.copy(powers = d.powers :+ printed)
       else d))
     val usedFromFirst = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card),
       powerId)
     val state = base.updateCurrent(_.copy(
       turn = TurnState(actor, Phase.Wake, Set(usedFromFirst)),
-      players = current.players.map(p => if (p.player != actor) p else
+      players = current.players.map(p => if p.player != actor then p else
         p.copy(advisers = p.advisers :+ DenizenState(second,
           Orientation.FaceUp, Tokens.empty))),
       commonCards = current.commonCards.copy(worldDeck =
@@ -94,7 +94,7 @@ class PhasePowerSuite extends munit.FunSuite:
     def withCardAt(forces: SiteForces) = base.updateCurrent(_.copy(
         turn = TurnState(actor, Phase.Act, Set.empty),
         players = current.players.map(p =>
-          if (p.player != actor) p else p.copy(advisers = Vector.empty)),
+          if p.player != actor then p else p.copy(advisers = Vector.empty)),
         map = current.map.copy(sites = current.map.sites.updated(far,
           current.map.sites(far).copy(forces = forces, denizens = Vector(
             DenizenState(card, Orientation.FaceUp, Tokens.empty)))))))
@@ -138,7 +138,7 @@ class PhasePowerSuite extends munit.FunSuite:
 
   private def withSecrets(state: ReadyGame, count: Int): ReadyGame =
     state.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player != actor) p else
+      if p.player != actor then p else
         p.copy(board = p.board.copy(faceUpSecrets = count)))))
   private def heldOnCard(state: ReadyGame): Tokens =
     state.game.current.players.find(_.player == actor).get.advisers.collectFirst {
@@ -189,7 +189,7 @@ class PhasePowerSuite extends munit.FunSuite:
     val printed = catalog.denizens.find(_.id.value == card.value).get.powers
       .find(_.id == powerId).get
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
-      if (e.id == edifice.id) e.copy(
+      if e.id == edifice.id then e.copy(
         intact = e.intact.copy(powers = e.intact.powers :+ printed),
         ruined = e.ruined.copy(powers = e.ruined.powers :+ printed)) else e))
     val current = base.game.current
@@ -198,7 +198,7 @@ class PhasePowerSuite extends munit.FunSuite:
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
       val state = base.updateCurrent(c => c.copy(
         turn = TurnState(actor, Phase.Act, Set.empty),
-        players = c.players.map(p => if (p.player != actor) p else
+        players = c.players.map(p => if p.player != actor then p else
           p.copy(advisers = Vector.empty)),
         map = c.map.copy(sites = c.map.sites.updated(home,
           c.map.sites(home).copy(denizens =

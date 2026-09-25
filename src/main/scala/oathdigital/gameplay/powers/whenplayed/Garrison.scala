@@ -39,7 +39,7 @@ object Garrison:
   private def gain(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     val count = ruled(ready, actor).size
-    if (count == 0) Right(Vector.empty)
+    if count == 0 then Right(Vector.empty)
     else PlayerFacts.forceKind(ready, actor).map(kind =>
       Vector(Gain.Warbands(actor, kind, count)))
 
@@ -47,7 +47,7 @@ object Garrison:
     val sites = ruled(ready, actor)
     val held = PlayerFacts.player(ready, actor).map(_.board.warbands)
       .getOrElse(0)
-    if (held == 0 || held >= sites.size) Vector.empty
+    if held == 0 || held >= sites.size then Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseMany(held, held,
       sites.map(site => DecisionOption.Site(DecisionOptionRef.Site(site))),
       heading = Some("Garrison: choose the sites that each receive a warband"))))
@@ -55,14 +55,14 @@ object Garrison:
   private def place(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val sites = ruled(ready, actor)
-    for {
+    for
       held <- PlayerFacts.player(ready, actor).map(_.board.warbands)
       kind <- PlayerFacts.forceKind(ready, actor)
       chosen <-
-        if (held >= sites.size) Right(sites)
-        else if (held == 0) Right(Vector.empty[SiteId])
+        if held >= sites.size then Right(sites)
+        else if held == 0 then Right(Vector.empty[SiteId])
         else answered(pending)
-    } yield chosen.map(site => Move(Piece.Warbands(kind, 1),
+    yield chosen.map(site => Move(Piece.Warbands(kind, 1),
       PositionedLocation(Location.PlayArea(actor)),
       PositionedLocation(Location.Site(site))))
 

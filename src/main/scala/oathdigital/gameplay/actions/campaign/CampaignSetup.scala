@@ -131,12 +131,12 @@ object CampaignSetup:
 
   /** The complete setup, once the force is answered. */
   def setup(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Option[CampaignSetup] = for {
+      : Option[CampaignSetup] = for
     kind <- kindOf(ready, actor, pending)
     origin <- originOf(ready, actor)
     defender <- defenderOf(ready, actor, pending, kind)
     force <- CampaignAnswers.force(pending)
-  } yield
+  yield
     val picked = CampaignAnswers.targets(pending)
     kind match
       case CampaignKind.Conquest =>

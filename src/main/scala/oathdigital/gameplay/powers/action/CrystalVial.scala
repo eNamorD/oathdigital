@@ -45,7 +45,7 @@ final case class CrystalVial(catalog: ExecutableCatalog)
 
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = candidates(ready, actor)
-    if (found.isEmpty) Vector.empty
+    if found.isEmpty then Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
       found.flatMap(c => DecisionOption.forRef(c.ref)), heading = Some(
         "Crystal Vial: bury an adviser of yours or a card at your site"))))
@@ -53,8 +53,8 @@ final case class CrystalVial(catalog: ExecutableCatalog)
   private def bury(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val found = candidates(ready, actor)
-    if (found.isEmpty) Right(Vector.empty)
-    else for {
+    if found.isEmpty then Right(Vector.empty)
+    else for
       ref <- PowerAnswers.one(pending, decisionId)
         .toRight(PowerAnswers.missing(decisionId))
       chosen <- found.find(_.ref == ref).toRight(OathViolation
@@ -63,7 +63,7 @@ final case class CrystalVial(catalog: ExecutableCatalog)
       _ <- Either.cond(chosen.tokens.favor == 0 || suit.isDefined, (),
         OathViolation.InvalidEventOrder(
           s"no suit is known for ${chosen.card.id.value}"))
-    } yield Bury.standard(chosen.card, PositionedLocation(chosen.from), suit,
+    yield Bury.standard(chosen.card, PositionedLocation(chosen.from), suit,
       chosen.tokens.favor, chosen.tokens.secrets, actor)
 
 object CrystalVial:

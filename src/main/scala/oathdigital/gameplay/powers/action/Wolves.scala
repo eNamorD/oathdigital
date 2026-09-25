@@ -24,7 +24,7 @@ case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)):
     BuildOps((live, pending) => kill(live, pending)))))
 
   private def kill(ready: ReadyGame, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] = for {
+      : Either[OathViolation, Vector[CoreOperation]] = for
     ref <- PowerAnswers.one(pending, decisionId)
       .toRight(PowerAnswers.missing(decisionId))
     board <- ref match
@@ -32,5 +32,5 @@ case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)):
       case other => Left(OathViolation.InvalidEventOrder(
         s"${other.kind}/${other.wireId} is not a player board"))
     kind <- PlayerFacts.forceKind(ready, board.player)
-  } yield Vector(Kill(Piece.Warbands(kind, 1),
+  yield Vector(Kill(Piece.Warbands(kind, 1),
     PositionedLocation(Location.PlayArea(board.player))))

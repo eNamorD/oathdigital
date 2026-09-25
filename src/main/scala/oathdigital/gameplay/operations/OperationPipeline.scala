@@ -10,7 +10,7 @@ final case class OperationRun(state: ReadyGame,
   /** Legacy event reducers must not accept a different effect than recorded. */
   def expectEffects(requested: Vector[CoreOperation],
       detail: String): Either[OathViolation, ReadyGame] =
-    if (executed == requested.map(OperationRun.canonical)) Right(state)
+    if executed == requested.map(OperationRun.canonical) then Right(state)
     else Left(OathViolation.InvalidEventOrder(detail))
 
 object OperationRun:
@@ -64,9 +64,9 @@ object OperationPipeline:
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]
   ): Either[OathViolation, OperationRun] =
-    if (operations.isEmpty) Left(OperationError.EmptyOperationBatch.toViolation)
+    if operations.isEmpty then Left(OperationError.EmptyOperationBatch.toViolation)
     else
-      for {
+      for
         expected <- OperationStateInvariant.cardIds(ready)
           .left.map(_.toViolation)
         staged <- operations.foldLeft[Either[OathViolation, OperationRun]](
@@ -95,4 +95,4 @@ object OperationPipeline:
         _ <- OperationStateInvariant.validate(updated,
           expected -- OperationRun.boxed(staged.executed))
           .left.map(_.toViolation)
-      } yield staged.copy(state = updated)
+      yield staged.copy(state = updated)

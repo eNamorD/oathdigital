@@ -10,7 +10,7 @@ import ServerUiSupport._
 private[frontend] object CampaignControls:
   def render(value: GameProjection, canControl: Boolean, groups: ActionSections,
       submit: GameCommand => Unit): Unit =
-    if (value.legalControls.contains("beginCampaign"))
+    if value.legalControls.contains("beginCampaign") then
       val node = button("Campaign (2 Supply)", "act-action campaign-action")
       node.disabled = !canControl
       node.onclick = _ => submit(GameCommand.StartWalker("campaign", Vector.empty))

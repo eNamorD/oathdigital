@@ -55,7 +55,7 @@ object PhasePowerProcedure:
   /** The cost is payable from `source`. A free cost is always payable. */
   private def payable(ready: ReadyGame, player: PlayerId, power: PhasePower,
       source: PowerSourceRef): Either[OathViolation, Unit] =
-    if (power.cost == Cost.free) Right(())
+    if power.cost == Cost.free then Right(())
     else source match
       case PowerSourceRef.Card(card) => Costs.plan(ready, player,
         Location.OnCard(card), power.cost).map(_ => ())
@@ -68,7 +68,7 @@ object PhasePowerProcedure:
     val current = ready.game.current
     val active = current.turn.activePlayer
     val phase = current.turn.phase
-    for {
+    for
       _ <- Either.cond(current.result.isEmpty, (), GameEnded)
       _ <- Either.cond(requester == active, (), WrongPlayer(active, requester))
       _ <- Either.cond(current.walkerPending.isEmpty &&
@@ -88,7 +88,7 @@ object PhasePowerProcedure:
       _ <- Either.cond(power.usable(ready, active, source), (),
         InvalidEventOrder(s"${power.id.value} has nothing to do from " +
           s"${source.kind}/${source.wireId}"))
-    } yield found
+    yield found
 
   def usable(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
       powers: PhasePowers): Vector[PowerSource] =
@@ -96,11 +96,11 @@ object PhasePowerProcedure:
     val available = current.result.isEmpty &&
       player == current.turn.activePlayer &&
       current.walkerPending.isEmpty && current.walkerProcedure.isEmpty
-    if (!available) Vector.empty
+    if !available then Vector.empty
     else
       val index = RuleSourceIndex.enumerate(catalog, ready)
       powers.powers.flatMap { power =>
-        if (!timingOf(current.turn.phase).contains(power.timing)) Vector.empty
+        if !timingOf(current.turn.phase).contains(power.timing) then Vector.empty
         else sourcesFrom(index, ready, player, power).collect:
           case (found, ref)
               if (!limited(power) ||
@@ -112,24 +112,24 @@ object PhasePowerProcedure:
 
   def build(id: PowerId, powers: PhasePowers)(catalog: ExecutableCatalog,
       ready: ReadyGame, player: PlayerId, args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Operation] = for {
+      : Either[OathViolation, Operation] = for
     power <- find(id, powers)
     source <- single(id, args)
     found <- check(catalog, ready, player, power, source)
     tree <- power.build(ready, player, source)
-  } yield assemble(catalog, power, player, found, tree)
+  yield assemble(catalog, power, player, found, tree)
 
   /** Resume skips the gate: the walker is pending and the use is not yet
     * recorded, so only the tree is rebuilt.
     */
   def rebuild(id: PowerId, powers: PhasePowers)(catalog: ExecutableCatalog,
       ready: ReadyGame, player: PlayerId, args: Vector[DecisionOptionRef])
-      : Either[OathViolation, Operation] = for {
+      : Either[OathViolation, Operation] = for
     power <- find(id, powers)
     source <- single(id, args)
     found <- sourceOf(source)
     tree <- power.build(ready, player, source)
-  } yield assemble(catalog, power, player, found, tree)
+  yield assemble(catalog, power, player, found, tree)
 
   private def assemble(catalog: ExecutableCatalog, power: PhasePower,
       player: PlayerId, source: PowerSourceRef, tree: Operation): Operation =
@@ -138,7 +138,7 @@ object PhasePowerProcedure:
         Vector(Costs.onCard(player, card, power.cost, catalog))
       case _ => Vector.empty
     val record: Vector[Operation] =
-      if (limited(power)) Vector(RecordPowerUse(useRef(power, source)))
+      if limited(power) then Vector(RecordPowerUse(useRef(power, source)))
       else Vector.empty
     Sequence(payment ++ Vector(tree) ++ record)
 

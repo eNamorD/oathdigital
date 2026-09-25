@@ -6,7 +6,7 @@ import ServerUiSupport._
 /** Stable player-facing layout; renderer refreshes replace only panel contents. */
 private[frontend] final class GameTableShell(mount: dom.Element, developmentTools: Boolean = true):
   private val table = element("div", "game-table")
-  while (mount.firstChild != null) mount.removeChild(mount.firstChild)
+  while mount.firstChild != null do mount.removeChild(mount.firstChild)
   mount.appendChild(table)
 
   private class Pane(id: String, title: String):
@@ -36,7 +36,7 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     // Pure class toggle, no re-render: the face keeps every element and CSS
     // decides what is visible, so a degraded face-up card can never adopt the
     // face-down letter treatment.
-    if (GameTableShell.compactAtScale(scale)) mapContent.classList.add("map-compact")
+    if GameTableShell.compactAtScale(scale) then mapContent.classList.add("map-compact")
     else mapContent.classList.remove("map-compact")
   })
   private val zoomControls = element("div", "map-controls")
@@ -56,7 +56,7 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   private val devToggle = button("Dev tools", "dev-toggle")
   devToggle.setAttribute("aria-controls", "development-panel")
   devToggle.setAttribute("aria-expanded", "false")
-  if (developmentTools) players.header.appendChild(devToggle)
+  if developmentTools then players.header.appendChild(devToggle)
   private val dev = element("aside", "development-panel").asInstanceOf[dom.html.Element]
   dev.id = "development-panel"
   dev.setAttribute("hidden", "")
@@ -74,13 +74,13 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   dev.appendChild(devContent)
   mount.appendChild(dev)
   private def setDev(open: Boolean): Unit =
-    if (open) dev.removeAttribute("hidden") else dev.setAttribute("hidden", "")
+    if open then dev.removeAttribute("hidden") else dev.setAttribute("hidden", "")
     devToggle.setAttribute("aria-expanded", open.toString)
-    if (open) close.focus() else devToggle.focus()
+    if open then close.focus() else devToggle.focus()
   devToggle.onclick = _ => setDev(dev.hasAttribute("hidden"))
   close.onclick = _ => setDev(false)
   private val escape: dom.KeyboardEvent => Unit = e => {
-    if (e.key == "Escape" && !dev.hasAttribute("hidden")) { e.preventDefault(); setDev(false) }
+    if e.key == "Escape" && !dev.hasAttribute("hidden") then { e.preventDefault(); setDev(false) }
   }
   dev.addEventListener("keydown", escape)
   private val inspector = new CardInspectionOverlay(mount)

@@ -33,7 +33,7 @@ private[operations] object CardFaceOperations:
     case Left(error) => Vector(error)
     case Right(_) =>
       val kindViolation: Vector[OperationError] =
-        if (id.isInstanceOf[WorldCardId] || id.isInstanceOf[RelicId])
+        if id.isInstanceOf[WorldCardId] || id.isInstanceOf[RelicId] then
           Vector.empty
         else Vector(IncompatibleLocation(Piece.Card(id), at))
       kindViolation ++ (card(ready, id, at) match {
@@ -42,7 +42,7 @@ private[operations] object CardFaceOperations:
       })
 
   def flipCard(ready: ReadyGame, id: CardId, at: Location,
-      orientation: Orientation): Either[OperationError, ReadyGame] = for {
+      orientation: Orientation): Either[OperationError, ReadyGame] = for
     located <- card(ready, id, at)
     updated <- located.state match
       case Some(_: DenizenState) | Some(_: VisionState) | Some(_: RelicState) =>
@@ -53,14 +53,14 @@ private[operations] object CardFaceOperations:
           case value => value
       case None if isDiscardLook(at, orientation) => Right(ready)
       case _ => Left(UnsupportedOrientation(id, at))
-  } yield updated
+  yield updated
 
   def peek(ready: ReadyGame, viewer: PlayerId, id: CardId,
-      at: Location): Either[OperationError, ReadyGame] = for {
+      at: Location): Either[OperationError, ReadyGame] = for
     // The card kind is the guard's (peekViolation).
     _ <- playerState(ready, viewer)
     located <- card(ready, id, at)
-  } yield located.location.container match
+  yield located.location.container match
     case CardContainer.Site(site, SiteCardArea.Relics) =>
       recordSiteRelicKnowledge(ready, viewer, site,
         id.asInstanceOf[RelicId])
@@ -78,7 +78,7 @@ private[operations] object CardFaceOperations:
     case _ => ready
 
   private def appendDistinct[A](values: Vector[A], value: A): Vector[A] =
-    if (values.contains(value)) values else values :+ value
+    if values.contains(value) then values else values :+ value
 
   private def recordSiteRelicKnowledge(
       ready: ReadyGame,

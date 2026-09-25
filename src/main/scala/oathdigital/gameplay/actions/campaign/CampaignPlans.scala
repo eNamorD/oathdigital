@@ -47,7 +47,7 @@ object CampaignPlans:
     * "Battle Plan"; one side's plan says which.
     */
   def badgeOf(sides: Set[CampaignPlanSide]): Option[String] =
-    if (sides.size > 1) Some("Battle Plan")
+    if sides.size > 1 then Some("Battle Plan")
     else sides.headOption.map:
       case CampaignPlanSide.Attacker => "Attack Plan"
       case CampaignPlanSide.Defender => "Defense Plan"

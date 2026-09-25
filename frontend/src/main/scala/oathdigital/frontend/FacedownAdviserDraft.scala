@@ -9,7 +9,7 @@ private[frontend] final case class FacedownAdviserDraft(
   def selected: Option[MinorAdviser] = advisers.find(adviser =>
     selectedCardId.contains(adviser.card.cardId))
   def choose(cardId: String): FacedownAdviserDraft =
-    if (advisers.exists(_.card.cardId == cardId)) copy(selectedCardId = Some(cardId))
+    if advisers.exists(_.card.cardId == cardId) then copy(selectedCardId = Some(cardId))
     else this
   def command: Option[GameIntent] = selected.map { adviser =>
     GameIntent.StartWalker("play-facedown-adviser", Vector.empty,

@@ -611,7 +611,7 @@ class HttpGameClientSuite extends FunSuite:
       choices: Boolean = true
   ): String =
     val pendingDecision =
-      if (choices)
+      if choices then
         s"""{"decisionId":"search-draw-0-red-exile","kind":"search","actorPlayerId":"red-exile","prompt":"Choose adviser","instructions":[],"cards":[${cardJson(adviserId, "denizen", "Printed Adviser")}],"keepMinimum":1,"keepMaximum":1,"orderingRequired":false,"resolutionsByCard":{"$adviserId":[{"kind":"search","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}}"""
       else "null"
     s"""{
@@ -645,7 +645,7 @@ class HttpGameClientSuite extends FunSuite:
       label: String,
       populated: Boolean = false
   ): String =
-    if (populated)
+    if populated then
       s"""{"siteId":"$siteId","label":"$label","looseFavor":2,"looseSecrets":1,"denizenCapacity":3,"relicCapacity":2,"denizens":[{"denizenId":"denizen:z","label":"Zed"},{"denizenId":"denizen:a","label":"Able"}],"relics":{"facedownCount":2},"forces":{"forceKind":"exile","count":2,"rulerKind":"player","rulerPlayerId":"red-exile","label":"Red Warbands","colorToken":"red"}}"""
     else
       s"""{"siteId":"$siteId","label":"$label","looseFavor":0,"looseSecrets":0,"denizenCapacity":0,"relicCapacity":0,"denizens":[],"relics":{"facedownCount":0},"forces":null}"""

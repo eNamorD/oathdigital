@@ -12,7 +12,7 @@ private[campaign] object CampaignOutcome:
     val losses: Operation = Sequence(Vector[Operation](BuildOps((ready, _) =>
       CampaignBattle.losses(ready, result))), Some(PowerWindow.CampaignLosses))
     val resolution: Vector[Operation] =
-      if (!result.attackerWins) Vector.empty
+      if !result.attackerWins then Vector.empty
       else result.kind match
         case CampaignKind.Conquest => CampaignConquest.steps(actor, result)
         case CampaignKind.Raid => CampaignRaid.steps(ready, actor, result)

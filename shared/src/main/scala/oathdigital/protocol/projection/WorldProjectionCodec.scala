@@ -6,14 +6,14 @@ private[protocol] object WorldProjectionCodec:
   def encodePlayer(value: SetupPlayerProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "displayName" -> value.displayName,
     "role" -> value.role, "colorToken" -> value.color.key)
-  def decodePlayer(raw: ujson.Value, path: String): Result[SetupPlayerProjection] = for {
+  def decodePlayer(raw: ujson.Value, path: String): Result[SetupPlayerProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("playerId", "displayName", "role", "colorToken"), path)
     playerId <- string(value, "playerId", path)
     displayName <- string(value, "displayName", path)
     role <- string(value, "role", path)
     color <- playerColor(value, "colorToken", path)
-  } yield SetupPlayerProjection(playerId, displayName, role, color)
+  yield SetupPlayerProjection(playerId, displayName, role, color)
 
   def encodeCard(value: CardDetailsProjection): ujson.Value = ujson.Obj(
     "cardId" -> value.cardId, "cardKind" -> value.cardKind, "name" -> value.name,
@@ -22,7 +22,7 @@ private[protocol] object WorldProjectionCodec:
     "side" -> stringOption(value.side), "favor" -> value.favor, "secrets" -> value.secrets,
     "relicValue" -> intOption(value.relicValue), "defense" -> intOption(value.defense),
     "hidden" -> value.hidden, "implemented" -> value.implemented)
-  def decodeCard(raw: ujson.Value, path: String): Result[CardDetailsProjection] = for {
+  def decodeCard(raw: ujson.Value, path: String): Result[CardDetailsProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("cardId", "cardKind", "name", "suit", "restrictions",
       "rulesText", "orientation", "side", "favor", "secrets", "relicValue",
@@ -41,36 +41,36 @@ private[protocol] object WorldProjectionCodec:
     defense <- optionalAbsent(value, "defense", path)(int)
     hidden <- bool(value, "hidden", path)
     implemented <- boolOr(value, "implemented", path, true)
-  } yield CardDetailsProjection(cardId, kind, name, suit, restrictions, rulesText,
+  yield CardDetailsProjection(cardId, kind, name, suit, restrictions, rulesText,
     orientation, side, favor, secrets, relicValue, defense, hidden, implemented)
 
   private def encodePower(value: SitePowerProjection): ujson.Value = ujson.Obj(
     "kind" -> value.kind, "label" -> value.label,
     "description" -> stringOption(value.description))
-  private def decodePower(raw: ujson.Value, path: String): Result[SitePowerProjection] = for {
+  private def decodePower(raw: ujson.Value, path: String): Result[SitePowerProjection] = for
     value <- obj(raw, path); _ <- exact(value, Set("kind", "label", "description"), path)
     kind <- string(value, "kind", path); label <- string(value, "label", path)
     description <- optionalString(value, "description", path)
-  } yield SitePowerProjection(kind, label, description)
+  yield SitePowerProjection(kind, label, description)
 
   private def encodeSiteCard(value: SiteCardProjection): ujson.Value = ujson.Obj(
     "denizenId" -> value.cardId, "label" -> value.label,
     "details" -> option(value.details)(encodeCard))
-  private def decodeSiteCard(raw: ujson.Value, path: String): Result[SiteCardProjection] = for {
+  private def decodeSiteCard(raw: ujson.Value, path: String): Result[SiteCardProjection] = for
     value <- obj(raw, path); _ <- exact(value, Set("denizenId", "label", "details"), path)
     id <- string(value, "denizenId", path); label <- string(value, "label", path)
     details <- optionalAbsent(value, "details", path)(decodeCard)
-  } yield SiteCardProjection(id, label, details)
+  yield SiteCardProjection(id, label, details)
 
   private def encodeRelics(value: SiteRelicsProjection): ujson.Value = ujson.Obj(
     "facedownCount" -> value.facedownCount,
     "knownRelics" -> encoded(value.knownRelics)(encodeCard))
-  private def decodeRelics(raw: ujson.Value, path: String): Result[SiteRelicsProjection] = for {
+  private def decodeRelics(raw: ujson.Value, path: String): Result[SiteRelicsProjection] = for
     value <- obj(raw, path); _ <- exact(value, Set("facedownCount", "knownRelics"), path)
     count <- int(value, "facedownCount", path)
     raws <- default(value, "knownRelics", path, Vector.empty[ujson.Value])(array)
     cards <- traverse(raws, s"$path.knownRelics")(decodeCard)
-  } yield SiteRelicsProjection(count, cards)
+  yield SiteRelicsProjection(count, cards)
 
   /** The wire keeps the flat shape older clients read: kind, ruler and colour
     * are each spelled out, and the decoder checks they name the same force.
@@ -84,7 +84,7 @@ private[protocol] object WorldProjectionCodec:
     ujson.Obj("forceKind" -> kind, "count" -> value.count, "rulerKind" -> ruler,
       "rulerPlayerId" -> stringOption(player), "label" -> value.label,
       "colorToken" -> color)
-  private def decodeForces(raw: ujson.Value, path: String): Result[SiteForcesProjection] = for {
+  private def decodeForces(raw: ujson.Value, path: String): Result[SiteForcesProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("forceKind", "count", "rulerKind", "rulerPlayerId",
       "label", "colorToken"), path)
@@ -105,7 +105,7 @@ private[protocol] object WorldProjectionCodec:
       case _ => Left(oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(path,
         "force, ruler, and color tokens do not agree"))
     }): Result[SiteForcesProjection]
-  } yield forces
+  yield forces
 
   private def encodeSite(value: SetupSiteProjection): ujson.Value = ujson.Obj(
     "siteId" -> value.siteId, "label" -> value.label,
@@ -117,7 +117,7 @@ private[protocol] object WorldProjectionCodec:
     "powers" -> encoded(value.powers)(encodePower),
     "forces" -> option(value.forces)(encodeForces),
     "denizens" -> encoded(value.denizens)(encodeSiteCard), "relics" -> encodeRelics(value.relics))
-  private def decodeSite(raw: ujson.Value, path: String): Result[SetupSiteProjection] = for {
+  private def decodeSite(raw: ujson.Value, path: String): Result[SetupSiteProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("siteId", "label", "looseFavor", "looseSecrets",
       "denizenCapacity", "relicCapacity", "defense", "recoverDifficulty", "forgeCost",
@@ -127,30 +127,30 @@ private[protocol] object WorldProjectionCodec:
     denizenCapacity <- int(value, "denizenCapacity", path)
     relicCapacity <- int(value, "relicCapacity", path); defense <- intOr(value, "defense", path, 0)
     recover <- optionalAbsent(value, "recoverDifficulty", path)(int)
-    forge <- optionalAbsent(value, "forgeCost", path) { (raw, child) => for {
+    forge <- optionalAbsent(value, "forgeCost", path) { (raw, child) => for
       cost <- obj(raw, child); _ <- exact(cost, Set("favor", "secrets"), child)
       favor <- int(cost, "favor", child); secrets <- int(cost, "secrets", child)
-    } yield ForgeCostProjection(favor, secrets) }
+    yield ForgeCostProjection(favor, secrets) }
     powerRaws <- default(value, "powers", path, Vector.empty[ujson.Value])(array)
     powers <- traverse(powerRaws, s"$path.powers")(decodePower)
     forces <- optionalAbsent(value, "forces", path)(decodeForces)
     denizenRaws <- array(value, "denizens", path)
     denizens <- traverse(denizenRaws, s"$path.denizens")(decodeSiteCard)
     relicRaw <- field(value, "relics", path); relics <- decodeRelics(relicRaw, s"$path.relics")
-  } yield SetupSiteProjection(siteId, label, favor, secrets, denizenCapacity,
+  yield SetupSiteProjection(siteId, label, favor, secrets, denizenCapacity,
     relicCapacity, denizens, relics, defense, recover, forge, powers, forces)
 
   def encodeRegion(value: SetupRegionProjection): ujson.Value = ujson.Obj(
     "regionId" -> value.regionId, "discardCount" -> value.discardCount,
     "discardTopCardKind" -> stringOption(value.discardTopCardKind),
     "sites" -> encoded(value.sites)(encodeSite))
-  def decodeRegion(raw: ujson.Value, path: String): Result[SetupRegionProjection] = for {
+  def decodeRegion(raw: ujson.Value, path: String): Result[SetupRegionProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("regionId", "discardCount", "discardTopCardKind", "sites"), path)
     region <- string(value, "regionId", path); count <- intOr(value, "discardCount", path, 0)
     top <- optionalAbsent(value, "discardTopCardKind", path)(string)
     raws <- array(value, "sites", path); sites <- traverse(raws, s"$path.sites")(decodeSite)
-  } yield SetupRegionProjection(region, sites, count, top)
+  yield SetupRegionProjection(region, sites, count, top)
 
   def encodeBoard(value: PlayerBoardProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "warbands" -> value.warbands, "favor" -> value.favor,
@@ -164,7 +164,7 @@ private[protocol] object WorldProjectionCodec:
       "banner" -> b.key, "face" -> b.face,
       "holderPlayerId" -> stringOption(b.holderPlayerId),
       "resources" -> b.resources)))
-  def decodeBoard(raw: ujson.Value, path: String): Result[PlayerBoardProjection] = for {
+  def decodeBoard(raw: ujson.Value, path: String): Result[PlayerBoardProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("playerId", "warbands", "favor", "faceUpSecrets",
       "faceDownSecrets", "committedSecrets", "totalSecrets", "supply", "pawnSiteId", "advisers", "relics",
@@ -180,12 +180,12 @@ private[protocol] object WorldProjectionCodec:
     relicRaws <- array(value, "relics", path); relics <- traverse(relicRaws, s"$path.relics")(decodeCard)
     vision <- optional(value, "revealedVision", path)(decodeCard)
     bannerRaws <- default(value, "banners", path, Vector.empty[ujson.Value])(array)
-    banners <- traverse(bannerRaws, s"$path.banners") { (raw, child) => for {
+    banners <- traverse(bannerRaws, s"$path.banners") { (raw, child) => for
       row <- obj(raw, child); _ <- exact(row,
         Set("banner", "face", "holderPlayerId", "resources"), child)
       key <- string(row, "banner", child); face <- string(row, "face", child)
       holder <- optionalString(row, "holderPlayerId", child)
       resources <- int(row, "resources", child)
-    } yield BannerProjection(key, face, holder, resources) }
-  } yield PlayerBoardProjection(player, warbands, favor, up, down, committed, total, supply, pawn,
+    yield BannerProjection(key, face, holder, resources) }
+  yield PlayerBoardProjection(player, warbands, favor, up, down, committed, total, supply, pawn,
     advisers, relics, vision, banners)

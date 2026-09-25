@@ -38,7 +38,7 @@ private[frontend] object WorldBoardRenderer:
      .foreach { player =>
      val section = element("section", "player-board")
      section.setAttribute("data-player-id", player.playerId)
-     if (value.activeParticipantId.contains(player.playerId))
+     if value.activeParticipantId.contains(player.playerId) then
        section.classList.add("player-board-active")
        section.setAttribute("aria-label", s"${player.displayName}, active player")
      // One line for who and what they hold: the pane is a strip across the
@@ -82,7 +82,7 @@ private[frontend] object WorldBoardRenderer:
        pill.onclick = _ => CardInspection.open(card, pill)
        slots.appendChild(pill)
      }
-     if (slots.childNodes.length > 0) section.appendChild(slots)
+     if slots.childNodes.length > 0 then section.appendChild(slots)
 
      // One row, no headings: two labelled rows cost more height than the pane
      // has, and a relic's square box already says which card is which.
@@ -154,7 +154,7 @@ private[frontend] object WorldBoardRenderer:
              handleSelection(state.choose(siteTarget))))
          control.addEventListener("keydown", (event: dom.Event) => {
            val key = event.asInstanceOf[dom.KeyboardEvent].key
-           if (key == "Enter" || key == " ") {
+           if key == "Enter" || key == " " then {
              event.preventDefault()
              currentBoardSelection.foreach(state =>
                handleSelection(state.choose(siteTarget)))
@@ -164,13 +164,13 @@ private[frontend] object WorldBoardRenderer:
        pawnOption.foreach { option =>
          control.setAttribute("role", "button")
          control.setAttribute("tabindex", "0")
-         def choose(): Unit = if (canControl) pawnPlacement.foreach:
+         def choose(): Unit = if canControl then pawnPlacement.foreach:
            case (decision, _) =>
              submitCommand(WalkerPanelSupport.resolveChooseOneCommand(decision, option))
          control.addEventListener("click", (_: dom.Event) => choose())
          control.addEventListener("keydown", (event: dom.Event) => {
            val key = event.asInstanceOf[dom.KeyboardEvent].key
-           if (key == "Enter" || key == " ") { event.preventDefault(); choose() }
+           if key == "Enter" || key == " " then { event.preventDefault(); choose() }
          })
        }
        control.appendChild(siteHeading(site))
@@ -190,7 +190,7 @@ private[frontend] object WorldBoardRenderer:
        sites.appendChild(control)
      }
      section.appendChild(sites)
-     if (region.regionId == "cradle")
+     if region.regionId == "cradle" then
        value.tracks.foreach(track => section.appendChild(roundTracker(value, track)))
      regions.appendChild(section)
    }
@@ -238,14 +238,14 @@ private[frontend] object WorldBoardRenderer:
      group.setAttribute("data-round", round.toString)
      val path = dom.document.createElementNS("http://www.w3.org/2000/svg", "path")
      path.setAttribute("d", segment.path)
-     path.setAttribute("class", if (round == track.round) "round-current" else "round-segment")
+     path.setAttribute("class", if round == track.round then "round-current" else "round-segment")
      val label = dom.document.createElementNS("http://www.w3.org/2000/svg", "text")
      label.setAttribute("x", segment.labelX.toString)
      label.setAttribute("y", segment.labelY.toString)
      label.setAttribute("text-anchor", "middle"); label.setAttribute("dominant-baseline", "middle")
      label.textContent = round.toString
      group.appendChild(path); group.appendChild(label)
-     if (track.usurperLimited && round == track.limiterRound)
+     if track.usurperLimited && round == track.limiterRound then
        val marker = dom.document.createElementNS("http://www.w3.org/2000/svg", "text")
        marker.setAttribute("x", segment.markerX.toString)
        marker.setAttribute("y", segment.markerY.toString)
@@ -258,7 +258,7 @@ private[frontend] object WorldBoardRenderer:
      s"Visions Drawn ${track.visionsDrawn} · First player ${track.firstPlayerId}"))
    // Beside the marker the tracker already draws on that round, rather than
    // in the action panel, which is about this turn rather than the game.
-   if (track.usurperLimited)
+   if track.usurperLimited then
      section.appendChild(text("p", "usurper-notice",
        s"Usurper locked until round ${track.limiterRound}"))
    section

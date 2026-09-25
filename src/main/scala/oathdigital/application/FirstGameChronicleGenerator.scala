@@ -30,7 +30,7 @@ object FirstGameChronicleGenerator:
   def generate(catalog: ExecutableCatalog, implemented: PowerId => Boolean,
       random: ChronicleRandomPort, policy: ShufflePolicy)
       : Either[ChronicleGeneratorFailure, Chronicle] =
-    for {
+    for
       atlas <- atlasBox(catalog, implemented, random)
       pools <- denizenPools(catalog, implemented, random)
       (worldPool, dispossessedPool) = pools
@@ -44,13 +44,13 @@ object FirstGameChronicleGenerator:
         relicDeck = policy.order(relicPool, implementedRelics, random),
         dispossessed = dispossessedPool)
       _ <- validate(catalog, chronicle)
-    } yield chronicle
+    yield chronicle
 
   private def atlasBox(catalog: ExecutableCatalog, implemented: PowerId => Boolean,
       random: ChronicleRandomPort)
       : Either[ChronicleGeneratorFailure, Vector[StoredSite]] =
     val sites = catalog.sites.map(_.id)
-    if (sites.size != 24) Left(WrongSiteCount(sites.size))
+    if sites.size != 24 then Left(WrongSiteCount(sites.size))
     else Right(random.shuffle(sites).map { siteId =>
       homelandSuit(catalog, siteId) match {
         case None => StoredSite(siteId)
@@ -86,7 +86,7 @@ object FirstGameChronicleGenerator:
         val (impl, unimpl) = suited.partition(implemented)
         val chosenImpl = random.shuffle(impl).take(PerSuit)
         val filler = PerSuit - chosenImpl.size
-        if (unimpl.size < filler + DispossessedPerSuit)
+        if unimpl.size < filler + DispossessedPerSuit then
           Left(TooFewSuitDenizens(suit, impl.size, unimpl.size))
         else
           val shuffledUnimpl = random.shuffle(unimpl)
@@ -107,20 +107,20 @@ object FirstGameChronicleGenerator:
     def perSuitCount(ids: Vector[DenizenId]): Map[Suit, Int] =
       Suit.all.map(suit => suit -> ids.count(id => suitOf.get(id).contains(suit))).toMap
 
-    if (chronicle.worldDeck.size != 60)
+    if chronicle.worldDeck.size != 60 then
       Left(InvariantViolated(
         s"world deck must have 60 denizens, has ${chronicle.worldDeck.size}"))
-    else if (chronicle.worldDeck.distinct.size != 60)
+    else if chronicle.worldDeck.distinct.size != 60 then
       Left(InvariantViolated("world deck denizens must be unique"))
-    else if (perSuitCount(chronicle.worldDeck).values.exists(_ != 10))
+    else if perSuitCount(chronicle.worldDeck).values.exists(_ != 10) then
       Left(InvariantViolated("world deck must have 10 denizens per suit"))
-    else if (chronicle.dispossessed.size != 12)
+    else if chronicle.dispossessed.size != 12 then
       Left(InvariantViolated(
         s"dispossessed must have 12 denizens, has ${chronicle.dispossessed.size}"))
-    else if (chronicle.dispossessed.distinct.size != 12)
+    else if chronicle.dispossessed.distinct.size != 12 then
       Left(InvariantViolated("dispossessed denizens must be unique"))
-    else if (perSuitCount(chronicle.dispossessed).values.exists(_ != 2))
+    else if perSuitCount(chronicle.dispossessed).values.exists(_ != 2) then
       Left(InvariantViolated("dispossessed must have 2 denizens per suit"))
-    else if ((chronicle.worldDeck.toSet intersect chronicle.dispossessed.toSet).nonEmpty)
+    else if (chronicle.worldDeck.toSet intersect chronicle.dispossessed.toSet).nonEmpty then
       Left(InvariantViolated("world deck and dispossessed must not overlap"))
     else Right(())

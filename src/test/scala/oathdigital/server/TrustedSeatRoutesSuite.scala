@@ -187,8 +187,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       val preview = """{"expectedNextSequence":1,"action":"travel"}"""
       Vector("/games", s"/s/$code", "/games/origin-game", "/games/origin-game/api",
         "/games/origin-game/api/commands", "/games/origin-game/api/preview").foreach { path =>
-        val payload = if (path == "/games") Some(body) else if (path.endsWith("commands")) Some(command)
-          else if (path.endsWith("preview")) Some(preview) else None
+        val payload = if path == "/games" then Some(body) else if path.endsWith("commands") then Some(command)
+          else if path.endsWith("preview") then Some(preview) else None
         val result = send(client, base, path + "?playerId=p1", payload, cookie)
         assertEquals(result.statusCode(), 400, result.body())
         assert(!result.body().contains(code))
@@ -229,7 +229,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
         val created = create(client, base, game)
         val entry = send(client, base, URI.create(created.seats.head.url).getPath)
         val cookie = entry.headers().firstValue("Set-Cookie").orElse("").takeWhile(_ != ';')
-        val path = if (game == "alpha") "/games/alpha" else "/games/alpha%3Aone"
+        val path = if game == "alpha" then "/games/alpha" else "/games/alpha%3Aone"
         val redirected = send(client, base, path + "/", cookie = Some(cookie))
         assertEquals(redirected.statusCode(), 303, redirected.body())
         assertEquals(redirected.headers().firstValue("Location").orElse(""), path)
@@ -362,7 +362,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
   private def assertCookie(raw: String, code: String, path: String, secure: Boolean): Unit =
     val attributes = raw.split(";\\s*").toSet
     val expected = Set(s"oath_seat=$code", s"Path=$path", "HttpOnly", "SameSite=Lax", "Max-Age=31536000")
-    assertEquals(attributes, if (secure) expected + "Secure" else expected)
+    assertEquals(attributes, if secure then expected + "Secure" else expected)
 
   private def creationBody(gameId: String): String = TrustedGameCreateRequestCodec.encode(
     TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),

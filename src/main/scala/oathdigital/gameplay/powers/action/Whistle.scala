@@ -24,7 +24,7 @@ case object Whistle extends PaidAction("relic.whistle", Cost(secret = 1)):
 
   private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
     val targets = PawnMoves.atOtherSites(ready, player)
-    if (targets.isEmpty) Vector.empty
+    if targets.isEmpty then Vector.empty
     else Vector(Decide(decisionId, player, DecisionQuery.ChooseOne(
       targets.map(target => DecisionOption.Player(
         DecisionOptionRef.Player(target))),
@@ -33,14 +33,14 @@ case object Whistle extends PaidAction("relic.whistle", Cost(secret = 1)):
 
   private def pull(ready: ReadyGame, player: PlayerId, whistle: RelicId,
       pending: PendingTree): Either[OathViolation, Vector[CoreOperation]] =
-    if (PawnMoves.atOtherSites(ready, player).isEmpty) Right(Vector.empty)
-    else for {
+    if PawnMoves.atOtherSites(ready, player).isEmpty then Right(Vector.empty)
+    else for
       here <- PawnMoves.pawnSite(ready, player)
       target <- PowerAnswers.one(pending, decisionId).collect {
         case DecisionOptionRef.Player(id) => id
       }.toRight(PowerAnswers.missing(decisionId))
       from <- PawnMoves.pawnSite(ready, target)
-    } yield Vector[CoreOperation](
+    yield Vector[CoreOperation](
       Move(Piece.Pawn(target), PositionedLocation(Location.Site(from)),
         PositionedLocation(Location.Site(here))),
       Move(Piece.Secrets(1), PositionedLocation(Location.OnCard(whistle)),

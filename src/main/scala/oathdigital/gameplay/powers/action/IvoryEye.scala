@@ -37,18 +37,18 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
     def ref: DecisionOptionRef.Button = optionFor(owner, slot)
     def label: String = s"${owner.value}: facedown adviser ${slot + 1}"
 
-  private def targets(ready: ReadyGame): Vector[Target] = for {
+  private def targets(ready: ReadyGame): Vector[Target] = for
     player <- ready.game.current.players
     (adviser, slot) <- player.advisers.zipWithIndex
     card <- adviser match
       case DenizenState(id, Orientation.FaceDown, _) => Some(id: WorldCardId)
       case VisionState(id, Orientation.FaceDown) => Some(id: WorldCardId)
       case _ => None
-  } yield Target(player.player, slot, card)
+  yield Target(player.player, slot, card)
 
   private def ask(ready: ReadyGame, actor: PlayerId): Vector[Operation] =
     val found = targets(ready)
-    if (found.isEmpty) Vector.empty
+    if found.isEmpty then Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
       found.map(t => DecisionOption.Button(t.ref, t.label)),
       heading = Some("Ivory Eye: peek at a facedown adviser"))))
@@ -56,10 +56,10 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
   private def peek(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val found = targets(ready)
-    if (found.isEmpty) Right(Vector.empty)
-    else for {
+    if found.isEmpty then Right(Vector.empty)
+    else for
       ref <- PowerAnswers.one(pending, decisionId)
         .toRight(PowerAnswers.missing(decisionId))
       target <- found.find(_.ref == ref).toRight(OathViolation
         .InvalidEventOrder(s"${ref.wireId} is not a facedown adviser"))
-    } yield Vector(Peek(actor, target.card, Location.PlayArea(target.owner)))
+    yield Vector(Peek(actor, target.card, Location.PlayArea(target.owner)))

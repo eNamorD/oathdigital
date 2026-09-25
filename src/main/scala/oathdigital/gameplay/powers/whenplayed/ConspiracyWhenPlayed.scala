@@ -55,7 +55,7 @@ case object ConspiracyWhenPlayed extends ContributingPower:
   private def targetDecision(ready: ReadyGame, actor: PlayerId)
       : Vector[Operation] =
     val options = legalTargets(ready, actor).flatMap(DecisionOption.forRef)
-    if (options.isEmpty) Vector.empty
+    if options.isEmpty then Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(options,
       heading = Some("Conspiracy: choose an enemy asset to take")),
       window = Some(PowerWindow.ConspiracyTargetSelection)))
@@ -107,6 +107,6 @@ case object ConspiracyWhenPlayed extends ContributingPower:
     val inHand = ready.game.current.temporaryHands
       .getOrElse(actor, Vector.empty).contains(VisionRules.Conspiracy)
     Move(Piece.Card(VisionRules.Conspiracy),
-      PositionedLocation(if (inHand) Location.Hand(actor)
+      PositionedLocation(if inHand then Location.Hand(actor)
         else Location.PlayArea(actor)),
       PositionedLocation(Location.SharedBank))

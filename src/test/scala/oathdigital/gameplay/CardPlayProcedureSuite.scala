@@ -66,7 +66,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val player = current.players.find(_.player == actor).get
     val added = extras.take(3 - player.advisers.size)
     val full = base.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = p.advisers ++ added.map(id =>
           DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
@@ -140,7 +140,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       _.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
       .map(d => DenizenId(d.id.value)).filterNot(_ == card).take(3)
     val full = base.updateCurrent(_.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(advisers = locked.map(id =>
           DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
@@ -167,7 +167,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
           id == vision || id == revealed)),
       temporaryHands = current.temporaryHands.updated(actor, Vector(vision)),
       players = current.players.map(player =>
-        if (player.player == actor) player.copy(revealedVision =
+        if player.player == actor then player.copy(revealedVision =
           Some(VisionState(revealed, Orientation.FaceUp))) else player)))
     val faceup = SearchPlacement.Adviser(Orientation.FaceUp, None)
     val choices = CardPlay.legalChoices(catalog, ready, actor, vision,
@@ -191,7 +191,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
         current.commonCards.worldDeck.filterNot(id =>
           held.contains(id) || id == revealed)),
       players = current.players.map(player =>
-        if (player.player == actor) player.copy(
+        if player.player == actor then player.copy(
           advisers = player.advisers ++ held.map(VisionState(_,
             Orientation.FaceDown)),
           revealedVision = Some(VisionState(revealed, Orientation.FaceUp)))
@@ -277,7 +277,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val old = VisionRules.Conquest
     val current = base.game.current
     val changed = current.copy(
-      players = current.players.map(p => if (p.player == actor)
+      players = current.players.map(p => if p.player == actor then
         p.copy(revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p),
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(id => id == incoming || id == old)),

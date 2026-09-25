@@ -45,6 +45,6 @@ case object WanderingFlameMove extends PaidAction(
       case Vector() => Right(Vector.empty)
       case Vector(only) => PawnMoves.relocate(ready, player, only)
       case sites => PawnMoves.chosenSite(pending, decisionId).flatMap(site =>
-        if (sites.contains(site)) PawnMoves.relocate(ready, player, site)
+        if sites.contains(site) then PawnMoves.relocate(ready, player, site)
         else Left(OathViolation.InvalidEventOrder(
           s"${site.value} holds no secret of its own")))

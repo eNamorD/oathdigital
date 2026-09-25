@@ -35,10 +35,10 @@ private[operations] object OperationStateWrites:
       values: Vector[Either[OperationError, A]]
   ): Either[OperationError, Vector[A]] =
     values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)):
-      case (result, value) => for {
+      case (result, value) => for
         accumulated <- result
         next <- value
-      } yield accumulated :+ next
+      yield accumulated :+ next
 
   def updateCommonCards(ready: ReadyGame)(
       f: CardZones => CardZones): Either[OperationError, ReadyGame] =
@@ -49,7 +49,7 @@ private[operations] object OperationStateWrites:
       f: PlayerState => PlayerState): Either[OperationError, ReadyGame] =
     playerState(ready, player).map { _ => ready.updateCurrent { current =>
       current.copy(players = current.players.map(value =>
-        if (value.player == player) f(value) else value))
+        if value.player == player then f(value) else value))
     }}
 
   def updateSite(ready: ReadyGame, site: SiteId)(
@@ -76,11 +76,11 @@ private[operations] object OperationStateWrites:
           located.location.container match
             case CardContainer.Player(player, PlayerCardArea.Advisers) =>
               updatePlayer(ready, player)(state => state.copy(advisers =
-                state.advisers.map(value => if (value.id == id)
+                state.advisers.map(value => if value.id == id then
                   f(value).asInstanceOf[AdviserState] else value)))
             case CardContainer.Player(player, PlayerCardArea.Relics) =>
               updatePlayer(ready, player)(state => state.copy(relics =
-                state.relics.map(value => if (value.id == id)
+                state.relics.map(value => if value.id == id then
                   f(value).asInstanceOf[RelicState] else value)))
             case CardContainer.Player(player, PlayerCardArea.RevealedVision) =>
               updatePlayer(ready, player)(state => state.copy(revealedVision =
@@ -88,11 +88,11 @@ private[operations] object OperationStateWrites:
                   f(value).asInstanceOf[VisionState])))
             case CardContainer.Site(site, SiteCardArea.Denizens) =>
               updateSite(ready, site)(state => state.copy(denizens =
-                state.denizens.map(value => if (value.id == id)
+                state.denizens.map(value => if value.id == id then
                   f(value).asInstanceOf[SiteDenizenState] else value)))
             case CardContainer.Site(site, SiteCardArea.Relics) =>
               updateSite(ready, site)(state => state.copy(relics =
-                state.relics.map(value => if (value.id == id)
+                state.relics.map(value => if value.id == id then
                   f(value).asInstanceOf[RelicState] else value)))
             case atlas: CardContainer.AtlasSite =>
               updateAtlasCardState(ready, atlas, id, f)
@@ -118,7 +118,7 @@ private[operations] object OperationStateWrites:
             existing => f(existing) match
               case next: SiteDenizenState => Right(stored.copy(denizens =
                 stored.denizens.map(value =>
-                  if (value.id == id) next else value)))
+                  if value.id == id then next else value)))
               case _ => Left(IncompatibleLocation(
                 Piece.Card(id), Location.OnCard(id)))
         case SiteCardArea.Relics =>
@@ -126,7 +126,7 @@ private[operations] object OperationStateWrites:
             existing => f(existing) match
               case next: RelicState => Right(stored.copy(relics =
                 stored.relics.map(value =>
-                  if (value.id == id) next else value)))
+                  if value.id == id then next else value)))
               case _ => Left(IncompatibleLocation(
                 Piece.Card(id), Location.OnCard(id)))
       updated.map { next =>

@@ -32,11 +32,11 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   private def decisionId(kind: String) = s"cardplay.$kind.denizen.${played.value}"
 
   /** Searches, keeps the played card and chooses to play it to the site. */
-  private def toSite(ready: ReadyGame): OathTransition = (for {
+  private def toSite(ready: ReadyGame): OathTransition = (for
     started <- start(ready)
     kept <- keep(started, played)
     placed <- place(kept, played, "site")
-  } yield placed.copy(events = started.events ++ kept.events ++ placed.events))
+  yield placed.copy(events = started.events ++ kept.events ++ placed.events))
     .fold(error => throw new AssertionError(error.toString), identity)
 
   private def asksToDiscard(transition: OathTransition): Boolean =
@@ -120,11 +120,11 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     assertEquals(siteCards(SearchFixture.after(done)).size, capacity)
     assert(siteCards(SearchFixture.after(done)).contains(played))
     val without = staged(fillers, identity)
-    val attempt = for {
+    val attempt = for
       started <- start(without)
       kept <- keep(started, played)
       placed <- place(kept, played, "site")
-    } yield placed
+    yield placed
     assert(attempt.isLeft, "a full site accepts no play without Mob")
 
   test("nobody else is asked: not another holder, not the Grand Council face, " +

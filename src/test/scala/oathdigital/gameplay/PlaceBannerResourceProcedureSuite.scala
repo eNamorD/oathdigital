@@ -76,6 +76,6 @@ class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
       Left(NoPlayableOption("place-banner-resource")))
     val (board, actor) = holding
     val broke = board.updateCurrent(current => current.copy(players =
-      current.players.map(p => if (p.player == actor.player)
+      current.players.map(p => if p.player == actor.player then
         p.copy(board = p.board.copy(faceUpSecrets = 0)) else p)))
     assertEquals(start(broke), Left(NoPlayableOption("place-banner-resource")))

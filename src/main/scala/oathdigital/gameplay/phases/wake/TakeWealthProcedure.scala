@@ -40,7 +40,7 @@ object TakeWealthProcedure:
     * one of them left to guess (Travel's case, for the same reason).
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
-      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
+      args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     // Wake phase, the active player, a live game -- the same gate the legacy
     // Wake command ran, under the name it already had.
     ready <- OathLifecycle.validateReady(OathState.Ready(state), activePlayer)
@@ -52,7 +52,7 @@ object TakeWealthProcedure:
     _ <- noEnemyPawn(ready, activePlayer, site)
     _ <- Either.cond(available(tokens, resource), (),
       OathViolation.ResourceUnavailable(site, resource))
-  } yield tree(activePlayer, site, resource)
+  yield tree(activePlayer, site, resource)
 
   /** Every resource the actor could take right now -- the single definition
     * the legal-action projection reads, and the Take Wealth twin of

@@ -230,14 +230,14 @@ object CatacombsContributionSuite:
     assert(deck.size > slots,
       "fixture needs enough relics to fill the site and still draw one")
     val relics =
-      if (placeRelic) Vector(RelicState(deck.head, Orientation.FaceDown,
+      if placeRelic then Vector(RelicState(deck.head, Orientation.FaceDown,
         Tokens.empty))
-      else if (fillCapacity) deck.take(slots).map(id =>
+      else if fillCapacity then deck.take(slots).map(id =>
         RelicState(id, Orientation.FaceUp, Tokens.empty))
       else Vector.empty
     val remainingDeck =
-      if (placeRelic) deck.tail
-      else if (fillCapacity) deck.drop(slots)
+      if placeRelic then deck.tail
+      else if fillCapacity then deck.drop(slots)
       else deck
     val site = current.map.sites(siteId).copy(relics = relics,
       denizens = Vector(DenizenState(catacombsCard, Orientation.FaceUp,
@@ -247,7 +247,7 @@ object CatacombsContributionSuite:
     val ready = base.updateCurrent(_.copy(
       turn = current.turn.copy(phase = Phase.Act),
       players = current.players.map(other =>
-        if (other.player == player.player) player else other),
+        if other.player == player.player then player else other),
       commonCards = current.commonCards.copy(
         relicDeck = remainingDeck,
         worldDeck = current.commonCards.worldDeck.filterNot(
@@ -275,7 +275,7 @@ object CatacombsContributionSuite:
       catalog.sites.find(_.id == id).exists(_.relicSlots > 0)).get
     val freed = current.map.sites(far).relics.map(_.id)
     val forces =
-      if (ruled) SiteForces.Occupied(ForceKind.Exile(lineage), 1)
+      if ruled then SiteForces.Occupied(ForceKind.Exile(lineage), 1)
       else SiteForces.Occupied(ForceKind.Bandit, 1)
     val moved = home.ready.updateCurrent(c => c.copy(
       commonCards = c.commonCards.copy(relicDeck =

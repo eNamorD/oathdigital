@@ -40,11 +40,11 @@ object SilverTongueFixture:
       .updated(empty, clearedSites(empty).copy(forces = SiteForces.Empty))
     val state = ready.copy(
       banks = ready.banks.copy(favor = Suit.all.map(suit =>
-        suit -> (if (stocked(suit)) 3 else 0)).toMap),
+        suit -> (if stocked(suit) then 3 else 0)).toMap),
       game = ready.game.copy(current = current.copy(
         turn = TurnState(actor, Phase.Rest, Set.empty),
         map = current.map.copy(sites = sites),
-        players = current.players.map(p => if (p.player != actor)
+        players = current.players.map(p => if p.player != actor then
           p.copy(advisers = p.advisers.filterNot {
             case DenizenState(card, _, _) => removed(card)
             case _ => false

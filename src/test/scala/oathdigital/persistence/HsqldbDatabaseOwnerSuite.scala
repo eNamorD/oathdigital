@@ -180,7 +180,7 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite:
     val recovered = HsqldbDatabaseOwner.retryTransientLock[Int](
       () => {
         attempts += 1
-        if (attempts == 1) Left(failure) else Right(7)
+        if attempts == 1 then Left(failure) else Right(7)
       },
       maxAttempts = 3,
       deadlineNanos = 100L,

@@ -47,10 +47,10 @@ final case class FaeMerchant private (scepters: Set[RelicId])
               DecisionOptionRef.Relic(id)), _) => id
         }.toRight(OathViolation.InvalidEventOrder(
           "no Fae Merchant relic is recorded")).map(Some(_))
-    for {
+    for
       pick <- chosen
       held <- PlayerFacts.player(state, player)
-    } yield pick.toVector.flatMap { id =>
+    yield pick.toVector.flatMap { id =>
       val secrets = held.relics.find(_.id == id).fold(0)(_.tokens.secrets)
       Bury.standard(BuryableCard.Relic(id),
         PositionedLocation(Location.PlayArea(player)), None, 0, secrets,

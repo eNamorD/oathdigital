@@ -135,7 +135,7 @@ final class HttpGameClient(transport: JsonTransport)
       request: MajorActionPreviewRequest) =
     transport.request("POST", s"/api/dev/first-games/${encode(gameId)}/preview?playerId=" +
       encode(selectedPlayerId), Some(MajorActionPreviewCodec.encodeRequest(request))).map({ result =>
-      result.flatMap(response => if (response.status >= 200 && response.status < 300)
+      result.flatMap(response => if response.status >= 200 && response.status < 300 then
         MajorActionPreviewCodec.decodeResponse(response.body).left.map(error =>
           GameClientFailure.DecodeFailure(error.path, error.message))
       else Left(GameClientFailure.HttpFailure(response.status, "preview", response.body)))
@@ -146,7 +146,7 @@ final class HttpGameClient(transport: JsonTransport)
     transport.request("GET",
       s"/api/dev/first-games/${encode(gameId)}/events?limit=$limit", None).map {
       _.flatMap { response =>
-        if (response.status < 200 || response.status >= 300)
+        if response.status < 200 || response.status >= 300 then
           Left(GameClientFailure.HttpFailure(response.status, "event-history",
             response.body))
         else try
@@ -188,7 +188,7 @@ final class TrustedHttpGameClient(transport: JsonTransport) extends GameClient:
       request: MajorActionPreviewRequest) =
     transport.request("POST", api(gameId) + "/preview",
       Some(MajorActionPreviewCodec.encodeRequest(request))).map(_.flatMap { response =>
-        if (response.status >= 200 && response.status < 300)
+        if response.status >= 200 && response.status < 300 then
           MajorActionPreviewCodec.decodeResponse(response.body).left.map(error =>
             GameClientFailure.DecodeFailure(error.path, error.message))
         else Left(GameJson.responseFailure(response))
@@ -201,7 +201,7 @@ final class TrustedHttpGameClient(transport: JsonTransport) extends GameClient:
 object GameJson:
   def projectionResponse(response: TransportResponse)
       : Either[GameClientFailure, GameProjection] =
-    if (response.status >= 200 && response.status < 300)
+    if response.status >= 200 && response.status < 300 then
       decodeProjection(response.body)
     else Left(responseFailure(response))
 
@@ -209,7 +209,7 @@ object GameJson:
     decodeError(response.body).fold(
       _ => GameClientFailure.HttpFailure(response.status,
         "invalid-error-response", response.body),
-      error => if (response.status == 409) GameClientFailure.StalePosition(error._2)
+      error => if response.status == 409 then GameClientFailure.StalePosition(error._2)
         else GameClientFailure.HttpFailure(response.status, error._1, error._2)
     )
 

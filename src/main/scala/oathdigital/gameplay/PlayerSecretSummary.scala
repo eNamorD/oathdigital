@@ -10,7 +10,7 @@ final case class PlayerSecretSummary(available: Int, facedown: Int, committed: I
 object PlayerSecretSummary:
   def derive(ready: ReadyGame, playerId: PlayerId): Either[String, PlayerSecretSummary] =
     PlayerResourceSources.player(ready, playerId).map { player =>
-      val committed = if (ready.game.current.turn.activePlayer == playerId)
+      val committed = if ready.game.current.turn.activePlayer == playerId then
         InPlayCardResources.discover(ready).secrets else 0
       PlayerSecretSummary(player.board.faceUpSecrets,
         player.board.faceDownSecrets, committed)

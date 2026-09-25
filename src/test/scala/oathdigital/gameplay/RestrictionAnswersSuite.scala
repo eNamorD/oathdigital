@@ -28,10 +28,10 @@ class RestrictionAnswersSuite extends munit.FunSuite:
   private val tree: Operation = Sequence(Vector[Operation](
     Decide(ask, actor, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Button(yes, "Yes"), DecisionOption.Button(no, "No")))),
-    Branch((_, pending) => if (pending.answered.exists {
+    Branch((_, pending) => if pending.answered.exists {
       case Answered(`ask`, DecisionAnswer.ChooseOneAnswer(`yes`), _) => true
       case _ => false
-    }) Vector(Sequence(Vector.empty, Some(nested))) else Vector.empty)))
+    } then Vector(Sequence(Vector.empty, Some(nested))) else Vector.empty)))
 
   private def answered(ref: DecisionOptionRef): Vector[Answered] =
     Vector(Answered(ask, DecisionAnswer.ChooseOneAnswer(ref), actor))

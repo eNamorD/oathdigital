@@ -18,20 +18,20 @@ object MusterSource:
     */
   def atSite(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Vector[MusterSource] =
-    for {
+    for
       siteId <- pawnSite(state, actor).toVector
       site <- state.game.current.map.sites.get(siteId).toVector
       card <- site.denizens
       if card.tokens.isEmpty
       suit <- catalog.suitOf(card.id).toVector
-    } yield sourceOf(siteId, card, suit)
+    yield sourceOf(siteId, card, suit)
 
   /** The source a reference names, or why it is not one. This is the single
     * acceptance function: a rule that lets a Muster draw on some other kind of
     * card widens it here. The token-free rule applies to every source.
     */
   def resolve(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
-      ref: DecisionOptionRef): Either[OathViolation, MusterSource] = for {
+      ref: DecisionOptionRef): Either[OathViolation, MusterSource] = for
     id <- cardIdOf(ref).toRight(OathViolation.InvalidEventOrder(
       s"${ref.kind}/${ref.wireId} is not a card a Muster or Trade can draw on"))
     siteId <- pawnSite(state, actor).toRight(OathViolation.PawnSiteMissing(actor))
@@ -43,7 +43,7 @@ object MusterSource:
       OathViolation.EconomyCardNotEmpty(id))
     suit <- catalog.suitOf(card.id).toRight(
       OathViolation.UnsupportedEconomyState(s"no catalog suit for ${card.id}"))
-  } yield sourceOf(siteId, card, suit)
+  yield sourceOf(siteId, card, suit)
 
   /** The actor's faceup advisers of `suit`: how many warbands, favor or
     * secrets a Muster or Trade adds to its base yield.

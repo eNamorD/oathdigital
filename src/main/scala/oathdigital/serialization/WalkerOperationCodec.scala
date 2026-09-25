@@ -167,7 +167,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         "receive" -> encodeGive(receive, "exchange-receive"))
       case PayCost(player, placedAt, cost, intoOccupied, matchingBank, _) =>
         val optional: Vector[(String, ujson.Value)] =
-          (if (intoOccupied) Vector("intoOccupied" -> (ujson.Bool(true): ujson.Value))
+          (if intoOccupied then Vector("intoOccupied" -> (ujson.Bool(true): ujson.Value))
           else Vector.empty) ++
             matchingBank.toVector.map(suit =>
               "matchingBank" -> (ujson.Str(suit.key): ujson.Value))
@@ -268,53 +268,53 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
 
   private def decodeCardOperation(value: ujson.Value,
       path: String): DecodedOperation =
-    case "peek" => for {
+    case "peek" => for
       card <- decodeCardRef(value("card"), s"$path.card")
       at <- decodeLocation(value("at"), s"$path.at")
-    } yield Peek(PlayerId(value("viewerPlayerId").str), card, at)
-    case "flip" => for {
+    yield Peek(PlayerId(value("viewerPlayerId").str), card, at)
+    case "flip" => for
       card <- decodeCardRef(value("card"), s"$path.card")
       at <- decodeLocation(value("at"), s"$path.at")
       orientation <- decodeOrientation(value("orientation").str,
         s"$path.orientation")
-    } yield Flip(card, at, orientation)
-    case "bury" => for {
+    yield Flip(card, at, orientation)
+    case "bury" => for
       card <- decodeBuryableCard(value("card"), s"$path.card")
       from <- decodePositionedLocation(value("from"), s"$path.from")
-    } yield Bury(card, from)
-    case "discard-denizen" => for {
+    yield Bury(card, from)
+    case "discard-denizen" => for
       from <- decodePositionedLocation(value("from"), s"$path.from")
       to <- decodeRegion(value("to").str, s"$path.to")
       suit <- decodeSuit(value("suit").str, s"$path.suit")
       favor <- safeIntField(value.obj, "favor", path)
       secrets <- safeIntField(value.obj, "secrets", path)
-    } yield Discard.Denizen(DenizenId(value("card").str), from, to, suit,
+    yield Discard.Denizen(DenizenId(value("card").str), from, to, suit,
       favor, secrets, PlayerId(value("actingPlayerId").str))
-    case "discard-vision" => for {
+    case "discard-vision" => for
       from <- decodePositionedLocation(value("from"), s"$path.from")
       to <- decodeRegion(value("to").str, s"$path.to")
-    } yield Discard.Vision(VisionId(value("card").str), from, to)
-    case "discard-ruined-edifice" => for {
+    yield Discard.Vision(VisionId(value("card").str), from, to)
+    case "discard-ruined-edifice" => for
       from <- decodePositionedLocation(value("from"), s"$path.from")
       suit <- decodeSuit(value("suit").str, s"$path.suit")
       favor <- safeIntField(value.obj, "favor", path)
       secrets <- safeIntField(value.obj, "secrets", path)
-    } yield Discard.RuinedEdifice(EdificeId(value("card").str), from, suit,
+    yield Discard.RuinedEdifice(EdificeId(value("card").str), from, suit,
       favor, secrets, PlayerId(value("actingPlayerId").str))
-    case "discard-relic" => for {
+    case "discard-relic" => for
       from <- decodePositionedLocation(value("from"), s"$path.from")
       secrets <- safeIntField(value.obj, "secrets", path)
-    } yield Discard.Relic(RelicId(value("card").str), from, secrets,
+    yield Discard.Relic(RelicId(value("card").str), from, secrets,
       PlayerId(value("actingPlayerId").str))
-    case "draw" => for {
+    case "draw" => for
       cards <- traverse(value("cards").arr.zipWithIndex.toVector):
         case (id, index) => decodeCardRef(id, s"$path.cards[$index]")
       _ <- Either.cond(cards.nonEmpty, (), InvalidValue(s"$path.cards",
         "draw must contain at least one card"))
       source <- decodeLocation(value("source"), s"$path.source")
       destination <- decodeLocation(value("destination"), s"$path.destination")
-    } yield Draw(PlayerId(value("playerId").str), cards, source, destination)
-    case "play" => for {
+    yield Draw(PlayerId(value("playerId").str), cards, source, destination)
+    case "play" => for
       card <- decodeCardRef(value("card"), s"$path.card")
       from <- decodePositionedLocation(value("from"), s"$path.from")
       destination <- decodeLocation(value("destination"), s"$path.destination")
@@ -324,12 +324,12 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
           s"play destination must be a site or a play area, got $other"))
       orientation <- decodeOrientation(value("orientation").str,
         s"$path.orientation")
-    } yield Play(card, from, destination, orientation)
-    case "reveal" => for {
+    yield Play(card, from, destination, orientation)
+    case "reveal" => for
       card <- decodeCardRef(value("card"), s"$path.card")
       at <- decodeLocation(value("at"), s"$path.at")
-    } yield Reveal(card, at)
-    case "swap" => for {
+    yield Reveal(card, at)
+    case "swap" => for
       firstCard <- decodeCardRef(value("firstCard"), s"$path.firstCard")
       firstLocation <- decodePositionedLocation(value("firstLocation"),
         s"$path.firstLocation")
@@ -340,11 +340,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         InvalidValue(path, "swap requires two different cards"))
       _ <- Either.cond(firstLocation != secondLocation, (),
         InvalidValue(path, "swap requires two different locations"))
-    } yield Swap(firstCard, firstLocation, secondCard, secondLocation)
+    yield Swap(firstCard, firstLocation, secondCard, secondLocation)
 
   private def decodePieceOperation(value: ujson.Value,
       path: String): DecodedOperation =
-    case "move" => for {
+    case "move" => for
       piece <- decodePiece(value("piece"), s"$path.piece")
       from <- decodePositionedLocation(value("from"), s"$path.from")
       to <- decodePositionedLocation(value("to"), s"$path.to")
@@ -352,21 +352,21 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         case ujson.Null => Right(None)
         case other => decodeOrientation(other.str,
           s"$path.resultingOrientation").map(Some(_))
-    } yield Move(piece, from, to, orientation)
-    case "take" => for {
+    yield Move(piece, from, to, orientation)
+    case "take" => for
       piece <- decodePiece(value("piece"), s"$path.piece")
       from <- decodeLocation(value("from"), s"$path.from")
       to <- decodeLocation(value("to"), s"$path.to")
       sourcePosition <- decodeStackPosition(value("sourcePosition").str,
         s"$path.sourcePosition")
-    } yield Take(piece, PlayerId(value("playerId").str), from, to,
+    yield Take(piece, PlayerId(value("playerId").str), from, to,
       sourcePosition)
-    case "kill" => for {
+    case "kill" => for
       piece <- decodePiece(value("warbands"), s"$path.warbands")
       warbands <- asWarbands(piece, s"$path.warbands")
       from <- decodePositionedLocation(value("from"), s"$path.from")
-    } yield Kill(warbands, from)
-    case "replace" => for {
+    yield Kill(warbands, from)
+    case "replace" => for
       removedPiece <- decodePiece(value("removed"), s"$path.removed")
       removed <- asWarbands(removedPiece, s"$path.removed")
       replacementsPiece <- decodePiece(value("replacements"),
@@ -377,13 +377,13 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         InvalidValue(path, "replace must exchange equal numbers of warbands"))
       _ <- Either.cond(removed.kind != replacements.kind, (),
         InvalidValue(path, "replacement warbands must have a new color"))
-    } yield Replace(removed, replacements, at)
-    case "sacrifice" => for {
+    yield Replace(removed, replacements, at)
+    case "sacrifice" => for
       piece <- decodePiece(value("warbands"), s"$path.warbands")
       warbands <- asWarbands(piece, s"$path.warbands")
       from <- decodePositionedLocation(value("from"), s"$path.from")
-    } yield Sacrifice(PlayerId(value("playerId").str), warbands, from)
-    case "burn" => for {
+    yield Sacrifice(PlayerId(value("playerId").str), warbands, from)
+    case "burn" => for
       resource <- decodePiece(value("resource"), s"$path.resource")
       from <- decodePositionedLocation(value("from"), s"$path.from")
       burn <- resource match
@@ -391,19 +391,19 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         case Piece.Secrets(amount) => Right(Burn.secrets(amount, from))
         case other => Left(InvalidValue(s"$path.resource",
           s"unsupported burn resource $other"))
-    } yield burn
+    yield burn
     case "give" => decodeGive(value, path)
-    case "exchange" => for {
+    case "exchange" => for
       give <- decodeGive(value("give"), s"$path.give")
       receive <- decodeGive(value("receive"), s"$path.receive")
-    } yield Exchange(give, receive)
-    case "pay-cost" => for {
+    yield Exchange(give, receive)
+    case "pay-cost" => for
       placedAt <- decodeLocation(value("placedAt"), s"$path.placedAt")
       cost <- decodeCost(value("cost"), s"$path.cost")
       bank <- value.obj.get("matchingBank") match
         case None | Some(ujson.Null) => Right(None)
         case Some(raw) => decodeSuit(raw.str, s"$path.matchingBank").map(Some(_))
-    } yield PayCost(PlayerId(value("playerId").str), placedAt, cost,
+    yield PayCost(PlayerId(value("playerId").str), placedAt, cost,
       intoOccupied = value.obj.get("intoOccupied").exists(_.bool),
       matchingBank = bank)
 
@@ -413,21 +413,21 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
       .map(amount => SpendSupply(PlayerId(value("playerId").str), amount))
     case "gain-supply" => decodePositiveInt(value("amount"), s"$path.amount")
       .map(amount => GainSupply(PlayerId(value("playerId").str), amount))
-    case "flip-secrets" => for {
+    case "flip-secrets" => for
       amount <- safeIntField(value.obj, "amount", path)
       from <- decodeSecretSide(value("from").str, s"$path.from")
       to <- decodeSecretSide(value("to").str, s"$path.to")
-    } yield FlipSecrets(PlayerId(value("playerId").str), amount, from, to)
-    case "gain-favor" => for {
+    yield FlipSecrets(PlayerId(value("playerId").str), amount, from, to)
+    case "gain-favor" => for
       amount <- safeIntField(value.obj, "amount", path)
       suit <- decodeSuit(value("suit").str, s"$path.suit")
-    } yield Gain.Favor(PlayerId(value("playerId").str), suit, amount)
+    yield Gain.Favor(PlayerId(value("playerId").str), suit, amount)
     case "gain-secrets" => safeIntField(value.obj, "amount", path).map(
       amount => Gain.Secrets(PlayerId(value("playerId").str), amount))
-    case "gain-warbands" => for {
+    case "gain-warbands" => for
       force <- decodeForceKind(value("force"), s"$path.force")
       amount <- safeIntField(value.obj, "amount", path)
-    } yield Gain.Warbands(PlayerId(value("playerId").str), force, amount)
+    yield Gain.Warbands(PlayerId(value("playerId").str), force, amount)
 
   private def decodeTurnOperation(value: ujson.Value,
       path: String): DecodedOperation =
@@ -446,17 +446,17 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
       case ujson.Null => None
       case other => Some(PlayerId(other.str))
     }))
-    case "record-power-use" => for {
+    case "record-power-use" => for
       timing <- decodePowerTiming(value("timing").str, s"$path.timing")
-      source <- (if (value.obj.contains("siteId"))
+      source <- (if value.obj.contains("siteId") then
           Right(PowerSourceRef.Site(SiteId(value("siteId").str)))
-        else if (value.obj.contains("bannerKey"))
+        else if value.obj.contains("bannerKey") then
           Banner.fromKey(value("bannerKey").str).map(PowerSourceRef.Banner(_))
             .toRight(InvalidValue(s"$path.bannerKey", "unknown banner"))
         else decodePowerCard(value("cardKind").str, value("cardId").str,
           s"$path.cardKind").map(PowerSourceRef.Card.apply)
         ): Either[WireError, PowerSourceRef]
-    } yield RecordPowerUse(PowerUseRef(timing, source,
+    yield RecordPowerUse(PowerUseRef(timing, source,
       PowerId(value("powerId").str)))
     case "record-campaign-result" =>
       decodeCampaignResult(value("result"), s"$path.result")
@@ -466,10 +466,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))
     case "roll" => decodeDiceKind(value("die").str, s"$path.die").map(die =>
       Roll(PoolKey(value("pool").str), DiceSpec(die)))
-    case "modify-roll-outcome" => for {
+    case "modify-roll-outcome" => for
       skulls <- decodeOptionalSignedInt(value("skulls"), s"$path.skulls")
       score <- decodeOptionalSignedInt(value("score"), s"$path.score")
-    } yield ModifyRollOutcome(PoolKey(value("pool").str), skulls, score)
+    yield ModifyRollOutcome(PoolKey(value("pool").str), skulls, score)
 
   private def encodeGive(give: Give, kind: String): ujson.Value = ujson.Obj(
     "kind" -> kind, "piece" -> encodePiece(give.piece),
@@ -477,11 +477,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
     "to" -> encodeLocation(give.to))
 
   private def decodeGive(value: ujson.Value,
-      path: String): Either[WireError, Give] = for {
+      path: String): Either[WireError, Give] = for
     piece <- decodePiece(value("piece"), s"$path.piece")
     from <- decodeLocation(value("from"), s"$path.from")
     to <- decodeLocation(value("to"), s"$path.to")
-  } yield Give(piece, PlayerId(value("giverPlayerId").str), from, to)
+  yield Give(piece, PlayerId(value("giverPlayerId").str), from, to)
 
   private def asWarbands(piece: Piece,
       path: String): Either[WireError, Piece.Warbands] = piece match
@@ -557,17 +557,18 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
       .map(Piece.Banner.apply)
     case "pawn" => Right(Piece.Pawn(PlayerId(value("playerId").str)))
     case "favor" => safeIntField(value.obj, "amount", path).flatMap(amount =>
-      if (amount > 0) Right(Piece.Favor(amount))
+      if amount > 0 then Right(Piece.Favor(amount))
       else Left(InvalidValue(s"$path.amount", "must be positive")))
     case "secrets" => safeIntField(value.obj, "amount", path).flatMap(amount =>
-      if (amount > 0) Right(Piece.Secrets(amount))
+      if amount > 0 then Right(Piece.Secrets(amount))
       else Left(InvalidValue(s"$path.amount", "must be positive")))
-    case "warbands" => for {
-      force <- decodeForceKind(value("force"), s"$path.force")
-      amount <- safeIntField(value.obj, "amount", path)
-      warbands <- if (amount > 0) Right(Piece.Warbands(force, amount))
-        else Left(InvalidValue(s"$path.amount", "must be positive"))
-    } yield warbands
+    case "warbands" =>
+      for
+        force <- decodeForceKind(value("force"), s"$path.force")
+        amount <- safeIntField(value.obj, "amount", path)
+        warbands <- if amount > 0 then Right(Piece.Warbands(force, amount))
+          else Left(InvalidValue(s"$path.amount", "must be positive"))
+      yield warbands
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown recorded walker piece '$other'"))
 
@@ -588,10 +589,10 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
       "position" -> encodeStackPosition(value.position))
 
   private def decodePositionedLocation(value: ujson.Value,
-      path: String): Either[WireError, PositionedLocation] = for {
+      path: String): Either[WireError, PositionedLocation] = for
     location <- decodeLocation(value("location"), s"$path.location")
     position <- decodeStackPosition(value("position").str, s"$path.position")
-  } yield PositionedLocation(location, position)
+  yield PositionedLocation(location, position)
 
   /** Total over `Location`, unlike the other encoders here, which stay bounded
     * to the leaf shapes this slice records. A location is a closed sealed
@@ -672,12 +673,12 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
   /** `safeIntField` already rejects a negative, so `Cost`'s own non-negative
     * `require` can never be reached from decoded JSON. */
   private def decodeCost(value: ujson.Value,
-      path: String): Either[WireError, Cost] = for {
+      path: String): Either[WireError, Cost] = for
     favor <- safeIntField(value.obj, "favor", path)
     secret <- safeIntField(value.obj, "secret", path)
     favorBurnt <- safeIntField(value.obj, "favorBurnt", path)
     secretBurnt <- safeIntField(value.obj, "secretBurnt", path)
-  } yield Cost(favor, secret, favorBurnt, secretBurnt)
+  yield Cost(favor, secret, favorBurnt, secretBurnt)
 
   // Must not be named encodeOrientation: under Scala 3 a same-named private
   // method here was dispatched in place of GameEventJsonSupport's, which
@@ -701,6 +702,6 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
   private def decodePositiveInt(value: ujson.Value,
       path: String): Either[WireError, Int] =
     decodeSignedInt(value, path).flatMap { amount =>
-      if (amount > 0) Right(amount)
+      if amount > 0 then Right(amount)
       else Left(InvalidValue(path, "expected a positive integer"))
     }

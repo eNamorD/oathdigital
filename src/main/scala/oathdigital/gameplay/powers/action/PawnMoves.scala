@@ -38,7 +38,7 @@ object PawnMoves:
   def relocate(ready: ReadyGame, player: PlayerId, to: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] =
     pawnSite(ready, player).map(from =>
-      if (from == to) Vector.empty
+      if from == to then Vector.empty
       else Vector(Move(Piece.Pawn(player),
         PositionedLocation(Location.Site(from)),
         PositionedLocation(Location.Site(to)))))

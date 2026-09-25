@@ -36,7 +36,7 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
         case RollPayload(pool, faces, _) =>
           def derive(all: Vector[DieFace]): (Int, Int) =
             val attack = all.collect { case face: AttackDieFace => face }
-            if (attack.nonEmpty)
+            if attack.nonEmpty then
               (AttackDieFace.skulls(attack), AttackDieFace.score(attack))
             else (0, DefenseDieFace.score(all.collect {
               case face: DefenseDieFace => face }))

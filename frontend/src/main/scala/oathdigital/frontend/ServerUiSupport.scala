@@ -52,9 +52,9 @@ private[frontend] object ServerUiSupport:
     val presentation = SiteCardPresentation.from(site)
     val heading = element("div", "site-heading")
     val tokens = element("span", "site-tokens")
-    if (presentation.looseFavor > 0)
+    if presentation.looseFavor > 0 then
       siteToken("favor", presentation.looseFavor).foreach(tokens.appendChild)
-    if (presentation.looseSecrets > 0)
+    if presentation.looseSecrets > 0 then
       siteToken("secret", presentation.looseSecrets).foreach(tokens.appendChild)
     // Always appended, empty or not: the name is the middle cell of three,
     // and a missing cell would slide it off centre.
@@ -65,7 +65,7 @@ private[frontend] object ServerUiSupport:
     // Drawn as dice rather than a number because defense is rolled, and no
     // site in the catalog exceeds two. An undefended site says so in words,
     // since no die at all would read as missing information.
-    if (presentation.defense == 0)
+    if presentation.defense == 0 then
       defense.appendChild(text("span", "site-defense-none", "0"))
     else (0 until presentation.defense)
       .foreach(_ => defense.appendChild(RulesTextRenderer.glyph("defense-die")))
@@ -117,7 +117,7 @@ private[frontend] object ServerUiSupport:
     // power's rules text rides on its hover title instead.
     val powers = element("p", "site-powers")
     site.powers.zipWithIndex.foreach { case (power, index) =>
-      if (index > 0) powers.appendChild(dom.document.createTextNode(" · "))
+      if index > 0 then powers.appendChild(dom.document.createTextNode(" · "))
       val item = text("span", "site-power", power.label)
       item.setAttribute("title", power.description.fold(power.label)(
         description => s"${power.label}: $description"))
@@ -182,9 +182,9 @@ private[frontend] object ServerUiSupport:
     pile.appendChild(text("span", "pile-label", s"$label:"))
     val css = pileCardClasses(count)
     val symbol = pileSymbol(count, topCardKind)
-    val back = text("span", css, if (symbol.isEmpty) "\u00a0" else symbol)
+    val back = text("span", css, if symbol.isEmpty then "\u00a0" else symbol)
     back.setAttribute("role", "img")
-    back.setAttribute("aria-label", if (count == 0) "Empty pile"
+    back.setAttribute("aria-label", if count == 0 then "Empty pile"
       else topCardKind match {
         case Some("denizen") => "Denizen card on top"
         case Some("vision") => "Vision card on top"
@@ -195,13 +195,13 @@ private[frontend] object ServerUiSupport:
     pile
 
   private[frontend] def pileSymbol(count: Int, topCardKind: Option[String]): String =
-    if (count == 0) "" else topCardKind match
+    if count == 0 then "" else topCardKind match
       case Some("denizen") => "D"
       case Some("vision") => "V"
       case _ => ""
 
   private[frontend] def pileCardClasses(count: Int): String =
-    if (count == 0) "pile-card pile-empty" else "pile-card pile-back"
+    if count == 0 then "pile-card pile-empty" else "pile-card pile-back"
 
   private[frontend] final case class TakeWealthAction(
       label: String,
@@ -219,7 +219,7 @@ private[frontend] object ServerUiSupport:
       value: GameProjection,
       playerId: String
   ): ViewerPresentation =
-    if (value.oathkeeper.exists(_.winnerPlayerId.nonEmpty))
+    if value.oathkeeper.exists(_.winnerPlayerId.nonEmpty) then
       return ViewerPresentation(showGameplayControls = false,
         waitingForPlayerId = None, waitingForDisplayName = None)
     // Task 5 fix: a parked walker `Decide`'s owner is projected `walkerDecision`
@@ -229,10 +229,10 @@ private[frontend] object ServerUiSupport:
     // fields would leave an off-turn owner with no panel -- and the active
     // player waiting on them right back -- since neither side is the other's
     // active participant.
-    if (value.walkerDecision.nonEmpty)
+    if value.walkerDecision.nonEmpty then
       return ViewerPresentation(showGameplayControls = true,
         waitingForPlayerId = None, waitingForDisplayName = None)
-    if (value.walkerWaiting.nonEmpty)
+    if value.walkerWaiting.nonEmpty then
       return ViewerPresentation(showGameplayControls = false,
         waitingForPlayerId = value.walkerWaiting.map(_.playerId),
         waitingForDisplayName = value.walkerWaiting.map(w =>
@@ -297,7 +297,7 @@ private[frontend] object ServerUiSupport:
       contents.get(key).filter(_.nonEmpty).foreach { nodes =>
         val section = element("section", s"available-action-group action-group-$key")
         section.appendChild(text("h3", "action-group-heading", heading))
-        val order = if (key == "major") majorFamilyOrder else nodes.map(_._1).distinct.toVector
+        val order = if key == "major" then majorFamilyOrder else nodes.map(_._1).distinct.toVector
         // One option per row: a run of buttons side by side reads as one blur.
         order.foreach(family => nodes.filter(_._1 == family).foreach { entry =>
           val row = element("div", "action-option")
@@ -308,8 +308,8 @@ private[frontend] object ServerUiSupport:
     }
 
   private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
-    if (action.maximum == 0) "No target is available; confirm to play this action."
-    else if (action.explicitConfirm) "Choose one target, then confirm."
+    if action.maximum == 0 then "No target is available; confirm to play this action."
+    else if action.explicitConfirm then "Choose one target, then confirm."
     else "Choose one target. Selection submits immediately."
 
   private[frontend] def candidateDetailText(
@@ -334,8 +334,8 @@ private[frontend] object ServerUiSupport:
 
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =
-    Vector("site", if (candidate) "board-target" else "site-readonly",
-      if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
+    Vector("site", if candidate then "board-target" else "site-readonly",
+      if selected then "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
 
   private[frontend] def commandForSelection(action: BoardTargetAction,
       targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
@@ -359,8 +359,8 @@ private[frontend] object ServerUiSupport:
       value: GameProjection,
       playerId: String
   ): Vector[TakeWealthAction] =
-    if (value.phase != "wake" ||
-        !viewerPresentation(value, playerId).showGameplayControls) Vector.empty
+    if value.phase != "wake" ||
+        !viewerPresentation(value, playerId).showGameplayControls then Vector.empty
     // Take Wealth moved onto the generic walker (batch-1 Task 7), so the
     // resource the player picks rides `StartWalker`'s start selection as the
     // button it is -- a choice with no game object behind it -- instead of a
@@ -389,7 +389,7 @@ private[frontend] object ServerUiSupport:
     node
 
   private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
-    if (minor.advisers.nonEmpty) 1 else 0
+    if minor.advisers.nonEmpty then 1 else 0
 
   private[frontend] def protocolNegotiationTerms(value: NegotiationTermsInput): NegotiationTerms =
     NegotiationTerms(
@@ -455,5 +455,5 @@ private[frontend] object ServerUiSupport:
 
   private[frontend] def element(tag: String, className: String): dom.Element =
     val node = dom.document.createElement(tag)
-    if (className.nonEmpty) node.setAttribute("class", className)
+    if className.nonEmpty then node.setAttribute("class", className)
     node

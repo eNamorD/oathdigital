@@ -44,14 +44,14 @@ object TravelFixture:
     val states = ids.map { id =>
       val definition = catalog.sites.find(_.id == id).get
       id -> SiteState(
-        if (definition.capacity == 0) SiteForces.Empty
+        if definition.capacity == 0 then SiteForces.Empty
         else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
         Vector.empty, Vector.empty, definition.startingResources)
     }.toMap
     val players = base.game.current.players.zipWithIndex.map:
       case (player, index) => player.copy(
-        pawnSite = Some(if (player.player == actor) source else ids(index + 1)),
-        board = if (player.player == actor)
+        pawnSite = Some(if player.player == actor then source else ids(index + 1)),
+        board = if player.player == actor then
           player.board.copy(supply = SupplyTrack(supply)) else player.board)
     inPhase(base.updateCurrent(_.copy(players = players,
       map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states))),

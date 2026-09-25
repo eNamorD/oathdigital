@@ -21,9 +21,9 @@ object Costs:
   def plan(ready: ReadyGame, actor: PlayerId, placedAt: Location,
       cost: Cost, intoOccupied: Boolean = false)
       : Either[OathViolation, PayCost] =
-    if (cost == Cost.free) Right(PayCost(actor, placedAt, cost))
+    if cost == Cost.free then Right(PayCost(actor, placedAt, cost))
     else
-      for {
+      for
         player <- ready.game.current.players.find(_.player == actor)
           .toRight(WrongPlayer(ready.game.current.turn.activePlayer, actor))
         favor = cost.favor + cost.favorBurnt
@@ -33,7 +33,7 @@ object Costs:
         _ <- Either.cond(player.board.faceUpSecrets >= secrets, (),
           InsufficientSecrets(secrets, player.board.faceUpSecrets))
         _ <- validatePlaced(ready, placedAt, cost, intoOccupied)
-      } yield PayCost(actor, placedAt, cost, intoOccupied)
+      yield PayCost(actor, placedAt, cost, intoOccupied)
 
   /** The placement every card-sourced cost uses: onto the card, with the
     * card's suit as its off-turn settlement bank. Relics have no suit.
@@ -45,7 +45,7 @@ object Costs:
 
   private def validatePlaced(ready: ReadyGame, placedAt: Location,
       cost: Cost, intoOccupied: Boolean): Either[OathViolation, Unit] =
-    if (cost.favor + cost.secret == 0) Right(())
+    if cost.favor + cost.secret == 0 then Right(())
     else
       placedAt match
         case Location.OnCard(id) if statefulCard(ready, id) =>
@@ -85,12 +85,12 @@ object DrawTopRelic:
 object PlaceRelicAtSite:
   def plan(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       relic: RelicId, site: SiteId, orientation: Orientation)
-      : Either[OathViolation, RelicPlacement] = for {
+      : Either[OathViolation, RelicPlacement] = for
     _ <- validate(catalog, ready, relic, site, orientation)
-  } yield RelicPlacement(actor, relic, site, orientation)
+  yield RelicPlacement(actor, relic, site, orientation)
 
   private def validate(catalog: ExecutableCatalog, ready: ReadyGame,
-      relic: RelicId, siteId: SiteId, orientation: Orientation) = for {
+      relic: RelicId, siteId: SiteId, orientation: Orientation) = for
     _ <- Either.cond(orientation == Orientation.FaceDown, (),
       InvalidEventOrder("initial relic placement must be facedown"))
     _ <- DrawTopRelic.validate(ready, relic)
@@ -98,4 +98,4 @@ object PlaceRelicAtSite:
     definition <- catalog.sites.find(_.id == siteId).toRight(SiteNotInPlay(siteId))
     _ <- Either.cond(site.relics.size < definition.relicSlots, (),
       RecoverUnavailable("site has no empty relic slot"))
-  } yield ()
+  yield ()

@@ -35,7 +35,7 @@ final class HsqldbIdentityRepository private[persistence] (
       nowMillis: Long
   ): Either[IdentityFailure, Unit] =
     runExpected("create user") { connection =>
-      if (exists(connection, "users", "user_id", userId.value))
+      if exists(connection, "users", "user_id", userId.value) then
         Left(DuplicateUser(userId))
       else
         val statement = connection.prepareStatement(
@@ -59,9 +59,9 @@ final class HsqldbIdentityRepository private[persistence] (
       userId: UserId
   ): Either[IdentityFailure, Unit] =
     runExpected("link external identity") { connection =>
-      if (!exists(connection, "users", "user_id", userId.value))
+      if !exists(connection, "users", "user_id", userId.value) then
         Left(UserNotFound(userId))
-      else if (externalExists(connection, identity))
+      else if externalExists(connection, identity) then
         Left(DuplicateExternalIdentity(identity))
       else
         val statement = connection.prepareStatement(
@@ -91,7 +91,7 @@ final class HsqldbIdentityRepository private[persistence] (
         statement.setString(1, identity.provider)
         statement.setString(2, identity.subject)
         val row = statement.executeQuery()
-        Right(if (row.next()) Some(UserId(row.getString(1))) else None)
+        Right(if row.next() then Some(UserId(row.getString(1))) else None)
       finally statement.close()
     }
 
@@ -111,9 +111,9 @@ final class HsqldbIdentityRepository private[persistence] (
   )(beforeOwnerMembership: Connection => Either[IdentityFailure, Unit])
       : Either[IdentityFailure, Unit] =
     runExpected("create game resource") { connection =>
-      if (!exists(connection, "users", "user_id", owner.value))
+      if !exists(connection, "users", "user_id", owner.value) then
         Left(UserNotFound(owner))
-      else if (exists(connection, "game_resources", "game_id", gameId))
+      else if exists(connection, "game_resources", "game_id", gameId) then
         Left(DuplicateGame(gameId))
       else
         try
@@ -136,11 +136,11 @@ final class HsqldbIdentityRepository private[persistence] (
   ): Either[IdentityFailure, Unit] =
     validateMembership(membership).flatMap { _ =>
       runExpected("add game membership") { connection =>
-        if (!exists(connection, "game_resources", "game_id", membership.gameId))
+        if !exists(connection, "game_resources", "game_id", membership.gameId) then
           Left(GameNotFound(membership.gameId))
-        else if (!exists(connection, "users", "user_id", membership.userId.value))
+        else if !exists(connection, "users", "user_id", membership.userId.value) then
           Left(UserNotFound(membership.userId))
-        else if (membershipExists(connection, membership.gameId, membership.userId))
+        else if membershipExists(connection, membership.gameId, membership.userId) then
           Left(DuplicateMembership(membership.gameId, membership.userId))
         else membership.playerId match
           case Some(playerId) if seatExists(connection, membership.gameId, playerId) =>
@@ -151,11 +151,11 @@ final class HsqldbIdentityRepository private[persistence] (
               Right(())
             catch
               case error: SQLException if constraintViolation(error) =>
-                if (membershipExists(
+                if membershipExists(
                   connection,
                   membership.gameId,
                   membership.userId
-                )) Left(DuplicateMembership(
+                ) then Left(DuplicateMembership(
                   membership.gameId,
                   membership.userId
                 ))
@@ -180,7 +180,7 @@ final class HsqldbIdentityRepository private[persistence] (
         statement.setString(1, gameId)
         statement.setString(2, userId.value)
         val row = statement.executeQuery()
-        if (!row.next()) Right(None)
+        if !row.next() then Right(None)
         else
           val playerId = Option(row.getString(2))
           Right(Some(GameMembership(
@@ -196,7 +196,7 @@ final class HsqldbIdentityRepository private[persistence] (
       gameId: String
   ): Either[IdentityFailure, Vector[GameMembership]] =
     runExpected("list game memberships") { connection =>
-      if (!exists(connection, "game_resources", "game_id", gameId))
+      if !exists(connection, "game_resources", "game_id", gameId) then
         Left(GameNotFound(gameId))
       else
         val statement = connection.prepareStatement(
@@ -207,7 +207,7 @@ final class HsqldbIdentityRepository private[persistence] (
           statement.setString(1, gameId)
           val rows = statement.executeQuery()
           val result = Vector.newBuilder[GameMembership]
-          while (rows.next()) result += GameMembership(
+          while rows.next() do result += GameMembership(
             gameId,
             UserId(rows.getString(1)),
             parseRole(rows.getString(2)),
@@ -226,9 +226,9 @@ final class HsqldbIdentityRepository private[persistence] (
   ): Either[IdentityFailure, Unit] =
     validateSession(session).flatMap { _ =>
       runExpected("create session") { connection =>
-        if (!exists(connection, "users", "user_id", session.userId.value))
+        if !exists(connection, "users", "user_id", session.userId.value) then
           Left(UserNotFound(session.userId))
-        else if (sessionExists(connection, session.digest))
+        else if sessionExists(connection, session.digest) then
           Left(DuplicateSession)
         else
           val statement = connection.prepareStatement(
@@ -291,7 +291,7 @@ final class HsqldbIdentityRepository private[persistence] (
       lastSeenAtMillis: Long,
       idleExpiresAtMillis: Long
   ): Either[IdentityFailure, Unit] =
-    if (idleExpiresAtMillis < lastSeenAtMillis)
+    if idleExpiresAtMillis < lastSeenAtMillis then
       Left(InvalidSession("idle expiry must not precede last seen time"))
     else runExpected("touch session") { connection =>
       selectSession(connection, digest) match
@@ -328,7 +328,7 @@ final class HsqldbIdentityRepository private[persistence] (
   ): Either[IdentityFailure, Unit] =
     validateTrustedSeats(seats).flatMap { _ =>
       runExpected("create trusted seats") { connection =>
-        if (exists(connection, "game_resources", "game_id", gameId))
+        if exists(connection, "game_resources", "game_id", gameId) then
           Left(DuplicateGame(gameId))
         else
           try
@@ -353,7 +353,7 @@ final class HsqldbIdentityRepository private[persistence] (
       try
         statement.setBytes(1, digest.bytes.toArray)
         val row = statement.executeQuery()
-        if (row.next()) Right(TrustedSeat(row.getString(1), row.getString(2)))
+        if row.next() then Right(TrustedSeat(row.getString(1), row.getString(2)))
         else Left(TrustedSeatNotFound)
       finally statement.close()
     }
@@ -365,7 +365,7 @@ final class HsqldbIdentityRepository private[persistence] (
         .getColumns(null, null, "SESSIONS", null)
       try
         val names = Vector.newBuilder[String]
-        while (columns.next()) names += columns.getString("COLUMN_NAME")
+        while columns.next() do names += columns.getString("COLUMN_NAME")
         Right(names.result().map(_.toLowerCase))
       finally columns.close()
     }
@@ -377,7 +377,7 @@ final class HsqldbIdentityRepository private[persistence] (
         .getColumns(null, null, "TRUSTED_SEATS", null)
       try
         val names = Vector.newBuilder[String]
-        while (columns.next()) names += columns.getString("COLUMN_NAME")
+        while columns.next() do names += columns.getString("COLUMN_NAME")
         Right(names.result().map(_.toLowerCase))
       finally columns.close()
     }
@@ -394,7 +394,7 @@ final class HsqldbIdentityRepository private[persistence] (
         setValues(statement)
         val digestIndex = statement.getParameterMetaData.getParameterCount
         statement.setBytes(digestIndex, digest.bytes.toArray)
-        if (statement.executeUpdate() == 0) Left(SessionNotFound)
+        if statement.executeUpdate() == 0 then Left(SessionNotFound)
         else Right(())
       finally statement.close()
     }
@@ -408,28 +408,28 @@ final class HsqldbIdentityRepository private[persistence] (
       case _ => Right(())
 
   private def validateSession(session: StoredSession) =
-    if (session.createdAtMillis > session.lastSeenAtMillis)
+    if session.createdAtMillis > session.lastSeenAtMillis then
       Left(InvalidSession("last seen time precedes creation"))
-    else if (session.lastSeenAtMillis > session.idleExpiresAtMillis)
+    else if session.lastSeenAtMillis > session.idleExpiresAtMillis then
       Left(InvalidSession("idle expiry precedes last seen time"))
-    else if (session.idleExpiresAtMillis > session.absoluteExpiresAtMillis)
+    else if session.idleExpiresAtMillis > session.absoluteExpiresAtMillis then
       Left(InvalidSession("idle expiry exceeds absolute expiry"))
-    else if (session.createdAtMillis > session.absoluteExpiresAtMillis)
+    else if session.createdAtMillis > session.absoluteExpiresAtMillis then
       Left(InvalidSession("absolute expiry precedes creation"))
-    else if (session.revokedAtMillis.exists(_ < session.createdAtMillis))
+    else if session.revokedAtMillis.exists(_ < session.createdAtMillis) then
       Left(InvalidSession("revocation precedes creation"))
-    else if (session.csrfTokenDigest.isEmpty)
+    else if session.csrfTokenDigest.isEmpty then
       Left(InvalidSession("CSRF token digest is required"))
     else Right(())
 
   private def validateTrustedSeats(seats: Vector[(SeatCodeDigest, String)]) =
-    if (seats.isEmpty)
+    if seats.isEmpty then
       Left(InvalidTrustedSeat("at least one trusted seat is required"))
-    else if (seats.exists { case (_, playerId) =>
+    else if seats.exists { case (_, playerId) =>
         playerId == null || playerId.trim.isEmpty
-      })
+      } then
       Left(InvalidTrustedSeat("trusted seat requires playerId"))
-    else if (seats.map(_._2).distinct.size != seats.size)
+    else if seats.map(_._2).distinct.size != seats.size then
       Left(InvalidTrustedSeat("trusted seat player IDs must be unique"))
     else Right(())
 
@@ -496,10 +496,10 @@ final class HsqldbIdentityRepository private[persistence] (
     try
       statement.setBytes(1, digest.bytes.toArray)
       val row = statement.executeQuery()
-      if (!row.next()) None
+      if !row.next() then None
       else
         val revokedValue = row.getLong(6)
-        val revoked = if (row.wasNull()) None else Some(revokedValue)
+        val revoked = if row.wasNull() then None else Some(revokedValue)
         val csrf = Option(row.getBytes(7)).flatMap(bytes =>
           CsrfTokenDigest.fromBytes(bytes.toVector).toOption)
         Some(StoredSession(
