@@ -26,7 +26,7 @@
 
 ## Baseline
 
-- [ ] **Step 0: Record the baseline**
+- [x] **Step 0: Record the baseline**
 
 ```bash
 ./sbtw test
@@ -94,13 +94,13 @@ object ParkedNode:
       : Either[String, Option[ParkedNode]]
 ```
 
-- [ ] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.gameplay.walker.ParkedDecisionAssertionsSuite"`; require pass. Its six tests are the bracket for this task; do not edit them.
+- [x] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.gameplay.walker.ParkedDecisionAssertionsSuite"`; require pass. Its six tests are the bracket for this task; do not edit them.
 
-- [ ] **Step 2: Move the rebuild.** Lift the body of `ParkedDecisionAssertions.parkedDecision` (`WalkerProcedureRegistry.rebuild`, `WalkerPowers.selected(walkerPowerCatalog, current.walkerModifiers)`, `ProcedureWalker.parkedDecide` / `parkedRoll` / `awaitedPlayer`, `WalkerProcedureRegistry.rollDecisionId`) into `ParkedNode.of`. Each `fail(...)` in the original becomes a `Left(message)` carrying the same text. `ParkedNode.Decision` carries the whole `Decide` (the driver needs its `query`), not only the id.
+- [x] **Step 2: Move the rebuild.** Lift the body of `ParkedDecisionAssertions.parkedDecision` (`WalkerProcedureRegistry.rebuild`, `WalkerPowers.selected(walkerPowerCatalog, current.walkerModifiers)`, `ProcedureWalker.parkedDecide` / `parkedRoll` / `awaitedPlayer`, `WalkerProcedureRegistry.rollDecisionId`) into `ParkedNode.of`. Each `fail(...)` in the original becomes a `Left(message)` carrying the same text. `ParkedNode.Decision` carries the whole `Decide` (the driver needs its `query`), not only the id.
 
-- [ ] **Step 3: Consume it.** `ParkedDecisionAssertions.parkedDecision` becomes: `ParkedNode.of(state, catalog, walkerPowerCatalog, phasePowerCatalog)` matched as `Left(reason) => fail(reason)`, `Right(node) => node.map(n => ParkedDecisionFacts(n.procedure, n.decisionId, n.awaiting))`. The public signatures of `ParkedDecisionAssertions` do not change.
+- [x] **Step 3: Consume it.** `ParkedDecisionAssertions.parkedDecision` becomes: `ParkedNode.of(state, catalog, walkerPowerCatalog, phasePowerCatalog)` matched as `Left(reason) => fail(reason)`, `Right(node) => node.map(n => ParkedDecisionFacts(n.procedure, n.decisionId, n.awaiting))`. The public signatures of `ParkedDecisionAssertions` do not change.
 
-- [ ] **Step 4: Verify.** `./sbtw "testOnly oathdigital.gameplay.walker.ParkedDecisionAssertionsSuite"`, then `./sbtw test`. Commit: `test(testkit): extract ParkedNode from ParkedDecisionAssertions`.
+- [x] **Step 4: Verify.** `./sbtw "testOnly oathdigital.gameplay.walker.ParkedDecisionAssertionsSuite"`, then `./sbtw test`. Commit: `test(testkit): extract ParkedNode from ParkedDecisionAssertions`.
 
 ---
 
@@ -169,7 +169,7 @@ trait SituationDriver:
   final def run(from: Situation, steps: Seq[Step], settle: Boolean): Situation
 ```
 
-- [ ] **Step 1: Write the failing suite first.** `SituationSuite` with these tests, all against `FirstGameSetupFixture.{catalog, chronicle, orders}`:
+- [x] **Step 1: Write the failing suite first.** `SituationSuite` with these tests, all against `FirstGameSetupFixture.{catalog, chronicle, orders}`:
 
   1. `"wake under the fixture's rules equals initialReady"` — `Situation.wake(Situation.rules(new OathRules(catalog))).ready == FirstGameSetupFixture.initialReady`. Until Task 3 this compares against the old `execute()`; that is the point.
   2. `"the rules and journaled adapters reach the same ready for the same steps"` — both drivers built from `Situation.defaultRules(catalog, dice)` and `new GameApplicationService(catalog, repo, campaignDicePort = dice)` with a deterministic `CampaignDicePort`; run `wake` then `EndWake(firstPlayer)`; assert equal `ready` and equal `events`.
@@ -180,9 +180,9 @@ trait SituationDriver:
 
   Run `./sbtw "testOnly oathdigital.testkit.SituationSuite"`; require compilation failure.
 
-- [ ] **Step 2: `Situation.scala`.** `Step`, `Park`, `Answers`, `Situation`, `defaultAnswer`, `defaultRules` (mirror `GameApplicationService.scala:87-91`: `WalkerPowerCatalog.default`, `PhasePowerCatalog.default`, `CampaignDicePort.walkerDice`), the three named situations, `seedInto` (the `zipWithIndex` → `GameEventWire.encodeEvent(gameId, catalog.ref, index, event)` → `repository.seed` block from `AuthenticatedGameRoutesSuite.scala:48-51`).
+- [x] **Step 2: `Situation.scala`.** `Step`, `Park`, `Answers`, `Situation`, `defaultAnswer`, `defaultRules` (mirror `GameApplicationService.scala:87-91`: `WalkerPowerCatalog.default`, `PhasePowerCatalog.default`, `CampaignDicePort.walkerDice`), the three named situations, `seedInto` (the `zipWithIndex` → `GameEventWire.encodeEvent(gameId, catalog.ref, index, event)` → `repository.seed` block from `AuthenticatedGameRoutesSuite.scala:48-51`).
 
-- [ ] **Step 3: `SituationDriver.scala`.** The shared `run` loop:
+- [x] **Step 3: `SituationDriver.scala`.** The shared `run` loop:
 
   ```
   for each step (index i):
@@ -204,9 +204,9 @@ trait SituationDriver:
 
   `JournaledDriver(service, repository, gameId, answers)`: `apply` for a command is `service.handle(gameId, from.nextSequence, command)` mapped to `Situation(accepted.state, from.events ++ accepted.events, accepted.nextSequence, this)`; for `Arrange` it appends the encoded record at `from.nextSequence` (today's `ParkedServiceFixture.seed`) then `service.load(gameId)`. `roll` issues `RollWalker(awaiting, pool)`. `parkedNode` uses `WalkerPowerCatalog.default(catalog)` and `PhasePowerCatalog.default(catalog)`, which is what the service's rules run.
 
-- [ ] **Step 4: One answer policy.** Replace `SetupWalkDriver.defaultAnswer` (`SetupWalkDriver.scala:34-47`) with a call to `Situation.defaultAnswer` applied to a `Park` built from the tree-level `Decide` (`Park(decide, state, decide.owner, TriggeredProcedureRef.Setup)`). `driveToCompletion` keeps its signature and its four callers do not move.
+- [x] **Step 4: One answer policy.** Replace `SetupWalkDriver.defaultAnswer` (`SetupWalkDriver.scala:34-47`) with a call to `Situation.defaultAnswer` applied to a `Park` built from the tree-level `Decide` (`Park(decide, state, decide.owner, TriggeredProcedureRef.Setup)`). `driveToCompletion` keeps its signature and its four callers do not move.
 
-- [ ] **Step 5: Verify.** `./sbtw "testOnly oathdigital.testkit.SituationSuite oathdigital.gameplay.setup.SetupProcedureSuite oathdigital.gameplay.powers.setup.*"`, then `./sbtw test`. Commit: `test(testkit): add Situation with a rules and a journaled adapter`.
+- [x] **Step 5: Verify.** `./sbtw "testOnly oathdigital.testkit.SituationSuite oathdigital.gameplay.setup.SetupProcedureSuite oathdigital.gameplay.powers.setup.*"`, then `./sbtw test`. Commit: `test(testkit): add Situation with a rules and a journaled adapter`.
 
 ---
 
@@ -214,13 +214,13 @@ trait SituationDriver:
 
 **Files:** Modify `src/test/scala/oathdigital/gameplay/setup/FirstGameSetupFixture.scala:93-138`, `src/test/scala/oathdigital/gameplay/setup/GameStartToWakeSuite.scala:22-56`.
 
-- [ ] **Step 1: Pin.** Before editing, in `SituationSuite` test 1 already compares `Situation.wake` against the old `execute()`. Run it; it must pass, or the driver does not reproduce today's walk (check `placementSites(index)` — the default policy picks the first *offered* site, the old fixture picks `sites(index)`; if they differ, `wake` takes an `answers` override that maps `pawnDecisionId(p)` to `sites(turnIndex)` and the test pins that override, not the default).
+- [x] **Step 1: Pin.** Before editing, in `SituationSuite` test 1 already compares `Situation.wake` against the old `execute()`. Run it; it must pass, or the driver does not reproduce today's walk (check `placementSites(index)` — the default policy picks the first *offered* site, the old fixture picks `sites(index)`; if they differ, `wake` takes an `answers` override that maps `pawnDecisionId(p)` to `sites(turnIndex)` and the test pins that override, not the default).
 
-- [ ] **Step 2: Delegate.** `execute(placementSites)` becomes: build `Situation.rules(new OathRules(catalog))` with the pawn override from Step 1 over `placementSites`, `Situation.wake(driver, chronicle, orders)`, return `(situation.state, situation.events)`. `initialReady` stays `lazy val` over `execute()._1`. Delete the local `order` vector and the hand-assembled `PartitionAnswer`.
+- [x] **Step 2: Delegate.** `execute(placementSites)` becomes: build `Situation.rules(new OathRules(catalog))` with the pawn override from Step 1 over `placementSites`, `Situation.wake(driver, chronicle, orders)`, return `(situation.state, situation.events)`. `initialReady` stays `lazy val` over `execute()._1`. Delete the local `order` vector and the hand-assembled `PartitionAnswer`.
 
-- [ ] **Step 3: `GameStartToWakeSuite`.** Its second test (`"driving every player's two decisions ends in Wake with the recorded seating"`) becomes `Situation.wake(Situation.rules(rules))` followed by the same three assertions. Tests one and three are unchanged.
+- [x] **Step 3: `GameStartToWakeSuite`.** Its second test (`"driving every player's two decisions ends in Wake with the recorded seating"`) becomes `Situation.wake(Situation.rules(rules))` followed by the same three assertions. Tests one and three are unchanged.
 
-- [ ] **Step 4: Verify.** `./sbtw "testOnly oathdigital.testkit.SituationSuite oathdigital.gameplay.setup.*"`, then `./sbtw test` — this is the task with the widest blast radius (39 `initialReady` readers, 29 `execute()` callers). Commit: `test(setup): drive FirstGameSetupFixture through Situation.wake`.
+- [x] **Step 4: Verify.** `./sbtw "testOnly oathdigital.testkit.SituationSuite oathdigital.gameplay.setup.*"`, then `./sbtw test` — this is the task with the widest blast radius (39 `initialReady` readers, 29 `execute()` callers). Commit: `test(setup): drive FirstGameSetupFixture through Situation.wake`.
 
 ---
 
@@ -228,22 +228,22 @@ trait SituationDriver:
 
 **Files:** Modify `src/test/scala/oathdigital/application/ParkedServiceFixture.scala` (whole file), `src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala:998-1007` (`private def execute`), `src/test/scala/oathdigital/application/WalkerDecisionProjectionSuite.scala` (one `setUp` call).
 
-- [ ] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite oathdigital.application.PendingWalkerInvariantSuite oathdigital.application.PhasePowerProjectorSuite oathdigital.application.WalkerDecisionProjectionSuite"`; require pass. Record `GameApplicationServiceSuite`'s `nextSequence == 21L` and `records.size == 21` assertions; they must still hold at the end.
+- [x] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite oathdigital.application.PendingWalkerInvariantSuite oathdigital.application.PhasePowerProjectorSuite oathdigital.application.WalkerDecisionProjectionSuite"`; require pass. Record `GameApplicationServiceSuite`'s `nextSequence == 21L` and `records.size == 21` assertions; they must still hold at the end.
 
-- [ ] **Step 2: `setUp`.** Signature unchanged (`service, gameId, placementSites, setupChronicle, setupOrders): GameAccepted`). Body: `Situation.journaled(service, repository?, gameId)` — the current signature has no repository; add an overload that takes one, keep the old one building a driver whose `Arrange` fails with "setUp without a repository cannot arrange" so existing callers compile. Pawn override as in Task 3 Step 1. Return `GameAccepted(situation.state, situation.events, situation.nextSequence)`.
+- [x] **Step 2: `setUp`.** Signature unchanged (`service, gameId, placementSites, setupChronicle, setupOrders): GameAccepted`). Body: `Situation.journaled(service, repository?, gameId)` — the current signature has no repository; add an overload that takes one, keep the old one building a driver whose `Arrange` fails with "setUp without a repository cannot arrange" so existing callers compile. Pawn override as in Task 3 Step 1. Return `GameAccepted(situation.state, situation.events, situation.nextSequence)`.
 
-- [ ] **Step 3: `seed` → `Arrange`.** Keep `seed(repository, gameId, at, ops)` as a one-line delegate that runs `Step.Arrange(ops, s"arrange the $gameId fixture")` through a journaled driver at `at`; the four parks stop calling it directly and use `situation.after(Arrange(...))` instead.
+- [x] **Step 3: `seed` → `Arrange`.** Keep `seed(repository, gameId, at, ops)` as a one-line delegate that runs `Step.Arrange(ops, s"arrange the $gameId fixture")` through a journaled driver at `at`; the four parks stop calling it directly and use `situation.after(Arrange(...))` instead.
 
-- [ ] **Step 4: The four parks.** Re-express each as steps over the driver, keeping every assertion:
+- [x] **Step 4: The four parks.** Re-express each as steps over the driver, keeping every assertion:
   - `leagueTreatyPark`: `wake` (seeded Chronicle) → `Arrange(cleared ++ moves)` → `parkedAfter(EndWake(active), BeginRest(active))`; the `assertParked(... FinishRest, destinationDecisionId ...)` stays.
   - `recoverChoicePark`: `wake` (rotated Chronicle) → `parkedAfter(EndWake(actor), StartWalker(Recover, ...))`. The driver auto-rolls with the service's `failingDice`, so the Roll park is answered the way the fixture's doc already describes.
   - `oathkeeperTiePark`: `wake` → `Arrange(...)` → `parkedAfter(EndWake(active), StartWalker(Travel, ...))`.
   - `silverTonguePark`: `wake` (seeded Chronicle) → `Arrange(...)` → `after(EndWake(active), BeginRest(active))` → `parkedAfter(UsePower(active, SilverTongue.id, source))`.
   `withWorldDeckTop`, `topOfWorldDeck`, `cleared`, `failingDice` stay as they are.
 
-- [ ] **Step 5: Call sites.** `GameApplicationServiceSuite.execute` (`:998`) and `WalkerDecisionProjectionSuite`'s `setUp` call keep their shape; adjust only if the repository overload is needed where an `Arrange` follows.
+- [x] **Step 5: Call sites.** `GameApplicationServiceSuite.execute` (`:998`) and `WalkerDecisionProjectionSuite`'s `setUp` call keep their shape; adjust only if the repository overload is needed where an `Arrange` follows.
 
-- [ ] **Step 6: Verify.** The Step 1 suites, then `./sbtw test`. Commit: `test(application): drive ParkedServiceFixture through Situation`.
+- [x] **Step 6: Verify.** The Step 1 suites, then `./sbtw test`. Commit: `test(application): drive ParkedServiceFixture through Situation`.
 
 ---
 
@@ -251,15 +251,15 @@ trait SituationDriver:
 
 **Files:** Modify `src/test/scala/oathdigital/application/ForgeWalkerFixture.scala:56-178`.
 
-- [ ] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite oathdigital.application.WalkerDecisionProjectionSuite"`; require pass.
+- [x] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite oathdigital.application.WalkerDecisionProjectionSuite"`; require pass.
 
-- [ ] **Step 2: `forgeReadyGame`.** Replace the Setup loop (`:72-91`) with `Situation.wake(driver, forgeChronicle, forgeOrders)` using a pawn override that places `order(i)` at `orderedSites(i)`. Replace the Campaign block (`:93-117`) with `after(EndWake(actor), StartWalker(Campaign, StartPayload(actor)))` under an `answers` override: `CampaignIds.targets → ChooseManyAnswer(Vector.empty)`, `CampaignIds.force → ChooseAmountAnswer(3)`, `CampaignIds.sacrifice → ChooseAmountAnswer(2)`, `CampaignIds.placement → ChooseAmountAnswer(1)`. The conditional parks (`targets`, `placement`) need no `if`: the override fires only when the park occurs.
+- [x] **Step 2: `forgeReadyGame`.** Replace the Setup loop (`:72-91`) with `Situation.wake(driver, forgeChronicle, forgeOrders)` using a pawn override that places `order(i)` at `orderedSites(i)`. Replace the Campaign block (`:93-117`) with `after(EndWake(actor), StartWalker(Campaign, StartPayload(actor)))` under an `answers` override: `CampaignIds.targets → ChooseManyAnswer(Vector.empty)`, `CampaignIds.force → ChooseAmountAnswer(3)`, `CampaignIds.sacrifice → ChooseAmountAnswer(2)`, `CampaignIds.placement → ChooseAmountAnswer(1)`. The conditional parks (`targets`, `placement`) need no `if`: the override fires only when the park occurs.
 
-- [ ] **Step 3: `searchOne`.** Becomes `after(StartWalker(Search, StartPayload(actor, Vector.empty, Vector(Button("search:world")))))` under an override with two cases: `"search.cards"` computes `kept` from `park.ready.game.current.temporaryHands(actor)` exactly as today (`CardPlay.plannedOperations(cat, park.ready, actor, card, SearchPlacement.Site(None), Origin.TemporaryHand).isRight`) and answers the keep/discard `PartitionAnswer`; `id if id.startsWith("cardplay.place.")` answers `ChooseOneAnswer(Button("site"))`. The Rest round (`:158-166`) becomes `after(BeginRest(actor), EndWake(p3), BeginRest(p3), EndWake(p1), BeginRest(p1), EndWake(actor))` then one more `searchOne()`.
+- [x] **Step 3: `searchOne`.** Becomes `after(StartWalker(Search, StartPayload(actor, Vector.empty, Vector(Button("search:world")))))` under an override with two cases: `"search.cards"` computes `kept` from `park.ready.game.current.temporaryHands(actor)` exactly as today (`CardPlay.plannedOperations(cat, park.ready, actor, card, SearchPlacement.Site(None), Origin.TemporaryHand).isRight`) and answers the keep/discard `PartitionAnswer`; `id if id.startsWith("cardplay.place.")` answers `ChooseOneAnswer(Button("site"))`. The Rest round (`:158-166`) becomes `after(BeginRest(actor), EndWake(p3), BeginRest(p3), EndWake(p1), BeginRest(p1), EndWake(actor))` then one more `searchOne()`.
 
-- [ ] **Step 4: `parkedForge`.** `parkedAfter(StartWalker(Forge, ...))` from the `forgeReadyGame` situation under `mixedForgeCostCatalog`; return values unchanged.
+- [x] **Step 4: `parkedForge`.** `parkedAfter(StartWalker(Forge, ...))` from the `forgeReadyGame` situation under `mixedForgeCostCatalog`; return values unchanged.
 
-- [ ] **Step 5: Verify.** Step 1 suites, then `./sbtw test`. Commit: `test(application): drive ForgeWalkerFixture through Situation`.
+- [x] **Step 5: Verify.** Step 1 suites, then `./sbtw test`. Commit: `test(application): drive ForgeWalkerFixture through Situation`.
 
 ---
 
@@ -267,19 +267,19 @@ trait SituationDriver:
 
 **Files:** Modify `src/test/scala/oathdigital/server/AuthenticatedGameRoutesSuite.scala:36-51`, `src/test/scala/oathdigital/server/TrustedSeatRoutesSuite.scala:57-67`.
 
-- [ ] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.server.AuthenticatedGameRoutesSuite oathdigital.server.TrustedSeatRoutesSuite"`; require pass.
+- [x] **Step 1: Baseline.** `./sbtw "testOnly oathdigital.server.AuthenticatedGameRoutesSuite oathdigital.server.TrustedSeatRoutesSuite"`; require pass.
 
-- [ ] **Step 2: Replace the seeding.** In each, the `execute()` + `startWalker` chain + `repository.seed(...encodeEvent...)` block becomes `Situation.act(Situation.rules(new OathRules(catalog)), actor)` (plus `after(StartWalker(Travel, ...))` in the Negotiation test) followed by `situation.seedInto(repository, gameId)`. `actor` is `situation.ready.game.current.turn.activePlayer` read from `wake` first. The sequence the Trusted test computes (`(events ++ act.events).size`) becomes `situation.nextSequence`.
+- [x] **Step 2: Replace the seeding.** In each, the `execute()` + `startWalker` chain + `repository.seed(...encodeEvent...)` block becomes `Situation.act(Situation.rules(new OathRules(catalog)), actor)` (plus `after(StartWalker(Travel, ...))` in the Negotiation test) followed by `situation.seedInto(repository, gameId)`. `actor` is `situation.ready.game.current.turn.activePlayer` read from `wake` first. The sequence the Trusted test computes (`(events ++ act.events).size`) becomes `situation.nextSequence`.
 
-- [ ] **Step 3: Verify.** Step 1 suites, then `./sbtw test`. Commit: `test(server): seed route journals from a Situation`.
+- [x] **Step 3: Verify.** Step 1 suites, then `./sbtw test`. Commit: `test(server): seed route journals from a Situation`.
 
 ---
 
 ### Task 7: Close out
 
-- [ ] **Step 1: Gates.** `./sbtw test`, `./sbtw frontend/test`, `python3 scripts/check-architecture.py`, `python3 scripts/check-markdown-links.py`.
+- [x] **Step 1: Gates.** `./sbtw test`, `./sbtw frontend/test`, `python3 scripts/check-architecture.py`, `python3 scripts/check-markdown-links.py`.
 
-- [ ] **Step 2: Sweep.**
+- [x] **Step 2: Sweep.**
 
 ```bash
 grep -rln 'PlayerId("p2"), PlayerId("p3"), PlayerId("p1")' src/test
@@ -293,6 +293,23 @@ grep -rln 'adviserKeepKey' src/test
 
 Expected: only `SetupProcedureSuite`, `NegotiationDealSuite` and the three route suites, where the Setup answer itself is under test. If `ParkedServiceFixture`, `ForgeWalkerFixture`, `FirstGameSetupFixture` or `GameStartToWakeSuite` still appear, a task is incomplete.
 
-- [ ] **Step 3: Docs.** Tick this plan's boxes. Add a "Situations" paragraph to `docs/testing/` where fixtures are described, if such a page exists; otherwise nothing.
+- [x] **Step 3: Docs.** Tick this plan's boxes. Add a "Situations" paragraph to `docs/testing/` where fixtures are described, if such a page exists; otherwise nothing.
 
-- [ ] **Step 4: Merge.** Merge local `main` into the worktree branch first (it lags and leads `origin` independently), run `./sbtw test` once more, then merge into `main`.
+- [x] **Step 4: Merge.** Merge local `main` into the worktree branch first (it lags and leads `origin` independently), run `./sbtw test` once more, then merge into `main`.
+
+---
+
+## As built
+
+Executed on branch `game-situations`. Where the code differs from the plan above:
+
+- `ParkedNode.Roll` names its id field `rollDecisionId`; `decisionId` is a method on both cases.
+- `Situation.rules` takes the catalog, power catalogs and ports and builds the `OathRules` itself, so the park rebuild cannot use power catalogs other than the rules'. `Situation.serviceRules` replaces `defaultRules` and returns a driver. Both take the war-exhaustion port too.
+- Steps are `(GameCommand | Step)*`, not an implicit `Conversion`: the build fails on feature warnings.
+- Answers: `withAnswers(overrides)` layers over `Situation.defaultAnswer`, replacing earlier overrides; `withPolicy(policy)` replaces the whole policy. `Situation.pawnsAt(sites)` places the n-th pawn at `sites(n)`, reading n from the board, so no file spells the turn order.
+- The journaled adapter takes any `EventStreamRepository` (the service suite runs it over HSQL), or none, in which case `Arrange` is rejected. `ParkedServiceFixture.seed` had no outside caller and was deleted.
+- The rules adapter refuses `WithModifiers` rather than skip the modifier check.
+- No shipped procedure parks on a `Roll` (every `Roll` is automatic), so the plan's Task 2 test 6 became a Recover-choice park under the rules adapter; the loop's Roll branch is untested.
+- `FirstGameSetupFixture.initialSituation(placementSites)` is the fixture's first game as a situation; `execute()` returns its state and events.
+- `SituationSuite` test 1 compared `wake` with the hand-written walk until Task 3 made that comparison circular; it now pins the fixture's documented seating.
+- The Task 7 sweep leaves `adviserKeepKey` only in `GameApplicationServiceSuite`'s adviser-privacy test, where the Setup answer is under test. The route suites, `SetupProcedureSuite` and `NegotiationDealSuite` had already stopped naming it before this plan ran.
