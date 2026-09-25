@@ -13,7 +13,6 @@ import oathdigital.model._
 object PlaceBannerResourceProcedure:
   val bannerDecisionId: String = "place-banner-resource.banner"
   val amountDecisionId: String = "place-banner-resource.amount"
-  val decisionIds: Set[String] = Set(bannerDecisionId, amountDecisionId)
 
   /** The amount question's own copy: the banner as it is printed, and the
     * one resource that banner takes.

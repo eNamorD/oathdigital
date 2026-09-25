@@ -17,8 +17,6 @@ import oathdigital.model._
 object ChallengeProcedure:
   val bannerDecisionId: String = "challenge.banner"
   val amountDecisionId: String = "challenge.amount"
-  val decisionIds: Set[String] =
-    Set(bannerDecisionId, amountDecisionId, ChallengeRibbon.siteDecisionId)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerStepRecorded}
+import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -15,12 +15,11 @@ object MovementFixture:
   import PowerFixture._
   import TargetsFixture.rules
 
-  /** The parked decision, as this file's suites rebuild it: the same catalog
-    * and phase power catalog `rules` (= `TargetsFixture.rules`) was built
-    * with.
+  /** The parked decision: the same `ParkedDecisionAssertions`, built on the
+    * same catalog and phase power catalog, that `TargetsFixture` already
+    * has.
     */
-  val parked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  val parked = TargetsFixture.parked
 
   val p1: PlayerId = PlayerId("p1")
   val p3: PlayerId = PlayerId("p3")

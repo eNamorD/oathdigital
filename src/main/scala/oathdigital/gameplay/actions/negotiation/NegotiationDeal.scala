@@ -25,7 +25,6 @@ final case class DealState(participants: Vector[PlayerId],
 object NegotiationDeal:
   val negotiatorsDecisionId: String = "negotiation.negotiators"
   val dealDecisionId: String = "negotiation.deal"
-  val decisionIds: Set[String] = Set(negotiatorsDecisionId, dealDecisionId)
 
   /** The players the actor may deal with: the others whose pawn is at the
     * actor's pawn site. The one place that rule lives, asked when the tree is

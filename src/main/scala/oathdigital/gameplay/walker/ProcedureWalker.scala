@@ -234,8 +234,7 @@ object ProcedureWalker:
     * primary owner, read off the rebuilt and transformed node, or the active
     * player for a parked `Roll`.
     * Never stored -- a power that changes an owner changes this answer on the
-    * next command, and authorization, projection and continuation all read
-    * it (Task 5).
+    * next command, and authorization and projection both read it (Task 5).
     */
   def awaitedPlayer(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[PlayerId] =

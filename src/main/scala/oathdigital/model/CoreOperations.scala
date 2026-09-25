@@ -577,7 +577,7 @@ final case class Decide(decisionId: String, owner: PlayerId,
     coOwners: Vector[PlayerId] = Vector.empty)
     extends PrimitiveOperation:
   /** Everyone who may answer: `owner` first, then the co-owners, each once.
-    * `owner` stays the primary owner, the addressee of continuations.
+    * `owner` stays the primary owner, the player `awaitedPlayer` names.
     */
   def owners: Vector[PlayerId] = (owner +: coOwners).distinct
 

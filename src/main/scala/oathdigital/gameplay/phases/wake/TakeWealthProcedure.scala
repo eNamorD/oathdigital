@@ -17,7 +17,7 @@ import oathdigital.model._
   * **Why it is the first action outside Act.** Take Wealth runs in the Wake
   * phase, which is the reason Wake is in this batch: it proves the walker
   * itself carries no phase, since the only thing that changes here is which
-  * gate `build` runs and which continuation the completed action produces.
+  * gate `build` runs.
   *
   * **The limit is not a gate here.** "Once per turn at each site" is a
   * `Restriction` declared by [[oathdigital.gameplay.powers.wake.TakeWealthLimit]] at this tree's own window, so

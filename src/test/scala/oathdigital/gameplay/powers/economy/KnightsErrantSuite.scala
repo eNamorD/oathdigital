@@ -129,7 +129,6 @@ class KnightsErrantSuite extends munit.FunSuite:
     val start = staged(supply = 1)
     val forced = toForce(answer(musterFrom(start, modifiers),
       KnightsErrant.decisionId, campaign))
-    assertEquals(parkedOn(forced), CampaignIds.force)
     parked.assertParked(forced.state, ActionRef.Muster, CampaignIds.force, actor)
     assertEquals(query(forced).asInstanceOf[DecisionQuery.ChooseAmount].max,
       afterMuster)

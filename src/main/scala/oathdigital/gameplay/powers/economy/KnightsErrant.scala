@@ -63,7 +63,7 @@ final case class KnightsErrant private (cardId: DenizenId,
 
 object KnightsErrant:
   val id: PowerId = PowerId("denizen.knights-errant")
-  /** Under the `muster.` prefix, which the Muster's continuation recognises. */
+  /** Under the `muster.` prefix. */
   val decisionId: String = "muster.knights-errant.campaign"
   val campaignOption: DecisionOptionRef.Button =
     DecisionOptionRef.Button("campaign")

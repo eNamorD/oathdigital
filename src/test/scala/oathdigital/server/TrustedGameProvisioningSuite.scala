@@ -1,6 +1,6 @@
 package oathdigital.server
 
-import oathdigital.model.PlayerColor
+import oathdigital.model.{PlayerColor, TriggeredProcedureRef}
 
 import java.nio.file.{Files, Path}
 import java.sql.{Connection, DriverManager}
@@ -8,6 +8,7 @@ import oathdigital.application._
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, chronicle,
   orders, participants}
+import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.protocol._
@@ -160,8 +161,8 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       .handle("prepared", 0L, GameCommand.Begin(chronicle, dealt)).toOption.get
     assertEquals(prepared.state, accepted.state)
     assertEquals(prepared.events, accepted.events)
-    assertEquals(parkedAssertions.parkedDecision(prepared.state),
-      parkedAssertions.parkedDecision(accepted.state))
+    parkedAssertions.assertParked(accepted.state, TriggeredProcedureRef.Setup,
+      SetupProcedure.pawnDecisionId(orders.firstPlayer), orders.firstPlayer)
     assertEquals(prepared.records, journal.load("prepared").toOption.flatten.get.records)
 
   test("store rejects invalid seat and record input without throwing or persisting rows"):

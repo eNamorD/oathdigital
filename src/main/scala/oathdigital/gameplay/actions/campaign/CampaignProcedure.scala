@@ -17,15 +17,10 @@ import oathdigital.model._
   * the losses change the board.
   */
 object CampaignProcedure:
-  val decisionIds: Set[String] = CampaignIds.all
-
   /** Every decision a Campaign asks starts with this, whether the engine or a
     * power asks it, so a parked one is always a Campaign decision.
     */
   val decisionPrefix: String = "campaign."
-
-  def isDecision(decisionId: String): Boolean =
-    decisionId.startsWith(decisionPrefix)
 
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for

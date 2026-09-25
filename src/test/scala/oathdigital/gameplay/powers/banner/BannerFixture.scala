@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
 /** Staging shared by the banner-face suites. The first game seats three
@@ -13,12 +12,12 @@ import oathdigital.model._
 object BannerFixture:
   import PowerFixture._
 
-  /** The parked decision, as this file's suites rebuild it: the same catalog
-    * and phase power catalog `TargetsFixture.rules` was built with, since
-    * the transitions `backToActing` reads come from that fixture.
+  /** The parked decision: the same `ParkedDecisionAssertions`, built on the
+    * same catalog and phase power catalog, that `TargetsFixture` already
+    * has, since the transitions `backToActing` reads come from that
+    * fixture.
     */
-  val parked = new ParkedDecisionAssertions(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+  val parked = TargetsFixture.parked
 
   val p1: PlayerId = PlayerId("p1")
   val p3: PlayerId = PlayerId("p3")

@@ -21,8 +21,6 @@ import oathdigital.model._
   * all read `PendingTree.answered` (see [[NegotiationDeal]]).
   */
 object NegotiationProcedure:
-  val decisionIds: Set[String] = NegotiationDeal.decisionIds
-
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)

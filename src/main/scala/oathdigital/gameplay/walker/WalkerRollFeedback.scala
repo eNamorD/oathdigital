@@ -9,8 +9,7 @@ import oathdigital.model.PoolKey
   * A `Decide` carries no pool of its own, and a projector that matched on the
   * procedure to decide what to show was exactly the drift the walker registry
   * exists to end -- so the procedure declares it, keyed by decision id, in the
-  * same registry entry that already declares its roll decision id and its
-  * continuations.
+  * same registry entry that already declares its roll decision id.
   */
 final case class WalkerRollFeedback(pool: PoolKey, target: Option[Int] = None,
     detail: Vector[String] = Vector.empty)

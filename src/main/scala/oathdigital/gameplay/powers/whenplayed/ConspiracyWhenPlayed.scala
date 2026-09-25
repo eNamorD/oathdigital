@@ -16,8 +16,7 @@ import oathdigital.model._
   *    batch, so the card leaves the game even when there was nothing to take.
   *
   * A legal target cannot be declined. The decision id sits under the
-  * `cardplay.` prefix, which the registry already maps to a prompt
-  * continuation for both Search and the facedown-adviser play.
+  * `cardplay.` prefix, shared with both Search and the facedown-adviser play.
   *
   * The transform must fold to the same vector while the decision is parked: it
   * reads only state that nothing between the fold and the answer changes.

@@ -6,11 +6,10 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
 /** What a parked position holds, derived the way the walker derives it
-  * rather than read off a value the rules stored. `coOwners` is the whole
-  * answering set, including `awaiting`.
+  * rather than read off a value the rules stored.
   */
 final case class ParkedDecisionFacts(procedure: ProcedureRef, decision: String,
-    awaiting: PlayerId, coOwners: Set[PlayerId])
+    awaiting: PlayerId)
 
 /** The parked decision as a test may assert it.
   *
@@ -81,8 +80,7 @@ final class ParkedDecisionAssertions(
                 powers).getOrElse(fail(
               s"a walker is pending at '$at' of $procedure on '$decision' " +
                 "but no player is awaited"))
-            Some(ParkedDecisionFacts(procedure, decision, awaiting,
-              ProcedureWalker.awaitedPlayers(ready, tree, pending, powers)))
+            Some(ParkedDecisionFacts(procedure, decision, awaiting))
       case _ => None
 
   /** The game is parked on `decision` of `procedure`, awaiting `awaiting`.
@@ -113,8 +111,3 @@ final class ParkedDecisionAssertions(
       case Ready(ready) => ready.game.current.turn
       case other => fail(s"expected a ready game, got $other")
     assertEquals((turn.phase, turn.activePlayer), (phase, active))
-
-  /** Co-owners, for a decision more than one player may answer. */
-  def assertCoOwners(state: OathState, owners: Set[PlayerId])(
-      using munit.Location): Unit =
-    assertEquals(parkedDecision(state).map(_.coOwners), Some(owners))

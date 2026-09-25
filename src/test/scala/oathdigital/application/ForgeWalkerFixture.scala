@@ -23,13 +23,6 @@ import oathdigital.model.OathState.Ready
   */
 object ForgeWalkerFixture extends munit.Assertions:
 
-  /** The parked decision, as this fixture rebuilds it: the same catalog and
-    * power catalogs `GameApplicationService` builds its rules with
-    * (`GameApplicationService.scala:87-90`).
-    */
-  private val parkedAssertions = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
-
   /** Every Forge in this fixture is preceded by a conquest, and a conquest
     * needs dice. These always come up the same way so the board the Forge
     * starts from is the same board every run.
@@ -63,6 +56,13 @@ object ForgeWalkerFixture extends munit.Assertions:
   def forgeReadyGame(service: GameApplicationService, gameId: String,
       cat: oathdigital.catalog.ExecutableCatalog = catalog)
       : (GameAccepted, PlayerId, SiteId) =
+    // The parked decision, as this fixture rebuilds it: the catalog and
+    // power catalogs `GameApplicationService` builds its rules with
+    // (`GameApplicationService.scala:87-90`) -- `cat`, not the module's
+    // default `catalog`, since `parkedForge` drives this under
+    // `mixedForgeCostCatalog`.
+    val parkedAssertions = new ParkedDecisionAssertions(cat,
+      WalkerPowerCatalog.default(cat), PhasePowerCatalog.default(cat))
     // Every homeland site restricts which denizens may be played there, and
     // this fixture plays three in, so the site has to be a non-homeland one.
     val forgeSite = cat.sites.find(site => site.forgeRequirements.nonEmpty &&

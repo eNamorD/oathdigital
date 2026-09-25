@@ -12,9 +12,6 @@ import oathdigital.model._
 object MusterProcedure:
   val decisionId: String = "muster.source"
 
-  /** Every decision a Muster or a power inside it asks starts with this. */
-  val decisionPrefix: String = "muster."
-
   private val kind = EconomyTree.Kind(decisionId,
     "Choose a card to Muster from", PowerWindow.MusterActionEligibility,
     PowerWindow.MusterSourceSelection, PowerWindow.MusterCost,
