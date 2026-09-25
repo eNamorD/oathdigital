@@ -48,12 +48,7 @@ final case class StoredSession(
     csrfTokenDigest: Option[CsrfTokenDigest]
 )
 
-sealed trait MembershipRole extends Product with Serializable
-object MembershipRole {
-  case object Owner extends MembershipRole
-  case object Player extends MembershipRole
-  case object Spectator extends MembershipRole
-}
+enum MembershipRole { case Owner, Player, Spectator }
 
 final case class GameMembership(
     gameId: String,

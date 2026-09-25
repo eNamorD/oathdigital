@@ -6,12 +6,7 @@ import java.nio.file.{Path, Paths}
 import scala.util.Try
 import scala.util.control.NonFatal
 
-sealed trait ServerMode extends Product with Serializable
-
-object ServerMode {
-  case object Development extends ServerMode
-  case object TrustedAlpha extends ServerMode
-}
+enum ServerMode { case Development, TrustedAlpha }
 
 final case class ServerConfig(
     host: String,

@@ -1,12 +1,6 @@
 package oathdigital.application
 
-sealed trait TrustedGameStoreFailure extends Product with Serializable
-object TrustedGameStoreFailure {
-  case object DuplicateGame extends TrustedGameStoreFailure
-  case object CodeCollision extends TrustedGameStoreFailure
-  case object InvalidInput extends TrustedGameStoreFailure
-  case object StorageFailure extends TrustedGameStoreFailure
-}
+enum TrustedGameStoreFailure { case DuplicateGame, CodeCollision, InvalidInput, StorageFailure }
 
 /** Commits the identity resource, seats and initial journal as one transaction. */
 trait TrustedGameStore {

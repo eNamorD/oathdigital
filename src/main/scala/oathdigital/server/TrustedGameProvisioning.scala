@@ -7,13 +7,7 @@ import scala.util.control.NonFatal
 import oathdigital.application._
 import oathdigital.protocol._
 
-sealed trait TrustedGameFailure extends Product with Serializable
-object TrustedGameFailure {
-  case object InvalidRequest extends TrustedGameFailure
-  case object DuplicateGame extends TrustedGameFailure
-  case object CodeCollision extends TrustedGameFailure
-  case object StorageFailure extends TrustedGameFailure
-}
+enum TrustedGameFailure { case InvalidRequest, DuplicateGame, CodeCollision, StorageFailure }
 
 final class TrustedGameProvisioning(
     service: GameApplicationService,

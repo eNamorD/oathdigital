@@ -31,20 +31,9 @@ final case class DenizenDefinition(
     powers: Vector[CatalogPower]
 ) extends CatalogPoweredDefinition
 
-sealed trait CardRestrictions extends Product with Serializable
-object CardRestrictions {
-  case object Unrestricted extends CardRestrictions
-  case object Locked extends CardRestrictions
-  case object SiteOnly extends CardRestrictions
-  case object AdviserOnly extends CardRestrictions
-  case object LockedAdviserOnly extends CardRestrictions
-}
+enum CardRestrictions { case Unrestricted, Locked, SiteOnly, AdviserOnly, LockedAdviserOnly }
 
-sealed trait RelicRole extends Product with Serializable
-object RelicRole {
-  case object Ordinary extends RelicRole
-  case object GrandScepter extends RelicRole
-}
+enum RelicRole { case Ordinary, GrandScepter }
 
 final case class RelicDefinition(
     id: DefinitionId,
