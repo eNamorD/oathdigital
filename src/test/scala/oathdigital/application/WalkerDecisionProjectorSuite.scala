@@ -528,21 +528,16 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
 
   /** Task 5: a `cardplay.place.*` park -- the one question in the walker
     * whose subject is not among its own options (a placement offers
-    * "discard"/"play faceup" buttons, never the card itself). The tree is
-    * substituted, the same way every other synthetic `Decide` in this suite
-    * is, but the decision id carries the real spelling `CardPlayProcedure`
-    * builds it with (`kind` then `value`), and the card sits where a real
-    * facedown adviser would: in the actor's own `advisers`.
+    * "discard"/"play faceup" buttons, never the card itself). The projector
+    * reads the card off the decision id, spelled the way `CardPlayProcedure`
+    * builds it (`kind` then `value`), and `GameProjector` draws it with the
+    * cards in hand; the lookup is exercised on its own here, with the card
+    * where a real facedown adviser would be: in the actor's own `advisers`.
     */
   private val facedownAdviserCard = DenizenId("denizen:vow-of-peace")
 
-  private def facedownAdviserTree(actor: PlayerId, card: DenizenId = facedownAdviserCard)
-      : Operation =
-    Sequence(Decide(s"cardplay.place.${card.kind}.${card.value}",
-      actor, DecisionQuery.ChooseOne(Vector(
-        DecisionOption.Button(DecisionOptionRef.Button("discard"), "Discard"),
-        DecisionOption.Button(DecisionOptionRef.Button("adviser-faceup"),
-          "Play faceup")))))
+  private def placementId(card: DenizenId): String =
+    s"cardplay.place.${card.kind}.${card.value}"
 
   private def facedownAdviserPlacement: (ScopedProjectionContext, PlayerId) =
     val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
@@ -553,24 +548,23 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
         else player))))
     (withAdviser, actor)
 
-  test("a placement decision projects the card being placed"):
+  test("a placement decision names the card being placed"):
     val (context, actor) = facedownAdviserPlacement
-    val projected = projectorFor(facedownAdviserTree(actor)).project(context)
-    assertEquals(projected.map(_.decisionId),
-      Some("cardplay.place.denizen.denizen:vow-of-peace"))
-    assertEquals(projected.toVector.flatMap(_.subjectCards).map(_.cardId),
-      Vector("denizen:vow-of-peace"))
+    val subjects = projector.subjectCards(context.ready, Some(actor),
+      placementId(facedownAdviserCard))
+    assertEquals(subjects.map(s => (s.cardId, s.hidden)),
+      Vector(("denizen:vow-of-peace", false)))
 
   /** `PlayFacedownAdviser` parks with the actor as its only owner, so there
     * is no co-owner fixture that reaches the projector as a non-owning
     * viewer (Task 5 brief's documented fallback): instead, a decision that
-    * is not a `cardplay.*` one -- the off-turn `Decide` above -- proves the
-    * subject is empty when the decision has none to name.
+    * is not a `cardplay.*` one proves the subject is empty when the decision
+    * has none to name.
     */
-  test("a decision that is about no card projects no subject"):
-    val (ready, _, owner, projector) = parkedOffTurn
-    val projected = projector.project(ScopedProjectionContext(ready, Some(owner)))
-    assertEquals(projected.toVector.flatMap(_.subjectCards), Vector.empty)
+  test("a decision that is about no card names no subject"):
+    val (context, actor) = facedownAdviserPlacement
+    assertEquals(projector.subjectCards(context.ready, Some(actor),
+      "test.decide"), Vector.empty)
 
   /** The redaction check the brief's own hidden-viewer test would have
     * covered has no co-owner fixture to reach it through (see above), but
@@ -589,8 +583,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       "it hidden, not with its real identity and not dropped"):
     val (context, actor) = parked(ActionRef.PlayFacedownAdviser)
     val missing = DenizenId("denizen:not-on-board")
-    val subjects = projectorFor(facedownAdviserTree(actor, missing))
-      .project(context).toVector.flatMap(_.subjectCards)
+    val subjects = projector.subjectCards(context.ready, Some(actor),
+      placementId(missing))
     assertEquals(subjects.map(s => (s.cardId, s.cardKind, s.hidden)),
       Vector(("hidden", "denizen", true)))
 

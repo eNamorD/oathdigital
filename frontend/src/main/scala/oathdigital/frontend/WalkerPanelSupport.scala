@@ -154,14 +154,8 @@ private[frontend] object WalkerPanelSupport:
     // first, as on every panel a roll belongs beside.
     rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", decisionHeading(query)))
-    // The card the question is about. A placement asks about a card that
-    // is neither an option nor in the temporary hand, so without this the
-    // player answers about a card they cannot see.
-    if decision.subjectCards.nonEmpty then
-      val subjects = element("div", "decision-subject")
-      decision.subjectCards.foreach(card =>
-        subjects.appendChild(CardFace.render(card)))
-      panel.appendChild(subjects)
+    // The card a placement is about is not among its options; it is drawn
+    // with the cards in hand (`temporaryHandPreview`), not here.
     // What this loop has already applied. A `Repeat` re-asks with the
     // chosen answers removed, so the panel otherwise reads as resetting.
     if decision.answeredOptions.nonEmpty then

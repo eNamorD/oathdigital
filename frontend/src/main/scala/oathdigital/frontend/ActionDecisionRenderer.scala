@@ -54,9 +54,10 @@ private[frontend] object ActionDecisionRenderer:
      panel.appendChild(winnerBanner(value, winner, victory))
    }
    // Drawn cards wait in the temporary hand: starting advisers, a Search's
-   // draw, a Vision in flight. The projection drops the preview once a
-   // decision offers the same cards, so nothing here has to know which
-   // action put them there.
+   // draw, a Vision in flight. A card a placement is about rides along, even
+   // when it is played from the board. The projection drops every card a
+   // decision offers as an option, so nothing here has to know which action
+   // put them there or which decision is asking.
    if value.temporaryHandPreview.nonEmpty then
      val preview = element("section", "temporary-hand-preview")
      preview.appendChild(text("h3", "", "Cards in hand"))

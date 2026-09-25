@@ -116,24 +116,11 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(rolling)),
       Right(rolling))
 
-  /** `ActionProjectionCodec` is `private[projection]`, so this reaches it
-    * the same way every other walker-decision test in this suite does: a
-    * full `GameProjection` round-trip through `GameProjectionCodec`.
-    */
-  test("a walker decision round-trips the cards it is about"):
-    val card = CardDetailsProjection("d1", "denizen", "Old Oak",
-      orientation = Some("face-down"))
-    val subject = projection.copy(walkerDecision = Some(
-      WalkerDecisionProjection("search", "cardplay.place.denizen.d1",
-        "decide", subjectCards = Vector(card))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(subject)),
-      Right(subject))
-
   /** Task 8: the answers already recorded at a repeated decision, described
     * as options -- the plan window's own "what has already been applied"
-    * strip, and the third key `WalkerDecisionProjection`'s codec added
-    * alongside `subjectCards` (Task 5) and `badge` (Task 7, on the option
-    * row itself).
+    * strip. `ActionProjectionCodec` is `private[projection]`, so this reaches
+    * it the same way every other walker-decision test in this suite does: a
+    * full `GameProjection` round-trip through `GameProjectionCodec`.
     */
   test("a walker decision round-trips the options already answered at it"):
     val played = DecisionOptionProjection("relic", "relic:sticky-fire",
