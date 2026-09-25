@@ -19,8 +19,8 @@ class RestButtonSuite extends munit.FunSuite:
         restSupplyGain = gain),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "red"),
-      ParkedDecision.Routed(None, None), SessionDrafts.empty,
-      new RecordingView("game", "red"))
+      ParkedDecision.Routed(None, None), canControl = true, SessionDrafts.empty,
+      new RecordingView("game", "red")).element
       .querySelectorAll(".rest-action").toVector
       .map(_.asInstanceOf[dom.Element].textContent).headOption
 

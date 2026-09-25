@@ -28,8 +28,8 @@ class ActionOptionRowSuite extends munit.FunSuite:
           canPeekSiteRelics = true, Vector.empty, Some("site:a"), 2, 1))),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "red"),
-      ParkedDecision.Routed(None, None), SessionDrafts.empty,
-      new RecordingView("game", "red"))
+      ParkedDecision.Routed(None, None), canControl = true, SessionDrafts.empty,
+      new RecordingView("game", "red")).element
 
   private def rows(group: String,
       of: dom.Element = panel()): Vector[dom.Element] = of

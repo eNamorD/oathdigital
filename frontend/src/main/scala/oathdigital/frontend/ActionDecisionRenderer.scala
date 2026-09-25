@@ -2,10 +2,14 @@ package oathdigital.frontend
 import oathdigital.protocol.{GameIntent => GameCommand, _}; import org.scalajs.dom
 import ServerUiSupport._
 private[frontend] object ActionDecisionRenderer:
- def status(value: GameProjection, ui: ServerUiView): dom.Element =
-   import ui._
+ /** The pane and the one line `ServerModeUi` keys the panel's focus reset
+   * on: the first selection instruction or modifier confirm appended, or
+   * "" -- what the old `querySelector` over the same two classes returned.
+   */
+ final case class ActionPane(element: dom.Element, prompt: String)
+
+ def status(value: GameProjection, presentation: ViewerPresentation): dom.Element =
    val node = element("div", "status")
-   val presentation = viewerPresentation(value, currentPlayerId)
    presentation.procedureStatus match
      case Some(message) => node.textContent = message
      case None => presentation.waitingForPlayerId match
@@ -43,12 +47,14 @@ private[frontend] object ActionDecisionRenderer:
          case None => node.appendChild(dom.document.createTextNode("none"))
    node
  def actionsPanel(value: GameProjection, presentation: ViewerPresentation,
-     routed: ParkedDecision.Routed, drafts: SessionDrafts,
-     ui: ServerUiView): dom.Element =
-   import ui._
+     routed: ParkedDecision.Routed, canControl: Boolean,
+     drafts: SessionDrafts, controls: ActionControls): ActionPane =
+   import controls._
+   var prompt = ""
+   def promptOnce(line: String): Unit = if prompt.isEmpty then prompt = line
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
-   panel.appendChild(status(value, ui))
+   panel.appendChild(status(value, presentation))
    value.oathkeeper.flatMap(_.winnerPlayerId).foreach { winner =>
      val victory = value.oathkeeper.flatMap(_.winnerVictoryKind)
        .getOrElse("winner").replace('-', ' ')
@@ -71,7 +77,7 @@ private[frontend] object ActionDecisionRenderer:
    // with the board; the acting player's resources are on their own board
    // already, and a site's loose wealth is drawn on the site.
    if value.phase == "wake" && presentation.showGameplayControls then
-     takeWealthActions(value, currentPlayerId).foreach { action =>
+     takeWealthActions(value, presentation.playerId).foreach { action =>
        val control = button(action.label, "wake-action")
        control.disabled = !canControl
        control.onclick = _ => submitCommand(action.command)
@@ -84,15 +90,16 @@ private[frontend] object ActionDecisionRenderer:
      end.onclick = _ => submitCommand(GameCommand.EndWake)
      panel.appendChild(end)
    if !value.actionSelectionOpen && presentation.showGameplayControls then
-     currentBoardSelection.flatMap(_.activeAction).foreach { action =>
+     drafts.boardTargets.flatMap(_.activeAction).foreach { action =>
+       promptOnce(action.prompt)
        panel.appendChild(text("p", "selection-instruction", action.prompt))
        panel.appendChild(text("p", "selection-cardinality",
          cardinalityInstruction(action)))
      }
    if showActActionControls(value, presentation) then
-     val selection = currentBoardSelection.flatMap(_.activeAction)
-     if currentModifierWorkflow.exists(_.ordering) then
-       val workflow = currentModifierWorkflow.get
+     val selection = drafts.boardTargets.flatMap(_.activeAction)
+     if drafts.modifiers.exists(_.ordering) then
+       val workflow = drafts.modifiers.get
        panel.appendChild(text("h2", "", s"Order ${actionLabel(workflow.preview.action)} modifiers"))
        panel.appendChild(text("p", "modifier-instruction", "Choose optional modifiers in " +
          "resolution order. Numbered badges show that order."))
@@ -140,17 +147,19 @@ private[frontend] object ActionDecisionRenderer:
          }
          panel.appendChild(row)
        }
+       promptOnce("Confirm modifier order")
        val confirm = button("Confirm modifier order", "modifier-confirm")
        confirm.disabled = !canControl; confirm.onclick = _ => confirmModifiers(); panel.appendChild(confirm)
        val back = button("Back", "modifier-back"); back.onclick = _ => backFromModifiers()
        panel.appendChild(back)
        val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
          cancelModifiers(); panel.appendChild(cancel)
-     else if currentFacedownAdviserDraft.nonEmpty then
+     else if drafts.facedownAdviser.nonEmpty then
        panel.appendChild(FacedownAdviserRenderer.render(
-         currentFacedownAdviserDraft.get, canControl, ui))
+         drafts.facedownAdviser.get, canControl, controls))
      else if selection.nonEmpty then
        val action = selection.get
+       promptOnce(action.prompt)
        panel.appendChild(text("p", "selection-instruction", action.prompt))
        panel.appendChild(text("p", "selection-cardinality",
          cardinalityInstruction(action)))
@@ -158,7 +167,7 @@ private[frontend] object ActionDecisionRenderer:
          val cancel = button("Cancel", "cancel-board-selection")
          cancel.onclick = _ => cancelTargetAction()
          panel.appendChild(cancel)
-         currentModifierWorkflow.foreach { workflow =>
+         drafts.modifiers.foreach { workflow =>
            val back = button(if workflow.hadModifierStage then "Back to modifiers"
              else "Back to actions", "back-board-selection")
            back.onclick = _ => backFromTargets(); panel.appendChild(back)
@@ -166,8 +175,8 @@ private[frontend] object ActionDecisionRenderer:
        if action.explicitConfirm then
          val confirm = button("Confirm selection", "confirm-board-selection")
          confirm.disabled = !canControl ||
-           !currentBoardSelection.exists(_.canConfirm)
-         confirm.onclick = _ => currentBoardSelection.flatMap(_.confirm)
+           !drafts.boardTargets.exists(_.canConfirm)
+         confirm.onclick = _ => drafts.boardTargets.flatMap(_.confirm)
            .foreach(handleSelection)
          panel.appendChild(confirm)
      else
@@ -244,14 +253,14 @@ private[frontend] object ActionDecisionRenderer:
            (action.candidates.isEmpty && action.minimum > 0)
          control.onclick = _ => {
            if action.minimum == 0 && action.maximum == 0 then
-             commandForSelection(action, Vector.empty, currentPlayerId).foreach(submitCommand)
+             commandForSelection(action, Vector.empty, presentation.playerId)
+               .foreach(submitCommand)
            else
              if ModifierWorkflow.targeted(action.actionKind).nonEmpty then
                beginTargetedMajorAction(action.actionKind)
              else
-               currentBoardSelection = currentBoardSelection.map(
-                 _.activate(action.actionKind))
-               rerender()
+               drafts.boardTargets.foreach(state =>
+                 stage(Draft.BoardTargets(state.activate(action.actionKind))))
          }
          groups.appendKind(action.actionKind, control)
        }
@@ -269,7 +278,8 @@ private[frontend] object ActionDecisionRenderer:
          rest.disabled = !canControl
          rest.onclick = _ => submitCommand(GameCommand.BeginRest)
          panel.appendChild(rest)
-   ParkedDecision.render(value, presentation, routed, canControl, panel, drafts, ui)
+   ParkedDecision.render(value, presentation, routed, canControl, panel, drafts,
+     controls)
    CampaignResultPanel.render(value, panel)
    if value.phase == "rest" && presentation.showGameplayControls then
      PhasePowerButtons.render(value, canControl, panel, submitCommand)
@@ -281,4 +291,4 @@ private[frontend] object ActionDecisionRenderer:
        finish.disabled = !canControl
        finish.onclick = _ => submitCommand(GameCommand.FinishRest)
        panel.appendChild(finish)
-   panel
+   ActionPane(panel, prompt)

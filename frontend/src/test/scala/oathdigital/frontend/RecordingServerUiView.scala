@@ -42,13 +42,11 @@ private[frontend] class RecordingView(gameId: String, playerId: String)
   def rerender(): Unit = rerenders += 1
   def submitCommand(command: Intent): Unit = submitted :+= command
 
-  def currentPlayerId: String = playerId
   var boardSelection: Option[BoardTargetSelectionState] = None
   def currentBoardSelection: Option[BoardTargetSelectionState] = boardSelection
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit =
     boardSelection = value
-  var modifierWorkflow: Option[ModifierWorkflow] = None
-  def currentModifierWorkflow: Option[ModifierWorkflow] = modifierWorkflow
+  def currentModifierWorkflow: Option[ModifierWorkflow] = None
   def currentFacedownAdviserDraft: Option[FacedownAdviserDraft] = None
   def chooseFacedownAdviser(cardId: String): Unit = ()
   def toggleModifier(value: PreviewModifier): Unit = ()

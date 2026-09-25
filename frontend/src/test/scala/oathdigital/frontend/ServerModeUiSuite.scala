@@ -728,7 +728,8 @@ class ServerModeUiSuite extends FunSuite:
       ready = false
     ).copy(walkerDecision = Some(pawnDecision))
 
-    val ownerStatus = ActionDecisionRenderer.status(value, new RecordingView("game-1", "blue-exile"))
+    val ownerStatus = ActionDecisionRenderer.status(value,
+      ServerUiSupport.viewerPresentation(value, "blue-exile"))
     assertEquals(ownerStatus.textContent, "Choose your starting site")
     assert(!ownerStatus.textContent.contains("active participant"))
 
@@ -744,7 +745,8 @@ class ServerModeUiSuite extends FunSuite:
       ready = false
     ).copy(walkerDecision = Some(decision))
 
-    val ownerStatus = ActionDecisionRenderer.status(value, new RecordingView("game-1", "blue-exile"))
+    val ownerStatus = ActionDecisionRenderer.status(value,
+      ServerUiSupport.viewerPresentation(value, "blue-exile"))
     assertEquals(ownerStatus.textContent, "Your decision.")
 
   test("board target classes distinguish candidate selected and read-only state"):

@@ -9,7 +9,6 @@ import scala.scalajs.js
   * goes in the last one.
   */
 private[frontend] trait ServerUiView extends ActionControls:
-  def currentPlayerId: String
   def currentBoardSelection: Option[BoardTargetSelectionState]
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit
   def currentWalkerPartition: Option[WalkerPartitionDraft]

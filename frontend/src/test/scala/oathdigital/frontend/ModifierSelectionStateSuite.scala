@@ -10,11 +10,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
   private val first = PreviewModifier("adviser:p:denizen:a", "h.a", "A")
   private val second = PreviewModifier("site-card:s:denizen:b", "h.b", "B")
 
-  /** Reaches the `currentModifierWorkflow.exists(_.ordering)` branch of
-    * `ActionDecisionRenderer.actionsPanel` -- no fixture in this suite drove
-    * that branch before this test, since `RecordingView.currentModifierWorkflow`
-    * was hardcoded `None` (see `RecordingServerUiView.scala`, now a settable
-    * `modifierWorkflow` var alongside its other draft fields).
+  /** Reaches the `drafts.modifiers.exists(_.ordering)` branch of
+    * `ActionDecisionRenderer.actionsPanel`.
     */
   private def renderOrderingPanel(modifiers: Vector[PreviewModifier])
       : org.scalajs.dom.Element =
@@ -24,8 +21,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       context.copy(action = "travel"), modifiers, "ordering-preview")
     val workflow = ModifierWorkflow(None, Some("travel"), Map.empty, response,
       selection, ModifierWorkflowStage.Ordering)
-    val view = new RecordingView("g", "p")
-    view.modifierWorkflow = Some(workflow)
     ActionDecisionRenderer.actionsPanel(
       GameProjection("g", 4L, "act", Some("p"),
         Vector(GamePlayer("p", "P", "exile", PlayerColor.Red)),
@@ -33,7 +28,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
         completed = false, actionSelectionOpen = true),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "p"),
-      ParkedDecision.Routed(None, None), SessionDrafts.empty, view)
+      ParkedDecision.Routed(None, None), canControl = true,
+      SessionDrafts.empty.copy(modifiers = Some(workflow)),
+      new RecordingView("g", "p")).element
 
   test("selection preserves click order supports badges reorder toggle and keyboard"):
     val empty = ModifierSelectionState.reconcile(None, context,

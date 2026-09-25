@@ -88,17 +88,16 @@ object ServerModeUi:
             facedownAdviserDraft)
           // Routed once per render: both panes read the same answer.
           val routed = ParkedDecision.route(value, presentation)
-          actionContent.appendChild(ActionDecisionRenderer.actionsPanel(
-            value, presentation, routed, currentDrafts, ui))
-          val prompt = Option(actionContent.querySelector(
-            "#card-decision-title,.selection-instruction,.modifier-confirm,.resolution-choice"))
-            .map(_.textContent).getOrElse("")
+          val pane = ActionDecisionRenderer.actionsPanel(value, presentation,
+            routed, ui.canControl, currentDrafts, ui)
+          actionContent.appendChild(pane.element)
           val decisionKey = Vector(selectedPlayer, value.phase,
             value.activeParticipantId.getOrElse(""),
             value.pendingCardDecision.map(_.decisionId).getOrElse(""),
             value.walkerDecision.map(_.decisionId).getOrElse(""),
-            boardSelectionState.flatMap(_.activeActionKind).getOrElse(""),
-            modifierWorkflow.map(_.stage.toString).getOrElse(""), prompt).mkString("|")
+            currentDrafts.boardTargets.flatMap(_.activeActionKind).getOrElse(""),
+            currentDrafts.modifiers.map(_.stage.toString).getOrElse(""),
+            pane.prompt).mkString("|")
           (WorldBoardRenderer.players(value, selectedPlayer),
             WorldBoardRenderer.world(value, routed.surface.collect {
               case board: ParkedDecision.Surface.Board => board
@@ -403,7 +402,6 @@ object ServerModeUi:
       def createGame() = newGame()
 
     lazy val ui: ServerUiView = new ServerUiView:
-      def currentPlayerId = selectedPlayer
       def currentBoardSelection = boardSelectionState
       def currentBoardSelection_=(value: Option[BoardTargetSelectionState]) = boardSelectionState = value
       def currentWalkerPartition = walkerPartitionDraft
