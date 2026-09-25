@@ -112,7 +112,7 @@ private[frontend] enum Draft:
 
 /** The six ways a viewer leaves the modifier flow. `Cancelled` carries the
   * restored board targets because computing them needs the projection's
-  * `boardTargetActions`; the caller (`restoredTargets` in `ServerModeUi`)
+  * `boardTargetActions`; the caller (`restoredTargets` in `ModifierFlow`)
   * builds the restore from the set's own context.
   */
 private[frontend] enum FlowExit:
