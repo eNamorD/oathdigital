@@ -39,7 +39,8 @@ class PanelPlacementSuite extends munit.FunSuite:
 
   private def actions(value: GameProjection): dom.Element =
     ActionDecisionRenderer.actionsPanel(value,
-      ServerUiSupport.ViewerPresentation(showGameplayControls = true, None, None),
+      ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
+        None, playerId = "red"),
       ParkedDecision.Routed(None, None), new RecordingView("game", "red"))
 
   test("the oath and its holder are listed in the shared bank"):

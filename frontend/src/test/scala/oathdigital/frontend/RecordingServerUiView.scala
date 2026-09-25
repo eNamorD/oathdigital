@@ -13,6 +13,19 @@ private[frontend] class RecordingView(gameId: String, playerId: String)
   var board: Option[WalkerBoardDraft] = None
   var submitted: Vector[Intent] = Vector.empty
   var rerenders: Int = 0
+  var staged: Vector[Draft] = Vector.empty
+  /** The draft set as the stages so far leave it, from `empty`. */
+  def drafts: SessionDrafts = staged.foldLeft(SessionDrafts.empty)(_.staged(_))
+  def stage(draft: Draft): Unit =
+    staged :+= draft
+    // Mirror into the transitional slots so a suite that re-renders from
+    // the fake's getters keeps seeing the staged draft until it migrates.
+    draft match
+      case Draft.Partition(value) => partition = Some(value)
+      case Draft.Distribute(value) => distribution = Some(value)
+      case Draft.Selection(value) => selection = Some(value)
+      case Draft.Board(value) => board = value
+      case Draft.BoardTargets(value) => boardSelection = Some(value)
 
   def currentWalkerPartition: Option[WalkerPartitionDraft] = partition
   def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit =

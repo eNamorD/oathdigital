@@ -15,7 +15,7 @@ class TemporaryHandPreviewSuite extends munit.FunSuite:
         Vector.empty, Vector.empty, Vector.empty, ready = true,
         completed = false, temporaryHandPreview = preview),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
-        None),
+        None, playerId = "red"),
       ParkedDecision.Routed(None, None),
       new RecordingView("game", "red"))
 

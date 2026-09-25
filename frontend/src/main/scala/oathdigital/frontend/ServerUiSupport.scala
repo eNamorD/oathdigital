@@ -4,7 +4,11 @@ import oathdigital.protocol.{GameIntent => GameCommand, _}
 import org.scalajs.dom
 import scala.scalajs.js
 
-private[frontend] trait ServerUiView:
+/** Transitional: the session as the renderers still see it. Every member
+  * below the `ActionControls` line leaves in its own task; the trait itself
+  * goes in the last one.
+  */
+private[frontend] trait ServerUiView extends ActionControls:
   def currentGameId: String
   def currentPlayerId: String
   def displayedProjection: Option[GameProjection]
@@ -21,20 +25,8 @@ private[frontend] trait ServerUiView:
   def currentWalkerBoard_=(value: Option[WalkerBoardDraft]): Unit
   def currentModifierWorkflow: Option[ModifierWorkflow]
   def currentFacedownAdviserDraft: Option[FacedownAdviserDraft]
-  def chooseFacedownAdviser(cardId: String): Unit
-  def toggleModifier(value: PreviewModifier): Unit
-  def moveModifier(value: PreviewModifier, delta: Int): Unit
-  def confirmModifiers(): Unit
-  def backFromModifiers(): Unit
-  def cancelModifiers(): Unit
-  def beginTargetedMajorAction(actionKind: String): Unit
-  def backFromTargets(): Unit
-  def cancelTargetAction(): Unit
-  def submitTargetCommand(command: GameCommand): Unit
   def canControl: Boolean
   def rerender(): Unit
-  def submitCommand(command: GameCommand): Unit
-  def handleSelection(result: BoardSelectionResult): Unit
   def loadSession(gameId: String, playerId: String): Unit
   def reconnectSession(): Unit
   def createGame(): Unit
@@ -215,7 +207,8 @@ private[frontend] object ServerUiSupport:
       showGameplayControls: Boolean,
       waitingForPlayerId: Option[String],
       waitingForDisplayName: Option[String],
-      procedureStatus: Option[String] = None
+      procedureStatus: Option[String] = None,
+      playerId: String
   )
 
   private[frontend] def viewerPresentation(
@@ -224,7 +217,8 @@ private[frontend] object ServerUiSupport:
   ): ViewerPresentation =
     if value.oathkeeper.exists(_.winnerPlayerId.nonEmpty) then
       return ViewerPresentation(showGameplayControls = false,
-        waitingForPlayerId = None, waitingForDisplayName = None)
+        waitingForPlayerId = None, waitingForDisplayName = None,
+        playerId = playerId)
     // Task 5 fix: a parked walker `Decide`'s owner is projected `walkerDecision`
     // regardless of whose turn it is, and everyone else is projected
     // `walkerWaiting` naming that owner (see WalkerDecisionProjector.project/
@@ -234,24 +228,28 @@ private[frontend] object ServerUiSupport:
     // active participant.
     if value.walkerDecision.nonEmpty then
       return ViewerPresentation(showGameplayControls = true,
-        waitingForPlayerId = None, waitingForDisplayName = None)
+        waitingForPlayerId = None, waitingForDisplayName = None,
+        playerId = playerId)
     if value.walkerWaiting.nonEmpty then
       return ViewerPresentation(showGameplayControls = false,
         waitingForPlayerId = value.walkerWaiting.map(_.playerId),
         waitingForDisplayName = value.walkerWaiting.map(w =>
-          playerDisplayName(value, w.playerId)))
+          playerDisplayName(value, w.playerId)),
+        playerId = playerId)
     val controllingPlayer = value.activeParticipantId
     controllingPlayer match
       case Some(activePlayerId) if activePlayerId != playerId =>
         ViewerPresentation(
           showGameplayControls = false,
           waitingForPlayerId = Some(activePlayerId),
-          waitingForDisplayName = Some(playerDisplayName(value, activePlayerId))
+          waitingForDisplayName = Some(playerDisplayName(value, activePlayerId)),
+          playerId = playerId
         )
       case _ => ViewerPresentation(
         showGameplayControls = true,
         waitingForPlayerId = None,
-        waitingForDisplayName = None
+        waitingForDisplayName = None,
+        playerId = playerId
       )
 
   private[frontend] def showActActionControls(

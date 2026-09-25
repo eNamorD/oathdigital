@@ -436,6 +436,14 @@ object ServerModeUi:
         completeTargetCommand(command)
       def canControl = controlsAvailable
       def rerender() = render()
+      def stage(draft: Draft) =
+        draft match
+          case Draft.Partition(value) => walkerPartitionDraft = Some(value)
+          case Draft.Distribute(value) => walkerDistributeDraft = Some(value)
+          case Draft.Selection(value) => walkerSelectionDraft = Some(value)
+          case Draft.Board(value) => walkerBoardDraft = value
+          case Draft.BoardTargets(value) => boardSelectionState = Some(value)
+        render()
       def submitCommand(command: GameCommand) = submit(command)
       def handleSelection(result: BoardSelectionResult) = handleBoardSelection(result)
       def loadSession(id: String, playerId: String) = loadExisting(id, playerId)

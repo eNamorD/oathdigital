@@ -27,7 +27,7 @@ class ActionOptionRowSuite extends munit.FunSuite:
         minorActions = Some(MinorActionsState(Vector.empty,
           canPeekSiteRelics = true, Vector.empty, Some("site:a"), 2, 1))),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
-        None),
+        None, playerId = "red"),
       ParkedDecision.Routed(None, None),
       new RecordingView("game", "red"))
 

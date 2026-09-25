@@ -13,7 +13,7 @@ class ParkedDecisionSuite extends munit.FunSuite:
   private val red = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
   private val blue = GamePlayer("blue", "Blue", "Exile", PlayerColor.Blue)
   private val controls = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None)
+    showGameplayControls = true, None, None, playerId = "red")
   private val observer = controls.copy(showGameplayControls = false)
 
   private def projection(decision: Option[WalkerDecisionState] = None,
