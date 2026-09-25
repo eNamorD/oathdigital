@@ -1,5 +1,7 @@
 package oathdigital.model
 
+import oathdigital.catalog.DefinitionId
+
 class OpaqueIdSuite extends munit.FunSuite {
   test("ids construct, extract and expose their value") {
     val PlayerId(player) = PlayerId("p1")
@@ -21,5 +23,11 @@ class OpaqueIdSuite extends munit.FunSuite {
   test("an id prints as its raw string") {
     assertEquals(PlayerId("p1").toString, "p1")
     assertEquals(s"${PowerId("site.coast")}", "site.coast")
+  }
+
+  test("DefinitionId keeps its validation and prints raw") {
+    assertEquals(DefinitionId("denizen.coast").value, "denizen.coast")
+    intercept[IllegalArgumentException](DefinitionId(" "))
+    assertEquals(DefinitionId("x").toString, "x")
   }
 }

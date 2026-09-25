@@ -3,8 +3,14 @@ package oathdigital.catalog
 import oathdigital.model.{CardId, CatalogRef, PowerId, SiteId, Suit, SupplyRules,
   Tokens, VisionId}
 
-final case class DefinitionId(value: String) {
-  require(value.trim.nonEmpty, "catalog definition ID must not be blank")
+opaque type DefinitionId = String
+object DefinitionId {
+  def apply(value: String): DefinitionId = {
+    require(value.trim.nonEmpty, "catalog definition ID must not be blank")
+    value
+  }
+  def unapply(id: DefinitionId): Some[String] = Some(id)
+  extension (id: DefinitionId) def value: String = id
 }
 
 final case class CatalogPower(id: PowerId, persistent: Boolean, rulesText: String) {
