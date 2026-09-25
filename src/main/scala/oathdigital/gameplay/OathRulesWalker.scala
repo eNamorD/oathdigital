@@ -89,14 +89,6 @@ private[gameplay] trait OathRulesWalker:
     * typed rejection rather than a nested start. The procedure's events are
     * appended to `transition`, so the action that triggered it and the
     * procedure journal as one command.
-    *
-    * When the triggered procedure finishes without parking, `walkerTransition`
-    * recomputes its continuation with `continuationIn(phase)`, which knows
-    * Act, Wake and Rest. That matches every current
-    * `completeAction` caller today -- all Act-gated with
-    * `ActActionSelection`, or Wake's Take Wealth -- so a triggered procedure
-    * always finishes in one of those phases. A future trigger fired outside
-    * Act, Wake or Rest must extend `continuationIn` first.
     */
   private[gameplay] def startTriggered(transition: OathTransition,
       procedure: TriggeredProcedureRef): Either[OathViolation, OathTransition] =
