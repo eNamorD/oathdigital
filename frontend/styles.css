@@ -397,13 +397,16 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .partition-options { display: flex; flex-wrap: wrap; align-items: flex-start;
   gap: 6px; }
 /* The heading sits at the top of the zone and holds the cards off instead:
-   space above it is the box's own padding twice over. */
-.partition-zone { padding-top: 7px; }
+   space above it is the box's own padding twice over. The cards sit at the
+   bottom: zones on one row share a height, so the cards in a zone with one
+   helper line up with the cards in a zone with two, and a card dragged from
+   Keep to Discard lands level with where it left. */
+.partition-zone { display: flex; flex-direction: column; padding-top: 7px; }
 .partition-zone > h3 { margin: 0; }
-.partition-zone > .decision-zone-helper { margin: 0.1em 0 0.35em; }
-.partition-zone > .decision-zone-order { margin: 0 0 1.15em; color: #a99f8c;
+.partition-zone > .decision-zone-helper { margin: 0.1em 0 0; }
+.partition-zone > .decision-zone-order { margin: 0.35em 0 0; color: #a99f8c;
   font-size: 0.82em; font-style: italic; }
-.partition-zone > .decision-zone-helper:last-of-type { margin-bottom: 1.15em; }
+.partition-zone > .partition-options { margin-top: auto; padding-top: 1.15em; }
 /* The card sets the option's width; a move button's label must not, or the
    zone inherits the widest destination name as its own width. */
 .partition-zone .decision-option { display: flex; flex-direction: column;
@@ -434,8 +437,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 /* An empty slot is a place, not a card: nothing to inspect, so no ring. */
 .card-face:not(.card-slot-empty):hover, .card-face:focus-visible {
   outline: 2px solid #fff0c9; outline-offset: -3px; }
-.card-header { display: flex; align-items: flex-start; gap: 0.25em;
-  min-width: 0; }
+/* The name sits beside the glyph while it fits and drops under it when it
+   does not: a 13ex card leaves a one-word name like Catacombs no room beside
+   the glyph, and breaking it mid-word ("Catacom bs") is worse than one more
+   line. Defense dice stay on the glyph's row. */
+.card-header { display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 0.25em; min-width: 0; }
 .card-header .token-glyph { flex: 0 0 auto; width: 1.2em; height: 1.2em;
   vertical-align: 0; }
 .card-name { min-width: 0; font-weight: 750; font-size: 0.95em;
@@ -490,7 +497,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-choice button[aria-pressed="true"] { border-color: #fff2d6;
   background: #3b3123; }
 .walker-many-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-.walker-many-option { border: 2px solid transparent; }
 .walker-many-option[aria-pressed="true"] { border-color: #fff2d6;
   background: #3b3123; color: #fff2d6; font-weight: 800; }
 .walker-many-option[aria-pressed="true"]::before { content: "✓ "; }
@@ -677,9 +683,37 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-dragging, .map-dragging * { cursor: grabbing !important; user-select: none !important; }
 .pane-actions .pane-content { font-size: .9rem; }
 .pane-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+/* Two button faces in the pane, both the system's own, so no control wears
+   the browser's. The Action face is the load-game and adviser button: a
+   choice that moves the game. The Control face is the map-zoom button: the
+   small movers and steppers beside an option. `:where` keeps each control's
+   own size rules (the 30px reorder arrows, the card-wide pickers) in charge
+   of size; the faces only paint. A card is a button too, and keeps its own
+   face. */
+.pane-actions :where(button:not(.card-face)) { min-height: 44px;
+  padding: 8px 12px; border: 1px solid #bca780; border-radius: 7px;
+  background: #282117; color: #fff; }
+.pane-actions :where(.move-option, .option-reorder button,
+    .distribute-decrement, .distribute-increment, .modifier-earlier,
+    .modifier-later) { border-color: #7c694b; border-radius: 4px;
+  background: #302a20; color: #e8d9bb; }
+.pane-actions :where(button:not(.card-face)):hover:not(:disabled) {
+  border-color: #fff2d6; background: #3b3123; }
+.pane-actions :where(button:not(.card-face)):disabled { opacity: 0.5;
+  cursor: not-allowed; }
+/* The system's input field, on the warband count and a deal's amounts. */
+.pane-actions input, .pane-actions select { max-width: 100%; min-height: 44px;
+  padding: 8px; border: 1px solid #88775d; border-radius: 6px;
+  background: #17140f; color: #fff; font: inherit; }
+/* One reading size under the brass h2: a zone or hand title, one step up
+   from the body, never larger than the question above it. */
+:where(.pane-actions h3) { font-size: .95rem; }
+/* Helper lines under a heading or prompt, in the same ink as a partition's
+   instruction: what the form allows, not the question itself. */
+.selection-cardinality, .board-draft, .modifier-instruction,
+.walker-many-instruction, .informational { color: #a99f8c; font-size: .82rem; }
 .pane-actions .decision-zones { grid-template-columns: 1fr; gap: 10px; }
 .pane-actions .decision-zone { min-height: 100px; }
-.pane-actions input, .pane-actions select { max-width: 100%; }
 .pane-actions .decision-final-row { flex-wrap: wrap; }
 .log-placeholder { color: #a99c85; font-size: .82rem; line-height: 1.5; margin: 0; }
 .pane-log .pane-content { background: repeating-linear-gradient(135deg,

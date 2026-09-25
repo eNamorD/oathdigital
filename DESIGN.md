@@ -442,9 +442,12 @@ controls are 30px.
   controls; 7px on load-game, adviser and restart.
 - **Control** (map zoom, Fit, dev tools, overlay close): Raised fill, `#e8d9bb`
   text, Brass Line border, `4px 9px` padding, 0.78rem.
-- **Action** (load game, adviser, wake actions): `#282117` fill, white text,
-  `#bca780` border, `8px 12px` padding. Any decision or modifier button
-  inherits the browser button face with `font: inherit` and 5px margins.
+- **Action** (load game, adviser, and every act, decision, confirm and
+  modifier button in the Actions pane): `#282117` fill, white text, `#bca780`
+  border, `8px 12px` padding. Hover: Pressed fill, Bright Cream border. The
+  small movers and steppers beside an option (card pickers, reorder arrows,
+  distribute `−`/`+`, modifier Earlier/Later) wear the Control face at their
+  own sizes. Decision buttons keep their 5px margins.
 - **Board target control**: full width of the site, Panel fill, Bright Cream
   800 text, brass border. Hover and focus: Pressed fill and a 3px Bright
   Cream outline offset 2px. Pressed state prefixes "✓ ".
@@ -476,9 +479,11 @@ ratio, sized in `ex` from `--card-w: 13ex`.
 - **Border:** 1px, transparent at rest so states never reflow; Line for a
   denizen, `#7a6a4c` for a relic, dashed Unimplemented for a card the engine
   does not run, dashed Line-mid with transparent fill for an empty slot.
-- **Face:** header row of suit glyph (1.2em) and name (750, 0.95em, wraps
-  anywhere) with defense dice pushed right; token row at 0.8em; restriction
-  in Ink Dim capitalized at the bottom; footer sinks to the bottom.
+- **Face:** header row of suit glyph (1.2em) and name (750, 0.95em) with
+  defense dice pushed right; a name that does not fit beside the glyph drops
+  under it whole rather than breaking mid-word; token row at 0.8em;
+  restriction in Ink Dim capitalized at the bottom; footer sinks to the
+  bottom.
 - **Face-down:** Facedown fill, centered Facedown Letter at 1.9em 800; a
   knowable card adds a Secret pip top-right and reveals a summary on hover or
   focus (pointer devices only, CSS only, no client state).
