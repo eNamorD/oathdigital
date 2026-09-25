@@ -101,7 +101,8 @@ class KnightsErrantSuite extends munit.FunSuite:
 
   test("after the gain it asks whether to campaign, as a Muster decision"):
     val asked = musterFrom(staged(), modifiers)
-    assertEquals(parkedOn(asked), KnightsErrant.decisionId)
+    parked.assertParked(asked.state, ActionRef.Muster, KnightsErrant.decisionId,
+      actor)
     assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
       .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.campaignOption,
       KnightsErrant.declineOption))

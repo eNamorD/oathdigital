@@ -506,7 +506,11 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       case other => fail(s"expected the Recover roll park to run, got $other")
     val Ready(startedReady) = started.state: @unchecked
     assertEquals(startedReady.game.current.walkerProcedure, Some(ActionRef.Recover))
-    assert(startedReady.game.current.walkerPending.nonEmpty)
+    val pending = startedReady.game.current.walkerPending.get
+    assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Recover),
+      Right(RecoverProcedure.rollDecisionId))
+    assertEquals(ProcedureWalker.awaitedPlayer(startedReady, rollTree, pending,
+      WalkerPowers.empty), Some(actor))
     assert(started.events.nonEmpty)
 
     // Forge declares none: the rejection is carried through as the command's
