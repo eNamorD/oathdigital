@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent => GameCommand, _}
 
+import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** The session's two effects on the page's address. */
@@ -221,8 +222,16 @@ private[frontend] final class TableSession(
   def fail(error: GameClientFailure): Unit =
     failure = Some(error)
     redraw()
-  def preview(request: MajorActionPreviewRequest) =
-    client.preview(gameId, selectedPlayer, request)
+  /** Completes only if the session is the one that asked: a response that
+    * lands after a seat change, a reload or a reconnect writes nothing,
+    * fails nothing and redraws nothing, like every other late response.
+    */
+  def preview(request: MajorActionPreviewRequest)
+      : Future[Either[GameClientFailure, MajorActionPreviewResponse]] =
+    val identity = coordinator.capture
+    client.preview(gameId, selectedPlayer, request).flatMap: result =>
+      if coordinator.accepts(identity) then Future.successful(result)
+      else Future.never
   def send(command: GameCommand, modifiers: Vector[ModifierInvocation]): Unit =
     submitTransport(command, modifiers)
 

@@ -309,6 +309,25 @@ class TableSessionSuite extends munit.FunSuite:
       assertEquals(fixture.client.previews, Vector(("g", "red", request)))
     }
 
+  /** Spec, Fix 2. */
+  test("a preview answered after the session changed never lands"):
+    displayed(2).flatMap { fixture =>
+      val answer = fixture.session.preview(MajorActionPreviewRequest(2L, "recover", Map.empty))
+      fixture.session.reconnectSession()
+      fixture.client.answerPreview(Right(MajorActionPreviewResponse(2L, "recover",
+        Vector.empty, Vector.empty, Vector.empty)))
+      settle().map(_ => assert(!answer.isCompleted))
+    }
+
+  test("a preview answered under the same session lands"):
+    displayed(2).flatMap { fixture =>
+      val answer = fixture.session.preview(MajorActionPreviewRequest(2L, "recover", Map.empty))
+      val response = MajorActionPreviewResponse(2L, "recover", Vector.empty,
+        Vector.empty, Vector.empty)
+      fixture.client.answerPreview(Right(response))
+      answer.map(result => assertEquals(result, Right(response)))
+    }
+
   test("fail shows the failure and redraws; replaceDrafts does not redraw"):
     displayed(2).map { fixture =>
       val before = fixture.redraws
