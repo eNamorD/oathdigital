@@ -35,8 +35,8 @@ class SituationSuite extends munit.FunSuite:
       "on the first sites and one adviser each"):
     // Before FirstGameSetupFixture delegated to it, this compared `wake`
     // with the fixture's own hand-written walk, state and events alike.
-    val ready = Situation.wake(Situation.rules(catalog,
-      answers = Situation.pawnsAt(sites) orElse Situation.defaultAnswer)).ready
+    val ready = Situation.wake(Situation.rules(catalog)
+      .withAnswers(Situation.pawnsAt(sites))).ready
     val current = ready.game.current
     assertEquals(ready, FirstGameSetupFixture.initialReady)
     assertEquals((current.turn.phase, current.turn.activePlayer),
@@ -66,7 +66,7 @@ class SituationSuite extends munit.FunSuite:
           Situation.defaultAnswer.isDefinedAt(park) =>
         Situation.defaultAnswer(park)
     val failure = intercept[AssertionError](
-      Situation.wake(Situation.rules(catalog, answers = partitionless)))
+      Situation.wake(Situation.rules(catalog).withPolicy(partitionless)))
     assert(failure.getMessage.contains(
       SetupProcedure.adviserDecisionId(orders.firstPlayer)),
       failure.getMessage)
@@ -107,9 +107,8 @@ class SituationSuite extends munit.FunSuite:
       chronicle.atlasBox.find(_.site == recoverSite).get +:
         chronicle.atlasBox.filterNot(_.site == recoverSite))
     val actor = orders.firstPlayer
-    val driver = Situation.serviceRules(catalog, blankDice,
-      answers = Situation.pawnsAt(recoverChronicle.atlasBox.take(8)
-        .map(_.site)) orElse Situation.defaultAnswer)
+    val driver = Situation.serviceRules(catalog, blankDice).withAnswers(
+      Situation.pawnsAt(recoverChronicle.atlasBox.take(8).map(_.site)))
     val parked = Situation.wake(driver, recoverChronicle, orders)
       .parkedAfter(GameCommand.EndWake(actor),
         GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))

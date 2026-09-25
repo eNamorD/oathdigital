@@ -1,7 +1,7 @@
 package oathdigital.testkit
 
-import oathdigital.application.{DefenseDicePort, ExpectedStream, GameCommand,
-  GameApplicationService, InMemoryEventStreamRepository, TreeDecision}
+import oathdigital.application.{DefenseDicePort, EventStreamRepository,
+  ExpectedStream, GameCommand, GameApplicationService, TreeDecision}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.MinorActionCommand
@@ -23,7 +23,13 @@ sealed trait SituationDriver:
   def catalog: ExecutableCatalog
   /** The whole policy: what every park is answered with. */
   def answers: Answers
-  def withAnswers(answers: Answers): SituationDriver
+  /** Replaces the whole policy. */
+  def withPolicy(answers: Answers): SituationDriver
+
+  /** `overrides` layered over [[Situation.defaultAnswer]], replacing any
+    * overrides given earlier. */
+  final def withAnswers(overrides: Answers): SituationDriver =
+    withPolicy(overrides orElse Situation.defaultAnswer)
 
   /** One step, no park handling. */
   protected def apply(from: Situation, step: Step)
@@ -99,7 +105,7 @@ object SituationDriver:
       walkerPowerCatalog = walkerPowers, phasePowerCatalog = phasePowers,
       walkerDice = walkerDice)
 
-    def withAnswers(answers: Answers): SituationDriver =
+    def withPolicy(answers: Answers): SituationDriver =
       copy(answers = answers)
 
     protected def parkedNode(state: OathState)
@@ -156,18 +162,19 @@ object SituationDriver:
         rules.handle(state, MinorActionCommand.MoveWarbands(player, toSite,
           amount))
 
-  /** Drives `service`, journaling into its `repository` as `gameId`. An
-    * `Arrange` appends the arranging record at the stream's next sequence and
-    * reloads, so the service replays it exactly as it would a real one. Parks
-    * are rebuilt with the power catalogs the service's rules run.
+  /** Drives `service` as `gameId`. An `Arrange` appends the arranging record
+    * to `repository`, which must be the service's own, at the stream's next
+    * sequence and reloads, so the service replays it exactly as it would a
+    * real one; without a repository an `Arrange` is rejected. Parks are
+    * rebuilt with the power catalogs the service's rules run.
     */
   final case class Journaled(service: GameApplicationService,
-      catalog: ExecutableCatalog, repository: InMemoryEventStreamRepository,
+      catalog: ExecutableCatalog, repository: Option[EventStreamRepository],
       gameId: String, answers: Answers) extends SituationDriver:
     private val walkerPowers = WalkerPowerCatalog.default(catalog)
     private val phasePowers = PhasePowerCatalog.default(catalog)
 
-    def withAnswers(answers: Answers): SituationDriver =
+    def withPolicy(answers: Answers): SituationDriver =
       copy(answers = answers)
 
     protected def parkedNode(state: OathState)
@@ -185,7 +192,9 @@ object SituationDriver:
         for
           record <- GameEventWire.encodeEvent(gameId, catalog.ref,
             from.nextSequence, event).left.map(_.toString)
-          _ <- repository.append(gameId,
+          journal <- repository.toRight(
+            "a journaled driver without its repository cannot arrange")
+          _ <- journal.append(gameId,
             ExpectedStream.AtNextSequence(from.nextSequence),
             Vector(ujson.write(record))).left.map(_.toString)
           loaded <- service.load(gameId).left.map(_.toString)

@@ -1,19 +1,13 @@
 package oathdigital.application
 
-import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
-import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
-import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.serialization.GameEventWire
+import oathdigital.testkit.{Situation, SituationDriver, Step}
 
 /** Real games parked on a walker through the application service.
   *
@@ -33,41 +27,35 @@ object ParkedServiceFixture:
   private val parkedAssertions = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
+  /** Setup driven through `service` as `gameId`, the n-th pawn placed at
+    * `placementSites(n)`: the accepted position the first player's Wake
+    * starts from, holding every event Setup journaled. */
   def setUp(service: GameApplicationService, gameId: String,
       placementSites: Vector[SiteId] = sites,
       setupChronicle: Chronicle = chronicle,
       setupOrders: SetupOrders = orders): GameAccepted =
-    var accepted = service.handle(gameId, 0L,
-      GameCommand.Begin(setupChronicle, setupOrders))
-      .fold(error => throw new AssertionError(error.toString), identity)
-    Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1")).zipWithIndex
-      .foreach { case (playerId, index) =>
-        accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.ResolveWalker(playerId, TreeDecision(
-            SetupProcedure.pawnDecisionId(playerId),
-            ChooseOneAnswer(DecisionOptionRef.Site(placementSites(index))))))
-          .fold(error => throw new AssertionError(
-            s"pawn placement for $playerId at ${placementSites(index)} failed: $error"),
-            identity)
-        val Ready(placedReady) = accepted.state: @unchecked
-        val denizens = placedReady.game.current.temporaryHands(playerId)
-          .collect { case id: DenizenId => id }
-        if denizens.isEmpty then throw new AssertionError(
-          s"no denizen in $playerId's hand: " +
-            placedReady.game.current.temporaryHands(playerId))
-        val adviser = denizens.head
-        val rejected = denizens.tail
-        accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.ResolveWalker(playerId, TreeDecision(
-            SetupProcedure.adviserDecisionId(playerId),
-            DecisionAnswer.PartitionAnswer(
-              DecisionPlacement(DecisionOptionRef.Denizen(adviser),
-                SetupProcedure.adviserKeepKey) +:
-              rejected.map(id => DecisionPlacement(DecisionOptionRef.Denizen(id),
-                SetupProcedure.adviserDiscardKey))))))
-          .toOption.get
-      }
-    accepted
+    accepted(woken(Situation.journaled(service, catalog, gameId),
+      placementSites, setupChronicle, setupOrders))
+
+  private def woken(driver: SituationDriver,
+      placementSites: Vector[SiteId] = sites,
+      setupChronicle: Chronicle = chronicle,
+      setupOrders: SetupOrders = orders): Situation =
+    Situation.wake(driver.withAnswers(Situation.pawnsAt(placementSites)),
+      setupChronicle, setupOrders)
+
+  /** The situation as the service accepted its last command: `events` are
+    * that command's alone, as `GameApplicationService.handle` reports them. */
+  private def accepted(situation: Situation, before: Situation): GameAccepted =
+    GameAccepted(situation.state, situation.events.drop(before.events.size),
+      situation.nextSequence)
+
+  private def accepted(situation: Situation): GameAccepted =
+    GameAccepted(situation.state, situation.events, situation.nextSequence)
+
+  /** The step that arranges `gameId`'s fixture board. */
+  private def arrange(gameId: String, ops: Vector[CoreOperation]): Step =
+    Step.Arrange(ops, s"arrange the $gameId fixture")
 
   /** `cards`, in order, become the top of the world deck. A card already
     * dealt by setup swaps places with the card it displaces, and the world
@@ -94,15 +82,6 @@ object ParkedServiceFixture:
       baseOrders.firstPlayer)
     (newChronicle, ChronicleFirstGamePlan.dealOrder(newChronicle, config))
 
-  /** Journals one arranging delta at `at`, the stream's next sequence. */
-  def seed(repository: InMemoryEventStreamRepository, gameId: String, at: Long,
-      ops: Vector[CoreOperation]): Unit =
-    val arrange = WalkerStepRecorded("0", DeltaRecorded(OperationApplied(
-      s"arrange the $gameId fixture")), ops, Vector.empty)
-    val record = ujson.write(GameEventWire.encodeEvent(gameId, catalogRef, at,
-      arrange).toOption.get)
-    repository.append(gameId, ExpectedStream.AtNextSequence(at), Vector(record))
-
   def topOfWorldDeck(card: DenizenId, to: Location,
       orientation: Orientation = Orientation.FaceUp): Move =
     Move(Piece.Card(card), PositionedLocation(Location.Deck(CardDeck.World),
@@ -124,9 +103,9 @@ object ParkedServiceFixture:
       : (GameAccepted, PlayerId, PlayerId) =
     val (seededChronicle, seededOrders) = withWorldDeckTop(chronicle, orders,
       Vector(treatyCard))
-    val setup = setUp(service, gameId, setupChronicle = seededChronicle,
-      setupOrders = seededOrders)
-    val Ready(base) = setup.state: @unchecked
+    val setup = woken(Situation.journaled(service, catalog, repository,
+      gameId), setupChronicle = seededChronicle, setupOrders = seededOrders)
+    val base = setup.ready
     val current = base.game.current
     assert(current.commonCards.worldDeck.headOption.contains(treatyCard),
       "League Treaty must top the world deck")
@@ -135,22 +114,19 @@ object ParkedServiceFixture:
     val lineage = current.players.find(_.player == ruler).get.lineage
     val site = current.map.cradle.head
     val suit = catalog.suitOf(treatyCard).get
-    seed(repository, gameId, setup.nextSequence, cleared(base, site) ++ Vector(
+    val act = setup.after(arrange(gameId, cleared(base, site) ++ Vector(
       topOfWorldDeck(treatyCard, Location.Site(site)),
       Move(Piece.Warbands(ForceKind.Exile(lineage), 1),
         PositionedLocation(Location.PlayArea(ruler)),
         PositionedLocation(Location.Site(site))),
       Move(Piece.Favor(2), PositionedLocation(Location.FavorBank(suit)),
-        PositionedLocation(Location.OnCard(treatyCard)))))
-    val seeded = service.load(gameId).toOption.flatten.get
-    val act = service.handle(gameId, seeded.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
-    val parked = service.handle(gameId, act.nextSequence,
-      GameCommand.BeginRest(active)).toOption.get
+        PositionedLocation(Location.OnCard(treatyCard))))),
+      GameCommand.EndWake(active))
+    val parked = act.parkedAfter(GameCommand.BeginRest(active))
     parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       LeagueTreatyContribution.destinationDecisionId(base, active, site,
         treatyCard), ruler)
-    (parked, active, ruler)
+    (accepted(parked, act), active, ruler)
 
   /** Defense dice that always come up blank. A Recover started with these
     * fails its roll, so it parks on the continue-or-stop choice instead of
@@ -177,14 +153,13 @@ object ParkedServiceFixture:
         chronicle.atlasBox.filterNot(_.site == recoverSite))
     val recoverSites = recoverChronicle.atlasBox.take(8).map(_.site)
     val actor = orders.firstPlayer
-    val setup = setUp(service, gameId, recoverSites, recoverChronicle, orders)
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
-    val parked = service.handle(gameId, act.nextSequence,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
+    val act = woken(Situation.journaled(service, catalog, gameId),
+      recoverSites, recoverChronicle, orders).after(GameCommand.EndWake(actor))
+    val parked = act.parkedAfter(
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
     parkedAssertions.assertParked(parked.state, ActionRef.Recover,
       RecoverProcedure.choiceDecisionId, actor)
-    (parked, actor, orders.participants.map(_.playerId))
+    (accepted(parked, act), actor, orders.participants.map(_.playerId))
 
   /** The off-turn Oathkeeper tie from the service suite: the holder must
     * pick between two tied leaders after the active player's Travel.
@@ -192,8 +167,9 @@ object ParkedServiceFixture:
   def oathkeeperTiePark(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, gameId: String)
       : (GameAccepted, PlayerId, PlayerId, PlayerId) =
-    val setup = setUp(service, gameId)
-    val Ready(base) = setup.state: @unchecked
+    val setup = woken(Situation.journaled(service, catalog, repository,
+      gameId))
+    val base = setup.ready
     val active = base.game.current.turn.activePlayer
     val players = base.game.current.players.map(_.player)
     val holder = players.find(_ != active).get
@@ -201,7 +177,7 @@ object ParkedServiceFixture:
     val lineageOf = base.game.current.players.map(p => p.player -> p.lineage).toMap
     val siteA = base.game.current.map.inPlay(0)
     val siteB = base.game.current.map.inPlay(1)
-    seed(repository, gameId, setup.nextSequence,
+    val act = setup.after(arrange(gameId,
       cleared(base, siteA) ++ cleared(base, siteB) ++ Vector(
         SetOathkeeper(Some(holder)),
         Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaders(0))), 1),
@@ -209,23 +185,22 @@ object ParkedServiceFixture:
           PositionedLocation(Location.Site(siteA))),
         Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaders(1))), 1),
           PositionedLocation(Location.PlayArea(leaders(1))),
-          PositionedLocation(Location.Site(siteB)))))
-    val act = service.handle(gameId, setup.nextSequence + 1L,
-      GameCommand.EndWake(active)).toOption.get
-    val Ready(inAct) = act.state: @unchecked
+          PositionedLocation(Location.Site(siteB))))),
+      GameCommand.EndWake(active))
+    val inAct = act.ready
     val activePlayer = inAct.game.current.players.find(_.player == active).get
     val destination = inAct.game.current.map.inPlay.find(id =>
       !activePlayer.pawnSite.contains(id) && id != siteA && id != siteB).get
-    val parked = service.handle(gameId, act.nextSequence,
+    val parked = act.parkedAfter(
       GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
-        Vector.empty, Vector(DecisionOptionRef.Site(destination))))).toOption.get
+        Vector.empty, Vector(DecisionOptionRef.Site(destination)))))
     assert(parked.events.last match {
       case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
       case _ => false
     }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
     parkedAssertions.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
       OathkeeperProcedure.recipientDecisionId, holder)
-    (parked, active, holder, leaders(1))
+    (accepted(parked, act), active, holder, leaders(1))
 
   /** Silver Tongue as the active player's faceup adviser, with two faceup
     * denizens of different suits at their pawn site. Every favor bank starts
@@ -242,27 +217,22 @@ object ParkedServiceFixture:
     val second = bySuit.find(_._2 != first._2).get
     val cards = Vector(silverTongueCard, first._1, second._1)
     val (seededChronicle, seededOrders) = withWorldDeckTop(chronicle, orders, cards)
-    val setup = setUp(service, gameId, setupChronicle = seededChronicle,
-      setupOrders = seededOrders)
-    val Ready(base) = setup.state: @unchecked
-    val current = base.game.current
+    val setup = woken(Situation.journaled(service, catalog, repository,
+      gameId), setupChronicle = seededChronicle, setupOrders = seededOrders)
+    val current = setup.ready.game.current
     assert(current.commonCards.worldDeck.take(3) == cards,
       "Silver Tongue and the two site cards must top the world deck")
     val active = current.turn.activePlayer
     val pawn = current.players.find(_.player == active).get.pawnSite.get
-    seed(repository, gameId, setup.nextSequence, Vector(
+    val resting = setup.after(arrange(gameId, Vector(
       topOfWorldDeck(silverTongueCard, Location.PlayArea(active)),
       topOfWorldDeck(first._1, Location.Site(pawn)),
-      topOfWorldDeck(second._1, Location.Site(pawn))))
-    val act = service.handle(gameId, setup.nextSequence + 1L,
-      GameCommand.EndWake(active)).toOption.get
-    val resting = service.handle(gameId, act.nextSequence,
-      GameCommand.BeginRest(active)).toOption.get
+      topOfWorldDeck(second._1, Location.Site(pawn)))),
+      GameCommand.EndWake(active), GameCommand.BeginRest(active))
     parkedAssertions.assertResumed(resting.state, Phase.Rest, active)
-    val parked = service.handle(gameId, resting.nextSequence,
-      GameCommand.UsePower(active, SilverTongue.id,
-        DecisionOptionRef.Denizen(silverTongueCard))).toOption.get
-    val Ready(restingReady) = resting.state: @unchecked
+    val parked = resting.parkedAfter(GameCommand.UsePower(active,
+      SilverTongue.id, DecisionOptionRef.Denizen(silverTongueCard)))
+    val restingReady = resting.ready
     parkedAssertions.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
       SilverTongue.choiceDecisionId(restingReady, active), active)
-    (parked, active, first._2)
+    (accepted(parked, resting), active, first._2)

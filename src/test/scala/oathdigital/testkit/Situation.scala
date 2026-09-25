@@ -1,7 +1,8 @@
 package oathdigital.testkit
 
-import oathdigital.application.{CampaignDicePort, DefenseDicePort, GameCommand,
-  GameApplicationService, InMemoryEventStreamRepository}
+import oathdigital.application.{CampaignDicePort, DefenseDicePort,
+  EventStreamRepository, GameCommand, GameApplicationService,
+  InMemoryEventStreamRepository}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -67,7 +68,7 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
   /** Continue under `overrides` layered over [[Situation.defaultAnswer]],
     * replacing any overrides given earlier. */
   def withAnswers(overrides: Answers): Situation =
-    copy(driver = driver.withAnswers(overrides orElse Situation.defaultAnswer))
+    copy(driver = driver.withAnswers(overrides))
 
   /** Writes this situation's events into `repository` as `gameId`'s whole
     * stream, the way a journal written by real play would hold them. */
@@ -115,35 +116,38 @@ object Situation:
 
   /** Drives `OathRules` directly: nothing is journaled. The rules are built
     * from the ports and power catalogs given, and the same power catalogs
-    * rebuild each park. `answers` is the whole policy; see `withAnswers`
-    * for overrides over the default. */
+    * rebuild each park. */
   def rules(catalog: ExecutableCatalog,
       walkerPowers: WalkerPowers = WalkerPowers.empty,
       phasePowers: PhasePowers = PhasePowers.empty,
       walkerDice: WalkerDice = WalkerDice.unavailable,
-      defenseDice: DefenseDicePort = DefenseDicePort.random,
-      answers: Answers = defaultAnswer): SituationDriver =
+      defenseDice: DefenseDicePort = DefenseDicePort.random): SituationDriver =
     SituationDriver.Rules(catalog, walkerPowers, phasePowers, walkerDice,
-      defenseDice, answers)
+      defenseDice, defaultAnswer)
 
   /** The rules adapter over the rules `GameApplicationService` builds
     * (`GameApplicationService.scala:87-91`), so it agrees with the journaled
     * adapter given the same input and dice. */
   def serviceRules(catalog: ExecutableCatalog,
       campaignDice: CampaignDicePort = CampaignDicePort.random,
-      defenseDice: DefenseDicePort = DefenseDicePort.random,
-      answers: Answers = defaultAnswer): SituationDriver =
+      defenseDice: DefenseDicePort = DefenseDicePort.random): SituationDriver =
     rules(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog),
-      CampaignDicePort.walkerDice(campaignDice), defenseDice, answers)
+      CampaignDicePort.walkerDice(campaignDice), defenseDice)
 
-  /** Drives `service`, journaling into `repository` as `gameId`, which must
-    * be `service`'s own repository and hold no stream for `gameId` yet.
+  /** Drives `service` as `gameId`, which must hold no stream yet, and
+    * arranges through `repository`, which must be the service's own.
     * `catalog` must be the service's: the parks are rebuilt against it. */
   def journaled(service: GameApplicationService, catalog: ExecutableCatalog,
-      repository: InMemoryEventStreamRepository, gameId: String,
-      answers: Answers = defaultAnswer): SituationDriver =
-    SituationDriver.Journaled(service, catalog, repository, gameId, answers)
+      repository: EventStreamRepository, gameId: String): SituationDriver =
+    SituationDriver.Journaled(service, catalog, Some(repository), gameId,
+      defaultAnswer)
+
+  /** As above, for a caller that does not hold the service's repository: an
+    * `Arrange` step is rejected. */
+  def journaled(service: GameApplicationService, catalog: ExecutableCatalog,
+      gameId: String): SituationDriver =
+    SituationDriver.Journaled(service, catalog, None, gameId, defaultAnswer)
 
   /** No game yet: where every situation starts. */
   def start(driver: SituationDriver): Situation =

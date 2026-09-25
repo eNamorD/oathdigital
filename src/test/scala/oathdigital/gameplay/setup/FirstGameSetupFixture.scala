@@ -95,9 +95,8 @@ object FirstGameSetupFixture:
     */
   def execute(placementSites: Vector[SiteId] = sites)
       : (OathState, Vector[OathEvent]) =
-    val woken = Situation.wake(Situation.rules(catalog,
-      answers = Situation.pawnsAt(placementSites) orElse
-        Situation.defaultAnswer), chronicle, orders)
+    val woken = Situation.wake(Situation.rules(catalog)
+      .withAnswers(Situation.pawnsAt(placementSites)), chronicle, orders)
     (woken.state, woken.events)
 
   /** The game `execute()` sets up. Immutable, so suites share one. */
