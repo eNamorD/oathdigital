@@ -38,12 +38,12 @@ private[frontend] object ModifierWorkflow:
   def targeted(actionKind: String): Option[(String, Map[String, String])] =
     targetedActions.get(actionKind)
 
-  def reconcile(previous: Option[ModifierWorkflow], gameId: String,
-      playerId: String, sequence: Long): Option[ModifierWorkflow] = previous.filter:
+  def reconcile(previous: Option[ModifierWorkflow],
+      context: BoardSelectionContext): Option[ModifierWorkflow] = previous.filter:
     workflow =>
-      val context = workflow.selection.context
-      context.gameId == gameId && context.playerId == playerId &&
-        context.sequence == sequence
+      val selected = workflow.selection.context
+      selected.gameId == context.gameId && selected.playerId == context.playerId &&
+        selected.sequence == context.sequence
 
   def action(command: GameIntent): Option[(String, Map[String, String])] = command match
     // Every action registered on the walker offers its modifiers through

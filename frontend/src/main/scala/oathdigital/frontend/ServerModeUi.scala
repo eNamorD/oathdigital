@@ -128,7 +128,7 @@ object ServerModeUi:
       routed.foreach:
         case ProjectionRoute.Display(displayed, retainedNotice) =>
           modifierWorkflow = ModifierWorkflow.reconcile(modifierWorkflow,
-            gameId, selectedPlayer, displayed.nextSequence)
+            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence))
           facedownAdviserDraft = FacedownAdviserDraft.reconcile(facedownAdviserDraft,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
             displayed.minorActions)

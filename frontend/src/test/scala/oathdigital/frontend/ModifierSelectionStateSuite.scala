@@ -155,10 +155,12 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assertEquals(targets.cancel, None)
     assertEquals(targets.copy(preview = response.copy(modifiers = Vector.empty))
       .backFromTargets, None)
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 4),
-      Some(targets))
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "other", 4), None)
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "p", 4)), Some(targets))
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "p", 5)), None)
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "other", 4)), None)
 
   test("Recover uses the generic ordered modifier flow but submits as a " +
       "walker command carrying Catacombs in its own modifiers field"):
@@ -177,7 +179,8 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assert(workflow.ordering)
     val targets = workflow.showTargets(response)
     assert(targets.backFromTargets.exists(_.ordering))
-    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
+    assertEquals(ModifierWorkflow.reconcile(Some(targets),
+      BoardSelectionContext("g", "p", 5)), None)
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       catacombs.handlerId)
     assertEquals(selection.invocations, Vector(invocation))
