@@ -106,8 +106,11 @@ persistence/serialization -> application-owned ports
 ```
 
 The domain vocabulary is `OathState`, `ReadyGame`, `OathEvent`,
-`OathContinue`, `GameplayTransition`, and `OathViolation`. `FirstGame`
-names remain only for the introductory setup scenario and its fixtures.
+`GameplayTransition`, and `OathViolation`. There is no stored fact naming what
+a parked position awaits: `ProcedureWalker.awaitedPlayer` recomputes the
+owner from live state on every command, and `WalkerDecisionProjector`
+projects it to clients. `FirstGame` names remain only for the introductory
+setup scenario and its fixtures.
 
 Events record accepted game facts, not transport requests or view data.
 Commands are transient. See [authoritative events](authoritative-events.md) and

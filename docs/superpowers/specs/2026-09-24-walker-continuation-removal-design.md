@@ -224,20 +224,25 @@ The 136 direct sites divide three ways:
   to a test about event folding; `RestWalkerSuite.scala:32` names a player
   read off `turn.activePlayer` on the previous line.
 
-  Three sites first classified as restatements turned out to assert something
-  their neighbour did not, and are converted instead of deleted:
-  `GameApplicationServiceSuite.scala:1074` (the neighbour names the phase, not
-  that the active player is still `active` after a completed Wake action — a
-  real claim, "a completed Wake action does not hand the turn over," that
-  nothing else in the test makes), `TakeWealthProcedureSuite.scala:150`
-  (same shape, the phase without the player), and
-  `gameplay/powers/economy/KnightsErrantSuite.scala:103-105` (the kept
-  neighbour re-proves the decision id and is silent on the awaited player).
-  In each case the neighbour carried only part of the deleted claim, usually
-  the phase or the decision id, never the awaited player. The classification
-  that produced 31 was made from adjacent-line greps rather than claim by
-  claim: a neighbour asserting something similar is not the same test as a
-  neighbour asserting everything the deleted line asserted.
+  Four sites came back from the first classification. Three turned out to
+  assert something their neighbour did not, and are converted instead of
+  deleted: `GameApplicationServiceSuite.scala:1074` (the neighbour names the
+  phase, not that the active player is still `active` after a completed Wake
+  action — a real claim, "a completed Wake action does not hand the turn
+  over," that nothing else in the test makes),
+  `TakeWealthProcedureSuite.scala:150` (same shape, the phase without the
+  player), and `gameplay/powers/economy/KnightsErrantSuite.scala:103-105`
+  (the kept neighbour re-proves the decision id and is silent on the awaited
+  player).
+  In each of these three the neighbour carried only part of the deleted
+  claim, usually the phase or the decision id, never the awaited player. The
+  fourth, `GameApplicationServiceSuite.scala:165-168`, stays deleted after
+  all, but not for the reason first given — see above, where its actual
+  cover is the unchanged `ResolveWalker` call further down the same test,
+  not either named neighbour. The classification that produced 31 was made
+  from adjacent-line greps rather than claim by claim: a neighbour asserting
+  something similar is not the same test as a neighbour asserting everything
+  the deleted line asserted.
 - **95 become `assertParked`, `assertNotParked` or `assertResumed`.**
 - **13 need a written substitute.** Nine are not assertions: they destructure
   the continuation to obtain a decision id for the next command
@@ -279,8 +284,8 @@ Test behavior is deliberately strengthened in one place. Twelve sites assert
 the negative — eleven as
 `!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision]`
 (`gameplay/powers/wake/HornedMaskSuite.scala:138,148,157,163,172` and similar
-in `LeagueTreatySuite`, `SilverTongueSuite`, `SleightOfHandSuite`,
-`AlchemistSuite`, `IvoryEyeSuite`, `CrystalVialSuite`), and one as
+in `SleightOfHandSuite`, `AlchemistSuite`, `IvoryEyeSuite`,
+`CrystalVialSuite`), and one as
 `SearchProcedureSuite`'s `!…isInstanceOf[AwaitingSearchDecision]`. These pass
 when the walk parked on a different continuation family, so they are weaker
 than the claim they are making. `assertNotParked` asserts that nothing is
