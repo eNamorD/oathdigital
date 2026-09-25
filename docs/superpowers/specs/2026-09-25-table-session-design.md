@@ -41,9 +41,12 @@ private[frontend] final class TableSession(
     initialPlayerId: String,
     clock: PollClock,
     navigation: Navigation,
-    redraw: () => Unit
+    repaint: () => Unit
 ) extends SessionControls, FlowHost, TableView
 ```
+
+The screen callback is `repaint`, not `redraw`: `FlowHost` already declares
+`redraw()`, and the session implements it by calling `repaint()`.
 
 - State moved in unchanged: `projection`, `failure`, `selectedPlayer`,
   `gameId`, `drafts`, `rawEvents`, `rawHistorySequence`, the
@@ -51,7 +54,7 @@ private[frontend] final class TableSession(
   session now builds itself from `clock` and its own `poll`.
 - Functions moved in unchanged in logic: `store`, `accept`, `loadExisting`,
   `newGame`, `reconnect`, `poll`, `submitTransport`, `invalidTrustedViewer`.
-  Every `render()` becomes `redraw()`. `updateSessionUrl()` becomes
+  Every `render()` becomes `redraw()` (the `FlowHost` member). `updateSessionUrl()` becomes
   `if !trusted then navigation.showSession(gameId, selectedPlayer)`.
   `newGame`'s `history.replaceState` and `startOver()` become
   `navigation.startOver()`.
@@ -108,7 +111,9 @@ private[frontend] trait Navigation:
 
 The browser implementation lives in `ServerModeUi.scala`: `showSession` is
 `updateUrl`, and `startOver` is `history.replaceState(null, "",
-Main.DevelopmentStartUrl)` followed by `start`'s `startOver` parameter.
+Main.DevelopmentStartUrl)` followed by `leave`, the callback `start` passes
+it (its own `startOver` parameter; the class cannot take a parameter with
+its method's name).
 `queryParameter` is read in `start` only.
 
 ### `TableView` and `TableScreen`
