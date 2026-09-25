@@ -185,15 +185,6 @@ final case class WalkerDecisionProjection(
     count: Option[Int] = None,
     query: Option[DecisionQueryProjection] = None,
     rollOutcome: Option[WalkerRollOutcomeProjection] = None,
-    /** The cards this decision is ABOUT, as opposed to the cards its options
-      * name: the card being placed by a `cardplay.place.*` question, which is
-      * not among its options (a Search's kept card is in the temporary hand,
-      * a facedown adviser's is on the board, and neither is offered). Plural so a decision about
-      * several cards needs no second field. Projected under the same
-      * disclosure rules as every other card, so a viewer who may not identify
-      * one receives it hidden.
-      */
-    subjectCards: Vector[CardDetailsProjection] = Vector.empty,
     /** The answers already recorded at THIS decision id, described as options.
       *
       * A decision inside a `Repeat` -- the battle-plan window is the only one

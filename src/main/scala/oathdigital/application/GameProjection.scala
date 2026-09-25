@@ -111,23 +111,30 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
           FinishRestProcedure.supplyGainAtRest(context.ready, active.player)
             .toOption).flatten)
 
-  /** The viewer's own temporary hand, drawn face up because the cards are
-    * held in their hand and read by them alone -- another seat, and a
-    * spectator, are shown nothing.
+  /** The cards the viewer is handling and nothing else on the panel draws:
+    * their own temporary hand, face up because the cards are held in their
+    * hand and read by them alone (another seat, and a spectator, are shown
+    * nothing), and the card a parked placement is about, which may be held
+    * elsewhere -- a facedown adviser is played from the board.
     *
-    * The preview falls silent once the parked decision offers one of the
-    * same cards: the decision draws them itself, and one card drawn twice
-    * reads as two cards.
+    * A card the parked decision offers as an option is left out: the
+    * decision draws it itself, and one card drawn twice reads as two cards.
+    * The same rule keeps a placement's card to one copy when it is also in
+    * the hand, as a Search's kept card is.
     */
   private def handPreview(context: ScopedProjectionContext,
       decision: Option[WalkerDecisionProjection])
       : Vector[CardDetailsProjection] =
     val hand = context.viewer.toVector.flatMap(viewer =>
       context.current.temporaryHands.getOrElse(viewer, Vector.empty))
-    val offered = decision.toVector.flatMap(offeredCards)
-    if hand.exists(card => offered.contains(card.value)) then Vector.empty
-    else hand.map(card => presentation.cardDetails(card,
-      Some(Orientation.FaceUp), hidden = false))
+      .map(card => presentation.cardDetails(card, Some(Orientation.FaceUp),
+        hidden = false))
+    val subjects = decision.toVector.flatMap(parked =>
+      walkerDecisions.subjectCards(context.ready, context.viewer,
+        parked.decisionId))
+    val offered = decision.toVector.flatMap(offeredCards).toSet
+    (hand ++ subjects).distinctBy(_.cardId)
+      .filterNot(card => offered.contains(card.cardId))
 
   /** Every card a decision puts in front of the player, named by the id an
     * answer spells: an option's own reference, and the card details that

@@ -49,21 +49,6 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     assertEquals(ui.submitted,
       Vector(WalkerPanelSupport.resolveChooseOneCommand(parked, oak)))
 
-  test("the card a placement is about is drawn above the buttons"):
-    val subject = CardDetails("denizen:vow-of-peace", "denizen", "Vow of Peace",
-      orientation = Some("face-down"))
-    val place = WalkerDecisionState("play-facedown-adviser",
-      "cardplay.place.denizen.denizen:vow-of-peace", "decide",
-      query = Some(DecisionQueryState("choose-one", Vector(
-        DecisionOptionState("button", "discard", "Discard"),
-        DecisionOptionState("button", "adviser-faceup", "Play faceup")),
-        heading = Some("Play or discard card"))),
-      subjectCards = Vector(subject))
-    val panel = draw(place)
-    assertEquals(all(panel, ".decision-subject .card-face").size, 1)
-    assertEquals(all(panel, ".walker-choice").map(_.textContent),
-      Vector("Discard", "Play faceup"))
-
   test("a battle-plan offer draws its card and its side as a chip"):
     val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",
       orientation = Some("face-up"))

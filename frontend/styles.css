@@ -370,10 +370,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-zone-helper { margin: 0.25rem 0 0.65rem; color: #a99f8c;
   font-size: 0.82rem; font-style: italic; font-weight: 400; }
 /* The card a decision is about, above the answers. */
-.decision-subject {
-  display: flex;
-  gap: 0.4em;
-  margin-bottom: 0.4em; }
 /* What the battle has already applied, above what is still on offer. */
 .plans-played { margin-bottom: 0.4em; font-size: 0.85em; }
 .plans-played ul { margin: 0; padding-left: 1.2em; }

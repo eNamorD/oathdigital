@@ -147,7 +147,6 @@ private[application] final class WalkerDecisionProjector(
               query = Some(projected),
               rollOutcome = rollOutcome(procedure, ready, awaited,
                 decide.decisionId),
-              subjectCards = subjectCards(ready, viewer, decide.decisionId),
               answeredOptions = answeredOptions(ready, viewer, pending,
                 decide.decisionId)))
         }
@@ -354,6 +353,11 @@ private[application] final class WalkerDecisionProjector(
     * spelling of `WorldCardId` (`kind` then `value`), so this parses what the
     * procedure wrote rather than reaching into the tree for it.
     *
+    * Not a field of the decision projection: `GameProjector` draws the
+    * subject with the cards in the viewer's hand (`temporaryHandPreview`),
+    * where a Search's kept card already is, so one card is never drawn as
+    * two.
+    *
     * A card that cannot be found, or that this viewer may not identify,
     * projects hidden rather than being dropped: unlike an option, a subject
     * carries no reference the client answers with, so showing a back is both
@@ -364,8 +368,9 @@ private[application] final class WalkerDecisionProjector(
     * whatever `hidden` is passed as, and the client trusts `hidden` to mean
     * the rest of the row is safe to skip reading.
     */
-  private def subjectCards(ready: ReadyGame, viewer: Option[PlayerId],
-      decisionId: String): Vector[CardDetailsProjection] =
+  private[application] def subjectCards(ready: ReadyGame,
+      viewer: Option[PlayerId], decisionId: String)
+      : Vector[CardDetailsProjection] =
     val index = CardIndex.from(ready.game).toOption
     val prefixes = Vector("cardplay.place.", "cardplay.replace.")
     prefixes.find(decisionId.startsWith).toVector.flatMap { prefix =>

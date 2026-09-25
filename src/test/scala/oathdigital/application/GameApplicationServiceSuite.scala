@@ -1702,6 +1702,73 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assert(asked.walkerDecision.exists(_.query.exists(_.options.nonEmpty)))
     assertEquals(asked.temporaryHandPreview, Vector.empty)
 
+  /** A placement asks about a card with buttons, never with the card itself.
+    * A Search's kept card is both in the temporary hand and the subject of
+    * the parked placement, and the panel is handed it once.
+    */
+  test("a Search's kept card is previewed once while it is being placed"):
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-search-preview"
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
+      .toOption.get
+    val Ready(afterDraw) = started.state: @unchecked
+    val drawn = afterDraw.game.current.temporaryHands(actor)
+    val kept = drawn.head
+    val chosen = if drawn.size == 1 then started else
+      def ref(card: WorldCardId): DecisionOptionRef = card match
+        case id: DenizenId => DecisionOptionRef.Denizen(id)
+        case id: VisionId => DecisionOptionRef.Vision(id)
+      val assignments = Vector(DecisionPlacement(ref(kept), "keep")) ++
+        drawn.tail.map(card => DecisionPlacement(ref(card), "discard"))
+      service.handle(gameId, started.nextSequence,
+        GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
+          DecisionAnswer.PartitionAnswer(assignments)))).toOption.get
+    val placing = new GameProjector(catalog).project(gameId,
+      LoadedGame(chosen.state, chosen.nextSequence), actor)
+
+    assertEquals(placing.walkerDecision.map(_.decisionId),
+      Some(s"cardplay.place.${kept.kind}.${kept.value}"))
+    assertEquals(placing.temporaryHandPreview.map(_.cardId), Vector(kept.value))
+
+  /** A facedown adviser is played from the board, so the hand holds nothing;
+    * the card being placed is previewed all the same, from where it lies.
+    */
+  test("a facedown adviser being played is previewed from the board"):
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-facedown-preview"
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val adviser = ready.game.current.players.find(_.player == actor).get
+      .advisers.collectFirst {
+        case DenizenState(id, Orientation.FaceDown, _) => id
+      }.get
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty,
+          Vector(DecisionOptionRef.Denizen(adviser))))).toOption.get
+    val Ready(parked) = started.state: @unchecked
+    assertEquals(parked.game.current.temporaryHands.getOrElse(actor,
+      Vector.empty), Vector.empty)
+    val placing = new GameProjector(catalog).project(gameId,
+      LoadedGame(started.state, started.nextSequence), actor)
+
+    assertEquals(placing.walkerDecision.map(_.decisionId),
+      Some(s"cardplay.place.${adviser.kind}.${adviser.value}"))
+    assertEquals(placing.temporaryHandPreview.map(c => (c.cardId, c.hidden)),
+      Vector((adviser.value, false)))
+
   test("player projection redacts other adviser hands and hidden orders"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
