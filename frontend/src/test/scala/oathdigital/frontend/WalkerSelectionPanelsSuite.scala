@@ -5,7 +5,7 @@ import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
 import ParkedDecision.{DecisionForm, Surface}
 import org.scalajs.dom
 
-class WalkerSelectionPanelsSuite extends munit.FunSuite {
+class WalkerSelectionPanelsSuite extends munit.FunSuite:
   private def site(id: String) = DecisionOptionState("site", id, s"Site $id")
   private val many = DecisionQueryState("choose-many",
     Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
@@ -20,32 +20,29 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite {
 
   /** The form the route would read off the query. */
   private def form(query: DecisionQueryState): ParkedDecision.SelectionForm =
-    if (query.form == "choose-many") DecisionForm.ChooseMany
+    if query.form == "choose-many" then DecisionForm.ChooseMany
     else DecisionForm.ChooseAmount
 
-  private def opened(id: String, query: DecisionQueryState) = {
+  private def opened(id: String, query: DecisionQueryState) =
     val ui = new RecordingView("game", "red")
     ui.currentWalkerSelection = WalkerSelectionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(decision(id, query)))
     ui
-  }
 
   private def render(ui: RecordingView, id: String, query: DecisionQueryState,
       canControl: Boolean = true,
-      rollOutcome: Option[WalkerRollOutcomeState] = None): dom.Element = {
+      rollOutcome: Option[WalkerRollOutcomeState] = None): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerSelectionPanels.render(Surface.Selection(
       decision(id, query, rollOutcome), query, form(query)), canControl, panel, ui)
     panel
-  }
 
-  private def one(root: dom.Element, selector: String): dom.Element = {
+  private def one(root: dom.Element, selector: String): dom.Element =
     val found = root.querySelectorAll(selector)
     assertEquals(found.length, 1, s"expected exactly one $selector")
     found(0).asInstanceOf[dom.Element]
-  }
 
-  test("choose-many renders a toggle per option and confirms only at the count") {
+  test("choose-many renders a toggle per option and confirms only at the count"):
     val ui = opened("challenge.ribbon-site", many)
     assertEquals(one(render(ui, "challenge.ribbon-site", many), "h2").textContent,
       "Choose sites")
@@ -65,9 +62,8 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite {
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("challenge.ribbon-site",
       DecisionAnswerWire.ChooseManyWire(Vector(DecisionOptionWire("site", "a"),
         DecisionOptionWire("site", "c"))))))
-  }
 
-  test("choose-amount renders a dropdown over its range and submits the choice") {
+  test("choose-amount renders a dropdown over its range and submits the choice"):
     val ui = opened("challenge.amount", amount)
     val panel = render(ui, "challenge.amount", amount)
     val select = one(panel, "select.walker-amount").asInstanceOf[dom.html.Select]
@@ -81,16 +77,14 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite {
     confirm.click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("challenge.amount",
       DecisionAnswerWire.ChooseAmountWire(5))))
-  }
 
-  test("a viewer who cannot control sees disabled controls") {
+  test("a viewer who cannot control sees disabled controls"):
     val ui = opened("challenge.amount", amount)
     val panel = render(ui, "challenge.amount", amount, canControl = false)
     assert(one(panel, "select.walker-amount").asInstanceOf[dom.html.Select].disabled)
     assert(one(panel, ".walker-amount-confirm").asInstanceOf[dom.html.Button].disabled)
-  }
 
-  test("the sacrifice panel draws dice, then totals, then the prompt") {
+  test("the sacrifice panel draws dice, then totals, then the prompt"):
     val outcome = WalkerRollOutcomeState("campaign.attack",
       Vector("two-swords-skull", "one-sword"), 3, None, Vector("1 skull loss"))
     val sacrifice = DecisionQueryState("choose-amount", Vector.empty,
@@ -109,11 +103,8 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite {
     assertEquals(order.take(3),
       Vector("walker-roll-faces", "walker-roll-totals", ""))
     assertEquals(panel.textContent.contains("two swords and a skull"), false)
-  }
 
-  test("a choose-amount no roll belongs beside draws no roll") {
+  test("a choose-amount no roll belongs beside draws no roll"):
     val ui = opened("challenge.amount", amount)
     val panel = render(ui, "challenge.amount", amount)
     assertEquals(panel.querySelectorAll(".walker-roll-totals").length, 0)
-  }
-}

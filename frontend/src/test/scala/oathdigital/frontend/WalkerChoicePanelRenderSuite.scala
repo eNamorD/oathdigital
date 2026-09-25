@@ -7,7 +7,7 @@ import org.scalajs.dom
   * control, and the consequences the engine annotated on it show beside it.
   * Runs under jsdom, like `PartitionPanelRenderSuite`.
   */
-class WalkerChoicePanelRenderSuite extends munit.FunSuite {
+class WalkerChoicePanelRenderSuite extends munit.FunSuite:
   private val oak = DecisionOptionState("denizen", "d1", "Old Oak", None,
     Vector("1 Supply", "+2 warbands"))
   private val pub = DecisionOptionState("denizen", "d2", "Rowdy Pub")
@@ -25,34 +25,31 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     * matched: the surface carries the decision and its query.
     */
   private def draw(decision: WalkerDecisionState,
-      ui: RecordingView = new RecordingView("game", "red")): dom.Element = {
+      ui: RecordingView = new RecordingView("game", "red")): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
       Surface.ChooseOne(decision, decision.query.get), table,
       canControl = true, panel, ui)
     panel
-  }
 
   private def all(root: dom.Element, selector: String): Vector[dom.Element] =
     root.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
-  test("each projected option is one control and its details show beside it") {
+  test("each projected option is one control and its details show beside it"):
     val panel = draw(parked)
     assertEquals(all(panel, ".walker-choice").map(_.textContent),
       Vector("Old Oak", "Rowdy Pub"))
     assertEquals(all(panel, ".walker-choice-details").map(_.textContent),
       Vector("1 Supply · +2 warbands"))
-  }
 
-  test("choosing an option submits the generic answer for its kind and id") {
+  test("choosing an option submits the generic answer for its kind and id"):
     val ui = new RecordingView("game", "red")
     val panel = draw(parked, ui)
     all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
     assertEquals(ui.submitted,
       Vector(WalkerPanelSupport.resolveChooseOneCommand(parked, oak)))
-  }
 
-  test("the card a placement is about is drawn above the buttons") {
+  test("the card a placement is about is drawn above the buttons"):
     val subject = CardDetails("denizen:vow-of-peace", "denizen", "Vow of Peace",
       orientation = Some("face-down"))
     val place = WalkerDecisionState("play-facedown-adviser",
@@ -66,9 +63,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     assertEquals(all(panel, ".decision-subject .card-face").size, 1)
     assertEquals(all(panel, ".walker-choice").map(_.textContent),
       Vector("Discard", "Play faceup"))
-  }
 
-  test("a battle-plan offer draws its card and its side as a chip") {
+  test("a battle-plan offer draws its card and its side as a chip"):
     val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",
       orientation = Some("face-up"))
     val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
@@ -85,9 +81,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Vector("Sticky Fire, Battle Plan"))
     assertEquals(all(panel, ".walker-choice-details").map(_.textContent),
       Vector("1 Favor"))
-  }
 
-  test("the plans already played are listed above the remaining offers") {
+  test("the plans already played are listed above the remaining offers"):
     val played = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
       None, Vector.empty, Some("Battle Plan"))
     val offer = DecisionOptionState("denizen", "denizen:longbows", "Longbows")
@@ -97,11 +92,10 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       "decide", query = Some(query), answeredOptions = Vector(played)))
     assertEquals(all(panel, ".plans-played li").map(_.textContent),
       Vector("Sticky Fire"))
-  }
 
   test("a card-shaped option with no badge stays a labelled text button, " +
       "not a card face -- Muster, Search, Forge and the like offer a card " +
-      "but no badge") {
+      "but no badge"):
     val card = CardDetails("denizen:old-oak", "denizen", "Old Oak",
       orientation = Some("face-up"))
     val option = DecisionOptionState("denizen", "d1", "Old Oak", Some(card))
@@ -111,9 +105,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       query = Some(query)))
     assertEquals(all(panel, ".walker-choice").map(_.textContent), Vector("Old Oak"))
     assertEquals(all(panel, ".card-face").size, 0)
-  }
 
-  test("an attacker-only plan draws its card and the attack chip") {
+  test("an attacker-only plan draws its card and the attack chip"):
     val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",
       orientation = Some("face-up"))
     val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
@@ -125,12 +118,11 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     assertEquals(all(panel, ".card-choice > .card-face").size, 1)
     assertEquals(all(panel, "span.option-badge.plan-side-attack").map(_.textContent),
       Vector("Attack Plan"))
-  }
 
   /** A plan applies as soon as it is chosen, so reading its card must not
     * choose it: the face opens the inspector and nothing else.
     */
-  test("clicking a battle plan's card submits nothing; its button chooses it") {
+  test("clicking a battle plan's card submits nothing; its button chooses it"):
     val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",
       orientation = Some("face-up"))
     val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
@@ -148,9 +140,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     assertEquals(ui.submitted.size, 0)
     all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
     assertEquals(ui.submitted.size, 1)
-  }
 
-  test("a badged option with no card names its side in words") {
+  test("a badged option with no card names its side in words"):
     val plan = DecisionOptionState("button", "title-plan", "Title plan",
       badge = Some("Defense Plan"))
     val query = DecisionQueryState("choose-one", Vector(plan),
@@ -160,9 +151,8 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
     assertEquals(all(panel, ".walker-choice").map(_.getAttribute("aria-label")),
       Vector("Title plan, Defense Plan"))
     assertEquals(all(panel, ".card-choice").size, 0)
-  }
 
-  test("a choose-one asked after a roll draws the roll before the question") {
+  test("a choose-one asked after a roll draws the roll before the question"):
     val outcome = WalkerRollOutcomeState("campaign.defense",
       Vector("one-shield", "blank"), 1)
     val site = DecisionOptionState("site", "s1", "The Spire")
@@ -176,5 +166,3 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite {
       Vector("img"))
     assertEquals(panel.firstElementChild.getAttribute("class"),
       "walker-roll-faces")
-  }
-}

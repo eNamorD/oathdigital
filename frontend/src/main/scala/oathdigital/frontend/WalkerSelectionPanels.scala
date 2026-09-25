@@ -5,7 +5,7 @@ import org.scalajs.dom
 /** The generic panels for a parked choose-many and choose-amount decision.
   * Both render only what the projected query declares and name no action.
   */
-private[frontend] object WalkerSelectionPanels {
+private[frontend] object WalkerSelectionPanels:
   import ParkedDecision.DecisionForm
   import ServerUiSupport.{button, element, text}
 
@@ -14,10 +14,10 @@ private[frontend] object WalkerSelectionPanels {
     * `WalkerSelectionDraft.reconcile` never builds) renders nothing.
     */
   def render(surface: ParkedDecision.Surface.Selection, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit = {
+      panel: dom.Element, ui: ServerUiView): Unit =
     val draft = ui.currentWalkerSelection
       .filter(_.decisionId == surface.decision.decisionId)
-    surface.form match {
+    surface.form match
       case DecisionForm.ChooseMany => draft
         .collect { case many: WalkerChooseManyDraft => many }
         .foreach(renderMany(surface.query, _, canControl, panel, ui))
@@ -25,14 +25,12 @@ private[frontend] object WalkerSelectionPanels {
         .collect { case amount: WalkerAmountDraft => amount }
         .foreach(renderAmount(surface.decision, surface.query, _, canControl,
           panel, ui))
-    }
-  }
 
   private def renderMany(query: DecisionQueryState, draft: WalkerChooseManyDraft,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit = {
+      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     panel.appendChild(text("p", "walker-many-instruction",
-      if (query.minimum == query.maximum) s"Choose ${query.minimum.getOrElse(0)}."
+      if query.minimum == query.maximum then s"Choose ${query.minimum.getOrElse(0)}."
       else s"Choose ${query.minimum.getOrElse(0)} to ${query.maximum.getOrElse(0)}."))
     val rows = element("div", "walker-many-options")
     query.options.foreach { option =>
@@ -53,7 +51,6 @@ private[frontend] object WalkerSelectionPanels {
     confirm.disabled = !canControl || !draft.canConfirm
     confirm.onclick = _ => draft.command.foreach(ui.submitCommand)
     panel.appendChild(confirm)
-  }
 
   /** A dropdown over the range. The change handler updates the draft without a
     * rerender, so the open control keeps focus; the confirm handler reads the
@@ -61,7 +58,7 @@ private[frontend] object WalkerSelectionPanels {
     */
   private def renderAmount(decision: WalkerDecisionState,
       query: DecisionQueryState, draft: WalkerAmountDraft,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit = {
+      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
     // The roll first, then what it came to, then the question about it: the
     // sacrifice question is only answerable by reading the attack.
     WalkerPanelSupport.rollFeedback(decision, panel)
@@ -89,5 +86,3 @@ private[frontend] object WalkerSelectionPanels {
       case latest: WalkerAmountDraft => latest
     }.flatMap(_.command).foreach(ui.submitCommand)
     panel.appendChild(confirm)
-  }
-}

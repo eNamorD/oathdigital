@@ -7,13 +7,13 @@ import org.scalajs.dom
   * it renders only what the projected query declares: a row per slot, with
   * its label, a stepper and its maximum.
   */
-private[frontend] object DistributePanelRenderer {
+private[frontend] object DistributePanelRenderer:
   import ServerUiSupport.{button, element, text}
 
   val AllTooltip = "Shift+click: all"
 
   def render(surface: ParkedDecision.Surface.Distribute, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit = {
+      panel: dom.Element, ui: ServerUiView): Unit =
     val decision = surface.decision
     val query = surface.query
     // A Campaign's placement is asked after the defense roll; the roll
@@ -36,27 +36,25 @@ private[frontend] object DistributePanelRenderer {
       confirm.onclick = _ => draft.command.foreach(ui.submitCommand)
       panel.appendChild(confirm)
     }
-  }
 
   private def row(slot: DecisionSlotState, draft: WalkerDistributeDraft,
-      canControl: Boolean, ui: ServerUiView): dom.Element = {
+      canControl: Boolean, ui: ServerUiView): dom.Element =
     val item = WalkerPartitionDraft.itemId(slot.option)
     val node = element("div", "distribute-slot")
     node.setAttribute("data-option-id", item)
     node.appendChild(slot.option.card.fold[dom.Element](
       text("span", "distribute-label", slot.option.label))(CardFace.render))
     node.appendChild(stepper("−", "distribute-decrement", canControl, ui,
-      shift => if (shift) draft.drain(item) else draft.decrement(item)))
+      shift => if shift then draft.drain(item) else draft.decrement(item)))
     node.appendChild(text("span", "distribute-amount",
       draft.state.amount(item).toString))
     node.appendChild(stepper("+", "distribute-increment", canControl, ui,
-      shift => if (shift) draft.fill(item) else draft.increment(item)))
+      shift => if shift then draft.fill(item) else draft.increment(item)))
     node.appendChild(text("span", "distribute-maximum", s"max ${slot.maximum}"))
     node
-  }
 
   private def stepper(label: String, className: String, canControl: Boolean,
-      ui: ServerUiView, next: Boolean => WalkerDistributeDraft): dom.Element = {
+      ui: ServerUiView, next: Boolean => WalkerDistributeDraft): dom.Element =
     val control = button(label, className)
     control.setAttribute("title", AllTooltip)
     control.disabled = !canControl
@@ -65,5 +63,3 @@ private[frontend] object DistributePanelRenderer {
       ui.rerender()
     }
     control
-  }
-}

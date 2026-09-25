@@ -17,7 +17,7 @@ import scala.scalajs.js
   * Runs under jsdom (`Test / jsEnv` in `build.sbt`), which is why
   * `dom.document` exists here at all.
   */
-class PartitionPanelRenderSuite extends munit.FunSuite {
+class PartitionPanelRenderSuite extends munit.FunSuite:
   /** Task 5b: the heading and the confirm label are the query's own, the
     * way `ForgeProcedure` now declares them -- the panel no longer reads
     * `decision.action` to decide what to call itself.
@@ -38,28 +38,25 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     * real `rerender()` would.
     */
   private def render(ui: RecordingView, canControl: Boolean = true,
-      decision: WalkerDecisionState = parked): dom.Element = {
+      decision: WalkerDecisionState = parked): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderPartitionPanel(
       Surface.Partition(decision, decision.query.get), canControl, panel, ui)
     panel
-  }
 
-  private def opened(): RecordingView = {
+  private def opened(): RecordingView =
     val ui = new RecordingView("game", "red")
     ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(parked))
     ui
-  }
 
   private def all(root: dom.Element, selector: String): Vector[dom.Element] =
     root.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
-  private def one(root: dom.Element, selector: String): dom.Element = {
+  private def one(root: dom.Element, selector: String): dom.Element =
     val found = all(root, selector)
     assertEquals(found.size, 1, s"expected exactly one $selector")
     found.head
-  }
 
   private def optionLabelsIn(panel: dom.Element, sectionKey: String)
       : Vector[String] =
@@ -73,7 +70,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     element.asInstanceOf[dom.html.Element].click()
 
   test("the panel renders one zone per projected section, holding the " +
-      "options placed there") {
+      "options placed there"):
     val panel = render(opened())
     assertEquals(one(panel, "h2").textContent, "Forge a relic")
     assertEquals(one(panel, ".partition-instruction").textContent,
@@ -92,19 +89,17 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assertEquals(all(panel, ".decision-option")
       .map(_.getAttribute("data-option-id")),
       Vector("denizen:denizen:1", "denizen:denizen:2", "denizen:denizen:3"))
-  }
 
   /** The options sit in their own row inside the zone. A zone that held them
     * directly measured as wide as its heading plus every card laid end to
     * end, so a keep-one zone claimed a full column it had no use for.
     */
-  test("a zone's options live in a row of their own") {
+  test("a zone's options live in a row of their own"):
     val zone = all(render(opened()), ".partition-zone").head
     val row = one(zone, ".partition-options")
     assertEquals(row.parentNode, zone)
     assertEquals(all(row, ".decision-option").size, 2)
     assertEquals(all(zone, ":scope > .decision-option"), Vector.empty)
-  }
 
   /** Order within a zone is part of the answer, but only a zone that takes
     * whatever is left over -- no minimum, no cap -- is one whose order the
@@ -119,34 +114,31 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     heading = Some("Choose your starting adviser"),
     confirmLabel = Some("Confirm Adviser"))
 
-  private def picking(): RecordingView = {
+  private def picking(): RecordingView =
     val ui = new RecordingView("game", "red")
     ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9),
       Some(WalkerDecisionState("setup", "setup-1", "decide",
         query = Some(keepDiscard))))
     ui
-  }
 
   private def pickPanel(ui: RecordingView): dom.Element =
     render(ui, decision = WalkerDecisionState("setup", "setup-1", "decide",
       query = Some(keepDiscard)))
 
-  test("a leftover zone holding several options says its order counts") {
+  test("a leftover zone holding several options says its order counts"):
     val zone = one(pickPanel(picking()), """[data-section-key="discard"]""")
     assertEquals(one(zone, ".decision-zone-order").textContent,
       "Discard happens in the order shown.")
-  }
 
-  test("the capped zone says nothing about order") {
+  test("the capped zone says nothing about order"):
     assertEquals(all(one(pickPanel(picking()),
       """[data-section-key="keep"]"""), ".decision-zone-order"), Vector.empty)
-  }
 
   /** One card cannot be in an order, so the sentence would be noise. A pick
     * of two leaves exactly one card behind, whichever one is kept.
     */
-  test("a zone holding one option says nothing about order") {
+  test("a zone holding one option says nothing about order"):
     val twoCards = keepDiscard.copy(options = keepDiscard.options.take(2))
     val decision = WalkerDecisionState("setup", "setup-1", "decide",
       query = Some(twoCards))
@@ -155,31 +147,27 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
       BoardSelectionContext("game", "red", 9), Some(decision))
     assertEquals(all(render(ui, decision = decision), ".decision-zone-order"),
       Vector.empty)
-  }
 
   /** Forge pays into zones that each carry a minimum, so none of them is a
     * leftover zone and none claims an order.
     */
-  test("a partition of payments claims no order anywhere") {
+  test("a partition of payments claims no order anywhere"):
     assertEquals(all(render(opened()), ".decision-zone-order"), Vector.empty)
-  }
 
-  test("the confirm button names the card the one-card zone holds") {
+  test("the confirm button names the card the one-card zone holds"):
     assertEquals(confirm(pickPanel(picking())).textContent, "Keep Denizen 1")
-  }
 
   /** With the slot empty or the query declaring no single-slot section, the
     * query's own label is what the button says.
     */
-  test("without a filled single slot the query's own label stands") {
+  test("without a filled single slot the query's own label stands"):
     val ui = picking()
     ui.currentWalkerPartition = ui.currentWalkerPartition
       .map(_.move("denizen:denizen:1", "discard"))
     assertEquals(confirm(pickPanel(ui)).textContent, "Confirm Adviser")
     assertEquals(confirm(render(opened())).textContent, "Complete Forge")
-  }
 
-  test("the accessible move button moves one option to the other zone") {
+  test("the accessible move button moves one option to the other zone"):
     val ui = opened()
     val panel = render(ui)
     val move = one(panel,
@@ -193,12 +181,11 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assertEquals(optionLabelsIn(moved, "pay-favor"), Vector("Denizen 2"))
     assertEquals(optionLabelsIn(moved, "pay-secret"),
       Vector("Denizen 3", "Denizen 1"))
-  }
 
   /** Order inside a zone is an answer, not a display detail: a discard zone
     * is discarded in the order it is left in.
     */
-  test("the reorder buttons slide an option within its zone") {
+  test("the reorder buttons slide an option within its zone"):
     val ui = opened()
     val later = one(render(ui),
       """[data-option-id="denizen:denizen:1"] .move-later""")
@@ -211,12 +198,11 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
       """[data-option-id="denizen:denizen:1"] .move-earlier"""))
     assertEquals(optionLabelsIn(render(ui), "pay-favor"),
       Vector("Denizen 1", "Denizen 2"))
-  }
 
   /** Disabled rather than absent, so moving an option never reflows the row
     * out from under the pointer that is working it.
     */
-  test("an option at the end of its zone keeps a disabled reorder button") {
+  test("an option at the end of its zone keeps a disabled reorder button"):
     val panel = render(opened())
     def enabled(id: String, cls: String): Boolean = !one(panel,
       s"""[data-option-id="$id"] .$cls""").asInstanceOf[dom.html.Button].disabled
@@ -227,9 +213,8 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     // The only option in its zone can go neither way.
     assert(!enabled("denizen:denizen:3", "move-earlier"))
     assert(!enabled("denizen:denizen:3", "move-later"))
-  }
 
-  test("dropping an option on another places it before that one") {
+  test("dropping an option on another places it before that one"):
     val ui = opened()
     val panel = render(ui)
     val dragged = dragStartPayload(one(panel,
@@ -238,9 +223,8 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assertEquals(optionLabelsIn(render(ui), "pay-favor"),
       Vector("Denizen 3", "Denizen 1", "Denizen 2"))
     assertEquals(optionLabelsIn(render(ui), "pay-secret"), Vector.empty)
-  }
 
-  test("dropping a dragged option on a zone moves it there") {
+  test("dropping a dragged option on a zone moves it there"):
     val ui = opened()
     val panel = render(ui)
     // Whatever `dragstart` puts on the transfer is exactly what the drop
@@ -254,9 +238,8 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assertEquals(optionLabelsIn(moved, "pay-favor"),
       Vector("Denizen 1", "Denizen 2", "Denizen 3"))
     assertEquals(optionLabelsIn(moved, "pay-secret"), Vector.empty)
-  }
 
-  test("confirmation is refused until every projected minimum is met") {
+  test("confirmation is refused until every projected minimum is met"):
     val ui = opened()
     assert(!confirm(render(ui)).disabled)
     // Emptying the secret zone leaves it below its projected minimum.
@@ -270,17 +253,15 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     drop(one(render(ui), """[data-section-key="pay-secret"]"""),
       "denizen:denizen:1")
     assert(!confirm(render(ui)).disabled)
-  }
 
-  test("a player who cannot control the game gets a disabled confirm") {
+  test("a player who cannot control the game gets a disabled confirm"):
     val ui = opened()
     val panel = render(ui, canControl = false)
     assert(confirm(panel).disabled)
     click(confirm(panel))
     assertEquals(ui.submitted, Vector.empty)
-  }
 
-  test("clicking confirm submits every option in the zone it was left in") {
+  test("clicking confirm submits every option in the zone it was left in"):
     val ui = opened()
     // Swap the first and last options, which keeps both minima met.
     drop(one(render(ui), """[data-section-key="pay-secret"]"""),
@@ -298,7 +279,6 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
         DecisionPlacementWire("denizen", "denizen:2", "pay-favor"),
         DecisionPlacementWire("denizen", "denizen:3", "pay-favor"),
         DecisionPlacementWire("denizen", "denizen:1", "pay-secret"))))))
-  }
 
   /** The copy is read from the query and from nowhere else, so these two
     * cases are the whole of Task 5b at the DOM.
@@ -310,15 +290,14 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     * declares no copy gets -- the panel must still be usable, just
     * untitled.
     */
-  test("the panel titles itself from the query, not from the action") {
+  test("the panel titles itself from the query, not from the action"):
     val retitled = query.copy(heading = Some("Pay for the relic"),
       confirmLabel = Some("Pay"))
     val panel = render(opened(), decision = parked.copy(query = Some(retitled)))
     assertEquals(one(panel, "h2").textContent, "Pay for the relic")
     assertEquals(confirm(panel).textContent, "Pay")
-  }
 
-  test("a partition query declaring no copy falls back to generic copy") {
+  test("a partition query declaring no copy falls back to generic copy"):
     val bare = query.copy(heading = None, confirmLabel = None)
     val panel = render(opened(), decision = parked.copy(query = Some(bare)))
     assertEquals(one(panel, "h2").textContent, "Resolve decision")
@@ -326,35 +305,31 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     // Untitled, not unusable: the zones and the options are still there.
     assertEquals(all(panel, ".partition-zone").size, 2)
     assertEquals(all(panel, ".decision-option").size, 3)
-  }
 
 
   /** Fires `dragstart` and returns what the handler wrote to the transfer.
     * jsdom implements neither `DragEvent` nor `DataTransfer`, so the event
     * carries a recording stand-in for the one property the handler reads.
     */
-  private def dragStartPayload(node: dom.Element): String = {
+  private def dragStartPayload(node: dom.Element): String =
     var written = ""
     val transfer = js.Dynamic.literal(
       setData = (_: String, value: String) => written = value,
       getData = (_: String) => written)
     node.dispatchEvent(transferEvent("dragstart", transfer))
     written
-  }
 
-  private def drop(zone: dom.Element, item: String): Unit = {
+  private def drop(zone: dom.Element, item: String): Unit =
     val transfer = js.Dynamic.literal(getData = (_: String) => item)
     zone.dispatchEvent(transferEvent("drop", transfer))
-  }
 
-  private def transferEvent(name: String, transfer: js.Dynamic): dom.Event = {
+  private def transferEvent(name: String, transfer: js.Dynamic): dom.Event =
     val event = js.Dynamic.newInstance(js.Dynamic.global.Event)(name,
       js.Dynamic.literal(bubbles = true, cancelable = true))
     event.updateDynamic("dataTransfer")(transfer)
     event.asInstanceOf[dom.Event]
-  }
 
-  test("a decision option is not a focus stop; the move buttons are the keyboard path") {
+  test("a decision option is not a focus stop; the move buttons are the keyboard path"):
     val panel = render(opened())
     val options = all(panel, ".decision-option")
     assert(options.nonEmpty)
@@ -364,9 +339,8 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assert(all(panel, ".move-option").nonEmpty)
     all(panel, ".move-option").foreach(move =>
       assert(move.getAttribute("aria-label").startsWith("Move ")))
-  }
 
-  test("a drag on an option swallows the click that follows; a plain press does not") {
+  test("a drag on an option swallows the click that follows; a plain press does not"):
     val node = dom.document.createElement("div").asInstanceOf[dom.html.Element]
     dom.document.body.appendChild(node)
     var clicks = 0
@@ -387,5 +361,3 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     assertEquals(clicks, 2, "the guard resets between gestures")
 
     node.remove()
-  }
-}

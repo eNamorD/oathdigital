@@ -18,7 +18,7 @@ import org.scalajs.dom
   * receives either `walkerDecision` or `walkerWaiting`, never both
   * (`WalkerDecisionProjector.project`/`.waiting` split on ownership).
   */
-private[frontend] object ParkedDecision {
+private[frontend] object ParkedDecision:
   import ServerUiSupport.{ViewerPresentation, text}
 
   /** The decision ids the route recognises by name. `kind` alone cannot
@@ -39,13 +39,12 @@ private[frontend] object ParkedDecision {
     * raw spelling: a form this client has no surface for renders nothing
     * rather than something wrong, and the value can still say what arrived.
     */
-  enum DecisionForm {
+  enum DecisionForm:
     case ChooseOne, ChooseMany, ChooseAmount, Partition, Distribute, Negotiate
     case Unknown(raw: String)
-  }
 
-  object DecisionForm {
-    def parse(raw: String): DecisionForm = raw match {
+  object DecisionForm:
+    def parse(raw: String): DecisionForm = raw match
       case "choose-one" => ChooseOne
       case "choose-many" => ChooseMany
       case "choose-amount" => ChooseAmount
@@ -53,8 +52,6 @@ private[frontend] object ParkedDecision {
       case "distribute" => Distribute
       case "negotiate" => Negotiate
       case other => Unknown(other)
-    }
-  }
 
   /** The two forms the selection panel answers: toggles for a choose-many,
     * a dropdown for a choose-amount.
@@ -63,7 +60,7 @@ private[frontend] object ParkedDecision {
     DecisionForm.ChooseMany.type | DecisionForm.ChooseAmount.type
 
   /** Which of its parks Recover's panel is at. */
-  enum RecoverStep {
+  enum RecoverStep:
     /** A Roll park asks nothing, so it has no query behind it -- which is
       * why its heading is the one Recover string the panel still writes.
       */
@@ -74,14 +71,13 @@ private[frontend] object ParkedDecision {
     case Choice(query: DecisionQueryState)
     /** The projected relic query, the same way. */
     case Relic(query: DecisionQueryState)
-  }
 
   /** Where a viewer sees the parked decision. Every case carries the whole
     * decision, so an attribute of any parked decision (its roll feedback,
     * its subject cards) is read by the surface that shows it, and a change
     * to what a decision carries edits one adapter and no route.
     */
-  enum Surface {
+  enum Surface:
     /** Recover's own panel, at whichever of its parks the walker sits. */
     case Recover(decision: WalkerDecisionState, step: RecoverStep)
     /** The generic choose-one button panel: a decide park no
@@ -103,7 +99,6 @@ private[frontend] object ParkedDecision {
       */
     case PawnPlacement(decision: WalkerDecisionState,
         query: DecisionQueryState)
-  }
 
   /** What one render of one viewer's projection shows for the parked
     * decision: the surface, if this viewer sees one, and the public notice
@@ -126,8 +121,8 @@ private[frontend] object ParkedDecision {
     * by its display name. Both are the projection's, so it rides along.
     */
   def render(value: GameProjection, routed: Routed, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit = {
-    routed.surface.foreach {
+      panel: dom.Element, ui: ServerUiView): Unit =
+    routed.surface.foreach:
       case surface: Surface.Recover => WalkerPanelSupport.renderRecoverPanel(
         surface, value, canControl, panel, ui)
       case surface: Surface.ChooseOne => WalkerPanelSupport.renderChooseOnePanel(
@@ -141,10 +136,8 @@ private[frontend] object ParkedDecision {
       case surface: Surface.Selection =>
         WalkerSelectionPanels.render(surface, canControl, panel, ui)
       case _: Surface.PawnPlacement => ()
-    }
     routed.notice.foreach(notice =>
       panel.appendChild(text("p", "walker-waiting", notice)))
-  }
 
   private def surface(value: GameProjection,
       showGameplayControls: Boolean): Option[Surface] =
@@ -162,10 +155,9 @@ private[frontend] object ParkedDecision {
     recoverStep(decision).map(Surface.Recover(decision, _))
       .orElse(decision.query.flatMap(query =>
         formSurface(decision, query, showGameplayControls)))
-      .filter {
+      .filter:
         case _: Surface.Negotiate => true
         case _ => showGameplayControls
-      }
 
   /** Recover keeps its own panel for its richer copy, so its parks are
     * claimed before the form is read. A park with nothing to render -- a
@@ -175,15 +167,14 @@ private[frontend] object ParkedDecision {
     */
   private def recoverStep(decision: WalkerDecisionState)
       : Option[RecoverStep] =
-    if (decision.action != "recover") None
-    else decision.kind match {
+    if decision.action != "recover" then None
+    else decision.kind match
       case "roll" => decision.pool.map(RecoverStep.Roll.apply)
       case "decide" if decision.decisionId == recoverChoiceDecisionId =>
         chooseOneQuery(decision).map(RecoverStep.Choice.apply)
       case "decide" if decision.decisionId == recoverRelicDecisionId =>
         chooseOneQuery(decision).map(RecoverStep.Relic.apply)
       case _ => None
-    }
 
   private def chooseOneQuery(decision: WalkerDecisionState)
       : Option[DecisionQueryState] =
@@ -193,7 +184,7 @@ private[frontend] object ParkedDecision {
   private def formSurface(decision: WalkerDecisionState,
       query: DecisionQueryState, showGameplayControls: Boolean)
       : Option[Surface] =
-    DecisionForm.parse(query.form) match {
+    DecisionForm.parse(query.form) match
       case DecisionForm.ChooseOne
           if decision.decisionId.startsWith(pawnPlacementDecisionIdPrefix) =>
         Some(Surface.PawnPlacement(decision, query))
@@ -214,7 +205,6 @@ private[frontend] object ParkedDecision {
         Surface.Negotiate(deal, deal.editing
           .filter(_ => showGameplayControls).map(decision.decisionId -> _)))
       case DecisionForm.Unknown(_) => None
-    }
 
   /** The public line shown to every viewer a parked decision is NOT waiting
     * on: who it awaits, and the question's heading when it has one -- `None`
@@ -229,4 +219,3 @@ private[frontend] object ParkedDecision {
       waiting.heading.fold(s"Waiting for $name")(heading =>
         s"Waiting for $name: $heading")
     }
-}

@@ -7,24 +7,21 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
 
-class ServerModeUiSuite extends FunSuite {
-  test("canonical path decodes only a single game segment") {
+class ServerModeUiSuite extends FunSuite:
+  test("canonical path decodes only a single game segment"):
     assertEquals(ServerUiSupport.canonicalGameId("/games/my%20game"), Some("my game"))
     assertEquals(ServerUiSupport.canonicalGameId("/"), None)
     assertEquals(ServerUiSupport.canonicalGameId("/games/"), None)
     assertEquals(ServerUiSupport.canonicalGameId("/games/a/api"), None)
     assertEquals(ServerUiSupport.canonicalGameId("/games/%broken"), None)
-  }
 
-  test("trusted player renders its fixed seat and never bootstraps switches or loads raw events") {
+  test("trusted player renders its fixed seat and never bootstraps switches or loads raw events"):
     val browser = new TestBrowser("?gameId=wrong&playerId=red")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += ((method, url, body))
         scala.concurrent.Future.successful(Right(TransportResponse(200, trustedProjection)))
-      }
-    }
     Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
     browser.settle.map { _ =>
       assertEquals(requests.map(r => r._1 -> r._2).toVector,
@@ -38,18 +35,15 @@ class ServerModeUiSuite extends FunSuite {
       assert(browser.byClass("restart").isEmpty)
       assert(browser.urls.isEmpty)
     }.andThen { case _ => browser.close() }(using scala.scalajs.concurrent.JSExecutionContext.queue)
-  }
 
-  test("trusted unauthorized player displays seat-link recovery without bootstrap") {
+  test("trusted unauthorized player displays seat-link recovery without bootstrap"):
     val browser = new TestBrowser
     var requests = 0
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += 1
         scala.concurrent.Future.successful(Right(TransportResponse(401,
           """{"error":"unauthorized","message":"internal detail"}""")))
-      }
-    }
     Main.start(browser.mount, "/games/missing", trustedAlpha = true, transport)
     browser.settle.map { _ =>
       assertEquals(requests, 1)
@@ -57,18 +51,15 @@ class ServerModeUiSuite extends FunSuite {
       assert(!browser.text.contains("internal detail"))
       assert(browser.byClass("restart").isEmpty)
     }.andThen { case _ => browser.close() }(using scala.scalajs.concurrent.JSExecutionContext.queue)
-  }
 
   private def hostTransport(
       requests: scala.collection.mutable.ArrayBuffer[(String, String, Option[String])],
       status: Int = 201,
       body: String = """{"gameId":"host-game","seats":[{"playerId":"Red","url":"https://oath.test/s/red-code"},{"playerId":"Blue","url":"https://oath.test/s/blue-code"}]}"""
-  ): JsonTransport = new JsonTransport {
-    def request(method: String, url: String, body0: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
+  ): JsonTransport = new JsonTransport:
+    def request(method: String, url: String, body0: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
       requests += ((method, url, body0))
       scala.concurrent.Future.successful(Right(TransportResponse(status, body)))
-    }
-  }
 
   private def hostRequests(requests: collection.Seq[(String, String, Option[String])]) =
     requests.map(r => oathdigital.protocol.TrustedGameCreateRequestCodec.decode(r._3.get).toOption.get)
@@ -83,7 +74,7 @@ class ServerModeUiSuite extends FunSuite {
   private def toggle(browser: TestBrowser): org.scalajs.dom.html.Button =
     browser.byClass("add-player-toggle").head.asInstanceOf[org.scalajs.dom.html.Button]
 
-  test("trusted root posts host form and displays ordered copyable seat links") {
+  test("trusted root posts host form and displays ordered copyable seat links"):
     val browser = new TestBrowser("?gameId=ignored&playerId=ignored")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
     Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
@@ -110,9 +101,8 @@ class ServerModeUiSuite extends FunSuite {
       browser.click("copy-seat-link")
       assertEquals(browser.copied, Vector("https://oath.test/s/red-code"))
     }.andThen { case _ => browser.close() }(using scala.scalajs.concurrent.JSExecutionContext.queue)
-  }
 
-  test("host add-player menu offers untaken colors in order and stops at six players") {
+  test("host add-player menu offers untaken colors in order and stops at six players"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
     Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
@@ -141,9 +131,8 @@ class ServerModeUiSuite extends FunSuite {
         Vector("Red" -> "red-lineage", "Blue" -> "blue-lineage", "Pink" -> "pink-lineage",
           "Brown" -> "brown-lineage", "Black" -> "black-lineage"))
     }.andThen { case _ => browser.close() }
-  }
 
-  test("host form blocks fewer than two players, invalid IDs and duplicate IDs before posting") {
+  test("host form blocks fewer than two players, invalid IDs and duplicate IDs before posting"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
     Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
@@ -169,29 +158,25 @@ class ServerModeUiSuite extends FunSuite {
       assertEquals(hostRequests(requests).head.participants.map(p => p.playerId -> p.color),
         Vector("Alex" -> PlayerColor.Yellow, "Sam" -> PlayerColor.Red))
     }.andThen { case _ => browser.close() }
-  }
 
-  test("host colors map to their own player badge tokens") {
+  test("host colors map to their own player badge tokens"):
     assertEquals(TrustedHostUi.LineageColors.map(PlayerColorCss.of),
       Vector("player-red", "player-blue", "player-yellow", "player-white", "player-black",
         "player-pink", "player-brown"))
     assertEquals(PlayerColorCss.of(None), "player-neutral")
-  }
 
   private def trustedProjection: String =
     """{"gameId":"my game","nextSequence":1,"phase":"awaiting-pawn","activeParticipantId":"red","viewerPlayerId":"blue","players":[{"playerId":"red","displayName":"Red Exile","role":"exile","colorToken":"red"},{"playerId":"blue","displayName":"Blue Exile","role":"exile","colorToken":"blue"}],"world":[],"pawnLocations":[],"legalControls":[],"ready":false,"completed":false}"""
 
-  test("development root retains query loading and raw history") {
+  test("development root retains query loading and raw history"):
     val browser = new TestBrowser("?gameId=existing&playerId=red")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += method -> url
-        val json = if (url.contains("/events")) """{"events":[]}"""
+        val json = if url.contains("/events") then """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", "")
         scala.concurrent.Future.successful(Right(TransportResponse(200, json)))
-      }
-    }
     Main.start(browser.mount, "/", trustedAlpha = false, transport)
     browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
       assertEquals(requests.toVector, Vector("GET" -> "/api/dev/first-games/existing?playerId=red",
@@ -203,9 +188,8 @@ class ServerModeUiSuite extends FunSuite {
       assert(browser.urls.last.contains("gameId=existing&playerId=red"))
       assert(!browser.text.contains("assigned seat link"))
     }.andThen { case _ => browser.close() }
-  }
 
-  test("host duplicate game response keeps form editable and retries with a new game ID") {
+  test("host duplicate game response keeps form editable and retries with a new game ID"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
     Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests, 409,
@@ -223,9 +207,8 @@ class ServerModeUiSuite extends FunSuite {
       assert(!browser.byClass("create-trusted-game").head.asInstanceOf[org.scalajs.dom.html.Button].disabled)
       assert(browser.byClass("seat-link").isEmpty)
     }.andThen { case _ => browser.close() }
-  }
 
-  test("development root without a game shows the start page and opens the created game") {
+  test("development root without a game shows the start page and opens the created game"):
     val browser = new TestBrowser("?mode=server")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
     val opened = scala.collection.mutable.ArrayBuffer.empty[String]
@@ -242,25 +225,22 @@ class ServerModeUiSuite extends FunSuite {
       assertEquals(opened.toVector, Vector("/?mode=server&gameId=host-game&playerId=Red"))
       assert(browser.byClass("seat-link").isEmpty)
     }.andThen { case _ => browser.close() }
-  }
 
-  test("development new game button returns to the start page") {
+  test("development new game button returns to the start page"):
     val browser = new TestBrowser("?mode=server&gameId=existing&playerId=red")
     val opened = scala.collection.mutable.ArrayBuffer.empty[String]
-    val transport = new JsonTransport {
+    val transport = new JsonTransport:
       def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         scala.concurrent.Future.successful(Right(TransportResponse(200,
-          if (url.contains("/events")) """{"events":[]}"""
+          if url.contains("/events") then """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", ""))))
-    }
     Main.start(browser.mount, "/", trustedAlpha = false, transport, navigate = opened += _)
     browser.settle.map { _ =>
       browser.click("restart")
       assertEquals(opened.toVector, Vector("/?mode=server"))
     }.andThen { case _ => browser.close() }
-  }
 
-  test("trusted UI reloads after command conflict without retrying or changing seat") {
+  test("trusted UI reloads after command conflict without retrying or changing seat"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
     val active = trustedProjection.replace("\"activeParticipantId\":\"red\"", "\"activeParticipantId\":\"blue\"")
@@ -270,12 +250,10 @@ class ServerModeUiSuite extends FunSuite {
       TransportResponse(200, active),
       TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}"""),
       TransportResponse(200, trustedProjection.replace("\"nextSequence\":1", "\"nextSequence\":2")))
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += method -> url
         scala.concurrent.Future.successful(Right(responses.dequeue()))
-      }
-    }
     Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
     browser.settle.flatMap { _ =>
       browser.click("wake-action")
@@ -288,19 +266,16 @@ class ServerModeUiSuite extends FunSuite {
       assert(browser.text.contains("refreshed without retrying"))
       assert(browser.urls.isEmpty)
     }.andThen { case _ => browser.close() }
-  }
 
-  test("trusted polling stops and clears private state when cookie access is lost") {
+  test("trusted polling stops and clears private state when cookie access is lost"):
     val browser = new TestBrowser
     var requests = 0
-    val transport = new JsonTransport {
-      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += 1
-        scala.concurrent.Future.successful(Right(if (requests == 1)
+        scala.concurrent.Future.successful(Right(if requests == 1 then
           TransportResponse(200, trustedProjection) else TransportResponse(403,
             """{"error":"forbidden","message":"denied"}""")))
-      }
-    }
     Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
     browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
       assertEquals(requests, 2)
@@ -309,11 +284,10 @@ class ServerModeUiSuite extends FunSuite {
       browser.tick()
       assertEquals(requests, 2)
     }.andThen { case _ => browser.close() }
-  }
 
   Vector("changed" -> Some("red"), "absent" -> None,
     "invalid" -> Some("unknown-seat")).foreach { case (label, viewer) =>
-    test(s"trusted same-sequence poll rejects $label viewer and disables old controls") {
+    test(s"trusted same-sequence poll rejects $label viewer and disables old controls"):
       val browser = new TestBrowser
       val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
       val active = trustedProjection.replace("\"activeParticipantId\":\"red\"", "\"activeParticipantId\":\"blue\"")
@@ -323,13 +297,11 @@ class ServerModeUiSuite extends FunSuite {
       val replacement = viewer.fold(active.replace("\"viewerPlayerId\":\"blue\",", "")) { id =>
         active.replace("\"viewerPlayerId\":\"blue\"", s"\"viewerPlayerId\":\"$id\"")
       }
-      val transport = new JsonTransport {
-        def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] = {
+      val transport = new JsonTransport:
+        def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
           requests += method -> url
           scala.concurrent.Future.successful(Right(TransportResponse(200,
-            if (requests.size == 1) active else replacement)))
-        }
-      }
+            if requests.size == 1 then active else replacement)))
       Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
       browser.settle.flatMap { _ =>
         val oldControl = browser.byClass("wake-action").head.asInstanceOf[scala.scalajs.js.Dynamic]
@@ -344,11 +316,10 @@ class ServerModeUiSuite extends FunSuite {
             "GET" -> "/games/my%20game/api", "GET" -> "/games/my%20game/api"))
         }
       }.andThen { case _ => browser.close() }
-    }
   }
 
   Vector(200, 401, 403).foreach { status =>
-  test(s"trusted identity loss with HTTP $status rejects a late command response from the previous seat session") {
+  test(s"trusted identity loss with HTTP $status rejects a late command response from the previous seat session"):
     val browser = new TestBrowser
     val pending = scala.concurrent.Promise[Either[GameClientFailure, TransportResponse]]()
     val active = trustedProjection.replace("\"activeParticipantId\":\"red\"", "\"activeParticipantId\":\"blue\"")
@@ -357,17 +328,15 @@ class ServerModeUiSuite extends FunSuite {
       .replace("\"ready\":false", "\"ready\":true")
     var loads = 0
     var commands = 0
-    val transport = new JsonTransport {
+    val transport = new JsonTransport:
       def request(method: String, url: String, body: Option[String]) =
-        if (method == "POST") { commands += 1; pending.future }
-        else {
+        if method == "POST" then { commands += 1; pending.future }
+        else
           loads += 1
-          scala.concurrent.Future.successful(Right(if (loads == 1) TransportResponse(200, active)
-            else if (status == 200) TransportResponse(200, active.replace("\"viewerPlayerId\":\"blue\"",
+          scala.concurrent.Future.successful(Right(if loads == 1 then TransportResponse(200, active)
+            else if status == 200 then TransportResponse(200, active.replace("\"viewerPlayerId\":\"blue\"",
               "\"viewerPlayerId\":\"red\""))
             else TransportResponse(status, """{"error":"forbidden","message":"denied"}""")))
-        }
-    }
     Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
     browser.settle.flatMap { _ =>
       browser.click("wake-action")
@@ -385,9 +354,8 @@ class ServerModeUiSuite extends FunSuite {
       assertEquals(commands, 1)
     }.andThen { case _ => browser.close() }
   }
-  }
 
-  test("secret summaries lead with available over total and explain unavailable tokens") {
+  test("secret summaries lead with available over total and explain unavailable tokens"):
     assertEquals(ServerUiSupport.secretSummaryLabel(1, 1, 0, 0),
       "1 available of 1 owned; 0 facedown and 0 committed")
     assertEquals(ServerUiSupport.secretSummaryLabel(0, 1, 0, 1),
@@ -396,9 +364,8 @@ class ServerModeUiSuite extends FunSuite {
       "0 available of 1 owned; 1 facedown and 0 committed")
     assertEquals(ServerUiSupport.secretSummaryLabel(1, 2, 0, 1),
       "1 available of 2 owned; 0 facedown and 1 committed")
-  }
   test("the roll outcome summary reads the accumulated dice, the score and " +
-      "what it is measured against") {
+      "what it is measured against"):
     assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState("recover", Vector("blank", "blank"), 0, Some(4))),
       "Rolled blank, blank -- 0 shields so far (need 4).")
@@ -411,7 +378,6 @@ class ServerModeUiSuite extends FunSuite {
         Vector("two-swords-skull", "one-sword"), 3, None,
         Vector("1 skull loss"))),
       "Rolled two-swords-skull, one-sword -- Attack 3, 1 skull loss.")
-  }
 
   /** Task 5: Forge is driven end to end through the shared two-zone
     * interaction. The sections carrying their own labels and minima, the
@@ -432,7 +398,7 @@ class ServerModeUiSuite extends FunSuite {
     WalkerPartitionDraft.itemId(forgeQuery.options(index))
 
   test("Forge is answered by moving projected options between projected " +
-      "sections") {
+      "sections"):
     val context = BoardSelectionContext("game", "red", 9)
     val initial = WalkerPartitionDraft.reconcile(None, context,
       Some(forgeParked)).get
@@ -464,9 +430,8 @@ class ServerModeUiSuite extends FunSuite {
       Vector("Denizen 1"))
     // A section the query never declared is ignored rather than recorded.
     assertEquals(repaired.move(forgeItem(0), "pay-nothing"), repaired)
-  }
 
-  test("a Forge draft is dropped whenever the question changes") {
+  test("a Forge draft is dropped whenever the question changes"):
     val context = BoardSelectionContext("game", "red", 9)
     val initial = WalkerPartitionDraft.reconcile(None, context,
       Some(forgeParked)).get
@@ -489,9 +454,8 @@ class ServerModeUiSuite extends FunSuite {
       Vector("Denizen 2", "Denizen 3"))
     assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context, None),
       None)
-  }
 
-  test("a parked walker decision that is not a partition drives no draft") {
+  test("a parked walker decision that is not a partition drives no draft"):
     val context = BoardSelectionContext("game", "red", 9)
     // A choose-one park, and a park whose query was suppressed because an
     // option could not be presented: neither is an answerable partition.
@@ -501,14 +465,12 @@ class ServerModeUiSuite extends FunSuite {
           DecisionOptionState("button", "stop", "Stop"))))))), None)
     assertEquals(WalkerPartitionDraft.reconcile(None, context,
       Some(forgeParked.copy(query = None))), None)
-  }
 
-  test("banner and Challenge action labels are presentable") {
+  test("banner and Challenge action labels are presentable"):
     assertEquals(ServerUiSupport.actionLabel("challenge"), "Challenge")
     assertEquals(ServerUiSupport.actionLabel("peoples-favor"), "People's Favor")
-  }
 
-  test("facedown adviser draft supports zero one and multiple choices and only faceup outcomes") {
+  test("facedown adviser draft supports zero one and multiple choices and only faceup outcomes"):
     val context = BoardSelectionContext("game", "red", 7)
     val card = CardDetails("D1", "denizen", "The Adviser")
     val other = CardDetails("D2", "denizen", "The Other Adviser")
@@ -545,9 +507,8 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(FacedownAdviserDraft.reconcile(Some(many.choose("D2")),
       context.copy(sequence = 8), Some(minor(Vector(
         MinorAdviser(card, placements), MinorAdviser(other, placements))))), None)
-  }
 
-  test("selection copy exposes details and non-color cardinality instructions") {
+  test("selection copy exposes details and non-color cardinality instructions"):
     val single = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty)))
     val confirmed = single.copy(explicitConfirm = true)
@@ -557,12 +518,10 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.cardinalityInstruction(single.copy(
       actionKind = "travel", minimum = 0, maximum = 0)),
       "No target is available; confirm to play this action.")
-  }
 
-  test("a roll answer carries the projected pool key and no die faces") {
+  test("a roll answer carries the projected pool key and no die faces"):
     assertEquals(GameCommand.RollWalker("red", "recover"),
       oathdigital.protocol.GameIntent.RollWalker("recover"))
-  }
 
   /** Task 4: both decide parks take their option set from the projected
     * query, and one generic command builder serves both -- a projected
@@ -571,7 +530,7 @@ class ServerModeUiSuite extends FunSuite {
     */
   test("the parked Recover choice decision resolves its projected button " +
       "options against its own decision id, distinct from the relic park " +
-      "sharing its \"decide\" kind") {
+      "sharing its \"decide\" kind"):
     val continueOption = DecisionOptionState("button", "continue", "Continue")
     val stopOption = DecisionOptionState("button", "stop", "Stop")
     val choiceQuery = DecisionQueryState("choose-one",
@@ -585,10 +544,9 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(choice, stopOption),
       GameCommand.ResolveWalker("red", "recover.choice",
         DecisionAnswerWire.ChooseOneWire("button", "stop")))
-  }
 
   test("the parked Recover relic decision offers one control per projected " +
-      "option, never a preselected relic") {
+      "option, never a preselected relic"):
     val bronze = DecisionOptionState("relic", "relic-1", "Bronze Idol",
       Some(CardDetails("relic-1", "relic", "Bronze Idol")))
     val silver = DecisionOptionState("relic", "relic-2", "Silver Idol",
@@ -603,9 +561,8 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, silver),
       GameCommand.ResolveWalker("red", "recover.relic",
         DecisionAnswerWire.ChooseOneWire("relic", "relic-2")))
-  }
 
-  test("site forces retain accessible labels counts and stable color classes") {
+  test("site forces retain accessible labels counts and stable color classes"):
     val cases = Vector(
       SiteForces.Exile(2, "red-exile", PlayerColor.Red,
         "Red Warbands") -> ("Red Warbands x2", "force-red"),
@@ -620,9 +577,8 @@ class ServerModeUiSuite extends FunSuite {
     }
     assertEquals(GameSite("empty", "Empty", 0, 0, 0, 0, Vector.empty,
       GameSiteRelics(0)).forces, None)
-  }
 
-  test("Take Wealth actions use the active-player labels and commands") {
+  test("Take Wealth actions use the active-player labels and commands"):
     val actions = ServerUiSupport.takeWealthActions(
       projection(Set("takeFavor", "takeSecret", "endWake")),
       "red-exile"
@@ -639,9 +595,8 @@ class ServerModeUiSuite extends FunSuite {
         GameCommand.TakeWealth("red-exile", "secret")
       )
     )
-  }
 
-  test("unavailable Take Wealth actions are absent") {
+  test("unavailable Take Wealth actions are absent"):
     assertEquals(
       ServerUiSupport.takeWealthActions(
         projection(Set("endWake")),
@@ -649,18 +604,16 @@ class ServerModeUiSuite extends FunSuite {
       ),
       Vector.empty
     )
-  }
 
-  test("blocked Take Wealth resource is absent while the legal one remains") {
+  test("blocked Take Wealth resource is absent while the legal one remains"):
     val actions = ServerUiSupport.takeWealthActions(
       projection(Set("takeSecret", "endWake")),
       "red-exile"
     )
 
     assertEquals(actions.map(_.label), Vector("Take Wealth: 1 secret"))
-  }
 
-  test("already-used Take Wealth actions are absent from a later phase") {
+  test("already-used Take Wealth actions are absent from a later phase"):
     assertEquals(
       ServerUiSupport.takeWealthActions(
         projection(Set("takeFavor", "takeSecret"), phase = "act-action-selection"),
@@ -668,9 +621,8 @@ class ServerModeUiSuite extends FunSuite {
       ),
       Vector.empty
     )
-  }
 
-  test("inactive Wake viewer waits and receives no gameplay controls") {
+  test("inactive Wake viewer waits and receives no gameplay controls"):
     val value = projection(
       Set("takeFavor", "takeSecret", "endWake"),
       activeParticipantId = "red-exile"
@@ -684,7 +636,6 @@ class ServerModeUiSuite extends FunSuite {
       ServerUiSupport.takeWealthActions(value, "blue-exile"),
       Vector.empty
     )
-  }
 
   /** Fix round 1: a parked walker `Decide`'s owner is not always the active
     * participant (Task 5). `walkerDecision` is projected to the owner alone
@@ -693,16 +644,15 @@ class ServerModeUiSuite extends FunSuite {
     * -- the bug this guards against left the owner and the active player
     * each waiting on the other.
     */
-  test("an off-turn owner of a parked walker decision keeps gameplay controls") {
+  test("an off-turn owner of a parked walker decision keeps gameplay controls"):
     val value = projection(Set.empty, activeParticipantId = "red-exile")
       .copy(walkerDecision = Some(forgeParked))
     val owner = ServerUiSupport.viewerPresentation(value, "blue-exile")
     assert(owner.showGameplayControls)
     assertEquals(owner.waitingForPlayerId, None)
     assertEquals(owner.waitingForDisplayName, None)
-  }
 
-  test("the active participant waits for the walker decision's off-turn owner") {
+  test("the active participant waits for the walker decision's off-turn owner"):
     val value = projection(Set.empty, activeParticipantId = "red-exile")
       .copy(walkerWaiting = Some(WalkerWaitingState("blue-exile",
         Some("Choose the Oathkeeper"))))
@@ -710,9 +660,8 @@ class ServerModeUiSuite extends FunSuite {
     assert(!active.showGameplayControls)
     assertEquals(active.waitingForPlayerId, Some("blue-exile"))
     assertEquals(active.waitingForDisplayName, Some("Blue Exile"))
-  }
 
-  test("inactive Act viewer sees no action-selection controls") {
+  test("inactive Act viewer sees no action-selection controls"):
     val value = projection(Set("beginRest"), phase = "act-action-selection")
       .copy(actionSelectionOpen = true,
         legalSearchSources = Vector(LegalSearchSource("world", None, 2)),
@@ -723,9 +672,8 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(inactive.waitingForPlayerId, Some("red-exile"))
     assert(!ServerUiSupport.showActActionControls(value, inactive))
     assert(ServerUiSupport.showActActionControls(value, active))
-  }
 
-  test("inactive setup viewer waits without pawn or private adviser controls") {
+  test("inactive setup viewer waits without pawn or private adviser controls"):
     val value = projection(
       Set.empty,
       phase = "setup-walker-decision",
@@ -737,9 +685,8 @@ class ServerModeUiSuite extends FunSuite {
 
     assertEquals(presentation.showGameplayControls, false)
     assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
-  }
 
-  test("active viewer retains Wake and setup gameplay controls") {
+  test("active viewer retains Wake and setup gameplay controls"):
     val wake = projection(Set("takeFavor", "endWake"))
     assert(ServerUiSupport.viewerPresentation(
       wake,
@@ -759,7 +706,6 @@ class ServerModeUiSuite extends FunSuite {
       setup,
       "red-exile"
     ).showGameplayControls)
-  }
 
   /** Regression: the owner of a parked walker decision has
     * `waitingForPlayerId = None` (Task 5, tested above), but the status line
@@ -769,7 +715,7 @@ class ServerModeUiSuite extends FunSuite {
     * to the very player who needs to act. Assert the decision's own heading
     * renders instead, for both the owner and an off-turn viewer.
     */
-  test("a parked walker decision's owner sees its heading, not the debug fallback") {
+  test("a parked walker decision's owner sees its heading, not the debug fallback"):
     val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
     val pawnQuery = DecisionQueryState("choose-one", Vector(site),
       heading = Some("Choose your starting site"))
@@ -785,9 +731,8 @@ class ServerModeUiSuite extends FunSuite {
     val ownerStatus = ActionDecisionRenderer.status(value, new RecordingView("game-1", "blue-exile"))
     assertEquals(ownerStatus.textContent, "Choose your starting site")
     assert(!ownerStatus.textContent.contains("active participant"))
-  }
 
-  test("a parked walker decision without a heading still avoids the debug fallback") {
+  test("a parked walker decision without a heading still avoids the debug fallback"):
     val vote = DecisionOptionState("button", "yes", "Yes")
     val query = DecisionQueryState("choose-one", Vector(vote))
     val decision = WalkerDecisionState("setup", "setup.some-decision.blue-exile",
@@ -801,18 +746,16 @@ class ServerModeUiSuite extends FunSuite {
 
     val ownerStatus = ActionDecisionRenderer.status(value, new RecordingView("game-1", "blue-exile"))
     assertEquals(ownerStatus.textContent, "Your decision.")
-  }
 
-  test("board target classes distinguish candidate selected and read-only state") {
+  test("board target classes distinguish candidate selected and read-only state"):
     assertEquals(ServerUiSupport.siteTargetClasses(false, false),
       "site site-readonly")
     assertEquals(ServerUiSupport.siteTargetClasses(true, false),
       "site board-target")
     assertEquals(ServerUiSupport.siteTargetClasses(true, true),
       "site board-target board-target-selected")
-  }
 
-  test("round tracker geometry is eight circular ring wedges") {
+  test("round tracker geometry is eight circular ring wedges"):
     val segments = (1 to 8).map(WorldBoardRenderer.roundSegment)
     assertEquals(segments.map(_.path).distinct.size, 8)
     segments.foreach { segment =>
@@ -827,25 +770,22 @@ class ServerModeUiSuite extends FunSuite {
     val markerRadius = Math.hypot(limiter.markerX - 100.0, limiter.markerY - 100.0)
     val labelRadius = Math.hypot(limiter.labelX - 100.0, limiter.labelY - 100.0)
     assert(markerRadius > labelRadius)
-  }
 
-  test("winner banner class resolves the winner's stable color token") {
+  test("winner banner class resolves the winner's stable color token"):
     assertEquals(ServerUiSupport.winnerColorClass(
       projection(Set.empty), "red-exile"), "player-red")
     assertEquals(ServerUiSupport.winnerColorClass(
       projection(Set.empty), "missing"), "player-neutral")
-  }
 
-  test("visible target detail badges contain details without duplicating names") {
+  test("visible target detail badges contain details without duplicating names"):
     val candidate = BoardTargetCandidate(BoardTargetRef.Site("site:a"),
       "Ancient City", Vector("2 Supply", "+1 warband"))
     val badge = ServerUiSupport.candidateDetailText(candidate)
     assertEquals(badge, Some("2 Supply · +1 warband"))
     assert(!badge.get.contains(candidate.label))
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
-  }
 
-  test("populated site details render properties, stable IDs, and hidden relics") {
+  test("populated site details render properties, stable IDs, and hidden relics"):
     val site = GameSite(
       "site:woods",
       "Woods",
@@ -867,9 +807,8 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(site.denizens.map(_.denizenId),
       Vector("denizen:fox", "denizen:owl"))
     assertEquals(details.unknownRelicCount, 2)
-  }
 
-  test("peeked site relics replace opaque slots only for the scoped viewer") {
+  test("peeked site relics replace opaque slots only for the scoped viewer"):
     val known = CardDetails("R1", "relic", "Ancient Crown", rulesText = Some("Rule"))
     val owner = SiteCardPresentation.from(GameSite("site", "Site", 0, 0, 0, 2,
       Vector.empty, GameSiteRelics(2, Vector(known))))
@@ -879,9 +818,8 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(other.unknownRelicCount, 2)
     assertEquals(owner.peekedRelics.map(_.card.name), Vector("Ancient Crown"))
     assertEquals(other.peekedRelics, Vector.empty)
-  }
 
-  test("empty site details have image-independent empty states") {
+  test("empty site details have image-independent empty states"):
     val details = SiteCardPresentation.from(GameSite(
       "site:empty",
       "Empty",
@@ -897,9 +835,8 @@ class ServerModeUiSuite extends FunSuite {
       (0, 0, 0))
     assertEquals(details.requirement, None)
     assertEquals(details.unknownRelicCount, 0)
-  }
 
-  test("a forgeable site shows its forge cost instead of its recover difficulty") {
+  test("a forgeable site shows its forge cost instead of its recover difficulty"):
     val forged = SiteCardPresentation.from(GameSite("forge", "Forge", 0, 0,
       3, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(4),
       forgeCost = Some(ForgeCost(2, 1))))
@@ -908,17 +845,15 @@ class ServerModeUiSuite extends FunSuite {
     val recover = SiteCardPresentation.from(GameSite("recover", "Recover", 0, 0,
       2, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(3)))
     assertEquals(recover.requirement, Some(SiteRequirement.Recover(3)))
-  }
 
-  test("pile symbols and shape classes distinguish public tops and empty piles") {
+  test("pile symbols and shape classes distinguish public tops and empty piles"):
     assertEquals(ServerUiSupport.pileSymbol(2, Some("denizen")), "D")
     assertEquals(ServerUiSupport.pileSymbol(1, Some("vision")), "V")
     assertEquals(ServerUiSupport.pileSymbol(0, None), "")
     assertEquals(ServerUiSupport.pileCardClasses(2), "pile-card pile-back")
     assertEquals(ServerUiSupport.pileCardClasses(0), "pile-card pile-empty")
-  }
 
-  test("a legal phase power becomes one usePower command") {
+  test("a legal phase power becomes one usePower command"):
     val power = PhasePowerState("denizen.silver-tongue",
       DecisionOptionState("denizen", "92", "Silver Tongue"),
       "Silver Tongue", "Take a favor.")
@@ -929,16 +864,14 @@ class ServerModeUiSuite extends FunSuite {
         oathdigital.protocol.WalkerStartArgWire("denizen", "92"))))
     assertEquals(PhasePowerButtons.actions(projection(Set("finishRest"),
       phase = "rest", phasePowers = Vector(power))), Vector.empty)
-  }
 
-  test("Finish Rest is offered only when finishRest is legal") {
+  test("Finish Rest is offered only when finishRest is legal"):
     assert(PhasePowerButtons.showsFinishRest(projection(Set("finishRest"),
       phase = "rest")))
     assert(!PhasePowerButtons.showsFinishRest(projection(Set.empty,
       phase = "rest")))
     assert(!PhasePowerButtons.showsFinishRest(projection(Set("finishRest"),
       phase = "wake")))
-  }
 
   private def projection(
       legalControls: Set[String],
@@ -974,7 +907,7 @@ class ServerModeUiSuite extends FunSuite {
       phasePowers = phasePowers
     )
 
-  test("a choose-one decision outside Recover is answered from its projected options") {
+  test("a choose-one decision outside Recover is answered from its projected options"):
     val decision = WalkerDecisionState("oathkeeper", "oathkeeper.recipient",
       "decide", query = Some(DecisionQueryState("choose-one", Vector(
         DecisionOptionState("player", "blue", "blue"),
@@ -984,8 +917,7 @@ class ServerModeUiSuite extends FunSuite {
       decision.query.get.options(1)),
       GameCommand.ResolveWalker("red", "oathkeeper.recipient",
         DecisionAnswerWire.ChooseOneWire("player", "yellow")))
-  }
-  test("selection actions map only authorized single target shapes to commands") {
+  test("selection actions map only authorized single target shapes to commands"):
     val placeholderCandidates = Vector("a", "b", "c", "d").map(id =>
       BoardTargetCandidate(BoardTargetRef.Site(id), id, Vector.empty))
     def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
@@ -1000,8 +932,7 @@ class ServerModeUiSuite extends FunSuite {
     // control and asks its questions as walker decisions.
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red"), None)
-  }
-  test("available controls use durable ordered presentation categories") {
+  test("available controls use durable ordered presentation categories"):
     assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
       Vector("Major actions", "Minor actions"))
     assertEquals(ServerUiSupport.actionCategory("travel"), "major")
@@ -1014,5 +945,3 @@ class ServerModeUiSuite extends FunSuite {
       "muster", "trade", "forge", "recover", "challenge"))
     assertEquals(Vector("trade-favor", "trade-secret").map(
       ServerUiSupport.actionFamily), Vector("trade", "trade"))
-  }
-}

@@ -8,7 +8,7 @@ import org.scalajs.dom
   * has this turn -- a pawn standing on it, a Travel preview, forces -- must
   * not change the box, or the board shifts under the player mid-decision.
   */
-class SiteBoxLayoutSuite extends munit.FunSuite {
+class SiteBoxLayoutSuite extends munit.FunSuite:
   private def all(node: dom.Element, selector: String): Vector[dom.Element] =
     node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
 
@@ -28,7 +28,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite {
   /** The row is drawn empty rather than left out, so the cards under it start
     * at the same height on a site nobody stands on as on one they do.
     */
-  test("a site nobody stands on still draws its pawn row") {
+  test("a site nobody stands on still draws its pawn row"):
     val empty = all(world(projection(), new RecordingView("game", "red")), ".site-pawns")
     assertEquals(empty.size, 1)
     assertEquals(empty.head.childNodes.length, 0)
@@ -36,12 +36,11 @@ class SiteBoxLayoutSuite extends munit.FunSuite {
       new RecordingView("game", "red")), ".site-pawns")
     assertEquals(occupied.size, 1)
     assert(occupied.head.textContent.contains("Red"), occupied.head.textContent)
-  }
 
   /** Travel's supply preview is drawn over the site rather than in its flow,
     * so choosing an action cannot push the board about.
     */
-  test("the travel supply badge hangs off the site, not inside its details") {
+  test("the travel supply badge hangs off the site, not inside its details"):
     val ui = new RecordingView("game", "red")
     ui.boardSelection = Some(BoardTargetSelectionState(
       BoardSelectionContext("game", "red", 1L),
@@ -55,5 +54,3 @@ class SiteBoxLayoutSuite extends munit.FunSuite {
     assertEquals(badges.head.parentNode.asInstanceOf[dom.Element]
       .getAttribute("class").contains("site"), true)
     assertEquals(all(node, ".site-details .target-detail-badge"), Vector.empty)
-  }
-}

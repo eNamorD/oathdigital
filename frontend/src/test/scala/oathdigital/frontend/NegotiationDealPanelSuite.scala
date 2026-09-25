@@ -6,7 +6,7 @@ import ParkedDecision.Surface
 import org.scalajs.dom
 
 /** The deal panel for a parked negotiation, as an owner and as a spectator. */
-class NegotiationDealPanelSuite extends munit.FunSuite {
+class NegotiationDealPanelSuite extends munit.FunSuite:
   // Faceup, so it is offered as a transfer only and not also as a disclosure.
   private val relic = CardDetails("r1", "relic", "Relic One",
     orientation = Some("face-up"))
@@ -27,19 +27,17 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
     Surface.Negotiate(value, None)
 
   private def render(surface: Surface.Negotiate, ui: RecordingView,
-      canControl: Boolean = true): dom.Element = {
+      canControl: Boolean = true): dom.Element =
     val panel = dom.document.createElement("div")
     NegotiationDealPanel.render(surface, canControl, panel, ui)
     panel
-  }
 
-  private def one(root: dom.Element, selector: String): dom.Element = {
+  private def one(root: dom.Element, selector: String): dom.Element =
     val found = root.querySelectorAll(selector)
     assertEquals(found.length, 1, s"expected exactly one $selector")
     found(0).asInstanceOf[dom.Element]
-  }
 
-  test("every term the owner edits is labelled and on its own row") {
+  test("every term the owner edits is labelled and on its own row"):
     val panel = render(owner(deal()), new RecordingView("game", "red"))
     val rows = panel.querySelectorAll(".negotiation-item").toVector
       .map(_.asInstanceOf[dom.Element])
@@ -50,9 +48,8 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
     assertEquals(rows.head.querySelectorAll("input[type=number]").length, 1)
     assertEquals(rows(1).textContent.trim, "Relic One")
     assertEquals(rows(1).querySelectorAll("input[type=checkbox]").length, 1)
-  }
 
-  test("an owner sees the deal and can save, accept and decline") {
+  test("an owner sees the deal and can save, accept and decline"):
     val ui = new RecordingView("game", "red")
     val panel = render(owner(deal()), ui)
     assertEquals(one(panel, "h2").textContent, "Negotiation")
@@ -74,25 +71,22 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
           Vector.empty))),
       Intent.ResolveWalker("negotiation.deal", DecisionAnswerWire.AcceptDealWire),
       Intent.ResolveWalker("negotiation.deal", DecisionAnswerWire.DeclineDealWire)))
-  }
 
-  test("accept is disabled until the engine says this player may accept") {
+  test("accept is disabled until the engine says this player may accept"):
     val ui = new RecordingView("game", "red")
     val panel = render(owner(deal(canAccept = false)), ui)
     assert(one(panel, ".negotiation-accept").asInstanceOf[dom.html.Button].disabled)
     assert(!one(panel, ".negotiation-decline").asInstanceOf[dom.html.Button].disabled)
     val blocked = render(owner(deal()), ui, canControl = false)
     assert(one(blocked, ".negotiation-save").asInstanceOf[dom.html.Button].disabled)
-  }
 
-  test("a spectator sees the deal read-only, with no inputs or buttons") {
+  test("a spectator sees the deal read-only, with no inputs or buttons"):
     val ui = new RecordingView("game", "green")
     val panel = render(spectator(deal(editing = false)), ui)
     assertEquals(one(panel, ".negotiation-status").textContent,
       "red: reviewing · blue: accepted")
     assertEquals(panel.querySelectorAll("input").length, 0)
     assertEquals(panel.querySelectorAll("button").length, 0)
-  }
 
   private def threeWay(editing: NegotiationEditingState,
       transfers: Vector[NegotiationTransferState] = Vector.empty,
@@ -103,7 +97,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
   private def box(panel: dom.Element, label: String): dom.html.Input =
     one(panel, s"""input[aria-label="$label"]""").asInstanceOf[dom.html.Input]
 
-  test("the editor restores only the viewer's own relic and disclosure selections") {
+  test("the editor restores only the viewer's own relic and disclosure selections"):
     val adviser = CardDetails("D1", "denizen", "Hidden Adviser")
     val deal = threeWay(NegotiationEditingState(3, Vector(relic),
       Vector(adviser), Vector.empty, canAccept = false),
@@ -116,9 +110,8 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
       "Promise adviser disclosure of Hidden Adviser to yellow").checked)
     assert(!box(panel,
       "Promise adviser disclosure of Hidden Adviser to blue").checked)
-  }
 
-  test("offering a relic to one recipient clears it for another") {
+  test("offering a relic to one recipient clears it for another"):
     val deal = threeWay(NegotiationEditingState(3, Vector(relic), Vector.empty,
       Vector.empty, canAccept = false))
     val panel = render(owner(deal), new RecordingView("game", "red"))
@@ -129,9 +122,8 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
     yellow.dispatchEvent(new dom.Event("change"))
     assert(!blue.checked)
     assert(yellow.checked)
-  }
 
-  test("disclosures are offered only for information the author can inspect") {
+  test("disclosures are offered only for information the author can inspect"):
     val faceUp = CardDetails("R1", "relic", "Public Relic",
       orientation = Some("face-up"))
     val faceDown = CardDetails("R2", "relic", "Secret Relic",
@@ -160,5 +152,3 @@ class NegotiationDealPanelSuite extends munit.FunSuite {
         Vector(oathdigital.protocol.NegotiationDisclosure("blue",
           oathdigital.protocol.NegotiationInformation.SiteRelic(
             "site:broken-peaks", "R3"))))))))
-  }
-}
