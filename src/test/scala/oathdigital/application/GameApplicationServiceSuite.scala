@@ -1082,6 +1082,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // The phase did not end with the action: a completed Wake action returns
     // its player to Wake, and the limit it recorded survives the reload below.
     assertEquals(afterTake.game.current.turn.phase, Phase.Wake)
+    parkedAssertions.assertResumed(wealth.state, Phase.Wake, active)
     val ended = service.handle(
       "game-wake",
       wealth.nextSequence,
