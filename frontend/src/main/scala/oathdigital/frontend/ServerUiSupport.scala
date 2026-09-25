@@ -194,11 +194,12 @@ private[frontend] object ServerUiSupport:
     pile.appendChild(text("span", "pile-count", s"x$count"))
     pile
 
+  /** The pile shows the same back letter a facedown card of that kind would,
+    * so `CardFace` owns the mapping. An empty pile, or one whose top the
+    * viewer may not identify, shows nothing.
+    */
   private[frontend] def pileSymbol(count: Int, topCardKind: Option[String]): String =
-    if count == 0 then "" else topCardKind match
-      case Some("denizen") => "D"
-      case Some("vision") => "V"
-      case _ => ""
+    if count == 0 then "" else topCardKind.fold("")(CardFace.backLetter)
 
   private[frontend] def pileCardClasses(count: Int): String =
     if count == 0 then "pile-card pile-empty" else "pile-card pile-back"
