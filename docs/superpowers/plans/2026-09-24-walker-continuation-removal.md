@@ -898,8 +898,11 @@ Expected: PASS.
 Run: `grep -rn "OathContinue" src frontend/src shared/src | wc -l`
 Expected: `0`.
 
-Compare the test count against the Baseline recording. It should be identical:
-this plan deletes 31 assertions and no tests.
+Compare the test count against the Baseline recording. It drops by one, from
+1701 to 1700, not identical: this plan deletes 28 assertions (not the 31
+first estimated; see the spec's correction) and one test —
+`OathRulesWalkerPowerSuite`'s `RoundEnd`-completion rejection, which guarded a
+fact that no longer exists once the type is gone.
 
 - [ ] **Step 4: Commit**
 

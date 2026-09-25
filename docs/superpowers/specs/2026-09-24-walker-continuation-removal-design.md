@@ -19,6 +19,11 @@
 > test surface is 218 sites across 53 files, not 104 across 43, because a
 > majority reach the continuation through a fixture helper without naming the
 > type.
+>
+> Landed 2026-09-25 by
+> [the implementation plan](../plans/2026-09-24-walker-continuation-removal.md),
+> commits `f5c1508c..da150149` (thirteen commits; see **Delivery** for the
+> actual shape, which is not the eight this document originally estimated).
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**,
 **form** and **surface**.
@@ -49,7 +54,8 @@ third copy, and the only one with no reader.
 
 The cost is real and recurring. A new procedure needs a case in
 `GameProcedureProtocol`, a `continuationFor` lambda in the registry, and a
-prompt that no client consumes. Nineteen such lambdas exist
+prompt that no client consumes. Eighteen such lambdas exist — seventeen in
+`entries` plus `usePowerEntry`'s own
 (`WalkerProcedureRegistry.scala:155-457`), four of them `(_, _, _) => None`.
 
 ## Ownership and interface
@@ -71,13 +77,13 @@ The following cease to exist:
   `GameAccepted` and on `PreparedGameBootstrap`. `OathTransition` becomes
   state and events.
 - `Entry.continuationFor` (`WalkerProcedureRegistry.scala:125`) and its
-  nineteen literals; `WalkerProcedureRegistry.continuationFor`;
+  eighteen literals; `WalkerProcedureRegistry.continuationFor`;
   `OathRulesWalker.parkedContinue` and `continuationIn` (`:497`, `:533`).
 
 `Entry` keeps its remaining fields. Narrowing `Entry` further, and removing the
 test-only `registrations` parameter from its accessors, is a separate change.
 
-### The two gates inside `parkedContinue`
+### The gates inside `parkedContinue` and `continuationIn`
 
 `parkedContinue` carries three rejections, and they are not equivalent.
 
@@ -110,6 +116,24 @@ type:
 
 Both survive as a small `checkAnswerable` in place of `parkedContinue`, keeping
 the same codes and detail strings.
+
+`continuationIn`, the other half of what this design deletes, carries a
+rejection of its own, and it is lost too — the registration gate above is not
+the only one. A walker procedure completing in a phase with no walker
+continuation registered failed with `InvalidEventOrder("a walker procedure
+completed in the <phase> phase, which has no walker continuation")`, pinned
+by a test in `OathRulesWalkerPowerSuite`. It is unreachable in production.
+`turnBoundary` (`OathRules.scala:124-133`) is the only code that puts the turn
+in `Phase.RoundEnd`; it runs only after `FinishRest`
+(`runsTurnBoundary`, `OathRulesWalker.scala:461-462`) and proceeds straight to
+`enterWake` inside the same command, so `RoundEnd` is transient within one
+command's fold and no procedure other than `FinishRest` can ever complete
+there. The deleted test could only observe the rejection by setting the phase
+directly and injecting a flat tree — a state no command produces. Like the
+registration gate, this guard protected the correctness of a continuation;
+with none left there is no wrong answer left to guard against. Its test goes
+with it, which is a real loss, not a conversion: the suite total drops from
+1701 to 1700.
 
 ### The test surface
 
@@ -186,19 +210,35 @@ fact and is a game invariant in its own right.
 
 The 136 direct sites divide three ways:
 
-- **31 are deleted.** Twenty assert a fact an adjacent line already asserts
-  (`gameplay/powers/economy/KnightsErrantSuite.scala:103-105` asserts the same
-  decision id twice; `application/GameApplicationServiceSuite.scala:165-168`
-  follows `walkerProcedure` and `walkerPending` with the continuation).
-  Eleven restate the implementation: four sites in
+- **28 are deleted.** Nineteen assert a fact an adjacent line already asserts;
+  `application/GameApplicationServiceSuite.scala:165-168` is one of them, but
+  not for the reason first thought: its neighbours name only `walkerProcedure`
+  and `walkerPending` — that some Recover walk is pending, not which decision
+  or whose. What actually covers the deleted claim is the unchanged
+  `ResolveWalker(actor, TreeDecision(relicDecisionId, …)).toOption.get`
+  further down the same test, which throws if either the decision id or the
+  owner is wrong. Nine restate the implementation: four sites in
   `WalkerProcedureRegistrySuite.scala` (`:113`, `:133`, `:143`, `:151`) assert
   the registry's own lambdas and die with them;
   `BackendArchitectureSuite.scala:20-21` passes one as a constructor argument
-  to a test about event folding; `RestWalkerSuite.scala:32`,
-  `TakeWealthProcedureSuite.scala:150` and
-  `GameApplicationServiceSuite.scala:1074` name a player read off
-  `turn.activePlayer` on the previous line.
-- **92 become `assertParked`, `assertNotParked` or `assertResumed`.**
+  to a test about event folding; `RestWalkerSuite.scala:32` names a player
+  read off `turn.activePlayer` on the previous line.
+
+  Three sites first classified as restatements turned out to assert something
+  their neighbour did not, and are converted instead of deleted:
+  `GameApplicationServiceSuite.scala:1074` (the neighbour names the phase, not
+  that the active player is still `active` after a completed Wake action — a
+  real claim, "a completed Wake action does not hand the turn over," that
+  nothing else in the test makes), `TakeWealthProcedureSuite.scala:150`
+  (same shape, the phase without the player), and
+  `gameplay/powers/economy/KnightsErrantSuite.scala:103-105` (the kept
+  neighbour re-proves the decision id and is silent on the awaited player).
+  In each case the neighbour carried only part of the deleted claim, usually
+  the phase or the decision id, never the awaited player. The classification
+  that produced 31 was made from adjacent-line greps rather than claim by
+  claim: a neighbour asserting something similar is not the same test as a
+  neighbour asserting everything the deleted line asserted.
+- **95 become `assertParked`, `assertNotParked` or `assertResumed`.**
 - **13 need a written substitute.** Nine are not assertions: they destructure
   the continuation to obtain a decision id for the next command
   (`PendingWalkerInvariantSuite.scala:96-99`, `PlanDriver.scala:85-90`,
@@ -224,23 +264,31 @@ and not the winner; they become an assertion on
 
 ## Scope and preservation
 
-Production behavior is preserved exactly: no rejection code or detail string,
+Production behavior is preserved exactly for every command a client can send:
 no operation order, no projected control, no walker event, no wire shape, no
-protocol DTO, no frontend edit. The change is in `model`, `gameplay` and
-`application` only; `frontend` and `shared` hold no reference to `OathContinue`
-and are untouched.
+protocol DTO, no frontend edit. Two rejections do disappear along with the
+type — the registration gate and `continuationIn`'s own `RoundEnd` gate, both
+under "The gates inside `parkedContinue` and `continuationIn`" below — but
+both are proven unreachable from any state a command can produce, so no
+legal or illegal input sees a different result; "preserved exactly" is about
+outcomes, not about which dead code still compiles. The change is in
+`model`, `gameplay` and `application` only; `frontend` and `shared` hold no
+reference to `OathContinue` and are untouched.
 
-Test behavior is deliberately strengthened in one place. About eighteen sites
-assert the negative as
+Test behavior is deliberately strengthened in one place. Twelve sites assert
+the negative — eleven as
 `!t.continue.isInstanceOf[OathContinue.AwaitingPowerDecision]`
 (`gameplay/powers/wake/HornedMaskSuite.scala:138,148,157,163,172` and similar
 in `LeagueTreatySuite`, `SilverTongueSuite`, `SleightOfHandSuite`,
-`AlchemistSuite`, `IvoryEyeSuite`, `CrystalVialSuite`). These pass when the
-walk parked on a different continuation family, so they are weaker than the
-claim they are making. `assertNotParked` asserts that nothing is parked at all.
-A failure there is a defect this change discovered, not a rewrite error: record
-it, fix it in its own change, and do not weaken the assertion to accommodate
-it.
+`AlchemistSuite`, `IvoryEyeSuite`, `CrystalVialSuite`), and one as
+`SearchProcedureSuite`'s `!…isInstanceOf[AwaitingSearchDecision]`. These pass
+when the walk parked on a different continuation family, so they are weaker
+than the claim they are making. `assertNotParked` asserts that nothing is
+parked at all, which is strictly stronger. All twelve were converted and all
+twelve passed under the stronger assertion: the strengthening found no
+defect. That is a result worth recording, not a non-event — the claim that
+these negatives were weaker than they looked turned out to be true of their
+wording and false of the code they were checking.
 
 Out of scope: narrowing `Entry`, removing the test-only `registrations`
 parameter, `LegalActionProjector`'s parallel per-procedure switchboard, and any
@@ -264,14 +312,21 @@ Markdown link check, and record the baseline.
 - Every suite that loses a continuation assertion keeps at least one assertion
   about the same park, through `assertParked`/`assertNotParked`/
   `assertResumed` or an existing neighbouring line. No suite ends with fewer
-  facts pinned than it started with, except the 31 deletions, each of which is
-  justified by a named duplicate or restatement above.
+  facts pinned than it started with, except the 28 deletions, each of which is
+  justified by a named duplicate or restatement above, and the one
+  `RoundEnd`-completion rejection test, which guarded a fact that no longer
+  exists.
 - Confirm by grep that `OathContinue` appears nowhere in `src`, `frontend` or
   `shared` at the end.
 
 ## Delivery
 
-Eight commits, one per task in the plan: the assertion module; then the test
-conversion in four suite families, each of which compiles and passes on its
-own; then the registry suite and the architecture suite; then the deletion of
-the type and its carriers; then the documentation and the full gate.
+Eight tasks: the assertion module; then the test conversion in four suite
+families, each of which compiles and passes on its own; then the registry
+suite and the architecture suite; then the deletion of the type and its
+carriers; then the documentation and the full gate. This document estimated
+eight commits, one per task; thirteen landed. Two precede Task 1 — the design
+and plan, and a pre-flight fix to the plan — and were never counted against a
+task. Four tasks (1, 4, 5 and 7) needed a fix-round commit beyond their own,
+each restoring a claim a reviewer found the task's own commit had dropped;
+those four fix rounds are the rest of the gap between eight and thirteen.
