@@ -55,7 +55,6 @@ private[frontend] final case class BoardTargetSelectionState(
       case candidate if selected(candidate.target) => candidate.target
   yield BoardSelectionResult.Submit(action, targets)
 
-
 private[frontend] object BoardTargetSelectionState:
   def restore(context: BoardSelectionContext,
       actions: Vector[BoardTargetAction]): BoardTargetSelectionState =

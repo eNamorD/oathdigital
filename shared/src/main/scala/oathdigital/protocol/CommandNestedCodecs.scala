@@ -163,9 +163,9 @@ private[protocol] object CommandNestedCodecs:
     information <- field(row, "information", path).flatMap(decodeInformation(_, s"$path.information"))
   yield NegotiationDisclosure(recipient, information) }
   private def decodeInformation(value: ujson.Value, path: String): Either[ProtocolDecodeFailure, NegotiationInformation] = obj(value, path).flatMap { row => string(row, "kind", path).flatMap {
-    case "adviser" => for  _ <- exact(row, Set("kind", "ownerPlayerId", "card"), path); owner <- string(row, "ownerPlayerId", path); card <- field(row, "card", path).flatMap(decodeWorld(_, s"$path.card"))  yield NegotiationInformation.Adviser(owner, card)
-    case "held-relic" => for  _ <- exact(row, Set("kind", "ownerPlayerId", "relicId"), path); owner <- string(row, "ownerPlayerId", path); relic <- string(row, "relicId", path)  yield NegotiationInformation.HeldRelic(owner, relic)
-    case "site-relic" => for  _ <- exact(row, Set("kind", "siteId", "relicId"), path); site <- string(row, "siteId", path); relic <- string(row, "relicId", path)  yield NegotiationInformation.SiteRelic(site, relic)
+    case "adviser" => for _ <- exact(row, Set("kind", "ownerPlayerId", "card"), path); owner <- string(row, "ownerPlayerId", path); card <- field(row, "card", path).flatMap(decodeWorld(_, s"$path.card")) yield NegotiationInformation.Adviser(owner, card)
+    case "held-relic" => for _ <- exact(row, Set("kind", "ownerPlayerId", "relicId"), path); owner <- string(row, "ownerPlayerId", path); relic <- string(row, "relicId", path) yield NegotiationInformation.HeldRelic(owner, relic)
+    case "site-relic" => for _ <- exact(row, Set("kind", "siteId", "relicId"), path); site <- string(row, "siteId", path); relic <- string(row, "relicId", path) yield NegotiationInformation.SiteRelic(site, relic)
     case kind => Left(InvalidValue(s"$path.kind", s"unknown disclosure kind '$kind'"))
   }}
   private def world(value: WorldCard) = ujson.Obj("kind" -> value.kind, "id" -> value.id)

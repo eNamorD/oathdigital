@@ -61,12 +61,13 @@ object MinorActions:
               MinorActionUnavailable("actor must rule the pawn's site"))
             _ <- Either.cond(amount <= actor.board.warbands, (),
               MinorActionUnavailable("not enough warbands on the player board"))
-          yield () else for
-            _ <- Either.cond(occupied.kind == ForceKind.Exile(actor.lineage), (),
-              MinorActionUnavailable("the pawn's site does not hold the actor's warbands"))
-            _ <- Either.cond(amount < occupied.count, (),
-              MinorActionUnavailable("at least one warband must remain at the site"))
           yield ()
+               else for
+                 _ <- Either.cond(occupied.kind == ForceKind.Exile(actor.lineage), (),
+                   MinorActionUnavailable("the pawn's site does not hold the actor's warbands"))
+                 _ <- Either.cond(amount < occupied.count, (),
+                   MinorActionUnavailable("at least one warband must remain at the site"))
+               yield ()
         yield WarbandsMoved(player, siteId, toSite, amount,
           actor.board.warbands, occupied.count)
     event.flatMap(e => transition(catalog, state, e))
@@ -121,12 +122,13 @@ object MinorActions:
             MinorActionOutcomeMismatch("recorded actor did not rule the site"))
           _ <- Either.cond(e.amount <= actor.board.warbands, (),
             MinorActionOutcomeMismatch("recorded board lacked warbands"))
-        yield () else for
-          _ <- Either.cond(occupied.kind == ForceKind.Exile(actor.lineage), (),
-            MinorActionOutcomeMismatch("recorded site had another force"))
-          _ <- Either.cond(e.amount < occupied.count, (),
-            MinorActionOutcomeMismatch("recorded movement removed the last warband"))
         yield ()
+             else for
+               _ <- Either.cond(occupied.kind == ForceKind.Exile(actor.lineage), (),
+                 MinorActionOutcomeMismatch("recorded site had another force"))
+               _ <- Either.cond(e.amount < occupied.count, (),
+                 MinorActionOutcomeMismatch("recorded movement removed the last warband"))
+             yield ()
         board = Location.PlayArea(e.playerId)
         siteLocation = Location.Site(e.siteId)
         (from, to) = if e.toSite then (board, siteLocation) else (siteLocation, board)

@@ -66,7 +66,6 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
     try assertEquals(upgradedV3.schemaVersion, Right(4))
     finally upgradedV3.close()
 
-
   test("trusted seats atomically create a resource and resolve digests after reopen"):
     val path = databasePath("trusted-seats")
     val first = open(path)

@@ -24,9 +24,9 @@ deferred, minus the parts ruled out below.
 | Topic | Decision |
 | --- | --- |
 | Execution | One spec, one branch per stage, merged in order A, B, C, D |
-| A: implicits | `given`/`using` for the 16 implicit values, one extension method, top-level definitions replacing the frontend package object |
+| A: implicits | `given`/`using` for the implicit values (21 sites), one extension method, top-level definitions replacing the frontend package object |
 | B: opaque types | The 7 standalone id wrappers; the 6 card and site ids stay case classes |
-| C: enums | The 61 flat sealed families (case objects only); mixed and parameterized families stay sealed traits |
+| C: enums | The flat sealed families (49 on hand check) (case objects only); mixed and parameterized families stay sealed traits |
 | D: syntax | Both compiler rewrites: `-indent` and `-new-syntax` |
 | Enforcement | No new compiler flag; `-Werror` from the warning cleanup remains the only gate on style |
 

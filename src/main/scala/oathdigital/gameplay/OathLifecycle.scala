@@ -37,7 +37,6 @@ private[gameplay] object OathLifecycle:
           "a walker procedure is pending; legacy actions are blocked"))
       else Right(ready)
 
-
 private[gameplay] object GameplayTransition:
   def apply(
       state: OathState,

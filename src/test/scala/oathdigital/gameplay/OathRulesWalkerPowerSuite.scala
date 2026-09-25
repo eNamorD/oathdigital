@@ -40,7 +40,6 @@ object OathRulesWalkerPowerSuite:
     override def resolution: PowerResolution = PowerResolution.PlayerSelected
     override def applicable(ctx: PowerCtx): Boolean = ctx.window == at
 
-
 class OathRulesWalkerPowerSuite extends munit.FunSuite:
   private val window: PowerWindow = PowerWindow.RecoverModifierSelection
 
