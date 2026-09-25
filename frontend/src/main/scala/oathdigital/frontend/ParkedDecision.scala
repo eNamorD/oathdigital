@@ -123,23 +123,25 @@ private[frontend] object ParkedDecision:
     * acting player's supply, and the choose-one panel names a player option
     * by its display name. Both are the projection's, so it rides along.
     */
-  def render(value: GameProjection, routed: Routed, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
+  def render(value: GameProjection, presentation: ViewerPresentation,
+      routed: Routed, canControl: Boolean, panel: dom.Element,
+      drafts: SessionDrafts, controls: TableControls): Unit =
     routed.surface.foreach:
       case surface: Surface.Recover => WalkerPanelSupport.renderRecoverPanel(
-        surface, value, canControl, panel, ui)
+        surface, value, canControl, panel, controls)
       case surface: Surface.ChooseOne => WalkerPanelSupport.renderChooseOnePanel(
-        surface, value, canControl, panel, ui)
+        surface, value, canControl, panel, controls)
       case surface: Surface.Partition => WalkerPanelSupport.renderPartitionPanel(
-        surface, canControl, panel, ui)
-      case surface: Surface.Distribute =>
-        DistributePanelRenderer.render(surface, canControl, panel, ui)
-      case surface: Surface.Negotiate =>
-        NegotiationDealPanel.render(surface, canControl, panel, ui)
-      case surface: Surface.Selection =>
-        WalkerSelectionPanels.render(surface, canControl, panel, ui)
+        surface, drafts.partition, presentation.playerId, canControl, panel,
+        controls)
+      case surface: Surface.Distribute => DistributePanelRenderer.render(
+        surface, drafts.distribute, canControl, panel, controls)
+      case surface: Surface.Negotiate => NegotiationDealPanel.render(
+        surface, presentation.playerId, canControl, panel, controls)
+      case surface: Surface.Selection => WalkerSelectionPanels.render(
+        surface, drafts.selection, canControl, panel, controls)
       case surface: Surface.Board => WalkerPanelSupport.renderBoardPanel(
-        surface, canControl, panel, ui)
+        surface, drafts.board, canControl, panel, controls)
     routed.notice.foreach(notice =>
       panel.appendChild(text("p", "walker-waiting", notice)))
 

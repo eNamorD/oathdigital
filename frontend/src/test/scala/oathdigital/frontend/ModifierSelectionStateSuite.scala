@@ -33,7 +33,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
         completed = false, actionSelectionOpen = true),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "p"),
-      ParkedDecision.Routed(None, None), view)
+      ParkedDecision.Routed(None, None), SessionDrafts.empty, view)
 
   test("selection preserves click order supports badges reorder toggle and keyboard"):
     val empty = ModifierSelectionState.reconcile(None, context,

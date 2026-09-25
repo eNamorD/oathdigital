@@ -43,7 +43,8 @@ private[frontend] object ActionDecisionRenderer:
          case None => node.appendChild(dom.document.createTextNode("none"))
    node
  def actionsPanel(value: GameProjection, presentation: ViewerPresentation,
-     routed: ParkedDecision.Routed, ui: ServerUiView): dom.Element =
+     routed: ParkedDecision.Routed, drafts: SessionDrafts,
+     ui: ServerUiView): dom.Element =
    import ui._
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
@@ -268,7 +269,7 @@ private[frontend] object ActionDecisionRenderer:
          rest.disabled = !canControl
          rest.onclick = _ => submitCommand(GameCommand.BeginRest)
          panel.appendChild(rest)
-   ParkedDecision.render(value, routed, canControl, panel, ui)
+   ParkedDecision.render(value, presentation, routed, canControl, panel, drafts, ui)
    CampaignResultPanel.render(value, panel)
    if value.phase == "rest" && presentation.showGameplayControls then
      PhasePowerButtons.render(value, canControl, panel, submitCommand)

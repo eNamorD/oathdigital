@@ -33,22 +33,24 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   private val parked =
     WalkerDecisionState("forge", "forge-9", "decide", query = Some(query))
 
-  /** Renders the panel into a detached container and hands back both, so a
-    * test can read the tree and then re-render it after a click the way the
-    * real `rerender()` would.
+  /** Renders the panel from `draft` into a detached container, so a test
+    * can read the tree and then re-render it from what a click staged
+    * (`ui.drafts.partition`) the way the session would.
     */
-  private def render(ui: RecordingView, canControl: Boolean = true,
+  private def render(ui: RecordingView, draft: Option[WalkerPartitionDraft],
+      canControl: Boolean = true,
       decision: WalkerDecisionState = parked): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderPartitionPanel(
-      Surface.Partition(decision, decision.query.get), canControl, panel, ui)
+      Surface.Partition(decision, decision.query.get), draft, "red",
+      canControl, panel, ui)
     panel
 
-  private def opened(): RecordingView =
-    val ui = new RecordingView("game", "red")
-    ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
+  private def view(): RecordingView = new RecordingView("game", "red")
+
+  private def opened(): Option[WalkerPartitionDraft] =
+    WalkerPartitionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(parked))
-    ui
 
   private def all(root: dom.Element, selector: String): Vector[dom.Element] =
     root.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
@@ -71,7 +73,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
 
   test("the panel renders one zone per projected section, holding the " +
       "options placed there"):
-    val panel = render(opened())
+    val panel = render(view(), opened())
     assertEquals(one(panel, "h2").textContent, "Forge a relic")
     assertEquals(one(panel, ".partition-instruction").textContent,
       "Assign every option: Pay Favor (2), Pay Secret (1).")
@@ -95,7 +97,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     * end, so a keep-one zone claimed a full column it had no use for.
     */
   test("a zone's options live in a row of their own"):
-    val zone = all(render(opened()), ".partition-zone").head
+    val zone = all(render(view(), opened()), ".partition-zone").head
     val row = one(zone, ".partition-options")
     assertEquals(row.parentNode, zone)
     assertEquals(all(row, ".decision-option").size, 2)
@@ -114,17 +116,16 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     heading = Some("Choose your starting adviser"),
     confirmLabel = Some("Confirm Adviser"))
 
-  private def picking(): RecordingView =
-    val ui = new RecordingView("game", "red")
-    ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
+  private def picking(): Option[WalkerPartitionDraft] =
+    WalkerPartitionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9),
       Some(WalkerDecisionState("setup", "setup-1", "decide",
         query = Some(keepDiscard))))
-    ui
 
-  private def pickPanel(ui: RecordingView): dom.Element =
-    render(ui, decision = WalkerDecisionState("setup", "setup-1", "decide",
-      query = Some(keepDiscard)))
+  private def pickPanel(draft: Option[WalkerPartitionDraft]): dom.Element =
+    render(view(), draft,
+      decision = WalkerDecisionState("setup", "setup-1", "decide",
+        query = Some(keepDiscard)))
 
   test("a leftover zone holding several options says its order counts"):
     val zone = one(pickPanel(picking()), """[data-section-key="discard"]""")
@@ -142,17 +143,17 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     val twoCards = keepDiscard.copy(options = keepDiscard.options.take(2))
     val decision = WalkerDecisionState("setup", "setup-1", "decide",
       query = Some(twoCards))
-    val ui = new RecordingView("game", "red")
-    ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
+    val draft = WalkerPartitionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(decision))
-    assertEquals(all(render(ui, decision = decision), ".decision-zone-order"),
-      Vector.empty)
+    assertEquals(all(render(view(), draft,
+      decision = decision), ".decision-zone-order"), Vector.empty)
 
   /** Forge pays into zones that each carry a minimum, so none of them is a
     * leftover zone and none claims an order.
     */
   test("a partition of payments claims no order anywhere"):
-    assertEquals(all(render(opened()), ".decision-zone-order"), Vector.empty)
+    assertEquals(all(render(view(), opened()), ".decision-zone-order"),
+      Vector.empty)
 
   test("the confirm button names the card the one-card zone holds"):
     assertEquals(confirm(pickPanel(picking())).textContent, "Keep Denizen 1")
@@ -161,23 +162,23 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     * query's own label is what the button says.
     */
   test("without a filled single slot the query's own label stands"):
-    val ui = picking()
-    ui.currentWalkerPartition = ui.currentWalkerPartition
-      .map(_.move("denizen:denizen:1", "discard"))
-    assertEquals(confirm(pickPanel(ui)).textContent, "Confirm Adviser")
-    assertEquals(confirm(render(opened())).textContent, "Complete Forge")
+    val emptied = picking().map(_.move("denizen:denizen:1", "discard"))
+    assertEquals(confirm(pickPanel(emptied)).textContent, "Confirm Adviser")
+    assertEquals(confirm(render(view(), opened())).textContent,
+      "Complete Forge")
 
   test("the accessible move button moves one option to the other zone"):
-    val ui = opened()
-    val panel = render(ui)
+    val ui = view()
+    val draft = opened()
+    val panel = render(ui, draft)
     val move = one(panel,
       """[data-option-id="denizen:denizen:1"] [aria-label=""" +
         """"Move Denizen 1 to Pay Secret"]""")
     assertEquals(move.textContent, "Pay Secret")
     click(move)
-    assertEquals(ui.rerenders, 1)
+    assertEquals(ui.staged.size, 1)
     // The draft the panel will be re-rendered from has actually moved.
-    val moved = render(ui)
+    val moved = render(ui, ui.drafts.partition)
     assertEquals(optionLabelsIn(moved, "pay-favor"), Vector("Denizen 2"))
     assertEquals(optionLabelsIn(moved, "pay-secret"),
       Vector("Denizen 3", "Denizen 1"))
@@ -186,24 +187,25 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     * is discarded in the order it is left in.
     */
   test("the reorder buttons slide an option within its zone"):
-    val ui = opened()
-    val later = one(render(ui),
+    val ui = view()
+    val draft = opened()
+    val later = one(render(ui, draft),
       """[data-option-id="denizen:denizen:1"] .move-later""")
     assertEquals(later.getAttribute("aria-label"),
       "Move Denizen 1 later in Pay Favor")
     click(later)
-    assertEquals(optionLabelsIn(render(ui), "pay-favor"),
+    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
       Vector("Denizen 2", "Denizen 1"))
-    click(one(render(ui),
+    click(one(render(ui, ui.drafts.partition),
       """[data-option-id="denizen:denizen:1"] .move-earlier"""))
-    assertEquals(optionLabelsIn(render(ui), "pay-favor"),
+    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
       Vector("Denizen 1", "Denizen 2"))
 
   /** Disabled rather than absent, so moving an option never reflows the row
     * out from under the pointer that is working it.
     */
   test("an option at the end of its zone keeps a disabled reorder button"):
-    val panel = render(opened())
+    val panel = render(view(), opened())
     def enabled(id: String, cls: String): Boolean = !one(panel,
       s"""[data-option-id="$id"] .$cls""").asInstanceOf[dom.html.Button].disabled
     assert(!enabled("denizen:denizen:1", "move-earlier"))
@@ -215,60 +217,65 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assert(!enabled("denizen:denizen:3", "move-later"))
 
   test("dropping an option on another places it before that one"):
-    val ui = opened()
-    val panel = render(ui)
+    val ui = view()
+    val draft = opened()
+    val panel = render(ui, draft)
     val dragged = dragStartPayload(one(panel,
       """[data-option-id="denizen:denizen:3"]"""))
     drop(one(panel, """[data-option-id="denizen:denizen:1"]"""), dragged)
-    assertEquals(optionLabelsIn(render(ui), "pay-favor"),
+    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
       Vector("Denizen 3", "Denizen 1", "Denizen 2"))
-    assertEquals(optionLabelsIn(render(ui), "pay-secret"), Vector.empty)
+    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-secret"),
+      Vector.empty)
 
   test("dropping a dragged option on a zone moves it there"):
-    val ui = opened()
-    val panel = render(ui)
+    val ui = view()
+    val draft = opened()
+    val panel = render(ui, draft)
     // Whatever `dragstart` puts on the transfer is exactly what the drop
     // reads back, so the two halves of the drag are tested together.
     val dragged = dragStartPayload(one(panel,
       """[data-option-id="denizen:denizen:3"]"""))
     assertEquals(dragged, "denizen:denizen:3")
     drop(one(panel, """[data-section-key="pay-favor"]"""), dragged)
-    assertEquals(ui.rerenders, 1)
-    val moved = render(ui)
+    assertEquals(ui.staged.size, 1)
+    val moved = render(ui, ui.drafts.partition)
     assertEquals(optionLabelsIn(moved, "pay-favor"),
       Vector("Denizen 1", "Denizen 2", "Denizen 3"))
     assertEquals(optionLabelsIn(moved, "pay-secret"), Vector.empty)
 
   test("confirmation is refused until every projected minimum is met"):
-    val ui = opened()
-    assert(!confirm(render(ui)).disabled)
+    val ui = view()
+    val draft = opened()
+    assert(!confirm(render(ui, draft)).disabled)
     // Emptying the secret zone leaves it below its projected minimum.
-    drop(one(render(ui), """[data-section-key="pay-favor"]"""),
+    drop(one(render(ui, draft), """[data-section-key="pay-favor"]"""),
       "denizen:denizen:3")
-    val short = render(ui)
+    val short = render(ui, ui.drafts.partition)
     assert(confirm(short).disabled)
     click(confirm(short))
     assertEquals(ui.submitted, Vector.empty)
     // Putting one back satisfies it again.
-    drop(one(render(ui), """[data-section-key="pay-secret"]"""),
-      "denizen:denizen:1")
-    assert(!confirm(render(ui)).disabled)
+    drop(one(render(ui, ui.drafts.partition),
+      """[data-section-key="pay-secret"]"""), "denizen:denizen:1")
+    assert(!confirm(render(ui, ui.drafts.partition)).disabled)
 
   test("a player who cannot control the game gets a disabled confirm"):
-    val ui = opened()
-    val panel = render(ui, canControl = false)
+    val ui = view()
+    val panel = render(ui, opened(), canControl = false)
     assert(confirm(panel).disabled)
     click(confirm(panel))
     assertEquals(ui.submitted, Vector.empty)
 
   test("clicking confirm submits every option in the zone it was left in"):
-    val ui = opened()
+    val ui = view()
+    val draft = opened()
     // Swap the first and last options, which keeps both minima met.
-    drop(one(render(ui), """[data-section-key="pay-secret"]"""),
+    drop(one(render(ui, draft), """[data-section-key="pay-secret"]"""),
       "denizen:denizen:1")
-    drop(one(render(ui), """[data-section-key="pay-favor"]"""),
-      "denizen:denizen:3")
-    val arranged = render(ui)
+    drop(one(render(ui, ui.drafts.partition),
+      """[data-section-key="pay-favor"]"""), "denizen:denizen:3")
+    val arranged = render(ui, ui.drafts.partition)
     assertEquals(optionLabelsIn(arranged, "pay-favor"),
       Vector("Denizen 2", "Denizen 3"))
     assertEquals(optionLabelsIn(arranged, "pay-secret"), Vector("Denizen 1"))
@@ -293,13 +300,15 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   test("the panel titles itself from the query, not from the action"):
     val retitled = query.copy(heading = Some("Pay for the relic"),
       confirmLabel = Some("Pay"))
-    val panel = render(opened(), decision = parked.copy(query = Some(retitled)))
+    val panel = render(view(), opened(),
+      decision = parked.copy(query = Some(retitled)))
     assertEquals(one(panel, "h2").textContent, "Pay for the relic")
     assertEquals(confirm(panel).textContent, "Pay")
 
   test("a partition query declaring no copy falls back to generic copy"):
     val bare = query.copy(heading = None, confirmLabel = None)
-    val panel = render(opened(), decision = parked.copy(query = Some(bare)))
+    val panel = render(view(), opened(),
+      decision = parked.copy(query = Some(bare)))
     assertEquals(one(panel, "h2").textContent, "Resolve decision")
     assertEquals(confirm(panel).textContent, "Confirm")
     // Untitled, not unusable: the zones and the options are still there.
@@ -330,7 +339,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     event.asInstanceOf[dom.Event]
 
   test("a decision option is not a focus stop; the move buttons are the keyboard path"):
-    val panel = render(opened())
+    val panel = render(view(), opened())
     val options = all(panel, ".decision-option")
     assert(options.nonEmpty)
     options.foreach(option =>

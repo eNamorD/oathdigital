@@ -48,10 +48,13 @@ class BoardSurfaceSuite extends munit.FunSuite:
       Some(surface(confirm = true))): dom.Element =
     WorldBoardRenderer.world(projection(), board, ui)
 
-  private def pane(ui: RecordingView, board: Surface.Board): dom.Element =
+  private def pane(ui: RecordingView, board: Surface.Board,
+      draft: Option[WalkerBoardDraft] = None): dom.Element =
     val panel = dom.document.createElement("div")
-    ParkedDecision.render(projection(), Routed(Some(board), None),
-      canControl = true, panel, ui)
+    ParkedDecision.render(projection(),
+      ServerUiSupport.viewerPresentation(projection(), "red"),
+      Routed(Some(board), None), canControl = true, panel,
+      SessionDrafts.empty.copy(context = Some(context), board = draft), ui)
     panel
 
   private def one(root: dom.Element, selector: String): dom.Element =
@@ -146,8 +149,7 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assert(one(empty, ".walker-board-confirm")
       .asInstanceOf[dom.html.Button].disabled)
 
-    ui.board = Some(woodsDraft)
-    val drafted = pane(ui, surface(confirm = true))
+    val drafted = pane(ui, surface(confirm = true), Some(woodsDraft))
     assertEquals(one(drafted, ".board-draft").textContent, "Deep Woods")
     val confirm = one(drafted, ".walker-board-confirm")
       .asInstanceOf[dom.html.Button]

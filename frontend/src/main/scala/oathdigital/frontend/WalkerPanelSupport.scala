@@ -70,7 +70,7 @@ private[frontend] object WalkerPanelSupport:
     */
   private[frontend] def renderRecoverPanel(
       surface: ParkedDecision.Surface.Recover, value: GameProjection,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
+      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     val decision = surface.decision
     surface.step match
       case ParkedDecision.RecoverStep.Roll(pool) =>
@@ -83,7 +83,7 @@ private[frontend] object WalkerPanelSupport:
         rollFeedback(decision, panel)
         val roll = button("Roll the dice", "recover-roll")
         roll.disabled = !canControl
-        roll.onclick = _ => ui.submitCommand(GameCommand.RollWalker(pool))
+        roll.onclick = _ => controls.submitCommand(GameCommand.RollWalker(pool))
         panel.appendChild(roll)
       case ParkedDecision.RecoverStep.Choice(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
@@ -101,7 +101,7 @@ private[frontend] object WalkerPanelSupport:
             else (option.label, "recover-choice")
           val control = button(label, className)
           control.disabled = !canControl || (spendsSupply && !hasSupply)
-          control.onclick = _ => ui.submitCommand(
+          control.onclick = _ => controls.submitCommand(
             resolveChooseOneCommand(decision, option))
           panel.appendChild(control)
         }
@@ -119,7 +119,7 @@ private[frontend] object WalkerPanelSupport:
           val choose = button("Take facedown", "recover-relic-choice")
           choose.setAttribute("aria-label", s"Take ${option.label} facedown")
           choose.disabled = !canControl
-          choose.onclick = _ => ui.submitCommand(
+          choose.onclick = _ => controls.submitCommand(
             resolveChooseOneCommand(decision, option))
           choice.appendChild(choose)
           relics.appendChild(choice)
@@ -131,23 +131,23 @@ private[frontend] object WalkerPanelSupport:
     * button that submits it. The sites themselves are the board's.
     */
   private[frontend] def renderBoardPanel(
-      surface: ParkedDecision.Surface.Board, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
+      surface: ParkedDecision.Surface.Board, board: Option[WalkerBoardDraft],
+      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     panel.appendChild(text("h2", "", decisionHeading(surface.query)))
-    val draft = ui.currentWalkerBoard
-      .filter(_.decisionId == surface.decision.decisionId)
+    val draft = board.filter(_.decisionId == surface.decision.decisionId)
     panel.appendChild(text("p", "board-draft",
       draft.fold("Choose a site on the board.")(_.option.label)))
     if surface.confirm then
       val confirm = button(partitionConfirmLabel(surface.query),
         "walker-board-confirm")
       confirm.disabled = !canControl || draft.isEmpty
-      confirm.onclick = _ => draft.foreach(value => ui.submitCommand(value.command))
+      confirm.onclick = _ =>
+        draft.foreach(value => controls.submitCommand(value.command))
       panel.appendChild(confirm)
 
   private[frontend] def renderChooseOnePanel(
       surface: ParkedDecision.Surface.ChooseOne, value: GameProjection,
-      canControl: Boolean, panel: dom.Element, ui: ServerUiView): Unit =
+      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     val decision = surface.decision
     val query = surface.query
     // The roll the question is asked after (a Campaign's relocation),
@@ -185,7 +185,7 @@ private[frontend] object WalkerPanelSupport:
         choose.setAttribute("aria-label", s"$label, $badge")
       }
       choose.disabled = !canControl
-      choose.onclick = _ => ui.submitCommand(
+      choose.onclick = _ => controls.submitCommand(
         resolveChooseOneCommand(decision, option))
       // A battle plan is chosen by reading what it does, so its card is
       // drawn above its button -- beside it, never inside: the face is
@@ -302,30 +302,31 @@ private[frontend] object WalkerPanelSupport:
     * borrowed rather than reimplemented.
     */
   private[frontend] def renderPartitionPanel(
-      surface: ParkedDecision.Surface.Partition, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
+      surface: ParkedDecision.Surface.Partition,
+      partition: Option[WalkerPartitionDraft], playerId: String,
+      canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     val decision = surface.decision
     val query = surface.query
     panel.appendChild(text("h2", "", decisionHeading(query)))
     panel.appendChild(text("p", "partition-instruction",
       partitionInstruction(query)))
-    ui.currentWalkerPartition.filter(_.decisionId == decision.decisionId)
+    partition.filter(_.decisionId == decision.decisionId)
         .foreach { draft =>
       val zones = element("div", "decision-zones partition-zones")
       query.sections.foreach(section =>
-        zones.appendChild(partitionZone(section, query, draft, ui)))
+        zones.appendChild(partitionZone(section, query, draft, controls)))
       panel.appendChild(zones)
       val confirm = button(partitionConfirmLabel(query, draft),
         "partition-confirm")
       confirm.disabled = !canControl || !draft.canConfirm
       confirm.onclick = _ =>
-        draft.command(ui.currentPlayerId).foreach(ui.submitCommand)
+        draft.command(playerId).foreach(controls.submitCommand)
       panel.appendChild(confirm)
     }
 
   private def partitionZone(section: DecisionSectionState,
       query: DecisionQueryState, draft: WalkerPartitionDraft,
-      ui: ServerUiView): dom.Element =
+      controls: TableControls): dom.Element =
     val zone = element("section", "decision-zone partition-zone")
     zone.setAttribute("data-section-key", section.key)
     zone.appendChild(text("h3", "", section.label))
@@ -339,20 +340,20 @@ private[frontend] object WalkerPanelSupport:
     // wide as all of them laid end to end, whatever it can wrap to.
     val options = element("div", "partition-options")
     draft.optionsIn(section.key).foreach(option =>
-      options.appendChild(partitionOption(option, section, query, draft, ui)))
+      options.appendChild(partitionOption(option, section, query, draft, controls)))
     zone.appendChild(options)
     zone.addEventListener("dragover",
       (event: dom.Event) => event.preventDefault())
     zone.addEventListener("drop", (event: dom.Event) => {
       event.preventDefault()
       moveOption(draft, event.asInstanceOf[dom.DragEvent].dataTransfer
-        .getData("text/plain"), section.key, ui)
+        .getData("text/plain"), section.key, controls)
     })
     zone
 
   private def partitionOption(option: DecisionOptionState,
       section: DecisionSectionState, query: DecisionQueryState,
-      draft: WalkerPartitionDraft, ui: ServerUiView): dom.Element =
+      draft: WalkerPartitionDraft, controls: TableControls): dom.Element =
     val item = WalkerPartitionDraft.itemId(option)
     val node = element("article", "decision-option")
     node.setAttribute("draggable", "true")
@@ -377,7 +378,7 @@ private[frontend] object WalkerPanelSupport:
       event.preventDefault()
       event.stopPropagation()
       update(draft.moveBefore(event.asInstanceOf[dom.DragEvent].dataTransfer
-        .getData("text/plain"), item), draft, ui)
+        .getData("text/plain"), item), draft, controls)
     })
     // The keyboard-reachable counterpart to the drag: one button per other
     // section, naming where it would move the option to.
@@ -386,7 +387,7 @@ private[frontend] object WalkerPanelSupport:
       val move = button(destination.label, "move-option")
       move.setAttribute("aria-label", label)
       move.setAttribute("title", label)
-      move.onclick = _ => moveOption(draft, item, destination.key, ui)
+      move.onclick = _ => moveOption(draft, item, destination.key, controls)
       node.appendChild(move)
     }
     // Order within a section is part of the answer, so it needs a keyboard
@@ -402,18 +403,16 @@ private[frontend] object WalkerPanelSupport:
         control.setAttribute("aria-label", label)
         control.setAttribute("title", label)
         control.disabled = atEnd
-        control.onclick = _ => update(draft.shift(item, delta), draft, ui)
+        control.onclick = _ => update(draft.shift(item, delta), draft, controls)
         reorder.appendChild(control)
       }
     node.appendChild(reorder)
     node
 
   private def moveOption(draft: WalkerPartitionDraft, item: String,
-      sectionKey: String, ui: ServerUiView): Unit =
-    update(draft.move(item, sectionKey), draft, ui)
+      sectionKey: String, controls: TableControls): Unit =
+    update(draft.move(item, sectionKey), draft, controls)
 
   private def update(moved: WalkerPartitionDraft, draft: WalkerPartitionDraft,
-      ui: ServerUiView): Unit =
-    if moved != draft then
-      ui.currentWalkerPartition = Some(moved)
-      ui.rerender()
+      controls: TableControls): Unit =
+    if moved != draft then controls.stage(Draft.Partition(moved))

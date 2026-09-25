@@ -41,7 +41,8 @@ class PanelPlacementSuite extends munit.FunSuite:
     ActionDecisionRenderer.actionsPanel(value,
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "red"),
-      ParkedDecision.Routed(None, None), new RecordingView("game", "red"))
+      ParkedDecision.Routed(None, None), SessionDrafts.empty,
+      new RecordingView("game", "red"))
 
   test("the oath and its holder are listed in the shared bank"):
     val line = one(world(projection()), ".shared-bank .oathkeeper-status")

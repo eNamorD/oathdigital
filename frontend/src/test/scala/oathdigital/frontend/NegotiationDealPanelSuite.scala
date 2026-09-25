@@ -27,9 +27,9 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     Surface.Negotiate(value, None)
 
   private def render(surface: Surface.Negotiate, ui: RecordingView,
-      canControl: Boolean = true): dom.Element =
+      canControl: Boolean = true, playerId: String = "red"): dom.Element =
     val panel = dom.document.createElement("div")
-    NegotiationDealPanel.render(surface, canControl, panel, ui)
+    NegotiationDealPanel.render(surface, playerId, canControl, panel, ui)
     panel
 
   private def one(root: dom.Element, selector: String): dom.Element =
@@ -82,7 +82,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
 
   test("a spectator sees the deal read-only, with no inputs or buttons"):
     val ui = new RecordingView("game", "green")
-    val panel = render(spectator(deal(editing = false)), ui)
+    val panel = render(spectator(deal(editing = false)), ui, playerId = "green")
     assertEquals(one(panel, ".negotiation-status").textContent,
       "red: reviewing · blue: accepted")
     assertEquals(panel.querySelectorAll("input").length, 0)

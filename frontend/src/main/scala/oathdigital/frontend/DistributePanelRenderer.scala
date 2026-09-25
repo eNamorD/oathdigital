@@ -12,18 +12,20 @@ private[frontend] object DistributePanelRenderer:
 
   val AllTooltip = "Shift+click: all"
 
-  def render(surface: ParkedDecision.Surface.Distribute, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit =
+  def render(surface: ParkedDecision.Surface.Distribute,
+      distribute: Option[WalkerDistributeDraft], canControl: Boolean,
+      panel: dom.Element, controls: TableControls): Unit =
     val decision = surface.decision
     val query = surface.query
     // A Campaign's placement is asked after the defense roll; the roll
     // comes first, as on every panel a roll belongs beside.
     WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
-    ui.currentWalkerDistribution.filter(_.decisionId == decision.decisionId)
+    distribute.filter(_.decisionId == decision.decisionId)
         .foreach { draft =>
       val rows = element("div", "distribute-slots")
-      query.slots.foreach(slot => rows.appendChild(row(slot, draft, canControl, ui)))
+      query.slots.foreach(slot =>
+        rows.appendChild(row(slot, draft, canControl, controls)))
       panel.appendChild(rows)
       panel.appendChild(text("p", "distribute-remaining",
         s"Remaining: ${draft.state.remaining}"))
@@ -33,33 +35,31 @@ private[frontend] object DistributePanelRenderer:
       val confirm = button(WalkerPanelSupport.partitionConfirmLabel(query),
         "distribute-confirm")
       confirm.disabled = !canControl || !draft.canConfirm
-      confirm.onclick = _ => draft.command.foreach(ui.submitCommand)
+      confirm.onclick = _ => draft.command.foreach(controls.submitCommand)
       panel.appendChild(confirm)
     }
 
   private def row(slot: DecisionSlotState, draft: WalkerDistributeDraft,
-      canControl: Boolean, ui: ServerUiView): dom.Element =
+      canControl: Boolean, controls: TableControls): dom.Element =
     val item = WalkerPartitionDraft.itemId(slot.option)
     val node = element("div", "distribute-slot")
     node.setAttribute("data-option-id", item)
     node.appendChild(slot.option.card.fold[dom.Element](
       text("span", "distribute-label", slot.option.label))(CardFace.render))
-    node.appendChild(stepper("−", "distribute-decrement", canControl, ui,
+    node.appendChild(stepper("−", "distribute-decrement", canControl, controls,
       shift => if shift then draft.drain(item) else draft.decrement(item)))
     node.appendChild(text("span", "distribute-amount",
       draft.state.amount(item).toString))
-    node.appendChild(stepper("+", "distribute-increment", canControl, ui,
+    node.appendChild(stepper("+", "distribute-increment", canControl, controls,
       shift => if shift then draft.fill(item) else draft.increment(item)))
     node.appendChild(text("span", "distribute-maximum", s"max ${slot.maximum}"))
     node
 
   private def stepper(label: String, className: String, canControl: Boolean,
-      ui: ServerUiView, next: Boolean => WalkerDistributeDraft): dom.Element =
+      controls: TableControls, next: Boolean => WalkerDistributeDraft): dom.Element =
     val control = button(label, className)
     control.setAttribute("title", AllTooltip)
     control.disabled = !canControl
-    control.onclick = (event: dom.MouseEvent) => {
-      ui.currentWalkerDistribution = Some(next(event.shiftKey))
-      ui.rerender()
-    }
+    control.onclick = (event: dom.MouseEvent) =>
+      controls.stage(Draft.Distribute(next(event.shiftKey)))
     control

@@ -16,7 +16,7 @@ class TemporaryHandPreviewSuite extends munit.FunSuite:
         completed = false, temporaryHandPreview = preview),
       ServerUiSupport.ViewerPresentation(showGameplayControls = true, None,
         None, playerId = "red"),
-      ParkedDecision.Routed(None, None),
+      ParkedDecision.Routed(None, None), SessionDrafts.empty,
       new RecordingView("game", "red"))
 
   private val card = CardDetails("denizen:a", "denizen", "Hearth Guard",

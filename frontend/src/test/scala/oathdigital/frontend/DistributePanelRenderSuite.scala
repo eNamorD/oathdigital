@@ -20,16 +20,15 @@ class DistributePanelRenderSuite extends munit.FunSuite:
   private val parked = WalkerDecisionState("begin-rest",
     "rest.league-treaty.distribution", "decide", query = Some(query))
 
-  private def opened(): RecordingView =
-    val ui = new RecordingView("game", "red")
-    ui.currentWalkerDistribution = WalkerDistributeDraft.reconcile(None,
+  private def opened(): Option[WalkerDistributeDraft] =
+    WalkerDistributeDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(parked))
-    ui
 
-  private def render(ui: RecordingView, canControl: Boolean = true): dom.Element =
+  private def render(ui: RecordingView, draft: Option[WalkerDistributeDraft],
+      canControl: Boolean = true): dom.Element =
     val panel = dom.document.createElement("div")
-    DistributePanelRenderer.render(Surface.Distribute(parked, query), canControl,
-      panel, ui)
+    DistributePanelRenderer.render(Surface.Distribute(parked, query), draft,
+      canControl, panel, ui)
     panel
 
   private def one(root: dom.Element, selector: String): dom.Element =
@@ -45,7 +44,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
       bubbles = true, shiftKey = shift).asInstanceOf[dom.MouseEventInit]))
 
   test("the panel renders one row per slot at its suggested amount"):
-    val panel = render(opened())
+    val panel = render(new RecordingView("game", "red"), opened())
     assertEquals(one(panel, "h2").textContent, "League Treaty")
     assertEquals(amount(panel, "favor-bank:arcane"), "2")
     assertEquals(amount(panel, "favor-bank:nomad"), "0")
@@ -57,25 +56,29 @@ class DistributePanelRenderSuite extends munit.FunSuite:
       .getAttribute("title"), "Shift+click: all")
 
   test("a plain click steps by one and a Shift+click drains or fills"):
-    val ui = opened()
-    click(one(render(ui), """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
-    assertEquals(amount(render(ui), "favor-bank:arcane"), "1")
-    click(one(render(ui), """[data-option-id="favor-bank:arcane"] .distribute-decrement"""),
+    val ui = new RecordingView("game", "red")
+    def staged(): dom.Element = render(ui, ui.drafts.distribute)
+    click(one(render(ui, opened()),
+      """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
+    assertEquals(amount(staged(), "favor-bank:arcane"), "1")
+    click(one(staged(), """[data-option-id="favor-bank:arcane"] .distribute-decrement"""),
       shift = true)
-    assertEquals(amount(render(ui), "favor-bank:arcane"), "0")
-    click(one(render(ui), """[data-option-id="favor-bank:nomad"] .distribute-increment"""),
+    assertEquals(amount(staged(), "favor-bank:arcane"), "0")
+    click(one(staged(), """[data-option-id="favor-bank:nomad"] .distribute-increment"""),
       shift = true)
-    assertEquals(amount(render(ui), "favor-bank:nomad"), "2")
-    assert(ui.rerenders >= 3)
+    assertEquals(amount(staged(), "favor-bank:nomad"), "2")
+    assert(ui.staged.size >= 3)
 
   test("confirm is enabled exactly when nothing remains and submits the amounts"):
-    val ui = opened()
-    click(one(render(ui), """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
-    val short = render(ui)
+    val ui = new RecordingView("game", "red")
+    click(one(render(ui, opened()),
+      """[data-option-id="favor-bank:arcane"] .distribute-decrement"""))
+    val short = render(ui, ui.drafts.distribute)
     val confirm = one(short, ".distribute-confirm").asInstanceOf[dom.html.Button]
     assert(confirm.disabled)
     click(one(short, """[data-option-id="favor-bank:nomad"] .distribute-increment"""))
-    val ready = one(render(ui), ".distribute-confirm").asInstanceOf[dom.html.Button]
+    val ready = one(render(ui, ui.drafts.distribute), ".distribute-confirm")
+      .asInstanceOf[dom.html.Button]
     assertEquals(ready.textContent, "Move favor")
     assert(!ready.disabled)
     ready.click()
@@ -85,7 +88,8 @@ class DistributePanelRenderSuite extends munit.FunSuite:
         DistributeAmountWire("favor-bank", "nomad", 1))))))
 
   test("a viewer who cannot control sees disabled steppers and confirm"):
-    val panel = render(opened(), canControl = false)
+    val panel = render(new RecordingView("game", "red"), opened(),
+      canControl = false)
     assert(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-increment""")
       .asInstanceOf[dom.html.Button].disabled)
     assert(one(panel, ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
@@ -98,16 +102,17 @@ class DistributePanelRenderSuite extends munit.FunSuite:
 
   test("a range shows its minimum and confirms anywhere inside it"):
     val ui = new RecordingView("game", "red")
-    ui.currentWalkerDistribution = WalkerDistributeDraft.reconcile(None,
+    val draft = WalkerDistributeDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(rangedParked))
-    def draw(): dom.Element =
+    def draw(from: Option[WalkerDistributeDraft]): dom.Element =
       val panel = dom.document.createElement("div")
       DistributePanelRenderer.render(Surface.Distribute(rangedParked, rangedQuery),
-        canControl = true, panel, ui)
+        from, canControl = true, panel, ui)
       panel
-    assertEquals(one(draw(), ".distribute-minimum").textContent,
+    assertEquals(one(draw(draft), ".distribute-minimum").textContent,
       "At least 1 must be placed")
-    assert(one(draw(), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
-    click(one(draw(), """[data-option-id="favor-bank:arcane"] .distribute-increment"""))
-    assert(!one(draw(), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
-    assertEquals(one(draw(), ".distribute-remaining").textContent, "Remaining: 2")
+    assert(one(draw(draft), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
+    click(one(draw(draft), """[data-option-id="favor-bank:arcane"] .distribute-increment"""))
+    val staged = ui.drafts.distribute
+    assert(!one(draw(staged), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
+    assertEquals(one(draw(staged), ".distribute-remaining").textContent, "Remaining: 2")

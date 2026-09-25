@@ -79,10 +79,17 @@ object ServerModeUi:
             text("p", "empty-state", "World unavailable."), "unavailable")
         case Some(value) =>
           val presentation = viewerPresentation(value, selectedPlayer)
+          // Transitional: the draft set assembled from the session's vars.
+          // Task 6 makes it the session's one value.
+          val currentDrafts = SessionDrafts(
+            Some(BoardSelectionContext(gameId, selectedPlayer, value.nextSequence)),
+            boardSelectionState, walkerPartitionDraft, walkerDistributeDraft,
+            walkerSelectionDraft, walkerBoardDraft, modifierWorkflow,
+            facedownAdviserDraft)
           // Routed once per render: both panes read the same answer.
           val routed = ParkedDecision.route(value, presentation)
           actionContent.appendChild(ActionDecisionRenderer.actionsPanel(
-            value, presentation, routed, ui))
+            value, presentation, routed, currentDrafts, ui))
           val prompt = Option(actionContent.querySelector(
             "#card-decision-title,.selection-instruction,.modifier-confirm,.resolution-choice"))
             .map(_.textContent).getOrElse("")
