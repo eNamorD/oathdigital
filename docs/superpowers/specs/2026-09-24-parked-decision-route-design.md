@@ -1,6 +1,7 @@
 # Parked Decision Route
 
-> Status: design approved 2026-09-24. Not yet implemented. This is a
+> Status: implemented 2026-09-24, merged to main (three commits, as delivered
+below, plus a syntax pass to match the Scala 3 modernization). This is a
 behavior-preserving architecture slice. Sequence it after the frontend tasks
 of §4 (`subjectCards`) and §7 (generalised roll payload) in
 [the vision identity and modifier selection design](2026-09-24-vision-identity-and-modifier-selection-design.md)
