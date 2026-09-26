@@ -94,6 +94,18 @@ class GameLogOverlaySuite extends munit.FunSuite:
       }
     }
 
+  test("while it is open the table behind is inert, and an open card overlay closes first"):
+    withShell() { (browser, _) =>
+      val table = browser.mount.querySelector(".game-table")
+      CardInspection.openText("Rules", Vector("A line"), heading(browser))
+      assert(!browser.mount.querySelector(".card-overlay").hasAttribute("hidden"))
+      click(heading(browser))
+      assert(browser.mount.querySelector(".card-overlay").hasAttribute("hidden"))
+      assert(table.hasAttribute("inert"))
+      press(overlay(browser).querySelector(".log-overlay-content"), "Escape")
+      assert(!table.hasAttribute("inert"))
+    }
+
   test("a click inside the panel does not close it"):
     withShell() { (browser, shell) =>
       shell.showLog("g", "red", entries, Map.empty)

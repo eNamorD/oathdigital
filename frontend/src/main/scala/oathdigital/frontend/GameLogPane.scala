@@ -68,13 +68,19 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
   def last: Option[Long] = shown.lastOption.map(_.sequence)
 
   /** Where the reader is: nothing at the end, otherwise the index among the
-    * list's children of the first one below the top edge. A stuck headline
-    * sits at the top edge whatever the scroll, so it is skipped. */
+    * list's children of the first one the reader can see. Stuck headlines
+    * sit at the top edge whatever the scroll, so they are skipped, and a line
+    * hidden under them does not count as seen. */
   def position: Option[Int] =
     if atEnd then None else
-      val top = content.getBoundingClientRect().top
-      Some(children.indexWhere(child => !child.classList.contains(sticky) &&
-        child.getBoundingClientRect().bottom > top).max(0))
+      val edge = content.getBoundingClientRect().top
+      val stuck = children.filter(_.classList.contains(sticky))
+        .map(_.getBoundingClientRect()).filter(_.top <= edge + 1)
+      val top = stuck.map(_.bottom).maxOption.fold(edge)(_.max(edge))
+      children.indexWhere(child => !child.classList.contains(sticky) &&
+        child.getBoundingClientRect().bottom > top) match
+        case -1 => None
+        case index => Some(index)
 
   /** Scrolls to a position another list reported (see `position`). */
   def restore(at: Option[Int]): Unit =

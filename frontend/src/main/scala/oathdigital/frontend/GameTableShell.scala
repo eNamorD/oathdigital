@@ -33,15 +33,24 @@ private[frontend] final class GameTableShell(mount: dom.Element,
   private val marker = new LogMarker(logStore)
   private val logPane = new GameLogPane(log.content, scrolled = () => watchLog())
   private val logOverlay = new GameLogOverlay(mount, () => watchLog(), () => {
+    behindLog(false)
     log.heading.setAttribute("aria-expanded", "false")
     watchLog()
   })
+  /** The log overlay is modal: while it is open the table and the developer
+    * panel behind it are inert, so Tab cannot leave it and no second dialog
+    * opens under it. */
+  private def behindLog(open: Boolean): Unit =
+    Vector(table, dev).foreach(node =>
+      if open then node.setAttribute("inert", "") else node.removeAttribute("inert"))
   // The heading opens the whole log (spec, "Overlay").
   log.heading.tabIndex = 0
   log.heading.setAttribute("role", "button")
   log.heading.setAttribute("aria-expanded", "false")
   log.heading.setAttribute("aria-controls", "log-overlay")
   private def openLog(): Unit =
+    if inspector.isOpen then inspector.hide()
+    behindLog(true)
     log.heading.setAttribute("aria-expanded", "true")
     logOverlay.open(logPane.position, log.heading)
     watchLog()

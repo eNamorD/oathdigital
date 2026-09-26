@@ -55,11 +55,12 @@ private[frontend] final class GameLogOverlay(root: dom.Element,
   def hide(): Unit =
     if isOpen then
       node.setAttribute("hidden", "")
+      // Before the focus moves: the owner makes the page behind usable again.
+      closed()
       // The opener is the pane heading, which the shell never rebuilds; the
       // guard matches the card overlay's in case that ever changes.
       opener.filter(dom.document.contains).foreach(_.focus())
       opener = None
-      closed()
 
   private val dismiss: dom.MouseEvent => Unit = event =>
     if event.target == node || event.target == close then hide()

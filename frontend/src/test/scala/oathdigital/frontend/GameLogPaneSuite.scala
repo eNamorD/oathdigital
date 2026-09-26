@@ -186,17 +186,30 @@ class GameLogPaneSuite extends munit.FunSuite:
     pane.show("g|red", Vector(setup, turn), Map.empty)
     assertEquals(pane.last, Some(3L))
 
-  test("the reading position is the first line below the top edge, skipping stuck headlines"):
+  test("the reading position is the first line seen below the stuck headline"):
     val content = box(500, 100, 200)
     val pane = new GameLogPane(content)
-    pane.show("g|red", Vector(setup, turn, travel), Map.empty)
+    val search = entry(6, "action", 1, LogSpanWire("text", "Started Search"))
+    pane.show("g|red", Vector(setup, turn, travel, search), Map.empty)
     content.scrollTop = 200
     place(content, 0, 100)
     val shown = items(content)
     place(shown(0), -40, -20)
     place(shown(1), 0, 15) // the stuck turn headline
-    place(shown(2), -10, 5)
-    assertEquals(pane.position, Some(2))
+    place(shown(2), -2, 13) // hidden under it
+    place(shown(3), 13, 28)
+    assertEquals(pane.position, Some(3))
+
+  test("a list that shows no line reports no position"):
+    val content = box(500, 100, 200)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, turn), Map.empty)
+    content.scrollTop = 200
+    place(content, 0, 100)
+    val shown = items(content)
+    place(shown(0), -40, -20)
+    place(shown(1), 0, 15)
+    assertEquals(pane.position, None)
 
   test("a list at the end has no position, and restoring none goes to the end"):
     val content = box(500, 100, 400)
