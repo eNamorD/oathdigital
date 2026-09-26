@@ -1,12 +1,14 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
+import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
-  WalkerStepPayload, WalkerStepRecorded}
+  WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer,
+  DeclineDeal, PartitionAnswer}
 import LogSpan.Text
 
 /** The action line each procedure posts, at the event its facts complete
@@ -154,9 +156,9 @@ private[gamelog] final class ActionLines(words: LogWords):
           action(Vector(Text(s"Placed ${resource(piece)} on "),
             words.banner(banner)))
       }
-      // Filled by Tasks 5 to 7; Task 7 deletes this case, making the match
-      // exhaustive over `ProcedureRef`.
-      case _ => Vector.empty
+      case ActionRef.Negotiation => negotiation(journal, run, at)
+      case ActionRef.UsePower(power) =>
+        usedPower(journal, run, at, power, completing, viewer)
 
   /** The card an economy action's source decision chose. */
   private def source(journal: LogJournal, run: Run, at: Int,
@@ -249,6 +251,96 @@ private[gamelog] final class ActionLines(words: LogWords):
           if giver == run.actor && onto == banner && resource(piece).nonEmpty =>
         resource(piece)
     }
+
+  /** "Negotiation ended by …" at the decline; otherwise "Negotiated with …"
+    * at the settlement batch, or at completion when the deal settled
+    * nothing. */
+  private def negotiation(journal: LogJournal, run: Run, at: Int)
+      : Vector[Posted] =
+    def negotiated = Vector(action(Text("Negotiated with ") +: LogWords.join(
+      negotiators(journal, run, at).map(player => Vector(words.player(player))))))
+    val declined = journal.answers(run, at).exists {
+      case Answered(NegotiationDeal.dealDecisionId, DeclineDeal, _) => true
+      case _ => false
+    }
+    val settledEarlier = (run.first until at).exists(index =>
+      isDelta(journal.event(index)))
+    journal.event(at) match
+      case WalkerStepRecorded(_, ChoicePayload(NegotiationDeal.dealDecisionId,
+          DeclineDeal, by), _, _) =>
+        Vector(action(Vector(Text("Negotiation ended by "), words.player(by))))
+      case event if isDelta(event) && !settledEarlier => negotiated
+      case _: WalkerCompleted if !declined && !settledEarlier => negotiated
+      case _ => Vector.empty
+
+  /** The negotiators decision's answer, or the one eligible player when it
+    * was not asked. */
+  private def negotiators(journal: LogJournal, run: Run, at: Int)
+      : Vector[PlayerId] =
+    journal.answers(run, at).collectFirst {
+      case Answered(NegotiationDeal.negotiatorsDecisionId,
+          ChooseManyAnswer(refs), _) =>
+        refs.collect { case DecisionOptionRef.Player(id) => id }
+    }.getOrElse(journal.readyBefore(run.first).fold(Vector.empty[PlayerId])(
+      NegotiationDeal.eligible(_, run.actor)))
+
+  /** "Used {card}" at the first step recording one of the power's own
+    * effects: a step that is not only the payment onto its card or to the
+    * bank, and not only the use record. At completion if it recorded none. */
+  private def usedPower(journal: LogJournal, run: Run, at: Int, power: PowerId,
+      completing: Boolean, viewer: Option[PlayerId]): Vector[Posted] =
+    val postedEarlier = (run.first until at).exists(effect(journal, run, _))
+    if postedEarlier || !(effect(journal, run, at) || completing) then
+      Vector.empty
+    else Vector(action(Text("Used ") +: powerSource(journal, run, at, power,
+      viewer)))
+
+  private def effect(journal: LogJournal, run: Run, index: Int): Boolean =
+    journal.event(index) match
+      case WalkerStepRecorded(_, _: WalkerStepPayload.DeltaRecorded, ops, _) =>
+        !ops.forall {
+          case RecordPowerUse(_) => true
+          case Move(Piece.Favor(_) | Piece.Secrets(_),
+              PositionedLocation(Location.PlayArea(payer), _),
+              PositionedLocation(Location.OnCard(_) | Location.SharedBank, _),
+              _) => payer == run.actor
+          case _ => false
+        }
+      case _ => false
+
+  /** The source the player named when starting (kept on every park), else
+    * the use record's source, else the card the power is printed on. */
+  private def powerSource(journal: LogJournal, run: Run, at: Int,
+      power: PowerId, viewer: Option[PlayerId]): Vector[LogSpan] =
+    val through = (run.first to journal.segmentEnd(at)).toVector
+    val ready = journal.readyBefore(run.first)
+    val started = through.map(journal.event).collectFirst {
+      case parked: WalkerParked => parked.startArgs
+    }.flatMap(_.headOption).flatMap(ref => ready.flatMap(state =>
+      named(ref, state, viewer)))
+    val used = through.flatMap(journal.ops).collectFirst {
+      case OpStep(RecordPowerUse(PowerUseRef(_, source, _)), _, _) => source
+    }.flatMap(source => ready.flatMap(state => source match
+      case PowerSourceRef.Card(id) =>
+        Some(words.one(words.card(id, state, state, viewer)))
+      case PowerSourceRef.Banner(banner) => Some(Vector(words.banner(banner)))
+      case PowerSourceRef.Site(site) => Some(Vector(words.site(site)))))
+    started.orElse(used).orElse(ready.map(state =>
+      words.power(state, run.actor, power, viewer)))
+      .getOrElse(Vector(Text(power.value)))
+
+  private def named(ref: DecisionOptionRef, ready: ReadyGame,
+      viewer: Option[PlayerId]): Option[Vector[LogSpan]] = ref match
+    case DecisionOptionRef.Denizen(id) =>
+      Some(words.one(words.card(id, ready, ready, viewer)))
+    case DecisionOptionRef.Relic(id) =>
+      Some(words.one(words.card(id, ready, ready, viewer)))
+    case DecisionOptionRef.Vision(id) =>
+      Some(words.one(words.card(id, ready, ready, viewer)))
+    case DecisionOptionRef.Edifice(id) =>
+      Some(words.one(words.card(id, ready, ready, viewer)))
+    case DecisionOptionRef.Banner(banner) => Some(Vector(words.banner(banner)))
+    case _ => None
 
 private[gamelog] object ActionLines:
   def action(spans: Vector[LogSpan]): Posted = Posted.line(LogKind.Action, spans)

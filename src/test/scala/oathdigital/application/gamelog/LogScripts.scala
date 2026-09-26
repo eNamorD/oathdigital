@@ -1,11 +1,13 @@
 package oathdigital.application.gamelog
 
 import oathdigital.application._
+import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseOneAnswer, DeclineDeal,
+  ProposeTerms}
 import oathdigital.testkit.{Situation, SituationDriver, Step}
 
 /** A journal built by real play through `GameApplicationService` on every
@@ -240,3 +242,54 @@ object LogScripts:
       GameCommand.EndWake(actor))
     start(start(act, ActionRef.Challenge), ActionRef.PlaceBannerResource)
     Script("banners", service, actor)
+
+  /** The first two pawns share a site, so the first player can negotiate
+    * with exactly one other: the negotiators decision is not asked. */
+  private def negotiating(name: String)(using munit.Location)
+      : (GameApplicationService, Situation, PlayerId, PlayerId) =
+    val sites = FirstGameSetupFixture.sites
+    val (service, _, driver) = journaled(name,
+      spread = Vector(sites(0), sites(0)) ++ sites.drop(1))
+    val woken = Situation.wake(driver)
+    val actor = active(woken)
+    val act = woken.after(GameCommand.EndWake(actor))
+    val partner = act.ready.game.current.players.find(player =>
+      player.player != actor && player.pawnSite == Some(pawn(act, actor)))
+      .get.player
+    (service, act.parkedAfter(GameCommand.StartWalker(ActionRef.Negotiation,
+      StartPayload(actor))), actor, partner)
+
+  private def deal(by: PlayerId, answer: DecisionAnswer): GameCommand =
+    GameCommand.ResolveWalker(by, TreeDecision(NegotiationDeal.dealDecisionId,
+      answer))
+
+  def negotiationDeclined(using munit.Location): Script =
+    val (service, parked, actor, partner) = negotiating("negotiation-declined")
+    parked.after(deal(partner, DeclineDeal))
+    Script("negotiation-declined", service, actor)
+
+  def negotiationAgreed(using munit.Location): Script =
+    val (service, parked, actor, partner) = negotiating("negotiation-agreed")
+    parked
+      .parkedAfter(deal(actor, ProposeTerms(NegotiationTerms(Vector(
+        NegotiationTransfer(partner, 1, Vector.empty))))))
+      .parkedAfter(deal(partner, AcceptDeal))
+      .after(deal(actor, AcceptDeal))
+    Script("negotiation-agreed", service, actor)
+
+  /** Silver Tongue used in Rest, its bank choice answered by default. */
+  def usePower(using munit.Location): Script =
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = steadyDice)
+    val (parked, actor, _) = ParkedServiceFixture.silverTonguePark(service,
+      repository, "use-power")
+    Situation(parked.state, Vector.empty, parked.nextSequence,
+      Situation.journaled(service, catalog, repository, "use-power")).after()
+    Script("use-power", service, actor)
+
+  /** Every script, for the properties that hold over all of them. */
+  def all(using munit.Location): Vector[Script] = Vector(woken, round,
+    oathkeeper, search, facedownAdviser, muster, trade, takeWealth,
+    recoverFailed, recoverSucceeded, forge, banners, negotiationDeclined,
+    negotiationAgreed, usePower)
