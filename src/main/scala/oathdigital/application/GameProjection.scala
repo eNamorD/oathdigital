@@ -25,6 +25,14 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
   private val pendingProjector = new PendingProjector(catalog,
     presentation, walkerDecisions)
 
+  private val logs = new gamelog.GameLogProjector(catalog, presentation)
+
+  /** The log page after `after` for `viewer`; `None` when `after` is past
+    * the journal's end. */
+  def logPage(gameId: String, history: GameHistory, after: Long,
+      viewer: PlayerId): Option[LogPageWire] =
+    logs.page(gameId, history, after, viewer)
+
   def project(gameId: String, loaded: LoadedGame,
       requestingPlayer: PlayerId): GameProjection =
     projectFor(gameId, loaded, Some(requestingPlayer))

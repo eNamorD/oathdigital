@@ -21,7 +21,8 @@ import oathdigital.application.{
 }
 import oathdigital.protocol.{MajorActionPreviewRequest, MajorActionPreviewResponse,
   PreviewIgnoredRule, PreviewTarget}
-import oathdigital.protocol.projection.GameProjection
+import oathdigital.protocol.projection.{GameProjection, LogPageCodec,
+  LogPageWire}
 import oathdigital.model.PlayerId
 
 private[server] object CommandRejectionMessage:
@@ -92,6 +93,14 @@ final class GameServerGateway(
       case None =>
         Left(GameApplicationError.StreamNotFound(gameId))
 
+  /** `None` when `after` is past the journal's end. */
+  def log(gameId: String, requestingPlayer: PlayerId, after: Long)
+      : Either[GameApplicationError, Option[LogPageWire]] =
+    service.history(gameId).flatMap:
+      case Some(history) =>
+        Right(projector.logPage(gameId, history, after, requestingPlayer))
+      case None => Left(GameApplicationError.StreamNotFound(gameId))
+
 private[server] object MajorActionPreviewTargets:
   def validate(projection: GameProjection, request: MajorActionPreviewRequest)
       : Either[GameApplicationError, Unit] =
@@ -153,6 +162,14 @@ final class GameRoutes(
                   PlayerId(validPlayerId)
                 ))
             } ~
+              path("log" / Segment) { raw =>
+                get:
+                  raw.toLongOption.filter(_ >= 0) match
+                    case None => complete(jsonResponse(StatusCodes.BadRequest,
+                      "malformed-request", "$.after: expected a journal sequence"))
+                    case Some(after) => completeLog(gateway.log(validGameId,
+                      PlayerId(validPlayerId), after))
+              } ~
               path("preview") {
                 post:
                   entity(as[String]) { body =>
@@ -198,6 +215,22 @@ final class GameRoutes(
         logger.error("Unhandled major-action preview failure", error)
         complete(jsonResponse(StatusCodes.InternalServerError, "internal-error",
           "the server could not complete the request"))
+
+  private def completeLog(
+      operation: => Either[GameApplicationError, Option[LogPageWire]]
+  ): Route = onComplete(Future(operation)(using blockingExecutionContext)):
+    case Success(Right(Some(page))) => complete(HttpResponse(StatusCodes.OK,
+      entity = HttpEntity(ContentTypes.`application/json`,
+        LogPageCodec.encode(page))))
+    case Success(Right(None)) => complete(jsonResponse(StatusCodes.BadRequest,
+      "malformed-request", "$.after: past the end of the journal"))
+    case Success(Left(error)) =>
+      val (status, code, message, _) = publicError(error)
+      complete(jsonResponse(status, code, message))
+    case Failure(error) =>
+      logger.error("Unhandled game-log route failure", error)
+      complete(jsonResponse(StatusCodes.InternalServerError, "internal-error",
+        "the server could not complete the request"))
 
   private def completeRawHistory(
       operation: => Either[GameApplicationError, Vector[String]]

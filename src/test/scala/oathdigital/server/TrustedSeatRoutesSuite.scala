@@ -127,6 +127,28 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
       }
     }
 
+  test("the log route pages for the seat's cookie and checks the cursor"):
+    withServer() { (base, _) =>
+      val client = HttpClient.newHttpClient()
+      val created = create(client, base, "log-game")
+      val code = URI.create(created.seats(1).url).getPath.stripPrefix("/s/")
+      val cookie = Some(s"oath_seat=$code")
+      val page = send(client, base, "/games/log-game/api/log/0", cookie = cookie)
+      assertEquals(page.statusCode(), 200, page.body())
+      assertEquals(page.headers().firstValue("Cache-Control").orElse(""), "no-store")
+      val decoded = oathdigital.protocol.projection.LogPageCodec
+        .decode(page.body()).toOption.get
+      assertEquals(decoded.after, 0L)
+      assertEquals(send(client, base, "/games/log-game/api/log/0").statusCode(), 403)
+      assertEquals(send(client, base, "/games/log-game/api/log/-1",
+        cookie = cookie).statusCode(), 400)
+      assertEquals(send(client, base,
+        s"/games/log-game/api/log/${decoded.nextSequence + 1}",
+        cookie = cookie).statusCode(), 400)
+      assertEquals(send(client, base, "/games/log-game/api/log/0?x=1",
+        cookie = cookie).statusCode(), 400)
+    }
+
   test("HTTPS public origin sets Secure even when the proxy connection uses HTTP"):
     withServer(Some("https://games.example.test")) { (base, _) =>
       val client = HttpClient.newHttpClient()

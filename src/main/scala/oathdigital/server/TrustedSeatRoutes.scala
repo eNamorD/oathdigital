@@ -87,6 +87,13 @@ final class TrustedSeatRoutes(
                         projection => json(StatusCodes.OK, GameHttpWire.encodeProjection(projection)))))
                 } }
               } }
+            } ~ path("log" / Segment) { raw =>
+              get { async {
+                raw.toLongOption.filter(_ >= 0).fold(malformed)(after =>
+                  authenticate(request, gameId).flatMap(gateway.log(gameId, _, after))
+                    .fold(publicError, page => json(StatusCodes.OK,
+                      oathdigital.protocol.projection.LogPageCodec.encode(page))))
+              } }
             } ~ path("preview"):
               post { sameOrigin {
                 entity(as[String]) { body => async {

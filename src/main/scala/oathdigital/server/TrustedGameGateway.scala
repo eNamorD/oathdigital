@@ -3,7 +3,7 @@ package oathdigital.server
 import oathdigital.application._
 import oathdigital.model.PlayerId
 import oathdigital.protocol._
-import oathdigital.protocol.projection.GameProjection
+import oathdigital.protocol.projection.{GameProjection, LogPageWire}
 
 sealed trait TrustedSeatFailure extends Product with Serializable
 object TrustedSeatFailure:
@@ -25,6 +25,16 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
       loaded <- service.load(gameId).left.map(Application.apply)
       game <- loaded.toRight(Application(GameApplicationError.StreamNotFound(gameId)))
     yield projector.project(gameId, game, player).copy(viewerPlayerId = Some(player.value))
+
+  /** The seat's log page. A cursor past the journal's end is an invalid
+    * request, which the route reports as malformed. */
+  def log(gameId: String, seat: TrustedSeat, after: Long)
+      : Either[TrustedSeatFailure, LogPageWire] = for
+    player <- actor(gameId, seat)
+    loaded <- service.history(gameId).left.map(Application.apply)
+    history <- loaded.toRight(Application(GameApplicationError.StreamNotFound(gameId)))
+    page <- projector.logPage(gameId, history, after, player).toRight(InvalidIntent)
+  yield page
 
   def submit(gameId: String, seat: TrustedSeat, request: ActorlessCommandRequest)
       : Either[TrustedSeatFailure, GameProjection] = for
