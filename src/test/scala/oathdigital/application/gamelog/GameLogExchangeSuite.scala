@@ -1,5 +1,7 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.model._
 import LogScripts._
 
 class GameLogExchangeSuite extends munit.FunSuite:
@@ -26,3 +28,13 @@ class GameLogExchangeSuite extends munit.FunSuite:
     assertEquals(all.count(_.startsWith("Used ")), 1, all)
     assert(all.exists(_ == "Used Silver Tongue") ||
       all.exists(_.startsWith("Used a ")), all)
+
+  test("a banner's power is named by its banner, not its id"):
+    val script = woken
+    val ready = script.history.steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val words = new LogWords(catalog, presentation)
+    assertEquals(words.power(ready, script.actor,
+      PowerId("banner.darkest-secret.wandering-flame.move"), None)
+      .map(_.text).mkString, "Darkest Secret")

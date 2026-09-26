@@ -55,14 +55,21 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
   def one(word: CardWord): Vector[LogSpan] = cards(Vector(word))
 
   /** A power named by the card it is printed on, as the modifier picker
-    * names it; the card follows the visibility rule on `ready`. */
+    * names it; the card follows the visibility rule on `ready`. A banner's
+    * power, printed on no card, is named by its banner. */
   def power(ready: ReadyGame, actor: PlayerId, id: PowerId,
       viewer: Option[PlayerId]): Vector[LogSpan] =
     descriptions.printedOn(ready, actor, id.value).fold(
-      Vector[LogSpan](LogSpan.Text(presentation.safeLabel(id.value))))(card =>
+      Vector[LogSpan](LogWords.bannerOf(id).fold[LogSpan](
+        LogSpan.Text(presentation.safeLabel(id.value)))(banner)))(card =>
       one(this.card(card, ready, ready, viewer)))
 
 private[gamelog] object LogWords:
+  /** The banner whose face prints `id`: banner power ids begin
+    * `banner.{key}.`. */
+  def bannerOf(id: PowerId): Option[Banner] =
+    Banner.all.find(banner => id.value.startsWith(s"banner.${banner.key}."))
+
   def backOf(id: CardId): String = id match
     case _: VisionId => "Vision"
     case _: RelicId => "Relic"
