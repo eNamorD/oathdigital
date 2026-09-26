@@ -9,14 +9,10 @@ import oathdigital.model._
   */
 object CatalogCards:
   def denizen(catalog: ExecutableCatalog, power: PowerId): Option[DenizenId] =
-    catalog.denizens.find(_.powers.exists(_.id == power))
-      .map(card => DenizenId(card.id.value))
+    catalog.denizenWithPower(power).map(card => DenizenId(card.id.value))
 
   def relic(catalog: ExecutableCatalog, power: PowerId): Option[RelicId] =
-    catalog.relics.find(_.powers.exists(_.id == power))
-      .map(card => RelicId(card.id.value))
+    catalog.relicWithPower(power).map(card => RelicId(card.id.value))
 
   def edifice(catalog: ExecutableCatalog, power: PowerId): Option[EdificeId] =
-    catalog.edifices.find(card => card.intact.powers.exists(_.id == power) ||
-      card.ruined.powers.exists(_.id == power))
-      .map(card => EdificeId(card.id.value))
+    catalog.edificeWithPower(power).map(card => EdificeId(card.id.value))

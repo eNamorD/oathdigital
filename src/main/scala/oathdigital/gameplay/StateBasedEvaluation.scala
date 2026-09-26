@@ -25,14 +25,16 @@ object StateBasedEvaluation:
     VisionRules.Rebellion, VisionRules.Sanctuary, VisionRules.Faith)
   def banditRefill(catalog: ExecutableCatalog, state: OathState)
       : Either[OathViolation, Option[OathEvent]] = supported(state).map { ready =>
-    val capacities = catalog.sites.map(s => s.id -> s.capacity).toMap
     val refills = ready.game.current.map.inPlay.flatMap { siteId =>
       ready.game.current.map.sites.get(siteId).collect:
-        case SiteState(SiteForces.Empty, _, _, _) if capacities.getOrElse(siteId, 0) > 0 =>
-          siteId -> capacities(siteId)
+        case SiteState(SiteForces.Empty, _, _, _) if capacity(catalog, siteId) > 0 =>
+          siteId -> capacity(catalog, siteId)
     }
     Option.when(refills.nonEmpty)(BanditsRefilled(refills))
   }
+
+  private def capacity(catalog: ExecutableCatalog, site: SiteId): Int =
+    catalog.site(site).fold(0)(_.capacity)
 
   def atWake(state: OathState): Either[OathViolation, Option[OathEvent]] =
     supported(state).map { ready =>

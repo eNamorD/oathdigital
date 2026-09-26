@@ -15,7 +15,7 @@ object ForgeRules:
   def validate(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerState,
       siteId: SiteId): Either[OathViolation, (Vector[SiteDenizenTarget], Tokens)] =
     val game = ready.game
-    val definition = catalog.sites.find(_.id == siteId)
+    val definition = catalog.site(siteId)
     val site = game.current.map.sites.get(siteId)
     PowerRuntime.requireAudited(catalog).flatMap { _ =>
       for

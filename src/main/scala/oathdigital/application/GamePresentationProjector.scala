@@ -19,32 +19,23 @@ private[application] final class GamePresentationProjector(
     definition.powers.nonEmpty && definition.powers.forall(power =>
       powerImplemented(power.id))
 
-  private val siteNames = catalog.sites.map(site => site.id -> site.name).toMap
-  private val denizenNames = catalog.denizens.map(d =>
-    DenizenId(d.id.value) -> d.name).toMap
-  private val edificeNames = catalog.edifices.map { edifice =>
-    EdificeId(edifice.id.value) ->
-      (edifice.intact.name -> edifice.ruined.name)
-  }.toMap
-  private val edificesById = catalog.edifices.map(e => e.id.value -> e).toMap
-  private val siteDefinitions = catalog.sites.map(site => site.id -> site).toMap
-
-  def siteLabel(id: SiteId): String = siteNames.getOrElse(id, safeLabel(id.value))
+  def siteLabel(id: SiteId): String =
+    catalog.site(id).fold(safeLabel(id.value))(_.name)
   def denizenLabel(id: DenizenId): String =
-    denizenNames.getOrElse(id, safeLabel(id.value))
-  def relicLabel(id: RelicId): String = catalog.relics.find(
-    _.id.value == id.value).map(_.name).getOrElse(safeLabel(id.value))
+    catalog.denizen(id).fold(safeLabel(id.value))(_.name)
+  def relicLabel(id: RelicId): String =
+    catalog.relic(id).fold(safeLabel(id.value))(_.name)
   def edificeLabel(id: EdificeId, side: EdificeSide): String =
-    edificeNames.get(id).fold(safeLabel(id.value)):
-      case (intact, ruined) => side match
-        case EdificeSide.Intact => intact
-        case EdificeSide.Ruined => ruined
+    catalog.edifice(id).fold(safeLabel(id.value)): edifice =>
+      side match
+        case EdificeSide.Intact => edifice.intact.name
+        case EdificeSide.Ruined => edifice.ruined.name
   /** A player's display name: the one label the Players strip and the game
     * log both use, so the two never disagree. */
   def playerLabel(id: PlayerId): String = safeLabel(id.value)
 
   private[application] def edificeCardDetails(value: EdificeState): CardDetailsProjection =
-    val definition = edificesById.get(value.id.value)
+    val definition = catalog.edifice(value.id)
     val face = definition.map(e => value.side match {
       case EdificeSide.Intact => e.intact
       case EdificeSide.Ruined => e.ruined
@@ -104,7 +95,7 @@ private[application] final class GamePresentationProjector(
 
   private def siteProjection(siteId: SiteId, state: Option[SiteState],
       ready: Option[ReadyGame], viewer: Option[PlayerId]): SetupSiteProjection =
-    val definition = siteDefinitions.get(siteId)
+    val definition = catalog.site(siteId)
     SetupSiteProjection(siteId.value, siteLabel(siteId),
       state.fold(0)(_.tokens.favor), state.fold(0)(_.tokens.secrets),
       definition.fold(0)(_.capacity), definition.fold(0)(_.relicSlots),
@@ -341,7 +332,7 @@ private[application] final class GamePresentationProjector(
 
   def cardDetails(id: CardId, orientation: Option[Orientation],
       hidden: Boolean): CardDetailsProjection = id match
-    case value: DenizenId => catalog.denizens.find(_.id.value == value.value).fold(
+    case value: DenizenId => catalog.denizen(value).fold(
       CardDetailsProjection(value.value, "denizen", worldCardLabel(value),
         orientation = orientation.map(orientationName), hidden = hidden)) { d =>
       CardDetailsProjection(value.value, "denizen", d.name, Some(d.suit.key),
@@ -356,7 +347,7 @@ private[application] final class GamePresentationProjector(
         rulesText = Some(vision.rulesText),
         orientation = orientation.map(orientationName), hidden = hidden)
     }
-    case value: RelicId => catalog.relics.find(_.id.value == value.value).fold(
+    case value: RelicId => catalog.relic(value).fold(
       CardDetailsProjection(value.value, "relic", safeLabel(value.value),
         orientation = orientation.map(orientationName), hidden = hidden)) { r =>
       CardDetailsProjection(value.value, "relic", r.name, rulesText = Some(r.rulesText),

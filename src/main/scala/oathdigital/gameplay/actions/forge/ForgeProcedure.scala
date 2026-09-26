@@ -141,7 +141,7 @@ object ForgeProcedure:
     */
   def printedCost(catalog: ExecutableCatalog,
       siteId: SiteId): Either[OathViolation, Tokens] =
-    catalog.sites.find(_.id == siteId).flatMap(_.forgeRequirements)
+    catalog.site(siteId).flatMap(_.forgeRequirements)
       .toRight(OathViolation.ForgeUnavailable("site has no printed Forge cost"))
 
   /** The two sections a Forge assignment spreads its targets across. Stable

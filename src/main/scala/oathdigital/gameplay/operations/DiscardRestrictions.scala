@@ -43,7 +43,7 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
       : Option[OperationReason] = operation match
     case value: Discard.Denizen if inPlay(value.from.location) =>
       if faceup(ready, value.card, value.from.location) &&
-          catalog.denizens.find(_.id.value == value.card.value)
+          catalog.denizen(value.card)
           .exists(d => d.restrictions == CardRestrictions.LockedAdviserOnly ||
             d.restrictions == CardRestrictions.Locked) then
         refuse("locked", s"${value.card.value} is locked and cannot be discarded")
@@ -84,9 +84,9 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
     else None
 
   private def printedBy(power: PowerId): Option[CardId] =
-    catalog.denizens.find(_.powers.exists(_.id == power))
+    catalog.denizenWithPower(power)
       .map(card => DenizenId(card.id.value): CardId)
-      .orElse(catalog.relics.find(_.powers.exists(_.id == power))
+      .orElse(catalog.relicWithPower(power)
         .map(card => RelicId(card.id.value): CardId))
 
   private def intact(ready: ReadyGame, card: EdificeId,
@@ -125,7 +125,7 @@ final class DiscardRestrictions(catalog: ExecutableCatalog,
           SiteRule.ruler(state.forces, current.players).toOption.contains(ruler) &&
             state.denizens.exists:
               case edifice: EdificeState if edifice.side == EdificeSide.Intact =>
-                catalog.edifices.find(_.id.value == edifice.id.value)
+                catalog.edifice(edifice.id)
                   .exists(_.intact.powers.exists(_.id == hallPower))
               case _ => false
         }

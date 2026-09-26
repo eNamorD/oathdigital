@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.banner
 
 import oathdigital.gameplay.{PowerRuntime, RuleSourceFace, RuleSourceIndex}
-import oathdigital.gameplay.powers.{CatalogResolution, PowerFixture}
+import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -35,4 +35,4 @@ class BannerFaceSourcesSuite extends munit.FunSuite:
     Vector("banner.darkest-secret.wandering-flame.move",
       "banner.darkest-secret.wandering-flame.place",
       "banner.peoples-favor.mob").foreach(id => assertEquals(
-      CatalogResolution.printed(catalog, PowerId(id)), None, id))
+      catalog.printedPower(PowerId(id)), None, id))
