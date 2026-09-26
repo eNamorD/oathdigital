@@ -4,7 +4,9 @@ import org.scalajs.dom
 import ServerUiSupport._
 
 /** Stable player-facing layout; renderer refreshes replace only panel contents. */
-private[frontend] final class GameTableShell(mount: dom.Element, developmentTools: Boolean = true):
+private[frontend] final class GameTableShell(mount: dom.Element,
+    developmentTools: Boolean = true,
+    logStore: Option[LogStore] = LogStore.browser):
   private val table = element("div", "game-table")
   while mount.firstChild != null do mount.removeChild(mount.firstChild)
   mount.appendChild(table)
@@ -28,7 +30,34 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   private val world = new Pane("world", "World Map")
   private val actions = new Pane("actions", "Action Selection")
   private val log = new Pane("log", "Game Log")
-  private val logPane = new GameLogPane(log.content)
+  private val marker = new LogMarker(logStore)
+  private val logPane = new GameLogPane(log.content, scrolled = () => watchLog())
+  private val logOverlay = new GameLogOverlay(mount, () => watchLog(), () => {
+    log.heading.setAttribute("aria-expanded", "false")
+    watchLog()
+  })
+  // The heading opens the whole log (spec, "Overlay").
+  log.heading.tabIndex = 0
+  log.heading.setAttribute("role", "button")
+  log.heading.setAttribute("aria-expanded", "false")
+  log.heading.setAttribute("aria-controls", "log-overlay")
+  private def openLog(): Unit =
+    log.heading.setAttribute("aria-expanded", "true")
+    logOverlay.open(logPane.position, log.heading)
+    watchLog()
+  log.heading.onclick = _ => openLog()
+  log.heading.onkeydown = event =>
+    if event.key == "Enter" || event.key == " " then
+      event.preventDefault()
+      openLog()
+  private var logSeat = Option.empty[String]
+  private var logSince = Option.empty[Long]
+  /** Either list at its end for a second marks the log seen (spec,
+    * "Divider"). */
+  private def watchLog(): Unit =
+    marker.observe(logPane.atEnd || logOverlay.atEnd, logPane.last)
+  private val leaving: dom.Event => Unit = _ => marker.flush()
+  dom.window.addEventListener("pagehide", leaving)
   private val mapContent = element("div", "map-content").asInstanceOf[dom.html.Div]
   private val zoomLabel = text("span", "zoom-label", "100%")
   private val mapView = new MapViewport(world.content, mapContent, scale => {
@@ -110,17 +139,28 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     previousGame = gameId
     previousDecision = decisionKey
 
-  /** The log is not rebuilt with the other panes: it only grows. */
-  def showLog(sessionKey: String,
+  /** The log is not rebuilt with the other panes: it only grows. The marker
+    * is read once per seat, so the pane and the overlay divide at the same
+    * entry. */
+  def showLog(gameId: String, seatId: String,
       entries: Vector[oathdigital.protocol.projection.LogEntryWire],
       colors: Map[String, String]): Unit =
-    logPane.show(sessionKey, entries, colors)
+    val sessionKey = s"$gameId|$seatId"
+    if !logSeat.contains(sessionKey) then
+      logSince = marker.open(gameId, seatId)
+      logSeat = Some(sessionKey)
+    logPane.show(sessionKey, entries, colors, logSince)
+    logOverlay.show(sessionKey, entries, colors, logSince)
+    watchLog()
 
   def dispose(): Unit =
     mapView.dispose()
     dev.removeEventListener("keydown", escape)
     CardInspection.clear()
     inspector.dispose()
+    dom.window.removeEventListener("pagehide", leaving)
+    logPane.dispose()
+    logOverlay.dispose()
     table.remove()
     dev.remove()
 

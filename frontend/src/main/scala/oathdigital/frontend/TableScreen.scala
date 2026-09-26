@@ -111,7 +111,7 @@ private[frontend] final class TableScreen(
         development.appendChild(DevelopmentRenderer.rawEventLog(view.viewedRawEvents))
     val attention = s"$decision|$connection|${failure.map(_.message)}"
     shell.update(view.viewedGameId, attention, players, world, actionContent, development)
-    shell.showLog(s"${view.viewedGameId}|${view.viewedPlayerId}",
+    shell.showLog(view.viewedGameId, view.viewedPlayerId,
       view.viewedLog, projection.fold(Map.empty[String, String])(value =>
         value.players.map(player =>
           player.playerId -> PlayerColorCss.of(player.color)).toMap))
