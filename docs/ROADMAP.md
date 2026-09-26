@@ -90,9 +90,13 @@ can take modifiers, and one action line per action, formatted per seat from
 the scanned journal and served on both seat routes. The design is
 [the Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
 
-- [ ] **Slice 2: knowledge, detail lines and goldens.** Setup lines, detail
-  lines, the knowledge fix, Negotiation settlement lines, the rest of
-  Campaign with the campaign panel's removal, and golden logs.
+Slice 2 is done (2026-09-26). Knowledge of a card now follows it when it
+moves, for the board as well as the log. The log tells decisions, rolls
+drawn as dice, resource and card changes, minor actions, state-based
+triggers, Setup, a Negotiation's settlement and a Campaign's full account,
+and the campaign result panel has left the Actions pane. Golden logs pin
+every test script for two seats.
+
 - [ ] **Slice 3: reading aids.** The overlay, the divider, the New chip and
   the sticky headline.
 - [ ] **Deferred: show a parked action's progress in the waiting message.**

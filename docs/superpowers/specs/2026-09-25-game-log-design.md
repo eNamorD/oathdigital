@@ -8,7 +8,9 @@
 > facts are complete. It covers the server-side formatter, the state change it
 > needs, the wire contract, the seat routes, and the pane and overlay that read
 > them. No implementation is authorized by this document alone; a plan follows
-> it.
+> it. Amended 2026-09-26 by the second slice's plan and its delivery: rolls
+> are drawn as dice, and the wording and anchors that slice fixed are
+> recorded under "Resolved decisions".
 
 ## Why now
 
@@ -300,7 +302,7 @@ line that closes the action.
 |------|----------|--------|
 | Decision | Chose {option} | `ChooseOneAnswer` not already covered by an action line |
 | Decision | Chose {options} | `ChooseManyAnswer`, names joined with commas |
-| Roll | Rolled {faces} | `RollPayload` faces |
+| Roll | Rolled {dice}, with " for the attack" or " for the defense" on a Campaign's pools | `RollPayload` faces, as a `dice` span |
 | Delta | Gained {n} favor from the {suit} bank | `Gain.Favor` not covered by an action line |
 | Delta | Gained {n} secrets | `Gain.Secrets` not covered by an action line |
 | Delta | Moved {n} warbands to {site} | `WarbandsMoved`, and `Move` of warbands inside a run |
@@ -337,9 +339,26 @@ Campaign carries the most lines, in this order:
     favor burned, banishment.
 
 The attack and defense results move here from the action pane: once the log
-carries them, the campaign result panel leaves the action pane. The exact
-wording of lines 7, 9, and 11 is fixed from `CampaignOutcome`'s operations by
-the second slice's plan.
+carries them, the campaign result panel leaves the action pane. The second
+slice fixed the wording and where each line posts:
+
+- Lines 2 and 3 post at the force answer, read with `CampaignSetup.setup`
+  and `CampaignBattle.printedDefense` exactly as the procedure reads them.
+- Lines 4 and 6 are one line per plan at its choice: "Activated {plan}", or
+  "Blue activated {plan}" for a player defender, and "The bandits activated
+  {plan}" at the record a bandit's application leaves. A face-down plan card
+  flipped at its use posts "Blue revealed {card}" at the flip, after its
+  activation line.
+- Line 7 is "Rolled {dice} for the attack", then "Attack: {score}" with
+  " with {n} skulls" when skulls were paid. A plan that rewrites the total in
+  the same segment (Outriders) is told once, as rewritten.
+- Line 8 is "Sacrificed {n} warbands for an attack of {total}".
+- Line 9 is "Rolled {dice} for the defense", then "Defense: {score}".
+- Line 11 posts at the run's completion: "Took {relics and banners} from
+  Blue" for a Raid, or "Placed {n} warbands on {site}" for a Conquest; then
+  the loser's "Blue lost {n} warbands, burned {n} favor, discarded {cards},
+  set aside {relics} and was sent to {site}", keeping only what happened,
+  with no subject when the loser is the actor and "The bandits" for bandits.
 
 ### Negotiation
 
@@ -414,8 +433,10 @@ someone takes it. Both are board bugs today, not only log concerns.
 The first task of the second slice fixes this in the operation application
 (`CardFaceOperations` and the move path), before any detail line exists:
 
-- A card that leaves a player's area adds that player to its `heldRelics` or
-  `advisers` knowledge.
+- A card that leaves a player's adviser or relic row adds that player to its
+  `heldRelics` or `advisers` knowledge. A move between the owner's own hand
+  and play area, or out of a temporary hand, records nothing: an owner knows
+  their own cards without a record.
 - A relic that leaves a site moves every `siteRelics` peeker of it into
   `heldRelics`.
 - A card that enters a deck or the reliquary clears every player's knowledge
@@ -436,11 +457,11 @@ definitions.
 final case class LogEntryWire(sequence: Long, ordinal: Int, kind: String,
     depth: Int, spans: Vector[LogSpanWire])
 
-final case class LogSpanWire(kind: String, // text | player | card | site | amount | cost
+final case class LogSpanWire(kind: String, // text | player | card | site | amount | cost | dice
     text: String,                           // display text for every kind
-    id: Option[String] = None,              // player, card, site
+    id: Option[String] = None,              // player, card, site; dice: face wire names, space-separated
     value: Option[Int] = None,              // amount, cost
-    unit: Option[String] = None)            // amount, cost
+    unit: Option[String] = None)            // amount, cost; dice: attack | defense
 
 final case class LogPageWire(gameId: String, after: Long, nextSequence: Long,
     entries: Vector[LogEntryWire])
@@ -663,3 +684,31 @@ The 2026-09-26 planning pass settled four more:
   with or without modifiers chosen.
 - Supply rides on the start line; Recover's continued rolls repeat it.
 - Card backs are public, so a hidden card reads as its kind.
+
+The second slice (2026-09-26) settled these, the first at the product
+owner's choice:
+
+- Rolls are drawn as dice: a seventh span kind, `dice`, which the pane draws
+  with the same die-face chips as the table.
+- Bandit battle plans are named like every other plan activation.
+- A decision posts "Chose {options}" (or "Blue chose …") for a single or a
+  non-empty multiple choice that no other line tells. A button reads the
+  label its chooser was shown, from the parked decision rebuilt on the state
+  before the answer.
+- Negotiation's settlement reads "Blue gave 1 favor to Yellow", "Blue gave
+  {relic} to Yellow", "White showed Blue {card}", and "Blue was shown {relic}
+  at {site}" for a site relic, which names no shower.
+- Search plays its kept card through Card Play, so it posts the same
+  "Played … / Discarded …" line as Play Facedown Adviser.
+- "{card}: {effect}" is not a separate line: only Use Power and Take Wealth
+  record a power's use, and Use Power's "Used {card}" is followed by its
+  effect's own lines. "Used" now also posts at the power's own decision, so
+  it precedes that decision's "Chose" line.
+- Reviewing the golden logs as copy changed three lines: Card Play's discard
+  names its pile ("Discarded {card} to the {region} discard"), warbands that
+  are not the actor's name their owner ("Moved 1 of Blue's warbands to
+  {site}"; bandits read as bandits), and a sacrifice states the attack it
+  makes.
+- A test script's arranged favor gain posts "Gained … favor from the … bank"
+  inside the End Wake run it joins. It is truthful to the journal and the
+  golden logs keep it.
