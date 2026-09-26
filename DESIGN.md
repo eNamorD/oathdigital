@@ -440,12 +440,13 @@ host page.
 - **Overlay lift** (`box-shadow: 0 12px 45px #000b`): the developer panel
   only, which floats above the table as a fixed aside.
 - **Overlay scrim** (`background: #0b0a08e8`): the card inspection overlay
-  darkens the table instead of casting a shadow.
+  and the log overlay darken the table instead of casting a shadow.
 
 ### Named Rules
 **The Flat Board Rule.** Board pieces never cast shadows. If something must
 read as above the table, it is a fixed overlay with a scrim or a lift, and
-there are two of those.
+there are three of those: the developer panel's lift, and the card and log
+overlays' scrim.
 
 **The No-Reflow Rule.** Every hover, focus and selection treatment fits in
 space reserved at rest: transparent borders, inset rings, negative-offset
@@ -480,7 +481,8 @@ Solid, bordered, no gloss. Every action button is at least 44px tall; compact
 controls are 30px.
 - **Shape:** 4px on map controls and the dev toggle; 6px on board-target
   controls; 7px on load-game, adviser and restart.
-- **Control** (map zoom, Fit, dev tools, overlay close): Raised fill, `#e8d9bb`
+- **Control** (map zoom, Fit, dev tools, overlay close, the log's New chip):
+  Raised fill, `#e8d9bb`
   text, Brass Line border, `4px 9px` padding, 0.78rem. Hover: Pressed fill,
   Bright Cream border, the Action face's own answer. The two player pills
   (title, Vision) take the Raised fill on hover.
@@ -582,7 +584,20 @@ border, 39px, Brass Label uppercase title) and a scrolling content area. The
 Log pane is an 11px list: round and victory headlines in Replay green, a
 turn headline naming its player in the seat color, and every other line one
 gutter in, in Ink Dim, with card and site names in Cream and a spent cost
-set apart by a lighter weight rather than a separator. Every pane's empty or
+set apart by a lighter weight rather than a separator. Three reading aids
+sit on that list. The current turn's headline sticks to the pane's top edge
+on the Pane fill, so the lines under it scroll beneath their turn. Where the
+reader left off, "Since you last looked" is a Brass Label rule across the
+list, its lines in Brass Line. While the reader is scrolled up, a
+Control-face "New" chip rides the list's bottom edge. The pane heading
+itself opens the log overlay; it answers hover in Bright Cream.
+
+The **log overlay** is the whole log over the table. It takes the card
+overlay's scrim and holds a Pane-fill panel with a Line-pane border, full
+height, at a 46rem measure, under a pane header with Close. Its list reads
+at 13px, and there the round headlines stick instead of the turns.
+
+Every pane's empty or
 loading line, and a waiting or seat notice in the Actions pane, is Ink Dim
 0.82rem. On the map the empty line is set against the scale
 (`0.82rem / --map-scale`) and centered, so it reads at one size whatever
@@ -640,7 +655,7 @@ in a sideways-scrolling row beside the identity column (Layout).
 - **Don't** add `transition` or `animation`. State changes by color, ring and
   outline only.
 - **Don't** put a resting `box-shadow` on a board piece; only the developer
-  panel lifts and only the card overlay scrims.
+  panel lifts and only the card and log overlays scrim.
 - **Don't** introduce grey or blue-tinted neutrals, blue-purple gradients,
   glassmorphism or translucent panels.
 - **Don't** add parchment textures, scrollwork, blackletter, bevels, gloss

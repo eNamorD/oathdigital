@@ -10,7 +10,9 @@
 > them. No implementation is authorized by this document alone; a plan follows
 > it. Amended 2026-09-26 by the second slice's plan and its delivery: rolls
 > are drawn as dice, and the wording and anchors that slice fixed are
-> recorded under "Resolved decisions".
+> recorded under "Resolved decisions". Amended 2026-09-26 by the third
+> slice's plan: where the marker, the divider and the overlay's position come
+> from is recorded under "Resolved decisions".
 
 ## Why now
 
@@ -717,3 +719,42 @@ owner's choice:
 - A test script's arranged favor gain posts "Gained … favor from the … bank"
   inside the End Wake run it joins. It is truthful to the journal and the
   golden logs keep it.
+
+The third slice (2026-09-26) settled these:
+
+- The marker holds the sequence of the last entry the client holds, written
+  once a list has stayed at the end for one second. On `pagehide` the client
+  writes only a mark already waiting for its second, so unload never moves
+  the marker past what the reader reached. A browser that refuses storage,
+  by throwing or by having none, gives no marker and no divider.
+- The frontend has no observer seat, so an empty seat id, which a trusted
+  table has until the server names its seat, counts as the observer: it
+  reads no marker, writes none and shows no divider.
+- The divider is placed only when the list is drawn in full: when a session
+  loads or the log resets. Appends never add, move or remove it. The pane and
+  the overlay read the marker once per seat and divide at the same entry.
+- The overlay's list is a pane list too, so it has its own "New" chip.
+- The list stays flat. Every turn headline in the pane is sticky, and the
+  latest one past the top covers the earlier ones; the overlay does the same
+  with round headlines. A sticky headline's `top` is minus the pane's
+  padding, so it meets the pane's top edge.
+- The pane's reading position is an index into its children: the first one,
+  not a sticky headline, that shows below the stuck headline. Both lists hold
+  the same children, so the overlay scrolls that child to just under its own
+  stuck round headline. A pane at the end opens the overlay at the end.
+- The overlay's list reads at 13px; the die chips, sized in `em`, scale with
+  it.
+- On open, focus goes to the overlay's scrolling list, so arrow keys and Page
+  Down scroll it at once; Close is one Shift+Tab away. Escape, from anywhere
+  on the page, Close and a click on the scrim shut it and return focus to
+  the pane heading.
+- The overlay is the only dialog while it is open: an open card overlay
+  closes first, and the table and the developer panel behind it are `inert`,
+  so Tab cannot leave it.
+- The pane heading is `role="button"` with `aria-expanded` and
+  `aria-controls`; Enter and Space open the overlay. The role replaces the
+  heading's own role, so the Log pane's section is named by it but the
+  document outline loses that `h2`. The spec made the heading the control,
+  and the overlay's own `h2` names the dialog.
+- The "New" chip is a 30px Control, like the table's other compact controls,
+  not a 44px target: mobile support is undecided.

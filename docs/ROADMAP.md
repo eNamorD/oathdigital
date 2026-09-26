@@ -97,7 +97,14 @@ triggers, Setup, a Negotiation's settlement and a Campaign's full account,
 and the campaign result panel has left the Actions pane. Golden logs pin
 every test script for two seats.
 
-- [ ] **Slice 3: reading aids.** The overlay, the divider, the New chip and
+Slice 3 is done (2026-09-26). The Log pane's heading opens the whole log in
+a full-height overlay, at the pane's own place. Each seat's browser keeps
+the last entry it saw, and a returning reader finds a "Since you last
+looked" divider there. A reader scrolled up is offered a "New" chip instead
+of being pulled down, and the current turn's headline stays at the top of
+the pane.
+
+- [x] **Slice 3: reading aids.** The overlay, the divider, the New chip and
   the sticky headline.
 - [ ] **Deferred: show a parked action's progress in the waiting message.**
   The Game Log posts a line only once its facts are complete, so an action
