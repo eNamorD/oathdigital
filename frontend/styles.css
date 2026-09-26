@@ -842,9 +842,17 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-actions .decision-zones { grid-template-columns: 1fr; gap: 10px; }
 .pane-actions .decision-zone { min-height: 100px; }
 .pane-actions .decision-final-row { flex-wrap: wrap; }
-.log-placeholder { color: #a99f8c; font-size: .82rem; line-height: 1.5; margin: 0; }
-.pane-log .pane-content { background: repeating-linear-gradient(135deg,
-  #211f1b, #211f1b 12px, #24211c 12px, #24211c 24px); }
+/* The game log: 11px Ink at the pane floor, lines one gutter in and dimmed,
+   round and victory headlines in the replay green, a spent cost set apart
+   by a lighter treatment rather than a separator. */
+.game-log { list-style: none; margin: 0; padding: 0; font-size: 11px;
+  line-height: 1.45; color: #f5ecd7; }
+.game-log .log-headline { font-weight: 800; margin-top: 6px; }
+.game-log .log-headline:first-child { margin-top: 0; }
+.game-log .log-round, .game-log .log-victory { color: #9ed59e; }
+.game-log .log-line { padding-left: 12px; color: #a99f8c; }
+.game-log .log-card, .game-log .log-site { color: #f5ecd7; }
+.game-log .log-cost { margin-left: 0.5em; opacity: 0.72; font-weight: 400; }
 .development-panel { position: fixed; z-index: 50; right: 12px; top: 48px;
   width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 64px);
   display: flex; flex-direction: column; background: #211d25;

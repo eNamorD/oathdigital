@@ -28,7 +28,7 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   private val world = new Pane("world", "World Map")
   private val actions = new Pane("actions", "Action Selection")
   private val log = new Pane("log", "Game Log")
-  log.content.appendChild(text("p", "log-placeholder", "Game history will appear here."))
+  private val logPane = new GameLogPane(log.content)
   private val mapContent = element("div", "map-content").asInstanceOf[dom.html.Div]
   private val zoomLabel = text("span", "zoom-label", "100%")
   private val mapView = new MapViewport(world.content, mapContent, scale => {
@@ -109,6 +109,12 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     mapView.refresh(changedGame)
     previousGame = gameId
     previousDecision = decisionKey
+
+  /** The log is not rebuilt with the other panes: it only grows. */
+  def showLog(sessionKey: String,
+      entries: Vector[oathdigital.protocol.projection.LogEntryWire],
+      colors: Map[String, String]): Unit =
+    logPane.show(sessionKey, entries, colors)
 
   def dispose(): Unit =
     mapView.dispose()
