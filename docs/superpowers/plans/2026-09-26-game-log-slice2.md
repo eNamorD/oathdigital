@@ -38,7 +38,7 @@ These were settled while planning (2026-09-26). The user chose the first one; th
 
 1. **Dice are drawn as dice.** A roll line carries a `dice` span: `kind = "dice"`, `unit` names the die (`attack` or `defense`), `id` holds the face wire names separated by single spaces, and `text` gives the rulebook names joined by ", ". The pane draws it with `DieFace.roll`, the chip the removed campaign panel used. This is a seventh span kind beside the spec's six.
 2. **Roll wording.** "Rolled {dice}" with " for the attack" or " for the defense" on the two Campaign pools, and nothing added for any other pool (Recover).
-3. **Battle plans.** Each plan gets its own line at its choice: "Activated {plan}", or "Blue activated {plan}" for the defender. A face-down plan card that is flipped posts "Blue revealed {card}" at the flip, so it follows its activation line instead of preceding it. The spec lists them as one "activated {battle plans}" line after "revealed". Where the attacker's loop ends is not always recorded in the segment that ends it, so one line per plan is the rule that never posts thin. Bandit plans apply with no decision and are not named; their effect shows in the defense total.
+3. **Battle plans.** Each plan gets its own line at its choice: "Activated {plan}", or "Blue activated {plan}" for the defender. A face-down plan card that is flipped posts "Blue revealed {card}" at the flip, so it follows its activation line instead of preceding it. The spec lists them as one "activated {battle plans}" line after "revealed". Where the attacker's loop ends is not always recorded in the segment that ends it, so one line per plan is the rule that never posts thin. Bandit plans are named the same way, "The bandits activated {plan}". Bandits apply every free plan with no decision, so their line posts at the record each application leaves (`CampaignPlans.appliedMarker`), read back to the plan's source by a new inverse, `CampaignPlans.markedRef`. (The user asked on 2026-09-26 for bandit plans to be named, so that every plan activation reads the same.)
 4. **Campaign results.** "Targets: {targets}" and "Attack Pool: {n}, Defense Pool: {n}" post at the always-asked force answer. They read `CampaignSetup.setup` and `CampaignBattle.printedDefense` on the state after that answer, exactly as the procedure reads them. "Attack: {score}" (with " with {n} skull(s)" when skulls were paid) and "Defense: {score}" post at each pool's `ModifyRollOutcome`. "Sacrificed {n} warband(s)" posts at a non-zero sacrifice answer. The winner's gains and the loser's losses post as two lines at the run's completion, when every outcome operation is known:
    - Gains: "Took {relics and banners} from Blue" for a Raid, or "Placed {n} warbands on {site}, …" for a Conquest.
    - Losses: "Blue lost {n} warbands, burned {n} favor, discarded {cards}, set aside {relics} and was sent to {site}", keeping only the parts that happened. The loser is the defender when the attacker wins and the attacker otherwise; "The bandits lost …" names the bandits.
@@ -76,6 +76,7 @@ These were settled while planning (2026-09-26). The user chose the first one; th
   - Results are written as `ModifyRollOutcome(attackPool, Some(skulls), Some(score))` and `ModifyRollOutcome(defensePool, None, Some(score))`, then `RecordCampaignResult(result)`.
   - The outcome: `Kill`s; on a Conquest win, `Move` of warbands back to a player defender and `Move(Warbands, PlayArea(attacker) -> Site(s))` placements. On a Raid win, one transfer batch of `Take` relics and banners, `Move` of face-down advisers to a regional discard, `Move` of face-down relics to `SetAsideRelics` and a `Burn` of favor, then `Move(Pawn(defender), Site -> Site)`.
   - A face-down defending plan card is flipped by `Move(Card(id), PlayArea(p) -> PlayArea(p), Some(FaceUp))`.
+  - A bandit defender applies every free, applicable plan with no decision (`CampaignPlanChoice.banditPlans`). Each application's last child records `ModifyDicePool(CampaignPlans.appliedMarker(CampaignPlans.refOf(source)), 1)`, where `appliedMarker(ref) = PoolKey(s"campaign.plan-applied.${ref.kind}.${ref.wireId}")`. The pool is never rolled. A kind holds no dot. `DecisionOptionRef.fromWire(kind, wireId)` parses a kind and wire id back into a ref.
   - `AttackDieFace { HollowSword, OneSword, TwoSwordsSkull }`, `DefenseDieFace { Blank, OneShield, TwoShields, Doubler }`. Their wire names (`hollow-sword`, `one-sword`, `two-swords-skull`, `blank`, `one-shield`, `two-shields`, `doubler`) are the ones the frontend's `DieFace` draws.
 - **The campaign result panel** is fed by one chain, and nothing else reads it. Every file in the chain:
   - Frontend: `CampaignResultPanel.scala`, called at `ActionDecisionRenderer.scala:285`, and the `CampaignResultState` alias in `frontend.scala:4-5`.
@@ -1410,11 +1411,13 @@ git commit -m "feat(log): a negotiation's settlement posts each transfer and dis
 - Create: `src/main/scala/oathdigital/application/gamelog/CampaignLines.scala` (moves the "{winner} wins!" rule out of `ActionLines`)
 - Modify: `src/main/scala/oathdigital/application/gamelog/ActionLines.scala`
 - Modify: `src/main/scala/oathdigital/application/gamelog/GameLogFormatter.scala` (constructs `ActionLines` with the new collaborators)
+- Modify: `src/main/scala/oathdigital/gameplay/actions/campaign/CampaignPlans.scala` (`markedRef`, the inverse of `appliedMarker`)
 - Modify: `src/test/scala/oathdigital/application/gamelog/LogScripts.scala` (`raid`)
-- Test: `src/test/scala/oathdigital/application/gamelog/GameLogCampaignSuite.scala`
+- Test: `src/test/scala/oathdigital/application/gamelog/GameLogCampaignSuite.scala`, `src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala` (new, unless a suite for `CampaignPlans` already exists; then add to it)
 
 **Interfaces:**
 - Consumes: `ChoiceWords.option`, `LogWords.subject`, `CampaignSetup.setup`, `CampaignBattle.printedDefense`, `CampaignIds`.
+- Produces: `CampaignPlans.markedRef(pool: PoolKey): Option[DecisionOptionRef]`, where `markedRef(appliedMarker(ref)) == Some(ref)` for every plan source ref, and `None` for any other pool.
 - Produces: `CampaignLines(words, choices, catalog).lines(journal, run, at, viewer): Vector[Posted]`. `ActionLines` becomes `ActionLines(words, choices, catalog)`.
 - Produces: `LogScripts.raid: Script`, a Raid against the player who shares the actor's site, which the attacker wins.
 
@@ -1536,15 +1539,93 @@ class GameLogCampaignSuite extends munit.FunSuite:
     assert(shown.contains(s"${name(defender)} activated a Denizen"), shown)
     assert(shown.exists(line => line.startsWith(s"${name(defender)} revealed ")
       && line != s"${name(defender)} revealed a Denizen"), shown)
+
+  test("a plan the bandits apply is named like any other activation"):
+    val script = woken
+    val steps = script.history.steps
+    val last = steps.last.after
+    val ready = last match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    // A first game deals each homeland site its edifice, which sits among
+    // the site's cards; a site card is what a bandit plan's source is.
+    val edifice = ready.game.current.map.sites.values.flatMap(_.denizens)
+      .collectFirst { case held: EdificeState => held.id }.get
+    val tail = Vector[OathEvent](
+      WalkerStepRecorded("bandit-plan", WalkerStepPayload.DeltaRecorded(
+        DeltaMeaning.OperationApplied("plan")), Vector(ModifyDicePool(
+          CampaignPlans.appliedMarker(DecisionOptionRef.Edifice(edifice)), 1)),
+        Vector.empty),
+      WalkerCompleted(ActionRef.Campaign))
+    val entries = formatter.format(steps ++ tail.zipWithIndex.map {
+      case (event, index) => ReplayStep(RecordedEvent(steps.size.toLong + index,
+        event), last, last) }, None)
+    val shown = texts(entries.filter(_.sequence >= steps.size))
+    // A site edifice is public, so even an observer reads its name.
+    assert(shown.exists(line => line.startsWith("The bandits activated ") &&
+      !line.endsWith("Edifice") &&
+      !line.contains("campaign.plan-applied")), shown)
+```
+
+Add `CampaignPlans` to the test's `oathdigital.gameplay.actions.campaign` import.
+
+Add the round-trip test for the inverse, in `src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala`:
+
+```scala
+package oathdigital.gameplay
+
+import oathdigital.gameplay.actions.campaign.CampaignPlans
+import oathdigital.model._
+
+class CampaignPlansSuite extends munit.FunSuite:
+  test("a bandit's applied-plan marker reads back to the plan's source"):
+    Vector[DecisionOptionRef](DecisionOptionRef.Denizen(DenizenId("56")),
+      DecisionOptionRef.Edifice(EdificeId("edifice:homeland-arcane")),
+      DecisionOptionRef.Relic(RelicId("relic:circlet")),
+      DecisionOptionRef.Button("title")).foreach { ref =>
+      assertEquals(CampaignPlans.markedRef(CampaignPlans.appliedMarker(ref)),
+        Some(ref))
+    }
+    assertEquals(CampaignPlans.markedRef(PoolKey("campaign.attack")), None)
 ```
 
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.application.gamelog.GameLogCampaignSuite"`
-Expected: the Raid test fails at "Targets:". The plan test fails at "activated": the reveal line already comes from Task 4's `DetailLines`.
+Expected: compilation failure, `value markedRef is not a member of object CampaignPlans`. After Step 3's first part adds it, run again:
+- The Raid test fails at "Targets:".
+- The player plan test fails at "activated". Its reveal line already comes from Task 4's `DetailLines`.
+- The bandit plan test fails with no "The bandits activated" line.
 If the `raid` script fails before the Campaign starts, the failure names the refusing command. The known risk is that Conquest is the only legal kind at the shared site; in that case the kind decision is not asked and the Campaign starts as a Conquest. Check `CampaignSetup.legalKinds` for the shared site. A Raid needs an enemy pawn at the actor's site, so the shared `sites(0)` spread should allow it.
 
-- [ ] **Step 3: Implement `CampaignLines`**
+- [ ] **Step 3: Implement `markedRef`, then `CampaignLines`**
+
+In `CampaignPlans`, beside `appliedMarker`, add its inverse, so the one place that spells the marker also reads it:
+
+```scala
+  /** The plan source `appliedMarker` recorded in `pool`, or `None` for any
+    * other pool. A ref's kind holds no dot, so the first dot after the
+    * prefix ends it. */
+  def markedRef(pool: PoolKey): Option[DecisionOptionRef] =
+    Option.when(pool.value.startsWith(MarkerPrefix))(
+      pool.value.stripPrefix(MarkerPrefix)).flatMap(rest =>
+      rest.split("\\.", 2) match
+        case Array(kind, wireId) => DecisionOptionRef.fromWire(kind, wireId)
+        case _ => None)
+
+  private val MarkerPrefix = "campaign.plan-applied."
+```
+
+Change `appliedMarker` to build its key from `MarkerPrefix` too: `PoolKey(s"$MarkerPrefix${ref.kind}.${ref.wireId}")`. Run `./sbtw "testOnly oathdigital.gameplay.CampaignPlansSuite"`; expected PASS.
+
+The bandit line names a site card with the visibility rule, and a card the viewer may not identify reads by its back. `LogWords.cards` writes "a {kind}", which is wrong for "Edifice". In `LogWords.cards`, choose the article by the kind's first letter, as a one-line change:
+
+```scala
+        if count == 1 then s"${LogWords.article(kind)} $kind"
+        else s"$count ${LogWords.plural(kind)}"))
+```
+
+with `def article(kind: String): String = if "AEIOU".contains(kind.head) then "an" else "a"` in `object LogWords`.
 
 Create `src/main/scala/oathdigital/application/gamelog/CampaignLines.scala`:
 
@@ -1553,7 +1634,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds,
-  CampaignSetup}
+  CampaignPlans, CampaignSetup}
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerStepRecorded}
 import oathdigital.model._
@@ -1567,7 +1648,7 @@ private[gamelog] final class CampaignLines(words: LogWords,
     choices: ChoiceWords, catalog: ExecutableCatalog):
   def lines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    answered(journal, run, at, viewer) ++ recorded(journal, at) ++
+    answered(journal, run, at, viewer) ++ recorded(journal, at, viewer) ++
       closing(journal, run, at, viewer)
 
   /** Targets and pools at the force answer; a battle plan at its choice; a
@@ -1611,9 +1692,16 @@ private[gamelog] final class CampaignLines(words: LogWords,
       case CampaignRaidTarget.Banner(_, banner) => Vector(words.banner(banner))
     })
 
-  /** The two totals as the result windows write them, and the winner. */
-  private def recorded(journal: LogJournal, at: Int): Vector[Posted] =
+  /** The two totals as the result windows write them, each plan the bandits
+    * applied, and the winner. */
+  private def recorded(journal: LogJournal, at: Int, viewer: Option[PlayerId])
+      : Vector[Posted] =
     journal.ops(at).collect {
+      case OpStep(ModifyDicePool(pool, _), before, after)
+          if CampaignPlans.markedRef(pool).nonEmpty =>
+        Posted.line(LogKind.Decision, Text("The bandits activated ") +:
+          choices.option(CampaignPlans.markedRef(pool).get, before, after,
+            viewer))
       case OpStep(ModifyRollOutcome(CampaignIds.attackPool, skulls,
           Some(score)), _, _) =>
         val paid = skulls.filter(_ > 0).fold("")(count =>
@@ -1753,8 +1841,8 @@ Expected: all pass, Slice 1's "Campaign: a start line naming kind and defender, 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/application/gamelog/CampaignLines.scala src/main/scala/oathdigital/application/gamelog/ActionLines.scala src/main/scala/oathdigital/application/gamelog/GameLogFormatter.scala src/test/scala/oathdigital/application/gamelog/LogScripts.scala src/test/scala/oathdigital/application/gamelog/GameLogCampaignSuite.scala
-git commit -m "feat(log): a campaign tells its targets, pools, plans, totals, gains and losses"
+git add src/main/scala/oathdigital/application/gamelog/CampaignLines.scala src/main/scala/oathdigital/application/gamelog/ActionLines.scala src/main/scala/oathdigital/application/gamelog/GameLogFormatter.scala src/main/scala/oathdigital/application/gamelog/LogWords.scala src/main/scala/oathdigital/gameplay/actions/campaign/CampaignPlans.scala src/test/scala/oathdigital/application/gamelog/LogScripts.scala src/test/scala/oathdigital/application/gamelog/GameLogCampaignSuite.scala src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala
+git commit -m "feat(log): a campaign tells its targets, pools, plans (the bandits' too), totals, gains and losses"
 ```
 
 ---
@@ -2071,7 +2159,8 @@ git commit -m "docs: mark the game log's second slice delivered"
   - The Knowledge tests: Task 1.
   - Coverage, including a declined negotiation and a campaign: the existing scripts plus `raid`.
   - The modifier start line that Slice 1 left unpinned: Task 10.
-- **Deliberately not here:** the overlay, divider, New chip and sticky headline are Slice 3. Bandit battle plans are not named (Decisions item 3). A Raid on the bandits posts no gains line, since nothing is taken.
+- **Deliberately not here:** the overlay, divider, New chip and sticky headline are Slice 3. A Raid on the bandits posts no gains line, since nothing is taken.
+- **Bandit battle plans** are named like every other activation (Decisions item 3, at the user's request). The name comes from the marker each application records, read back by `CampaignPlans.markedRef`, which has its own round-trip test (Task 8).
 - **Impeccable:** Task 10's golden review applies `clarify` to the log's copy, and Task 11 applies `polish` to the Log and Actions panes, with DESIGN.md kept current. Both use bounded passes, the worktree's own build, and a scratch database.
 - **Type consistency:**
   - `ChoiceWords.option(ref, before, after, viewer)` is used by `DetailLines` (Task 2) and `CampaignLines` (Task 8).
