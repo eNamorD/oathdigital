@@ -89,3 +89,136 @@ class GameLogPaneSuite extends munit.FunSuite:
     pane.show("g|red", Vector(setup, turn), Map.empty)
     pane.show("g|blue", Vector(setup), Map.empty)
     assertEquals(items(content).map(_.textContent), Vector("Setup"))
+
+  private val victory = entry(9, "victory", 0,
+    LogSpanWire("player", "Red", id = Some("red")), LogSpanWire("text", " won"))
+
+  /** Gives `node` a layout box: jsdom lays nothing out. */
+  private def place(node: dom.Element, top: Double, bottom: Double): Unit =
+    js.Object.defineProperty(node, "getBoundingClientRect",
+      js.Dynamic.literal(configurable = true, value = (() =>
+        js.Dynamic.literal(top = top, bottom = bottom, height = bottom - top))
+        : js.Function0[js.Dynamic]).asInstanceOf[js.PropertyDescriptor])
+
+  private def scroll(content: dom.Element): Unit =
+    content.dispatchEvent(new dom.Event("scroll"))
+
+  test("a marker below the last entry puts the divider before the first newer one, at the top"):
+    val content = box(500, 100, 0)
+    new GameLogPane(content).show("g|red", Vector(setup, turn, travel), Map.empty,
+      since = Some(3))
+    assertEquals(items(content).map(_.getAttribute("class")), Vector(
+      "log-entry log-headline log-round", "log-entry log-headline log-turn",
+      "log-divider", "log-entry log-line log-action"))
+    assertEquals(content.querySelector(".log-divider").textContent,
+      "Since you last looked")
+    // Scrolled to the divider, which jsdom places at 0, not to the end.
+    assertEquals(content.scrollTop, 0.0)
+
+  test("a marker at the last entry, or none, opens at the end with no divider"):
+    Vector(Some(5L), None).foreach { since =>
+      val content = box(500, 100, 0)
+      new GameLogPane(content).show("g|red", Vector(setup, turn, travel), Map.empty, since)
+      assertEquals(content.querySelectorAll(".log-divider").length, 0)
+      assertEquals(content.scrollTop, 500.0)
+    }
+
+  test("appends never add a divider"):
+    val content = box(0, 0, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup), Map.empty, since = Some(0))
+    pane.show("g|red", Vector(setup, turn, travel), Map.empty, since = Some(0))
+    assertEquals(content.querySelectorAll(".log-divider").length, 0)
+
+  test("a reader scrolled up is offered the New chip, which returns them to the end"):
+    val content = box(500, 100, 0)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, turn), Map.empty)
+    val chip = content.querySelector(".log-new").asInstanceOf[dom.html.Button]
+    assertEquals(chip.textContent, "New")
+    assert(chip.hasAttribute("hidden"))
+    content.scrollTop = 40
+    pane.show("g|red", Vector(setup, turn, travel), Map.empty)
+    assert(!chip.hasAttribute("hidden"))
+    assertEquals(content.scrollTop, 40.0)
+    chip.click()
+    assertEquals(content.scrollTop, 500.0)
+    assert(chip.hasAttribute("hidden"))
+
+  test("scrolling to the end hides the chip and tells the owner"):
+    val content = box(500, 100, 0)
+    var told = 0
+    val pane = new GameLogPane(content, scrolled = () => told += 1)
+    pane.show("g|red", Vector(setup, turn), Map.empty)
+    content.scrollTop = 40
+    pane.show("g|red", Vector(setup, turn, travel), Map.empty)
+    content.scrollTop = 400
+    scroll(content)
+    assert(content.querySelector(".log-new").hasAttribute("hidden"))
+    assertEquals(told, 1)
+
+  test("a reader at the end is followed and never shown the chip"):
+    val content = box(500, 100, 400)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, turn), Map.empty)
+    content.scrollTop = 400
+    pane.show("g|red", Vector(setup, turn, travel), Map.empty)
+    assert(content.querySelector(".log-new").hasAttribute("hidden"))
+
+  test("in headings mode rounds and victories are h3, turns h4, lines neither"):
+    val content = box(0, 0, 0)
+    new GameLogPane(content, headings = true)
+      .show("g|red", Vector(setup, turn, travel, victory), Map.empty)
+    val shown = items(content)
+    assertEquals(shown.map(item => Option(item.querySelector(".log-heading"))
+      .map(_.tagName)), Vector(Some("H3"), Some("H4"), None, Some("H3")))
+    assertEquals(shown(1).textContent, "Red's turn")
+    assertEquals(shown(1).querySelector("h4 .log-player").textContent, "Red")
+
+  test("the empty overlay's Setup is a heading too"):
+    val content = box(0, 0, 0)
+    new GameLogPane(content, headings = true).show("g|red", Vector.empty, Map.empty)
+    assertEquals(content.querySelector("li h3.log-heading").textContent, "Setup")
+
+  test("last is the newest entry's sequence"):
+    val pane = new GameLogPane(box(0, 0, 0))
+    assertEquals(pane.last, None)
+    pane.show("g|red", Vector(setup, turn), Map.empty)
+    assertEquals(pane.last, Some(3L))
+
+  test("the reading position is the first line below the top edge, skipping stuck headlines"):
+    val content = box(500, 100, 200)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, turn, travel), Map.empty)
+    content.scrollTop = 200
+    place(content, 0, 100)
+    val shown = items(content)
+    place(shown(0), -40, -20)
+    place(shown(1), 0, 15) // the stuck turn headline
+    place(shown(2), -10, 5)
+    assertEquals(pane.position, Some(2))
+
+  test("a list at the end has no position, and restoring none goes to the end"):
+    val content = box(500, 100, 400)
+    val pane = new GameLogPane(content)
+    pane.show("g|red", Vector(setup, turn), Map.empty)
+    content.scrollTop = 400
+    assertEquals(pane.position, None)
+    val other = box(900, 300, 0)
+    val overlay = new GameLogPane(other, headings = true)
+    overlay.show("g|red", Vector(setup, turn), Map.empty)
+    other.scrollTop = 0
+    overlay.restore(None)
+    assertEquals(other.scrollTop, 900.0)
+
+  test("restoring a position puts that child just under the list's stuck headline"):
+    val content = box(900, 300, 0)
+    val overlay = new GameLogPane(content, headings = true)
+    overlay.show("g|red", Vector(setup, turn, travel), Map.empty)
+    content.scrollTop = 0
+    place(content, 50, 350)
+    val shown = items(content)
+    place(shown(0), 50, 68) // the round headline that sticks in the overlay
+    place(shown(2), 350, 365)
+    overlay.restore(Some(2))
+    assertEquals(content.scrollTop, 350.0 - 50.0 - 18.0)
