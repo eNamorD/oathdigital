@@ -54,3 +54,46 @@ object LogScripts:
     val (service, _, driver) = journaled("woken")
     val situation = Situation.wake(driver)
     Script("woken", service, active(situation))
+
+  /** Setup; the first player travels and rests; every other player rests;
+    * Round 2 begins. */
+  def round(using munit.Location): Script =
+    val (service, _, driver) = journaled("round")
+    val woken = Situation.wake(driver)
+    val first = active(woken)
+    val acting = woken.after(GameCommand.EndWake(first))
+    val destination = acting.ready.game.current.map.inPlay
+      .find(_ != pawn(acting, first)).get
+    val travelled = acting.after(GameCommand.StartWalker(ActionRef.Travel,
+      StartPayload(first, Vector.empty,
+        Vector(DecisionOptionRef.Site(destination)))))
+    val seats = woken.ready.game.current.players.size
+    (1 to seats).foldLeft(travelled) { (situation, turn) =>
+      val player = active(situation)
+      val awake = if turn == 1 then situation
+        else situation.after(GameCommand.EndWake(player))
+      // Begin Rest runs on into Finish Rest when Rest asks nothing.
+      val resting = awake.after(GameCommand.BeginRest(player))
+      if active(resting) == player then
+        resting.after(GameCommand.FinishRest(player))
+      else resting
+    }
+    Script("round", service, first)
+
+  val presentation = new GamePresentationProjector(catalog)
+  val formatter = new GameLogFormatter(catalog, presentation)
+
+  def format(script: Script, viewer: Option[PlayerId])(using munit.Location)
+      : Vector[LogEntry] =
+    formatter.format(script.history.steps, viewer)
+
+  /** An entry as a client that ignores span kinds shows it; the cost span
+    * set apart by a space, as the pane sets it apart by a margin. */
+  def text(entry: LogEntry): String = entry.spans.map {
+    case cost: LogSpan.Cost => " " + cost.text
+    case span => span.text
+  }.mkString
+
+  def texts(entries: Vector[LogEntry]): Vector[String] = entries.map(text)
+
+  def name(player: PlayerId): String = presentation.playerLabel(player)
