@@ -1561,9 +1561,9 @@ class GameLogCampaignSuite extends munit.FunSuite:
       case (event, index) => ReplayStep(RecordedEvent(steps.size.toLong + index,
         event), last, last) }, None)
     val shown = texts(entries.filter(_.sequence >= steps.size))
-    // A site edifice is public, so even an observer reads its name.
+    // A site card is public, so even an observer reads its name.
     assert(shown.exists(line => line.startsWith("The bandits activated ") &&
-      !line.endsWith("Edifice") &&
+      !line.endsWith("Edifice") && !line.endsWith("Denizen") &&
       !line.contains("campaign.plan-applied")), shown)
 ```
 
@@ -1617,15 +1617,6 @@ In `CampaignPlans`, beside `appliedMarker`, add its inverse, so the one place th
 ```
 
 Change `appliedMarker` to build its key from `MarkerPrefix` too: `PoolKey(s"$MarkerPrefix${ref.kind}.${ref.wireId}")`. Run `./sbtw "testOnly oathdigital.gameplay.CampaignPlansSuite"`; expected PASS.
-
-The bandit line names a site card with the visibility rule, and a card the viewer may not identify reads by its back. `LogWords.cards` writes "a {kind}", which is wrong for "Edifice". In `LogWords.cards`, choose the article by the kind's first letter, as a one-line change:
-
-```scala
-        if count == 1 then s"${LogWords.article(kind)} $kind"
-        else s"$count ${LogWords.plural(kind)}"))
-```
-
-with `def article(kind: String): String = if "AEIOU".contains(kind.head) then "an" else "a"` in `object LogWords`.
 
 Create `src/main/scala/oathdigital/application/gamelog/CampaignLines.scala`:
 
@@ -1841,7 +1832,7 @@ Expected: all pass, Slice 1's "Campaign: a start line naming kind and defender, 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main/scala/oathdigital/application/gamelog/CampaignLines.scala src/main/scala/oathdigital/application/gamelog/ActionLines.scala src/main/scala/oathdigital/application/gamelog/GameLogFormatter.scala src/main/scala/oathdigital/application/gamelog/LogWords.scala src/main/scala/oathdigital/gameplay/actions/campaign/CampaignPlans.scala src/test/scala/oathdigital/application/gamelog/LogScripts.scala src/test/scala/oathdigital/application/gamelog/GameLogCampaignSuite.scala src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala
+git add src/main/scala/oathdigital/application/gamelog/CampaignLines.scala src/main/scala/oathdigital/application/gamelog/ActionLines.scala src/main/scala/oathdigital/application/gamelog/GameLogFormatter.scala src/main/scala/oathdigital/gameplay/actions/campaign/CampaignPlans.scala src/test/scala/oathdigital/application/gamelog/LogScripts.scala src/test/scala/oathdigital/application/gamelog/GameLogCampaignSuite.scala src/test/scala/oathdigital/gameplay/CampaignPlansSuite.scala
 git commit -m "feat(log): a campaign tells its targets, pools, plans (the bandits' too), totals, gains and losses"
 ```
 
