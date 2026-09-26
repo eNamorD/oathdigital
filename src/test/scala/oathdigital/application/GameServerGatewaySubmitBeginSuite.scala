@@ -7,7 +7,8 @@ import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.model.{OathState, PlayerId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.server.{GameHttpWire, GameServerGateway}
-import oathdigital.protocol.projection.SiteForcesProjection
+import oathdigital.protocol.projection.{DecisionQueryProjection,
+  SiteForcesProjection}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 /** `GameServerGateway.submit` with `GameCommand.Begin` is what the
@@ -78,8 +79,9 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
     assertEquals(decision.action, "setup")
     assertEquals(decision.decisionId, SetupProcedure.pawnDecisionId(PlayerId("p2")))
     assertEquals(decision.kind, "decide")
-    assertEquals(decision.query.get.form, "choose-one")
-    val siteOptions = decision.query.get.options
+    val siteOptions = decision.query match
+      case Some(one: DecisionQueryProjection.ChooseOne) => one.options
+      case other => fail(s"expected a choose-one, got $other")
     assertEquals(siteOptions.size, 8)
     assert(siteOptions.forall(_.kind == "site"))
     assert(!json.contains("relicOrder"))

@@ -25,10 +25,10 @@ class RecoverPanelSuite extends munit.FunSuite:
       canControl = true, panel, new RecordingControls())
     panel
 
-  private val choiceQuery = DecisionQueryState("choose-one",
+  private val choiceQuery = DecisionQueryState.ChooseOne(
     Vector(DecisionOptionState("button", "continue", "Continue"),
       DecisionOptionState("button", "stop", "Stop")),
-    Vector.empty, heading = Some("Recover"))
+    heading = Some("Recover"))
 
   private def choice(rollOutcome: Option[WalkerRollOutcomeState] = None)
       : Surface.Recover =

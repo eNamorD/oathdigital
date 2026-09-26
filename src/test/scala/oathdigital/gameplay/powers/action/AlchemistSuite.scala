@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.protocol.projection.DecisionQueryProjection
 
 class AlchemistSuite extends munit.FunSuite:
   import PowerFixture._
@@ -62,12 +63,13 @@ class AlchemistSuite extends munit.FunSuite:
     val t = use(ready, Alchemist, source).toOption.get
     assert(awaits(t, Alchemist.decisionId),
       parked.parkedDecision(t.state).toString)
-    val query = queryOf(t, actor).get
-    assertEquals(query.form, "distribute")
+    val query = queryOf(t, actor) match
+      case Some(distribute: DecisionQueryProjection.Distribute) => distribute
+      case other => fail(s"expected a distribution, got $other")
     assertEquals(query.slots.map(s => (s.option.id, s.minimum, s.maximum)),
       Suit.all.filter(Set(Suit.Arcane, Suit.Discord, Suit.Nomad))
         .map(suit => (suit.key, 0, math.min(ready.banks.favor(suit), 4))))
-    assertEquals((query.minTotal, query.maxTotal), (Some(4), Some(4)))
+    assertEquals((query.minTotal, query.maxTotal), (4, 4))
     val done = answer(t, actor, Alchemist.decisionId,
       rows(Suit.Arcane -> 3, Suit.Discord -> 1, Suit.Nomad -> 0)).toOption.get
     assertEquals(player(after(done)).board.favor, player(ready).board.favor + 4)

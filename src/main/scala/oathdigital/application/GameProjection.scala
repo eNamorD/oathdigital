@@ -142,6 +142,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
     */
   private def offeredCards(decision: WalkerDecisionProjection): Vector[String] =
     decision.query.toVector.flatMap { query =>
-      val options = query.options ++ query.slots.map(_.option)
+      val options = query.offeredOptions
       options.map(_.id) ++ options.flatMap(_.card).map(_.cardId)
     }

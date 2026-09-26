@@ -163,68 +163,178 @@ private[projection] object ActionProjectionCodec:
     deal <- optionalAbsent(value, "deal", path)(decodeDeal)
   yield WalkerWaitingProjection(playerId, heading, coOwners, deal)
 
-  /** A projected decision query: one `form` string, direct options, the
-    * sections a partition declares, and the slots plus total a distribute
-    * query declares. An option's `kind`/`id` pair, including an option
-    * embedded in a distribute slot, is the same spelling a submitted and a
-    * journalled answer use, so this codec writes no table of its own -- it
-    * copies the two strings through.
+  /** A projected decision query: the `form` discriminator and, per form,
+    * exactly the fields that form declares. A payload carrying a field its
+    * own form does not declare is rejected rather than ignored, which is what
+    * the per-case `exact` sets are for.
+    *
+    * The discriminator key is `form`, not the `kind` its two neighbours in
+    * this file use. Deliberate: **form** is the word `CONTEXT.md` gives the
+    * concept, and the project has already paid to have it mean one thing.
+    *
+    * An option's `kind`/`id` pair, including one embedded in a slot, is the
+    * same spelling a submitted and a journalled answer use, so this codec
+    * writes no table of its own -- it copies the two strings through. The six
+    * form spellings are this wire's own and are deliberately not shared with
+    * `DecisionAnswerCodec`'s journal tags; see
+    * `docs/superpowers/specs/2026-09-25-decision-form-tag-separation-decision.md`.
     */
-  def encodeDecisionQuery(value: DecisionQueryProjection): ujson.Value = ujson.Obj(
-    "form" -> value.form,
-    "options" -> encoded(value.options)(encodeOptionRow),
-    "sections" -> encoded(value.sections)(section => ujson.Obj(
-      "key" -> section.key, "label" -> section.label,
-      "minRequired" -> section.minRequired,
-      "maxAllowed" -> intOption(section.maxAllowed))),
-    "heading" -> stringOption(value.heading),
-    "confirmLabel" -> stringOption(value.confirmLabel),
-    "slots" -> encoded(value.slots)(slot => ujson.Obj(
-      "option" -> encodeOptionRow(slot.option), "minimum" -> slot.minimum,
-      "maximum" -> slot.maximum, "suggested" -> intOption(slot.suggested))),
-    "minTotal" -> intOption(value.minTotal),
-    "maxTotal" -> intOption(value.maxTotal),
-    "minimum" -> intOption(value.minimum),
-    "maximum" -> intOption(value.maximum),
-    "suggested" -> intOption(value.suggested),
-    "deal" -> option(value.deal)(encodeDeal))
+  def encodeDecisionQuery(value: DecisionQueryProjection): ujson.Value =
+    value match
+      case DecisionQueryProjection.ChooseOne(options, heading) => ujson.Obj(
+        "form" -> "choose-one",
+        "options" -> encoded(options)(encodeOptionRow),
+        "heading" -> stringOption(heading))
+      case DecisionQueryProjection.ChooseMany(options, minOptions, maxOptions,
+          heading) => ujson.Obj(
+        "form" -> "choose-many",
+        "options" -> encoded(options)(encodeOptionRow),
+        "minOptions" -> minOptions, "maxOptions" -> maxOptions,
+        "heading" -> stringOption(heading))
+      case DecisionQueryProjection.ChooseAmount(minAmount, maxAmount,
+          suggested, confirmLabel, heading) => ujson.Obj(
+        "form" -> "choose-amount",
+        "minAmount" -> minAmount, "maxAmount" -> maxAmount,
+        "suggested" -> intOption(suggested),
+        "confirmLabel" -> confirmLabel,
+        "heading" -> stringOption(heading))
+      case DecisionQueryProjection.Partition(sections, options, confirmLabel,
+          heading) => ujson.Obj(
+        "form" -> "partition",
+        "sections" -> encoded(sections)(encodeSection),
+        "options" -> encoded(options)(encodeOptionRow),
+        "confirmLabel" -> stringOption(confirmLabel),
+        "heading" -> stringOption(heading))
+      case DecisionQueryProjection.Distribute(slots, minTotal, maxTotal,
+          confirmLabel, heading) => ujson.Obj(
+        "form" -> "distribute",
+        "slots" -> encoded(slots)(encodeSlot),
+        "minTotal" -> minTotal, "maxTotal" -> maxTotal,
+        "confirmLabel" -> confirmLabel,
+        "heading" -> stringOption(heading))
+      case DecisionQueryProjection.Negotiate(deal, heading) => ujson.Obj(
+        "form" -> "negotiate",
+        "deal" -> encodeDeal(deal),
+        "heading" -> stringOption(heading))
+
+  /** Reads the discriminator, then hands the object to the one decoder that
+    * knows that form's fields. One decoder per case rather than one `for`
+    * with every field optional: each carries its own `exact` set, so a field
+    * another form declares is an unexpected field here rather than an ignored
+    * one.
+    */
   def decodeDecisionQuery(raw: ujson.Value, path: String)
       : Result[DecisionQueryProjection] = for
     value <- obj(raw, path)
-    _ <- exact(value, Set("form", "options", "sections", "heading",
-      "confirmLabel", "slots", "minTotal", "maxTotal", "minimum", "maximum",
-      "suggested", "deal"), path)
     form <- string(value, "form", path)
-    optionRaws <- array(value, "options", path)
-    options <- traverse(optionRaws, s"$path.options")(decodeOptionRow)
-    sectionRaws <- array(value, "sections", path)
-    sections <- traverse(sectionRaws, s"$path.sections") { (raw, child) => for
-      row <- obj(raw, child)
-      _ <- exact(row, Set("key", "label", "minRequired", "maxAllowed"), child)
-      key <- string(row, "key", child); label <- string(row, "label", child)
-      minimum <- int(row, "minRequired", child)
-      maximum <- optionalInt(row, "maxAllowed", child)
-    yield DecisionSectionProjection(key, label, minimum, maximum) }
+    query <- form match
+      case "choose-one" => decodeChooseOne(value, path)
+      case "choose-many" => decodeChooseMany(value, path)
+      case "choose-amount" => decodeChooseAmount(value, path)
+      case "partition" => decodePartition(value, path)
+      case "distribute" => decodeDistribute(value, path)
+      case "negotiate" => decodeNegotiate(value, path)
+      case other => Left(oathdigital.protocol.ProtocolDecodeFailure
+        .UnknownVariant(s"$path.form", s"unknown decision form '$other'"))
+  yield query
+
+  private def decodeChooseOne(value: ujson.Obj, path: String)
+      : Result[DecisionQueryProjection] = for
+    _ <- exact(value, Set("form", "options", "heading"), path)
+    options <- optionRows(value, path)
     heading <- optionalString(value, "heading", path)
-    confirmLabel <- optionalString(value, "confirmLabel", path)
-    slotRaws <- array(value, "slots", path)
-    slots <- traverse(slotRaws, s"$path.slots") { (raw, child) => for
-      row <- obj(raw, child)
-      _ <- exact(row, Set("option", "minimum", "maximum", "suggested"), child)
-      option <- field(row, "option", child).flatMap(
-        decodeOptionRow(_, s"$child.option"))
-      minimum <- int(row, "minimum", child)
-      maximum <- int(row, "maximum", child)
-      suggested <- optionalInt(row, "suggested", child)
-    yield DecisionSlotProjection(option, minimum, maximum, suggested) }
-    minTotal <- optionalInt(value, "minTotal", path)
-    maxTotal <- optionalInt(value, "maxTotal", path)
-    minimum <- optionalInt(value, "minimum", path)
-    maximum <- optionalInt(value, "maximum", path)
+  yield DecisionQueryProjection.ChooseOne(options, heading)
+
+  private def decodeChooseMany(value: ujson.Obj, path: String)
+      : Result[DecisionQueryProjection] = for
+    _ <- exact(value, Set("form", "options", "minOptions", "maxOptions",
+      "heading"), path)
+    options <- optionRows(value, path)
+    minOptions <- int(value, "minOptions", path)
+    maxOptions <- int(value, "maxOptions", path)
+    heading <- optionalString(value, "heading", path)
+  yield DecisionQueryProjection.ChooseMany(options, minOptions, maxOptions,
+    heading)
+
+  private def decodeChooseAmount(value: ujson.Obj, path: String)
+      : Result[DecisionQueryProjection] = for
+    _ <- exact(value, Set("form", "minAmount", "maxAmount", "suggested",
+      "confirmLabel", "heading"), path)
+    minAmount <- int(value, "minAmount", path)
+    maxAmount <- int(value, "maxAmount", path)
     suggested <- optionalInt(value, "suggested", path)
-    deal <- optionalAbsent(value, "deal", path)(decodeDeal)
-  yield DecisionQueryProjection(form, options, sections, heading,
-    confirmLabel, slots, minTotal, maxTotal, minimum, maximum, suggested, deal)
+    confirmLabel <- string(value, "confirmLabel", path)
+    heading <- optionalString(value, "heading", path)
+  yield DecisionQueryProjection.ChooseAmount(minAmount, maxAmount, suggested,
+    confirmLabel, heading)
+
+  private def decodePartition(value: ujson.Obj, path: String)
+      : Result[DecisionQueryProjection] = for
+    _ <- exact(value, Set("form", "sections", "options", "confirmLabel",
+      "heading"), path)
+    sectionRaws <- array(value, "sections", path)
+    sections <- traverse(sectionRaws, s"$path.sections")(decodeSection)
+    options <- optionRows(value, path)
+    confirmLabel <- optionalString(value, "confirmLabel", path)
+    heading <- optionalString(value, "heading", path)
+  yield DecisionQueryProjection.Partition(sections, options, confirmLabel,
+    heading)
+
+  private def decodeDistribute(value: ujson.Obj, path: String)
+      : Result[DecisionQueryProjection] = for
+    _ <- exact(value, Set("form", "slots", "minTotal", "maxTotal",
+      "confirmLabel", "heading"), path)
+    slotRaws <- array(value, "slots", path)
+    slots <- traverse(slotRaws, s"$path.slots")(decodeSlot)
+    minTotal <- int(value, "minTotal", path)
+    maxTotal <- int(value, "maxTotal", path)
+    confirmLabel <- string(value, "confirmLabel", path)
+    heading <- optionalString(value, "heading", path)
+  yield DecisionQueryProjection.Distribute(slots, minTotal, maxTotal,
+    confirmLabel, heading)
+
+  private def decodeNegotiate(value: ujson.Obj, path: String)
+      : Result[DecisionQueryProjection] = for
+    _ <- exact(value, Set("form", "deal", "heading"), path)
+    dealRaw <- field(value, "deal", path)
+    deal <- decodeDeal(dealRaw, s"$path.deal")
+    heading <- optionalString(value, "heading", path)
+  yield DecisionQueryProjection.Negotiate(deal, heading)
+
+  private def optionRows(value: ujson.Obj, path: String)
+      : Result[Vector[DecisionOptionProjection]] =
+    array(value, "options", path)
+      .flatMap(traverse(_, s"$path.options")(decodeOptionRow))
+
+  private def encodeSection(section: DecisionSectionProjection): ujson.Value =
+    ujson.Obj("key" -> section.key, "label" -> section.label,
+      "minRequired" -> section.minRequired,
+      "maxAllowed" -> intOption(section.maxAllowed))
+
+  private def decodeSection(raw: ujson.Value, path: String)
+      : Result[DecisionSectionProjection] = for
+    row <- obj(raw, path)
+    _ <- exact(row, Set("key", "label", "minRequired", "maxAllowed"), path)
+    key <- string(row, "key", path); label <- string(row, "label", path)
+    minimum <- int(row, "minRequired", path)
+    maximum <- optionalInt(row, "maxAllowed", path)
+  yield DecisionSectionProjection(key, label, minimum, maximum)
+
+  private def encodeSlot(slot: DecisionSlotProjection): ujson.Value =
+    ujson.Obj("option" -> encodeOptionRow(slot.option),
+      "minimum" -> slot.minimum, "maximum" -> slot.maximum,
+      "suggested" -> intOption(slot.suggested))
+
+  private def decodeSlot(raw: ujson.Value, path: String)
+      : Result[DecisionSlotProjection] = for
+    row <- obj(raw, path)
+    _ <- exact(row, Set("option", "minimum", "maximum", "suggested"), path)
+    option <- field(row, "option", path).flatMap(
+      decodeOptionRow(_, s"$path.option"))
+    minimum <- int(row, "minimum", path)
+    maximum <- int(row, "maximum", path)
+    suggested <- optionalInt(row, "suggested", path)
+  yield DecisionSlotProjection(option, minimum, maximum, suggested)
 
   private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value =
     ujson.Obj("kind" -> row.kind, "id" -> row.id, "label" -> row.label,

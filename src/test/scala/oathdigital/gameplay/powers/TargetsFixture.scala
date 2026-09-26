@@ -100,7 +100,7 @@ object TargetsFixture:
   /** The `(kind, id)` of every option of the parked decision. */
   def offered(transition: OathTransition, viewer: PlayerId)
       : Option[Vector[(String, String)]] =
-    queryOf(transition, viewer).map(_.options.map(o => o.kind -> o.id))
+    queryOf(transition, viewer).map(_.offeredOptions.map(o => o.kind -> o.id))
 
   def boardOf(transition: OathTransition, viewer: PlayerId, owner: PlayerId)
       : PlayerBoardProjection = projector.project("targets",

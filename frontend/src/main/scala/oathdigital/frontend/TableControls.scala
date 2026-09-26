@@ -39,3 +39,8 @@ private[frontend] trait SessionControls:
   def loadSession(gameId: String, playerId: String): Unit
   def reconnectSession(): Unit
   def createGame(): Unit
+  /** Fetches the client the server is now serving. The screen offers it when
+    * this build cannot parse the position; it is the same path Reconnect
+    * takes to the session.
+    */
+  def reloadClient(): Unit

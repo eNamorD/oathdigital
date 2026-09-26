@@ -117,7 +117,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     val Ready(ready) = state: @unchecked
     projector(actor, powers)
       .project(ScopedProjectionContext(ready, Some(actor)))
-      .flatMap(_.query).map(_.options.map(_.id)).getOrElse(
+      .flatMap(_.query).map(_.offeredOptions.map(_.id)).getOrElse(
         fail("the parked actor must be offered the decision"))
 
   /** The heading the projector offers at the park, if any. */

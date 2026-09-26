@@ -6,7 +6,7 @@ import scala.scalajs.js
 import scala.util.control.NonFatal
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   MajorActionPreviewCodec, MajorActionPreviewRequest, MajorActionPreviewResponse,
-  ModifierInvocation, GameIntent => GameCommand}
+  ModifierInvocation, ProtocolDecodeFailure, GameIntent => GameCommand}
 import oathdigital.protocol.projection.{GameProjection, GameProjectionCodec}
 
 final case class TransportResponse(status: Int, body: String)
@@ -86,6 +86,14 @@ object GameClientFailure:
       extends GameClientFailure:
     override val message: String =
       s"Stale position; refreshed without retrying. $detail"
+  /** A projection this build cannot parse: the server sent a variant of a
+    * discriminated wire type this client does not know. The frontend ships
+    * inside the server's own resources, so in normal operation there is no
+    * skew window; what remains is a browser holding a stale cached bundle.
+    */
+  final case class UnsupportedProjection(path: String, detail: String)
+      extends GameClientFailure:
+    override val message: String = s"$path: $detail"
 
   def isTransient(failure: GameClientFailure): Boolean = failure match
     case _: NetworkFailure | _: RequestTimedOut | _: RequestAborted => true
@@ -218,8 +226,10 @@ object GameJson:
     ActorlessCommandCodec.encode(ActorlessCommandRequest(sequence, command, modifiers))
 
   def decodeProjection(json: String): Either[GameClientFailure, GameProjection] =
-    GameProjectionCodec.decode(json).left.map(error =>
-      GameClientFailure.DecodeFailure(error.path, error.message))
+    GameProjectionCodec.decode(json).left.map:
+      case unknown: ProtocolDecodeFailure.UnknownVariant =>
+        GameClientFailure.UnsupportedProjection(unknown.path, unknown.message)
+      case error => GameClientFailure.DecodeFailure(error.path, error.message)
 
   def decodeError(json: String): Either[GameClientFailure, (String, String)] =
     try

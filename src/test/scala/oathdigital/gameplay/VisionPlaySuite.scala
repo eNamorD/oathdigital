@@ -124,7 +124,7 @@ class VisionPlaySuite extends munit.FunSuite:
     assertEquals(owner.walkerDecision.map(_.decisionId),
       Some("cardplay.conspiracy.target"))
     assertEquals(owner.walkerDecision.flatMap(_.query)
-      .map(_.options.map(option => (option.kind, option.id))),
+      .map(_.offeredOptions.map(option => (option.kind, option.id))),
       Some(Vector(("banner", "peoples-favor"))))
     assertEquals(hidden.walkerDecision, None)
 

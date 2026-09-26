@@ -5,6 +5,7 @@ import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.rest.{SilverTongue, SilverTongueFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.protocol.projection.DecisionQueryProjection
 
 class PhasePowerProjectorSuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
@@ -128,8 +129,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       treatyService, treatyRepository, "project-league-treaty")
     val treatyOwner = projector.project("project-league-treaty",
       LoadedGame(treatyPark.state, treatyPark.nextSequence), ruler)
-    assertEquals(treatyOwner.walkerDecision.map(_.query.map(_.form)),
-      Some(Some("choose-one")))
+    assert(treatyOwner.walkerDecision.flatMap(_.query)
+      .exists(_.isInstanceOf[DecisionQueryProjection.ChooseOne]))
     val treatyWaiter = projector.project("project-league-treaty",
       LoadedGame(treatyPark.state, treatyPark.nextSequence), active)
     assertEquals(treatyWaiter.walkerDecision, None)
@@ -141,6 +142,6 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       tongueService, tongueRepository, "project-silver-tongue")
     val tongueOwner = projector.project("project-silver-tongue",
       LoadedGame(tonguePark.state, tonguePark.nextSequence), actor)
-    assertEquals(tongueOwner.walkerDecision.map(_.query.map(_.form)),
-      Some(Some("choose-one")))
+    assert(tongueOwner.walkerDecision.flatMap(_.query)
+      .exists(_.isInstanceOf[DecisionQueryProjection.ChooseOne]))
     assertEquals(tongueOwner.legalControls, Vector("resolveWalkerDecision"))

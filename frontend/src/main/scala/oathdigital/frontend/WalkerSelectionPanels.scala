@@ -6,32 +6,32 @@ import org.scalajs.dom
   * Both render only what the projected query declares and name no action.
   */
 private[frontend] object WalkerSelectionPanels:
-  import ParkedDecision.DecisionForm
   import ServerUiSupport.{button, element, text}
 
-  /** The draft is the session's, paired with the decision by id; the form
-    * says which draft shape to expect, and a draft of another shape (which
-    * `WalkerSelectionDraft.reconcile` never builds) renders nothing.
+  /** The draft is the session's, paired with the decision by id; the query's
+    * own case says which draft shape to expect, and a draft of another shape
+    * (which `WalkerSelectionDraft.reconcile` never builds) renders nothing.
     */
   def render(surface: ParkedDecision.Surface.Selection,
       selection: Option[WalkerSelectionDraft], canControl: Boolean,
       panel: dom.Element, controls: TableControls): Unit =
     val draft = selection.filter(_.decisionId == surface.decision.decisionId)
-    surface.form match
-      case DecisionForm.ChooseMany => draft
-        .collect { case many: WalkerChooseManyDraft => many }
-        .foreach(renderMany(surface.query, _, canControl, panel, controls))
-      case DecisionForm.ChooseAmount => draft
-        .collect { case amount: WalkerAmountDraft => amount }
-        .foreach(renderAmount(surface.decision, surface.query, _, canControl,
+    surface.query match
+      case many: DecisionQueryState.ChooseMany => draft
+        .collect { case value: WalkerChooseManyDraft => value }
+        .foreach(renderMany(many, _, canControl, panel, controls))
+      case amount: DecisionQueryState.ChooseAmount => draft
+        .collect { case value: WalkerAmountDraft => value }
+        .foreach(renderAmount(surface.decision, amount, _, canControl,
           panel, controls))
 
-  private def renderMany(query: DecisionQueryState, draft: WalkerChooseManyDraft,
+  private def renderMany(query: DecisionQueryState.ChooseMany,
+      draft: WalkerChooseManyDraft,
       canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     panel.appendChild(text("p", "walker-many-instruction",
-      if query.minimum == query.maximum then s"Choose ${query.minimum.getOrElse(0)}."
-      else s"Choose ${query.minimum.getOrElse(0)} to ${query.maximum.getOrElse(0)}."))
+      if query.minOptions == query.maxOptions then s"Choose ${query.minOptions}."
+      else s"Choose ${query.minOptions} to ${query.maxOptions}."))
     val rows = element("div", "walker-many-options")
     query.options.foreach { option =>
       val item = WalkerPartitionDraft.itemId(option)
@@ -43,8 +43,9 @@ private[frontend] object WalkerSelectionPanels:
       rows.appendChild(toggle)
     }
     panel.appendChild(rows)
-    val confirm = button(WalkerPanelSupport.partitionConfirmLabel(query),
-      "walker-many-confirm")
+    // A choose-many declares no confirm label, so the old
+    // `confirmLabel.getOrElse("Confirm")` was always this literal.
+    val confirm = button("Confirm", "walker-many-confirm")
     confirm.disabled = !canControl || !draft.canConfirm
     confirm.onclick = _ => draft.command.foreach(controls.submitCommand)
     panel.appendChild(confirm)
@@ -54,7 +55,7 @@ private[frontend] object WalkerSelectionPanels:
     * select was built from, so confirm reads the control and submits.
     */
   private def renderAmount(decision: WalkerDecisionState,
-      query: DecisionQueryState, draft: WalkerAmountDraft,
+      query: DecisionQueryState.ChooseAmount, draft: WalkerAmountDraft,
       canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     // The roll first, then what it came to, then the question about it: the
     // sacrifice question is only answerable by reading the attack.
@@ -64,7 +65,7 @@ private[frontend] object WalkerSelectionPanels:
       .asInstanceOf[dom.html.Select]
     select.className = "walker-amount"
     select.setAttribute("aria-label", WalkerPanelSupport.decisionHeading(query))
-    (query.minimum.getOrElse(0) to query.maximum.getOrElse(0)).foreach { n =>
+    (query.minAmount to query.maxAmount).foreach { n =>
       val choice = dom.document.createElement("option")
         .asInstanceOf[dom.html.Option]
       choice.value = n.toString
@@ -74,8 +75,7 @@ private[frontend] object WalkerSelectionPanels:
     select.value = draft.amount.toString
     select.disabled = !canControl
     panel.appendChild(select)
-    val confirm = button(WalkerPanelSupport.partitionConfirmLabel(query),
-      "walker-amount-confirm")
+    val confirm = button(query.confirmLabel, "walker-amount-confirm")
     confirm.disabled = !canControl || !draft.canConfirm
     confirm.onclick = _ => select.value.toIntOption
       .flatMap(value => draft.choose(value).command)

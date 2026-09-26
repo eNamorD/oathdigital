@@ -33,3 +33,4 @@ private[frontend] final class BrowserNavigation(leave: () => Unit) extends Navig
   def startOver(): Unit =
     dom.window.history.replaceState(null, "", Main.DevelopmentStartUrl)
     leave()
+  def reload(): Unit = dom.window.location.reload()

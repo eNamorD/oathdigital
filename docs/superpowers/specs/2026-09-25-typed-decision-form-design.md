@@ -1,7 +1,6 @@
 # Typed Decision Form
 
-> Status: design approved in conversation on 2026-09-25, from an architecture
-> review. No implementation is authorized by this document alone. This is the
+> Status: implemented 2026-09-26 (two commits). This is the
 > follow-up the [parked decision route design](2026-09-24-parked-decision-route-design.md)
 > parked as "a typed form or a server-declared surface hint on the wire.
 > Separate protocol slice; this design makes it a one-file change on the

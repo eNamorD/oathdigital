@@ -22,13 +22,13 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     * way `ForgeProcedure` now declares them -- the panel no longer reads
     * `decision.action` to decide what to call itself.
     */
-  private val query = DecisionQueryState("partition",
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+  private val query = DecisionQueryState.Partition(
     Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
       DecisionSectionState("pay-secret", "Pay Secret", 1)),
-    heading = Some("Forge a relic"),
-    confirmLabel = Some("Complete Forge"))
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+    confirmLabel = Some("Complete Forge"),
+    heading = Some("Forge a relic"))
 
   private val parked =
     WalkerDecisionState("forge", "forge-9", "decide", query = Some(query))
@@ -40,9 +40,12 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   private def render(ui: RecordingControls, draft: Option[WalkerPartitionDraft],
       canControl: Boolean = true,
       decision: WalkerDecisionState = parked): dom.Element =
+    val parkedQuery = decision.query match
+      case Some(partition: DecisionQueryState.Partition) => partition
+      case other => fail(s"expected a partition, got $other")
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderPartitionPanel(
-      Surface.Partition(decision, decision.query.get), draft, "red",
+      Surface.Partition(decision, parkedQuery), draft, "red",
       canControl, panel, ui)
     panel
 
@@ -108,13 +111,13 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     * player needs explaining. Keyed on that shape rather than on the word
     * "Discard", which would stop matching the day the section is renamed.
     */
-  private val keepDiscard = DecisionQueryState("partition",
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+  private val keepDiscard = DecisionQueryState.Partition(
     Vector(DecisionSectionState("keep", "Keep", 1, Some(1)),
       DecisionSectionState("discard", "Discard", 0)),
-    heading = Some("Choose your starting adviser"),
-    confirmLabel = Some("Confirm Adviser"))
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+    confirmLabel = Some("Confirm Adviser"),
+    heading = Some("Choose your starting adviser"))
 
   private def picking(): Option[WalkerPartitionDraft] =
     WalkerPartitionDraft.reconcile(None,

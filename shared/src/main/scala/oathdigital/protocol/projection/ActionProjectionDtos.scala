@@ -61,15 +61,12 @@ final case class PhasePowerProjection(powerId: String,
   * projection this replaced -- two hand-written candidate derivations that
   * agreed with the engine only by convention -- are gone.
   *
-  * `form` is the query shape: `"choose-one"` (pick exactly one option),
-  * `"partition"` (spread every option across the declared sections),
-  * `"distribute"` (assign amounts across the declared slots),
-  * `"choose-many"` (pick `minimum` to `maximum` of the options), or
-  * `"choose-amount"` (pick an integer from `minimum` to `maximum`, with no
-  * options). A choose-one
-  * query carries no `sections` at all. `slots` and `total` are a distribute
-  * form's whole content. That form's `options` is empty, because every
-  * option it offers sits on a slot.
+  * Sealed, one case per form, for the same reason the model's `DecisionQuery`
+  * is: what each form carries is the form's own business, and a flat record
+  * could spell a distribute with no slots or a choose-one with a confirm
+  * label. Which form carries sections, which carries slots, and which has no
+  * confirm step to name are all read off the case list below rather than
+  * from prose here.
   *
   * There is deliberately NO prebuilt wire answer on an option. The client
   * already holds everything an answer needs: a `ChooseOneWire(kind, id)`, a
@@ -78,32 +75,77 @@ final case class PhasePowerProjection(powerId: String,
   * answer would duplicate the identity and couple these DTOs to the command
   * protocol for nothing.
   *
-  * `heading` and `confirmLabel` (Task 5b) are the panel's own prompt copy,
-  * passed through from the query the action declared -- the frame around the
-  * options, where an option's `label` is the copy on the option itself. Both
-  * are optional, and a client that is handed neither falls back to generic
-  * copy of its own; nothing on the server supplies a default. A choose-one
-  * query never carries a `confirmLabel`, because it submits on the click and
-  * has no confirm step to name.
-  *
-  * This is two optional strings, not the start of a form language: no
-  * layout, no conditionals, no per-option copy beyond the label an option
-  * already carries. A third piece of panel copy is a reason to ask what the
-  * panel is really missing.
+  * `heading` and `confirmLabel` are the panel's own prompt copy, passed
+  * through from the query the action declared -- the frame around the
+  * options, where an option's `label` is the copy on the option itself. This
+  * is two optional strings, not the start of a form language: no layout, no
+  * conditionals, no per-option copy beyond the label an option already
+  * carries. A third piece of panel copy is a reason to ask what the panel is
+  * really missing.
   */
-final case class DecisionQueryProjection(
-    form: String,
-    options: Vector[DecisionOptionProjection],
-    sections: Vector[DecisionSectionProjection] = Vector.empty,
-    heading: Option[String] = None,
-    confirmLabel: Option[String] = None,
-    slots: Vector[DecisionSlotProjection] = Vector.empty,
-    minTotal: Option[Int] = None,
-    maxTotal: Option[Int] = None,
-    minimum: Option[Int] = None,
-    maximum: Option[Int] = None,
-    suggested: Option[Int] = None,
-    deal: Option[NegotiationDealProjection] = None)
+sealed trait DecisionQueryProjection extends Product with Serializable:
+  /** The one piece of copy every form carries, and for the same reason the
+    * model's `DecisionQuery` declares it on its own trait: every shape has a
+    * frame to title, and a client handed none falls back to generic copy.
+    */
+  def heading: Option[String]
+
+  /** Every option the question puts in front of the player, wherever the
+    * form keeps them. A distribute query keeps each option inside a slot, and
+    * `GameProjection.offeredCards` used to know that; as a question every
+    * form answers, the caller no longer does.
+    */
+  def offeredOptions: Vector[DecisionOptionProjection]
+
+object DecisionQueryProjection:
+  /** Pick exactly one option. No confirm label: the answer submits on the
+    * click, so there is no confirm step to name.
+    */
+  final case class ChooseOne(options: Vector[DecisionOptionProjection],
+      heading: Option[String] = None) extends DecisionQueryProjection:
+    def offeredOptions: Vector[DecisionOptionProjection] = options
+
+  /** Pick between `minOptions` and `maxOptions` of the options. The bounds
+    * count OPTIONS; `ChooseAmount`'s bound a value, which is why they are no
+    * longer one `minimum`/`maximum` pair serving both.
+    */
+  final case class ChooseMany(options: Vector[DecisionOptionProjection],
+      minOptions: Int, maxOptions: Int, heading: Option[String] = None)
+      extends DecisionQueryProjection:
+    def offeredOptions: Vector[DecisionOptionProjection] = options
+
+  /** Pick an integer from `minAmount` to `maxAmount`. No options: the range
+    * is the question. `suggested` is where the panel opens.
+    */
+  final case class ChooseAmount(minAmount: Int, maxAmount: Int,
+      suggested: Option[Int], confirmLabel: String,
+      heading: Option[String] = None) extends DecisionQueryProjection:
+    def offeredOptions: Vector[DecisionOptionProjection] = Vector.empty
+
+  /** Spread every option across the declared sections. The one form whose
+    * confirm label is optional.
+    */
+  final case class Partition(sections: Vector[DecisionSectionProjection],
+      options: Vector[DecisionOptionProjection],
+      confirmLabel: Option[String] = None, heading: Option[String] = None)
+      extends DecisionQueryProjection:
+    def offeredOptions: Vector[DecisionOptionProjection] = options
+
+  /** Assign amounts across the slots, summing to between `minTotal` and
+    * `maxTotal`. Every option it offers sits on a slot.
+    */
+  final case class Distribute(slots: Vector[DecisionSlotProjection],
+      minTotal: Int, maxTotal: Int, confirmLabel: String,
+      heading: Option[String] = None) extends DecisionQueryProjection:
+    def offeredOptions: Vector[DecisionOptionProjection] = slots.map(_.option)
+
+  /** A deal, as the viewer may see it. The deal is not optional here: the
+    * projector always attaches one, and the old `Option` meant a negotiate
+    * query with nothing to negotiate could be built.
+    */
+  final case class Negotiate(deal: NegotiationDealProjection,
+      heading: Option[String] = None) extends DecisionQueryProjection:
+    def offeredOptions: Vector[DecisionOptionProjection] = Vector.empty
 
 /** One selectable option: its stable reference as `kind` plus `id` -- the
   * exact pair `DecisionOptionRef` spells for a submitted answer and a

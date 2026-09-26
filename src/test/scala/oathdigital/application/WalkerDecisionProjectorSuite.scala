@@ -9,9 +9,8 @@ import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.protocol.DecisionFormVocabulary
-import oathdigital.protocol.projection.{WalkerDecisionProjection,
-  WalkerWaitingProjection}
+import oathdigital.protocol.projection.{DecisionQueryProjection,
+  WalkerDecisionProjection, WalkerWaitingProjection}
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
   *
@@ -130,16 +129,15 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
       total = 2, heading = Some("League Treaty"), confirmLabel = "Move favor")))
-    val query = projectorFor(tree).project(context).flatMap(_.query)
-      .getOrElse(fail("a parked distribution must project"))
-    assertEquals(query.form, "distribute")
-    assertEquals(query.options, Vector.empty)
+    val query = projectorFor(tree).project(context).flatMap(_.query) match
+      case Some(distribute: DecisionQueryProjection.Distribute) => distribute
+      case other => fail(s"expected a distribution, got $other")
     assertEquals(query.slots.map(s => (s.option.kind, s.option.id, s.minimum,
       s.maximum, s.suggested)), Vector(("favor-bank", "arcane", 0, 2, Some(2)),
       ("favor-bank", "nomad", 0, 6, Some(0))))
-    assertEquals(query.minTotal -> query.maxTotal, Some(2) -> Some(2))
+    assertEquals(query.minTotal -> query.maxTotal, 2 -> 2)
     assertEquals(query.heading, Some("League Treaty"))
-    assertEquals(query.confirmLabel, Some("Move favor"))
+    assertEquals(query.confirmLabel, "Move favor")
 
   test("a ranged distribution projects both totals"):
     val (context, actor) = parked(ActionRef.Recover)
@@ -148,9 +146,10 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 3, None)),
       minTotal = 0, maxTotal = 3, heading = Some("Place force"),
       confirmLabel = "Place")))
-    val query = projectorFor(tree).project(context).flatMap(_.query)
-      .getOrElse(fail("a parked ranged distribution must project"))
-    assertEquals(query.minTotal -> query.maxTotal, Some(0) -> Some(3))
+    val query = projectorFor(tree).project(context).flatMap(_.query) match
+      case Some(distribute: DecisionQueryProjection.Distribute) => distribute
+      case other => fail(s"expected a distribution, got $other")
+    assertEquals(query.minTotal -> query.maxTotal, 0 -> 3)
 
   test("a parked choose-many projects its options and count"):
     val (context, actor) = parked(ActionRef.Recover)
@@ -158,57 +157,23 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val tree = Sequence(Decide("test.many", actor, DecisionQuery.ChooseMany(2, 2,
       siteIds.map(id => DecisionOption.Site(DecisionOptionRef.Site(id))),
       Some("Choose sites"))))
-    val query = projectorFor(tree).project(context).flatMap(_.query)
-      .getOrElse(fail("a parked choose-many must project"))
-    assertEquals(query.form, "choose-many")
-    assertEquals((query.minimum, query.maximum), (Some(2), Some(2)))
-    assertEquals(query.options.map(_.id), siteIds.map(_.value))
+    val query = projectorFor(tree).project(context).flatMap(_.query) match
+      case Some(many: DecisionQueryProjection.ChooseMany) => many
+      case other => fail(s"expected a choose-many, got $other")
+    assertEquals((query.minOptions, query.maxOptions), (2, 2))
+    assertEquals(query.offeredOptions.map(_.id), siteIds.map(_.value))
     assertEquals(query.heading, Some("Choose sites"))
 
   test("a parked choose-amount projects its bounds and confirm label"):
     val (context, actor) = parked(ActionRef.Recover)
     val tree = Sequence(Decide("test.amount", actor, DecisionQuery.ChooseAmount(
       3, 6, Some("Place more than 2 favor"), "Take banner")))
-    val query = projectorFor(tree).project(context).flatMap(_.query)
-      .getOrElse(fail("a parked choose-amount must project"))
-    assertEquals(query.form, "choose-amount")
-    assertEquals((query.minimum, query.maximum), (Some(3), Some(6)))
-    assertEquals(query.confirmLabel, Some("Take banner"))
-    assertEquals(query.options, Vector.empty)
-
-  /** The projector half of the vocabulary pin: every shape the model can
-    * declare projects a form in `DecisionFormVocabulary`, and between them
-    * the six shapes emit all of it. Deleted with the untyped `form` field in
-    * the next commit, where the case set IS the vocabulary.
-    */
-  test("the projector emits exactly the shared form vocabulary"):
-    val (context, actor) = parked(ActionRef.Recover)
-    val siteIds = context.ready.game.current.map.sites.keys.toVector.take(2)
-    val options = siteIds.map(id => DecisionOption.Site(DecisionOptionRef.Site(id)))
-    val queries: Vector[DecisionQuery] = Vector(
-      DecisionQuery.ChooseOne(options),
-      DecisionQuery.ChooseMany(1, 2, options),
-      DecisionQuery.ChooseAmount(0, 1, Some("Amount"), "Confirm"),
-      DecisionQuery.Partition(
-        Vector(DecisionSection("keep", "Keep", 1, Some(1)),
-          DecisionSection("rest", "Rest", 0)),
-        options, Some("Split")),
-      DecisionQuery.Distribute.exactly(
-        Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 1, None)),
-        total = 1, heading = Some("Spread"), confirmLabel = "Place"),
-      // A deal with one participant and nothing on the table: the projector
-      // reads `terms` and `bounds` at every participant, so both are present
-      // and empty rather than absent.
-      DecisionQuery.Negotiate(Vector(actor), Map(actor -> NegotiationTerms()),
-        Set.empty,
-        Map(actor -> NegotiationBounds(Vector.empty, 0, Vector.empty,
-          Vector.empty)),
-        Set(actor), Some("Deal")))
-    val forms = queries.flatMap(query =>
-      projectorFor(Sequence(Decide("test.form", actor, query)))
-        .project(context).flatMap(_.query).map(_.form))
-    assertEquals(forms.size, queries.size)
-    assertEquals(forms.toSet, DecisionFormVocabulary.All)
+    val query = projectorFor(tree).project(context).flatMap(_.query) match
+      case Some(amount: DecisionQueryProjection.ChooseAmount) => amount
+      case other => fail(s"expected a choose-amount, got $other")
+    assertEquals((query.minAmount, query.maxAmount), (3, 6))
+    assertEquals(query.confirmLabel, "Take banner")
+    assertEquals(query.offeredOptions, Vector.empty)
 
   test("a banner is named as it is printed, and counts what it holds"):
     val (base, actor) = parked(ActionRef.Recover)
@@ -220,7 +185,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       .getOrElse(fail("an unclaimed banner must project"))
     // No owner in the label: the banner is one object on the table, and who
     // holds it is read off the board. The count names the resource it takes.
-    assertEquals(query.options.map(row => (row.kind, row.id, row.label,
+    assertEquals(query.offeredOptions.map(row => (row.kind, row.id, row.label,
       row.details)), Vector(("banner", "darkest-secret",
       "Darkest Secret", Vector("Currently 3 secrets"))))
 
@@ -252,7 +217,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val live = projects(context, actor, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(present)))).getOrElse(
         fail("a present relic option must project"))
-    assertEquals(live.options.map(_.id), Vector(present.value))
+    assertEquals(live.offeredOptions.map(_.id), Vector(present.value))
 
     // One unpresentable option among two takes the whole projection with
     // it: not a one-option query, and not a blank second option.
@@ -291,10 +256,10 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
 
     val query = projects(placed, actor, Vector(option))
       .getOrElse(fail("an edifice at a site must project"))
-    assertEquals(query.options.map(row => (row.kind, row.id)),
+    assertEquals(query.offeredOptions.map(row => (row.kind, row.id)),
       Vector(("edifice", "E16")))
-    assert(query.options.head.label.nonEmpty)
-    assert(query.options.head.card.nonEmpty)
+    assert(query.offeredOptions.head.label.nonEmpty)
+    assert(query.offeredOptions.head.card.nonEmpty)
 
     // Control: the same option while the hall still sits in the deck has no
     // located state to describe, so the whole decision is suppressed.
@@ -322,11 +287,12 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
 
     val query = projects(placed, actor, Vector(slot, held))
       .getOrElse(fail("a held relic slot and banner must project"))
-    assertEquals(query.options.map(row => (row.kind, row.id)),
+    assertEquals(query.offeredOptions.map(row => (row.kind, row.id)),
       Vector(("relic-slot", s"${enemy.player.value}:0"),
         ("banner", "peoples-favor")))
-    assert(query.options.forall(row => row.card.isEmpty && row.label.nonEmpty))
-    assert(query.options.head.label.contains("facedown relic"))
+    assert(query.offeredOptions.forall(row =>
+      row.card.isEmpty && row.label.nonEmpty))
+    assert(query.offeredOptions.head.label.contains("facedown relic"))
 
     // Control: a slot past the owner's relics has no live state to describe,
     // so it suppresses the whole decision. An unclaimed banner is presentable.
@@ -389,8 +355,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       DecisionOption.Denizen(DecisionOptionRef.Denizen(
         DenizenId(ownCard.value))))).getOrElse(
           fail("a card in the decision owner's own hand must project"))
-    assertEquals(projected.options.map(_.id), Vector(ownCard.value))
-    assert(projected.options.forall(_.card.exists(!_.hidden)))
+    assertEquals(projected.offeredOptions.map(_.id), Vector(ownCard.value))
+    assert(projected.offeredOptions.forall(_.card.exists(!_.hidden)))
 
     // Another player drew it: same card, same container, same absent
     // orientation -- and the whole decision is suppressed.
@@ -446,9 +412,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val projected = projects(context, actor, Vector(
       DecisionOption.Denizen(DecisionOptionRef.Denizen(ownAdviser))))
       .getOrElse(fail("the actor's own adviser must project"))
-    assertEquals(projected.options.map(_.id), Vector(ownAdviser.value))
-    assert(projected.options.forall(_.card.exists(!_.hidden)))
-    assert(projected.options.forall(_.label.nonEmpty))
+    assertEquals(projected.offeredOptions.map(_.id), Vector(ownAdviser.value))
+    assert(projected.offeredOptions.forall(_.card.exists(!_.hidden)))
+    assert(projected.offeredOptions.forall(_.label.nonEmpty))
 
   /** Task 5b: panel copy is OPTIONAL, and the absent case has to project as
     * absent rather than as an invented default.
@@ -460,14 +426,16 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * a panel falls back to are the frontend's business
     * (`WalkerPanelSupport.decisionHeading`); nothing here supplies one.
     */
-  test("a query declaring no panel copy projects both fields as absent"):
+  test("a query declaring no heading projects it as absent"):
     val (context, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
     val present = relicAtActorSite(context, actor)
     val query = projects(context, actor, Vector(
       DecisionOption.Relic(DecisionOptionRef.Relic(present)))).getOrElse(
         fail("a present relic option must project"))
     assertEquals(query.heading, None)
-    assertEquals(query.confirmLabel, None)
+    // The other half of the old assertion is now the type's: a choose-one
+    // declares no confirm label, so there is no field left to find absent.
+    assert(query.isInstanceOf[DecisionQueryProjection.ChooseOne])
 
   /** Task 5: a parked `Decide` owned by a player other than the active one.
     * `owner` is who [[WalkerDecisionProjector.project]] must show the
@@ -526,9 +494,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     val projector = new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers.empty)
     val query = projector.project(ctx(Some(holder))).flatMap(_.query)
-    assertEquals(query.map(_.options.map(_.kind)),
+    assertEquals(query.map(_.offeredOptions.map(_.kind)),
       Some(Vector("player", "player")))
-    assertEquals(query.map(_.options.map(_.id)), Some(leaders.map(_.value)))
+    assertEquals(query.map(_.offeredOptions.map(_.id)), Some(leaders.map(_.value)))
     assertEquals(projector.project(ctx(Some(active))), None)
     val waiting = Some(WalkerWaitingProjection(holder.value,
       Some("Choose the Oathkeeper")))

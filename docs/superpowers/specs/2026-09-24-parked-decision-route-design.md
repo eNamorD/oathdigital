@@ -111,6 +111,10 @@ Out of scope, each recorded as its own follow-up:
   `WorldBoardRenderer.world`. Separate fix.
 - A typed form or a server-declared surface hint on the wire. Separate
   protocol slice; this design makes it a one-file change on the frontend.
+  Done 2026-09-26 by the
+  [typed decision form design](2026-09-25-typed-decision-form-design.md); it
+  cost rather more than one file, because the drafts and the panels read the
+  query too.
 - Any change to Recover's surface. §7 of the vision design makes roll feedback
   an attribute of any parked decision; because every `Surface` case carries
   the decision, that later change edits one adapter and no route.

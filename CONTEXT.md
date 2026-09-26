@@ -17,7 +17,9 @@ _Avoid_: pending decision, walker decision, park
 **Form**:
 The kind of answer a parked decision asks for: choose one, choose many, choose
 an amount, partition, distribute, or negotiate. A parked decision has exactly
-one form, or none when it asks nothing (a roll).
+one form, or none when it asks nothing (a roll). The form determines what else
+the question carries: its options, its sections, its slots, its bounds and the
+name of its confirm control.
 _Avoid_: query type, decision type, panel type
 
 **Surface**:

@@ -69,7 +69,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * declares a `confirmLabel`; a choose-one submits on the click, so there
     * is no confirm step to name and the field does not exist on that shape.
     */
-  private val choiceQuery = DecisionQueryProjection("choose-one", Vector(
+  private val choiceQuery = DecisionQueryProjection.ChooseOne(Vector(
     DecisionOptionProjection("button", "continue", "Continue"),
     DecisionOptionProjection("button", "stop", "Stop")),
     heading = Some("Recover"))
@@ -233,7 +233,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     // `cardDetails` output every other card projection uses -- so the
     // walker path inherits the existing disclosure rules rather than
     // restating them.
-    val expectedQuery = DecisionQueryProjection("choose-one",
+    val expectedQuery = DecisionQueryProjection.ChooseOne(
       facedownRelics.map(relic => DecisionOptionProjection("relic",
         relic.id.value, presentation.relicLabel(relic.id),
         Some(presentation.cardDetails(relic.id, Some(Orientation.FaceDown),
@@ -254,11 +254,13 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     // assert on the actual site relics, not a hardcoded single id, so this
     // would fail if the projector ever fell back to echoing a closure
     // instead of describing the query rebuilt against live site state.
-    assert(ownerDecision.flatMap(_.query).exists(_.options.map(_.id).toSet ==
-      facedownRelics.map(_.id.value).toSet))
-    // A choose-one query declares no sections at all.
-    assertEquals(ownerDecision.flatMap(_.query).map(_.sections),
-      Some(Vector.empty))
+    assert(ownerDecision.flatMap(_.query)
+      .exists(_.offeredOptions.map(_.id).toSet ==
+        facedownRelics.map(_.id.value).toSet))
+    // A choose-one is a type with no sections, so there is nothing left to
+    // assert about: the old `sections` read is gone with the field.
+    assert(ownerDecision.flatMap(_.query)
+      .exists(_.isInstanceOf[DecisionQueryProjection.ChooseOne]))
 
     val viewer = ScopedProjectionContext(ready, Some(other))
     assertEquals(walkerDecisions.project(viewer), None)
@@ -356,8 +358,9 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       Some(actor))).getOrElse(
         fail("the parked actor must be offered the Forge decision"))
     assertEquals(decision.decisionId, ForgeProcedure.assignmentDecisionId)
-    val query = decision.query.getOrElse(
-      fail("a parked Forge decision must project its query"))
+    val query = decision.query match
+      case Some(partition: DecisionQueryProjection.Partition) => partition
+      case other => fail(s"expected a Forge partition, got $other")
 
     assertEquals(query.heading, Some("Forge a relic"))
     assertEquals(query.confirmLabel, Some("Complete Forge"))
@@ -370,7 +373,6 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
         printed.favor),
       DecisionSectionProjection(ForgeProcedure.secretSectionKey, "Pay Secret",
         printed.secrets)))
-    assertEquals(query.form, "partition")
 
     // And it is owner-private like every other field of this projection:
     // copy is prompt text for the player being asked, not public table talk.

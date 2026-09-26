@@ -18,6 +18,7 @@ private[frontend] trait TableView:
   def viewedConnection: ServerConnectionState
   def controlsAvailable: Boolean
   def viewedRawEvents: Vector[RawEvent]
+  def clientOutOfDate: Boolean
 
 /** The table: the action pane, the players, the world and the development
   * pane, drawn from the session's view. Every `render` replaces them all;
@@ -59,11 +60,18 @@ private[frontend] final class TableScreen(
     failure.filterNot(error =>
       disconnected && GameClientFailure.isTransient(error)).foreach { error =>
       val notice = text("div", "status error",
-        if TableSession.needsSeatLink(view.trusted, error) then
+        if view.clientOutOfDate then
+          "This table is running a newer version of the game than this " +
+            "page. Reload to continue."
+        else if TableSession.needsSeatLink(view.trusted, error) then
           "Open your assigned seat link to restore access to this game."
         else error.message)
       notice.setAttribute("role", "alert")
       actionContent.appendChild(notice)
+      if view.clientOutOfDate then
+        val reload = button("Reload", "reloadClient")
+        reload.onclick = _ => session.reloadClient()
+        actionContent.appendChild(reload)
     }
     if view.trusted && selectedPlayer.nonEmpty then
       actionContent.appendChild(text("p", "seat-identity", "Your seat: " +

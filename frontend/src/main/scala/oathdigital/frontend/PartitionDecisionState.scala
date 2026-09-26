@@ -155,7 +155,7 @@ private[frontend] object PartitionDecisionState:
 private[frontend] final case class WalkerPartitionDraft(
     context: BoardSelectionContext,
     decisionId: String,
-    query: DecisionQueryState,
+    query: DecisionQueryState.Partition,
     partition: PartitionDecisionState
 ):
   def optionFor(item: String): Option[DecisionOptionState] =
@@ -220,8 +220,9 @@ private[frontend] object WalkerPartitionDraft:
   def reconcile(previous: Option[WalkerPartitionDraft],
       context: BoardSelectionContext, decision: Option[WalkerDecisionState])
       : Option[WalkerPartitionDraft] =
-    decision.flatMap(parked => parked.query.filter(_.form == "partition")
-        .map(parked.decisionId -> _))
+    decision.flatMap(parked => parked.query.collect {
+        case partition: DecisionQueryState.Partition =>
+          parked.decisionId -> partition })
       .map { case (decisionId, query) =>
         previous.filter(draft => draft.context == context &&
             draft.decisionId == decisionId && draft.query == query)

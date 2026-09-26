@@ -5,12 +5,12 @@ import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
 
 class WalkerSelectionDraftSuite extends munit.FunSuite:
   private def site(id: String) = DecisionOptionState("site", id, id)
-  private val many = DecisionQueryState("choose-many",
-    Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
-    minimum = Some(2), maximum = Some(2))
-  private val amount = DecisionQueryState("choose-amount", Vector.empty,
-    heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
-    minimum = Some(3), maximum = Some(6))
+  private val many = DecisionQueryState.ChooseMany(
+    Vector(site("a"), site("b"), site("c")), minOptions = 2, maxOptions = 2,
+    heading = Some("Choose sites"))
+  private val amount = DecisionQueryState.ChooseAmount(minAmount = 3,
+    maxAmount = 6, suggested = None, confirmLabel = "Take banner",
+    heading = Some("Place more than 2 favor"))
   private val context = BoardSelectionContext("game", "red", 9)
   private def parked(id: String, query: DecisionQueryState) =
     Some(WalkerDecisionState("challenge", id, "decide", query = Some(query)))
@@ -27,7 +27,7 @@ class WalkerSelectionDraftSuite extends munit.FunSuite:
     assertEquals(two.toggle("site:a").selected, Vector("site:c"))
 
   test("a choose-many range confirms between its minimum and maximum"):
-    val range = many.copy(minimum = Some(1), maximum = Some(3))
+    val range = many.copy(minOptions = 1, maxOptions = 3)
     val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("negotiation.negotiators", range)): @unchecked
     assert(!draft.canConfirm)
@@ -35,7 +35,7 @@ class WalkerSelectionDraftSuite extends munit.FunSuite:
     assert(draft.toggle("site:a").toggle("site:b").toggle("site:c").canConfirm)
 
   test("an optional choose-many confirms an empty selection and submits it"):
-    val optional = many.copy(minimum = Some(0), maximum = Some(3))
+    val optional = many.copy(minOptions = 0, maxOptions = 3)
     val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("campaign.targets", optional)): @unchecked
     assert(draft.canConfirm)

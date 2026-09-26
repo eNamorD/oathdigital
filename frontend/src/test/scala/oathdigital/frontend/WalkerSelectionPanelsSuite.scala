@@ -2,26 +2,21 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
-import ParkedDecision.{DecisionForm, Surface}
+import ParkedDecision.Surface
 import org.scalajs.dom
 
 class WalkerSelectionPanelsSuite extends munit.FunSuite:
   private def site(id: String) = DecisionOptionState("site", id, s"Site $id")
-  private val many = DecisionQueryState("choose-many",
-    Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
-    minimum = Some(2), maximum = Some(2))
-  private val amount = DecisionQueryState("choose-amount", Vector.empty,
-    heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
-    minimum = Some(3), maximum = Some(5))
+  private val many = DecisionQueryState.ChooseMany(
+    Vector(site("a"), site("b"), site("c")), minOptions = 2, maxOptions = 2,
+    heading = Some("Choose sites"))
+  private val amount = DecisionQueryState.ChooseAmount(minAmount = 3,
+    maxAmount = 5, suggested = None, confirmLabel = "Take banner",
+    heading = Some("Place more than 2 favor"))
   private def decision(id: String, query: DecisionQueryState,
       rollOutcome: Option[WalkerRollOutcomeState] = None): WalkerDecisionState =
     WalkerDecisionState("challenge", id, "decide", query = Some(query),
       rollOutcome = rollOutcome)
-
-  /** The form the route would read off the query. */
-  private def form(query: DecisionQueryState): ParkedDecision.SelectionForm =
-    if query.form == "choose-many" then DecisionForm.ChooseMany
-    else DecisionForm.ChooseAmount
 
   private def opened(id: String, query: DecisionQueryState)
       : Option[WalkerSelectionDraft] =
@@ -29,12 +24,12 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
       BoardSelectionContext("game", "red", 9), Some(decision(id, query)))
 
   private def render(ui: RecordingControls, draft: Option[WalkerSelectionDraft],
-      id: String, query: DecisionQueryState, canControl: Boolean = true,
+      id: String, query: ParkedDecision.SelectionForm,
+      canControl: Boolean = true,
       rollOutcome: Option[WalkerRollOutcomeState] = None): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerSelectionPanels.render(Surface.Selection(
-      decision(id, query, rollOutcome), query, form(query)), draft, canControl,
-      panel, ui)
+      decision(id, query, rollOutcome), query), draft, canControl, panel, ui)
     panel
 
   private def one(root: dom.Element, selector: String): dom.Element =
@@ -58,6 +53,10 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(one(panel, """[data-option-id="site:a"]""")
       .getAttribute("aria-pressed"), "true")
     val confirm = one(panel, ".walker-many-confirm").asInstanceOf[dom.html.Button]
+    // A choose-many declares no confirm label, so the panel names the control
+    // itself. Asserted rather than reasoned about: the string became a literal
+    // when the query stopped carrying an optional label.
+    assertEquals(confirm.textContent, "Confirm")
     assert(!confirm.disabled)
     confirm.click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("challenge.ribbon-site",
@@ -91,9 +90,9 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
   test("the sacrifice panel draws dice, then totals, then the prompt"):
     val outcome = WalkerRollOutcomeState("campaign.attack",
       Vector("two-swords-skull", "one-sword"), 3, None, Vector("1 skull loss"))
-    val sacrifice = DecisionQueryState("choose-amount", Vector.empty,
-      heading = Some("Sacrifice up to 2 warbands for one attack each"),
-      confirmLabel = Some("Sacrifice"), minimum = Some(0), maximum = Some(2))
+    val sacrifice = DecisionQueryState.ChooseAmount(minAmount = 0,
+      maxAmount = 2, suggested = None, confirmLabel = "Sacrifice",
+      heading = Some("Sacrifice up to 2 warbands for one attack each"))
     val panel = render(new RecordingControls(),
       opened("campaign.sacrifice", sacrifice), "campaign.sacrifice", sacrifice,
       rollOutcome = Some(outcome))

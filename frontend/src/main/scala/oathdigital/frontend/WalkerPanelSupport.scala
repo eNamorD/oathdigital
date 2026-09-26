@@ -138,8 +138,9 @@ private[frontend] object WalkerPanelSupport:
     panel.appendChild(text("p", "board-draft",
       draft.fold("Choose a site on the board.")(_.option.label)))
     if surface.confirm then
-      val confirm = button(partitionConfirmLabel(surface.query),
-        "walker-board-confirm")
+      // A board surface is a choose-one, and a choose-one declares no
+      // confirm label, so the old `getOrElse` fallback was always this string.
+      val confirm = button("Confirm", "walker-board-confirm")
       confirm.disabled = !canControl || draft.isEmpty
       confirm.onclick = _ =>
         draft.foreach(value => controls.submitCommand(value.command))
@@ -253,8 +254,9 @@ private[frontend] object WalkerPanelSupport:
   private[frontend] def decisionHeading(query: DecisionQueryState): String =
     query.heading.getOrElse("Resolve decision")
 
-  private[frontend] def partitionConfirmLabel(query: DecisionQueryState)
-      : String = query.confirmLabel.getOrElse("Confirm")
+  private[frontend] def partitionConfirmLabel(
+      query: DecisionQueryState.Partition): String =
+    query.confirmLabel.getOrElse("Confirm")
 
   /** A query that keeps exactly one thing says which one on its button.
     *
@@ -264,7 +266,8 @@ private[frontend] object WalkerPanelSupport:
     * supplies the verb, so nothing here knows what a Keep is. Any other
     * shape falls back to what the query calls its own confirmation.
     */
-  private[frontend] def partitionConfirmLabel(query: DecisionQueryState,
+  private[frontend] def partitionConfirmLabel(
+      query: DecisionQueryState.Partition,
       draft: WalkerPartitionDraft): String =
     query.sections.filter(_.maxAllowed.contains(1))
       .flatMap(section => draft.optionsIn(section.key) match {
@@ -294,7 +297,7 @@ private[frontend] object WalkerPanelSupport:
     * needs no mover of its own, and the minimums say nothing a player has
     * to be told.
     */
-  private[frontend] def keepOne(query: DecisionQueryState)
+  private[frontend] def keepOne(query: DecisionQueryState.Partition)
       : Option[(DecisionSectionState, DecisionSectionState)] =
     query.sections match
       case Vector(first, second) =>
@@ -311,7 +314,8 @@ private[frontend] object WalkerPanelSupport:
     * keep-one shape reads like the rulebook's own sentence; every other
     * shape lists each section with its minimum.
     */
-  private[frontend] def partitionInstruction(query: DecisionQueryState): String =
+  private[frontend] def partitionInstruction(
+      query: DecisionQueryState.Partition): String =
     keepOne(query) match
       case Some((capped, leftover)) =>
         s"${capped.label} one; ${leftover.label.toLowerCase} the rest."
@@ -359,7 +363,7 @@ private[frontend] object WalkerPanelSupport:
     }
 
   private def partitionZone(section: DecisionSectionState,
-      query: DecisionQueryState, draft: WalkerPartitionDraft,
+      query: DecisionQueryState.Partition, draft: WalkerPartitionDraft,
       controls: TableControls): dom.Element =
     val zone = element("section", "decision-zone partition-zone")
     zone.setAttribute("data-section-key", section.key)
@@ -392,7 +396,7 @@ private[frontend] object WalkerPanelSupport:
     zone
 
   private def partitionOption(option: DecisionOptionState,
-      section: DecisionSectionState, query: DecisionQueryState,
+      section: DecisionSectionState, query: DecisionQueryState.Partition,
       draft: WalkerPartitionDraft, controls: TableControls): dom.Element =
     val item = WalkerPartitionDraft.itemId(option)
     val node = element("article", "decision-option")

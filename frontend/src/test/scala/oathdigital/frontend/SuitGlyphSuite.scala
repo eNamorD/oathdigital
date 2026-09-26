@@ -29,13 +29,14 @@ class SuitGlyphSuite extends munit.FunSuite:
       Vector("token-glyph token-suit-arcane", "token-glyph token-suit-nomad"))
 
   test("a bank offered as a choice carries its symbol too"):
+    val query = DecisionQueryState.ChooseOne(
+      Vector(DecisionOptionState("favor-bank", "hearth", "Hearth")),
+      Some("Gain 3 favor from one bank"))
     val parked = WalkerDecisionState("use-power", "gambling-hall.bank",
-      "decide", query = Some(DecisionQueryState("choose-one",
-        Vector(DecisionOptionState("favor-bank", "hearth", "Hearth")),
-        heading = Some("Gain 3 favor from one bank"))))
+      "decide", query = Some(query))
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
-      ParkedDecision.Surface.ChooseOne(parked, parked.query.get),
+      ParkedDecision.Surface.ChooseOne(parked, query),
       GameProjection("game", 9L, "act", Some("red"), Vector.empty,
         Vector.empty, Vector.empty, Vector.empty, ready = true,
         completed = false),

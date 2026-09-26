@@ -71,7 +71,7 @@ private[frontend] object DistributeDecisionState:
 private[frontend] final case class WalkerDistributeDraft(
     context: BoardSelectionContext,
     decisionId: String,
-    query: DecisionQueryState,
+    query: DecisionQueryState.Distribute,
     state: DistributeDecisionState
 ):
   def increment(item: String): WalkerDistributeDraft = copy(state = state.increment(item))
@@ -93,16 +93,17 @@ private[frontend] object WalkerDistributeDraft:
   def reconcile(previous: Option[WalkerDistributeDraft],
       context: BoardSelectionContext, decision: Option[WalkerDecisionState])
       : Option[WalkerDistributeDraft] =
-    decision.flatMap(parked => parked.query.filter(_.form == "distribute")
-        .map(parked.decisionId -> _))
+    decision.flatMap(parked => parked.query.collect {
+        case distribute: DecisionQueryState.Distribute =>
+          parked.decisionId -> distribute })
       .map { case (decisionId, query) =>
         previous.filter(draft => draft.context == context &&
             draft.decisionId == decisionId && draft.query == query)
           .getOrElse(WalkerDistributeDraft(context, decisionId, query,
             DistributeDecisionState.opened(query.slots.map(slot =>
               DistributeSlotBounds(WalkerPartitionDraft.itemId(slot.option),
-                slot.minimum, slot.maximum)), query.minTotal.getOrElse(0),
-                query.maxTotal.getOrElse(0),
+                slot.minimum, slot.maximum)), query.minTotal,
+                query.maxTotal,
               Option.when(query.slots.nonEmpty &&
                 query.slots.forall(_.suggested.nonEmpty))(
                 query.slots.flatMap(_.suggested)))))

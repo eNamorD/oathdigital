@@ -1,10 +1,10 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
-import ParkedDecision.{DecisionForm, RecoverStep, Routed, Surface}
+import ParkedDecision.{RecoverStep, Routed, Surface}
 
-/** The route as a pure function of a viewer's projection: one case per form
-  * and per surface, Recover's parks, pawn placement to the board, an
+/** The route as a pure function of a viewer's projection: one case per query
+  * type and per surface, Recover's parks, pawn placement to the board, an
   * observer's deal summary beside the waiting notice, and the parks that
   * render nothing. No DOM: what a surface looks like is the panel suites'
   * business.
@@ -27,8 +27,21 @@ class ParkedDecisionSuite extends munit.FunSuite:
     ParkedDecision.route(projection(Some(decision)), presentation)
 
   private val option = DecisionOptionState("player", "blue", "Blue")
-  private def query(form: String): DecisionQueryState =
-    DecisionQueryState(form, Vector(option), heading = Some("Question"))
+  private val heading = Some("Question")
+  // One constructor per form, where a `query(form: String)` helper used to
+  // build every shape from one record. Each is a fixed value rather than a
+  // method, so `parked(..., one)` and the expected surface hold the SAME
+  // query and an equality failure cannot be a fixture difference.
+  private val one = DecisionQueryState.ChooseOne(Vector(option), heading)
+  private val many = DecisionQueryState.ChooseMany(Vector(option), 1, 1,
+    heading)
+  private val amount = DecisionQueryState.ChooseAmount(0, 2, None, "Place",
+    heading)
+  private val partition = DecisionQueryState.Partition(
+    Vector(DecisionSectionState("keep", "Keep", 1, Some(1))), Vector(option),
+    Some("Split"), heading)
+  private val distribute = DecisionQueryState.Distribute(
+    Vector(DecisionSlotState(option, 0, 2, None)), 0, 2, "Place", heading)
   private def parked(action: String, id: String, query: DecisionQueryState,
       kind: String = "decide"): WalkerDecisionState =
     WalkerDecisionState(action, id, kind, query = Some(query))
@@ -38,56 +51,43 @@ class ParkedDecisionSuite extends munit.FunSuite:
   private val deal = NegotiationDealState(Vector("red", "blue"), Vector.empty,
     Vector.empty, Vector.empty, Some(editing))
   private val negotiation = parked("negotiation", "negotiation.deal",
-    query("negotiate").copy(deal = Some(deal)))
+    DecisionQueryState.Negotiate(deal, heading))
 
   test("nothing parked routes to no surface and no notice"):
     assertEquals(ParkedDecision.route(projection(), controls),
       Routed(None, None))
 
   test("each form routes to the surface that answers it"):
-    def surface(form: String): Option[Surface] =
-      routeOf(parked("muster", "muster.source", query(form))).surface
-    val oneQuery = query("choose-one")
-    assertEquals(surface("choose-one"), Some(Surface.ChooseOne(
-      parked("muster", "muster.source", oneQuery), oneQuery)))
-    assertEquals(surface("partition"), Some(Surface.Partition(
-      parked("muster", "muster.source", query("partition")),
-      query("partition"))))
-    assertEquals(surface("distribute"), Some(Surface.Distribute(
-      parked("muster", "muster.source", query("distribute")),
-      query("distribute"))))
-    assertEquals(surface("choose-many"), Some(Surface.Selection(
-      parked("muster", "muster.source", query("choose-many")),
-      query("choose-many"), DecisionForm.ChooseMany)))
-    assertEquals(surface("choose-amount"), Some(Surface.Selection(
-      parked("muster", "muster.source", query("choose-amount")),
-      query("choose-amount"), DecisionForm.ChooseAmount)))
+    def at(query: DecisionQueryState): WalkerDecisionState =
+      parked("muster", "muster.source", query)
+    assertEquals(routeOf(at(one)).surface,
+      Some(Surface.ChooseOne(at(one), one)))
+    assertEquals(routeOf(at(partition)).surface,
+      Some(Surface.Partition(at(partition), partition)))
+    assertEquals(routeOf(at(distribute)).surface,
+      Some(Surface.Distribute(at(distribute), distribute)))
+    assertEquals(routeOf(at(many)).surface,
+      Some(Surface.Selection(at(many), many)))
+    assertEquals(routeOf(at(amount)).surface,
+      Some(Surface.Selection(at(amount), amount)))
     assertEquals(routeOf(negotiation).surface, Some(Surface.Negotiate(deal,
       Some("negotiation.deal" -> editing))))
 
-  test("an unknown form routes to no surface and keeps its spelling"):
-    assertEquals(routeOf(parked("muster", "muster.source",
-      query("choose-two"))).surface, None)
-    assertEquals(DecisionForm.parse("choose-two"),
-      DecisionForm.Unknown("choose-two"))
-
-  test("a negotiate query without a deal routes to no surface"):
-    assertEquals(routeOf(parked("negotiation", "negotiation.deal",
-      query("negotiate"))).surface, None)
+  // A form outside the vocabulary no longer reaches the route: the codec
+  // refuses it, which `ProjectionProtocolSuite` asserts. A negotiate query
+  // without a deal is likewise unconstructable -- the deal is not optional.
 
   test("Recover's parks route to its own panel"):
     val roll = WalkerDecisionState("recover", "walker.recover.roll", "roll",
       pool = Some("recover"), count = Some(2))
     assertEquals(routeOf(roll).surface,
       Some(Surface.Recover(roll, RecoverStep.Roll("recover"))))
-    val choice = parked("recover", ParkedDecision.recoverChoiceDecisionId,
-      query("choose-one"))
+    val choice = parked("recover", ParkedDecision.recoverChoiceDecisionId, one)
     assertEquals(routeOf(choice).surface,
-      Some(Surface.Recover(choice, RecoverStep.Choice(query("choose-one")))))
-    val relic = parked("recover", ParkedDecision.recoverRelicDecisionId,
-      query("choose-one"))
+      Some(Surface.Recover(choice, RecoverStep.Choice(one))))
+    val relic = parked("recover", ParkedDecision.recoverRelicDecisionId, one)
     assertEquals(routeOf(relic).surface,
-      Some(Surface.Recover(relic, RecoverStep.Relic(query("choose-one")))))
+      Some(Surface.Recover(relic, RecoverStep.Relic(one))))
 
   test("a Recover park with nothing to render routes to no surface"):
     // A roll with no projected pool: no control could be built for it.
@@ -100,8 +100,8 @@ class ParkedDecisionSuite extends munit.FunSuite:
         .surface, None, s"$id must route nowhere without a query"))
     // A Recover choose-one at a decision id its panel does not know is
     // not handed to the generic panel either.
-    assertEquals(routeOf(parked("recover", "recover.other",
-      query("choose-one"))).surface, None)
+    assertEquals(routeOf(parked("recover", "recover.other", one)).surface,
+      None)
 
   test("a Roll park outside Recover routes to no surface"):
     assertEquals(routeOf(WalkerDecisionState("teleport", "walker.recover.roll",
@@ -112,23 +112,23 @@ class ParkedDecisionSuite extends munit.FunSuite:
       .surface, None)
 
   test("a choose-one that is not a decide park routes to no surface"):
-    assertEquals(routeOf(parked("muster", "muster.source",
-      query("choose-one"), kind = "roll")).surface, None)
+    assertEquals(routeOf(parked("muster", "muster.source", one,
+      kind = "roll")).surface, None)
 
   test("Setup's pawn placement routes to the board, confirmed from the pane"):
     val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
-    val pawnQuery = DecisionQueryState("choose-one", Vector(site),
-      heading = Some("Choose your starting site"))
+    val pawnQuery = DecisionQueryState.ChooseOne(Vector(site),
+      Some("Choose your starting site"))
     val pawn = parked("setup", "setup.pawn-placement.p1", pawnQuery)
     assertEquals(routeOf(pawn).surface,
       Some(Surface.Board(pawn, pawnQuery, confirm = true)))
 
   test("a viewer without gameplay controls sees no control surface, only " +
       "a deal's summary"):
-    assertEquals(routeOf(parked("muster", "muster.source",
-      query("choose-one")), observer).surface, None)
-    assertEquals(routeOf(parked("muster", "muster.source",
-      query("partition")), observer).surface, None)
+    assertEquals(routeOf(parked("muster", "muster.source", one),
+      observer).surface, None)
+    assertEquals(routeOf(parked("muster", "muster.source", partition),
+      observer).surface, None)
     assertEquals(routeOf(WalkerDecisionState("recover", "walker.recover.roll",
       "roll", pool = Some("recover")), observer).surface, None)
     assertEquals(routeOf(negotiation, observer).surface,

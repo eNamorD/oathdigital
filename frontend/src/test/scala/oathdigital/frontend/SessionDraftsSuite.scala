@@ -9,11 +9,11 @@ import oathdigital.protocol.{MajorActionPreviewResponse, PreviewModifier}
 class SessionDraftsSuite extends munit.FunSuite:
   private val context = BoardSelectionContext("game", "red", 9)
   private val site = (id: String) => DecisionOptionState("site", id, id)
-  private val forgeQuery = DecisionQueryState("partition",
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+  private val forgeQuery = DecisionQueryState.Partition(
     Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
-      DecisionSectionState("pay-secret", "Pay Secret", 1)))
+      DecisionSectionState("pay-secret", "Pay Secret", 1)),
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")))
   private val forgeParked = WalkerDecisionState("forge", "forge-9", "decide",
     query = Some(forgeQuery))
   private val travel = BoardTargetAction("travel", "Choose a destination", 1, 1,

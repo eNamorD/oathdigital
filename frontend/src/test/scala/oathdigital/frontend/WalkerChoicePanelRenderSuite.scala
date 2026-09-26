@@ -11,7 +11,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
   private val oak = DecisionOptionState("denizen", "d1", "Old Oak", None,
     Vector("1 Supply", "+2 warbands"))
   private val pub = DecisionOptionState("denizen", "d2", "Rowdy Pub")
-  private val query = DecisionQueryState("choose-one", Vector(oak, pub),
+  private val query = DecisionQueryState.ChooseOne(Vector(oak, pub),
     heading = Some("Choose a card to Muster from"))
   private val parked = WalkerDecisionState("muster", "muster.source", "decide",
     query = Some(query))
@@ -26,10 +26,12 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     */
   private def draw(decision: WalkerDecisionState,
       ui: RecordingControls = new RecordingControls()): dom.Element =
+    val query = decision.query match
+      case Some(one: DecisionQueryState.ChooseOne) => one
+      case other => fail(s"expected a choose-one, got $other")
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
-      Surface.ChooseOne(decision, decision.query.get), table,
-      canControl = true, panel, ui)
+      Surface.ChooseOne(decision, query), table, canControl = true, panel, ui)
     panel
 
   private def all(root: dom.Element, selector: String): Vector[dom.Element] =
@@ -54,7 +56,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       orientation = Some("face-up"))
     val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
       Some(card), Vector("1 Favor"), Some("Battle Plan"))
-    val query = DecisionQueryState("choose-one", Vector(plan),
+    val query = DecisionQueryState.ChooseOne(Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
       "decide", query = Some(query)))
@@ -71,7 +73,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val played = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
       None, Vector.empty, Some("Battle Plan"))
     val offer = DecisionOptionState("denizen", "denizen:longbows", "Longbows")
-    val query = DecisionQueryState("choose-one", Vector(offer),
+    val query = DecisionQueryState.ChooseOne(Vector(offer),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
       "decide", query = Some(query), answeredOptions = Vector(played)))
@@ -84,7 +86,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val card = CardDetails("denizen:old-oak", "denizen", "Old Oak",
       orientation = Some("face-up"))
     val option = DecisionOptionState("denizen", "d1", "Old Oak", Some(card))
-    val query = DecisionQueryState("choose-one", Vector(option),
+    val query = DecisionQueryState.ChooseOne(Vector(option),
       heading = Some("Choose a card to Muster from"))
     val panel = draw(WalkerDecisionState("muster", "muster.source", "decide",
       query = Some(query)))
@@ -96,7 +98,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       orientation = Some("face-up"))
     val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
       Some(card), badge = Some("Attack Plan"))
-    val query = DecisionQueryState("choose-one", Vector(plan),
+    val query = DecisionQueryState.ChooseOne(Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
       "decide", query = Some(query)))
@@ -112,7 +114,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       orientation = Some("face-up"))
     val plan = DecisionOptionState("relic", "relic:sticky-fire", "Sticky Fire",
       Some(card), badge = Some("Attack Plan"))
-    val query = DecisionQueryState("choose-one", Vector(plan),
+    val query = DecisionQueryState.ChooseOne(Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
     val ui = new RecordingControls()
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
@@ -129,7 +131,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
   test("a badged option with no card names its side in words"):
     val plan = DecisionOptionState("button", "title-plan", "Title plan",
       badge = Some("Defense Plan"))
-    val query = DecisionQueryState("choose-one", Vector(plan),
+    val query = DecisionQueryState.ChooseOne(Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.defender-plan",
       "decide", query = Some(query)))
@@ -141,7 +143,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val outcome = WalkerRollOutcomeState("campaign.defense",
       Vector("one-shield", "blank"), 1)
     val site = DecisionOptionState("site", "s1", "The Spire")
-    val query = DecisionQueryState("choose-one", Vector(site),
+    val query = DecisionQueryState.ChooseOne(Vector(site),
       heading = Some("Move the defending warbands"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.relocation",
       "decide", query = Some(query), rollOutcome = Some(outcome)))

@@ -8,7 +8,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, ProposeTerms}
 import oathdigital.model.OathState.Ready
-import oathdigital.protocol.projection.{GameProjection, NegotiationDealProjection}
+import oathdigital.protocol.projection.{DecisionQueryProjection,
+  GameProjection, NegotiationDealProjection}
 
 /** What each viewer of a parked deal is shown. */
 class NegotiationDealProjectionSuite extends munit.FunSuite:
@@ -31,7 +32,8 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
     projector.project("negotiation", LoadedGame(state, 30), viewer)
 
   private def deal(projection: GameProjection): NegotiationDealProjection =
-    projection.walkerDecision.flatMap(_.query).flatMap(_.deal)
+    projection.walkerDecision.flatMap(_.query).collect {
+      case negotiate: DecisionQueryProjection.Negotiate => negotiate.deal }
       .orElse(projection.walkerWaiting.flatMap(_.deal))
       .getOrElse(fail("the deal must be projected"))
 
@@ -43,7 +45,8 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       assertEquals(projection.walkerWaiting, None, viewer.value)
       val decision = projection.walkerDecision.getOrElse(fail("owner decision"))
       assertEquals(decision.decisionId, dealId)
-      assertEquals(decision.query.map(_.form), Some("negotiate"))
+      assert(decision.query.exists(
+        _.isInstanceOf[DecisionQueryProjection.Negotiate]))
       val editing = deal(projection).editing.getOrElse(fail("editing"))
       assertEquals(editing.editableFavor, 5)
       assert(!editing.canAccept)

@@ -24,7 +24,7 @@ class EconomyProjectionSuite extends munit.FunSuite:
     val started = rules.startWalker(Ready(ready), action, actor, startArgs = args)
       .getOrElse(fail("the action must start"))
     projector.project("economy", LoadedGame(started.state, 5), actor)
-      .walkerDecision.flatMap(_.query).map(_.options)
+      .walkerDecision.flatMap(_.query).map(_.offeredOptions)
       .getOrElse(fail("the parked decision must project a query"))
 
   test("the active player is offered Muster and both Trades, and nobody else"):
@@ -79,7 +79,8 @@ class EconomyProjectionSuite extends munit.FunSuite:
     val withPower = new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers(Vector(
         AddAdviserSource(PowerId("test.add-adviser-source")))))
-    val options = withPower.project(context).flatMap(_.query).map(_.options)
+    val options = withPower.project(context).flatMap(_.query)
+      .map(_.offeredOptions)
       .getOrElse(fail("the decision must project"))
     assertEquals(options.map(_.id), Vector(plainId.value))
 

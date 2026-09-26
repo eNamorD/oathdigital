@@ -25,8 +25,8 @@ class BoardSurfaceSuite extends munit.FunSuite:
 
   private val woodsOption = DecisionOptionState("site", "site:woods", "Deep Woods")
   private val cityOption = DecisionOptionState("site", "site:city", "Ancient City")
-  private val query = DecisionQueryState("choose-one",
-    Vector(woodsOption, cityOption), heading = Some("Choose your starting site"))
+  private val query = DecisionQueryState.ChooseOne(
+    Vector(woodsOption, cityOption), Some("Choose your starting site"))
   private val decision = WalkerDecisionState("setup", "setup.pawn-placement.red",
     "decide", query = Some(query))
   private val context = BoardSelectionContext("game", "red", 1L)
@@ -153,6 +153,8 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assertEquals(one(drafted, ".board-draft").textContent, "Deep Woods")
     val confirm = one(drafted, ".walker-board-confirm")
       .asInstanceOf[dom.html.Button]
+    // A board surface is a choose-one, which declares no confirm label.
+    assertEquals(confirm.textContent, "Confirm")
     assert(!confirm.disabled)
     confirm.click()
     assertEquals(ui.submitted, Vector(placeAtWoods))

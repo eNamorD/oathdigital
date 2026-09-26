@@ -23,7 +23,8 @@ class PricedOptionProjectionSuite extends munit.FunSuite:
     new WalkerDecisionProjector(catalog, new GamePresentationProjector(catalog),
       WalkerPowers.empty, (_, _, _, _, _) => Right(tree))
       .project(ScopedProjectionContext(ready, Some(actor)))
-      .flatMap(_.query).getOrElse(fail("the decision must project")).options
+      .flatMap(_.query).getOrElse(fail("the decision must project"))
+      .offeredOptions
 
   test("a priced option is the wrapped option with its price as details"):
     val plain = DecisionOption.Site(DecisionOptionRef.Site(site))

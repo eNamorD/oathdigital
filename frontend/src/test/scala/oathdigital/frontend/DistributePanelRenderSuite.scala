@@ -12,11 +12,11 @@ import scala.scalajs.js
 class DistributePanelRenderSuite extends munit.FunSuite:
   private def bank(id: String, label: String) =
     DecisionOptionState("favor-bank", id, label)
-  private val query = DecisionQueryState("distribute", Vector.empty,
-    heading = Some("League Treaty"), confirmLabel = Some("Move favor"),
-    slots = Vector(DecisionSlotState(bank("arcane", "Arcane"), 0, 2, Some(2)),
+  private val query = DecisionQueryState.Distribute(
+    Vector(DecisionSlotState(bank("arcane", "Arcane"), 0, 2, Some(2)),
       DecisionSlotState(bank("nomad", "Nomad"), 0, 4, Some(0))),
-    minTotal = Some(2), maxTotal = Some(2))
+    minTotal = 2, maxTotal = 2, confirmLabel = "Move favor",
+    heading = Some("League Treaty"))
   private val parked = WalkerDecisionState("begin-rest",
     "rest.league-treaty.distribution", "decide", query = Some(query))
 
@@ -97,7 +97,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
   private val rangedQuery = query.copy(slots = Vector(
     DecisionSlotState(bank("arcane", "Arcane"), 0, 3, None),
     DecisionSlotState(bank("nomad", "Nomad"), 0, 3, None)),
-    minTotal = Some(1), maxTotal = Some(3))
+    minTotal = 1, maxTotal = 3)
   private val rangedParked = parked.copy(query = Some(rangedQuery))
 
   test("a range shows its minimum and confirms anywhere inside it"):

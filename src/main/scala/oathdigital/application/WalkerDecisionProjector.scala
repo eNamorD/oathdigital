@@ -213,35 +213,33 @@ private[application] final class WalkerDecisionProjector(
     // supplies its own generic fallback.
     query match
       case DecisionQuery.ChooseOne(options, heading) =>
-        described(options).map(DecisionQueryProjection("choose-one", _,
-          heading = heading))
+        described(options).map(projected =>
+          DecisionQueryProjection.ChooseOne(projected, heading))
       case DecisionQuery.ChooseMany(min, max, options, heading) =>
-        described(options).map(DecisionQueryProjection("choose-many", _,
-          heading = heading, minimum = Some(min), maximum = Some(max)))
+        described(options).map(projected =>
+          DecisionQueryProjection.ChooseMany(projected, min, max, heading))
       case negotiate: DecisionQuery.Negotiate =>
-        Some(DecisionQueryProjection("negotiate", Vector.empty,
-          heading = negotiate.heading,
-          deal = Some(deals.project(ready, viewer, negotiate))))
+        Some(DecisionQueryProjection.Negotiate(
+          deals.project(ready, viewer, negotiate), negotiate.heading))
       case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel,
           suggested) =>
-        Some(DecisionQueryProjection("choose-amount", Vector.empty,
-          heading = heading, confirmLabel = Some(confirmLabel),
-          minimum = Some(min), maximum = Some(max), suggested = suggested))
+        Some(DecisionQueryProjection.ChooseAmount(min, max, suggested,
+          confirmLabel, heading))
       case DecisionQuery.Partition(sections, options, heading, confirmLabel) =>
-        described(options).map(DecisionQueryProjection("partition", _,
-          sections.map(section => DecisionSectionProjection(section.key,
-            section.label, section.minRequired, section.maxAllowed)),
-          heading = heading, confirmLabel = confirmLabel))
+        described(options).map(projected =>
+          DecisionQueryProjection.Partition(
+            sections.map(section => DecisionSectionProjection(section.key,
+              section.label, section.minRequired, section.maxAllowed)),
+            projected, confirmLabel, heading))
       case DecisionQuery.Distribute(slots, minTotal, maxTotal, heading,
           confirmLabel) =>
         described(slots.flatMap(slot => DecisionOption.forRef(slot.ref)))
           .filter(_.size == slots.size).map(options =>
-            DecisionQueryProjection("distribute", Vector.empty,
-              heading = heading, confirmLabel = Some(confirmLabel),
-              slots = slots.zip(options).map { case (slot, option) =>
+            DecisionQueryProjection.Distribute(
+              slots.zip(options).map { case (slot, option) =>
                 DecisionSlotProjection(option, slot.minimum, slot.maximum,
                   slot.suggested) },
-              minTotal = Some(minTotal), maxTotal = Some(maxTotal)))
+              minTotal, maxTotal, confirmLabel, heading))
 
   /** One option, as its stable reference plus display detail.
     *

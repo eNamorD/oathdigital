@@ -54,19 +54,19 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     tracks = Some(GameTracksProjection(4, 3, false, 4, "red")),
     relicDeckCount = 21,
     temporaryHandPreview = Vector(known),
-    // A partition query, the shape with every field populated: a form, two
-    // sections with minima, and options carrying both a plain label and
-    // card details. A choose-one query is the same type with no sections,
-    // so this one round-trip covers both.
+    // A partition query, the form with the most to carry: two sections with
+    // minima, options with both a plain label and card details, and both
+    // pieces of panel copy. Every other form has its own round trip below,
+    // because every other form is now its own type.
     walkerDecision = Some(WalkerDecisionProjection("forge", "forge.assignment",
-      "decide", query = Some(DecisionQueryProjection("partition",
+      "decide", query = Some(DecisionQueryProjection.Partition(
+        Vector(DecisionSectionProjection("pay-favor", "Pay Favor", 1),
+          DecisionSectionProjection("pay-secret", "Pay Secret", 1)),
         Vector(DecisionOptionProjection("denizen", "known", "Known",
             Some(known)),
           DecisionOptionProjection("button", "skip", "Skip")),
-        Vector(DecisionSectionProjection("pay-favor", "Pay Favor", 1),
-          DecisionSectionProjection("pay-secret", "Pay Secret", 1)),
-        heading = Some("Forge a relic"),
-        confirmLabel = Some("Complete Forge"))),
+        confirmLabel = Some("Complete Forge"),
+        heading = Some("Forge a relic"))),
       rollOutcome = Some(WalkerRollOutcomeProjection("campaign.attack",
         Vector("two-swords-skull"), 2, None, Vector("1 skull loss"))))),
     walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))),
@@ -95,10 +95,9 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       Right(without))
 
   test("a decision query declaring no panel copy round-trips as absent"):
-    val bare = DecisionQueryProjection("choose-one",
+    val bare = DecisionQueryProjection.ChooseOne(
       Vector(DecisionOptionProjection("button", "stop", "Stop")))
     assertEquals(bare.heading, None)
-    assertEquals(bare.confirmLabel, None)
     val without = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(bare))))
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
@@ -132,7 +131,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       Right(repeated))
 
   test("a choose-one option round-trips its details and defaults them to none"):
-    val annotated = DecisionQueryProjection("choose-one", Vector(
+    val annotated = DecisionQueryProjection.ChooseOne(Vector(
       DecisionOptionProjection("denizen", "d1", "Old Oak", None,
         Vector("1 Supply", "+2 warbands")),
       DecisionOptionProjection("denizen", "d2", "Rowdy Pub")))
@@ -158,8 +157,8 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       Vector(NegotiationTransferProjection("red", "blue", 3, 1, Vector(card))),
       Vector(NegotiationDisclosureProjection("red", "blue", "held-relic", None)),
       Some(editing))
-    val query = DecisionQueryProjection("negotiate", Vector.empty,
-      heading = Some("Negotiation"), deal = Some(deal))
+    val query = DecisionQueryProjection.Negotiate(deal,
+      heading = Some("Negotiation"))
     val waiting = WalkerWaitingProjection("red", Some("Negotiation"),
       Vector("blue"), Some(deal.copy(editing = None)))
     val carrying = projection.copy(
@@ -170,13 +169,13 @@ class ProjectionProtocolSuite extends munit.FunSuite:
 
   test("choose-many and choose-amount queries round-trip their counts and bounds"):
     def site(id: String) = DecisionOptionProjection("site", id, id)
-    val many = DecisionQueryProjection("choose-many",
-      Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
-      minimum = Some(2), maximum = Some(2))
-    val amount = DecisionQueryProjection("choose-amount", Vector.empty,
-      heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
-      minimum = Some(3), maximum = Some(6))
-    Vector(many, amount).foreach { query =>
+    val many = DecisionQueryProjection.ChooseMany(
+      Vector(site("a"), site("b"), site("c")), minOptions = 2, maxOptions = 2,
+      heading = Some("Choose sites"))
+    val amount = DecisionQueryProjection.ChooseAmount(minAmount = 3,
+      maxAmount = 6, suggested = Some(4), confirmLabel = "Take banner",
+      heading = Some("Place more than 2 favor"))
+    Vector[DecisionQueryProjection](many, amount).foreach { query =>
       val carrying = projection.copy(walkerDecision =
         projection.walkerDecision.map(_.copy(query = Some(query))))
       assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
@@ -185,11 +184,11 @@ class ProjectionProtocolSuite extends munit.FunSuite:
 
   test("a distribute query round-trips its slots, suggestions and total"):
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
-    val distribute = DecisionQueryProjection("distribute", Vector.empty,
-      heading = Some("League Treaty"), confirmLabel = Some("Move favor"),
-      slots = Vector(DecisionSlotProjection(bank("arcane"), 0, 2, Some(2)),
+    val distribute = DecisionQueryProjection.Distribute(
+      Vector(DecisionSlotProjection(bank("arcane"), 0, 2, Some(2)),
         DecisionSlotProjection(bank("nomad"), 0, 6, None)),
-      minTotal = Some(6), maxTotal = Some(6))
+      minTotal = 6, maxTotal = 6, confirmLabel = "Move favor",
+      heading = Some("League Treaty"))
     val carrying = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(distribute))))
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
@@ -197,15 +196,48 @@ class ProjectionProtocolSuite extends munit.FunSuite:
 
   test("a ranged distribute query round-trips both totals"):
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
-    val distribute = DecisionQueryProjection("distribute", Vector.empty,
-      heading = Some("Place force"), confirmLabel = Some("Place"),
-      slots = Vector(DecisionSlotProjection(bank("arcane"), 0, 3, None),
+    val distribute = DecisionQueryProjection.Distribute(
+      Vector(DecisionSlotProjection(bank("arcane"), 0, 3, None),
         DecisionSlotProjection(bank("nomad"), 0, 3, None)),
-      minTotal = Some(0), maxTotal = Some(3))
+      minTotal = 0, maxTotal = 3, confirmLabel = "Place",
+      heading = Some("Place force"))
     val carrying = projection.copy(walkerDecision =
       projection.walkerDecision.map(_.copy(query = Some(distribute))))
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
       Right(carrying))
+
+  /** A partition is the one form whose confirm label is optional, so the
+    * absent case needs a trip of its own -- the fixture above carries one.
+    */
+  test("a partition declaring no confirm label round-trips as absent"):
+    val unlabelled = DecisionQueryProjection.Partition(
+      Vector(DecisionSectionProjection("keep", "Keep", 1, Some(1)),
+        DecisionSectionProjection("rest", "Rest", 0)),
+      Vector(DecisionOptionProjection("button", "stop", "Stop")))
+    assertEquals(unlabelled.confirmLabel, None)
+    val without = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(unlabelled))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
+      Right(without))
+
+  /** The types rule out a form outside the vocabulary and a field one form
+    * lends another, so only JSON from outside can carry either. The fixture's
+    * query is a partition, so `minTotal` is a distribute field it must refuse
+    * and `sections` is one it must require.
+    */
+  test("the decoder refuses an unknown form and a field the form does not declare"):
+    def rejected(edit: ujson.Value => Unit): Option[ProtocolDecodeFailure] =
+      val json = ujson.read(GameProjectionCodec.encode(projection))
+      edit(json)
+      GameProjectionCodec.decode(ujson.write(json)).left.toOption
+    val unknown = rejected(_("walkerDecision")("query")("form") = "choose-two")
+    assertEquals(unknown.map(_.path), Some("$.walkerDecision.query.form"))
+    assert(clue(unknown).exists(_.isInstanceOf[ProtocolDecodeFailure.UnknownVariant]))
+    assertEquals(rejected(_("walkerDecision")("query")("minTotal") = 3).map(_.path),
+      Some("$.walkerDecision.query.minTotal"))
+    assertEquals(
+      rejected(_("walkerDecision")("query").obj.remove("sections")).map(_.path),
+      Some("$.walkerDecision.query.sections"))
 
   /** `WalkerWaitingProjection.heading` is `None` for a Roll park (see its
     * doc): the populated projection above only covers the Decide case

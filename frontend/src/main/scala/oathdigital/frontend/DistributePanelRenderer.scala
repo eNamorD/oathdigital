@@ -29,11 +29,10 @@ private[frontend] object DistributePanelRenderer:
       panel.appendChild(rows)
       panel.appendChild(text("p", "distribute-remaining",
         s"Remaining: ${draft.state.remaining}"))
-      query.minTotal.filter(min => query.maxTotal.exists(min < _)).foreach(min =>
+      Option.when(query.minTotal < query.maxTotal)(query.minTotal).foreach(min =>
         panel.appendChild(text("p", "distribute-minimum",
           s"At least $min must be placed")))
-      val confirm = button(WalkerPanelSupport.partitionConfirmLabel(query),
-        "distribute-confirm")
+      val confirm = button(query.confirmLabel, "distribute-confirm")
       confirm.disabled = !canControl || !draft.canConfirm
       confirm.onclick = _ => draft.command.foreach(controls.submitCommand)
       panel.appendChild(confirm)

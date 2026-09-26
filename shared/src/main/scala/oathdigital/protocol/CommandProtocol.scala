@@ -16,6 +16,16 @@ object ProtocolDecodeFailure:
       extends ProtocolDecodeFailure
   final case class InvalidValue(path: String, message: String)
       extends ProtocolDecodeFailure
+  /** A discriminated wire type carrying a variant this build does not know.
+    *
+    * Distinct from `InvalidValue` because the cause is the vocabulary, not
+    * the value: the sender knows a form, a kind or a type this reader was not
+    * built with. For a projection that means the client is out of date, which
+    * a caller can act on; a bad value means the payload is wrong, which it
+    * cannot.
+    */
+  final case class UnknownVariant(path: String, message: String)
+      extends ProtocolDecodeFailure
   final case class ActorInjection(path: String,
       message: String = "actor identity is bound by the server")
       extends ProtocolDecodeFailure

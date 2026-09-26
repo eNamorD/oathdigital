@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.protocol.projection.{BoardTargetRefProjection,
-  DecisionSectionProjection, SiteForcesProjection}
+  DecisionQueryProjection, DecisionSectionProjection, SiteForcesProjection}
 
 import java.nio.file.Files
 
@@ -851,9 +851,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val decision = owner.walkerDecision.getOrElse(
       fail("the parked actor must be offered the Forge assignment prompt"))
     assertEquals(decision.decisionId, ForgeProcedure.assignmentDecisionId)
-    val prompt = decision.query.getOrElse(
-      fail("a parked Forge decision must project its query"))
-    assertEquals(prompt.form, "partition")
+    val prompt = decision.query match
+      case Some(partition: DecisionQueryProjection.Partition) => partition
+      case other => fail(s"expected a Forge partition, got $other")
     val printed = forgeCatalog.sites.find(_.id == forgeSite).get
       .forgeRequirements.get
     assertEquals(prompt.sections, Vector(
@@ -1710,7 +1710,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val asked = projector.project("game-hand",
       LoadedGame(placed.state, placed.nextSequence), holder)
 
-    assert(asked.walkerDecision.exists(_.query.exists(_.options.nonEmpty)))
+    assert(asked.walkerDecision.exists(
+      _.query.exists(_.offeredOptions.nonEmpty)))
     assertEquals(asked.temporaryHandPreview, Vector.empty)
 
   /** A placement asks about a card with buttons, never with the card itself.
@@ -1797,7 +1798,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val own = projector.project("game-private", loaded, PlayerId("p2"))
     val other = projector.project("game-private", loaded, PlayerId("p1"))
     val privateIds = own.walkerDecision.toVector.flatMap(_.query.toVector
-      .flatMap(_.options)).map(_.id)
+      .flatMap(_.offeredOptions)).map(_.id)
     val otherJson = oathdigital.server.GameHttpWire
       .encodeProjection(other)
 
@@ -1837,7 +1838,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(continued.world.map(_.discardCount).sum, 8)
     // The next park is the following player's own pawn placement (all 8
     // in-play sites), not another adviser choice.
-    assertEquals(continued.walkerDecision.get.query.get.options.size, 8)
+    assertEquals(continued.walkerDecision.get.query.get.offeredOptions.size,
+      8)
 
   private def jsonStrings(value: ujson.Value): Set[String] =
     value match
@@ -1986,7 +1988,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
         .load(gameId).toOption.flatten.get
       assertEquals(loaded.state, parked.state)
       val seen = new GameProjector(catalog).project(gameId, loaded, other)
-        .walkerDecision.flatMap(_.query).flatMap(_.deal).get
+        .walkerDecision.flatMap(_.query).collect {
+          case negotiate: DecisionQueryProjection.Negotiate => negotiate.deal
+        }.get
       assertEquals(seen.disclosures.map(d => (d.authorPlayerId, d.card)),
         Vector((actor.value, None)))
     finally reopened.close()

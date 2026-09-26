@@ -11,6 +11,8 @@ private[frontend] trait Navigation:
   def showSession(gameId: String, playerId: String): Unit
   /** Leaves the table for the development start page. */
   def startOver(): Unit
+  /** Reloads the page, to fetch the client the server is now serving. */
+  def reload(): Unit
 
 /** The table session (CONTEXT.md): one viewer's live connection to one game
   * from one seat. It holds the displayed position, the failure on show and
@@ -114,7 +116,8 @@ private[frontend] final class TableSession(
       case Left(error) =>
         coordinator.recordFailure(request, error)
         if GameClientFailure.isTransient(error) ||
-            TableSession.needsSeatLink(trusted, error) then
+            TableSession.needsSeatLink(trusted, error) ||
+            TableSession.unsupported(error) then
           polling.stop()
         if TableSession.needsSeatLink(trusted, error) then
           coordinator.switchSession(gameId, selectedPlayer)
@@ -214,6 +217,7 @@ private[frontend] final class TableSession(
   def loadSession(id: String, playerId: String): Unit = loadExisting(id, playerId)
   def reconnectSession(): Unit = reconnect()
   def createGame(): Unit = newGame()
+  def reloadClient(): Unit = navigation.reload()
 
   // FlowHost (the modifier flow). The three identity members are above.
   def currentDrafts: SessionDrafts = drafts
@@ -245,6 +249,15 @@ private[frontend] final class TableSession(
   def controlsAvailable: Boolean =
     coordinator.connectionState == ServerConnectionState.Connected
   def viewedRawEvents: Vector[RawEvent] = rawEvents
+  /** Derived from the failure on show rather than latched, so it cannot
+    * outlive it. A non-transient failure leaves the session Connected
+    * (`ServerSessionCoordinator.recordFailure`), so every control on the
+    * retained position stays live and a submit the server accepts can carry
+    * the table past the park this build could not parse -- after which a
+    * latched flag would have labelled the NEXT unrelated failure a stale
+    * bundle.
+    */
+  def clientOutOfDate: Boolean = failure.exists(TableSession.unsupported)
 
 private[frontend] object TableSession:
   /** A trusted seat whose cookie no longer opens the game: the viewer must
@@ -254,3 +267,11 @@ private[frontend] object TableSession:
     error match
       case GameClientFailure.HttpFailure(401 | 403, _, _) if trusted => true
       case _ => false
+
+  /** A projection this client cannot parse: the server has moved on and the
+    * bundle in this browser is stale. Polling cannot recover from it and only
+    * a reload can, so the session stops asking and says so.
+    */
+  def unsupported(error: GameClientFailure): Boolean = error match
+    case _: GameClientFailure.UnsupportedProjection => true
+    case _ => false

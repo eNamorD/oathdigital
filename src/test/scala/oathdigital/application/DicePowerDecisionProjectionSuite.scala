@@ -33,9 +33,9 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(hall)).toOption.get.state)
     val projection = owner(parked).get
     assertEquals(projection.decisionId, GamblingHall.decisionId)
-    assertEquals(projection.query.get.options.map(_.kind).distinct,
+    assertEquals(projection.query.get.offeredOptions.map(_.kind).distinct,
       Vector("favor-bank"))
-    assertEquals(projection.query.get.options.size, Suit.all.size)
+    assertEquals(projection.query.get.offeredOptions.size, Suit.all.size)
     assertEquals(other(parked), None)
 
   test("Fae Merchant names both eligible relics to its owner, including the facedown one just taken"):
@@ -48,7 +48,8 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(fae)).toOption.get.state)
     val projection = owner(parked).get
     assertEquals(projection.decisionId, FaeMerchant.decisionId)
-    assertEquals(projection.query.get.options.map(_.id), Vector(held.value,
-      top.value))
-    assert(projection.query.get.options.forall(_.card.exists(!_.hidden)))
+    assertEquals(projection.query.get.offeredOptions.map(_.id),
+      Vector(held.value, top.value))
+    assert(projection.query.get.offeredOptions
+      .forall(_.card.exists(!_.hidden)))
     assertEquals(other(parked), None)

@@ -497,11 +497,11 @@ class ServerModeUiSuite extends FunSuite:
     * assembled by generic code -- nothing below states Forge's printed
     * cost, and nothing names a resource.
     */
-  private val forgeQuery = DecisionQueryState("partition",
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+  private val forgeQuery = DecisionQueryState.Partition(
     Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
-      DecisionSectionState("pay-secret", "Pay Secret", 1)))
+      DecisionSectionState("pay-secret", "Pay Secret", 1)),
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")))
 
   private val forgeParked = WalkerDecisionState("forge", "forge-9", "decide",
     query = Some(forgeQuery))
@@ -573,7 +573,7 @@ class ServerModeUiSuite extends FunSuite:
     // option could not be presented: neither is an answerable partition.
     assertEquals(WalkerPartitionDraft.reconcile(None, context, Some(
       WalkerDecisionState("recover", "recover.choice", "decide",
-        query = Some(DecisionQueryState("choose-one", Vector(
+        query = Some(DecisionQueryState.ChooseOne(Vector(
           DecisionOptionState("button", "stop", "Stop"))))))), None)
     assertEquals(WalkerPartitionDraft.reconcile(None, context,
       Some(forgeParked.copy(query = None))), None)
@@ -645,8 +645,8 @@ class ServerModeUiSuite extends FunSuite:
       "sharing its \"decide\" kind"):
     val continueOption = DecisionOptionState("button", "continue", "Continue")
     val stopOption = DecisionOptionState("button", "stop", "Stop")
-    val choiceQuery = DecisionQueryState("choose-one",
-      Vector(continueOption, stopOption), heading = Some("Recover"))
+    val choiceQuery = DecisionQueryState.ChooseOne(
+      Vector(continueOption, stopOption), Some("Recover"))
     val choice = WalkerDecisionState("recover", "recover.choice", "decide",
       query = Some(choiceQuery))
     assertEquals(
@@ -663,7 +663,7 @@ class ServerModeUiSuite extends FunSuite:
       Some(CardDetails("relic-1", "relic", "Bronze Idol")))
     val silver = DecisionOptionState("relic", "relic-2", "Silver Idol",
       Some(CardDetails("relic-2", "relic", "Silver Idol")))
-    val relicQuery = DecisionQueryState("choose-one", Vector(bronze, silver),
+    val relicQuery = DecisionQueryState.ChooseOne(Vector(bronze, silver),
       heading = Some("Take a relic"))
     val relic = WalkerDecisionState("recover", "recover.relic", "decide",
       query = Some(relicQuery))
@@ -829,7 +829,7 @@ class ServerModeUiSuite extends FunSuite:
     */
   test("a parked walker decision's owner sees its heading, not the debug fallback"):
     val site = DecisionOptionState("site", "site:ancient-city", "Ancient City")
-    val pawnQuery = DecisionQueryState("choose-one", Vector(site),
+    val pawnQuery = DecisionQueryState.ChooseOne(Vector(site),
       heading = Some("Choose your starting site"))
     val pawnDecision = WalkerDecisionState("setup", "setup.pawn-placement.blue-exile",
       "decide", query = Some(pawnQuery))
@@ -847,7 +847,7 @@ class ServerModeUiSuite extends FunSuite:
 
   test("a parked walker decision without a heading still avoids the debug fallback"):
     val vote = DecisionOptionState("button", "yes", "Yes")
-    val query = DecisionQueryState("choose-one", Vector(vote))
+    val query = DecisionQueryState.ChooseOne(Vector(vote))
     val decision = WalkerDecisionState("setup", "setup.some-decision.blue-exile",
       "decide", query = Some(query))
     val value = projection(
@@ -1024,13 +1024,14 @@ class ServerModeUiSuite extends FunSuite:
     )
 
   test("a choose-one decision outside Recover is answered from its projected options"):
+    val query = DecisionQueryState.ChooseOne(Vector(
+      DecisionOptionState("player", "blue", "blue"),
+      DecisionOptionState("player", "yellow", "yellow")),
+      heading = Some("Choose the Oathkeeper"))
     val decision = WalkerDecisionState("oathkeeper", "oathkeeper.recipient",
-      "decide", query = Some(DecisionQueryState("choose-one", Vector(
-        DecisionOptionState("player", "blue", "blue"),
-        DecisionOptionState("player", "yellow", "yellow")),
-        heading = Some("Choose the Oathkeeper"))))
+      "decide", query = Some(query))
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(decision,
-      decision.query.get.options(1)),
+      query.options(1)),
       GameCommand.ResolveWalker("red", "oathkeeper.recipient",
         DecisionAnswerWire.ChooseOneWire("player", "yellow")))
   test("selection actions map only authorized single target shapes to commands"):

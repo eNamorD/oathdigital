@@ -52,14 +52,14 @@ class CardChoicePanelSuite extends munit.FunSuite:
     assertEquals(faces(panel), Vector("Old Oak"))
     assertEquals(all(panel, ".facedown-adviser-choice"), Vector.empty)
 
-  private val relicQuery = DecisionQueryState("choose-one",
+  private val relicQuery = DecisionQueryState.ChooseOne(
     Vector(DecisionOptionState("relic", "relic:crown", "Ancient Crown",
       card = Some(CardDetails("relic:crown", "relic", "Ancient Crown",
         orientation = Some("face-down"), defense = Some(2)))),
       DecisionOptionState("relic", "relic:horn", "Brass Horn",
         card = Some(CardDetails("relic:horn", "relic", "Brass Horn",
           orientation = Some("face-down"), defense = Some(1))))),
-    Vector.empty, heading = Some("Take a relic"))
+    heading = Some("Take a relic"))
 
   private val relicPark: Surface.Recover = Surface.Recover(WalkerDecisionState("recover",
     ParkedDecision.recoverRelicDecisionId, "decide",

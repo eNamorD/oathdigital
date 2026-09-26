@@ -104,11 +104,11 @@ class PartitionDecisionStateSuite extends munit.FunSuite:
   /** The walker half: a parked partition decision adapted into the same
     * interaction, answered generically.
     */
-  private val query = DecisionQueryState("partition",
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+  private val query = DecisionQueryState.Partition(
     Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
-      DecisionSectionState("pay-secret", "Pay Secret", 1)))
+      DecisionSectionState("pay-secret", "Pay Secret", 1)),
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")))
   private val parked =
     WalkerDecisionState("forge", "forge-9", "decide", query = Some(query))
   private val context = BoardSelectionContext("game", "red", 9)

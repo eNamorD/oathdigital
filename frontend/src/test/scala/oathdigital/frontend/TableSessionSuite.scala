@@ -72,8 +72,10 @@ class TableSessionSuite extends munit.FunSuite:
   private final class RecordingNavigation extends Navigation:
     var shown = Vector.empty[(String, String)]
     var startedOver = 0
+    var reloads = 0
     def showSession(gameId: String, playerId: String): Unit = shown :+= (gameId -> playerId)
     def startOver(): Unit = startedOver += 1
+    def reload(): Unit = reloads += 1
 
   private final class Fixture(trusted: Boolean, player: String = "red"):
     val client = new FakeClient
@@ -220,6 +222,70 @@ class TableSessionSuite extends munit.FunSuite:
         assertEquals(fixture.redraws, before + 1)
         assert(fixture.clock.pending)
       }
+    }
+
+  /** Spec, "An unparseable form": the failure moves from a blank pane to a
+    * stopped session with the last good position still on screen.
+    */
+  test("an unsupported projection stops polling, keeps the position and asks for a reload"):
+    displayed(2).flatMap { fixture =>
+      fixture.clock.fire()
+      val unsupported = GameClientFailure.UnsupportedProjection(
+        "$.walkerDecision.query.form", "unknown decision form 'choose-two'")
+      fixture.client.answerLoad(Left(unsupported))
+      settle().map { _ =>
+        assertEquals(fixture.session.viewedProjection.map(_.nextSequence), Some(2L))
+        assertEquals(fixture.session.shownFailure, Some(unsupported))
+        assert(fixture.session.clientOutOfDate)
+        assert(!fixture.clock.pending)
+      }
+    }
+
+  /** The regression the derived flag prevents: an unsupported projection
+    * leaves the session Connected, so a control on the retained position is
+    * still live. A submit the server accepts can carry the table past the
+    * park this build could not parse, and a LATCHED flag would then have
+    * labelled the next unrelated failure a stale bundle.
+    */
+  test("recovering past the unparseable park clears the out-of-date notice"):
+    displayed(2).flatMap { fixture =>
+      fixture.clock.fire()
+      fixture.client.answerLoad(Left(GameClientFailure.UnsupportedProjection(
+        "$.walkerDecision.query.form", "unknown decision form 'choose-two'")))
+      settle().flatMap { _ =>
+        assert(fixture.session.clientOutOfDate)
+        fixture.session.reconnectSession()
+        fixture.client.answerLoad(Right(snapshot(3)))
+        settle()
+      }.flatMap { _ =>
+        assert(!fixture.session.clientOutOfDate)
+        assertEquals(fixture.session.shownFailure, None)
+        fixture.clock.fire()
+        fixture.client.answerLoad(Left(
+          GameClientFailure.HttpFailure(500, "internal", "boom")))
+        settle()
+      }.map { _ =>
+        assert(!fixture.session.clientOutOfDate)
+        assertEquals(fixture.session.shownFailure.map(_.message),
+          Some("HTTP 500 internal: boom"))
+      }
+    }
+
+  test("an ordinary decode failure keeps polling and asks for no reload"):
+    displayed(2).flatMap { fixture =>
+      fixture.clock.fire()
+      fixture.client.answerLoad(Left(
+        GameClientFailure.DecodeFailure("$.phase", "expected string")))
+      settle().map { _ =>
+        assert(!fixture.session.clientOutOfDate)
+        assert(fixture.clock.pending)
+      }
+    }
+
+  test("reload leaves the page to the browser"):
+    displayed(2).map { fixture =>
+      fixture.session.reloadClient()
+      assertEquals(fixture.navigation.reloads, 1)
     }
 
   test("a transient poll failure disconnects and stops polling"):

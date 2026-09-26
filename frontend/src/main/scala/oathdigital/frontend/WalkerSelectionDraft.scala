@@ -17,10 +17,10 @@ private[frontend] sealed trait WalkerSelectionDraft:
 
 private[frontend] final case class WalkerChooseManyDraft(
     context: BoardSelectionContext, decisionId: String,
-    query: DecisionQueryState, selected: Vector[String])
+    query: DecisionQueryState.ChooseMany, selected: Vector[String])
     extends WalkerSelectionDraft:
-  private def minimum: Int = query.minimum.getOrElse(0)
-  private def maximum: Int = query.maximum.getOrElse(0)
+  private def minimum: Int = query.minOptions
+  private def maximum: Int = query.maxOptions
 
   /** Adds an unselected option while fewer than `maximum` are selected, and
     * removes a selected one; adding past the maximum changes nothing.
@@ -42,9 +42,10 @@ private[frontend] final case class WalkerChooseManyDraft(
 
 private[frontend] final case class WalkerAmountDraft(
     context: BoardSelectionContext, decisionId: String,
-    query: DecisionQueryState, amount: Int) extends WalkerSelectionDraft:
-  private def minimum: Int = query.minimum.getOrElse(0)
-  private def maximum: Int = query.maximum.getOrElse(0)
+    query: DecisionQueryState.ChooseAmount, amount: Int)
+    extends WalkerSelectionDraft:
+  private def minimum: Int = query.minAmount
+  private def maximum: Int = query.maxAmount
 
   def choose(value: Int): WalkerAmountDraft =
     copy(amount = math.max(minimum, math.min(maximum, value)))
@@ -63,23 +64,27 @@ private[frontend] object WalkerSelectionDraft:
   def reconcile(previous: Option[WalkerSelectionDraft],
       context: BoardSelectionContext, decision: Option[WalkerDecisionState])
       : Option[WalkerSelectionDraft] =
-    decision.flatMap(parked => parked.query
-        .filter(query => query.form == "choose-many" ||
-          query.form == "choose-amount")
-        .map(parked.decisionId -> _))
-      .map { case (decisionId, query) =>
-        previous.filter(draft => draft.context == context &&
-            draft.decisionId == decisionId && draft.query == query)
-          .getOrElse(
-            if query.form == "choose-many" then
-              WalkerChooseManyDraft(context, decisionId, query, Vector.empty)
-            else {
-              // Where the question says to open, clamped to its own range so
-              // a suggestion can never seed an illegal amount.
-              val least = query.minimum.getOrElse(0)
-              val most = query.maximum.getOrElse(least)
-              WalkerAmountDraft(context, decisionId, query,
-                query.suggested.fold(least)(value =>
-                  math.max(least, math.min(most, value))))
-            })
-      }
+    // The annotation is load-bearing: without it the two arms below infer
+    // their least upper bound, `DecisionQueryState`, and the union that makes
+    // the draft constructors typecheck is lost.
+    val asked: Option[(String, ParkedDecision.SelectionForm)] =
+      decision.flatMap(parked => parked.query match
+        case Some(many: DecisionQueryState.ChooseMany) =>
+          Some(parked.decisionId -> many)
+        case Some(amount: DecisionQueryState.ChooseAmount) =>
+          Some(parked.decisionId -> amount)
+        case _ => None)
+    asked.map { case (decisionId, query) =>
+      previous.filter(draft => draft.context == context &&
+          draft.decisionId == decisionId && draft.query == query)
+        .getOrElse(query match
+          case many: DecisionQueryState.ChooseMany =>
+            WalkerChooseManyDraft(context, decisionId, many, Vector.empty)
+          case amount: DecisionQueryState.ChooseAmount =>
+            // Where the question says to open, clamped to its own range so a
+            // suggestion can never seed an illegal amount.
+            WalkerAmountDraft(context, decisionId, amount,
+              amount.suggested.fold(amount.minAmount)(value =>
+                math.max(amount.minAmount,
+                  math.min(amount.maxAmount, value)))))
+    }
