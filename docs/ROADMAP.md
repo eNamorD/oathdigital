@@ -8,30 +8,15 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase — Randomized setup for alpha** is active. Phase 3's first batch (30
-denizens, 12 edifice faces, 15 relics, the Wandering Flame phase power and the
-Mob card play modifier) is complete and merged. All five slices (0
-foundations, 1a-1d When Played/ACTION/WAKE powers, 2
-modifiers/restrictions/triggers, 3 battle plans, 4 banner faces) are
-implemented. The rest of the denizen/relic/edifice catalog is not needed for
-the alpha and stays future work (tracked generally under **L6** below).
+**Phase - Player-facing action history** is active: Game Log slice 3, the
+reading aids, is in progress. **Phase - Catalog batch 2** is next.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
 
-### Phase - Randomized setup for alpha
-
-Done. Every game starts with sites randomized, each Homeland seeded with its
-suit's edifice card (preferring an implemented one), and the top 30 world-deck
-cards drawn from implemented denizens. Setup is a pure function of a Chronicle
-(shaped like the TTS export format) plus recorded shuffle orders, and runs on
-the walker, with a generator producing a random first-game Chronicle, built in
-three slices: Chronicle model/generator/port, setup on the walker, and the
-E02/E06/E22 powers. All six batch-1 edifice faces now work; only the WHEN
-EXPLORED windows they declared stay inert until an explore procedure exists to
-fire them.
+### Setup deferred items
 
 - [ ] **Deferred: derive the lineage from the color on the server.** The color
   is always associated with a lineage, but the trusted creation request still
@@ -51,12 +36,9 @@ fire them.
 
 ### Phase 5 - All-Exile alpha readiness
 
-The distribution and runtime foundation, trusted-alpha seat access, the alpha
-data policy, and a two-machine LAN and HTTPS acceptance run of the local
-`0.1.0-alpha.1` build are done. The run's
-[record](testing/alpha-acceptance-0.1.0-alpha.1.md) passed with one NGINX
-log-redaction mitigation and a throwaway local CA. What remains is release
-operations. Deferred findings and requested UI changes are in the
+What remains is release operations. The last acceptance run is
+[recorded](testing/alpha-acceptance-0.1.0-alpha.1.md). Deferred findings and
+requested UI changes are in the
 [Phase 5 follow-ups](operations/phase-5-follow-ups.md).
 
 1. [ ] Complete release operations: publish multi-architecture Linux OCI images
@@ -82,20 +64,8 @@ events into one player action, preserve stable sequence references for replay,
 color player labels, and distinguish major actions, minor actions, decisions,
 resource changes, rolls, and victory checks. Produce public and player-scoped
 projections so hidden draws, facedown identities, and private choices are never
-leaked. Keep the raw loopback development event log separate.
-
-Slice 1 is done (2026-09-26). The Log pane shows round, turn and victory
-headlines, a start line with modifiers and Supply cost for every action that
-can take modifiers, and one action line per action, formatted per seat from
-the scanned journal and served on both seat routes. The design is
+leaked. Keep the raw loopback development event log separate. The design is
 [the Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
-
-Slice 2 is done (2026-09-26). Knowledge of a card now follows it when it
-moves, for the board as well as the log. The log tells decisions, rolls
-drawn as dice, resource and card changes, minor actions, state-based
-triggers, Setup, a Negotiation's settlement and a Campaign's full account,
-and the campaign result panel has left the Actions pane. Golden logs pin
-every test script for two seats.
 
 - [ ] **Slice 3: reading aids.** The overlay, the divider, the New chip and
   the sticky headline.
@@ -108,6 +78,14 @@ every test script for two seats.
   an action logs a generic "Used {card}". Each power could instead declare
   the line it contributes where it takes effect, with the generic line kept
   only as a fallback. Recorded in the Game Log design of 2026-09-26.
+
+### Phase - Catalog batch 2
+
+Implement the next set of denizens and relics. The first batch covered 30 of
+255 denizens and 15 of 48 relics. Choose cards whose powers need no Empire,
+Chronicle or explore machinery, so they fit the all-Exile game. The slice's
+own spec sets the card count and selection. As cards become implemented,
+the setup generator draws more of them into the world deck.
 
 ### Powers-related deferred items
 
@@ -258,7 +236,8 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   phase)
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
-  in the phased sequence above)
+  in the phased sequence above; the next denizens and relics are
+  **Phase - Catalog batch 2**)
 - [ ] **L7 — Incremental synchronization transport**
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
@@ -268,7 +247,8 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   read at runtime and validated against its schema. Move denizens, relics,
   edifices, legacies, and sites into typed Scala objects (or a compile-time
   generated loader) so suit, restrictions, and modifiers are looked up as
-  fields instead of string-keyed JSON traversal.
+  fields instead of string-keyed JSON traversal. The catalog already indexes
+  components by ID and by the powers they print.
 
 ## Standing rules
 
