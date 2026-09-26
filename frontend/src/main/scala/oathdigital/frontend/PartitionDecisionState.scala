@@ -179,6 +179,13 @@ private[frontend] final case class WalkerPartitionDraft(
   def shift(item: String, delta: Int): WalkerPartitionDraft =
     copy(partition = partition.shift(item, delta))
 
+  /** Moves one item to the end of the section holding it: the last of a
+    * leftover section is the top of the pile it becomes.
+    */
+  def putLast(item: String): WalkerPartitionDraft =
+    partition.sectionOf(item).fold(this)(key =>
+      copy(partition = partition.placeBefore(item, key, None)))
+
   /** Where an item sits in its own section, and how long that section is --
     * what a reorder control needs to know whether it can still move.
     */

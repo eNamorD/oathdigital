@@ -122,15 +122,46 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
       Some(WalkerDecisionState("setup", "setup-1", "decide",
         query = Some(keepDiscard))))
 
-  private def pickPanel(draft: Option[WalkerPartitionDraft]): dom.Element =
-    render(view(), draft,
+  private def pickPanel(ui: RecordingControls,
+      draft: Option[WalkerPartitionDraft]): dom.Element =
+    render(ui, draft,
       decision = WalkerDecisionState("setup", "setup-1", "decide",
         query = Some(keepDiscard)))
+
+  private def pickPanel(draft: Option[WalkerPartitionDraft]): dom.Element =
+    pickPanel(view(), draft)
 
   test("a leftover zone holding several options says its order counts"):
     val zone = one(pickPanel(picking()), """[data-section-key="discard"]""")
     assertEquals(one(zone, ".decision-zone-order").textContent,
-      "Discard happens in the order shown.")
+      "The last one lands on top of the pile.")
+
+  /** The keep-one shape reads like the rulebook's own sentence, and its
+    * minimums are not worth a line: the slot always holds its one and the
+    * rest has none. Forge, with a minimum to meet in each zone, keeps both.
+    */
+  test("a keep-one partition says keep one, discard the rest, without minimum lines"):
+    val panel = pickPanel(picking())
+    assertEquals(one(panel, ".partition-instruction").textContent,
+      "Keep one; discard the rest.")
+    assertEquals(all(panel, ".decision-zone-helper"), Vector.empty)
+    assertEquals(WalkerPanelSupport.keepOne(query), None)
+
+  /** Pressing Keep on a discard card swaps it with the kept one, so the kept
+    * card's own Discard button would only say the same thing backwards.
+    */
+  test("the kept card has no mover; the discard cards keep theirs"):
+    val ui = view()
+    val panel = pickPanel(ui, picking())
+    assertEquals(all(panel,
+      """[data-option-id="denizen:denizen:1"] .move-option"""), Vector.empty)
+    val keep = one(panel, """[data-option-id="denizen:denizen:2"] .move-option""")
+    assertEquals(keep.textContent, "Keep")
+    click(keep)
+    val swapped = pickPanel(ui, ui.drafts.partition)
+    assertEquals(optionLabelsIn(swapped, "keep"), Vector("Denizen 2"))
+    assertEquals(optionLabelsIn(swapped, "discard"),
+      Vector("Denizen 1", "Denizen 3"))
 
   test("the capped zone says nothing about order"):
     assertEquals(all(one(pickPanel(picking()),
@@ -183,38 +214,46 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(optionLabelsIn(moved, "pay-secret"),
       Vector("Denizen 3", "Denizen 1"))
 
-  /** Order inside a zone is an answer, not a display detail: a discard zone
-    * is discarded in the order it is left in.
+  /** Order inside a leftover zone is an answer, not a display detail: the
+    * engine stacks the discards in the order they are left in, so the last
+    * one is the pile's top. The one control is the one position a player
+    * acts on; any full order is a few of them pressed in turn.
     */
-  test("the reorder buttons slide an option within its zone"):
+  test("put on top moves a discard to the end of its zone"):
     val ui = view()
-    val draft = opened()
-    val later = one(render(ui, draft),
-      """[data-option-id="denizen:denizen:1"] .move-later""")
-    assertEquals(later.getAttribute("aria-label"),
-      "Move Denizen 1 later in Pay Favor")
-    click(later)
-    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
-      Vector("Denizen 2", "Denizen 1"))
-    click(one(render(ui, ui.drafts.partition),
-      """[data-option-id="denizen:denizen:1"] .move-earlier"""))
-    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
-      Vector("Denizen 1", "Denizen 2"))
+    val top = one(pickPanel(ui, picking()),
+      """[data-option-id="denizen:denizen:2"] .put-on-top""")
+    assertEquals(top.textContent, "Put on top")
+    assertEquals(top.getAttribute("aria-label"),
+      "Discard Denizen 2 last, so it lands on top of the pile")
+    click(top)
+    assertEquals(optionLabelsIn(pickPanel(ui, ui.drafts.partition), "discard"),
+      Vector("Denizen 3", "Denizen 2"))
+    // And back, by pressing the other one.
+    click(one(pickPanel(ui, ui.drafts.partition),
+      """[data-option-id="denizen:denizen:3"] .put-on-top"""))
+    assertEquals(optionLabelsIn(pickPanel(ui, ui.drafts.partition), "discard"),
+      Vector("Denizen 2", "Denizen 3"))
 
-  /** Disabled rather than absent, so moving an option never reflows the row
-    * out from under the pointer that is working it.
+  /** A pill of the button's height rather than nothing, so working the row
+    * never reflows it out from under the pointer. Nothing about order is
+    * drawn where order is not an answer: the capped zone and every Forge
+    * zone.
     */
-  test("an option at the end of its zone keeps a disabled reorder button"):
-    val panel = render(view(), opened())
-    def enabled(id: String, cls: String): Boolean = !one(panel,
-      s"""[data-option-id="$id"] .$cls""").asInstanceOf[dom.html.Button].disabled
-    assert(!enabled("denizen:denizen:1", "move-earlier"))
-    assert(enabled("denizen:denizen:1", "move-later"))
-    assert(enabled("denizen:denizen:2", "move-earlier"))
-    assert(!enabled("denizen:denizen:2", "move-later"))
-    // The only option in its zone can go neither way.
-    assert(!enabled("denizen:denizen:3", "move-earlier"))
-    assert(!enabled("denizen:denizen:3", "move-later"))
+  test("the card already on top wears the Top pill, not a button"):
+    val panel = pickPanel(picking())
+    val last = one(panel, """[data-option-id="denizen:denizen:3"]""")
+    assertEquals(one(last, ".option-top").textContent, "Top")
+    assertEquals(all(last, ".put-on-top"), Vector.empty)
+    val kept = one(panel, """[data-option-id="denizen:denizen:1"]""")
+    assertEquals(all(kept, ".option-top, .put-on-top"), Vector.empty)
+    assertEquals(all(render(view(), opened()), ".option-top, .put-on-top"),
+      Vector.empty)
+
+  test("the confirm button sits in its own footer strip"):
+    val panel = pickPanel(picking())
+    assertEquals(confirm(panel).parentNode.asInstanceOf[dom.Element]
+      .getAttribute("class"), "partition-footer")
 
   test("dropping an option on another places it before that one"):
     val ui = view()

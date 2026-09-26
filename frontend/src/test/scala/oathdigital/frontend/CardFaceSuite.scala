@@ -47,6 +47,33 @@ class CardFaceSuite extends munit.FunSuite:
     assert(!node.textContent.contains("Suit:"), node.textContent)
     assert(!node.textContent.contains("Favor:"), node.textContent)
 
+  test("a face carries its initials for the zoomed-out map, out of the accessible name"):
+    val node = CardFace.render(faceUp)
+    val short = one(node, ".card-name-short")
+    assertEquals(short.map(_.textContent), Some("OO"))
+    assertEquals(short.flatMap(s => Option(s.getAttribute("aria-hidden"))), Some("true"))
+    assertEquals(node.getAttribute("aria-label"), "Old Oak")
+    assertEquals(node.getAttribute("title"), "Old Oak")
+    assert(!CardFace.render(hidden).hasAttribute("title"))
+    assertEquals(one(CardFace.render(hidden), ".card-name-short"), None)
+
+  test("initials take each word's first character as written, or a lone word's first two"):
+    assertEquals(CardFace.initials("Rotting Fortress"), "RF")
+    assertEquals(CardFace.initials("Master of Disguise"), "MoD")
+    assertEquals(CardFace.initials("Quartermaster"), "Qu")
+    assertEquals(CardFace.initials("Well-Fed Elders"), "WFE")
+    assertEquals(CardFace.initials(""), "")
+
+  test("a card is classed by every fit bucket its longest word clears"):
+    assertEquals(CardFace.nameFitClasses("Elders"),
+      Vector("name-fits-6", "name-fits-8", "name-fits-10", "name-fits-12"))
+    assertEquals(CardFace.nameFitClasses("Rotting Fortress"),
+      Vector("name-fits-8", "name-fits-10", "name-fits-12"))
+    assertEquals(CardFace.nameFitClasses("Quartermaster"), Vector.empty)
+    val node = CardFace.render(faceUp)
+    assert(node.classList.contains("name-fits-6"), node.className)
+    assert(!CardFace.render(hidden).className.contains("name-fits"))
+
   test("rules text never reaches the face"):
     assert(!CardFace.render(faceUp).textContent.contains("ACTION"))
     assert(!CardFace.render(knowable).textContent.contains("Rule"))
@@ -89,8 +116,10 @@ class CardFaceSuite extends munit.FunSuite:
     assertEquals(glyph.getAttribute("aria-label"), "order suit")
     assertEquals(glyph.getAttribute("class"), "token-glyph token-suit-order")
     assertEquals(header.firstChild, glyph)
-    assertEquals(header.lastChild.asInstanceOf[dom.Element].getAttribute("class"),
+    assertEquals(header.childNodes(1).asInstanceOf[dom.Element].getAttribute("class"),
       "card-name")
+    assertEquals(header.lastChild.asInstanceOf[dom.Element].getAttribute("class"),
+      "card-name-short")
     assertEquals(all(node, ".card-suit"), Vector.empty)
     assert(!node.textContent.contains("order"), node.textContent)
 
@@ -98,7 +127,8 @@ class CardFaceSuite extends munit.FunSuite:
     val header = one(CardFace.render(knowable.copy(orientation = Some("face-up"),
       defense = None)), ".card-header").getOrElse(fail("no card header"))
     assertEquals(all(header, ".token-glyph"), Vector.empty)
-    assertEquals(header.textContent, "Ancient Crown")
+    assertEquals(one(header, ".card-name").map(_.textContent), Some("Ancient Crown"))
+    assertEquals(header.firstChild, one(header, ".card-name").orNull)
 
   /** The dice ride the header's right end, so a name that wraps is laid out
     * beside them rather than under them.

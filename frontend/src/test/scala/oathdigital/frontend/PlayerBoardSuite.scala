@@ -64,7 +64,9 @@ class PlayerBoardSuite extends munit.FunSuite:
             orientation = Some("face-up")))))),
       "red")
     assertEquals(all(node, ".board-cards").size, 1)
-    assertEquals(all(node, ".board-cards .card-face").map(_.getAttribute("class")),
+    // The fit classes belong to the map's zoom, not to the box.
+    assertEquals(all(node, ".board-cards .card-face").map(_.getAttribute("class")
+        .split(" ").filterNot(_.startsWith("name-fits-")).mkString(" ")),
       Vector("card-face card-face-denizen", "card-face card-face-relic"))
     assertEquals(all(node, ".board-cards strong"), Vector.empty)
     assertEquals(one(node, ".board-cards").map(_.getAttribute("aria-label")),

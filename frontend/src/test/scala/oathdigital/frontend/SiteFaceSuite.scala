@@ -15,6 +15,13 @@ class SiteFaceSuite extends munit.FunSuite:
   private def glyphs(node: dom.Element, selector: String): Vector[String] =
     all(node, s"$selector .token-glyph").map(_.getAttribute("aria-label"))
 
+  /** The box classes of a row's cards, without the `name-fits-N` classes the
+    * map's zoom reads: those belong to the name, not to the box.
+    */
+  private def boxClasses(row: dom.Element): Vector[String] =
+    all(row, ".card-face").map(_.getAttribute("class").split(" ")
+      .filterNot(_.startsWith("name-fits-")).mkString(" "))
+
   private def denizen(id: String, name: String, suit: String): GameSiteCard =
     GameSiteCard(id, name, Some(CardDetails(id, "denizen", name,
       suit = Some(suit), orientation = Some("face-up"))))
@@ -47,7 +54,7 @@ class SiteFaceSuite extends munit.FunSuite:
       relicCapacity = 1, denizens = Vector(denizen("denizen:fox", "Fox", "beast")),
       relics = GameSiteRelics(1))), ".site-cards")
       .getOrElse(fail("no site card row"))
-    assertEquals(all(row, ".card-face").map(_.getAttribute("class")), Vector(
+    assertEquals(boxClasses(row), Vector(
       "card-face card-face-denizen",
       "card-face card-face-denizen card-slot-empty",
       "card-face card-face-relic card-face-down"))
@@ -69,7 +76,7 @@ class SiteFaceSuite extends munit.FunSuite:
   test("a relic in a slot leaves the rest of the relic slots drawn"):
     val row = one(ServerUiSupport.siteDetails(mine), ".site-cards")
       .getOrElse(fail("no site card row"))
-    assertEquals(all(row, ".card-face").map(_.getAttribute("class")), Vector(
+    assertEquals(boxClasses(row), Vector(
       "card-face card-face-denizen",
       "card-face card-face-relic card-face-down",
       "card-face card-face-relic card-face-down"))

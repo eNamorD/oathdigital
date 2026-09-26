@@ -47,16 +47,30 @@ class MapViewStateSuite extends FunSuite:
     val hidden = MapViewState().resize(MapBounds(0, 0, 0, 0))
     assert(hidden.scale > 0 && !hidden.scale.isInfinity && !hidden.scale.isNaN)
 
-  test("map cards drop to name only below 0.6 scale and not at or above it"):
-    // Measured working scales: fit-to-screen lands at 0.4524 and 0.5655,
-    // comfortable reading at 0.71. Below 0.6 the token and suit lines are
-    // noise while a name is still legible and is what a player scans for.
+  test("map cards go compact where their name would fall under 11px on screen"):
+    // Measured fit-to-screen scales: 0.36 at 1024x768 and 0.43 at 1440x900.
+    // The name at rest is 15.2px in map space, so 0.72 is where it holds
+    // 11px; at and above that the ordinary face reads.
+    assert(GameTableShell.compactAtScale(0.36))
     assert(GameTableShell.compactAtScale(0.4524))
-    assert(GameTableShell.compactAtScale(0.5655))
-    assert(GameTableShell.compactAtScale(0.5999))
-    assert(!GameTableShell.compactAtScale(0.6))
-    assert(!GameTableShell.compactAtScale(0.71))
+    assert(GameTableShell.compactAtScale(0.71))
+    assert(!GameTableShell.compactAtScale(0.7237))
+    assert(!GameTableShell.compactAtScale(0.8))
     assert(!GameTableShell.compactAtScale(1.0))
+
+  test("the fit bucket is the longest word one line of floor-sized text holds"):
+    // A card is 137.6px wide in map space, so on screen it is 49.5px at
+    // 0.36 and 59px at 0.43; less the padding, that is 6.9 and 8.4
+    // characters of 11px bold Inter.
+    assertEquals(GameTableShell.nameFit(0.36), Some(6))
+    assertEquals(GameTableShell.nameFit(0.43), Some(8))
+    assertEquals(GameTableShell.nameFit(0.53), Some(10))
+    assertEquals(GameTableShell.nameFit(0.62), Some(12))
+    assertEquals(GameTableShell.nameFit(0.71), Some(12))
+    assertEquals(GameTableShell.nameFit(0.2), Some(0))
+    assertEquals(GameTableShell.nameFit(0.8), None)
+    assertEquals(GameTableShell.fitClasses,
+      Vector("map-fit-0", "map-fit-6", "map-fit-8", "map-fit-10", "map-fit-12"))
 
   test("zoom at an anchor keeps the world point under the anchor fixed"):
     val fitted = MapViewState().resize(bounds)

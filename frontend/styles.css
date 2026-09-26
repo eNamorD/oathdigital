@@ -405,21 +405,36 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .partition-zone > h3 { margin: 0; }
 .partition-zone > .decision-zone-helper { margin: 0.1em 0 0; }
 .partition-zone > .decision-zone-order { margin: 0.35em 0 0; color: #a99f8c;
-  font-size: 0.82em; font-style: italic; }
+  font-size: 0.85em; font-style: italic; }
 .partition-zone > .partition-options { margin-top: auto; padding-top: 1.15em; }
 /* The card sets the option's width; a move button's label must not, or the
-   zone inherits the widest destination name as its own width. */
+   zone inherits the widest destination name as its own width. The step is
+   the smallest that keeps the card's name and its picker over 11px. */
 .partition-zone .decision-option { display: flex; flex-direction: column;
   align-items: center; gap: 4px; margin: 0; padding: 5px;
-  width: calc(var(--card-w) + 12px); font-size: 0.74em; }
-.partition-zone .move-option { min-height: 36px; width: 100%; margin: 0;
-  padding: 2px 4px; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; }
-.option-reorder { display: flex; width: 100%; gap: 4px; }
-.option-reorder button { flex: 1 1 0; min-height: 30px; margin: 0;
-  padding: 0; font-size: 0.85em; line-height: 1; }
-.option-reorder button:disabled { opacity: 0.35; cursor: default; }
+  width: calc(var(--card-w) + 12px); font-size: 0.84em; }
+.partition-zone .move-option, .partition-zone .put-on-top { min-height: 36px;
+  width: 100%; margin: 0; padding: 2px 4px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+/* The card already on top: a state, so a pill, at the button's height so
+   putting another card on top never reflows the row. */
+.option-top { display: inline-flex; align-items: center;
+  justify-content: center; min-height: 36px; width: 100%;
+  border: 1px solid #7c694b; border-radius: 999px; color: #a99f8c;
+  font-size: 0.85em; font-weight: 600; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
+/* The answer stays in view: the footer pins to the pane's bottom edge on
+   the pane's own fill while the zones scroll above it, and its negative
+   margins run it out to the pane's padding so nothing shows beneath. */
+.partition-footer { position: sticky; bottom: 0; margin: 12px -12px 0;
+  padding: 10px 12px 12px; border-top: 1px solid #443c30;
+  background: #211f1b; }
+/* A sticky box never leaves its containing block, so the pane's own bottom
+   padding would hold the footer 12px short of the edge: the footer carries
+   that padding instead. */
+.pane-actions > .pane-content:has(.partition-footer) { padding-bottom: 0; }
+.partition-footer .partition-confirm { display: block; width: 100%;
+  margin: 0; }
 /* One box per card type, in ex so a pane's font size scales every card in it
    together. Never overridden per pane: per-context size is font size alone. */
 :root { --card-w: 13ex; --card-h: calc(var(--card-w) * 1.4);
@@ -445,8 +460,13 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   gap: 0.25em; min-width: 0; }
 .card-header .token-glyph { flex: 0 0 auto; width: 1.2em; height: 1.2em;
   vertical-align: 0; }
-.card-name { min-width: 0; font-weight: 750; font-size: 0.95em;
-  overflow-wrap: anywhere; }
+/* The floor under the name and the restriction is a screen size: a card
+   scaled down by its pane's font size keeps its box in ex and its text no
+   smaller than 11.2px, which is what a name has to be to be read. */
+.card-name { min-width: 0; max-width: 100%; font-weight: 750;
+  font-size: max(0.95em, 0.7rem); overflow-wrap: anywhere; }
+/* The initials, for the zoomed-out map only; the name is the button's label. */
+.card-name-short { display: none; }
 .card-tokens { display: flex; align-items: center; gap: 0.15em;
   font-size: 0.8em; }
 .card-token-count { margin-right: 0.35em; font-weight: 700; }
@@ -454,8 +474,8 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
    beside the dice rather than under them. */
 .card-defense { display: flex; flex: 0 0 auto; align-items: flex-start;
   gap: 0.05em; margin-left: auto; font-size: 0.8em; }
-.card-restriction { margin-top: auto; font-size: 0.72em; color: #a99f8c;
-  text-transform: capitalize; }
+.card-restriction { margin-top: auto; font-size: max(0.72em, 0.7rem);
+  color: #a99f8c; text-transform: capitalize; }
 /* The footer sinks to the bottom with or without a restriction above it. */
 .card-unimplemented-badge { align-self: flex-start; margin-top: auto;
   padding: 0 0.35em;
@@ -600,9 +620,21 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .game-table .player-boards { display: flex; align-items: flex-start; gap: 6px;
   min-height: 100%; }
 .pane-players > .pane-content { padding: 6px; }
-.game-table .player-board { flex: 1 0 225px; min-width: 225px; margin: 0;
-  padding: 6px 12px; border: 0; border-right: 1px solid #4a4032;
-  border-radius: 0; font-size: .82rem; }
+/* Two columns: who they are and what they hold on the left, the cards on
+   the right. The card row sets the board's height, so the strip is never
+   taller than a card at the reading floor, and a fourth adviser or relic
+   runs sideways inside the board instead of wrapping into a second row the
+   strip has no room for. The strip itself scrolls sideways past four
+   boards at 1024px rather than growing downward. */
+.game-table .player-board { display: grid; flex: 1 0 300px; min-width: 300px;
+  margin: 0; padding: 6px 12px; border: 0; border-right: 1px solid #4a4032;
+  border-radius: 0; font-size: .82rem; column-gap: 12px; align-items: start;
+  grid-template-columns: minmax(8.5rem, 10rem) minmax(0, 1fr);
+  grid-template-rows: auto auto auto; }
+.game-table .player-board > * { grid-column: 1; }
+.game-table .player-board > .board-cards { grid-column: 2; grid-row: 1 / span 3;
+  margin: 0; padding-bottom: 3px; flex-wrap: nowrap; overflow-x: auto;
+  overflow-y: hidden; scrollbar-width: thin; }
 .game-table .player-board-active { outline: 1px dashed #c8b48b; outline-offset: -2px;
   background: #29251d; }
 .player-board h3 { font-size: 1rem; margin: 0 0 4px; }
@@ -641,9 +673,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .resource { display: inline-flex; align-items: baseline; gap: 0.15em;
   white-space: nowrap; }
 /* Cards on a board are read at a glance, not studied; the overlay is where
-   a card is studied. Font size is the only handle, so the box follows. */
-.player-board .board-cards { margin: 3px 0 0; align-items: flex-start;
-  font-size: 0.78em; }
+   a card is studied. Font size is the only handle, so the box follows; the
+   step is the smallest that keeps the name at the reading floor. */
+.player-board .board-cards { align-items: flex-start; font-size: 0.86em; }
 .game-table button, .development-panel button { cursor: pointer; }
 .map-controls { display: flex; align-items: center; gap: 5px; }
 .map-control, .dev-toggle, .dev-close { color: #e8d9bb; background: #302a20;
@@ -660,12 +692,68 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    inherited font-size change would compound with that invisibly. */
 .map-content { position: absolute; width: 1500px; padding: 20px;
   transform-origin: top left; font-size: 1rem; }
-/* Zoomed out, a card keeps what a player scans the board for: its resources
-   and the badge saying it does not work yet. Defense and restriction are
-   re-read on the inspect overlay, so they go. */
-.map-content.map-compact .card-face .card-defense,
-.map-content.map-compact .card-face .card-restriction {
-  display: none; }
+/* The glance layer. Below 0.72 the map's own text falls under 11px on
+   screen, so what a player scans the board for (region and site names,
+   pawns, tokens, defense, forces, card names) is set against the scale
+   instead: each clamp holds its text near one screen size while the board
+   keeps shrinking under it, the way a map's place names hold still while
+   the map zooms. The study layer (site powers and requirement, a card's
+   defense, restriction and badge) goes; a zoom or the overlay holds it.
+   Nothing here changes the height of the map: the site box is fixed and
+   clips, and the region title has a fixed line, so a Fit that lands near
+   the threshold cannot flip the class and re-fit forever. */
+/* The box re-grids: the name has the whole width to itself and the two
+   corners share the pawn row. At this size a name beside its tokens wraps,
+   and a second line is one the fixed box does not have. */
+.map-compact .site { display: grid; gap: 3px 6px; align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr); }
+.map-compact .site-heading { display: contents; }
+.map-compact .site-name { grid-column: 1 / -1; line-height: 1.1;
+  font-size: clamp(1.08rem, calc(12px / var(--map-scale, 1)), 3rem); }
+.map-compact .site-tokens { grid-row: 2; grid-column: 1; }
+.map-compact .site-pawns { grid-row: 2; grid-column: 2; margin: 0;
+  justify-content: center; }
+.map-compact .site-defense { grid-row: 2; grid-column: 3; }
+.map-compact .site-tokens, .map-compact .site-defense, .map-compact .site-pawns,
+.map-compact .site-details {
+  font-size: clamp(0.86rem, calc(11.6px / var(--map-scale, 1)), 3.2rem); }
+.map-compact .pawn { font-size: inherit; }
+.map-compact .site-details { grid-column: 1 / -1; align-self: stretch;
+  margin: 0; line-height: 1.15; }
+.map-compact .site > .board-target-control { grid-column: 1 / -1; margin: 0; }
+.map-compact .site-forces { margin-top: 4px; }
+.map-compact .site-footer { display: none; }
+/* Forces take a line the fixed box does not have at this size, so the
+   cards give it up. */
+.map-compact .site:has(.site-forces) {
+  --card-w: min(7.3rem, calc((100% - 2 * var(--card-gap)) / 3)); }
+/* The compact card face: the name in the middle, the suit in the corner.
+   The card inherits the counter-scaled size from the site, so its own em
+   rules hold the name at the floor without a clamp of their own. */
+.map-compact .site .card-face { padding: 0.25em; justify-content: center;
+  align-items: center; text-align: center; }
+.map-compact .card-header { display: contents; }
+.map-compact .card-header .token-glyph { position: absolute; top: 0.2em;
+  left: 0.2em; width: 1.05em; height: 1.05em; }
+.map-compact .card-tokens { justify-content: center; }
+.map-compact .card-face .card-defense, .map-compact .card-face .card-restriction,
+.map-compact .card-face .card-unimplemented-badge { display: none; }
+.map-compact .card-hover-summary { justify-content: center;
+  align-items: center; text-align: center; }
+/* A name shows whole where its longest word fits one line of floor-sized
+   text, which `GameTableShell.nameFit` turns into the map's one `map-fit-N`
+   class; every other card shows its initials, larger, since two or three
+   letters have the room. */
+.map-compact .card-name { display: none; }
+.map-compact .card-name-short { display: block; font-size: 1.5em;
+  font-weight: 800; letter-spacing: 0.02em; }
+.map-fit-6 .name-fits-6 .card-name, .map-fit-8 .name-fits-8 .card-name,
+.map-fit-10 .name-fits-10 .card-name, .map-fit-12 .name-fits-12 .card-name {
+  display: block; }
+.map-fit-6 .name-fits-6 .card-name-short, .map-fit-8 .name-fits-8 .card-name-short,
+.map-fit-10 .name-fits-10 .card-name-short,
+.map-fit-12 .name-fits-12 .card-name-short { display: none; }
 .map-content .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .map-content .sites { grid-template-columns: 1fr; }
 /* The board's three regions each have their own light, in board order:
@@ -676,10 +764,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-content .region:nth-child(2) { background: #1d3441; border-color: #3a5b6d; }
 .map-content .region:nth-child(3) { background: #46261a; border-color: #7a4a35; }
 /* The region's name is its title, set like the board's brushed lettering:
-   large, mixed case, and the brightest text on the map. */
-.map-content .region-label { margin: 0 0 10px; color: #fff2d6;
-  font-family: Georgia, serif; font-size: 1.6rem; font-weight: 800;
-  letter-spacing: 0.01em; text-transform: none; }
+   large, mixed case, and the brightest text on the map. Its line is a fixed
+   height so the counter-scaled size below never changes the map's height,
+   which the Fit scale is computed from. */
+.map-content .region-label { margin: 0 0 6px; height: 2.4rem;
+  line-height: 2.4rem; overflow: hidden; white-space: nowrap; color: #fff2d6;
+  font-family: Georgia, serif; font-weight: 800; letter-spacing: 0.01em;
+  text-transform: none;
+  font-size: clamp(1.6rem, calc(12.5px / var(--map-scale, 1)), 2.2rem); }
 .map-dragging, .map-dragging * { cursor: grabbing !important; user-select: none !important; }
 .pane-actions .pane-content { font-size: .9rem; }
 .pane-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
@@ -693,7 +785,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-actions :where(button:not(.card-face)) { min-height: 44px;
   padding: 8px 12px; border: 1px solid #bca780; border-radius: 7px;
   background: #282117; color: #fff; }
-.pane-actions :where(.move-option, .option-reorder button,
+.pane-actions :where(.move-option, .put-on-top,
     .distribute-decrement, .distribute-increment, .modifier-earlier,
     .modifier-later) { border-color: #7c694b; border-radius: 4px;
   background: #302a20; color: #e8d9bb; }

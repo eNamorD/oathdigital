@@ -33,11 +33,18 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
   private val zoomLabel = text("span", "zoom-label", "100%")
   private val mapView = new MapViewport(world.content, mapContent, scale => {
     zoomLabel.textContent = s"${math.round(scale * 100)}%"
+    // The stylesheet reads the scale to hold the glance layer (names, pawns,
+    // tokens) near one screen size while the board shrinks under it.
+    mapContent.style.setProperty("--map-scale", scale.toString)
     // Pure class toggle, no re-render: the face keeps every element and CSS
     // decides what is visible, so a degraded face-up card can never adopt the
     // face-down letter treatment.
-    if GameTableShell.compactAtScale(scale) then mapContent.classList.add("map-compact")
-    else mapContent.classList.remove("map-compact")
+    GameTableShell.fitClasses.foreach(mapContent.classList.remove)
+    GameTableShell.nameFit(scale) match
+      case Some(bucket) =>
+        mapContent.classList.add("map-compact")
+        mapContent.classList.add(s"map-fit-$bucket")
+      case None => mapContent.classList.remove("map-compact")
   })
   private val zoomControls = element("div", "map-controls")
   private val out = button("−", "map-control")
@@ -112,6 +119,33 @@ private[frontend] final class GameTableShell(mount: dom.Element, developmentTool
     dev.remove()
 
 private[frontend] object GameTableShell:
-  /** Below this the summary lines are noise at map scale; the name is not. */
-  private val CompactBelow = 0.6
+  /** Functional text holds 11px on screen (the design detector's floor). */
+  private val NameFloorPx = 11.0
+  /** A map card's name at rest is 0.95em of the map's 16px, 15.2px, which
+    * crosses the floor at 0.72. Below it the compact face takes over and the
+    * glance layer is set against the scale instead.
+    */
+  private val CompactBelow = NameFloorPx / 15.2
   def compactAtScale(scale: Double): Boolean = scale < CompactBelow
+
+  /** A map card is 8.6rem wide; the compact face pads it 0.25em of its
+    * floor-sized text on each side. Inter at 750 advances about 0.58em per
+    * character of a mixed-case name.
+    */
+  private val CardWidthPx = 8.6 * 16
+  private val CardPaddingScreenPx = 0.25 * NameFloorPx
+  private val AverageAdvanceEm = 0.58
+
+  /** The bucket of `CardFace.NameFitBuckets` in force at this scale: the
+    * longest word a card can show whole on one line of floor-sized text.
+    * `Some(0)` is a scale where no bucket fits and every card shows its
+    * initials; `None` is a scale that is not compact at all.
+    */
+  def nameFit(scale: Double): Option[Int] = Option.when(compactAtScale(scale)) {
+    val characters = (CardWidthPx * scale - 2 * CardPaddingScreenPx) /
+      (NameFloorPx * AverageAdvanceEm)
+    CardFace.NameFitBuckets.filter(_ <= characters).lastOption.getOrElse(0)
+  }
+
+  val fitClasses: Vector[String] =
+    (0 +: CardFace.NameFitBuckets).map(bucket => s"map-fit-$bucket")

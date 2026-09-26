@@ -327,7 +327,9 @@ hand-brushed titles; Inter never tries to be decorative.
 - **Headline** (800, 1.08rem, Georgia): site names on the map, centered in
   the site heading. Region titles on the map are Georgia 1.6rem, 800, mixed
   case, Bright Cream: the brightest text on the map, like the board's brushed
-  lettering. The card overlay name is Georgia 1.5em, 800, Bright Cream.
+  lettering. The card overlay name is Georgia 1.5em, 800, Bright Cream. On
+  the zoomed-out map both are set against the scale (see The Glance Layer
+  Rule): a site name holds 12px on screen, a region title 12.5px.
 - **Title** (750, 0.8rem, uppercase, 0.06em, Inter): pane headings in Brass
   Label. Under 620px: 0.72rem, 0.025em.
 - **Body** (400, 0.9rem in the action pane, 0.86rem/1.45 for site details,
@@ -344,6 +346,27 @@ change the container's font size and let the card follow.
 
 **The Serif Names Things Rule.** Georgia is for names of sites, regions and
 cards and the page title. It is never used for controls, labels or body text.
+
+**The Eleven-Pixel Floor.** Functional text is never under 11px on screen. In
+the panes this is a floor on the text, not the box: a card name is
+`max(0.95em, 0.7rem)` and a restriction `max(0.72em, 0.7rem)`, so a card
+scaled down by its pane's font size keeps its box in `ex` and its text
+readable. The smallest steps in use are `.84em` for a partition option and
+`.85em` for its order note, both chosen to clear the floor at the pane's
+0.9rem.
+
+**The Glance Layer Rule.** The map is a fixed 1500px surface scaled by the
+viewport, so its text shrinks with it. Below a scale of 0.72, where the map
+card name (0.95em of 16px) falls under the floor, `.map-content` carries
+`map-compact` and `--map-scale`, and the glance layer is set against the
+scale instead: `font-size: clamp(rest, calc(<screen px> / var(--map-scale)),
+cap)` holds region and site names, pawns, tokens, defense, forces and card
+names near one screen size while the board keeps shrinking under them, the
+way a map's place names hold still while the map zooms. The study layer
+(site powers and requirement, a card's defense, restriction and badge) is
+hidden; a zoom or the overlay carries it. Nothing in the compact mode may
+change the map's height, because the Fit scale is computed from it: the site
+box is fixed and clips, and the region title has a fixed 2.4rem line.
 
 ## Layout
 
@@ -366,8 +389,13 @@ Each pane is a `section` with a 39px header strip and a scrolling
 World pane is the exception: zero padding, a Base field, a hidden
 scrollbar, and a `.map-content` surface fixed at 1500px wide with 20px padding
 that is transform-scaled by the viewport. The map's font size is pinned to
-1rem so zoom and font scaling never compound. Below a zoom threshold the map
-goes compact and cards drop defense and restriction lines.
+1rem so zoom and font scaling never compound. Fit is the default and is
+height-bound at the supported sizes (0.36 at 1024×768, 0.43 at 1440×900);
+below 0.72 the map goes compact and the glance layer is counter-scaled (The
+Glance Layer Rule). In compact mode the site re-grids: the name takes the
+full width on the first row, the token corner, the pawns and the defense
+corner share the second, and the details fill the rest; a site holding forces
+narrows its cards to 7.3rem so the forces line fits the fixed box.
 
 On the map, three regions sit in a 3-column grid with 12px gaps; each region
 lists its sites in one column with 9px gaps. Every site is the same height
@@ -376,8 +404,12 @@ opening never shifts the board. The card row inside a site is three cards
 wide: `--card-w: min(8.6rem, (100% - 2 gaps) / 3)`.
 
 The Players pane is a horizontal strip of player boards, each `flex: 1 0
-225px`, divided by 1px Line-mid right borders; it wraps state pills rather
-than growing, because the strip does not scroll. The Actions pane stacks
+300px`, divided by 1px Line-mid right borders. A board is a two-column grid:
+identity, resources and the title or Vision row on the left (8.5–10rem), the
+card row on the right, spanning the rows. The card row sets the board's
+height and scrolls sideways inside the board when it holds more than fits;
+the strip scrolls sideways past four boards at 1024px. Nothing in the strip
+scrolls vertically. The Actions pane stacks
 decision zones in one column with 10px gaps. Spacing runs 4, 6, 8, 12, 18px;
 `min-height: 44px` is the touch floor for every action button.
 
@@ -445,9 +477,12 @@ controls are 30px.
 - **Action** (load game, adviser, and every act, decision, confirm and
   modifier button in the Actions pane): `#282117` fill, white text, `#bca780`
   border, `8px 12px` padding. Hover: Pressed fill, Bright Cream border. The
-  small movers and steppers beside an option (card pickers, reorder arrows,
+  small movers and steppers beside an option (card pickers, Put on top,
   distribute `−`/`+`, modifier Earlier/Later) wear the Control face at their
-  own sizes. Decision buttons keep their 5px margins.
+  own sizes. Decision buttons keep their 5px margins. The partition confirm
+  sits in a footer strip pinned to the pane's bottom edge (Pane fill,
+  Line-pane top border, 12px padding), full width, so the answer stays in
+  view while the zones scroll.
 - **Board target control**: full width of the site, Panel fill, Bright Cream
   800 text, brass border. Hover and focus: Pressed fill and a 3px Bright
   Cream outline offset 2px. Pressed state prefixes "✓ ".
@@ -455,8 +490,15 @@ controls are 30px.
   Pressed fill, Bright Cream border and text, weight 800, "✓ " prefix.
 - **Focus:** 2px Cream Focus outline, -3px offset, inside the table; 3px white
   outline, 3px offset, on the host page.
-- **Disabled:** opacity 0.5 (0.35 on reorder arrows), `cursor: not-allowed`
-  or default.
+- **Disabled:** opacity 0.5, `cursor: not-allowed` or default.
+- **Partition surface:** a keep-one partition (Search, the starting adviser)
+  reads "Keep one; discard the rest." with no minimum lines; the kept card
+  has no mover, because Keep on another card swaps them; each discard card
+  that is not last carries one Control-face "Put on top" button, and the
+  last carries a "Top" pill of the same height (Line-mid border, Ink Dim
+  text, 999px radius). The order note reads "The last one lands on top of
+  the pile." Forge's payment partition keeps its minimum lines and movers
+  and has no order controls.
 
 ### Chips and Pills
 - **Site card count**: pill, 1px Line border, Cream 800 text, `2px 6px`
@@ -484,6 +526,18 @@ ratio, sized in `ex` from `--card-w: 13ex`.
   under it whole rather than breaking mid-word; token row at 0.8em;
   restriction in Ink Dim capitalized at the bottom; footer sinks to the
   bottom.
+- **Compact (zoomed-out map only):** the box and ratio are unchanged; the
+  suit glyph moves to the top-left corner and the name sits centered in the
+  box. The face inherits the counter-scaled size from the site, so the name
+  holds 11px on screen. A name whose longest word does not fit one line at
+  the current scale shows its initials instead, at 1.5em 800: the first
+  character of each word as written ("Rotting Fortress" is RF, "Master of
+  Disguise" is MoD), or a lone word's first two ("Quartermaster" is Qu).
+  Both forms are in the DOM; the card carries `name-fits-N` for each of the
+  buckets 6, 8, 10 and 12 its longest word clears, the map carries the one
+  `map-fit-N` its scale allows (`GameTableShell.nameFit`), and the
+  stylesheet picks. The whole name stays in the button's label and title.
+  Defense, restriction and the unimplemented badge are hidden; tokens stay.
 - **Face-down:** Facedown fill, centered Facedown Letter at 1.9em 800; a
   knowable card adds a Secret pip top-right and reveals a summary on hover or
   focus (pointer devices only, CSS only, no client state).
@@ -503,7 +557,9 @@ of totals.
 A site is the board's unit: Site fill, Line border, 9px radius, 12px padding,
 fixed 19.5rem height, `overflow: hidden`. The heading is a three-column grid
 so the name is centered on the box regardless of token counts; tokens sit
-left, defense right. Powers are one ellipsized line with hover titles. A legal
+left, defense right. Below the compact threshold the name owns the first row
+and the two corners flank the pawns on the second (Layout). Powers are one
+ellipsized line with hover titles, hidden in compact mode. A legal
 target gets a brass border and inset ring; hover brightens the border to
 Bright Cream with the target halo; selected turns Selection blue on Selection
 Fill.
@@ -534,7 +590,8 @@ in the off-palette purple with the overlay lift.
 One board per player in the strip: 225px minimum, `6px 12px` padding,
 0.82rem, a Line-mid right border. The active board gets a dashed `#c8b48b`
 outline and a `#29251d` fill. The identity line joins name, role and title
-with drawn "·" separators in Ink Separator. Cards on a board render at 0.78em.
+with drawn "·" separators in Ink Separator. Cards on a board render at 0.86em
+in a sideways-scrolling row beside the identity column (Layout).
 
 ## Do's and Don'ts
 

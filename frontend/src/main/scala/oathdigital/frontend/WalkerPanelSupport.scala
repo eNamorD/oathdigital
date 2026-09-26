@@ -285,10 +285,39 @@ private[frontend] object WalkerPanelSupport:
       held: Int): Boolean =
     section.minRequired == 0 && section.maxAllowed.isEmpty && held > 1
 
-  /** The instruction line, assembled from the query's own sections. */
+  /** The keep-one shape: exactly two sections, one that holds exactly one
+    * and one that takes whatever is left. Search and the starting adviser
+    * both ask it. The pair is (the capped section, the leftover section).
+    *
+    * Read off the bounds, like [[ordered]], never off the word "Keep". On
+    * this shape the capped section swaps on arrival, so the card it holds
+    * needs no mover of its own, and the minimums say nothing a player has
+    * to be told.
+    */
+  private[frontend] def keepOne(query: DecisionQueryState)
+      : Option[(DecisionSectionState, DecisionSectionState)] =
+    query.sections match
+      case Vector(first, second) =>
+        def capped(section: DecisionSectionState) =
+          section.minRequired == 1 && section.maxAllowed.contains(1)
+        def leftover(section: DecisionSectionState) =
+          section.minRequired == 0 && section.maxAllowed.isEmpty
+        if capped(first) && leftover(second) then Some(first -> second)
+        else if capped(second) && leftover(first) then Some(second -> first)
+        else None
+      case _ => None
+
+  /** The instruction line, assembled from the query's own sections. The
+    * keep-one shape reads like the rulebook's own sentence; every other
+    * shape lists each section with its minimum.
+    */
   private[frontend] def partitionInstruction(query: DecisionQueryState): String =
-    s"Assign every option: ${query.sections.map(section =>
-      s"${section.label} (${section.minRequired})").mkString(", ")}."
+    keepOne(query) match
+      case Some((capped, leftover)) =>
+        s"${capped.label} one; ${leftover.label.toLowerCase} the rest."
+      case None =>
+        s"Assign every option: ${query.sections.map(section =>
+          s"${section.label} (${section.minRequired})").mkString(", ")}."
 
   /** Renders a parked partition decision as the shared two-zone
     * interaction: one zone per projected section, holding the options the
@@ -321,7 +350,12 @@ private[frontend] object WalkerPanelSupport:
       confirm.disabled = !canControl || !draft.canConfirm
       confirm.onclick = _ =>
         draft.command(playerId).foreach(controls.submitCommand)
-      panel.appendChild(confirm)
+      // Its own strip, which the stylesheet pins to the pane's bottom edge:
+      // the answer is the last step, and it stays in view while the zones
+      // scroll above it.
+      val footer = element("div", "partition-footer")
+      footer.appendChild(confirm)
+      panel.appendChild(footer)
     }
 
   private def partitionZone(section: DecisionSectionState,
@@ -330,12 +364,18 @@ private[frontend] object WalkerPanelSupport:
     val zone = element("section", "decision-zone partition-zone")
     zone.setAttribute("data-section-key", section.key)
     zone.appendChild(text("h3", "", section.label))
-    zone.appendChild(text("p", "decision-zone-helper",
-      s"At least ${section.minRequired}."))
+    // A minimum is worth a line where the player has to meet one. On the
+    // keep-one shape the slot always holds its one and the rest has none.
+    if keepOne(query).isEmpty then
+      zone.appendChild(text("p", "decision-zone-helper",
+        s"At least ${section.minRequired}."))
     val held = draft.optionsIn(section.key)
+    // The consequence, not the mechanism: the engine stacks the leftovers
+    // in this order, so the last one is the pile's top and the next
+    // Search's first draw.
     if ordered(section, held.size) then
       zone.appendChild(text("p", "decision-zone-order",
-        s"${section.label} happens in the order shown."))
+        "The last one lands on top of the pile."))
     // Own row: a zone that holds heading and options together measures as
     // wide as all of them laid end to end, whatever it can wrap to.
     val options = element("div", "partition-options")
@@ -381,32 +421,38 @@ private[frontend] object WalkerPanelSupport:
         .getData("text/plain"), item), draft, controls)
     })
     // The keyboard-reachable counterpart to the drag: one button per other
-    // section, naming where it would move the option to.
-    query.sections.filterNot(_.key == section.key).foreach { destination =>
-      val label = s"Move ${option.label} to ${destination.label}"
-      val move = button(destination.label, "move-option")
-      move.setAttribute("aria-label", label)
-      move.setAttribute("title", label)
-      move.onclick = _ => moveOption(draft, item, destination.key, controls)
-      node.appendChild(move)
-    }
-    // Order within a section is part of the answer, so it needs a keyboard
-    // path of its own. Both buttons are always drawn and disabled at the
-    // ends, so working an option along a row never reflows it.
+    // section, naming where it would move the option to. The one card in a
+    // keep-one slot has none: pressing Keep on another card swaps them, so
+    // a Discard button on it would only say the same thing backwards.
+    val swapsOut = keepOne(query).exists(_._1.key == section.key)
+    if !swapsOut then
+      query.sections.filterNot(_.key == section.key).foreach { destination =>
+        val label = s"Move ${option.label} to ${destination.label}"
+        val move = button(destination.label, "move-option")
+        move.setAttribute("aria-label", label)
+        move.setAttribute("title", label)
+        move.onclick = _ => moveOption(draft, item, destination.key, controls)
+        node.appendChild(move)
+      }
+    // Order within a leftover section is part of the answer, and the one
+    // position a player acts on is the top of the pile: one button puts a
+    // card there, and any full order is a few of them pressed in turn. The
+    // card already on top wears a pill of the same height instead, so
+    // working the row never reflows it. Drag-before remains the pointer
+    // path for the rest.
     val (index, size) = draft.positionOf(item).getOrElse((0, 1))
-    val reorder = element("div", "option-reorder")
-    Vector(("move-earlier", "◀", "earlier", -1, index <= 0),
-      ("move-later", "▶", "later", 1, index >= size - 1))
-      .foreach { case (cssClass, glyph, word, delta, atEnd) =>
-        val label = s"Move ${option.label} $word in ${section.label}"
-        val control = button(glyph, cssClass)
+    if ordered(section, size) then
+      if index >= size - 1 then
+        val top = text("span", "option-top", "Top")
+        top.setAttribute("title", s"${option.label} lands on top of the pile")
+        node.appendChild(top)
+      else
+        val label = s"${section.label} ${option.label} last, so it lands on top of the pile"
+        val control = button("Put on top", "put-on-top")
         control.setAttribute("aria-label", label)
         control.setAttribute("title", label)
-        control.disabled = atEnd
-        control.onclick = _ => update(draft.shift(item, delta), draft, controls)
-        reorder.appendChild(control)
-      }
-    node.appendChild(reorder)
+        control.onclick = _ => update(draft.putLast(item), draft, controls)
+        node.appendChild(control)
     node
 
   private def moveOption(draft: WalkerPartitionDraft, item: String,
