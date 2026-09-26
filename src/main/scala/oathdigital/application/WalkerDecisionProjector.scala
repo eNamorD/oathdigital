@@ -66,6 +66,20 @@ private[application] final class WalkerDecisionProjector(
         powers)
     yield Parked(procedure, tree, pending, powers, awaited, owners)
 
+  /** The `Decide` the walker is parked on in `ready`, after every power's
+    * transform: the options its owner was shown. The game log reads a
+    * button's label from it. */
+  def parkedDecide(ready: ReadyGame): Option[Decide] =
+    val current = ready.game.current
+    for
+      pending <- current.walkerPending
+      procedure <- current.walkerProcedure
+      tree <- rebuild(ready, procedure, current.turn.activePlayer,
+        current.walkerStartArgs).toOption
+      decide <- ProcedureWalker.parkedDecide(ready, tree, pending,
+        WalkerPowers.selected(walkerPowerCatalog, current.walkerModifiers))
+    yield decide
+
   /** The full owner-private projection, for every owner of the parked
     * decision: the awaited player and any co-owners.
     */

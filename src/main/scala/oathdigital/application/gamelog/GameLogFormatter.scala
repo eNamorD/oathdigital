@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
-import oathdigital.application.GamePresentationProjector
+import oathdigital.application.{GamePresentationProjector,
+  WalkerDecisionProjector}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.powers.WalkerPowerCatalog
@@ -23,6 +24,9 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val starts = new StartLines(words, WalkerPowerCatalog.default(catalog)
     .powers.map(power => power.id -> power.resolution).toMap)
   private val actions = new ActionLines(words)
+  private val choices = new ChoiceWords(words,
+    new WalkerDecisionProjector(catalog, presentation))
+  private val details = new DetailLines(words, choices)
 
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
@@ -80,6 +84,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         val posted = start.toVector ++
           starts.continued(journal, begun, at).toVector ++
           actions.lines(journal, begun, at, viewer) ++
+          details.lines(journal, begun, at, viewer) ++
           turnHeadlines(journal, at)
         val next = journal.event(at) match
           case _: WalkerCompleted => None

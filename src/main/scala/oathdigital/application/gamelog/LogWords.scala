@@ -19,6 +19,14 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
   private val descriptions = new PreviewModifierDescriptions(catalog,
     presentation)
 
+  /** "Verb " when `player` is the run's actor, else "Blue verb ". */
+  def subject(player: PlayerId, actor: PlayerId, verb: String)
+      : Vector[LogSpan] =
+    if player == actor then Vector(LogSpan.Text(s"${verb.capitalize} "))
+    else Vector(this.player(player), LogSpan.Text(s" $verb "))
+
+  def label(key: String): String = presentation.safeLabel(key)
+
   def player(id: PlayerId): LogSpan =
     LogSpan.Player(id.value, presentation.playerLabel(id))
   def site(id: SiteId): LogSpan =

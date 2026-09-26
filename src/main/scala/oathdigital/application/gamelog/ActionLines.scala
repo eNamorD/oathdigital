@@ -306,6 +306,9 @@ private[gamelog] final class ActionLines(words: LogWords):
               _) => payer == run.actor
           case _ => false
         }
+      // A power's own question: its source is already known, so "Used"
+      // comes before the "Chose" line its answer posts.
+      case WalkerStepRecorded(_, _: ChoicePayload, _, _) => true
       case _ => false
 
   /** The source the player named when starting (kept on every park), else
