@@ -16,23 +16,27 @@ reading aids, is in progress. **Phase - Catalog batch 2** is next.
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
 
-### Setup deferred items
+### Phase - Player-facing action history
 
-- [ ] **Deferred: derive the lineage from the color on the server.** The color
-  is always associated with a lineage, but the trusted creation request still
-  carries a free-form `lineageId`, and the host page sends `<color>-lineage`.
-  The server should derive the lineage and the request should drop `lineageId`.
-- [ ] **Deferred: generate the game ID on the server.** The host page generates
-  it in the browser (`manual-<time>-<random>`) and generates a new one when the
-  server reports a duplicate. The server should assign it and return it in the
-  creation response, and the request should drop `gameId`.
-- [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
-  the Chancellor or first player (site order is used until then). Player choices
-  earlier in setup once foundations and legacies exist, such as the Chancellor
-  choosing Recent or Forgotten sites. The Chronicle string codec for TTS import
-  and export, including the sections that format has not defined yet. Later-game
-  setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
-  triggers once an explore procedure exists.
+Add a human-readable action log similar to HRF's log, but derive it from
+authoritative event batches through a typed semantic formatter. Group related
+events into one player action, preserve stable sequence references for replay,
+color player labels, and distinguish major actions, minor actions, decisions,
+resource changes, rolls, and victory checks. Produce public and player-scoped
+projections so hidden draws, facedown identities, and private choices are never
+leaked. Keep the raw loopback development event log separate. The design is
+[the Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
+
+- [ ] **Slice 3: reading aids.** The overlay, the divider, the New chip and
+  the sticky headline.
+
+### Phase - Catalog batch 2
+
+Implement the next set of denizens and relics. The first batch covered 30 of
+255 denizens and 15 of 48 relics. Choose cards whose powers need no Empire,
+Chronicle or explore machinery, so they fit the all-Exile game. The slice's
+own spec sets the card count and selection. As cards become implemented,
+the setup generator draws more of them into the world deck.
 
 ### Phase 5 - All-Exile alpha readiness
 
@@ -56,19 +60,26 @@ requested UI changes are in the
    packaged smoke gates, and a new acceptance record if the release commit
    differs from the tested one, before each alpha build.
 
-### Phase - Player-facing action history
+### Setup deferred items
 
-Add a human-readable action log similar to HRF's log, but derive it from
-authoritative event batches through a typed semantic formatter. Group related
-events into one player action, preserve stable sequence references for replay,
-color player labels, and distinguish major actions, minor actions, decisions,
-resource changes, rolls, and victory checks. Produce public and player-scoped
-projections so hidden draws, facedown identities, and private choices are never
-leaked. Keep the raw loopback development event log separate. The design is
-[the Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
+- [ ] **Deferred: derive the lineage from the color on the server.** The color
+  is always associated with a lineage, but the trusted creation request still
+  carries a free-form `lineageId`, and the host page sends `<color>-lineage`.
+  The server should derive the lineage and the request should drop `lineageId`.
+- [ ] **Deferred: generate the game ID on the server.** The host page generates
+  it in the browser (`manual-<time>-<random>`) and generates a new one when the
+  server reports a duplicate. The server should assign it and return it in the
+  creation response, and the request should drop `gameId`.
+- [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
+  the Chancellor or first player (site order is used until then). Player choices
+  earlier in setup once foundations and legacies exist, such as the Chancellor
+  choosing Recent or Forgotten sites. The Chronicle string codec for TTS import
+  and export, including the sections that format has not defined yet. Later-game
+  setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
+  triggers once an explore procedure exists.
 
-- [ ] **Slice 3: reading aids.** The overlay, the divider, the New chip and
-  the sticky headline.
+### Game Log deferred items
+
 - [ ] **Deferred: show a parked action's progress in the waiting message.**
   The Game Log posts a line only once its facts are complete, so an action
   that is still parked says nothing about its choices so far. The table's
@@ -79,23 +90,8 @@ leaked. Keep the raw loopback development event log separate. The design is
   the line it contributes where it takes effect, with the generic line kept
   only as a fallback. Recorded in the Game Log design of 2026-09-26.
 
-### Phase - Catalog batch 2
-
-Implement the next set of denizens and relics. The first batch covered 30 of
-255 denizens and 15 of 48 relics. Choose cards whose powers need no Empire,
-Chronicle or explore machinery, so they fit the all-Exile game. The slice's
-own spec sets the card count and selection. As cards become implemented,
-the setup generator draws more of them into the world deck.
-
 ### Powers-related deferred items
 
-- [ ] **Deferred: walker follow-ups.** Make the Recover roll automatic like the
-  others, and add real consent (for Narrow Pass and beyond) as its own system
-  separate from Negotiation. Audit the first-game rules the walker actions
-  dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
-  Add the remaining attacker, defender and bandit battle plan families,
-  non-deterministic loss choices, and the additional Raid, victory, defeat and
-  At End handlers that the Campaign timing windows already expose.
 - [ ] **Deferred: walker-native card play through card slots.** Card play still
   runs through the legacy `CardPlay.legalChoices` and `plannedOperations` helpers
   rather than through Operations, so a power cannot change the placement
@@ -111,37 +107,6 @@ the setup generator draws more of them into the world deck.
   so it needs its own spec. Until then Mob uses a single `PlacementRules` value
   on `PlacementTree` that carries the adviser limits and a
   "may discard a site card first" permission.
-- [ ] **Deferred: an adviser-slot decision option.** `DecisionOptionRef` names a
-  card by identity, and `WalkerDecisionProjector` drops any decision that names
-  a card its viewer may not identify, so a decision cannot offer another
-  player's facedown adviser. Relics have an identity-free `RelicSlot`
-  reference, and advisers have none. Ivory Eye works around it with `Button`
-  options keyed by owner and adviser position, which show a label and no card.
-  An `AdviserSlot(owner, slot)` reference, like `RelicSlot`, would let the
-  panel present the slot as a facedown card. It touches the model, the answer
-  codec, the projector and the frontend, and any future power that targets a
-  facedown adviser would use it.
-
-- [ ] **Deferred: a public view of a revealed temporary hand.** The Truthful Harp
-  reveals the cards it draws by recording a `Peek` for every other player. No
-  operation reveals a card in a temporary hand and the hand is projected to its
-  owner only, so no view shows the reveal to the other players yet.
-
-- [ ] **Deferred: a board slot for distributions and Sticky Fire without a choice.**
-  Warning Signals names the defender's board by a player option in its distribution, which
-  the panel shows as a player name, and Sticky Fire asks its question even when a yes
-  changes nothing (against bandits it only costs the favor). A board option, and skipping a
-  question whose answers are the same, need a small change to the option vocabulary.
-
-- [ ] **Deferred: offer a nested Campaign only when it would be accepted.**
-  Knights Errant runs a Campaign inside a Muster and offers it whenever a
-  Campaign is legal. A restriction on the whole Campaign (Vow of Peace, the
-  Fortress start refusal) rejects the player's "campaign" answer, so a Vow of
-  Peace holder is offered a Campaign that is then refused, and can only decline.
-  Offering it only when it would be accepted needs the power to ask the walker
-  whether the answer would pass its restrictions, which `PowerCtx` cannot do
-  today. It is accepted until then.
-
 - [ ] **Deferred: locked cards as a generic operation restriction.** Locking is
   enforced today by `DiscardRestrictions` (a faceup locked adviser, an intact
   edifice, a modifier selected for the running action, and the Hall of
@@ -160,22 +125,35 @@ the setup generator draws more of them into the world deck.
   and Horned Mask's filter, and needs an audit of every step that legitimately
   moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
   lines, with regression risk in the Negotiation and Campaign suites.
-
-- [ ] **Deferred: the Grand Council and Festival banner faces.** They are listed
-  as synthetic ids in the reviewed catalog and have no behaviour.
-
-- [ ] **Deferred: Mercenaries' player-chosen sign.** Mercenaries adds attack dice
-  when its user attacks and removes defense dice from the attacker when it
-  defends. The card lets the player choose the sign, and the plan fixes it by side.
-  Choosing it needs a decision inside the plan and a preview that shows both.
-
+- [ ] **Deferred: an adviser-slot decision option.** `DecisionOptionRef` names a
+  card by identity, and `WalkerDecisionProjector` drops any decision that names
+  a card its viewer may not identify, so a decision cannot offer another
+  player's facedown adviser. Relics have an identity-free `RelicSlot`
+  reference, and advisers have none. Ivory Eye works around it with `Button`
+  options keyed by owner and adviser position, which show a label and no card.
+  An `AdviserSlot(owner, slot)` reference, like `RelicSlot`, would let the
+  panel present the slot as a facedown card. It touches the model, the answer
+  codec, the projector and the frontend, and any future power that targets a
+  facedown adviser would use it.
 - [ ] **Deferred: plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
   in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
   catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
   3b and go with the reviewed catalog.
-
+- [ ] **Deferred: walker follow-ups.** Make the Recover roll automatic like the
+  others, and add real consent (for Narrow Pass and beyond) as its own system
+  separate from Negotiation. Audit the first-game rules the walker actions
+  dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
+  Add the remaining attacker, defender and bandit battle plan families,
+  non-deterministic loss choices, and the additional Raid, victory, defeat and
+  At End handlers that the Campaign timing windows already expose.
+- [ ] **Deferred: the Grand Council and Festival banner faces.** They are listed
+  as synthetic ids in the reviewed catalog and have no behaviour.
+- [ ] **Deferred: Mercenaries' player-chosen sign.** Mercenaries adds attack dice
+  when its user attacks and removes defense dice from the attacker when it
+  defends. The card lets the player choose the sign, and the plan fixes it by side.
+  Choosing it needs a decision inside the plan and a preview that shows both.
 - [ ] **Deferred: record a bandit's applied battle plan as an event.** A player's
   plan is a recorded answer that later windows read. A bandit defender applies its
   cost-free plans without asking, so `CampaignPlanApplication` records the use as
@@ -183,6 +161,23 @@ the setup generator draws more of them into the world deck.
   shows in the journal as a dice-pool change and suites that count a Campaign's
   `ModifyDicePool` operations see it. A dedicated recorded operation would say
   what happened.
+- [ ] **Deferred: a public view of a revealed temporary hand.** The Truthful Harp
+  reveals the cards it draws by recording a `Peek` for every other player. No
+  operation reveals a card in a temporary hand and the hand is projected to its
+  owner only, so no view shows the reveal to the other players yet.
+- [ ] **Deferred: a board slot for distributions and Sticky Fire without a choice.**
+  Warning Signals names the defender's board by a player option in its distribution, which
+  the panel shows as a player name, and Sticky Fire asks its question even when a yes
+  changes nothing (against bandits it only costs the favor). A board option, and skipping a
+  question whose answers are the same, need a small change to the option vocabulary.
+- [ ] **Deferred: offer a nested Campaign only when it would be accepted.**
+  Knights Errant runs a Campaign inside a Muster and offers it whenever a
+  Campaign is legal. A restriction on the whole Campaign (Vow of Peace, the
+  Fortress start refusal) rejects the player's "campaign" answer, so a Vow of
+  Peace holder is offered a Campaign that is then refused, and can only decline.
+  Offering it only when it would be accepted needs the power to ask the walker
+  whether the answer would pass its restrictions, which `PowerCtx` cannot do
+  today. It is accepted until then.
 
 ### Engine deferred items
 
