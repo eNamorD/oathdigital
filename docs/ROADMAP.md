@@ -84,6 +84,17 @@ resource changes, rolls, and victory checks. Produce public and player-scoped
 projections so hidden draws, facedown identities, and private choices are never
 leaked. Keep the raw loopback development event log separate.
 
+Slice 1 is done (2026-09-26). The Log pane shows round, turn and victory
+headlines, a start line with modifiers and Supply cost for every action that
+can take modifiers, and one action line per action, formatted per seat from
+the scanned journal and served on both seat routes. The design is
+[the Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
+
+- [ ] **Slice 2: knowledge, detail lines and goldens.** Setup lines, detail
+  lines, the knowledge fix, Negotiation settlement lines, the rest of
+  Campaign with the campaign panel's removal, and golden logs.
+- [ ] **Slice 3: reading aids.** The overlay, the divider, the New chip and
+  the sticky headline.
 - [ ] **Deferred: show a parked action's progress in the waiting message.**
   The Game Log posts a line only once its facts are complete, so an action
   that is still parked says nothing about its choices so far. The table's
