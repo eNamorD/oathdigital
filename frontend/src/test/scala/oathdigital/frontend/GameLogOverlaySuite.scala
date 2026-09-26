@@ -106,6 +106,14 @@ class GameLogOverlaySuite extends munit.FunSuite:
       assert(!table.hasAttribute("inert"))
     }
 
+  test("Escape closes it even when focus has dropped to the page"):
+    withShell() { (browser, _) =>
+      click(heading(browser))
+      press(dom.document.body, "Escape")
+      assert(overlay(browser).hasAttribute("hidden"))
+      assertEquals(dom.document.activeElement, heading(browser))
+    }
+
   test("a click inside the panel does not close it"):
     withShell() { (browser, shell) =>
       shell.showLog("g", "red", entries, Map.empty)

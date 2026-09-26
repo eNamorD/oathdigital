@@ -69,10 +69,12 @@ private[frontend] final class GameLogOverlay(root: dom.Element,
     if event.key == "Escape" && isOpen then { event.preventDefault(); hide() }
 
   node.addEventListener("click", dismiss)
-  node.addEventListener("keydown", escape)
+  // On the document: a click on the panel's blank space drops focus to the
+  // body, and Escape must still close the overlay from there.
+  dom.document.addEventListener("keydown", escape)
 
   def dispose(): Unit =
     node.removeEventListener("click", dismiss)
-    node.removeEventListener("keydown", escape)
+    dom.document.removeEventListener("keydown", escape)
     log.dispose()
     node.remove()
