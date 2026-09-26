@@ -84,6 +84,16 @@ resource changes, rolls, and victory checks. Produce public and player-scoped
 projections so hidden draws, facedown identities, and private choices are never
 leaked. Keep the raw loopback development event log separate.
 
+- [ ] **Deferred: show a parked action's progress in the waiting message.**
+  The Game Log posts a line only once its facts are complete, so an action
+  that is still parked says nothing about its choices so far. The table's
+  "Waiting on player" message is the place to show that progress. Recorded in
+  the Game Log design of 2026-09-26.
+- [ ] **Deferred: powers declare their own log lines.** A phase power used as
+  an action logs a generic "Used {card}". Each power could instead declare
+  the line it contributes where it takes effect, with the generic line kept
+  only as a fallback. Recorded in the Game Log design of 2026-09-26.
+
 ### Powers-related deferred items
 
 - [ ] **Deferred: walker follow-ups.** Make the Recover roll automatic like the

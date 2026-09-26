@@ -1,11 +1,14 @@
 # Game Log: A Player-Facing Action History
 
 > Status: design confirmed 2026-09-25 from an Impeccable shape pass over the
-> table's Log pane, then amended 2026-09-26 by a full-feature design pass that
-> checked the server half against the code. It covers the server-side
-> formatter, the state change it needs, the wire contract, the seat route, and
-> the pane and overlay that read them. No implementation is authorized by this
-> document alone; a plan follows it.
+> table's Log pane, then amended twice on 2026-09-26: first by a full-feature
+> design pass that checked the server half against the code, then by a
+> planning pass that found most actions park before their details exist. The
+> second amendment replaces action headlines with lines posted once their
+> facts are complete. It covers the server-side formatter, the state change it
+> needs, the wire contract, the seat routes, and the pane and overlay that read
+> them. No implementation is authorized by this document alone; a plan follows
+> it.
 
 ## Why now
 
@@ -26,26 +29,32 @@ contract a builder can implement without inventing anything.
 | # | Decision | Choice |
 |---|----------|--------|
 | 1 | Reading direction | Chronological, newest at bottom, sticks to bottom while already there. |
-| 2 | Granularity | One headline per round, per turn, and per action; subordinate lines beneath an action. |
+| 2 | Granularity | Headlines for rounds, turns, and victories only. Everything else is a flat line under the current turn. |
 | 3 | Room | The 16% pane row stays. Clicking the pane heading opens a full-height overlay with the whole log. |
 | 4 | Last-looked marker | Client side, `localStorage`, keyed by game and seat. Not on the server. |
-| 5 | Hidden information | Resolved on the server per viewer, per card, from the game state on each side of the operation. |
-| 6 | Entry shape | Typed spans, not a string: text, player, card, site, and amount refs. |
+| 5 | Hidden information | Resolved on the server per viewer, per card, from the game state on each side of the operation. Card backs are public. |
+| 6 | Entry shape | Typed spans, not a string: text, player, card, site, amount, and cost refs. |
 | 7 | State per event | A new `EventReplayEngine.scan` exposes the state before and after every event. The log and the board share one fold. |
 | 8 | Entry provenance | Every entry traces to exactly one journal event. One event may produce several entries. |
-| 9 | Unknown input | Compile-time exhaustive matches over `OathEvent` and `ProcedureRef`. Operations inside a step use an allow-list; an unlisted operation is silent. |
+| 9 | Unknown input | Compile-time exhaustive matches over `OathEvent`'s sealed cases and `ProcedureRef`. Operations inside a step use an allow-list; an unlisted operation is silent. |
 | 10 | Voice | Past-tense verbs throughout, subject omitted under the actor's own turn. |
 | 11 | Knowledge | A player who knew a card keeps knowing it when the card moves. Fixed in game state, so the board benefits too. |
 | 12 | Delivery | Three vertical slices (see Delivery). |
+| 13 | When a line is posted | At the event where its facts are complete. A line is never posted thin and never changes once sent; the client only appends. |
+| 14 | Start lines | Every action that can take modifiers opens with a start line, naming the chosen modifiers when there are any. |
+| 15 | Supply | Supply an action spends rides on its start line as a distinct cost span, not a line of its own. |
+| 16 | Test journals | Scripted journals built through `GameApplicationService` on every run. No stored game is a golden fixture. |
 
 ## Vocabulary
 
 - **Entry**: one line of the log, at one depth, with a stable `(sequence, ordinal)` key.
-- **Headline**: an entry at depth 0. Round, turn, action, and victory entries are headlines.
-- **Subordinate line**: an entry at depth 1 under an action or turn: a decision, roll, resource delta, or triggered power.
+- **Headline**: an entry at depth 0. Round, turn, and victory entries are headlines.
+- **Line**: an entry at depth 1. Every entry that is not a headline is a line, in journal order under the current turn.
+- **Start line**: the line that opens an action that can take modifiers.
 - **Span**: one piece of an entry's text. Either plain text or a typed reference.
 - **Viewer**: the seat the log is formatted for, or nobody for an observer.
-- **Run**: the contiguous journal events one walker records for one procedure, from its first event up to a park or completion.
+- **Run**: every journal event one walker records for one procedure, from its first event to its `walker.completed`, across any number of parks.
+- **Segment**: the part of a run one command appends, ending at a `walker.parked` or `walker.completed`.
 - **Divider**: the client-only line "Since you last looked" placed before the first entry newer than the stored marker.
 
 ## The formatter
@@ -70,7 +79,7 @@ returns only the final state. This design adds a sibling:
 ```scala
 final case class ReplayStep[S, E](event: RecordedEvent[E], before: S, after: S)
 
-def scan(events: Vector[RecordedEvent[E]])
+def scan(events: Iterable[RecordedEvent[E]])
     : Either[EventReplayFailure[V], Vector[ReplayStep[S, E]]]
 ```
 
@@ -80,8 +89,9 @@ calling `replay`.
 
 For a `walker.step-recorded` event whose batch holds several operations, the
 formatter steps through the batch from `before`, applying each operation with
-the same operation application replay uses. Every line and every visibility
-judgement is therefore made against the state immediately before and after the
+the same operation application replay uses (`WalkerReplay.executeRecorded`,
+exposed one operation at a time). Every line and every visibility judgement
+is therefore made against the state immediately before and after the
 operation it describes, not the whole batch.
 
 The formatter reads operations, not `DeltaMeaning`. `DeltaMeaning` falls back
@@ -97,7 +107,7 @@ final case class LogEntry(
     sequence: Long,        // journal index of the event that produced it
     ordinal: Int,          // position among entries sharing a sequence
     kind: LogKind,
-    depth: Int,            // 0 headline, 1 subordinate
+    depth: Int,            // 0 headline, 1 line
     spans: Vector[LogSpan])
 
 enum LogKind { case Round, Turn, Action, Decision, Roll, Delta, Trigger, Victory }
@@ -109,14 +119,15 @@ object LogSpan:
   final case class Card(id: String, name: String) extends LogSpan
   final case class Site(id: String, name: String) extends LogSpan
   final case class Amount(value: Int, unit: String) extends LogSpan
+  final case class Cost(value: Int, unit: String) extends LogSpan
 ```
 
 `(sequence, ordinal)` is the stable identity of an entry, and entries are
 emitted in that order. Display order equals key order, so the client only ever
 appends. One journal event may produce several entries: a
-`walker.step-recorded` whose batch both spends supply and moves warbands yields
-two subordinate lines. Sequence references stay stable across replays, which
-the roadmap requires for later replay navigation.
+`gameplay.round-ended` yields a round headline and the next turn's headline.
+Sequence references stay stable across replays, which the roadmap requires for
+later replay navigation.
 
 The formatter is a pure function of the scanned journal prefix and the viewer:
 
@@ -126,151 +137,228 @@ def format(steps: Vector[ReplayStep[OathState, OathEvent]],
 ```
 
 Two viewers may receive different spans for the same entry. They always receive
-the same entries with the same keys; only a `Card` span may differ, between a
-name and a placeholder or count.
+the same entries with the same keys; only a card reference may differ, between
+a name and its card back.
+
+### Posting
+
+A line is posted at the event where its facts are complete, and is built only
+from that event, the events before it, and the rest of its own segment. The
+rest of a segment is safe to read because one command appends a whole segment
+in one transaction (`HsqldbEventStreamRepository` appends a command's events
+atomically), so any journal prefix a client can observe ends on a segment
+boundary. That look-ahead is how a line learns which procedure its operations
+belong to: `walker.step-recorded` carries no procedure, and only the segment's
+closing `walker.parked` or `walker.completed` names it.
+
+Nothing is ever posted thin. An action that parks before its details exist
+posts nothing about them until they do: Place Banner Resource says nothing
+until its placement, then posts "Placed 3 favor on People's Favor". Progress
+on an action that is still parked belongs to the table's waiting message, not
+to the log (see Scope).
+
+The consequence, and the property the tests hold the formatter to: formatting
+a prefix that ends on a segment boundary yields exactly the entries the whole
+journal yields below that boundary. Nothing already sent changes, so the
+client only ever appends.
 
 ### Exhaustiveness
 
 - The formatter matches `OathEvent` exhaustively at compile time. Each case
   either produces entries or is named in a `silent` branch with a comment
-  saying why (for example `IgnoredRulesRecorded`, a diagnostic). A new event
-  fails compilation until someone decides.
-- The action headline matches `ProcedureRef` exhaustively. A new action or
-  phase transition fails compilation until it has a verb. `use-power:{id}` is
-  the one open-ended key and is covered by "Used {card}'s power".
+  saying why (for example `IgnoredRulesRecorded`, a diagnostic).
+  `WalkerEvent` is an open trait (`GameEventProtocol.scala`), so its three
+  known cases are matched by name and an unknown walker event is silent, the
+  same fallback `OathRules.evolve` uses.
+- Lines for a walker run match `ProcedureRef` exhaustively. A new action or
+  phase transition fails compilation until it has a decision.
+  `use-power:{id}` is the one open-ended key.
 - Operations inside a step batch go through an allow-list: the operations
-  mapped in the templates below produce lines, and every other operation
-  produces none. There is no exhaustiveness test over `CoreOperation`; most of
-  its cases (`EnterPhase`, `Decide`, `Sequence`, `ModifyDicePool`, and so on)
-  have nothing to say to a player.
+  mapped below produce lines, and every other operation produces none. There
+  is no exhaustiveness test over `CoreOperation`; most of its cases
+  (`EnterPhase`, `Decide`, `Sequence`, `ModifyDicePool`, and so on) have
+  nothing to say to a player.
 - The formatter never emits an operation's or event's class name.
 
-`SiteRelicsPeeked` and `OwnedRelicRevealed` are top-level `OathEvent` cases, not
-operations, and are handled by the event match.
+### Headlines
 
-### Grouping
-
-The journal carries no action-start or turn-start event as such, so boundaries
-come from the operations and walker events already recorded:
-
-| Boundary | Signal | Entry |
+| Headline | Signal | Entry |
 |----------|--------|-------|
-| Game start | `setup.game-started` | Round headline "Setup", then the setup procedure's lines as subordinates |
-| Round | `gameplay.round-ended` | Round headline "Round n" for `nextRound` |
-| Turn | A `BeginTurn(player, phase)` operation, wherever it is recorded | Turn headline "Red's turn" |
-| Action | The first event of a run whose procedure is an `ActionRef` | Action headline; subordinates are that run's lines |
-| Phase transition | A run whose procedure is a `PhaseTransitionRef` | Subordinate line under the current turn: "Ended Wake", "Began resting" |
-| Triggered | A run with `TriggeredProcedureRef.Oathkeeper` | Subordinate line: "Oathkeeper passed to Blue" |
-| Victory | `gameplay.usurper-victory`, `gameplay.vision-victory`, `gameplay.war-exhaustion-resolved` | Victory headline |
+| Setup | `setup.game-started` | "Setup" |
+| Round 1 | The Setup procedure's closing `BeginTurn(player, Wake)`, recognised by the phase before it being `Setup` | "Round 1", then that player's turn headline |
+| Round n | `gameplay.round-ended` with `nextRound = Some(n)` | "Round n", then the turn headline for the round's first player (the active player after the event) |
+| Turn | Any other `BeginTurn(player, Wake)` | "Red's turn" |
+| Victory | `gameplay.usurper-victory`, `gameplay.vision-victory`, `gameplay.war-exhaustion-resolved` | See below |
 
-`BeginTurn` is recorded by Finish Rest for every turn after the first, and as
-the last leaf of `SetupProcedure` for the first turn. Both count. The
-`BeginTurn` doc comment in `CoreOperations.scala`, which says Finish Rest is
-the only procedure that declares it, is corrected in the same slice.
+Finish Rest records `BeginTurn(firstPlayer, RoundEnd)` before the round-end
+event, and `gameplay.round-ended` then moves that same player into Wake
+(verified against the six-player journal: sequence 321 `begin-turn` into
+`round-end`, 322 `walker.completed`, 323 `gameplay.round-ended`). A
+`BeginTurn` into `RoundEnd` therefore posts nothing, and the round-end event
+posts both headlines, so the round headline always precedes the turn it
+opens. After round eight, `nextRound` is `None`: no round or turn headline,
+and the victory headline follows.
 
-A round headline always precedes the first turn headline of its round. The
-plan verifies the relative order of `gameplay.round-ended` and the round's
-opening `BeginTurn` against the fixture journal; if the `BeginTurn` comes
-first, the formatter emits the round headline at that operation's position and
-`gameplay.round-ended` emits nothing.
+Victory headlines:
 
-**Action headlines are anchored to the first event of their run.**
-`walker.step-recorded` carries no procedure; only the `walker.parked` or
-`walker.completed` that ends the run names it. One player command appends all
-its events in one transaction, and the state projection's `nextSequence`
-advances once per command, so a formatted prefix always contains whole runs.
-The formatter therefore looks ahead within the prefix to the run's closing
-event, and emits the action headline at the run's first event with ordinal 0.
-That event's own lines take ordinals 1 and up.
+- `UsurperVictory(p)` and `WarExhaustionResolved(p, Usurper)`: "Pink won as the Usurper".
+- `VisionVictory(p, v)` and `WarExhaustionResolved(p, Visionary, Some(v))`: "Pink won with {vision}".
+- `WarExhaustionResolved(p, Oathkeeper)`: "Pink won as the Oathkeeper".
+- `WarExhaustionResolved(p, RandomSelection)`: "Pink won by random selection".
 
-A run that parks and later resumes continues under the same headline. If any
-other headline was emitted between the park and the resume, the formatter
-repeats the action headline at the resume's first event, with the text span
-" (continued)" appended, rather than attaching lines to a headline the reader
-has scrolled past.
+The `BeginTurn` doc comment in `CoreOperations.scala`, which says Finish Rest
+is the only procedure that declares it, is corrected: Setup declares it too.
 
-Actions that record no steps before completing still get a headline, anchored
-to their `walker.completed`.
+### Start lines
 
-### Verbs
+The nine actions whose `WalkerProcedureRegistry` entry declares a
+`modifierWindow` open with a start line; the others (take wealth, negotiation,
+place banner resource, use power) do not.
 
-Headlines omit the subject under a turn headline. The subject appears when the
-actor differs from the turn's player: a defender's choices, a negotiation
-partner's transfers, a bandit refill, an oathkeeper trigger.
+| Action | Start line |
+|--------|------------|
+| search | Started Search |
+| play-facedown-adviser | Playing Facedown Adviser |
+| recover | Started Recover |
+| forge | Started Forge |
+| travel | Started Travel |
+| muster | Started Muster |
+| trade | Started Trade |
+| challenge | Started Challenge |
+| campaign | Started Campaign: {Raid \| Conquest} against {Blue \| the bandits} |
 
-| `ProcedureRef` key | Headline | Detail source |
-|--------------------|----------|---------------|
-| `muster` | Mustered {amount} warbands at {site} | `Gain.Warbands` amount; pawn site |
-| `travel` | Travelled to {site} | destination from the pawn `Move` |
-| `campaign` | Campaigned against {Blue \| the bandits} at {site}, and {won \| lost} | `RecordCampaignResult` |
-| `search` | Searched the {World Deck \| {region} discard} | `Draw` source |
-| `trade` | Traded for {amount} favor with {card} | `Gain.Favor`, suit, and the adviser or site card that paid |
-| `recover` | Recovered {card} at {site} | `Move` of a relic or banner |
-| `forge` | Forged {card} | the edifice card |
-| `play-facedown-adviser` | Played {card} face down | the card, subject to the visibility rule: the owner and anyone who knows it see the name, others see "a card" |
-| `take-wealth` | Took wealth: {amount} favor | `Gain.Favor` |
-| `challenge` | Challenged {player} for {banner} | banner move |
-| `place-banner-resource` | Placed {amount} {secrets \| favor} on {banner} | `Move` of counted pieces |
-| `negotiation` | Negotiated with {players} | see Negotiation |
-| `use-power:{id}` | Used {card}'s power | the power's card |
-| `end-wake` | Ended Wake | subordinate under the turn |
-| `begin-rest` | Began resting | subordinate |
-| `finish-rest` | Increased supply from {before} to {after} | subordinate; supply values from the states around `GainSupply` |
-| `oathkeeper` | Oathkeeper passed to {player \| the bank} | `SetOathkeeper`; subordinate |
-| `setup` | (no headline; the Setup round headline covers it) | each participant's starting lines as subordinates |
+- **Modifiers.** When the player chose modifiers, the line ends
+  " with Gambling Hall and Wandering Flame". A run that parks carries the
+  player's selection on every `walker.parked`. A run that never parks records
+  no selection, so its modifiers are read from its steps' `contributions`,
+  keeping only powers whose `resolution` is not automatic. Each modifier is
+  named by its source card, the same name the modifier picker shows.
+- **Supply.** The Supply the action has spent by the start line's event rides
+  on it as a `Cost` span ("−2 Supply"), drawn distinctly rather than behind a
+  separator. No span when nothing was spent.
+- **Anchor.** The start line is posted at the run's first event, with these
+  exceptions, each because its facts complete later:
+  - Muster and Trade pay their Supply after the source decision, so their
+    start line is posted at the cost step.
+  - Campaign's start line names its kind and defender, so it is posted at
+    the first event by which both are settled. The kind and defender
+    decisions are asked only when there is a choice, so the plan fixes where
+    the formatter reads each one when its decision was not asked.
+- **Recover** spends Supply again each time the player continues rolling. Each
+  such spend posts "Continued Recover" with its own `Cost` span.
 
-Finish Rest names no phase in its line: the turn is already in Rest, and the
-"Began resting" line precedes it.
+### Action lines
 
-Campaign gets four subordinate lines in this order: force ("Attacked with force
-3: 2 warbands and 1 sacrificed"), attack roll ("Rolled attack: 2 swords, 1
-skull"), defense roll ("Blue rolled defense: 1 shield"), and outcome ("Blue lost
-2 warbands at Deep Woods", one per affected site or raid target). Battle plans
-played appear as `Trigger` lines between the force line and the rolls.
+Posted at the event named in the last column. The subject is omitted under
+the actor's own turn.
 
-Subordinate line templates:
+| Action | Line | Posted at |
+|--------|------|-----------|
+| travel | Travelled to {site} | the pawn `Move` |
+| search | Drew {cards} from the {World Deck \| Provinces discard} and kept {cards} | the keep/discard answer, or the run's completion when only one card was drawn |
+| play-facedown-adviser | Played {card} as an adviser \| Played {card} to {site} \| Discarded {card} | the placement step |
+| muster | Mustered {n} warbands with {card} | `Gain.Warbands`; the card from the earlier cost step |
+| trade | Traded with {card} for {n} {favor \| secrets} | `Gain.Favor` or `Gain.Secrets`; the card from the earlier cost step |
+| take-wealth | Took 1 {favor \| secret} from {site} | the `Take` |
+| recover | Recovered {relic} at {site} | the relic `Move` |
+| recover (failed) | Failed to recover at {site} | the run's completion without a relic move |
+| forge | Placed favor on {cards} and secrets on {cards} | the payment step; an empty half is left out |
+| forge | Forged {relic} | the relic `Play` from the relic deck |
+| challenge | Took {banner} from {Blue \| the bank} with {n} {favor \| secrets} | the banner custody `Move` |
+| place-banner-resource | Placed {n} {favor \| secrets} on {banner} | the `Move` onto the banner |
+| campaign | {Blue} wins! | `RecordCampaignResult` |
+| negotiation | Negotiated with Blue and White | the settlement step |
+| negotiation (declined) | Negotiation ended by Yellow | the `DeclineDeal` answer |
+| use-power:{id} | Used {card} | the first step recording one of the power's own effects, after any payment; the run's completion if it records none |
+| oathkeeper | Oathkeeper passed to {Blue \| the bank} | `SetOathkeeper` |
+| finish-rest | Increased supply from {before} to {after} | `GainSupply`; values from the states around it |
+
+- A Recover that succeeds with no relic available posts no action line.
+- Forge plays the top of the relic deck face down into the forger's area. The
+  relic is named to the forger and anyone who knows it; others read "a Relic".
+- End Wake and Begin Rest post nothing: the phase changes are visible from the
+  lines around them.
+- `use-power:{id}` names the power's source card, found from the power id
+  through the catalog. The ideal is that a power declares its own log line
+  and this generic one is only a fallback (a roadmap follow-up).
+- Modifier powers used inside another action are named only on that action's
+  start line.
+
+### Setup lines
+
+Under the Setup headline, one line per player's pawn placement ("Red placed
+pawn at Green Shore") and one per adviser kept ("Red kept Tinker"). The kept
+adviser is named to its owner; others read "Red kept a Denizen" or "Red kept
+a Vision".
+
+### Detail lines
+
+These arrive with the second slice, between the start line and the action
+line that closes the action.
 
 | Kind | Template | Source |
 |------|----------|--------|
-| Decision | Kept {cards}, discarded {n} | `PartitionAnswer` with a keep-one section |
-| Decision | Chose {option} | `ChooseOneAnswer` |
+| Decision | Chose {option} | `ChooseOneAnswer` not already covered by an action line |
 | Decision | Chose {options} | `ChooseManyAnswer`, names joined with commas |
-| Decision | Paid {amount} {unit} | `ChooseAmountAnswer` under a payment query |
-| Roll | Rolled {faces} | `RollPayload` faces, named as the rulebook names them |
-| Delta | Spent {n} supply ({before} to {after}) | `SpendSupply` |
-| Delta | Increased supply from {before} to {after} | `GainSupply` |
-| Delta | Gained {n} favor from the {suit} bank | `Gain.Favor` |
-| Delta | Gained {n} secrets | `Gain.Secrets` |
-| Delta | Moved {n} warbands to {site} | `Move` of warbands |
-| Delta | Drew {cards} \| Drew {n} cards | `Draw`, per the visibility rule |
+| Roll | Rolled {faces} | `RollPayload` faces |
+| Delta | Gained {n} favor from the {suit} bank | `Gain.Favor` not covered by an action line |
+| Delta | Gained {n} secrets | `Gain.Secrets` not covered by an action line |
+| Delta | Moved {n} warbands to {site} | `WarbandsMoved`, and `Move` of warbands inside a run |
+| Delta | Drew {cards} | `Draw` outside Search |
 | Delta | Discarded {cards} to the {region} discard | `Discard.Denizen` |
 | Delta | Buried {card} | `Bury` |
-| Delta | Peeked at {cards} \| Peeked at {n} relics | `SiteRelicsPeeked`, `Peek`, per the visibility rule |
+| Delta | Peeked at {cards} | `SiteRelicsPeeked`, `Peek` |
 | Delta | Revealed {card} | `Reveal`, `OwnedRelicRevealed` |
-| Trigger | {card}: {effect} | `RecordPowerUse` followed by its batch, effect from the batch's own delta line |
+| Trigger | {card}: {effect} | `RecordPowerUse` followed by its batch |
+| Trigger | {player} became the Usurper | `UsurperFlipped` |
+| Trigger | Bandits returned to {sites} | `BanditsRefilled` |
 
-The die face names in `Rolled {faces}` come from the rulebook under
-`reference/`; the plan fixes the exact strings.
+Die faces are named as the rulebook names them (`reference/Oath Combined
+Rulebook.pdf`, "Attack" and "Defend"): attack faces "hollow sword", "sword",
+and "two swords and a skull"; defense faces "blank", "shield", "two shields",
+and "doubler".
+
+### Campaign
+
+Campaign carries the most lines, in this order:
+
+1. The start line: "Started Campaign: Raid against Blue" with its cost span.
+2. "Targets: {sites and pieces}".
+3. "Attack Pool: {n}, Defense Pool: {n}".
+4. "{attacker} activated {battle plans}".
+5. "{defender} revealed {cards}", when a defending battle plan was face down.
+6. "{defender} activated {battle plans}".
+7. The attack result lines.
+8. "{attacker} sacrificed {n} warbands".
+9. The defense result lines.
+10. "{winner} wins!"
+11. A line of everything the winner gained, if anything, then a line of what
+    the loser lost that the previous line does not already say: warbands lost,
+    favor burned, banishment.
+
+The attack and defense results move here from the action pane: once the log
+carries them, the campaign result panel leaves the action pane. The exact
+wording of lines 7, 9, and 11 is fixed from `CampaignOutcome`'s operations by
+the second slice's plan.
 
 ### Negotiation
 
 The back-and-forth of a negotiation (proposals, counter-proposals,
-acceptances) produces no lines. A negotiation produces a headline and then
-either a summary or an ending line.
+acceptances) produces no lines.
 
-- **Headline**: "Negotiated with Blue, White and Yellow". The participants come
-  from the negotiators `ChooseManyAnswer` step. When only one opponent was
-  eligible, that step is not recorded (`NegotiationProcedure.tree` omits the
-  decision), and the formatter reads the participant from
-  `NegotiationDeal.eligible` on the state before the run.
-- **Agreed**: the settling step's batch holds `Give` and `Peek` operations. Each
-  produces one subordinate line with its own subject:
+- **Agreed**: "Negotiated with Blue, White and Yellow", then one line per
+  settlement operation with its own subject:
   - "Blue gave 1 favor to Yellow" from a `Give` of favor.
   - "Yellow gave {relic} to White" from a `Give` of a relic.
   - "White showed Blue {adviser}" from a `Peek` disclosure. It says "showed",
     not "revealed": a disclosure tells one player and flips nothing.
 - **Declined**: "Negotiation ended by Yellow", from the `DeclineDeal` answer's
   `by` field. No settlement operations follow.
+
+The participants come from the negotiators `ChooseManyAnswer`. When only one
+opponent was eligible, that decision is not recorded
+(`NegotiationProcedure.tree` omits it), and the formatter reads the
+participant from `NegotiationDeal.eligible` on the state before the run.
 
 A face-down card in these lines follows the visibility rule. A viewer who may
 not see it reads "facedown relic (slot 1)" or "facedown adviser (slot 3)",
@@ -290,12 +378,17 @@ colour stays on the client, keyed by the `Player` span's `id`.
 
 ### Visibility
 
-One rule decides every card span. A card is named for a viewer when
+One rule decides every card reference. A card is named for a viewer when
 `GamePresentationProjector.identifiesCard` holds for that viewer either at the
 card's source in the state before the operation, or at its destination in the
-state after it. Otherwise the span shows a placeholder ("a card", "facedown
-relic (slot 1)") or the line uses its count form ("Drew 3 cards", "Peeked at
-2 relics"). An observer (`viewer = None`) gets the same rule with no player.
+state after it. Otherwise it is shown by its back.
+
+Card backs are public. A card that is not named reads as its kind: "a
+Denizen", "a Vision", "a Relic". Several unnamed cards are counted by kind:
+"Drew 2 Denizens and 1 Vision from the World Deck and kept a Vision". The one
+exception is a face-down card in a player's row that a line must tell apart
+from its neighbours, which reads by slot ("facedown relic (slot 1)"). An
+observer (`viewer = None`) gets the same rule with no player.
 
 The rule covers every case the log meets:
 
@@ -307,7 +400,7 @@ The rule covers every case the log meets:
 - A face-down adviser discarded is named only for its owner and for players
   who know it, judged on the state before.
 - A face-down adviser played is named for its owner and for players who know
-  it; everyone else reads "a card".
+  it; everyone else reads its back.
 
 ### Knowledge follows the card
 
@@ -319,7 +412,7 @@ away stops being able to see it. Site peeks are stored per site in
 someone takes it. Both are board bugs today, not only log concerns.
 
 The first task of the second slice fixes this in the operation application
-(`CardFaceOperations` and the move path), before any subordinate line exists:
+(`CardFaceOperations` and the move path), before any detail line exists:
 
 - A card that leaves a player's area adds that player to its `heldRelics` or
   `advisers` knowledge.
@@ -343,22 +436,22 @@ definitions.
 final case class LogEntryWire(sequence: Long, ordinal: Int, kind: String,
     depth: Int, spans: Vector[LogSpanWire])
 
-final case class LogSpanWire(kind: String, // text | player | card | site | amount
+final case class LogSpanWire(kind: String, // text | player | card | site | amount | cost
     text: String,                           // display text for every kind
     id: Option[String] = None,              // player, card, site
-    value: Option[Int] = None,              // amount
-    unit: Option[String] = None)            // amount
+    value: Option[Int] = None,              // amount, cost
+    unit: Option[String] = None)            // amount, cost
 
 final case class LogPageWire(gameId: String, after: Long, nextSequence: Long,
     entries: Vector[LogEntryWire])
 ```
 
 `text` is always present so a client that ignores span kinds still renders
-a sentence. Kind strings are the lower-case enum names. A hidden card is a
-`text` span, never a `card` span with its id withheld, so the wire carries no
-hidden card id in any field.
+a sentence. Kind strings are the lower-case enum names. A card shown by its
+back is a `text` span, never a `card` span with its id withheld, so the wire
+carries no hidden card id in any field.
 
-## Route
+## Routes
 
 Trusted seat routes refuse query strings (`noQuery`), so the cursor rides
 the path:
@@ -369,14 +462,17 @@ GET /games/{gameId}/api/log/{after}
 
 `after` is a journal sequence; the page holds every entry with
 `sequence >= after`, formatted for the authenticated seat. `after = 0` is
-the whole log. The response carries `nextSequence` so the client can poll
+the whole log. The response carries `nextSequence` so the client can ask
 with it next time, the same cursor the state projection already carries.
 Anything outside `0..nextSequence` is a 400 `malformed`. The route uses
 the same `oath_seat` cookie authentication and private headers as the
-projection route.
+projection route. It has no observer mode, as the projection route has
+none; observer formatting is exercised by the formatter's own tests.
 
-The development routes keep their raw event log unchanged. No public or
-trusted route ever exposes it.
+The development table reads the same log through a sibling of its projection
+route, `GET /api/dev/first-games/{gameId}/log/{after}?playerId=...`, with the
+same `playerId` binding its other routes use. The development raw event log
+is unchanged, and no public or trusted route ever exposes it.
 
 ### Cost
 
@@ -385,19 +481,18 @@ the whole journal. A page after sequence `n` still needs the fold from 0 to
 name things and judge visibility. Because the client asks only when
 `nextSequence` has advanced, that cost is paid once per command per seat, not
 per poll. This is acceptable for an alpha with journals in the low thousands
-of events; the six-player fixture has 1053. The place to cache, when needed,
-is a per-game `Vector[LogEntry]` for the public formatting plus per-seat
-overlays; this design does not add it.
+of events. The place to cache, when needed, is a per-game `Vector[LogEntry]`
+for the public formatting plus per-seat overlays; this design does not add it.
 
 ## Client
 
 ### Pane
 
 The Log pane renders the tail of the log at the pane floor: 11px Ink, no
-monospace. Depth 1 lines indent by one card gutter and use Ink Dim. Round and
-Victory headlines use the `replay` green; Turn headlines carry the player's
-seat color on the name span. Action headlines are Ink at the pane floor, in
-the Headline weight.
+monospace. Lines indent by one card gutter and use Ink Dim. Round and Victory
+headlines use the `replay` green; Turn headlines carry the player's seat
+color on the name span. A `cost` span is set apart from the sentence in a
+lighter treatment, with no separator character.
 
 The current turn headline sticks to the pane's top edge while its lines
 scroll under it, so the reader always knows whose turn the visible lines
@@ -422,8 +517,10 @@ Otherwise it opens at the bottom. The marker is written whenever the pane or
 the overlay has been scrolled to the end for one second, and on page unload.
 An observer seat writes no marker and shows no divider. Reads and writes are
 wrapped so a blocked store degrades to "no divider". This is the first
-`localStorage` use in the frontend's main code; the jsdom harness already
-clears the store between tests.
+`localStorage` use in the frontend's main code. The jsdom harness
+(`TestBrowser`) makes every storage access throw, to catch credential
+storage, so the divider's suites supply a fake store instead of lifting that
+trap.
 
 ### Overlay
 
@@ -447,25 +544,30 @@ The client adds no timer of its own. Whenever it receives a state projection,
 from the `SnapshotPollingCoordinator` timer, a command response, or a session
 load, and that projection's `nextSequence` is higher than the log's, it
 requests the log route with the log's last `nextSequence` and appends. It
-never re-requests entries it has. A stale-position rejection on a command
-does not touch the log. On a session change the log resets with the rest of
-the table.
+never re-requests entries it has. A failed log request leaves the log as it
+was and is retried at the next advancing projection. A stale-position
+rejection on a command does not touch the log. On a session change, and on a
+development seat switch, the log resets with the rest of the table.
 
 ## Delivery
 
 Three vertical slices, each shippable on its own:
 
-1. **Headlines end to end.** `EventReplayEngine.scan`; the formatter with the
-   `OathEvent` and `ProcedureRef` matches, run anchoring, and round, turn,
-   action, and victory headlines only; `playerLabel`; the `BeginTurn` doc
-   fix; the visibility rule, applied to headline card spans; wire types,
-   codec, and route; the pane rendering entries and the fetch rule; the leak
-   test over headlines. The rule is safe before the knowledge fix: that fix
-   only adds knowledge, so without it the log can hide a name a player
-   should see, never show one they should not.
-2. **Lines and knowledge.** Knowledge follows the card (first task); every
-   subordinate template; negotiation; golden tests; the leak test extended to
-   every line.
+1. **Headlines and action lines.** `EventReplayEngine.scan`; the formatter
+   with the `OathEvent` and `ProcedureRef` matches and segment look-ahead;
+   round, turn, and victory headlines; start lines with modifiers and cost;
+   one action line per row of the Action lines table, including Campaign's
+   start line and "{winner} wins!" and Negotiation's first line;
+   `playerLabel`; the `BeginTurn` doc fix; the visibility rule with card
+   backs; wire types, codec, both routes; the pane rendering entries, sticking
+   to the bottom, and the fetch rule; the prefix-stability and leak tests. The
+   rule is safe before the knowledge fix: that fix only adds knowledge, so
+   without it the log can hide a name a player should see, never show one
+   they should not.
+2. **Details and knowledge.** Knowledge follows the card (first task); every
+   detail line; setup lines; negotiation's settlement lines; the rest of the
+   campaign lines, and the campaign result panel's removal from the action
+   pane; golden tests over every line.
 3. **Reading aids.** The overlay, the divider and its marker, the "New" chip,
    and the sticky turn headline.
 
@@ -473,6 +575,10 @@ Three vertical slices, each shippable on its own:
 
 Out of scope, on purpose:
 
+- Showing a parked action's progress. The table's waiting message is the
+  place for it (a roadmap follow-up), not the log.
+- Powers declaring their own log lines (a roadmap follow-up); the generic
+  "Used {card}" stands in until then.
 - Click-to-highlight of sites or cards on the map.
 - Filters, collapsing, and search.
 - Timestamps. The journal records none; adding them is a durable wire change
@@ -488,53 +594,72 @@ Out of scope, on purpose:
 - Removing `DeltaMeaning`.
 - Re-keying `CardKnowledge` by card id (a roadmap follow-up).
 
-Untouched: the Actions pane, the map, the Players strip beyond `playerLabel`,
-the development raw event log.
+Untouched: the Actions pane except the campaign result panel's removal, the
+map, the Players strip beyond `playerLabel`, the development raw event log.
 
 ## Testing
 
 Server:
 
-- **Fixture journal.** The completed six-player game
-  `manual-1790205747051-112090` (1053 events, current walker vocabulary,
-  ending in `gameplay.usurper-victory`) is extracted once, by a read-only JDBC
-  query against a copy of `var/oathdigital`, into
-  `src/test/resources/journals/six-player-usurper.json`. The first task proves
-  it replays under the current code. It then doubles as a replay-drift guard:
-  a later journal wire change migrates this fixture with everything else.
-- **Coverage.** A test lists which `ProcedureRef` keys the fixture exercises.
-  Each key it misses (and a declined negotiation) gets a small scripted journal
-  driven through `GameApplicationService`, not a hand-built event vector.
-- **Golden tests.** The exact `LogEntry` vectors for the fixture and each
-  scripted journal, for the public viewer and for the acting seat.
-- **Viewer agreement.** For every journal, every viewer receives the same
-  entry keys; spans differ only where a `Card` span becomes a placeholder or a
-  count.
-- **Leak test.** Across every journal, the public formatting contains no
-  `Card` span that fails the visibility rule for `viewer = None`, and no wire
-  field carries a hidden card's id.
+- **Scripted journals.** Every journal a log test reads is built on each run
+  by driving commands through `GameApplicationService` with deterministic
+  ports, the way `testkit/Situation` seeds games. No stored game is a golden
+  fixture: replay re-checks unimplemented-power diagnostics
+  (`IgnoredRulesRecorded`) and re-derives state-based events, so a stored
+  journal breaks whenever a card is implemented, for reasons that have
+  nothing to do with the log. A script that a new card changes fails at the
+  command that no longer applies, which names the fix.
+- **Coverage.** Scripts together exercise every `ProcedureRef` key the
+  formatter handles, including a declined negotiation, and a campaign.
+- **Six-player smoke read.** During the first slice, the completed six-player
+  game `manual-1790205747051-112090` (1053 events) is formatted once from a
+  copy of `var/oathdigital` into scratch space for a person to read. Nothing
+  from it is committed.
+- **Golden tests.** The exact `LogEntry` vectors for each script, for the
+  acting seat and for another seat.
+- **Prefix stability.** For every script and every segment boundary `k`,
+  formatting the first `k` events yields exactly the full formatting's entries
+  below `k`.
+- **Viewer agreement.** For every script, every viewer receives the same entry
+  keys; spans differ only where a card reference becomes its back.
+- **Leak test.** Across every script, no formatting contains a `Card` span
+  that fails the visibility rule for its viewer, and no wire field carries a
+  hidden card's id.
 - **Knowledge.** A giver still identifies a given face-down relic; a site
   peeker still identifies a relic after another player takes it; a buried or
   reshuffled card is identified by nobody.
-- **Scan.** `scan(events).last.after == replay(events)` over the fixture.
-- **Route.** Cookie auth, `after` bounds, `nextSequence` echo, observer
-  formatting, and that the development raw log is unchanged.
+- **Scan.** `scan(events).last.after == replay(events)` over every script.
+- **Routes.** Cookie auth, `after` bounds, `nextSequence` echo, the
+  development route's `playerId` binding, and that the development raw log is
+  unchanged.
 
 Frontend (jsdom, munit):
 
-- Rendering of each kind at each depth, span colouring, sticky turn headline
-  structure.
+- Rendering of each kind at each depth, span colouring, the cost span, sticky
+  turn headline structure.
 - Stick-to-bottom versus "New" chip on append.
 - Divider placement and marker read/write with a fake store, including a
   throwing store.
 - Overlay open, close, focus return, and `aria-expanded`.
-- Fetching only when the projection's `nextSequence` advanced.
+- Fetching only when the projection's `nextSequence` advanced, and not again
+  for entries already held.
 
 ## Resolved decisions
 
 The original design left three decisions for the plan. All are settled:
 
 - Finish Rest shows the supply values: "Increased supply from 2 to 5".
-- Die face names come from the rulebook; the plan fixes the strings.
-- A negotiation's terms are neither the proposer's subordinates nor headlines
-  of their own: only the settlement or the ending is logged (see Negotiation).
+- Die face names come from the rulebook (see Detail lines).
+- A negotiation's terms are not logged; only the settlement or the ending is.
+
+The 2026-09-26 planning pass settled four more:
+
+- Headlines are rounds, turns, and victories. An action is a start line and an
+  action line posted when its facts are complete, because most actions park
+  before their details exist and a headline sent at the start would be thin.
+  Re-sending an open action's entries was considered and rejected: entries
+  would change after being read.
+- Start lines are consistent: every action that can take modifiers has one,
+  with or without modifiers chosen.
+- Supply rides on the start line; Recover's continued rolls repeat it.
+- Card backs are public, so a hidden card reads as its kind.
