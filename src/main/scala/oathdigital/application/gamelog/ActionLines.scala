@@ -18,6 +18,7 @@ import LogSpan.Text
   */
 private[gamelog] final class ActionLines(words: LogWords):
   import ActionLines._
+  private val setup = new SetupLines(words)
 
   def lines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
@@ -45,8 +46,7 @@ private[gamelog] final class ActionLines(words: LogWords):
       // The phase changes show in the lines around them.
       case PhaseTransitionRef.EndWake | PhaseTransitionRef.BeginRest =>
         Vector.empty
-      // Setup lines: the second slice.
-      case TriggeredProcedureRef.Setup => Vector.empty
+      case TriggeredProcedureRef.Setup => setup.lines(journal, at, viewer)
       case ActionRef.Search =>
         search(journal, run, at, viewer) ++
           playedAdviser(journal, run, at, viewer)

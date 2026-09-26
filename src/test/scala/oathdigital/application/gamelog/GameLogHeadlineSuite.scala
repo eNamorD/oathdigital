@@ -13,7 +13,8 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val entries = format(script, Some(script.actor))
     assertEquals(headlines(entries),
       Vector("Setup", "Round 1", s"${name(script.actor)}'s turn"))
-    assertEquals(entries.map(_.kind).take(3),
+    // Setup's own lines sit between the Setup and Round 1 headlines.
+    assertEquals(entries.filter(_.depth == 0).map(_.kind).take(3),
       Vector(LogKind.Round, LogKind.Round, LogKind.Turn))
     assertEquals(entries.head.sequence, 0L)
 
