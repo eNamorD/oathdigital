@@ -197,3 +197,13 @@ class CampaignPlansSuite extends munit.FunSuite:
     assert(plans.forall(_.isInstanceOf[BattlePlan]))
     assertEquals(plans.map(_.id.value).toSet, Set("title.oathkeeper-defense",
       "denizen.outriders", "relic.brass-army.campaign", "denizen.watchdog"))
+
+  test("a bandit's applied-plan marker reads back to the plan's source"):
+    Vector[DecisionOptionRef](DecisionOptionRef.Denizen(DenizenId("56")),
+      DecisionOptionRef.Edifice(EdificeId("edifice:homeland-arcane")),
+      DecisionOptionRef.Relic(RelicId("relic:circlet")),
+      DecisionOptionRef.Button("title")).foreach { ref =>
+      assertEquals(CampaignPlans.markedRef(CampaignPlans.appliedMarker(ref)),
+        Some(ref))
+    }
+    assertEquals(CampaignPlans.markedRef(PoolKey("campaign.attack")), None)

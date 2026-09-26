@@ -41,7 +41,19 @@ object CampaignPlans:
     * ends.
     */
   def appliedMarker(ref: DecisionOptionRef): PoolKey =
-    PoolKey(s"campaign.plan-applied.${ref.kind}.${ref.wireId}")
+    PoolKey(s"$MarkerPrefix${ref.kind}.${ref.wireId}")
+
+  /** The plan source `appliedMarker` recorded in `pool`, or `None` for any
+    * other pool. A ref's kind holds no dot, so the first dot after the
+    * prefix ends it. */
+  def markedRef(pool: PoolKey): Option[DecisionOptionRef] =
+    Option.when(pool.value.startsWith(MarkerPrefix))(
+      pool.value.stripPrefix(MarkerPrefix)).flatMap(rest =>
+      rest.split("\\.", 2) match
+        case Array(kind, wireId) => DecisionOptionRef.fromWire(kind, wireId)
+        case _ => None)
+
+  private val MarkerPrefix = "campaign.plan-applied."
 
   /** The chip an offer's sides produce. A plan usable by either side is a
     * "Battle Plan"; one side's plan says which.

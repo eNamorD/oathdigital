@@ -37,6 +37,18 @@ class GameLogPropertiesSuite extends munit.FunSuite:
         script.name))
     }
 
+  /** A line judges a card at the operation that moved it, which may lie
+    * earlier in the same walker run than the event posting the line (a
+    * Campaign's losses post at completion). The states a card may be
+    * identified in are therefore every state from the run's first event
+    * through the posting event. */
+  private def runStates(steps: Vector[oathdigital.engine.ReplayStep[OathState,
+      OathEvent]], at: Int): Vector[OathState] =
+    val first = (at - 1 to 0 by -1).find(index =>
+      steps(index).event.event.isInstanceOf[WalkerCompleted]).fold(0)(_ + 1)
+    (first to at).toVector.flatMap(index =>
+      Vector(steps(index).before, steps(index).after))
+
   test("no card span names a card its viewer cannot identify"):
     scripts.foreach { script =>
       val steps = script.history.steps
@@ -46,7 +58,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
           entry.spans.collect { case card: LogSpan.Card => card }
             .foreach { card =>
               val id = cardId(card.id, step)
-              val known = Vector(step.before, step.after).exists {
+              val known = runStates(steps, entry.sequence.toInt).exists {
                 case OathState.Ready(ready) => id.exists(value =>
                   presentation.identifiesAt(ready, Some(player), value))
                 case _ => false

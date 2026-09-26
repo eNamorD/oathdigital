@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -14,9 +15,11 @@ import LogSpan.Text
   * run's events before it; a name alone may come from later in the same
   * segment. The subject is omitted: it is the actor's own action.
   */
-private[gamelog] final class ActionLines(words: LogWords):
+private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
+    catalog: ExecutableCatalog):
   import ActionLines._
   private val setup = new SetupLines(words)
+  private val campaigns = new CampaignLines(words, choices, catalog)
   private val negotiations = new NegotiationLines(words)
 
   def lines(journal: LogJournal, run: Run, at: Int,
@@ -129,16 +132,7 @@ private[gamelog] final class ActionLines(words: LogWords):
               words.one(words.card(relic, before, after, viewer)))
         }
         payment ++ forged
-      case ActionRef.Campaign => ops.collect {
-        case OpStep(RecordCampaignResult(result), _, _) =>
-          action(
-            if result.attackerWins then
-              Vector(words.player(result.attacker), Text(" wins!"))
-            else result.defender match
-              case CampaignDefender.Player(player) =>
-                Vector(words.player(player), Text(" wins!"))
-              case CampaignDefender.Bandits => Vector(Text("The bandits win!")))
-      }
+      case ActionRef.Campaign => campaigns.lines(journal, run, at, viewer)
       case ActionRef.Challenge => ops.collect {
         case OpStep(Move(Piece.Banner(banner), PositionedLocation(from, _),
             PositionedLocation(Location.PlayArea(taker), _), _), _, _)

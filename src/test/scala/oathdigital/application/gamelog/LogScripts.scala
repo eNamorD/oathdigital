@@ -1,14 +1,15 @@
 package oathdigital.application.gamelog
 
 import oathdigital.application._
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseOneAnswer, DeclineDeal,
-  ProposeTerms}
-import oathdigital.testkit.{Situation, SituationDriver, Step}
+import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
+  ChooseOneAnswer, DeclineDeal, ProposeTerms}
+import oathdigital.testkit.{Park, Situation, SituationDriver, Step}
 
 /** A journal built by real play through `GameApplicationService` on every
   * run (spec, "Test journals"). No stored game is a fixture: a script a new
@@ -265,6 +266,39 @@ object LogScripts:
     start(start(act, ActionRef.Challenge), ActionRef.PlaceBannerResource)
     Script("banners", service, actor)
 
+  /** Attack dice all swords, defense dice all blank. */
+  val raidDice: CampaignDicePort = new CampaignDicePort:
+    def rollAttack(count: Int): Vector[AttackDieFace] =
+      Vector.fill(count)(AttackDieFace.OneSword)
+    def rollDefense(count: Int): Vector[DefenseDieFace] =
+      Vector.fill(count)(DefenseDieFace.Blank)
+
+  /** A Raid on the player whose pawn shares the actor's site. Every board
+    * warband goes into the force and every survivor is sacrificed, so the
+    * attack is twice the force against the defender's board warbands and
+    * blank dice: the attacker wins. No battle plan is chosen. */
+  def raid(using munit.Location): Script =
+    val sites = FirstGameSetupFixture.sites
+    val (service, _, driver) = journaled("raid", raidDice,
+      Vector(sites(0), sites(0)) ++ sites.drop(1))
+    val woken = Situation.wake(driver)
+    val actor = active(woken)
+    woken.withAnswers {
+      case park if park.decisionId == CampaignIds.kind =>
+        ChooseOneAnswer(DecisionOptionRef.Button("raid"))
+      case Park(Decide(CampaignIds.force, _,
+          DecisionQuery.ChooseAmount(_, max, _, _, _), _, _), _, _, _) =>
+        ChooseAmountAnswer(max)
+      case Park(Decide(CampaignIds.sacrifice, _,
+          DecisionQuery.ChooseAmount(_, max, _, _, _), _, _), _, _, _) =>
+        ChooseAmountAnswer(max)
+      case park if park.decisionId == CampaignIds.attackerPlan ||
+          park.decisionId == CampaignIds.defenderPlan =>
+        ChooseOneAnswer(CampaignIds.finish)
+    }.after(GameCommand.EndWake(actor),
+      GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
+    Script("raid", service, actor)
+
   /** The first two pawns share a site, so the first player can negotiate
     * with exactly one other: the negotiators decision is not asked. */
   private def negotiating(name: String)(using munit.Location)
@@ -330,5 +364,5 @@ object LogScripts:
   /** Every script, for the properties that hold over all of them. */
   def all(using munit.Location): Vector[Script] = Vector(woken, round,
     oathkeeper, search, facedownAdviser, muster, trade, takeWealth,
-    recoverFailed, recoverSucceeded, revealRelic, forge, banners, negotiationDeclined,
+    recoverFailed, recoverSucceeded, revealRelic, forge, banners, raid, negotiationDeclined,
     negotiationAgreed, negotiationDisclosed, usePower)

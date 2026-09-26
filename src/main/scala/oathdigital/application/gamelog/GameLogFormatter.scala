@@ -23,9 +23,9 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val words = new LogWords(catalog, presentation)
   private val starts = new StartLines(words, WalkerPowerCatalog.default(catalog)
     .powers.map(power => power.id -> power.resolution).toMap)
-  private val actions = new ActionLines(words)
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
+  private val actions = new ActionLines(words, choices, catalog)
   private val details = new DetailLines(words, choices)
   private val events = new EventLines(words)
 
