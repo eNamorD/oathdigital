@@ -192,6 +192,14 @@ leaked. Keep the raw loopback development event log separate.
   the legacy-event path (allowlist reasons come before shape reasons today)
   and needs its own preservation argument. Recorded during the operation
   family consolidation of 2026-09-24.
+- [ ] **Deferred: key `CardKnowledge` by card id.** Knowledge is stored per
+  place: `siteRelics` by viewer and site, `heldRelics` and `advisers` by
+  viewer, and an owner's knowledge is implicit in `identifiesCard`. The Game
+  Log phase patches the gaps this leaves (an ex-owner and a site peeker both
+  lose a card's name when it moves) by copying knowledge as cards move. A
+  single map from card id to the players who know it would make "knowledge
+  follows the card" structural instead of maintained per move. Recorded in
+  the Game Log design of 2026-09-26.
 
 ### Phase - Empire and campaign continuity
 
