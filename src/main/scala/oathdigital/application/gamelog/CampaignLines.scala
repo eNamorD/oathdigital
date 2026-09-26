@@ -44,8 +44,13 @@ private[gamelog] final class CampaignLines(words: LogWords,
         "activated") ++ choices.option(ref, before, after, viewer))).toVector
     case WalkerStepRecorded(_, ChoicePayload(CampaignIds.sacrifice,
         ChooseAmountAnswer(count), _), _, _) if count > 0 =>
+      // Each warband sacrificed adds one to the attack; saying the new
+      // total spares the reader the sum against the defense.
+      val attack = journal.readyBefore(at).flatMap(_.game.current.rollOutcomes
+        .get(CampaignIds.attackPool)).fold(0)(_.score)
       Vector(Posted.line(LogKind.Decision, Vector(Text(
-        s"Sacrificed $count ${plural(count, "warband", "warbands")}"))))
+        s"Sacrificed $count ${plural(count, "warband", "warbands")} " +
+          s"for an attack of ${attack + count}"))))
     case _ => Vector.empty
 
   private def targets(setup: CampaignSetup, ready: ReadyGame,

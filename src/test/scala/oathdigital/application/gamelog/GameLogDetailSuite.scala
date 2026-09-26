@@ -48,4 +48,7 @@ class GameLogDetailSuite extends munit.FunSuite:
   test("the placement discard is told once, by the action line"):
     val all = lines(facedownAdviser)
     assertEquals(all.count(_.startsWith("Discarded ")), 1, all)
-    assert(!all.exists(_.endsWith(" discard")), all)
+    // The action line names the pile, as every discard line does.
+    assert(all.exists(line =>
+      "^Discarded .+ to the (Cradle|Provinces|Hinterland) discard$".r
+        .matches(line)), all)

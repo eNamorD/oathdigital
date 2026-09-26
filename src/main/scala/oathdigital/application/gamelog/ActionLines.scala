@@ -230,7 +230,13 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       after: ReadyGame, actor: PlayerId, viewer: Option[PlayerId]): Posted =
     val named = words.one(words.card(card, before, after, viewer))
     key match
-      case "discard" => action(Vector(Text("Discarded ")) ++ named)
+      // Named with its pile, as every other discard line is.
+      case "discard" => action(Vector(Text("Discarded ")) ++ named ++
+        CardIndex.from(after.game).toOption.flatMap(_.get(card))
+          .map(_.location.container).collect {
+            case CardContainer.RegionalDiscard(region) =>
+              Text(s" to the ${region.key.capitalize} discard")
+          }.toVector)
       case "site" => action(Vector(Text("Played ")) ++ named ++
         LogJournal.pawnSite(before, actor).toVector.flatMap(site =>
           Vector(Text(" to "), words.site(site))))

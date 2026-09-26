@@ -97,12 +97,12 @@ private[gamelog] final class DetailLines(words: LogWords,
       case Move(Piece.Secrets(amount), PositionedLocation(Location.SharedBank, _),
           PositionedLocation(Location.PlayArea(player), _), _) =>
         gainedSecrets(player, amount)
-      case Move(Piece.Warbands(_, amount), _,
+      case Move(Piece.Warbands(kind, amount), _,
           PositionedLocation(Location.Site(site), _), _)
           if run.procedure != ActionRef.Campaign =>
-        line(Vector(LogSpan.Text(s"Moved $amount " +
-          ActionLines.plural(amount, "warband", "warbands") + " to "),
-          words.site(site)))
+        line(LogSpan.Text(s"Moved $amount ") +:
+          (whose(kind, amount, actor, before) ++
+            Vector(LogSpan.Text(" to "), words.site(site))))
       case Draw(player, cards, _, _) if run.procedure != ActionRef.Search =>
         line(words.subject(player, actor, "drew") ++
           words.cards(cards.map(card)))
@@ -122,6 +122,22 @@ private[gamelog] final class DetailLines(words: LogWords,
           Some(Orientation.FaceUp)) if owner == same && faceDown(before, id) =>
         line(words.subject(owner, actor, "revealed") ++ words.one(card(id)))
       case _ => Vector.empty
+
+  /** Whose warbands moved: the actor's go unnamed, anyone else's are named
+    * ("1 of Blue's warbands"), and bandits are bandits. */
+  private def whose(kind: ForceKind, amount: Int, actor: PlayerId,
+      ready: ReadyGame): Vector[LogSpan] =
+    val noun = ActionLines.plural(amount, "warband", "warbands")
+    kind match
+      case ForceKind.Exile(lineage) => ready.game.current.players
+          .find(_.lineage == lineage).map(_.player).filter(_ != actor) match
+        // "1 of Blue's warbands": after "of" the noun stays plural.
+        case Some(owner) => Vector(LogSpan.Text("of "), words.player(owner),
+          LogSpan.Text("'s warbands"))
+        case None => Vector(LogSpan.Text(noun))
+      case ForceKind.Imperial => Vector(LogSpan.Text(s"Imperial $noun"))
+      case ForceKind.Bandit =>
+        Vector(LogSpan.Text(ActionLines.plural(amount, "bandit", "bandits")))
 
   private def faceDown(ready: ReadyGame, id: CardId): Boolean =
     CardIndex.from(ready.game).toOption.flatMap(_.get(id))

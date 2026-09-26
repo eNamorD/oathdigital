@@ -58,3 +58,10 @@ class GameLogStartLineSuite extends munit.FunSuite:
   test("a start line without modifiers has no 'with' clause"):
     val start = texts(format(round, None)).find(_.startsWith("Started Travel")).get
     assert(!start.contains(" with "), start)
+
+  test("a chosen modifier is named on the start line by its card"):
+    val script = augury
+    val start = texts(format(script, None)).find(_.startsWith("Started Search"))
+      .get
+    assert(start.startsWith("Started Search with Augury"), start)
+    assert(start.endsWith("−2 Supply"), start)

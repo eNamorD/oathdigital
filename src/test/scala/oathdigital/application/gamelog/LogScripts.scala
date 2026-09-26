@@ -4,6 +4,7 @@ import oathdigital.application._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -361,8 +362,37 @@ object LogScripts:
       Situation.journaled(service, catalog, repository, "use-power")).after()
     Script("use-power", service, actor)
 
-  /** Every script, for the properties that hold over all of them. */
-  def all(using munit.Location): Vector[Script] = Vector(woken, round,
-    oathkeeper, search, facedownAdviser, muster, trade, takeWealth,
-    recoverFailed, recoverSucceeded, revealRelic, forge, banners, raid, negotiationDeclined,
-    negotiationAgreed, negotiationDisclosed, usePower)
+  /** Augury, a free Search modifier, stands at the actor's site; the Search
+    * selects it. */
+  def augury(using munit.Location): Script =
+    val card = DenizenId("56")
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders,
+      Vector(card))
+    val (service, _, driver) = journaled("augury")
+    val woken = Situation.wake(driver, chronicle, orders)
+    val actor = active(woken)
+    woken.after(Step.Arrange(Vector(ParkedServiceFixture.topOfWorldDeck(card,
+        Location.Site(pawn(woken, actor))))), GameCommand.EndWake(actor))
+      .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
+        Vector(Augury.id), Vector(DecisionOptionRef.Button("search:world")))))
+    Script("augury", service, actor)
+
+  /** Every script by its stream name, for the suites that hold for each. */
+  val named: Vector[(String, () => Script)] = Vector(
+    "woken" -> (() => woken), "round" -> (() => round),
+    "oathkeeper" -> (() => oathkeeper), "search" -> (() => search),
+    "augury" -> (() => augury),
+    "facedown-adviser" -> (() => facedownAdviser),
+    "muster" -> (() => muster), "trade" -> (() => trade),
+    "take-wealth" -> (() => takeWealth),
+    "recover-failed" -> (() => recoverFailed),
+    "recover-succeeded" -> (() => recoverSucceeded),
+    "reveal-relic" -> (() => revealRelic), "forge" -> (() => forge),
+    "banners" -> (() => banners), "raid" -> (() => raid),
+    "negotiation-declined" -> (() => negotiationDeclined),
+    "negotiation-agreed" -> (() => negotiationAgreed),
+    "negotiation-disclosed" -> (() => negotiationDisclosed),
+    "use-power" -> (() => usePower))
+
+  def all: Vector[Script] = named.map(_._2())
