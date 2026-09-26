@@ -19,3 +19,8 @@ reference/
 node_modules/
 
 .superpowers/
+
+# Design critique snapshots are local run state: absolute paths and content
+# fingerprints of this checkout. The ignore list a critique reads stays shared.
+.impeccable/critique/*
+!.impeccable/critique/ignore.md
