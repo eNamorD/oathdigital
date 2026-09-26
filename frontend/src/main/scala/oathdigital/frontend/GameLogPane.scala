@@ -56,4 +56,12 @@ private[frontend] object GameLogPane:
       span.id.flatMap(colors.get).getOrElse(PlayerColorCss.neutral), span.text)
     case "card" | "site" | "amount" | "cost" =>
       text("span", s"log-${span.kind}", span.text)
+    // The same die chips the table draws; the faces ride in `id`.
+    case "dice" => span.id.fold[dom.Node](dom.document.createTextNode(span.text)) {
+      faces =>
+        val dice = DieFace.roll(faces.split(" ").toVector.filter(_.nonEmpty))
+        dice.setAttribute("class",
+          s"die-faces log-dice log-dice-${span.unit.getOrElse("unknown")}")
+        dice
+    }
     case _ => dom.document.createTextNode(span.text)

@@ -1,9 +1,11 @@
 package oathdigital.protocol.projection
 
 /** One span of a log entry on the wire. `kind` is `text`, `player`, `card`,
-  * `site`, `amount` or `cost`; `text` is always present, so a client that
-  * ignores kinds still shows a sentence. A card shown by its back is a
-  * `text` span: no field carries a hidden card's id. */
+  * `site`, `amount`, `cost` or `dice`; `text` is always present, so a client
+  * that ignores kinds still shows a sentence. A card shown by its back is a
+  * `text` span: no field carries a hidden card's id. A `dice` span's `id`
+  * holds its face wire names separated by spaces, and its `unit` names the
+  * die, `attack` or `defense`. */
 final case class LogSpanWire(kind: String, text: String,
     id: Option[String] = None, value: Option[Int] = None,
     unit: Option[String] = None)

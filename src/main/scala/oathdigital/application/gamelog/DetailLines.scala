@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -7,7 +8,8 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.walker.{ChoicePayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, RollPayload,
+  WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
 
@@ -20,7 +22,14 @@ private[gamelog] final class DetailLines(words: LogWords,
     choices: ChoiceWords):
   def lines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    decision(journal, run, at, viewer)
+    decision(journal, run, at, viewer) ++ roll(journal, at)
+
+  private def roll(journal: LogJournal, at: Int): Vector[Posted] =
+    journal.event(at) match
+      case WalkerStepRecorded(_, RollPayload(pool, faces, _), _, _) =>
+        LogWords.dice(faces).toVector.map(dice => Posted.line(LogKind.Roll,
+          Vector(LogSpan.Text("Rolled "), dice) ++ DetailLines.forPool(pool)))
+      case _ => Vector.empty
 
   private def decision(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] = journal.event(at) match
@@ -52,6 +61,12 @@ private[gamelog] object DetailLines:
     PlaceBannerResourceProcedure.bannerDecisionId,
     PlaceBannerResourceProcedure.amountDecisionId,
     OathkeeperProcedure.recipientDecisionId)
+
+  def forPool(pool: PoolKey): Vector[LogSpan] =
+    if pool == CampaignIds.attackPool then Vector(LogSpan.Text(" for the attack"))
+    else if pool == CampaignIds.defensePool then
+      Vector(LogSpan.Text(" for the defense"))
+    else Vector.empty
 
   def narrated(decisionId: String): Boolean =
     NarratedIds(decisionId) || NarratedPrefixes.exists(decisionId.startsWith)

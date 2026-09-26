@@ -36,6 +36,11 @@ object LogSpan:
     def text: String = name
   final case class Amount(value: Int, unit: String) extends LogSpan:
     def text: String = s"$value $unit"
+  /** One roll of one die kind, drawn as dice: `faces` are the wire names the
+    * client's die chips know, `names` the rulebook's ("Attack" and "Defend"). */
+  final case class Dice(die: String, faces: Vector[String],
+      names: Vector[String]) extends LogSpan:
+    def text: String = names.mkString(", ")
   /** What an action spent, drawn apart from the sentence (spec, "Supply"). */
   final case class Cost(value: Int, unit: String) extends LogSpan:
     def text: String = s"−$value $unit"

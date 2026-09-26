@@ -52,6 +52,18 @@ class GameLogPaneSuite extends munit.FunSuite:
     assertEquals(list.getAttribute("role"), "log")
     assertEquals(list.getAttribute("aria-live"), "polite")
 
+  test("a dice span draws the die-face chips, one per face"):
+    val content = box(0, 0, 0)
+    val roll = entry(7, "roll", 1, LogSpanWire("text", "Rolled "),
+      LogSpanWire("dice", "sword, blank", id = Some("one-sword blank"),
+        unit = Some("attack")), LogSpanWire("text", " for the attack"))
+    new GameLogPane(content).show("g|red", Vector(roll), Map.empty)
+    val faces = content.querySelectorAll(".die-faces .die-face")
+    assertEquals(faces.length, 2)
+    assertEquals(faces(0).getAttribute("aria-label"), "one sword")
+    assertEquals(content.querySelector(".die-faces").getAttribute("class"),
+      "die-faces log-dice log-dice-attack")
+
   test("new entries append; a reader at the end stays at the end"):
     val content = box(500, 100, 400)
     val pane = new GameLogPane(content)

@@ -15,6 +15,13 @@ class LogPageCodecSuite extends munit.FunSuite:
   test("a page round-trips"):
     assertEquals(LogPageCodec.decode(LogPageCodec.encode(page)), Right(page))
 
+  test("a dice span round-trips with its faces and die"):
+    val dice = LogPageWire("g", 0, 9, Vector(LogEntryWire(7, 0, "roll", 1,
+      Vector(LogSpanWire("text", "Rolled "), LogSpanWire("dice",
+        "sword, two swords and a skull", id = Some("one-sword two-swords-skull"),
+        unit = Some("attack"))))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(dice)), Right(dice))
+
   test("a text span carries no id, value or unit on the wire"):
     val json = ujson.read(LogPageCodec.encode(page))
     val text = json("entries")(0)("spans")(1).obj

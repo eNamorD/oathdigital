@@ -78,6 +78,36 @@ private[gamelog] object LogWords:
   def bannerOf(id: PowerId): Option[Banner] =
     Banner.all.find(banner => id.value.startsWith(s"banner.${banner.key}."))
 
+  /** A roll as a dice span, or nothing for no dice or an unknown die. */
+  def dice(faces: Vector[DieFace]): Option[LogSpan.Dice] =
+    val attack = faces.collect { case face: AttackDieFace => face }
+    val defense = faces.collect { case face: DefenseDieFace => face }
+    if faces.isEmpty then None
+    else if attack.size == faces.size then Some(LogSpan.Dice("attack",
+      attack.map(attackWire), attack.map(attackName)))
+    else if defense.size == faces.size then Some(LogSpan.Dice("defense",
+      defense.map(defenseWire), defense.map(defenseName)))
+    else None
+
+  private def attackWire(face: AttackDieFace): String = face match
+    case AttackDieFace.HollowSword => "hollow-sword"
+    case AttackDieFace.OneSword => "one-sword"
+    case AttackDieFace.TwoSwordsSkull => "two-swords-skull"
+  private def attackName(face: AttackDieFace): String = face match
+    case AttackDieFace.HollowSword => "hollow sword"
+    case AttackDieFace.OneSword => "sword"
+    case AttackDieFace.TwoSwordsSkull => "two swords and a skull"
+  private def defenseWire(face: DefenseDieFace): String = face match
+    case DefenseDieFace.Blank => "blank"
+    case DefenseDieFace.OneShield => "one-shield"
+    case DefenseDieFace.TwoShields => "two-shields"
+    case DefenseDieFace.Doubler => "doubler"
+  private def defenseName(face: DefenseDieFace): String = face match
+    case DefenseDieFace.Blank => "blank"
+    case DefenseDieFace.OneShield => "shield"
+    case DefenseDieFace.TwoShields => "two shields"
+    case DefenseDieFace.Doubler => "doubler"
+
   def backOf(id: CardId): String = id match
     case _: VisionId => "Vision"
     case _: RelicId => "Relic"
