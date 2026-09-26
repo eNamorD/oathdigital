@@ -684,13 +684,15 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .player-board .board-cards { align-items: flex-start; font-size: 0.86em; }
 .game-table button, .development-panel button { cursor: pointer; }
 .map-controls { display: flex; align-items: center; gap: 5px; }
-.map-control, .dev-toggle, .dev-close { color: #e8d9bb; background: #302a20;
+.map-control, .dev-toggle, .dev-close, .log-new, .log-overlay-close {
+  color: #e8d9bb; background: #302a20;
   border: 1px solid #7c694b; border-radius: 4px; padding: 4px 9px;
   min-width: 32px; min-height: 30px; font-size: .78rem; }
 /* The same answer the Action face gives: a brighter frame on the pressed
    fill, in the space the border already holds. */
 .map-control:hover, .dev-toggle:hover, .dev-close:hover,
-.card-overlay-close:hover { border-color: #fff2d6; background: #3b3123; }
+.card-overlay-close:hover, .log-new:hover,
+.log-overlay-close:hover { border-color: #fff2d6; background: #3b3123; }
 .player-title:hover, .player-slot-vision:hover { background: #302a20; }
 .zoom-label { font-size: .72rem; color: #c0b398; min-width: 35px; text-align: center; }
 /* One draggable surface, like the Arcs map: the wheel zooms, the drag pans,
@@ -856,6 +858,28 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 /* A roll's dice sit on the line without growing it: the chip is a pixel
    shorter than the 11px line, so it hangs from the line's top. */
 .game-log .log-dice { vertical-align: top; }
+/* Reading aids. In the pane the current turn's headline stays at the top
+   while its lines scroll under it; in the overlay the round's does. The
+   list is flat, so the latest headline past the top covers the earlier
+   ones. A stuck headline is painted on the pane fill so nothing shows
+   through it. A sticky box stops at the scroller's padding, so `top` is
+   minus that padding: the headline meets the pane's top edge, with no
+   older line showing above it. */
+.pane-log .game-log .log-turn, .log-overlay .game-log .log-round {
+  position: sticky; top: -12px; z-index: 1; background: #211f1b; }
+/* Where the reader left off: a Brass Label rule across the list. */
+.game-log .log-divider { display: flex; align-items: center; gap: 8px;
+  margin: 6px 0; color: #d5bd8f; font-weight: 750; letter-spacing: .06em;
+  text-transform: uppercase; }
+.game-log .log-divider::before, .game-log .log-divider::after {
+  content: ""; flex: 1 1 0; border-top: 1px solid #7c694b; }
+/* The New chip rides the list's bottom edge while the reader is scrolled up. */
+.log-new { position: sticky; bottom: 0; z-index: 2; display: block;
+  margin: 6px auto 0; }
+.log-new[hidden] { display: none; }
+/* The pane heading opens the whole log. */
+.pane-log .pane-heading { cursor: pointer; }
+.pane-log .pane-heading:hover { color: #fff2d6; }
 .development-panel { position: fixed; z-index: 50; right: 12px; top: 48px;
   width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 64px);
   display: flex; flex-direction: column; background: #211d25;
@@ -882,6 +906,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   .pane-header { padding: 4px 7px; gap: 4px; }
   .pane-heading { font-size: .72rem; letter-spacing: .025em; }
   .pane-content { padding: 8px; }
+  .pane-log .game-log .log-turn, .log-overlay .game-log .log-round { top: -8px; }
 }
 @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
   .game-table { grid-template-rows: minmax(76px, 24%) minmax(0, 1fr) minmax(65px, 20%); }
@@ -914,3 +939,15 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   background: #302a20; border: 1px solid #7c694b; border-radius: 4px;
   font-size: 0.78rem; cursor: pointer; }
 .card-overlay-close:focus-visible { outline: 2px solid #fff0c9; }
+/* The whole log, over the table with the card overlay's scrim: a pane-fill
+   panel, full height, a reading measure wide. It sits outside the table, so
+   it names its own button cursor and focus ring. */
+.log-overlay { position: fixed; z-index: 300; inset: 0; display: flex;
+  justify-content: center; padding: 4vmin 16px; background: #0b0a08e8; }
+.log-overlay[hidden] { display: none; }
+.log-overlay-panel { display: flex; flex-direction: column; min-height: 0;
+  width: min(46rem, 100%); background: #211f1b; border: 1px solid #40382b; }
+.log-overlay .game-log { font-size: 13px; }
+.log-overlay .log-heading { margin: 0; font: inherit; }
+.log-overlay button { cursor: pointer; }
+.log-overlay button:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }
