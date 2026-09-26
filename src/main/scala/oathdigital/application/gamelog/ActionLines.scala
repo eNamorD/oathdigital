@@ -1,14 +1,12 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
-import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer,
-  DeclineDeal, PartitionAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import LogSpan.Text
 
 /** The action line each procedure posts, at the event its facts complete
@@ -19,6 +17,7 @@ import LogSpan.Text
 private[gamelog] final class ActionLines(words: LogWords):
   import ActionLines._
   private val setup = new SetupLines(words)
+  private val negotiations = new NegotiationLines(words)
 
   def lines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
@@ -158,7 +157,7 @@ private[gamelog] final class ActionLines(words: LogWords):
           action(Vector(Text(s"Placed ${resource(piece)} on "),
             words.banner(banner)))
       }
-      case ActionRef.Negotiation => negotiation(journal, run, at)
+      case ActionRef.Negotiation => negotiations.lines(journal, run, at, viewer)
       case ActionRef.UsePower(power) =>
         usedPower(journal, run, at, power, completing, viewer)
 
@@ -260,38 +259,6 @@ private[gamelog] final class ActionLines(words: LogWords):
           if giver == run.actor && onto == banner && resource(piece).nonEmpty =>
         resource(piece)
     }
-
-  /** "Negotiation ended by …" at the decline; otherwise "Negotiated with …"
-    * at the settlement batch, or at completion when the deal settled
-    * nothing. */
-  private def negotiation(journal: LogJournal, run: Run, at: Int)
-      : Vector[Posted] =
-    def negotiated = Vector(action(Text("Negotiated with ") +: LogWords.join(
-      negotiators(journal, run, at).map(player => Vector(words.player(player))))))
-    val declined = journal.answers(run, at).exists {
-      case Answered(NegotiationDeal.dealDecisionId, DeclineDeal, _) => true
-      case _ => false
-    }
-    val settledEarlier = (run.first until at).exists(index =>
-      isDelta(journal.event(index)))
-    journal.event(at) match
-      case WalkerStepRecorded(_, ChoicePayload(NegotiationDeal.dealDecisionId,
-          DeclineDeal, by), _, _) =>
-        Vector(action(Vector(Text("Negotiation ended by "), words.player(by))))
-      case event if isDelta(event) && !settledEarlier => negotiated
-      case _: WalkerCompleted if !declined && !settledEarlier => negotiated
-      case _ => Vector.empty
-
-  /** The negotiators decision's answer, or the one eligible player when it
-    * was not asked. */
-  private def negotiators(journal: LogJournal, run: Run, at: Int)
-      : Vector[PlayerId] =
-    journal.answers(run, at).collectFirst {
-      case Answered(NegotiationDeal.negotiatorsDecisionId,
-          ChooseManyAnswer(refs), _) =>
-        refs.collect { case DecisionOptionRef.Player(id) => id }
-    }.getOrElse(journal.readyBefore(run.first).fold(Vector.empty[PlayerId])(
-      NegotiationDeal.eligible(_, run.actor)))
 
   /** "Used {card}" at the first step recording one of the power's own
     * effects: a step that is not only the payment onto its card or to the

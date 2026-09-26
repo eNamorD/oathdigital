@@ -47,6 +47,23 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
       CardWord.Named(LogSpan.Card(id.value, presentation.cardLabel(after, id)))
     else CardWord.Back(LogWords.backOf(id))
 
+  /** A card in `owner`'s adviser or relic row: named when the viewer may
+    * identify it, else by its 1-based slot in that row before the operation
+    * (spec, "Negotiation"). */
+  def slotted(id: CardId, owner: PlayerId, before: ReadyGame,
+      after: ReadyGame, viewer: Option[PlayerId]): Vector[LogSpan] =
+    card(id, before, after, viewer) match
+      case CardWord.Named(span) => Vector(span)
+      case back: CardWord.Back =>
+        val row = before.game.current.players.find(_.player == owner)
+        val (noun, index) = id match
+          case _: RelicId =>
+            ("relic", row.fold(-1)(_.relics.indexWhere(_.id == id)))
+          case _ =>
+            ("adviser", row.fold(-1)(_.advisers.indexWhere(_.id == id)))
+        if index < 0 then one(back)
+        else Vector(LogSpan.Text(s"facedown $noun (slot ${index + 1})"))
+
   /** Cards as one phrase: named cards in order, then backs counted by kind,
     * "Tinker, 2 Denizens and a Vision". */
   def cards(words: Vector[CardWord]): Vector[LogSpan] =

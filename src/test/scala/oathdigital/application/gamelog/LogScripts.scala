@@ -299,6 +299,23 @@ object LogScripts:
       .after(deal(actor, AcceptDeal))
     Script("negotiation-agreed", service, actor)
 
+  /** The partner shows the actor its facedown starting adviser. */
+  def negotiationDisclosed(using munit.Location): Script =
+    val (service, parked, actor, partner) =
+      negotiating("negotiation-disclosed")
+    val adviser = parked.ready.game.current.players
+      .find(_.player == partner).get.advisers.collectFirst {
+        case DenizenState(id, Orientation.FaceDown, _) => id: WorldCardId
+        case VisionState(id, Orientation.FaceDown) => id: WorldCardId
+      }.get
+    parked
+      .parkedAfter(deal(partner, ProposeTerms(NegotiationTerms(Vector.empty,
+        Vector(NegotiationDisclosure(actor,
+          NegotiationDisclosureRef.Adviser(partner, adviser)))))))
+      .parkedAfter(deal(actor, AcceptDeal))
+      .after(deal(partner, AcceptDeal))
+    Script("negotiation-disclosed", service, actor)
+
   /** Silver Tongue used in Rest, its bank choice answered by default. */
   def usePower(using munit.Location): Script =
     val repository = new InMemoryEventStreamRepository
@@ -314,4 +331,4 @@ object LogScripts:
   def all(using munit.Location): Vector[Script] = Vector(woken, round,
     oathkeeper, search, facedownAdviser, muster, trade, takeWealth,
     recoverFailed, recoverSucceeded, revealRelic, forge, banners, negotiationDeclined,
-    negotiationAgreed, usePower)
+    negotiationAgreed, negotiationDisclosed, usePower)
