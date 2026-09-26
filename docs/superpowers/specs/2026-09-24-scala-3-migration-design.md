@@ -1,7 +1,8 @@
 # Scala 3 migration — design
 
 Date: 2026-09-24
-Status: approved design, not yet planned or implemented
+Status: implemented. The build now uses Scala 3, and the
+[Scala 3 modernization](2026-09-24-scala-3-modernization-design.md) followed.
 
 ## Goal
 
