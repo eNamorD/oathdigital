@@ -26,8 +26,8 @@ class GameLogExchangeSuite extends munit.FunSuite:
   test("a used power is named by its source card, once"):
     val all = lines(usePower)
     assertEquals(all.count(_.startsWith("Used ")), 1, all)
-    assert(all.exists(_ == "Used Silver Tongue") ||
-      all.exists(_.startsWith("Used a ")), all)
+    // A faceup adviser, so every viewer reads its name.
+    assert(all.contains("Used Silver Tongue"), all)
 
   test("a banner's power is named by its banner, not its id"):
     val script = woken
