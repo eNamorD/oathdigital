@@ -519,7 +519,8 @@ final case class RecordCampaignResult(result: CampaignResult)
 /** Hands the turn to `player` in `phase`, clearing every power use recorded
   * against the turn that ended.
   *
-  * Finish Rest is the only procedure that declares it. As with
+  * Two procedures declare it: Finish Rest hands the turn to the next player,
+  * and Setup's last step hands the first turn to the first player. As with
   * [[EnterPhase]], which player follows whom is not stated here: that is the
   * turn order Finish Rest reads. What applying this does reject is a player
   * who is not seated, and a phase no turn begins in. A turn begins in Wake,

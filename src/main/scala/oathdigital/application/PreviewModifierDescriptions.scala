@@ -69,9 +69,11 @@ private[application] final class PreviewModifierDescriptions(
     * Only a card the actor may already read is named: one of their own
     * advisers or relics first (they know those whichever way up), else a
     * faceup card on the board. A facedown card of anyone else is never a
-    * candidate, so the lookup cannot reveal one.
+    * candidate, so the lookup cannot reveal one. The game log names
+    * modifiers and used powers with it too, and judges visibility per viewer
+    * itself.
     */
-  private def printedOn(ready: ReadyGame, actor: PlayerId, handlerId: String)
+  private[application] def printedOn(ready: ReadyGame, actor: PlayerId, handlerId: String)
       : Option[CardId] =
     val holders = RuleSourceIndex.enumerate(catalog, ready)
       .filter(_.powerIds.exists(_.value == handlerId))

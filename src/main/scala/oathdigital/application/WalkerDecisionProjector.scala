@@ -401,11 +401,7 @@ private[application] final class WalkerDecisionProjector(
       .flatMap(optionProjection(ready, viewer, index, _))
 
   private def orientationOf(state: Option[CardState]): Option[Orientation] =
-    state match
-      case Some(DenizenState(_, orientation, _)) => Some(orientation)
-      case Some(VisionState(_, orientation)) => Some(orientation)
-      case Some(RelicState(_, orientation, _)) => Some(orientation)
-      case _ => None
+    GamePresentationProjector.orientationOf(state)
 
   /** The roll the parked decision declares it is about, with the faces
     * accumulated in that pool so far.

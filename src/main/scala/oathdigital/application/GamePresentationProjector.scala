@@ -39,6 +39,9 @@ private[application] final class GamePresentationProjector(
       case (intact, ruined) => side match
         case EdificeSide.Intact => intact
         case EdificeSide.Ruined => ruined
+  /** A player's display name: the one label the Players strip and the game
+    * log both use, so the two never disagree. */
+  def playerLabel(id: PlayerId): String = safeLabel(id.value)
 
   private[application] def edificeCardDetails(value: EdificeState): CardDetailsProjection =
     val definition = edificesById.get(value.id.value)
@@ -59,11 +62,11 @@ private[application] final class GamePresentationProjector(
   def setupPlayers(participants: Vector[FirstGameParticipant]) =
     participants.map { participant =>
       SetupPlayerProjection(participant.playerId.value,
-        safeLabel(participant.playerId.value), "exile", participant.color)
+        playerLabel(participant.playerId), "exile", participant.color)
     }
 
   def readyPlayers(ready: ReadyGame) = ready.game.current.players.map { player =>
-    SetupPlayerProjection(player.player.value, safeLabel(player.player.value),
+    SetupPlayerProjection(player.player.value, playerLabel(player.player),
       "exile", ready.playerColors(player.player))
   }
 
@@ -291,6 +294,27 @@ private[application] final class GamePresentationProjector(
           knownToViewer(ready, player, id, area))
       case _ => false
 
+  /** [[identifiesCard]] for the card wherever it lies in `ready`: its own
+    * orientation and container, looked up rather than passed. False for a
+    * card that is nowhere. The game log asks this on the state before and
+    * after each operation (spec, "Visibility").
+    */
+  def identifiesAt(ready: ReadyGame, viewer: Option[PlayerId], id: CardId)
+      : Boolean =
+    CardIndex.from(ready.game).toOption.flatMap(_.get(id)).exists(located =>
+      identifiesCard(ready, viewer, id,
+        GamePresentationProjector.orientationOf(located.state),
+        located.location.container))
+
+  /** A card's printed name; an edifice's is the side it shows in `ready`. */
+  def cardLabel(ready: ReadyGame, id: CardId): String = id match
+    case edifice: EdificeId =>
+      val side = CardIndex.from(ready.game).toOption.flatMap(_.stateOf(edifice))
+        .collect { case EdificeState(_, side, _) => side }
+        .getOrElse(EdificeSide.Intact)
+      edificeLabel(edifice, side)
+    case other => cardDetails(other, None, hidden = false).name
+
   private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
     ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
 
@@ -364,3 +388,13 @@ private[application] final class GamePresentationProjector(
       "plains" -> ("Plains", "This site has the Plains site power."))
     known.get(kind).fold(SitePowerProjection(kind, safeLabel(kind), None)):
       case (label, description) => SitePowerProjection(kind, label, Some(description))
+
+private[application] object GamePresentationProjector:
+  /** A card's orientation from its container state; `None` for a state
+    * that has none (a deck, a discard, a hand). */
+  def orientationOf(state: Option[CardState]): Option[Orientation] =
+    state match
+      case Some(DenizenState(_, orientation, _)) => Some(orientation)
+      case Some(VisionState(_, orientation)) => Some(orientation)
+      case Some(RelicState(_, orientation, _)) => Some(orientation)
+      case _ => None
