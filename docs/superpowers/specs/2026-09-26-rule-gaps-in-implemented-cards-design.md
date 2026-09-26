@@ -1,6 +1,7 @@
 # Rule Gaps in Implemented Cards — Design
 
-**Status:** approved design, not yet planned
+**Status:** approved design, planned in
+`docs/superpowers/plans/2026-09-26-rule-gaps-in-implemented-cards.md`
 **Date:** 2026-09-26
 **Supersedes nothing.** Closes the deferrals recorded in
 `2026-09-19-visions-conspiracy-walker-design.md` (Vision-play cards) and
@@ -93,7 +94,11 @@ restrictions:
 1. **Probe.** For each option of a `Decide`, the walker appends a hypothetical
    `Answered` for that option to the answers so far. It then runs
    `restrictionViolations` over the tree those answers derive. An option that
-   yields a violation is not offered.
+   yields a violation the answers so far do not already yield is not offered.
+   Comparing against that baseline keeps a violation that no option causes
+   (one a state change earlier in the same command brought about) from
+   emptying every decision after it; the answer-time check still reports
+   such a violation.
 2. **Query kinds.**
    - `ChooseOne` and `ChooseMany` probe each option on its own.
    - `ChooseAmount` probes each value from `min` to `max` and narrows the
@@ -111,9 +116,10 @@ restrictions:
    that hides the start control through `WalkerSimulation.starts`, as it does
    today.
 5. **One level deep.** The walk inside a probe does not probe its own
-   decisions. A flag threaded through the probe's traversal turns probing off,
-   so probing never recurses and its cost stays linear in the number of
-   options. A restriction that only a combination of later answers breaks
+   decisions. A `probing` flag on `WalkerPowers`, which already travels
+   everywhere the probe's traversal goes, turns probing off, so probing never
+   recurses and its cost stays linear in the number of options. The probe
+   runs only when some power contributes a `Restriction`. A restriction that only a combination of later answers breaks
    still rejects at answer time, as it does today, as a backstop.
 6. **Answers reach restrictions.** `restrictionViolations`' `ctxFor` passes
    `answered` into `PowerCtx`. Today it drops them, so a `Restriction` cannot
@@ -169,6 +175,12 @@ Secret Police and Sacred Ground bind players who have no access to the card,
 so they find the card on the map, as Toll Roads and the Fortress do, rather
 than through `PowerAccess`.
 
+A restriction binds only while the Vision is still where the play started: in
+the player's temporary hand or among their facedown advisers. Once the card
+has moved, the hook describes a play already made, and a later command's
+restriction check must not refuse it again because the holder's state has
+changed since.
+
 | Card | Forbids a faceup Vision when | Conspiracy |
 |---|---|---|
 | Vow of Obedience (#121) | the player holds it as a faceup adviser | forbidden |
@@ -184,7 +196,10 @@ that hold favor, a single stocked bank is chosen automatically, and the power
 is not offered when every bank is empty. It replaces the reviewed stub
 `RestPowers.VowOfObedience`. The catalog marks the power `persistent: false`
 because of its REST. It is registered the way Silver Tongue is, since that
-card also combines a rule with a REST.
+card also combines a rule with a REST: in both the walker and the phase power
+catalogs, with the default automatic resolution rather than one read from the
+catalog flag. The three rules and Book Binders are registered together in
+`CardPlayTriggers`.
 
 The stale fail-closed description in
 `docs/architecture/bounded-visions-and-conspiracy.md` is rewritten to describe
@@ -248,7 +263,7 @@ beside its existing `Restriction` at `CampaignActionEligibility`.
 - It finds the defender with `CampaignSetup.setup`, as `PlanContext.of` does.
 - When the defender is `CampaignDefender.Player(id)` and `id` holds Vow of
   Peace faceup, it returns `Vector.empty`. The sacrifice decision disappears
-  and `CampaignAnswers.sacrificed` reads zero.
+  and `CampaignSetup.sacrificed` reads zero.
 - It does nothing otherwise.
 
 A `Restriction` on the amount would also work with the look-ahead, but it
@@ -278,5 +293,7 @@ clearer.
 
 - `./sbtw test` and `./sbtw "frontend/test"`.
 - `python3 scripts/check-markdown-links.py`.
-- A manual game in the browser: Search with a Vision while holding Vow of
-  Obedience shows no faceup option.
+- A browser smoke check on a scratch database: a Search reaches its
+  placement decision and a play completes. A live game cannot be arranged to
+  deal Vow of Obedience and a Vision together, so the hidden faceup option is
+  proven by the suites.
