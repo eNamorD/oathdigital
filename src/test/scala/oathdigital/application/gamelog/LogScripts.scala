@@ -97,3 +97,15 @@ object LogScripts:
   def texts(entries: Vector[LogEntry]): Vector[String] = entries.map(text)
 
   def name(player: PlayerId): String = presentation.playerLabel(player)
+
+  /** The service suite's Oathkeeper tie: an arranged board, the active
+    * player's Travel, and the holder's choice of the next Oathkeeper. */
+  def oathkeeper(using munit.Location): Script =
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = steadyDice)
+    val (parked, active, _, _) = ParkedServiceFixture.oathkeeperTiePark(
+      service, repository, "oathkeeper")
+    Situation(parked.state, Vector.empty, parked.nextSequence,
+      Situation.journaled(service, catalog, repository, "oathkeeper")).after()
+    Script("oathkeeper", service, active)

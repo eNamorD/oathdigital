@@ -3,6 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.application.GamePresentationProjector
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
 import oathdigital.model._
@@ -19,6 +20,9 @@ import LogSpan.Text
 private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     presentation: GamePresentationProjector):
   private val words = new LogWords(catalog, presentation)
+  private val starts = new StartLines(words, WalkerPowerCatalog.default(catalog)
+    .powers.map(power => power.id -> power.resolution).toMap)
+  private val actions = new ActionLines(words)
 
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
@@ -70,10 +74,17 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     yield Run(procedure, ready.game.current.turn.activePlayer, at, None)) match
       case None => (Vector.empty, None)
       case Some(run) =>
+        val start = starts.start(journal, run, at, viewer)
+        val begun = if start.isEmpty then run
+          else run.copy(started = Some(journal.segmentEnd(at)))
+        val posted = start.toVector ++
+          starts.continued(journal, begun, at).toVector ++
+          actions.lines(journal, begun, at, viewer) ++
+          turnHeadlines(journal, at)
         val next = journal.event(at) match
           case _: WalkerCompleted => None
-          case _ => Some(run)
-        (turnHeadlines(journal, at), next)
+          case _ => Some(begun)
+        (posted, next)
 
   /** A turn begins at `BeginTurn(player, Wake)`. Setup's closing one also
     * opens Round 1; a `BeginTurn` into the round's end posts nothing, since
