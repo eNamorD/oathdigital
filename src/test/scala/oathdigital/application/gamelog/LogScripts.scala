@@ -225,6 +225,18 @@ object LogScripts:
     start(act, ActionRef.Recover)
     Script("recover-succeeded", service, active(act))
 
+  /** A successful Recover, then the recovered relic revealed as a minor
+    * action. */
+  def revealRelic(using munit.Location): Script =
+    val (service, act) = recovering("reveal-relic", steadyDice)
+    val actor = active(act)
+    val recovered = start(act, ActionRef.Recover)
+    val relic = recovered.ready.game.current.players.find(_.player == actor)
+      .get.relics.collectFirst {
+        case RelicState(id, Orientation.FaceDown, _) => id }.get
+    recovered.after(GameCommand.RevealOwnedRelic(actor, relic))
+    Script("reveal-relic", service, actor)
+
   /** The Forge fixture's journal (a Conquest, Searches, rounds) and then the
     * Forge itself, which never parks at a single-resource site. */
   def forge(using munit.Location): Script =
@@ -301,5 +313,5 @@ object LogScripts:
   /** Every script, for the properties that hold over all of them. */
   def all(using munit.Location): Vector[Script] = Vector(woken, round,
     oathkeeper, search, facedownAdviser, muster, trade, takeWealth,
-    recoverFailed, recoverSucceeded, forge, banners, negotiationDeclined,
+    recoverFailed, recoverSucceeded, revealRelic, forge, banners, negotiationDeclined,
     negotiationAgreed, usePower)

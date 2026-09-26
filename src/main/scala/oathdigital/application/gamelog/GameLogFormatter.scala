@@ -27,6 +27,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
   private val details = new DetailLines(words, choices)
+  private val events = new EventLines(words)
 
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
@@ -59,10 +60,11 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Vector(victory(winner, exhaustion(kind, vision))), run)
       // A diagnostic, not play.
       case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
-      // Detail lines: the second slice.
+      // Minor actions and state-based changes, outside any walker run.
       case _: OathEvent.SiteRelicsPeeked | _: OathEvent.OwnedRelicRevealed |
           _: OathEvent.WarbandsMoved | _: OathEvent.BanditsRefilled |
-          _: OathEvent.UsurperFlipped => (Vector.empty, run)
+          _: OathEvent.UsurperFlipped =>
+        (events.lines(journal, at, viewer), run)
       case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted =>
         walker(journal, run, at, viewer)
       case _: WalkerEvent => (Vector.empty, run)
