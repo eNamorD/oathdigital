@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.engine.{EventReplayEngine, RecordedEvent}
+import oathdigital.engine.{EventReplayEngine, RecordedEvent, ReplayStep}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -21,6 +21,13 @@ final case class GameAccepted(
 
 final case class LoadedGame(
     state: OathState,
+    nextSequence: Long
+)
+/** The whole journal as the log reads it: every event with the state
+  * before and after it, and the sequence the next event takes.
+  */
+final case class GameHistory(
+    steps: Vector[ReplayStep[OathState, OathEvent]],
     nextSequence: Long
 )
 final case class PreparedGameBootstrap(
@@ -122,6 +129,21 @@ final class GameApplicationService(
       case Some(stream) =>
         reconstruct(gameId, stream).map(state =>
           Some(LoadedGame(state, stream.nextSequence)))
+
+  /** The scanned journal: the same decode and fold `load` runs, keeping
+    * every step. The game log formats from this; nothing else needs it.
+    */
+  def history(
+      gameId: String
+  ): Either[GameApplicationError, Option[GameHistory]] =
+    repository.load(gameId).left.map(storageError).flatMap:
+      case None => Right(None)
+      case Some(stream) =>
+        for
+          records <- decodeRecords(gameId, stream)
+          steps <- replay.scan(records).left
+            .map(failure => ReplayFailure(failure.index, failure.violation))
+        yield Some(GameHistory(steps, stream.nextSequence))
 
   def preview(gameId: String, expectedNextSequence: Long, actor: PlayerId,
       action: ActionKind, selected: Vector[OrderedRuleInvocation])
@@ -260,6 +282,14 @@ final class GameApplicationService(
       gameId: String,
       stream: StoredEventStream
   ): Either[GameApplicationError, OathState] =
+    decodeRecords(gameId, stream).flatMap(records =>
+      replay.replay(records).left
+        .map(failure => ReplayFailure(failure.index, failure.violation)))
+
+  private def decodeRecords(
+      gameId: String,
+      stream: StoredEventStream
+  ): Either[GameApplicationError, Vector[RecordedEvent[OathEvent]]] =
     for
       _ <-
         if stream.gameId == gameId then Right(())
@@ -276,12 +306,8 @@ final class GameApplicationService(
         case (envelope, _) if envelope.gameId != gameId =>
           StreamIdentityMismatch(gameId, envelope.gameId)
       }.toLeft(())
-      state <- replay
-        .replay(envelopes.map(envelope =>
-          RecordedEvent(envelope.sequence, envelope.event)))
-        .left
-        .map(failure => ReplayFailure(failure.index, failure.violation))
-    yield state
+    yield envelopes.map(envelope =>
+      RecordedEvent(envelope.sequence, envelope.event)).toVector
 
   private def handleAgainst(
       gameId: String,

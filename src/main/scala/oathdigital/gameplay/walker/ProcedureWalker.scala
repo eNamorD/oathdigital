@@ -113,6 +113,15 @@ object ProcedureWalker:
       event: WalkerEvent): Either[OathViolation, OathState] =
     WalkerReplay.applyRecorded(state, event)
 
+  /** Applies ONE operation of a recorded batch, exactly as replay applies
+    * each in turn. The game log steps through a batch with it, so a line
+    * about one operation is judged against the state just before and just
+    * after that operation rather than the whole batch.
+    */
+  def applyRecordedOperation(state: ReadyGame, operation: CoreOperation)
+      : Either[OathViolation, ReadyGame] =
+    WalkerReplay.applyOperation(state, operation)
+
 
   def advance(state: ReadyGame, action: Operation,
       pending: Option[PendingTree], powers: WalkerPowers,

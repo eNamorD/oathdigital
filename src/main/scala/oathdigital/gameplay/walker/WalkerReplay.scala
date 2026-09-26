@@ -28,16 +28,20 @@ private[walker] object WalkerReplay:
       .map(OathState.Ready.apply)
     case _ => Left(OathViolation.GameNotStarted)
 
-  /** Applies the recorded operations the way the pipeline ran them: a `PayCost`
-    * whose payer is not the active player settles at once, so the recorded
-    * (requested) operation expands to the same moves it did when it ran.
+  /** Applies one recorded operation the way the pipeline ran it: a
+    * `PayCost` whose payer is not the active player settles at once, so the
+    * recorded (requested) operation expands to the same moves it did when it
+    * ran.
     */
+  def applyOperation(ready: ReadyGame, operation: CoreOperation)
+      : Either[OathViolation, ReadyGame] =
+    PayCostSettlement.prepare(ready, operation).flatMap(prepared =>
+      new OperationExecutor().execute(ready, prepared).left.map(_.toViolation))
+
   private def executeRecorded(ready: ReadyGame, ops: Vector[CoreOperation])
       : Either[OathViolation, ReadyGame] =
     ops.foldLeft[Either[OathViolation, ReadyGame]](Right(ready)):
-      (result, operation) => result.flatMap(state =>
-        PayCostSettlement.prepare(state, operation).flatMap(prepared =>
-          new OperationExecutor().execute(state, prepared).left.map(_.toViolation)))
+      (result, operation) => result.flatMap(applyOperation(_, operation))
 
   private def applyRecordedReady(ready: ReadyGame,
       event: WalkerEvent): Either[OathViolation, ReadyGame] =
