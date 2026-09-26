@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerStepPayload, WalkerStepRecorded}
@@ -84,6 +85,75 @@ private[gamelog] final class ActionLines(words: LogWords):
           action(Vector(Text(s"Took ${resource(piece)} from "),
             words.site(site)))
       }
+      case ActionRef.Recover =>
+        val recovered = ops.collect {
+          case OpStep(Move(Piece.Card(relic: RelicId),
+              PositionedLocation(Location.Site(site), _),
+              PositionedLocation(Location.PlayArea(taker), _), _), before, after)
+              if taker == actor =>
+            action(Vector(Text("Recovered ")) ++
+              words.one(words.card(relic, before, after, viewer)) ++
+              Vector(Text(" at "), words.site(site)))
+        }
+        // A Recover that succeeds with no relic to take posts nothing.
+        val failed =
+          if completing && stopped(journal, run, at) then
+            journal.readyBefore(run.first).flatMap(LogJournal.pawnSite(_, actor))
+              .toVector.map(site =>
+                action(Vector(Text("Failed to recover at "), words.site(site))))
+          else Vector.empty
+        recovered ++ failed
+      case ActionRef.Forge =>
+        val paid = ops.collect {
+          case OpStep(PayCost(_, Location.OnCard(card), cost, _, _, _),
+              before, after) => (card, cost, before, after)
+        }
+        val favor = paid.collect { case (card, cost, before, after)
+          if cost.favor > 0 => words.card(card, before, after, viewer) }
+        val secret = paid.collect { case (card, cost, before, after)
+          if cost.secret > 0 => words.card(card, before, after, viewer) }
+        val halves = Vector(
+          Option.when(favor.nonEmpty)(Text("favor on ") +: words.cards(favor)),
+          Option.when(secret.nonEmpty)(Text("secrets on ") +: words.cards(secret))
+        ).flatten
+        val payment = if halves.isEmpty then Vector.empty
+          else Vector(action(Text("Placed ") +: LogWords.join(halves)))
+        val forged = ops.collect {
+          case OpStep(Play(relic: RelicId,
+              PositionedLocation(Location.Deck(CardDeck.Relic), _), _, _, _),
+              before, after) =>
+            action(Vector(Text("Forged ")) ++
+              words.one(words.card(relic, before, after, viewer)))
+        }
+        payment ++ forged
+      case ActionRef.Campaign => ops.collect {
+        case OpStep(RecordCampaignResult(result), _, _) =>
+          action(
+            if result.attackerWins then
+              Vector(words.player(result.attacker), Text(" wins!"))
+            else result.defender match
+              case CampaignDefender.Player(player) =>
+                Vector(words.player(player), Text(" wins!"))
+              case CampaignDefender.Bandits => Vector(Text("The bandits win!")))
+      }
+      case ActionRef.Challenge => ops.collect {
+        case OpStep(Move(Piece.Banner(banner), PositionedLocation(from, _),
+            PositionedLocation(Location.PlayArea(taker), _), _), _, _)
+            if taker == actor =>
+          val holder = from match
+            case Location.PlayArea(player) => words.player(player)
+            case _ => Text("the bank")
+          action(Vector(Text("Took "), words.banner(banner), Text(" from "),
+            holder) ++ paidOnto(journal, run, at, banner).toVector.map(paid =>
+              Text(s" with $paid")))
+      }
+      case ActionRef.PlaceBannerResource => ops.collect {
+        case OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _),
+            PositionedLocation(Location.OnBanner(banner), _), _), _, _)
+            if giver == actor && resource(piece).nonEmpty =>
+          action(Vector(Text(s"Placed ${resource(piece)} on "),
+            words.banner(banner)))
+      }
       // Filled by Tasks 5 to 7; Task 7 deletes this case, making the match
       // exhaustive over `ProcedureRef`.
       case _ => Vector.empty
@@ -162,6 +232,23 @@ private[gamelog] final class ActionLines(words: LogWords):
           Vector(Text(" to "), words.site(site))))
       case _ => action(Vector(Text("Played ")) ++ named ++
         Vector(Text(" as an adviser")))
+
+  /** The last continue-or-stop answer was "stop". */
+  private def stopped(journal: LogJournal, run: Run, at: Int): Boolean =
+    journal.answers(run, at).reverse.collectFirst {
+      case Answered(RecoverProcedure.choiceDecisionId,
+          ChooseOneAnswer(DecisionOptionRef.Button(key)), _) => key == "stop"
+    }.contains(true)
+
+  /** What the challenger put on the banner, earlier in the run. */
+  private def paidOnto(journal: LogJournal, run: Run, at: Int, banner: Banner)
+      : Option[String] =
+    journal.runOps(run, at).collectFirst {
+      case (_, OpStep(Move(piece, PositionedLocation(Location.PlayArea(giver), _),
+          PositionedLocation(Location.OnBanner(onto), _), _), _, _))
+          if giver == run.actor && onto == banner && resource(piece).nonEmpty =>
+        resource(piece)
+    }
 
 private[gamelog] object ActionLines:
   def action(spans: Vector[LogSpan]): Posted = Posted.line(LogKind.Action, spans)

@@ -1,9 +1,11 @@
 package oathdigital.application.gamelog
 
 import oathdigital.application._
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{Situation, SituationDriver, Step}
 
 /** A journal built by real play through `GameApplicationService` on every
@@ -182,3 +184,59 @@ object LogScripts:
       PositionedLocation(Location.Site(pawn(woken, actor)))))))
     start(arranged, ActionRef.TakeWealth, DecisionOptionRef.Button("favor"))
     Script("take-wealth", service, actor)
+
+  private def recovering(name: String, dice: CampaignDicePort)
+      (using munit.Location): (GameApplicationService, Situation) =
+    val (service, _, driver) = journaled(name, dice,
+      ParkedServiceFixture.recoverSites)
+    val woken = Situation.wake(driver,
+      ParkedServiceFixture.recoverChronicle)
+    (service, woken.after(GameCommand.EndWake(active(woken))))
+
+  /** Dice that fail every Recover roll: continue once, then stop. */
+  def recoverFailed(using munit.Location): Script =
+    val (service, act) = recovering("recover-failed",
+      ParkedServiceFixture.failingDice)
+    val actor = active(act)
+    def answer(key: String) = GameCommand.ResolveWalker(actor, TreeDecision(
+      RecoverProcedure.choiceDecisionId,
+      ChooseOneAnswer(DecisionOptionRef.Button(key))))
+    act.parkedAfter(GameCommand.StartWalker(ActionRef.Recover,
+        StartPayload(actor)))
+      .parkedAfter(answer("continue"))
+      .after(answer("stop"))
+    Script("recover-failed", service, actor)
+
+  /** Steady dice succeed at once; the relic decision is answered by default. */
+  def recoverSucceeded(using munit.Location): Script =
+    val (service, act) = recovering("recover-succeeded", steadyDice)
+    start(act, ActionRef.Recover)
+    Script("recover-succeeded", service, active(act))
+
+  /** The Forge fixture's journal (a Conquest, Searches, rounds) and then the
+    * Forge itself, which never parks at a single-resource site. */
+  def forge(using munit.Location): Script =
+    val service = new GameApplicationService(catalog,
+      new InMemoryEventStreamRepository,
+      campaignDicePort = ForgeWalkerFixture.blankCampaignDice)
+    val (ready, actor, _) = ForgeWalkerFixture.forgeReadyGame(service, "forge")
+    service.handle("forge", ready.nextSequence, GameCommand.StartWalker(
+      ActionRef.Forge, StartPayload(actor))).fold(
+      error => munit.Assertions.fail(s"Forge refused: $error"), identity)
+    Script("forge", service, actor)
+
+  /** A Challenge for a banner from the bank, then resources placed on it.
+    * A Challenge needs strictly more favor than the banner holds, and a
+    * player starts with too little to challenge and still have favor to
+    * place, so two favor are arranged into the actor's area before End Wake.
+    */
+  def banners(using munit.Location): Script =
+    val (service, _, driver) = journaled("banners")
+    val woken = Situation.wake(driver)
+    val actor = active(woken)
+    val act = woken.after(Step.Arrange(Vector(Move(Piece.Favor(2),
+        PositionedLocation(Location.FavorBank(Suit.all.head)),
+        PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor))
+    start(start(act, ActionRef.Challenge), ActionRef.PlaceBannerResource)
+    Script("banners", service, actor)
