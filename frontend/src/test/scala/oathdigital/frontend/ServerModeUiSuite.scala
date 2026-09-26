@@ -189,6 +189,32 @@ class ServerModeUiSuite extends FunSuite:
       assert(!browser.text.contains("assigned seat link"))
     }.andThen { case _ => browser.close() }
 
+  test("a lost connection shows one notice naming the recovery, not the transport error"):
+    val browser = new TestBrowser("?gameId=existing&playerId=red")
+    var loads = 0
+    val transport = new JsonTransport:
+      def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
+        if url.contains("/events") then
+          Future.successful(Right(TransportResponse(200, """{"events":[]}""")))
+        else
+          loads += 1
+          if loads == 1 then Future.successful(Right(TransportResponse(200,
+            trustedProjection.replace("\"viewerPlayerId\":\"blue\",", ""))))
+          else Future.successful(Left(GameClientFailure.NetworkFailure(
+            "GET /api/dev/first-games/existing?playerId=red failed")))
+    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    // The first load lands; the poll the tick fires is the one that fails.
+    browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
+      assertEquals(loads, 2)
+      val notices = browser.byClass("status")
+        .filter(_.getAttribute("class").contains("error"))
+      assertEquals(notices.map(_.textContent),
+        Vector("Connection lost. Reconnect to see the current table before acting."))
+      assertEquals(notices.head.getAttribute("role"), "alert")
+      assert(browser.byClass("reconnectSession").nonEmpty)
+      assert(!browser.text.contains("failed"), browser.text)
+    }.andThen { case _ => browser.close() }
+
   /** Spec, behavior change 1. A development session follows the active
     * player; the render between the seat change and the reload used to show
     * the previous seat's walker drafts, since they were cleared only by the

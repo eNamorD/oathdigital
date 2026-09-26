@@ -35,25 +35,29 @@ private[frontend] final class TableScreen(
     val drafts = view.viewedDrafts
     val connection = view.viewedConnection
     val actionContent = element("div", "action-content")
-    connection match
+    val disconnected = connection match
       case ServerConnectionState.Disconnected(_) =>
-        actionContent.appendChild(text(
-          "div",
-          "status error disconnected",
-          "Disconnected. Reconnect to fetch the authoritative current " +
-            "state before issuing another command."
-        ))
+        val notice = text("div", "status error disconnected",
+          "Connection lost. Reconnect to see the current table before acting.")
+        notice.setAttribute("role", "alert")
+        actionContent.appendChild(notice)
         val retry = button("Reconnect", "reconnectSession")
         retry.onclick = _ => session.reconnectSession()
         actionContent.appendChild(retry)
+        true
       case ServerConnectionState.Connecting if projection.nonEmpty =>
         actionContent.appendChild(text(
           "div",
           "status",
           "Reconnecting to server…"
         ))
-      case _ => ()
-    failure.foreach { error =>
+        false
+      case _ => false
+    // The failure that cut the connection is the notice above: it names the
+    // recovery, where the transport error names a URL. Any other failure
+    // still shows, since the notice says nothing about it.
+    failure.filterNot(error =>
+      disconnected && GameClientFailure.isTransient(error)).foreach { error =>
       val notice = text("div", "status error",
         if TableSession.needsSeatLink(view.trusted, error) then
           "Open your assigned seat link to restore access to this game."

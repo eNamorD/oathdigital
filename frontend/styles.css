@@ -23,6 +23,8 @@
   --die-defense: #3d6fb4;
   --die-round: #9b59b6;
 }
+/* Selected text is brass on the table's base, not the browser's blue. */
+::selection { background: #d2a85e; color: #17140f; }
 
 .token-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .token-glyph { display: inline-block; width: 1.05em; height: 1.05em;
@@ -173,7 +175,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 .region-label {
   margin: 0 0 8px;
-  color: #a99b82;
+  color: #a99f8c;
   font-size: 0.78rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -267,7 +269,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   gap: 0.15em; font-weight: 800; }
 .site-defense { justify-content: flex-end; }
 .site-token-count { margin-right: 0.35em; }
-.site-defense-none { color: #a99b82; }
+.site-defense-none { color: #a99f8c; }
 .site-footer { display: flex; align-items: flex-end; justify-content: space-between;
   gap: 9px; margin-top: auto; }
 /* One line, cut with an ellipsis rather than wrapped: the box has room for a
@@ -421,7 +423,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .option-top { display: inline-flex; align-items: center;
   justify-content: center; min-height: 36px; width: 100%;
   border: 1px solid #7c694b; border-radius: 999px; color: #a99f8c;
-  font-size: 0.85em; font-weight: 600; }
+  font-size: max(0.85em, 0.7rem); font-weight: 600; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
 /* The answer stays in view: the footer pins to the pane's bottom edge on
    the pane's own fill while the zones scroll above it, and its negative
@@ -614,7 +616,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   scrollbar-color: #8c7959 #211f1b; }
 .game-table .panel { border: 0; border-radius: 0; background: transparent;
   margin: 0; padding: 0; }
-.game-table .world > h2, .game-table .wake-actions > h2 { display: none; }
+/* The pane header is the visible title, so these headings are kept for the
+   document outline a screen reader walks and taken off the screen. */
+.game-table .world > h2, .game-table .wake-actions > h2 { position: absolute;
+  width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0; }
 .game-table .status { margin: 0 0 12px; padding: 10px; font-size: .9rem; }
 .game-table .status.error { border-color: #e27f79; }
 .game-table .player-boards { display: flex; align-items: flex-start; gap: 6px;
@@ -681,6 +687,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-control, .dev-toggle, .dev-close { color: #e8d9bb; background: #302a20;
   border: 1px solid #7c694b; border-radius: 4px; padding: 4px 9px;
   min-width: 32px; min-height: 30px; font-size: .78rem; }
+/* The same answer the Action face gives: a brighter frame on the pressed
+   fill, in the space the border already holds. */
+.map-control:hover, .dev-toggle:hover, .dev-close:hover,
+.card-overlay-close:hover { border-color: #fff2d6; background: #3b3123; }
+.player-title:hover, .player-slot-vision:hover { background: #302a20; }
 .zoom-label { font-size: .72rem; color: #c0b398; min-width: 35px; text-align: center; }
 /* One draggable surface, like the Arcs map: the wheel zooms, the drag pans,
    and the scrollbar that native overflow would draw is hidden. */
@@ -709,25 +720,40 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: auto auto minmax(0, 1fr); }
 .map-compact .site-heading { display: contents; }
+/* The glance layer's two sizes, named once so the compact site below can
+   size its card row from what the text leaves it. */
+.map-compact { --glance-name: clamp(1.08rem, calc(12px / var(--map-scale, 1)), 3rem);
+  --glance-text: clamp(0.86rem, calc(11.6px / var(--map-scale, 1)), 3.2rem); }
 .map-compact .site-name { grid-column: 1 / -1; line-height: 1.1;
-  font-size: clamp(1.08rem, calc(12px / var(--map-scale, 1)), 3rem); }
+  font-size: var(--glance-name); }
 .map-compact .site-tokens { grid-row: 2; grid-column: 1; }
 .map-compact .site-pawns { grid-row: 2; grid-column: 2; margin: 0;
   justify-content: center; }
 .map-compact .site-defense { grid-row: 2; grid-column: 3; }
 .map-compact .site-tokens, .map-compact .site-defense, .map-compact .site-pawns,
-.map-compact .site-details {
-  font-size: clamp(0.86rem, calc(11.6px / var(--map-scale, 1)), 3.2rem); }
+.map-compact .site-details { font-size: var(--glance-text); }
 .map-compact .pawn { font-size: inherit; }
 .map-compact .site-details { grid-column: 1 / -1; align-self: stretch;
   margin: 0; line-height: 1.15; }
 .map-compact .site > .board-target-control { grid-column: 1 / -1; margin: 0; }
 .map-compact .site-forces { margin-top: 4px; }
 .map-compact .site-footer { display: none; }
-/* Forces take a line the fixed box does not have at this size, so the
-   cards give it up. */
-.map-compact .site:has(.site-forces) {
-  --card-w: min(7.3rem, calc((100% - 2 * var(--card-gap)) / 3)); }
+/* The card row takes what the fixed box leaves under the counter-scaled
+   text, so the glance layer never pushes a line out of the box as the map
+   shrinks: the box less its padding and grid gaps, less one 1.1 line of
+   name and one 1.25 line of pawns, is the row's height, and a denizen is
+   1.4 of its width. Above a scale of about 0.35 the row's own ceiling wins
+   and nothing changes. A site holding forces gives the line up first: the
+   forces line (1.15 plus its 4px margin) comes off the row as well, and
+   its ceiling is lower to begin with. */
+.map-compact .site { --card-w: min(8.6rem,
+  calc((100% - 2 * var(--card-gap)) / 3),
+  calc((var(--site-h) - 30px - var(--glance-name) * 1.1
+    - var(--glance-text) * 1.25) / 1.4)); }
+.map-compact .site:has(.site-forces) { --card-w: min(7.3rem,
+  calc((100% - 2 * var(--card-gap)) / 3),
+  calc((var(--site-h) - 34px - var(--glance-name) * 1.1
+    - var(--glance-text) * 2.4) / 1.4)); }
 /* The compact card face: the name in the middle, the suit in the corner.
    The card inherits the counter-scaled size from the site, so its own em
    rules hold the name at the floor without a clamp of their own. */
@@ -803,11 +829,20 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 /* Helper lines under a heading or prompt, in the same ink as a partition's
    instruction: what the form allows, not the question itself. */
 .selection-cardinality, .board-draft, .modifier-instruction,
-.walker-many-instruction, .informational { color: #a99f8c; font-size: .82rem; }
+.walker-many-instruction, .informational, .walker-waiting, .seat-identity,
+.walker-choice-details, .decision-instruction, .empty-state {
+  color: #a99f8c; font-size: .82rem; }
+/* A pane with nothing to show yet says so in the helper ink, at the top of
+   the pane like any first line. On the map, which is transform-scaled, the
+   line is set against the scale so it reads at one size whatever Fit came
+   to, and sits in the middle of the field the board would fill. */
+.empty-state { margin: 0; line-height: 1.5; }
+.map-content > .empty-state { padding: 3rem 0; text-align: center;
+  font-size: calc(0.82rem / var(--map-scale, 1)); }
 .pane-actions .decision-zones { grid-template-columns: 1fr; gap: 10px; }
 .pane-actions .decision-zone { min-height: 100px; }
 .pane-actions .decision-final-row { flex-wrap: wrap; }
-.log-placeholder { color: #a99c85; font-size: .82rem; line-height: 1.5; margin: 0; }
+.log-placeholder { color: #a99f8c; font-size: .82rem; line-height: 1.5; margin: 0; }
 .pane-log .pane-content { background: repeating-linear-gradient(135deg,
   #211f1b, #211f1b 12px, #24211c 12px, #24211c 24px); }
 .development-panel { position: fixed; z-index: 50; right: 12px; top: 48px;

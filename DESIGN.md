@@ -366,7 +366,15 @@ way a map's place names hold still while the map zooms. The study layer
 (site powers and requirement, a card's defense, restriction and badge) is
 hidden; a zoom or the overlay carries it. Nothing in the compact mode may
 change the map's height, because the Fit scale is computed from it: the site
-box is fixed and clips, and the region title has a fixed 2.4rem line.
+box is fixed and clips, and the region title has a fixed 2.4rem line. The
+two glance sizes are named once on `.map-compact` (`--glance-name`,
+`--glance-text`), and the compact site's card row is sized from what they
+leave: `--card-w` is the least of the row's own ceiling, a third of the
+width, and the box's height less the name line, the pawn row and, on a site
+holding forces, the forces line, divided by the card ratio. Above a scale of
+about 0.35 the ceiling wins and nothing changes; below it the cards, which
+show initials there anyway, give up height so the forces line is never the
+thing the box clips.
 
 ## Layout
 
@@ -473,7 +481,9 @@ controls are 30px.
 - **Shape:** 4px on map controls and the dev toggle; 6px on board-target
   controls; 7px on load-game, adviser and restart.
 - **Control** (map zoom, Fit, dev tools, overlay close): Raised fill, `#e8d9bb`
-  text, Brass Line border, `4px 9px` padding, 0.78rem.
+  text, Brass Line border, `4px 9px` padding, 0.78rem. Hover: Pressed fill,
+  Bright Cream border, the Action face's own answer. The two player pills
+  (title, Vision) take the Raised fill on hover.
 - **Action** (load game, adviser, and every act, decision, confirm and
   modifier button in the Actions pane): `#282117` fill, white text, `#bca780`
   border, `8px 12px` padding. Hover: Pressed fill, Bright Cream border. The
@@ -568,7 +578,17 @@ Fill.
 Four `section`s with a header strip (Pane Header fill, Line-pane bottom
 border, 39px, Brass Label uppercase title) and a scrolling content area. The
 Log pane's content carries a 12px diagonal stripe (`#211f1b` / `#24211c`) as
-a texture while empty; the placeholder is `#a99c85` 0.82rem.
+a texture while empty; the placeholder is Ink Dim 0.82rem, as is every
+pane's empty or loading line, and a waiting or seat notice in the Actions
+pane. On the map the empty line is set against the scale
+(`0.82rem / --map-scale`) and centered, so it reads at one size whatever
+Fit came to. The pane header is each pane's visible title; the `h2`s the
+renderers write inside a pane ("The World", "Available actions", a decision's
+heading) are kept for the document outline and taken off the screen with
+the clip pattern, never `display: none`.
+
+Text selection is brass on Base (`::selection`), so the one browser surface
+a player touches in every pane carries the palette.
 
 ### Inputs / Fields
 - **Style:** Base fill, white text, Line-mid border, 6px radius, 8px padding,
