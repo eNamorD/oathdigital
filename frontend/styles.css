@@ -946,7 +946,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   justify-content: center; padding: 4vmin 16px; background: #0b0a08e8; }
 .log-overlay[hidden] { display: none; }
 .log-overlay-panel { display: flex; flex-direction: column; min-height: 0;
-  width: min(46rem, 100%); background: #211f1b; border: 1px solid #40382b; }
+  width: min(46rem, 100%); background: #211f1b; border: 1px solid #443c30; }
 .log-overlay .game-log { font-size: 13px; }
 .log-overlay .log-heading { margin: 0; font: inherit; }
 .log-overlay button { cursor: pointer; }
