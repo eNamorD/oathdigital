@@ -98,3 +98,22 @@ class GameLogCampaignSuite extends munit.FunSuite:
     assert(shown.exists(line => line.startsWith("The bandits activated ") &&
       !line.endsWith("Edifice") && !line.endsWith("Denizen") &&
       !line.contains("campaign.plan-applied")), shown)
+
+  test("a total a plan rewrites in the same segment is told once, as rewritten"):
+    // Outriders ignores the skulls: it writes the attack again after the cap.
+    val script = woken
+    val steps = script.history.steps
+    val last = steps.last.after
+    val tail = Vector[OathEvent](
+      WalkerStepRecorded("attack-result", WalkerStepPayload.DeltaRecorded(
+        DeltaMeaning.OperationApplied("attack")), Vector(
+          ModifyRollOutcome(CampaignIds.attackPool, Some(2), Some(6)),
+          ModifyRollOutcome(CampaignIds.attackPool, Some(0), Some(8))),
+        Vector.empty),
+      WalkerCompleted(ActionRef.Campaign))
+    val entries = formatter.format(steps ++ tail.zipWithIndex.map {
+      case (event, index) => ReplayStep(RecordedEvent(steps.size.toLong + index,
+        event), last, last) }, None)
+    val attacks = texts(entries.filter(_.sequence >= steps.size))
+      .filter(_.startsWith("Attack: "))
+    assertEquals(attacks, Vector("Attack: 8"))

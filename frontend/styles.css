@@ -853,6 +853,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .game-log .log-line { padding-left: 12px; color: #a99f8c; }
 .game-log .log-card, .game-log .log-site { color: #f5ecd7; }
 .game-log .log-cost { margin-left: 0.5em; opacity: 0.72; font-weight: 400; }
+/* A roll's dice sit on the line without growing it: the chip is a pixel
+   shorter than the 11px line, so it hangs from the line's top. */
+.game-log .log-dice { vertical-align: top; }
 .development-panel { position: fixed; z-index: 50; right: 12px; top: 48px;
   width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 64px);
   display: flex; flex-direction: column; background: #211d25;

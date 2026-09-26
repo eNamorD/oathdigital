@@ -69,21 +69,31 @@ private[gamelog] final class CampaignLines(words: LogWords,
     * applied, and the winner. */
   private def recorded(journal: LogJournal, at: Int, viewer: Option[PlayerId])
       : Vector[Posted] =
-    journal.ops(at).collect {
-      case OpStep(ModifyDicePool(pool, _, _), before, after)
+    val ops = journal.ops(at)
+    val later = (at + 1 to journal.segmentEnd(at)).toVector.flatMap(journal.ops)
+    // A plan that rewrites a total after the skull cap (Outriders) writes the
+    // same pool again in this segment; only the final total is told.
+    def rewritten(index: Int, pool: PoolKey): Boolean =
+      (ops.drop(index + 1) ++ later).exists {
+        case OpStep(ModifyRollOutcome(again, _, Some(_)), _, _) => again == pool
+        case _ => false
+      }
+    ops.zipWithIndex.collect {
+      case (OpStep(ModifyDicePool(pool, _, _), before, after), _)
           if CampaignPlans.markedRef(pool).nonEmpty =>
         Posted.line(LogKind.Decision, Text("The bandits activated ") +:
           choices.option(CampaignPlans.markedRef(pool).get, before, after,
             viewer))
-      case OpStep(ModifyRollOutcome(CampaignIds.attackPool, skulls,
-          Some(score)), _, _) =>
+      case (OpStep(ModifyRollOutcome(CampaignIds.attackPool, skulls,
+          Some(score)), _, _), index)
+          if !rewritten(index, CampaignIds.attackPool) =>
         val paid = skulls.filter(_ > 0).fold("")(count =>
           s" with $count ${plural(count, "skull", "skulls")}")
         Posted.line(LogKind.Roll, Vector(Text(s"Attack: $score$paid")))
-      case OpStep(ModifyRollOutcome(CampaignIds.defensePool, _, Some(score)),
-          _, _) =>
+      case (OpStep(ModifyRollOutcome(CampaignIds.defensePool, _, Some(score)),
+          _, _), index) if !rewritten(index, CampaignIds.defensePool) =>
         Posted.line(LogKind.Roll, Vector(Text(s"Defense: $score")))
-      case OpStep(RecordCampaignResult(result), _, _) =>
+      case (OpStep(RecordCampaignResult(result), _, _), _) =>
         action(
           if result.attackerWins then
             Vector(words.player(result.attacker), Text(" wins!"))

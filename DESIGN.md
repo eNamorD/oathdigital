@@ -561,7 +561,9 @@ A rolled die is a face-shaped chip: 1.9em minimum width, 1.5em tall, 1px
 Brass Line border, 0.25em radius, Base fill, symbols in Token Symbol at 0.9em
 700. A blank face is a dashed `#5d5144` chip with nothing on it. Faces sit in
 an inline wrap with 0.25em gaps; a walk's roll shows the faces, then one line
-of totals.
+of totals. A roll in the game log draws the same chips inline in its line,
+hung from the line's top so the 11px line never grows; the totals follow as
+their own log lines.
 
 ### Sites
 A site is the board's unit: Site fill, Line border, 9px radius, 12px padding,
@@ -577,10 +579,12 @@ Fill.
 ### Panes
 Four `section`s with a header strip (Pane Header fill, Line-pane bottom
 border, 39px, Brass Label uppercase title) and a scrolling content area. The
-Log pane's content carries a 12px diagonal stripe (`#211f1b` / `#24211c`) as
-a texture while empty; the placeholder is Ink Dim 0.82rem, as is every
-pane's empty or loading line, and a waiting or seat notice in the Actions
-pane. On the map the empty line is set against the scale
+Log pane is an 11px list: round and victory headlines in Replay green, a
+turn headline naming its player in the seat color, and every other line one
+gutter in, in Ink Dim, with card and site names in Cream and a spent cost
+set apart by a lighter weight rather than a separator. Every pane's empty or
+loading line, and a waiting or seat notice in the Actions pane, is Ink Dim
+0.82rem. On the map the empty line is set against the scale
 (`0.82rem / --map-scale`) and centered, so it reads at one size whatever
 Fit came to. The pane header is each pane's visible title; the `h2`s the
 renderers write inside a pane ("The World", "Available actions", a decision's
