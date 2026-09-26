@@ -8,12 +8,30 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase - Catalog batch 2** is next.
+**Phase - Rule gaps in implemented cards** is next, then **Phase - Catalog
+batch 2**.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
+
+### Phase - Rule gaps in implemented cards
+
+Walker migrations dropped these rules. The cards can already appear in play,
+so the game silently skips part of their printed text.
+
+- [ ] **Vision-play restrictions.** Vow of Obedience, Secret Police, Book
+  Binders and the Sacred Ground / Desecrated Ground edifice faces should
+  become `Restriction` powers. Until then they are silently ignored when a
+  Vision is played. Recorded in the Visions and Conspiracy walker design.
+- [ ] **Vow of Peace's second sentence.** Attackers may still sacrifice
+  against a faceup holder (`VowOfPeaceContribution`). Recorded in the
+  Campaign walker design.
+- [ ] **Off-turn modifiers beyond battle plans.** A player choosing powers
+  off their own turn works only for Campaign plans, so a defender cannot
+  activate any other modifier. Recorded in the powers design and the walker
+  ownership and phases design.
 
 ### Phase - Catalog batch 2
 
@@ -22,6 +40,22 @@ Implement the next set of denizens and relics. The first batch covered 30 of
 Chronicle or explore machinery, so they fit the all-Exile game. The slice's
 own spec sets the card count and selection. As cards become implemented,
 the setup generator draws more of them into the world deck.
+
+Some candidate cards need engine work first, which the spec can take on or
+choose around:
+
+- Narrow Pass and other consent cards need the consent system.
+- The Gathering and Whispering Stone need a nested Negotiation with its own
+  participants.
+- Golem Legions needs Muster to allow a per-source exception to the
+  token-free rule and to accept the actor's own advisers as sources.
+
+### Phase - Consent system
+
+A way for players to request and give consent, including per-player
+permissions that approve it automatically. It interacts with certain
+Restrictions, probably through their "ignore" features. Narrow Pass and later
+cards need it, and it is a system of its own, separate from Negotiation.
 
 ### Phase 5 - All-Exile alpha readiness
 
@@ -44,6 +78,21 @@ requested UI changes are in the
    documentation fixes made afterwards. Rerun the complete verification and
    packaged smoke gates, and a new acceptance record if the release commit
    differs from the tested one, before each alpha build.
+2. [ ] **Unanswered off-turn decisions.** A parked decision blocks every
+   command until its owner answers. There are no timeouts, forfeits or host
+   resolution. Recorded in the walker ownership and phases design.
+3. [ ] **Reconnection UX.** After a client loses its connection it should
+   retry with exponential backoff and show a **Try Again** button. Recorded
+   in the Phase 5 follow-ups.
+4. [ ] **Investigate UI work missing from the packaged build.** The operator
+   did not see earlier UI changes in the `0.1.0-alpha.1` build. Recorded in
+   the Phase 5 follow-ups.
+5. [ ] **Phase 5 deferred defects.** Items 7, 12, 13, 16 and 18 of the
+   [follow-ups](operations/phase-5-follow-ups.md#deferred-defects): bracketed
+   `[::1]` rejected as loopback, the frontend linker on the test classpath,
+   the test `index.html` fixture shadowing the generated one, the hardcoded
+   `oathdigital:root` assertion, and no Docker `HEALTHCHECK`. Also document
+   host bind mounts at `/var/lib/oathdigital` in the configuration guide.
 
 ### Setup deferred items
 
@@ -58,10 +107,10 @@ requested UI changes are in the
 - [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
   the Chancellor or first player (site order is used until then). Player choices
   earlier in setup once foundations and legacies exist, such as the Chancellor
-  choosing Recent or Forgotten sites. The Chronicle string codec for TTS import
-  and export, including the sections that format has not defined yet. Later-game
+  choosing Recent or Forgotten sites. Later-game
   setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
-  triggers once an explore procedure exists.
+  triggers once an explore procedure exists. The Chronicle string codec is
+  under **Phase - Empire and campaign continuity**.
 
 ### Game Log deferred items
 
@@ -74,6 +123,10 @@ requested UI changes are in the
   an action logs a generic "Used {card}". Each power could instead declare
   the line it contributes where it takes effect, with the generic line kept
   only as a fallback. Recorded in the Game Log design of 2026-09-26.
+- [ ] **Deferred: Game Log features the design left out.** Click-to-highlight,
+  filters and search, timestamps, a server-side read marker, failed victory
+  checks and negotiation proposals. Replay navigation is **L4**. Recorded in
+  the Game Log design of 2026-09-26.
 
 ### Powers-related deferred items
 
@@ -127,8 +180,7 @@ requested UI changes are in the
   catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
   3b and go with the reviewed catalog.
 - [ ] **Deferred: walker follow-ups.** Make the Recover roll automatic like the
-  others, and add real consent (for Narrow Pass and beyond) as its own system
-  separate from Negotiation. Audit the first-game rules the walker actions
+  others. Audit the first-game rules the walker actions
   dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
   Add the remaining attacker, defender and bandit battle plan families,
   non-deterministic loss choices, and the additional Raid, victory, defeat and
@@ -183,6 +235,30 @@ requested UI changes are in the
   single map from card id to the players who know it would make "knowledge
   follows the card" structural instead of maintained per move. Recorded in
   the Game Log design of 2026-09-26.
+- [ ] **Deferred: retire the reviewed-catalog machinery.**
+  `ReviewedPowerInspector` and `PowerRuntime` are still used by 12 main files,
+  and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
+  used only by tests. Move the remaining users onto the executable catalog and
+  delete the reviewed catalog.
+- [ ] **Deferred: decide whether to keep `DeltaMeaning`.** Nothing reads it.
+  The retention decision of 2026-09-24 said to revisit it once the action
+  history was designed, and the Game Log does not use it.
+- [ ] **Deferred: frontend and protocol clean-up.** Decision option kinds are
+  bare string literals in the frontend, and the id grammars (`stableKey`,
+  decision-id prefixes) have no shared home. The projection has no protocol
+  version field. `WalkerDecisionProjectorSuite` fabricates parks instead of
+  reaching them through a Situation. Table-session clean-up is parked: no
+  `SeatMode` enum, the `HttpGameClient` downcast for the raw event history in
+  `TableSession`, and duplicate jsdom tests. Recorded in the typed decision
+  form and table session designs.
+
+### Phase - Negotiation terms and promises
+
+A Negotiation deal holds favor and relic transfers and disclosures only. Add
+promises about future actions, transfers of secrets, advisers, sites and
+banners, remote and private Negotiation, a registry of term kinds, and
+eligibility powers. Record ignored Negotiation rules per participant rather
+than for the actor only. Citizenship offers belong to the Empire phase.
 
 ### Phase - Empire and campaign continuity
 
@@ -195,6 +271,13 @@ Then implement the Chronicle and persistent campaign: generalized later-game
 setup, Atlas transitions, Chronicle tasks, world reconstruction, Reliquary
 changes, Foundation mutation, Legacy activation/scoring, Oathkeeper goal
 changes, era scoring, saved-campaign continuation, and campaign browsing.
+
+- [ ] **End-of-game Chronicle steps.**
+- [ ] **Chronicle import and export.** The Chronicle string codec for the TTS
+  format, including the sections that format has not defined yet.
+- [ ] **Foundations.**
+- [ ] **Legacies.**
+- [ ] **Eras.**
 
 ### Phase - Gameplay completeness gate
 
@@ -211,7 +294,8 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   - [ ] Add membership-management UX, rate limiting, audit logging, and the
     final production deployment gate. The alpha phase may add a narrower safe
     invitation flow first; until then, keep development routes loopback-only.
-- [ ] **L3 — Licensed game assets with permanent visual fallbacks**
+- [ ] **L3 — Licensed game assets with permanent visual fallbacks**, including
+  suit and restriction icons on card faces.
 - [ ] **L4 — Saved-game browser and replay navigation** (campaign-continuity
   phase)
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
@@ -222,6 +306,10 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
     justifies the added server lifecycle complexity.
+  - A cheaper first step keeps redaction intact: a change-check that returns
+    the viewer's current sequence (or a 304), fetching the projection only
+    when it advanced. See the
+    [Phase 5 follow-ups](operations/phase-5-follow-ups.md#snapshot-polling-sends-a-full-projection-on-every-tick).
 - [ ] **L8 — Migrate the component catalog into typed Scala objects.**
   `docs/catalog/new-foundations-component-catalog.json` is hand-authored JSON,
   read at runtime and validated against its schema. Move denizens, relics,
@@ -229,6 +317,17 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   generated loader) so suit, restrictions, and modifiers are looked up as
   fields instead of string-keyed JSON traversal. The catalog already indexes
   components by ID and by the powers they print.
+- [ ] **Table UI rework.** Rework the layout of player areas and sites, and
+  port the map to haunt-roll-fail's canvas approach. Recorded in the card
+  shape and inspection design.
+- [ ] **In-game chat.**
+- [ ] **Public Chronicle pages.** The winner of a game may write their summary
+  of it, and players can browse all the summaries.
+- [ ] **Private lineage pages.** Each lineage has its own private notebook for
+  notes.
+- [ ] **Distribution beyond the alpha.** Intel macOS and Linux arm64 archives,
+  code signing and notarization, native installers, and spectator links.
+  Fingerprint asset names so they can be cached long-term again.
 
 ## Standing rules
 
