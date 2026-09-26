@@ -4,6 +4,7 @@ import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent => GameCommand, MajorActionPreviewRequest,
   MajorActionPreviewResponse, ModifierInvocation}
 
+import oathdigital.protocol.projection.LogPageWire
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.timers.setTimeout
@@ -52,6 +53,17 @@ class TableSessionSuite extends munit.FunSuite:
     def answerPreview(result: Answer[MajorActionPreviewResponse]): Unit =
       val promise = pendingPreviews.head
       pendingPreviews = pendingPreviews.tail
+      promise.success(result)
+    var logs = Vector.empty[(String, String, Long)]
+    private var pendingLogs = Vector.empty[Promise[Answer[LogPageWire]]]
+    def loadLog(gameId: String, selectedPlayerId: String, after: Long) =
+      logs :+= ((gameId, selectedPlayerId, after))
+      val promise = Promise[Answer[LogPageWire]]()
+      pendingLogs :+= promise
+      promise.future
+    def answerLog(result: Answer[LogPageWire]): Unit =
+      val promise = pendingLogs.head
+      pendingLogs = pendingLogs.tail
       promise.success(result)
 
   /** Holds the latest scheduled poll; `fire` runs it as if its delay passed. */

@@ -8,6 +8,16 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
 
 class ServerModeUiSuite extends FunSuite:
+  /** Answers every log request with an empty page and passes every other
+    * request to `inner`, so a test that counts, lists or queues requests sees
+    * only the requests it is about. */
+  private def quietLog(inner: JsonTransport): JsonTransport = new JsonTransport:
+    def request(method: String, url: String, body: Option[String])
+        : Future[Either[GameClientFailure, TransportResponse]] =
+      if url.contains("/log/") then Future.successful(Right(TransportResponse(200,
+        """{"gameId":"quiet","after":0,"nextSequence":0,"entries":[]}""")))
+      else inner.request(method, url, body)
+
   test("canonical path decodes only a single game segment"):
     assertEquals(ServerUiSupport.canonicalGameId("/games/my%20game"), Some("my game"))
     assertEquals(ServerUiSupport.canonicalGameId("/"), None)
@@ -22,7 +32,7 @@ class ServerModeUiSuite extends FunSuite:
       def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += ((method, url, body))
         scala.concurrent.Future.successful(Right(TransportResponse(200, trustedProjection)))
-    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, quietLog(transport))
     browser.settle.map { _ =>
       assertEquals(requests.map(r => r._1 -> r._2).toVector,
         Vector("GET" -> "/games/my%20game/api"))
@@ -44,7 +54,7 @@ class ServerModeUiSuite extends FunSuite:
         requests += 1
         scala.concurrent.Future.successful(Right(TransportResponse(401,
           """{"error":"unauthorized","message":"internal detail"}""")))
-    Main.start(browser.mount, "/games/missing", trustedAlpha = true, transport)
+    Main.start(browser.mount, "/games/missing", trustedAlpha = true, quietLog(transport))
     browser.settle.map { _ =>
       assertEquals(requests, 1)
       assert(browser.text.contains("assigned seat link"))
@@ -77,7 +87,7 @@ class ServerModeUiSuite extends FunSuite:
   test("trusted root posts host form and displays ordered copyable seat links"):
     val browser = new TestBrowser("?gameId=ignored&playerId=ignored")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
-    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
+    Main.start(browser.mount, "/", trustedAlpha = true, quietLog(hostTransport(requests)))
     assertEquals(requests.size, 0)
     assert(!browser.nodes.exists(_.getAttribute("aria-label") == "Game ID"))
     assert(!browser.nodes.exists(_.getAttribute("aria-label") == "First player ID"))
@@ -105,7 +115,7 @@ class ServerModeUiSuite extends FunSuite:
   test("host add-player menu offers untaken colors in order and stops at six players"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
-    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
+    Main.start(browser.mount, "/", trustedAlpha = true, quietLog(hostTransport(requests)))
     assert(browser.byClass("add-player-menu").head.hasAttribute("hidden"))
     browser.click("add-player-toggle")
     assertEquals(toggle(browser).getAttribute("aria-expanded"), "true")
@@ -135,7 +145,7 @@ class ServerModeUiSuite extends FunSuite:
   test("host form blocks fewer than two players, invalid IDs and duplicate IDs before posting"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
-    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests))
+    Main.start(browser.mount, "/", trustedAlpha = true, quietLog(hostTransport(requests)))
     browser.click("remove-player-red")
     browser.click("create-trusted-game")
     assert(browser.text.contains("Need at least 2 players."))
@@ -177,7 +187,7 @@ class ServerModeUiSuite extends FunSuite:
         val json = if url.contains("/events") then """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", "")
         scala.concurrent.Future.successful(Right(TransportResponse(200, json)))
-    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    Main.start(browser.mount, "/", trustedAlpha = false, quietLog(transport))
     browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
       assertEquals(requests.toVector, Vector("GET" -> "/api/dev/first-games/existing?playerId=red",
         "GET" -> "/api/dev/first-games/existing/events?limit=25",
@@ -202,7 +212,7 @@ class ServerModeUiSuite extends FunSuite:
             trustedProjection.replace("\"viewerPlayerId\":\"blue\",", ""))))
           else Future.successful(Left(GameClientFailure.NetworkFailure(
             "GET /api/dev/first-games/existing?playerId=red failed")))
-    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    Main.start(browser.mount, "/", trustedAlpha = false, quietLog(transport))
     // The first load lands; the poll the tick fires is the one that fails.
     browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
       assertEquals(loads, 2)
@@ -241,7 +251,7 @@ class ServerModeUiSuite extends FunSuite:
             case 1 => Future.successful(Right(TransportResponse(200, snapshot(1L, "red"))))
             case 2 => Future.successful(Right(TransportResponse(200, snapshot(2L, "blue"))))
             case _ => Future.never
-    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    Main.start(browser.mount, "/", trustedAlpha = false, quietLog(transport))
     browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
       assertEquals(loads, 3)
       // The route still shows Forge's partition heading to the new seat;
@@ -275,7 +285,7 @@ class ServerModeUiSuite extends FunSuite:
           else if url.contains("/preview") then preview
           else projection
         Future.successful(Right(TransportResponse(200, json)))
-    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    Main.start(browser.mount, "/", trustedAlpha = false, quietLog(transport))
     browser.settle.flatMap { _ =>
       browser.click("recover-action")
       browser.settle
@@ -304,8 +314,8 @@ class ServerModeUiSuite extends FunSuite:
   test("host duplicate game response keeps form editable and retries with a new game ID"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
-    Main.start(browser.mount, "/", trustedAlpha = true, hostTransport(requests, 409,
-      """{"error":"game-already-exists","message":"Game already exists"}"""))
+    Main.start(browser.mount, "/", trustedAlpha = true, quietLog(hostTransport(requests, 409,
+      """{"error":"game-already-exists","message":"Game already exists"}""")))
     browser.click("create-trusted-game")
     browser.settle.flatMap { _ =>
       assert(browser.text.contains("A new one was generated"))
@@ -324,7 +334,7 @@ class ServerModeUiSuite extends FunSuite:
     val browser = new TestBrowser("?mode=server")
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
     val opened = scala.collection.mutable.ArrayBuffer.empty[String]
-    Main.start(browser.mount, "/", trustedAlpha = false, hostTransport(requests),
+    Main.start(browser.mount, "/", trustedAlpha = false, quietLog(hostTransport(requests)),
       navigate = opened += _)
     assertEquals(requests.size, 0)
     assertEquals(hostColors(browser), Vector("red", "blue"))
@@ -346,7 +356,7 @@ class ServerModeUiSuite extends FunSuite:
         scala.concurrent.Future.successful(Right(TransportResponse(200,
           if url.contains("/events") then """{"events":[]}"""
           else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", ""))))
-    Main.start(browser.mount, "/", trustedAlpha = false, transport, navigate = opened += _)
+    Main.start(browser.mount, "/", trustedAlpha = false, quietLog(transport), navigate = opened += _)
     browser.settle.map { _ =>
       browser.click("restart")
       assertEquals(opened.toVector, Vector("/?mode=server"))
@@ -366,7 +376,7 @@ class ServerModeUiSuite extends FunSuite:
       def request(method: String, url: String, body: Option[String]): Future[Either[GameClientFailure, TransportResponse]] =
         requests += method -> url
         scala.concurrent.Future.successful(Right(responses.dequeue()))
-    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, quietLog(transport))
     browser.settle.flatMap { _ =>
       browser.click("wake-action")
       browser.settle
@@ -388,7 +398,7 @@ class ServerModeUiSuite extends FunSuite:
         scala.concurrent.Future.successful(Right(if requests == 1 then
           TransportResponse(200, trustedProjection) else TransportResponse(403,
             """{"error":"forbidden","message":"denied"}""")))
-    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, quietLog(transport))
     browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
       assertEquals(requests, 2)
       assert(browser.text.contains("assigned seat link"))
@@ -414,7 +424,7 @@ class ServerModeUiSuite extends FunSuite:
           requests += method -> url
           scala.concurrent.Future.successful(Right(TransportResponse(200,
             if requests.size == 1 then active else replacement)))
-      Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+      Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, quietLog(transport))
       browser.settle.flatMap { _ =>
         val oldControl = browser.byClass("wake-action").head.asInstanceOf[scala.scalajs.js.Dynamic]
         browser.tick()
@@ -449,7 +459,7 @@ class ServerModeUiSuite extends FunSuite:
             else if status == 200 then TransportResponse(200, active.replace("\"viewerPlayerId\":\"blue\"",
               "\"viewerPlayerId\":\"red\""))
             else TransportResponse(status, """{"error":"forbidden","message":"denied"}""")))
-    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, quietLog(transport))
     browser.settle.flatMap { _ =>
       browser.click("wake-action")
       browser.tick()

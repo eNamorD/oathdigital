@@ -7,7 +7,8 @@ import scala.util.control.NonFatal
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   MajorActionPreviewCodec, MajorActionPreviewRequest, MajorActionPreviewResponse,
   ModifierInvocation, ProtocolDecodeFailure, GameIntent => GameCommand}
-import oathdigital.protocol.projection.{GameProjection, GameProjectionCodec}
+import oathdigital.protocol.projection.{GameProjection, GameProjectionCodec,
+  LogPageCodec, LogPageWire}
 
 final case class TransportResponse(status: Int, body: String)
 final case class RawEvent(sequence: Long, discriminator: String, rawPayload: String)
@@ -114,6 +115,9 @@ trait GameClient:
   def preview(gameId: String, selectedPlayerId: String,
       request: MajorActionPreviewRequest)
       : Future[Either[GameClientFailure, MajorActionPreviewResponse]]
+  /** Every log entry at or after `after`, formatted for this seat. */
+  def loadLog(gameId: String, selectedPlayerId: String, after: Long)
+      : Future[Either[GameClientFailure, LogPageWire]]
 
 final class HttpGameClient(transport: JsonTransport)
     extends GameClient:
@@ -148,6 +152,12 @@ final class HttpGameClient(transport: JsonTransport)
           GameClientFailure.DecodeFailure(error.path, error.message))
       else Left(GameClientFailure.HttpFailure(response.status, "preview", response.body)))
     })(using scala.scalajs.concurrent.JSExecutionContext.queue)
+
+  override def loadLog(gameId: String, selectedPlayerId: String, after: Long) =
+    transport.request("GET", s"/api/dev/first-games/${encode(gameId)}/log/$after" +
+      "?playerId=" + encode(selectedPlayerId), None)
+      .map(_.flatMap(GameJson.logResponse))(
+        using scala.scalajs.concurrent.JSExecutionContext.queue)
 
   def loadRawEventHistory(gameId: String, limit: Int = 25)
       : Future[Either[GameClientFailure, Vector[RawEvent]]] =
@@ -192,6 +202,11 @@ final class TrustedHttpGameClient(transport: JsonTransport) extends GameClient:
     send("POST", api(gameId) + "/commands",
       Some(GameJson.encodeCommand(expectedNextSequence, command, orderedModifiers)))
 
+  override def loadLog(gameId: String, selectedPlayerId: String, after: Long) =
+    transport.request("GET", api(gameId) + s"/log/$after", None)
+      .map(_.flatMap(GameJson.logResponse))(
+        using scala.scalajs.concurrent.JSExecutionContext.queue)
+
   override def preview(gameId: String, selectedPlayerId: String,
       request: MajorActionPreviewRequest) =
     transport.request("POST", api(gameId) + "/preview",
@@ -211,6 +226,13 @@ object GameJson:
       : Either[GameClientFailure, GameProjection] =
     if response.status >= 200 && response.status < 300 then
       decodeProjection(response.body)
+    else Left(responseFailure(response))
+
+  def logResponse(response: TransportResponse)
+      : Either[GameClientFailure, LogPageWire] =
+    if response.status >= 200 && response.status < 300 then
+      LogPageCodec.decode(response.body).left.map(error =>
+        GameClientFailure.DecodeFailure(error.path, error.message))
     else Left(responseFailure(response))
 
   def responseFailure(response: TransportResponse): GameClientFailure =

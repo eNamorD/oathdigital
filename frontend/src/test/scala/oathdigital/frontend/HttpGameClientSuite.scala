@@ -664,6 +664,35 @@ class HttpGameClientSuite extends FunSuite:
       )
     ).toOption.get
 
+  private val logPage = """{"gameId":"g","after":3,"nextSequence":5,"entries":[{"sequence":3,"ordinal":0,"kind":"turn","depth":0,"spans":[{"kind":"player","text":"Red","id":"red"},{"kind":"text","text":"'s turn"}]}]}"""
+
+  test("the trusted client reads the log after a cursor on the seat's path"):
+    val transport = new StubTransport(Vector(Right(TransportResponse(200, logPage))))
+    new TrustedHttpGameClient(transport).loadLog("my game", "ignored", 3L).map { result =>
+      assertEquals(transport.requests.map(r => r._1 -> r._2).toVector,
+        Vector("GET" -> "/games/my%20game/api/log/3"))
+      assertEquals(result.map(_.entries.map(_.sequence)), Right(Vector(3L)))
+    }
+
+  test("the development client reads the log for the selected seat"):
+    val transport = new StubTransport(Vector(Right(TransportResponse(200, logPage))))
+    new HttpGameClient(transport).loadLog("g", "red exile", 0L).map { result =>
+      assertEquals(transport.requests.map(_._2).toVector,
+        Vector("/api/dev/first-games/g/log/0?playerId=red%20exile"))
+      assert(result.isRight)
+    }
+
+  test("a log failure is a client failure, never a thrown decode"):
+    val transport = new StubTransport(Vector(
+      Right(TransportResponse(400, """{"error":"malformed-request","message":"bad"}""")),
+      Right(TransportResponse(200, "{"))))
+    val client = new TrustedHttpGameClient(transport)
+    client.loadLog("g", "", 9L).flatMap { refused =>
+      assertEquals(refused, Left(GameClientFailure.HttpFailure(400,
+        "malformed-request", "bad")))
+      client.loadLog("g", "", 0L)
+    }.map(garbled => assert(garbled.isLeft))
+
   private final class StubTransport(
       responses: Vector[Either[GameClientFailure, TransportResponse]]
   ) extends JsonTransport:
