@@ -69,3 +69,30 @@ class CardKnowledgeSuite extends munit.FunSuite:
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Bottom)))
       .toOption.get
     assert(!gone.knowledge.advisers.values.exists(_.contains(adviser)))
+
+  /** Every card pile is face down at the table: no one tracks a card once it
+    * enters one, so its knowledge is cleared as for a deck. */
+  test("a face-down adviser discarded or dispossessed is forgotten by everyone"):
+    val adviser = current.players.find(_.player == owner).get.advisers
+      .collectFirst { case DenizenState(id, Orientation.FaceDown, _) => id }.get
+    val peeked = run(Peek(other, adviser, Location.PlayArea(owner)))
+    Vector(
+      PositionedLocation(Location.RegionalDiscard(Region.Cradle),
+        StackPosition.Top),
+      PositionedLocation(Location.Dispossessed)).foreach { pile =>
+      val gone = executor.execute(peeked, Move(Piece.Card(adviser),
+        PositionedLocation(Location.PlayArea(owner)), pile))
+        .fold(error => fail(s"$pile: $error"), identity)
+      assert(!gone.knowledge.advisers.values.exists(_.contains(adviser)),
+        s"$pile: ${gone.knowledge.advisers}")
+    }
+
+  test("a relic set aside is forgotten by everyone, its holder included"):
+    val held = run(Peek(other, relic, Location.Site(site)), taken)
+    assert(knows(held, other, relic))
+    val aside = executor.execute(held, Move(Piece.Card(relic),
+      PositionedLocation(Location.PlayArea(owner)),
+      PositionedLocation(Location.SetAsideRelics)))
+      .fold(error => fail(s"set aside: $error"), identity)
+    assert(!aside.knowledge.heldRelics.values.exists(_.contains(relic)),
+      aside.knowledge.heldRelics)

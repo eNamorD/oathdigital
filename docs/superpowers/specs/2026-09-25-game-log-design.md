@@ -439,8 +439,12 @@ The first task of the second slice fixes this in the operation application
   their own cards without a record.
 - A relic that leaves a site moves every `siteRelics` peeker of it into
   `heldRelics`.
-- A card that enters a deck or the reliquary clears every player's knowledge
-  of it.
+- A card that enters any card pile clears every player's knowledge of it: a
+  deck, a regional discard, the reliquary, the set-aside relics, the
+  dispossessed, or the atlas. No one at the table tracks a card inside a
+  pile, so a card discarded and later drawn by another player is not named
+  to the player who discarded it. (Widened from decks and the reliquary on
+  2026-09-26, at the product owner's request.)
 
 `knowledge` is derived during replay and never journaled, so no migration is
 needed: existing games re-derive the fuller knowledge on load. A follow-up on
@@ -647,8 +651,9 @@ Server:
   that fails the visibility rule for its viewer, and no wire field carries a
   hidden card's id.
 - **Knowledge.** A giver still identifies a given face-down relic; a site
-  peeker still identifies a relic after another player takes it; a buried or
-  reshuffled card is identified by nobody.
+  peeker still identifies a relic after another player takes it; a buried,
+  reshuffled, discarded, set-aside or dispossessed card is identified by
+  nobody.
 - **Scan.** `scan(events).last.after == replay(events)` over every script.
 - **Routes.** Cookie auth, `after` bounds, `nextSequence` echo, the
   development route's `playerId` binding, and that the development raw log is

@@ -4,7 +4,9 @@ import oathdigital.model._
 
 /** Knowledge follows the card (Game Log design, "Knowledge follows the
   * card"). A player who knew a card keeps knowing it when it moves; a card
-  * that goes into a deck or the reliquary is known by nobody.
+  * that goes into any card pile (a deck, a regional discard, the reliquary,
+  * the set-aside relics, the dispossessed or the atlas) is known by nobody,
+  * since no one at the table tracks a card inside a pile.
   *
   * `CardKnowledge` is derived during replay and never journaled, so a game
   * loaded after this change re-derives the fuller knowledge.
@@ -39,7 +41,8 @@ private[operations] object CardKnowledgeMoves:
     case _ => false
 
   private def hidden(to: Location): Boolean = to match
-    case Location.Deck(_) | Location.Reliquary => true
+    case Location.Deck(_) | Location.RegionalDiscard(_) | Location.Reliquary |
+        Location.SetAsideRelics | Location.Dispossessed | Location.Atlas => true
     case _ => false
 
   private def remember(knowledge: CardKnowledge, player: PlayerId,
