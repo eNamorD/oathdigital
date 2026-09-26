@@ -4,7 +4,7 @@ import oathdigital.application._
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{Situation, SituationDriver}
+import oathdigital.testkit.{Situation, SituationDriver, Step}
 
 /** A journal built by real play through `GameApplicationService` on every
   * run (spec, "Test journals"). No stored game is a fixture: a script a new
@@ -109,3 +109,76 @@ object LogScripts:
     Situation(parked.state, Vector.empty, parked.nextSequence,
       Situation.journaled(service, catalog, repository, "oathkeeper")).after()
     Script("oathkeeper", service, active)
+
+  private def acting(name: String)(using munit.Location)
+      : (GameApplicationService, InMemoryEventStreamRepository, Situation) =
+    val (service, repository, driver) = journaled(name)
+    val woken = Situation.wake(driver)
+    (service, repository, woken.after(GameCommand.EndWake(active(woken))))
+
+  private def start(situation: Situation, action: StartableRef,
+      args: DecisionOptionRef*)(using munit.Location): Situation =
+    situation.after(GameCommand.StartWalker(action,
+      StartPayload(active(situation), Vector.empty, args.toVector)))
+
+  /** Search of the world deck, every decision answered by default. */
+  def search(using munit.Location): Script =
+    val (service, _, act) = acting("search")
+    start(act, ActionRef.Search, DecisionOptionRef.Button("search:world"))
+    Script("search", service, active(act))
+
+  /** The setup adviser played from its facedown slot. */
+  def facedownAdviser(using munit.Location): Script =
+    val (service, _, act) = acting("facedown-adviser")
+    val actor = active(act)
+    val held = act.ready.game.current.players.find(_.player == actor).get
+      .advisers.collectFirst {
+        case DenizenState(id, Orientation.FaceDown, _) =>
+          DecisionOptionRef.Denizen(id)
+        case VisionState(id, Orientation.FaceDown) =>
+          DecisionOptionRef.Vision(id)
+      }.get
+    start(act, ActionRef.PlayFacedownAdviser, held)
+    Script("facedown-adviser", service, actor)
+
+  /** The actor stands on a site with a card to Muster or Trade from,
+    * travelling there first if the pawn's own site has none. A first game
+    * deals no denizen to a site, so on this board the card is a homeland
+    * edifice. */
+  private def besideSource(act: Situation)(using munit.Location): Situation =
+    val actor = active(act)
+    def hasSource(site: SiteId) = act.ready.game.current.map.sites(site)
+      .denizens.exists(_.tokens.isEmpty)
+    if hasSource(pawn(act, actor)) then act
+    else start(act, ActionRef.Travel, DecisionOptionRef.Site(
+      act.ready.game.current.map.inPlay.find(hasSource).get))
+
+  def muster(using munit.Location): Script =
+    val (service, _, act) = acting("muster")
+    start(besideSource(act), ActionRef.Muster)
+    Script("muster", service, active(act))
+
+  /** Trade for secrets. It costs two favor and a player starts with one, so
+    * a second is arranged into the actor's area before End Wake. With no
+    * adviser matching the source's suit, it gains nothing. */
+  def trade(using munit.Location): Script =
+    val (service, _, driver) = journaled("trade")
+    val woken = Situation.wake(driver)
+    val actor = active(woken)
+    val act = woken.after(Step.Arrange(Vector(Move(Piece.Favor(1),
+        PositionedLocation(Location.FavorBank(Suit.all.head)),
+        PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor))
+    start(besideSource(act), ActionRef.Trade, DecisionOptionRef.Button("secret"))
+    Script("trade", service, actor)
+
+  /** One favor arranged onto the actor's site, then taken in Wake. */
+  def takeWealth(using munit.Location): Script =
+    val (service, _, driver) = journaled("take-wealth")
+    val woken = Situation.wake(driver)
+    val actor = active(woken)
+    val arranged = woken.after(Step.Arrange(Vector(Move(Piece.Favor(1),
+      PositionedLocation(Location.FavorBank(Suit.all.head)),
+      PositionedLocation(Location.Site(pawn(woken, actor)))))))
+    start(arranged, ActionRef.TakeWealth, DecisionOptionRef.Button("favor"))
+    Script("take-wealth", service, actor)
