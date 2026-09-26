@@ -100,3 +100,11 @@ class GameLogActionLineSuite extends munit.FunSuite:
       .r.matches(line)), all)
     assert(all.exists(line => "^Placed \\d+ (favor|secrets?) on .+$".r
       .matches(line)), all)
+
+  test("Play Facedown Adviser: a card placed as an adviser or at the site"):
+    val adviser = facedownAdviser("placed-adviser", Some("adviser-faceup"))
+    assert(lines(adviser, None).exists(line => line.startsWith("Played ") &&
+      line.endsWith(" as an adviser")), lines(adviser, None))
+    val site = facedownAdviser("placed-site", Some("site"))
+    assert(lines(site, None).exists(line => "^Played .+ to .+$".r.matches(line)),
+      lines(site, None))

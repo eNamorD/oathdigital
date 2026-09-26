@@ -133,7 +133,17 @@ object LogScripts:
 
   /** The setup adviser played from its facedown slot. */
   def facedownAdviser(using munit.Location): Script =
-    val (service, _, act) = acting("facedown-adviser")
+    facedownAdviser("facedown-adviser", None)
+
+  /** As above, the placement answered with the `placement` button when one
+    * is given, else by default (the first button, discard). */
+  def facedownAdviser(name: String, placement: Option[String])
+      (using munit.Location): Script =
+    val (service, _, acted) = acting(name)
+    val act = placement.fold(acted)(key => acted.withAnswers {
+      case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
+        ChooseOneAnswer(DecisionOptionRef.Button(key))
+    })
     val actor = active(act)
     val held = act.ready.game.current.players.find(_.player == actor).get
       .advisers.collectFirst {
@@ -143,7 +153,7 @@ object LogScripts:
           DecisionOptionRef.Vision(id)
       }.get
     start(act, ActionRef.PlayFacedownAdviser, held)
-    Script("facedown-adviser", service, actor)
+    Script(name, service, actor)
 
   /** The actor stands on a site with a card to Muster or Trade from,
     * travelling there first if the pawn's own site has none. A first game

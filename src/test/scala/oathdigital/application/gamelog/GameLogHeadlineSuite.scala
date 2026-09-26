@@ -1,5 +1,6 @@
 package oathdigital.application.gamelog
 
+import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.model._
 import LogScripts._
 
@@ -37,3 +38,41 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     assertEquals(keys, keys.sorted)
     entries.groupBy(_.sequence).values.foreach { same =>
       assertEquals(same.map(_.ordinal), same.indices.toVector) }
+
+  /** `script`'s journal with `events` appended on its last state: the
+    * formatter reads a victory from its event alone. */
+  private def ending(script: Script, events: OathEvent*): Vector[LogEntry] =
+    val steps = script.history.steps
+    val last = steps.last.after
+    formatter.format(steps ++ events.zipWithIndex.map { case (event, index) =>
+      ReplayStep(RecordedEvent(steps.size.toLong + index, event), last, last)
+    }, None)
+
+  test("each victory posts one victory headline naming the winner"):
+    val script = woken
+    val winner = script.actor
+    val vision = VisionId("vision:vision-of-faith")
+    val headlines = Vector(
+      OathEvent.UsurperVictory(winner) -> " won as the Usurper",
+      OathEvent.VisionVictory(winner, vision) -> " won with Vision of Faith",
+      OathEvent.WarExhaustionResolved(winner, VictoryKind.Usurper, None,
+        Vector.empty) -> " won as the Usurper",
+      OathEvent.WarExhaustionResolved(winner, VictoryKind.Visionary,
+        Some(vision), Vector.empty) -> " won with Vision of Faith",
+      OathEvent.WarExhaustionResolved(winner, VictoryKind.Visionary, None,
+        Vector.empty) -> " won as a Visionary",
+      OathEvent.WarExhaustionResolved(winner, VictoryKind.Oathkeeper, None,
+        Vector.empty) -> " won as the Oathkeeper",
+      OathEvent.WarExhaustionResolved(winner, VictoryKind.RandomSelection, None,
+        Vector.empty) -> " won by random selection")
+    headlines.foreach { case (event, rest) =>
+      val last = ending(script, event).last
+      assertEquals(last.kind, LogKind.Victory)
+      assertEquals(last.depth, 0)
+      assertEquals(text(last), name(winner) + rest)
+    }
+
+  test("the last round's end posts no round headline"):
+    val script = woken
+    val before = format(script, None)
+    assertEquals(ending(script, OathEvent.RoundEnded(8, None)), before)
