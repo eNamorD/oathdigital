@@ -47,7 +47,9 @@ private[gamelog] final class ActionLines(words: LogWords):
         Vector.empty
       // Setup lines: the second slice.
       case TriggeredProcedureRef.Setup => Vector.empty
-      case ActionRef.Search => search(journal, run, at, viewer)
+      case ActionRef.Search =>
+        search(journal, run, at, viewer) ++
+          playedAdviser(journal, run, at, viewer)
       case ActionRef.PlayFacedownAdviser =>
         playedAdviser(journal, run, at, viewer)
       case ActionRef.Muster => ops.collect {
@@ -193,7 +195,14 @@ private[gamelog] final class ActionLines(words: LogWords):
           Some(placements.collect {
             case DecisionPlacement(ref, SearchProcedure.keepKey) => ref
           }.flatMap(worldCard))
-        case _: WalkerCompleted if drawn.size == 1 => Some(drawn.map(_._1))
+        // One card drawn: its placement answer completes the line, so the
+        // line precedes the placement line it leads to.
+        case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _)
+            if drawn.size == 1 && id.startsWith(PlacePrefix) =>
+          Some(drawn.map(_._1))
+        case _: WalkerCompleted if drawn.size == 1 && !journal.answers(run, at)
+            .exists(_.decisionId.startsWith(PlacePrefix)) =>
+          Some(drawn.map(_._1))
         case _ => None
       kept.toVector.map(ids => action(Vector(Text("Drew ")) ++
         words.cards(drawn.map(_._2)) ++

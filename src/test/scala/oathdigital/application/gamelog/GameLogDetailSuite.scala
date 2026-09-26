@@ -23,3 +23,29 @@ class GameLogDetailSuite extends munit.FunSuite:
     val all = lines(recoverFailed)
     assert(all.indexWhere(_.startsWith("Rolled ")) >
       all.indexWhere(_.startsWith("Started Recover")), all)
+  test("an arranged favor gain reads as a gain from its bank"):
+    val all = lines(trade)
+    assert(all.exists(line =>
+      "^Gained 1 favor from the \\w+ bank$".r.matches(line)), all)
+
+  test("Trade's own gain is its action line, not a second gain line"):
+    val all = lines(trade)
+    assertEquals(all.count(_.startsWith("Gained ")), 1, all)
+
+  test("Search: the kept card's placement posts after the draw line"):
+    val all = lines(search)
+    val drew = all.indexWhere(_.startsWith("Drew "))
+    val placed = all.indexWhere(line => line.startsWith("Discarded ") ||
+      line.startsWith("Played "))
+    assert(drew >= 0 && placed > drew, all)
+
+  test("Search: the cards not kept are discarded to a regional discard"):
+    val all = lines(search)
+    assert(all.exists(line =>
+      "^Discarded .+ to the (Cradle|Provinces|Hinterland) discard$".r
+        .matches(line)), all)
+
+  test("the placement discard is told once, by the action line"):
+    val all = lines(facedownAdviser)
+    assertEquals(all.count(_.startsWith("Discarded ")), 1, all)
+    assert(!all.exists(_.endsWith(" discard")), all)
