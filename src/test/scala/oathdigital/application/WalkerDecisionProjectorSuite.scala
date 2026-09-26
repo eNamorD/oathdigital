@@ -9,6 +9,7 @@ import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
+import oathdigital.protocol.DecisionFormVocabulary
 import oathdigital.protocol.projection.{WalkerDecisionProjection,
   WalkerWaitingProjection}
 
@@ -174,6 +175,40 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals((query.minimum, query.maximum), (Some(3), Some(6)))
     assertEquals(query.confirmLabel, Some("Take banner"))
     assertEquals(query.options, Vector.empty)
+
+  /** The projector half of the vocabulary pin: every shape the model can
+    * declare projects a form in `DecisionFormVocabulary`, and between them
+    * the six shapes emit all of it. Deleted with the untyped `form` field in
+    * the next commit, where the case set IS the vocabulary.
+    */
+  test("the projector emits exactly the shared form vocabulary"):
+    val (context, actor) = parked(ActionRef.Recover)
+    val siteIds = context.ready.game.current.map.sites.keys.toVector.take(2)
+    val options = siteIds.map(id => DecisionOption.Site(DecisionOptionRef.Site(id)))
+    val queries: Vector[DecisionQuery] = Vector(
+      DecisionQuery.ChooseOne(options),
+      DecisionQuery.ChooseMany(1, 2, options),
+      DecisionQuery.ChooseAmount(0, 1, Some("Amount"), "Confirm"),
+      DecisionQuery.Partition(
+        Vector(DecisionSection("keep", "Keep", 1, Some(1)),
+          DecisionSection("rest", "Rest", 0)),
+        options, Some("Split")),
+      DecisionQuery.Distribute.exactly(
+        Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 1, None)),
+        total = 1, heading = Some("Spread"), confirmLabel = "Place"),
+      // A deal with one participant and nothing on the table: the projector
+      // reads `terms` and `bounds` at every participant, so both are present
+      // and empty rather than absent.
+      DecisionQuery.Negotiate(Vector(actor), Map(actor -> NegotiationTerms()),
+        Set.empty,
+        Map(actor -> NegotiationBounds(Vector.empty, 0, Vector.empty,
+          Vector.empty)),
+        Set(actor), Some("Deal")))
+    val forms = queries.flatMap(query =>
+      projectorFor(Sequence(Decide("test.form", actor, query)))
+        .project(context).flatMap(_.query).map(_.form))
+    assertEquals(forms.size, queries.size)
+    assertEquals(forms.toSet, DecisionFormVocabulary.All)
 
   test("a banner is named as it is printed, and counts what it holds"):
     val (base, actor) = parked(ActionRef.Recover)
