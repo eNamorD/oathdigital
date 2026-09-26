@@ -4,7 +4,7 @@ import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent => GameCommand, MajorActionPreviewRequest,
   MajorActionPreviewResponse, ModifierInvocation}
 
-import oathdigital.protocol.projection.LogPageWire
+import oathdigital.protocol.projection.{LogEntryWire, LogPageWire, LogSpanWire}
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.timers.setTimeout
@@ -426,3 +426,59 @@ class TableSessionSuite extends munit.FunSuite:
     assert(!TableSession.needsSeatLink(trusted = true, http(500)))
     assert(!TableSession.needsSeatLink(trusted = true,
       GameClientFailure.NetworkFailure("down")))
+
+  private def page(after: Long, next: Long): LogPageWire =
+    LogPageWire("g", after, next, (after until next).toVector.map(sequence =>
+      LogEntryWire(sequence, 0, "action", 1,
+        Vector(LogSpanWire("text", s"line $sequence")))))
+
+  test("a displayed position fetches the log from the start and appends it"):
+    displayed(3).flatMap { fixture =>
+      assertEquals(fixture.client.logs, Vector(("g", "red", 0L)))
+      fixture.client.answerLog(Right(page(0, 3)))
+      settle().map { _ =>
+        assertEquals(fixture.session.viewedLog.map(_.sequence),
+          Vector(0L, 1L, 2L))
+      }
+    }
+
+  test("the log is asked for again only when the position advances"):
+    displayed(3).flatMap { fixture =>
+      fixture.client.answerLog(Right(page(0, 3)))
+      settle().flatMap { _ =>
+        fixture.clock.fire()
+        fixture.client.answerLoad(Right(snapshot(3)))
+        settle()
+      }.flatMap { _ =>
+        assertEquals(fixture.client.logs.size, 1)
+        fixture.clock.fire()
+        fixture.client.answerLoad(Right(snapshot(5)))
+        settle()
+      }.map { _ =>
+        assertEquals(fixture.client.logs.last, ("g", "red", 3L))
+      }
+    }
+
+  test("a failed log request leaves the log and is retried at the next advance"):
+    displayed(3).flatMap { fixture =>
+      fixture.client.answerLog(Left(GameClientFailure.NetworkFailure("down")))
+      settle().flatMap { _ =>
+        assertEquals(fixture.session.viewedLog, Vector.empty)
+        assertEquals(fixture.session.shownFailure, None)
+        fixture.clock.fire()
+        fixture.client.answerLoad(Right(snapshot(4)))
+        settle()
+      }.map { _ =>
+        assertEquals(fixture.client.logs, Vector(("g", "red", 0L),
+          ("g", "red", 0L)))
+      }
+    }
+
+  test("a session change resets the log and ignores the old answer"):
+    displayed(3).flatMap { fixture =>
+      fixture.session.loadSession("h", "blue")
+      fixture.client.answerLog(Right(page(0, 3)))
+      settle().map { _ =>
+        assertEquals(fixture.session.viewedLog, Vector.empty)
+      }
+    }

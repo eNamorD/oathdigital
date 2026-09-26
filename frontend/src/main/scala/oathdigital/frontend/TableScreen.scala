@@ -18,6 +18,8 @@ private[frontend] trait TableView:
   def viewedConnection: ServerConnectionState
   def controlsAvailable: Boolean
   def viewedRawEvents: Vector[RawEvent]
+  /** The game log as fetched for this seat, oldest first. */
+  def viewedLog: Vector[oathdigital.protocol.projection.LogEntryWire]
   def clientOutOfDate: Boolean
 
 /** The table: the action pane, the players, the world and the development

@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent => GameCommand, _}
+import oathdigital.protocol.projection.LogEntryWire
 
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -39,6 +40,41 @@ private[frontend] final class TableSession(
   private var drafts = SessionDrafts.empty
   private var rawEvents = Vector.empty[RawEvent]
   private var rawHistorySequence = Option.empty[Long]
+  private var log = Vector.empty[LogEntryWire]
+  // The cursor the next request asks with: the log's `nextSequence`.
+  private var logSequence = 0L
+  // Bumped on every reset, so an answer to a request from before it lands
+  // on nothing.
+  private var logEpoch = 0
+  private var logLoading = false
+
+  private def resetLog(): Unit =
+    log = Vector.empty
+    logSequence = 0L
+    logEpoch += 1
+    logLoading = false
+
+  /** Asks for the entries after the log's cursor when `target`, a displayed
+    * position, is past it. One request at a time; a failure changes nothing
+    * and the next advancing position asks again (spec, "Fetching"). */
+  private def fetchLog(target: Long): Unit =
+    if !logLoading && target > logSequence then
+      logLoading = true
+      val epoch = logEpoch
+      client.loadLog(gameId, selectedPlayer, logSequence).foreach { result =>
+        if epoch == logEpoch then
+          logLoading = false
+          result.foreach { page =>
+            val advanced = page.nextSequence > logSequence
+            val last = log.lastOption.map(entry => entry.sequence -> entry.ordinal)
+            log ++= page.entries.filter(entry => last.forall(key =>
+              Ordering[(Long, Int)].gt(entry.sequence -> entry.ordinal, key)))
+            logSequence = math.max(logSequence, page.nextSequence)
+            redraw()
+            if advanced then projection.foreach(current =>
+              fetchLog(current.nextSequence))
+          }
+      }
 
   private def showSession(): Unit =
     if !trusted then navigation.showSession(gameId, selectedPlayer)
@@ -70,6 +106,7 @@ private[frontend] final class TableSession(
         polling.stop()
         coordinator.switchSession(gameId, selectedPlayer)
         projection = None
+        resetLog()
         failure = Some(GameClientFailure.HttpFailure(403, "seat-changed",
           "Open your assigned seat link."))
         redraw()
@@ -83,6 +120,7 @@ private[frontend] final class TableSession(
         failure = retainedNotice
         redraw()
         polling.resume(coordinator.capture)
+        fetchLog(displayed.nextSequence)
         if !trusted && !rawHistorySequence.contains(displayed.nextSequence) then
           rawHistorySequence = Some(displayed.nextSequence)
           client match
@@ -96,6 +134,7 @@ private[frontend] final class TableSession(
             retainedNotice
           ) =>
         drafts = SessionDrafts.empty
+        resetLog()
         polling.stop()
         projection = Some(displayed)
         failure = retainedNotice
@@ -122,6 +161,7 @@ private[frontend] final class TableSession(
         if TableSession.needsSeatLink(trusted, error) then
           coordinator.switchSession(gameId, selectedPlayer)
           projection = None
+          resetLog()
         failure = Some(error)
         redraw()
 
@@ -133,6 +173,7 @@ private[frontend] final class TableSession(
     drafts = SessionDrafts.empty
     rawEvents = Vector.empty
     rawHistorySequence = None
+    resetLog()
     failure = None
     selectedPlayer = playerId.trim match
       case "" => "red-exile"
@@ -249,6 +290,7 @@ private[frontend] final class TableSession(
   def controlsAvailable: Boolean =
     coordinator.connectionState == ServerConnectionState.Connected
   def viewedRawEvents: Vector[RawEvent] = rawEvents
+  def viewedLog: Vector[LogEntryWire] = log
   /** Derived from the failure on show rather than latched, so it cannot
     * outlive it. A non-transient failure leaves the session Connected
     * (`ServerSessionCoordinator.recordFailure`), so every control on the
