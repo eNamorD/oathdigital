@@ -110,7 +110,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
       .copy(walkerDecision = pending.walkerDecision,
         walkerWaiting = pending.walkerWaiting,
         phasePowers = projectedPhasePowers,
-        lastCampaign = CampaignResultProjector.project(context.ready),
         temporaryHandPreview = handPreview(context, pending.walkerDecision),
         supplyMaximum = SupplyTrack.Maximum,
         // Only the player who can end the Act is promised a return, and the

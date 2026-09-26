@@ -442,8 +442,8 @@ private[application] final class WalkerDecisionProjector(
 
   /** Local duplicate of `WalkerEventCodec`'s (serialization-layer) face
     * vocabulary: the application layer may not import the serialization layer
-    * (`BackendArchitectureSuite`), and `CampaignResultProjector` follows the
-    * same precedent for Campaign's dice. `DieFace` is open, so a face family
+    * (`BackendArchitectureSuite`), and the game log's `LogWords.dice` follows the
+    * same precedent. `DieFace` is open, so a face family
     * neither pool rolls spells as nothing rather than as a guess.
     */
   private def faceName(value: DieFace): Vector[String] = value match

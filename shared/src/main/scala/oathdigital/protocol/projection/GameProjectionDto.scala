@@ -33,7 +33,6 @@ final case class GameProjection(
     ,walkerDecision: Option[WalkerDecisionProjection] = None
     ,walkerWaiting: Option[WalkerWaitingProjection] = None
     ,phasePowers: Vector[PhasePowerProjection] = Vector.empty
-    ,lastCampaign: Option[CampaignResultProjection] = None
     ,viewerPlayerId: Option[String] = None
     ,supplyMaximum: Int = 0
     ,restSupplyGain: Option[Int] = None

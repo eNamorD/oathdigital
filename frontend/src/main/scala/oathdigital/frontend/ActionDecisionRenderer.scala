@@ -282,7 +282,6 @@ private[frontend] object ActionDecisionRenderer:
          panel.appendChild(rest)
    ParkedDecision.render(value, presentation, routed, canControl, panel, drafts,
      controls)
-   CampaignResultPanel.render(value, panel)
    if value.phase == "rest" && presentation.showGameplayControls then
      PhasePowerButtons.render(value, canControl, panel, submitCommand)
      if PhasePowerButtons.showsFinishRest(value) then

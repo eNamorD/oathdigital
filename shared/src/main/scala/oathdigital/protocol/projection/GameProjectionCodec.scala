@@ -19,7 +19,7 @@ object GameProjectionCodec:
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
     "relicDeckCount", "temporaryHandPreview",
-    "walkerDecision", "walkerWaiting", "phasePowers", "lastCampaign", "viewerPlayerId",
+    "walkerDecision", "walkerWaiting", "phasePowers", "viewerPlayerId",
     "supplyMaximum", "restSupplyGain")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
@@ -76,7 +76,6 @@ object GameProjectionCodec:
     "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
     "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting),
     "phasePowers" -> encoded(value.phasePowers)(encodePhasePower),
-    "lastCampaign" -> option(value.lastCampaign)(CampaignResultProjectionCodec.encode),
     "supplyMaximum" -> value.supplyMaximum,
     "restSupplyGain" -> intOption(value.restSupplyGain))
     value.viewerPlayerId.foreach(player => result("viewerPlayerId") = ujson.Str(player))
@@ -136,7 +135,6 @@ object GameProjectionCodec:
     powerRaws <- default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)
     phasePowers <- traverse(powerRaws, s"$path.phasePowers") { (raw, child) =>
       decodePhasePower(raw, child) }
-    lastCampaign <- optionalAbsent(value, "lastCampaign", path)(CampaignResultProjectionCodec.decode)
     viewer <- optionalAbsent(value, "viewerPlayerId", path)(string)
     supplyMaximum <- intOr(value, "supplyMaximum", path, 0)
     restGain <- optionalAbsent(value, "restSupplyGain", path)(int)
@@ -145,7 +143,7 @@ object GameProjectionCodec:
     sources, actions, pending,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
-    walkerDecision, walkerWaiting, phasePowers, lastCampaign, viewer,
+    walkerDecision, walkerWaiting, phasePowers, viewer,
     supplyMaximum, restGain)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for
