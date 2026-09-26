@@ -49,8 +49,13 @@ class GameLogRareLinesSuite extends munit.FunSuite:
     assert(lines.contains(s"${name(other)} gained 2 favor from the Arcane bank"),
       lines)
     assert(lines.contains("Gained 1 secret"), lines)
-    assert(lines.contains("Drew 2 Denizens") ||
-      lines.exists(_.startsWith("Drew a ")), lines)
+    // Both cards, counted by their backs: an observer sees no names.
+    val kinds = drawn.map(LogWords.backOf)
+    val backs = kinds.distinct.map { kind =>
+      val count = kinds.count(_ == kind)
+      if count == 1 then s"a $kind" else s"$count ${LogWords.plural(kind)}"
+    }.mkString(" and ")
+    assert(lines.contains(s"Drew $backs"), lines)
     assert(lines.contains("Buried a Relic"), lines)
     assert(lines.contains(s"${name(other)} peeked at a Relic"), lines)
     assert(lines.exists(_.startsWith("Revealed ")), lines)
