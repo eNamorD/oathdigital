@@ -11,7 +11,7 @@ object CampaignBattle:
   def printedDefense(catalog: ExecutableCatalog, setup: CampaignSetup): Int =
     setup.kind match
       case CampaignKind.Conquest => setup.targetSites
-        .flatMap(site => catalog.sites.find(_.id == site)).map(_.defense).sum
+        .flatMap(site => catalog.site(site)).map(_.defense).sum
       case CampaignKind.Raid => setup.raidTargets.map {
         case _: CampaignRaidTarget.Pawn => 2
         case CampaignRaidTarget.Relic(_, relic) => catalog.relics

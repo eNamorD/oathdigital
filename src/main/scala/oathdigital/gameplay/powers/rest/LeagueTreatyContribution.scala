@@ -111,7 +111,7 @@ object LeagueTreatyContribution:
   private val Decline = "decline"
 
   def forCatalog(catalog: ExecutableCatalog): Option[LeagueTreatyContribution] =
-    catalog.denizens.find(_.powers.exists(_.id == id))
+    catalog.denizenWithPower(id)
       .map(d => new LeagueTreatyContribution(DenizenId(d.id.value), catalog))
 
   private def stem(ready: ReadyGame, rester: PlayerId, site: SiteId,

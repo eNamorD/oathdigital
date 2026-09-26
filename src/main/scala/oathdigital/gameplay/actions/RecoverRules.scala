@@ -11,6 +11,6 @@ import oathdigital.model._
   */
 object RecoverRules:
   def difficulty(catalog: ExecutableCatalog, site: SiteId): Option[Int] =
-    catalog.sites.find(_.id == site).flatMap(_.recoverDifficulty)
+    catalog.site(site).flatMap(_.recoverDifficulty)
 
   def score(faces: Vector[DefenseDieFace]): Int = DefenseDieFace.score(faces)

@@ -34,5 +34,5 @@ object VowOfPeaceContribution:
 
   /** `None` when the catalog has no such card, for example a test stub. */
   def forCatalog(catalog: ExecutableCatalog): Option[VowOfPeaceContribution] =
-    catalog.denizens.find(_.handlers.contains(id.value))
+    catalog.denizenWithPower(id)
       .map(card => new VowOfPeaceContribution(DenizenId(card.id.value)))

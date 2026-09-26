@@ -4,8 +4,6 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 
 final class FirstGameSetupMaterializer(catalog: ExecutableCatalog):
-  private val sitesById = catalog.sites.map(site => site.id -> site).toMap
-  private val edificesById = catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap
 
   def materialize(plan: FirstGameSetupPlan,
       placements: Vector[PawnPlacement],
@@ -19,7 +17,7 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog):
       plan.orderedSites.slice(2, 5),
       plan.orderedSites.slice(5, 8),
       plan.orderedSites.map { siteId =>
-        val definition = sitesById(siteId)
+        val definition = catalog.site(siteId).get
         val forces = if definition.capacity == 0 then SiteForces.Empty
           else SiteForces.Occupied(ForceKind.Bandit, definition.capacity)
         val denizens = edifices.get(siteId).toVector.map(id =>
@@ -56,7 +54,7 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog):
   private def assignRelics(plan: FirstGameSetupPlan): Map[SiteId, Vector[RelicId]] =
     var offset = 0
     plan.orderedSites.map { site =>
-      val count = sitesById(site).relicSlots
+      val count = catalog.site(site).get.relicSlots
       val assigned = plan.relicOrder.slice(offset, offset + count)
       offset += count
       site -> assigned
@@ -89,6 +87,6 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog):
   private def favorBanks(plan: FirstGameSetupPlan): Map[Suit, Int] =
     val bonus = if plan.participants.size >= 5 then 1 else 0
     val edificeSuits = plan.homelandEdifices.map { case (_, id) =>
-      edificesById(id).suit
+      catalog.edifice(id).get.suit
     }
     Suit.all.map(suit => suit -> (3 + bonus + edificeSuits.count(_ == suit))).toMap

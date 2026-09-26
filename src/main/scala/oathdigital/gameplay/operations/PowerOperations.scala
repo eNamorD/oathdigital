@@ -95,7 +95,7 @@ object PlaceRelicAtSite:
       InvalidEventOrder("initial relic placement must be facedown"))
     _ <- DrawTopRelic.validate(ready, relic)
     site <- ready.game.current.map.sites.get(siteId).toRight(SiteNotInPlay(siteId))
-    definition <- catalog.sites.find(_.id == siteId).toRight(SiteNotInPlay(siteId))
+    definition <- catalog.site(siteId).toRight(SiteNotInPlay(siteId))
     _ <- Either.cond(site.relics.size < definition.relicSlots, (),
       RecoverUnavailable("site has no empty relic slot"))
   yield ()

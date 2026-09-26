@@ -41,13 +41,13 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
   private def printed(source: PowerSourceRef, power: PowerId)
       : Option[(String, oathdigital.catalog.CatalogPower)] = source match
     case PowerSourceRef.Card(id: DenizenId) =>
-      catalog.denizens.find(_.id.value == id.value)
+      catalog.denizen(id)
         .flatMap(d => d.powers.find(_.id == power).map(d.name -> _))
     case PowerSourceRef.Card(id: RelicId) =>
-      catalog.relics.find(_.id.value == id.value)
+      catalog.relic(id)
         .flatMap(r => r.powers.find(_.id == power).map(r.name -> _))
     case PowerSourceRef.Card(id: EdificeId) =>
-      catalog.edifices.find(_.id.value == id.value).flatMap(e =>
+      catalog.edifice(id).flatMap(e =>
         Vector(e.intact, e.ruined).flatMap(face =>
           face.powers.find(_.id == power).map(face.name -> _)).headOption)
     case PowerSourceRef.Banner(_) => BannerFacePowers.printed(power).map:

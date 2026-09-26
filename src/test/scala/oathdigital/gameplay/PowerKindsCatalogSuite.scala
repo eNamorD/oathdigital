@@ -21,7 +21,7 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     "edifice.e28.ruined")
 
   private def flag(id: String): Option[Boolean] =
-    CatalogResolution.printed(catalog, PowerId(id)).map(_.persistent)
+    catalog.printedPower(PowerId(id)).map(_.persistent)
 
   test("every in-scope modifier is catalogued non-persistent"):
     modifiers.foreach(id => assertEquals(flag(id), Some(false), id))

@@ -67,17 +67,17 @@ object RuleSourceIndex:
   ): Vector[IndexedRuleSource] =
     val current = ready.game.current
     val sites = current.map.inPlay.flatMap { siteId =>
-      val printed = catalog.sites.find(_.id == siteId).toVector.map(definition =>
+      val printed = catalog.site(siteId).toVector.map(definition =>
         IndexedRuleSource(RuleSourceRef.Site(siteId), rawIds(definition.handlers),
           RuleSourceFace.Printed))
       val cards = current.map.sites(siteId).denizens.flatMap:
         case denizen: DenizenState =>
-          catalog.denizens.find(_.id.value == denizen.id.value).toVector.map(
+          catalog.denizen(denizen.id).toVector.map(
             definition => IndexedRuleSource(
               RuleSourceRef.SiteCard(siteId, denizen.id), ids(definition.powers),
               orientation(denizen.orientation)))
         case edifice: EdificeState =>
-          catalog.edifices.find(_.id.value == edifice.id.value).toVector.map:
+          catalog.edifice(edifice.id).toVector.map:
             definition =>
               val face = if edifice.side == EdificeSide.Intact then
                 definition.intact else definition.ruined
@@ -85,7 +85,7 @@ object RuleSourceIndex:
                 ids(face.powers), if edifice.side == EdificeSide.Intact then
                   RuleSourceFace.Intact else RuleSourceFace.Ruined)
       val relics = current.map.sites(siteId).relics.flatMap { relic =>
-        catalog.relics.find(_.id.value == relic.id.value).toVector.map(
+        catalog.relic(relic.id).toVector.map(
           definition => IndexedRuleSource(
             RuleSourceRef.SiteRelic(siteId, relic.id), ids(definition.powers),
             orientation(relic.orientation)))
@@ -94,13 +94,13 @@ object RuleSourceIndex:
     }
     val players = current.players.flatMap { player =>
       val advisers = player.advisers.collect { case denizen: DenizenState =>
-        catalog.denizens.find(_.id.value == denizen.id.value).toVector.map(
+        catalog.denizen(denizen.id).toVector.map(
           definition => IndexedRuleSource(
             RuleSourceRef.Adviser(player.player, denizen.id), ids(definition.powers),
             orientation(denizen.orientation)))
       }.flatten
       val relics = player.relics.flatMap { relic =>
-        catalog.relics.find(_.id.value == relic.id.value).toVector.map(
+        catalog.relic(relic.id).toVector.map(
           definition => IndexedRuleSource(
             RuleSourceRef.Relic(player.player, relic.id), ids(definition.powers),
             orientation(relic.orientation)))
@@ -110,7 +110,7 @@ object RuleSourceIndex:
     val legacies = ready.game.campaign.lineages.toVector.sortBy(_._1.value)
       .flatMap { case (lineageId, lineage) =>
         lineage.legacies.flatMap { legacy =>
-          catalog.legacies.find(_.id.value == legacy.id.value).toVector.map(
+          catalog.legacy(legacy.id).toVector.map(
             definition => IndexedRuleSource(
               RuleSourceRef.Legacy(lineageId, legacy.id), ids(definition.powers),
               if legacy.active then RuleSourceFace.Active else RuleSourceFace.Inactive))

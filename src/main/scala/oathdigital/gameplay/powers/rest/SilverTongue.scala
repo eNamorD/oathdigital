@@ -96,7 +96,7 @@ object SilverTongue:
   /** How many advisers the holder may have, in either orientation. */
   val HolderLimit: Int = 2
   def forCatalog(catalog: ExecutableCatalog): Option[SilverTongue] =
-    catalog.denizens.find(_.powers.exists(_.id == id))
+    catalog.denizenWithPower(id)
       .map(d => new SilverTongue(DenizenId(d.id.value), catalog))
 
   def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =

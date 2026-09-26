@@ -61,5 +61,5 @@ final case class Dazzle private (cardId: DenizenId,
 object Dazzle:
   val id: PowerId = PowerId("denizen.dazzle")
   def forCatalog(catalog: ExecutableCatalog): Option[Dazzle] =
-    catalog.denizens.find(_.powers.exists(_.id == id))
+    catalog.denizenWithPower(id)
       .map(definition => new Dazzle(DenizenId(definition.id.value), catalog))

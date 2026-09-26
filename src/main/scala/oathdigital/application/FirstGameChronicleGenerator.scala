@@ -96,16 +96,15 @@ object FirstGameChronicleGenerator:
       }
 
   private def homelandSuit(catalog: ExecutableCatalog, siteId: SiteId): Option[Suit] =
-    catalog.sites.find(_.id == siteId).get.handlers.collectFirst {
+    catalog.site(siteId).get.handlers.collectFirst {
       case handler if handler.contains(".homeland-") =>
         handler.substring(handler.indexOf(".homeland-") + 10)
     }.flatMap(Suit.fromKey)
 
   private def validate(catalog: ExecutableCatalog, chronicle: Chronicle)
       : Either[ChronicleGeneratorFailure, Unit] =
-    val suitOf = catalog.denizens.map(d => DenizenId(d.id.value) -> d.suit).toMap
     def perSuitCount(ids: Vector[DenizenId]): Map[Suit, Int] =
-      Suit.all.map(suit => suit -> ids.count(id => suitOf.get(id).contains(suit))).toMap
+      Suit.all.map(suit => suit -> ids.count(id => catalog.suitOf(id).contains(suit))).toMap
 
     if chronicle.worldDeck.size != 60 then
       Left(InvariantViolated(

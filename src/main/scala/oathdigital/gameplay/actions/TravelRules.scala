@@ -40,8 +40,8 @@ object TravelRules:
       from <- map.regionOf(source).toRight(SiteNotInPlay(source))
       to <- map.regionOf(destination).toRight(SiteNotInPlay(destination))
       _ <- Either.cond(source != destination, (), SameTravelSite(source))
-      _ <- catalog.sites.find(_.id == source).toRight(SiteNotInPlay(source))
-      _ <- catalog.sites.find(_.id == destination)
+      _ <- catalog.site(source).toRight(SiteNotInPlay(source))
+      _ <- catalog.site(destination)
         .toRight(SiteNotInPlay(destination))
     yield (from, to) match
       case (Region.Cradle, Region.Cradle) => 1

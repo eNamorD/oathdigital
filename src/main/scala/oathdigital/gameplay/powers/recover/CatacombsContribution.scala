@@ -32,7 +32,7 @@ final case class CatacombsContribution private (cardId: DenizenId,
   private def place(actor: PlayerId): Operation = BuildOps((ready, _) => for
     siteId <- PowerAccess.siteOf(ready, actor, cardId)
       .toRight(OathViolation.PawnSiteMissing(actor))
-    _ <- Either.cond(catalog.sites.find(_.id == siteId).exists(d =>
+    _ <- Either.cond(catalog.site(siteId).exists(d =>
       ready.game.current.map.sites.get(siteId).fold(0)(_.relics.size) < d.relicSlots),
       (), OathViolation.RecoverUnavailable("site has no empty relic slot"))
     relic <- ready.game.current.commonCards.relicDeck.headOption.toRight(OathViolation.RecoverUnavailable("relic deck is empty"))
@@ -47,5 +47,5 @@ object CatacombsContribution:
   val id: PowerId = PowerId("denizen.catacombs")
   // None if the catalog has no such card (e.g. a test stub).
   def forCatalog(catalog: ExecutableCatalog): Option[CatacombsContribution] =
-    catalog.denizens.find(_.powers.exists(_.id == id))
+    catalog.denizenWithPower(id)
       .map(d => new CatacombsContribution(DenizenId(d.id.value), catalog))

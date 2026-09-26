@@ -126,7 +126,7 @@ object CardPlay:
       case _: VisionId => Left(InvalidSearchPlacement("Visions cannot be played to sites"))
       case id: DenizenId =>
         for
-          definition <- catalog.denizens.find(_.id.value == id.value)
+          definition <- catalog.denizen(id)
             .toRight(UnknownWorldCard(id))
           _ <- Either.cond(definition.restrictions != CardRestrictions.AdviserOnly &&
             definition.restrictions != CardRestrictions.LockedAdviserOnly, (),
@@ -142,7 +142,7 @@ object CardPlay:
     case SearchPlacement.Adviser(orientation, replace) => card match
       case id: DenizenId =>
         for
-          definition <- catalog.denizens.find(_.id.value == id.value)
+          definition <- catalog.denizen(id)
             .toRight(UnknownWorldCard(id))
           _ <- Either.cond(origin != Origin.FacedownAdviser ||
             (orientation == Orientation.FaceUp && replace.isEmpty), (),
@@ -335,7 +335,7 @@ object CardPlay:
       case Some(id) => advisers.find(_.id == id).toRight(
         InvalidSearchPlacement("replacement adviser is not held")).flatMap { _ =>
         val discardable = id match
-          case d: DenizenId => catalog.denizens.find(_.id.value == d.value)
+          case d: DenizenId => catalog.denizen(d)
             .toRight(UnknownWorldCard(d)).map(
               _.restrictions != CardRestrictions.LockedAdviserOnly)
           case _: VisionId => Right(true)
@@ -354,7 +354,7 @@ object CardPlay:
       site: SiteState, suit: Suit, replace: Option[CardId],
       rules: PlacementRules)
       : Either[OathViolation, Option[SiteDenizenState]] =
-    val capacity = catalog.sites.find(_.id == siteId).map(_.capacity).getOrElse(0)
+    val capacity = catalog.site(siteId).map(_.capacity).getOrElse(0)
     val full = site.denizens.size >= capacity
     if rules.siteDiscardFirst then replace match
       // Any site, at any capacity: the discard is optional with room and
@@ -372,7 +372,7 @@ object CardPlay:
       "site replacement is allowed only at a full Homeland"))
     else
       val homelandMatches = site.denizens.exists:
-        case e: EdificeState => catalog.edifices.find(_.id.value == e.id.value)
+        case e: EdificeState => catalog.edifice(e.id)
           .exists(_.suit == suit)
         case _ => false
       if !homelandMatches then Left(InvalidSearchPlacement(

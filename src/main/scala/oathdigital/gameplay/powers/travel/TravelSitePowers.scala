@@ -150,7 +150,7 @@ object TravelSitePowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     val present = supported.foldLeft(Vector.empty[(Supported, SiteId)]):
       (found, descriptor) =>
-        catalog.sites.find(_.handlers.contains(descriptor.id.value)) match
+        catalog.siteWithHandler(descriptor.id) match
           case Some(site) => found :+ (descriptor -> site.id)
           case None => found
     val coastSites = present.collect {

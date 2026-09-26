@@ -31,5 +31,5 @@ trait WhenPlayedPower extends ContributingPower:
 object WhenPlayedPower:
   /** The denizen that prints power `id`, or `None` for a catalog without it. */
   def cardOf(catalog: ExecutableCatalog, id: PowerId): Option[DenizenId] =
-    catalog.denizens.find(_.powers.exists(_.id == id))
+    catalog.denizenWithPower(id)
       .map(definition => DenizenId(definition.id.value))

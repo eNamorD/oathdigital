@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.catalog.{CatalogPower, ExecutableCatalog}
+import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.{PowerId, PowerResolution}
 
 /** How a modifier or a persistent rule activates, read from the catalog: a
@@ -13,11 +13,6 @@ import oathdigital.model.{PowerId, PowerResolution}
   * way either.
   */
 object CatalogResolution:
-  def printed(catalog: ExecutableCatalog, id: PowerId): Option[CatalogPower] =
-    (catalog.denizens.flatMap(_.powers) ++ catalog.relics.flatMap(_.powers) ++
-      catalog.edifices.flatMap(e => e.intact.powers ++ e.ruined.powers) ++
-      catalog.legacies.flatMap(_.powers)).find(_.id == id)
-
   def of(catalog: ExecutableCatalog, id: PowerId): PowerResolution =
-    if printed(catalog, id).exists(_.persistent) then PowerResolution.Automatic
+    if catalog.printedPower(id).exists(_.persistent) then PowerResolution.Automatic
     else PowerResolution.PlayerSelected

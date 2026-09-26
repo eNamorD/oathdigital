@@ -136,17 +136,14 @@ object GameStartRules:
   private def homelandEdifices(catalog: ExecutableCatalog,
       inPlay: Vector[StoredSite])
       : Either[OathViolation, Vector[(SiteId, EdificeId)]] =
-    val sitesById = catalog.sites.map(s => s.id -> s).toMap
-    val edificesById = catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap
     inPlay.foldLeft[Either[OathViolation, Vector[(SiteId, EdificeId)]]](
         Right(Vector.empty)) { (acc, stored) =>
       acc.flatMap { built =>
-        homelandSuit(sitesById(stored.site).handlers) match
+        homelandSuit(catalog.site(stored.site).get.handlers) match
           case None => Right(built)
           case Some(suit) =>
             stored.items.collectFirst { case id: EdificeId => id } match
-              case Some(edificeId) if edificesById.get(edificeId)
-                    .exists(_.suit == suit) =>
+              case Some(edificeId) if catalog.edifice(edificeId).exists(_.suit == suit) =>
                 Right(built :+ (stored.site -> edificeId))
               case Some(edificeId) => Left(UnsupportedChronicle(
                 s"edifice ${edificeId.value} at ${stored.site.value} does " +
@@ -163,4 +160,4 @@ object GameStartRules:
     }.flatMap(Suit.fromKey)
 
   private def relicSlots(catalog: ExecutableCatalog, site: SiteId): Int =
-    catalog.sites.find(_.id == site).get.relicSlots
+    catalog.site(site).get.relicSlots
