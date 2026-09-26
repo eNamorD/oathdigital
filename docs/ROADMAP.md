@@ -8,8 +8,9 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase - Rule gaps in implemented cards** is next, then **Phase - Catalog
-batch 2**.
+**Phase - Rule gaps in implemented cards** is next
+([design](superpowers/specs/2026-09-26-rule-gaps-in-implemented-cards-design.md)),
+then **Phase - Power log lines** and **Phase - Catalog batch 2**.
 
 ## Next
 
@@ -19,19 +20,31 @@ campaign-continuity rules.
 ### Phase - Rule gaps in implemented cards
 
 Walker migrations dropped these rules. The cards can already appear in play,
-so the game silently skips part of their printed text.
+so the game silently skips part of their printed text. The
+[design](superpowers/specs/2026-09-26-rule-gaps-in-implemented-cards-design.md)
+covers all of it.
 
-- [ ] **Vision-play restrictions.** Vow of Obedience, Secret Police, Book
-  Binders and the Sacred Ground / Desecrated Ground edifice faces should
-  become `Restriction` powers. Until then they are silently ignored when a
-  Vision is played. Recorded in the Visions and Conspiracy walker design.
+- [ ] **Restriction look-ahead.** The walker hides any option whose answer
+  would break a `Restriction`, instead of refusing it after the player chose
+  it. Future "cannot" cards then need only a `Restriction`.
+- [ ] **Vision-play cards.** Vow of Obedience (with its REST), Secret Police
+  and Sacred Ground forbid playing a Vision faceup, and Book Binders rewards
+  its holder when another player does. Until then they are silently ignored.
 - [ ] **Vow of Peace's second sentence.** Attackers may still sacrifice
-  against a faceup holder (`VowOfPeaceContribution`). Recorded in the
-  Campaign walker design.
-- [ ] **Off-turn modifiers beyond battle plans.** A player choosing powers
-  off their own turn works only for Campaign plans, so a defender cannot
-  activate any other modifier. Recorded in the powers design and the walker
-  ownership and phases design.
+  against a faceup holder (`VowOfPeaceContribution`).
+
+### Phase - Power log lines
+
+Powers change what an action does without saying so in the Game Log. A
+phase power used as an action logs a generic "Used {card}", and a modifier
+is named only on its action's start line. Automatic powers and Restrictions
+leave no line at all: when Vow of Peace removes the attacker's sacrifice
+decision, nothing records why. Each power should be able to declare the lines
+it contributes where it takes effect, such as "Used Vow of Peace to skip the
+sacrifice step", through one generic mechanism rather than a case per card.
+The generic line stays as a fallback. The mechanism has to cover powers that
+remove or hide something, which record no operation of their own. The Game
+Log design of 2026-09-26 recorded this as a follow-up.
 
 ### Phase - Catalog batch 2
 
@@ -49,6 +62,11 @@ choose around:
   participants.
 - Golem Legions needs Muster to allow a per-source exception to the
   token-free rule and to accept the actor's own advisers as sources.
+- Sneak Attack needs an off-turn nested action: a Campaign whose acting
+  player is not the active player, including selecting modifiers off turn.
+  Campaign powers read `ctx.activePlayer` as the attacker today
+  (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`). Recorded in the
+  powers design and the walker ownership and phases design.
 
 ### Phase - Consent system
 
@@ -111,6 +129,12 @@ requested UI changes are in the
   setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
   triggers once an explore procedure exists. The Chronicle string codec is
   under **Phase - Empire and campaign continuity**.
+- [ ] **Deferred: Desecrated Ground.** E08's ruined face lets an Exile at its
+  site keep any number of revealed Visions, which turns
+  `PlayerState.revealedVision` into a collection across card play, projection,
+  Vision victory, the frontend and the save format. E08 never appears in
+  generated games, since the Nomad homeland becomes E06. Do it when E08 can
+  appear. Recorded in the rule gaps design of 2026-09-26.
 
 ### Game Log deferred items
 
@@ -119,10 +143,6 @@ requested UI changes are in the
   that is still parked says nothing about its choices so far. The table's
   "Waiting on player" message is the place to show that progress. Recorded in
   the Game Log design of 2026-09-26.
-- [ ] **Deferred: powers declare their own log lines.** A phase power used as
-  an action logs a generic "Used {card}". Each power could instead declare
-  the line it contributes where it takes effect, with the generic line kept
-  only as a fallback. Recorded in the Game Log design of 2026-09-26.
 - [ ] **Deferred: Game Log features the design left out.** Click-to-highlight,
   filters and search, timestamps, a server-side read marker, failed victory
   checks and negotiation proposals. Replay navigation is **L4**. Recorded in
