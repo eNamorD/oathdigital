@@ -214,7 +214,8 @@ private[operations] object CardMovementOperations:
         Right(without)) { case (result, (move, located)) =>
         result.flatMap(insertCard(_, move, located))
       }
-    yield inserted
+    yield CardKnowledgeMoves.follow(inserted, removedCards.map {
+      case (transfer, located) => transfer.to.location -> located })
 
   private def removeCard(
       ready: ReadyGame,
