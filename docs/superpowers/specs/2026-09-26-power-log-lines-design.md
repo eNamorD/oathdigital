@@ -197,7 +197,7 @@ Wording rules:
 
 - Past tense for what happened: "Toll Roads: Red paid 1 favor to Blue."
 - "must", "may" or "cannot" for a rule that binds: "Narrow Pass: Red cannot
-  travel to Green Shore."
+  travel to other sites in the region."
 - Terse fragments are fine: "Outriders: Skulls ignored."
 - An exclamation mark is allowed where a procedure changes dramatically.
 - A pawn placed by a power "placed at" a site. It did not travel or move.
@@ -278,8 +278,8 @@ cost payment logs nothing today and still logs nothing.
 | Sacred Ground | hide hook | Sacred Ground: {Red} cannot play a Vision faceup. |
 | Oaken Fortress, Rotting Fortress | hide hook, per protected target | Oaken Fortress: {Blue} cannot be targeted. |
 | Circlet of Command | hide hook | Circlet of Command: {Blue}'s banners and relics cannot be targeted. |
-| Narrow Pass, Campaign targets | hide hook | Narrow Pass: Other sites in the region cannot be targeted. |
-| Narrow Pass, Travel | hide hook, per site | Narrow Pass: {Red} cannot travel to {site}. |
+| Narrow Pass, Campaign targets | hide hook | Narrow Pass: {Red} cannot target other sites in the region. |
+| Narrow Pass, Travel | hide hook | Narrow Pass: {Red} cannot travel to other sites in the region. |
 
 ### Added effects
 
