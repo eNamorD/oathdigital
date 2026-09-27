@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.gameplay.{CampaignFixture, ChallengeFixture}
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.powerresolver.{PowerCtx, Restriction}
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
@@ -151,3 +151,49 @@ class FortressRulesSuite extends munit.FunSuite:
     // An Oaken Fortress the holder does not rule protects nobody.
     assertEquals(challengeBanners(EdificeSide.Intact, ruled = false).toSet,
       Set(banner(Banner.PeoplesFavor), banner(Banner.DarkestSecret)))
+
+  // ---- Lines ----
+
+  private def hidden(power: FortressRule, from: OathTransition)
+      : Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, from.events)
+  private val oaken = OakenFortress.forCatalog(catalog).get
+  private val rotting = RottingFortress.forCatalog(catalog).get
+  private def shielded(player: PlayerId) = NoteText.Said("shielded",
+    s"${player.value} cannot be targeted.", covers = false)
+
+  test("a Raid the Oaken Fortress hides names the protected ruler"):
+    val b = fortified(EdificeSide.Intact, ruled = true)
+    assertEquals(hidden(oaken, startOf(b).toOption.get), Vector(shielded(b.other)))
+
+  test("a defender the Oaken Fortress hides is named when the Raid stays"):
+    val b = fortified(EdificeSide.Intact, ruled = true)
+    val started = start(pawnAt(b.ready, third(b), b.origin), ActionRef.Campaign,
+      b.actor).toOption.get
+    assertEquals(hidden(oaken, started), Vector.empty)
+    val kind = TargetingFixture.rules.resolveWalker(started.state, b.actor,
+      CampaignIds.kind, ChooseOneAnswer(raid)).toOption.get
+    assertEquals(hidden(oaken, kind), Vector(shielded(b.other)))
+
+  test("a Raid the Rotting Fortress hides from several players names the site"):
+    val b = fortified(EdificeSide.Ruined, ruled = true)
+    val crowded = pawnAt(b.ready, third(b), b.origin)
+    assertEquals(hidden(rotting, start(crowded, ActionRef.Campaign, b.actor)
+      .toOption.get), Vector(NoteText.Said("all-shielded",
+        s"No player at ${b.origin.value} can be targeted.", covers = false)))
+
+  test("a banner a protected player holds is named by its holder"):
+    val (base, _) = ChallengeFixture.ready(resources = 2)
+    val actor = ChallengeFixture.active(base)
+    val held = ChallengeFixture.enemyHolds(base, Banner.PeoplesFavor, 2)
+    val enemy = ChallengeFixture.enemy(held).player
+    val staged = fortressAt(held, EdificeSide.Ruined,
+      playerOf(held, actor).pawnSite.get)
+    assertEquals(hidden(rotting, start(staged, ActionRef.Challenge, actor)
+      .toOption.get), Vector(shielded(enemy)))
+
+  test("a Fortress that protects nobody writes nothing"):
+    val b = withEnemyAtOrigin(board(extras = 1, warbands = 4))
+    val ready = fortressAt(b.ready, EdificeSide.Ruined, b.extras.head)
+    assertEquals(hidden(rotting, start(ready, ActionRef.Campaign, b.actor)
+      .toOption.get), Vector.empty)
