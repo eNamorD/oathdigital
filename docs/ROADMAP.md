@@ -32,13 +32,8 @@ mechanism and the line for every implemented power.
 Slice 1 merged on 2026-09-26: the mechanism, with Vow of Peace and Gambling
 Hall as its first powers. Slice 2 merged on 2026-09-26: every phase power
 has its own line. Slice 3 merged on 2026-09-26: every removed and hidden
-option has its line. Slice 4 gives every added effect and altered
-procedure its line. Slice 5 remains: setup.
-
-Book Binders reports itself applicable on every faceup Vision another player
-plays, even when every favor bank is empty, because its node must exist
-whatever the banks hold. Its line should come from the Gain it makes, so a
-play that finds no favor writes none.
+option has its line. Slice 4 merged on 2026-09-26: every added effect
+and altered procedure has its line. Slice 5 remains: setup.
 
 ### Phase - Catalog batch 2
 
