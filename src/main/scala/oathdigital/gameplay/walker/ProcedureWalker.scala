@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Restriction}
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 
@@ -308,7 +308,10 @@ object ProcedureWalker:
       /** The procedure of the parked position being resumed. */
       procedure: Option[oathdigital.model.ProcedureRef],
       /** The whole action tree, which the restriction look-ahead probes. */
-      root: Operation
+      root: Operation,
+      /** The states before and after the step this command journaled last,
+        * which a note reads. */
+      previous: Option[(ReadyGame, ReadyGame)] = None
   )
 
   private sealed trait Step extends Product with Serializable
@@ -367,8 +370,20 @@ object ProcedureWalker:
       case branch: Branch => walkBranch(branch, ctx, path, cursor, resume, hooks)
       case leaf: PrimitiveOperation =>
         walkLeaf(leaf, ctx, path, cursor, resume, hooks)
+      case note: Note => Right(Done(noted(note, ctx)))
       case composite =>
         walkComposite(composite, ctx, path, cursor, resume, hooks)
+
+  /** Journals a power's note. A resumed walk skips the children before its
+    * cursor, so a note runs only on the walk that first reaches it. */
+  private def noted(note: Note, ctx: WalkCtx): WalkCtx =
+    note.build(NoteStates(ctx.state, ctx.previous, ctx.answered)).fold(ctx)(
+      built => ctx.copy(events = ctx.events :+
+        PowerNoted(note.power, built, note.covers)))
+
+  /** Events other than notes: a note changes nothing a guard reads. */
+  private def recorded(ctx: WalkCtx): Int =
+    ctx.events.count(!_.isInstanceOf[PowerNoted])
 
   /** Gathers at `window` (a no-op when `None`) and folds `children` through
     * the gathered transforms, then walks the folded vector child by child --
@@ -431,7 +446,7 @@ object ProcedureWalker:
           case park: Park => Right(park)
           // A pass that recorded nothing and asked nothing cannot change what
           // the guard reads, so it would only repeat itself for ever.
-          case Done(next) if next.events.size == current.events.size &&
+          case Done(next) if recorded(next) == recorded(current) &&
               next.answered.size == current.answered.size => Right(Done(next))
           case Done(next) => passes(next)
 
@@ -639,7 +654,9 @@ object ProcedureWalker:
             deltaMeaning(updated.executed, label)),
           ops = updated.executed,
           contributions = contributions)
-      ctx.copy(state = updated.state, events = events)
+      ctx.copy(state = updated.state, events = events,
+        previous = if updated.executed.isEmpty then ctx.previous
+          else Some((ctx.state, updated.state)))
     }
 
   private def deltaMeaning(ops: Vector[CoreOperation],
@@ -680,6 +697,7 @@ object ProcedureWalker:
         if path.isEmpty then leafLabel(decide) else path.mkString(".")
       ctx.copy(
         answered = ctx.answered :+ answer,
+        previous = Some((ctx.state, ctx.state)),
         events = ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId,
           payload = ChoicePayload(answer.decisionId, answer.answer, answer.by),
@@ -696,8 +714,10 @@ object ProcedureWalker:
     WalkerRolls.outcomeFor(roll, ctx.state, faces).map { outcome =>
       val nodeId =
         if path.isEmpty then leafLabel(roll) else path.mkString(".")
+      val written = WalkerRolls.write(ctx.state, outcome)
       ctx.copy(
-        state = WalkerRolls.write(ctx.state, outcome),
+        state = written,
+        previous = Some((ctx.state, written)),
         events = ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId, payload = RollPayload(roll.pool, faces, automatic),
           ops = Vector.empty, contributions = contributions))

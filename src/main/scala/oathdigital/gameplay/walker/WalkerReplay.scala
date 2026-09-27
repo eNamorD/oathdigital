@@ -155,6 +155,8 @@ private[walker] object WalkerReplay:
             rollPools = Map.empty,
             rollOutcomes = Map.empty)))
 
+      // An audit fact for the Game Log; replay has nothing to apply.
+      case _: PowerNoted => Right(ready)
       case step: WalkerStepRecorded =>
         invalid(s"unsupported recorded walker payload ${step.payload.productPrefix}")
       case other =>

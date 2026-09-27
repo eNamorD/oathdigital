@@ -98,6 +98,15 @@ object PowerSourceRef:
   /** A banner whose printed face power was used. */
   final case class Banner(banner: oathdigital.model.Banner) extends PowerSourceRef
 
+  /** The source a phase power's start selection names, for its notes. */
+  def of(ref: DecisionOptionRef): Option[PowerSourceRef] = ref match
+    case DecisionOptionRef.Denizen(id) => Some(Card(id))
+    case DecisionOptionRef.Relic(id) => Some(Card(id))
+    case DecisionOptionRef.Vision(id) => Some(Card(id))
+    case DecisionOptionRef.Edifice(id) => Some(Card(id))
+    case DecisionOptionRef.Site(id) => Some(Site(id))
+    case _ => None
+
 /** A stable identity for one use-limited power instance this turn. */
 final case class PowerUseRef(
     timing: PowerTiming,

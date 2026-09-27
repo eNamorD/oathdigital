@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, ProcedureRef, RelicId, SiteId, WalkerEvent}
+import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, PowerNote, ProcedureRef, RelicId, SiteId, WalkerEvent}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -100,4 +100,12 @@ final case class WalkerParked(
   * field without deriving or running the operation tree.
   */
 final case class WalkerCompleted(procedure: ProcedureRef)
+    extends WalkerEvent
+
+/** Audit fact: a power's effect happened here and says so in the Game Log
+  * (power log lines design). Replay applies nothing for it, as it never
+  * reads `WalkerStepRecorded.contributions`. `covers` tells the log to drop
+  * the generic detail lines of the step before it.
+  */
+final case class PowerNoted(power: PowerId, note: PowerNote, covers: Boolean)
     extends WalkerEvent

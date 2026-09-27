@@ -9,7 +9,7 @@ import oathdigital.model._
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.{PhasePowers}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
+import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerCompleted,
   WalkerDice, WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent._
@@ -78,6 +78,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
+      case event: PowerNoted => ProcedureWalker.applyRecorded(state, event)
       // `WalkerEvent` is open, so an event type this match does not know
       // rejects here instead of escaping as a `MatchError`.
       case other: WalkerEvent =>
