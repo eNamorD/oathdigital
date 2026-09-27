@@ -441,3 +441,21 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       }
       assertEquals(named, viewer == script.actor, shown(took).spans.toString)
     }
+
+  test("Hunger's forced step writes one trigger line that covers the burial, " +
+      "naming the card to whoever may identify it"):
+    val script = hunger
+    val holder = name(script.actor)
+    val other = script.players.find(_ != script.actor).get
+    Vector(script.actor, other).foreach { viewer =>
+      val shown = format(script, Some(viewer)).filter(_.depth == 1)
+      val all = texts(shown)
+      val at = all.indexWhere(line => line.startsWith(s"Hunger: $holder buried ") &&
+        line.endsWith(s" from $holder's advisers."))
+      assert(at >= 0, all)
+      assertEquals(shown(at).kind, LogKind.Trigger)
+      assert(!all.exists(_.startsWith("Buried ")), all)
+      assert(!all.exists(_.startsWith("Used Hunger")), all)
+      assertEquals(all(at).contains(" buried a Denizen from "),
+        viewer != script.actor, all(at))
+    }

@@ -77,7 +77,7 @@
   | Shifting Fog | `moved` | Shifting Fog: Every bank's favor moved to the next bank. | |
   | Twin Brother | `swapped` | Twin Brother: {Red} swapped it for {Blue}'s {card}. | |
   | Chaos Cult | `took` | Chaos Cult: {Red} took {1 favor} from {Blue}. | |
-  | Hunger | `buried` | Hunger: {Red} buried {Blue}'s {card}. | the Buried line |
+  | Hunger | `buried` | Hunger: {Red} buried {card} from {Blue}'s advisers. | the Buried line |
   | Hunger, nothing to bury | `none` | Hunger: No adviser could be buried. | |
 
 - Decision ids:

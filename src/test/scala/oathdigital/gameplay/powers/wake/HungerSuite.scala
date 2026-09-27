@@ -98,7 +98,8 @@ class HungerSuite extends munit.FunSuite:
       secrets.faceUpSecrets + secrets.faceDownSecrets + 2)
     assert(done.events.contains(WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
     assertEquals(NoteText.said(hunger, done.events), Vector(NoteText.Said(
-      "buried", s"${next.value} buried ${third.value}'s ${victim.id.value}.",
+      "buried", s"${next.value} buried ${victim.id.value} from " +
+        s"${third.value}'s advisers.",
       covers = true)))
     assertEquals(done.events.foldLeft[Either[OathViolation, OathState]](
       Right(Ready(before)))((s, e) => s.flatMap(rules.evolve(_, e))),

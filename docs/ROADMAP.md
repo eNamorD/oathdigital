@@ -8,7 +8,7 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase - Catalog batch 2** is next.
+**Phase - Catalog batch 2** is complete. **Phase - Cleanup tasks** is next.
 
 ## Next
 
@@ -37,8 +37,10 @@ Clay Rattle, with the `Shuffle` operation. Slice 3b is done: Scryer and
 Oracular Pig, with the `Inspect` decision and the card list. Slice 3c is
 done: Oracle, which draws a Vision and plays it through Search's placement.
 Slice 4 is done: the actions on others, Spoiled Supplies, Charming Friend,
-Siege Engines, Book of Records and Barbed Net. Slice 5, triggers and
-when-played powers, remains.
+Siege Engines, Book of Records and Barbed Net. Slice 5 is done: the
+triggers and When Played powers, Shifting Fog, Twin Brother, Chaos Cult and
+Hunger, with the Oathkeeper title-change window and forced Wake steps.
+Catalog batch 2 is complete.
 
 Cards left for a later batch because they need engine work first:
 
@@ -210,16 +212,8 @@ requested UI changes are in the
   and Horned Mask's filter, and needs an audit of every step that legitimately
   moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
   lines, with regression risk in the Negotiation and Campaign suites.
-- [ ] **an adviser-slot decision option.** `DecisionOptionRef` names a
-  card by identity, and `WalkerDecisionProjector` drops any decision that names
-  a card its viewer may not identify, so a decision cannot offer another
-  player's facedown adviser. Relics have an identity-free `RelicSlot`
-  reference, and advisers have none. Ivory Eye works around it with `Button`
-  options keyed by owner and adviser position, which show a label and no card.
-  An `AdviserSlot(owner, slot)` reference, like `RelicSlot`, would let the
-  panel present the slot as a facedown card. It touches the model, the answer
-  codec, the projector and the frontend, and any future power that targets a
-  facedown adviser would use it.
+- [x] **an adviser-slot decision option.** Hunger and Ivory Eye offer
+  `AdviserSlot`s (catalog batch 2, slice 5).
 - [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry

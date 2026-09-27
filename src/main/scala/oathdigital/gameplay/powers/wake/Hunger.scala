@@ -87,16 +87,18 @@ final case class Hunger private (cardId: DenizenId, catalog: ExecutableCatalog)
       case Some(ref) =>
         states.previous.flatMap((before, _) =>
           candidates(before, holder).find(_.ref == ref)).map(chosen =>
-          buried(card, NoteArg.Player(holder), NoteArg.Player(chosen.owner),
-            NoteArg.Card(chosen.card.id)))
+          buried(card, NoteArg.Player(holder), NoteArg.Card(chosen.card.id),
+            NoteArg.Player(chosen.owner)))
 
 object Hunger:
   val id: PowerId = PowerId("denizen.hunger")
   val decisionId: String = "power.hunger.adviser"
-  /** "{Red} buried {Blue}'s {card}." */
+  /** "{Red} buried {card} from {Blue}'s advisers." The card reads as its
+    * back to anyone who may not identify it, so the owner is named apart
+    * from it, as Ivory Eye's line does. */
   val buried: NoteKey = NoteKey("buried", Vector(NotePart.Arg(0),
-    NotePart.Text(" buried "), NotePart.Arg(1), NotePart.Text("'s "),
-    NotePart.Arg(2), NotePart.Text(".")))
+    NotePart.Text(" buried "), NotePart.Arg(1), NotePart.Text(" from "),
+    NotePart.Arg(2), NotePart.Text("'s advisers.")))
   /** "No adviser could be buried." */
   val spared: NoteKey = NoteKey("none", Vector(
     NotePart.Text("No adviser could be buried.")))
