@@ -130,8 +130,8 @@ class ServerRoutesSuite extends munit.FunSuite:
         .header("Origin", origin)
         .POST(HttpRequest.BodyPublishers.ofString(
           s"""{"gameId":"$gameId","participants":[""" +
-            """{"playerId":"Red","lineageId":"red-lineage","color":"red"},""" +
-            """{"playerId":"Blue","lineageId":"blue-lineage","color":"blue"}]}"""))
+            """{"playerId":"Red","color":"red"},""" +
+            """{"playerId":"Blue","color":"blue"}]}"""))
         .build(),
       JavaResponse.BodyHandlers.ofString())
 

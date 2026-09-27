@@ -100,8 +100,8 @@ class ServerModeUiSuite extends FunSuite:
       val request = hostRequests(requests).head
       assert(request.gameId.startsWith("manual-"), request.gameId)
       assertEquals(request.participants, Vector(
-        oathdigital.protocol.BootstrapParticipantRequest("Red", "red-lineage", PlayerColor.Red),
-        oathdigital.protocol.BootstrapParticipantRequest("Blue", "blue-lineage", PlayerColor.Blue)))
+        oathdigital.protocol.BootstrapParticipantRequest("Red", PlayerColor.Red),
+        oathdigital.protocol.BootstrapParticipantRequest("Blue", PlayerColor.Blue)))
       assert(browser.text.contains("Game ID: host-game"))
       val links = browser.byClass("seat-link").map(_.asInstanceOf[org.scalajs.dom.html.Input])
       assertEquals(links.map(_.value), Vector("https://oath.test/s/red-code", "https://oath.test/s/blue-code"))
@@ -137,9 +137,9 @@ class ServerModeUiSuite extends FunSuite:
     assertEquals(menuColors(browser), Vector("Yellow", "White"))
     browser.click("create-trusted-game")
     browser.settle.map { _ =>
-      assertEquals(hostRequests(requests).head.participants.map(p => p.playerId -> p.lineageId),
-        Vector("Red" -> "red-lineage", "Blue" -> "blue-lineage", "Pink" -> "pink-lineage",
-          "Brown" -> "brown-lineage", "Black" -> "black-lineage"))
+      assertEquals(hostRequests(requests).head.participants.map(p => p.playerId -> p.color),
+        Vector("Red" -> PlayerColor.Red, "Blue" -> PlayerColor.Blue, "Pink" -> PlayerColor.Pink,
+          "Brown" -> PlayerColor.Brown, "Black" -> PlayerColor.Black))
     }.andThen { case _ => browser.close() }
 
   test("host form blocks fewer than two players, invalid IDs and duplicate IDs before posting"):

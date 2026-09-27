@@ -383,8 +383,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     assertEquals(attributes, if secure then expected + "Secure" else expected)
 
   private def creationBody(gameId: String): String = TrustedGameCreateRequestCodec.encode(
-    TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
-      BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue))))
+    TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", PlayerColor.Red),
+      BootstrapParticipantRequest("p2", PlayerColor.Blue))))
 
   private def create(client: HttpClient, base: String, gameId: String): TrustedGameCreateResponse =
     val response = send(client, base, "/games", Some(creationBody(gameId)))

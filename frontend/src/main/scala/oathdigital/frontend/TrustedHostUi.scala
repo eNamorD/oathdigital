@@ -20,8 +20,6 @@ private[frontend] object TrustedHostUi:
   val MinPlayers = 2
   val MaxPlayers = 6
 
-  /** The color decides the lineage; the backend should derive it (see the roadmap). */
-  def lineageId(color: PlayerColor): String = s"${color.key}-lineage"
   def defaultPlayerId(color: PlayerColor): String = name(color)
   private def name(color: PlayerColor): String = color.key.capitalize
 
@@ -157,7 +155,7 @@ private[frontend] object TrustedHostUi:
         case Some(message) => status.textContent = message; return
         case None => ()
       val participants = rows.zip(ids).map { case (row, id) =>
-        BootstrapParticipantRequest(id, lineageId(row.color), row.color)
+        BootstrapParticipantRequest(id, row.color)
       }
       val request = TrustedGameCreateRequest(gameId, participants)
       create.disabled = true

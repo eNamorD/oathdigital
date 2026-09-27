@@ -22,8 +22,8 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
   private val request = TrustedGameCreateRequest("trusted-game", Vector(
-    BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
-    BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue)))
+    BootstrapParticipantRequest("p1", PlayerColor.Red),
+    BootstrapParticipantRequest("p2", PlayerColor.Blue)))
   private val codes = Vector("AAAAAAAAAAAAAAAAAAAAAA", "AQEBAQEBAQEBAQEBAQEBAQ",
     "AgICAgICAgICAgICAgICAg", "AwMDAwMDAwMDAwMDAwMDAw").map(SeatCode.parse(_).toOption.get)
 
@@ -125,9 +125,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       val service = provision(owner, () => fail("must validate before code generation"))
       Vector(request.copy(gameId = "bad/game"), request.copy(participants = Vector.empty),
         request.copy(participants = request.participants.updated(1,
-          request.participants(1).copy(color = PlayerColor.Red))),
-        request.copy(participants = request.participants.updated(1,
-          request.participants(1).copy(lineageId = "l1")))).foreach { invalid =>
+          request.participants(1).copy(color = PlayerColor.Red)))).foreach { invalid =>
         assertEquals(service.create(invalid, "https://games.test"), Left(TrustedGameFailure.InvalidRequest))
         assertEquals(rows(connection, invalid.gameId), Vector(0, 0, 0, 0))
       }
