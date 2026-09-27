@@ -28,8 +28,11 @@ settles each card. Each card writes its Game Log line through the Power log
 lines `Note` mechanism as it lands.
 
 Slice 1 is done: Animal Playmates, Birdsong, Royal Stables and Forgotten
-Vault, with the Travel Supply reduction. Slices 2 to 5 remain: battle plans,
-actions on yourself, actions on others, then triggers and when-played powers.
+Vault, with the Travel Supply reduction. Slice 2 is done: the battle plans
+Fire Talkers, Nature Worship, Cracked Sage, Horse Archers, Storm Caller,
+Longbows, Black Sword, Bag of Siegeworks and Hospital, with ignored defense
+faces and the Campaign kill replacement. Slices 3 to 5 remain: actions on
+yourself, actions on others, then triggers and when-played powers.
 
 Cards left for a later batch because they need engine work first:
 

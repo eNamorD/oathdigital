@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.CampaignFixture.Board
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{PowerImplementationStatus, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerDice, WalkerStepRecorded}
@@ -27,6 +27,14 @@ object PlanDriver:
 
   val winning: WalkerDice = dice(AttackDieFace.OneSword)
   val losing: WalkerDice = dice(AttackDieFace.HollowSword)
+
+  /** `count` denizens of `suit` whose powers do nothing yet, to hold as
+    * advisers without offering a plan of their own. */
+  def inert(suit: Suit, count: Int): Vector[String] =
+    val implemented = PowerImplementationStatus.implemented(catalog)
+    catalog.denizens.filter(card => card.suit == suit &&
+      card.handlers.forall(handler => !implemented(PowerId(handler))))
+      .map(_.id.value).take(count)
 
   def ready(state: OathState): ReadyGame = state match
     case Ready(value) => value
