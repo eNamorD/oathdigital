@@ -31,8 +31,11 @@ Slice 1 is done: Animal Playmates, Birdsong, Royal Stables and Forgotten
 Vault, with the Travel Supply reduction. Slice 2 is done: the battle plans
 Fire Talkers, Nature Worship, Cracked Sage, Horse Archers, Storm Caller,
 Longbows, Black Sword, Bag of Siegeworks and Hospital, with ignored defense
-faces and the Campaign kill replacement. Slices 3 to 5 remain: actions on
-yourself, actions on others, then triggers and when-played powers.
+faces and the Campaign kill replacement. Slice 3 runs as three plans. Slice
+3a is done: Tutor, Spirit Snare, Wizard School, Shifting Map, Demon Tail and
+Clay Rattle, with the `Shuffle` operation. Slice 3b (Scryer, Oracular Pig
+and the card-list view) and 3c (Oracle and drawing a Vision) remain, then
+slice 4, actions on others, and slice 5, triggers and when-played powers.
 
 Cards left for a later batch because they need engine work first:
 
