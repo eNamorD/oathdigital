@@ -8,33 +8,12 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase - Power log lines** is next, then **Phase - Catalog batch 2**.
+**Phase - Catalog batch 2** is next.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
-
-### Phase - Power log lines
-
-Powers change what an action does without saying so in the Game Log. A
-phase power used as an action logs a generic "Used {card}", and a modifier
-is named only on its action's start line. Automatic powers and Restrictions
-leave no line at all: when Vow of Peace removes the attacker's sacrifice
-decision, nothing records why. Each power should be able to declare the lines
-it contributes where it takes effect, such as "Used Vow of Peace to skip the
-sacrifice step", through one generic mechanism rather than a case per card.
-The generic line stays as a fallback. The mechanism has to cover powers that
-remove or hide something, which record no operation of their own. The
-[design](superpowers/specs/2026-09-26-power-log-lines-design.md) covers the
-mechanism and the line for every implemented power.
-
-Slice 1 merged on 2026-09-26: the mechanism, with Vow of Peace and Gambling
-Hall as its first powers. Slice 2 merged on 2026-09-26: every phase power
-has its own line. Slice 3 merged on 2026-09-26: every removed and hidden
-option has its line. Slice 4 merged on 2026-09-26: every added effect
-and altered procedure has its line. Slice 5 gives every setup rule its
-line.
 
 ### Phase - Catalog batch 2
 
