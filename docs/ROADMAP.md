@@ -29,6 +29,10 @@ remove or hide something, which record no operation of their own. The
 [design](superpowers/specs/2026-09-26-power-log-lines-design.md) covers the
 mechanism and the line for every implemented power.
 
+Slice 1 merged on 2026-09-26: the mechanism, with Vow of Peace and Gambling
+Hall as its first powers. Slices 2 to 5 remain: phase powers, removed and
+hidden options, added effects and altered procedures, then setup.
+
 Book Binders reports itself applicable on every faceup Vision another player
 plays, even when every favor bank is empty, because its node must exist
 whatever the banks hold. Its line should come from the Gain it makes, so a
