@@ -17,6 +17,9 @@ records what it decided.
 **Slice 4 (2026-09-26):** the added effects and altered procedures.
 "Settled in slice 4" records what it decided.
 
+**Slice 5 (2026-09-26):** setup. "Settled in slice 5" records what it
+decided.
+
 **Builds on** the [Game Log design](2026-09-25-game-log-design.md). That
 design left "powers declaring their own log lines" out of scope, kept the
 generic "Used {card}" as a stand-in, and reserved the detail row
@@ -337,14 +340,16 @@ cost payment logs nothing today and still logs nothing.
 
 ### Setup
 
-| Card | Line |
-|---|---|
-| Great Market | Great Market: Placed {n} favor on {site}. |
-| Bandit Market | Bandit Market: Placed 1 favor on each bandit site and burned 1 favor from each bank. |
-| Great Forge | Great Forge: {Red} drew {relic} facedown. |
-| Broken Forge | Broken Forge: Discarded {n} relics at {sites}. |
-| Proving Grounds | Proving Grounds: {Red} gained 3 warbands. |
-| Empty Grounds | Empty Grounds: Discarded {cards}. |
+| Card | Line | Covers |
+|---|---|---|
+| Great Market | Great Market: Placed {3 favor} on {site}. | |
+| Bandit Market, key `placed-and-burned` | Bandit Market: Placed {1 favor} on the bandit site and burned {6 favor} from the banks. | |
+| Bandit Market, key `placed`, when no bank held favor | Bandit Market: Placed {1 favor} on the bandit site. | |
+| Bandit Market, key `burned`, when no site is bandit-ruled | Bandit Market: Burned {6 favor} from the banks. | |
+| Great Forge | Great Forge: {Red} drew {relic} facedown. | |
+| Broken Forge | Broken Forge: Discarded {cards}. | |
+| Proving Grounds | Proving Grounds: {Red} gained {3 warbands}. | |
+| Empty Grounds | Empty Grounds: Discarded {cards}. | the Discard line |
 
 ### No line
 
@@ -545,6 +550,28 @@ The fourth slice settled these:
 - `NoteSupport.killedKey` and `NoteSupport.gainedFromKey` are the kill and
   the gain-from-a-bank sentences that Wolves, Gambling Hall and this
   slice's powers share.
+
+## Settled in slice 5
+
+The fifth slice settled these:
+
+- Each setup rule's note goes last in its window's expansion, after the
+  rule's own `BuildOps`, and reads that step. A rule whose step changed
+  nothing writes nothing: an empty relic deck, an empty bank, or a region
+  with no denizens.
+- Bandit Market writes what it did, in three keys, as Sticky Fire does:
+  the favor placed on the bandit sites, the favor burned from the banks,
+  or both. One favor goes to each site, so the placed amount names the
+  number of sites.
+- Broken Forge lists the relics it discarded as cards, "Discarded {cards}",
+  and Empty Grounds shares that sentence. Facedown relics read by their
+  back.
+- Empty Grounds covers the generic Discard line, and reads the state its
+  transform was folded with, as Dazzle does.
+- Great Forge shares the relic draw sentence, and Proving Grounds the gain
+  sentence.
+- The Setup procedure has no start line, so its notes post where they
+  fall, among the setup lines.
 
 ## Slices
 

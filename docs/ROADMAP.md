@@ -33,7 +33,8 @@ Slice 1 merged on 2026-09-26: the mechanism, with Vow of Peace and Gambling
 Hall as its first powers. Slice 2 merged on 2026-09-26: every phase power
 has its own line. Slice 3 merged on 2026-09-26: every removed and hidden
 option has its line. Slice 4 merged on 2026-09-26: every added effect
-and altered procedure has its line. Slice 5 remains: setup.
+and altered procedure has its line. Slice 5 gives every setup rule its
+line.
 
 ### Phase - Catalog batch 2
 

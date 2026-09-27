@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.setup
 
-import oathdigital.gameplay.powers.{CardStaging, PlayerFacts, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PlayerFacts, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupWalkDriver}
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
@@ -54,3 +54,42 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
     // the board as the sole survivor of its own region.
     assertEquals(remaining, Vector[SiteDenizenState](EdificeState(edifice,
       EdificeSide.Ruined, Tokens.empty)))
+
+  // ---- Lines ----
+
+  private def events(ready: ReadyGame): Vector[OathEvent] =
+    val tree = SetupProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty).toOption.get
+    SetupWalkDriver.driveWithEvents(ready, tree, powers)._2
+
+  private val proving = ProvingGrounds.forCatalog(catalog).get
+  private val empty = EmptyGrounds.forCatalog(catalog).get
+
+  test("Proving Grounds writes the warbands its player gained"):
+    val staged = stagedAt(EdificeSide.Intact)
+    val said = NoteText.said(proving.id, proving.noteKeys, events(staged))
+    assertEquals(said.head, NoteText.Said("gained",
+      s"${firstPlayer.value} gained 3 warbands.", covers = false))
+    // The driver places every pawn at the first site, so each player gains.
+    assertEquals(said.size, staged.game.current.players.size)
+
+  test("Empty Grounds writes the cards it discarded, in place of the Discard line"):
+    // The fixture's region holds no other card, so two denizens join the
+    // edifice's site.
+    val extra = FirstGameSetupFixture.freshReady.game.current.commonCards
+      .worldDeck.collect { case id: DenizenId => id }.take(2)
+    val staged = extra.foldLeft(stagedAt(EdificeSide.Ruined))((ready, id) =>
+      CardStaging.without(ready, id).updateCurrent(c => c.copy(map = c.map.copy(
+        sites = c.map.sites.updated(site, c.map.sites(site).copy(denizens =
+          c.map.sites(site).denizens :+
+            DenizenState(id, Orientation.FaceUp, Tokens.empty)))))))
+    val current = staged.game.current
+    val region = current.map.regionOf(site).get
+    val others = current.map.inPlay
+      .filter(s => current.map.regionOf(s).contains(region))
+      .flatMap(s => current.map.sites(s).denizens.map(_.id.value))
+      .filterNot(_ == edifice.value)
+    assert(others.nonEmpty)
+    assertEquals(NoteText.said(empty.id, empty.noteKeys, events(staged)),
+      Vector(NoteText.Said("discarded",
+        s"Discarded ${others.mkString(", ")}.", covers = true)))

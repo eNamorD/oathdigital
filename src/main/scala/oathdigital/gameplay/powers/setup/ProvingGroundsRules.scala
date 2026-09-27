@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts}
+import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
 import oathdigital.model._
 
 /** E22, both faces (2026-09-21 Chronicle design, "Setup powers"). See
@@ -24,6 +24,8 @@ final case class ProvingGrounds private (edifice: EdificeId, catalog: Executable
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx).isDefined
 
+  override def noteKeys: Vector[NoteKey] = Vector(ProvingGrounds.gained)
+
   private def build(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     PlayerFacts.forceKind(ready, actor).map(kind =>
@@ -31,12 +33,17 @@ final case class ProvingGrounds private (edifice: EdificeId, catalog: Executable
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     val effect = Vector(Transform((ctx, ops) => at(ctx) match {
-      case Some((actor, _)) => ops :+ BuildOps((ready, _) => build(ready, actor))
+      case Some((actor, _)) => ops :+ BuildOps((ready, _) => build(ready, actor)) :+
+        Note(id, NoteSupport.gainedNote(ProvingGrounds.gained,
+          PowerSourceRef.Card(edifice), actor, NoteUnit.Warband,
+          NoteSupport.warbands))
       case None => ops
     }))
     Map(PowerWindow.SetupPawnPlaced -> effect, PowerWindow.WhenExplored -> effect)
 object ProvingGrounds:
   val id: PowerId = PowerId("edifice.e22.intact")
+  /** "{player} gained {3 warbands}." */
+  val gained: NoteKey = NoteSupport.gainedKey("gained")
   def forCatalog(catalog: ExecutableCatalog): Option[ProvingGrounds] =
     CatalogCards.edifice(catalog, id).map(new ProvingGrounds(_, catalog))
 
@@ -57,18 +64,35 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
 
   override def applicable(ctx: PowerCtx): Boolean = at(ctx.state).isDefined
 
+  override def noteKeys: Vector[NoteKey] = Vector(EdificeSetupSupport.discarded)
+
+  /** Every card at a site in `site`'s region except this edifice, in map
+    * order. An intact edifice among them is locked and stays. */
+  private def candidates(ready: ReadyGame, site: SiteId)
+      : Vector[(SiteId, SiteDenizenState)] =
+    val current = ready.game.current
+    current.map.regionOf(site).toVector.flatMap(region =>
+      current.map.inPlay.filter(s => current.map.regionOf(s).contains(region)))
+      .flatMap(s => current.map.sites(s).denizens.map(s -> _))
+      .filterNot { case (s, card) => s == site && card.id.value == edifice.value }
+
+  /** The cards Empty Grounds would discard in `before` that no site holds
+    * now. */
+  private def discardNote(before: ReadyGame, site: SiteId)(
+      states: NoteStates): Option[PowerNote] =
+    val sites = states.now.game.current.map.sites.values
+    val gone = candidates(before, site).map(_._2.id).filterNot(id =>
+      sites.exists(_.denizens.exists(_.id == id)))
+    Option.when(gone.nonEmpty)(EdificeSetupSupport.discarded(
+      PowerSourceRef.Card(edifice), NoteArg.Cards(gone)))
+
   private def build(ready: ReadyGame, site: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] =
-    val current = ready.game.current
     val actor = ready.setup.firstPlayer
-    current.map.regionOf(site).toRight(OathViolation.InvalidEventOrder(
+    ready.game.current.map.regionOf(site).toRight(OathViolation.InvalidEventOrder(
       s"${site.value} is not in play")).flatMap { region =>
       val destination = CardPlay.nextRegion(region)
-      val candidates = current.map.inPlay.filter(s =>
-        current.map.regionOf(s).contains(region)).flatMap(s =>
-        current.map.sites(s).denizens.map(s -> _))
-        .filterNot { case (s, card) => s == site && card.id.value == edifice.value }
-      candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](Right(Vector.empty)):
+      candidates(ready, site).foldLeft[Either[OathViolation, Vector[CoreOperation]]](Right(Vector.empty)):
         case (acc, (siteId, card)) => for
           operations <- acc
           suit <- catalog.suitOf(card.id).toRight(card match {
@@ -90,7 +114,8 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
     val effect = Vector(Transform((ctx, ops) => at(ctx.state) match {
       case Some(site) => ops :+ BuildOps((ready, _) => build(ready, site),
         restrictions = (ready, _) =>
-          Vector(new DiscardRestrictions(catalog, ready.setup.firstPlayer)))
+          Vector(new DiscardRestrictions(catalog, ready.setup.firstPlayer))) :+
+        Note(id, discardNote(ctx.state, site), covers = true)
       case None => ops
     }))
     Map(PowerWindow.SetupEnd -> effect, PowerWindow.WhenExplored -> effect)
