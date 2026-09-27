@@ -258,16 +258,17 @@ private[walker] object WalkerPowerGather:
     * walk that parked here used -- a `Transform` is required to be a pure
     * function of state (same invariant `Branch.select` already carries), so
     * re-folding here with the same `powers` reproduces the exact indices the
-    * walk parked at. The sole caller is [[ProcedureWalker.parkedRoll]]/
-    * [[ProcedureWalker.parkedDecide]] (in turn
-    * `OathRulesWalker.checkAnswerable`),
-    * moved here (like [[applyWindow]]/[[restrictionViolations]] above) to
-    * keep `ProcedureWalker.scala` under the project's line bound.
+    * walk parked at. The callers are [[ProcedureWalker.parkedRoll]] and
+    * [[ProcedureWalker.openDecisions]] (and through it `parkedDecide`), which
+    * answer checks, projections and awaited-player lookups use. It lives here
+    * (like [[applyWindow]]/[[restrictionViolations]] above) to keep
+    * `ProcedureWalker.scala` under the project's line bound.
     *
-    * A `Decide` is narrowed by the restriction look-ahead ([[probe]]),
-    * exactly as the walk narrowed it before parking. A position the walk
-    * would not have parked at, whose probe empties the decision, is returned
-    * as declared, and the answer-time check refuses it.
+    * When `powers.probing` is on, a `Decide` is narrowed by the restriction
+    * look-ahead ([[probe]]), exactly as the walk narrowed it before
+    * parking. A position the walk would not have parked at, whose probe
+    * empties the decision, is returned as declared, and the answer-time
+    * check refuses it.
     */
   def leafAt(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[Operation] =

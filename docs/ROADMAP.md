@@ -29,6 +29,11 @@ remove or hide something, which record no operation of their own. The
 [design](superpowers/specs/2026-09-26-power-log-lines-design.md) covers the
 mechanism and the line for every implemented power.
 
+Book Binders reports itself applicable on every faceup Vision another player
+plays, even when every favor bank is empty, because its node must exist
+whatever the banks hold. Its line should come from the Gain it makes, so a
+play that finds no favor writes none.
+
 ### Phase - Catalog batch 2
 
 Implement the next set of denizens and relics. The first batch covered 30 of
@@ -195,6 +200,12 @@ requested UI changes are in the
   Add the remaining attacker, defender and bandit battle plan families,
   non-deterministic loss choices, and the additional Raid, victory, defeat and
   At End handlers that the Campaign timing windows already expose.
+  At an action's start command, window folds and the restriction look-ahead
+  see no walker procedure (`PowerCtx.procedure` is `None`), while every later
+  command sees it. Make them agree before a Restriction reads the procedure.
+  `WalkerDecisionProjector.waiting` reads only a parked decision's heading and
+  Negotiation query, which the look-ahead never narrows, so its second
+  `parkedDecide` could skip the look-ahead like the other identity-only callers.
 - [ ] **Deferred: the Grand Council and Festival banner faces.** They are listed
   as synthetic ids in the reviewed catalog and have no behaviour.
 - [ ] **Deferred: Mercenaries' player-chosen sign.** Mercenaries adds attack dice
@@ -217,14 +228,6 @@ requested UI changes are in the
   the panel shows as a player name, and Sticky Fire asks its question even when a yes
   changes nothing (against bandits it only costs the favor). A board option, and skipping a
   question whose answers are the same, need a small change to the option vocabulary.
-- [ ] **Deferred: offer a nested Campaign only when it would be accepted.**
-  Knights Errant runs a Campaign inside a Muster and offers it whenever a
-  Campaign is legal. A restriction on the whole Campaign (Vow of Peace, the
-  Fortress start refusal) rejects the player's "campaign" answer, so a Vow of
-  Peace holder is offered a Campaign that is then refused, and can only decline.
-  Offering it only when it would be accepted needs the power to ask the walker
-  whether the answer would pass its restrictions, which `PowerCtx` cannot do
-  today. It is accepted until then.
 
 ### Engine deferred items
 
@@ -257,7 +260,10 @@ requested UI changes are in the
   bare string literals in the frontend, and the id grammars (`stableKey`,
   decision-id prefixes) have no shared home. The projection has no protocol
   version field. `WalkerDecisionProjectorSuite` fabricates parks instead of
-  reaching them through a Situation. Table-session clean-up is parked: no
+  reaching them through a Situation. `OathViolation.InvalidSearchPlacement`
+  also reports card-play refusals outside Search (a facedown adviser play, a
+  forbidden faceup Vision), and renaming it changes the wire format.
+  Table-session clean-up is parked: no
   `SeatMode` enum, the `HttpGameClient` downcast for the raw event history in
   `TableSession`, and duplicate jsdom tests. Recorded in the typed decision
   form and table session designs.
