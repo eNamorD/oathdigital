@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
@@ -99,3 +100,21 @@ class AlchemistSuite extends munit.FunSuite:
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
       assert(use(ready, Alchemist, source).isLeft)
     }
+
+  test("it writes the favor it gained, beside each bank's own line"):
+    val t = use(staged(Suit.Nomad -> 9), Alchemist, source).toOption.get
+    assertEquals(NoteText.said(Alchemist, t.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} gained 4 favor.", covers = false)))
+
+  test("a distribution writes its total once the player answers"):
+    val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3, Suit.Nomad -> 2)
+    val t = use(ready, Alchemist, source).toOption.get
+    assertEquals(NoteText.said(Alchemist, t.events), Vector.empty)
+    val done = answer(t, actor, Alchemist.decisionId,
+      rows(Suit.Arcane -> 3, Suit.Discord -> 1, Suit.Nomad -> 0)).toOption.get
+    assertEquals(NoteText.said(Alchemist, done.events).map(_.text),
+      Vector(s"${actor.value} gained 4 favor."))
+
+  test("empty banks give nothing, so nothing is written"):
+    assertEquals(NoteText.said(Alchemist,
+      use(staged(), Alchemist, source).toOption.get.events), Vector.empty)

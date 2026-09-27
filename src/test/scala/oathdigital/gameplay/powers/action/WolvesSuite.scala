@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PlayerFacts, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
+  PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -74,3 +75,16 @@ class WolvesSuite extends munit.FunSuite:
     val again = withSecrets(after(done), actor, 1, 0)
     assertEquals(usableNow(again), Vector.empty)
     assert(use(again, Wolves, source).isLeft)
+
+  test("it writes the warband it killed"):
+    val done = answer(parked, actor, Wolves.decisionId, choose(victim)).toOption.get
+    assertEquals(NoteText.said(Wolves, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"Killed 1 ${victim.value} warband.", covers = false)))
+
+  test("a board with no warband is written as such"):
+    val empty = updatePlayer(staged(), victim)(p =>
+      p.copy(board = p.board.copy(warbands = 0)))
+    val t = use(empty, Wolves, source).toOption.get
+    val done = answer(t, actor, Wolves.decisionId, choose(victim)).toOption.get
+    assertEquals(NoteText.said(Wolves, done.events), Vector(NoteText.Said(
+      "used.none", s"${victim.value} had no warband to kill.", covers = false)))

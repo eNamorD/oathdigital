@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.PowerAnswers
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
 /** Alchemist (card 9), ACTION: place 1 secret on this card and burn 1, then
@@ -17,11 +17,16 @@ case object Alchemist extends PaidAction("denizen.alchemist",
     Cost(secret = 1, secretBurnt = 1)):
   val Favor: Int = 4
   val decisionId: String = "power.alchemist.banks"
+  /** Its own line: the whole favor it gained. Each bank's Gain line stays. */
+  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = Vector(gained)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => ask(live, player)),
-    BuildOps((live, pending) => gain(live, player, pending)))))
+    BuildOps((live, pending) => gain(live, player, pending)),
+    Note(id, NoteSupport.gainNote(gained, source, player, NoteUnit.Favor,
+      NoteSupport.favor)))))
 
   /** The banks that hold favor, with their stock, in suit order. */
   private def stocked(ready: ReadyGame): Vector[(Suit, Int)] =

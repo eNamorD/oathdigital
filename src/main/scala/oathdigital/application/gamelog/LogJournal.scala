@@ -60,7 +60,7 @@ private[gamelog] final class LogJournal(
     * `at`'s segment. That line then replaces "Used {card}". */
   def notedUse(run: Run, power: PowerId, at: Int): Boolean =
     (run.first to segmentEnd(at)).exists(index => event(index) match
-      case PowerNoted(`power`, note, _) => note.key == NoteKey.Used
+      case PowerNoted(`power`, note, _) => NoteKey.isUse(note.key)
       case _ => false)
 
   /** Whether a covering note restates the step at `index`: one follows it

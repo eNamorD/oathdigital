@@ -1,12 +1,13 @@
 package oathdigital.application.gamelog
 
-import oathdigital.gameplay.walker.PowerNoted
+import oathdigital.gameplay.walker.{PowerNoted, WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
 
 /** The lines powers write about themselves (power log lines design,
   * section 2): "{source}: {sentence}", from the template the note's power
-  * declares.
+  * declares. A note names a card its viewer identified at its action's
+  * start, at the step it restates, or after it.
   *
   * An action whose start line has not posted yet holds its notes, and they
   * post right after it. A note identical to an earlier one in the same action
@@ -32,15 +33,27 @@ private[gamelog] final class PowerLines(words: LogWords,
     case PowerNoted(power, note, _) if !repeated(journal, run, at, power, note) =>
       for
         template <- wordings.template(power, note.key)
-        state <- journal.readyAfter(at)
+        after <- journal.readyAfter(at)
+        seen = states(journal, run, at) :+ after
       yield Posted.line(kind(run, power, note),
-        words.source(note.source, state, viewer) ++
-          (Text(": ") +: sentence(template, note.args, state, viewer)))
+        words.source(note.source, seen, viewer) ++
+          (Text(": ") +: sentence(template, note.args, seen, viewer)))
     case _ => None
 
-  /** A phase power's own `used` note is its action's line. */
+  /** The states before `at` that a note's cards are judged at: its action's
+    * start, and the step it restates, the last step before it. A generic
+    * line judges a card before and after its own operation, so a note
+    * restating it never names less. */
+  private def states(journal: LogJournal, run: Run, at: Int): Vector[ReadyGame] =
+    val restated = (run.first until at).reverseIterator.find(index =>
+      journal.event(index).isInstanceOf[WalkerStepRecorded])
+    journal.readyBefore(run.first).toVector ++
+      restated.toVector.flatMap(journal.readyBefore)
+
+  /** A phase power's own `used` note, or a variant of it, is its action's
+    * line. */
   private def kind(run: Run, power: PowerId, note: PowerNote): LogKind =
-    if note.key == NoteKey.Used && run.procedure == ActionRef.UsePower(power)
+    if NoteKey.isUse(note.key) && run.procedure == ActionRef.UsePower(power)
     then LogKind.Action
     else LogKind.Trigger
 
@@ -51,19 +64,19 @@ private[gamelog] final class PowerLines(words: LogWords,
       case _ => false)
 
   private def sentence(template: Vector[NotePart], args: Vector[NoteArg],
-      state: ReadyGame, viewer: Option[PlayerId]): Vector[LogSpan] =
+      seen: Vector[ReadyGame], viewer: Option[PlayerId]): Vector[LogSpan] =
     template.flatMap:
       case NotePart.Text(written) => Vector(Text(written))
       case NotePart.Arg(index) =>
-        args.lift(index).toVector.flatMap(argument(_, state, viewer))
+        args.lift(index).toVector.flatMap(argument(_, seen, viewer))
       case NotePart.Plural(index, one, many) => Vector(Text(args.lift(index) match
         case Some(NoteArg.Amount(1, _)) | Some(NoteArg.Number(1)) => one
         case _ => many))
 
-  private def argument(arg: NoteArg, state: ReadyGame,
+  private def argument(arg: NoteArg, seen: Vector[ReadyGame],
       viewer: Option[PlayerId]): Vector[LogSpan] = arg match
     case NoteArg.Player(id) => Vector(words.player(id))
-    case NoteArg.Card(id) => words.one(words.card(id, state, state, viewer))
+    case NoteArg.Card(id) => words.one(words.seen(id, seen, viewer))
     case NoteArg.Site(id) => Vector(words.site(id))
     case NoteArg.Amount(value, unit) =>
       Vector(LogSpan.Amount(value, unit.word(value)))

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{ExecutableCatalog, RelicRole}
-import oathdigital.gameplay.powers.{PlayerFacts, RelicDraws}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, RelicDraws}
 import oathdigital.model._
 
 /** Fae Merchant (card 180), ACTION: place 1 secret on this card, draw a relic
@@ -18,9 +18,12 @@ final case class FaeMerchant private (scepters: Set[RelicId])
     extends PaidAction("denizen.fae-merchant", Cost(secret = 1)):
   import FaeMerchant._
 
+  override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew, returned)
+
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
-      : Either[OathViolation, Operation] = Right(Sequence(Vector(
+      : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     BuildOps((state, _) => Right(RelicDraws.takeTop(state, player))),
+    Note(this.id, RelicDraws.drawNote(source, player)),
     Branch((state, _) => candidates(state, player) match {
       case several if several.size > 1 => Vector(Decide(decisionId, player,
         DecisionQuery.ChooseOne(several.map(id =>
@@ -29,7 +32,16 @@ final case class FaeMerchant private (scepters: Set[RelicId])
             "relic deck"))))
       case _ => Vector.empty
     }),
-    BuildOps((state, pending) => putBack(state, player, pending)))))
+    BuildOps((state, pending) => putBack(state, player, pending)),
+    Note(this.id, returnNote(_, player, source), covers = true))))
+
+  /** The relic the bury took from the player, in place of its Buried line. */
+  private def returnNote(states: NoteStates, player: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    step <- states.previous
+    relic <- NoteSupport.relicsLost(step, player).headOption
+  yield returned(card, NoteArg.Player(player), NoteArg.Card(relic))
 
   /** The relics the player holds, in play-area order, that may go back. */
   private def candidates(state: ReadyGame, player: PlayerId): Vector[RelicId] =
@@ -60,6 +72,9 @@ final case class FaeMerchant private (scepters: Set[RelicId])
 object FaeMerchant:
   val decisionId: String = "fae-merchant.relic"
   val id: PowerId = PowerId("denizen.fae-merchant")
+  val returned: NoteKey = NoteKey("returned", Vector(NotePart.Arg(0),
+    NotePart.Text(" put "), NotePart.Arg(1),
+    NotePart.Text(" on the bottom of the relic deck.")))
 
   /** The Grand Scepter is read from the catalog's relic roles, not by name. */
   def forCatalog(catalog: ExecutableCatalog): FaeMerchant = new FaeMerchant(

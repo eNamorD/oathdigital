@@ -5,10 +5,11 @@ import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.powers.action.GamblingHall
+import oathdigital.gameplay.powers.action.{GamblingHall, Wolves}
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
@@ -116,6 +117,19 @@ object LogScripts:
       ReplayStep(RecordedEvent(at + offset, event), state, state) }
     steps.take(after + 1) ++ added ++ steps.drop(after + 1).map(step =>
       step.copy(event = step.event.copy(index = step.event.index + events.size)))
+
+  /** `steps` without their power notes, renumbered: the journal of a power
+    * that writes no line of its own. Notes change no state, so every other
+    * step is unchanged. */
+  def withoutNotes(steps: Vector[ReplayStep[OathState, OathEvent]])
+      : Vector[ReplayStep[OathState, OathEvent]] =
+    steps.filterNot(_.event.event.isInstanceOf[PowerNoted]).zipWithIndex.map {
+      case (step, index) => step.copy(event = step.event.copy(index = index.toLong))
+    }
+
+  def formatWithoutNotes(script: Script, viewer: Option[PlayerId])(using
+      munit.Location): Vector[LogEntry] =
+    formatter.format(withoutNotes(script.history.steps), viewer)
 
   /** The service suite's Oathkeeper tie: an arranged board, the active
     * player's Travel, and the holder's choice of the next Oathkeeper. */
@@ -415,6 +429,29 @@ object LogScripts:
       GameCommand.UsePower(actor, GamblingHall.id, DecisionOptionRef.Denizen(card)))
     Script("gambling-hall", service, actor)
 
+  /** Wolves at the actor's site, used in Act with a secret arranged. The
+    * board question parks; the answer kills one of the other player's
+    * warbands with the most of them. */
+  def wolves(using munit.Location): Script =
+    val card = DenizenId("39")
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
+    val (service, _, driver) = journaled("wolves")
+    val woken = Situation.wake(driver, chronicle, orders)
+    val actor = active(woken)
+    val victim = woken.ready.game.current.players.filter(_.player != actor)
+      .maxBy(_.board.warbands).player
+    woken.withAnswers {
+      case park if park.decisionId == Wolves.decisionId =>
+        ChooseOneAnswer(DecisionOptionRef.Player(victim))
+    }.after(Step.Arrange(Vector(
+        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(woken, actor))),
+        Move(Piece.Secrets(1), PositionedLocation(Location.SharedBank),
+          PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor),
+      GameCommand.UsePower(actor, Wolves.id, DecisionOptionRef.Denizen(card)))
+    Script("wolves", service, actor)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -431,6 +468,6 @@ object LogScripts:
     "negotiation-agreed" -> (() => negotiationAgreed),
     "negotiation-disclosed" -> (() => negotiationDisclosed),
     "use-power" -> (() => usePower),
-    "gambling-hall" -> (() => gamblingHall))
+    "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves))
 
   def all: Vector[Script] = named.map(_._2())

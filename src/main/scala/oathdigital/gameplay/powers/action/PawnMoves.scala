@@ -47,3 +47,15 @@ object PawnMoves:
       : Either[OathViolation, SiteId] = PowerAnswers.one(pending, decisionId)
     .collect { case DecisionOptionRef.Site(site) => site }
     .toRight(PowerAnswers.missing(decisionId))
+
+  /** "{player} placed at {site}.": a pawn a power places does not travel or
+    * move. */
+  def placedKey(name: String): NoteKey = NoteKey(name, Vector(NotePart.Arg(0),
+    NotePart.Text(" placed at "), NotePart.Arg(1), NotePart.Text(".")))
+
+  /** Where `player`'s pawn stands after the power placed it. */
+  def placedNote(key: NoteKey, source: DecisionOptionRef, player: PlayerId)(
+      states: NoteStates): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    site <- PowerAccess.pawnSite(states.now, player)
+  yield key(card, NoteArg.Player(player), NoteArg.Site(site))

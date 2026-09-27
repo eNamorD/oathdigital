@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PhasePower
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Marble Fountains (edifice E15, intact), WAKE: if your pawn is at this
@@ -12,6 +13,11 @@ import oathdigital.model._
 case object MarbleFountains extends PhasePower:
   val id: PowerId = PowerId("edifice.e15.intact")
   def timing: PowerTiming = PowerTiming.Wake
+  /** Its own line: the Supply it refreshed to. */
+  val refreshed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+    NotePart.Text("'s Supply refreshed to "), NotePart.Arg(1),
+    NotePart.Text(".")))
+  override def noteKeys: Vector[NoteKey] = Vector(refreshed)
 
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = source match
@@ -24,5 +30,10 @@ case object MarbleFountains extends PhasePower:
     case _ => false
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
-      : Either[OathViolation, Operation] =
-    Right(GainSupply(player, SupplyTrack.Maximum))
+      : Either[OathViolation, Operation] = Right(Sequence(Vector(
+    GainSupply(player, SupplyTrack.Maximum),
+    Note(id, states => for
+      card <- PowerSourceRef.of(source)
+      board <- NoteSupport.board(states.now, player)
+    yield refreshed(card, NoteArg.Player(player),
+      NoteArg.Number(board.supply.supply))))))

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 /** Wolves (card 39), ACTION: place 1 secret on this card, then kill one
@@ -14,6 +14,13 @@ import oathdigital.model._
   */
 case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)):
   val decisionId: String = "power.wolves.board"
+  val killed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Killed "),
+    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
+    NotePart.Plural(0, " warband.", " warbands.")))
+  /** Its line when the chosen board had no warband: the kill is best-effort. */
+  val spared: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
+    NotePart.Text(" had no warband to kill.")))
+  override def noteKeys: Vector[NoteKey] = Vector(killed, spared)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
@@ -21,7 +28,20 @@ case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)):
       ready.game.current.players.map(p => DecisionOption.Player(
         DecisionOptionRef.Player(p.player))),
       heading = Some("Wolves: kill one warband on a player board"))),
-    BuildOps((live, pending) => kill(live, pending)))))
+    BuildOps((live, pending) => kill(live, pending)),
+    Note(id, killNote(_, source)))))
+
+  /** The warbands the chosen board lost in the kill step. */
+  private def killNote(states: NoteStates, source: DecisionOptionRef)
+      : Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    target <- NoteSupport.answer(states, decisionId).collect {
+      case DecisionOptionRef.Player(board) => board }
+    step <- states.previous
+    lost = -NoteSupport.warbands(step, target)
+  yield
+    if lost > 0 then killed(card, NoteArg.Number(lost), NoteArg.Player(target))
+    else spared(card, NoteArg.Player(target))
 
   private def kill(ready: ReadyGame, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] = for

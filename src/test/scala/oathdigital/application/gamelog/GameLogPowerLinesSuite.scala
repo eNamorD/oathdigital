@@ -24,9 +24,10 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     NotePart.Text(" lost "), NotePart.Arg(1), NotePart.Text(" "),
     NotePart.Plural(1, "warband", "warbands"), NotePart.Text(", then "),
     NotePart.Arg(2), NotePart.Text(".")))
+  private val none = NoteKey("used.none", Vector(NotePart.Text("Nothing to take.")))
   private val noting = new GameLogFormatter(catalog, presentation,
     NoteWordings.default(catalog) ++
-      NoteWordings.of(power, Vector(said, took, counted)))
+      NoteWordings.of(power, Vector(said, took, counted, none)))
 
   private def entries(steps: Steps, viewer: Option[PlayerId]) =
     noting.format(steps, viewer).filter(_.depth == 1)
@@ -61,16 +62,26 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note reads as its source, a colon and its sentence"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val noted = inserted(steps, take(steps),
       saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor)))
     val entry = ours(noted).head
     assertEquals(text(entry), s"Silver Tongue: ${name(script.actor)} said 2 favor.")
     assertEquals(entry.kind, LogKind.Trigger)
 
+  test("a banner source reads as its banner"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val noted = inserted(steps, take(steps), PowerNoted(power,
+      said(PowerSourceRef.Banner(Banner.DarkestSecret),
+        NoteArg.Player(script.actor), NoteArg.Amount(1, NoteUnit.Secret)),
+      covers = false))
+    assert(lines(noted).contains(
+      s"Darkest Secret: ${name(script.actor)} said 1 secret."), lines(noted))
+
   test("a phase power's used note replaces Used {card} as the action line"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     assert(lines(steps).contains("Used Silver Tongue"), lines(steps))
     val noted = inserted(steps, take(steps), PowerNoted(power, took(card,
       NoteArg.Player(script.actor), NoteArg.Amount(1, NoteUnit.Favor)),
@@ -82,7 +93,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a covering note drops the generic lines of the step before it, but no decision line"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val before = lines(steps)
     assert(before.exists(_.startsWith("Gained 1 favor from the ")), before)
     val chose = before.filter(_.startsWith("Chose "))
@@ -96,7 +107,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note identical to an earlier one in the action posts nothing"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val twice = saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor))
     val noted = inserted(steps, take(steps), twice, twice,
       saying(script.actor, NoteArg.Amount(3, NoteUnit.Favor)))
@@ -106,7 +117,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("plurals follow their amount"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     def counting(count: Int) = PowerNoted(power, counted(card,
       NoteArg.Player(script.actor), NoteArg.Number(count),
       NoteArg.Amount(count, NoteUnit.Warband)), covers = false)
@@ -117,14 +128,14 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note no power words posts nothing"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val unknown = PowerNoted(PowerId("test.unknown"),
       PowerNote(card, "said", Vector.empty), covers = false)
     assertEquals(lines(inserted(steps, take(steps), unknown)), lines(steps))
 
   test("a card its viewer may not identify is not named to them"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val last = steps.last.after match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
@@ -142,7 +153,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note's source its viewer may not identify reads as its back"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val last = steps.last.after match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
@@ -162,7 +173,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("the same note in another action posts again"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val note = saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor))
     val first = steps.indexWhere(_.event.event.isInstanceOf[WalkerStepRecorded])
     assert(first < take(steps))
@@ -173,7 +184,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note waits for its action's start line"):
     val script = raid
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val opened = steps.indexWhere(_.event.event match
       case parked: WalkerParked => parked.procedure == ActionRef.Campaign
       case _ => false)
@@ -204,3 +215,47 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val entry = format(script, None).find(entry =>
       text(entry).startsWith(s"Gambling Hall: $actor rolled ")).get
     assertEquals(entry.kind, LogKind.Action)
+
+  test("a variant of a phase power's used note also replaces Used {card}"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val noted = inserted(steps, take(steps),
+      PowerNoted(power, none(card), covers = false))
+    assert(!lines(noted).exists(_.startsWith("Used ")), lines(noted))
+    val entry = ours(noted).head
+    assertEquals(text(entry), "Silver Tongue: Nothing to take.")
+    assertEquals(entry.kind, LogKind.Action)
+
+  test("a card is named to a viewer who identified it at any state its line reads"):
+    val script = usePower
+    val last = script.history.steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val (owner, hidden) = last.game.current.players
+      .filter(_.player != script.actor).flatMap(held => held.advisers.collect {
+        case DenizenState(id, Orientation.FaceDown, _) => held.player -> id
+      }).head
+    val shown = last.updateCurrent(current => current.copy(players =
+      current.players.map(held => if held.player != owner then held
+        else held.copy(advisers = held.advisers.map {
+          case DenizenState(`hidden`, _, tokens) =>
+            DenizenState(hidden, Orientation.FaceUp, tokens)
+          case other => other
+        }))))
+    val words = new LogWords(catalog, presentation)
+    val viewer = Some(script.actor)
+    assertEquals(words.seen(hidden, Vector(last), viewer), CardWord.Back("Denizen"))
+    assertEquals(words.seen(hidden, Vector(shown, last), viewer),
+      CardWord.Named(LogSpan.Card(hidden.value,
+        presentation.cardLabel(last, hidden))))
+
+  test("Wolves writes its kill as the action line, after the choice it answers"):
+    val script = wolves
+    val entries = format(script, None).filter(_.depth == 1)
+    val all = texts(entries)
+    val kill = all.indexWhere(_.startsWith("Wolves: Killed 1 "))
+    assert(kill > 0, all)
+    assert(all(kill - 1).startsWith("Chose "), all)
+    assert(all(kill).endsWith(" warband."), all(kill))
+    assert(!all.exists(_.startsWith("Used ")), all)
+    assertEquals(entries(kill).kind, LogKind.Action)

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.PowerAnswers
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
 /** Sleight of Hand (card 17), ACTION: place 1 favor on this card, then take
@@ -21,11 +21,31 @@ case object SleightOfHand extends PaidAction("denizen.sleight-of-hand",
     Cost(favor = 1)):
   val decisionId: String = "power.sleight-of-hand.target"
   val MinimumSecrets: Int = 2
+  /** Its line when no player at the site holds two secrets. */
+  val nobody: NoteKey = NoteKey("used.none", Vector(
+    NotePart.Text("No player could be robbed.")))
+  override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took, nobody)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => ask(live, player)),
-    BuildOps((live, pending) => steal(live, player, pending)))))
+    BuildOps((live, pending) => steal(live, player, pending)),
+    Note(id, stealNote(_, player, source)))))
+
+  /** The question is asked whenever there is a target, so no answer means
+    * nobody could be robbed. */
+  private def stealNote(states: NoteStates, actor: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] =
+    PowerSourceRef.of(source).flatMap(card =>
+      NoteSupport.answer(states, decisionId) match
+        case Some(DecisionOptionRef.Player(target)) =>
+          for
+            step <- states.previous
+            amount = NoteSupport.secrets(step, actor)
+            if amount > 0
+          yield NoteSupport.took(card, NoteArg.Player(actor),
+            NoteArg.Amount(amount, NoteUnit.Secret), NoteArg.Player(target))
+        case _ => Some(nobody(card)))
 
   private def secretsOf(player: PlayerState): Int =
     player.board.faceUpSecrets + player.board.faceDownSecrets

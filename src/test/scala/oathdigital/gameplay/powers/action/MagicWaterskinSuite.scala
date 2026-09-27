@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -48,3 +48,11 @@ class MagicWaterskinSuite extends munit.FunSuite:
     assertEquals(PhasePowerProcedure.usable(catalog, facedown, actor,
       PhasePowerCatalog.default(catalog)), Vector.empty)
     assert(use(facedown).isLeft)
+
+  test("it writes the Supply it gained, as the track allowed"):
+    assertEquals(NoteText.said(MagicWaterskin, use(staged()).toOption.get.events),
+      Vector(NoteText.Said(NoteKey.Used, s"${actor.value} gained 4 Supply.",
+        covers = false)))
+    assertEquals(NoteText.said(MagicWaterskin,
+      use(staged(supply = 5)).toOption.get.events).map(_.text),
+      Vector(s"${actor.value} gained 2 Supply."))

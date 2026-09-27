@@ -8,6 +8,9 @@ removes Vow of Peace's sacrifice decision.
 **Slice 1 (2026-09-26):** the mechanism, with Vow of Peace and Gambling Hall
 as its first two powers. "Settled in slice 1" records what it decided.
 
+**Slice 2 (2026-09-26):** every phase power's own line. "Settled in slice 2"
+records what it decided.
+
 **Builds on** the [Game Log design](2026-09-25-game-log-design.md). That
 design left "powers declaring their own log lines" out of scope, kept the
 generic "Used {card}" as a stand-in, and reserved the detail row
@@ -255,20 +258,22 @@ cost payment logs nothing today and still logs nothing.
 | Fae Merchant | Fae Merchant: {Red} drew {relic} facedown. | |
 | Fae Merchant, key `returned` | Fae Merchant: {Red} put {relic} on the bottom of the relic deck. | the Buried line |
 | Crystal Vial | Crystal Vial: {Red} buried {card}. | the Buried line |
-| Ivory Eye | Ivory Eye: {Red} peeked at {Blue}'s {card}. | the Peeked line |
+| Ivory Eye | Ivory Eye: {Red} peeked at {card} in {Blue}'s advisers. | the Peeked line |
 | Sleight of Hand | Sleight of Hand: {Red} took 1 secret from {Blue}. | |
 | Sleight of Hand, no target | Sleight of Hand: No player could be robbed. | |
 | Whistle | Whistle: Placed {Blue} at {site} and gave {Blue} the Whistle's secret. | |
 | Whistle, no target | Whistle: No pawn could be pulled. | |
 | Wolves | Wolves: Killed {n} {Blue} warband. | |
 | Wolves, no warband | Wolves: {Blue} had no warband to kill. | |
-| Brass Horse | Brass Horse: {Red} revealed {card} and placed at {site}. | the Revealed line |
+| Brass Horse | Brass Horse: {Red} revealed {card}. | the Revealed line |
+| Brass Horse, key `placed` | Brass Horse: {Red} placed at {site}. | |
 | Magic Carpet | Magic Carpet: {Red} placed at {site}. | |
 | Magic Carpet, key `given` | Magic Carpet: Given to {Blue}. | |
 | Magic Carpet, key `discarded` | Magic Carpet: Discarded. | |
-| Wandering Flame (move) | Wandering Flame: {Red} placed at {site}. | |
-| Wandering Flame (place) | Wandering Flame: {Red} placed a secret at {site}. | |
+| Wandering Flame (move) | Darkest Secret: {Red} placed at {site}. | |
+| Wandering Flame (place) | Darkest Secret: {Red} placed a secret at {site}. | |
 | Horned Mask | Horned Mask: {Red} took {card} as a facedown adviser. | |
+| Horned Mask, key `taken`, after a discard question | Horned Mask: {Red} took {card} as a facedown adviser. | |
 | Marble Fountains | Marble Fountains: {Red}'s Supply refreshed to {n}. | |
 | Silver Tongue (REST) | Silver Tongue: {Red} took {n} favor from {the Order bank}. | the Gain line |
 | Vow of Obedience (REST) | Vow of Obedience: {Red} took {n} favor from {the Order bank}. | the Gain line |
@@ -435,6 +440,35 @@ The first slice settled these:
   effect, because "Used {card}" is decided at that step and reads ahead only
   to the end of its segment.
 - The test that every phase power declares `used` arrives with slice 2.
+
+## Settled in slice 2
+
+The second slice settled these:
+
+- A row the table marks as another outcome of a power's `used` line, such
+  as "Wolves, no warband", is a variant named `used.{variant}`: `used.none`,
+  `used.empty`, `used.away`. A variant also replaces "Used {card}" and is its
+  action's line. Every phase power declares a key named exactly `used`,
+  which a catalog test checks.
+- Brass Horse's reveal is its first effect, and its destination question can
+  park. Its `used` line is therefore the reveal, and the placement is a
+  `placed` line of its own. With an empty pile, "Used Brass Horse" stays.
+- Horned Mask's take lands after "Used Horned Mask" has posted when the
+  adviser area was full and a discard question parked. Its line then uses
+  the key `taken`, a trigger with the same sentence.
+- A note's cards, its source included, are judged at its action's start, at
+  the step it restates, and after it. A viewer who identified a card at any
+  of them reads its name. Magic Waterskin's source is buried by the time its
+  line posts, and still reads as Magic Waterskin.
+- Ivory Eye names the adviser apart from its owner, so a viewer who may not
+  identify it reads "a Denizen in Blue's advisers".
+- A banner's power names its banner, as "Used Darkest Secret" does:
+  "Darkest Secret: Red placed at {site}."
+- Magic Waterskin's Buried line posts before its own line, since the bury
+  comes first on the card.
+- The reads a note needs live in `NoteSupport`. Shared sentences live beside
+  the helpers of their family: `RollResults.rolled`, `RelicDraws.drew`,
+  `PawnMoves.placedKey`, `NoteSupport.took` and `NoteSupport.gainedKey`.
 
 ## Slices
 

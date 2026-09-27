@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -66,3 +67,16 @@ class WhistleSuite extends munit.FunSuite:
       withRelic(base, whistle, Orientation.FaceDown), 2), Phase.Act)
     assert(!usable(facedown, Whistle.id))
     assert(use(facedown, Whistle.id, whistle).isLeft)
+
+  test("it writes the pawn it pulled and the secret it gave"):
+    val parked = use(staged(), Whistle.id, whistle).toOption.get
+    val done = choose(parked.state, Whistle.decisionId, target).toOption.get
+    assertEquals(NoteText.said(Whistle, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"Placed ${p3.value} at ${ancientCity.value} and gave " +
+        s"${p3.value} the Whistle's secret.", covers = false)))
+
+  test("with nobody to pull it writes that"):
+    val start = withPawn(withPawn(staged(), p1, ancientCity), p3, ancientCity)
+    val done = use(start, Whistle.id, whistle).toOption.get
+    assertEquals(NoteText.said(Whistle, done.events), Vector(NoteText.Said(
+      "used.none", "No pawn could be pulled.", covers = false)))

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -83,3 +84,9 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
     val start = withSiteSecrets(staged(faceUp = 1), brokenPeaks, 1)
     assertEquals(PaidActionHarness.usableIds(start).toSet,
       Set(WanderingFlameMove.id, WanderingFlamePlace.id))
+
+  test("it writes the site it placed a secret at"):
+    val done = use(staged(faceUp = 2), power, darkestSecret).toOption.get
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} placed a secret at ${ancientCity.value}.",
+      covers = false)))

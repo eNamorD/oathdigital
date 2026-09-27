@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -90,3 +91,9 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
     val wake = inPhase(withSiteSecrets(holdingFlame(base), brokenPeaks, 1),
       Phase.Wake)
     assert(!usable(wake, power.id))
+
+  test("it writes where the pawn went"):
+    val done = use(staged(brokenPeaks), power, darkestSecret).toOption.get
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} placed at ${brokenPeaks.value}.",
+      covers = false)))

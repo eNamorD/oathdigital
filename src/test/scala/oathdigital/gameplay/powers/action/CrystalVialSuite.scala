@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -149,3 +150,14 @@ class CrystalVialSuite extends munit.FunSuite:
     val done = answer(t, actor, CrystalVial.decisionId,
       pick(DecisionOptionRef.Denizen(held))).toOption.get
     assertEquals(usableNow(withSecrets(after(done), actor, 2, 0)), Vector.empty)
+
+  test("it writes the card it buried in place of the generic line"):
+    val t = use(staged, power, source).toOption.get
+    val done = answer(t, actor, CrystalVial.decisionId,
+      pick(DecisionOptionRef.Denizen(held))).toOption.get
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} buried ${held.value}.", covers = true)))
+
+  test("with no candidate nothing is written"):
+    assertEquals(NoteText.said(power, use(bare, power, source).toOption.get.events),
+      Vector.empty)

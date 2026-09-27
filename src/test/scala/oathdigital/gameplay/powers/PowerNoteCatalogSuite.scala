@@ -31,3 +31,17 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
     val keys = declared.toMap.view.mapValues(_.map(_.name)).toMap
     assertEquals(keys.get(GamblingHall.id), Some(Vector(NoteKey.Used, "gained")))
     assertEquals(keys.get(VowOfPeaceContribution.id), Some(Vector("no-sacrifice")))
+
+  test("a used line's variants are named used.{variant}"):
+    assert(NoteKey.isUse("used"))
+    assert(NoteKey.isUse("used.none"))
+    assert(!NoteKey.isUse("usedx"))
+    assert(!NoteKey.isUse("gained"))
+
+  test("a banner option names its banner as a note's source"):
+    assertEquals(PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
+      Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
+
+  test("every phase power declares its own used line"):
+    PhasePowerCatalog.default(catalog).powers.foreach(power =>
+      assert(power.noteKeys.exists(_.name == NoteKey.Used), power.id.value))

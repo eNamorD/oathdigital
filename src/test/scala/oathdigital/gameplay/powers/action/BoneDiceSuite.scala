@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -72,3 +72,20 @@ class BoneDiceSuite extends munit.FunSuite:
     assert(!usableIds(occupied).contains(BoneDice.id))
     val facedown = staged(orientation = Orientation.FaceDown)
     assert(!usableIds(facedown).contains(BoneDice.id))
+
+  test("it writes its roll and its gain, and no skull writes no bury"):
+    val done = use(rules(attackDice(AttackDieFace.OneSword,
+      AttackDieFace.HollowSword)), staged(), BoneDice.id, source).toOption.get
+    assertEquals(NoteText.said(BoneDice, done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} rolled 2 dice, Total: 1",
+        covers = true),
+      NoteText.Said("gained", s"${actor.value} gained 1 Supply.", covers = false)))
+
+  test("a skull writes the bury in place of the generic line"):
+    val done = use(rules(attackDice(AttackDieFace.OneSword,
+      AttackDieFace.TwoSwordsSkull)), staged(), BoneDice.id, source).toOption.get
+    assertEquals(NoteText.said(BoneDice, done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} rolled 2 dice, Total: 3",
+        covers = true),
+      NoteText.Said("gained", s"${actor.value} gained 3 Supply.", covers = false),
+      NoteText.Said("buried", "Buried after a skull.", covers = true)))

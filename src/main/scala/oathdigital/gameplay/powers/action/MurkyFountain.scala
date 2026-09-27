@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Murky Fountain (edifice E15, ruined), ACTION: place 1 secret on this card.
@@ -19,17 +20,39 @@ case object MurkyFountain extends PaidAction("edifice.e15.ruined",
     Cost(secret = 1)):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("murky-fountain")
+  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  val ended: NoteKey = NoteKey("ended", Vector(NotePart.Arg(0),
+    NotePart.Text("'s Act phase ended.")))
+  /** Its line when the pawn is elsewhere: the cost is paid, nothing else. */
+  val away: NoteKey = NoteKey("used.away", Vector(NotePart.Arg(0),
+    NotePart.Text(" was not at its site.")))
+  override def noteKeys: Vector[NoteKey] = Vector(RollResults.rolled, gained,
+    ended, away)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match
-    case DecisionOptionRef.Edifice(id) =>
-      if !atPawnSite(ready, player, id) then Right(Sequence(Vector.empty))
+    case DecisionOptionRef.Edifice(edifice) =>
+      if !atPawnSite(ready, player, edifice) then Right(Sequence(Vector(
+        Note(id, _ => PowerSourceRef.of(source).map(away(_,
+          NoteArg.Player(player)))))))
       else Right(Sequence(Vector(
         ModifyDicePool(pool, Dice),
         Roll(pool, DiceSpec(DiceKind.Defense), RollMode.Automatic),
-        BuildOps((state, _) => Right(outcome(state, player))))))
+        Note(id, RollResults.rollNote(source, player, pool), covers = true),
+        BuildOps((state, _) => Right(outcome(state, player))),
+        Note(id, NoteSupport.gainNote(gained, source, player, NoteUnit.Supply,
+          NoteSupport.supply)),
+        Note(id, endNote(_, player, source)))))
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not an edifice source"))
+
+  /** The outcome step moved the turn out of the Act phase. */
+  private def endNote(states: NoteStates, player: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    step <- states.previous
+    if step._1.game.current.turn.phase != step._2.game.current.turn.phase
+  yield ended(card, NoteArg.Player(player))
 
   private def atPawnSite(ready: ReadyGame, player: PlayerId, id: EdificeId)
       : Boolean = PowerAccess.siteOf(ready, player, id)

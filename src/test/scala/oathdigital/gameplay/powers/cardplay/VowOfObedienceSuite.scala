@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{CardStaging, PhasePowerCatalog, PowerFixture,
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PhasePowerCatalog,
+  PowerFixture,
   PowerImplementationStatus, SearchFixture, TargetsFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
@@ -105,3 +106,9 @@ class VowOfObedienceSuite extends munit.FunSuite:
   test("REST: with every bank empty the power is not offered"):
     assert(!PhasePowerProcedure.usable(catalog, resting(Map.empty), actor,
       PhasePowerCatalog.default(catalog)).exists(_.power.id == VowOfObedience.id))
+
+  test("REST: the take is written as its own line, covering the generic one"):
+    val done = rest(resting(Map(Suit.Hearth -> 2)))
+    assertEquals(NoteText.said(VowOfObedience.forCatalog(catalog).get, done.events),
+      Vector(NoteText.Said(NoteKey.Used,
+        s"${actor.value} took 1 favor from the Hearth bank.", covers = true)))

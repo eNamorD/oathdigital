@@ -46,7 +46,7 @@ class GameLogExchangeSuite extends munit.FunSuite:
       s"${name(partner)} showed ${name(script.actor)} facedown adviser (slot 1)")
 
   test("a used power is named by its source card, once"):
-    val all = lines(usePower)
+    val all = texts(formatWithoutNotes(usePower, None).filter(_.depth == 1))
     assertEquals(all.count(_.startsWith("Used ")), 1, all)
     // A faceup adviser, so every viewer reads its name.
     assert(all.contains("Used Silver Tongue"), all)

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -54,3 +54,15 @@ class WaysideInnSuite extends munit.FunSuite:
     val wake = inPhase(staged(favor = 3, supply = 2), Phase.Wake)
     assertEquals(PhasePowerProcedure.usable(catalog, wake, actor,
       PhasePowerCatalog.default(catalog)), Vector.empty)
+
+  test("it writes the Supply it gained as its own line"):
+    val done = use(staged(favor = 3, supply = 2)).toOption.get
+    assertEquals(NoteText.said(WaysideInn, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} gained 2 Supply.", covers = false)))
+
+  test("a gain the track caps is written as what it gained, and a full track writes nothing"):
+    assertEquals(NoteText.said(WaysideInn,
+      use(staged(favor = 1, supply = 6)).toOption.get.events).map(_.text),
+      Vector(s"${actor.value} gained 1 Supply."))
+    assertEquals(NoteText.said(WaysideInn,
+      use(staged(favor = 1, supply = 7)).toOption.get.events), Vector.empty)

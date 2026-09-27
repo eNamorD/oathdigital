@@ -48,6 +48,10 @@ final case class NoteKey(name: String, template: Vector[NotePart]):
 object NoteKey:
   /** A phase power's own line, which replaces "Used {card}". */
   val Used: String = "used"
+  /** A phase power's own line, or a variant of it for another outcome, such
+    * as nothing to target: `used`, or `used.{variant}`. Either replaces
+    * "Used {card}" and is its action's line. */
+  def isUse(name: String): Boolean = name == Used || name.startsWith(s"$Used.")
 
 /** What a note may read when the walker reaches it. `previous` is the states
   * before and after the step this command journaled last, if any, so a note

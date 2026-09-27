@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -117,3 +117,18 @@ class FaeMerchantSuite extends munit.FunSuite:
     val done = answer(rules0, parked.state, FaeMerchant.decisionId,
       relicRef(held1)).toOption.get
     assert(!usableIds(ready(done.state)).contains(FaeMerchant.id))
+
+  test("it writes the relic it drew, then the relic it put back in place of the generic line"):
+    val ready0 = staged()
+    val top = ready0.game.current.commonCards.relicDeck.head
+    val merchant = FaeMerchant.forCatalog(catalog)
+    val parked = use(rules(), ready0, FaeMerchant.id, source).toOption.get
+    assertEquals(NoteText.said(merchant, parked.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} drew ${top.value} facedown.",
+        covers = false)))
+    val done = answer(rules(), parked.state, FaeMerchant.decisionId,
+      relicRef(held1)).toOption.get
+    assertEquals(NoteText.said(merchant, done.events), Vector(
+      NoteText.Said("returned",
+        s"${actor.value} put ${held1.value} on the bottom of the relic deck.",
+        covers = true)))

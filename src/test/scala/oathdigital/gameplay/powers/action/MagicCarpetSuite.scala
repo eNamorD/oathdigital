@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -86,3 +87,20 @@ class MagicCarpetSuite extends munit.FunSuite:
     val facedown = inPhase(withRelic(base, carpet, Orientation.FaceDown), Phase.Act)
     assert(!usable(facedown, MagicCarpet.id))
     assert(use(facedown, MagicCarpet.id, carpet).isLeft)
+
+  test("it writes where the pawn went, then that it was discarded"):
+    val (first, placed) = placedAt(staged, deepWoods)
+    val done = choose(placed.state, MagicCarpet.fateDecisionId,
+      MagicCarpet.discard).toOption.get
+    assertEquals(NoteText.said(MagicCarpet,
+      first.events ++ placed.events ++ done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} placed at ${deepWoods.value}.",
+        covers = false),
+      NoteText.Said("discarded", "Discarded.", covers = false)))
+
+  test("a Carpet given away is written as given"):
+    val (_, placed) = placedAt(staged, deepWoods)
+    val done = choose(placed.state, MagicCarpet.fateDecisionId,
+      DecisionOptionRef.Player(p3)).toOption.get
+    assertEquals(NoteText.said(MagicCarpet, done.events), Vector(
+      NoteText.Said("given", s"Given to ${p3.value}.", covers = false)))

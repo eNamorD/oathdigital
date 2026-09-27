@@ -1,11 +1,12 @@
 0.0 round 0 | Setup
 3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
-6.0 decision 1 | [player:p2|P2] kept a Denizen
+6.0 decision 1 | [player:p2|P2] kept [card:208|Wizard's Conclave]
 9.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
 12.0 decision 1 | [player:p3|P3] kept a Denizen
 15.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
-18.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
+18.0 decision 1 | [player:p1|P1] kept a Denizen
 19.0 round 0 | Round 1
 19.1 turn 0 | [player:p2|P2]'s turn
-27.0 decision 1 | Chose the Discord bank
-29.0 action 1 | [card:92|Silver Tongue]: [player:p2|P2] took [amount:1 favor] from the Discord bank.
+21.0 delta 1 | Gained 1 secret
+26.0 decision 1 | Chose [player:p1|P1]
+28.0 action 1 | [card:39|Wolves]: Killed 1 [player:p1|P1] warband.

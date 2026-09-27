@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -112,3 +113,16 @@ class SleightOfHandSuite extends munit.FunSuite:
     val ready = staged(2, 0, favor = 0)
     assertEquals(usableNow(ready), Vector.empty)
     assert(use(ready, SleightOfHand, source).isLeft)
+
+  test("it writes the secret it took"):
+    val t = use(staged(2, 0), SleightOfHand, source).toOption.get
+    val done = answer(t, actor, SleightOfHand.decisionId, choose(victim))
+      .toOption.get
+    assertEquals(NoteText.said(SleightOfHand, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} took 1 secret from ${victim.value}.",
+      covers = false)))
+
+  test("with nobody to rob it writes that"):
+    val t = use(staged(1, 0), SleightOfHand, source).toOption.get
+    assertEquals(NoteText.said(SleightOfHand, t.events), Vector(NoteText.Said(
+      "used.none", "No player could be robbed.", covers = false)))

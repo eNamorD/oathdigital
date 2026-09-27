@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -21,6 +21,7 @@ final case class VowOfObedience private (cardId: DenizenId)
   def id: PowerId = VowOfObedience.id
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+  override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup -> Vector(Restriction((ctx, _) =>
@@ -34,8 +35,10 @@ final case class VowOfObedience private (cardId: DenizenId)
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =
     val choice = VowOfObedience.choiceDecisionId(ready, player)
-    Right(Branch((state, _) => FavorBankChoice.take(state, player, 1, choice,
-      "Vow of Obedience: take a favor from a bank")))
+    Right(Sequence(Vector(
+      Branch((state, _) => FavorBankChoice.take(state, player, 1, choice,
+        "Vow of Obedience: take a favor from a bank")),
+      Note(id, NoteSupport.tookNote(source, player), covers = true))))
 
   /** Whether `player` holds this card as a faceup adviser. */
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
