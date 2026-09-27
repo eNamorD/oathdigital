@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.application.ParkedServiceFixture
 import oathdigital.engine.ReplayStep
+import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
@@ -282,3 +283,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assert(all(kill).endsWith(" warband."), all(kill))
     assert(!all.exists(_.startsWith("Used ")), all)
     assertEquals(entries(kill).kind, LogKind.Action)
+
+  test("a game rule's line is worded from RuleNotes"):
+    assertEquals(NoteWordings.default(catalog).template(RuleNotes.homelandDiscard,
+      PlacementRules.discardFirst.name), Some(PlacementRules.discardFirst.template))

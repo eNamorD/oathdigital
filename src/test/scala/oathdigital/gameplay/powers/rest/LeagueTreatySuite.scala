@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.rest
 import oathdigital.gameplay._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 
@@ -137,3 +137,40 @@ class LeagueTreatySuite extends munit.FunSuite:
       assertEquals(banks(done.state)(destinationBank),
         ready.banks.favor(destinationBank) + 3, side.toString)
     }
+
+  // ---- Lines ----
+
+  private val power = LeagueTreatyContribution.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("the treaty's line says how much favor the ruler sent to one bank"):
+    val owner = offTurn(act)
+    val (ready, site) = arranged(Some(owner), example)
+    val destination = LeagueTreatyContribution.destinationDecisionId(ready,
+      rester(ready), site, treatyCard)
+    val distribution = LeagueTreatyContribution.distributionDecisionId(ready,
+      rester(ready), site, treatyCard)
+    val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
+      rester(ready)).toOption.get
+    val chosen = rules.resolveWalker(parked.state, owner, destination,
+      DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad))).toOption.get
+    val done = rules.resolveWalker(chosen.state, owner, distribution,
+      DecisionAnswer.DistributeAnswer(Vector(Suit.Arcane -> 0,
+        Suit.Discord -> 1, Suit.Hearth -> 2, Suit.Nomad -> 3).map {
+          case (suit, n) => DistributeAmount(bank(suit), n) })).toOption.get
+    assertEquals(said(parked.events ++ chosen.events), Vector.empty)
+    assertEquals(said(done.events), Vector(NoteText.Said("sent",
+      s"${owner.value} sent 3 favor to the Nomad bank.", covers = false)))
+
+  test("a ruler who declines sends nothing, and writes nothing"):
+    val owner = offTurn(act)
+    val (ready, site) = arranged(Some(owner), example)
+    val destination = LeagueTreatyContribution.destinationDecisionId(ready,
+      rester(ready), site, treatyCard)
+    val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
+      rester(ready)).toOption.get
+    val declined = rules.resolveWalker(parked.state, owner, destination,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("decline")))
+      .toOption.get
+    assertEquals(said(parked.events ++ declined.events), Vector.empty)

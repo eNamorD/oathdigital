@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.gameplay.actions.{CardPlay, PlacementRules}
+import oathdigital.gameplay.actions.{CardPlay, PlacementRules, RuleNotes}
 import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
@@ -221,10 +221,30 @@ object CardPlayProcedure:
               case _ => CardPlay.playedSource(ready, actor, card, placement)
                 .map(CardPlayedFaceup(card, _)).toVector
             }
-            choice ++ Vector(apply) ++ hook
+            // The line of whatever asked for the discard, after its answer
+            // and before the play. A note never comes before a decision
+            // already in the tree, so a game parked on one resumes where it
+            // was; it joins the play's own node, keeping the hook's place.
+            val notice: Vector[Operation] = placement match
+              case _: SearchPlacement.Site if replacements.nonEmpty =>
+                if rules.siteDiscardFirst then rules.siteDiscardNote.toVector
+                else homelandNote(ready, actor).toVector
+              case _ => Vector.empty
+            val played = if notice.isEmpty then apply
+              else Sequence(notice :+ apply)
+            choice ++ Vector(played) ++ hook
         }
       })
       Vector(choose, selected)
+
+  /** The Homeland rule's line, "{site}: {Red} may discard a card at their
+    * site first.": without a power's permission, only a full Homeland of the
+    * card's suit asks for a discard at a site. */
+  private def homelandNote(ready: ReadyGame, actor: PlayerId): Option[Note] =
+    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+      .map(site => Note(RuleNotes.homelandDiscard, _ => Some(
+        PlacementRules.discardFirst(PowerSourceRef.Site(site),
+          NoteArg.Player(actor)))))
 
   /** The replacement's options are not read once the play is made, only that
     * the decision held its place in the tree. */

@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.banner
 import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.powers.{PowerFixture, SearchFixture, TargetsFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture, TargetsFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -234,3 +235,19 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     assertEquals(player(end).board.favor, player(ready).board.favor + 2)
     assertEquals(hearth(end), hearth(ready) - 1)
     assertEquals(siteCards(end), Vector[CardId](party, played))
+
+  // ---- Lines ----
+
+  private def mobSaid(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys, events)
+
+  test("the discard the Mob permits writes its line once it is answered"):
+    val hearth = denizensOf(Suit.Hearth)
+    val asked = toSite(staged(Vector(hearth(0), hearth(1))))
+    assertEquals(mobSaid(asked.events), Vector.empty)
+    val done = discardAnswer(asked, noDiscard).toOption.get
+    assertEquals(mobSaid(done.events), Vector(NoteText.Said("discard-first",
+      s"${actor.value} may discard a card at their site first.", covers = false)))
+
+  test("a play asked no discard writes no Mob line"):
+    assertEquals(mobSaid(toSite(staged(Vector.empty)).events), Vector.empty)

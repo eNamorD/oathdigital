@@ -14,6 +14,9 @@ records what it decided.
 **Slice 3 (2026-09-26):** the removed and hidden options. "Settled in slice
 3" records what it decided.
 
+**Slice 4 (2026-09-26):** the added effects and altered procedures.
+"Settled in slice 4" records what it decided.
+
 **Builds on** the [Game Log design](2026-09-25-game-log-design.md). That
 design left "powers declaring their own log lines" out of scope, kept the
 generic "Used {card}" as a stand-in, and reserved the detail row
@@ -85,6 +88,9 @@ beside the operation types.
 | `Amount(n, unit)` | "3 favor", "1 secret", "2 Supply", "1 warband" |
 | `Bank(suit)` | "the Order bank" |
 | `Dice(die, faces)` | die-face chips, as the log's `Dice` span |
+| `Number(n)` | a bare number, "Total: 8" |
+| `Cards(ids)` | one phrase of card chips, "Tinker, 2 Denizens and a Vision", each card by the knowledge rule |
+| `Banner(banner)` | the banner's name |
 
 ### Emission path 1: the `Note` leaf
 
@@ -108,6 +114,8 @@ covers: Boolean = false)` is a new leaf of the operation tree. The walker handle
   amount as the difference between `previous`'s two states, so no power
   repeats the cap logic of the operation it describes. "Magic Waterskin:
   {Red} gained {3} Supply." reads 3 when the track had room for only 3.
+  A leaf that ran and changed nothing gives `previous` the same state
+  twice, so a note after it reads no change.
 - A `Note` inside a branch that never runs is never journaled. A line
   therefore appears only when its effect happened.
 - A Transform that removes a decision leaves a `Note` in its place. Vow of
@@ -143,10 +151,11 @@ same choice People's Favor's Mob face offers everywhere. It gets the same
 line.
 
 - A game rule that writes a line gets a `PowerId` of its own, such as
-  `rule.homeland-discard`, and declares its templates in `RuleNotes`, a small
-  registry the formatter consults beside the two power catalogs.
-- The card-play planner puts a `Note` with that id in the placement tree when
-  the rule offers the discard. Its `source` is the Homeland site, so the line
+  `rule.homeland-discard`, and declares its templates in `RuleNotes` (in
+  `gameplay.actions`), a small registry the formatter consults beside the
+  two power catalogs.
+- The card-play planner puts a `Note` with that id in the placement tree
+  after the discard answer. Its `source` is the Homeland site, so the line
   starts with the site's chip.
 
 ### Once per effect
@@ -299,29 +308,32 @@ cost payment logs nothing today and still logs nothing.
 
 | Card | Line | Covers |
 |---|---|---|
-| Toll Roads | Toll Roads: {Red} paid 1 favor to {Blue}. / Toll Roads: {Red} burned 1 favor. | |
+| Toll Roads, key `paid` | Toll Roads: {Red} paid {1 favor} to {Blue}. | |
+| Toll Roads, key `burned`, when bandits rule | Toll Roads: {Red} burned {1 favor}. | |
 | Grasping Vines | Grasping Vines: Killed {n} {Red} warband. | |
 | Gossip | Gossip: {Blue} gained {n} favor from {the Discord bank}. | the Gain line |
 | Book Binders | Book Binders: {Blue} gained {n} favor from {the Order bank}. | the Gain line |
-| Gleaming Armor | Gleaming Armor: {Red}'s battle plans cost {1} extra secret. | |
+| Gleaming Armor, after the taxed plan | Gleaming Armor: {Red}'s battle plans cost {1} extra secret. | |
 | Conspiracy (when played) | Conspiracy: {Red} seized {relic or banner} from {Blue}. | |
 | Dazzle | Dazzle: Discarded {cards}. | the Discard line |
 | Mercenaries | Mercenaries: Discarded after {Red} lost. | |
-| Sticky Fire | Sticky Fire: Killed {n} {Blue} warband, and {Blue} gained {n} favor. | |
-| Truthful Harp | Truthful Harp: Revealed {cards}. | the Reveal line |
-| Forest Paths | Forest Paths: Ignoring site powers. | |
-| Dragonskin Drum | Dragonskin Drum: Gained {n} warband. | |
+| Sticky Fire, key `burned` | Sticky Fire: Killed {n} {Blue} warband, and {Blue} gained {1 favor}. | |
+| Sticky Fire, key `killed`, the winner had no favor | Sticky Fire: Killed {n} {Blue} warband. | |
+| Sticky Fire, key `gained`, no warband to kill | Sticky Fire: {Blue} gained {1 favor}. | |
+| Truthful Harp | Truthful Harp: Revealed {cards}. | the Peeked lines |
+| Forest Paths, destination with a beast card | Forest Paths: Ignoring site powers. | |
+| Dragonskin Drum | Dragonskin Drum: {Red} gained {1 warband}. | |
 
 ### Altered procedures
 
 | Card | Line |
 |---|---|
-| Outriders | Outriders: Skulls ignored. |
-| Warning Signals | Warning Signals: {Blue} may redistribute their warbands. |
-| Knights Errant | Knights Errant: {Red} campaigns for no Supply. |
-| People's Favor (Mob face) | People's Favor: {Red} may discard a card at their site first. |
-| Homeland rule, at a full Homeland matching the played card's suit | {Homeland site}: {Red} may discard a card at their site first. |
-| League Treaty | League Treaty: {Blue} may send the region's favor to one bank. |
+| Outriders, when the attack rolled a skull | Outriders: Skulls ignored. |
+| Warning Signals, after the arrangement | Warning Signals: {Blue} redistributed their warbands. |
+| Knights Errant, after the choice to campaign | Knights Errant: {Red} campaigns for no Supply. |
+| People's Favor (Mob face), after the discard answer | People's Favor: {Red} may discard a card at their site first. |
+| Homeland rule, at a full Homeland matching the played card's suit, after the discard answer | {Homeland site}: {Red} may discard a card at their site first. |
+| League Treaty, after the moves | League Treaty: {Blue} sent {n favor} to {the Nomad bank}. |
 
 ### Setup
 
@@ -497,6 +509,42 @@ The third slice settled these:
   a line.
 - `NoteText.said` reads any power's notes by id and keys, so the suites of
   contributing powers assert their lines as the phase power suites do.
+
+## Settled in slice 4
+
+The fourth slice settled these:
+
+- A note never comes before a decision already in the tree. A game
+  parked on a decision stores its position, and a node inserted before it
+  would move it. The "may" lines of Knights Errant, the Mob and the
+  Homeland rule therefore post after the choice they explain. Warning
+  Signals and League Treaty post after it too, and say what happened:
+  "{Blue} redistributed their warbands.", "{Blue} sent {3 favor} to {the
+  Nomad bank}.".
+- A leaf that ran and changed nothing is the step a note after it reads,
+  as its unchanged state twice. Every note reads a difference, so it
+  writes nothing there, and no older step is restated by mistake.
+- `NoteArg.Cards` names several cards as one phrase, and `NoteArg.Banner`
+  names a banner. Truthful Harp and Dazzle list their cards. Conspiracy
+  names the relic or banner it seized.
+- A note that cannot read one step reads the state its transform was
+  folded with, which is the state before the step. Dazzle lists the
+  cards it would discard there that no site holds when it writes.
+- The Mob's line travels in `PlacementRules.siteDiscardNote`, so card
+  play still names no power. Without that permission card play writes
+  the Homeland rule's line. Both use `PlacementRules.discardFirst`.
+- `RuleNotes` lives in `gameplay.actions`, beside `PlacementRules`.
+- Sticky Fire writes what the burn did, in three keys, and nothing
+  against bandits. The count is what the burn killed: after a Raid's own
+  losses it names only the warbands left for the burn. Outriders writes
+  only when a skull was rolled. Forest Paths writes only when it ignores
+  site powers. Toll Roads writes `paid` or `burned`. Dragonskin Drum names
+  the player who gained.
+- Gleaming Armor's line posts after the taxed plan's own effects. Its
+  extra secret is a `Number` with a `Plural`.
+- `NoteSupport.killedKey` and `NoteSupport.gainedFromKey` are the kill and
+  the gain-from-a-bank sentences that Wolves, Gambling Hall and this
+  slice's powers share.
 
 ## Slices
 
