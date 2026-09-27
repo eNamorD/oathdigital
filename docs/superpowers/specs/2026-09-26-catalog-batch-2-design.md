@@ -95,11 +95,12 @@ retires.
 
 ### N3. Campaign kill replacement (slice 2)
 
-Hospital is a battle plan. Once chosen, each `Kill` of its user's warbands
-during that Campaign becomes a move to Hospital's site, while the user still
-rules that site when the kill happens. It is a later hook at the Campaign's
-loss windows, like Sticky Fire's. Kills at Hospital's own site, when that
-site is a Conquest target the attacker won, stay kills.
+Hospital is a battle plan. Once chosen, each kill of its user's warbands
+during that Campaign stays a kill and is counted: the losses, Sticky Fire's
+kills, and the sacrifice of a plan chosen after Hospital. Per the card's FAQ,
+at the end of the Campaign that many warbands move from the user's supply to
+Hospital's site, if the user rules it then. It hooks the plan application and
+losses windows, like Sticky Fire, and the Campaign's root for the placement.
 
 ### N4. Shuffle (slice 3)
 
@@ -242,7 +243,7 @@ that follow Oracle stay.
 | Hunger, no adviser to bury | Hunger: No adviser could be buried. | |
 | Twin Brother | Twin Brother: {Red} swapped it for {Blue}'s {card}. | |
 | Chaos Cult | Chaos Cult: {Red} took {1} favor from {Blue}. | |
-| Hospital | Hospital: Placed {n} {Red} warband at {site} instead. | the Killed line |
+| Hospital, at the end of the Campaign | Hospital: Placed {n} {Red} warband at {site} instead. | |
 | Horse Archers | Horse Archers: Discarded after the Campaign. | |
 | Storm Caller | Storm Caller: Discarded after the Campaign. | |
 

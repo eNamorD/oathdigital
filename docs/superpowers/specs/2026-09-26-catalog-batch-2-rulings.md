@@ -43,7 +43,7 @@ faceup advisers.
 | 4 Longbows | either | Free. ±1 attack die. |
 | R35 Black Sword | attacker | Cost 2 secrets burnt. +5 attack dice. |
 | R37 Bag of Siegeworks | attacker | Cost 1 secret placed. Conquest only ("targeting sites"). Each single-shield defense die scores 0. Two shields and doublers are unaffected, so Blank, OneShield and Doubler score 0. The reviewed-catalog stub retires. |
-| 149 Hospital | either | Site-only. A battle plan, not a modifier: its gradient marks it as one. Free, used by the ruler of Hospital's site. For the rest of the Campaign, each of the user's warbands that would be killed is placed on Hospital's site instead, while the user still rules that site at the kill. Kills at Hospital's own site when it is a Conquest target the attacker won stay kills. |
+| 149 Hospital | either | Site-only. A battle plan, not a modifier: its gradient marks it as one. Free, used by the ruler of Hospital's site. For the rest of the Campaign, each of the user's warbands that is killed is saved. That includes a sacrifice paid by a plan chosen after Hospital, such as Wrestlers'; a sacrifice paid before Hospital was chosen is not saved. Per the card's FAQ, the saved warbands are placed on Hospital's site at the end of the Campaign, and only if the user rules it then. So when Hospital's site is a Conquest target the attacker won, nothing is placed. |
 
 ## Slice 3: actions on yourself
 

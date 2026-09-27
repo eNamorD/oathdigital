@@ -13,10 +13,12 @@
   - They share a new `PlanDice` helper for the "±" rule: an attacker adds attack dice, a defender removes them.
 - Horse Archers and Storm Caller use `later` at the Campaign's root, `CampaignActionEligibility`. There they discard the card through `PlanDiscard` and write "Discarded after the Campaign."
 - Bag of Siegeworks (N2) uses `wrapping` at `CampaignDefenseResult`. Before the defender's force is added, it rewrites the defense roll's score with `ModifyRollOutcome`, the operation Outriders already uses. No new contribution is needed.
-- Hospital (N3) uses `wrapping` at `CampaignLosses`:
-  - It rewrites every `Kill` of its user's warbands into a `Move` to Hospital's site, inside the losses step and inside Sticky Fire's burn.
-  - It raises its `priority` so it folds after Sticky Fire's wrapping, as Royal Stables does in slice 1.
-  - It adds one note at the end.
+- Hospital (N3) follows the FAQ: saved warbands are placed at the end of the Campaign, only if the user rules Hospital's site then.
+  - Once Hospital is chosen, each kill of its user's warbands stays a kill, and Hospital counts it in a hidden Campaign pool (`Hospital.Saved`). It hooks two windows through `wrapping`:
+    - `CampaignPlanApplication`, for the sacrifice of a plan chosen after Hospital, such as Wrestlers';
+    - `CampaignLosses`, for the losses step and Sticky Fire's burn. Hospital raises its `priority` so it folds after Sticky Fire's wrapping, as Royal Stables does in slice 1.
+  - At the end of the Campaign (`later` at `CampaignActionEligibility`), it moves that many warbands from the user's supply onto its site, if the user rules the site then, and writes its line.
+  - Pools are never shown to a viewer, and the walker clears them only when the action finishes.
 - Horse Archers, Storm Caller, Bag of Siegeworks and Hospital register in `PlanRules`.
 
 **Tech Stack:** Scala 3 on the JVM, munit, built through `./sbtw`. No frontend change, so Impeccable is not needed.
@@ -60,19 +62,23 @@ These settle what the spec and rulings leave open. Each one names what it costs 
 2. **Nature Worship with no dice is not offered.** A faceup Nature Worship at a ruled site, with no faceup beast adviser, would add 0 dice. `AddAttackDice` requires a positive count, and a plan that does nothing is noise. If this is wrong, the plan is offered with no effect.
 3. **Bandits and the discard.** A bandit defender applies every free plan it is offered (batch 1). It may therefore apply Horse Archers or Storm Caller standing at a site it rules. The card is then discarded too, since the ruling says "whoever won", and the attacker is the discard's acting player. If this is wrong, a bandit-used card stays in play.
 4. **Hospital is never offered to a bandit defender.** It has no user whose warbands it could save.
-5. **Hospital does nothing when its site is a Conquest target the attacker won.**
-   - The spec says only that kills at that site stay kills.
-   - Saving warbands from other targets onto a site that falls in the same Campaign would leave them where the attacker is placing its own. So none is replaced.
-   - If this is wrong, only the other targets' kills should move.
-6. **Hospital hooks only the losses window.** This follows the spec's "a later hook at the Campaign's loss windows". A Wrestlers sacrifice is a cost paid at the plan step, and it stays a kill. If this is wrong, a defender using both loses one warband it should keep.
-7. **A Conquest defender's returned half comes from Hospital's site.**
+5. **Hospital places its saved warbands at the end of the Campaign, if its user rules the site then.** This follows the card's FAQ: "place them on Hospital's site instead if you rule it at the end". Until then, a saved warband is dead: it sits in its owner's supply and is not part of any force. Three cases follow from this:
+   - When Hospital's site is a Conquest target the attacker won, the user does not rule it at the end, so nothing is placed.
+   - A warband sacrificed from Hospital's own site comes back to it at the end.
+   - The spec's "while the user still rules that site when the kill happens" is replaced by the FAQ's timing.
+6. **Hospital saves a plan-step sacrifice made after it.** This is the product owner's ruling, given on the plan. A Wrestlers sacrifice is a kill, so if the defender chose Hospital before Wrestlers, the sacrificed warband is saved. If they chose Wrestlers first, the warband died before Hospital was chosen and is not saved.
+   - The plan window applies each plan the moment it is picked, so this order needs no extra check. Hospital's `CampaignPlanApplication` wrapping runs only once Hospital's pick is answered.
+   - The sacrificed warband still leaves the force, so it still lowers the recorded force by one.
+7. **A Conquest defender's returned half is not counted as saved.**
    - The losses kill every warband at the targets and then return half of them from the supply to the defender's board.
-   - Under Hospital, the kills become moves to Hospital's site, and the return moves from there instead of the supply. So Hospital's site keeps only the half that would have died.
-   - Without this, the defender would gain warbands from the supply.
+   - Hospital counts the kills and subtracts the return, so it saves only the half that died.
 8. **Hospital's line covers nothing.**
-   - The spec lists it as covering "the Killed line". With the kill replaced there is no such line: the Campaign's action line counts only `Kill`s in "lost N warbands", so the saved warbands drop out of it on their own.
-   - Setting `covers` would instead hide the losses step's other lines.
-9. **The Campaign's "Placed" line counts only moves onto a target.** An attacker's Hospital moves warbands from its board to a site, which `CampaignLines` would otherwise read as a Conquest placement. Task 5 fixes that.
+   - The kills still happen, and the Campaign's action line reports them as "lost N warbands".
+   - Hospital's line then says how many came back: "Hospital: Placed 2 Red warbands at Mines instead."
+9. **Before the outcome, `PlanUse` names a player defender.**
+   - Hospital must know its user in the plan and losses windows. `PlanUse.user` read the defender only from the recorded result, which does not exist before the outcome.
+   - `PlanUse.chosen` now also reads the defender from the Campaign's setup.
+   - Every existing reader runs after the outcome, where nothing changes.
 10. **Bag of Siegeworks writes its line only when a single shield was rolled**, since otherwise nothing was ignored.
 11. **Mercenaries keeps its own sign logic.** `PlanDice` is new, and moving Mercenaries onto it would touch a file log lines slice 4 edits. A later cleanup can move it.
 
@@ -88,13 +94,12 @@ These settle what the spec and rulings leave open. Each one names what it costs 
 | Create `.../campaign/HorseArchers.scala`, `StormCaller.scala` | Plans discarded at the end (Task 3). |
 | Create `.../campaign/BagOfSiegeworks.scala` | N2 (Task 4). |
 | Modify `src/main/scala/oathdigital/gameplay/powers/CampaignPowers.scala` | Retires the `BagOfSiegeworks` stub. |
-| Create `.../campaign/Hospital.scala` | N3 (Task 5). |
-| Modify `src/main/scala/oathdigital/application/gamelog/CampaignLines.scala` | "Placed" counts only moves onto a target. |
+| Create `.../campaign/Hospital.scala` | N3: counts the kills, places the saved warbands at the end (Task 5). |
+| Modify `.../campaign/PlanContext.scala` | `PlanUse` names a player defender before the outcome. |
 | Modify `.../campaign/PlanRules.scala` | Registers Horse Archers, Storm Caller, Bag of Siegeworks and Hospital. |
 | Modify `src/test/scala/oathdigital/gameplay/powers/campaign/PlanDriver.scala` | Adds `inert(suit, count)`. |
 | Create one suite per card in `src/test/scala/oathdigital/gameplay/powers/campaign/` | Walker-driven tests. |
 | Modify `src/test/scala/oathdigital/gameplay/CampaignProcedureSuite.scala` | Rewords the test that used Bag of Siegeworks as an unimplemented power. |
-| Modify `src/test/scala/oathdigital/application/gamelog/GameLogRareLinesSuite.scala` | The "Placed" fix. |
 | Modify `src/test/scala/oathdigital/gameplay/powers/PowerImplementationStatusSuite.scala` | Pins the nine cards. |
 | Modify `docs/ROADMAP.md` | Records the slice. |
 
@@ -1365,28 +1370,76 @@ git commit -m "feat(powers): Bag of Siegeworks ignores single-shield defense dic
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powers/campaign/Hospital.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/PlanContext.scala` (`PlanUse`)
 - Modify: `src/main/scala/oathdigital/gameplay/powers/campaign/PlanRules.scala`
-- Modify: `src/main/scala/oathdigital/application/gamelog/CampaignLines.scala` (the `placed` collector in `gains`)
 - Test: `src/test/scala/oathdigital/gameplay/powers/campaign/HospitalSuite.scala`
-- Modify: `src/test/scala/oathdigital/application/gamelog/GameLogRareLinesSuite.scala`
 
 **Interfaces:**
 - Consumes:
-  - `BattlePlan.wrapping`.
+  - `BattlePlan.wrapping` and `BattlePlan.later`.
   - `ContributingPower.priority: Int` (default 0; fold order `(priority, source.stableKey, id)`).
-  - `PlanUse.user`, `PlanUse.result: Option[CampaignResult]`, `PlanUse.ready` (the state the window is folded with, before the losses run).
+  - `PlanUse.user`, `PlanUse.ready`.
+  - `CampaignSetup.setup(ready, actor, pending): Option[CampaignSetup]`.
   - `SiteRulers.siteOf(ready, card): Option[SiteId]` and `SiteRulers.rulerOf(ready, site): Option[SiteRuler]`.
   - `PlayerFacts.forceKind(ready, player): Either[OathViolation, ForceKind]`.
-  - `StickyFire.decisionId`, `StickyFire.yes`, `CampaignPlans.appliedMarker(ref)`.
-- Produces: `Hospital.id`, `Hospital.placed: NoteKey` (name `"placed"`), `Hospital.Priority = 1`.
+  - `ModifyDicePool(pool: PoolKey, delta: Int)`; `CurrentGameState.rollPools: Map[PoolKey, DicePoolState]` (`count`); `ReadyGame.banks.warbandSupply: Map[ForceKind, Int]`.
+  - Test side: `StickyFire.decisionId`, `StickyFire.yes`, `CampaignPlans.appliedMarker(ref)`.
+- Produces:
+  - `Hospital.id`, `Hospital.placed: NoteKey` (name `"placed"`), `Hospital.Priority = 1`, `Hospital.Saved: PoolKey`.
+  - `PlanUse` gains `defender: Option[CampaignDefender] = None`.
 
 Background:
 - `CampaignOutcome.steps` puts the whole losses step in one `BuildOps` under `CampaignLosses`.
 - Sticky Fire wraps the same window: it asks first, then runs the losses, then appends its own `BuildOps` burn.
 - Hospital must see the burn, so it folds after Sticky Fire. Both sources are `game:` keys, and `denizen.hospital` sorts before `relic.sticky-fire`, so Hospital raises its priority to 1.
-- The Game Log writes no detail line for a warband move inside a Campaign. The Campaign's action line counts only `Kill`s as "lost", so the saved warbands drop out of it (ruling 8).
+- Each chosen plan runs as a `CampaignPlanApplication`, in the window of the same name, right after its pick is answered. A Wrestlers sacrifice is a `Sacrifice` operation inside it. At that window `PlanUse.chosen` finds Hospital only if Hospital's pick came earlier, which gives the order in ruling 6.
+- The count lives in a dice pool, the way a bandit plan's `appliedMarker` does:
+  - no viewer sees `rollPools`;
+  - the Game Log reads only the marker pools;
+  - the walker clears every pool when the action finishes, after the root's appended children run.
+- The kills still write "lost N warbands" on the Campaign's action line. The final move comes from the supply to a site, which no Campaign line reads, and Hospital's own line reports it (ruling 8).
 
-- [ ] **Step 1: Write the failing suite**
+- [ ] **Step 1: Let `PlanUse` name a defender before the outcome**
+
+In `PlanContext.scala`, replace `PlanUse`'s declaration and `user` with:
+
+```scala
+final case class PlanUse(side: CampaignPlanSide, actor: PlayerId,
+    result: Option[CampaignResult], ready: ReadyGame,
+    defender: Option[CampaignDefender] = None):
+  /** The player who used the plan; `None` for a bandit defender. A defender
+    * is read from the recorded result once the outcome is known, and from
+    * the Campaign's setup before it. */
+  def user: Option[PlayerId] = side match
+    case CampaignPlanSide.Attacker => Some(actor)
+    case CampaignPlanSide.Defender =>
+      result.map(_.defender).orElse(defender).collect:
+        case CampaignDefender.Player(player) => player
+```
+
+In `PlanUse.chosen`, replace the final expression:
+
+```scala
+    picked.orElse(banditApplied).map(side => PlanUse(side, actor,
+      Option.when(afterOutcome)(ready.game.current.lastCampaignResult)
+        .flatten.filter(_.attacker == actor), ready))
+```
+
+with:
+
+```scala
+    picked.orElse(banditApplied).map(side => PlanUse(side, actor,
+      Option.when(afterOutcome)(ready.game.current.lastCampaignResult)
+        .flatten.filter(_.attacker == actor), ready,
+      CampaignSetup.setup(ready, actor, pending).map(_.defender)))
+```
+
+`PlanContext.scala` already imports `CampaignSetup`.
+
+Run: `./sbtw "testOnly oathdigital.gameplay.powers.campaign.*"`
+Expected: PASS. No existing plan reads `user` before the outcome.
+
+- [ ] **Step 2: Write the failing suite**
 
 `HospitalSuite.scala`:
 
@@ -1400,8 +1453,9 @@ import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
-/** Hospital: once chosen, each of its user's warbands the Campaign would kill
-  * is placed on Hospital's site instead, while the user still rules it. */
+/** Hospital: once chosen, each of its user's warbands the Campaign kills is
+  * saved, and placed on Hospital's site at the end of the Campaign if the
+  * user rules it then. */
 class HospitalSuite extends munit.FunSuite:
   private val card = cardWith("denizen.hospital")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
@@ -1436,19 +1490,25 @@ class HospitalSuite extends munit.FunSuite:
       s"Placed $amount ${who.value} $noun at ${site.value} instead.",
       covers = false)
 
-  test("a defeated attacker's dead are placed on Hospital's site instead"):
+  private def returned(b: Board, who: PlayerId, amount: Int, site: SiteId)
+      : CoreOperation = Move(Piece.Warbands(kind(b, who), amount),
+    PositionedLocation(Location.WarbandBank(kind(b, who))),
+    PositionedLocation(Location.Site(site)))
+
+  test("a defeated attacker's dead are placed on Hospital's site at the end"):
     val base = board()
     val site = spare(base)
     val b = hospitalFor(base, base.actor, site)
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finish
     assertEquals(winner(done), Some(false))
-    // Half of the four survivors die: they go to Hospital's site, not the bank.
+    // Half of the four survivors die in the losses, then come back to
+    // Hospital's site from the supply when the Campaign ends.
+    assert(done.ops.contains(Kill(Piece.Warbands(kind(b, b.actor), 2),
+      PositionedLocation(Location.PlayArea(b.actor)))))
+    assert(done.ops.contains(returned(b, b.actor, 2, site)))
     assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.actor), 4))
     assertEquals(player(done.state, b.actor).board.warbands, 3)
-    assert(!done.ops.exists {
-      case Kill(Piece.Warbands(killed, _), _) => killed == kind(b, b.actor)
-      case _ => false })
     assertEquals(lines(done), Vector(placed(2, b.actor, site)))
 
   test("a defeated defender keeps the returned half on its board, and the rest go to Hospital's site"):
@@ -1460,22 +1520,25 @@ class HospitalSuite extends munit.FunSuite:
       .pick(b.other, CampaignIds.defenderPlan, ref).finish
     assertEquals(winner(done), Some(true))
     // Two warbands held the origin: one returns to the board as usual, and
-    // the one that would have died is placed on Hospital's site.
+    // the one that died is placed on Hospital's site.
     assertEquals(player(done.state, b.other).board.warbands, before + 1)
     assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.other), 3))
     assertEquals(lines(done), Vector(placed(1, b.other, site)))
 
-  test("at a Conquest target the attacker won, every kill stays a kill"):
+  test("a site its user no longer rules at the end saves nothing"):
     val base = againstPlayer(board())
     val b = withSiteCard(base, base.origin, card)
     val done = commit(rules(winning), b, 4)
       .pick(b.other, CampaignIds.defenderPlan, ref).finish
     assertEquals(winner(done), Some(true))
-    assert(done.ops.contains(Kill(Piece.Warbands(kind(b, b.other), 2),
-      PositionedLocation(Location.Site(b.origin)))))
+    assert(!done.ops.contains(returned(b, b.other, 1, b.origin)))
+    // No saved warband comes back to the lost site.
+    assert(forces(done.state, b.origin) match
+      case SiteForces.Occupied(held, _) => held != kind(b, b.other)
+      case SiteForces.Empty => true)
     assertEquals(lines(done), Vector.empty)
 
-  test("the warbands Sticky Fire kills are placed on Hospital's site too"):
+  test("the warbands Sticky Fire kills are saved too"):
     val base = againstPlayer(board())
     val site = spare(base)
     val fire = relicWith("relic.sticky-fire")
@@ -1488,10 +1551,52 @@ class HospitalSuite extends munit.FunSuite:
       .pick(b.other, StickyFire.decisionId, StickyFire.yes).finish
     assertEquals(winner(done), Some(false))
     // The two the defeat kills, then the three Sticky Fire kills from the
-    // board, all go to Hospital's site.
+    // board, all come back to Hospital's site.
     assertEquals(player(done.state, b.actor).board.warbands, 0)
     assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.actor), 7))
     assertEquals(lines(done), Vector(placed(5, b.actor, site)))
+
+  private val wrestlers = cardWith("denizen.wrestlers")
+  private val wrestlersRef: DecisionOptionRef =
+    DecisionOptionRef.Denizen(DenizenId(wrestlers))
+
+  /** The defender rules the origin and Hospital's site, and holds Wrestlers,
+    * which sacrifices a warband from the origin, the only target. The
+    * attacker wins: four swords against the one warband left and blank dice.
+    */
+  private def wrestling: (Board, SiteId) =
+    val base = againstPlayer(board())
+    val site = spare(base)
+    (withAdviserFor(hospitalFor(base, base.other, site), base.other, wrestlers,
+      Orientation.FaceUp), site)
+
+  test("a sacrifice made after Hospital was chosen is saved, and placed at the end"):
+    val (b, site) = wrestling
+    val before = b.player(b.other).board.warbands
+    val picked = commit(rules(winning), b, 4)
+      .pick(b.other, CampaignIds.defenderPlan, ref)
+      .pick(b.other, CampaignIds.defenderPlan, wrestlersRef)
+    assert(picked.ops.exists(_.isInstanceOf[Sacrifice]))
+    // Until the end the sacrificed warband is dead: it leaves the force.
+    assertEquals(forces(picked.state, b.origin),
+      SiteForces.Occupied(kind(b, b.other), 1))
+    assertEquals(forces(picked.state, site), SiteForces.Occupied(kind(b, b.other), 2))
+    val done = picked.finish
+    assertEquals(winner(done), Some(true))
+    // The last origin warband dies and returns to the board as the returned
+    // half; only the sacrificed one is saved.
+    assertEquals(player(done.state, b.other).board.warbands, before + 1)
+    assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.other), 3))
+    assertEquals(lines(done), Vector(placed(1, b.other, site)))
+
+  test("a sacrifice made before Hospital was chosen is not saved"):
+    val (b, site) = wrestling
+    val done = commit(rules(winning), b, 4)
+      .pick(b.other, CampaignIds.defenderPlan, wrestlersRef)
+      .pick(b.other, CampaignIds.defenderPlan, ref).finish
+    assertEquals(winner(done), Some(true))
+    assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.other), 2))
+    assertEquals(lines(done), Vector.empty)
 
   test("a player who does not rule its site is not offered it"):
     val base = board()
@@ -1510,12 +1615,12 @@ class HospitalSuite extends munit.FunSuite:
     assertEquals(PlanRules.forCatalog(catalog).count(_.id == Hospital.id), 1)
 ```
 
-- [ ] **Step 2: Run the suite and see it fail to compile**
+- [ ] **Step 3: Run the suite and see it fail to compile**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.campaign.HospitalSuite"`
 Expected: compilation fails with "Not found: Hospital".
 
-- [ ] **Step 3: Create `Hospital.scala`**
+- [ ] **Step 4: Create `Hospital.scala`**
 
 ```scala
 package oathdigital.gameplay.powers.campaign
@@ -1527,21 +1632,25 @@ import oathdigital.model._
 
 /** Hospital (card 149, site-only), a battle plan for either side: "If any of
   * your warbands would be killed, place them on Hospital's site instead if
-  * you still rule it."
+  * you still rule it." Its FAQ sets when: at the end of the Campaign, if its
+  * user rules the site then.
   *
   * It is free and used by the player who rules Hospital's site; a bandit
-  * defender never uses it. Once chosen, every kill of its user's warbands in
-  * the Campaign's losses (`CampaignLosses`) becomes a move to Hospital's
-  * site. That includes the kills Sticky Fire adds there, so Hospital folds
-  * after every plan at the default priority. A Conquest defender's returned
-  * half comes back from Hospital's site instead of the supply, so the site
-  * keeps only the warbands that would have died.
+  * defender never uses it. Once it is chosen, each kill of its user's
+  * warbands stays a kill, and Hospital counts it in `Hospital.Saved`:
   *
-  * When Hospital's site is a Conquest target the attacker won, its user loses
-  * the site in this Campaign, and no kill is replaced. A sacrifice paid at
-  * the plan step, such as Wrestlers', is a cost and stays a kill.
+  *  - the sacrifice of a plan its user applies afterwards, such as Wrestlers'
+  *    (`CampaignPlanApplication`); a plan applied before Hospital was chosen
+  *    has already killed its warband;
+  *  - every kill in the losses (`CampaignLosses`), including the kills
+  *    Sticky Fire adds there, so Hospital folds after every plan at the
+  *    default priority. A Conquest defender's returned half comes back out of
+  *    the count, because those warbands did not stay dead.
   *
-  * It writes one line after the losses, naming how many warbands it placed.
+  * When the Campaign ends, that many warbands move from the user's supply to
+  * Hospital's site, if the user rules it then, and Hospital says so. When
+  * its site was a Conquest target the attacker won, the user rules it no
+  * longer and nothing comes back.
   */
 final case class Hospital private (cardId: DenizenId) extends BattlePlan:
   def id: PowerId = Hospital.id
@@ -1554,68 +1663,90 @@ final case class Hospital private (cardId: DenizenId) extends BattlePlan:
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.user.flatMap(_ => context.denizen(cardId)).map(source =>
       CampaignPlanOffer(source,
-        "Hospital: place your warbands that would be killed on its site",
-        Vector.empty, Vector.empty))
+        "Hospital: save your warbands that would be killed", Vector.empty,
+        Vector.empty))
 
   override def wrapping
       : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignLosses -> ((use, losses) => (for
-      user <- use.user
-      result <- use.result
-      site <- SiteRulers.siteOf(use.ready, cardId)
-      if SiteRulers.rulerOf(use.ready, site).contains(SiteRuler.Player(user))
-      if !conquered(result, site)
-      kind <- PlayerFacts.forceKind(use.ready, user).toOption
-    yield
-      val ward = Ward(user, kind, site)
-      val before = Hospital.at(use.ready, site, kind)
-      losses.map(ward.rewrite) :+ Note(id, ward.note(_, before))
-    ).getOrElse(losses)))
+    PowerWindow.CampaignPlanApplication -> counted,
+    PowerWindow.CampaignLosses -> counted)
 
-  /** Whether `site` is a Conquest target the attacker won. */
-  private def conquered(result: CampaignResult, site: SiteId): Boolean =
-    result.attackerWins && result.kind == CampaignKind.Conquest &&
-      result.targetSites.contains(site)
+  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
+    PowerWindow.CampaignActionEligibility -> (use =>
+      use.user.toVector.flatMap(user => Vector(
+        BuildOps((ready, _) => Right(placement(ready, user).toVector)),
+        Note(id, placedNote(_, user))))))
 
-  /** The kills of `user`'s warbands, of force `kind`, turned into moves to
-    * Hospital's `site`. */
-  private final class Ward(val user: PlayerId, val kind: ForceKind,
-      val site: SiteId):
-    private val ward = PositionedLocation(Location.Site(site))
+  /** A window's children, with each kill of the user's warbands counted. */
+  private def counted(use: PlanUse, children: Vector[Operation])
+      : Vector[Operation] = (for
+    user <- use.user
+    kind <- PlayerFacts.forceKind(use.ready, user).toOption
+  yield children.map(Tally(user, kind).rewrite)).getOrElse(children)
 
+  /** The saved warbands, from the user's supply to Hospital's site, when the
+    * user rules it now. */
+  private def placement(ready: ReadyGame, user: PlayerId)
+      : Option[CoreOperation] = for
+    site <- SiteRulers.siteOf(ready, cardId)
+    if SiteRulers.rulerOf(ready, site).contains(SiteRuler.Player(user))
+    kind <- PlayerFacts.forceKind(ready, user).toOption
+    count = Hospital.saved(ready)
+      .min(ready.banks.warbandSupply.getOrElse(kind, 0))
+    if count > 0
+  yield Move(Piece.Warbands(kind, count),
+    PositionedLocation(Location.WarbandBank(kind)),
+    PositionedLocation(Location.Site(site)))
+
+  /** What the placement just added to Hospital's site. */
+  private def placedNote(states: NoteStates, user: PlayerId)
+      : Option[PowerNote] = for
+    (before, after) <- states.previous
+    site <- SiteRulers.siteOf(after, cardId)
+    kind <- PlayerFacts.forceKind(after, user).toOption
+    count = Hospital.at(after, site, kind) - Hospital.at(before, site, kind)
+    if count > 0
+  yield Hospital.placed(PowerSourceRef.Card(cardId), NoteArg.Number(count),
+    NoteArg.Player(user), NoteArg.Site(site))
+
+  /** Counts the kills of `user`'s warbands, of force `kind`, in
+    * `Hospital.Saved`. A warband returned from the supply to the user's board
+    * did not stay dead, so it comes back out of the count. */
+  private final class Tally(user: PlayerId, kind: ForceKind):
     def rewrite(operation: Operation): Operation = operation match
       case ops: BuildOps => ops.copy(build = (ready, pending) =>
-        ops.build(ready, pending).map(_.map(replaced)))
+        ops.build(ready, pending).map(_.flatMap(counted)))
       case sequence: Sequence =>
         sequence.copy(children = sequence.children.map(rewrite))
       case branch: Branch => Branch((ready, pending) =>
         branch.select(ready, pending).map(rewrite))
-      case core: CoreOperation => replaced(core)
+      case core: CoreOperation => counted(core) match
+        case Vector(same) => same
+        case several => Sequence(several)
       case other => other
 
-    private def replaced(operation: CoreOperation): CoreOperation =
+    private def counted(operation: CoreOperation): Vector[CoreOperation] =
       operation match
-        case Kill(warbands @ Piece.Warbands(`kind`, _), from)
-            if from.location != ward.location =>
-          Move(warbands, from, ward)
-        case Move(warbands @ Piece.Warbands(`kind`, _),
+        case Kill(Piece.Warbands(`kind`, count), _) =>
+          Vector(operation, ModifyDicePool(Hospital.Saved, count))
+        case Sacrifice(`user`, Piece.Warbands(`kind`, count), _) =>
+          Vector(operation, ModifyDicePool(Hospital.Saved, count))
+        case Move(Piece.Warbands(`kind`, count),
             PositionedLocation(Location.WarbandBank(_), _),
-            to @ PositionedLocation(Location.PlayArea(`user`), _), None) =>
-          Move(warbands, ward, to)
-        case other => other
-
-    /** How many warbands the losses left on the site beyond `before`. */
-    def note(states: NoteStates, before: Int): Option[PowerNote] =
-      val count = Hospital.at(states.now, site, kind) - before
-      Option.when(count > 0)(Hospital.placed(PowerSourceRef.Card(cardId),
-        NoteArg.Number(count), NoteArg.Player(user), NoteArg.Site(site)))
+            PositionedLocation(Location.PlayArea(`user`), _), None) =>
+          Vector(operation, ModifyDicePool(Hospital.Saved, -count))
+        case other => Vector(other)
 
 object Hospital:
   val id: PowerId = PowerId("denizen.hospital")
 
-  /** Folds after every plan at the default priority 0, so its rewrite sees
-    * the kills Sticky Fire adds to the losses. */
+  /** Folds after every plan at the default priority 0, so its count sees the
+    * kills Sticky Fire adds to the losses. */
   val Priority: Int = 1
+
+  /** The count of saved warbands. It is never rolled or shown, and the
+    * walker clears it with every pool when the Campaign ends. */
+  val Saved: PoolKey = PoolKey("campaign.hospital.saved")
 
   /** "Placed {n} {Red} warband at {site} instead." */
   val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
@@ -1623,8 +1754,11 @@ object Hospital:
     NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
     NotePart.Text(" instead.")))
 
+  private def saved(ready: ReadyGame): Int =
+    ready.game.current.rollPools.get(Saved).fold(0)(_.count)
+
   /** The warbands of force `kind` at `site`. */
-  private[campaign] def at(ready: ReadyGame, site: SiteId, kind: ForceKind): Int =
+  private def at(ready: ReadyGame, site: SiteId, kind: ForceKind): Int =
     ready.game.current.map.sites.get(site).map(_.forces).collect {
       case SiteForces.Occupied(`kind`, count) => count
     }.getOrElse(0)
@@ -1633,9 +1767,10 @@ object Hospital:
     CatalogCards.denizen(catalog, id).map(new Hospital(_))
 ```
 
-If `-Wunused` flags `Ward`'s `val` parameters as unused public members, drop the `val` keywords. Backticked patterns accept plain constructor parameters too.
+- If `-Wunused` rejects the tuple pattern `(before, after) <- states.previous`, write `step <- states.previous` and read `step._1` and `step._2`.
+- If `DicePoolState` names its field something other than `count`, use that name. `TurnStateOperations.adjustDicePool` reads it.
 
-- [ ] **Step 4: Register it in `PlanRules.scala`**
+- [ ] **Step 5: Register it in `PlanRules.scala`**
 
 Replace the scaladoc and body with:
 
@@ -1644,9 +1779,9 @@ Replace the scaladoc and body with:
   * them, registered together: Sticky Fire (a question in the losses), Warning
   * Signals (a decision of its own and a discard at the end), Gleaming Armor (an
   * added cost on the enemy's plans), Horse Archers and Storm Caller (a discard
-  * at the end), Bag of Siegeworks (the defense scored again) and Hospital (the
-  * losses' kills replaced). A power whose card is absent from `catalog` is
-  * omitted.
+  * at the end), Bag of Siegeworks (the defense scored again) and Hospital
+  * (killed warbands saved until the end). A power whose card is absent from
+  * `catalog` is omitted.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -1659,65 +1794,21 @@ object PlanRules:
       Hospital.forCatalog(catalog).toVector
 ```
 
-- [ ] **Step 5: Run the suite and see it pass**
+- [ ] **Step 6: Run the suites and see them pass**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.powers.campaign.*"`
-Expected: PASS, including the 7 Hospital tests.
+Run: `./sbtw "testOnly oathdigital.gameplay.powers.campaign.* oathdigital.application.gamelog.*"`
+Expected: PASS, including the 9 Hospital tests. The Game Log suites must still pass: the count pool is not a marker, so no line reads it.
 
-If the Sticky Fire test places 2 and not 5, Hospital folded before Sticky Fire. Check that `priority` is overridden and that `BattlePlan` does not mark `priority` final.
+If the Sticky Fire test saves 2 and not 5, Hospital folded before Sticky Fire. Check that `priority` is overridden and that `BattlePlan` does not mark `priority` final.
 
-- [ ] **Step 6: Write the failing log test**
-
-Add to `GameLogRareLinesSuite.scala`, after the test `"a defeated attacker's losses have no subject"`:
-
-```scala
-  test("a warband the attacker moves to a site it does not target is not placed"):
-    val elsewhere = ready.game.current.map.inPlay.find(_ != site).get
-    val warbands = ForceKind.Exile(lineage(actor))
-    val result = CampaignResult(actor, CampaignKind.Conquest,
-      CampaignDefender.Bandits, Vector(site), Vector.empty, 3, Vector.empty,
-      3, 0, 0, Vector.empty, 1, attackerWins = true)
-    val lines = posted(ActionRef.Campaign, RecordCampaignResult(result),
-      Move(Piece.Warbands(warbands, 1),
-        PositionedLocation(Location.PlayArea(actor)),
-        PositionedLocation(Location.Site(elsewhere))),
-      Move(Piece.Warbands(warbands, 2),
-        PositionedLocation(Location.PlayArea(actor)),
-        PositionedLocation(Location.Site(site))))
-    assert(lines.contains(s"Placed 2 warbands on ${presentation.siteLabel(site)}"),
-      lines)
-```
-
-Run: `./sbtw "testOnly oathdigital.application.gamelog.GameLogRareLinesSuite"`
-Expected: FAIL. The line reads "Placed 1 warband on … and 2 warbands on …".
-
-- [ ] **Step 7: Count only moves onto a target in `CampaignLines.scala`**
-
-In `gains`, the Conquest branch, change the guard of the `placed` collector from:
-
-```scala
-              if player == result.attacker =>
-```
-
-to:
-
-```scala
-              if player == result.attacker &&
-                result.targetSites.contains(site) =>
-```
-
-Run: `./sbtw "testOnly oathdigital.application.gamelog.*"`
-Expected: PASS.
-
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/main/scala/oathdigital/gameplay/powers/campaign/Hospital.scala \
+  src/main/scala/oathdigital/gameplay/powers/campaign/PlanContext.scala \
   src/main/scala/oathdigital/gameplay/powers/campaign/PlanRules.scala \
-  src/main/scala/oathdigital/application/gamelog/CampaignLines.scala \
-  src/test/scala/oathdigital/gameplay/powers/campaign/HospitalSuite.scala \
-  src/test/scala/oathdigital/application/gamelog/GameLogRareLinesSuite.scala
-git commit -m "feat(powers): Hospital places its user's killed warbands on its site"
+  src/test/scala/oathdigital/gameplay/powers/campaign/HospitalSuite.scala
+git commit -m "feat(powers): Hospital saves its user's killed warbands until the Campaign ends"
 ```
 
 ---
@@ -1767,7 +1858,7 @@ yourself, actions on others, then triggers and when-played powers.
 - [ ] **Step 3: Run the gates**
 
 Run: `./sbtw "test" "frontend/test"`
-Expected: every server and frontend test passes. The server count is the baseline plus the new tests: 50 across the nine card suites, 1 log test and 1 status test, so baseline + 52.
+Expected: every server and frontend test passes. The server count is the baseline plus the new tests: 52 across the nine card suites and 1 status test, so baseline + 53.
 
 Run: `python3 scripts/check-architecture.py && python3 scripts/check-markdown-links.py`
 Expected: both pass.
