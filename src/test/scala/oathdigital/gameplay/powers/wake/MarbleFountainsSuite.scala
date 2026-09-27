@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PlayerFacts, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
+  PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -62,3 +63,9 @@ class MarbleFountainsSuite extends munit.FunSuite:
     val ruined = staged(EdificeSide.Ruined)
     assertEquals(PhasePowerProcedure.usable(catalog, ruined, actor,
       PhasePowerCatalog.default(catalog)), Vector.empty)
+
+  test("it writes the Supply it refreshed to"):
+    val done = use(staged()).toOption.get
+    assertEquals(NoteText.said(MarbleFountains, done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value}'s Supply refreshed to 7.",
+        covers = false)))

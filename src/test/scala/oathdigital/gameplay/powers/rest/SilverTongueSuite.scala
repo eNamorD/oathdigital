@@ -7,7 +7,8 @@ import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerOutcome, WalkerPowers}
-import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -127,3 +128,11 @@ class SilverTongueSuite extends munit.FunSuite:
       afterChoice.asInstanceOf[WalkerOutcome.Parked].tree, powers).get
     assert(replacement.query.asInstanceOf[DecisionQuery.ChooseOne].options
       .exists(_.ref == DecisionOptionRef.Denizen(others.head)))
+
+  test("its take is written as its own line, covering the generic one"):
+    val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane))
+    val used = rules.startWalker(Ready(ready), use, actor, Vector.empty,
+      Vector(source)).toOption.get
+    assertEquals(NoteText.said(SilverTongue.forCatalog(catalog).get, used.events),
+      Vector(NoteText.Said(NoteKey.Used,
+        s"${actor.value} took 1 favor from the Arcane bank.", covers = true)))

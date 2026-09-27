@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.rest
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver._
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Silver Tongue (card 92): "You can only have two advisers. REST: Take a
@@ -19,6 +20,7 @@ final case class SilverTongue private (cardId: DenizenId,
   def id: PowerId = SilverTongue.id
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+  override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took)
 
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = stocked(ready, player).nonEmpty
@@ -26,7 +28,7 @@ final case class SilverTongue private (cardId: DenizenId,
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =
     val choice = choiceDecisionId(ready, player)
-    Right(Branch((state, _) => stocked(state, player) match {
+    Right(Sequence(Vector(Branch((state, _) => stocked(state, player) match {
       case Vector(only) => Vector(take(player, _ => Right(only)))
       case several => Vector(
         Decide(choice, player, DecisionQuery.ChooseOne(several.map(suit =>
@@ -37,7 +39,8 @@ final case class SilverTongue private (cardId: DenizenId,
             DecisionOptionRef.FavorBank(suit)), _) => suit
         }.toRight(OathViolation.InvalidEventOrder(
           s"no Silver Tongue bank is recorded for $choice"))))
-    }))
+    }),
+      Note(id, NoteSupport.tookNote(source, player), covers = true))))
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>

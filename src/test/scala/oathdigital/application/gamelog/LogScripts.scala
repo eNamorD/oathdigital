@@ -9,6 +9,7 @@ import oathdigital.gameplay.powers.action.GamblingHall
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
@@ -116,6 +117,19 @@ object LogScripts:
       ReplayStep(RecordedEvent(at + offset, event), state, state) }
     steps.take(after + 1) ++ added ++ steps.drop(after + 1).map(step =>
       step.copy(event = step.event.copy(index = step.event.index + events.size)))
+
+  /** `steps` without their power notes, renumbered: the journal of a power
+    * that writes no line of its own. Notes change no state, so every other
+    * step is unchanged. */
+  def withoutNotes(steps: Vector[ReplayStep[OathState, OathEvent]])
+      : Vector[ReplayStep[OathState, OathEvent]] =
+    steps.filterNot(_.event.event.isInstanceOf[PowerNoted]).zipWithIndex.map {
+      case (step, index) => step.copy(event = step.event.copy(index = index.toLong))
+    }
+
+  def formatWithoutNotes(script: Script, viewer: Option[PlayerId])(using
+      munit.Location): Vector[LogEntry] =
+    formatter.format(withoutNotes(script.history.steps), viewer)
 
   /** The service suite's Oathkeeper tie: an arranged board, the active
     * player's Travel, and the holder's choice of the next Oathkeeper. */

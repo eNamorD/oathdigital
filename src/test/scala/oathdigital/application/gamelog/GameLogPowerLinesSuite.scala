@@ -62,7 +62,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note reads as its source, a colon and its sentence"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val noted = inserted(steps, take(steps),
       saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor)))
     val entry = ours(noted).head
@@ -71,7 +71,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a phase power's used note replaces Used {card} as the action line"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     assert(lines(steps).contains("Used Silver Tongue"), lines(steps))
     val noted = inserted(steps, take(steps), PowerNoted(power, took(card,
       NoteArg.Player(script.actor), NoteArg.Amount(1, NoteUnit.Favor)),
@@ -83,7 +83,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a covering note drops the generic lines of the step before it, but no decision line"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val before = lines(steps)
     assert(before.exists(_.startsWith("Gained 1 favor from the ")), before)
     val chose = before.filter(_.startsWith("Chose "))
@@ -97,7 +97,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note identical to an earlier one in the action posts nothing"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val twice = saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor))
     val noted = inserted(steps, take(steps), twice, twice,
       saying(script.actor, NoteArg.Amount(3, NoteUnit.Favor)))
@@ -107,7 +107,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("plurals follow their amount"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     def counting(count: Int) = PowerNoted(power, counted(card,
       NoteArg.Player(script.actor), NoteArg.Number(count),
       NoteArg.Amount(count, NoteUnit.Warband)), covers = false)
@@ -118,14 +118,14 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note no power words posts nothing"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val unknown = PowerNoted(PowerId("test.unknown"),
       PowerNote(card, "said", Vector.empty), covers = false)
     assertEquals(lines(inserted(steps, take(steps), unknown)), lines(steps))
 
   test("a card its viewer may not identify is not named to them"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val last = steps.last.after match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
@@ -143,7 +143,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note's source its viewer may not identify reads as its back"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val last = steps.last.after match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
@@ -163,7 +163,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("the same note in another action posts again"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val note = saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor))
     val first = steps.indexWhere(_.event.event.isInstanceOf[WalkerStepRecorded])
     assert(first < take(steps))
@@ -174,7 +174,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a note waits for its action's start line"):
     val script = raid
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val opened = steps.indexWhere(_.event.event match
       case parked: WalkerParked => parked.procedure == ActionRef.Campaign
       case _ => false)
@@ -208,7 +208,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
 
   test("a variant of a phase power's used note also replaces Used {card}"):
     val script = usePower
-    val steps = script.history.steps
+    val steps = withoutNotes(script.history.steps)
     val noted = inserted(steps, take(steps),
       PowerNoted(power, none(card), covers = false))
     assert(!lines(noted).exists(_.startsWith("Used ")), lines(noted))

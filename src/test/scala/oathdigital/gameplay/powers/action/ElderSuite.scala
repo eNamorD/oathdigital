@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -37,3 +37,8 @@ class ElderSuite extends munit.FunSuite:
     assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
       PhasePowerCatalog.default(catalog)), Vector.empty)
     assert(use(broke).isLeft)
+
+  test("it writes its gain as its own line, covering the generic one"):
+    val done = use(staged(favor = 3)).toOption.get
+    assertEquals(NoteText.said(Elders, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} gained 1 secret.", covers = true)))
