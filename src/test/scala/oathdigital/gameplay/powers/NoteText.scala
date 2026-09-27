@@ -43,3 +43,4 @@ object NoteText:
     case NoteArg.Dice(faces) => s"${faces.size} dice"
     case NoteArg.Cards(ids) => ids.map(_.value).mkString(", ")
     case NoteArg.Banner(banner) => BannerRules.displayName(banner)
+    case NoteArg.Pile(pile) => SearchSource.name(pile)

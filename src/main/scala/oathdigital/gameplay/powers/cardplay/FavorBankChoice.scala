@@ -2,11 +2,12 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.model._
 
-/** "Take favor from any one favor bank", for Vow of Obedience's REST and
-  * Book Binders. The player chooses among the banks that hold favor; one
-  * stocked bank is taken without asking, and none leaves nothing to do.
+/** "Take favor from any one favor bank", for Vow of Obedience's REST, Book
+  * Binders and Spirit Snare. The player chooses among the banks that hold
+  * favor; one stocked bank is taken without asking, and none leaves nothing
+  * to do.
   */
-private[cardplay] object FavorBankChoice:
+private[powers] object FavorBankChoice:
 
   /** The banks that hold favor, in suit order. */
   def stocked(ready: ReadyGame): Vector[Suit] =

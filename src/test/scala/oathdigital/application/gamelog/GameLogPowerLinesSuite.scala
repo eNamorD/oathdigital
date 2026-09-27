@@ -175,6 +175,18 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assertEquals(text(ours(banner).head),
       s"Silver Tongue: ${name(script.actor)} said Darkest Secret.")
 
+  test("a pile reads as its name, the template supplying the article"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val cradle = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Pile(SearchSource.RegionalDiscard(Region.Cradle))))
+    assertEquals(text(ours(cradle).head),
+      s"Silver Tongue: ${name(script.actor)} said Cradle discard pile.")
+    val deck = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Pile(SearchSource.WorldDeck)))
+    assertEquals(text(ours(deck).head),
+      s"Silver Tongue: ${name(script.actor)} said world deck.")
+
   test("a note's source its viewer may not identify reads as its back"):
     val script = usePower
     val steps = withoutNotes(script.history.steps)

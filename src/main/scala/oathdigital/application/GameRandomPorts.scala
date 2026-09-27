@@ -25,6 +25,9 @@ object DefenseDicePort:
 trait CampaignDicePort:
   def rollAttack(count: Int): Vector[AttackDieFace]
   def rollDefense(count: Int): Vector[DefenseDieFace]
+  /** A uniform order for a pile of `count` cards, as a permutation of
+    * `0 until count`. A test port may fix it. */
+  def shuffle(count: Int): Vector[Int] = CampaignDicePort.uniform(count)
 object CampaignDicePort:
   val random: CampaignDicePort = new CampaignDicePort:
     private val rng = new scala.util.Random()
@@ -39,13 +42,21 @@ object CampaignDicePort:
     def rollDefense(count: Int) = Vector.fill(count)(defense(rng.nextInt(6)))
 
   /** The walker's dice source, backed by `port`: the same faces a legacy
-    * Campaign rolled, now drawn by an automatic `Roll` node.
+    * Campaign rolled, now drawn by an automatic `Roll` node, and the port's
+    * pile order for a `Shuffle`.
     */
-  def walkerDice(port: CampaignDicePort): WalkerDice = (kind, count) =>
-    Right(kind match {
+  def walkerDice(port: CampaignDicePort): WalkerDice = new WalkerDice:
+    def roll(kind: DiceKind, count: Int)
+        : Either[OathViolation, Vector[DieFace]] = Right(kind match {
       case DiceKind.Attack => port.rollAttack(count)
       case DiceKind.Defense => port.rollDefense(count)
     })
+    override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
+      Right(port.shuffle(count))
+
+  private val shuffler = new scala.util.Random()
+  private def uniform(count: Int): Vector[Int] =
+    shuffler.shuffle((0 until count).toVector)
 
 object CardDecisionIds:
   /** Stable across reload/replay and derived solely from authoritative setup progress. */
