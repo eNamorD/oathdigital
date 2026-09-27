@@ -65,14 +65,13 @@ Cards left for a later batch because they need engine work first:
   any capacity, read from the site. Plains has no power; Coast, Island,
   Mountain and Pass were already built. See the
   [site powers design](superpowers/specs/2026-09-27-site-powers-design.md).
-- [ ] **Setup's Reveal Cards step.** The rules' setup step 3 comes after
-  the starting advisers are chosen: each player may reveal any number of their
-  relics and advisers, except site-only advisers, and revealing does not
-  trigger When Played powers. `SetupProcedure` has no such step, so every
-  starting adviser stays facedown. It needs one decision per player after the
-  adviser choices, flipping the chosen cards faceup without the card-played
-  window. A revealed Hunger then runs at the first Wake: the forced Wake step
-  already runs when Setup ends (catalog batch 2, slice 5).
+- [x] **Setup's Reveal Cards step.** After keeping an adviser, each player
+  may reveal any number of their facedown advisers and relics, except
+  site-only advisers (CR p. 13). `SetupProcedure` asks it as a `ChooseMany`
+  only when there is something to reveal, and turns the chosen cards faceup
+  with `Reveal`, so no When Played power triggers. The Game Log writes
+  "{player} revealed {card}." A revealed Hunger runs at the first Wake
+  (`HungerSuite`).
 - [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
   not discarded in the Chronicle Phase's Shape Empire step, which the engine
   does not have yet. The Pass's consent waits for the Consent system phase.

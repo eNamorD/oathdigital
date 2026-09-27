@@ -1,11 +1,11 @@
 0.0 round 0 | Setup
 3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
 6.0 decision 1 | [player:p2|P2] kept a Denizen
-9.0 action 1 | [player:p3|P3] placed pawn at [site:site:ancient-city|Ancient City]
-12.0 decision 1 | [player:p3|P3] kept a Denizen
-15.0 action 1 | [player:p1|P1] placed pawn at [site:site:broken-peaks|Broken Peaks]
-18.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
-19.0 round 0 | Round 1
-19.1 turn 0 | [player:p2|P2]'s turn
-29.0 action 1 | Negotiated with [player:p3|P3]
-29.1 delta 1 | [player:p2|P2] gave 1 favor to [player:p3|P3]
+11.0 action 1 | [player:p3|P3] placed pawn at [site:site:ancient-city|Ancient City]
+14.0 decision 1 | [player:p3|P3] kept a Denizen
+19.0 action 1 | [player:p1|P1] placed pawn at [site:site:broken-peaks|Broken Peaks]
+22.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
+25.0 round 0 | Round 1
+25.1 turn 0 | [player:p2|P2]'s turn
+35.0 action 1 | Negotiated with [player:p3|P3]
+35.1 delta 1 | [player:p2|P2] gave 1 favor to [player:p3|P3]

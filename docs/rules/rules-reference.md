@@ -28,7 +28,7 @@ Each player controls a lineage/color and one pawn. Roles are:
 2. Deal eight faceup sites from Recent Sites. Populate starting resources, facedown relics equal to slots, bandits equal to capacity, and a matching ruined edifice at each Homeland (CR p. 6).
 3. Build a 60-denizen pool (10 of each suit), seed regional discards and player hands, and build the world deck with Vision packets: 10 denizens + 2 Visions above 15 denizens + 3 Visions above the remaining denizens (CR p. 6).
 4. Put 3 favor in each suit bank, +1 per bank at 5+ players, and +1 to a bank per matching edifice on the map. Initialize Round, Usurper Limiter (round 4), Visions Drawn, and relic deck (CR p. 7).
-5. Randomize seating/first player. Everyone is an Exile with 1 favor, 1 secret, 3 warbands on board, full-left Supply, and 2 random legacies. In order, place pawn, keep one legacy dormant, keep one of three denizens as adviser, and discard the rest to the next regional discard cycle (CR p. 7).
+5. Randomize seating/first player. Everyone is an Exile with 1 favor, 1 secret, 3 warbands on board, full-left Supply, and 2 random legacies. In order, place pawn, keep one legacy dormant, keep one of three denizens as adviser, discard the rest to the next regional discard cycle, then reveal any facedown advisers and relics except site-only advisers, without When Played (CR pp. 7, 13).
 
 No one begins Chancellor or Oathkeeper; the first player to satisfy Supremacy takes the title (NF p. 8). Do not reuse first-game setup for a new era unless fully resetting the box (CR p. 7; NF p. 9).
 

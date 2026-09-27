@@ -157,8 +157,9 @@ class GameRoutesSuite extends munit.FunSuite:
         ujson.read(reloaded.body())("nextSequence").num.toLong,
         ujson.read(chosen.body())("nextSequence").num.toLong
       )
+      // p2 is asked Reveal Cards next, so p3 waits on it.
       assertEquals(ujson.read(reloaded.body())("phase").str,
-        "setup-walker-decision")
+        "setup-walker-waiting")
     finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()

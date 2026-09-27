@@ -1,12 +1,12 @@
 0.0 round 0 | Setup
 3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
 6.0 decision 1 | [player:p2|P2] kept a Denizen
-9.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
-12.0 decision 1 | [player:p3|P3] kept a Denizen
-15.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
-18.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
-19.0 round 0 | Round 1
-19.1 turn 0 | [player:p2|P2]'s turn
-26.0 turn 0 | [player:p3|P3]'s turn
-29.0 decision 1 | Chose [player:p3|P3]'s facedown adviser (slot 1)
-31.0 trigger 1 | [card:216|Hunger]: [player:p3|P3] buried a Denizen from [player:p3|P3]'s advisers.
+11.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
+14.0 decision 1 | [player:p3|P3] kept a Denizen
+19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
+22.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
+25.0 round 0 | Round 1
+25.1 turn 0 | [player:p2|P2]'s turn
+32.0 turn 0 | [player:p3|P3]'s turn
+35.0 decision 1 | Chose [player:p3|P3]'s facedown adviser (slot 1)
+37.0 trigger 1 | [card:216|Hunger]: [player:p3|P3] buried a Denizen from [player:p3|P3]'s advisers.

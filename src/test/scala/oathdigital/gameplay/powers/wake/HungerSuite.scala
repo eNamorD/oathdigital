@@ -6,12 +6,12 @@ import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture
+import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Situation
+import oathdigital.testkit.{Answers, Situation}
 
 class HungerSuite extends munit.FunSuite:
   import PowerFixture.{actor, base, player}
@@ -46,6 +46,11 @@ class HungerSuite extends munit.FunSuite:
     PhaseTransitionRef.BeginRest, actor).toOption.get
 
   private def ready(state: OathState) = state.asInstanceOf[Ready].value
+
+  private def optionRefs(query: DecisionQuery): Vector[DecisionOptionRef] =
+    query match
+      case DecisionQuery.Partition(_, options, _, _) => options.map(_.ref)
+      case _ => Vector.empty
 
   private def bury(from: OathTransition, slot: DecisionOptionRef) =
     rules.resolveWalker(from.state, next, Hunger.decisionId,
@@ -127,18 +132,44 @@ class HungerSuite extends munit.FunSuite:
     parked.assertResumed(t.state, Phase.Wake, next)
     assert(!t.events.contains(WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
 
-  test("a Hunger faceup when Setup ends runs at the first Wake"):
-    // Stands in for Setup's Reveal Cards step (ROADMAP cleanup), which does
-    // not exist yet: Hunger is turned faceup while Setup is parked.
+  test("a Hunger revealed in Setup's Reveal Cards runs at the first Wake"):
     val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
       FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders,
       Vector(card))
+    val hungerRef = DecisionOptionRef.Denizen(card)
+    val keepAndReveal: Answers =
+      case park if park.decisionId ==
+          SetupProcedure.adviserDecisionId(park.awaiting) &&
+          optionRefs(park.decide.query).contains(hungerRef) =>
+        DecisionAnswer.PartitionAnswer(optionRefs(park.decide.query).map(ref =>
+          DecisionPlacement(ref, if ref == hungerRef then
+            SetupProcedure.adviserKeepKey else SetupProcedure.adviserDiscardKey)))
+      case park if park.decisionId ==
+          SetupProcedure.revealDecisionId(park.awaiting) &&
+          player(park.ready, park.awaiting).advisers.exists(_.id == card) =>
+        DecisionAnswer.ChooseManyAnswer(Vector(DecisionOptionRef.AdviserSlot(
+          park.awaiting, player(park.ready, park.awaiting).advisers
+            .indexWhere(_.id == card))))
     val begun = Situation.start(Situation.rules(catalog,
-      phasePowers = phasePowers)).parkedAfter(GameCommand.Begin(chronicle, orders))
+      phasePowers = phasePowers).withAnswers(keepAndReveal))
+      .parkedAfter(GameCommand.Begin(chronicle, orders))
     val first = begun.ready.setup.firstPlayer
-    val revealed = begun.copy(state = Ready(giveAdviser(begun.ready, first,
-      card, Orientation.FaceUp)))
-    val woken = revealed.after()
+    // Hunger tops the world deck; it trades places with the first card of the
+    // first player's setup hand.
+    val dealt = begun.ready.updateCurrent(current =>
+      val hand = current.temporaryHands(first)
+      val deck = current.commonCards.worldDeck
+      current.copy(
+        temporaryHands = current.temporaryHands.updated(first,
+          hand.updated(0, card)),
+        commonCards = current.commonCards.copy(worldDeck =
+          deck.updated(deck.indexOf(card), hand.head))))
+    val woken = begun.copy(state = Ready(dealt)).after()
+    assert(player(woken.ready, first).advisers.exists {
+      case DenizenState(id, orientation, _) =>
+        id == card && orientation == Orientation.FaceUp
+      case _ => false
+    }, player(woken.ready, first).advisers)
     assert(woken.events.contains(
       WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
     assertEquals(woken.ready.game.current.turn.activePlayer, first)

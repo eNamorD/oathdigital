@@ -1,13 +1,13 @@
 0.0 round 0 | Setup
 3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
 6.0 decision 1 | [player:p2|P2] kept a Denizen
-9.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
-12.0 decision 1 | [player:p3|P3] kept a Denizen
-15.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
-18.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
-19.0 round 0 | Round 1
-19.1 turn 0 | [player:p2|P2]'s turn
-23.0 action 1 | Started Search[cost:2 Supply]
-26.0 action 1 | Drew 3 Denizens from the World Deck and kept a Denizen
-27.0 delta 1 | Discarded 2 Denizens to the Provinces discard
-30.0 action 1 | Discarded a Denizen to the Provinces discard
+11.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
+14.0 decision 1 | [player:p3|P3] kept a Denizen
+19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
+22.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
+25.0 round 0 | Round 1
+25.1 turn 0 | [player:p2|P2]'s turn
+29.0 action 1 | Started Search[cost:2 Supply]
+32.0 action 1 | Drew 3 Denizens from the World Deck and kept a Denizen
+33.0 delta 1 | Discarded 2 Denizens to the Provinces discard
+36.0 action 1 | Discarded a Denizen to the Provinces discard

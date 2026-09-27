@@ -1041,10 +1041,10 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // Chronicle design, slice 2): `GameStarted` plus a `WalkerParked`/
     // `WalkerStepRecorded`/`WalkerCompleted` fact per player decision and
     // delta, not one event per legacy setup command.
-    assertEquals(reloaded.nextSequence, 21L)
+    assertEquals(reloaded.nextSequence, 27L)
     assert(reloaded.state.isInstanceOf[Ready])
     val records = repository.load("game-v2").toOption.flatten.get.records
-    assertEquals(records.size, 21)
+    assertEquals(records.size, 27)
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
@@ -1073,10 +1073,10 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // Take Wealth is one atomic walker command (batch-1 Task 7): the single
     // legacy event became the walker's three -- the resource move, the use
     // record, and the completion -- so the next free position moves by three.
-    assertEquals(wealth.nextSequence, 24L)
+    assertEquals(wealth.nextSequence, 30L)
     assertEquals(
-      service.handle("game-wake", 21L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(21L, 24L))
+      service.handle("game-wake", 27L, GameCommand.EndWake(active)),
+      Left(GameApplicationError.StaleClientPosition(27L, 30L))
     )
     val Ready(afterTake) = wealth.state: @unchecked
     // The phase did not end with the action: a completed Wake action returns
@@ -1098,14 +1098,14 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       oathdigital.gameplay.powers.wake.TakeWealthLimit.useRef(siteId)),
       "the replayed journal must restore the use limit it recorded")
     val records = repository.load("game-wake").toOption.flatten.get.records
-    assertEquals(records.take(21).map(record =>
+    assertEquals(records.take(27).map(record =>
       ujson.read(record)("formatVersion").num.toInt).distinct, Vector(1))
-    assertEquals(records.drop(21).map(record =>
+    assertEquals(records.drop(27).map(record =>
       ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1, 1))
     // Ending Wake is a walker procedure too now (batch-1 Task 7), so the
     // Wake phase journals nothing of its own: the last two records are its
     // phase-change step and its completion, not a `gameplay.wake-ended`.
-    assertEquals(records.drop(21).map(record =>
+    assertEquals(records.drop(27).map(record =>
       ujson.read(record)("eventType").str),
       Vector("walker.step-recorded", "walker.step-recorded",
         "walker.completed", "walker.step-recorded", "walker.completed"))
@@ -1829,10 +1829,25 @@ class GameApplicationServiceSuite extends munit.FunSuite:
             DecisionOptionRef.Denizen(DenizenId(id)),
             SetupProcedure.adviserDiscardKey))))))
       .toOption.get
+    // Reveal Cards follows while p2 holds a facedown adviser it may reveal:
+    // everyone else is told who is deciding, and nothing names the card.
+    val kept = privateIds.head
+    val revealing =
+      if catalog.denizen(DenizenId(kept)).exists(_.restrictions ==
+          oathdigital.catalog.CardRestrictions.SiteOnly) then chosen
+      else
+        val waiting = projector.projectPublic("game-private",
+          LoadedGame(chosen.state, chosen.nextSequence))
+        assertEquals(waiting.walkerWaiting.map(_.playerId), Some("p2"))
+        assert(!GameHttpWire.encodeProjection(waiting).contains(kept))
+        service.handle("game-private", chosen.nextSequence,
+          GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
+            SetupProcedure.revealDecisionId(PlayerId("p2")),
+            ChooseManyAnswer(Vector.empty)))).toOption.get
     val continuedPublic = projector.projectPublic("game-private",
-      LoadedGame(chosen.state, chosen.nextSequence))
+      LoadedGame(revealing.state, revealing.nextSequence))
     val continued = projector.project("game-private",
-      LoadedGame(chosen.state, chosen.nextSequence),
+      LoadedGame(revealing.state, revealing.nextSequence),
       PlayerId(continuedPublic.walkerWaiting.get.playerId))
     assertEquals(continued.phase, "setup-walker-decision")
     assertEquals(continued.world.map(_.discardCount).sum, 8)
@@ -1867,7 +1882,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       val loaded = new GameApplicationService(catalog, reopened)
         .load("game-hsql-v2").toOption.flatten.get
       assertEquals(loaded.state, accepted.state)
-      assertEquals(loaded.nextSequence, 21L)
+      assertEquals(loaded.nextSequence, 27L)
     finally reopened.close()
 
   test("HSQL reopen preserves completed Rest cleanup and secret summary"):

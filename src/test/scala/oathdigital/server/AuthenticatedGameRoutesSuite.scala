@@ -258,6 +258,19 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
         resolveWalkerKeepPartitionBody(afterPawn, adviserDecision, "denizen",
           p2Hand.value, p2HandRest.map(_.value)))
       assertEquals(accepted.statusCode(), 200)
+      // Reveal Cards follows, unless the kept adviser is site-only. Only its
+      // owner is offered the card; everyone else sees no decision.
+      if !catalog.denizen(p2Hand).exists(
+          _.restrictions == oathdigital.catalog.CardRestrictions.SiteOnly) then
+        val reveal = ujson.read(accepted.body())("walkerDecision")
+        assertEquals(reveal("decisionId").str,
+          SetupProcedure.revealDecisionId(PlayerId("p2")))
+        assert(reveal("query")("options").arr.nonEmpty, reveal)
+        Vector(owner, spectator, p3User).foreach { user =>
+          val projection = get(client, base, Some(user.value))
+          assert(ujson.read(projection.body())("walkerDecision").isNull)
+          assert(!projection.body().contains(p2Hand.value), user)
+        }
 
       database.close()
       val storage = get(client, base, Some(owner.value))
