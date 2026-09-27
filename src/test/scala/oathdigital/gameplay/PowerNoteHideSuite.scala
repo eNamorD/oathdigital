@@ -8,10 +8,10 @@ import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
 import oathdigital.model._
 
 object PowerNoteHideSuite:
-  val noteSource: PowerSourceRef = PowerSourceRef.Site(SiteId("test-site"))
+  val hideSource: PowerSourceRef = PowerSourceRef.Site(SiteId("test-site"))
   val hidden: OathViolation = OathViolation.InvalidEventOrder("hidden by test")
 
-  def hid(ref: DecisionOptionRef): PowerNote = PowerNote(noteSource, "hid",
+  def hid(ref: DecisionOptionRef): PowerNote = PowerNote(hideSource, "hid",
     ref match
       case DecisionOptionRef.Site(site) => Vector(NoteArg.Site(site))
       case _ => Vector.empty)
@@ -32,7 +32,7 @@ object PowerNoteHideSuite:
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Restriction((_, _) => Some(hidden),
-        (_, _) => Some(PowerNote(noteSource, "forbade", Vector.empty)))))
+        (_, _) => Some(PowerNote(hideSource, "forbade", Vector.empty)))))
 
 class PowerNoteHideSuite extends munit.FunSuite:
   import PowerNoteHideSuite._
@@ -92,7 +92,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
     val Right(WalkerOutcome.Parked(pending, events)) =
       ProcedureWalker.advance(ready, tree, None, powers): @unchecked
     assertEquals(notes(events), Vector[OathEvent](PowerNoted(forbidder,
-      PowerNote(noteSource, "forbade", Vector.empty), covers = false)))
+      PowerNote(hideSource, "forbade", Vector.empty), covers = false)))
     val Right(WalkerOutcome.Finished(_, answered)) = ProcedureWalker.resolve(
       ready, tree, pending, Answered("ask", DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Button("no")), actor), powers): @unchecked

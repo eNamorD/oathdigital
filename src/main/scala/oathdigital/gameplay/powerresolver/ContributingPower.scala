@@ -168,3 +168,7 @@ object ContributingPower:
   */
 trait NotingPower:
   def noteKeys: Vector[NoteKey] = Vector.empty
+  /** The name this power's notes are written under, when it is not the name
+    * of its source. A site power four sites share names itself, so its line
+    * reads "River: ..." wherever it was used. */
+  def noteSource: Option[String] = None

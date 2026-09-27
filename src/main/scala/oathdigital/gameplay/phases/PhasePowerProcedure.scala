@@ -162,6 +162,8 @@ object PhasePowerProcedure:
       Some(PowerSourceRef.Card(id) -> DecisionOptionRef.Edifice(id))
     case RuleSourceRef.Banner(key) => Banner.fromKey(key).map(banner =>
       PowerSourceRef.Banner(banner) -> DecisionOptionRef.Banner(banner))
+    case RuleSourceRef.Site(id) =>
+      Some(PowerSourceRef.Site(id) -> DecisionOptionRef.Site(id))
     case _ => None
 
   private def sourceOf(source: DecisionOptionRef)
@@ -170,5 +172,6 @@ object PhasePowerProcedure:
     case DecisionOptionRef.Relic(id) => Right(PowerSourceRef.Card(id))
     case DecisionOptionRef.Edifice(id) => Right(PowerSourceRef.Card(id))
     case DecisionOptionRef.Banner(banner) => Right(PowerSourceRef.Banner(banner))
+    case DecisionOptionRef.Site(id) => Right(PowerSourceRef.Site(id))
     case other => Left(InvalidEventOrder(
       s"${other.kind}/${other.wireId} is not a power source"))
