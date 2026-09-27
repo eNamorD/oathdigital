@@ -8,4 +8,4 @@ import oathdigital.gameplay.powerresolver.PhasePower
   */
 object SelfActionPowers:
   val powers: Vector[PhasePower] = Vector(Tutor, ShiftingMap, DemonTail,
-    WizardSchool)
+    WizardSchool, SpiritSnare)
