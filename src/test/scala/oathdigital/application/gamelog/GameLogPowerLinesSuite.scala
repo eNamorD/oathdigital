@@ -155,3 +155,21 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assertEquals(all.indexWhere(_.endsWith(" said 2 favor.")), start + 1, all)
     assertPrefixStable(noted)
 
+  test("Gambling Hall writes its roll and its gain in place of the generic lines"):
+    val script = gamblingHall
+    val all = texts(format(script, None).filter(_.depth == 1))
+    val actor = name(script.actor)
+    val rolled = all.filter(_.startsWith(s"Gambling Hall: $actor rolled "))
+    assertEquals(rolled.size, 1, all)
+    assert(rolled.head.endsWith(", Total: 8"), rolled.head)
+    val gained = all.filter(_.startsWith(s"Gambling Hall: $actor gained "))
+    assertEquals(gained.size, 1, all)
+    assert(gained.head.endsWith(" bank."), gained.head)
+    // The favor arranged before the power posts its own line; only the
+    // power's lines are held to this.
+    val used = all.dropWhile(!_.startsWith("Gambling Hall: "))
+    assert(!used.exists(line => line.startsWith("Used ") ||
+      line.startsWith("Rolled ") || line.startsWith("Gained ")), all)
+    val entry = format(script, None).find(entry =>
+      text(entry).startsWith(s"Gambling Hall: $actor rolled ")).get
+    assertEquals(entry.kind, LogKind.Action)

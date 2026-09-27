@@ -5,6 +5,7 @@ import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.powers.action.GamblingHall
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -390,6 +391,30 @@ object LogScripts:
         Vector(Augury.id), Vector(DecisionOptionRef.Button("search:world")))))
     Script("augury", service, actor)
 
+  /** Gambling Hall at the actor's site, used in Act with a second favor
+    * arranged. The steady dice total 8, and the richest bank is chosen so
+    * the gain is never empty. */
+  def gamblingHall(using munit.Location): Script =
+    val card = DenizenId("93")
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
+    val (service, _, driver) = journaled("gambling-hall")
+    val woken = Situation.wake(driver, chronicle, orders)
+    val actor = active(woken)
+    val richest = Suit.all.maxBy(suit => woken.ready.banks.favor(suit))
+    val spare = Suit.all.find(suit => suit != richest &&
+      woken.ready.banks.favor(suit) > 0).get
+    woken.withAnswers {
+      case park if park.decisionId == GamblingHall.decisionId =>
+        ChooseOneAnswer(DecisionOptionRef.FavorBank(richest))
+    }.after(Step.Arrange(Vector(
+        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(woken, actor))),
+        Move(Piece.Favor(1), PositionedLocation(Location.FavorBank(spare)),
+          PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor),
+      GameCommand.UsePower(actor, GamblingHall.id, DecisionOptionRef.Denizen(card)))
+    Script("gambling-hall", service, actor)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -405,6 +430,7 @@ object LogScripts:
     "negotiation-declined" -> (() => negotiationDeclined),
     "negotiation-agreed" -> (() => negotiationAgreed),
     "negotiation-disclosed" -> (() => negotiationDisclosed),
-    "use-power" -> (() => usePower))
+    "use-power" -> (() => usePower),
+    "gambling-hall" -> (() => gamblingHall))
 
   def all: Vector[Script] = named.map(_._2())
