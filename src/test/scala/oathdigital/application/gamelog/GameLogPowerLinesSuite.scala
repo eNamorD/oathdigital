@@ -69,6 +69,16 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assertEquals(text(entry), s"Silver Tongue: ${name(script.actor)} said 2 favor.")
     assertEquals(entry.kind, LogKind.Trigger)
 
+  test("a banner source reads as its banner"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val noted = inserted(steps, take(steps), PowerNoted(power,
+      said(PowerSourceRef.Banner(Banner.DarkestSecret),
+        NoteArg.Player(script.actor), NoteArg.Amount(1, NoteUnit.Secret)),
+      covers = false))
+    assert(lines(noted).contains(
+      s"Darkest Secret: ${name(script.actor)} said 1 secret."), lines(noted))
+
   test("a phase power's used note replaces Used {card} as the action line"):
     val script = usePower
     val steps = withoutNotes(script.history.steps)
