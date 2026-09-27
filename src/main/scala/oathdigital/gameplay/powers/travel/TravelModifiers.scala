@@ -10,6 +10,7 @@ import oathdigital.gameplay.powerresolver.ContributingPower
 object TravelModifiers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Tents.forCatalog(catalog).toVector ++
+      RoyalStables.forCatalog(catalog).toVector ++
       ForestPaths.forCatalog(catalog).toVector ++
       DragonskinDrum.forCatalog(catalog).toVector ++
       TollRoads.forCatalog(catalog).toVector ++
