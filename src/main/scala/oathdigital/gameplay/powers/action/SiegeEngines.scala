@@ -89,7 +89,9 @@ case object SiegeEngines extends PaidAction("denizen.siege-engines",
       case Some(SiteForces.Occupied(`kind`, count)) => count
       case _ => 0
 
-  /** The player whose warbands are of `kind`. */
+  /** The player whose warbands are of `kind`. Every game is all-Exile, so
+    * each non-bandit kind has one owner; Imperial warbands, which have none
+    * until Empire rules exist, would leave the kill without a line. */
   private def owner(ready: ReadyGame, kind: ForceKind): Option[PlayerId] =
     ready.game.current.players.find(p =>
       PlayerForceKind.of(ready, p).contains(kind)).map(_.player)
