@@ -43,13 +43,17 @@ play that finds no favor writes none.
 
 Implement 23 denizens and 8 relics, which brings every suit to the 10
 denizens a generated world deck holds, so every card in it works. 37 of 255
-denizens and 16 of 48 relics are implemented today; after this phase 60 and
-24 are. The [design](superpowers/specs/2026-09-26-catalog-batch-2-design.md)
+denizens and 16 of 48 relics were implemented before this phase; after it 60
+and 24 are. The [design](superpowers/specs/2026-09-26-catalog-batch-2-design.md)
 lists the cards, eight engine additions, five slices by kind of power and
 every card's log line, and its
 [rulings appendix](superpowers/specs/2026-09-26-catalog-batch-2-rulings.md)
-settles each card. Implementation starts once the Power log lines phase
-merges its `Note` mechanism, so each card writes its line as it lands.
+settles each card. Each card writes its Game Log line through the Power log
+lines `Note` mechanism as it lands.
+
+Slice 1 is done: Animal Playmates, Birdsong, Royal Stables and Forgotten
+Vault, with the Travel Supply reduction. Slices 2 to 5 remain: battle plans,
+actions on yourself, actions on others, then triggers and when-played powers.
 
 Cards left for a later batch because they need engine work first:
 
