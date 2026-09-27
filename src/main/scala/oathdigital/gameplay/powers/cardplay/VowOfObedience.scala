@@ -15,18 +15,22 @@ import oathdigital.model._
   * Tongue's is. The catalog marks the power `persistent: false` because of
   * its REST, so the rule keeps the default automatic resolution rather than
   * reading one from the catalog.
+  * When the look-ahead hides a faceup placement because of it, it writes
+  * "{Red} cannot play a Vision faceup."
   */
 final case class VowOfObedience private (cardId: DenizenId)
     extends PhasePower with ContributingPower:
   def id: PowerId = VowOfObedience.id
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took)
+  override def noteKeys: Vector[NoteKey] =
+    Vector(NoteSupport.took, VisionPlay.noFaceup)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup -> Vector(Restriction((ctx, _) =>
       VisionPlay.pending(ctx).filter(_ => holds(ctx.state, ctx.activePlayer))
-        .map(_ => VisionPlay.forbidden("Vow of Obedience")))))
+        .map(_ => VisionPlay.forbidden("Vow of Obedience")),
+      VisionPlay.note(cardId))))
 
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean =

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{DecisionOptionRef, Location, Move, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerId, PowerWindow, RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply}
+import oathdigital.model.{DecisionOptionRef, Location, Move, NoteArg, NoteKey, NotePart, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerId, PowerNote, PowerSourceRef, PowerWindow, RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply}
 
 private[travel] object TravelRoute:
   final case class PawnMove(player: PlayerId, source: SiteId, destination: SiteId)
@@ -58,11 +58,18 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     coastSites: Set[SiteId], coastOrIslandSites: Set[SiteId])
     extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.Site(site)
+  override def noteKeys: Vector[NoteKey] = Vector(NarrowPassSitePower.noTarget)
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelActionEligibility ->
       Vector(Restriction((ctx, _) => blocked(ctx))),
     PowerWindow.CampaignTargetSelection ->
-      Vector(OptionRestriction(campaignBlocked)))
+      Vector(OptionRestriction(campaignBlocked, campaignNote)))
+
+  /** A hidden target site's line. A Travel the Pass blocks is refused whole
+    * and writes nothing (power log lines design, ruling 3). */
+  private def campaignNote(ctx: PowerCtx, ref: DecisionOptionRef)
+      : Option[PowerNote] = Some(NarrowPassSitePower.noTarget(
+    PowerSourceRef.Site(site), NoteArg.Player(ctx.activePlayer)))
 
   override def applicable(ctx: PowerCtx): Boolean = ctx.window match
     // Per candidate, in `campaignBlocked`: nothing about the tree decides it.
@@ -118,6 +125,11 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
         case Right(_) | Left(_) =>
           Some(OathViolation.TravelPassBlocked(site, route.destination))
     }
+
+object NarrowPassSitePower:
+  /** "{Red} cannot target other sites in the region." */
+  val noTarget: NoteKey = NoteKey("no-target", Vector(NotePart.Arg(0),
+    NotePart.Text(" cannot target other sites in the region.")))
 
 /** Catalog-bound site contributions for Travel's terrain rules. Static site
   * topology lives on the power objects; command state supplies only the

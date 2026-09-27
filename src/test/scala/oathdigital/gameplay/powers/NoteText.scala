@@ -13,8 +13,13 @@ object NoteText:
 
   /** The notes `power` journaled in `events`, in order. */
   def said(power: PhasePower, events: Vector[OathEvent]): Vector[Said] =
-    events.collect { case PowerNoted(id, note, covers) if id == power.id =>
-      Said(note.key, sentence(power.noteKeys, note), covers) }
+    said(power.id, power.noteKeys, events)
+
+  /** The notes the power `id`, declaring `keys`, journaled in `events`. */
+  def said(id: PowerId, keys: Vector[NoteKey], events: Vector[OathEvent])
+      : Vector[Said] =
+    events.collect { case PowerNoted(`id`, note, covers) =>
+      Said(note.key, sentence(keys, note), covers) }
 
   private def sentence(keys: Vector[NoteKey], note: PowerNote): String =
     keys.find(_.name == note.key).fold(s"<no template for ${note.key}>")(

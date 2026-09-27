@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.powers.travel.{NarrowPassSitePower, TravelSitePowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -112,3 +113,20 @@ class CampaignPowersSuite extends munit.FunSuite:
       provinces = passMap.provinces.filterNot(_ == pass))
     assertEquals(offered(withPawnAt(ordered.head, without),
       Vector(ordered(3), ordered(4)).map(siteOption)).size, 2)
+
+  /** The notes the Pass writes when the walk parks on `options`. */
+  private def passNotes(ready: ReadyGame,
+      options: Vector[DecisionOption] = candidates.map(siteOption))
+      : Vector[NoteText.Said] =
+    val Right(WalkerOutcome.Parked(_, events)) = ProcedureWalker.advance(ready,
+      targets(options), None, WalkerPowers(Vector(passPower))): @unchecked
+    NoteText.said(passPower.id, passPower.noteKeys, events)
+
+  test("each site the Pass hides writes the same line, which merges to one"):
+    assertEquals(passNotes(withPawnAt(ordered.head)), Vector.fill(2)(
+      NoteText.Said("no-target",
+        s"${actor.value} cannot target other sites in the region.",
+        covers = false)))
+
+  test("a Pass that hides nothing writes nothing"):
+    assertEquals(passNotes(withPawnAt(ordered(3))), Vector.empty)

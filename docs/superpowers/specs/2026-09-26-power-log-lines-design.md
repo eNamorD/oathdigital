@@ -11,6 +11,9 @@ as its first two powers. "Settled in slice 1" records what it decided.
 **Slice 2 (2026-09-26):** every phase power's own line. "Settled in slice 2"
 records what it decided.
 
+**Slice 3 (2026-09-26):** the removed and hidden options. "Settled in slice
+3" records what it decided.
+
 **Builds on** the [Game Log design](2026-09-25-game-log-design.md). That
 design left "powers declaring their own log lines" out of scope, kept the
 generic "Used {card}" as a stand-in, and reserved the detail row
@@ -205,7 +208,7 @@ Wording rules:
 
 - Past tense for what happened: "Toll Roads: Red paid 1 favor to Blue."
 - "must", "may" or "cannot" for a rule that binds: "Narrow Pass: Red cannot
-  travel to other sites in the region."
+  target other sites in the region."
 - Terse fragments are fine: "Outriders: Skulls ignored."
 - An exclamation mark is allowed where a procedure changes dramatically.
 - A pawn placed by a power "placed at" a site. It did not travel or move.
@@ -287,9 +290,10 @@ cost payment logs nothing today and still logs nothing.
 | Secret Police | hide hook | Secret Police: {Red} cannot play a Vision faceup. |
 | Sacred Ground | hide hook | Sacred Ground: {Red} cannot play a Vision faceup. |
 | Oaken Fortress, Rotting Fortress | hide hook, per protected target | Oaken Fortress: {Blue} cannot be targeted. |
-| Circlet of Command | hide hook | Circlet of Command: {Blue}'s banners and relics cannot be targeted. |
+| Rotting Fortress, a Raid hidden from several players, key `all-shielded` | hide hook | Rotting Fortress: No player at {site} can be targeted. |
+| Circlet of Command, Raid and Challenge | hide hook | Circlet of Command: {Blue}'s banners and relics cannot be targeted. |
+| Circlet of Command, Conspiracy | `Note` from its transform | Circlet of Command: {Blue}'s banners and relics cannot be targeted. |
 | Narrow Pass, Campaign targets | hide hook | Narrow Pass: {Red} cannot target other sites in the region. |
-| Narrow Pass, Travel | hide hook | Narrow Pass: {Red} cannot travel to other sites in the region. |
 
 ### Added effects
 
@@ -346,7 +350,8 @@ cost payment logs nothing today and still logs nothing.
   no decision point explains it well.
 - Take Wealth's once-per-site limit: an ordinary availability rule.
 - Every whole-action block (ruling 3): Vow of Peace's first sentence, the
-  Fortress's Raid-only block.
+  Fortress's Raid-only block, and a Travel the Narrow Pass blocks. Travel's
+  destination is part of the command, so no decision hides it.
 
 ## 4. Storage
 
@@ -469,6 +474,29 @@ The second slice settled these:
 - The reads a note needs live in `NoteSupport`. Shared sentences live beside
   the helpers of their family: `RollResults.rolled`, `RelicDraws.drew`,
   `PawnMoves.placedKey`, `NoteSupport.took` and `NoteSupport.gainedKey`.
+
+## Settled in slice 3
+
+The third slice settled these:
+
+- The Narrow Pass writes no Travel line. Travel's destination is part of
+  the command, and no decision offers destinations, so a blocked Travel is a
+  whole-action block.
+- The hide hook is asked once per hidden option. A Raid hidden at the kind
+  decision names the one player it could have targeted, or, when a Rotting
+  Fortress protects several, their site: "No player at {site} can be
+  targeted." An Oaken Fortress protects only its ruler.
+- The Circlet narrows a Conspiracy's target with a transform, which puts a
+  `Note` before the decision whenever it drops an option, and in the
+  decision's place when it drops them all.
+- Vow of Obedience, Secret Police and Sacred Ground share one key,
+  `no-faceup`, declared in `VisionPlay`. Several Visions hidden in one
+  action post one line, through the merge slice 1 built.
+- A hidden option is credited to the first restriction whose violation its
+  answer adds. When two powers forbid the same option, only that one writes
+  a line.
+- `NoteText.said` reads any power's notes by id and keys, so the suites of
+  contributing powers assert their lines as the phase power suites do.
 
 ## Slices
 

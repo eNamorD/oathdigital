@@ -28,6 +28,12 @@ import oathdigital.model._
   * takes the site leaves the Raid as the only legal kind, for one.) The answers
   * are read from the pending position the restriction is checked against, so it
   * holds for a Campaign that a power runs inside another action as well.
+  *
+  * Each option it hides writes a line (power log lines design, "Removed and
+  * hidden options"). A hidden defender or banner names the player it
+  * protects. A hidden Raid names the one player it could have targeted, or,
+  * when a Rotting Fortress protects several, their site. The start refusal
+  * blocks the whole action and writes nothing.
   */
 sealed abstract class FortressRule extends ContributingPower:
   def catalog: ExecutableCatalog
@@ -42,14 +48,43 @@ sealed abstract class FortressRule extends ContributingPower:
   final override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
+  final override def noteKeys: Vector[NoteKey] =
+    Vector(FortressRule.shielded, FortressRule.allShielded)
+
   final def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
-    PowerWindow.CampaignKindSelection -> Vector(OptionRestriction(kindGuard)),
+    PowerWindow.CampaignKindSelection ->
+      Vector(OptionRestriction(kindGuard, kindNote)),
     PowerWindow.CampaignDefenderSelection ->
-      Vector(OptionRestriction(defenderGuard)),
+      Vector(OptionRestriction(defenderGuard, defenderNote)),
     PowerWindow.CampaignActionEligibility ->
       Vector(Restriction((ctx, _) => startGuard(ctx))),
     PowerWindow.ChallengeBannerSelection ->
-      Vector(OptionRestriction(bannerGuard)))
+      Vector(OptionRestriction(bannerGuard, bannerNote)))
+
+  private def card: PowerSourceRef = PowerSourceRef.Card(fortress)
+
+  private def shieldedNote(player: PlayerId): Option[PowerNote] =
+    Some(FortressRule.shielded(card, NoteArg.Player(player)))
+
+  /** The Raid it hid names the one player it could have targeted, or their
+    * site when it protects several. */
+  private def kindNote(ctx: PowerCtx, ref: DecisionOptionRef)
+      : Option[PowerNote] =
+    CampaignSetup.raidDefenders(ctx.state, ctx.activePlayer) match
+      case Vector(defender) => shieldedNote(defender)
+      case _ => pawnSite(ctx.state, ctx.activePlayer).map(site =>
+        FortressRule.allShielded(card, NoteArg.Site(site)))
+
+  private def defenderNote(ctx: PowerCtx, ref: DecisionOptionRef)
+      : Option[PowerNote] = ref match
+    case DecisionOptionRef.Player(defender) => shieldedNote(defender)
+    case _ => None
+
+  private def bannerNote(ctx: PowerCtx, ref: DecisionOptionRef)
+      : Option[PowerNote] = ref match
+    case DecisionOptionRef.Banner(banner) =>
+      BannerRules.holder(ctx.state.game.current, banner).flatMap(shieldedNote)
+    case _ => None
 
   private def blocked(detail: String): OathViolation =
     OathViolation.CampaignUnavailable(detail)
@@ -104,6 +139,16 @@ sealed abstract class FortressRule extends ContributingPower:
       Some(OathViolation.InvalidEventOrder(
         s"a Fortress protects the holder of ${banner.key} from a Challenge"))
     case _ => None
+
+object FortressRule:
+  /** "{Blue} cannot be targeted." */
+  val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
+    NotePart.Text(" cannot be targeted.")))
+  /** "No player at {site} can be targeted.", for a Raid hidden from several
+    * protected players. */
+  val allShielded: NoteKey = NoteKey("all-shielded", Vector(
+    NotePart.Text("No player at "), NotePart.Arg(0),
+    NotePart.Text(" can be targeted.")))
 
 /** The Oaken Fortress (E28, intact): while its ruler is at this site, they
   * cannot be targeted by a Challenge or a Raid. Empire rulers are not

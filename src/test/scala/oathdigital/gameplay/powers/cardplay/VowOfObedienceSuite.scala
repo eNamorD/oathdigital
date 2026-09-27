@@ -56,6 +56,23 @@ class VowOfObedienceSuite extends munit.FunSuite:
     val parkedAt = search(VisionRules.Conspiracy, holding(_))
     assert(!offered(parkedAt).contains("adviser-faceup"))
 
+  private def hidden(from: OathTransition): Vector[NoteText.Said] =
+    val power = VowOfObedience.forCatalog(catalog).get
+    NoteText.said(power.id, power.noteKeys, from.events)
+
+  private val noFaceup = NoteText.Said("no-faceup",
+    s"${actor.value} cannot play a Vision faceup.", covers = false)
+
+  test("the hidden faceup placement is written as the Vow's line"):
+    assertEquals(hidden(search(VisionRules.Faith, holding(_))).distinct,
+      Vector(noFaceup))
+    assertEquals(hidden(fromAdvisers(holding(inPhase(base, Phase.Act)),
+      VisionRules.Faith)).distinct, Vector(noFaceup))
+
+  test("a Vow that forbids nothing writes nothing"):
+    assertEquals(hidden(search(VisionRules.Faith, holding(_,
+      orientation = Orientation.FaceDown))), Vector.empty)
+
   test("a facedown Vow, or another player's faceup Vow, forbids nothing"):
     assert(offered(search(VisionRules.Faith, holding(_,
       orientation = Orientation.FaceDown))).contains("adviser-faceup"))

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture,
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
   PowerImplementationStatus, SearchFixture, TargetsFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -75,3 +75,16 @@ class SecretPoliceSuite extends munit.FunSuite:
       exile(other))
     assert(!offered(fromAdvisers(ready, VisionRules.Faith))
       .contains("adviser-faceup"))
+
+  private def hidden(from: OathTransition): Vector[NoteText.Said] =
+    val power = SecretPolice.forCatalog(catalog).get
+    NoteText.said(power.id, power.noteKeys, from.events)
+
+  test("the hidden faceup placement is written as the Police's line"):
+    assertEquals(hidden(search(home(base), exile(other), exile(other))).distinct,
+      Vector(NoteText.Said("no-faceup",
+        s"${actor.value} cannot play a Vision faceup.", covers = false)))
+
+  test("a player the Police do not bind reads no line"):
+    assertEquals(hidden(search(home(base), exile(actor), exile(actor))),
+      Vector.empty)
