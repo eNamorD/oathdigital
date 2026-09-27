@@ -28,7 +28,8 @@ object ServerRuntime:
   def open(
       databasePath: Path,
       catalogPath: Path,
-      random: ChronicleRandomPort = ChronicleRandomPort.random
+      random: ChronicleRandomPort = ChronicleRandomPort.random,
+      gameIds: () => String = () => TrustedGameProvisioning.generateGameId()
   ): Either[String, ServerRuntime] =
     HsqldbDatabaseOwner.open(databasePath).left.map {
       case oathdigital.application.RepositoryFailure.StorageFailure(message) =>
@@ -83,7 +84,7 @@ object ServerRuntime:
             authorization,
             database.identities,
             new TrustedGameProvisioning(firstGameService, generatedPlanFactory,
-              database.trustedGames),
+              database.trustedGames, generateGameId = gameIds),
             new TrustedGameGateway(firstGameService, projector),
             database
           )

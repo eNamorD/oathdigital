@@ -161,7 +161,7 @@ class GameHttpWireSuite extends munit.FunSuite:
 
   test("development bootstrap remains configuration-only"):
     val json =
-      """{"expectedNextSequence":0,"participants":[{"playerId":"p1","lineageId":"l1","color":"red"}],"firstPlayer":"p1"}"""
+      """{"expectedNextSequence":0,"participants":[{"playerId":"p1","color":"red"}],"firstPlayer":"p1"}"""
     val request = GameHttpWire.decodeBootstrap(json).toOption.get
     assertEquals(request.expectedNextSequence, 0L)
     assertEquals(request.participants.map(_.playerId), Vector("p1"))

@@ -14,7 +14,8 @@ final class TrustedGameProvisioning(
     planFactory: FirstGamePlanFactory,
     store: TrustedGameStore,
     generateCode: () => SeatCode = () => TrustedGameProvisioning.generateCode(),
-    nowMillis: () => Long = () => System.currentTimeMillis()
+    nowMillis: () => Long = () => System.currentTimeMillis(),
+    generateGameId: () => String = () => TrustedGameProvisioning.generateGameId()
 ):
   import TrustedGameFailure._
 
@@ -30,20 +31,36 @@ final class TrustedGameProvisioning(
         config = FirstGameBootstrapMapper.map(FirstGameBootstrapRequest(
           0L, valid.participants, valid.participants.head.playerId))
         plan <- planFactory.build(config).left.map(_ => InvalidRequest)
-        prepared <- service.prepareBootstrap(valid.gameId, plan.chronicle,
-          plan.resolvedConfig).left.map:
-          case _: GameApplicationError.CommandRejected => InvalidRequest
-          case _ => StorageFailure
-        codes <- generateSeats(valid.participants)
-        _ <- store.create(valid.gameId, codes.map { case (player, code) =>
-          code.digest -> player }, prepared.records, nowMillis()).left.map:
-          case TrustedGameStoreFailure.DuplicateGame => DuplicateGame
-          case TrustedGameStoreFailure.CodeCollision => CodeCollision
-          case TrustedGameStoreFailure.InvalidInput => InvalidRequest
-          case TrustedGameStoreFailure.StorageFailure => StorageFailure
-      yield TrustedGameCreateResponse(valid.gameId, codes.map { case (player, code) =>
+        placed <- place(valid.participants, plan, None, 1)
+        (gameId, codes) = placed
+      yield TrustedGameCreateResponse(gameId, codes.map { case (player, code) =>
         TrustedSeatLink(player, s"$origin/s/${code.raw}") })
     catch { case NonFatal(_) => Left(StorageFailure) }
+
+  /** Stores the game under a freshly drawn ID. A taken ID is drawn again, up
+    * to `MaxGameIdAttempts` draws, keeping the seat codes already generated.
+    */
+  private def place(participants: Vector[BootstrapParticipantRequest],
+      plan: FirstGamePlan, seats: Option[Vector[(String, SeatCode)]], attempt: Int)
+      : Either[TrustedGameFailure, (String, Vector[(String, SeatCode)])] =
+    val gameId = generateGameId()
+    for
+      prepared <- service.prepareBootstrap(gameId, plan.chronicle,
+        plan.resolvedConfig).left.map:
+        case _: GameApplicationError.CommandRejected => InvalidRequest
+        case _ => StorageFailure
+      codes <- seats.fold(generateSeats(participants))(Right(_))
+      placed <- store.create(gameId, codes.map { case (player, code) =>
+          code.digest -> player }, prepared.records, nowMillis()) match
+        case Left(TrustedGameStoreFailure.DuplicateGame)
+            if attempt < TrustedGameProvisioning.MaxGameIdAttempts =>
+          place(participants, plan, Some(codes), attempt + 1)
+        case Left(TrustedGameStoreFailure.DuplicateGame) => Left(DuplicateGame)
+        case Left(TrustedGameStoreFailure.CodeCollision) => Left(CodeCollision)
+        case Left(TrustedGameStoreFailure.InvalidInput) => Left(InvalidRequest)
+        case Left(TrustedGameStoreFailure.StorageFailure) => Left(StorageFailure)
+        case Right(()) => Right(gameId -> codes)
+    yield placed
 
   private def generateSeats(participants: Vector[BootstrapParticipantRequest])
       : Either[TrustedGameFailure, Vector[(String, SeatCode)]] =
@@ -75,5 +92,12 @@ final class TrustedGameProvisioning(
     }.map(_.toString).toRight(InvalidRequest)
 
 object TrustedGameProvisioning:
+  val MaxGameIdAttempts: Int = 8
+  private val GameIdAlphabet = "abcdefghijklmnopqrstuvwxyz234567"
   private lazy val random = new SecureRandom()
   private def generateCode(): SeatCode = SeatCode.generate(random)
+
+  /** "game-" and 12 random lowercase base32 characters: 60 bits, within the
+    * identifier rule of `TrustedGameCodecFields.identifier`. */
+  def generateGameId(): String =
+    "game-" + Vector.fill(12)(GameIdAlphabet(random.nextInt(GameIdAlphabet.length))).mkString

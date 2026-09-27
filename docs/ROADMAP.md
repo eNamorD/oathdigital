@@ -128,14 +128,12 @@ requested UI changes are in the
 
 ### Setup deferred items
 
-- [ ] **derive the lineage from the color on the server.** The color
-  is always associated with a lineage, but the trusted creation request still
-  carries a free-form `lineageId`, and the host page sends `<color>-lineage`.
-  The server should derive the lineage and the request should drop `lineageId`.
-- [ ] **generate the game ID on the server.** The host page generates
-  it in the browser (`manual-<time>-<random>`) and generates a new one when the
-  server reports a duplicate. The server should assign it and return it in the
-  creation response, and the request should drop `gameId`.
+- [x] **derive the lineage from the color on the server.** Creation
+  requests name only each player and color, and `FirstGameBootstrapMapper`
+  derives `<color>-lineage` (server-side setup IDs, 2026-09-27).
+- [x] **generate the game ID on the server.** `TrustedGameProvisioning` draws
+  `game-<12 base32 characters>` and draws again, up to 8 times, when the ID is
+  taken. The creation response returns it (server-side setup IDs, 2026-09-27).
 - [ ] **Simultaneous setup effects.** Simultaneous setup effects are resolved by
   the Chancellor or first player (site order is used until then). Player choices
   earlier in setup once foundations and legacies exist, such as the Chancellor

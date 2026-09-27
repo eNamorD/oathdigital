@@ -296,11 +296,16 @@ class ProjectionProtocolSuite extends munit.FunSuite:
 
   test("bootstrap requests round-trip and reject malformed exact fields"):
     val request = FirstGameBootstrapRequest(0, Vector(
-      BootstrapParticipantRequest("red", "red-lineage", PlayerColor.Red),
-      BootstrapParticipantRequest("blue", "blue-lineage", PlayerColor.Blue)), "red")
+      BootstrapParticipantRequest("red", PlayerColor.Red),
+      BootstrapParticipantRequest("blue", PlayerColor.Blue)), "red")
     assertEquals(FirstGameBootstrapCodec.decode(FirstGameBootstrapCodec.encode(request)),
       Right(request))
     val unexpected = ujson.read(FirstGameBootstrapCodec.encode(request))
     unexpected("participants")(0)("actorPlayerId") = "red"
     assertEquals(FirstGameBootstrapCodec.decode(ujson.write(unexpected)).left.toOption.get.path,
       "$.participants[0].actorPlayerId")
+    // The server derives the lineage from the color, so a request naming one is refused.
+    val lineage = ujson.read(FirstGameBootstrapCodec.encode(request))
+    lineage("participants")(0)("lineageId") = "red-lineage"
+    assertEquals(FirstGameBootstrapCodec.decode(ujson.write(lineage)).left.toOption.get.path,
+      "$.participants[0].lineageId")

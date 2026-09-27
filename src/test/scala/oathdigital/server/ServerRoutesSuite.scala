@@ -124,27 +124,28 @@ class ServerRoutesSuite extends munit.FunSuite:
     val binding = bind(ServerRoutes.route(runtime, blocking,
       config(ServerMode.Development), ServerReadiness.starting("test-version")))
 
-    def create(gameId: String, origin: String) = client.send(
+    def create(origin: String) = client.send(
       HttpRequest.newBuilder(URI.create(
         s"http://127.0.0.1:${binding.localAddress.getPort}/games"))
         .header("Origin", origin)
         .POST(HttpRequest.BodyPublishers.ofString(
-          s"""{"gameId":"$gameId","participants":[""" +
-            """{"playerId":"Red","lineageId":"red-lineage","color":"red"},""" +
-            """{"playerId":"Blue","lineageId":"blue-lineage","color":"blue"}]}"""))
+          """{"participants":[""" +
+            """{"playerId":"Red","color":"red"},""" +
+            """{"playerId":"Blue","color":"blue"}]}"""))
         .build(),
       JavaResponse.BodyHandlers.ofString())
 
     try
-      assertEquals(create("foreign-game", "http://example.com:8080").statusCode(), 403)
-      assertEquals(create("other-port-game", "http://localhost:9090").statusCode(), 403)
-      assertEquals(create("ip-game", "http://127.0.0.1:8080").statusCode(), 201)
-      val created = create("dev-game", "http://localhost:8080")
+      assertEquals(create("http://example.com:8080").statusCode(), 403)
+      assertEquals(create("http://localhost:9090").statusCode(), 403)
+      assertEquals(create("http://127.0.0.1:8080").statusCode(), 201)
+      val created = create("http://localhost:8080")
       assertEquals(created.statusCode(), 201)
       assert(created.body().contains("http://127.0.0.1:8080/s/"))
-      val loaded = get(client, binding, "/api/dev/first-games/dev-game?playerId=Red")
+      val gameId = ujson.read(created.body())("gameId").str
+      val loaded = get(client, binding, s"/api/dev/first-games/$gameId?playerId=Red")
       assertEquals(loaded.statusCode(), 200)
-      assert(loaded.body().contains("\"gameId\":\"dev-game\""))
+      assert(loaded.body().contains(s"\"gameId\":\"$gameId\""))
     finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       runtime.close()

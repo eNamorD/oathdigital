@@ -187,7 +187,6 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
     "participants" -> ujson.Arr.from(playerIds.zipWithIndex.map {
       case (playerId, index) => ujson.Obj(
         "playerId" -> playerId,
-        "lineageId" -> s"lineage-${index + 1}",
         "color" -> oathdigital.model.PlayerColor.all(index).key
       )
     }),

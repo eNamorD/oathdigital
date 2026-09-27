@@ -21,9 +21,10 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
   private val parkedAssertions = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
-  private val request = TrustedGameCreateRequest("trusted-game", Vector(
-    BootstrapParticipantRequest("p1", "l1", PlayerColor.Red),
-    BootstrapParticipantRequest("p2", "l2", PlayerColor.Blue)))
+  private val gameId = "trusted-game"
+  private val request = TrustedGameCreateRequest(Vector(
+    BootstrapParticipantRequest("p1", PlayerColor.Red),
+    BootstrapParticipantRequest("p2", PlayerColor.Blue)))
   private val codes = Vector("AAAAAAAAAAAAAAAAAAAAAA", "AQEBAQEBAQEBAQEBAQEBAQ",
     "AgICAgICAgICAgICAgICAg", "AwMDAwMDAwMDAwMDAwMDAw").map(SeatCode.parse(_).toOption.get)
 
@@ -34,9 +35,11 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
     try body(owner, connection)
     finally { connection.close(); owner.close() }
 
-  private def provision(owner: HsqldbDatabaseOwner, generate: () => SeatCode) =
+  private def provision(owner: HsqldbDatabaseOwner, generate: () => SeatCode,
+      gameIds: () => String = () => gameId) =
     new TrustedGameProvisioning(new GameApplicationService(catalog, owner.eventStreams),
-      new GeneratedFirstGamePlanFactory(catalog), owner.trustedGames, generate, () => 1234L)
+      new GeneratedFirstGamePlanFactory(catalog), owner.trustedGames, generate, () => 1234L,
+      gameIds)
 
   private def rows(connection: Connection, gameId: String): Vector[Int] =
     Vector("game_resources", "trusted_seats", "event_streams", "event_entries").map { table =>
@@ -59,10 +62,10 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       // GameStarted plus the WalkerParked fact from Setup's immediate first
       // park (2026-09-21 Chronicle design, slice 2): two event entries for
       // one bootstrap, not the legacy one.
-      assertEquals(rows(connection, request.gameId), Vector(1, 2, 1, 2))
+      assertEquals(rows(connection, gameId), Vector(1, 2, 1, 2))
       codes.take(2).zipWithIndex.foreach { case (code, index) =>
         assertEquals(owner.identities.resolveTrustedSeat(code.digest),
-          Right(TrustedSeat(request.gameId, s"p${index + 1}")))
+          Right(TrustedSeat(gameId, s"p${index + 1}")))
       }
       val statement = connection.createStatement()
       try
@@ -73,24 +76,54 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
           assertEquals(result.getLong(2), 1234L)
           index += 1
       finally statement.close()
-      val loaded = new GameApplicationService(catalog, owner.eventStreams).load(request.gameId)
+      val loaded = new GameApplicationService(catalog, owner.eventStreams).load(gameId)
       assertEquals(loaded.toOption.flatten.map(_.nextSequence), Some(2L))
-      val journal = owner.eventStreams.load(request.gameId).toOption.flatten.get.records.mkString
+      val journal = owner.eventStreams.load(gameId).toOption.flatten.get.records.mkString
       codes.foreach(code => assert(!journal.contains(code.raw)))
     }
 
-  test("duplicate game and persistent digest collision return generic failures without partial rows"):
+  test("the game ID comes from the server's generator"):
+    withDatabase { (owner, connection) =>
+      val generated = codes.iterator
+      val response = provision(owner, () => generated.next(), () => "server-game")
+        .create(request, "https://games.test")
+      assertEquals(response.map(_.gameId), Right("server-game"))
+      assertEquals(rows(connection, "server-game"), Vector(1, 2, 1, 2))
+    }
+
+  test("a taken game ID is drawn again, keeping the seat codes"):
+    withDatabase { (owner, connection) =>
+      val first = codes.iterator
+      assert(provision(owner, () => first.next()).create(request, "https://games.test").isRight)
+      val ids = Iterator(gameId, "fresh")
+      val second = codes.drop(2).iterator
+      val response = provision(owner, () => second.next(), () => ids.next())
+        .create(request, "https://games.test")
+      assertEquals(response.map(_.gameId), Right("fresh"))
+      assertEquals(response.map(_.seats.map(_.url)), Right(codes.drop(2).map(code =>
+        s"https://games.test/s/${code.raw}")))
+      assertEquals(rows(connection, "fresh"), Vector(1, 2, 1, 2))
+    }
+
+  test("generated game IDs are distinct and follow the identifier rule"):
+    val ids = Vector.fill(50)(TrustedGameProvisioning.generateGameId())
+    assert(ids.forall(_.matches("game-[a-z2-7]{12}")), ids)
+    assertEquals(ids.distinct.size, ids.size)
+
+  test("eight taken game IDs and persistent digest collision return generic failures without partial rows"):
     withDatabase { (owner, connection) =>
       val generated = codes.iterator
       assert(provision(owner, () => generated.next()).create(request, "http://localhost:8080").isRight)
-      val before = rows(connection, request.gameId)
+      val before = rows(connection, gameId)
       val duplicates = codes.drop(2).iterator
-      assertEquals(provision(owner, () => duplicates.next()).create(request, "http://localhost:8080"),
-        Left(TrustedGameFailure.DuplicateGame))
-      assertEquals(rows(connection, request.gameId), before)
+      var draws = 0
+      assertEquals(provision(owner, () => duplicates.next(), () => { draws += 1; gameId })
+        .create(request, "http://localhost:8080"), Left(TrustedGameFailure.DuplicateGame))
+      assertEquals(draws, TrustedGameProvisioning.MaxGameIdAttempts)
+      assertEquals(rows(connection, gameId), before)
       val collisionCodes = Vector(codes(2), codes.head).iterator
-      val collision = provision(owner, () => collisionCodes.next()).create(
-        request.copy(gameId = "collision"), "http://localhost:8080")
+      val collision = provision(owner, () => collisionCodes.next(), () => "collision").create(
+        request, "http://localhost:8080")
       assertEquals(collision, Left(TrustedGameFailure.CodeCollision))
       assertEquals(rows(connection, "collision"), Vector(0, 0, 0, 0))
       codes.foreach(code => assert(!collision.toString.contains(code.raw)))
@@ -101,8 +134,8 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       val generated = Vector(codes.head, codes.head, codes(1)).iterator
       assert(provision(owner, () => generated.next()).create(request, "https://games.test").isRight)
       var count = 0
-      val failed = provision(owner, () => { count += 1; codes(2) }).create(
-        request.copy(gameId = "exhausted"), "https://games.test")
+      val failed = provision(owner, () => { count += 1; codes(2) }, () => "exhausted").create(
+        request, "https://games.test")
       assertEquals(failed, Left(TrustedGameFailure.CodeCollision))
       assertEquals(count, 9)
       assertEquals(rows(connection, "exhausted"), Vector(0, 0, 0, 0))
@@ -116,26 +149,24 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       val generated = codes.iterator
       val failed = provision(owner, () => generated.next()).create(request, "https://games.test")
       assertEquals(failed, Left(TrustedGameFailure.StorageFailure))
-      assertEquals(rows(connection, request.gameId), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
       codes.foreach(code => assert(!failed.toString.contains(code.raw)))
     }
 
   test("invalid bootstrap semantics and origins never persist anything or generate codes"):
     withDatabase { (owner, connection) =>
       val service = provision(owner, () => fail("must validate before code generation"))
-      Vector(request.copy(gameId = "bad/game"), request.copy(participants = Vector.empty),
+      Vector(request.copy(participants = Vector.empty),
         request.copy(participants = request.participants.updated(1,
-          request.participants(1).copy(color = PlayerColor.Red))),
-        request.copy(participants = request.participants.updated(1,
-          request.participants(1).copy(lineageId = "l1")))).foreach { invalid =>
+          request.participants(1).copy(color = PlayerColor.Red)))).foreach { invalid =>
         assertEquals(service.create(invalid, "https://games.test"), Left(TrustedGameFailure.InvalidRequest))
-        assertEquals(rows(connection, invalid.gameId), Vector(0, 0, 0, 0))
+        assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
       }
       Vector("https://user:secret@games.test", "https://games.test/path", "https://games.test?q=secret",
         "ftp://games.test", "https://games.test/#secret").foreach { origin =>
         assertEquals(service.create(request, origin), Left(TrustedGameFailure.InvalidRequest))
       }
-      assertEquals(rows(connection, request.gameId), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
     }
 
   test("code generator exceptions are generic and cannot leak credentials"):
@@ -144,7 +175,7 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
         .create(request, "https://games.test")
       assertEquals(failed, Left(TrustedGameFailure.StorageFailure))
       assert(!failed.toString.contains(codes.head.raw))
-      assertEquals(rows(connection, request.gameId), Vector(0, 0, 0, 0))
+      assertEquals(rows(connection, gameId), Vector(0, 0, 0, 0))
     }
 
   test("bootstrap preparation performs no repository IO and matches ordinary handle"):
