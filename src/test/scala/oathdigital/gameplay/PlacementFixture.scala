@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.catalog.CardRestrictions
-import oathdigital.gameplay.actions.PlacementRules
+import oathdigital.gameplay.actions.{CardPlay, PlacementRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -44,20 +44,23 @@ object PlacementFixture:
   def denizen(id: DenizenId, tokens: Tokens = Tokens.empty): DenizenState =
     DenizenState(id, Orientation.FaceUp, tokens)
 
-  /** `card` in the actor's hand and the actor's pawn site holding exactly
-    * `site`. Every card that leaves a place goes to the matching deck, so the
-    * inventory stays whole.
+  /** `card` in the actor's hand and the site at `at`, or the actor's pawn
+    * site, holding exactly `site`; the actor's pawn moves to `at`. Every card
+    * that leaves a place goes to the matching deck, so the inventory stays
+    * whole.
     */
-  def staged(card: DenizenId, site: Vector[SiteDenizenState])
-      : (ReadyGame, PlayerId, SiteId) =
+  def staged(card: DenizenId, site: Vector[SiteDenizenState],
+      at: Option[SiteId] = None): (ReadyGame, PlayerId, SiteId) =
     val base = initialReady
     val current = base.game.current
     val actor = actorOf(base)
-    val siteId = actor.pawnSite.get
+    val siteId = at.getOrElse(actor.pawnSite.get)
     val placed = site.collect { case d: DenizenState => d.id: CardId } :+ card
     val edifices = site.collect { case e: EdificeState => e.id }
     val before = current.map.sites(siteId).denizens
     (base.updateCurrent(_.copy(
+      players = current.players.map(p =>
+        if p.player == actor.player then p.copy(pawnSite = Some(siteId)) else p),
       temporaryHands = current.temporaryHands.updated(actor.player, Vector(card)),
       commonCards = current.commonCards.copy(
         worldDeck = current.commonCards.worldDeck.filterNot(placed.contains) ++
@@ -67,6 +70,10 @@ object PlacementFixture:
       map = current.map.copy(sites = current.map.sites.updated(siteId,
         current.map.sites(siteId).copy(denizens = site))))),
       actor.player, siteId)
+
+  /** The first in-play Homeland of the first game, and its suit. */
+  lazy val homeland: (SiteId, Suit) = initialReady.game.current.map.inPlay
+    .flatMap(site => CardPlay.homelandSuit(catalog, site).map(site -> _)).head
 
   /** The actor rules the pawn site, so a Hall of Ministers does not protect it. */
   def ruledByActor(ready: ReadyGame, site: SiteId): ReadyGame =

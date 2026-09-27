@@ -242,18 +242,22 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val player = current.players.find(_.player == actor).get
     val enemy = current.players.find(_.player != actor).get
     val hall = EdificeId("E16")
-    val hallSuit = catalog.edifices.find(_.id.value == hall.value).get.suit
-    val siteId = player.pawnSite.get
+    // The actor plays a card of its suit to the Homeland, which holds the Hall.
+    val (siteId, homeSuit) = PlacementFixture.homeland
     val capacity = catalog.sites.find(_.id == siteId).get.capacity
     val denizens = current.commonCards.worldDeck.collect { case id: DenizenId => id }
-    val card = denizens.find(id => catalog.suitOf(id).contains(hallSuit)).get
+    val card = denizens.find(id => catalog.suitOf(id).contains(homeSuit)).get
     val fillers = denizens.filter(_ != card).take(capacity - 1)
     def prepared(ruler: LineageId) = base.updateCurrent(_.copy(
+      players = current.players.map(p =>
+        if p.player == actor then p.copy(pawnSite = Some(siteId)) else p),
       temporaryHands = current.temporaryHands.updated(actor, Vector(card)),
       commonCards = current.commonCards.copy(
         worldDeck = current.commonCards.worldDeck
           .filterNot(id => id == card || fillers.contains(id)),
-        edificeDeck = current.commonCards.edificeDeck.filterNot(_ == hall)),
+        edificeDeck = current.commonCards.edificeDeck.filterNot(_ == hall) ++
+          current.map.sites(siteId).denizens.collect {
+            case e: EdificeState if e.id != hall => e.id }),
       map = current.map.copy(sites = current.map.sites.updated(siteId,
         current.map.sites(siteId).copy(
           forces = SiteForces.Occupied(ForceKind.Exile(ruler), 1),

@@ -98,19 +98,18 @@ class DiscardRestrictionsSuite extends munit.FunSuite:
       CardPlay.Origin.TemporaryHand)
       .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
 
-  /** A full site whose Homeland is the Hall, so the played card may replace one
-    * of its cards, and the actor rules it.
+  /** The full Homeland of the played card's suit, holding the Hall, so the
+    * played card may replace one of its cards, and the actor rules it.
     */
   private def fullHomeland(side: EdificeSide)
       : (ReadyGame, DenizenId, Vector[DenizenId]) =
-    val hallSuit = catalog.suitOf(hall).get
+    val (homeSite, homeSuit) = homeland
     val cards = plain(initialReady)
-    val card = cards.find(catalog.suitOf(_).contains(hallSuit)).get
-    val (probe, _, site) = staged(card, Vector.empty)
-    val capacity = catalog.sites.find(_.id == site).get.capacity
+    val card = cards.find(catalog.suitOf(_).contains(homeSuit)).get
+    val capacity = catalog.site(homeSite).get.capacity
     val fillers = cards.filter(_ != card).take(capacity - 1)
-    val (ready, _, _) = staged(card, fillers.map(denizen(_)) :+
-      EdificeState(hall, side, Tokens.empty))
+    val (ready, _, site) = staged(card, fillers.map(denizen(_)) :+
+      EdificeState(hall, side, Tokens.empty), Some(homeSite))
     (ruledByActor(ready, site), card, fillers)
 
   test("a replacement can never be an intact edifice"):
