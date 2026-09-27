@@ -70,6 +70,9 @@ class ClayRattleSuite extends munit.FunSuite:
     // Replay has no shuffle source: it applies the recorded order.
     assertEquals(replayed(rules(), ready0, started.events ++ done.events), end)
     assert(wireRoundTrips(started.events ++ done.events))
+    assertEquals(NoteText.said(ClayRattle, started.events ++ done.events),
+      Vector(NoteText.Said(NoteKey.Used,
+        s"${actor.value} shuffled the world deck.", covers = false)))
 
   test("a region's discard pile is shuffled, and its line names it"):
     val (ready0, started, answered) = shuffled(cradle)
