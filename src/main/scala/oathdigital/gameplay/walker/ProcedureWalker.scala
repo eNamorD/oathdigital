@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Restriction}
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, Shuffle, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 
@@ -574,6 +574,9 @@ object ProcedureWalker:
         leaf match
           case roll: Roll if roll.mode == RollMode.Automatic =>
             runAutomaticRoll(roll, ctx, path, contributions).map(Done(_))
+          case shuffle: Shuffle if shuffle.order.isEmpty =>
+            WalkerShuffles.ordered(shuffle, ctx.state, ctx.dice).flatMap(
+              record(_, ctx, path, contributions, strict)).map(Done(_))
           case _: Decide | _: Roll => Right(Park(path, ctx))
           case build: BuildOps =>
             runBuildOps(build, ctx, path, contributions).map(Done(_))

@@ -39,13 +39,19 @@ object CampaignDicePort:
     def rollDefense(count: Int) = Vector.fill(count)(defense(rng.nextInt(6)))
 
   /** The walker's dice source, backed by `port`: the same faces a legacy
-    * Campaign rolled, now drawn by an automatic `Roll` node.
+    * Campaign rolled, now drawn by an automatic `Roll` node. Its shuffle is
+    * uniform.
     */
-  def walkerDice(port: CampaignDicePort): WalkerDice = (kind, count) =>
-    Right(kind match {
+  def walkerDice(port: CampaignDicePort): WalkerDice = new WalkerDice:
+    def roll(kind: DiceKind, count: Int)
+        : Either[OathViolation, Vector[DieFace]] = Right(kind match {
       case DiceKind.Attack => port.rollAttack(count)
       case DiceKind.Defense => port.rollDefense(count)
     })
+    override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
+      Right(shuffler.shuffle((0 until count).toVector))
+
+  private val shuffler = new scala.util.Random()
 
 object CardDecisionIds:
   /** Stable across reload/replay and derived solely from authoritative setup progress. */

@@ -193,6 +193,8 @@ private[gameplay] object OperationApplication:
         result.flatMap(TurnStateOperations.adjustSupply(_, player, amount))
       case (result, AdvanceVisionsDrawn) =>
         result.flatMap(TurnStateOperations.advanceVisionsDrawn)
+      case (result, Shuffle(pile, order)) =>
+        result.flatMap(PileOperations.shuffle(_, pile, order))
       case (result, ModifyDicePool(pool, delta, _)) =>
         result.flatMap(TurnStateOperations.adjustDicePool(_, pool, delta))
       case (result, ModifyRollOutcome(pool, skulls, score)) =>

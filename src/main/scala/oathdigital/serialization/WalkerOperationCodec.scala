@@ -39,7 +39,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
     * `CoreOperation` case belongs to no group.
     */
   private type CardOperation =
-    Peek | Flip | Bury | Discard | Draw | Play | Reveal | Swap
+    Peek | Flip | Bury | Discard | Draw | Play | Reveal | Swap | Shuffle
   private type PieceOperation =
     Move | Take | Kill | Replace | Sacrifice | Burn | Give | Exchange | PayCost
   private type ResourceOperation = SpendSupply | GainSupply | FlipSecrets | Gain
@@ -132,6 +132,12 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
           "firstLocation" -> encodePositionedLocation(firstLocation),
           "secondCard" -> encodeCardRef(secondCard),
           "secondLocation" -> encodePositionedLocation(secondLocation))
+      case Shuffle(pile, order) =>
+        val shuffled = ujson.Obj("kind" -> "shuffle",
+          "pile" -> encodeSearchSource(pile))
+        order.foreach(cards =>
+          shuffled("order") = ujson.Arr.from(cards.map(encodeWorldCardId)))
+        shuffled
 
   private def encodePieceOperation(operation: PieceOperation): ujson.Value =
     operation match
@@ -341,6 +347,18 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
       _ <- Either.cond(firstLocation != secondLocation, (),
         InvalidValue(path, "swap requires two different locations"))
     yield Swap(firstCard, firstLocation, secondCard, secondLocation)
+    case "shuffle" => for
+      pile <- decodeSearchSource(value("pile"), s"$path.pile")
+      order <- decodeShuffleOrder(value, path)
+    yield Shuffle(pile, order)
+
+  /** A recorded shuffle carries its order; a declared one has none. */
+  private def decodeShuffleOrder(value: ujson.Value, path: String)
+      : Either[WireError, Option[Vector[WorldCardId]]] =
+    value.obj.get("order").fold[Either[WireError, Option[Vector[WorldCardId]]]](
+      Right(None))(cards => traverse(cards.arr.zipWithIndex.toVector)({
+        case (card, index) => decodeWorldCardId(card, s"$path.order[$index]")
+      }).map(Some(_)))
 
   private def decodePieceOperation(value: ujson.Value,
       path: String): DecodedOperation =

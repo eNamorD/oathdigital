@@ -518,6 +518,9 @@ class GameEventWireSuite extends munit.FunSuite:
         skullLosses = 0, sacrificed = 0,
         defenseFaces = Vector(DefenseDieFace.Blank), defenseScore = 2,
         attackerWins = false)),
+      Shuffle(SearchSource.WorldDeck, Some(Vector(denizen, vision))),
+      Shuffle(SearchSource.RegionalDiscard(Region.Cradle), Some(Vector(vision))),
+      Shuffle(SearchSource.RegionalDiscard(Region.Hinterland)),
       SetOathkeeper(Some(PlayerId("red"))),
       SetOathkeeper(None))
 

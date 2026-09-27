@@ -14,3 +14,7 @@ class WalkerDiceAdapterSuite extends munit.FunSuite:
     assertEquals(dice.roll(DiceKind.Defense, 3),
       Right(Vector.fill(3)(DefenseDieFace.TwoShields)))
     assertEquals(dice.roll(DiceKind.Attack, 0), Right(Vector.empty))
+
+  test("the adapter shuffles a pile into a permutation of its positions"):
+    val order = CampaignDicePort.walkerDice(port).shuffle(6)
+    assertEquals(order.map(_.sorted), Right((0 until 6).toVector))

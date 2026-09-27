@@ -24,6 +24,12 @@ object SearchSource:
   case object WorldDeck extends SearchSource
   final case class RegionalDiscard(region: Region) extends SearchSource
 
+  /** "world deck" or "Cradle discard pile". A log line or a label supplies
+    * the article. */
+  def name(source: SearchSource): String = source match
+    case WorldDeck => "world deck"
+    case RegionalDiscard(region) => s"$region discard pile"
+
 sealed trait SearchPlacement extends Product with Serializable
 object SearchPlacement:
   case object Discard extends SearchPlacement

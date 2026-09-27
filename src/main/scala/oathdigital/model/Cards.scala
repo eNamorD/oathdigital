@@ -58,6 +58,19 @@ final case class CardZones(
   def discard(region: Region): Vector[WorldCardId] =
     regionalDiscards.getOrElse(region, Vector.empty)
 
+  /** The cards of a pile Search draws from, in stored order: the world deck
+    * top first, a discard pile top last. */
+  def pile(source: SearchSource): Vector[WorldCardId] = source match
+    case SearchSource.WorldDeck => worldDeck
+    case SearchSource.RegionalDiscard(region) => discard(region)
+
+  /** These zones with `source` holding `cards`, in stored order. */
+  def withPile(source: SearchSource, cards: Vector[WorldCardId]): CardZones =
+    source match
+      case SearchSource.WorldDeck => copy(worldDeck = cards)
+      case SearchSource.RegionalDiscard(region) =>
+        copy(regionalDiscards = regionalDiscards.updated(region, cards))
+
 /** Stable, container-qualified target for a denizen printed at a site. */
 final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId):
   def stableKey: String = s"site:${siteId.value}:denizen:${denizenId.value}"
