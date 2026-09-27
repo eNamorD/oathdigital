@@ -1,9 +1,11 @@
 package oathdigital.application.gamelog
 
 import oathdigital.application._
+import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.powers.action.GamblingHall
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -103,6 +105,17 @@ object LogScripts:
   def texts(entries: Vector[LogEntry]): Vector[String] = entries.map(text)
 
   def name(player: PlayerId): String = presentation.playerLabel(player)
+
+  /** `steps` with `events` journaled right after position `after`. Each
+    * changes no state, and every later sequence moves up to make room. */
+  def inserted(steps: Vector[ReplayStep[OathState, OathEvent]], after: Int,
+      events: OathEvent*): Vector[ReplayStep[OathState, OathEvent]] =
+    val state = steps(after).after
+    val at = steps(after).event.index + 1
+    val added = events.toVector.zipWithIndex.map { case (event, offset) =>
+      ReplayStep(RecordedEvent(at + offset, event), state, state) }
+    steps.take(after + 1) ++ added ++ steps.drop(after + 1).map(step =>
+      step.copy(event = step.event.copy(index = step.event.index + events.size)))
 
   /** The service suite's Oathkeeper tie: an arranged board, the active
     * player's Travel, and the holder's choice of the next Oathkeeper. */
@@ -378,6 +391,30 @@ object LogScripts:
         Vector(Augury.id), Vector(DecisionOptionRef.Button("search:world")))))
     Script("augury", service, actor)
 
+  /** Gambling Hall at the actor's site, used in Act with a second favor
+    * arranged. The steady dice total 8, and the richest bank is chosen so
+    * the gain is never empty. */
+  def gamblingHall(using munit.Location): Script =
+    val card = DenizenId("93")
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
+    val (service, _, driver) = journaled("gambling-hall")
+    val woken = Situation.wake(driver, chronicle, orders)
+    val actor = active(woken)
+    val richest = Suit.all.maxBy(suit => woken.ready.banks.favor(suit))
+    val spare = Suit.all.find(suit => suit != richest &&
+      woken.ready.banks.favor(suit) > 0).get
+    woken.withAnswers {
+      case park if park.decisionId == GamblingHall.decisionId =>
+        ChooseOneAnswer(DecisionOptionRef.FavorBank(richest))
+    }.after(Step.Arrange(Vector(
+        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(woken, actor))),
+        Move(Piece.Favor(1), PositionedLocation(Location.FavorBank(spare)),
+          PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor),
+      GameCommand.UsePower(actor, GamblingHall.id, DecisionOptionRef.Denizen(card)))
+    Script("gambling-hall", service, actor)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -393,6 +430,7 @@ object LogScripts:
     "negotiation-declined" -> (() => negotiationDeclined),
     "negotiation-agreed" -> (() => negotiationAgreed),
     "negotiation-disclosed" -> (() => negotiationDisclosed),
-    "use-power" -> (() => usePower))
+    "use-power" -> (() => usePower),
+    "gambling-hall" -> (() => gamblingHall))
 
   def all: Vector[Script] = named.map(_._2())

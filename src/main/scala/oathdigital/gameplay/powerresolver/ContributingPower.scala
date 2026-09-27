@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, DecisionOptionRef, OathViolation, OfferedPlan, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, PlayerId, PowerId, PowerNote, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -41,6 +41,9 @@ final case class PowerCtx(
   * options of the `Decide` it hooks.
   */
 sealed trait Contribution extends Product with Serializable
+object Contribution:
+  /** The hide hook of a restriction that writes no Game Log line. */
+  val silent: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = (_, _) => None
 
 /** Rewrites the hooked node's children. Covers must-effects (insert ops),
   * cost changes (modify the pay ops), and reordering (roll order).
@@ -56,20 +59,25 @@ final case class Transform(
 ) extends Contribution
 
 /** Validates the whole action tree root, returning a violation to reject the
-  * action wholesale. Covers cannot-effects.
+  * action wholesale. Covers cannot-effects. `note` is what the Game Log says
+  * when the restriction look-ahead hides an option because of it (power log
+  * lines design, section 1).
   */
 final case class Restriction(
-    fn: (PowerCtx, Operation) => Option[OathViolation]
+    fn: (PowerCtx, Operation) => Option[OathViolation],
+    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent
 ) extends Contribution
 
 /** Forbids one option of the `Decide` the window hooks. Called once per offered
   * option in the window fold, before the query is parked, so a forbidden
   * option is absent from what the projector offers, from what `accepts`
   * validates and from what a simulation answers. Covers cannot-effects that
-  * name a choice rather than the whole action.
+  * name a choice rather than the whole action. `note` is what the Game Log
+  * says for each option it hides (power log lines design, section 1).
   */
 final case class OptionRestriction(
-    fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation]
+    fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation],
+    note: (PowerCtx, DecisionOptionRef) => Option[PowerNote] = Contribution.silent
 ) extends Contribution
 
 /** Offers one option to the node its window hooks, when that node is an
@@ -117,7 +125,7 @@ object OfferHost:
   * power that never expects to be player-chosen (the common case for a
   * "must"/"cannot" rule) declares nothing extra.
   */
-trait ContributingPower:
+trait ContributingPower extends NotingPower:
   def id: PowerId
   def source: RuleSourceRef
   def priority: Int = 0
@@ -152,3 +160,11 @@ object ContributingPower:
     */
   def sortKey(power: ContributingPower): (Int, String, String) =
     (power.priority, power.source.stableKey, power.id.value)
+
+/** The Game Log lines a power can write (power log lines design). A note it
+  * builds must come from one of these keys, and a phase power's
+  * `NoteKey.Used` line replaces "Used {card}". Contributing and phase powers
+  * share this, so a power that is both declares its keys once.
+  */
+trait NotingPower:
+  def noteKeys: Vector[NoteKey] = Vector.empty

@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
+import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 
 /** Vow of Peace's second sentence: attackers cannot sacrifice warbands to
@@ -63,3 +64,17 @@ class VowOfPeaceSuite extends munit.FunSuite:
     val picked = run.pick(b.other, CampaignIds.defenderPlan,
       DecisionOptionRef.Denizen(DenizenId(wrestlers)))
     assert(picked.since(run).exists(_.isInstanceOf[Sacrifice]))
+
+  private def notes(run: Run): Vector[PowerNoted] =
+    run.finish.events.collect { case noted: PowerNoted => noted }
+
+  test("the removed sacrifice decision leaves a note naming the defender"):
+    val b = defendedBy(againstPlayer(board()), Orientation.FaceUp)
+    assertEquals(notes(commit(rules(losing), b, 2)), Vector(PowerNoted(
+      VowOfPeaceContribution.id, VowOfPeaceContribution.noSacrifice(
+        PowerSourceRef.Card(DenizenId(vow)), NoteArg.Player(b.other)),
+      covers = false)))
+
+  test("an attacker against anyone else writes no Vow of Peace note"):
+    assertEquals(notes(commit(rules(losing), againstPlayer(board()), 2)),
+      Vector.empty)

@@ -1,7 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.engine.ReplayStep
-import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
+import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, ProcedureWalker,
   WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 
@@ -55,6 +55,25 @@ private[gamelog] final class LogJournal(
       case parked: WalkerParked => parked.procedure
       case completed: WalkerCompleted => completed.procedure
     }
+
+  /** Whether `power` journals its own `used` note in `run`, up to the end of
+    * `at`'s segment. That line then replaces "Used {card}". */
+  def notedUse(run: Run, power: PowerId, at: Int): Boolean =
+    (run.first to segmentEnd(at)).exists(index => event(index) match
+      case PowerNoted(`power`, note, _) => note.key == NoteKey.Used
+      case _ => false)
+
+  /** Whether a covering note restates the step at `index`: one follows it
+    * in its segment before the next step. */
+  def covered(index: Int): Boolean = event(index) match
+    case _: WalkerStepRecorded =>
+      (index + 1 to segmentEnd(index)).iterator.map(event)
+        .takeWhile(!_.isInstanceOf[WalkerStepRecorded])
+        .exists {
+          case noted: PowerNoted => noted.covers
+          case _ => false
+        }
+    case _ => false
 
   /** Every operation of `run` from its first event through `at`. */
   def runOps(run: Run, at: Int): Vector[(Int, OpStep)] =

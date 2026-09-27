@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, PowerNoted}
 import oathdigital.model._
 
 class GamblingHallSuite extends munit.FunSuite:
@@ -111,3 +111,47 @@ class GamblingHallSuite extends munit.FunSuite:
         c.map.sites(far).copy(forces = SiteForces.Occupied(kind, 1)))))))(
       _.copy(favor = 3)))
     assert(usableIds(ready0).contains(GamblingHall.id))
+
+  private val card = PowerSourceRef.Card(hall)
+  private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =
+    events.collect { case noted: PowerNoted => noted }
+
+  test("it notes its roll, then what it gained, each covering the generic line"):
+    val rules0 = rules(total4)
+    val parked = use(rules0, staged(), GamblingHall.id, source).toOption.get
+    val done = answer(rules0, parked.state, GamblingHall.decisionId,
+      bank(Suit.Beast)).toOption.get
+    assertEquals(notes(parked.events ++ done.events), Vector(
+      PowerNoted(GamblingHall.id, GamblingHall.rolled(card, NoteArg.Player(actor),
+        NoteArg.Dice(Vector(DefenseDieFace.OneShield, DefenseDieFace.OneShield,
+          DefenseDieFace.TwoShields, DefenseDieFace.Blank)),
+        NoteArg.Number(4)), covers = true),
+      PowerNoted(GamblingHall.id, GamblingHall.gained(card, NoteArg.Player(actor),
+        NoteArg.Amount(4, NoteUnit.Favor), NoteArg.Bank(Suit.Beast)),
+        covers = true)))
+
+  test("a gain the bank caps is noted as what the bank paid"):
+    val doubled = defenseDice(DefenseDieFace.OneShield,
+      DefenseDieFace.TwoShields, DefenseDieFace.Doubler, DefenseDieFace.Blank)
+    val ready0 = staged()
+    val parked = use(rules(doubled), ready0, GamblingHall.id, source).toOption.get
+    val done = answer(rules(doubled), parked.state, GamblingHall.decisionId,
+      bank(Suit.Nomad)).toOption.get
+    assertEquals(notes(done.events).map(_.note.args), Vector(Vector(
+      NoteArg.Player(actor),
+      NoteArg.Amount(ready0.banks.favor(Suit.Nomad), NoteUnit.Favor),
+      NoteArg.Bank(Suit.Nomad))))
+
+  test("a total of zero notes only the roll"):
+    val rules0 = rules(defenseDice(DefenseDieFace.Blank, DefenseDieFace.Blank,
+      DefenseDieFace.Blank, DefenseDieFace.Blank))
+    val done = use(rules0, staged(), GamblingHall.id, source).toOption.get
+    assertEquals(notes(done.events).map(_.note.key), Vector(NoteKey.Used))
+
+  test("an empty bank gives nothing, so no gain is noted"):
+    val drained = staged().copy(banks = staged().banks.copy(
+      favor = staged().banks.favor.updated(Suit.Discord, 0)))
+    val parked = use(rules(total4), drained, GamblingHall.id, source).toOption.get
+    val done = answer(rules(total4), parked.state, GamblingHall.decisionId,
+      bank(Suit.Discord)).toOption.get
+    assertEquals(notes(done.events), Vector.empty)

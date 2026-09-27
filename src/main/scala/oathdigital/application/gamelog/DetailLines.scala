@@ -23,8 +23,8 @@ private[gamelog] final class DetailLines(words: LogWords,
     choices: ChoiceWords):
   def lines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    decision(journal, run, at, viewer) ++ roll(journal, at) ++
-      deltas(journal, run, at, viewer)
+    decision(journal, run, at, viewer) ++ (if journal.covered(at) then
+      Vector.empty else roll(journal, at) ++ deltas(journal, run, at, viewer))
 
   private def roll(journal: LogJournal, at: Int): Vector[Posted] =
     journal.event(at) match

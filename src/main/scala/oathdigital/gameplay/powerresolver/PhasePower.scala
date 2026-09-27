@@ -8,7 +8,7 @@ import oathdigital.model.{Cost, DecisionOptionRef, OathViolation, Operation, Pla
   * records the use after `build`'s tree. `build` must be a pure function of
   * state: the tree is rebuilt on every resume.
   */
-trait PhasePower:
+trait PhasePower extends NotingPower:
   def id: PowerId
   def timing: PowerTiming
   /** Power-specific preconditions beyond access and once-per-turn. */

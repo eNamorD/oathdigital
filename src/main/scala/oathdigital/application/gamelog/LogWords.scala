@@ -33,6 +33,12 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
     LogSpan.Site(id.value, presentation.siteLabel(id))
   def banner(banner: Banner): LogSpan =
     LogSpan.Text(BannerRules.displayName(banner))
+  /** The card, banner or site a power belongs to. */
+  def source(ref: PowerSourceRef, state: ReadyGame,
+      viewer: Option[PlayerId]): Vector[LogSpan] = ref match
+    case PowerSourceRef.Card(id) => one(card(id, state, state, viewer))
+    case PowerSourceRef.Banner(held) => Vector(banner(held))
+    case PowerSourceRef.Site(at) => Vector(site(at))
   /** A Vision a victory names: public by then. */
   def vision(id: VisionId): LogSpan =
     LogSpan.Card(id.value, presentation.cardDetails(id, None,

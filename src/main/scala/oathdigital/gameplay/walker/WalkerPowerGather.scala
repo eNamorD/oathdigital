@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx}
+import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx, Restriction}
 import oathdigital.model.{Answered, Branch, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
@@ -15,6 +15,11 @@ import oathdigital.model.{Answered, Branch, Decide, DecisionAnswer, DecisionOpti
   * ruling J).
   */
 private[walker] object WalkerPowerGather:
+
+  /** A restriction's violation with the power and context that produced it,
+    * so the look-ahead can ask that restriction for its note. */
+  private final case class Attributed(power: PowerId, ctx: PowerCtx,
+      restriction: Restriction, violation: OathViolation)
 
   /** Gathers powers at `window` (a no-op for `None` -- spec decision 9's
     * third case: an engine-internal node contributes nothing) and folds
@@ -37,8 +42,23 @@ private[walker] object WalkerPowerGather:
       ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef],
       answered: Vector[Answered] = Vector.empty, resuming: Boolean = false)
       : (Vector[Operation], Vector[PowerId]) =
+    val (folded, order, _) = applyWindowNoted(window, operation, state,
+      activePlayer, powers, path, ops, procedure, answered, resuming,
+      noting = false)
+    (folded, order)
+
+  /** As [[applyWindow]], and, when `noting`, the notes of the options each
+    * `OptionRestriction` hid from a `Decide`. The walker notes only a window
+    * it enters fresh, so a resume never says it twice.
+    */
+  def applyWindowNoted(window: Option[PowerWindow], operation: Operation,
+      state: ReadyGame,
+      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
+      ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef],
+      answered: Vector[Answered], resuming: Boolean, noting: Boolean)
+      : (Vector[Operation], Vector[PowerId], Vector[PowerNoted]) =
     window match
-      case None => (ops, Vector.empty)
+      case None => (ops, Vector.empty, Vector.empty)
       case Some(w) =>
         val byId: Map[PowerId, ContributingPower] =
           powers.powers.map(power => power.id -> power).toMap
@@ -49,17 +69,44 @@ private[walker] object WalkerPowerGather:
         val folded = gathered.transforms.foldLeft(ops):
           case (acc, (powerId, transform)) =>
             transform.fn(ctxFor(byId(powerId)), acc)
-        val restricted = operation match
-          case _: Decide => restrictOptions(folded, gathered.optionRestrictions,
-            ctxFor, byId)
+        operation match
+          case _: Decide =>
+            (restrictOptions(folded, gathered.optionRestrictions, ctxFor, byId),
+              gathered.order,
+              if noting then hiddenNotes(folded, gathered.optionRestrictions,
+                ctxFor, byId) else Vector.empty)
           case host: OfferHost =>
             val offered = gathered.offers.flatMap { case (powerId, offer) =>
               offer.plan(ctxFor(byId(powerId))).map(OfferedPlan(powerId, _))
             }
-            folded ++ host.expand(offered, OfferHost.Pass(state, answered,
-              resuming, WalkerSimulation.applies(_, state, powers)))
-          case _ => folded
-        (restricted, gathered.order)
+            (folded ++ host.expand(offered, OfferHost.Pass(state, answered,
+              resuming, WalkerSimulation.applies(_, state, powers))),
+              gathered.order, Vector.empty)
+          case _ => (folded, gathered.order, Vector.empty)
+
+  /** The options of a choose-one or choose-many decision, in order. */
+  private def optionRefs(decide: Decide): Vector[DecisionOptionRef] =
+    decide.query match
+      case one: DecisionQuery.ChooseOne => one.options.map(_.ref)
+      case many: DecisionQuery.ChooseMany => many.options.map(_.ref)
+      case _ => Vector.empty
+
+  /** For each option a restriction forbids, the note of the first power
+    * that forbids it. */
+  private def hiddenNotes(ops: Vector[Operation],
+      restrictions: Vector[(PowerId, OptionRestriction)],
+      ctxFor: ContributingPower => PowerCtx,
+      byId: Map[PowerId, ContributingPower]): Vector[PowerNoted] =
+    if restrictions.isEmpty then Vector.empty
+    else ops.collect { case decide: Decide => decide }.flatMap(decide =>
+      optionRefs(decide).flatMap { ref =>
+        restrictions.find { case (id, restriction) =>
+          restriction.fn(ctxFor(byId(id)), ref).nonEmpty
+        }.flatMap { case (id, restriction) =>
+          restriction.note(ctxFor(byId(id)), ref)
+            .map(PowerNoted(id, _, covers = false))
+        }
+      })
 
   private def permits(restrictions: Vector[(PowerId, OptionRestriction)],
       ctxFor: ContributingPower => PowerCtx,
@@ -139,6 +186,15 @@ private[walker] object WalkerPowerGather:
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
       state: ReadyGame, activePlayer: PlayerId,
       answered: Vector[Answered] = Vector.empty): Vector[OathViolation] =
+    val (rejected, emptied) = attributed(tree, powers, state, activePlayer,
+      answered)
+    rejected.map(_.violation) ++ emptied
+
+  /** [[restrictionViolations]], keeping who rejected: the restrictions'
+    * violations with their power, and the emptied decisions. */
+  private def attributed(tree: Operation, powers: WalkerPowers,
+      state: ReadyGame, activePlayer: PlayerId, answered: Vector[Answered])
+      : (Vector[Attributed], Vector[OathViolation]) =
     val byId: Map[PowerId, ContributingPower] =
       powers.powers.map(power => power.id -> power).toMap
     /** Each contribution's context carries `answered`, so a restriction can
@@ -170,18 +226,19 @@ private[walker] object WalkerPowerGather:
     val windows = windowsIn(tree, Vector.empty)
     val rejected = windows.flatMap:
       case (window, path, operation) =>
-        val gathered = ContributionCollector.gather(window, powers.powers,
-          ctxFor(window, path, operation))
-        gathered.restrictions.flatMap { case (powerId, restriction) =>
-          restriction.fn(ctxFor(window, path, operation)(byId(powerId)), tree)
-        }
+        val ctx = ctxFor(window, path, operation)
+        ContributionCollector.gather(window, powers.powers, ctx).restrictions
+          .flatMap { case (powerId, restriction) =>
+            val at = ctx(byId(powerId))
+            restriction.fn(at, tree).map(Attributed(powerId, at, restriction, _))
+          }
     val emptied = windows.flatMap:
       case (window, path, decide: Decide) =>
         val ctx = ctxFor(window, path, decide)
         emptiedDecision(decide, ContributionCollector.gather(window,
           powers.powers, ctx).optionRestrictions, ctx, byId)
       case _ => Vector.empty
-    rejected ++ emptied
+    (rejected, emptied)
 
   /** The restriction look-ahead (rule-gaps design, section 1): `decide`
     * without the options whose answer would break a `Restriction` somewhere in
@@ -243,6 +300,35 @@ private[walker] object WalkerPowerGather:
             max = allowed.last, suggested = amount.suggested.map(value =>
               math.max(allowed.head, math.min(allowed.last, value)))))))
         case _ => Right(Some(decide))
+
+  /** The notes the look-ahead writes for the options `narrowed` no longer
+    * offers: for each, the note of the restriction whose violation answering
+    * it would add. The walker asks only at a decision reached fresh.
+    */
+  def lookAheadNotes(root: Operation, decide: Decide, narrowed: Decide,
+      state: ReadyGame, activePlayer: PlayerId, powers: WalkerPowers,
+      answered: Vector[Answered], procedure: Option[ProcedureRef])
+      : Vector[PowerNoted] =
+    val offered = optionRefs(narrowed).toSet
+    val hidden = optionRefs(decide).filterNot(offered)
+    if hidden.isEmpty then Vector.empty
+    else
+      val quiet = powers.copy(probing = false)
+      val seen = state.updateCurrent(_.copy(walkerPending = None,
+        walkerProcedure = procedure))
+      def found(answers: Vector[Answered]): Vector[Attributed] =
+        attributed(root, quiet, seen, activePlayer, answers)._1
+      val baseline = found(answered).map(_.violation).toSet
+      hidden.flatMap { ref =>
+        val answer = decide.query match
+          case _: DecisionQuery.ChooseMany =>
+            DecisionAnswer.ChooseManyAnswer(Vector(ref))
+          case _ => DecisionAnswer.ChooseOneAnswer(ref)
+        found(answered :+ Answered(decide.decisionId, answer, decide.owner))
+          .find(breach => !baseline(breach.violation))
+          .flatMap(breach => breach.restriction.note(breach.ctx, ref)
+            .map(PowerNoted(breach.power, _, covers = false)))
+      }
 
   /** Resolves the node addressed by `pending.at` (a child-index path rooted
     * at `action`), or `None` when a segment is non-numeric or out of range (a
