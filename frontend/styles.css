@@ -913,8 +913,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 }
 
 /* Document level, above .game-pane -- which is what lets that pane keep
-   overflow: hidden without clipping anything a card needs to show. */
-.card-overlay { position: fixed; z-index: 300; inset: 0; display: flex;
+   overflow: hidden without clipping anything a card needs to show. It sits
+   one step above the log overlay, so a card list opened from the full log
+   covers it. */
+.card-overlay { position: fixed; z-index: 310; inset: 0; display: flex;
   align-items: center; justify-content: center; gap: 2ex; flex-wrap: wrap;
   padding: 4vmin; background: #0b0a08e8; font-size: clamp(1rem, 2.6vmin, 1.9rem); }
 .card-overlay[hidden] { display: none; }
@@ -951,3 +953,38 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .log-overlay .log-heading { margin: 0; font: inherit; }
 .log-overlay button { cursor: pointer; }
 .log-overlay button:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }
+/* A card list: cards in pile order, as the Inspect panel and a log line's
+   "6 cards" show them. The grid holds dozens and scrolls inside itself; its
+   cards take the one card box, so the container's font size alone sizes
+   them. The title is a count in the Brass Label, as a pane header names a
+   pane. */
+.card-list { margin: 8px 0; }
+.card-list-title { margin: 0 0 6px; color: #d5bd8f; font-size: max(11px, .78em);
+  font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.card-list-grid { display: grid; gap: var(--card-gap);
+  grid-template-columns: repeat(auto-fill, var(--card-w));
+  margin: 0; padding: 0; list-style: none; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin;
+  scrollbar-color: #8c7959 #211f1b; }
+.card-list-item { display: flex; }
+/* In the action pane, a row and a half shows at most, so a longer pile says
+   it scrolls and Done stays in reach under it. */
+.pane-actions .card-list-grid {
+  max-height: calc(var(--card-h) * 1.5 + var(--card-gap)); }
+/* In the card overlay the list takes the overlay's width, a measure of
+   cards wide, and scrolls with the overlay body rather than inside itself.
+   Its cards stay at the overlay's font size, not the lone card's 1.9em. */
+.card-overlay-body:has(> .card-list) { width: min(100%, 60em); }
+.card-overlay-body > .card-list { flex: 1 1 100%; min-width: 0; margin: 0;
+  font-size: 0.8em; }
+.card-overlay-body .card-list-grid { overflow: visible; }
+/* A log line's card list reads as part of its sentence, a card name in
+   Cream underlined in Brass Line, and opens the list on click. Its focus
+   ring is the log's, set off the text so it does not cross the letters. */
+.game-log .log-cards { display: inline; margin: 0; padding: 0; border: 0;
+  background: none; color: #f5ecd7; font: inherit; line-height: inherit;
+  text-decoration: underline; text-decoration-color: #7c694b;
+  text-underline-offset: 0.2em; cursor: pointer; }
+.game-log .log-cards:hover { color: #fff2d6; text-decoration-color: #d2a85e; }
+.game-log .log-cards:focus-visible { outline: 2px solid #fff0c9;
+  outline-offset: 1px; }

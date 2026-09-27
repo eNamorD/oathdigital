@@ -213,3 +213,18 @@ class CardInspectionOverlaySuite extends munit.FunSuite:
     press(root.querySelector(".card-overlay"), "Escape")
     assert(!overlay.isOpen)
     assertEquals(dom.document.activeElement, opener)
+
+  test("a card list shows every card in order, each its face or its back"):
+    val (root, overlay) = fixture()
+    val opener = origin()
+    overlay.showCards("6 cards", Vector(card, hidden), opener)
+    assert(overlay.isOpen)
+    val node = root.querySelector(".card-overlay")
+    assertEquals(node.getAttribute("aria-label"), "6 cards")
+    val faces = all(node, ".card-list-item .card-face")
+    assertEquals(faces.map(_.getAttribute("data-card-id")),
+      Vector("d1", "hidden"))
+    assert(faces(1).classList.contains("card-face-down"))
+    overlay.hide()
+    assertEquals(dom.document.activeElement, opener)
+    overlay.dispose(); root.remove(); opener.remove()

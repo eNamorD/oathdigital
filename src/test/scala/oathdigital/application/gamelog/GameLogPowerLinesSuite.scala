@@ -5,8 +5,8 @@ import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import LogScripts._
 
@@ -174,6 +174,51 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       NoteArg.Banner(Banner.DarkestSecret)))
     assertEquals(text(ours(banner).head),
       s"Silver Tongue: ${name(script.actor)} said Darkest Secret.")
+
+  test("more than five cards read as a card list, each its face or its back"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val last = steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val deck = last.game.current.commonCards.worldDeck.take(5)
+    val listed = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Cards(ParkedServiceFixture.silverTongueCard +: deck)))
+    val entry = ours(listed, Some(script.actor)).head
+    val lists = entry.spans.collect { case cards: LogSpan.Cards => cards }
+    assertEquals(lists.map(_.text), Vector("6 cards"))
+    assertEquals(lists.head.cards.map(card => card.hidden -> card.cardId),
+      (false -> ParkedServiceFixture.silverTongueCard.value) +:
+        deck.map(_ => true -> "hidden"))
+    assertEquals(text(entry),
+      s"Silver Tongue: ${name(script.actor)} said 6 cards.")
+
+  test("more than five cards its viewer may identify none of read as a count"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val last = steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val listed = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Cards(last.game.current.commonCards.worldDeck.take(6))))
+    val entry = ours(listed, Some(script.actor)).head
+    assert(!entry.spans.exists(_.isInstanceOf[LogSpan.Cards]),
+      entry.spans.toString)
+    assertEquals(text(entry),
+      s"Silver Tongue: ${name(script.actor)} said 6 cards.")
+
+  test("pressing Done on an Inspect writes no Chose line"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    def pressed(ref: DecisionOptionRef) = inserted(steps, take(steps),
+      WalkerStepRecorded("inspect", ChoicePayload("power.scryer.inspect",
+        DecisionAnswer.ChooseOneAnswer(ref), script.actor), Vector.empty,
+        Vector.empty))
+    def chose(lines: Vector[String]) = lines.count(_.startsWith("Chose "))
+    val before = chose(lines(steps))
+    assertEquals(chose(lines(pressed(DecisionOptionRef.Button("other")))),
+      before + 1)
+    assertEquals(chose(lines(pressed(DecisionQuery.Inspect.Done))), before)
 
   test("a pile reads as its name, the template supplying the article"):
     val script = usePower

@@ -209,6 +209,15 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   /** A partition is the one form whose confirm label is optional, so the
     * absent case needs a trip of its own -- the fixture above carries one.
     */
+  test("an inspect query round-trips its cards, its done button and its heading"):
+    val inspect = DecisionQueryProjection.Inspect(Vector(known, hidden),
+      DecisionOptionProjection("button", "done", "Done"),
+      heading = Some("Scryer: the Cradle discard pile"))
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(inspect))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+      Right(carrying))
+
   test("a partition declaring no confirm label round-trips as absent"):
     val unlabelled = DecisionQueryProjection.Partition(
       Vector(DecisionSectionProjection("keep", "Keep", 1, Some(1)),

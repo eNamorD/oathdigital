@@ -325,6 +325,18 @@ object DecisionQuery:
       bounds: Map[PlayerId, NegotiationBounds], acceptors: Set[PlayerId],
       heading: Option[String] = None) extends DecisionQuery
 
+  /** Look at `cards`, in order, then press Done (catalog batch 2, N5). There
+    * is no choice: the one answer is the choose-one answer of the `Done`
+    * button, labelled `doneLabel`. The action records a `Peek` of each card
+    * before it, so the owner may identify them. The heading is required: a
+    * list of cards with no heading says nothing about where they lie.
+    */
+  final case class Inspect(cards: Vector[CardId], heading: Option[String],
+      doneLabel: String = "Done") extends DecisionQuery
+  object Inspect:
+    /** The one answer an `Inspect` takes. */
+    val Done: DecisionOptionRef.Button = DecisionOptionRef.Button("done")
+
 /** One option assigned to one section in a [[DecisionAnswer.PartitionAnswer]].
   */
 final case class DecisionPlacement(option: DecisionOptionRef,

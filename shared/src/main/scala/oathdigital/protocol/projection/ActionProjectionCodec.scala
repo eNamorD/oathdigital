@@ -174,7 +174,7 @@ private[projection] object ActionProjectionCodec:
     *
     * An option's `kind`/`id` pair, including one embedded in a slot, is the
     * same spelling a submitted and a journalled answer use, so this codec
-    * writes no table of its own -- it copies the two strings through. The six
+    * writes no table of its own -- it copies the two strings through. The seven
     * form spellings are this wire's own and are deliberately not shared with
     * `DecisionAnswerCodec`'s journal tags; see
     * `docs/superpowers/specs/2026-09-25-decision-form-tag-separation-decision.md`.
@@ -216,6 +216,11 @@ private[projection] object ActionProjectionCodec:
         "form" -> "negotiate",
         "deal" -> encodeDeal(deal),
         "heading" -> stringOption(heading))
+      case DecisionQueryProjection.Inspect(cards, done, heading) => ujson.Obj(
+        "form" -> "inspect",
+        "cards" -> encoded(cards)(encodeCard),
+        "done" -> encodeOptionRow(done),
+        "heading" -> stringOption(heading))
 
   /** Reads the discriminator, then hands the object to the one decoder that
     * knows that form's fields. One decoder per case rather than one `for`
@@ -234,6 +239,7 @@ private[projection] object ActionProjectionCodec:
       case "partition" => decodePartition(value, path)
       case "distribute" => decodeDistribute(value, path)
       case "negotiate" => decodeNegotiate(value, path)
+      case "inspect" => decodeInspect(value, path)
       case other => Left(oathdigital.protocol.ProtocolDecodeFailure
         .UnknownVariant(s"$path.form", s"unknown decision form '$other'"))
   yield query
@@ -300,6 +306,16 @@ private[projection] object ActionProjectionCodec:
     deal <- decodeDeal(dealRaw, s"$path.deal")
     heading <- optionalString(value, "heading", path)
   yield DecisionQueryProjection.Negotiate(deal, heading)
+
+  private def decodeInspect(value: ujson.Obj, path: String)
+      : Result[DecisionQueryProjection] = for
+    _ <- exact(value, Set("form", "cards", "done", "heading"), path)
+    cardRaws <- array(value, "cards", path)
+    cards <- traverse(cardRaws, s"$path.cards")(decodeCard)
+    done <- field(value, "done", path).flatMap(
+      decodeOptionRow(_, s"$path.done"))
+    heading <- optionalString(value, "heading", path)
+  yield DecisionQueryProjection.Inspect(cards, done, heading)
 
   private def optionRows(value: ujson.Obj, path: String)
       : Result[Vector[DecisionOptionProjection]] =

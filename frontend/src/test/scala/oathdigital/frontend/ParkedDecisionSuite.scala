@@ -77,6 +77,12 @@ class ParkedDecisionSuite extends munit.FunSuite:
   // refuses it, which `ProjectionProtocolSuite` asserts. A negotiate query
   // without a deal is likewise unconstructable -- the deal is not optional.
 
+  test("an inspect routes to its card list panel"):
+    val inspect = DecisionQueryState.Inspect(Vector.empty,
+      DecisionOptionState("button", "done", "Done"), heading)
+    val at = parked("use-power", "power.scryer.inspect", inspect)
+    assertEquals(routeOf(at).surface, Some(Surface.Inspect(at, inspect)))
+
   test("Recover's parks route to its own panel"):
     val roll = WalkerDecisionState("recover", "walker.recover.roll", "roll",
       pool = Some("recover"), count = Some(2))

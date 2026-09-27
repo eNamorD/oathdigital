@@ -68,7 +68,9 @@ private[operations] object CardKnowledgeMoves:
         sites.updated(site, sites(site).filterNot(_ == relic)))), player, relic)
     }
 
-  private def forget(knowledge: CardKnowledge, id: CardId): CardKnowledge =
+  /** Nobody knows `id` any more: it went into a pile, or its pile was
+    * shuffled. */
+  def forget(knowledge: CardKnowledge, id: CardId): CardKnowledge =
     CardKnowledge(
       siteRelics = knowledge.siteRelics.view.mapValues(_.view
         .mapValues(_.filterNot(_ == id)).toMap).toMap,

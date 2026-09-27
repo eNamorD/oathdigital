@@ -12,7 +12,7 @@ import ProjectionCodecSupport._
 object LogPageCodec:
   private val PageFields = Set("gameId", "after", "nextSequence", "entries")
   private val EntryFields = Set("sequence", "ordinal", "kind", "depth", "spans")
-  private val SpanFields = Set("kind", "text", "id", "value", "unit")
+  private val SpanFields = Set("kind", "text", "id", "value", "unit", "cards")
 
   def encode(value: LogPageWire): String = ujson.write(ujson.Obj(
     "gameId" -> value.gameId,
@@ -35,7 +35,9 @@ object LogPageCodec:
       "text" -> ujson.Str(span.text)) ++
       span.id.map(id => "id" -> (ujson.Str(id): ujson.Value)) ++
       span.value.map(amount => "value" -> (ujson.Num(amount): ujson.Value)) ++
-      span.unit.map(unit => "unit" -> (ujson.Str(unit): ujson.Value)))
+      span.unit.map(unit => "unit" -> (ujson.Str(unit): ujson.Value)) ++
+      Option.when(span.cards.nonEmpty)("cards" ->
+        (encoded(span.cards)(WorldProjectionCodec.encodeCard): ujson.Value)))
 
   private def decodePage(raw: ujson.Value, path: String): Result[LogPageWire] =
     for
@@ -69,4 +71,7 @@ object LogPageCodec:
       id <- optionalAbsent(value, "id", path)(string)
       amount <- optionalAbsent(value, "value", path)(int)
       unit <- optionalAbsent(value, "unit", path)(string)
-    yield LogSpanWire(kind, text, id, amount, unit)
+      cards <- default(value, "cards", path, Vector.empty[CardDetailsProjection])(
+        (raw, child) => array(raw, child).flatMap(
+          traverse(_, child)(WorldProjectionCodec.decodeCard)))
+    yield LogSpanWire(kind, text, id, amount, unit, cards)

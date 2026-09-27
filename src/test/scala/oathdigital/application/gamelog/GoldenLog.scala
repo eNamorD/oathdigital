@@ -18,3 +18,6 @@ object GoldenLog:
     case LogSpan.Cost(count, unit) => s"[cost:$count $unit]"
     case dice: LogSpan.Dice =>
       s"[dice:${dice.die} ${dice.faces.mkString(" ")}|${dice.text}]"
+    case list: LogSpan.Cards => s"[cards:${list.cards.map(card =>
+      if card.hidden then s"back ${card.cardKind}" else card.cardId)
+      .mkString(" ")}|${list.text}]"

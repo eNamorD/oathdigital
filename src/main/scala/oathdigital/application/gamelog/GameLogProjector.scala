@@ -33,3 +33,4 @@ private[application] object GameLogProjector:
       id = Some(dice.faces.mkString(" ")), unit = Some(dice.die))
     case cost @ LogSpan.Cost(count, unit) =>
       LogSpanWire("cost", cost.text, value = Some(count), unit = Some(unit))
+    case list: LogSpan.Cards => LogSpanWire("cards", list.text, cards = list.cards)

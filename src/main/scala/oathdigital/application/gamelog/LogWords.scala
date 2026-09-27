@@ -91,6 +91,26 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
 
   def one(word: CardWord): Vector[LogSpan] = cards(Vector(word))
 
+  /** A power note's card list (catalog batch 2, N5): up to
+    * [[LogWords.Inline]] cards as one phrase, as `cards` writes it. More are
+    * a `Cards` span a client opens, each card its face or its back, or plain
+    * "6 cards" when the viewer may identify none of them. */
+  def listed(ids: Vector[CardId], states: Vector[ReadyGame],
+      viewer: Option[PlayerId]): Vector[LogSpan] =
+    val words = ids.map(seen(_, states, viewer))
+    if ids.size <= LogWords.Inline then cards(words)
+    else if words.forall(_.isInstanceOf[CardWord.Back]) then
+      Vector(LogSpan.Text(s"${ids.size} cards"))
+    else Vector(LogSpan.Cards(ids.zip(words).map((id, word) => face(id, word))))
+
+  /** A card as a card list shows it: its face when named, else its back. */
+  private def face(id: CardId, word: CardWord)
+      : oathdigital.protocol.projection.CardDetailsProjection = word match
+    case CardWord.Named(_) => presentation.cardDetails(id, None, hidden = false)
+    case CardWord.Back(_) => presentation.hiddenCard(id match
+      case _: RelicId => "relic"
+      case other => presentation.cardKind(other))
+
   /** A power named by the card it is printed on, as the modifier picker
     * names it; the card follows the visibility rule on `ready`. A banner's
     * power, printed on no card, is named by its banner. */
@@ -136,6 +156,9 @@ private[gamelog] object LogWords:
     case DefenseDieFace.OneShield => "shield"
     case DefenseDieFace.TwoShields => "two shields"
     case DefenseDieFace.Doubler => "doubler"
+
+  /** The most cards a power note names inline (catalog batch 2, N5). */
+  val Inline: Int = 5
 
   def backOf(id: CardId): String = id match
     case _: VisionId => "Vision"

@@ -239,6 +239,11 @@ private[application] final class WalkerDecisionProjector(
       case negotiate: DecisionQuery.Negotiate =>
         Some(DecisionQueryProjection.Negotiate(
           deals.project(ready, viewer, negotiate), negotiate.heading))
+      case DecisionQuery.Inspect(cards, heading, doneLabel) =>
+        Some(DecisionQueryProjection.Inspect(
+          cards.map(shown(ready, viewer, index, _)),
+          DecisionOptionProjection(DecisionQuery.Inspect.Done.kind,
+            DecisionQuery.Inspect.Done.wireId, doneLabel), heading))
       case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel,
           suggested) =>
         Some(DecisionQueryProjection.ChooseAmount(min, max, suggested,
@@ -394,16 +399,21 @@ private[application] final class WalkerDecisionProjector(
         case Vector("denizen", value) => Vector(DenizenId(value): CardId)
         case Vector("vision", value) => Vector(VisionId(value): CardId)
         case _ => Vector.empty[CardId]
-    }.map { id =>
-      index.flatMap(_.get(id)) match
-        case Some(located) =>
-          val orientation = orientationOf(located.state)
-          if presentation.identifiesCard(ready, viewer, id, orientation,
-              located.location.container) then
-            presentation.cardDetails(id, orientation, hidden = false)
-          else presentation.hiddenCard(presentation.cardKind(id))
-        case None => presentation.hiddenCard(presentation.cardKind(id))
-    }
+    }.map(shown(ready, viewer, index, _))
+
+  /** A card as its viewer may see it: its face when they may identify it,
+    * else the redacted back [[GamePresentationProjector.hiddenCard]] gives an
+    * unidentifiable board slot. */
+  private def shown(ready: ReadyGame, viewer: Option[PlayerId],
+      index: Option[CardIndex], id: CardId): CardDetailsProjection =
+    index.flatMap(_.get(id)) match
+      case Some(located) =>
+        val orientation = orientationOf(located.state)
+        if presentation.identifiesCard(ready, viewer, id, orientation,
+            located.location.container) then
+          presentation.cardDetails(id, orientation, hidden = false)
+        else presentation.hiddenCard(presentation.cardKind(id))
+      case None => presentation.hiddenCard(presentation.cardKind(id))
 
   /** Every answer already recorded at `decisionId`, in answer order, described
     * the way the decision's own options are. See `answeredOptions`' doc on the
