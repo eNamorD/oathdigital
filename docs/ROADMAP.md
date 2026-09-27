@@ -49,7 +49,6 @@ the setup generator draws more of them into the world deck.
 Some candidate cards need engine work first, which the spec can take on or
 choose around:
 
-- Narrow Pass and other consent cards need the consent system.
 - The Gathering and Whispering Stone need a nested Negotiation with its own
   participants.
 - Golem Legions needs Muster to allow a per-source exception to the
@@ -59,6 +58,16 @@ choose around:
   Campaign powers read `ctx.activePlayer` as the attacker today
   (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`). Recorded in the
   powers design and the walker ownership and phases design.
+
+### Phase - Cleanup tasks
+
+- [ ] **Implement every site power.** Each site's own power must work,
+  including the River's. Site powers are declared like other powers, as
+  contributions on the operation they change.
+- [ ] **Log the post-action checks.** The checks that run after an action, such
+  as the bandit refill and the Oathkeeper check, change the game without a Game
+  Log line. Each should write a line saying what it did, for example which site
+  the bandits refilled or who became Oathkeeper.
 
 ### Phase - Consent system
 
