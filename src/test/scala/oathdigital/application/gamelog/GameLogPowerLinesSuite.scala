@@ -383,3 +383,31 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val wordings = NoteWordings.default(catalog)
     assertEquals(wordings.source(PowerId("site.riverbank.river")), Some("River"))
     assertEquals(wordings.source(PowerId("site.narrow-pass.pass")), None)
+
+  test("Oracle writes its draw, then where the Vision went, named to its " +
+      "drawer alone"):
+    val script = oracle
+    val actor = name(script.actor)
+    val other = script.players.find(_ != script.actor).get
+    val last = script.history.steps.last.after match
+      case OathState.Ready(ready) => ready
+      case state => fail(s"expected a ready game, got $state")
+    val vision = last.game.current.players.find(_.player == script.actor).get
+      .advisers.collectFirst {
+        case VisionState(id, Orientation.FaceDown) => id }.get
+    Vector(script.actor, other).foreach { viewer =>
+      val shown = format(script, Some(viewer)).filter(_.depth == 1)
+      val all = texts(shown)
+      val drew = all.indexWhere(_.startsWith(s"Oracle: $actor drew "))
+      assert(drew >= 0, all)
+      assert(all(drew).endsWith(" from the world deck."), all(drew))
+      assertEquals(shown(drew).kind, LogKind.Action)
+      assert(all(drew + 1).startsWith("Played "), all)
+      assert(all(drew + 1).endsWith(" as an adviser"), all)
+      assert(!all.drop(drew).exists(_.startsWith("Used ")), all)
+      val named = shown(drew).spans.exists {
+        case LogSpan.Card(id, _) => id == vision.value
+        case _ => false
+      }
+      assertEquals(named, viewer == script.actor, shown(drew).spans.toString)
+    }

@@ -5,7 +5,7 @@ import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.powers.action.{GamblingHall, Wolves}
+import oathdigital.gameplay.powers.action.{GamblingHall, Oracle, Wolves}
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -452,6 +452,27 @@ object LogScripts:
       GameCommand.UsePower(actor, Wolves.id, DecisionOptionRef.Denizen(card)))
     Script("wolves", service, actor)
 
+  /** Oracle at the actor's site, used in Act with two secrets arranged. A
+    * first game's world deck holds its first Vision below ten denizens;
+    * Oracle draws it, and the actor keeps it as a facedown adviser. */
+  def oracle(using munit.Location): Script =
+    val card = DenizenId("160")
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
+    val (service, _, driver) = journaled("oracle")
+    val woken = Situation.wake(driver, chronicle, orders)
+    val actor = active(woken)
+    woken.withAnswers {
+      case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
+        ChooseOneAnswer(DecisionOptionRef.Button("adviser-facedown"))
+    }.after(Step.Arrange(Vector(
+        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(woken, actor))),
+        Move(Piece.Secrets(2), PositionedLocation(Location.SharedBank),
+          PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor),
+      GameCommand.UsePower(actor, Oracle.id, DecisionOptionRef.Denizen(card)))
+    Script("oracle", service, actor)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -468,6 +489,7 @@ object LogScripts:
     "negotiation-agreed" -> (() => negotiationAgreed),
     "negotiation-disclosed" -> (() => negotiationDisclosed),
     "use-power" -> (() => usePower),
-    "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves))
+    "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves),
+    "oracle" -> (() => oracle))
 
   def all: Vector[Script] = named.map(_._2())

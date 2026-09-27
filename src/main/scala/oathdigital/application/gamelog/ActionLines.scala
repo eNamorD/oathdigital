@@ -152,8 +152,12 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
             words.banner(banner)))
       }
       case ActionRef.Negotiation => negotiations.lines(journal, run, at, viewer)
+      // A power that plays a card as if searched (Oracle) posts where the
+      // card went, as a Search does. Only a run that answered a placement
+      // decision has such a line.
       case ActionRef.UsePower(power) =>
-        usedPower(journal, run, at, power, completing, viewer)
+        usedPower(journal, run, at, power, completing, viewer) ++
+          playedAdviser(journal, run, at, viewer)
 
   /** The card an economy action's source decision chose. */
   private def source(journal: LogJournal, run: Run, at: Int,
