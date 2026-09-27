@@ -30,8 +30,8 @@ remove or hide something, which record no operation of their own. The
 mechanism and the line for every implemented power.
 
 Slice 1 merged on 2026-09-26: the mechanism, with Vow of Peace and Gambling
-Hall as its first powers. Slice 2 gives every phase power its own line.
-Slices 3 to 5 remain: removed and hidden options, added effects and altered
+Hall as its first powers. Slice 2 merged on 2026-09-26: every phase power
+has its own line. Slices 3 to 5 remain: removed and hidden options, added effects and altered
 procedures, then setup.
 
 Book Binders reports itself applicable on every faceup Vision another player
