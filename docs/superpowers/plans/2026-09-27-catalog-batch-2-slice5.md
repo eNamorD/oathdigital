@@ -23,6 +23,7 @@
   - `PhasePower` gains `forced: Boolean = false`. A forced power is never offered or accepted as an optional use.
   - A new triggered procedure, `TriggeredProcedureRef.ForcedWake`, runs `ForcedWakeProcedure`: every forced Wake power the waking player can access, in catalog order.
   - `OathRules.enterWake` starts it after the Usurper and Vision checks, when the game is not over and a forced power is due. A parked walker already blocks End Wake and every optional power, so nothing new is needed to make the step come first.
+  - The first Wake of a game does not pass through `enterWake`: Setup's own tree begins it. So when the Setup procedure completes, the walker starts the same step. Setup's Reveal Cards step (a new ROADMAP cleanup item) can leave Hunger faceup there.
   - Like `UsePower`, the procedure needs the phase power catalog. It is threaded through the same three places `UsePower` uses:
     - `OathRulesWalker.buildWalker`;
     - `WalkerDecisionProjector.tree`;
@@ -40,7 +41,7 @@
 **Rulings made while planning:**
 
 - **The adviser-slot option ships in this slice.** Hunger must offer another player's facedown adviser, and a `Denizen` option would send that card's id to the chooser. Ivory Eye moves to it in the same task, so no `Button` workaround is left. Cost if wrong: one extra task.
-- **The first Wake of the game gets no forced step.** Setup keeps every starting adviser facedown (`SetupProcedure.chooseAdviser`), so no forced power can be accessible then. Setup's completion stays untouched. Cost if wrong: a Hunger that somehow starts faceup would skip one Wake.
+- **The first Wake of the game runs the forced step too.** The rules' setup step 3, Reveal Cards, lets a player reveal starting advisers, so Hunger can be faceup at the first Wake. `SetupProcedure` lacks that step today (recorded as a ROADMAP cleanup item), and the test stands in for it by turning Hunger faceup while Setup is parked. Only the forced step runs when Setup completes, not the Wake checks, which cannot fire in round 1.
 - **Hunger offers every adviser, denizen or Vision, in either orientation,** of every player whose pawn is at the holder's site, the holder included. Only Hunger itself is excluded. Locked cards are offered, since `Bury` ignores locked. The options are listed in seat order, then adviser order. Hunger asks even when only one option exists. The standard returns send favor to the card's suit bank and secrets to Hunger's holder, as Crystal Vial's do. Cost if wrong: a filter.
 - **Hunger's keys are `buried` and `none`, not `used`.** The run is a `ForcedWake`, not a `UsePower`, so the lines are Trigger lines and no "Used Hunger" line exists to replace.
 - **Shifting Fog writes its line only when some favor moved.** With every bank empty it writes nothing, as the spec's "amounts are what happened" rule implies.
@@ -981,15 +982,18 @@ Create `src/test/scala/oathdigital/gameplay/powers/wake/HungerSuite.scala`:
 ```scala
 package oathdigital.gameplay.powers.wake
 
+import oathdigital.application.{GameCommand, ParkedServiceFixture}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   TargetsFixture}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Situation
 
 class HungerSuite extends munit.FunSuite:
   import PowerFixture.{actor, base, player}
@@ -1101,6 +1105,25 @@ class HungerSuite extends munit.FunSuite:
     parked.assertResumed(t.state, Phase.Wake, next)
     assert(!t.events.contains(WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
 
+  test("a Hunger faceup when Setup ends runs at the first Wake"):
+    // Stands in for Setup's Reveal Cards step (ROADMAP cleanup), which does
+    // not exist yet: Hunger is turned faceup while Setup is parked.
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders,
+      Vector(card))
+    val begun = Situation.start(Situation.rules(catalog,
+      phasePowers = phasePowers)).parkedAfter(GameCommand.Begin(chronicle, orders))
+    val first = begun.ready.setup.firstPlayer
+    val revealed = begun.copy(state = Ready(giveAdviser(begun.ready, first,
+      card, Orientation.FaceUp)))
+    val woken = revealed.after()
+    assert(woken.events.contains(
+      WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
+    assertEquals(woken.ready.game.current.turn.activePlayer, first)
+    assertEquals(woken.ready.game.current.turn.phase, Phase.Wake)
+    assertEquals(NoteText.said(hunger, woken.events).map(_.key),
+      Vector("buried"))
+
   test("Hunger cannot be used as an optional power"):
     val t = rested(staged(Orientation.FaceDown))
     val faceup = ready(t.state).updateCurrent(c => c.copy(players =
@@ -1151,7 +1174,8 @@ In `ProcedureRef.scala`, add to `TriggeredProcedureRef`:
 
 ```scala
   /** The forced Wake powers of the player whose Wake begins (catalog batch 2,
-    * N8). The turn boundary starts it; nothing else may run until it ends. */
+    * N8). The turn boundary or the end of Setup starts it; nothing else may
+    * run until it ends. */
   case ForcedWake extends TriggeredProcedureRef("forced-wake")
 ```
 
@@ -1174,10 +1198,10 @@ import oathdigital.model._
   * }}}
   *
   * Every forced WAKE power the waking player can access, in catalog order,
-  * each asking its own decision. The turn boundary starts this as a
-  * triggered procedure after the Wake checks, so the player can do nothing
-  * else until it ends: a parked walker refuses End Wake and every optional
-  * power.
+  * each asking its own decision. It is a triggered procedure, started by
+  * the turn boundary after the Wake checks, or by the end of Setup for the
+  * first Wake. The player can do nothing else until it ends: a parked walker
+  * refuses End Wake and every optional power.
   *
   * `build` is also `rebuild`. The list is read from the state the walk
   * resumes in, so a forced power must not change which forced powers are
@@ -1254,10 +1278,10 @@ In `OathRules`:
 
 ```scala
   /** The forced Wake powers of the player whose Wake begins (catalog batch
-    * 2, N8), after the Usurper and Vision checks and only while the game
-    * goes on. Setup keeps every starting adviser facedown, so the first Wake
-    * of a game, which does not pass here, has none. */
-  private def forcedWake(transition: OathTransition)
+    * 2, N8): after the Usurper and Vision checks at a turn boundary, and
+    * when Setup ends, since Setup's tree begins the first Wake itself. Only
+    * while the game goes on. */
+  protected def forcedWake(transition: OathTransition)
       : Either[OathViolation, OathTransition] = transition.state match
     case Ready(ready) if ready.game.current.result.isEmpty &&
         ready.game.current.turn.phase == Phase.Wake &&
@@ -1265,6 +1289,28 @@ In `OathRules`:
           ready.game.current.turn.activePlayer, phasePowerCatalog).nonEmpty =>
       startTriggered(transition, TriggeredProcedureRef.ForcedWake)
     case _ => Right(transition)
+```
+
+In `OathRulesWalker`:
+
+1. Declare it beside `turnBoundary`:
+
+```scala
+  /** Starts the forced Wake step when one is due (catalog batch 2, N8). */
+  protected def forcedWake(transition: OathTransition)
+      : Either[OathViolation, OathTransition]
+```
+
+2. In `walkerTransition`'s `Finished` branch, run it after Setup:
+
+```scala
+          if runsActionBoundary(procedure) then completeAction(transition)
+          else if runsTurnBoundary(procedure) then turnBoundary(transition)
+          // Setup's tree begins the first Wake, which no turn boundary
+          // enters, so its forced step starts here.
+          else if procedure == TriggeredProcedureRef.Setup then
+            forcedWake(transition)
+          else Right(transition))
 ```
 
 In `ActionLines.lines`, add before the `TriggeredProcedureRef.Setup` case:
