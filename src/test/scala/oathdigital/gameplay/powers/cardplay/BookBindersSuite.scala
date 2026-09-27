@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powerresolver.{PowerCtx, Transform}
+import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture,
   TargetsFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -10,6 +11,7 @@ import oathdigital.model._
 
 class BookBindersSuite extends munit.FunSuite:
   import PowerFixture._
+  import VisionPlayFixture._
 
   private val binders = DenizenId("140")
   private val holder = TargetsFixture.others(base).head
@@ -99,5 +101,87 @@ class BookBindersSuite extends munit.FunSuite:
       power.contributions(PowerWindow.ActionCardPlayedFaceup).head: @unchecked
     val folded = fn(ctx, Vector(hook))
     assertEquals(folded.head, hook)
-    assertEquals(folded.collect { case decide: Decide => decide.owner },
+    // The take is one node whatever it does to bank state (see the fix
+    // wave's fix), so it is a single Branch, not a bare Decide.
+    val branches = folded.collect { case branch: Branch => branch }
+    assertEquals(branches.size, 1)
+    val selected = branches.head.select(ready, PendingTree(Vector.empty, Vector.empty))
+    assertEquals(selected.collect { case decide: Decide => decide.owner },
       Vector(holder))
+
+  /** `holder` also holds a relic, and stands at the actor's own site, so
+    * the actor's faceup Conspiracy has a legal target: another player's pawn
+    * holding a relic at the actor's site, the way `ConspiracyWhenPlayedSuite`
+    * arranges one.
+    */
+  private def withConspiracyTarget(relic: RelicId): ReadyGame =
+    val staged = TargetsFixture.giveAdviser(CardStaging.without(
+      SearchFixture.staged(Vector(VisionRules.Conspiracy)), binders), holder,
+      binders, Orientation.FaceUp)
+    val atSite = TargetsFixture.withPawn(staged, holder, home(base))
+    atSite.updateCurrent(c => c.copy(players = c.players.map(p =>
+      if p.player == holder then p.copy(relics = p.relics :+
+        RelicState(relic, Orientation.FaceDown, Tokens.empty)) else p)))
+
+  test("the Conspiracy still resolves when Book Binders' own take drains " +
+      "the bank it emptied, which used to shift the target decision's index"):
+    val relic = RelicId("conspiracy-target-relic")
+    val staged = withConspiracyTarget(relic)
+    // Two banks stocked; the one Book Binders' holder picks (Arcane, holding
+    // only 1) empties, leaving only Order stocked -- the shape-changing case
+    // the fix covers, since Book Binders' own contribution used to be 2 nodes
+    // (a Decide plus a Move) with two banks stocked, and only 1 (a bare
+    // Move) with one, shifting every later sibling at this window.
+    val ready = staged.copy(banks = staged.banks.copy(favor =
+      Suit.all.map(suit => suit -> Map(Suit.Arcane -> 1, Suit.Order -> 5)
+        .getOrElse(suit, 0)).toMap))
+    val started = SearchFixture.start(ready).toOption.get
+    val kept = SearchFixture.keep(started, VisionRules.Conspiracy).toOption.get
+    val placed = SearchFixture.place(kept, VisionRules.Conspiracy,
+      "adviser-faceup").toOption.get
+    // Book Binders sorts before Conspiracy at this window (source keys
+    // "game:denizen.book-binders" < "game:vision.conspiracy"), so its own
+    // take parks first.
+    val choice = BookBinders.decisionId(ready, holder, VisionRules.Conspiracy)
+    parked.assertParked(placed.state, ActionRef.Search, choice, holder)
+    val tookBank = SearchFixture.rules.resolveWalker(placed.state, holder,
+      choice, DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(
+        Suit.Arcane))).toOption.get
+    // The Conspiracy's target decision now parks, at whatever index this
+    // command's refold gives it -- the fix keeps that index stable.
+    parked.assertParked(tookBank.state, ActionRef.Search,
+      ConspiracyWhenPlayed.decisionId, actor)
+    val done = SearchFixture.rules.resolveWalker(tookBank.state, actor,
+      ConspiracyWhenPlayed.decisionId, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.RelicSlot(holder, 0)))
+    assert(done.isRight, done)
+    val after = SearchFixture.after(done.toOption.get)
+    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(after.banks.favor(Suit.Arcane), 0)
+    assertEquals(after.banks.favor(Suit.Order), 5)
+    assertEquals(favor(after, holder), favor(ready, holder) + 1)
+    assert(player(after, actor).relics.exists(_.id == relic))
+    assert(!player(after, holder).relics.exists(_.id == relic))
+
+  test("a facedown Vision played from the advisers gives the holder favor " +
+      "too, off turn, pinning the rebuildFacedown settle path"):
+    val ready = TargetsFixture.giveAdviser(CardStaging.without(
+      inPhase(base, Phase.Act), binders), holder, binders, Orientation.FaceUp)
+      .copy(banks = base.banks.copy(favor =
+        Suit.all.map(suit => suit -> Map(Suit.Arcane -> 3, Suit.Order -> 3)
+          .getOrElse(suit, 0)).toMap))
+    val atPlacement = fromAdvisers(ready, VisionRules.Faith)
+    val placed = SearchFixture.rules.resolveWalker(atPlacement.state, actor,
+      s"cardplay.place.${VisionRules.Faith.kind}.${VisionRules.Faith.value}",
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button(
+        "adviser-faceup"))).toOption.get
+    val choice = BookBinders.decisionId(ready, holder, VisionRules.Faith)
+    parked.assertParked(placed.state, ActionRef.PlayFacedownAdviser, choice,
+      holder)
+    val taken = SearchFixture.rules.resolveWalker(placed.state, holder, choice,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Order)))
+      .toOption.get
+    val after = SearchFixture.after(taken)
+    assertEquals(favor(after, holder), favor(ready, holder) + 2)
+    assertEquals(after.banks.favor(Suit.Order), 1)
+    assertEquals(after.banks.favor(Suit.Arcane), 3)

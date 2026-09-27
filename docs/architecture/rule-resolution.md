@@ -100,6 +100,13 @@ so its start control is hidden. The probe's own traversal does not probe
 needs only a `Restriction`, even when the window it checks exists only after
 the answer, as a card-play hook does.
 
+A `Transform` that adds nodes after its hooked node must add the same number
+of nodes whatever its own effects do to the state, because the walk refolds
+the window on every command and a later sibling contribution at that window
+is addressed by index, not by identity. Wrap the state-dependent piece in a
+`Branch` instead, as Book Binders and Vow of Obedience's REST do: the branch
+itself is one node, however many children its own `select` produces.
+
 ## Window-driven power runtime
 
 `PowerRegistry` and `PowerResolver` keep four concepts separate: factual sources

@@ -25,17 +25,27 @@ final case class BookBinders private (cardId: DenizenId,
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      reward(ctx).fold(children)(children ++ _))))
+      reward(ctx).fold(children)(children :+ _))))
 
   override def applicable(ctx: PowerCtx): Boolean = reward(ctx).nonEmpty
 
-  /** The holder's take, when another player plays a Vision faceup. */
-  private def reward(ctx: PowerCtx): Option[Vector[Operation]] = for
+  /** The `Branch` that takes the holder's reward, when another player plays a
+    * Vision faceup and at least one favor bank is stocked at fold time. One
+    * node whatever the take does to bank state: the walker refolds this
+    * window on every command, and a sibling contribution at the same window
+    * (Conspiracy's own target decision, sorted after this one) is addressed
+    * by index, so this must add the same number of nodes regardless of live
+    * state. The take itself is state-dependent, so it stays inside the
+    * `Branch`, exactly as Vow of Obedience's REST builds its tree.
+    */
+  private def reward(ctx: PowerCtx): Option[Operation] = for
     vision <- VisionPlay.played(ctx)
     holder <- holderOf(ctx.state).filter(_ != ctx.activePlayer)
-  yield FavorBankChoice.take(ctx.state, holder, BookBinders.Favor,
-    BookBinders.decisionId(ctx.state, holder, vision),
-    "Book Binders: take two favor from a bank")
+    if FavorBankChoice.stocked(ctx.state).nonEmpty
+  yield
+    val decisionId = BookBinders.decisionId(ctx.state, holder, vision)
+    Branch((state, _) => FavorBankChoice.take(state, holder, BookBinders.Favor,
+      decisionId, "Book Binders: take two favor from a bank"))
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
     ready.game.current.players.find(_.advisers.exists {
