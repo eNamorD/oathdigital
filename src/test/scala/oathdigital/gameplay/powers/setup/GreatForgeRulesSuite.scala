@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.setup
 
-import oathdigital.gameplay.powers.{CardStaging, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{CardStaging, NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupWalkDriver}
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
@@ -46,3 +46,40 @@ class GreatForgeRulesSuite extends munit.FunSuite:
     val finished = finish(staged)
     assert(finished.game.current.map.sites(relicSite).relics.isEmpty)
     assert(relicsBefore.nonEmpty)
+
+  // ---- Lines ----
+
+  private def events(ready: ReadyGame): Vector[OathEvent] =
+    val tree = SetupProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty).toOption.get
+    SetupWalkDriver.driveWithEvents(ready, tree, powers)._2
+
+  private val great = GreatForge.forCatalog(catalog).get
+  private val broken = BrokenForge.forCatalog(catalog).get
+
+  test("Great Forge writes the relic its player drew"):
+    val staged = stagedAt(EdificeSide.Intact)
+    val topRelic = staged.game.current.commonCards.relicDeck.head
+    val said = NoteText.said(great.id, great.noteKeys, events(staged))
+    assertEquals(said.head, NoteText.Said(NoteKey.Used,
+      s"${firstPlayer.value} drew ${topRelic.value} facedown.", covers = false))
+    // The driver places every pawn at the first site, so each player draws.
+    assertEquals(said.size, staged.game.current.players.size)
+
+  test("Great Forge with an empty relic deck writes nothing"):
+    val staged = stagedAt(EdificeSide.Intact).updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(relicDeck = Vector.empty)))
+    assertEquals(NoteText.said(great.id, great.noteKeys, events(staged)),
+      Vector.empty)
+
+  test("Broken Forge writes the relics it discarded"):
+    val staged = stagedAt(EdificeSide.Ruined)
+    val current = staged.game.current
+    val region = current.map.regionOf(site).get
+    val relics = current.map.inPlay
+      .filter(s => current.map.regionOf(s).contains(region))
+      .flatMap(s => current.map.sites(s).relics.map(_.id.value))
+    assert(relics.nonEmpty)
+    assertEquals(NoteText.said(broken.id, broken.noteKeys, events(staged)),
+      Vector(NoteText.Said("discarded",
+        s"Discarded ${relics.mkString(", ")}.", covers = false)))

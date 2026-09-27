@@ -13,11 +13,18 @@ import oathdigital.testkit.{Park, Situation}
   */
 object SetupWalkDriver extends WalkerRecordedOpsReducer with munit.Assertions:
   def driveToCompletion(ready: ReadyGame, tree: Operation, powers: WalkerPowers)
-      : ReadyGame =
+      : ReadyGame = driveWithEvents(ready, tree, powers)._1
+
+  /** `driveToCompletion`, also returning every event the walk journaled, in
+    * walk order, for the suites that read a rule's notes. */
+  def driveWithEvents(ready: ReadyGame, tree: Operation, powers: WalkerPowers)
+      : (ReadyGame, Vector[OathEvent]) =
     var state = ready
+    var journaled = Vector.empty[OathEvent]
     var outcome = ProcedureWalker.advance(state, tree, None, powers).toOption.get
     while outcome.isInstanceOf[WalkerOutcome.Parked] do
       val WalkerOutcome.Parked(pending, events) = outcome: @unchecked
+      journaled = journaled ++ events
       state = foldRecordedOps(state, events, "setup walk failed")
       val decide = ProcedureWalker.parkedDecide(state, tree, pending, powers).get
       val park = Park(decide, state, decide.owner,
@@ -28,5 +35,5 @@ object SetupWalkDriver extends WalkerRecordedOpsReducer with munit.Assertions:
         decide.owner)
       outcome = ProcedureWalker.resolve(state, tree, pending, answer, powers)
         .toOption.get
-    val WalkerOutcome.Finished(finished, _) = outcome: @unchecked
-    finished
+    val WalkerOutcome.Finished(finished, events) = outcome: @unchecked
+    (finished, journaled ++ events)

@@ -25,17 +25,36 @@ sealed abstract class MarketRule extends ContributingPower:
   protected def build(ready: ReadyGame, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]]
 
+  /** The line this face writes after its effect. */
+  protected def note(at: SiteId): Note
+
   final def contributions: Map[PowerWindow, Vector[Contribution]] =
     val effect = Vector(Transform((ctx, ops) => at(ctx.state) match {
-      case Some(site) => ops :+ BuildOps((ready, _) => build(ready, site))
+      case Some(site) =>
+        ops :+ BuildOps((ready, _) => build(ready, site)) :+ note(site)
       case None => ops
     }))
     Map(PowerWindow.SetupEnd -> effect, PowerWindow.WhenExplored -> effect)
+object MarketRule:
+  /** The favor on `site` in `ready`. */
+  def siteFavor(ready: ReadyGame, site: SiteId): Int =
+    ready.game.current.map.sites.get(site).fold(0)(_.tokens.favor)
+
+  def favor(amount: Int): NoteArg = NoteArg.Amount(amount, NoteUnit.Favor)
 
 final case class GreatMarket private (edifice: EdificeId, catalog: ExecutableCatalog)
     extends MarketRule:
   def id: PowerId = GreatMarket.id
   protected def side: EdificeSide = EdificeSide.Intact
+
+  override def noteKeys: Vector[NoteKey] = Vector(GreatMarket.placed)
+
+  protected def note(at: SiteId): Note = Note(id, states => for
+    step <- states.previous
+    placed = MarketRule.siteFavor(step._2, at) - MarketRule.siteFavor(step._1, at)
+    if placed > 0
+  yield GreatMarket.placed(PowerSourceRef.Card(edifice), MarketRule.favor(placed),
+    NoteArg.Site(at)))
 
   protected def build(ready: ReadyGame, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] = for
@@ -51,6 +70,9 @@ final case class GreatMarket private (edifice: EdificeId, catalog: ExecutableCat
       PositionedLocation(Location.FavorBank(suit)), PositionedLocation(Location.Site(at))))
 object GreatMarket:
   val id: PowerId = PowerId("edifice.e02.intact")
+  /** "Placed {3 favor} on {site}." */
+  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
+    NotePart.Arg(0), NotePart.Text(" on "), NotePart.Arg(1), NotePart.Text(".")))
   def forCatalog(catalog: ExecutableCatalog): Option[GreatMarket] =
     CatalogCards.edifice(catalog, id).map(new GreatMarket(_, catalog))
 
@@ -58,6 +80,26 @@ final case class BanditMarket private (edifice: EdificeId, catalog: ExecutableCa
     extends MarketRule:
   def id: PowerId = BanditMarket.id
   protected def side: EdificeSide = EdificeSide.Ruined
+
+  override def noteKeys: Vector[NoteKey] =
+    Vector(BanditMarket.placedAndBurned, BanditMarket.placed, BanditMarket.burned)
+
+  /** Each bandit site took one favor; the banks lost that and the burn. */
+  protected def note(at: SiteId): Note = Note(id, states =>
+    states.previous.flatMap { case (before, after) =>
+      val placed = after.game.current.map.sites.keysIterator.map(site =>
+        MarketRule.siteFavor(after, site) - MarketRule.siteFavor(before, site))
+        .filter(_ > 0).sum
+      val drained = Suit.all.map(suit => before.banks.favor.getOrElse(suit, 0) -
+        after.banks.favor.getOrElse(suit, 0)).sum
+      val burned = drained - placed
+      val card = PowerSourceRef.Card(edifice)
+      if placed > 0 && burned > 0 then Some(BanditMarket.placedAndBurned(card,
+        MarketRule.favor(placed), MarketRule.favor(burned)))
+      else if placed > 0 then Some(BanditMarket.placed(card, MarketRule.favor(placed)))
+      else if burned > 0 then Some(BanditMarket.burned(card, MarketRule.favor(burned)))
+      else None
+    })
 
   protected def build(ready: ReadyGame, at: SiteId)
       : Either[OathViolation, Vector[CoreOperation]] =
@@ -73,5 +115,19 @@ final case class BanditMarket private (edifice: EdificeId, catalog: ExecutableCa
     }
 object BanditMarket:
   val id: PowerId = PowerId("edifice.e02.ruined")
+  /** "Placed {2 favor} on the bandit sites and burned {6 favor} from the
+    * banks." */
+  val placedAndBurned: NoteKey = NoteKey("placed-and-burned", Vector(
+    NotePart.Text("Placed "), NotePart.Arg(0),
+    NotePart.Plural(0, " on the bandit site", " on the bandit sites"),
+    NotePart.Text(" and burned "), NotePart.Arg(1),
+    NotePart.Text(" from the banks.")))
+  /** "Placed {2 favor} on the bandit sites." */
+  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
+    NotePart.Arg(0),
+    NotePart.Plural(0, " on the bandit site.", " on the bandit sites.")))
+  /** "Burned {6 favor} from the banks." */
+  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+    NotePart.Arg(0), NotePart.Text(" from the banks.")))
   def forCatalog(catalog: ExecutableCatalog): Option[BanditMarket] =
     CatalogCards.edifice(catalog, id).map(new BanditMarket(_, catalog))
