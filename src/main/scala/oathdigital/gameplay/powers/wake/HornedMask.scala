@@ -5,7 +5,8 @@ import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.powers.{AdviserLimit, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.powers.{AdviserLimit, NoteSupport, PlayerFacts,
+  PowerAnswers}
 import oathdigital.model._
 
 /** Horned Mask (relic R06), WAKE: take a non-edifice denizen from your pawn's
@@ -29,6 +30,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
 
   def id: PowerId = HornedMask.id
   def timing: PowerTiming = PowerTiming.Wake
+  override def noteKeys: Vector[NoteKey] = Vector(took, taken)
   def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = true
 
@@ -38,7 +40,23 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
     Branch((live, pending) => askDiscard(live, player, pending)),
     BuildOps((live, pending) => take(live, player, pending),
       restrictions = (_, _) => Vector(
-        new DiscardRestrictions(catalog, player))))))
+        new DiscardRestrictions(catalog, player))),
+    Note(this.id, takeNote(_, player, source)))))
+
+  /** After a discard question the take lands in a later command than the
+    * power's first effect, where "Used Horned Mask" has already posted, so
+    * the line is then `taken`, a trigger. */
+  private def takeNote(states: NoteStates, actor: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    denizen <- NoteSupport.answer(states, denizenDecisionId).collect {
+      case DecisionOptionRef.Denizen(chosen) => chosen }
+    if advisers(states.now, actor).exists(_.id == denizen)
+  yield
+    val key =
+      if NoteSupport.answer(states, discardDecisionId).isDefined then taken
+      else took
+    key(card, NoteArg.Player(actor), NoteArg.Card(denizen))
 
   private def site(ready: ReadyGame, actor: PlayerId)
       : Option[(SiteId, SiteState)] = PowerAccess.pawnSite(ready, actor)
@@ -141,3 +159,7 @@ object HornedMask:
   val id: PowerId = PowerId("relic.horned-mask")
   val denizenDecisionId: String = "power.horned-mask.denizen"
   val discardDecisionId: String = "power.horned-mask.discard"
+  val took: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+    NotePart.Text(" took "), NotePart.Arg(1),
+    NotePart.Text(" as a facedown adviser.")))
+  val taken: NoteKey = took.copy(name = "taken")

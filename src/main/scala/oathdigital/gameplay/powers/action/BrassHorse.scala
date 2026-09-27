@@ -21,11 +21,24 @@ final class BrassHorse(catalog: ExecutableCatalog)
     extends PaidAction(BrassHorse.id.value, Cost(secret = 1)):
   import BrassHorse._
 
+  override def noteKeys: Vector[NoteKey] = Vector(revealed, placed)
+
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     BuildOps((state, _) => reveal(state, player)),
+    Note(this.id, revealNote(_, player, source), covers = true),
     Branch((state, _) => ask(state, player)),
-    BuildOps((state, pending) => place(state, player, pending)))))
+    BuildOps((state, pending) => place(state, player, pending)),
+    Note(this.id, PawnMoves.placedNote(placed, source, player)))))
+
+  /** The reveal changes nothing, so the pile's top card is still the one it
+    * revealed. */
+  private def revealNote(states: NoteStates, player: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    found <- region(states.now, player).toOption
+    shown <- top(states.now, found)
+  yield revealed(card, NoteArg.Player(player), NoteArg.Card(shown))
 
   private def region(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, Region] = for
@@ -79,3 +92,9 @@ final class BrassHorse(catalog: ExecutableCatalog)
 object BrassHorse:
   val id: PowerId = PowerId("relic.brass-horse")
   val decisionId: String = "power.brass-horse.site"
+  /** Its own line: the reveal is its first effect, so the line sits there,
+    * in the command that starts it. The placement may follow a question in
+    * a later command, so it writes a line of its own. */
+  val revealed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+    NotePart.Text(" revealed "), NotePart.Arg(1), NotePart.Text(".")))
+  val placed: NoteKey = PawnMoves.placedKey("placed")

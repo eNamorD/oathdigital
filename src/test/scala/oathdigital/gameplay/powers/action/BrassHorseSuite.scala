@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -100,3 +101,19 @@ class BrassHorseSuite extends munit.FunSuite:
     val facedown = inPhase(withSecrets(
       withRelic(base, horse, Orientation.FaceDown), 2), Phase.Act)
     assert(!usable(facedown, id))
+
+  test("it writes the card it revealed in place of the generic line, then where the pawn went"):
+    val done = use(cradleTopped(beastTop), BrassHorse.id, horse).toOption.get
+    assertEquals(NoteText.said(new BrassHorse(catalog), done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} revealed ${beastTop.value}.",
+        covers = true),
+      NoteText.Said("placed", s"${actor.value} placed at ${deepWoods.value}.",
+        covers = false)))
+
+  test("an empty pile writes only where the pawn went"):
+    val start = withDiscard(staged, Region.Cradle, Vector.empty)
+    val parked = use(start, BrassHorse.id, horse).toOption.get
+    val done = choose(parked.state, BrassHorse.decisionId, site(dunes)).toOption.get
+    assertEquals(NoteText.said(new BrassHorse(catalog), parked.events ++ done.events),
+      Vector(NoteText.Said("placed", s"${actor.value} placed at ${dunes.value}.",
+        covers = false)))

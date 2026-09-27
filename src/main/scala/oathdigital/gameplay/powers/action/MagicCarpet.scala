@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.PlayerFacts
-import oathdigital.gameplay.powers.PowerAnswers
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 /** Magic Carpet (relic R39), ACTION, no cost: place your pawn at any site,
@@ -17,6 +16,12 @@ case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free):
   val siteDecisionId: String = "power.magic-carpet.site"
   val fateDecisionId: String = "power.magic-carpet.fate"
   val discard: DecisionOptionRef.Button = DecisionOptionRef.Button("discard")
+  val placed: NoteKey = PawnMoves.placedKey(NoteKey.Used)
+  val givenAway: NoteKey = NoteKey("given", Vector(NotePart.Text("Given to "),
+    NotePart.Arg(0), NotePart.Text(".")))
+  val discarded: NoteKey = NoteKey("discarded", Vector(
+    NotePart.Text("Discarded.")))
+  override def noteKeys: Vector[NoteKey] = Vector(placed, givenAway, discarded)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match
@@ -26,10 +31,21 @@ case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free):
         "Magic Carpet: choose the site to place your pawn at"),
       BuildOps((state, pending) => PawnMoves.chosenSite(pending,
         siteDecisionId).flatMap(PawnMoves.relocate(state, player, _))),
+      Note(id, PawnMoves.placedNote(placed, source, player)),
       Branch((state, _) => ask(state, player)),
-      BuildOps((state, pending) => settle(state, player, carpet, pending)))))
+      BuildOps((state, pending) => settle(state, player, carpet, pending)),
+      Note(id, fateNote(_, source)))))
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not a relic source"))
+
+  /** The fate question is not asked when nobody may take the Carpet, and it
+    * is then discarded. */
+  private def fateNote(states: NoteStates, source: DecisionOptionRef)
+      : Option[PowerNote] = PowerSourceRef.of(source).map(card =>
+    NoteSupport.answer(states, fateDecisionId) match
+      case Some(DecisionOptionRef.Player(taker)) =>
+        givenAway(card, NoteArg.Player(taker))
+      case _ => discarded(card))
 
   private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
     val takers = PawnMoves.atOtherSites(ready, player)

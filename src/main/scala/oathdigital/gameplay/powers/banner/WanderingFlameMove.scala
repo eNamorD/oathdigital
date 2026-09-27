@@ -18,6 +18,8 @@ import oathdigital.model._
 case object WanderingFlameMove extends PaidAction(
     "banner.darkest-secret.wandering-flame.move", Cost.free):
   val decisionId: String = "power.wandering-flame.site"
+  val placed: NoteKey = PawnMoves.placedKey(NoteKey.Used)
+  override def noteKeys: Vector[NoteKey] = Vector(placed)
 
   override def usable(ready: ReadyGame, player: PlayerId,
       source: DecisionOptionRef): Boolean = destinations(ready, player).nonEmpty
@@ -25,7 +27,8 @@ case object WanderingFlameMove extends PaidAction(
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((state, _) => ask(state, player)),
-    BuildOps((state, pending) => move(state, player, pending)))))
+    BuildOps((state, pending) => move(state, player, pending)),
+    Note(id, PawnMoves.placedNote(placed, source, player)))))
 
   /** The other sites, in map order, with a secret on the site itself. */
   private def destinations(ready: ReadyGame, player: PlayerId): Vector[SiteId] =

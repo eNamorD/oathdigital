@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -185,3 +186,21 @@ class HornedMaskSuite extends munit.FunSuite:
     assertEquals(usableNow(facedown), Vector.empty)
     assert(use(facedown, power, source).isLeft)
     assert(use(inPhase(atHome(staged, inn), Phase.Act), power, source).isLeft)
+
+  test("it writes the denizen it took"):
+    val t = use(atHome(staged, inn), power, source).toOption.get
+    val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
+      .toOption.get
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} took ${inn.value} as a facedown adviser.",
+      covers = false)))
+
+  test("after a discard question the take is written apart from its action line"):
+    val t = use(holding(elders, fresh, wolves), power, source).toOption.get
+    val asked = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
+      .toOption.get
+    val done = answer(asked, actor, HornedMask.discardDecisionId,
+      choose(elders)).toOption.get
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      "taken", s"${actor.value} took ${inn.value} as a facedown adviser.",
+      covers = false)))
