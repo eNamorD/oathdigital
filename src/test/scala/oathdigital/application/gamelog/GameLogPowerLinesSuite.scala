@@ -411,3 +411,33 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       }
       assertEquals(named, viewer == script.actor, shown(drew).spans.toString)
     }
+
+  test("Barbed Net writes its peek and its take as its action's lines, " +
+      "naming the relic to its taker alone"):
+    val script = barbedNet
+    val actor = name(script.actor)
+    val other = script.players.find(_ != script.actor).get
+    val last = script.history.steps.last.after match
+      case OathState.Ready(ready) => ready
+      case state => fail(s"expected a ready game, got $state")
+    val taken = last.game.current.players.find(_.player == script.actor).get
+      .relics.collectFirst { case RelicState(id, Orientation.FaceDown, _) => id }
+      .get
+    Vector(script.actor, other).foreach { viewer =>
+      val shown = format(script, Some(viewer)).filter(_.depth == 1)
+      val all = texts(shown)
+      val peeked = all.indexWhere(
+        _.startsWith(s"Barbed Net: $actor peeked at the relics at "))
+      val took = all.indexWhere(_.startsWith(s"Barbed Net: $actor took "))
+      assert(peeked >= 0 && took > peeked, all)
+      assert(all(took).contains(" facedown from "), all(took))
+      assertEquals(shown(peeked).kind, LogKind.Action)
+      assertEquals(shown(took).kind, LogKind.Action)
+      assert(!all.exists(_.startsWith("Used Barbed Net")), all)
+      assertEquals(all.count(_.contains("peeked at")), 1, all)
+      val named = shown(took).spans.exists {
+        case LogSpan.Card(id, _) => id == taken.value
+        case _ => false
+      }
+      assertEquals(named, viewer == script.actor, shown(took).spans.toString)
+    }

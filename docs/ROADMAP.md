@@ -36,8 +36,9 @@ faces and the Campaign kill replacement. Slice 3 runs as three plans. Slice
 Clay Rattle, with the `Shuffle` operation. Slice 3b is done: Scryer and
 Oracular Pig, with the `Inspect` decision and the card list. Slice 3c is
 done: Oracle, which draws a Vision and plays it through Search's placement.
-Slice 4, actions on others, and slice 5, triggers and when-played powers,
-remain.
+Slice 4 is done: the actions on others, Spoiled Supplies, Charming Friend,
+Siege Engines, Book of Records and Barbed Net. Slice 5, triggers and
+when-played powers, remains.
 
 Cards left for a later batch because they need engine work first:
 

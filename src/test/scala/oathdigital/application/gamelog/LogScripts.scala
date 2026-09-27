@@ -5,7 +5,8 @@ import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.powers.action.{GamblingHall, Oracle, Wolves}
+import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
+  Wolves}
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -473,6 +474,37 @@ object LogScripts:
       GameCommand.UsePower(actor, Oracle.id, DecisionOptionRef.Denizen(card)))
     Script("oracle", service, actor)
 
+  /** Barbed Net in the actor's play area and a relic from the relic deck at
+    * the actor's site, used in Act with three secrets arranged. The relic
+    * question parks; the answer takes that relic. */
+  def barbedNet(using munit.Location): Script =
+    val net = RelicId("R36")
+    val (service, _, driver) = journaled("barbed-net")
+    val woken = Situation.wake(driver, FirstGameSetupFixture.chronicle,
+      FirstGameSetupFixture.orders)
+    val actor = active(woken)
+    val current = woken.ready.game.current
+    val from = current.map.sites.collectFirst {
+      case (site, state) if state.relics.exists(_.id == net) =>
+        Location.Site(site)
+    }.getOrElse(Location.Deck(CardDeck.Relic))
+    val target = current.commonCards.relicDeck.find(_ != net).get
+    woken.withAnswers {
+      case park if park.decisionId == BarbedNet.decisionId =>
+        ChooseOneAnswer(DecisionOptionRef.Relic(target))
+    }.after(Step.Arrange(Vector(
+        Move(Piece.Card(net), PositionedLocation(from),
+          PositionedLocation(Location.PlayArea(actor)),
+          resultingOrientation = Some(Orientation.FaceUp)),
+        Move(Piece.Card(target), PositionedLocation(Location.Deck(CardDeck.Relic)),
+          PositionedLocation(Location.Site(pawn(woken, actor))),
+          resultingOrientation = Some(Orientation.FaceDown)),
+        Move(Piece.Secrets(3), PositionedLocation(Location.SharedBank),
+          PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor),
+      GameCommand.UsePower(actor, BarbedNet.id, DecisionOptionRef.Relic(net)))
+    Script("barbed-net", service, actor)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -490,6 +522,6 @@ object LogScripts:
     "negotiation-disclosed" -> (() => negotiationDisclosed),
     "use-power" -> (() => usePower),
     "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves),
-    "oracle" -> (() => oracle))
+    "oracle" -> (() => oracle), "barbed-net" -> (() => barbedNet))
 
   def all: Vector[Script] = named.map(_._2())
