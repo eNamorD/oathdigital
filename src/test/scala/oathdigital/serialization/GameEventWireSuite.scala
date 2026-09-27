@@ -5,8 +5,8 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, RollPayload,
-  WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, PowerNoted,
+  RollPayload, WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,
   RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -868,3 +868,34 @@ class GameEventWireSuite extends munit.FunSuite:
       .encodeEvent("game", catalogRef, 0L, OathEvent.BanditsRefilled(Vector.empty))
       .toOption
       .get
+
+  private def noteEvent(source: PowerSourceRef, args: NoteArg*): PowerNoted =
+    PowerNoted(PowerId("test.power"), PowerNote(source, "used", args.toVector),
+      covers = true)
+
+  test("a power note round trips with every argument kind"):
+    val event = noteEvent(PowerSourceRef.Card(DenizenId("93")),
+      NoteArg.Player(PlayerId("p1")), NoteArg.Card(RelicId("r1")),
+      NoteArg.Site(SiteId("s1")), NoteArg.Amount(3, NoteUnit.Favor),
+      NoteArg.Amount(1, NoteUnit.Warband), NoteArg.Number(8),
+      NoteArg.Bank(Suit.all.head),
+      NoteArg.Dice(Vector(DefenseDieFace.TwoShields, DefenseDieFace.Blank)),
+      NoteArg.Dice(Vector(AttackDieFace.OneSword)))
+    val encoded = GameEventWire.encodeEvent("notes", catalog.ref, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+
+  test("a power note's site and banner sources round trip"):
+    Vector(noteEvent(PowerSourceRef.Site(SiteId("s1"))),
+        noteEvent(PowerSourceRef.Banner(Banner.PeoplesFavor))).foreach { event =>
+      val encoded = GameEventWire.encodeEvent("notes", catalog.ref, 0, event)
+        .toOption.get
+      assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    }
+
+  test("an unknown note argument is refused"):
+    val event = noteEvent(PowerSourceRef.Site(SiteId("s1")), NoteArg.Number(1))
+    val encoded = ujson.read(GameEventWire.encodeEvent("notes", catalog.ref, 0,
+      event).toOption.get)
+    encoded("payload")("note")("args")(0)("kind") = "colour"
+    assert(GameEventWire.decode(encoded).isLeft)

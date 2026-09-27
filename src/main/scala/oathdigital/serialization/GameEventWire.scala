@@ -39,6 +39,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val WalkerStepRecordedType = "walker.step-recorded"
   val WalkerParkedType = "walker.parked"
   val WalkerCompletedType = "walker.completed"
+  val PowerNotedType = "walker.power-noted"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
