@@ -62,14 +62,23 @@ component modifiers. Relevant implemented command paths continue to reject
 unsupported handlers with their stable source identity instead of ignoring
 them.
 
-The faceup-Vision legality boundary fingerprints denizens, relics, both faces
-of every edifice, legacies, and sites. In the pinned runtime catalog it treats
-`denizen.vow-of-obedience`, `denizen.secret-police`,
-`denizen.book-binders`, `edifice.e08.intact` (Sacred Ground), and
-`edifice.e08.ruined` (Desecrated Ground) as relevant. Direct reveal, Search,
-Conspiracy, event replay, and private projection all use this boundary.
-Unrelated Vision references such as facedown-adviser peeks, adviser-limit
-changes, setup ordering, and the generic `denizen.revelation` When Played power
-do not block faceup Vision play. The legacy facedown-adviser command supports
-discarding a Vision but cannot play one faceup; `VisionRevealed` and the typed
-Conspiracy procedure are the sole faceup paths.
+Three cards forbid a faceup Vision play and one rewards it. Each is a power on
+the card-play hook `ActionCardPlayedFaceup`:
+
+- **Vow of Obedience** (`denizen.vow-of-obedience`): its faceup holder cannot
+  play Visions faceup, the Conspiracy included. Its REST takes one favor from
+  any stocked bank.
+- **Secret Police** (`denizen.secret-police`): enemies of its site's ruler
+  cannot while their pawn is at a site that ruler rules. Under Bandit rule
+  that is every player at a Bandit site. An Empire ruler binds no one yet.
+- **Sacred Ground** (`edifice.e08.intact`): no player can, except with the
+  Conspiracy, unless their pawn is at its site.
+- **Book Binders** (`denizen.book-binders`): after another player plays a
+  Vision faceup, its holder takes two favor from a bank of their choice.
+
+The first three are `Restriction`s. They bind only while the Vision is still
+in the player's temporary hand or among their facedown advisers. The walker's
+restriction look-ahead removes the faceup placement from Search and from
+facedown-adviser play, which are the only faceup paths, and the answer-time
+check refuses a submitted one. Desecrated Ground (`edifice.e08.ruined`) is
+not implemented; E08 never appears in a generated game.
