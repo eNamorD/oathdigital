@@ -94,12 +94,16 @@ object PlanContext:
   * board.
   */
 final case class PlanUse(side: CampaignPlanSide, actor: PlayerId,
-    result: Option[CampaignResult], ready: ReadyGame):
-  /** The player who used the plan; `None` for a bandit defender. */
+    result: Option[CampaignResult], ready: ReadyGame,
+    defender: Option[CampaignDefender] = None):
+  /** The player who used the plan; `None` for a bandit defender. A defender
+    * is read from the recorded result once the outcome is known, and from
+    * the Campaign's setup before it. */
   def user: Option[PlayerId] = side match
     case CampaignPlanSide.Attacker => Some(actor)
-    case CampaignPlanSide.Defender => result.map(_.defender).collect:
-      case CampaignDefender.Player(player) => player
+    case CampaignPlanSide.Defender =>
+      result.map(_.defender).orElse(defender).collect:
+        case CampaignDefender.Player(player) => player
 
   /** Whether the plan's user won. `None` before the outcome is known. */
   def won: Option[Boolean] = result.map(_.attackerWins == (
@@ -121,4 +125,5 @@ object PlanUse:
       CampaignPlanSide.Defender)
     picked.orElse(banditApplied).map(side => PlanUse(side, actor,
       Option.when(afterOutcome)(ready.game.current.lastCampaignResult)
-        .flatten.filter(_.attacker == actor), ready))
+        .flatten.filter(_.attacker == actor), ready,
+      CampaignSetup.setup(ready, actor, pending).map(_.defender)))
