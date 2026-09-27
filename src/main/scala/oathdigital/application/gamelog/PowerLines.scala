@@ -36,7 +36,8 @@ private[gamelog] final class PowerLines(words: LogWords,
         after <- journal.readyAfter(at)
         seen = states(journal, run, at) :+ after
       yield Posted.line(kind(run, power, note),
-        words.source(note.source, seen, viewer) ++
+        wordings.source(power).fold(words.source(note.source, seen, viewer))(
+          named => Vector(Text(named))) ++
           (Text(": ") +: sentence(template, note.args, seen, viewer)))
     case _ => None
 

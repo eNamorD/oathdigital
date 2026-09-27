@@ -53,4 +53,8 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
     case PowerSourceRef.Banner(_) => BannerFacePowers.printed(power).map:
       case (name, text) =>
         name -> oathdigital.catalog.CatalogPower(power, persistent = false, text)
+    case PowerSourceRef.Site(_) =>
+      SitePowerText.of(SitePowerText.kindOf(power.value)).map(site =>
+        site.label -> oathdigital.catalog.CatalogPower(power,
+          persistent = false, site.text))
     case _ => None

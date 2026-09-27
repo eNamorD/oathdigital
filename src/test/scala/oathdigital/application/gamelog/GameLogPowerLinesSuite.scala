@@ -316,3 +316,25 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assert(all.indexOf("Setup") < line && line < all.indexOf("Round 1"), all)
     assert(all.take(line).exists(_.contains(" placed pawn at ")), all)
     assertPrefixStable(noted)
+
+  test("a power that names its notes' source reads under that name, not its site"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val site = SiteId("site:ancient-city")
+    val noted = inserted(steps, take(steps), PowerNoted(power, took(
+      PowerSourceRef.Site(site), NoteArg.Player(script.actor),
+      NoteArg.Amount(1, NoteUnit.Favor)), covers = false))
+    val named = new GameLogFormatter(catalog, presentation,
+      NoteWordings.default(catalog) ++ NoteWordings.of(power, Vector(took),
+        Some("River")))
+    assert(texts(named.format(noted, None).filter(_.depth == 1)).contains(
+      s"River: ${name(script.actor)} took 1 favor."))
+    // Without a name the site is the source, as Narrow Pass's line has it.
+    assert(lines(noted).contains(
+      s"${presentation.siteLabel(site)}: ${name(script.actor)} took 1 favor."),
+      lines(noted))
+
+  test("the River's notes are written under River; Narrow Pass keeps its site"):
+    val wordings = NoteWordings.default(catalog)
+    assertEquals(wordings.source(PowerId("site.riverbank.river")), Some("River"))
+    assertEquals(wordings.source(PowerId("site.narrow-pass.pass")), None)

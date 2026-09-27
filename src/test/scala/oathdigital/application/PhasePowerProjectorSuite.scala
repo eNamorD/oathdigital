@@ -145,3 +145,16 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assert(tongueOwner.walkerDecision.flatMap(_.query)
       .exists(_.isInstanceOf[DecisionQueryProjection.ChooseOne]))
     assertEquals(tongueOwner.legalControls, Vector("resolveWalkerDecision"))
+
+  test("a site's phase power is projected under its power's name and printed text"):
+    import oathdigital.gameplay.powers.wake.RiverFixture
+    val ready = RiverFixture.staged()
+    val actor = ready.game.current.turn.activePlayer
+    val projected = projector.project("river", LoadedGame(Ready(ready), 30L), actor)
+    assertEquals(projected.phasePowers.filter(_.powerId ==
+      "site.ancient-city.river").map(p =>
+      (p.source.kind, p.source.id, p.name, p.rulesText)), Vector(("site",
+      "site:ancient-city", "River",
+      "WAKE: You may place your pawn at another River. This is not a Travel action.")))
+    assert(projected.legalControls.contains(
+      "usePower:site.ancient-city.river:site:ancient-city"))
