@@ -12,4 +12,6 @@ object CardPlayTriggers:
     WildCry.forCatalog(catalog).toVector ++
       WelcomingParty.forCatalog(catalog).toVector ++
       Gossip.forCatalog(catalog).toVector ++
-      VowOfObedience.forCatalog(catalog).toVector
+      VowOfObedience.forCatalog(catalog).toVector ++
+      SecretPolice.forCatalog(catalog).toVector ++
+      SacredGround.forCatalog(catalog).toVector
