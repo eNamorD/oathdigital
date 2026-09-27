@@ -235,7 +235,8 @@ private[walker] object WalkerPowerGather:
           val verdicts = (amount.min to amount.max).toVector.map(value =>
             value -> added(DecisionAnswer.ChooseAmountAnswer(value)))
           val allowed = verdicts.collect { case (value, None) => value }
-          if allowed.isEmpty then Left(verdicts.flatMap(_._2).head)
+          if verdicts.isEmpty then Right(Some(decide))
+          else if allowed.isEmpty then Left(verdicts.flatMap(_._2).head)
           else if allowed.last - allowed.head + 1 != allowed.size then
             Right(Some(decide))
           else Right(Some(decide.copy(query = amount.copy(min = allowed.head,

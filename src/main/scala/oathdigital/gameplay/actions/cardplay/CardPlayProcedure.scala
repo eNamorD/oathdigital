@@ -120,11 +120,12 @@ object CardPlayProcedure:
     s"$placementPrefix${card.kind}.${card.value}"
 
   /** The card whose placement was answered in `pending`, inverting
-    * [[placementDecisionId]]. A denizen's value never contains a '.', and
-    * neither does a kind, so the kind is everything up to the first '.'
-    * after the prefix and the value is everything after it -- a Vision's own
-    * value may contain ':', so splitting on '.' alone is what keeps this
-    * safe. `None` when nothing has answered a placement decision yet.
+    * [[placementDecisionId]]. The parse splits the remainder at the first
+    * '.' after the prefix: safe because no card kind contains a '.', whereas
+    * the value that follows may contain anything, '.' and ':' included.
+    * Takes the first recorded placement answer, which is right because a
+    * single-card Search (the settle path this exists for) records exactly
+    * one. `None` when nothing has answered a placement decision yet.
     */
   def placedCard(pending: PendingTree): Option[WorldCardId] =
     pending.answered.flatMap(answered => cardFor(answered.decisionId))

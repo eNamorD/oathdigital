@@ -335,3 +335,11 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assertEquals(visionId, s"cardplay.place.vision.${vision.value}")
     assertEquals(CardPlayProcedure.placedCard(pendingFor(visionId)),
       Some(vision))
+
+    // A value may itself contain '.': only the FIRST '.' after the prefix
+    // is the kind/value split, since no kind contains one.
+    val dotted = VisionId("vision:has.a.dot")
+    val dottedId = CardPlayProcedure.placementDecisionId(dotted)
+    assertEquals(dottedId, s"cardplay.place.vision.${dotted.value}")
+    assertEquals(CardPlayProcedure.placedCard(pendingFor(dottedId)),
+      Some(dotted))

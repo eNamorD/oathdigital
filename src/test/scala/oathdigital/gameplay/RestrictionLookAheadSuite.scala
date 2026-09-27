@@ -101,6 +101,12 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
     assertEquals(parkedQuery(amounts(Set(2))),
       DecisionQuery.ChooseAmount(0, 4, Some("How many?"), "Confirm"))
 
+  test("a choose-amount with an empty range is left declared, not thrown"):
+    val tree = asking(DecisionQuery.ChooseAmount(3, 2, Some("How many?"),
+      "Confirm"), _ => true)
+    assertEquals(parkedQuery(tree),
+      DecisionQuery.ChooseAmount(3, 2, Some("How many?"), "Confirm"))
+
   test("a required decision the probe empties stops the action from starting"):
     val onlyYes = asking(DecisionQuery.ChooseOne(Vector(button("yes"))),
       _ => true)

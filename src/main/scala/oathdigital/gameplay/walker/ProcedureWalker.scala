@@ -59,7 +59,7 @@ object WalkerPowers:
     * both always fold a shared window identically (Task 5 projector seam).
     */
   def selected(catalog: WalkerPowers, modifiers: Vector[PowerId]): WalkerPowers =
-    WalkerPowers(catalog.powers.filter(power =>
+    catalog.copy(powers = catalog.powers.filter(power =>
       power.resolution == PowerResolution.Automatic ||
         modifiers.contains(power.id)))
 
