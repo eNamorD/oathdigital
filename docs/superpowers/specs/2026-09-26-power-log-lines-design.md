@@ -5,6 +5,9 @@
 merges: it needs that phase's Restriction look-ahead and the Transform that
 removes Vow of Peace's sacrifice decision.
 
+**Slice 1 (2026-09-26):** the mechanism, with Vow of Peace and Gambling Hall
+as its first two powers. "Settled in slice 1" records what it decided.
+
 **Builds on** the [Game Log design](2026-09-25-game-log-design.md). That
 design left "powers declaring their own log lines" out of scope, kept the
 generic "Used {card}" as a stand-in, and reserved the detail row
@@ -59,7 +62,8 @@ These were settled while designing and bind the rest of this document.
 
 ### The note
 
-`PowerNote(key: String, args: Vector[NoteArg])` lives in the gameplay model,
+`PowerNote(source: PowerSourceRef, key: String, args: Vector[NoteArg])` lives
+in the gameplay model,
 beside the operation types.
 
 - `key` tells apart the lines one power can write. The key `used` is
@@ -78,7 +82,7 @@ beside the operation types.
 
 ### Emission path 1: the `Note` leaf
 
-`Note(power: PowerId, source: RuleSourceRef, build: NoteStates => PowerNote,
+`Note(power: PowerId, build: NoteStates => Option[PowerNote],
 covers: Boolean = false)` is a new leaf of the operation tree. The walker handles it the way it handles
 `Decide` and `Roll`. It is not a `CoreOperation` and changes no state.
 
@@ -86,10 +90,11 @@ covers: Boolean = false)` is a new leaf of the operation tree. The walker handle
   output, a battle plan's subtree, a phase power's `build`, a when-played
   tree, a setup rule's operations.
 - When the walk reaches the leaf, the walker calls `build` and appends
-  `PowerNoted(power, source, note)` to `WalkCtx.events`, in walk order.
-- `NoteStates(now: ReadyGame, previous: Option[(ReadyGame, ReadyGame)])`
-  gives `build` the live state, like `BuildOps`, and the states before and
-  after the step this walk journaled immediately before the note. `previous`
+  `PowerNoted(power, note, covers)` to `WalkCtx.events`, in walk order.
+- `NoteStates(now: ReadyGame, previous: Option[(ReadyGame, ReadyGame)],
+  answered: Vector[Answered])` gives `build` the live state, like
+  `BuildOps`, the states before and after the step this walk journaled
+  immediately before the note, and the action's answers so far. `previous`
   is empty when the note is the first step of its command.
 - **Amounts are what happened, never the printed number.** Supply clamps at
   the track's maximum, a favor gain takes at most what the bank holds, and a
@@ -102,8 +107,8 @@ covers: Boolean = false)` is a new leaf of the operation tree. The walker handle
 - A Transform that removes a decision leaves a `Note` in its place. Vow of
   Peace swaps the sacrifice `Decide` for a note reading "Vow of Peace: The
   attacker cannot sacrifice against Blue."
-- `source` names the card the line starts with. The setup rules, whose own
-  `source` is a game rule, pass their edifice card.
+- The note's `source` names the card the line starts with. The setup rules,
+  whose own `source` is a game rule, pass their edifice card.
 
 ### Emission path 2: the hide hook
 
@@ -340,11 +345,11 @@ cost payment logs nothing today and still logs nothing.
 
 ## 4. Storage
 
-- `PowerNoted(power, source, note)` joins `WalkerEventCodec` with the type
+- `PowerNoted(power, note, covers)` joins `WalkerEventCodec` with the type
   `"walker.power-noted"`.
-- A note is stored as its key and its arguments, each argument tagged with
-  its kind, like the log's span wire format. An unknown argument kind is a
-  decode error.
+- A note is stored as its source, its key and its arguments, the source and
+  each argument tagged with its kind, like the log's span wire format. An
+  unknown argument kind is a decode error.
 - `FormatVersion` does not change. Old journals stay valid and contain no
   notes.
 - `WalkerReplay.applyRecordedReady` gains a no-op `PowerNoted` case ahead of
@@ -398,6 +403,38 @@ Catalog:
 
 Cards: each row of the audit asserts its exact line in that card's existing
 suite.
+
+## Settled in slice 1
+
+The first slice settled these:
+
+- A note carries its source: `PowerNote(source: PowerSourceRef, key, args)`.
+  `PowerSourceRef` is what the log already names sources by. It is not the
+  `RuleSourceRef` this document first named: Vow of Peace and other powers
+  have only a game-rule `RuleSourceRef`.
+- `Note(power, build, covers)` is a plain `Operation`, not a
+  `PrimitiveOperation`. `build` may return nothing, and then nothing is
+  journaled, which is how an amount of zero writes no line.
+- `NoteStates` also carries the action's answers, so a note can name what
+  the player chose.
+- `PowerNoted(power, note, covers)` carries `covers` for the formatter.
+- A template lives on its `NoteKey`. A power declares `noteKeys` and builds
+  its notes through them, so a key never lacks a template. A missing
+  template can happen only for an old journal. `ContributingPower` and
+  `PhasePower` share `noteKeys` through one parent trait, `NotingPower`, so a
+  power that is both, such as Silver Tongue, declares its keys once.
+- `NoteArg.Number` is a bare number, for "Total: 8".
+- The hide hook covers choose-one and choose-many options. A choose-amount
+  decision the look-ahead narrows writes no note.
+- Merging compares the journaled notes, never the rendered text, so every
+  viewer receives the same entries.
+- Held notes post right after the start line, at the event that posts it.
+- A template starts with an argument or a capital letter, which a catalog
+  test checks. The formatter never changes case.
+- A phase power puts its `used` note in the same command as its first
+  effect, because "Used {card}" is decided at that step and reads ahead only
+  to the end of its segment.
+- The test that every phase power declares `used` arrives with slice 2.
 
 ## Slices
 
