@@ -40,14 +40,17 @@ play that finds no favor writes none.
 
 ### Phase - Catalog batch 2
 
-Implement the next set of denizens and relics. The first batch covered 30 of
-255 denizens and 15 of 48 relics. Choose cards whose powers need no Empire,
-Chronicle or explore machinery, so they fit the all-Exile game. The slice's
-own spec sets the card count and selection. As cards become implemented,
-the setup generator draws more of them into the world deck.
+Implement 23 denizens and 8 relics, which brings every suit to the 10
+denizens a generated world deck holds, so every card in it works. 37 of 255
+denizens and 16 of 48 relics are implemented today; after this phase 60 and
+24 are. The [design](superpowers/specs/2026-09-26-catalog-batch-2-design.md)
+lists the cards, eight engine additions, five slices by kind of power and
+every card's log line, and its
+[rulings appendix](superpowers/specs/2026-09-26-catalog-batch-2-rulings.md)
+settles each card. Implementation starts once the Power log lines phase
+merges its `Note` mechanism, so each card writes its line as it lands.
 
-Some candidate cards need engine work first, which the spec can take on or
-choose around:
+Cards left for a later batch because they need engine work first:
 
 - The Gathering and Whispering Stone need a nested Negotiation with its own
   participants.
@@ -58,6 +61,10 @@ choose around:
   Campaign powers read `ctx.activePlayer` as the attacker today
   (`PlanContext`, `BattlePlan`, `VowOfPeaceContribution`). Recorded in the
   powers design and the walker ownership and phases design.
+- Peace Envoy, Marsh Spirit, True Names and Code of Honor restrict which
+  battle plans a side may choose, which no contribution can hook yet.
+- Council Arbiter, Deed Writer and Traveling Negotiator widen who may
+  negotiate and what a deal may hold.
 
 ### Phase - Cleanup tasks
 
