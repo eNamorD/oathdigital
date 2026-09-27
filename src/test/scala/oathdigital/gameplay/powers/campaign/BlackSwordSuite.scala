@@ -28,9 +28,10 @@ class BlackSwordSuite extends munit.FunSuite:
     val b = replacePlayer(withRelicFor(base, base.other, relic), base.other)(p =>
       p.copy(board = p.board.copy(faceUpSecrets = 2)))
     val run = commit(rules(winning), b, 2)
-    // The title's defense may still be offered; Black Sword is not.
-    assert(!awaits(run, b.other, CampaignIds.defenderPlan) ||
-      !run.offered(b.actor).contains(ref))
+    // The defender holds the title, so its defense is offered and the choice
+    // is asked; Black Sword is not among the options.
+    assert(awaits(run, b.other, CampaignIds.defenderPlan))
+    assert(!run.offered(b.actor).contains(ref))
 
   test("the card is found in the catalog and registered once"):
     assertEquals(SimplePlans.forCatalog(catalog).count(_.id == BlackSword.id), 1)
