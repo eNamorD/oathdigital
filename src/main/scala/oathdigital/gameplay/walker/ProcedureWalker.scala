@@ -396,10 +396,11 @@ object ProcedureWalker:
       children: Vector[Operation], ctx: WalkCtx, path: Vector[String],
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] =
-    val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
-      ctx.activePlayer, ctx.powers, path, children, ctx.procedure, ctx.answered,
-      cursor.isDefined)
-    walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
+    val (folded, order, hidden) = WalkerPowerGather.applyWindowNoted(window,
+      operation, ctx.state, ctx.activePlayer, ctx.powers, path, children,
+      ctx.procedure, ctx.answered, cursor.isDefined, noting = cursor.isEmpty)
+    walkChildren(folded, ctx.copy(events = ctx.events ++ hidden), path, cursor,
+      resume, hooks.withOrder(order))
 
   private def walkComposite(composite: Operation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
@@ -499,8 +500,14 @@ object ProcedureWalker:
       case decide: Decide if asked(cursor, resume) =>
         WalkerPowerGather.probe(ctx.root, decide, ctx.state, ctx.activePlayer,
             ctx.powers, ctx.answered, ctx.procedure).flatMap:
-          case Some(narrowed) => runNarrowed(narrowed, ctx, path, cursor,
-            resume, contributions, strict)
+          case Some(narrowed) =>
+            // Reached fresh, so this is the only time it is asked this pass.
+            val hidden = if cursor.nonEmpty then Vector.empty
+              else WalkerPowerGather.lookAheadNotes(ctx.root, decide, narrowed,
+                ctx.state, ctx.activePlayer, ctx.powers, ctx.answered,
+                ctx.procedure)
+            runNarrowed(narrowed, ctx.copy(events = ctx.events ++ hidden), path,
+              cursor, resume, contributions, strict)
           case None if cursor.isEmpty => Right(Done(ctx))
           case None => Left(OathViolation.InvalidEventOrder(
             s"decision ${decide.decisionId} has nothing left to offer"))
