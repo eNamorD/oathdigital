@@ -55,10 +55,12 @@ Cards left for a later batch because they need engine work first:
 - [ ] **Implement every site power.** Each site's own power must work,
   including the River's. Site powers are declared like other powers, as
   contributions on the operation they change.
-- [ ] **Log the post-action checks.** The checks that run after an action, such
-  as the bandit refill and the Oathkeeper check, change the game without a Game
-  Log line. Each should write a line saying what it did, for example which site
-  the bandits refilled or who became Oathkeeper.
+- [x] **Log the post-action checks.** Already done by the Game Log phase: the
+  bandit refill posts "Bandits returned to {sites}" (`EventLines`), the
+  Oathkeeper check posts "Oathkeeper passed to {player}" (`ActionLines`), and
+  the Usurper flip at Wake posts "{player} became the Usurper". The Game Log
+  design's trigger table lists them, and `GameLogEventSuite` and the
+  `oathkeeper` golden log test them.
 
 ### Phase - Consent system
 
