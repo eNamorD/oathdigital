@@ -111,6 +111,36 @@ object CardPlayProcedure:
     new PlacementTree(card, rules =>
       childrenFor(catalog, ready, actor, card, origin, rules))
 
+  private val placementPrefix = "cardplay.place."
+
+  /** `card`'s placement decision id, `cardplay.place.{kind}.{value}` -- the
+    * one place that spells it, so every reader agrees with `childrenFor`.
+    */
+  def placementDecisionId(card: WorldCardId): String =
+    s"$placementPrefix${card.kind}.${card.value}"
+
+  /** The card whose placement was answered in `pending`, inverting
+    * [[placementDecisionId]]. A denizen's value never contains a '.', and
+    * neither does a kind, so the kind is everything up to the first '.'
+    * after the prefix and the value is everything after it -- a Vision's own
+    * value may contain ':', so splitting on '.' alone is what keeps this
+    * safe. `None` when nothing has answered a placement decision yet.
+    */
+  def placedCard(pending: PendingTree): Option[WorldCardId] =
+    pending.answered.flatMap(answered => cardFor(answered.decisionId))
+      .headOption
+
+  private def cardFor(decisionId: String): Option[WorldCardId] =
+    Option.when(decisionId.startsWith(placementPrefix))(
+      decisionId.stripPrefix(placementPrefix)).flatMap { rest =>
+      val dot = rest.indexOf('.')
+      Option.when(dot >= 0)(rest.take(dot) -> rest.drop(dot + 1))
+    }.flatMap {
+      case ("denizen", value) => Some(DenizenId(value))
+      case ("vision", value) => Some(VisionId(value))
+      case _ => None
+    }
+
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
       rules: PlacementRules)
@@ -140,7 +170,7 @@ object CardPlayProcedure:
       val options = offered.map { case (ref, _, _, _) =>
         DecisionOption.Button(ref, label(ref))
       }
-      val decisionId = s"cardplay.place.${card.kind}.${card.value}"
+      val decisionId = placementDecisionId(card)
       val choose = Decide(decisionId, actor, DecisionQuery.ChooseOne(options,
         heading = Some("Play or discard card")))
       val selected = Branch((_, pending) => {
