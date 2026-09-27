@@ -9,4 +9,4 @@ import oathdigital.gameplay.powerresolver.PhasePower
 object OtherActionPowers:
   val powers: Vector[PhasePower] =
     Vector[PhasePower](SpoiledSupplies, CharmingFriend, SiegeEngines,
-      BookOfRecords)
+      BookOfRecords, BarbedNet)
