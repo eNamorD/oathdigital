@@ -123,11 +123,15 @@ later powers look at the Dispossessed. One reusable view serves them:
   reuse it as a pick list.
 - **`NoteArg.Cards(ids)`**, a list of cards in a log line. Up to 5 cards render
   inline as card chips. More than 5 render as "6 cards", which opens the
-  overlay. Each card in the overlay passes the log's knowledge rule, showing
-  its face to a viewer who may identify it and its back otherwise. The text is
-  not a link for a viewer who may identify none of them.
-- **`NoteArg.Pile(pile)`**, which renders "the world deck" or "the Cradle
-  discard pile".
+  overlay, so a Scryer line can read "Scryer: Red peeked at the Cradle
+  discard pile: 6 cards." Each card in the overlay passes the log's knowledge
+  rule, showing its face to a viewer who may identify it and its back
+  otherwise. The text is not a link for a viewer who may identify none of
+  them.
+- **`NoteArg.Pile(pile)`**, which renders "world deck" or "Cradle discard
+  pile". The template supplies the article.
+- **UI work.** Design and build the overlay, and any other UI element this
+  batch needs, with the `/impeccable` skill.
 
 ### N6. Drawing a Vision (slice A)
 
@@ -194,14 +198,14 @@ Each note is the power's `used` line unless marked otherwise.
 | Spirit Snare, every bank empty | Spirit Snare: Every favor bank was empty. | |
 | Wizard School | Wizard School: {Red} gained {1} secret. | the Gain line |
 | Wizard School, key `ended` | Wizard School: {Red}'s Act phase ended. | |
-| Scryer | Scryer: {Red} peeked at {the Cradle discard pile} ({cards}). | the Peeked lines |
-| Scryer, empty pile | Scryer: {Red} peeked at {the Cradle discard pile}, which was empty. | |
-| Oracular Pig | Oracular Pig: {Red} peeked at the top of {the world deck} ({cards}). | the Peeked lines |
-| Oracle | Oracle: {Red} drew {Vision} from {the world deck}. | |
-| Oracle, no Vision | Oracle: {The world deck} held no Vision. | |
+| Scryer | Scryer: {Red} peeked at the {Cradle discard pile}: {cards}. | the Peeked lines |
+| Scryer, empty pile | Scryer: {Red} peeked at the {Cradle discard pile}, which was empty. | |
+| Oracular Pig | Oracular Pig: {Red} peeked at the top of the world deck: {cards}. | the Peeked lines |
+| Oracle | Oracle: {Red} drew {Vision} from the world deck. | |
+| Oracle, no Vision | Oracle: The world deck held no Vision. | |
 | Shifting Map | Shifting Map: {Red} gained {n} Supply. | |
 | Demon Tail | Demon Tail: {Red} gained {n} Supply. | |
-| Clay Rattle | Clay Rattle: {Red} shuffled {the Cradle discard pile}. | |
+| Clay Rattle | Clay Rattle: {Red} shuffled the {Cradle discard pile}. | |
 | Spoiled Supplies, one line per player who lost Supply | Spoiled Supplies: {Blue} lost {n} Supply. | |
 | Spoiled Supplies, nobody lost any | Spoiled Supplies: No enemy lost Supply. | |
 | Charming Friend | Charming Friend: {Red} took {1} favor from {Blue}. | |
@@ -215,10 +219,12 @@ Each note is the power's `used` line unless marked otherwise.
 | Book of Records | Book of Records: {Red} took {n} favor from {Blue}'s {banner}. / Book of Records: {Red} took {n} secret from {Blue}'s {banner}. | |
 | Book of Records, empty banner | Book of Records: {Blue}'s {banner} held nothing to take. | |
 
-Scryer's `{cards}` is `NoteArg.Cards`: up to 5 names inline, or "6 cards"
-opening the overlay. Oracle's Vision is a card argument, so a viewer who may
-not identify it reads its back. The Search placement lines that follow Oracle
-stay.
+Scryer's and Oracular Pig's `{cards}` is `NoteArg.Cards`: up to 5 names
+inline, or "6 cards" opening the overlay. Oracular Pig and Oracle always use
+the world deck, so their lines name it as text. Scryer and Clay Rattle name
+their pile with `NoteArg.Pile`. Oracle's Vision is a card argument, so a
+viewer who may not identify it reads its back. The Search placement lines
+that follow Oracle stay.
 
 ### Removed and hidden options
 
@@ -263,9 +269,10 @@ stay.
   a defender's plan.
 - Replay tests cover `Shuffle`, `Inspect` and the forced Wake step.
 - Codec tests cover the new operation, decision and note argument kinds.
-- Frontend tests cover the overlay: inline chips up to 5 cards, the "N cards"
-  link above 5, card backs for a viewer who may not identify a card, and the
-  plain text when they may identify none.
+- Frontend tests cover the overlay, built with the `/impeccable` skill:
+  inline chips up to 5 cards, the "N cards" link above 5, card backs for a
+  viewer who may not identify a card, and the plain text when they may
+  identify none.
 - `PowerImplementationStatusSuite` and `PowerKindsCatalogSuite` pin the new
   cards.
 - `BackendArchitectureSuite` still applies: files stay under 800 lines, no
