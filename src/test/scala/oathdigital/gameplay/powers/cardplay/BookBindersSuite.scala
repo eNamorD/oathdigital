@@ -163,6 +163,37 @@ class BookBindersSuite extends munit.FunSuite:
     assert(player(after, actor).relics.exists(_.id == relic))
     assert(!player(after, holder).relics.exists(_.id == relic))
 
+  test("the Conspiracy still resolves, and the holder still gains favor, " +
+      "when Book Binders' own take drains the only stocked bank"):
+    val relic = RelicId("conspiracy-single-bank-relic")
+    val staged = withConspiracyTarget(relic)
+    // Exactly one bank stocked, holding 2 or fewer favor: Book Binders' own
+    // take asks nothing (FavorBankChoice.take auto-takes a single bank) and
+    // drains it to zero within the SAME command that places the Vision, so
+    // the walk continues straight to Conspiracy's target decision without
+    // parking on Book Binders at all. The regression is on the NEXT command
+    // (answering the Conspiracy target), whose refold of this window must
+    // still find Book Binders' node even though every bank is now empty.
+    val ready = staged.copy(banks = staged.banks.copy(favor =
+      Suit.all.map(suit => suit -> Map(Suit.Hearth -> 1)
+        .getOrElse(suit, 0)).toMap))
+    val started = SearchFixture.start(ready).toOption.get
+    val kept = SearchFixture.keep(started, VisionRules.Conspiracy).toOption.get
+    val placed = SearchFixture.place(kept, VisionRules.Conspiracy,
+      "adviser-faceup").toOption.get
+    parked.assertParked(placed.state, ActionRef.Search,
+      ConspiracyWhenPlayed.decisionId, actor)
+    val done = SearchFixture.rules.resolveWalker(placed.state, actor,
+      ConspiracyWhenPlayed.decisionId, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.RelicSlot(holder, 0)))
+    assert(done.isRight, done)
+    val after = SearchFixture.after(done.toOption.get)
+    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(after.banks.favor(Suit.Hearth), 0)
+    assertEquals(favor(after, holder), favor(ready, holder) + 1)
+    assert(player(after, actor).relics.exists(_.id == relic))
+    assert(!player(after, holder).relics.exists(_.id == relic))
+
   test("a facedown Vision played from the advisers gives the holder favor " +
       "too, off turn, pinning the rebuildFacedown settle path"):
     val ready = TargetsFixture.giveAdviser(CardStaging.without(

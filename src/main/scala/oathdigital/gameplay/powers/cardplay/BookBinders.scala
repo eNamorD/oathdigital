@@ -29,19 +29,24 @@ final case class BookBinders private (cardId: DenizenId,
 
   override def applicable(ctx: PowerCtx): Boolean = reward(ctx).nonEmpty
 
-  /** The `Branch` that takes the holder's reward, when another player plays a
-    * Vision faceup and at least one favor bank is stocked at fold time. One
-    * node whatever the take does to bank state: the walker refolds this
-    * window on every command, and a sibling contribution at the same window
-    * (Conspiracy's own target decision, sorted after this one) is addressed
-    * by index, so this must add the same number of nodes regardless of live
-    * state. The take itself is state-dependent, so it stays inside the
-    * `Branch`, exactly as Vow of Obedience's REST builds its tree.
+  /** The `Branch` that takes the holder's reward, whenever another player
+    * plays a Vision faceup and this card's holder is a different player.
+    * One node whatever the take does to bank state, and whatever the banks
+    * hold, even none: the walker refolds this window on every command, and
+    * a sibling contribution at the same window (Conspiracy's own target
+    * decision, sorted after this one) is addressed by index, so this must
+    * add the same number of nodes regardless of live state -- including a
+    * later refold where a bank this same take already drained leaves every
+    * bank empty. Gating on whether a bank is stocked, at any fold, risks the
+    * exact same shift one level up, so the gate is gone: `FavorBankChoice
+    * .take` already yields nothing when no bank is stocked, and the `Branch`
+    * carries that, not the fold. Crediting Book Binders on a play where no
+    * bank held favor -- adding a `Branch` that then does nothing -- is
+    * accepted for now (Power log lines phase).
     */
   private def reward(ctx: PowerCtx): Option[Operation] = for
     vision <- VisionPlay.played(ctx)
     holder <- holderOf(ctx.state).filter(_ != ctx.activePlayer)
-    if FavorBankChoice.stocked(ctx.state).nonEmpty
   yield
     val decisionId = BookBinders.decisionId(ctx.state, holder, vision)
     Branch((state, _) => FavorBankChoice.take(state, holder, BookBinders.Favor,
