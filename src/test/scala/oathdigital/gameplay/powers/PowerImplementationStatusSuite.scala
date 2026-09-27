@@ -37,3 +37,9 @@ class PowerImplementationStatusSuite extends munit.FunSuite:
     Vector("denizen.animal-playmates", "denizen.birdsong",
       "denizen.royal-stables", "denizen.forgotten-vault").foreach(id =>
       assert(implemented(PowerId(id)), id))
+
+  test("catalog batch 2's battle plans are implemented"):
+    Vector("denizen.fire-talkers", "denizen.nature-worship",
+      "denizen.cracked-sage", "denizen.horse-archers", "denizen.storm-caller",
+      "denizen.longbows", "relic.black-sword", "relic.bag-of-siegeworks",
+      "denizen.hospital").foreach(id => assert(implemented(PowerId(id)), id))
