@@ -105,6 +105,7 @@ object PowerSourceRef:
     case DecisionOptionRef.Vision(id) => Some(Card(id))
     case DecisionOptionRef.Edifice(id) => Some(Card(id))
     case DecisionOptionRef.Site(id) => Some(Site(id))
+    case DecisionOptionRef.Banner(banner) => Some(Banner(banner))
     case _ => None
 
 /** A stable identity for one use-limited power instance this turn. */

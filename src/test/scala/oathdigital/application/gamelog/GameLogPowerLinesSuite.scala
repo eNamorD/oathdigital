@@ -24,9 +24,10 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     NotePart.Text(" lost "), NotePart.Arg(1), NotePart.Text(" "),
     NotePart.Plural(1, "warband", "warbands"), NotePart.Text(", then "),
     NotePart.Arg(2), NotePart.Text(".")))
+  private val none = NoteKey("used.none", Vector(NotePart.Text("Nothing to take.")))
   private val noting = new GameLogFormatter(catalog, presentation,
     NoteWordings.default(catalog) ++
-      NoteWordings.of(power, Vector(said, took, counted)))
+      NoteWordings.of(power, Vector(said, took, counted, none)))
 
   private def entries(steps: Steps, viewer: Option[PlayerId]) =
     noting.format(steps, viewer).filter(_.depth == 1)
@@ -204,3 +205,36 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val entry = format(script, None).find(entry =>
       text(entry).startsWith(s"Gambling Hall: $actor rolled ")).get
     assertEquals(entry.kind, LogKind.Action)
+
+  test("a variant of a phase power's used note also replaces Used {card}"):
+    val script = usePower
+    val steps = script.history.steps
+    val noted = inserted(steps, take(steps),
+      PowerNoted(power, none(card), covers = false))
+    assert(!lines(noted).exists(_.startsWith("Used ")), lines(noted))
+    val entry = ours(noted).head
+    assertEquals(text(entry), "Silver Tongue: Nothing to take.")
+    assertEquals(entry.kind, LogKind.Action)
+
+  test("a card is named to a viewer who identified it at any state its line reads"):
+    val script = usePower
+    val last = script.history.steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val (owner, hidden) = last.game.current.players
+      .filter(_.player != script.actor).flatMap(held => held.advisers.collect {
+        case DenizenState(id, Orientation.FaceDown, _) => held.player -> id
+      }).head
+    val shown = last.updateCurrent(current => current.copy(players =
+      current.players.map(held => if held.player != owner then held
+        else held.copy(advisers = held.advisers.map {
+          case DenizenState(`hidden`, _, tokens) =>
+            DenizenState(hidden, Orientation.FaceUp, tokens)
+          case other => other
+        }))))
+    val words = new LogWords(catalog, presentation)
+    val viewer = Some(script.actor)
+    assertEquals(words.seen(hidden, Vector(last), viewer), CardWord.Back("Denizen"))
+    assertEquals(words.seen(hidden, Vector(shown, last), viewer),
+      CardWord.Named(LogSpan.Card(hidden.value,
+        presentation.cardLabel(last, hidden))))

@@ -299,7 +299,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       named(ref, state, viewer)))
     val used = through.flatMap(journal.ops).collectFirst {
       case OpStep(RecordPowerUse(PowerUseRef(_, source, _)), _, _) => source
-    }.flatMap(source => ready.map(state => words.source(source, state, viewer)))
+    }.flatMap(source => ready.map(state => words.source(source, Vector(state), viewer)))
     started.orElse(used).orElse(ready.map(state =>
       words.power(state, run.actor, power, viewer)))
       .getOrElse(Vector(Text(power.value)))

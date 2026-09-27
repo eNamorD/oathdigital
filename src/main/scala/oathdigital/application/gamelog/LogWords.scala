@@ -33,10 +33,10 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
     LogSpan.Site(id.value, presentation.siteLabel(id))
   def banner(banner: Banner): LogSpan =
     LogSpan.Text(BannerRules.displayName(banner))
-  /** The card, banner or site a power belongs to. */
-  def source(ref: PowerSourceRef, state: ReadyGame,
+  /** The card, banner or site a power belongs to, judged at `states`. */
+  def source(ref: PowerSourceRef, states: Vector[ReadyGame],
       viewer: Option[PlayerId]): Vector[LogSpan] = ref match
-    case PowerSourceRef.Card(id) => one(card(id, state, state, viewer))
+    case PowerSourceRef.Card(id) => one(seen(id, states, viewer))
     case PowerSourceRef.Banner(held) => Vector(banner(held))
     case PowerSourceRef.Site(at) => Vector(site(at))
   /** A Vision a victory names: public by then. */
@@ -47,11 +47,17 @@ private[gamelog] final class LogWords(catalog: ExecutableCatalog,
   /** Named when the viewer identifies the card where it lies before the
     * operation, or where it lies after it; otherwise its back. */
   def card(id: CardId, before: ReadyGame, after: ReadyGame,
+      viewer: Option[PlayerId]): CardWord = seen(id, Vector(before, after), viewer)
+
+  /** Named, by its label in the last of `states`, when the viewer identifies
+    * the card in any of them; otherwise its back. */
+  def seen(id: CardId, states: Vector[ReadyGame],
       viewer: Option[PlayerId]): CardWord =
-    if presentation.identifiesAt(before, viewer, id) ||
-        presentation.identifiesAt(after, viewer, id) then
-      CardWord.Named(LogSpan.Card(id.value, presentation.cardLabel(after, id)))
-    else CardWord.Back(LogWords.backOf(id))
+    states.lastOption.filter(_ =>
+      states.exists(presentation.identifiesAt(_, viewer, id))) match
+      case Some(last) =>
+        CardWord.Named(LogSpan.Card(id.value, presentation.cardLabel(last, id)))
+      case None => CardWord.Back(LogWords.backOf(id))
 
   /** A card in `owner`'s adviser or relic row: named when the viewer may
     * identify it, else by its 1-based slot in that row before the operation
