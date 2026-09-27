@@ -142,6 +142,13 @@ requested UI changes are in the
   then need no Game Log line. The hide hook's note from the Power log lines
   phase is the natural source. Recorded in the
   [Power log lines design](superpowers/specs/2026-09-26-power-log-lines-design.md).
+- [ ] **Deferred: warn before a choice that has no effect.** The rules let a
+  player pay for a power or pick an option that then does nothing: a
+  modifier selected for an action it will not change (Cup of Plenty,
+  Animal Playmates or Birdsong with a card of the wrong suit), a power whose
+  target is empty, or a bank with no stock. The game should warn the player
+  before they commit, without refusing the choice. Recorded while designing
+  Catalog batch 2.
 
 ### Powers-related deferred items
 
