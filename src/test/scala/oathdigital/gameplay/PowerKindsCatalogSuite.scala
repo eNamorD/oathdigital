@@ -40,3 +40,9 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     assertEquals(flag("denizen.dazzle"), Some(false))
     assertEquals(oathdigital.gameplay.powers.whenplayed.Dazzle
       .forCatalog(catalog).get.resolution, PowerResolution.Automatic)
+
+  test("Vow of Obedience's rule is automatic whatever its flag: the flag is " +
+      "false because of its REST"):
+    assertEquals(flag("denizen.vow-of-obedience"), Some(false))
+    assertEquals(oathdigital.gameplay.powers.cardplay.VowOfObedience
+      .forCatalog(catalog).get.resolution, PowerResolution.Automatic)

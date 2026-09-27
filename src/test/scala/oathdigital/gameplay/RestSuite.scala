@@ -247,7 +247,7 @@ class RestSuite extends munit.FunSuite:
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val relevant = Set("denizen.vow-of-poverty", "denizen.naysayers",
-      "denizen.insomnia", "denizen.vow-of-obedience")
+      "denizen.insomnia")
     relevant.foreach { handler =>
       val definition = catalog.denizens.find(_.handlers.contains(handler)).get
       val adviser = DenizenState(DenizenId(definition.id.value),
