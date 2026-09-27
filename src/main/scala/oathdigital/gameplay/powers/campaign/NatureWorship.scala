@@ -1,0 +1,49 @@
+package oathdigital.gameplay.powers.campaign
+
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.model._
+
+/** Nature Worship (card 175), a battle plan for either side: "[secret] ±
+  * [attack-die] per [suit-beast] adviser you have."
+  *
+  * A secret is placed onto the card. The dice are one per faceup beast
+  * adviser its user has, since only a faceup card has a suit. It counts
+  * itself when it is an adviser: a facedown one is revealed when chosen, so
+  * it is counted whatever its face now, and the count does not change when
+  * the plan reveals it. At a site it is not an adviser and counts only the
+  * others. A plan that would add no die is not offered.
+  */
+final case class NatureWorship private (cardId: DenizenId,
+    catalog: ExecutableCatalog) extends BattlePlan:
+  def id: PowerId = NatureWorship.id
+  def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
+  def sides: Set[CampaignPlanSide] =
+    Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
+
+  def plan(context: PlanContext): Option[CampaignPlanOffer] =
+    context.denizen(cardId).flatMap { source =>
+      val itself = source match
+        case _: CampaignPlanSource.Adviser => 1
+        case _ => 0
+      val dice = otherBeasts(context) + itself
+      Option.when(dice > 0)(CampaignPlanOffer(source,
+        PlanDice.label("Nature Worship", context.side, dice),
+        Vector(CampaignPlanCost.Secret(1)),
+        Vector(PlanDice.effect(context.side, dice))))
+    }
+
+  /** The user's faceup beast advisers other than this card. */
+  private def otherBeasts(context: PlanContext): Int =
+    context.ready.game.current.players.filter(p => context.user.contains(p.player))
+      .flatMap(_.advisers).count {
+        case DenizenState(held, Orientation.FaceUp, _) =>
+          held != cardId && catalog.suitOf(held).contains(Suit.Beast)
+        case _ => false
+      }
+
+object NatureWorship:
+  val id: PowerId = PowerId("denizen.nature-worship")
+
+  def forCatalog(catalog: ExecutableCatalog): Option[NatureWorship] =
+    CatalogCards.denizen(catalog, id).map(new NatureWorship(_, catalog))
