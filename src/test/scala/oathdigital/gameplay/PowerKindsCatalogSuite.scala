@@ -20,7 +20,7 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
     "denizen.grasping-vines", "relic.circlet-of-command", "denizen.gossip",
     "denizen.league-treaty", "denizen.gleaming-armor", "edifice.e28.intact",
     "edifice.e28.ruined", "denizen.secret-police", "edifice.e08.intact",
-    "denizen.book-binders")
+    "denizen.book-binders", "denizen.forgotten-vault")
 
   private def flag(id: String): Option[Boolean] =
     catalog.printedPower(PowerId(id)).map(_.persistent)
