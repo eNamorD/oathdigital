@@ -96,6 +96,16 @@ class ClayRattleSuite extends munit.FunSuite:
     val (_, _, answered) = shuffled(SearchSource.WorldDeck, under = rules())
     assert(answered.isLeft)
 
+  test("a source whose order is not a permutation of the pile is refused"):
+    val repeating: WalkerDice = new WalkerDice:
+      def roll(kind: DiceKind, count: Int)
+          : Either[OathViolation, Vector[DieFace]] =
+        Left(OathViolation.InvalidEventOrder("Clay Rattle never rolls"))
+      override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
+        Right(Vector.fill(count)(0))
+    val (_, _, answered) = shuffled(cradle, under = rules(repeating))
+    assert(answered.isLeft)
+
   test("one faceup secret is not enough"):
     val broke = staged(faceUp = 1)
     assert(!usableIds(broke).contains(ClayRattle.id))

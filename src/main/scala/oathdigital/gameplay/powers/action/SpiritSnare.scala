@@ -9,8 +9,9 @@ import oathdigital.model._
   * without asking. With every bank empty the cost is paid and nothing else
   * happens, so the power stays usable, unlike Vow of Obedience's REST.
   *
-  * Its take line covers the generic one. The empty-banks line is written
-  * only when no take line was, and covers nothing.
+  * Its take line covers the generic one. The empty-banks line covers nothing.
+  * The `Branch` picks the line with the take, as Book Binders' does, so the
+  * empty-banks line never reads a step the take did not run.
   */
 case object SpiritSnare extends PaidAction("denizen.spirit-snare",
     Cost(secret = 1)):
@@ -21,13 +22,14 @@ case object SpiritSnare extends PaidAction("denizen.spirit-snare",
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] =
     val choice = SpiritSnare.choiceDecisionId(ready, player)
-    val took = NoteSupport.tookNote(source, player)
-    Right(Sequence(Vector(
-      Branch((state, _) => FavorBankChoice.take(state, player, 1, choice,
-        "Spirit Snare: take a favor from a bank")),
-      Note(id, took, covers = true),
-      Note(id, states => if took(states).nonEmpty then None
-        else PowerSourceRef.of(source).map(empty(_))))))
+    Right(Branch((state, _) => {
+      val take = FavorBankChoice.take(state, player, 1, choice,
+        "Spirit Snare: take a favor from a bank")
+      if take.isEmpty then
+        Vector(Note(id, _ => PowerSourceRef.of(source).map(empty(_))))
+      else take :+ Note(id, NoteSupport.tookNote(source, player),
+        covers = true)
+    }))
 
   /** The power is used at most once a turn. */
   def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =

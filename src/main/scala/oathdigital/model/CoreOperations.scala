@@ -537,11 +537,13 @@ case object AdvanceVisionsDrawn extends PrimitiveOperation:
   * discard pile. `order` is the pile's new contents in stored order (the
   * world deck top first, a discard pile top last).
   *
-  * A tree declares a shuffle with no order. The walker fills the order from
-  * its random source before running it, so the journal records the order and
-  * replay applies it as it ran, as it applies an automatic roll's faces.
-  * Applying a shuffle with no order, or with an order that is not exactly the
-  * pile's cards, is an error.
+  * A tree declares a shuffle with no order, as a leaf of its own (a
+  * `Branch` may return one). The walker fills the order from its random
+  * source before running it, so the journal records the order and replay
+  * applies it as it ran, as it applies an automatic roll's faces. A
+  * `BuildOps` batch is run as it is built, so an unordered shuffle inside one
+  * is never filled. Applying a shuffle with no order, or with an order that
+  * is not exactly the pile's cards, is an error.
   */
 final case class Shuffle(pile: SearchSource,
     order: Option[Vector[WorldCardId]] = None) extends PrimitiveOperation:

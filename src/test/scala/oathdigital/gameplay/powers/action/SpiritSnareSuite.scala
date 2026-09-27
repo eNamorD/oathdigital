@@ -41,6 +41,15 @@ class SpiritSnareSuite extends munit.FunSuite:
       NoteKey.Used, s"${actor.value} took 1 favor from the Order bank.",
       covers = true)))
 
+  test("a bank holding one favor gives it and is left empty"):
+    val ready = staged(Suit.Hearth -> 1)
+    val t = use(ready, SpiritSnare, source).toOption.get
+    assertEquals(bank(after(t), Suit.Hearth), 0)
+    assertEquals(player(after(t)).board.favor, player(ready).board.favor + 1)
+    assertEquals(NoteText.said(SpiritSnare, t.events), Vector(NoteText.Said(
+      NoteKey.Used, s"${actor.value} took 1 favor from the Hearth bank.",
+      covers = true)))
+
   test("several stocked banks ask which, and the answer is taken from"):
     val ready = staged(Suit.Arcane -> 2, Suit.Beast -> 1)
     val t = use(ready, SpiritSnare, source).toOption.get
