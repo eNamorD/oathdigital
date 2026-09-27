@@ -12,6 +12,13 @@ import oathdigital.model._
   */
 case object DowsingSticks extends PaidAction("relic.dowsing-sticks",
     Cost(secret = 1, secretBurnt = 2)):
+  /** Its line when the deck had no relic to draw. */
+  val emptyDeck: NoteKey = NoteKey("used.empty", Vector(
+    NotePart.Text("The relic deck was empty.")))
+  override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew, emptyDeck)
+
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
-      : Either[OathViolation, Operation] =
-    Right(BuildOps((state, _) => Right(RelicDraws.takeTop(state, player))))
+      : Either[OathViolation, Operation] = Right(Sequence(Vector(
+    BuildOps((state, _) => Right(RelicDraws.takeTop(state, player))),
+    Note(id, states => RelicDraws.drawNote(source, player)(states)
+      .orElse(PowerSourceRef.of(source).map(emptyDeck(_)))))))

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -61,3 +61,22 @@ class DowsingSticksSuite extends munit.FunSuite:
     val facedown = act(withBoard(withRelic(base, sticks, Orientation.FaceDown))(
       _.copy(faceUpSecrets = 3)))
     assert(!usableIds(facedown).contains(DowsingSticks.id))
+
+  test("it writes the relic it drew"):
+    val ready0 = staged()
+    val top = ready0.game.current.commonCards.relicDeck.head
+    val done = use(rules(), ready0, DowsingSticks.id, source).toOption.get
+    assertEquals(NoteText.said(DowsingSticks, done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} drew ${top.value} facedown.",
+        covers = false)))
+
+  test("an empty relic deck is written as such"):
+    val ready0 = staged()
+    val current = ready0.game.current
+    val emptied = ready0.updateCurrent(_.copy(commonCards =
+      current.commonCards.copy(relicDeck = Vector.empty)))
+      .updateCampaign(c => c.copy(reliquary = c.reliquary ++
+        current.commonCards.relicDeck))
+    val done = use(rules(), emptied, DowsingSticks.id, source).toOption.get
+    assertEquals(NoteText.said(DowsingSticks, done.events), Vector(
+      NoteText.Said("used.empty", "The relic deck was empty.", covers = false)))

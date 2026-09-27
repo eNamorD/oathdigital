@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -108,3 +109,13 @@ class IvoryEyeSuite extends munit.FunSuite:
     val done = answer(t, actor, IvoryEye.decisionId, peekAt(target, 0))
       .toOption.get
     assertEquals(usableNow(withSecrets(after(done), actor, 1, 0)), Vector.empty)
+
+  test("it writes the adviser it peeked at in place of the generic line"):
+    val t = use(staged, IvoryEye, source).toOption.get
+    val card = firstAdviser(staged, target)
+    val done = answer(t, actor, IvoryEye.decisionId, peekAt(target, 0))
+      .toOption.get
+    assertEquals(NoteText.said(IvoryEye, done.events), Vector(NoteText.Said(
+      NoteKey.Used,
+      s"${actor.value} peeked at ${card.value} in ${target.value}'s advisers.",
+      covers = true)))

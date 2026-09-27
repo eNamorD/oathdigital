@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.PowerAnswers
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
 /** Ivory Eye (relic R16), ACTION: place 1 secret on this relic, then peek at
@@ -20,6 +20,13 @@ import oathdigital.model._
 case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
   val decisionId: String = "power.ivory-eye.adviser"
   private val Prefix = "adviser:"
+  /** Its own line, in place of the generic Peeked line. The card reads as
+    * its back to anyone but the peeker, so the owner is named apart from
+    * it. */
+  val peeked: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+    NotePart.Text(" peeked at "), NotePart.Arg(1), NotePart.Text(" in "),
+    NotePart.Arg(2), NotePart.Text("'s advisers.")))
+  override def noteKeys: Vector[NoteKey] = Vector(peeked)
 
   /** The option for the facedown adviser in position `slot` of `owner`'s
     * advisers.
@@ -30,7 +37,18 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => ask(live, player)),
-    BuildOps((live, pending) => peek(live, player, pending)))))
+    BuildOps((live, pending) => peek(live, player, pending)),
+    Note(id, peekNote(_, player, source), covers = true))))
+
+  /** A peek leaves the adviser where it was, so the answered slot still
+    * names it. */
+  private def peekNote(states: NoteStates, actor: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    ref <- NoteSupport.answer(states, decisionId)
+    target <- targets(states.now).find(_.ref == ref)
+  yield peeked(card, NoteArg.Player(actor), NoteArg.Card(target.card),
+    NoteArg.Player(target.owner))
 
   private final case class Target(owner: PlayerId, slot: Int,
       card: WorldCardId):

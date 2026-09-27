@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.PowerAnswers
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
 /** Crystal Vial (relic R21), ACTION: place 1 secret on this relic and burn
@@ -20,10 +20,22 @@ final case class CrystalVial(catalog: ExecutableCatalog)
     extends PaidAction(CrystalVial.id.value, CrystalVial.price):
   import CrystalVial._
 
+  override def noteKeys: Vector[NoteKey] = Vector(buried)
+
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => ask(live, player)),
-    BuildOps((live, pending) => bury(live, player, pending)))))
+    BuildOps((live, pending) => bury(live, player, pending)),
+    Note(this.id, buriedNote(_, player, source), covers = true))))
+
+  /** The chosen card, read where it stood before the bury step. */
+  private def buriedNote(states: NoteStates, actor: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    step <- states.previous
+    ref <- NoteSupport.answer(states, decisionId)
+    chosen <- candidates(step._1, actor).find(_.ref == ref)
+  yield buried(card, NoteArg.Player(actor), NoteArg.Card(chosen.card.id))
 
   private def candidates(ready: ReadyGame, actor: PlayerId): Vector[Candidate] =
     val current = ready.game.current
@@ -70,6 +82,8 @@ object CrystalVial:
   val id: PowerId = PowerId("relic.crystal-vial")
   val price: Cost = Cost(secret = 1, secretBurnt = 1)
   val decisionId: String = "power.crystal-vial.card"
+  val buried: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+    NotePart.Text(" buried "), NotePart.Arg(1), NotePart.Text(".")))
 
   private[action] final case class Candidate(ref: DecisionOptionRef,
       card: BuryableCard, from: Location, tokens: Tokens)
