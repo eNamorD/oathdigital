@@ -52,3 +52,6 @@ class PowerImplementationStatusSuite extends munit.FunSuite:
   test("catalog batch 2's peeking actions are implemented"):
     Vector("denizen.scryer", "relic.oracular-pig")
       .foreach(id => assert(implemented(PowerId(id)), id))
+
+  test("catalog batch 2's Vision draw is implemented"):
+    assert(implemented(PowerId("denizen.oracle")))

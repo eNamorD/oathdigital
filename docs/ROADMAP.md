@@ -34,9 +34,10 @@ Longbows, Black Sword, Bag of Siegeworks and Hospital, with ignored defense
 faces and the Campaign kill replacement. Slice 3 runs as three plans. Slice
 3a is done: Tutor, Spirit Snare, Wizard School, Shifting Map, Demon Tail and
 Clay Rattle, with the `Shuffle` operation. Slice 3b is done: Scryer and
-Oracular Pig, with the `Inspect` decision and the card list. Slice 3c
-(Oracle and drawing a Vision) remains, then slice 4, actions on others, and
-slice 5, triggers and when-played powers.
+Oracular Pig, with the `Inspect` decision and the card list. Slice 3c is
+done: Oracle, which draws a Vision and plays it through Search's placement.
+Slice 4, actions on others, and slice 5, triggers and when-played powers,
+remain.
 
 Cards left for a later batch because they need engine work first:
 
