@@ -344,7 +344,7 @@ cost payment logs nothing today and still logs nothing.
 |---|---|---|
 | Great Market | Great Market: Placed {3 favor} on {site}. | |
 | Bandit Market, key `placed-and-burned` | Bandit Market: Placed {1 favor} on the bandit site and burned {6 favor} from the banks. | |
-| Bandit Market, key `placed`, when no bank held favor | Bandit Market: Placed {1 favor} on the bandit site. | |
+| Bandit Market, key `placed`, when no favor is left to burn | Bandit Market: Placed {1 favor} on the bandit site. | |
 | Bandit Market, key `burned`, when no site is bandit-ruled | Bandit Market: Burned {6 favor} from the banks. | |
 | Great Forge | Great Forge: {Red} drew {relic} facedown. | |
 | Broken Forge | Broken Forge: Discarded {cards}. | |

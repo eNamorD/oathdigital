@@ -93,3 +93,15 @@ class GreatMarketRulesSuite extends munit.FunSuite:
     assertEquals(NoteText.said(bandit.id, bandit.noteKeys, events(staged)),
       Vector(NoteText.Said("burned",
         s"Burned ${Suit.all.size} favor from the banks.", covers = false)))
+
+  test("Bandit Market that places the last favor in the banks writes only the placing"):
+    val marketSuit = catalog.suitOf(edifice).get
+    val staged = banditsOnly(stagedAt(EdificeSide.Ruined),
+      Set(FirstGameSetupFixture.sites(1)))
+    // One favor in the market's own bank and none elsewhere: the site takes
+    // it, and the burn finds nothing left.
+    val lean = staged.copy(banks = staged.banks.copy(favor =
+      Suit.all.map(suit => suit -> (if suit == marketSuit then 1 else 0)).toMap))
+    assertEquals(NoteText.said(bandit.id, bandit.noteKeys, events(lean)),
+      Vector(NoteText.Said("placed", "Placed 1 favor on the bandit site.",
+        covers = false)))
