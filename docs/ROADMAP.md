@@ -149,6 +149,13 @@ requested UI changes are in the
   checks and negotiation proposals. Replay navigation is **L4**. Recorded in
   the Game Log design of 2026-09-26.
 
+- [ ] **Deferred: explain restricted options where they are offered.** A
+  restricted option, or a missing action control, carries a hover note (or
+  similar) saying which power restricts it and why. Most Restrictions would
+  then need no Game Log line. The hide hook's note from the Power log lines
+  phase is the natural source. Recorded in the
+  [Power log lines design](superpowers/specs/2026-09-26-power-log-lines-design.md).
+
 ### Powers-related deferred items
 
 - [ ] **Deferred: walker-native card play through card slots.** Card play still

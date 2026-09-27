@@ -120,9 +120,9 @@ It defaults to returning nothing.
   calls the hook of the power that removed each option.
 - Each returned note is journaled as a `PowerNoted`, in option order, before
   the decision parks or resolves.
-- Narrow Pass's note names the site, so it reads one line per hidden site.
-  The Circlet of Command's note names only the holder, so its identical notes
-  merge into one line (see "Placement").
+- A note that names only what binds, not the option it hid, merges into one
+  line per action (see "Placement"). Narrow Pass hiding three sites as
+  targets, or the Circlet of Command hiding three relics, reads once.
 
 ### Game rules
 
@@ -278,7 +278,7 @@ cost payment logs nothing today and still logs nothing.
 | Sacred Ground | hide hook | Sacred Ground: {Red} cannot play a Vision faceup. |
 | Oaken Fortress, Rotting Fortress | hide hook, per protected target | Oaken Fortress: {Blue} cannot be targeted. |
 | Circlet of Command | hide hook | Circlet of Command: {Blue}'s banners and relics cannot be targeted. |
-| Narrow Pass, Campaign targets | hide hook, per site | Narrow Pass: {Red} cannot target {site}. |
+| Narrow Pass, Campaign targets | hide hook | Narrow Pass: Other sites in the region cannot be targeted. |
 | Narrow Pass, Travel | hide hook, per site | Narrow Pass: {Red} cannot travel to {site}. |
 
 ### Added effects
@@ -413,8 +413,11 @@ The plan may merge slices when it sizes them.
 
 ## Out of scope
 
-- Explaining a missing action control (ruling 3). That belongs to the action
-  controls, and no roadmap item covers it yet.
+- Explaining a missing action control (ruling 3), and explaining a hidden
+  option where it would have been offered. The roadmap's "explain restricted
+  options where they are offered" item covers both. Once it exists, most
+  hide-hook lines can move out of the log; the hide hook's note is the
+  natural source of that explanation.
 - Cards not yet implemented. Catalog batch 2 follows this pattern for each
   card it adds.
 - WHEN EXPLORED: the setup rules share that window, but no explore procedure
