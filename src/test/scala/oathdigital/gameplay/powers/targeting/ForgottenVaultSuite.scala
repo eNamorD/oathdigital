@@ -80,11 +80,12 @@ class ForgottenVaultSuite extends munit.FunSuite:
   private val other = RelicId("R10")
 
   /** The actor plays Conspiracy at a site the enemy shares. The enemy holds
-    * relic R10, and the People's Favor when `banner`. The Vault stands at
-    * another site, ruled by the enemy. Returns the enemy, the target options
-    * (empty when no decision was asked) and the journal.
+    * relic R10 on `side`, and the People's Favor when `banner`. The Vault
+    * stands at another site, ruled by the enemy. Returns the enemy, the target
+    * options (empty when no decision was asked) and the journal.
     */
-  private def conspiracyTargets(banner: Boolean)
+  private def conspiracyTargets(banner: Boolean,
+      side: Orientation = Orientation.FaceUp)
       : (PlayerId, Vector[DecisionOptionRef], Vector[OathEvent]) =
     val base = PowerFixture.base
     val actor = PowerFixture.actor
@@ -99,7 +100,7 @@ class ForgottenVaultSuite extends munit.FunSuite:
             holder = Option.when(banner)(enemy)),
           darkestSecret = c.banners.darkestSecret.copy(holder = None)),
         temporaryHands = c.temporaryHands.updated(actor, Vector(conspiracy))))
-    val ready = vaultAt(holds(staged, enemy, other), site.get, Some(enemy))
+    val ready = vaultAt(holds(staged, enemy, other, side), site.get, Some(enemy))
     val hook = CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(actor, conspiracy))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
       Vector.empty)
@@ -111,6 +112,13 @@ class ForgottenVaultSuite extends munit.FunSuite:
 
   test("Conspiracy may take the ruler's banner, but not their relic"):
     val (enemy, options, events) = conspiracyTargets(banner = true)
+    assertEquals(options, Vector[DecisionOptionRef](
+      DecisionOptionRef.Banner(Banner.PeoplesFavor)))
+    assertEquals(notes(events), Vector(line(enemy)))
+
+  test("Conspiracy may not take the ruler's facedown relic either"):
+    val (enemy, options, events) = conspiracyTargets(banner = true,
+      Orientation.FaceDown)
     assertEquals(options, Vector[DecisionOptionRef](
       DecisionOptionRef.Banner(Banner.PeoplesFavor)))
     assertEquals(notes(events), Vector(line(enemy)))
