@@ -597,6 +597,19 @@ overlay's scrim and holds a Pane-fill panel with a Line-pane border, full
 height, at a 46rem measure, under a pane header with Close. Its list reads
 at 13px, and there the round headlines stick instead of the turns.
 
+The **card list** shows cards in pile order: what Scryer or Oracular Pig
+looked at, or a log line's list of more than five cards. It is a count title
+in the Brass Label over a grid of ordinary card faces, each a face or a back
+as the viewer may identify it, and the grid scrolls inside itself. Its cards
+take the one card box, so the container's font size sizes them. In the
+action pane it sits between the decision's heading and Done, at most a row
+and a half tall, so a longer pile shows that it scrolls and Done stays in
+reach. From the log, the count ("6 cards") reads as part of the sentence, a
+Cream name underlined in Brass Line, and opens the list in the card overlay.
+There the list takes a 60em measure at 0.8em, not the lone card's 1.9em, and
+scrolls with the overlay body. The card overlay stacks one step above the
+log overlay, so a list opened from the whole log covers it.
+
 Every pane's empty or
 loading line, and a waiting or seat notice in the Actions pane, is Ink Dim
 0.82rem. On the map the empty line is set against the scale

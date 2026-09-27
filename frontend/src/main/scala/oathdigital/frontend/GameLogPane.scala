@@ -151,4 +151,10 @@ private[frontend] object GameLogPane:
           s"die-faces log-dice log-dice-${span.unit.getOrElse("unknown")}")
         dice
     }
+    // More cards than a line names: a control that opens them as a card
+    // list (catalog batch 2, N5). A span with no cards stays words.
+    case "cards" if span.cards.nonEmpty =>
+      val open = button(span.text, "log-cards")
+      open.onclick = _ => CardInspection.openCards(span.text, span.cards, open)
+      open
     case _ => dom.document.createTextNode(span.text)

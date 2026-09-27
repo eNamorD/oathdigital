@@ -235,3 +235,33 @@ class GameLogPaneSuite extends munit.FunSuite:
     place(shown(2), 350, 365)
     overlay.restore(Some(2))
     assertEquals(content.scrollTop, 350.0 - 50.0 - 18.0)
+
+  test("a card list is a control that opens it; few cards or a count are words"):
+    val cards = (1 to 6).toVector.map(n =>
+      CardDetails(s"d$n", "denizen", s"Card $n"))
+    val listed = entry(7, "action", 1, LogSpanWire("text", "Scryer: "),
+      LogSpanWire("cards", "6 cards", cards = cards))
+    val plain = entry(8, "action", 1, LogSpanWire("text", "Oracle: 6 cards"))
+    val few = entry(9, "action", 1, LogSpanWire("text", "Pig: "),
+      LogSpanWire("card", "Old Oak", id = Some("d1")))
+    var opened = Vector.empty[CardInspection.Request]
+    CardInspection.onOpen(request => opened :+= request)
+    try
+      val content = box(0, 0, 0)
+      new GameLogPane(content).show("g|red", Vector(setup, listed, plain, few),
+        Map.empty)
+      val shown = items(content)
+      val short = shown.find(_.textContent.startsWith("Pig")).get
+      assertEquals(short.querySelector(".log-card").textContent, "Old Oak")
+      assertEquals(short.querySelector(".log-cards"), null)
+      val link = shown.find(_.textContent.startsWith("Scryer")).get
+        .querySelector("button.log-cards").asInstanceOf[dom.html.Button]
+      assertEquals(link.textContent, "6 cards")
+      link.click()
+      assertEquals(opened.collect {
+        case CardInspection.Request.Cards(title, sent, _) =>
+          title -> sent.map(_.cardId)
+      }, Vector("6 cards" -> cards.map(_.cardId)))
+      assertEquals(shown.find(_.textContent.startsWith("Oracle")).get
+        .querySelector(".log-cards"), null)
+    finally CardInspection.clear()

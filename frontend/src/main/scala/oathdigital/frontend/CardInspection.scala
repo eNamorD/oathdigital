@@ -20,6 +20,9 @@ private[frontend] object CardInspection:
         extends Request
     final case class Text(title: String, lines: Vector[String],
         origin: dom.html.Element) extends Request
+    /** Cards in order, as a log line's card list opens them (N5). */
+    final case class Cards(title: String, cards: Vector[CardDetails],
+        origin: dom.html.Element) extends Request
 
   private var handler = Option.empty[Request => Unit]
 
@@ -33,3 +36,7 @@ private[frontend] object CardInspection:
   def openText(title: String, lines: Vector[String],
       origin: dom.html.Element): Unit =
     handler.foreach(_(Request.Text(title, lines, origin)))
+
+  def openCards(title: String, cards: Vector[CardDetails],
+      origin: dom.html.Element): Unit =
+    handler.foreach(_(Request.Cards(title, cards, origin)))

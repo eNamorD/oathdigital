@@ -57,6 +57,17 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     body.appendChild(panel)
     open(origin)
 
+  /** Cards in the order given, as a card list (catalog batch 2, N5): a log
+    * line's "6 cards". Each is its face or its back as projected; a face
+    * still opens that one card here.
+    */
+  def showCards(title: String, cards: Vector[CardDetails],
+      origin: dom.html.Element): Unit =
+    clear()
+    node.setAttribute("aria-label", title)
+    body.appendChild(CardList.render(title, cards))
+    open(origin)
+
   private def clear(): Unit =
     while body.firstChild != null do body.removeChild(body.firstChild)
 
