@@ -86,6 +86,20 @@ and simulation all see the filtered options. Narrow Pass uses it at
 `CampaignRaidTransfer` and `CampaignRaidRelocation`, all audited vocabulary that
 only Vow of Peace and Narrow Pass use so far.
 
+A `Restriction` also hides options. Before the walker offers a decision it
+probes each option: it appends a hypothetical answer and runs the restriction
+traversal over the tree those answers derive
+(`WalkerPowerGather.probe`). An option whose answer adds a violation the
+answers so far do not already produce is not offered, in the walk, in
+`accepts`, in the projector and in `WalkerSimulation`. `ChooseOne` and
+`ChooseMany` are probed per option and `ChooseAmount` per value; a range with
+a gap is left whole. A required decision left with nothing rejects the action,
+so its start control is hidden. The probe's own traversal does not probe
+(`WalkerPowers.probing`), and it runs only when some power contributes a
+`Restriction`. The answer-time check stays as a backstop. So a "cannot" card
+needs only a `Restriction`, even when the window it checks exists only after
+the answer, as a card-play hook does.
+
 ## Window-driven power runtime
 
 `PowerRegistry` and `PowerResolver` keep four concepts separate: factual sources

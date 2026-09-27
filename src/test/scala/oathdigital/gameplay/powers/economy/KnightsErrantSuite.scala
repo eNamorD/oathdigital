@@ -165,19 +165,23 @@ class KnightsErrantSuite extends munit.FunSuite:
       : Either[OathViolation, OathTransition] =
     rules.resolveWalker(from.state, actor, KnightsErrant.decisionId, campaign)
 
-  test("Vow of Peace forbids the nested Campaign, and declining is still allowed"):
+  test("Vow of Peace forbids the nested Campaign, so the look-ahead hides " +
+      "the option, and declining is still allowed"):
     val vow = DenizenId(catalog.denizens.find(_.powers.exists(
       _.id.value == "denizen.vow-of-peace")).get.id.value)
     val ready = PowerFixture.asAdviser(CardStaging.without(staged(), vow), vow)
     val asked = musterFrom(ready, modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
-    assert(campaigning(asked).left.toOption.exists(
-      _.isInstanceOf[OathViolation.CampaignUnavailable]))
+    assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
+      .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.declineOption))
+    assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(
+      s"decision ${KnightsErrant.decisionId} does not offer the selected " +
+        "option")))
     assert(rules.resolveWalker(asked.state, actor, KnightsErrant.decisionId,
       decline).isRight)
 
-  test("a Fortress that protects every player a Raid could target forbids the " +
-      "nested Campaign"):
+  test("a Fortress that protects every player a Raid could target forbids " +
+      "the nested Campaign, so the look-ahead hides the option"):
     // Nobody rules the site, so a Conquest is not legal. An enemy pawn stands
     // there, so a Raid is, and the Rotting Fortress protects that enemy.
     val base = staged(campaignLegal = false)
@@ -187,8 +191,11 @@ class KnightsErrantSuite extends munit.FunSuite:
       TargetingFixture.pawnAt(base, other, site), EdificeSide.Ruined, site)
     val asked = musterFrom(fortified, modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
-    assert(campaigning(asked).left.toOption.exists(
-      _.isInstanceOf[OathViolation.CampaignUnavailable]))
+    assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
+      .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.declineOption))
+    assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(
+      s"decision ${KnightsErrant.decisionId} does not offer the selected " +
+        "option")))
     // The same board without the Fortress lets the Raid start.
     val open = musterFrom(TargetingFixture.pawnAt(base, other, site), modifiers)
     assert(campaigning(open).isRight)

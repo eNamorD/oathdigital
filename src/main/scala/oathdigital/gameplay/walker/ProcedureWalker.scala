@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.powerresolver.ContributingPower
+import oathdigital.gameplay.powerresolver.{ContributingPower, Restriction}
 import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
@@ -37,8 +37,18 @@ object WalkerOutcome:
   * `OathRules` supplies it at command entry; `applyRecorded` (replay) never
   * takes one -- replay applies recorded ops only (spec decision 5) and must
   * never re-gather or re-transform.
+  *
+  * `probing` is on for every command. The restriction look-ahead turns it off
+  * for the traversal it runs, so a dry run inside a probe (an `OfferHost`
+  * pass) never probes in turn.
   */
-final case class WalkerPowers(powers: Vector[ContributingPower])
+final case class WalkerPowers(powers: Vector[ContributingPower],
+    probing: Boolean = true):
+  /** Whether any power can reject an action. The restriction look-ahead
+    * ([[WalkerPowerGather.probe]]) has nothing to find without one.
+    */
+  lazy val hasRestrictions: Boolean = powers.exists(_.contributions.values
+    .exists(_.exists(_.isInstanceOf[Restriction])))
 object WalkerPowers:
   val empty: WalkerPowers = WalkerPowers(Vector.empty)
 
@@ -135,7 +145,7 @@ object ProcedureWalker:
     // stored field before executing deltas.
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice,
-      state.game.current.walkerProcedure),
+      state.game.current.walkerProcedure, action),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)
 
   /** Resumes the `Roll` park recorded by `advance` (Task 4 roll contract).
@@ -161,7 +171,7 @@ object ProcedureWalker:
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
       state.game.current.turn.activePlayer, pending.answered, powers, dice,
-      state.game.current.walkerProcedure),
+      state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
       .map(toOutcome)
 
@@ -186,7 +196,7 @@ object ProcedureWalker:
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
       state.game.current.turn.activePlayer, pending.answered, powers, dice,
-      state.game.current.walkerProcedure),
+      state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
       .map(toOutcome)
 
@@ -277,7 +287,9 @@ object ProcedureWalker:
       powers: WalkerPowers,
       dice: WalkerDice,
       /** The procedure of the parked position being resumed. */
-      procedure: Option[oathdigital.model.ProcedureRef]
+      procedure: Option[oathdigital.model.ProcedureRef],
+      /** The whole action tree, which the restriction look-ahead probes. */
+      root: Operation
   )
 
   private sealed trait Step extends Product with Serializable
@@ -439,9 +451,39 @@ object ProcedureWalker:
 
   /** Executes or parks one leaf at its own position, recording
     * `contributions` (every enclosing window's gather order, this leaf's own
-    * included) on whatever event it emits.
+    * included) on whatever event it emits. A `Decide` where it is asked --
+    * reached fresh or being answered -- is first narrowed by the restriction
+    * look-ahead ([[WalkerPowerGather.probe]]). A required decision with
+    * nothing left rejects the command, and an optional one with nothing left
+    * is passed without asking.
     */
   private def runLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
+      path: Vector[String], cursor: Option[Vector[String]],
+      resume: Resume, contributions: Vector[PowerId],
+      strict: Boolean): Either[OathViolation, Step] =
+    leaf match
+      case decide: Decide if asked(cursor, resume) =>
+        WalkerPowerGather.probe(ctx.root, decide, ctx.state, ctx.activePlayer,
+            ctx.powers, ctx.answered, ctx.procedure).flatMap:
+          case Some(narrowed) => runNarrowed(narrowed, ctx, path, cursor,
+            resume, contributions, strict)
+          case None if cursor.isEmpty => Right(Done(ctx))
+          case None => Left(OathViolation.InvalidEventOrder(
+            s"decision ${decide.decisionId} has nothing left to offer"))
+      case _ => runNarrowed(leaf, ctx, path, cursor, resume, contributions,
+        strict)
+
+  /** Whether the leaf is where a decision is asked: reached fresh, or at the
+    * cursor's end while an answer resumes. A plain resume only re-parks it.
+    */
+  private def asked(cursor: Option[Vector[String]], resume: Resume): Boolean =
+    cursor match
+      case None => true
+      case Some(remaining) =>
+        remaining.isEmpty && resume.isInstanceOf[AnswerResume]
+
+  /** Executes or parks one leaf that the look-ahead has already narrowed. */
+  private def runNarrowed(leaf: PrimitiveOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, contributions: Vector[PowerId],
       strict: Boolean): Either[OathViolation, Step] =
