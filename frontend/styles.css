@@ -466,7 +466,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
    scaled down by its pane's font size keeps its box in ex and its text no
    smaller than 11.2px, which is what a name has to be to be read. */
 .card-name { min-width: 0; max-width: 100%; font-weight: 750;
-  font-size: max(0.95em, 0.7rem); overflow-wrap: anywhere; }
+  font-size: max(0.95em, 0.7rem); overflow-wrap: anywhere; hyphens: auto; }
 /* The initials, for the zoomed-out map only; the name is the button's label. */
 .card-name-short { display: none; }
 .card-tokens { display: flex; align-items: center; gap: 0.15em;
@@ -478,12 +478,17 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   gap: 0.05em; margin-left: auto; font-size: 0.8em; }
 .card-restriction { margin-top: auto; font-size: max(0.72em, 0.7rem);
   color: #a99f8c; text-transform: capitalize; }
-/* The footer sinks to the bottom with or without a restriction above it. */
-.card-unimplemented-badge { align-self: flex-start; margin-top: auto;
-  padding: 0 0.35em;
-  border-radius: 0.25em; background: #a15c4a; color: #f5ecd7;
-  font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.03em; }
-.card-restriction + .card-unimplemented-badge { margin-top: 0; }
+/* A band across the card's foot, out to the dashed border, so the word gets
+   the card's whole width: at the floor's 0.7rem, mixed case, "Unimplemented"
+   fits the smallest card in a pane. The card keeps the band's height free
+   at its foot, worked out in the card's own font, so the restriction above
+   it never runs under it. */
+.card-unimplemented-badge { position: absolute; right: 0; bottom: 0; left: 0;
+  padding: 0 0.2em; background: #a15c4a; color: #f5ecd7;
+  font-size: max(0.62em, 0.7rem); line-height: 1.35; text-align: center;
+  white-space: nowrap; }
+.card-face:has(> .card-unimplemented-badge) {
+  padding-bottom: calc(max(0.62em, 0.7rem) * 1.35 + 0.3em); }
 .card-face-down { align-items: center; justify-content: center;
   border-style: solid; background: #2a2333; }
 .card-back-letter { font-size: 1.9em; font-weight: 800; color: #cbb7dd; }
@@ -962,21 +967,28 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .card-list-title { margin: 0 0 6px; color: #d5bd8f; font-size: max(11px, .78em);
   font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .card-list-grid { display: grid; gap: var(--card-gap);
-  grid-template-columns: repeat(auto-fill, var(--card-w));
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-w), 1fr));
   margin: 0; padding: 0; list-style: none; overflow-y: auto;
   overscroll-behavior: contain; scrollbar-width: thin;
   scrollbar-color: #8c7959 #211f1b; }
 .card-list-item { display: flex; }
-/* In the action pane, a row and a half shows at most, so a longer pile says
-   it scrolls and Done stays in reach under it. */
-.pane-actions .card-list-grid {
-  max-height: calc(var(--card-h) * 1.5 + var(--card-gap)); }
+/* The columns share the list's whole width, and each card follows its
+   column's width at its ratio, as a site's card row does. */
+.card-list-item > .card-face { width: 100%; height: auto;
+  aspect-ratio: 1 / 1.4; }
+.card-list-item > .card-face-relic { aspect-ratio: 1 / 1; }
+/* In the action pane, about a row and a half shows at most (a column is at
+   most a third wider than a card there), so a longer pile says it scrolls
+   and Done stays in reach under it. */
+.pane-actions .card-list-grid { max-height: calc(var(--card-h) * 2); }
 /* In the card overlay the list takes the overlay's width, a measure of
    cards wide, and scrolls with the overlay body rather than inside itself.
-   Its cards stay at the overlay's font size, not the lone card's 1.9em. */
+   Its cards stay near the overlay's font size, not the lone card's 1.9em,
+   and never smaller than the action pane's, so a narrow screen does not
+   shrink a name into breaking. */
 .card-overlay-body:has(> .card-list) { width: min(100%, 60em); }
 .card-overlay-body > .card-list { flex: 1 1 100%; min-width: 0; margin: 0;
-  font-size: 0.8em; }
+  font-size: max(0.8em, 0.9rem); }
 .card-overlay-body .card-list-grid { overflow: visible; }
 /* A log line's card list reads as part of its sentence, a card name in
    Cream underlined in Brass Line, and opens the list on click. Its focus
