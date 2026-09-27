@@ -78,17 +78,25 @@ beside the operation types.
 
 ### Emission path 1: the `Note` leaf
 
-`Note(power: PowerId, source: RuleSourceRef, build: ReadyGame => PowerNote)`
-is a new leaf of the operation tree. The walker handles it the way it handles
+`Note(power: PowerId, source: RuleSourceRef, build: NoteStates => PowerNote,
+covers: Boolean = false)` is a new leaf of the operation tree. The walker handles it the way it handles
 `Decide` and `Roll`. It is not a `CoreOperation` and changes no state.
 
 - A power puts a `Note` in any tree it builds or rewrites: a Transform's
   output, a battle plan's subtree, a phase power's `build`, a when-played
   tree, a setup rule's operations.
-- When the walk reaches the leaf, the walker calls `build` on the current
-  state and appends `PowerNoted(power, source, note)` to `WalkCtx.events`, in
-  walk order. `build` reads the live state, like `BuildOps`, so a note after
-  a roll can name the faces rolled.
+- When the walk reaches the leaf, the walker calls `build` and appends
+  `PowerNoted(power, source, note)` to `WalkCtx.events`, in walk order.
+- `NoteStates(now: ReadyGame, previous: Option[(ReadyGame, ReadyGame)])`
+  gives `build` the live state, like `BuildOps`, and the states before and
+  after the step this walk journaled immediately before the note. `previous`
+  is empty when the note is the first step of its command.
+- **Amounts are what happened, never the printed number.** Supply clamps at
+  the track's maximum, a favor gain takes at most what the bank holds, and a
+  kill does what the board allows. A note that restates a step reads its
+  amount as the difference between `previous`'s two states, so no power
+  repeats the cap logic of the operation it describes. "Magic Waterskin:
+  {Red} gained {3} Supply." reads 3 when the track had room for only 3.
 - A `Note` inside a branch that never runs is never journaled. A line
   therefore appears only when its effect happened.
 - A Transform that removes a decision leaves a `Note` in its place. Vow of
@@ -175,6 +183,7 @@ Wording rules:
   travel to Green Shore."
 - Terse fragments are fine: "Outriders: Skulls ignored."
 - An exclamation mark is allowed where a procedure changes dramatically.
+- A pawn placed by a power "placed at" a site. It did not travel or move.
 - Players are named by chip, never "you". Every viewer reads the same line.
 
 ### Placement
@@ -189,75 +198,47 @@ Wording rules:
 
 ### Phase powers
 
-- A phase power's note with the key `used` becomes the action line, kind
-  `Action`, at that note's position. It replaces "Used {card}".
-- The phase power's other notes are ordinary `Trigger` lines.
-- A run with no `used` note posts "Used {card}" exactly as today. In practice
-  that is only a journal written before this phase, since a catalog test
-  requires every phase power to declare `used` (see Tests).
-
-### Covering
-
-A note may restate a step's result. Gambling Hall's "Rolled 3 shields, Total:
-3" repeats the generic "Rolled" detail line.
-
-- A `Note` leaf carries `covers: Boolean`, default false.
-- A covering note covers the step journaled immediately before it in the same
-  segment, and the formatter drops that step's generic detail lines.
-- The formatter already reads ahead to the end of a segment (Game Log design,
-  "Posting"), so the step's lines are decided before anything is sent and
-  prefix stability holds.
-- A note that covers nothing leaves ruling 5 intact: the operations still log.
-
-### Missing wording
-
-A note whose power or key has no template renders nothing, which matches the
-log's rule that an event this build does not know stays silent. That happens
-only for a journal naming a power that was later renamed or removed. A
-catalog test holds current powers to having every template.
-
-## 3. Audit
-
-These rows are the source of truth for this phase. A plan task implements
-rows. The wording is final unless spec review changes it. `{…}` marks an
-argument. "Covers" names the generic detail line a note replaces.
-
-### Phase powers
-
 Every note in this table is the power's `used` line unless marked otherwise.
+"Covers" names the generic line the note replaces. Today most of these
+effects log nothing but "Used {card}": `GainSupply`, `Kill`, pawn moves, a
+relic drawn by a power, and secrets moved between players have no generic
+line at all. Those notes cover nothing and fill the gap.
+
+A "Chose …" line from the power's own decision stays (see "Covering"). The
+cost payment logs nothing today and still logs nothing.
 
 | Card | Line | Covers |
 |---|---|---|
-| Elders | Elders: {Red} gained 1 secret. | the Gain line |
-| Wayside Inn | Wayside Inn: {Red} gained 2 Supply. | the Gain line |
-| Magic Waterskin | Magic Waterskin: {Red} gained 4 Supply. | the Gain line |
-| Alchemist | Alchemist: {Red} gained 4 favor. | nothing: each bank's Gain line stays |
-| Gambling Hall | Gambling Hall: {Red} rolled {dice}, Total: {n} | the roll |
+| Elders | Elders: {Red} gained {1} secret. | the Gain line |
+| Wayside Inn | Wayside Inn: {Red} gained {n} Supply. | |
+| Magic Waterskin | Magic Waterskin: {Red} gained {n} Supply. | |
+| Alchemist | Alchemist: {Red} gained {n} favor. | nothing: each bank's Gain line stays |
+| Gambling Hall | Gambling Hall: {Red} rolled {dice}, Total: {n} | the Rolled line |
 | Gambling Hall, key `gained`, when the total is above zero | Gambling Hall: {Red} gained {n} favor from {the Order bank}. | the Gain line |
-| Bone Dice | Bone Dice: {Red} rolled {dice}, Total: {n} | the roll |
-| Bone Dice, key `gained` | Bone Dice: {Red} gained {n} Supply. | the Gain line |
-| Bone Dice, key `buried`, on a skull | Bone Dice: Buried after a skull. | the Bury line |
-| Murky Fountain, pawn at its site | Murky Fountain: {Red} rolled {dice}, Total: {n} | the roll |
-| Murky Fountain, key `gained` | Murky Fountain: {Red} gained {n} Supply. | the Gain line |
+| Bone Dice | Bone Dice: {Red} rolled {dice}, Total: {n} | the Rolled line |
+| Bone Dice, key `gained`, when the score is above zero | Bone Dice: {Red} gained {n} Supply. | |
+| Bone Dice, key `buried`, on a skull | Bone Dice: Buried after a skull. | the Buried line |
+| Murky Fountain, pawn at its site | Murky Fountain: {Red} rolled {dice}, Total: {n} | the Rolled line |
+| Murky Fountain, key `gained`, when the total is above zero | Murky Fountain: {Red} gained {n} Supply. | |
 | Murky Fountain, key `ended`, on a zero total | Murky Fountain: {Red}'s Act phase ended. | |
 | Murky Fountain, pawn elsewhere | Murky Fountain: {Red} was not at its site. | |
-| Dowsing Sticks | Dowsing Sticks: {Red} drew {relic} facedown. | the Draw line |
+| Dowsing Sticks | Dowsing Sticks: {Red} drew {relic} facedown. | |
 | Dowsing Sticks, empty deck | Dowsing Sticks: The relic deck was empty. | |
-| Fae Merchant | Fae Merchant: {Red} drew {relic} facedown. | the Draw line |
-| Fae Merchant, key `returned` | Fae Merchant: {Red} put {relic} on the bottom of the relic deck. | the Bury line |
-| Crystal Vial | Crystal Vial: {Red} buried {card}. | the Bury line |
-| Ivory Eye | Ivory Eye: {Red} peeked at {Blue}'s {card}. | the Peek line |
+| Fae Merchant | Fae Merchant: {Red} drew {relic} facedown. | |
+| Fae Merchant, key `returned` | Fae Merchant: {Red} put {relic} on the bottom of the relic deck. | the Buried line |
+| Crystal Vial | Crystal Vial: {Red} buried {card}. | the Buried line |
+| Ivory Eye | Ivory Eye: {Red} peeked at {Blue}'s {card}. | the Peeked line |
 | Sleight of Hand | Sleight of Hand: {Red} took 1 secret from {Blue}. | |
 | Sleight of Hand, no target | Sleight of Hand: No player could be robbed. | |
-| Whistle | Whistle: {Red} pulled {Blue}'s pawn to {site}. | |
+| Whistle | Whistle: Placed {Blue} at {site} and gave {Blue} the Whistle's secret. | |
 | Whistle, no target | Whistle: No pawn could be pulled. | |
-| Wolves | Wolves: Killed 1 {Blue} warband. | |
+| Wolves | Wolves: Killed {1} {Blue} warband. | |
 | Wolves, no warband | Wolves: {Blue} had no warband to kill. | |
-| Brass Horse | Brass Horse: {Red} revealed {card} and moved to {site}. | the Reveal line |
-| Magic Carpet | Magic Carpet: {Red} moved to {site}. | |
+| Brass Horse | Brass Horse: {Red} revealed {card} and placed at {site}. | the Revealed line |
+| Magic Carpet | Magic Carpet: {Red} placed at {site}. | |
 | Magic Carpet, key `given` | Magic Carpet: Given to {Blue}. | |
 | Magic Carpet, key `discarded` | Magic Carpet: Discarded. | |
-| Wandering Flame (move) | Wandering Flame: {Red} moved to {site}. | |
+| Wandering Flame (move) | Wandering Flame: {Red} placed at {site}. | |
 | Wandering Flame (place) | Wandering Flame: {Red} placed a secret at {site}. | |
 | Horned Mask | Horned Mask: {Red} took {card} as a facedown adviser. | |
 | Marble Fountains | Marble Fountains: {Red}'s Supply refreshed to {n}. | |
@@ -311,7 +292,7 @@ Every note in this table is the power's `used` line unless marked otherwise.
 | Great Market | Great Market: Placed {n} favor on {site}. |
 | Bandit Market | Bandit Market: Placed 1 favor on each bandit site and burned 1 favor from each bank. |
 | Great Forge | Great Forge: {Red} drew {relic} facedown. |
-| Broken Forge | Broken Forge: Discarded the relics at {sites}. |
+| Broken Forge | Broken Forge: Discarded {n} relics at {sites}. |
 | Proving Grounds | Proving Grounds: {Red} gained 3 warbands. |
 | Empty Grounds | Empty Grounds: Discarded {cards}. |
 
@@ -353,6 +334,8 @@ Walker:
 
 - A `Note` leaf journals once, in walk order, with arguments read from the
   state at that point.
+- A note after a capped step reads the applied amount from `previous`, not
+  the printed one: Magic Waterskin near the top of the Supply track.
 - A `Note` in a branch that does not run journals nothing.
 - A resumed command journals no note twice. A new `Repeat` pass journals
   again.
