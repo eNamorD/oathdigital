@@ -7,8 +7,8 @@ import oathdigital.model.{NoteKey, PowerId}
   * the formatter reads this beside the two power catalogs.
   */
 object RuleNotes:
-  /** Card play's Homeland rule: a full Homeland takes a card of its suit
-    * after a discard. */
+  /** Card play's Homeland rule: a play of a card of the Homeland's suit to
+    * that site may discard a card there first, at any capacity. */
   val homelandDiscard: PowerId = PowerId("rule.homeland-discard")
 
   val all: Vector[(PowerId, Vector[NoteKey])] =

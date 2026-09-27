@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
@@ -67,5 +68,20 @@ class HomelandLineSuite extends munit.FunSuite:
       case ref: DecisionOptionRef.Denizen => ref }.get
     val WalkerOutcome.Finished(_, events) = answer(ready, tree, pending, none,
       decisionId(card, "replace"), discarded, actor): @unchecked
+    assertEquals(said(events), Vector(NoteText.Said("discard-first",
+      s"${actor.value} may discard a card at their site first.", covers = false)))
+
+  test("a play with room at a matching Homeland writes the line when it " +
+      "declines the discard"):
+    val (ready, actor, card) = atHomeland(matching = true, full = false)
+    val tree = build(ready, actor, card)
+    val WalkerOutcome.Parked(pending, _) = answer(ready, tree,
+      park(ready, tree, none), none, decisionId(card, "place"),
+      DecisionOptionRef.Button("site"), actor): @unchecked
+    val done @ WalkerOutcome.Finished(_, events) = answer(ready, tree, pending,
+      none, decisionId(card, "replace"),
+      CardPlayProcedure.noReplacement.ref, actor): @unchecked
+    assert(done.treeless.game.current.map.sites(homeSite).denizens
+      .exists(_.id == card))
     assertEquals(said(events), Vector(NoteText.Said("discard-first",
       s"${actor.value} may discard a card at their site first.", covers = false)))

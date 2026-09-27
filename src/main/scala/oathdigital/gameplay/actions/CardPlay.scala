@@ -16,7 +16,8 @@ object CardPlay:
   /** One legal placement. `replacements` are the cards the play may discard
     * first. They are required when the placement is otherwise impossible, and
     * `replacementOptional` says the play is also legal with no discard (a
-    * site with room, under `PlacementRules.siteDiscardFirst`).
+    * site with room, under `PlacementRules.siteDiscardFirst` or at the
+    * Homeland of the card's suit).
     */
   final case class Choice(placement: SearchPlacement,
       replacements: Vector[CardId], replacementOptional: Boolean = false)
@@ -52,7 +53,7 @@ object CardPlay:
       // under a power's permission or at the Homeland of the card's suit.
       val optional = direct && (placement match
         case _: SearchPlacement.Site => player.flatMap(_.pawnSite).exists(site =>
-          catalog.suitOf(card).exists(discardFirst(catalog, site, _, rules)))
+          catalog.suitOf(card).exists(siteDiscardAllowed(catalog, site, _, rules)))
         case _ => false)
       val replacements = if direct && !optional then Vector.empty
       else candidateIds.filter { id =>
@@ -77,7 +78,7 @@ object CardPlay:
 
   /** A play of a `suit` card to `site` may discard a card there first: under
     * a power's permission, or at the Homeland of `suit`. */
-  private def discardFirst(catalog: ExecutableCatalog, site: SiteId,
+  private def siteDiscardAllowed(catalog: ExecutableCatalog, site: SiteId,
       suit: Suit, rules: PlacementRules): Boolean =
     rules.siteDiscardFirst || homelandSuit(catalog, site).contains(suit)
 
@@ -373,7 +374,7 @@ object CardPlay:
       : Either[OathViolation, Option[SiteDenizenState]] =
     val capacity = catalog.site(siteId).map(_.capacity).getOrElse(0)
     val full = site.denizens.size >= capacity
-    if discardFirst(catalog, siteId, suit, rules) then replace match
+    if siteDiscardAllowed(catalog, siteId, suit, rules) then replace match
       // At any capacity: the discard is optional with room and required
       // without, and it may name any card of the site's card list.
       // `DiscardRestrictions` decide what may actually be discarded: a locked
