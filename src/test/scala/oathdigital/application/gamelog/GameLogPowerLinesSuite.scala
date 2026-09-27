@@ -238,3 +238,14 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assertEquals(words.seen(hidden, Vector(shown, last), viewer),
       CardWord.Named(LogSpan.Card(hidden.value,
         presentation.cardLabel(last, hidden))))
+
+  test("Wolves writes its kill as the action line, after the choice it answers"):
+    val script = wolves
+    val entries = format(script, None).filter(_.depth == 1)
+    val all = texts(entries)
+    val kill = all.indexWhere(_.startsWith("Wolves: Killed 1 "))
+    assert(kill > 0, all)
+    assert(all(kill - 1).startsWith("Chose "), all)
+    assert(all(kill).endsWith(" warband."), all(kill))
+    assert(!all.exists(_.startsWith("Used ")), all)
+    assertEquals(entries(kill).kind, LogKind.Action)

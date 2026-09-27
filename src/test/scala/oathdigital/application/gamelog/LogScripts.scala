@@ -5,7 +5,7 @@ import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.powers.action.GamblingHall
+import oathdigital.gameplay.powers.action.{GamblingHall, Wolves}
 import oathdigital.gameplay.powers.search.Augury
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -429,6 +429,29 @@ object LogScripts:
       GameCommand.UsePower(actor, GamblingHall.id, DecisionOptionRef.Denizen(card)))
     Script("gambling-hall", service, actor)
 
+  /** Wolves at the actor's site, used in Act with a secret arranged. The
+    * board question parks; the answer kills one of the other player's
+    * warbands with the most of them. */
+  def wolves(using munit.Location): Script =
+    val card = DenizenId("39")
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
+    val (service, _, driver) = journaled("wolves")
+    val woken = Situation.wake(driver, chronicle, orders)
+    val actor = active(woken)
+    val victim = woken.ready.game.current.players.filter(_.player != actor)
+      .maxBy(_.board.warbands).player
+    woken.withAnswers {
+      case park if park.decisionId == Wolves.decisionId =>
+        ChooseOneAnswer(DecisionOptionRef.Player(victim))
+    }.after(Step.Arrange(Vector(
+        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(woken, actor))),
+        Move(Piece.Secrets(1), PositionedLocation(Location.SharedBank),
+          PositionedLocation(Location.PlayArea(actor))))),
+      GameCommand.EndWake(actor),
+      GameCommand.UsePower(actor, Wolves.id, DecisionOptionRef.Denizen(card)))
+    Script("wolves", service, actor)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -445,6 +468,6 @@ object LogScripts:
     "negotiation-agreed" -> (() => negotiationAgreed),
     "negotiation-disclosed" -> (() => negotiationDisclosed),
     "use-power" -> (() => usePower),
-    "gambling-hall" -> (() => gamblingHall))
+    "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves))
 
   def all: Vector[Script] = named.map(_._2())

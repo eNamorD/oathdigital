@@ -41,3 +41,7 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
   test("a banner option names its banner as a note's source"):
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
       Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
+
+  test("every phase power declares its own used line"):
+    PhasePowerCatalog.default(catalog).powers.foreach(power =>
+      assert(power.noteKeys.exists(_.name == NoteKey.Used), power.id.value))
