@@ -140,6 +140,37 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assert(!named(script.actor).contains(hidden.value), named(script.actor))
     assert(named(owner).contains(hidden.value), named(owner))
 
+  test("a note's source its viewer may not identify reads as its back"):
+    val script = usePower
+    val steps = script.history.steps
+    val last = steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val (owner, hidden) = last.game.current.players
+      .filter(_.player != script.actor).flatMap(held => held.advisers.collect {
+        case DenizenState(id, Orientation.FaceDown, _) => held.player -> (id: CardId)
+      }).head
+    val noted = inserted(steps, take(steps), PowerNoted(power,
+      said(PowerSourceRef.Card(hidden), NoteArg.Player(script.actor),
+        NoteArg.Amount(2, NoteUnit.Favor)), covers = false))
+    def line(viewer: PlayerId) = entries(noted, Some(viewer))
+      .find(entry => text(entry).endsWith(" said 2 favor.")).get
+    assertEquals(text(line(script.actor)),
+      s"a Denizen: ${name(script.actor)} said 2 favor.")
+    assert(line(owner).spans.head == LogSpan.Card(hidden.value,
+      presentation.cardLabel(last, hidden)), line(owner).spans)
+
+  test("the same note in another action posts again"):
+    val script = usePower
+    val steps = script.history.steps
+    val note = saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor))
+    val first = steps.indexWhere(_.event.event.isInstanceOf[WalkerStepRecorded])
+    assert(first < take(steps))
+    val noted = inserted(inserted(steps, take(steps), note), first, note)
+    // The card is not public during setup, so the first line shows its back.
+    assertEquals(lines(noted).count(_.endsWith(s"${name(script.actor)} said 2 favor.")),
+      2, lines(noted))
+
   test("a note waits for its action's start line"):
     val script = raid
     val steps = script.history.steps
