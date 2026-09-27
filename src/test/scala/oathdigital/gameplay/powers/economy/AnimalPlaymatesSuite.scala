@@ -26,13 +26,14 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
     .find(e => e.suit == Suit.Beast &&
       !e.intact.powers.exists(p => economy(p.id))).get.id.value)
 
-  /** The actor holds Animal Playmates as a faceup adviser; their site holds
-    * the plain card and `source`.
+  /** The actor holds Animal Playmates as an adviser; their site holds the
+    * plain card and `source`. Both cards leave wherever the first game dealt
+    * them, so neither is duplicated.
     */
   private def at(source: SiteDenizenState,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    val ready = CardStaging.without(act(advisers = Vector(
-      DenizenState(playmates, orientation, Tokens.empty))), source.id)
+    val ready = CardStaging.without(PowerFixture.asAdviser(
+      CardStaging.without(act(), playmates), playmates, orientation), source.id)
     val site = PowerFixture.home(ready)
     ready.updateCurrent(c => c.copy(map = c.map.copy(sites = c.map.sites.updated(
       site, c.map.sites(site).copy(denizens = (Vector[SiteDenizenState](
