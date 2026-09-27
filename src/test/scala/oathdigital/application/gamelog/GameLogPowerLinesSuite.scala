@@ -1,0 +1,157 @@
+package oathdigital.application.gamelog
+
+import oathdigital.application.ParkedServiceFixture
+import oathdigital.engine.ReplayStep
+import oathdigital.gameplay.powers.rest.SilverTongue
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
+  WalkerStepRecorded}
+import oathdigital.model._
+import LogScripts._
+
+/** Lines powers write about themselves (power log lines design, section 2).
+  * The notes are journaled into real scripts, as Silver Tongue's, whose
+  * wording this suite supplies. */
+class GameLogPowerLinesSuite extends munit.FunSuite:
+  private type Steps = Vector[ReplayStep[OathState, OathEvent]]
+  private val power = SilverTongue.id
+  private val card = PowerSourceRef.Card(ParkedServiceFixture.silverTongueCard)
+  private val said = NoteKey("said", Vector(NotePart.Arg(0),
+    NotePart.Text(" said "), NotePart.Arg(1), NotePart.Text(".")))
+  private val took = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
+    NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(".")))
+  private val counted = NoteKey("counted", Vector(NotePart.Arg(0),
+    NotePart.Text(" lost "), NotePart.Arg(1), NotePart.Text(" "),
+    NotePart.Plural(1, "warband", "warbands"), NotePart.Text(", then "),
+    NotePart.Arg(2), NotePart.Text(".")))
+  private val noting = new GameLogFormatter(catalog, presentation,
+    NoteWordings.default(catalog) ++
+      NoteWordings.of(power, Vector(said, took, counted)))
+
+  private def entries(steps: Steps, viewer: Option[PlayerId]) =
+    noting.format(steps, viewer).filter(_.depth == 1)
+  private def lines(steps: Steps, viewer: Option[PlayerId] = None) =
+    texts(entries(steps, viewer))
+  private def ours(steps: Steps, viewer: Option[PlayerId] = None) =
+    entries(steps, viewer).filter(entry => text(entry).startsWith("Silver Tongue: "))
+
+  /** Silver Tongue's take: the step that moves favor out of a bank. */
+  private def take(steps: Steps): Int = steps.indexWhere(_.event.event match
+    case step: WalkerStepRecorded => step.ops.exists {
+      case Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _),
+          _, _) => true
+      case _ => false
+    }
+    case _ => false)
+
+  private def saying(actor: PlayerId, arg: NoteArg): PowerNoted =
+    PowerNoted(power, said(card, NoteArg.Player(actor), arg), covers = false)
+
+  private def closes(event: OathEvent): Boolean = event match
+    case _: WalkerParked | _: WalkerCompleted => true
+    case _ => false
+
+  private def assertPrefixStable(steps: Steps): Unit =
+    val whole = noting.format(steps, None)
+    steps.indices.filter(index => closes(steps(index).event.event))
+      .map(_ + 1).foreach { end =>
+        assertEquals(noting.format(steps.take(end), None),
+          whole.takeWhile(_.sequence < end), s"at $end")
+      }
+
+  test("a note reads as its source, a colon and its sentence"):
+    val script = usePower
+    val steps = script.history.steps
+    val noted = inserted(steps, take(steps),
+      saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor)))
+    val entry = ours(noted).head
+    assertEquals(text(entry), s"Silver Tongue: ${name(script.actor)} said 2 favor.")
+    assertEquals(entry.kind, LogKind.Trigger)
+
+  test("a phase power's used note replaces Used {card} as the action line"):
+    val script = usePower
+    val steps = script.history.steps
+    assert(lines(steps).contains("Used Silver Tongue"), lines(steps))
+    val noted = inserted(steps, take(steps), PowerNoted(power, took(card,
+      NoteArg.Player(script.actor), NoteArg.Amount(1, NoteUnit.Favor)),
+      covers = false))
+    assert(!lines(noted).exists(_.startsWith("Used ")), lines(noted))
+    val entry = ours(noted).head
+    assertEquals(text(entry), s"Silver Tongue: ${name(script.actor)} took 1 favor.")
+    assertEquals(entry.kind, LogKind.Action)
+
+  test("a covering note drops the generic lines of the step before it, but no decision line"):
+    val script = usePower
+    val steps = script.history.steps
+    val before = lines(steps)
+    assert(before.exists(_.startsWith("Gained 1 favor from the ")), before)
+    val chose = before.filter(_.startsWith("Chose "))
+    assert(chose.nonEmpty, before)
+    val noted = inserted(steps, take(steps),
+      saying(script.actor, NoteArg.Amount(1, NoteUnit.Favor)).copy(covers = true))
+    val after = lines(noted)
+    assert(!after.exists(_.startsWith("Gained 1 favor from the ")), after)
+    assertEquals(after.filter(_.startsWith("Chose ")), chose)
+    assertPrefixStable(noted)
+
+  test("a note identical to an earlier one in the action posts nothing"):
+    val script = usePower
+    val steps = script.history.steps
+    val twice = saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor))
+    val noted = inserted(steps, take(steps), twice, twice,
+      saying(script.actor, NoteArg.Amount(3, NoteUnit.Favor)))
+    assertEquals(ours(noted).map(text), Vector(
+      s"Silver Tongue: ${name(script.actor)} said 2 favor.",
+      s"Silver Tongue: ${name(script.actor)} said 3 favor."))
+
+  test("plurals follow their amount"):
+    val script = usePower
+    val steps = script.history.steps
+    def counting(count: Int) = PowerNoted(power, counted(card,
+      NoteArg.Player(script.actor), NoteArg.Number(count),
+      NoteArg.Amount(count, NoteUnit.Warband)), covers = false)
+    val noted = inserted(steps, take(steps), counting(1), counting(2))
+    assertEquals(ours(noted).map(text), Vector(
+      s"Silver Tongue: ${name(script.actor)} lost 1 warband, then 1 warband.",
+      s"Silver Tongue: ${name(script.actor)} lost 2 warbands, then 2 warbands."))
+
+  test("a note no power words posts nothing"):
+    val script = usePower
+    val steps = script.history.steps
+    val unknown = PowerNoted(PowerId("test.unknown"),
+      PowerNote(card, "said", Vector.empty), covers = false)
+    assertEquals(lines(inserted(steps, take(steps), unknown)), lines(steps))
+
+  test("a card its viewer may not identify is not named to them"):
+    val script = usePower
+    val steps = script.history.steps
+    val last = steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val (owner, hidden) = last.game.current.players
+      .filter(_.player != script.actor).flatMap(held => held.advisers.collect {
+        case DenizenState(id, Orientation.FaceDown, _) => held.player -> (id: CardId)
+        case VisionState(id, Orientation.FaceDown) => held.player -> (id: CardId)
+      }).head
+    val noted = inserted(steps, take(steps),
+      saying(script.actor, NoteArg.Card(hidden)))
+    def named(viewer: PlayerId) = ours(noted, Some(viewer)).head.spans.collect {
+      case shown: LogSpan.Card => shown.id }
+    assert(!named(script.actor).contains(hidden.value), named(script.actor))
+    assert(named(owner).contains(hidden.value), named(owner))
+
+  test("a note waits for its action's start line"):
+    val script = raid
+    val steps = script.history.steps
+    val opened = steps.indexWhere(_.event.event match
+      case parked: WalkerParked => parked.procedure == ActionRef.Campaign
+      case _ => false)
+    val noted = inserted(steps, opened,
+      saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor)))
+    val all = lines(noted)
+    val start = all.indexWhere(_.startsWith("Started Campaign"))
+    assert(start >= 0, all)
+    // Silver Tongue is not at hand in this game, so the log shows its back.
+    assertEquals(all.indexWhere(_.endsWith(" said 2 favor.")), start + 1, all)
+    assertPrefixStable(noted)
+

@@ -5,7 +5,7 @@ import oathdigital.application.{GamePresentationProjector,
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
+import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
 import oathdigital.model._
 import LogSpan.Text
@@ -19,7 +19,9 @@ import LogSpan.Text
   * takes.
   */
 private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
-    presentation: GamePresentationProjector):
+    presentation: GamePresentationProjector, wordings: NoteWordings):
+  def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
+    this(catalog, presentation, NoteWordings.default(catalog))
   private val words = new LogWords(catalog, presentation)
   private val starts = new StartLines(words, WalkerPowerCatalog.default(catalog)
     .powers.map(power => power.id -> power.resolution).toMap)
@@ -28,6 +30,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val actions = new ActionLines(words, choices, catalog)
   private val details = new DetailLines(words, choices)
   private val events = new EventLines(words)
+  private val notes = new PowerLines(words, wordings)
 
   def format(steps: Vector[ReplayStep[OathState, OathEvent]],
       viewer: Option[PlayerId]): Vector[LogEntry] =
@@ -65,7 +68,8 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
           _: OathEvent.WarbandsMoved | _: OathEvent.BanditsRefilled |
           _: OathEvent.UsurperFlipped =>
         (events.lines(journal, at, viewer), run)
-      case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted =>
+      case _: WalkerStepRecorded | _: WalkerParked | _: WalkerCompleted |
+          _: PowerNoted =>
         walker(journal, run, at, viewer)
       case _: WalkerEvent => (Vector.empty, run)
 
@@ -84,9 +88,12 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         val begun = if start.isEmpty then run
           else run.copy(started = Some(journal.segmentEnd(at)))
         val posted = start.toVector ++
+          (if start.isEmpty then Vector.empty
+            else notes.held(journal, begun, at, viewer)) ++
           starts.continued(journal, begun, at).toVector ++
           actions.lines(journal, begun, at, viewer) ++
           details.lines(journal, begun, at, viewer) ++
+          notes.own(journal, begun, at, starts.opens(begun.procedure), viewer) ++
           turnHeadlines(journal, at)
         val next = journal.event(at) match
           case _: WalkerCompleted => None

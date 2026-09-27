@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.application._
+import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
@@ -103,6 +104,17 @@ object LogScripts:
   def texts(entries: Vector[LogEntry]): Vector[String] = entries.map(text)
 
   def name(player: PlayerId): String = presentation.playerLabel(player)
+
+  /** `steps` with `events` journaled right after position `after`. Each
+    * changes no state, and every later sequence moves up to make room. */
+  def inserted(steps: Vector[ReplayStep[OathState, OathEvent]], after: Int,
+      events: OathEvent*): Vector[ReplayStep[OathState, OathEvent]] =
+    val state = steps(after).after
+    val at = steps(after).event.index + 1
+    val added = events.toVector.zipWithIndex.map { case (event, offset) =>
+      ReplayStep(RecordedEvent(at + offset, event), state, state) }
+    steps.take(after + 1) ++ added ++ steps.drop(after + 1).map(step =>
+      step.copy(event = step.event.copy(index = step.event.index + events.size)))
 
   /** The service suite's Oathkeeper tie: an arranged board, the active
     * player's Travel, and the holder's choice of the next Oathkeeper. */

@@ -266,8 +266,8 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
   private def usedPower(journal: LogJournal, run: Run, at: Int, power: PowerId,
       completing: Boolean, viewer: Option[PlayerId]): Vector[Posted] =
     val postedEarlier = (run.first until at).exists(effect(journal, run, _))
-    if postedEarlier || !(effect(journal, run, at) || completing) then
-      Vector.empty
+    if postedEarlier || !(effect(journal, run, at) || completing) ||
+        journal.notedUse(run, power, at) then Vector.empty
     else Vector(action(Text("Used ") +: powerSource(journal, run, at, power,
       viewer)))
 
@@ -299,11 +299,7 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       named(ref, state, viewer)))
     val used = through.flatMap(journal.ops).collectFirst {
       case OpStep(RecordPowerUse(PowerUseRef(_, source, _)), _, _) => source
-    }.flatMap(source => ready.flatMap(state => source match
-      case PowerSourceRef.Card(id) =>
-        Some(words.one(words.card(id, state, state, viewer)))
-      case PowerSourceRef.Banner(banner) => Some(Vector(words.banner(banner)))
-      case PowerSourceRef.Site(site) => Some(Vector(words.site(site)))))
+    }.flatMap(source => ready.map(state => words.source(source, state, viewer)))
     started.orElse(used).orElse(ready.map(state =>
       words.power(state, run.actor, power, viewer)))
       .getOrElse(Vector(Text(power.value)))

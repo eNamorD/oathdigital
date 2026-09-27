@@ -47,6 +47,11 @@ private[gamelog] final class StartLines(words: LogWords,
       case other =>
         title(other).filter(_ => at == run.first).map(t => Vector(Text(t)))
 
+  /** Whether `procedure` opens with a start line, so its power lines wait
+    * for it. */
+  def opens(procedure: ProcedureRef): Boolean =
+    procedure == ActionRef.Campaign || title(procedure).nonEmpty
+
   private def title(procedure: ProcedureRef): Option[String] =
     procedure match
       case ActionRef.Search => Some("Started Search")
