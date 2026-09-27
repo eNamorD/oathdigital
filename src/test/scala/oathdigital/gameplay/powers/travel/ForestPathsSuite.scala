@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.CardRestrictions
-import oathdigital.gameplay.powers.PowerFixture
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -74,3 +74,19 @@ class ForestPathsSuite extends munit.FunSuite:
     val broke = withBoard(denizenAt(passRuled(held), beast, mountain))(
       _.copy(favor = 0))
     assert(travel(broke, mountain, modifiers).isLeft)
+
+  // ---- Lines ----
+
+  private val power = ForestPaths.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("a Travel to a beast card writes that site powers are ignored"):
+    val ready = denizenAt(passRuled(held), beast, mountain)
+    assertEquals(said(travel(ready, mountain, modifiers).toOption.get.events),
+      Vector(NoteText.Said("ignoring", "Ignoring site powers.",
+        covers = false)))
+
+  test("without a beast card nothing is ignored, and nothing is written"):
+    assertEquals(said(travel(passRuled(held), mountain, modifiers).toOption.get
+      .events), Vector.empty)

@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powerresolver.{PowerCtx, Transform}
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture,
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture, SearchFixture,
   TargetsFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
@@ -216,3 +216,29 @@ class BookBindersSuite extends munit.FunSuite:
     assertEquals(favor(after, holder), favor(ready, holder) + 2)
     assertEquals(after.banks.favor(Suit.Order), 1)
     assertEquals(after.banks.favor(Suit.Arcane), 3)
+
+  // ---- Lines ----
+
+  private val power = BookBinders.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+  private def gained(amount: Int, suit: Suit) = NoteText.Said("gained",
+    s"${holder.value} gained $amount favor from the $suit bank.", covers = true)
+
+  test("the favor taken from the one stocked bank is the Binders' line"):
+    assertEquals(said(faceup(arranged(Map(Suit.Order -> 3))).events),
+      Vector(gained(2, Suit.Order)))
+
+  test("a bank chosen off turn writes the line when the take happens"):
+    val ready = arranged(Map(Suit.Arcane -> 3, Suit.Order -> 1))
+    val placed = faceup(ready)
+    assertEquals(said(placed.events), Vector.empty)
+    val choice = BookBinders.decisionId(ready, holder, VisionRules.Faith)
+    val taken = SearchFixture.rules.resolveWalker(placed.state, holder, choice,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.FavorBank(Suit.Order)))
+      .toOption.get
+    assertEquals(said(taken.events), Vector(gained(1, Suit.Order)))
+
+  test("the holder's own faceup Vision writes nothing"):
+    assertEquals(said(faceup(arranged(Map(Suit.Hearth -> 5), owner = actor))
+      .events), Vector.empty)

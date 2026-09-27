@@ -20,17 +20,22 @@ import oathdigital.model._
   * Pass restriction both hook a Travel window, so Forest Paths hooks both
   * windows too (the second with a transform that changes nothing), because the
   * collector only lets a power ignore what is gathered beside it.
+  *
+  * While it ignores the site powers it writes "Ignoring site powers."; its
+  * Supply waiver writes nothing (power log lines design, "No line").
   */
 final case class ForestPaths private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = ForestPaths.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
   override def cost: Cost = Cost(favor = ForestPaths.Favor)
+  override def noteKeys: Vector[NoteKey] = Vector(ForestPaths.ignoring)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
       if beastAtDestination(ctx) then
-        TravelPayments.withoutSupply(operations, ctx.activePlayer)
+        Note(id, _ => Some(ForestPaths.ignoring(PowerSourceRef.Card(cardId)))) +:
+          TravelPayments.withoutSupply(operations, ctx.activePlayer)
       else operations)),
     PowerWindow.TravelActionEligibility ->
       Vector(Transform((_, operations) => operations)))
@@ -52,6 +57,9 @@ final case class ForestPaths private (cardId: DenizenId,
 object ForestPaths:
   val id: PowerId = PowerId("denizen.forest-paths")
   val Favor: Int = 1
+  /** "Ignoring site powers." */
+  val ignoring: NoteKey = NoteKey("ignoring",
+    Vector(NotePart.Text("Ignoring site powers.")))
 
   def forCatalog(catalog: ExecutableCatalog): Option[ForestPaths] =
     CatalogCards.denizen(catalog, id).map(new ForestPaths(_, catalog))

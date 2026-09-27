@@ -13,6 +13,9 @@ import oathdigital.model._
   * (a deferred rule). When the user is defeated, the card is discarded by the
   * standard denizen discard once the Campaign has resolved, so its favor returns
   * to the bank.
+  *
+  * The discard writes "Discarded after {Red} lost.", read from the discard's
+  * step.
   */
 final case class Mercenaries private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends BattlePlan:
@@ -32,14 +35,33 @@ final case class Mercenaries private (cardId: DenizenId,
         Vector(effect))
     }
 
+  override def noteKeys: Vector[NoteKey] = Vector(Mercenaries.discarded)
+
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
       if !use.won.contains(false) then Vector.empty
-      else use.user.toVector.map(PlanDiscard.denizen(catalog, _, cardId))))
+      else use.user.toVector.flatMap(user => Vector(
+        PlanDiscard.denizen(catalog, user, cardId),
+        Note(id, discardNote(user))))))
+
+  /** Its line, when the discard's step took the card out of play. */
+  private def discardNote(user: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = for
+    step <- states.previous
+    if inPlay(step._1) && !inPlay(step._2)
+  yield Mercenaries.discarded(PowerSourceRef.Card(cardId), NoteArg.Player(user))
+
+  private def inPlay(ready: ReadyGame): Boolean =
+    val current = ready.game.current
+    current.players.exists(_.advisers.exists(_.id == cardId)) ||
+      current.map.sites.values.exists(_.denizens.exists(_.id == cardId))
 
 object Mercenaries:
   val id: PowerId = PowerId("denizen.mercenaries")
   val Dice: Int = 3
+  /** "Discarded after {Red} lost." */
+  val discarded: NoteKey = NoteKey("discarded", Vector(
+    NotePart.Text("Discarded after "), NotePart.Arg(0), NotePart.Text(" lost.")))
 
   def forCatalog(catalog: ExecutableCatalog): Option[Mercenaries] =
     CatalogCards.denizen(catalog, id).map(new Mercenaries(_, catalog))

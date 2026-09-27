@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.powers.{PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -71,3 +71,22 @@ class TollRoadsSuite extends munit.FunSuite:
     val ready = withBoard(adviser(board(), toll, Orientation.FaceDown))(
       _.copy(favor = 0))
     assert(travel(ready, coast).isRight)
+
+  // ---- Lines ----
+
+  private val power = TollRoads.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("the toll paid to the ruler is written as the Roads' line"):
+    assertEquals(said(travel(rivalRules, coast).toOption.get.events),
+      Vector(NoteText.Said("paid",
+        s"${actor.value} paid 1 favor to ${rival.value}.", covers = false)))
+
+  test("a toll burnt for bandits is written; a free Travel writes nothing"):
+    val ready = withBoard(denizenAt(board(), toll, plains(1)))(_.copy(favor = 1))
+    assertEquals(said(travel(ready, coast).toOption.get.events),
+      Vector(NoteText.Said("burned", s"${actor.value} burned 1 favor.",
+        covers = false)))
+    assertEquals(said(travel(rivalRules, plains(2)).toOption.get.events),
+      Vector.empty)

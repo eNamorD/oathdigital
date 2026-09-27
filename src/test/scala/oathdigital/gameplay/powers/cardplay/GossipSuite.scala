@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.{PowerFixture, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
+  TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -77,3 +78,18 @@ class GossipSuite extends munit.FunSuite:
   private object WalkerPowerCatalogHas:
     def gossip: Boolean = oathdigital.gameplay.powers.WalkerPowerCatalog
       .default(catalog).powers.exists(_.id == Gossip.id)
+
+  // ---- Lines ----
+
+  private val power = Gossip.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("the favor another player's facedown play gains is Gossip's line"):
+    val done = play(held(plain), Vector.empty, plain.head, "adviser-facedown")
+    assertEquals(said(done.events), Vector(NoteText.Said("gained",
+      s"${holder.value} gained 1 favor from the Discord bank.", covers = true)))
+
+  test("a faceup play writes no Gossip line"):
+    assertEquals(said(play(held(plain), Vector.empty, plain.head,
+      "adviser-faceup").events), Vector.empty)

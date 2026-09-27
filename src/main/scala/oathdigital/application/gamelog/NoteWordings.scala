@@ -1,6 +1,7 @@
 package oathdigital.application.gamelog
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.RuleNotes
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.model.{NoteKey, NotePart, PowerId}
 
@@ -18,10 +19,11 @@ private[application] object NoteWordings:
   def of(power: PowerId, keys: Vector[NoteKey]): NoteWordings =
     NoteWordings(keys.map(key => (power, key.name) -> key.template).toMap)
 
-  /** The walker powers' and the phase powers' keys. */
+  /** The walker powers', the phase powers' and the game rules' keys. */
   def default(catalog: ExecutableCatalog): NoteWordings =
     (WalkerPowerCatalog.default(catalog).powers.map(power =>
       of(power.id, power.noteKeys)) ++
       PhasePowerCatalog.default(catalog).powers.map(power =>
-        of(power.id, power.noteKeys)))
+        of(power.id, power.noteKeys)) ++
+      RuleNotes.all.map((id, keys) => of(id, keys)))
       .foldLeft(NoteWordings(Map.empty))(_ ++ _)

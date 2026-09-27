@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -44,3 +44,19 @@ class DragonskinDrumSuite extends munit.FunSuite:
   test("a facedown Drum is not usable"):
     assert(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
       modifiers).isLeft)
+
+  // ---- Lines ----
+
+  private val power = DragonskinDrum.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("the warband gained is written as the Drum's line"):
+    assertEquals(said(travel(held, coast, modifiers).toOption.get.events),
+      Vector(NoteText.Said("gained", s"${actor.value} gained 1 warband.",
+        covers = false)))
+
+  test("an empty warband bank gains nothing, and writes nothing"):
+    val kind = PlayerFacts.forceKind(held, actor).toOption.get
+    assertEquals(said(travel(leaveInBank(held, kind, 0), coast, modifiers)
+      .toOption.get.events), Vector.empty)

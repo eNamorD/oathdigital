@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -146,3 +147,27 @@ class GleamingArmorSuite extends munit.FunSuite:
       .powers.filter(_.id == GleamingArmor.id)
     assertEquals(plans.size, 1)
     assertEquals(plans.head.resolution, PowerResolution.Automatic)
+
+  // ---- Lines ----
+
+  private val power = GleamingArmor.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("a taxed plan writes the Armor's line, naming the plan's user"):
+    val b = attackerHolds(1)
+    val run = commit(rules(losing), b, 4)
+    // Pricing the offered plans writes nothing: only a plan applied does.
+    assertEquals(said(run.events), Vector.empty)
+    val picked = run.pick(b.other, CampaignIds.defenderPlan,
+      DecisionOptionRef.Denizen(DenizenId(watchdog)))
+    assertEquals(said(picked.events), Vector(NoteText.Said("taxed",
+      s"${b.other.value}'s battle plans cost 1 extra secret.", covers = false)))
+
+  test("the holder's own plan is not taxed, and writes nothing"):
+    val base = againstPlayer(board())
+    val b = secrets(withAdviserFor(withAdviserFor(base, base.other, armor,
+      Orientation.FaceUp), base.other, watchdog, Orientation.FaceUp), base.other, 0)
+    val picked = commit(rules(losing), b, 4).pick(b.other,
+      CampaignIds.defenderPlan, DecisionOptionRef.Denizen(DenizenId(watchdog)))
+    assertEquals(said(picked.events), Vector.empty)

@@ -53,6 +53,16 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
       None, WalkerPowers.empty).isRight)
     assertEquals(seen.map(_.previous), Some(None))
 
+  test("a note after a leaf that changed nothing reads no change, not an older step"):
+    var seen = Option.empty[NoteStates]
+    val reading = Note(power, states => { seen = Some(states); None })
+    val tree = Sequence(Vector[Operation](ModifyDicePool(pool, 1),
+      BuildOps((_, _) => Right(Vector.empty)), reading))
+    assert(ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty).isRight)
+    val (before, after) = seen.get.previous.get
+    assertEquals(before, after)
+    assert(after.game.current.rollPools.contains(pool))
+
   test("a note whose build says nothing journals nothing"):
     val tree = Sequence(Vector[Operation](Note(power, _ => None),
       ModifyDicePool(pool, 1)))

@@ -309,8 +309,9 @@ object ProcedureWalker:
       procedure: Option[oathdigital.model.ProcedureRef],
       /** The whole action tree, which the restriction look-ahead probes. */
       root: Operation,
-      /** The states before and after the step this command journaled last,
-        * which a note reads. */
+      /** The states before and after the leaf this command ran last, which
+        * a note reads. A leaf that changed nothing gives the same state
+        * twice. */
       previous: Option[(ReadyGame, ReadyGame)] = None
   )
 
@@ -624,14 +625,14 @@ object ProcedureWalker:
 
   /** Executes a [[oathdigital.model.BuildOps]] leaf: `build(state, pending)` returns the delta
     * batch to run through the pipeline, recorded as the node's step ops. An
-    * empty batch runs nothing and records nothing (the node produced no
-    * state change).
+    * empty batch runs nothing and records nothing, and a note after it reads
+    * that nothing changed.
     */
   private def runBuildOps(build: BuildOps, ctx: WalkCtx, path: Vector[String],
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
     val tree = PendingTree(at = path, answered = ctx.answered)
     build.build(ctx.state, tree).flatMap { ops =>
-      if ops.isEmpty then Right(ctx)
+      if ops.isEmpty then Right(ctx.copy(previous = Some((ctx.state, ctx.state))))
       else recordBatch(ops, contributions, ctx, path, leafLabel(build),
         build.restrictions(ctx.state, tree))
     }
@@ -662,8 +663,7 @@ object ProcedureWalker:
           ops = updated.executed,
           contributions = contributions)
       ctx.copy(state = updated.state, events = events,
-        previous = if updated.executed.isEmpty then ctx.previous
-          else Some((ctx.state, updated.state)))
+        previous = Some((ctx.state, updated.state)))
     }
 
   private def deltaMeaning(ops: Vector[CoreOperation],

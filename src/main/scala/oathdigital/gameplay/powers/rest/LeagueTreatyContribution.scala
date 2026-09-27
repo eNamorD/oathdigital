@@ -12,6 +12,11 @@ import oathdigital.model._
   * The transform inserts two decisions and zero or more moves ahead of cleanup.
   * Both decisions come before anything it changes, so the transform sees the
   * same state, and folds to the same vector, while either is parked.
+  *
+  * After the moves it writes "{Blue} sent 3 favor to the Nomad bank.", read
+  * from their step. Nothing is written when the ruler declines or nothing
+  * moves. The line follows the moves, so it never comes before either
+  * decision.
   */
 final case class LeagueTreatyContribution private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends ContributingPower:
@@ -21,6 +26,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
+  override def noteKeys: Vector[NoteKey] = Vector(sent)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RestReturnFavor -> Vector(Transform((ctx, ops) =>
       treaty(ctx.state).fold(ops)(inserted(ctx.state, ctx.activePlayer, _) ++ ops))))
@@ -76,7 +82,21 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
         case Some(bank) if treaty.suits.exists(_ != bank) =>
           amounts(pending, distribution).map(moves(treaty, bank, _))
         case _ => Right(Vector.empty)
-      }))
+      }),
+      Note(id, sentNote(treaty.ruler, destination)))
+
+  /** What the moves' step sent to the chosen bank. */
+  private def sentNote(ruler: PlayerId, destination: String)(
+      states: NoteStates): Option[PowerNote] = for
+    bank <- states.answered.collectFirst {
+      case Answered(`destination`, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.FavorBank(suit)), _) => suit }
+    step <- states.previous
+    moved = step._2.banks.favor.getOrElse(bank, 0) -
+      step._1.banks.favor.getOrElse(bank, 0)
+    if moved > 0
+  yield sent(PowerSourceRef.Card(cardId), NoteArg.Player(ruler),
+    NoteArg.Amount(moved, NoteUnit.Favor), NoteArg.Bank(bank))
 
   private def query(treaty: Treaty, bank: Suit): DecisionQuery.Distribute =
     DecisionQuery.Distribute.exactly(
@@ -109,6 +129,11 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
 object LeagueTreatyContribution:
   val id: PowerId = PowerId("denizen.league-treaty")
   private val Decline = "decline"
+
+  /** "{Blue} sent {3 favor} to {the Nomad bank}." */
+  val sent: NoteKey = NoteKey("sent", Vector(NotePart.Arg(0),
+    NotePart.Text(" sent "), NotePart.Arg(1), NotePart.Text(" to "),
+    NotePart.Arg(2), NotePart.Text(".")))
 
   def forCatalog(catalog: ExecutableCatalog): Option[LeagueTreatyContribution] =
     catalog.denizenWithPower(id)

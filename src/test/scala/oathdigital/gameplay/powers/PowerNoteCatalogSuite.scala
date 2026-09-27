@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers
 
+import oathdigital.gameplay.actions.RuleNotes
 import oathdigital.gameplay.powers.action.GamblingHall
 import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -11,7 +12,7 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
     WalkerPowerCatalog.default(catalog).powers.map(power =>
       power.id -> power.noteKeys) ++
     PhasePowerCatalog.default(catalog).powers.map(power =>
-      power.id -> power.noteKeys)
+      power.id -> power.noteKeys) ++ RuleNotes.all
 
   test("a power names each of its notes once"):
     declared.foreach { case (id, keys) =>
@@ -45,3 +46,7 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
   test("every phase power declares its own used line"):
     PhasePowerCatalog.default(catalog).powers.foreach(power =>
       assert(power.noteKeys.exists(_.name == NoteKey.Used), power.id.value))
+
+  test("the Homeland rule declares the line it writes"):
+    assertEquals(declared.toMap.get(RuleNotes.homelandDiscard)
+      .map(_.map(_.name)), Some(Vector("discard-first")))

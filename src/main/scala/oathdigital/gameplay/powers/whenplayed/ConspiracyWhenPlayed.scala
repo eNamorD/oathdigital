@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.actions.{BannerRules, VisionRules}
 import oathdigital.gameplay.powerresolver._
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Conspiracy: when played, take a relic or a banner from a player whose pawn
@@ -20,6 +21,9 @@ import oathdigital.model._
   *
   * The transform must fold to the same vector while the decision is parked: it
   * reads only state that nothing between the fold and the answer changes.
+  *
+  * After the take it writes "{Red} seized {relic or banner} from {Blue}.",
+  * read from the take's step, and nothing when nothing was taken.
   */
 case object ConspiracyWhenPlayed extends ContributingPower:
   val id: PowerId = PowerId("vision.conspiracy")
@@ -30,11 +34,35 @@ case object ConspiracyWhenPlayed extends ContributingPower:
     case CardPlayedFaceup(card, _) => card == VisionRules.Conspiracy
     case _ => false
 
+  override def noteKeys: Vector[NoteKey] = Vector(seized)
+
+  /** "{Red} seized {relic or banner} from {Blue}." */
+  val seized: NoteKey = NoteKey("seized", Vector(NotePart.Arg(0),
+    NotePart.Text(" seized "), NotePart.Arg(1), NotePart.Text(" from "),
+    NotePart.Arg(2), NotePart.Text(".")))
+
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
       (children ++ targetDecision(ctx.state, ctx.activePlayer)) :+
         BuildOps((ready, pending) =>
-          effects(ready, ctx.activePlayer, pending)))))
+          effects(ready, ctx.activePlayer, pending)) :+
+        Note(id, seizedNote(ctx.activePlayer)))))
+
+  /** What the take moved to the actor, and from whom. */
+  private def seizedNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] = for
+    step <- states.previous
+    (what, owner) <- NoteSupport.answer(states, decisionId) match
+      case Some(DecisionOptionRef.RelicSlot(owner, _)) =>
+        NoteSupport.relicsGained(step, actor).headOption
+          .map(relic => (NoteArg.Card(relic), owner))
+      case Some(DecisionOptionRef.Banner(banner))
+          if BannerRules.holder(step._2.game.current, banner).contains(actor) =>
+        BannerRules.holder(step._1.game.current, banner)
+          .map(owner => (NoteArg.Banner(banner), owner))
+      case _ => None
+  yield seized(PowerSourceRef.Card(VisionRules.Conspiracy),
+    NoteArg.Player(actor), what, NoteArg.Player(owner))
 
   /** Every relic slot and banner held by another player whose pawn is at the
     * actor's site, in seat order, relic slots before banners.

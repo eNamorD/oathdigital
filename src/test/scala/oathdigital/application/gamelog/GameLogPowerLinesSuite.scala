@@ -2,6 +2,7 @@ package oathdigital.application.gamelog
 
 import oathdigital.application.ParkedServiceFixture
 import oathdigital.engine.ReplayStep
+import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
@@ -151,6 +152,29 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assert(!named(script.actor).contains(hidden.value), named(script.actor))
     assert(named(owner).contains(hidden.value), named(owner))
 
+  test("a card list reads as one phrase, and a banner by its name"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val last = steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val hidden: CardId = last.game.current.players
+      .filter(_.player != script.actor).flatMap(_.advisers.collect {
+        case DenizenState(id, Orientation.FaceDown, _) => id: CardId
+        case VisionState(id, Orientation.FaceDown) => id: CardId
+      }).head
+    val back = hidden match
+      case _: VisionId => "a Vision"
+      case _ => "a Denizen"
+    val listed = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Cards(Vector(ParkedServiceFixture.silverTongueCard, hidden))))
+    assertEquals(text(ours(listed, Some(script.actor)).head),
+      s"Silver Tongue: ${name(script.actor)} said Silver Tongue and $back.")
+    val banner = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Banner(Banner.DarkestSecret)))
+    assertEquals(text(ours(banner).head),
+      s"Silver Tongue: ${name(script.actor)} said Darkest Secret.")
+
   test("a note's source its viewer may not identify reads as its back"):
     val script = usePower
     val steps = withoutNotes(script.history.steps)
@@ -259,3 +283,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assert(all(kill).endsWith(" warband."), all(kill))
     assert(!all.exists(_.startsWith("Used ")), all)
     assertEquals(entries(kill).kind, LogKind.Action)
+
+  test("a game rule's line is worded from RuleNotes"):
+    assertEquals(NoteWordings.default(catalog).template(RuleNotes.homelandDiscard,
+      PlacementRules.discardFirst.name), Some(PlacementRules.discardFirst.template))

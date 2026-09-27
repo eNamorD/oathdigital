@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.powers.{PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -64,3 +64,18 @@ class GraspingVinesSuite extends munit.FunSuite:
       plains.head, rival)
     assertEquals(warbands(after(travel(ready, coast).toOption.get)),
       warbands(ready))
+
+  // ---- Lines ----
+
+  private val power = GraspingVines.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("the kill is written as the Vines' line, naming the traveller"):
+    assertEquals(said(travel(vinesAtHome(Some(rival)), coast).toOption.get
+      .events), Vector(NoteText.Said("killed",
+        s"Killed 1 ${actor.value} warband.", covers = false)))
+
+  test("a traveller with no warband to lose reads no line"):
+    val ready = withBoard(vinesAtHome(Some(rival)))(_.copy(warbands = 0))
+    assertEquals(said(travel(ready, coast).toOption.get.events), Vector.empty)

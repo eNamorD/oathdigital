@@ -3,7 +3,9 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 
@@ -155,3 +157,26 @@ class WarningSignalsSuite extends munit.FunSuite:
     assertEquals(PaidActionHarness.replayed(g, b.ready, run.events),
       ready(run.state))
     assert(PaidActionHarness.wireRoundTrips(run.events))
+
+  // ---- Lines ----
+
+  private val power = WarningSignals.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("the arrangement is written as the Signals' line, after the answer"):
+    val b = defending
+    val asked = chosen(b)
+    assertEquals(said(asked.events), Vector.empty)
+    val done = asked.answer(b.other, decision, arrangement(b, 1, 3, 3))
+    assertEquals(said(done.events), Vector(NoteText.Said("redistributed",
+      s"${b.other.value} redistributed their warbands.", covers = false)))
+
+  test("a defender with nowhere to move to writes nothing"):
+    val base = withEnemyAtOrigin(board(warbands = 4))
+    val b = replacePlayer(withAdviserFor(base, base.other, card,
+      Orientation.FaceUp), base.other)(p => p.copy(board = p.board.copy(
+      warbands = 3)))
+    val done = commit(rules(losing), b, 2, raid = true).pick(b.other,
+      CampaignIds.defenderPlan, ref).finish
+    assertEquals(said(done.events), Vector.empty)

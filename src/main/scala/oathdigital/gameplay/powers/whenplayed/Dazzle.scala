@@ -8,6 +8,12 @@ import oathdigital.model._
 /** Dazzle discards as many Hearth/Order site denizens and ruined edifices in
   * the actor's region as the generic discard rules permit. Intact edifices are
   * locked, so they stay.
+  *
+  * Its line names the cards it discarded, "Discarded {cards}.", and covers
+  * the generic discard lines. It lists the cards it would discard when the
+  * window is folded, which is before its step, that no site holds when the
+  * line is written, so a card a restriction kept is not named (power log
+  * lines slice 4, decision 5).
   */
 final case class Dazzle private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends ContributingPower:
@@ -18,11 +24,38 @@ final case class Dazzle private (cardId: DenizenId,
     case CardPlayedFaceup(card, _) => card == cardId
     case _ => false
 
+  override def noteKeys: Vector[NoteKey] = Vector(Dazzle.discarded)
+
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
       children :+ BuildOps((ready, _) => effects(ready, ctx.activePlayer),
         restrictions = (_, _) => Vector(
-        new DiscardRestrictions(catalog, ctx.activePlayer))))))
+        new DiscardRestrictions(catalog, ctx.activePlayer))) :+
+        Note(id, discardNote(ctx.state, ctx.activePlayer), covers = true))))
+
+  /** The cards Dazzle would discard in `before` that no site holds now. */
+  private def discardNote(before: ReadyGame, actor: PlayerId)(
+      states: NoteStates): Option[PowerNote] =
+    val sites = states.now.game.current.map.sites.values
+    val gone = targets(before, actor).filterNot(id =>
+      sites.exists(_.denizens.exists(_.id == id)))
+    Option.when(gone.nonEmpty)(Dazzle.discarded(PowerSourceRef.Card(cardId),
+      NoteArg.Cards(gone)))
+
+  /** The Hearth and Order site denizens and ruined edifices in the actor's
+    * region, in map order. */
+  private def targets(ready: ReadyGame, actor: PlayerId): Vector[CardId] =
+    val current = ready.game.current
+    current.players.find(_.player == actor).flatMap(_.pawnSite)
+      .flatMap(current.map.regionOf).toVector.flatMap(region =>
+        current.map.inPlay.filter(current.map.regionOf(_).contains(region))
+          .flatMap(site => current.map.sites(site).denizens.collect {
+            case denizen: DenizenState => denizen.id: CardId
+            case edifice: EdificeState if edifice.side == EdificeSide.Ruined =>
+              edifice.id: CardId
+          }))
+      .filter(id => catalog.suitOf(id).exists(suit =>
+        suit == Suit.Hearth || suit == Suit.Order))
 
   private def effects(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
@@ -60,6 +93,9 @@ final case class Dazzle private (cardId: DenizenId,
 
 object Dazzle:
   val id: PowerId = PowerId("denizen.dazzle")
+  /** "Discarded {cards}." */
+  val discarded: NoteKey = NoteKey("discarded", Vector(
+    NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(".")))
   def forCatalog(catalog: ExecutableCatalog): Option[Dazzle] =
     catalog.denizenWithPower(id)
       .map(definition => new Dazzle(DenizenId(definition.id.value), catalog))
