@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.actions.{BannerRules, VisionRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
@@ -222,3 +222,39 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     assertEquals(player(after, f.actor).revealedVision, revealedBefore)
     assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
     assertEquals(replayed(f, done), after)
+
+  // ---- Lines ----
+
+  private def seized(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(ConspiracyWhenPlayed.id, ConspiracyWhenPlayed.noteKeys, events)
+
+  test("Conspiracy's line names the relic it seized and its owner"):
+    val relic = RelicState(RelicId("conspiracy-relic"), Orientation.FaceDown,
+      Tokens.empty)
+    val f = fixture(Vector(relic))()
+    val (tree, at) = atTarget(f)
+    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
+      DecisionOptionRef.RelicSlot(f.enemy, 0)))
+    assertEquals(seized(done.events), Vector(NoteText.Said("seized",
+      s"${f.actor.value} seized conspiracy-relic from ${f.enemy.value}.",
+      covers = false)))
+
+  test("Conspiracy's line names the banner it seized"):
+    val f = fixture()((ready, enemy) => {
+      val current = ready.game.current
+      ready.updateCurrent(_.copy(banners = current.banners.copy(darkestSecret =
+        current.banners.darkestSecret.copy(holder = Some(enemy), secrets = 3))))
+    })
+    val (tree, at) = atTarget(f)
+    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
+      DecisionOptionRef.Banner(Banner.DarkestSecret)))
+    assertEquals(seized(done.events), Vector(NoteText.Said("seized",
+      s"${f.actor.value} seized Darkest Secret from ${f.enemy.value}.",
+      covers = false)))
+
+  test("a Conspiracy with no target writes no line"):
+    val f = fixture(shared = false)()
+    val tree = treeFor(f)
+    val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
+    assertEquals(seized(finished(answer(f, tree, place, placeId, faceup))
+      .events), Vector.empty)

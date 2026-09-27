@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture, SearchFixture,
+  TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -76,3 +77,19 @@ class TruthfulHarpSuite extends munit.FunSuite:
     val facedown = withRelic(SearchFixture.staged(plain.take(7)), harp,
       Orientation.FaceDown)
     assert(start(facedown, onlyHarp).isLeft)
+
+  // ---- Lines ----
+
+  private val power = TruthfulHarp.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("the revealed hand is the Harp's line, in place of the peeks"):
+    val top = plain.take(7)
+    val started = start(withHarp(top), onlyHarp).toOption.get
+    assertEquals(said(started.events), Vector(NoteText.Said("revealed",
+      s"Revealed ${top.take(5).map(_.value).mkString(", ")}.", covers = true)))
+
+  test("a Search without the Harp writes no Harp line"):
+    assertEquals(said(start(withHarp(plain.take(7))).toOption.get.events),
+      Vector.empty)

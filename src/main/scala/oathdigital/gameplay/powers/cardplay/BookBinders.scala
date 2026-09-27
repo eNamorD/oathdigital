@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
+import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
 import oathdigital.model._
 
 /** Book Binders (card 140), a persistent rule of a faceup adviser: "After
@@ -15,6 +15,10 @@ import oathdigital.model._
   * The holder chooses the bank off turn, as League Treaty's ruler does. One
   * stocked bank is taken without asking, and a bank holding one favor gives
   * one.
+  *
+  * Its line, "{Blue} gained 2 favor from the Order bank.", follows the take
+  * inside the `Branch`, so the window's node count still does not depend on
+  * live state.
   */
 final case class BookBinders private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends ContributingPower:
@@ -28,6 +32,8 @@ final case class BookBinders private (cardId: DenizenId,
       reward(ctx).fold(children)(children :+ _))))
 
   override def applicable(ctx: PowerCtx): Boolean = reward(ctx).nonEmpty
+
+  override def noteKeys: Vector[NoteKey] = Vector(BookBinders.gained)
 
   /** The `Branch` that takes the holder's reward, whenever another player
     * plays a Vision faceup and this card's holder is a different player.
@@ -49,8 +55,13 @@ final case class BookBinders private (cardId: DenizenId,
     holder <- holderOf(ctx.state).filter(_ != ctx.activePlayer)
   yield
     val decisionId = BookBinders.decisionId(ctx.state, holder, vision)
-    Branch((state, _) => FavorBankChoice.take(state, holder, BookBinders.Favor,
-      decisionId, "Book Binders: take two favor from a bank"))
+    Branch((state, _) => {
+      val take = FavorBankChoice.take(state, holder, BookBinders.Favor,
+        decisionId, "Book Binders: take two favor from a bank")
+      if take.isEmpty then take
+      else take :+ Note(id, NoteSupport.gainedFromNote(BookBinders.gained,
+        PowerSourceRef.Card(cardId), holder), covers = true)
+    })
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
     ready.game.current.players.find(_.advisers.exists {
@@ -61,6 +72,7 @@ final case class BookBinders private (cardId: DenizenId,
 object BookBinders:
   val id: PowerId = PowerId("denizen.book-binders")
   val Favor: Int = 2
+  val gained: NoteKey = NoteSupport.gainedFromKey("gained")
 
   def forCatalog(catalog: ExecutableCatalog): Option[BookBinders] =
     CatalogCards.denizen(catalog, id).map(new BookBinders(_, catalog))

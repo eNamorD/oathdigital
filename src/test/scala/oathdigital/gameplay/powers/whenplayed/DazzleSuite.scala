@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay._
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
@@ -52,6 +53,15 @@ class DazzleSuite extends munit.FunSuite:
     assertEquals(PowerRuntime.ignoredAtSource(catalog, prepared, actor,
       ActionKind.WhenPlayed, RuleSourceRef.Adviser(actor, dazzle)),
       Right(Vector.empty))
+    assertEquals(NoteText.said(power.id, power.noteKeys, finished.events),
+      Vector(NoteText.Said("discarded",
+        s"Discarded ${targets.map(_.value).mkString(", ")}.", covers = true)))
+    // A second Dazzle finds nothing left to discard, and writes nothing.
+    val again = ProcedureWalker.advance(finished.treeless, hook, None,
+      WalkerPowers(Vector(power))).toOption.get
+      .asInstanceOf[WalkerOutcome.Finished]
+    assertEquals(NoteText.said(power.id, power.noteKeys, again.events),
+      Vector.empty)
 
   test("Dazzle skips a rule-immune target and still discards another"):
     val base = initialReady
