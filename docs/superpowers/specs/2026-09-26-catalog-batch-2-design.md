@@ -182,6 +182,12 @@ than expected does not hold up the rest. Hospital's kill replacement (N3) may
 move to its own sub-slice of slice 2 if the Campaign's loss paths make it
 large.
 
+Slice 3 runs as three plans, since it holds nine cards, three additions and
+the batch's only frontend work. 3a is Tutor, Spirit Snare, Wizard School,
+Shifting Map, Demon Tail and Clay Rattle, with N4 and `NoteArg.Pile`, which
+Clay Rattle needs. 3b is Scryer and Oracular Pig with the rest of N5. 3c is
+Oracle with N6.
+
 ## Log lines
 
 Every power follows the Power log lines design: its wording rules, its
