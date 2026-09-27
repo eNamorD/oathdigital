@@ -19,8 +19,12 @@ object RelicDraws:
   /** The relic the step before the note drew, restated. Nothing when that
     * step drew none. */
   def drawNote(source: DecisionOptionRef, player: PlayerId)(
+      states: NoteStates): Option[PowerNote] =
+    PowerSourceRef.of(source).flatMap(drewNote(_, player)(states))
+
+  /** `drawNote` for a power whose card is `card`. */
+  def drewNote(card: PowerSourceRef, player: PlayerId)(
       states: NoteStates): Option[PowerNote] = for
-    card <- PowerSourceRef.of(source)
     step <- states.previous
     relic <- NoteSupport.relicsGained(step, player).headOption
   yield drew(card, NoteArg.Player(player), NoteArg.Card(relic))

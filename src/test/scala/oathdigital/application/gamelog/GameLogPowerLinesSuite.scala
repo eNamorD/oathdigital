@@ -287,3 +287,20 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
   test("a game rule's line is worded from RuleNotes"):
     assertEquals(NoteWordings.default(catalog).template(RuleNotes.homelandDiscard,
       PlacementRules.discardFirst.name), Some(PlacementRules.discardFirst.template))
+
+  test("a setup note posts under the Setup headline, among the setup lines"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val placed = steps.indexWhere(_.event.event match
+      case step: WalkerStepRecorded => step.ops.exists {
+        case Move(Piece.Pawn(_), _, _, _) => true
+        case _ => false
+      }
+      case _ => false)
+    val noted = inserted(steps, placed,
+      saying(script.actor, NoteArg.Amount(2, NoteUnit.Favor)))
+    val all = texts(noting.format(noted, None))
+    val line = all.indexWhere(_.endsWith(s"${name(script.actor)} said 2 favor."))
+    assert(all.indexOf("Setup") < line && line < all.indexOf("Round 1"), all)
+    assert(all.take(line).exists(_.contains(" placed pawn at ")), all)
+    assertPrefixStable(noted)

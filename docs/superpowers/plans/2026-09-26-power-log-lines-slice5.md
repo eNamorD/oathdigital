@@ -48,7 +48,7 @@ These were settled while planning (2026-09-26). Task 2 records each one in the s
 1. **Amounts are what happened.** Every setup note reads the step before it, the rule's own `BuildOps` batch, so it states what that batch did. A rule whose batch changed nothing writes nothing. Examples: an empty relic deck, a Great Market in a region with no denizens, or a bank already empty.
 2. **Bandit Market has three keys**, as Sticky Fire does. The spec's printed "1 favor on each bandit site … 1 favor from each bank" is not what happens when a bank runs dry or no site is bandit-ruled.
    - `placed-and-burned`: "Placed {2 favor} on the bandit sites and burned {6 favor} from the banks."
-   - `placed`: "Placed {2 favor} on the bandit sites." when no bank held favor to burn.
+   - `placed`: "Placed {2 favor} on the bandit sites." when the placing leaves no favor in the banks to burn.
    - `burned`: "Burned {6 favor} from the banks." when no site is bandit-ruled.
    - Each site takes one favor, so the placed amount is also the number of sites. "site" or "sites" follows it through a `Plural`.
    - The burned amount is the favor the banks lost minus the favor the sites gained.
@@ -663,7 +663,7 @@ decided.
 |---|---|---|
 | Great Market | Great Market: Placed {3 favor} on {site}. | |
 | Bandit Market, key `placed-and-burned` | Bandit Market: Placed {1 favor} on the bandit site and burned {6 favor} from the banks. | |
-| Bandit Market, key `placed`, when no bank held favor | Bandit Market: Placed {1 favor} on the bandit site. | |
+| Bandit Market, key `placed`, when no favor is left to burn | Bandit Market: Placed {1 favor} on the bandit site. | |
 | Bandit Market, key `burned`, when no site is bandit-ruled | Bandit Market: Burned {6 favor} from the banks. | |
 | Great Forge | Great Forge: {Red} drew {relic} facedown. | |
 | Broken Forge | Broken Forge: Discarded {cards}. | |

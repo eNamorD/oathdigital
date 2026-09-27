@@ -36,3 +36,8 @@ object EdificeSetupSupport:
     ctx.answered.lastOption.collect:
       case Answered(_, DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Site(site)), by) => by -> site
+
+  /** "Discarded {cards}.": Broken Forge's relics and Empty Grounds'
+    * denizens. */
+  val discarded: NoteKey = NoteKey("discarded", Vector(
+    NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(".")))
