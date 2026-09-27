@@ -42,7 +42,6 @@ private[frontend] object TrustedHostUi:
         "Seating order and the first player are chosen at random. " +
         "The new game opens as the first listed player; switch players from the toolbar."
     }))
-    var gameId = freshGameId()
     val form = element("form", "trusted-host-form")
     val list = element("ol", "host-players")
     list.setAttribute("aria-label", "Players")
@@ -157,7 +156,7 @@ private[frontend] object TrustedHostUi:
       val participants = rows.zip(ids).map { case (row, id) =>
         BootstrapParticipantRequest(id, row.color)
       }
-      val request = TrustedGameCreateRequest(gameId, participants)
+      val request = TrustedGameCreateRequest(participants)
       create.disabled = true
       status.textContent = "Creating game…"
       transport.request("POST", "/games", Some(TrustedGameCreateRequestCodec.encode(request)))
@@ -166,10 +165,11 @@ private[frontend] object TrustedHostUi:
             if response.status >= 200 && response.status < 300 then
               TrustedGameCreateResponseCodec.decode(response.body).left.map(error =>
                 GameClientFailure.DecodeFailure(error.path, error.message))
+            // The generic reading of a 409 is a stale table position; here it
+            // means every game ID the server drew was taken.
             else if response.status == 409 then
-              gameId = freshGameId()
-              Left(GameClientFailure.HttpFailure(409, "game-already-exists",
-                "That game ID was already taken. A new one was generated; select Create game again."))
+              Left(GameClientFailure.HttpFailure(409, "duplicate-game",
+                "The server could not assign a new game ID. Select Create game again."))
             else Left(GameJson.responseFailure(response))
           }
           decoded match

@@ -16,6 +16,13 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.protocol._
 
 class TrustedSeatRoutesSuite extends munit.FunSuite:
+  /** The server generates game IDs. These tests name the ID each creation
+    * receives, like `alpha:one` for the path-encoding tests, by queueing it
+    * before the POST; an empty queue falls back to a generated ID. */
+  private val nextGameIds = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+  private val gameIds: () => String = () =>
+    Option(nextGameIds.poll()).getOrElse(TrustedGameProvisioning.generateGameId())
+
   /**
    * Generated games shuffle seating and make the first seat the first player.
    * Reversing the two requested seats makes p2 the deterministic first player.
@@ -286,7 +293,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val client = HttpClient.newHttpClient()
 
     def openServer(): (ServerRuntime, akka.http.scaladsl.Http.ServerBinding, String) =
-      val runtime = ServerRuntime.open(database, catalogPath, reversing).toOption.get
+      val runtime = ServerRuntime.open(database, catalogPath, reversing, gameIds).toOption.get
       val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
         ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
       (runtime, binding, s"http://127.0.0.1:${binding.localAddress.getPort}")
@@ -382,8 +389,9 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val expected = Set(s"oath_seat=$code", s"Path=$path", "HttpOnly", "SameSite=Lax", "Max-Age=31536000")
     assertEquals(attributes, if secure then expected + "Secure" else expected)
 
-  private def creationBody(gameId: String): String = TrustedGameCreateRequestCodec.encode(
-    TrustedGameCreateRequest(gameId, Vector(BootstrapParticipantRequest("p1", PlayerColor.Red),
+  private def creationBody(gameId: String): String =
+    nextGameIds.add(gameId)
+    TrustedGameCreateRequestCodec.encode(TrustedGameCreateRequest(Vector(BootstrapParticipantRequest("p1", PlayerColor.Red),
       BootstrapParticipantRequest("p2", PlayerColor.Blue))))
 
   private def create(client: HttpClient, base: String, gameId: String): TrustedGameCreateResponse =
@@ -405,7 +413,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val blocking = system.dispatchers.lookup(DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val database = Files.createTempDirectory("trusted-seat-routes-").resolve("database")
     val catalogPath = Paths.get("docs/catalog/new-foundations-component-catalog.json")
-    val runtime = ServerRuntime.open(database, catalogPath, reversing).toOption.get
+    val runtime = ServerRuntime.open(database, catalogPath, reversing, gameIds).toOption.get
     val config = ServerConfig("127.0.0.1", 8080, origin.map(URI.create), database, catalogPath,
       ServerMode.TrustedAlpha, None, "test")
     val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(

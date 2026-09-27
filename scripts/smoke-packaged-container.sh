@@ -82,7 +82,7 @@ container_name=oathdigital-smoke-container-$unique_suffix
 volume_name=oathdigital-smoke-volume-$unique_suffix
 temporary_root=${TMPDIR:-/tmp}
 temporary_directory=$(mktemp -d "$temporary_root/oathdigital-container-smoke.XXXXXX")
-game_id=packaged-seat-smoke
+game_id=
 creation_response=$temporary_directory/creation.json
 command_response=$temporary_directory/command.json
 exchange_error=$temporary_directory/exchange-error.log
@@ -177,13 +177,17 @@ create_game() {
     --output "$creation_response" \
     --write-out '%{http_code}' \
     --header 'Content-Type: application/json' \
-    --data '{"gameId":"packaged-seat-smoke","participants":[{"playerId":"red-exile","lineageId":"red-lineage","color":"red"},{"playerId":"blue-exile","lineageId":"blue-lineage","color":"blue"},{"playerId":"yellow-exile","lineageId":"yellow-lineage","color":"yellow"}]}' \
+    --data '{"participants":[{"playerId":"red-exile","color":"red"},{"playerId":"blue-exile","color":"blue"},{"playerId":"yellow-exile","color":"yellow"}]}' \
     "$base_url/games") ||
     fail "game creation request failed on run $run_label"
   [ "$creation_status" = 201 ] ||
     fail "game creation returned HTTP $creation_status instead of 201 on run $run_label"
-  grep -F '"gameId":"packaged-seat-smoke"' "$creation_response" >/dev/null ||
-    fail "game creation response has the wrong game on run $run_label"
+  created_game_id=$(sed -n 's#.*"gameId":"\([^"]*\)".*#\1#p' "$creation_response")
+  case "$created_game_id" in
+    game-[a-z2-7]*) ;;
+    *) fail "game creation response has no generated game ID on run $run_label" ;;
+  esac
+  game_id=$created_game_id
 }
 
 extract_seat_url() {

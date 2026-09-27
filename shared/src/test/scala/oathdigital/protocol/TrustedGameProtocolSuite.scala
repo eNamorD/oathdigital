@@ -3,8 +3,8 @@ package oathdigital.protocol
 import oathdigital.model.PlayerColor
 
 class TrustedGameProtocolSuite extends munit.FunSuite:
-  private val json = """{"gameId":"game-1","participants":[{"playerId":"p1","color":"red"},{"playerId":"p2","color":"blue"}]}"""
-  private val request = TrustedGameCreateRequest("game-1", Vector(
+  private val json = """{"participants":[{"playerId":"p1","color":"red"},{"playerId":"p2","color":"blue"}]}"""
+  private val request = TrustedGameCreateRequest(Vector(
     BootstrapParticipantRequest("p1", PlayerColor.Red),
     BootstrapParticipantRequest("p2", PlayerColor.Blue)))
 
@@ -14,12 +14,11 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
 
   test("creation requires exact root and participant fields"):
     val base = ujson.read(json)
-    Vector("gameId", "participants").foreach { key =>
-      val value = ujson.read(json).obj
-      value.remove(key)
-      assert(TrustedGameCreateRequestCodec.decode(ujson.write(value)).isLeft)
-    }
-    Vector("actor", "expectedNextSequence", "firstPlayerId", "extra").foreach { key =>
+    val missing = ujson.read(json).obj
+    missing.remove("participants")
+    assert(TrustedGameCreateRequestCodec.decode(ujson.write(missing)).isLeft)
+    // The server generates the game ID, so a request naming one is refused.
+    Vector("gameId", "actor", "expectedNextSequence", "firstPlayerId", "extra").foreach { key =>
       val value = ujson.read(json)
       value(key) = "p1"
       assert(TrustedGameCreateRequestCodec.decode(ujson.write(value)).isLeft)
@@ -34,7 +33,6 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
 
   test("invalid identifiers, duplicates, and empty participants fail"):
     Vector("", " ", "a/b", "a?b", "a" * 129).foreach { invalid =>
-      assert(TrustedGameCreateRequestCodec.decode(json.replace("game-1", invalid)).isLeft)
       assert(TrustedGameCreateRequestCodec.decode(json.replace("p1", invalid)).isLeft)
     }
     Vector(request.copy(participants = Vector.empty),
@@ -48,7 +46,7 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
         json.replace("\"red\"", s"\"$invalid\"")).left.toOption.map(_.path),
         Some("$.participants[0].color"))
     }
-    Vector("[]", "null", "{", json.replace("\"game-1\"", "12")).foreach { invalid =>
+    Vector("[]", "null", "{", json.replace("\"p1\"", "12")).foreach { invalid =>
       assert(TrustedGameCreateRequestCodec.decode(invalid).isLeft)
     }
 

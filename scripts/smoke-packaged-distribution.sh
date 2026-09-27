@@ -89,7 +89,7 @@ base_url=http://127.0.0.1:$port
 catalog_path=$package_directory/share/oathdigital/new-foundations-component-catalog.json
 database_path=$database_directory/oathdigital
 index_file=$temporary_directory/index.html
-game_path=/games/alpha%3Aone
+game_path=
 creation_response=$temporary_directory/creation.json
 command_response=$temporary_directory/command.json
 exchange_error=$temporary_directory/exchange-error.log
@@ -173,13 +173,17 @@ create_game() {
     --output "$creation_response" \
     --write-out '%{http_code}' \
     --header 'Content-Type: application/json' \
-    --data '{"gameId":"alpha:one","participants":[{"playerId":"red-exile","lineageId":"red-lineage","color":"red"},{"playerId":"blue-exile","lineageId":"blue-lineage","color":"blue"},{"playerId":"yellow-exile","lineageId":"yellow-lineage","color":"yellow"}]}' \
+    --data '{"participants":[{"playerId":"red-exile","color":"red"},{"playerId":"blue-exile","color":"blue"},{"playerId":"yellow-exile","color":"yellow"}]}' \
     "$base_url/games") ||
     fail "game creation request failed on run $run_label"
   [ "$creation_status" = 201 ] ||
     fail "game creation returned HTTP $creation_status instead of 201 on run $run_label"
-  grep -F '"gameId":"alpha:one"' "$creation_response" >/dev/null ||
-    fail "game creation response has the wrong game on run $run_label"
+  created_game_id=$(sed -n 's#.*"gameId":"\([^"]*\)".*#\1#p' "$creation_response")
+  case "$created_game_id" in
+    game-[a-z2-7]*) ;;
+    *) fail "game creation response has no generated game ID on run $run_label" ;;
+  esac
+  game_path=/games/$created_game_id
 }
 
 extract_seat_url() {
