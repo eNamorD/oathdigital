@@ -103,22 +103,22 @@ requested UI changes are in the
 
 ### Setup deferred items
 
-- [ ] **Deferred: derive the lineage from the color on the server.** The color
+- [ ] **derive the lineage from the color on the server.** The color
   is always associated with a lineage, but the trusted creation request still
   carries a free-form `lineageId`, and the host page sends `<color>-lineage`.
   The server should derive the lineage and the request should drop `lineageId`.
-- [ ] **Deferred: generate the game ID on the server.** The host page generates
+- [ ] **generate the game ID on the server.** The host page generates
   it in the browser (`manual-<time>-<random>`) and generates a new one when the
   server reports a duplicate. The server should assign it and return it in the
   creation response, and the request should drop `gameId`.
-- [ ] **Deferred: setup follow-ups.** Simultaneous setup effects are resolved by
+- [ ] **Simultaneous setup effects.** Simultaneous setup effects are resolved by
   the Chancellor or first player (site order is used until then). Player choices
   earlier in setup once foundations and legacies exist, such as the Chancellor
   choosing Recent or Forgotten sites. Later-game
   setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
   triggers once an explore procedure exists. The Chronicle string codec is
   under **Phase - Empire and campaign continuity**.
-- [ ] **Deferred: Desecrated Ground.** E08's ruined face lets an Exile at its
+- [ ] **Desecrated Ground.** E08's ruined face lets an Exile at its
   site keep any number of revealed Visions, which turns
   `PlayerState.revealedVision` into a collection across card play, projection,
   Vision victory, the frontend and the save format. E08 never appears in
@@ -127,23 +127,23 @@ requested UI changes are in the
 
 ### Game Log deferred items
 
-- [ ] **Deferred: show a parked action's progress in the waiting message.**
+- [ ] **show a parked action's progress in the waiting message.**
   The Game Log posts a line only once its facts are complete, so an action
   that is still parked says nothing about its choices so far. The table's
   "Waiting on player" message is the place to show that progress. Recorded in
   the Game Log design of 2026-09-26.
-- [ ] **Deferred: Game Log features the design left out.** Click-to-highlight,
+- [ ] **Game Log features the design left out.** Click-to-highlight,
   filters and search, timestamps, a server-side read marker, failed victory
   checks and negotiation proposals. Replay navigation is **L4**. Recorded in
   the Game Log design of 2026-09-26.
 
-- [ ] **Deferred: explain restricted options where they are offered.** A
+- [ ] **Explain restricted options where they are offered.** A
   restricted option, or a missing action control, carries a hover note (or
   similar) saying which power restricts it and why. Most Restrictions would
   then need no Game Log line. The hide hook's note from the Power log lines
   phase is the natural source. Recorded in the
   [Power log lines design](superpowers/specs/2026-09-26-power-log-lines-design.md).
-- [ ] **Deferred: warn before a choice that has no effect.** The rules let a
+- [ ] **Warn before a choice that has no effect.** The rules let a
   player pay for a power or pick an option that then does nothing: a
   modifier selected for an action it will not change (Cup of Plenty,
   Animal Playmates or Birdsong with a card of the wrong suit), a power whose
@@ -153,7 +153,7 @@ requested UI changes are in the
 
 ### Powers-related deferred items
 
-- [ ] **Deferred: walker-native card play through card slots.** Card play still
+- [ ] **walker-native card play through card slots.** Card play still
   runs through the legacy `CardPlay.legalChoices` and `plannedOperations` helpers
   rather than through Operations, so a power cannot change the placement
   procedure. Powers that need to (People's Favor: Mob may discard a site
@@ -168,7 +168,7 @@ requested UI changes are in the
   so it needs its own spec. Until then Mob uses a single `PlacementRules` value
   on `PlacementTree` that carries the adviser limits and a
   "may discard a site card first" permission.
-- [ ] **Deferred: locked cards as a generic operation restriction.** Locking is
+- [ ] **locked cards as a generic operation restriction.** Locking is
   enforced today by `DiscardRestrictions` (a faceup locked adviser, an intact
   edifice, a modifier selected for the running action, and the Hall of
   Ministers). Each path that discards a card in play attaches it, and a coverage
@@ -186,7 +186,7 @@ requested UI changes are in the
   and Horned Mask's filter, and needs an audit of every step that legitimately
   moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
   lines, with regression risk in the Negotiation and Campaign suites.
-- [ ] **Deferred: an adviser-slot decision option.** `DecisionOptionRef` names a
+- [ ] **an adviser-slot decision option.** `DecisionOptionRef` names a
   card by identity, and `WalkerDecisionProjector` drops any decision that names
   a card its viewer may not identify, so a decision cannot offer another
   player's facedown adviser. Relics have an identity-free `RelicSlot`
@@ -196,13 +196,13 @@ requested UI changes are in the
   panel present the slot as a facedown card. It touches the model, the answer
   codec, the projector and the frontend, and any future power that targets a
   facedown adviser would use it.
-- [ ] **Deferred: plan-restricting powers, Bag of Siegeworks and Empire defenders.**
+- [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
   in `CampaignPowers` and no plan. Empire defenders are not modelled. The reviewed
   catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
   3b and go with the reviewed catalog.
-- [ ] **Deferred: walker follow-ups.** Make the Recover roll automatic like the
+- [ ] **walker follow-ups.** Make the Recover roll automatic like the
   others. Audit the first-game rules the walker actions
   dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
   Add the remaining attacker, defender and bandit battle plan families,
@@ -214,24 +214,24 @@ requested UI changes are in the
   `WalkerDecisionProjector.waiting` reads only a parked decision's heading and
   Negotiation query, which the look-ahead never narrows, so its second
   `parkedDecide` could skip the look-ahead like the other identity-only callers.
-- [ ] **Deferred: the Grand Council and Festival banner faces.** They are listed
+- [ ] **the Grand Council and Festival banner faces.** They are listed
   as synthetic ids in the reviewed catalog and have no behaviour.
-- [ ] **Deferred: Mercenaries' player-chosen sign.** Mercenaries adds attack dice
+- [ ] **Mercenaries' player-chosen sign.** Mercenaries adds attack dice
   when its user attacks and removes defense dice from the attacker when it
   defends. The card lets the player choose the sign, and the plan fixes it by side.
   Choosing it needs a decision inside the plan and a preview that shows both.
-- [ ] **Deferred: record a bandit's applied battle plan as an event.** A player's
+- [ ] **record a bandit's applied battle plan as an event.** A player's
   plan is a recorded answer that later windows read. A bandit defender applies its
   cost-free plans without asking, so `CampaignPlanApplication` records the use as
   a `ModifyDicePool` marker under `campaign.plan-applied.<kind>.<id>`. The marker
   shows in the journal as a dice-pool change and suites that count a Campaign's
   `ModifyDicePool` operations see it. A dedicated recorded operation would say
   what happened.
-- [ ] **Deferred: a public view of a revealed temporary hand.** The Truthful Harp
+- [ ] **a public view of a revealed temporary hand.** The Truthful Harp
   reveals the cards it draws by recording a `Peek` for every other player. No
   operation reveals a card in a temporary hand and the hand is projected to its
   owner only, so no view shows the reveal to the other players yet.
-- [ ] **Deferred: a board slot for distributions and Sticky Fire without a choice.**
+- [ ] **a board slot for distributions and Sticky Fire without a choice.**
   Warning Signals names the defender's board by a player option in its distribution, which
   the panel shows as a player name, and Sticky Fire asks its question even when a yes
   changes nothing (against bandits it only costs the favor). A board option, and skipping a
@@ -239,7 +239,7 @@ requested UI changes are in the
 
 ### Engine deferred items
 
-- [ ] **Deferred: one seam for "who may veto an operation".** `OperationPolicy`
+- [ ] **one seam for "who may veto an operation".** `OperationPolicy`
   (an exact-shape allowlist, used by `StateBasedOperationPolicy` and
   `MinorActionOperationPolicy` on the legacy-event paths) and
   `OperationRestriction` (contextual reasons from powers) answer the same
@@ -248,7 +248,7 @@ requested UI changes are in the
   the legacy-event path (allowlist reasons come before shape reasons today)
   and needs its own preservation argument. Recorded during the operation
   family consolidation of 2026-09-24.
-- [ ] **Deferred: key `CardKnowledge` by card id.** Knowledge is stored per
+- [ ] **key `CardKnowledge` by card id.** Knowledge is stored per
   place: `siteRelics` by viewer and site, `heldRelics` and `advisers` by
   viewer, and an owner's knowledge is implicit in `identifiesCard`. The Game
   Log phase patches the gaps this leaves (an ex-owner and a site peeker both
@@ -256,15 +256,15 @@ requested UI changes are in the
   single map from card id to the players who know it would make "knowledge
   follows the card" structural instead of maintained per move. Recorded in
   the Game Log design of 2026-09-26.
-- [ ] **Deferred: retire the reviewed-catalog machinery.**
+- [ ] **retire the reviewed-catalog machinery.**
   `ReviewedPowerInspector` and `PowerRuntime` are still used by 12 main files,
   and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
   used only by tests. Move the remaining users onto the executable catalog and
   delete the reviewed catalog.
-- [ ] **Deferred: decide whether to keep `DeltaMeaning`.** Nothing reads it.
+- [ ] **decide whether to keep `DeltaMeaning`.** Nothing reads it.
   The retention decision of 2026-09-24 said to revisit it once the action
   history was designed, and the Game Log does not use it.
-- [ ] **Deferred: frontend and protocol clean-up.** Decision option kinds are
+- [ ] **frontend and protocol clean-up.** Decision option kinds are
   bare string literals in the frontend, and the id grammars (`stableKey`,
   decision-id prefixes) have no shared home. The projection has no protocol
   version field. `WalkerDecisionProjectorSuite` fabricates parks instead of
