@@ -899,3 +899,15 @@ class GameEventWireSuite extends munit.FunSuite:
       event).toOption.get)
     encoded("payload")("note")("args")(0)("kind") = "colour"
     assert(GameEventWire.decode(encoded).isLeft)
+
+  test("a note with an unknown source, an unknown unit or a negative amount is refused"):
+    def refused(edit: ujson.Value => Unit): Boolean =
+      val event = noteEvent(PowerSourceRef.Site(SiteId("s1")),
+        NoteArg.Amount(2, NoteUnit.Favor))
+      val encoded = ujson.read(GameEventWire.encodeEvent("notes", catalog.ref, 0,
+        event).toOption.get)
+      edit(encoded("payload")("note"))
+      GameEventWire.decode(encoded).isLeft
+    assert(refused(note => note("source")("kind") = "moon"))
+    assert(refused(note => note("args")(0)("unit") = "gold"))
+    assert(refused(note => note("args")(0)("value") = -1))
