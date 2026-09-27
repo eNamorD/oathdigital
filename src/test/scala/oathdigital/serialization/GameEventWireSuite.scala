@@ -899,7 +899,9 @@ class GameEventWireSuite extends munit.FunSuite:
   test("a power note's card list and banner arguments round trip"):
     val event = noteEvent(PowerSourceRef.Card(DenizenId("93")),
       NoteArg.Cards(Vector(DenizenId("12"), RelicId("r1"))),
-      NoteArg.Cards(Vector.empty), NoteArg.Banner(Banner.PeoplesFavor))
+      NoteArg.Cards(Vector.empty), NoteArg.Banner(Banner.PeoplesFavor),
+      NoteArg.Pile(SearchSource.WorldDeck),
+      NoteArg.Pile(SearchSource.RegionalDiscard(Region.Provinces)))
     val encoded = GameEventWire.encodeEvent("notes", catalog.ref, 0, event)
       .toOption.get
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))

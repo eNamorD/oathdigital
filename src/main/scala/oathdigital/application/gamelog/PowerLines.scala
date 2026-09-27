@@ -85,3 +85,4 @@ private[gamelog] final class PowerLines(words: LogWords,
     case NoteArg.Dice(faces) => LogWords.dice(faces).toVector
     case NoteArg.Cards(ids) => words.cards(ids.map(words.seen(_, seen, viewer)))
     case NoteArg.Banner(banner) => Vector(words.banner(banner))
+    case NoteArg.Pile(pile) => Vector(Text(SearchSource.name(pile)))

@@ -25,6 +25,9 @@ object NoteArg:
     * card still passes the log's knowledge rule. */
   final case class Cards(ids: Vector[CardId]) extends NoteArg
   final case class Banner(banner: oathdigital.model.Banner) extends NoteArg
+  /** "world deck" or "Cradle discard pile". The template supplies the
+    * article. */
+  final case class Pile(pile: SearchSource) extends NoteArg
 
 /** `key` is the wire spelling. */
 enum NoteUnit(val key: String, val one: String, val many: String):
