@@ -1,6 +1,6 @@
 # Site Powers
 
-**Status:** designed 2026-09-27. Implements the roadmap's cleanup task
+**Status:** designed and built 2026-09-27. Implements the roadmap's cleanup task
 "Implement every site power".
 
 ## Goal

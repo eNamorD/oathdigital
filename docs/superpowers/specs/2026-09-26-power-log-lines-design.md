@@ -149,8 +149,8 @@ It defaults to returning nothing.
 ### Game rules
 
 The Homeland rule is not a power. `CardPlay` lets a player discard a card at
-a full Homeland whose edifice matches the played card's suit, which is the
-same choice People's Favor's Mob face offers everywhere. It gets the same
+the Homeland of the played card's suit, which is the same choice People's
+Favor's Mob face offers everywhere. It gets the same
 line.
 
 - A game rule that writes a line gets a `PowerId` of its own, such as
@@ -335,7 +335,7 @@ cost payment logs nothing today and still logs nothing.
 | Warning Signals, after the arrangement | Warning Signals: {Blue} redistributed their warbands. |
 | Knights Errant, after the choice to campaign | Knights Errant: {Red} campaigns for no Supply. |
 | People's Favor (Mob face), after the discard answer | People's Favor: {Red} may discard a card at their site first. |
-| Homeland rule, at a full Homeland matching the played card's suit, after the discard answer | {Homeland site}: {Red} may discard a card at their site first. |
+| Homeland rule, at the Homeland of the played card's suit, after the discard answer | {Homeland site}: {Red} may discard a card at their site first. |
 | League Treaty, after the moves | League Treaty: {Blue} sent {n favor} to {the Nomad bank}. |
 
 ### Setup
@@ -417,9 +417,9 @@ Formatter:
 - A line identical to an earlier line of the same action is dropped; the same
   line in the next action is not.
 - `Plural` and a pluralised `Amount` read correctly for 1 and for 2.
-- A card played to a full matching Homeland reads the Homeland line; a card
-  played to a full Homeland of another suit is refused as today and reads
-  nothing.
+- A card played to the Homeland of its suit reads the Homeland line after its
+  discard; a card played to a full Homeland of another suit is refused and
+  reads nothing.
 - The prefix-stability property holds over journals that contain notes.
 
 Catalog:
