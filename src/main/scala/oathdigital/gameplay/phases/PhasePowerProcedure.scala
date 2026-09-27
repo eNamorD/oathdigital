@@ -77,6 +77,8 @@ object PhasePowerProcedure:
       _ <- Either.cond(timingOf(phase).contains(power.timing), (),
         InvalidEventOrder(s"${power.id.value} is a ${power.timing} power " +
           s"and cannot be used in the ${phase.productPrefix} phase"))
+      _ <- Either.cond(!power.forced, (), InvalidEventOrder(
+        s"${power.id.value} runs on its own at the start of its phase"))
       found <- sources(catalog, ready, active, power).collectFirst {
         case (found, `source`) => found
       }.toRight(InvalidEventOrder(s"${source.kind}/${source.wireId} is not " +
@@ -100,7 +102,8 @@ object PhasePowerProcedure:
     else
       val index = RuleSourceIndex.enumerate(catalog, ready)
       powers.powers.flatMap { power =>
-        if !timingOf(current.turn.phase).contains(power.timing) then Vector.empty
+        if power.forced || !timingOf(current.turn.phase).contains(power.timing)
+        then Vector.empty
         else sourcesFrom(index, ready, player, power).collect:
           case (found, ref)
               if (!limited(power) ||

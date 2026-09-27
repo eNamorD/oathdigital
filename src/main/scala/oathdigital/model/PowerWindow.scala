@@ -129,6 +129,10 @@ object PowerWindow:
     */
   case object ConspiracyTargetSelection extends OtherWindow:
     val key = "conspiracy.target-selection"
+  /** The Oathkeeper title changing hands (catalog batch 2, N7). A power
+    * appends what happens after the change: Chaos Cult's take. */
+  case object OathkeeperTitleChange extends OtherWindow:
+    val key = "oathkeeper.title-change"
   case object PlaceBannerResourceEligibility extends OtherWindow:
     val key = "place-banner-resource.eligibility"
   case object PlaceBannerResourceBannerSelection extends OtherWindow:

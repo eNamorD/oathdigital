@@ -9,9 +9,10 @@ import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.setup.{BanditMarket, BrokenForge, EmptyGrounds, GreatForge, GreatMarket, ProvingGrounds}
 import oathdigital.gameplay.powers.targeting.TargetProtections
+import oathdigital.gameplay.powers.title.ChaosCult
 import oathdigital.gameplay.powers.travel.{TravelModifiers, TravelSitePowers}
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.powers.whenplayed.{ASmallFavor, ConspiracyWhenPlayed, Dazzle, FaithfulFriend, FamilyHeirloom, Garrison}
+import oathdigital.gameplay.powers.whenplayed.{ASmallFavor, ConspiracyWhenPlayed, Dazzle, FaithfulFriend, FamilyHeirloom, Garrison, ShiftingFog, TwinBrother}
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
@@ -50,6 +51,9 @@ object WalkerPowerCatalog:
       FaithfulFriend.forCatalog(catalog).toVector ++
       Garrison.forCatalog(catalog).toVector ++
       FamilyHeirloom.forCatalog(catalog).toVector ++
+      ShiftingFog.forCatalog(catalog).toVector ++
+      TwinBrother.forCatalog(catalog).toVector ++
+      ChaosCult.forCatalog(catalog).toVector ++
       ActionModifiers.forCatalog(catalog) ++
       TargetProtections.forCatalog(catalog) ++
       KnightsErrant.forCatalog(catalog).toVector ++

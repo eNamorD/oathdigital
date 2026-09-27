@@ -245,7 +245,7 @@ that follow Oracle stay.
 | Card | Line | Covers |
 |---|---|---|
 | Shifting Fog | Shifting Fog: Every bank's favor moved to the next bank. | |
-| Hunger | Hunger: {Red} buried {Blue}'s {card}. | the Buried line |
+| Hunger | Hunger: {Red} buried {card} from {Blue}'s advisers. | the Buried line |
 | Hunger, no adviser to bury | Hunger: No adviser could be buried. | |
 | Twin Brother | Twin Brother: {Red} swapped it for {Blue}'s {card}. | |
 | Chaos Cult | Chaos Cult: {Red} took {1} favor from {Blue}. | |

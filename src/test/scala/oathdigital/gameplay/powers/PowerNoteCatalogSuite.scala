@@ -43,9 +43,12 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
       Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
 
-  test("every phase power declares its own used line"):
+  test("every phase power but a forced one declares its own used line"):
+    // A forced power is never a `UsePower`, so it has no "Used" line to
+    // replace, and its lines are trigger lines.
     PhasePowerCatalog.default(catalog).powers.foreach(power =>
-      assert(power.noteKeys.exists(_.name == NoteKey.Used), power.id.value))
+      assertEquals(power.noteKeys.exists(_.name == NoteKey.Used), !power.forced,
+        power.id.value))
 
   test("the Homeland rule declares the line it writes"):
     assertEquals(declared.toMap.get(RuleNotes.homelandDiscard)

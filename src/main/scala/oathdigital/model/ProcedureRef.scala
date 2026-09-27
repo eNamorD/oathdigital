@@ -55,6 +55,10 @@ enum TriggeredProcedureRef(val key: String) extends ProcedureRef:
   /** Runs once, right after `GameStarted` evolves (2026-09-21 Chronicle
     * design, slice 2, "Setup on the walker"). No client command starts it. */
   case Setup extends TriggeredProcedureRef("setup")
+  /** The forced Wake powers of the player whose Wake begins (catalog batch 2,
+    * N8). The turn boundary or the end of Setup starts it; nothing else may
+    * run until it ends. */
+  case ForcedWake extends TriggeredProcedureRef("forced-wake")
 
 object ActionRef:
   case object Search extends ActionRef { val key = "search" }
@@ -109,7 +113,8 @@ object PhaseTransitionRef:
   val all: Vector[PhaseTransitionRef] = Vector(EndWake, BeginRest, FinishRest)
 
 object TriggeredProcedureRef:
-  val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup)
+  val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper, Setup,
+    ForcedWake)
 
 object StartableRef:
   /** Finite references are listed in `all`; parameterized use-power keys

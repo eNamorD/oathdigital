@@ -301,6 +301,24 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assert(projects(placed, actor, Vector(DecisionOption.Banner(
       DecisionOptionRef.Banner(Banner.DarkestSecret)))).nonEmpty)
 
+  test("an adviser slot is the card to a viewer who identifies it, a card " +
+      "back to anyone else, and a slot past the advisers suppresses it"):
+    val (base, actor) = parked(ActionRef.Recover)
+    val enemy = base.ready.game.current.players.find(_.player != actor).get
+    def slot(owner: PlayerId, at: Int) = DecisionOption.AdviserSlot(
+      DecisionOptionRef.AdviserSlot(owner, at))
+    val theirs = projects(base, actor, Vector(slot(enemy.player, 0)))
+      .getOrElse(fail("another player's facedown adviser must project"))
+    val row = theirs.offeredOptions.head
+    assertEquals((row.kind, row.id), ("adviser-slot", s"${enemy.player.value}:0"))
+    assert(row.card.exists(_.hidden), row.toString)
+    assert(!row.toString.contains(enemy.advisers.head.id.value), row.toString)
+    assert(row.label.contains("facedown adviser"), row.label)
+    val mine = projects(base, actor, Vector(slot(actor, 0)))
+      .getOrElse(fail("the viewer's own adviser must project"))
+    assert(mine.offeredOptions.head.card.exists(!_.hidden))
+    assertEquals(projects(base, actor, Vector(slot(enemy.player, 9))), None)
+
   /** The other half of "cannot be presented": a card that IS in
     * authoritative state but that this viewer may not identify.
     *

@@ -8,6 +8,7 @@ import oathdigital.gameplay.phases.rest.{TurnBoundary,
 import oathdigital.model._
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.phases.wake.ForcedWakeProcedure
 import oathdigital.gameplay.powerresolver.{PhasePowers}
 import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerCompleted,
   WalkerDice, WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
@@ -199,7 +200,20 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       }
       case Some(other) => Left(InvalidEventOrder(
         s"unexpected Wake evaluation event: $other"))
-    })
+    }).flatMap(forcedWake)
+
+  /** The forced Wake powers of the player whose Wake begins (catalog batch
+    * 2, N8): after the Usurper and Vision checks at a turn boundary, and
+    * when Setup ends, since Setup's tree begins the first Wake itself. Only
+    * while the game goes on. */
+  protected def forcedWake(transition: OathTransition)
+      : Either[OathViolation, OathTransition] = transition.state match
+    case Ready(ready) if ready.game.current.result.isEmpty &&
+        ready.game.current.turn.phase == Phase.Wake &&
+        ForcedWakeProcedure.due(catalog, ready,
+          ready.game.current.turn.activePlayer, phasePowerCatalog).nonEmpty =>
+      startTriggered(transition, TriggeredProcedureRef.ForcedWake)
+    case _ => Right(transition)
 
   private def appendEvaluation(transition: OathTransition,
       evaluate: OathState => Either[OathViolation, Option[OathEvent]]) =

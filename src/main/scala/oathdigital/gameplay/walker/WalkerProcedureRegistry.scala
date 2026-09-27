@@ -10,7 +10,8 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
+import oathdigital.gameplay.phases.wake.{EndWakeProcedure, ForcedWakeProcedure,
+  TakeWealthProcedure}
 import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
@@ -389,11 +390,22 @@ object WalkerProcedureRegistry:
     build = PhasePowerProcedure.build(id, powers),
     rebuild = PhasePowerProcedure.rebuild(id, powers))
 
+  /** The forced Wake step reads the phase powers, as `UsePower` does. It is
+    * started by the turn boundary, so it has no fallback kind, no modifier
+    * window and no start selection. */
+  private def forcedWakeEntry(powers: PhasePowers): Entry = Entry(
+    fallbackKind = None,
+    rollDecisionId = None,
+    modifierWindow = None,
+    build = ForcedWakeProcedure.build(powers),
+    rebuild = ForcedWakeProcedure.build(powers))
+
   private def lookup(procedure: ProcedureRef,
       registrations: Map[ProcedureRef, Entry],
       powers: PhasePowers = PhasePowers.empty): Either[OathViolation, Entry] =
     procedure match
       case ActionRef.UsePower(id) => Right(usePowerEntry(id, powers))
+      case TriggeredProcedureRef.ForcedWake => Right(forcedWakeEntry(powers))
       case _ => registrations.get(procedure).toRight(OathViolation
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
 
@@ -465,7 +477,8 @@ object WalkerProcedureRegistry:
     * second `ProcedureRef` match at the preview call site.
     */
   def isRegistered(procedure: ProcedureRef): Boolean =
-    procedure.isInstanceOf[ActionRef.UsePower] || entries.contains(procedure)
+    procedure.isInstanceOf[ActionRef.UsePower] ||
+      procedure == TriggeredProcedureRef.ForcedWake || entries.contains(procedure)
 
   /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
   def requiresPlayableOption(procedure: ProcedureRef): Boolean =

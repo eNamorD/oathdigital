@@ -5,6 +5,7 @@ import oathdigital.engine.{RecordedEvent, ReplayStep}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
 import oathdigital.gameplay.powers.search.Augury
@@ -505,6 +506,23 @@ object LogScripts:
       GameCommand.UsePower(actor, BarbedNet.id, DecisionOptionRef.Relic(net)))
     Script("barbed-net", service, actor)
 
+  /** Hunger faceup with the second player, whose Wake begins when the first
+    * player rests. The forced step parks for them. Pawns are spread, so the
+    * only candidate is their own starting adviser, which the default answer
+    * buries. The script's actor is Hunger's holder. */
+  def hunger(using munit.Location): Script =
+    val card = DenizenId("216")
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
+    val (service, _, driver) = journaled("hunger")
+    val woken = Situation.wake(driver, chronicle, orders)
+    val first = active(woken)
+    val holder = FinishRestProcedure.turnOrder(woken.ready)(1)
+    woken.after(Step.Arrange(Vector(ParkedServiceFixture.topOfWorldDeck(card,
+        Location.PlayArea(holder)))),
+      GameCommand.EndWake(first), GameCommand.BeginRest(first))
+    Script("hunger", service, holder)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -522,6 +540,7 @@ object LogScripts:
     "negotiation-disclosed" -> (() => negotiationDisclosed),
     "use-power" -> (() => usePower),
     "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves),
-    "oracle" -> (() => oracle), "barbed-net" -> (() => barbedNet))
+    "oracle" -> (() => oracle), "barbed-net" -> (() => barbedNet),
+    "hunger" -> (() => hunger))
 
   def all: Vector[Script] = named.map(_._2())
