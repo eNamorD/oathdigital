@@ -5,8 +5,8 @@ import oathdigital.engine.ReplayStep
 import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{PowerNoted, WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, PowerNoted, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import LogScripts._
 
@@ -206,6 +206,19 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       entry.spans.toString)
     assertEquals(text(entry),
       s"Silver Tongue: ${name(script.actor)} said 6 cards.")
+
+  test("pressing Done on an Inspect writes no Chose line"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    def pressed(ref: DecisionOptionRef) = inserted(steps, take(steps),
+      WalkerStepRecorded("inspect", ChoicePayload("power.scryer.inspect",
+        DecisionAnswer.ChooseOneAnswer(ref), script.actor), Vector.empty,
+        Vector.empty))
+    def chose(lines: Vector[String]) = lines.count(_.startsWith("Chose "))
+    val before = chose(lines(steps))
+    assertEquals(chose(lines(pressed(DecisionOptionRef.Button("other")))),
+      before + 1)
+    assertEquals(chose(lines(pressed(DecisionQuery.Inspect.Done))), before)
 
   test("a pile reads as its name, the template supplying the article"):
     val script = usePower

@@ -71,6 +71,17 @@ object DecisionQueries:
           "declares duplicate options")
       yield ()
 
+    case DecisionQuery.Inspect(cards, heading, doneLabel) =>
+      for
+        _ <- require(cards.nonEmpty, decisionId, "declares no cards")
+        _ <- require(cards.distinct.size == cards.size, decisionId,
+          "declares duplicate cards")
+        _ <- require(heading.exists(_.trim.nonEmpty), decisionId,
+          "declares no heading")
+        _ <- require(doneLabel.trim.nonEmpty, decisionId,
+          "declares a blank done label")
+      yield ()
+
     case DecisionQuery.Negotiate(participants, terms, accepted, bounds,
         acceptors, _) =>
       val members = participants.toSet
@@ -212,6 +223,12 @@ object DecisionQueries:
           "does not offer the selected option")
       case _ =>
         reject(decisionId, "expects a single-choice answer")
+
+    case _: DecisionQuery.Inspect => answer match
+      case DecisionAnswer.ChooseOneAnswer(DecisionQuery.Inspect.Done) =>
+        Right(())
+      case _ =>
+        reject(decisionId, "expects its Done button")
 
     case DecisionQuery.ChooseMany(min, max, options, _) => answer match
       case DecisionAnswer.ChooseManyAnswer(selected) =>

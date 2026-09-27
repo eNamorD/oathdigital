@@ -74,6 +74,9 @@ private[frontend] object ParkedDecision:
     case Distribute(decision: WalkerDecisionState,
         query: DecisionQueryState.Distribute)
     case Selection(decision: WalkerDecisionState, query: SelectionForm)
+    /** Cards to look at and a Done button (catalog batch 2, N5). */
+    case Inspect(decision: WalkerDecisionState,
+        query: DecisionQueryState.Inspect)
     /** The deal summary every viewer sees; `editor` is the decision id and
       * the editable terms for the one viewer who may answer, `None` for an
       * observer of the parked deal or a viewer the deal is waiting on.
@@ -126,6 +129,8 @@ private[frontend] object ParkedDecision:
         surface, presentation.playerId, canControl, panel, controls)
       case surface: Surface.Selection => WalkerSelectionPanels.render(
         surface, drafts.selection, canControl, panel, controls)
+      case surface: Surface.Inspect => InspectPanel.render(
+        surface, canControl, panel, controls)
       case surface: Surface.Board => WalkerPanelSupport.renderBoardPanel(
         surface, drafts.board, canControl, panel, controls)
     routed.notice.foreach(notice =>
@@ -197,6 +202,8 @@ private[frontend] object ParkedDecision:
         Some(Surface.Selection(decision, many))
       case amount: DecisionQueryState.ChooseAmount =>
         Some(Surface.Selection(decision, amount))
+      case inspect: DecisionQueryState.Inspect =>
+        Some(Surface.Inspect(decision, inspect))
       case negotiate: DecisionQueryState.Negotiate =>
         Some(Surface.Negotiate(negotiate.deal, negotiate.deal.editing
           .filter(_ => showGameplayControls).map(decision.decisionId -> _)))

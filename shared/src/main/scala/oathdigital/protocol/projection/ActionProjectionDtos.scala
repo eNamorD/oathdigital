@@ -147,6 +147,15 @@ object DecisionQueryProjection:
       heading: Option[String] = None) extends DecisionQueryProjection:
     def offeredOptions: Vector[DecisionOptionProjection] = Vector.empty
 
+  /** Look at `cards`, in order, then press `done` (catalog batch 2, N5).
+    * Each card is its face if the owner may identify it, else its back.
+    * `done` is the one option, answered as a choose-one.
+    */
+  final case class Inspect(cards: Vector[CardDetailsProjection],
+      done: DecisionOptionProjection, heading: Option[String] = None)
+      extends DecisionQueryProjection:
+    def offeredOptions: Vector[DecisionOptionProjection] = Vector(done)
+
 /** One selectable option: its stable reference as `kind` plus `id` -- the
   * exact pair `DecisionOptionRef` spells for a submitted answer and a
   * journalled one -- its display text, and for card-shaped options the same

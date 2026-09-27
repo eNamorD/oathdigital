@@ -38,6 +38,8 @@ private[gamelog] final class DetailLines(words: LogWords,
     case WalkerStepRecorded(_, ChoicePayload(id, answer, by), _, _)
         if !DetailLines.narrated(id) =>
       val refs = answer match
+        // Pressing Done after looking at cards is not a choice (N5).
+        case ChooseOneAnswer(DecisionQuery.Inspect.Done) => Vector.empty
         case ChooseOneAnswer(ref) => Vector(ref)
         case ChooseManyAnswer(selected) => selected
         case _ => Vector.empty
