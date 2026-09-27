@@ -120,10 +120,23 @@ It defaults to returning nothing.
   calls the hook of the power that removed each option.
 - Each returned note is journaled as a `PowerNoted`, in option order, before
   the decision parks or resolves.
-- Identical notes at one decision (same power, source, key and args) are
-  journaled once. Narrow Pass writes one line per hidden site. The Circlet of
-  Command, whose note names only the holder, writes one line however many of
-  the holder's relics it hides.
+- Narrow Pass's note names the site, so it reads one line per hidden site.
+  The Circlet of Command's note names only the holder, so its identical notes
+  merge into one line (see "Placement").
+
+### Game rules
+
+The Homeland rule is not a power. `CardPlay` lets a player discard a card at
+a full Homeland whose edifice matches the played card's suit, which is the
+same choice People's Favor's Mob face offers everywhere. It gets the same
+line.
+
+- A game rule that writes a line gets a `PowerId` of its own, such as
+  `rule.homeland-discard`, and declares its templates in `RuleNotes`, a small
+  registry the formatter consults beside the two power catalogs.
+- The card-play planner puts a `Note` with that id in the placement tree when
+  the rule offers the discard. Its `source` is the Homeland site, so the line
+  starts with the site's chip.
 
 ### Once per effect
 
@@ -169,8 +182,12 @@ Each power declares a template for each key it emits, beside its own code:
 
 ```scala
 def noteTemplates: Map[String, Vector[NotePart]]
-// NotePart = Text(words) | Arg(index)
+// NotePart = Text(words) | Arg(index) | Plural(index, one, many)
 ```
+
+`Plural` picks a word by the `Amount` argument at `index`, so "Killed {n}
+{Blue} warband" reads "Killed 1 Blue warband" and "Killed 2 Blue warbands".
+An `Amount` rendered through `Arg` pluralises its own unit.
 
 The formatter finds the power by id through `WalkerPowerCatalog` and
 `PhasePowerCatalog`. `GameLogFormatter` already builds a lookup from the
@@ -184,6 +201,8 @@ Wording rules:
 - Terse fragments are fine: "Outriders: Skulls ignored."
 - An exclamation mark is allowed where a procedure changes dramatically.
 - A pawn placed by a power "placed at" a site. It did not travel or move.
+- Every amount is an argument, including one the card prints as fixed. The
+  applied value can be smaller.
 - Players are named by chip, never "you". Every viewer reads the same line.
 
 ### Placement
@@ -195,6 +214,10 @@ Wording rules:
   event is a `PowerNoted` (the hide hook at an action's first decision), the
   start line posts first.
 - Setup notes post under the Setup headline, among the setup lines.
+- A power line identical to one already posted in the same action is
+  dropped. The Circlet of Command hiding three relics, or Gleaming Armor
+  taxing two plans, reads once. Only earlier lines are compared, so prefix
+  stability holds.
 
 ### Phase powers
 
@@ -232,7 +255,7 @@ cost payment logs nothing today and still logs nothing.
 | Sleight of Hand, no target | Sleight of Hand: No player could be robbed. | |
 | Whistle | Whistle: Placed {Blue} at {site} and gave {Blue} the Whistle's secret. | |
 | Whistle, no target | Whistle: No pawn could be pulled. | |
-| Wolves | Wolves: Killed {1} {Blue} warband. | |
+| Wolves | Wolves: Killed {n} {Blue} warband. | |
 | Wolves, no warband | Wolves: {Blue} had no warband to kill. | |
 | Brass Horse | Brass Horse: {Red} revealed {card} and placed at {site}. | the Revealed line |
 | Magic Carpet | Magic Carpet: {Red} placed at {site}. | |
@@ -242,7 +265,7 @@ cost payment logs nothing today and still logs nothing.
 | Wandering Flame (place) | Wandering Flame: {Red} placed a secret at {site}. | |
 | Horned Mask | Horned Mask: {Red} took {card} as a facedown adviser. | |
 | Marble Fountains | Marble Fountains: {Red}'s Supply refreshed to {n}. | |
-| Silver Tongue (REST) | Silver Tongue: {Red} took 1 favor from {the Order bank}. | the Gain line |
+| Silver Tongue (REST) | Silver Tongue: {Red} took {n} favor from {the Order bank}. | the Gain line |
 | Vow of Obedience (REST) | Vow of Obedience: {Red} took {n} favor from {the Order bank}. | the Gain line |
 
 ### Removed and hidden options
@@ -263,17 +286,17 @@ cost payment logs nothing today and still logs nothing.
 | Card | Line | Covers |
 |---|---|---|
 | Toll Roads | Toll Roads: {Red} paid 1 favor to {Blue}. / Toll Roads: {Red} burned 1 favor. | |
-| Grasping Vines | Grasping Vines: Killed 1 {Red} warband. | |
-| Gossip | Gossip: {Blue} gained 1 favor from {the Discord bank}. | the Gain line |
+| Grasping Vines | Grasping Vines: Killed {n} {Red} warband. | |
+| Gossip | Gossip: {Blue} gained {n} favor from {the Discord bank}. | the Gain line |
 | Book Binders | Book Binders: {Blue} gained {n} favor from {the Order bank}. | the Gain line |
-| Gleaming Armor | Gleaming Armor: {Red} paid 1 secret to use {plan}. | |
-| Conspiracy (when played) | Conspiracy: {Red} took {relic or banner} from {Blue}. | |
+| Gleaming Armor | Gleaming Armor: {Red}'s battle plans cost {1} extra secret. | |
+| Conspiracy (when played) | Conspiracy: {Red} seized {relic or banner} from {Blue}. | |
 | Dazzle | Dazzle: Discarded {cards}. | the Discard line |
 | Mercenaries | Mercenaries: Discarded after {Red} lost. | |
-| Sticky Fire | Sticky Fire: Killed every {Blue} warband, and {Blue} gained 1 favor. | |
+| Sticky Fire | Sticky Fire: Killed {n} {Blue} warband, and {Blue} gained {n} favor. | |
 | Truthful Harp | Truthful Harp: Revealed {cards}. | the Reveal line |
-| Forest Paths | Forest Paths: {site}'s powers were ignored. | |
-| Dragonskin Drum | Dragonskin Drum: Placed 1 warband at {site}. | |
+| Forest Paths | Forest Paths: Ignoring site powers. | |
+| Dragonskin Drum | Dragonskin Drum: Gained {n} warband. | |
 
 ### Altered procedures
 
@@ -283,6 +306,7 @@ cost payment logs nothing today and still logs nothing.
 | Warning Signals | Warning Signals: {Blue} may redistribute their warbands. |
 | Knights Errant | Knights Errant: {Red} campaigns for no Supply. |
 | People's Favor (Mob face) | People's Favor: {Red} may discard a card at their site first. |
+| Homeland rule, at a full Homeland matching the played card's suit | {Homeland site}: {Red} may discard a card at their site first. |
 | League Treaty | League Treaty: {Blue} may send the region's favor to one bank. |
 
 ### Setup
@@ -340,7 +364,7 @@ Walker:
 - A resumed command journals no note twice. A new `Repeat` pass journals
   again.
 - The hide hook journals one note per hidden option, only at a decision the
-  walker reaches, with identical notes merged.
+  walker reaches.
 - A whole-action Restriction journals nothing.
 - Replay ignores `PowerNoted`: a journal with and without notes replays to the
   same state.
@@ -358,12 +382,19 @@ Formatter:
 - A `used` note replaces "Used {card}". A run without one still posts it.
 - A covering note drops the covered step's detail line and nothing else.
 - A note with no template renders nothing.
+- A line identical to an earlier line of the same action is dropped; the same
+  line in the next action is not.
+- `Plural` and a pluralised `Amount` read correctly for 1 and for 2.
+- A card played to a full matching Homeland reads the Homeland line; a card
+  played to a full Homeland of another suit is refused as today and reads
+  nothing.
 - The prefix-stability property holds over journals that contain notes.
 
 Catalog:
 
 - Every key a power can emit has a template.
 - Every phase power declares a `used` template.
+- Every id in `RuleNotes` has a template for each key it emits.
 
 Cards: each row of the audit asserts its exact line in that card's existing
 suite.
