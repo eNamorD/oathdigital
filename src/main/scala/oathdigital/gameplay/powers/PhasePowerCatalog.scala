@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
-import oathdigital.gameplay.powers.action.{DiceAndRelicDrawPowers, Elders, MagicWaterskin, MovementPowers, TargetPowers, WaysideInn}
+import oathdigital.gameplay.powers.action.{DiceAndRelicDrawPowers, Elders, MagicWaterskin, MovementPowers, SelfActionPowers, TargetPowers, WaysideInn}
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.cardplay.VowOfObedience
 import oathdigital.gameplay.powers.rest.SilverTongue
@@ -19,4 +19,5 @@ object PhasePowerCatalog:
       DiceAndRelicDrawPowers.forCatalog(catalog) ++
       TargetPowers.forCatalog(catalog) ++
       MovementPowers.forCatalog(catalog) ++
+      SelfActionPowers.powers ++
       BannerFacePowers.phasePowers)
