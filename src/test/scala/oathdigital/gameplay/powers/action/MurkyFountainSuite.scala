@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PlayerFacts, PowerFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
+  PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -95,3 +96,26 @@ class MurkyFountainSuite extends munit.FunSuite:
     val intact = staged(side = EdificeSide.Intact)
     assert(!usableIds(intact).contains(MurkyFountain.id))
     assert(use(rules(), intact, MurkyFountain.id, source).isLeft)
+
+  test("it writes its roll and the Supply it gained"):
+    val done = use(rules(defenseDice(DefenseDieFace.OneShield,
+      DefenseDieFace.TwoShields)), staged(), MurkyFountain.id, source).toOption.get
+    assertEquals(NoteText.said(MurkyFountain, done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} rolled 2 dice, Total: 3",
+        covers = true),
+      NoteText.Said("gained", s"${actor.value} gained 3 Supply.", covers = false)))
+
+  test("a total of zero writes that the Act phase ended"):
+    val done = use(rules(defenseDice(DefenseDieFace.Blank, DefenseDieFace.Blank)),
+      staged(), MurkyFountain.id, source).toOption.get
+    assertEquals(NoteText.said(MurkyFountain, done.events), Vector(
+      NoteText.Said(NoteKey.Used, s"${actor.value} rolled 2 dice, Total: 0",
+        covers = true),
+      NoteText.Said("ended", s"${actor.value}'s Act phase ended.", covers = false)))
+
+  test("with the pawn elsewhere it writes only that"):
+    val done = use(rules(), staged(pawnAtEdifice = false), MurkyFountain.id,
+      source).toOption.get
+    assertEquals(NoteText.said(MurkyFountain, done.events), Vector(
+      NoteText.Said("used.away", s"${actor.value} was not at its site.",
+        covers = false)))

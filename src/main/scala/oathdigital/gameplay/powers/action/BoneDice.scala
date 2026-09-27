@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.PlayerFacts
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
 /** Bone Dice (relic R24), ACTION: place 1 secret on this relic, roll 2 attack
@@ -15,15 +15,34 @@ import oathdigital.model._
 case object BoneDice extends PaidAction("relic.bone-dice", Cost(secret = 1)):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("bone-dice")
+  val gained: NoteKey = NoteSupport.gainedKey("gained")
+  /** The bury a skull forces, in place of the generic Buried line. */
+  val buried: NoteKey = NoteKey("buried", Vector(
+    NotePart.Text("Buried after a skull.")))
+  override def noteKeys: Vector[NoteKey] = Vector(RollResults.rolled, gained,
+    buried)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = source match
-    case DecisionOptionRef.Relic(id) => Right(Sequence(Vector(
+    case DecisionOptionRef.Relic(relic) => Right(Sequence(Vector(
       ModifyDicePool(pool, Dice),
       Roll(pool, DiceSpec(DiceKind.Attack), RollMode.Automatic),
-      BuildOps((state, _) => settle(state, player, id)))))
+      Note(id, RollResults.rollNote(source, player, pool), covers = true),
+      BuildOps((state, _) => settle(state, player, relic)),
+      Note(id, NoteSupport.gainNote(gained, source, player, NoteUnit.Supply,
+        NoteSupport.supply)),
+      Note(id, buryNote(_, player, source), covers = true))))
     case other => Left(OathViolation.InvalidEventOrder(
       s"${other.kind} is not a relic source"))
+
+  /** The settle step buried the relic. It covers that step, whose only
+    * generic line is the Buried line: `GainSupply` posts none. */
+  private def buryNote(states: NoteStates, player: PlayerId,
+      source: DecisionOptionRef): Option[PowerNote] = for
+    card <- PowerSourceRef.of(source)
+    step <- states.previous
+    if NoteSupport.relicsLost(step, player).nonEmpty
+  yield buried(card)
 
   private def settle(state: ReadyGame, player: PlayerId, id: RelicId)
       : Either[OathViolation, Vector[CoreOperation]] = for
