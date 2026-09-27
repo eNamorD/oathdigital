@@ -26,9 +26,8 @@ import oathdigital.model._
   *
   * Each option it hides writes "{Blue}'s banners and relics cannot be
   * targeted.", naming the holder (power log lines design, "Removed and
-  * hidden options"). At a Conspiracy, whose decision it narrows with a
-  * transform, the same line is a note put before the decision whenever it
-  * drops an option, and in its place when it drops them all.
+  * hidden options"). At a Conspiracy the same line is written by
+  * [[ConspiracyTargets]].
   */
 final case class CircletOfCommand private (cardId: RelicId,
     catalog: ExecutableCatalog) extends ContributingPower:
@@ -44,7 +43,8 @@ final case class CircletOfCommand private (cardId: RelicId,
       Vector(OptionRestriction(guard, (ctx, _) => note(ctx))),
     PowerWindow.ChallengeBannerSelection ->
       Vector(OptionRestriction(guard, (ctx, _) => note(ctx))),
-    PowerWindow.ConspiracyTargetSelection -> Vector(Transform(dropShielded)))
+    PowerWindow.ConspiracyTargetSelection -> Vector(Transform((ctx, operations) =>
+      ConspiracyTargets.narrowed(id, operations, shields(ctx, _), note(ctx)))))
 
   /** The line naming the holder whose things it protects. */
   private def note(ctx: PowerCtx): Option[PowerNote] =
@@ -55,21 +55,6 @@ final case class CircletOfCommand private (cardId: RelicId,
       : Option[OathViolation] = Option.when(shields(ctx, ref))(
     OathViolation.InvalidEventOrder(
       "the Circlet of Command protects its holder's banners and relics"))
-
-  /** The Conspiracy's decision without the options it protects, after the
-    * note saying so when it dropped any. */
-  private def dropShielded(ctx: PowerCtx, operations: Vector[Operation])
-      : Vector[Operation] =
-    val kept = operations.flatMap:
-      case decide: Decide => decide.query match
-        case one: DecisionQuery.ChooseOne =>
-          val options = one.options.filterNot(option => shields(ctx, option.ref))
-          if options.isEmpty then Vector.empty
-          else Vector(decide.copy(query = one.copy(options = options)))
-        case _ => Vector(decide)
-      case other => Vector(other)
-    if kept == operations then operations
-    else note(ctx).map(said => Note(id, _ => Some(said))).toVector ++ kept
 
   /** The player holding this Circlet faceup, if any. */
   private def holder(ready: ReadyGame): Option[PlayerId] =

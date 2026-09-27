@@ -16,10 +16,8 @@ import oathdigital.model._
   *
   *  - a Raid's optional targets (`CampaignTargetSelection`), through an
   *    `OptionRestriction` whose hide hook notes each relic it hides;
-  *  - a played Conspiracy's target (`ConspiracyTargetSelection`), through a
-  *    `Transform`, as the Circlet's is, because a decision left with no option
-  *    is dropped there. The same note goes before the narrowed decision, or
-  *    in its place.
+  *  - a played Conspiracy's target (`ConspiracyTargetSelection`), through
+  *    [[ConspiracyTargets]], which writes the same note.
   *
   * The Game Log posts identical notes once per action.
   */
@@ -34,7 +32,9 @@ final case class ForgottenVault private (cardId: DenizenId,
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignTargetSelection ->
       Vector(OptionRestriction(guard, (ctx, _) => protectedRuler(ctx).map(said))),
-    PowerWindow.ConspiracyTargetSelection -> Vector(Transform(dropShielded)))
+    PowerWindow.ConspiracyTargetSelection -> Vector(Transform((ctx, operations) =>
+      ConspiracyTargets.narrowed(id, operations, shields(ctx, _),
+        protectedRuler(ctx).map(said)))))
 
   private def guard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = Option.when(shields(ctx, ref))(
@@ -43,20 +43,6 @@ final case class ForgottenVault private (cardId: DenizenId,
 
   private def said(ruler: PlayerId): PowerNote =
     ForgottenVault.shielded(PowerSourceRef.Card(cardId), NoteArg.Player(ruler))
-
-  private def dropShielded(ctx: PowerCtx, operations: Vector[Operation])
-      : Vector[Operation] = operations.flatMap:
-    case decide: Decide => decide.query match
-      case one: DecisionQuery.ChooseOne =>
-        val options = one.options.filterNot(option => shields(ctx, option.ref))
-        if options.size == one.options.size then Vector(decide)
-        else
-          val note = protectedRuler(ctx).toVector.map(ruler =>
-            Note(id, _ => Some(said(ruler))))
-          if options.isEmpty then note
-          else note :+ decide.copy(query = one.copy(options = options))
-      case _ => Vector(decide)
-    case other => Vector(other)
 
   /** The Vault's ruler, when the acting player is one of their enemies. */
   private def protectedRuler(ctx: PowerCtx): Option[PlayerId] =
