@@ -523,8 +523,11 @@ controls are 30px.
 - **Plan side**: 1em pill, `0 0.6em` padding, 0.75em; Discord fill for attack,
   Order fill for defense, a Discord-to-Order gradient for both; white text.
 - **Modifier ordinal**: 1.8rem brass disc, Base text, 800.
-- **Unimplemented badge**: 0.25em radius, Unimplemented fill, Cream 0.62em
-  uppercase, bottom-left of the card.
+- **Unimplemented badge**: a band across the card's foot, out to its dashed
+  border, in the Unimplemented fill: Cream mixed case at `max(0.62em,
+  0.7rem)`, centered. The card keeps the band's height free at its foot, so
+  the restriction sits above it. Mixed case and the full width are what let
+  the word clear the Eleven-Pixel Floor on the smallest card in a pane.
 
 ### Cards
 The signature component. A card is a bordered box in Base with the physical
@@ -535,7 +538,8 @@ ratio, sized in `ex` from `--card-w: 13ex`.
   does not run, dashed Line-mid with transparent fill for an empty slot.
 - **Face:** header row of suit glyph (1.2em) and name (750, 0.95em) with
   defense dice pushed right; a name that does not fit beside the glyph drops
-  under it whole rather than breaking mid-word; token row at 0.8em;
+  under it whole rather than breaking mid-word, and a single word too long
+  for the box is hyphenated at a syllable; token row at 0.8em;
   restriction in Ink Dim capitalized at the bottom; footer sinks to the
   bottom.
 - **Compact (zoomed-out map only):** the box and ratio are unchanged; the
@@ -600,14 +604,16 @@ at 13px, and there the round headlines stick instead of the turns.
 The **card list** shows cards in pile order: what Scryer or Oracular Pig
 looked at, or a log line's list of more than five cards. It is a count title
 in the Brass Label over a grid of ordinary card faces, each a face or a back
-as the viewer may identify it, and the grid scrolls inside itself. Its cards
-take the one card box, so the container's font size sizes them. In the
-action pane it sits between the decision's heading and Done, at most a row
-and a half tall, so a longer pile shows that it scrolls and Done stays in
-reach. From the log, the count ("6 cards") reads as part of the sentence, a
+as the viewer may identify it, and the grid scrolls inside itself. The
+container's font size sets the least column width, one card box; the
+columns then share the list's whole width, and each card follows its
+column at the card ratio, as a site's card row does. In the action pane it
+sits between the decision's heading and Done, about a row and a half tall,
+so a longer pile shows that it scrolls and Done stays in reach. From the log, the count ("6 cards") reads as part of the sentence, a
 Cream name underlined in Brass Line, and opens the list in the card overlay.
-There the list takes a 60em measure at 0.8em, not the lone card's 1.9em, and
-scrolls with the overlay body. The card overlay stacks one step above the
+There the list takes a 60em measure at 0.8em, never smaller than the action
+pane's 0.9rem and never the lone card's 1.9em, and scrolls with the overlay
+body. The card overlay stacks one step above the
 log overlay, so a list opened from the whole log covers it.
 
 Every pane's empty or
