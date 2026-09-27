@@ -15,11 +15,32 @@ import oathdigital.model._
   * when the card is no longer in either place.
   *
   * Like every discard of a card in play, it attaches `DiscardRestrictions`.
+  *
+  * `afterCampaign` is the discard of a plan that says "At end, discard" (Horse
+  * Archers, Storm Caller), with its line.
   */
 object PlanDiscard:
   def denizen(catalog: ExecutableCatalog, user: PlayerId, card: DenizenId)
       : Operation = BuildOps((ready, _) => operations(catalog, ready, user, card),
     restrictions = (_, _) => Vector(new DiscardRestrictions(catalog, user)))
+
+  /** "Discarded after the Campaign." */
+  val discarded: NoteKey = NoteKey("discarded",
+    Vector(NotePart.Text("Discarded after the Campaign.")))
+
+  /** The standard discard of `card` once the Campaign has resolved, whoever
+    * won, and `power`'s line. A bandit defender has no user, so the attacker
+    * is the acting player of its discard. The line is written only when the
+    * discard happened. */
+  def afterCampaign(catalog: ExecutableCatalog, power: PowerId, use: PlanUse,
+      card: DenizenId): Vector[Operation] = Vector(
+    denizen(catalog, use.user.getOrElse(use.actor), card),
+    Note(power, states => Option.when(states.previous.exists {
+      case (before, after) => !inDiscard(before, card) && inDiscard(after, card)
+    })(discarded(PowerSourceRef.Card(card)))))
+
+  private def inDiscard(ready: ReadyGame, card: DenizenId): Boolean =
+    ready.game.current.commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def operations(catalog: ExecutableCatalog, ready: ReadyGame,
       user: PlayerId, card: DenizenId)
