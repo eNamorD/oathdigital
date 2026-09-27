@@ -127,6 +127,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       "value" -> value, "unit" -> unit.key)
     case NoteArg.Number(value) => ujson.Obj("kind" -> "number", "value" -> value)
     case NoteArg.Bank(suit) => ujson.Obj("kind" -> "bank", "suit" -> suit.key)
+    case NoteArg.Cards(ids) => ujson.Obj("kind" -> "cards",
+      "cards" -> ujson.Arr.from(ids.map(encodeCardId)))
+    case NoteArg.Banner(banner) => ujson.Obj("kind" -> "banner",
+      "bannerKey" -> banner.key)
     case NoteArg.Dice(faces) => ujson.Obj("kind" -> "dice",
       "faces" -> ujson.Arr.from(faces.map(encodeDieFace)))
 
@@ -172,6 +176,11 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       .map(NoteArg.Bank.apply)
     case "dice" => traverse(value("faces").arr.toVector)(face =>
       decodeDieFace(face.str, s"$path.faces")).map(NoteArg.Dice.apply)
+    case "cards" => traverse(value("cards").arr.zipWithIndex.toVector)({
+      case (card, index) => decodeCardId(card, s"$path.cards[$index]") })
+      .map(NoteArg.Cards.apply)
+    case "banner" => decodeBanner(value("bannerKey").str, s"$path.bannerKey")
+      .map(NoteArg.Banner.apply)
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown note argument '$other'"))
 

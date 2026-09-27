@@ -46,12 +46,46 @@ object NoteSupport:
     * gained writes nothing. */
   def gainNote(key: NoteKey, source: DecisionOptionRef, player: PlayerId,
       unit: NoteUnit, read: (Step, PlayerId) => Int)(states: NoteStates)
+      : Option[PowerNote] = PowerSourceRef.of(source).flatMap(card =>
+    gainedNote(key, card, player, unit, read)(states))
+
+  /** What `player` gained in the step before the note, by `read`, for a
+    * power whose card is `card`. Nothing gained writes nothing. */
+  def gainedNote(key: NoteKey, card: PowerSourceRef, player: PlayerId,
+      unit: NoteUnit, read: (Step, PlayerId) => Int)(states: NoteStates)
       : Option[PowerNote] = for
-    card <- PowerSourceRef.of(source)
     step <- states.previous
     amount = read(step, player)
     if amount > 0
   yield key(card, NoteArg.Player(player), NoteArg.Amount(amount, unit))
+
+  /** "{player} gained {amount} from {bank}." */
+  def gainedFromKey(name: String): NoteKey = NoteKey(name, Vector(
+    NotePart.Arg(0), NotePart.Text(" gained "), NotePart.Arg(1),
+    NotePart.Text(" from "), NotePart.Arg(2), NotePart.Text(".")))
+
+  /** The favor `player` took from one bank in the step before the note. */
+  def gainedFromNote(key: NoteKey, card: PowerSourceRef, player: PlayerId)(
+      states: NoteStates): Option[PowerNote] = for
+    step <- states.previous
+    amount = favor(step, player)
+    if amount > 0
+    bank <- bankPaid(step)
+  yield key(card, NoteArg.Player(player), NoteArg.Amount(amount, NoteUnit.Favor),
+    NoteArg.Bank(bank))
+
+  /** "Killed {n} {player} warband." */
+  def killedKey(name: String): NoteKey = NoteKey(name, Vector(
+    NotePart.Text("Killed "), NotePart.Arg(0), NotePart.Text(" "),
+    NotePart.Arg(1), NotePart.Plural(0, " warband.", " warbands.")))
+
+  /** The warbands `player` lost in the step before the note. */
+  def killedNote(key: NoteKey, card: PowerSourceRef, player: PlayerId)(
+      states: NoteStates): Option[PowerNote] = for
+    step <- states.previous
+    lost = -warbands(step, player)
+    if lost > 0
+  yield key(card, NoteArg.Number(lost), NoteArg.Player(player))
 
   /** "{player} took {amount} from {whom}.": a REST power's take, or a secret
     * taken from a player. */

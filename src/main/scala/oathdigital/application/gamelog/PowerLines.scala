@@ -83,3 +83,5 @@ private[gamelog] final class PowerLines(words: LogWords,
     case NoteArg.Number(value) => Vector(Text(value.toString))
     case NoteArg.Bank(suit) => Vector(Text(s"the $suit bank"))
     case NoteArg.Dice(faces) => LogWords.dice(faces).toVector
+    case NoteArg.Cards(ids) => words.cards(ids.map(words.seen(_, seen, viewer)))
+    case NoteArg.Banner(banner) => Vector(words.banner(banner))

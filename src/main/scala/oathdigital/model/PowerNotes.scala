@@ -21,6 +21,10 @@ object NoteArg:
   /** "the Order bank". */
   final case class Bank(suit: Suit) extends NoteArg
   final case class Dice(faces: Vector[DieFace]) extends NoteArg
+  /** Several cards as one phrase, "Tinker, 2 Denizens and a Vision". Each
+    * card still passes the log's knowledge rule. */
+  final case class Cards(ids: Vector[CardId]) extends NoteArg
+  final case class Banner(banner: oathdigital.model.Banner) extends NoteArg
 
 /** `key` is the wire spelling. */
 enum NoteUnit(val key: String, val one: String, val many: String):
@@ -54,9 +58,11 @@ object NoteKey:
   def isUse(name: String): Boolean = name == Used || name.startsWith(s"$Used.")
 
 /** What a note may read when the walker reaches it. `previous` is the states
-  * before and after the step this command journaled last, if any, so a note
-  * that restates a step reads the applied amount instead of repeating the
-  * operation's cap logic. `answered` holds the action's decisions so far. */
+  * before and after the leaf this command ran last, if any, so a note that
+  * restates a step reads the applied amount instead of repeating the
+  * operation's cap logic. A leaf that ran and changed nothing gives the same
+  * state twice, so a note after it reads no change. `answered` holds the
+  * action's decisions so far. */
 final case class NoteStates(now: ReadyGame,
     previous: Option[(ReadyGame, ReadyGame)], answered: Vector[Answered])
 

@@ -26,9 +26,7 @@ case object GamblingHall extends PaidAction("denizen.gambling-hall",
     * and the generic "Rolled" line. */
   val rolled: NoteKey = RollResults.rolled
   /** What the total took from the chosen bank, which a thin bank caps. */
-  val gained: NoteKey = NoteKey("gained", Vector(NotePart.Arg(0),
-    NotePart.Text(" gained "), NotePart.Arg(1), NotePart.Text(" from "),
-    NotePart.Arg(2), NotePart.Text(".")))
+  val gained: NoteKey = NoteSupport.gainedFromKey("gained")
   override def noteKeys: Vector[NoteKey] = Vector(rolled, gained)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)

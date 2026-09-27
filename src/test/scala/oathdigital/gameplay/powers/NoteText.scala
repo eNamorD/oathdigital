@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers
 
+import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
@@ -40,3 +41,5 @@ object NoteText:
     case NoteArg.Number(value) => value.toString
     case NoteArg.Bank(suit) => s"the $suit bank"
     case NoteArg.Dice(faces) => s"${faces.size} dice"
+    case NoteArg.Cards(ids) => ids.map(_.value).mkString(", ")
+    case NoteArg.Banner(banner) => BannerRules.displayName(banner)

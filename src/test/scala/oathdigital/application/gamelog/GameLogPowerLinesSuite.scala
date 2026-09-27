@@ -151,6 +151,29 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     assert(!named(script.actor).contains(hidden.value), named(script.actor))
     assert(named(owner).contains(hidden.value), named(owner))
 
+  test("a card list reads as one phrase, and a banner by its name"):
+    val script = usePower
+    val steps = withoutNotes(script.history.steps)
+    val last = steps.last.after match
+      case OathState.Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+    val hidden: CardId = last.game.current.players
+      .filter(_.player != script.actor).flatMap(_.advisers.collect {
+        case DenizenState(id, Orientation.FaceDown, _) => id: CardId
+        case VisionState(id, Orientation.FaceDown) => id: CardId
+      }).head
+    val back = hidden match
+      case _: VisionId => "a Vision"
+      case _ => "a Denizen"
+    val listed = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Cards(Vector(ParkedServiceFixture.silverTongueCard, hidden))))
+    assertEquals(text(ours(listed, Some(script.actor)).head),
+      s"Silver Tongue: ${name(script.actor)} said Silver Tongue and $back.")
+    val banner = inserted(steps, take(steps), saying(script.actor,
+      NoteArg.Banner(Banner.DarkestSecret)))
+    assertEquals(text(ours(banner).head),
+      s"Silver Tongue: ${name(script.actor)} said Darkest Secret.")
+
   test("a note's source its viewer may not identify reads as its back"):
     val script = usePower
     val steps = withoutNotes(script.history.steps)

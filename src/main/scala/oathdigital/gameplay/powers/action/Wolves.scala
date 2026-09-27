@@ -14,9 +14,7 @@ import oathdigital.model._
   */
 case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)):
   val decisionId: String = "power.wolves.board"
-  val killed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Killed "),
-    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
-    NotePart.Plural(0, " warband.", " warbands.")))
+  val killed: NoteKey = NoteSupport.killedKey(NoteKey.Used)
   /** Its line when the chosen board had no warband: the kill is best-effort. */
   val spared: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" had no warband to kill.")))
