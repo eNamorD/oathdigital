@@ -171,7 +171,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
         k -> f.copy(face = FoundationFace.Altered) })))
     assert(start(b.copy(ready = altered)).isRight)
 
-  test("a held Campaign power the engine does not run does not block the start"):
+  test("a held battle-plan relic does not block the start: its plan is chosen at the plan step"):
     val b = board()
     val bag = catalog.relics.find(_.handlers.contains("relic.bag-of-siegeworks")).get
     val held = RelicId(bag.id.value)
@@ -184,9 +184,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
         current.commonCards.relicDeck.filterNot(_ == held)),
       map = current.map.copy(sites = current.map.sites.map { case (id, site) =>
         id -> site.copy(relics = site.relics.filterNot(_.id == held)) })))
-    // What gets recorded is whatever the reviewed catalog lists for the
-    // Campaign modifier window as an unimplemented automatic rule; Bag of
-    // Siegeworks is a player-selected plan, which the catalog does not list.
+    // Bag of Siegeworks is a battle plan, offered at the plan step, so
+    // holding it changes nothing at the start.
     assert(start(b.copy(ready = holding)).isRight)
 
   test("a faceup Vow of Peace stops the start, through the walker power catalog"):

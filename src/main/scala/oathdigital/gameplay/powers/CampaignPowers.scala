@@ -17,7 +17,5 @@ object CampaignPowers:
   object Watchdog extends ReviewedPower("denizen.watchdog", modifier,
     Vector(ReviewedHandler.selected(PowerWindow.CampaignDefenderBattlePlans,
       implemented = true)))
-  object BagOfSiegeworks extends ReviewedPower("relic.bag-of-siegeworks", modifier,
-    Vector(ReviewedHandler.selected(PowerWindow.CampaignAttackerBattlePlans)))
   val powers: Vector[Power] = Vector(VowOfPeace, Outriders, BrassArmyCampaign,
-    Watchdog, BagOfSiegeworks)
+    Watchdog)
