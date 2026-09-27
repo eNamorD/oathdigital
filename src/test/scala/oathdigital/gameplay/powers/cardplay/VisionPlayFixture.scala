@@ -18,10 +18,14 @@ object VisionPlayFixture:
     result.fold(error => throw new AssertionError(error.toString), identity)
 
   /** A Search that drew `vision`, parked on its placement. `ready` must come
-    * from `SearchFixture.staged(Vector(vision))`.
+    * from `SearchFixture.staged(Vector(vision))`. The events are the whole
+    * Search's so far: with one card drawn the placement is reached in the
+    * command that starts it, and its notes are journaled there.
     */
   def searched(ready: ReadyGame, vision: VisionId): OathTransition =
-    orFail(SearchFixture.start(ready).flatMap(SearchFixture.keep(_, vision)))
+    orFail(SearchFixture.start(ready).flatMap(started =>
+      SearchFixture.keep(started, vision).map(kept =>
+        kept.copy(events = started.events ++ kept.events))))
 
   /** The Play-Facedown-Adviser action on `vision`, which the actor is given as
     * a facedown adviser, parked on its placement. `ready` must be in the Act

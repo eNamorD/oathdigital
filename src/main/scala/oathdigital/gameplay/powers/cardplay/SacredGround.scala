@@ -14,15 +14,19 @@ import oathdigital.model._
   * It binds every player whose pawn is elsewhere, the site's own ruler
   * included. Its ruined face, Desecrated Ground, is not implemented; E08
   * never appears in a generated game.
+  * When the look-ahead hides a faceup placement because of it, it writes
+  * "{Red} cannot play a Vision faceup."
   */
 final case class SacredGround private (edifice: EdificeId)
     extends ContributingPower:
   def id: PowerId = SacredGround.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
+  override def noteKeys: Vector[NoteKey] = Vector(VisionPlay.noFaceup)
+
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup ->
-      Vector(Restriction((ctx, _) => blocked(ctx))))
+      Vector(Restriction((ctx, _) => blocked(ctx), VisionPlay.note(edifice))))
 
   private def blocked(ctx: PowerCtx): Option[OathViolation] = for
     vision <- VisionPlay.pending(ctx)

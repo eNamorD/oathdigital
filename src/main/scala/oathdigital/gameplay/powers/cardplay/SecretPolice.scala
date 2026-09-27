@@ -17,15 +17,19 @@ import oathdigital.model._
   * one until the Empire phase decides otherwise. The rule binds players who
   * cannot use the card, so the card is found on the map, as Toll Roads is,
   * and not through `PowerAccess`.
+  * When the look-ahead hides a faceup placement because of it, it writes
+  * "{Red} cannot play a Vision faceup."
   */
 final case class SecretPolice private (cardId: DenizenId)
     extends ContributingPower:
   def id: PowerId = SecretPolice.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
+  override def noteKeys: Vector[NoteKey] = Vector(VisionPlay.noFaceup)
+
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.ActionCardPlayedFaceup ->
-      Vector(Restriction((ctx, _) => blocked(ctx))))
+      Vector(Restriction((ctx, _) => blocked(ctx), VisionPlay.note(cardId))))
 
   private def blocked(ctx: PowerCtx): Option[OathViolation] = for
     _ <- VisionPlay.pending(ctx)
