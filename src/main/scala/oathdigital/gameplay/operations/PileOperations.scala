@@ -5,6 +5,9 @@ import oathdigital.model._
 /** The `Shuffle` write: a pile Search draws from takes the order the walker
   * generated. The order must hold exactly the pile's cards, so a recorded
   * shuffle can reorder a pile but never add, drop or replace a card.
+  *
+  * A shuffle forgets every card of its pile, for every player: a peek told
+  * a player which card lay where, and after a shuffle nobody knows.
   */
 private[operations] object PileOperations:
   import OperationError.InvalidDescription
@@ -20,4 +23,5 @@ private[operations] object PileOperations:
         Left(InvalidDescription(
           s"a shuffle of the $name must hold exactly its cards"))
       case Some(cards) => Right(ready.updateCurrent(current => current.copy(
-        commonCards = current.commonCards.withPile(pile, cards))))
+        commonCards = current.commonCards.withPile(pile, cards))).copy(
+        knowledge = cards.foldLeft(ready.knowledge)(CardKnowledgeMoves.forget)))

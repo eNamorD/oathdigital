@@ -254,8 +254,10 @@ private[application] final class GamePresentationProjector(
     *  - A player's temporary hand is named to that player and to nobody
     *    else. It is drawn-but-unresolved cards, not a board slot, and it is
     *    the one player area with no orientation to reason about.
-    *  - Everything else -- decks, discards, the reliquary, set-aside relics,
-    *    the dispossessed pile, suited reserves, atlas sites -- is never
+    *  - A world card in the world deck or a discard pile is named only to a
+    *    viewer who peeked at it there (Scryer, Oracular Pig).
+    *  - Everything else -- other decks, the reliquary, set-aside relics, the
+    *    dispossessed pile, suited reserves, atlas sites -- is never
     *    identified. A card in a deck has no orientation at all, so it must be
     *    rejected by its container rather than by being facedown.
     */
@@ -283,6 +285,13 @@ private[application] final class GamePresentationProjector(
       case CardContainer.Player(owner, area) =>
         faceup || viewer.exists(player => player == owner ||
           knownToViewer(ready, player, id, area))
+      // A world card peeked in the world deck or a discard pile (Scryer,
+      // Oracular Pig). A card entering a pile is forgotten, and so is a
+      // shuffled pile's (`CardKnowledgeMoves`, `PileOperations`), so only
+      // such a peek leaves a record here.
+      case CardContainer.Deck(CardDeck.World) | CardContainer.RegionalDiscard(_) =>
+        viewer.exists(player => ready.knowledge.advisers
+          .getOrElse(player, Vector.empty).exists(_ == id))
       case _ => false
 
   /** [[identifiesCard]] for the card wherever it lies in `ready`: its own

@@ -39,3 +39,14 @@ class ShuffleOperationSuite extends munit.FunSuite:
   test("a pile is named for a log line or a label"):
     assertEquals(SearchSource.name(SearchSource.WorldDeck), "world deck")
     assertEquals(SearchSource.name(cradle), "Cradle discard pile")
+
+  test("a shuffle forgets its pile's cards, since no one knows which is where"):
+    val peeker = discarded.game.current.players.head.player
+    val peeked = pile.foldLeft(discarded)((ready, card) => executor.execute(
+      ready, Peek(peeker, card, Location.RegionalDiscard(Region.Cradle)))
+      .toOption.get)
+    assert(pile.forall(peeked.knowledge.advisers(peeker).contains))
+    val shuffled = executor.execute(peeked, Shuffle(cradle, Some(pile.reverse)))
+      .toOption.get
+    assert(shuffled.knowledge.advisers.values.forall(known =>
+      pile.forall(!known.contains(_))), shuffled.knowledge.advisers.toString)

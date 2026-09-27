@@ -87,6 +87,24 @@ class CardKnowledgeSuite extends munit.FunSuite:
         s"$pile: ${gone.knowledge.advisers}")
     }
 
+  /** Scryer and Oracular Pig peek into a pile. A card entering a pile is
+    * forgotten, so a record of a card still in one comes from such a peek. */
+  test("a card peeked in the world deck or a discard pile is named to its peeker alone"):
+    val Vector(top, next) = current.commonCards.worldDeck.take(2): @unchecked
+    val staged = initialReady.updateCurrent(c => c.copy(commonCards =
+      c.commonCards.copy(worldDeck = c.commonCards.worldDeck.filterNot(_ == next),
+        regionalDiscards = c.commonCards.regionalDiscards.updated(Region.Cradle,
+          c.commonCards.discard(Region.Cradle) :+ next))))
+    val peeked = Vector(Peek(owner, top, Location.Deck(CardDeck.World)),
+      Peek(owner, next, Location.RegionalDiscard(Region.Cradle)))
+      .foldLeft(staged)((ready, op) =>
+        executor.execute(ready, op).fold(error => fail(s"$op: $error"), identity))
+    Vector[CardId](top, next).foreach { card =>
+      assert(!knows(staged, owner, card), s"$card before the peek")
+      assert(knows(peeked, owner, card), s"$card to its peeker")
+      assert(!knows(peeked, other, card), s"$card to another player")
+    }
+
   test("a relic set aside is forgotten by everyone, its holder included"):
     val held = run(Peek(other, relic, Location.Site(site)), taken)
     assert(knows(held, other, relic))
