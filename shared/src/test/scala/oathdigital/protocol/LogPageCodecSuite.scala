@@ -35,3 +35,11 @@ class LogPageCodecSuite extends munit.FunSuite:
 
   test("malformed JSON is a decode failure, not an exception"):
     assert(LogPageCodec.decode("{").isLeft)
+
+  test("a card list span round-trips its faces and backs"):
+    val list = LogPageWire("g", 0, 9, Vector(LogEntryWire(7, 0, "action", 1,
+      Vector(LogSpanWire("cards", "6 cards", cards = Vector(
+        CardDetailsProjection("19", "denizen", "Scryer", Some("discord")),
+        CardDetailsProjection("hidden", "vision", "Facedown vision",
+          orientation = Some("face-down"), hidden = true)))))))
+    assertEquals(LogPageCodec.decode(LogPageCodec.encode(list)), Right(list))

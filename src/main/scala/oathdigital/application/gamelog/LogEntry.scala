@@ -1,5 +1,7 @@
 package oathdigital.application.gamelog
 
+import oathdigital.protocol.projection.CardDetailsProjection
+
 /** One line of the game log (spec, "Output"). `(sequence, ordinal)` is its
   * stable identity: `sequence` is the journal index of the event that posted
   * it, `ordinal` its position among the entries that event posted. Depth 0
@@ -44,6 +46,11 @@ object LogSpan:
   /** What an action spent, drawn apart from the sentence (spec, "Supply"). */
   final case class Cost(value: Int, unit: String) extends LogSpan:
     def text: String = s"−$value $unit"
+  /** More cards than a line names inline, read as "6 cards": the list a
+    * client opens, in order, each card's face if its viewer may identify it
+    * and its back otherwise (catalog batch 2, N5). */
+  final case class Cards(cards: Vector[CardDetailsProjection]) extends LogSpan:
+    def text: String = s"${cards.size} cards"
 
 /** An entry before it has a key: what one event posts, in order. */
 private[gamelog] final case class Posted(kind: LogKind, depth: Int,
