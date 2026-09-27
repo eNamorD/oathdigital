@@ -11,11 +11,12 @@ import oathdigital.model.{Note, NoteKey, NotePart, Orientation}
   *    limit must discard an adviser.
   *  - `siteDiscardFirst` lets a play to a site first discard one card of the
   *    site's card list, at any capacity. It is optional with room and required
-  *    without, and it lifts the rule that a full site accepts only a card that
-  *    matches its homeland edifice.
+  *    without, and it lifts the rule that a full site accepts a card only at
+  *    the Homeland of its suit. The Homeland of the card's suit gives the same
+  *    permission without it.
   *  - `siteDiscardNote` is the line of the power that permits the discard.
   *    Card play writes it after the discard answer at a site. Without the
-  *    permission, the discard is asked only at a full Homeland of the card's
+  *    permission, the discard is asked only at the Homeland of the card's
   *    suit, and card play writes the Homeland rule's line there instead.
   *
   * Every change narrows or adds a permission independently of the others, so

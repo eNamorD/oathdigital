@@ -238,7 +238,7 @@ object CardPlayProcedure:
       Vector(choose, selected)
 
   /** The Homeland rule's line, "{site}: {Red} may discard a card at their
-    * site first.": without a power's permission, only a full Homeland of the
+    * site first.": without a power's permission, only the Homeland of the
     * card's suit asks for a discard at a site. */
   private def homelandNote(ready: ReadyGame, actor: PlayerId): Option[Note] =
     ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)

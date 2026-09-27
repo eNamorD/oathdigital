@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.action.{DiceAndRelicDrawPowers, Elders, Magic
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.cardplay.VowOfObedience
 import oathdigital.gameplay.powers.rest.SilverTongue
-import oathdigital.gameplay.powers.wake.MarbleFountains
+import oathdigital.gameplay.powers.wake.{MarbleFountains, RiverSitePower}
 
 /** The production phase powers, beside [[WalkerPowerCatalog]]. A power whose
   * card is absent from `catalog` is omitted.
@@ -20,4 +20,5 @@ object PhasePowerCatalog:
       TargetPowers.forCatalog(catalog) ++
       MovementPowers.forCatalog(catalog) ++
       SelfActionPowers.powers ++
-      BannerFacePowers.phasePowers)
+      BannerFacePowers.phasePowers ++
+      RiverSitePower.forCatalog(catalog))

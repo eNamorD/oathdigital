@@ -16,7 +16,8 @@ object CardPlay:
   /** One legal placement. `replacements` are the cards the play may discard
     * first. They are required when the placement is otherwise impossible, and
     * `replacementOptional` says the play is also legal with no discard (a
-    * site with room, under `PlacementRules.siteDiscardFirst`).
+    * site with room, under `PlacementRules.siteDiscardFirst` or at the
+    * Homeland of the card's suit).
     */
   final case class Choice(placement: SearchPlacement,
       replacements: Vector[CardId], replacementOptional: Boolean = false)
@@ -48,9 +49,12 @@ object CardPlay:
           .filterNot(value => origin == Origin.FacedownAdviser &&
             value.id == card).map(_.id)
         case SearchPlacement.Discard => Vector.empty
-      // A play to a site may be preceded by a discard even where it has room.
-      val optional = direct && rules.siteDiscardFirst &&
-        placement.isInstanceOf[SearchPlacement.Site]
+      // A play to a site may be preceded by a discard even where it has room,
+      // under a power's permission or at the Homeland of the card's suit.
+      val optional = direct && (placement match
+        case _: SearchPlacement.Site => player.flatMap(_.pawnSite).exists(site =>
+          catalog.suitOf(card).exists(siteDiscardAllowed(catalog, site, _, rules)))
+        case _ => false)
       val replacements = if direct && !optional then Vector.empty
       else candidateIds.filter { id =>
         val selected = placement match
@@ -63,6 +67,20 @@ object CardPlay:
       Option.when(direct || replacements.nonEmpty)(Choice(placement,
         replacements, replacementOptional = optional && replacements.nonEmpty))
     }
+
+  /** The suit whose Homeland `site` is, from its `site.<id>.homeland-<suit>`
+    * handler (CR p. 31). */
+  def homelandSuit(catalog: ExecutableCatalog, site: SiteId): Option[Suit] =
+    catalog.site(site).toVector.flatMap(_.handlers).flatMap(handler =>
+      handler.split('.').lastOption.filter(_.startsWith("homeland-"))
+        .flatMap(kind => Suit.fromKey(kind.stripPrefix("homeland-"))))
+      .headOption
+
+  /** A play of a `suit` card to `site` may discard a card there first: under
+    * a power's permission, or at the Homeland of `suit`. */
+  private def siteDiscardAllowed(catalog: ExecutableCatalog, site: SiteId,
+      suit: Suit, rules: PlacementRules): Boolean =
+    rules.siteDiscardFirst || homelandSuit(catalog, site).contains(suit)
 
   /** Physical intent of one placement. Replacement cards join the ordered
     * next-region discards or the edifice deck bottom after the kept card moves.
@@ -356,9 +374,9 @@ object CardPlay:
       : Either[OathViolation, Option[SiteDenizenState]] =
     val capacity = catalog.site(siteId).map(_.capacity).getOrElse(0)
     val full = site.denizens.size >= capacity
-    if rules.siteDiscardFirst then replace match
-      // Any site, at any capacity: the discard is optional with room and
-      // required without, and it may name any card of the site's card list.
+    if siteDiscardAllowed(catalog, siteId, suit, rules) then replace match
+      // At any capacity: the discard is optional with room and required
+      // without, and it may name any card of the site's card list.
       // `DiscardRestrictions` decide what may actually be discarded: a locked
       // card, an intact edifice and an active modifier may not.
       case None if full => Left(InvalidSearchPlacement(
@@ -367,18 +385,11 @@ object CardPlay:
       case Some(id) => site.denizens.find(_.id == id).toRight(
         InvalidSearchPlacement("replacement card is not at the site"))
         .map(Some(_))
-    else if !full && replace.isEmpty then Right(None)
-    else if !full then Left(InvalidSearchPlacement(
-      "site replacement is allowed only at a full Homeland"))
-    else
-      val homelandMatches = site.denizens.exists:
-        case e: EdificeState => catalog.edifice(e.id)
-          .exists(_.suit == suit)
-        case _ => false
-      if !homelandMatches then Left(InvalidSearchPlacement(
-        "full non-matching site cannot accept a denizen"))
-      else replace.flatMap(id => site.denizens.find(_.id == id)).toRight(
-        InvalidSearchPlacement("full matching Homeland requires a site-card discard")).map(Some(_))
+    else if full then Left(InvalidSearchPlacement(
+      "a full site takes a card only at the Homeland of its suit"))
+    else if replace.nonEmpty then Left(InvalidSearchPlacement(
+      "a site discard needs the Homeland of the card's suit or a power's permission"))
+    else Right(None)
 
   /** The region whose discard pile receives a card discarded at a site of
     * `region`.

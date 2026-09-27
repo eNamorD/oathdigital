@@ -56,9 +56,14 @@ Cards left for a later batch because they need engine work first:
 
 ### Phase - Cleanup tasks
 
-- [ ] **Implement every site power.** Each site's own power must work,
-  including the River's. Site powers are declared like other powers, as
-  contributions on the operation they change.
+- [x] **Implement every site power.** The River is a Wake power of its site
+  that places the pawn at another River, and Homeland offers its discard at
+  any capacity, read from the site. Plains has no power; Coast, Island,
+  Mountain and Pass were already built. See the
+  [site powers design](superpowers/specs/2026-09-27-site-powers-design.md).
+- [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
+  not discarded in the Chronicle Phase's Shape Empire step, which the engine
+  does not have yet. The Pass's consent waits for the Consent system phase.
 - [x] **Log the post-action checks.** Already done by the Game Log phase: the
   bandit refill posts "Bandits returned to {sites}" (`EventLines`), the
   Oathkeeper check posts "Oathkeeper passed to {player}" (`ActionLines`), and

@@ -31,3 +31,17 @@ class GamePresentationProjectorPrintedFacesSuite extends munit.FunSuite:
         case EdificeSide.Ruined => "unrestricted"
       }))
     }
+
+  test("a site's powers show their printed text"):
+    val sites = projector.readyWorld(initialReady, None).flatMap(_.sites)
+    def powers(id: String) = sites.find(_.siteId == id).get.powers
+      .map(p => (p.kind, p.label, p.description))
+    assertEquals(powers("site:ancient-city"), Vector(
+      ("enduring", "Enduring", Some("Cards at this site are not discarded in " +
+        "the Chronicle Phase during the Shape Empire step.")),
+      ("river", "River", Some("WAKE: You may place your pawn at another " +
+        "River. This is not a Travel action."))))
+    assertEquals(powers("site:deep-woods"), Vector(("homeland-beast",
+      "Homeland", Some("There is a Homeland of each suit. When playing a card " +
+        "of its Homeland suit to this site, you may discard a card from the " +
+        "site first (even one of matching suit)."))))

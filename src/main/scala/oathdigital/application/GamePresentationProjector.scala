@@ -378,16 +378,9 @@ private[application] final class GamePresentationProjector(
     case value: DenizenId => denizenLabel(value)
     case value: VisionId => safeLabel(value.value)
   private def sitePower(handler: String): SitePowerProjection =
-    val kind = handler.split('.').lastOption.getOrElse(handler)
-    val known = Map(
-      "coast" -> ("Coast", "Travel along the Coast route."),
-      "mountain" -> ("Mountain", "Travel here costs additional Supply."),
-      "river" -> ("River", "Part of the River route."),
-      "island" -> ("Island", "Travel here follows Island travel rules."),
-      "pass" -> ("Pass", "Travel through the Pass is restricted."),
-      "plains" -> ("Plains", "This site has the Plains site power."))
-    known.get(kind).fold(SitePowerProjection(kind, safeLabel(kind), None)):
-      case (label, description) => SitePowerProjection(kind, label, Some(description))
+    val kind = SitePowerText.kindOf(handler)
+    SitePowerText.of(kind).fold(SitePowerProjection(kind, safeLabel(kind), None))(
+      printed => SitePowerProjection(kind, printed.label, Some(printed.text)))
 
 private[application] object GamePresentationProjector:
   /** A card's orientation from its container state; `None` for a state
