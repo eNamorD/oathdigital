@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
 import oathdigital.model._
@@ -29,9 +30,9 @@ final case class GraspingVines private (cardId: DenizenId,
 
   private def kill(ctx: PowerCtx): Option[CoreOperation] = for
     route <- TravelRoute.pawnMove(ctx.operation)
-    ruler <- TravelRulers.rulerOfCard(ctx.state, cardId)
-    if TravelRulers.isEnemy(ruler, route.player)
-    if TravelRulers.rulerOf(ctx.state, route.source).contains(ruler)
+    ruler <- SiteRulers.rulerOfCard(ctx.state, cardId)
+    if SiteRule.enemies(ruler, SiteRuler.Player(route.player))
+    if SiteRulers.rulerOf(ctx.state, route.source).contains(ruler)
     warband <- TravelPayments.ownWarband(ctx.state, route.player,
       GraspingVines.Warbands)
   yield Kill(warband, PositionedLocation(Location.PlayArea(route.player)))

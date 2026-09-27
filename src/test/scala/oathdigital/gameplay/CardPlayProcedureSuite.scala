@@ -316,3 +316,30 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assert(owner.walkerDecision.nonEmpty)
     assertEquals(hidden.walkerDecision, None)
     assert(hidden.walkerWaiting.nonEmpty)
+
+  test("placementDecisionId and placedCard round-trip a denizen and a " +
+      "Vision whose value contains ':'"):
+    val actor = initialReady.game.current.turn.activePlayer
+    def pendingFor(id: String): PendingTree = PendingTree(at = Vector.empty,
+      answered = Vector(Answered(id, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.Button("adviser-faceup")), actor)))
+
+    val denizen = DenizenId("140")
+    val denizenId = CardPlayProcedure.placementDecisionId(denizen)
+    assertEquals(denizenId, "cardplay.place.denizen.140")
+    assertEquals(CardPlayProcedure.placedCard(pendingFor(denizenId)),
+      Some(denizen))
+
+    val vision = VisionRules.Faith
+    val visionId = CardPlayProcedure.placementDecisionId(vision)
+    assertEquals(visionId, s"cardplay.place.vision.${vision.value}")
+    assertEquals(CardPlayProcedure.placedCard(pendingFor(visionId)),
+      Some(vision))
+
+    // A value may itself contain '.': only the FIRST '.' after the prefix
+    // is the kind/value split, since no kind contains one.
+    val dotted = VisionId("vision:has.a.dot")
+    val dottedId = CardPlayProcedure.placementDecisionId(dotted)
+    assertEquals(dottedId, s"cardplay.place.vision.${dotted.value}")
+    assertEquals(CardPlayProcedure.placedCard(pendingFor(dottedId)),
+      Some(dotted))

@@ -153,10 +153,19 @@ object SearchProcedure:
       case Answered(`cardDecisionId`,
           DecisionAnswer.PartitionAnswer(placements), _) => placements
 
+  /** When no Partition answer is recorded (a single-card draw never asks
+    * one), the kept card is read from the live temporary hand. Once that
+    * single kept card has been played, the hand is empty; the tree is then
+    * settled from the answers instead, mirroring `CardPlayProcedure`'s own
+    * `settled` path, and the placement decision it recorded names the card.
+    */
   private def selectedCards(ready: ReadyGame, pending: PendingTree,
       actor: PlayerId): Vector[WorldCardId] =
-    answered(pending).fold(ready.game.current.temporaryHands
-      .getOrElse(actor, Vector.empty))(_.flatMap(value => card(value.option)))
+    answered(pending).fold {
+      val hand = ready.game.current.temporaryHands.getOrElse(actor, Vector.empty)
+      if hand.nonEmpty then hand
+      else CardPlayProcedure.placedCard(pending).toVector
+    }(_.flatMap(value => card(value.option)))
 
   private def selected(ready: ReadyGame, pending: PendingTree,
       actor: PlayerId): Either[OathViolation,

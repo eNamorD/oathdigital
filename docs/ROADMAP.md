@@ -8,30 +8,12 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase - Rule gaps in implemented cards** is next
-([design](superpowers/specs/2026-09-26-rule-gaps-in-implemented-cards-design.md)),
-then **Phase - Power log lines** and **Phase - Catalog batch 2**.
+**Phase - Power log lines** is next, then **Phase - Catalog batch 2**.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
-
-### Phase - Rule gaps in implemented cards
-
-Walker migrations dropped these rules. The cards can already appear in play,
-so the game silently skips part of their printed text. The
-[design](superpowers/specs/2026-09-26-rule-gaps-in-implemented-cards-design.md)
-covers all of it.
-
-- [ ] **Restriction look-ahead.** The walker hides any option whose answer
-  would break a `Restriction`, instead of refusing it after the player chose
-  it. Future "cannot" cards then need only a `Restriction`.
-- [ ] **Vision-play cards.** Vow of Obedience (with its REST), Secret Police
-  and Sacred Ground forbid playing a Vision faceup, and Book Binders rewards
-  its holder when another player does. Until then they are silently ignored.
-- [ ] **Vow of Peace's second sentence.** Attackers may still sacrifice
-  against a faceup holder (`VowOfPeaceContribution`).
 
 ### Phase - Power log lines
 

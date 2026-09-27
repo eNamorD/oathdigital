@@ -1,7 +1,7 @@
 # Rule Gaps in Implemented Cards — Design
 
-**Status:** approved design, planned in
-`docs/superpowers/plans/2026-09-26-rule-gaps-in-implemented-cards.md`
+**Status:** implemented (plan
+`docs/superpowers/plans/2026-09-26-rule-gaps-in-implemented-cards.md`)
 **Date:** 2026-09-26
 **Supersedes nothing.** Closes the deferrals recorded in
 `2026-09-19-visions-conspiracy-walker-design.md` (Vision-play cards) and

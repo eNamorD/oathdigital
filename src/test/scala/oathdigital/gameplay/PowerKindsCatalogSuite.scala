@@ -18,7 +18,8 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
   private val persistentRules = Vector("denizen.toll-roads",
     "denizen.grasping-vines", "relic.circlet-of-command", "denizen.gossip",
     "denizen.league-treaty", "denizen.gleaming-armor", "edifice.e28.intact",
-    "edifice.e28.ruined")
+    "edifice.e28.ruined", "denizen.secret-police", "edifice.e08.intact",
+    "denizen.book-binders")
 
   private def flag(id: String): Option[Boolean] =
     catalog.printedPower(PowerId(id)).map(_.persistent)
@@ -39,4 +40,10 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
       "play, so it does not derive its resolution from the flag"):
     assertEquals(flag("denizen.dazzle"), Some(false))
     assertEquals(oathdigital.gameplay.powers.whenplayed.Dazzle
+      .forCatalog(catalog).get.resolution, PowerResolution.Automatic)
+
+  test("Vow of Obedience's rule is automatic whatever its flag: the flag is " +
+      "false because of its REST"):
+    assertEquals(flag("denizen.vow-of-obedience"), Some(false))
+    assertEquals(oathdigital.gameplay.powers.cardplay.VowOfObedience
       .forCatalog(catalog).get.resolution, PowerResolution.Automatic)

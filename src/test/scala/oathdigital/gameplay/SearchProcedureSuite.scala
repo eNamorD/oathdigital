@@ -2,6 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.powerresolver.Transform
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
@@ -121,6 +122,42 @@ class SearchProcedureSuite extends munit.FunSuite:
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
     assertEquals(after.game.current.walkerPending, None)
     withPowersParked.assertNotParked(result.state)
+
+  test("a single-card Search settles from its placement answer, so a " +
+      "power's Decide added after the play still resolves (5c2597ee)"):
+    val base = ready
+    val actor = base.game.current.turn.activePlayer
+    val vision = VisionRules.Faith
+    val current = base.game.current
+    val deck = current.commonCards.worldDeck
+    // A Vision on top stops the draw at one card, so no Partition decision
+    // is ever asked -- the scenario the settle fix covers.
+    val initial = base.updateCurrent(_.copy(commonCards = current.commonCards
+      .copy(worldDeck = Vector(vision) ++ deck.filterNot(_ == vision))))
+    val settleDecision = "test.search-settle"
+    val settlePower = ProcedureWalkerSuite.TestPower(
+      PowerId("test.search-settle"),
+      Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform(
+        (ctx, children) => children :+ Decide(settleDecision, ctx.activePlayer,
+          DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
+            DecisionOptionRef.Button("ok"), "OK"))))))))
+    val withPower = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowers(Vector(settlePower)))
+    val withPowerParked = new ParkedDecisionAssertions(catalog,
+      WalkerPowers(Vector(settlePower)))
+    val started = withPower.startWalker(OathState.Ready(initial), ActionRef.Search,
+      actor, startArgs = Vector(DecisionOptionRef.Button("search:world")))
+      .toOption.get
+    val placed = withPower.resolveWalker(started.state, actor,
+      s"cardplay.place.${vision.kind}.${vision.value}",
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup")))
+      .toOption.get
+    withPowerParked.assertParked(placed.state, ActionRef.Search, settleDecision,
+      actor)
+    val completed = withPower.resolveWalker(placed.state, actor, settleDecision,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("ok"))).toOption.get
+    val OathState.Ready(finalReady) = completed.state: @unchecked
+    assertEquals(finalReady.game.current.walkerPending, None)
 
   test("Search uses its registered modifier-selection window"):
     val initial = ready

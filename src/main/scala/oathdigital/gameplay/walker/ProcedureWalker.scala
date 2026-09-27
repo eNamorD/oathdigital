@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.powerresolver.ContributingPower
+import oathdigital.gameplay.powerresolver.{ContributingPower, Restriction}
 import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
@@ -37,8 +37,18 @@ object WalkerOutcome:
   * `OathRules` supplies it at command entry; `applyRecorded` (replay) never
   * takes one -- replay applies recorded ops only (spec decision 5) and must
   * never re-gather or re-transform.
+  *
+  * `probing` is on for every command. The restriction look-ahead turns it off
+  * for the traversal it runs, so a dry run inside a probe (an `OfferHost`
+  * pass) never probes in turn.
   */
-final case class WalkerPowers(powers: Vector[ContributingPower])
+final case class WalkerPowers(powers: Vector[ContributingPower],
+    probing: Boolean = true):
+  /** Whether any power can reject an action. The restriction look-ahead
+    * ([[WalkerPowerGather.probe]]) has nothing to find without one.
+    */
+  lazy val hasRestrictions: Boolean = powers.exists(_.contributions.values
+    .exists(_.exists(_.isInstanceOf[Restriction])))
 object WalkerPowers:
   val empty: WalkerPowers = WalkerPowers(Vector.empty)
 
@@ -49,7 +59,7 @@ object WalkerPowers:
     * both always fold a shared window identically (Task 5 projector seam).
     */
   def selected(catalog: WalkerPowers, modifiers: Vector[PowerId]): WalkerPowers =
-    WalkerPowers(catalog.powers.filter(power =>
+    catalog.copy(powers = catalog.powers.filter(power =>
       power.resolution == PowerResolution.Automatic ||
         modifiers.contains(power.id)))
 
@@ -135,7 +145,7 @@ object ProcedureWalker:
     // stored field before executing deltas.
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice,
-      state.game.current.walkerProcedure),
+      state.game.current.walkerProcedure, action),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)
 
   /** Resumes the `Roll` park recorded by `advance` (Task 4 roll contract).
@@ -161,7 +171,7 @@ object ProcedureWalker:
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
       state.game.current.turn.activePlayer, pending.answered, powers, dice,
-      state.game.current.walkerProcedure),
+      state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
       .map(toOutcome)
 
@@ -186,7 +196,7 @@ object ProcedureWalker:
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
       state.game.current.turn.activePlayer, pending.answered, powers, dice,
-      state.game.current.walkerProcedure),
+      state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
       .map(toOutcome)
 
@@ -211,12 +221,18 @@ object ProcedureWalker:
     * here used -- `leafAt` folds every window on the path exactly like the
     * walk does, so a transform that inserts operations around a windowed
     * node does not make this address the wrong leaf.
+    *
+    * Always resolves with the restriction look-ahead off: the look-ahead
+    * only narrows a `Decide`'s options, never a `Roll`'s, so probing here
+    * could only be wasted work on a position that turns out to be a
+    * `Decide` (discarded below either way).
     */
   def parkedRoll(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Option[(PoolKey, Int)] =
-    WalkerPowerGather.leafAt(state, action, pending, powers).collect:
-      case roll: Roll if roll.mode == RollMode.Parked =>
-        (roll.pool, WalkerRolls.poolCount(state, roll.pool))
+    WalkerPowerGather.leafAt(state, action, pending, powers.copy(probing = false))
+      .collect:
+        case roll: Roll if roll.mode == RollMode.Parked =>
+          (roll.pool, WalkerRolls.poolCount(state, roll.pool))
 
   /** Every decision open at the park: one for a plain or co-owned `Decide`,
     * none for a `Roll` or a position that does not resolve. Reports the nodes
@@ -224,39 +240,52 @@ object ProcedureWalker:
     * rather than on the park's structural path, which shifts if the tree is
     * edited. A future `Simultaneous` node would return one per unanswered
     * child, and nothing else here would change.
+    *
+    * `probing` (default on) runs the restriction look-ahead, narrowing the
+    * options a caller offers or validates against. A caller that only reads
+    * the decision's identity, owner or labels -- never which options are
+    * still legal -- passes `probing = false` to skip that work.
     */
   def openDecisions(state: ReadyGame, action: Operation,
-      pending: PendingTree, powers: WalkerPowers): Vector[Decide] =
-    WalkerPowerGather.leafAt(state, action, pending, powers).collect {
+      pending: PendingTree, powers: WalkerPowers,
+      probing: Boolean = true): Vector[Decide] =
+    val looked = if probing then powers else powers.copy(probing = false)
+    WalkerPowerGather.leafAt(state, action, pending, looked).collect {
       case decide: Decide => decide
     }.toVector
 
   /** The single-decision view of [[openDecisions]]. `None` when the park is a
     * Roll or the position does not resolve to a Decide. Symmetric to
-    * [[parkedRoll]].
+    * [[parkedRoll]]. See [[openDecisions]] for `probing`.
     */
   def parkedDecide(state: ReadyGame, action: Operation,
-      pending: PendingTree, powers: WalkerPowers): Option[Decide] =
-    openDecisions(state, action, pending, powers).headOption
+      pending: PendingTree, powers: WalkerPowers,
+      probing: Boolean = true): Option[Decide] =
+    openDecisions(state, action, pending, powers, probing).headOption
 
   /** Who a parked position waits on, as one player: a parked `Decide`'s
     * primary owner, read off the rebuilt and transformed node, or the active
     * player for a parked `Roll`.
     * Never stored -- a power that changes an owner changes this answer on the
     * next command, and authorization and projection both read it (Task 5).
+    *
+    * Skips the restriction look-ahead: an owner never changes with which
+    * options the look-ahead would hide, so probing here is pure overhead.
     */
   def awaitedPlayer(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[PlayerId] =
-    parkedDecide(state, action, pending, powers).map(_.owner).orElse(
-      parkedRoll(state, action, pending, powers).map(_ =>
+    parkedDecide(state, action, pending, powers, probing = false).map(_.owner)
+      .orElse(parkedRoll(state, action, pending, powers).map(_ =>
         state.game.current.turn.activePlayer))
 
   /** Everyone who may answer the parked position: the owners and co-owners of
-    * its open decisions, or the active player for a parked `Roll`.
+    * its open decisions, or the active player for a parked `Roll`. Skips the
+    * restriction look-ahead for the same reason [[awaitedPlayer]] does: an
+    * owner set never depends on which options are hidden.
     */
   def awaitedPlayers(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Set[PlayerId] =
-    val open = openDecisions(state, action, pending, powers)
+    val open = openDecisions(state, action, pending, powers, probing = false)
     if open.nonEmpty then open.flatMap(_.owners).toSet
     else parkedRoll(state, action, pending, powers)
       .map(_ => Set(state.game.current.turn.activePlayer)).getOrElse(Set.empty)
@@ -277,7 +306,9 @@ object ProcedureWalker:
       powers: WalkerPowers,
       dice: WalkerDice,
       /** The procedure of the parked position being resumed. */
-      procedure: Option[oathdigital.model.ProcedureRef]
+      procedure: Option[oathdigital.model.ProcedureRef],
+      /** The whole action tree, which the restriction look-ahead probes. */
+      root: Operation
   )
 
   private sealed trait Step extends Product with Serializable
@@ -439,9 +470,39 @@ object ProcedureWalker:
 
   /** Executes or parks one leaf at its own position, recording
     * `contributions` (every enclosing window's gather order, this leaf's own
-    * included) on whatever event it emits.
+    * included) on whatever event it emits. A `Decide` where it is asked --
+    * reached fresh or being answered -- is first narrowed by the restriction
+    * look-ahead ([[WalkerPowerGather.probe]]). A required decision with
+    * nothing left rejects the command, and an optional one with nothing left
+    * is passed without asking.
     */
   private def runLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
+      path: Vector[String], cursor: Option[Vector[String]],
+      resume: Resume, contributions: Vector[PowerId],
+      strict: Boolean): Either[OathViolation, Step] =
+    leaf match
+      case decide: Decide if asked(cursor, resume) =>
+        WalkerPowerGather.probe(ctx.root, decide, ctx.state, ctx.activePlayer,
+            ctx.powers, ctx.answered, ctx.procedure).flatMap:
+          case Some(narrowed) => runNarrowed(narrowed, ctx, path, cursor,
+            resume, contributions, strict)
+          case None if cursor.isEmpty => Right(Done(ctx))
+          case None => Left(OathViolation.InvalidEventOrder(
+            s"decision ${decide.decisionId} has nothing left to offer"))
+      case _ => runNarrowed(leaf, ctx, path, cursor, resume, contributions,
+        strict)
+
+  /** Whether the leaf is where a decision is asked: reached fresh, or at the
+    * cursor's end while an answer resumes. A plain resume only re-parks it.
+    */
+  private def asked(cursor: Option[Vector[String]], resume: Resume): Boolean =
+    cursor match
+      case None => true
+      case Some(remaining) =>
+        remaining.isEmpty && resume.isInstanceOf[AnswerResume]
+
+  /** Executes or parks one leaf that the look-ahead has already narrowed. */
+  private def runNarrowed(leaf: PrimitiveOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, contributions: Vector[PowerId],
       strict: Boolean): Either[OathViolation, Step] =

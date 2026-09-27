@@ -3,11 +3,16 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 
-/** The powers that trigger when a card is played, registered together. A power
-  * whose card is absent from `catalog` is omitted.
+/** The powers that act when a card is played, registered together: the
+  * triggers that reward a play and the rules that forbid one. A power whose
+  * card is absent from `catalog` is omitted.
   */
 object CardPlayTriggers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     WildCry.forCatalog(catalog).toVector ++
       WelcomingParty.forCatalog(catalog).toVector ++
-      Gossip.forCatalog(catalog).toVector
+      Gossip.forCatalog(catalog).toVector ++
+      BookBinders.forCatalog(catalog).toVector ++
+      VowOfObedience.forCatalog(catalog).toVector ++
+      SecretPolice.forCatalog(catalog).toVector ++
+      SacredGround.forCatalog(catalog).toVector

@@ -23,10 +23,11 @@ import oathdigital.model._
   * window is walked for a Muster (`PowerCtx.procedure`). The power cannot be
   * selected for any other action, so this is the Campaign it runs itself.
   *
-  * Limitation: a Restriction hooked on the whole Campaign (Vow of Peace) is
-  * checked once, when a command starts, against the tree that exists then, and
-  * the nested Campaign is not part of it. The decisions of the nested Campaign
-  * are restricted as usual.
+  * A Campaign-wide Restriction (Vow of Peace, a protecting Fortress) still
+  * reaches the nested Campaign: the walker's restriction look-ahead probes the
+  * "campaign" option before offering it, walking the tree that answer would
+  * derive, so a forbidden nested Campaign hides that option instead of
+  * parking on it and refusing the answer.
   */
 final case class KnightsErrant private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends SelectedModifier:

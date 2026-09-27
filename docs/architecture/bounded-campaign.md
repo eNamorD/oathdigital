@@ -123,8 +123,9 @@ receives the durable recipient decision before normal Act controls resume.
 
 - **Vow of Peace** is a root `Restriction` at `CampaignActionEligibility`. A faceup
   copy held as an adviser blocks its holder's Campaign with
-  `CampaignUnavailable`. The second printed sentence (attackers cannot sacrifice
-  against a holder) is not modelled.
+  `CampaignUnavailable`. Its second sentence is a `Transform` at
+  `CampaignSacrificeSelection` that removes the attacker's sacrifice decision
+  when the defender (the targets' ruler in a Conquest) holds a faceup copy.
 - **Narrow Pass** gains an `OptionRestriction` at `CampaignTargetSelection`, beside
   its Travel restriction. It removes another site in the Pass's region from the
   targets when the actor's pawn is outside that region and the actor does not rule

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx}
-import oathdigital.model.{Answered, Branch, Decide, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ReadyGame}
+import oathdigital.model.{Answered, Branch, Decide, DecisionAnswer, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ProcedureRef, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -79,17 +79,25 @@ private[walker] object WalkerPowerGather:
     else
       val permitted = permits(restrictions, ctxFor, byId)
       ops.flatMap:
-        case decide: Decide => decide.query match
-          case one: DecisionQuery.ChooseOne => Vector(decide.copy(query =
-            one.copy(options = one.options.filter(o => permitted(o.ref)))))
-          case many: DecisionQuery.ChooseMany =>
-            val options = many.options.filter(o => permitted(o.ref))
-            if many.min == 0 && options.isEmpty then Vector.empty
-            else Vector(decide.copy(query = many.copy(
-              min = math.min(many.min, options.size),
-              max = math.min(many.max, options.size), options = options)))
-          case _ => Vector(decide)
+        case decide: Decide => narrowed(decide, permitted).toVector
         case other => Vector(other)
+
+  /** `decide` offering only the permitted options. `None` is an optional
+    * choose-many with nothing left, which is not asked. Other query kinds
+    * are returned unchanged.
+    */
+  private def narrowed(decide: Decide,
+      permitted: DecisionOptionRef => Boolean): Option[Decide] =
+    decide.query match
+      case one: DecisionQuery.ChooseOne => Some(decide.copy(query =
+        one.copy(options = one.options.filter(o => permitted(o.ref)))))
+      case many: DecisionQuery.ChooseMany =>
+        val options = many.options.filter(o => permitted(o.ref))
+        if many.min == 0 && options.isEmpty then None
+        else Some(decide.copy(query = many.copy(
+          min = math.min(many.min, options.size),
+          max = math.min(many.max, options.size), options = options)))
+      case _ => Some(decide)
 
   /** A required decision with every option forbidden cannot be answered: the
     * violation is the first restriction's, for the first option.
@@ -133,10 +141,13 @@ private[walker] object WalkerPowerGather:
       answered: Vector[Answered] = Vector.empty): Vector[OathViolation] =
     val byId: Map[PowerId, ContributingPower] =
       powers.powers.map(power => power.id -> power).toMap
+    /** Each contribution's context carries `answered`, so a restriction can
+      * read what was chosen.
+      */
     def ctxFor(window: PowerWindow, path: Vector[String], operation: Operation)
         : ContributingPower => PowerCtx =
       power => PowerCtx(state, activePlayer, power.source, window, path,
-        operation, state.game.current.walkerProcedure)
+        operation, state.game.current.walkerProcedure, answered)
     def windowsIn(node: Operation, path: Vector[String])
         : Vector[(PowerWindow, Vector[String], Operation)] =
       val own = node.window.map(w => Vector((w, path, node))).getOrElse(Vector.empty)
@@ -156,20 +167,82 @@ private[walker] object WalkerPowerGather:
           activePlayer, powers, path, node.children,
           state.game.current.walkerProcedure, answered)._1)
       own ++ nested
-    val rejected = windowsIn(tree, Vector.empty).flatMap:
+    val windows = windowsIn(tree, Vector.empty)
+    val rejected = windows.flatMap:
       case (window, path, operation) =>
         val gathered = ContributionCollector.gather(window, powers.powers,
           ctxFor(window, path, operation))
         gathered.restrictions.flatMap { case (powerId, restriction) =>
           restriction.fn(ctxFor(window, path, operation)(byId(powerId)), tree)
         }
-    val emptied = windowsIn(tree, Vector.empty).flatMap:
+    val emptied = windows.flatMap:
       case (window, path, decide: Decide) =>
         val ctx = ctxFor(window, path, decide)
         emptiedDecision(decide, ContributionCollector.gather(window,
           powers.powers, ctx).optionRestrictions, ctx, byId)
       case _ => Vector.empty
     rejected ++ emptied
+
+  /** The restriction look-ahead (rule-gaps design, section 1): `decide`
+    * without the options whose answer would break a `Restriction` somewhere in
+    * `root`. Each option is probed by appending a hypothetical answer by the
+    * decision's owner to `answered` and running [[restrictionViolations]]. An
+    * option is removed only when that adds a violation the answers so far do
+    * not already produce, so a violation no option causes never empties a
+    * decision; the answer-time check still reports it.
+    *
+    * `ChooseOne` and `ChooseMany` are probed option by option and narrowed as
+    * [[restrictOptions]] narrows them. `ChooseAmount` is probed value by value
+    * and narrowed to the permitted values when they form one range; with a
+    * gap it is left whole and the answer-time check decides. Other query
+    * kinds are not probed. `Left` is a required decision with nothing left,
+    * carrying the first option's violation. `Right(None)` is an optional one
+    * with nothing left, which is not asked.
+    *
+    * The traversal runs with probing off, so a dry run inside it never probes
+    * in turn, and against the state as the walk sees it (no pending tree, the
+    * walk's procedure), so the live walk and [[leafAt]] offer the same
+    * options.
+    */
+  def probe(root: Operation, decide: Decide, state: ReadyGame,
+      activePlayer: PlayerId, powers: WalkerPowers, answered: Vector[Answered],
+      procedure: Option[ProcedureRef]): Either[OathViolation, Option[Decide]] =
+    if !powers.probing || !powers.hasRestrictions then Right(Some(decide))
+    else
+      val quiet = powers.copy(probing = false)
+      val seen = state.updateCurrent(_.copy(walkerPending = None,
+        walkerProcedure = procedure))
+      def violations(answers: Vector[Answered]): Vector[OathViolation] =
+        restrictionViolations(root, quiet, seen, activePlayer, answers)
+      val baseline = violations(answered).toSet
+      def added(answer: DecisionAnswer): Option[OathViolation] =
+        violations(answered :+ Answered(decide.decisionId, answer,
+          decide.owner)).find(!baseline(_))
+      def byOption(refs: Vector[DecisionOptionRef],
+          answer: DecisionOptionRef => DecisionAnswer,
+          required: Boolean): Either[OathViolation, Option[Decide]] =
+        val verdicts = refs.map(ref => ref -> added(answer(ref))).toMap
+        if required && refs.nonEmpty && refs.forall(verdicts(_).nonEmpty) then
+          Left(verdicts(refs.head).get)
+        else Right(narrowed(decide, ref => verdicts(ref).isEmpty))
+      decide.query match
+        case one: DecisionQuery.ChooseOne => byOption(one.options.map(_.ref),
+          DecisionAnswer.ChooseOneAnswer(_), required = true)
+        case many: DecisionQuery.ChooseMany => byOption(
+          many.options.map(_.ref),
+          ref => DecisionAnswer.ChooseManyAnswer(Vector(ref)), many.min >= 1)
+        case amount: DecisionQuery.ChooseAmount =>
+          val verdicts = (amount.min to amount.max).toVector.map(value =>
+            value -> added(DecisionAnswer.ChooseAmountAnswer(value)))
+          val allowed = verdicts.collect { case (value, None) => value }
+          if verdicts.isEmpty then Right(Some(decide))
+          else if allowed.isEmpty then Left(verdicts.flatMap(_._2).head)
+          else if allowed.last - allowed.head + 1 != allowed.size then
+            Right(Some(decide))
+          else Right(Some(decide.copy(query = amount.copy(min = allowed.head,
+            max = allowed.last, suggested = amount.suggested.map(value =>
+              math.max(allowed.head, math.min(allowed.last, value)))))))
+        case _ => Right(Some(decide))
 
   /** Resolves the node addressed by `pending.at` (a child-index path rooted
     * at `action`), or `None` when a segment is non-numeric or out of range (a
@@ -190,11 +263,21 @@ private[walker] object WalkerPowerGather:
     * `OathRulesWalker.checkAnswerable`),
     * moved here (like [[applyWindow]]/[[restrictionViolations]] above) to
     * keep `ProcedureWalker.scala` under the project's line bound.
+    *
+    * A `Decide` is narrowed by the restriction look-ahead ([[probe]]),
+    * exactly as the walk narrowed it before parking. A position the walk
+    * would not have parked at, whose probe empties the decision, is returned
+    * as declared, and the answer-time check refuses it.
     */
   def leafAt(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[Operation] =
     resolveAt(state, pending, powers, action, pending.at, Vector.empty,
-      Set.empty)
+      Set.empty).map:
+        case decide: Decide => probe(action, decide, state,
+          state.game.current.turn.activePlayer, powers, pending.answered,
+          state.game.current.walkerProcedure).toOption.flatten
+          .getOrElse(decide)
+        case other => other
 
   private def resolveAt(state: ReadyGame, pending: PendingTree,
       powers: WalkerPowers, node: Operation, remaining: Vector[String],

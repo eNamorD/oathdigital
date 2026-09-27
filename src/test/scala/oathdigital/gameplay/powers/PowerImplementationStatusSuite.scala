@@ -27,3 +27,8 @@ class PowerImplementationStatusSuite extends munit.FunSuite:
 
   test("an id nothing declares at all is not implemented"):
     assert(!implemented(PowerId("denizen.not-a-real-power")))
+
+  test("the Vision-play cards are implemented"):
+    Vector("denizen.vow-of-obedience", "denizen.secret-police",
+      "denizen.book-binders", "edifice.e08.intact").foreach(id =>
+      assert(implemented(PowerId(id)), id))
