@@ -145,6 +145,10 @@ class GameLogRareLinesSuite extends munit.FunSuite:
     assertEquals(said(DecisionOptionRef.Relic(relic)), "a Relic")
     assertEquals(said(DecisionOptionRef.RelicSlot(other, 0)),
       s"${name(other)}'s facedown relic (slot 1)")
+    assertEquals(said(DecisionOptionRef.AdviserSlot(other, 0)),
+      s"${name(other)}'s facedown adviser (slot 1)")
+    assertEquals(said(DecisionOptionRef.AdviserSlot(other, 9)),
+      s"${name(other)}'s adviser (slot 10)")
     assertEquals(said(DecisionOptionRef.Banner(Banner.PeoplesFavor)),
       "People's Favor")
     assertEquals(said(DecisionOptionRef.Deck(CardDeck.World)), "World")

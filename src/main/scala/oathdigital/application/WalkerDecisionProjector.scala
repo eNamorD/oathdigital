@@ -322,6 +322,18 @@ private[application] final class WalkerDecisionProjector(
             .exists(_.relics.isDefinedAt(slot.slot)) then
           row(s"${presentation.safeLabel(slot.owner.value)} facedown relic")
         else None
+      // The card when the viewer may identify it, else its back: a slot
+      // never discloses a facedown adviser, but the panel still draws a card.
+      case DecisionOption.AdviserSlot(slot) =>
+        ready.game.current.players.find(_.player == slot.owner)
+          .flatMap(_.advisers.lift(slot.slot)).flatMap { held =>
+            val owner = presentation.safeLabel(slot.owner.value)
+            card(ready, viewer, index, held.id) match
+              case Some(details) => row(details.name, Some(details),
+                extra = Vector(s"$owner's adviser"))
+              case None => row(s"$owner's facedown adviser ${slot.slot + 1}",
+                Some(presentation.hiddenCard(presentation.cardKind(held.id))))
+          }
       case DecisionOption.Banner(held) =>
         // The banner is one object on the table and the board says who holds
         // it, so the option names the banner alone -- and counts what that

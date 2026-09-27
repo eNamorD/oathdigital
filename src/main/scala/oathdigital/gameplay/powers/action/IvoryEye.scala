@@ -11,15 +11,12 @@ import oathdigital.model._
   * viewer's knowledge, and the presentation layer then names that facedown
   * adviser to the viewer alone.
   *
-  * The options are `Button`s keyed by owner and adviser slot rather than card
-  * references. A card option names the card's identity, and the projector
-  * drops any decision that names a card its viewer may not identify, which a
-  * facedown adviser of another player is. The slot is read from live state, so
-  * an answer cannot name a card that has since moved.
+  * The options are adviser slots, not card references, so a facedown
+  * adviser of another player is offered without disclosing it. The slot is
+  * read from live state, so an answer cannot name a card that has since moved.
   */
 case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
   val decisionId: String = "power.ivory-eye.adviser"
-  private val Prefix = "adviser:"
   /** Its own line, in place of the generic Peeked line. The card reads as
     * its back to anyone but the peeker, so the owner is named apart from
     * it. */
@@ -31,8 +28,8 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
   /** The option for the facedown adviser in position `slot` of `owner`'s
     * advisers.
     */
-  def optionFor(owner: PlayerId, slot: Int): DecisionOptionRef.Button =
-    DecisionOptionRef.Button(s"$Prefix${owner.value}:$slot")
+  def optionFor(owner: PlayerId, slot: Int): DecisionOptionRef.AdviserSlot =
+    DecisionOptionRef.AdviserSlot(owner, slot)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
@@ -52,8 +49,7 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
 
   private final case class Target(owner: PlayerId, slot: Int,
       card: WorldCardId):
-    def ref: DecisionOptionRef.Button = optionFor(owner, slot)
-    def label: String = s"${owner.value}: facedown adviser ${slot + 1}"
+    def ref: DecisionOptionRef.AdviserSlot = optionFor(owner, slot)
 
   private def targets(ready: ReadyGame): Vector[Target] = for
     player <- ready.game.current.players
@@ -68,7 +64,7 @@ case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
     val found = targets(ready)
     if found.isEmpty then Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(
-      found.map(t => DecisionOption.Button(t.ref, t.label)),
+      found.map(t => DecisionOption.AdviserSlot(t.ref)),
       heading = Some("Ivory Eye: peek at a facedown adviser"))))
 
   private def peek(ready: ReadyGame, actor: PlayerId, pending: PendingTree)

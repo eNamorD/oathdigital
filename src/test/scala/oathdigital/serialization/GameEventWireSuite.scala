@@ -237,6 +237,7 @@ class GameEventWireSuite extends munit.FunSuite:
       DecisionOptionRef.Deck(CardDeck.Relic),
       DecisionOptionRef.FavorBank(Suit.Hearth),
       DecisionOptionRef.RelicSlot(PlayerId("blue"), 0),
+      DecisionOptionRef.AdviserSlot(PlayerId("blue"), 1),
       DecisionOptionRef.Banner(Banner.PeoplesFavor))
     val events = refs.zipWithIndex.map { case (ref, index) =>
       WalkerStepRecorded(index.toString,

@@ -25,6 +25,12 @@ private[gamelog] final class ChoiceWords(words: LogWords,
     case DecisionOptionRef.Edifice(id) => card(id, before, after, viewer)
     case DecisionOptionRef.RelicSlot(owner, slot) =>
       Vector(words.player(owner), Text(s"'s facedown relic (slot ${slot + 1})"))
+    case DecisionOptionRef.AdviserSlot(owner, slot) =>
+      before.game.current.players.find(_.player == owner)
+        .flatMap(_.advisers.lift(slot)).fold(Vector[LogSpan](
+          words.player(owner), Text(s"'s adviser (slot ${slot + 1})")))(held =>
+          words.player(owner) +: Text("'s ") +:
+            words.slotted(held.id, owner, before, after, viewer))
     case DecisionOptionRef.Banner(banner) => Vector(words.banner(banner))
     case DecisionOptionRef.Deck(deck) => Vector(Text(words.label(deck.key)))
     case DecisionOptionRef.FavorBank(suit) => Vector(Text(s"the $suit bank"))

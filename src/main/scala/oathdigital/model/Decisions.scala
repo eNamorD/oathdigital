@@ -34,7 +34,7 @@ package oathdigital.model
   * part of a card's identity.
   */
 sealed trait DecisionOptionRef extends Product with Serializable:
-  /** Which of the eleven variants this is, as a stable wire string. */
+  /** Which of the twelve variants this is, as a stable wire string. */
   def kind: String
 
   /** The variant's identity as a stable wire string, paired with [[kind]].
@@ -82,6 +82,16 @@ object DecisionOptionRef:
     require(slot >= 0, "a relic slot must be non-negative")
     val kind: String = "relic-slot"
     def wireId: String = s"${owner.value}:$slot"
+  /** One adviser of a player, named by its position in their advisers
+    * rather than by the card, so a facedown adviser's identity is never
+    * disclosed by an option. The owner may contain a colon; the slot is
+    * always the text after the last one.
+    */
+  final case class AdviserSlot(owner: PlayerId, slot: Int)
+      extends DecisionOptionRef:
+    require(slot >= 0, "an adviser slot must be non-negative")
+    val kind: String = "adviser-slot"
+    def wireId: String = s"${owner.value}:$slot"
   /** A banner. It names no holder: who holds it is read from live state, so
     * an answer cannot name a holder that has since changed.
     */
@@ -103,7 +113,7 @@ object DecisionOptionRef:
     * pair from untrusted input: `None` for an unknown kind or an id that
     * variant cannot carry, never a thrown `require`.
     *
-    * Total over the eleven variants, and the exact inverse of the two
+    * Total over the twelve variants, and the exact inverse of the two
     * accessors above — a new variant that forgets this method fails to
     * compile, because the match below is exhaustive over nothing and the
     * accessors are abstract.
@@ -118,15 +128,21 @@ object DecisionOptionRef:
       case "relic" => Some(Relic(RelicId(wireId)))
       case "vision" => Some(Vision(VisionId(wireId)))
       case "edifice" => Some(Edifice(EdificeId(wireId)))
-      case "relic-slot" =>
-        val at = wireId.lastIndexOf(':')
-        Option.when(at > 0)(wireId.take(at)).filter(_.trim.nonEmpty)
-          .flatMap(owner => wireId.drop(at + 1).toIntOption
-            .filter(_ >= 0).map(RelicSlot(PlayerId(owner), _)))
+      case "relic-slot" => slotOf(wireId).map((owner, slot) =>
+        RelicSlot(owner, slot))
+      case "adviser-slot" => slotOf(wireId).map((owner, slot) =>
+        AdviserSlot(owner, slot))
       case "banner" => oathdigital.model.Banner.fromKey(wireId).map(Banner(_))
       case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
       case "favor-bank" => Suit.fromKey(wireId).map(FavorBank(_))
       case _ => None
+
+  /** The owner and non-negative slot of a slot reference's wire id. */
+  private def slotOf(wireId: String): Option[(PlayerId, Int)] =
+    val at = wireId.lastIndexOf(':')
+    Option.when(at > 0)(wireId.take(at)).filter(_.trim.nonEmpty)
+      .flatMap(owner => wireId.drop(at + 1).toIntOption
+        .filter(_ >= 0).map(PlayerId(owner) -> _))
 
 /** One selectable option on a decision: its stable reference, plus whatever
   * display detail the action itself authors.
@@ -150,6 +166,8 @@ object DecisionOption:
   final case class Vision(ref: DecisionOptionRef.Vision) extends DecisionOption
   final case class Edifice(ref: DecisionOptionRef.Edifice) extends DecisionOption
   final case class RelicSlot(ref: DecisionOptionRef.RelicSlot)
+      extends DecisionOption
+  final case class AdviserSlot(ref: DecisionOptionRef.AdviserSlot)
       extends DecisionOption
   final case class Banner(ref: DecisionOptionRef.Banner) extends DecisionOption
   final case class Deck(ref: DecisionOptionRef.Deck) extends DecisionOption
@@ -188,6 +206,7 @@ object DecisionOption:
     case value: DecisionOptionRef.Vision => Some(Vision(value))
     case value: DecisionOptionRef.Edifice => Some(Edifice(value))
     case value: DecisionOptionRef.RelicSlot => Some(RelicSlot(value))
+    case value: DecisionOptionRef.AdviserSlot => Some(AdviserSlot(value))
     case value: DecisionOptionRef.Banner => Some(Banner(value))
     case value: DecisionOptionRef.Deck => Some(Deck(value))
     case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))

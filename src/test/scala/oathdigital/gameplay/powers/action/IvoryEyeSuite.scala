@@ -50,6 +50,14 @@ class IvoryEyeSuite extends munit.FunSuite:
       IvoryEye.optionFor(target, 1).kind -> IvoryEye.optionFor(target, 1).wireId))
     assertEquals(facedown(ready).size, 4)
 
+  test("its options are adviser slots, drawn as card backs for another " +
+      "player's adviser"):
+    val t = use(staged, IvoryEye, source).toOption.get
+    val options = queryOf(t, actor).get.offeredOptions
+    assert(options.forall(_.kind == "adviser-slot"), options.toString)
+    assert(options.filter(_.id.startsWith(s"${target.value}:"))
+      .forall(_.card.exists(_.hidden)), options.toString)
+
   test("a peek records knowledge for the actor only and changes nothing else"):
     val t = use(staged, IvoryEye, source).toOption.get
     val card = firstAdviser(staged, target).asInstanceOf[WorldCardId]
