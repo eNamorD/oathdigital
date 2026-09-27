@@ -23,6 +23,10 @@ import oathdigital.model._
   * The rule is automatic, so it needs no selection. A facedown copy is not
   * active, and the card is adviser-only, so the holder is found among the
   * players' faceup advisers.
+  *
+  * Each taxed plan writes "{Red}'s battle plans cost 1 extra secret." after
+  * the plan's own effects, so it never comes before a decision the plan asks.
+  * Two taxed plans in one Campaign post one line.
   */
 final case class GleamingArmor private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends ContributingPower:
@@ -31,13 +35,23 @@ final case class GleamingArmor private (cardId: DenizenId,
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
 
+  override def noteKeys: Vector[NoteKey] = Vector(GleamingArmor.taxed)
+
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignPlanApplication -> Vector(Transform((ctx, children) =>
       ctx.operation match {
         case application: CampaignPlanApplication =>
-          surcharge(ctx, application).fold(children)(_ +: children)
+          surcharge(ctx, application).fold(children)(cost =>
+            cost +: children :+ note(application))
         case _ => children
       })))
+
+  /** Its line, naming the plan's user; a bandit plan has none and pays
+    * nothing. */
+  private def note(application: CampaignPlanApplication): Note =
+    Note(id, _ => application.user.map(user => GleamingArmor.taxed(
+      PowerSourceRef.Card(cardId), NoteArg.Player(user),
+      NoteArg.Number(GleamingArmor.Secret))))
 
   private def holder(ctx: PowerCtx): Option[PlayerId] =
     ctx.state.game.current.players.find(_.advisers.exists {
@@ -53,13 +67,13 @@ final case class GleamingArmor private (cardId: DenizenId,
   yield application.user.fold[Operation](unpayable)(user =>
     BuildOps((ready, _) => CampaignPlans.cardOf(application.source) match {
       case Some(card) => Right(Vector[CoreOperation](Costs.onCard(user, card,
-        Cost(secret = 1), catalog, intoOccupied = true)))
+        Cost(secret = GleamingArmor.Secret), catalog, intoOccupied = true)))
       case None =>
         // Turning a secret facedown does nothing without one, so the cost of the
         // title's plan is checked here rather than left to a best-effort flip.
         val faceUp = ready.game.current.players.find(_.player == user)
           .fold(0)(_.board.faceUpSecrets)
-        if faceUp >= 1 then Right(Vector[CoreOperation](FlipSecrets(user, 1,
+        if faceUp >= 1 then Right(Vector[CoreOperation](FlipSecrets(user, GleamingArmor.Secret,
           SecretSide.FaceUp, SecretSide.FaceDown)))
         else Left(OathViolation.InsufficientSecrets(1, faceUp))
     }))
@@ -76,6 +90,12 @@ final case class GleamingArmor private (cardId: DenizenId,
 
 object GleamingArmor:
   val id: PowerId = PowerId("denizen.gleaming-armor")
+  /** The added cost, in secrets. */
+  val Secret: Int = 1
+  /** "{Red}'s battle plans cost {1} extra secret." */
+  val taxed: NoteKey = NoteKey("taxed", Vector(NotePart.Arg(0),
+    NotePart.Text("'s battle plans cost "), NotePart.Arg(1),
+    NotePart.Plural(1, " extra secret.", " extra secrets.")))
 
   def forCatalog(catalog: ExecutableCatalog): Option[GleamingArmor] =
     CatalogCards.denizen(catalog, id).map(new GleamingArmor(_, catalog))

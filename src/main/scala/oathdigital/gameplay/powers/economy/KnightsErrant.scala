@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.campaign.{CampaignProcedure, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, PowerAnswers, SelectedModifier}
+import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PowerAnswers,
+  SelectedModifier}
 import oathdigital.model._
 
 /** Knights Errant (card 120), a selected Muster modifier: after mustering, you
@@ -28,11 +29,15 @@ import oathdigital.model._
   * "campaign" option before offering it, walking the tree that answer would
   * derive, so a forbidden nested Campaign hides that option instead of
   * parking on it and refusing the answer.
+  *
+  * Choosing to campaign writes "{Red} campaigns for no Supply." right after
+  * the choice.
   */
 final case class KnightsErrant private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends SelectedModifier:
   def id: PowerId = KnightsErrant.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
+  override def noteKeys: Vector[NoteKey] = Vector(KnightsErrant.campaigns)
 
   def effects: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.MusterActionEligibility -> Vector(Transform((ctx, children) =>
@@ -53,7 +58,15 @@ final case class KnightsErrant private (cardId: DenizenId,
     else Vector(Decide(KnightsErrant.decisionId, actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(KnightsErrant.campaignOption, "Campaign"),
         DecisionOption.Button(KnightsErrant.declineOption, "Do not campaign")),
-      heading = Some("Knights Errant: campaign for no Supply?")))))
+      heading = Some("Knights Errant: campaign for no Supply?"))),
+      Note(id, campaignNote(actor))))
+
+  /** Its line, once the player chose to campaign. */
+  private def campaignNote(actor: PlayerId)(states: NoteStates)
+      : Option[PowerNote] =
+    Option.when(NoteSupport.answer(states, KnightsErrant.decisionId)
+      .contains(KnightsErrant.campaignOption))(KnightsErrant.campaigns(
+      PowerSourceRef.Card(cardId), NoteArg.Player(actor)))
 
   private def campaign(actor: PlayerId): Operation = Branch((ready, pending) =>
     if !PowerAnswers.one(pending, KnightsErrant.decisionId)
@@ -70,6 +83,9 @@ object KnightsErrant:
     DecisionOptionRef.Button("campaign")
   val declineOption: DecisionOptionRef.Button =
     DecisionOptionRef.Button("decline")
+  /** "{Red} campaigns for no Supply." */
+  val campaigns: NoteKey = NoteKey("campaigns", Vector(NotePart.Arg(0),
+    NotePart.Text(" campaigns for no Supply.")))
 
   def forCatalog(catalog: ExecutableCatalog): Option[KnightsErrant] =
     CatalogCards.denizen(catalog, id).map(new KnightsErrant(_, catalog))

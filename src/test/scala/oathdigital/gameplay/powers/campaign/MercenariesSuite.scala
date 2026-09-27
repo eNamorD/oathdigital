@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -135,3 +136,22 @@ class MercenariesSuite extends munit.FunSuite:
 
   test("the card is found in the catalog and registered once"):
     assertEquals(SimplePlans.forCatalog(catalog).count(_.id == Mercenaries.id), 1)
+
+  // ---- Lines ----
+
+  private val power = Mercenaries.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("a defeated user's discard is written as the Mercenaries' line"):
+    val b = attackerBoard
+    val done = commit(rules(losing), b, 0)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+    assertEquals(said(done.events), Vector(NoteText.Said("discarded",
+      s"Discarded after ${b.actor.value} lost.", covers = false)))
+
+  test("a winner keeps Mercenaries and reads no line"):
+    val b = attackerBoard
+    val done = commit(rules(winning), b, 0)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+    assertEquals(said(done.events), Vector.empty)

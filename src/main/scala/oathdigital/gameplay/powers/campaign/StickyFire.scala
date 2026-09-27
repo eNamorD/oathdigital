@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
-import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 /** Sticky Fire (relic R01), a battle plan for either side: "If you're victorious,
@@ -22,12 +22,20 @@ import oathdigital.model._
   * Then the winner gives the loser a favor if they can. A `Give` takes only what
   * its giver holds, and against bandits the favor is given to the shared bank,
   * which burns it.
+  *
+  * After the burn it writes what died and the favor given, read from the
+  * burn's step: "Killed 3 {Blue} warbands, and {Blue} gained 1 favor.", or
+  * either half alone. Against bandits it writes nothing: no player lost a
+  * warband or gained the favor.
   */
 final case class StickyFire private (relicId: RelicId) extends BattlePlan:
   def id: PowerId = StickyFire.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
+
+  override def noteKeys: Vector[NoteKey] =
+    Vector(StickyFire.burned, StickyFire.killed, StickyFire.gave)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.relic(relicId).map(source => CampaignPlanOffer(source,
@@ -40,7 +48,35 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan:
       user <- use.user
       result <- use.result
       if use.won.contains(true)
-    yield ask(user) +: (losses :+ burn(use, user, result))).getOrElse(losses)))
+    yield ask(user) +: (losses :+ burn(use, user, result) :+
+      Note(id, burnNote(use.side, result)))).getOrElse(losses)))
+
+  /** What the burn did to the loser, read from its step. */
+  private def burnNote(side: CampaignPlanSide, result: CampaignResult)(
+      states: NoteStates): Option[PowerNote] =
+    val card = PowerSourceRef.Card(relicId)
+    for
+      loser <- loserOf(side, result)
+      if NoteSupport.answer(states, StickyFire.decisionId).contains(StickyFire.yes)
+      step <- states.previous
+      killed = -NoteSupport.warbands(step, loser)
+      gift = NoteSupport.favor(step, loser)
+      note <- (killed > 0, gift > 0) match
+        case (true, true) => Some(StickyFire.burned(card, NoteArg.Number(killed),
+          NoteArg.Player(loser), NoteArg.Amount(gift, NoteUnit.Favor)))
+        case (true, false) => Some(StickyFire.killed(card,
+          NoteArg.Number(killed), NoteArg.Player(loser)))
+        case (false, true) => Some(StickyFire.gave(card, NoteArg.Player(loser),
+          NoteArg.Amount(gift, NoteUnit.Favor)))
+        case _ => None
+    yield note
+
+  /** The player the user beat; bandits are no player. */
+  private def loserOf(side: CampaignPlanSide, result: CampaignResult)
+      : Option[PlayerId] = (side, result.defender) match
+    case (CampaignPlanSide.Defender, _) => Some(result.attacker)
+    case (_, CampaignDefender.Player(defender)) => Some(defender)
+    case (_, CampaignDefender.Bandits) => None
 
   private def ask(user: PlayerId): Operation = Decide(StickyFire.decisionId, user,
     DecisionQuery.ChooseOne(Vector(
@@ -111,6 +147,16 @@ object StickyFire:
   val decisionId: String = CampaignProcedure.decisionPrefix + "sticky-fire"
   val yes: DecisionOptionRef.Button = DecisionOptionRef.Button("kill")
   val no: DecisionOptionRef.Button = DecisionOptionRef.Button("spare")
+
+  /** "Killed {n} {Blue} warband, and {Blue} gained {1 favor}." */
+  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Killed "),
+    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
+    NotePart.Plural(0, " warband, and ", " warbands, and "), NotePart.Arg(1),
+    NotePart.Text(" gained "), NotePart.Arg(2), NotePart.Text(".")))
+  /** The kill alone, when the winner had no favor to give. */
+  val killed: NoteKey = NoteSupport.killedKey("killed")
+  /** The favor alone, when the loser's board held no warband. */
+  val gave: NoteKey = NoteSupport.gainedKey("gained")
 
   def forCatalog(catalog: ExecutableCatalog): Option[StickyFire] =
     CatalogCards.relic(catalog, id).map(new StickyFire(_))

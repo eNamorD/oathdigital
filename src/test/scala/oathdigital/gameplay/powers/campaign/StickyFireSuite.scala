@@ -2,7 +2,9 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Sticky Fire: when its user wins, they may kill the whole of the enemy's force,
@@ -153,3 +155,50 @@ class StickyFireSuite extends munit.FunSuite:
     assertEquals(ready(done.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(true))
     assertEquals(done.ops.count(_.isInstanceOf[Give]), 0)
+
+  // ---- Lines ----
+
+  private val power = StickyFire.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("a burnt force is written: what died, and the favor given"):
+    val base = withEnemyAtOrigin(board(warbands = 4))
+    val b = favored(withRelic(replacePlayer(base, base.other)(p => p.copy(
+      board = p.board.copy(warbands = 3))), relic), base.actor, 1)
+    val done = commit(rules(winning), b, 4, raid = true)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
+      .pick(b.actor, decision, StickyFire.yes)
+    // The Raid's own losses kill one of the three first; the burn kills the
+    // two left, and its line says what the burn did.
+    assertEquals(said(done.events), Vector(NoteText.Said("burned",
+      s"Killed 2 ${b.other.value} warbands, and ${b.other.value} gained 1 favor.",
+      covers = false)))
+
+  test("a winner with no favor to give writes only the kill"):
+    val b = favored(conquest, conquest.actor, 0)
+    val done = commit(rules(winning), b, 4)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .pick(b.other, CampaignIds.defenderPlan, CampaignIds.finish)
+      .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
+      .pick(b.actor, decision, StickyFire.yes).finish
+    assertEquals(said(done.events), Vector(NoteText.Said("killed",
+      s"Killed 1 ${b.other.value} warband.", covers = false)))
+
+  test("sparing the force, or burning bandits, writes nothing"):
+    val b = conquest
+    val spared = commit(rules(winning), b, 4)
+      .pick(b.actor, CampaignIds.attackerPlan, ref)
+      .pick(b.other, CampaignIds.defenderPlan, CampaignIds.finish)
+      .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
+      .pick(b.actor, decision, StickyFire.no).finish
+    assertEquals(said(spared.events), Vector.empty)
+    val base = board()
+    val bandits = favored(withRelic(base, relic), base.actor, 2)
+    val burnt = commit(rules(winning), bandits, 4)
+      .pick(bandits.actor, CampaignIds.attackerPlan, ref)
+      .answer(bandits.actor, CampaignIds.sacrifice,
+        DecisionAnswer.ChooseAmountAnswer(0))
+      .pick(bandits.actor, decision, StickyFire.yes).finish
+    assertEquals(said(burnt.events), Vector.empty)

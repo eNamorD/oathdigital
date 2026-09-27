@@ -16,12 +16,17 @@ import oathdigital.model._
   * leaves each site at least one warband. Nothing is asked when there is nowhere
   * to move to. The card is discarded when the Campaign has resolved, whether or
   * not the defender won.
+  *
+  * Once the defender has answered it writes "{Blue} redistributed their
+  * warbands."; the line follows the decision, so a game parked on it resumes
+  * where it was.
   */
 final case class WarningSignals private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends BattlePlan:
   def id: PowerId = WarningSignals.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
+  override def noteKeys: Vector[NoteKey] = Vector(WarningSignals.redistributed)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
     context.user.flatMap(user => context.denizen(cardId).map(source =>
@@ -59,6 +64,8 @@ final case class WarningSignals private (cardId: DenizenId,
           slots, total, Some("Warning Signals: arrange your warbands. Your " +
             "board holds the ones no site keeps, and each site keeps at least one"),
           "Move warbands")),
+        Note(id, _ => Some(WarningSignals.redistributed(
+          PowerSourceRef.Card(cardId), NoteArg.Player(user)))),
         BuildOps((state, pending) => PowerAnswers.distribution(pending,
           WarningSignals.decisionId).toRight(PowerAnswers.missing(
           WarningSignals.decisionId)).flatMap(rows => moves(state, user, rows))))
@@ -94,6 +101,9 @@ object WarningSignals:
   val id: PowerId = PowerId("denizen.warning-signals")
   /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "warning-signals"
+  /** "{Blue} redistributed their warbands." */
+  val redistributed: NoteKey = NoteKey("redistributed", Vector(NotePart.Arg(0),
+    NotePart.Text(" redistributed their warbands.")))
 
   def forCatalog(catalog: ExecutableCatalog): Option[WarningSignals] =
     CatalogCards.denizen(catalog, id).map(new WarningSignals(_, catalog))

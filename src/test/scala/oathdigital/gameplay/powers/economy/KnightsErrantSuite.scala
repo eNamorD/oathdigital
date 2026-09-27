@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.gameplay.{CampaignFixture, EconomyFixture, OathRules}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.economy.MusterProcedure
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.powers.targeting.TargetingFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -208,3 +209,20 @@ class KnightsErrantSuite extends munit.FunSuite:
     // and none of them is refused.
     val done = answer(forced, CampaignIds.force, ChooseAmountAnswer(0))
     assertEquals(ready(done).game.current.walkerProcedure, None)
+
+  // ---- Lines ----
+
+  private val power = KnightsErrant.forCatalog(catalog).get
+  private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
+    NoteText.said(power.id, power.noteKeys, events)
+
+  test("choosing to campaign writes the Knights' line after the choice"):
+    val asked = musterFrom(staged(), modifiers)
+    assertEquals(said(asked.events), Vector.empty)
+    val chosen = answer(asked, KnightsErrant.decisionId, campaign)
+    assertEquals(said(chosen.events), Vector(NoteText.Said("campaigns",
+      s"${actor.value} campaigns for no Supply.", covers = false)))
+
+  test("declining writes nothing"):
+    assertEquals(said(answer(musterFrom(staged(), modifiers),
+      KnightsErrant.decisionId, decline).events), Vector.empty)
