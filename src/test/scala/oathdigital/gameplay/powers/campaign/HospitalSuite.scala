@@ -152,6 +152,25 @@ class HospitalSuite extends munit.FunSuite:
     assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.other), 2))
     assertEquals(lines(done), Vector.empty)
 
+  test("a Raid defender's dead from the board are placed on Hospital's site at the end"):
+    val base = withEnemyAtOrigin(board(warbands = 4))
+    val site = spare(base)
+    val b = replacePlayer(hospitalFor(base, base.other, site), base.other)(p =>
+      p.copy(board = p.board.copy(warbands = 3)))
+    val won = commit(rules(winning), b, 4, raid = true)
+      .pick(b.other, CampaignIds.defenderPlan, ref).finish
+    // The defeated pawn is moved on before the Campaign ends.
+    assert(awaits(won, b.actor, CampaignIds.relocation))
+    val done = won.pick(b.actor, CampaignIds.relocation,
+      won.offered(b.actor).head)
+    assertEquals(parked.parkedDecision(done.state), None)
+    assertEquals(winner(done), Some(true))
+    // The Raid kills half of the three on the board, rounded down; the one
+    // killed comes back to Hospital's site, not to the board.
+    assertEquals(player(done.state, b.other).board.warbands, 2)
+    assertEquals(forces(done.state, site), SiteForces.Occupied(kind(b, b.other), 3))
+    assertEquals(lines(done), Vector(placed(1, b.other, site)))
+
   test("a player who does not rule its site is not offered it"):
     val base = board()
     val b = withSiteCard(base, spare(base), card)

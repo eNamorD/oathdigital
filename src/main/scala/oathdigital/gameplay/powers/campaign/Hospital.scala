@@ -43,8 +43,8 @@ final case class Hospital private (cardId: DenizenId) extends BattlePlan:
 
   override def wrapping
       : Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] = Map(
-    PowerWindow.CampaignPlanApplication -> counted,
-    PowerWindow.CampaignLosses -> counted)
+    PowerWindow.CampaignPlanApplication -> counted(returns = false),
+    PowerWindow.CampaignLosses -> counted(returns = true))
 
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
@@ -52,12 +52,14 @@ final case class Hospital private (cardId: DenizenId) extends BattlePlan:
         BuildOps((ready, _) => Right(placement(ready, user).toVector)),
         Note(id, placedNote(_, user))))))
 
-  /** A window's children, with each kill of the user's warbands counted. */
-  private def counted(use: PlanUse, children: Vector[Operation])
-      : Vector[Operation] = (for
+  /** A window's children, with each kill of the user's warbands counted.
+    * `returns` says whether the window can hand back a Conquest defender's
+    * half, which only the losses do. */
+  private def counted(returns: Boolean)(use: PlanUse,
+      children: Vector[Operation]): Vector[Operation] = (for
     user <- use.user
     kind <- PlayerFacts.forceKind(use.ready, user).toOption
-  yield children.map(Tally(user, kind).rewrite)).getOrElse(children)
+  yield children.map(Tally(user, kind, returns).rewrite)).getOrElse(children)
 
   /** The saved warbands, from the user's supply to Hospital's site, when the
     * user rules it now. */
@@ -85,9 +87,15 @@ final case class Hospital private (cardId: DenizenId) extends BattlePlan:
     NoteArg.Player(user), NoteArg.Site(site))
 
   /** Counts the kills of `user`'s warbands, of force `kind`, in
-    * `Hospital.Saved`. A warband returned from the supply to the user's board
-    * did not stay dead, so it comes back out of the count. */
-  private final class Tally(user: PlayerId, kind: ForceKind):
+    * `Hospital.Saved`. When `returns` is set, a warband returned from the
+    * supply to the user's board did not stay dead, so it comes back out of
+    * the count.
+    *
+    * It counts the amount each operation asks for, which the Campaign's kills
+    * always execute in full because they read the board they kill from. It
+    * reaches through `BuildOps`, `Sequence` and `Branch`, the only nodes these
+    * windows hold. */
+  private final class Tally(user: PlayerId, kind: ForceKind, returns: Boolean):
     def rewrite(operation: Operation): Operation = operation match
       case ops: BuildOps => ops.copy(build = (ready, pending) =>
         ops.build(ready, pending).map(_.flatMap(counted)))
@@ -108,7 +116,7 @@ final case class Hospital private (cardId: DenizenId) extends BattlePlan:
           Vector(operation, ModifyDicePool(Hospital.Saved, count))
         case Move(Piece.Warbands(`kind`, count),
             PositionedLocation(Location.WarbandBank(_), _),
-            PositionedLocation(Location.PlayArea(`user`), _), None) =>
+            PositionedLocation(Location.PlayArea(`user`), _), None) if returns =>
           Vector(operation, ModifyDicePool(Hospital.Saved, -count))
         case other => Vector(other)
 
