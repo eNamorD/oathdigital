@@ -37,6 +37,9 @@ private[gameplay] trait OathRulesWalker:
       : Either[OathViolation, OathTransition]
   protected def turnBoundary(transition: OathTransition)
       : Either[OathViolation, OathTransition]
+  /** Starts the forced Wake step when one is due (catalog batch 2, N8). */
+  protected def forcedWake(transition: OathTransition)
+      : Either[OathViolation, OathTransition]
   /** Whether `player` could use a REST power now. */
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean
 
@@ -331,10 +334,12 @@ private[gameplay] trait OathRulesWalker:
       starting: Boolean)
       : Either[OathViolation, Operation] =
     procedure match
-      case _: ActionRef.UsePower if starting => WalkerProcedureRegistry.build(
-        procedure, catalog, ready, actor, startArgs, phasePowerCatalog)
-      case _: ActionRef.UsePower => WalkerProcedureRegistry.rebuild(
-        procedure, catalog, ready, actor, startArgs, phasePowerCatalog)
+      case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake if starting =>
+        WalkerProcedureRegistry.build(
+          procedure, catalog, ready, actor, startArgs, phasePowerCatalog)
+      case _: ActionRef.UsePower | TriggeredProcedureRef.ForcedWake =>
+        WalkerProcedureRegistry.rebuild(
+          procedure, catalog, ready, actor, startArgs, phasePowerCatalog)
       case _ => walkerTree(catalog, procedure, ready, actor, startArgs, starting)
 
   /** A procedure that opts in (`Entry.requiresPlayableOption`) is rejected at
@@ -396,6 +401,10 @@ private[gameplay] trait OathRulesWalker:
         .flatMap(transition =>
           if runsActionBoundary(procedure) then completeAction(transition)
           else if runsTurnBoundary(procedure) then turnBoundary(transition)
+          // Setup's tree begins the first Wake, which no turn boundary
+          // enters, so its forced step starts here.
+          else if procedure == TriggeredProcedureRef.Setup then
+            forcedWake(transition)
           else Right(transition))
         .flatMap(transition =>
           if procedure == PhaseTransitionRef.BeginRest then autoFinishRest(transition)

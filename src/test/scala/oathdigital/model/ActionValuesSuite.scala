@@ -29,6 +29,7 @@ class ActionValuesSuite extends munit.FunSuite:
       Some(PhaseTransitionRef.EndWake))
     assertEquals(ProcedureRef.fromFamilyKey("triggered", "recover"), None)
     assertEquals(TriggeredProcedureRef.all, Vector(TriggeredProcedureRef.Oathkeeper,
-      TriggeredProcedureRef.Setup))
+      TriggeredProcedureRef.Setup, TriggeredProcedureRef.ForcedWake))
     // A client names a procedure by key alone; the triggered key must not resolve.
     assertEquals(StartableRef.fromKey("oathkeeper"), None)
+    assertEquals(StartableRef.fromKey("forced-wake"), None)

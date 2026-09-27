@@ -14,4 +14,5 @@ class EnumShapeSuite extends munit.FunSuite:
     assertEquals(ActionKind.fromKey("when-played"), Some(ActionKind.WhenPlayed))
     assertEquals(PhaseTransitionRef.EndWake.family, "phase-transition")
     assertEquals(PhaseTransitionRef.EndWake.key, "end-wake")
-    assertEquals(TriggeredProcedureRef.all.map(_.key), Vector("oathkeeper", "setup"))
+    assertEquals(TriggeredProcedureRef.all.map(_.key),
+      Vector("oathkeeper", "setup", "forced-wake"))

@@ -45,7 +45,7 @@ final case class ChaosCult private (cardId: DenizenId)
 
   private def take(ready: ReadyGame, holder: PlayerId): Vector[CoreOperation] =
     ready.game.current.title.holder.filter(_ != holder)
-      .flatMap(taker => ready.game.current.players.find(_.player == taker))
+      .flatMap(newHolder => ready.game.current.players.find(_.player == newHolder))
       .filter(_.board.favor > 0).toVector.map(from => Take(Piece.Favor(Favor),
         holder, Location.PlayArea(from.player), Location.PlayArea(holder)))
 

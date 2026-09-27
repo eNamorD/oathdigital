@@ -11,6 +11,10 @@ import oathdigital.model.{Cost, DecisionOptionRef, OathViolation, Operation, Pla
 trait PhasePower extends NotingPower:
   def id: PowerId
   def timing: PowerTiming
+  /** A power its holder must use (catalog batch 2, N8): it runs on its own
+    * at the start of its phase and is never offered or accepted as an
+    * optional use. Only WAKE powers are forced today. */
+  def forced: Boolean = false
   /** Power-specific preconditions beyond access and once-per-turn. */
   def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Boolean
   /** What using the power costs, placed onto its source card. The engine

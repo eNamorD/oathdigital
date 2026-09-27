@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.model.{ActionRef, DecisionOptionRef, ActionKind, OathViolation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId}
+import oathdigital.model.{ActionRef, DecisionOptionRef, ActionKind, OathViolation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId, TriggeredProcedureRef}
 
 /** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -53,7 +53,11 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     * fails here instead, before anything runs.
     */
   test("the production entries register every procedure reference"):
-    assertEquals(WalkerProcedureRegistry.entries.keySet, ProcedureRef.all.toSet)
+    // The forced Wake step is built from the phase powers, as `UsePower` is,
+    // so it has no fixed entry.
+    assertEquals(WalkerProcedureRegistry.entries.keySet,
+      ProcedureRef.all.toSet - TriggeredProcedureRef.ForcedWake)
+    assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.ForcedWake))
 
   /** Batch-1 Task 1: the modifier-selection window is per-action registry
     * data, alongside `fallbackKind`/`rollDecisionId`. Recover declares the
