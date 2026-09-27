@@ -221,12 +221,18 @@ object ProcedureWalker:
     * here used -- `leafAt` folds every window on the path exactly like the
     * walk does, so a transform that inserts operations around a windowed
     * node does not make this address the wrong leaf.
+    *
+    * Always resolves with the restriction look-ahead off: the look-ahead
+    * only narrows a `Decide`'s options, never a `Roll`'s, so probing here
+    * could only be wasted work on a position that turns out to be a
+    * `Decide` (discarded below either way).
     */
   def parkedRoll(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Option[(PoolKey, Int)] =
-    WalkerPowerGather.leafAt(state, action, pending, powers).collect:
-      case roll: Roll if roll.mode == RollMode.Parked =>
-        (roll.pool, WalkerRolls.poolCount(state, roll.pool))
+    WalkerPowerGather.leafAt(state, action, pending, powers.copy(probing = false))
+      .collect:
+        case roll: Roll if roll.mode == RollMode.Parked =>
+          (roll.pool, WalkerRolls.poolCount(state, roll.pool))
 
   /** Every decision open at the park: one for a plain or co-owned `Decide`,
     * none for a `Roll` or a position that does not resolve. Reports the nodes
@@ -234,39 +240,52 @@ object ProcedureWalker:
     * rather than on the park's structural path, which shifts if the tree is
     * edited. A future `Simultaneous` node would return one per unanswered
     * child, and nothing else here would change.
+    *
+    * `probing` (default on) runs the restriction look-ahead, narrowing the
+    * options a caller offers or validates against. A caller that only reads
+    * the decision's identity, owner or labels -- never which options are
+    * still legal -- passes `probing = false` to skip that work.
     */
   def openDecisions(state: ReadyGame, action: Operation,
-      pending: PendingTree, powers: WalkerPowers): Vector[Decide] =
-    WalkerPowerGather.leafAt(state, action, pending, powers).collect {
+      pending: PendingTree, powers: WalkerPowers,
+      probing: Boolean = true): Vector[Decide] =
+    val looked = if probing then powers else powers.copy(probing = false)
+    WalkerPowerGather.leafAt(state, action, pending, looked).collect {
       case decide: Decide => decide
     }.toVector
 
   /** The single-decision view of [[openDecisions]]. `None` when the park is a
     * Roll or the position does not resolve to a Decide. Symmetric to
-    * [[parkedRoll]].
+    * [[parkedRoll]]. See [[openDecisions]] for `probing`.
     */
   def parkedDecide(state: ReadyGame, action: Operation,
-      pending: PendingTree, powers: WalkerPowers): Option[Decide] =
-    openDecisions(state, action, pending, powers).headOption
+      pending: PendingTree, powers: WalkerPowers,
+      probing: Boolean = true): Option[Decide] =
+    openDecisions(state, action, pending, powers, probing).headOption
 
   /** Who a parked position waits on, as one player: a parked `Decide`'s
     * primary owner, read off the rebuilt and transformed node, or the active
     * player for a parked `Roll`.
     * Never stored -- a power that changes an owner changes this answer on the
     * next command, and authorization and projection both read it (Task 5).
+    *
+    * Skips the restriction look-ahead: an owner never changes with which
+    * options the look-ahead would hide, so probing here is pure overhead.
     */
   def awaitedPlayer(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[PlayerId] =
-    parkedDecide(state, action, pending, powers).map(_.owner).orElse(
-      parkedRoll(state, action, pending, powers).map(_ =>
+    parkedDecide(state, action, pending, powers, probing = false).map(_.owner)
+      .orElse(parkedRoll(state, action, pending, powers).map(_ =>
         state.game.current.turn.activePlayer))
 
   /** Everyone who may answer the parked position: the owners and co-owners of
-    * its open decisions, or the active player for a parked `Roll`.
+    * its open decisions, or the active player for a parked `Roll`. Skips the
+    * restriction look-ahead for the same reason [[awaitedPlayer]] does: an
+    * owner set never depends on which options are hidden.
     */
   def awaitedPlayers(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Set[PlayerId] =
-    val open = openDecisions(state, action, pending, powers)
+    val open = openDecisions(state, action, pending, powers, probing = false)
     if open.nonEmpty then open.flatMap(_.owners).toSet
     else parkedRoll(state, action, pending, powers)
       .map(_ => Set(state.game.current.turn.activePlayer)).getOrElse(Set.empty)
