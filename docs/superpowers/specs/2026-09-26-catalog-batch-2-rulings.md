@@ -8,7 +8,7 @@
 > that applies to every power applies here too: access, facedown cards,
 > activation, repeat use, usability, secrets, movement and bury.
 
-## Slice D: modifiers and restrictions
+## Slice 1: modifiers and restrictions
 
 | Card | Ruling |
 |---|---|
@@ -17,7 +17,7 @@
 | 245 Royal Stables | Site-only. A selected Travel modifier with no cost, usable at the pawn's site or a site the player rules. It lowers the Travel's `SpendSupply` by 1, never below 1. Terrain and other modifiers apply first. Tents removes the `SpendSupply` entirely, so with both the Travel is free. |
 | 75 Forgotten Vault | Site-only, persistent. Players other than the Vault's ruler cannot target relics its ruler holds, as the Circlet of Command protects relics. It hides them from a Raid's target options and from a played Conspiracy's target list. In an all-Exile game every other player is an enemy. Ruled by bandits, it does nothing, because bandits hold no relics. The Empire clause does nothing until Empire rules exist. |
 
-## Slice C: battle plans
+## Slice 2: battle plans
 
 Batch 1's plan rules apply: a plan is chosen at the plan step, only by its
 source's ruler, once per Campaign, and it is not offered when it cannot be
@@ -45,7 +45,7 @@ faceup advisers.
 | R37 Bag of Siegeworks | attacker | Cost 1 secret placed. Conquest only ("targeting sites"). Each single-shield defense die scores 0. Two shields and doublers are unaffected, so Blank, OneShield and Doubler score 0. The reviewed-catalog stub retires. |
 | 149 Hospital | either | Site-only. A battle plan, not a modifier: its gradient marks it as one. Free, used by the ruler of Hospital's site. For the rest of the Campaign, each of the user's warbands that would be killed is placed on Hospital's site instead, while the user still rules that site at the kill. Kills at Hospital's own site when it is a Conquest target the attacker won stay kills. |
 
-## Slice A: actions on yourself
+## Slice 3: actions on yourself
 
 | Card | Ruling |
 |---|---|
@@ -59,7 +59,7 @@ faceup advisers.
 | R46 Demon Tail | Cost 3 secrets burnt. Gain 2 Supply, up to the track's maximum. |
 | R47 Clay Rattle | Cost 2 secrets placed. Choose the world deck or one region's discard pile and shuffle it with the new `Shuffle` operation. The server generates the order and the journal records it. |
 
-## Slice B: actions on others
+## Slice 4: actions on others
 
 | Card | Ruling |
 |---|---|
@@ -69,7 +69,7 @@ faceup advisers.
 | R36 Barbed Net | Cost 3 secrets burnt. Peek at every relic at the player's site, then take one facedown, as Recover does. The existing minor action that reveals an owned relic covers "you may keep it facedown". A site with no relic: the cost is paid and nothing happens. |
 | R19 Book of Records | Cost 1 secret placed and 2 secrets burnt. Choose a banner held by a player whose pawn is at the player's site, the player's own banner included. Take up to 2 of what it holds: favor from the People's Favor, secrets from the Darkest Secret. |
 
-## Slice E: triggers and when played
+## Slice 5: triggers and when played
 
 | Card | Ruling |
 |---|---|

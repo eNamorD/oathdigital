@@ -77,14 +77,14 @@ supports, and are left for a later batch only to keep this one small.
 
 Each addition is built in the slice that first needs it.
 
-### N1. Supply reduction (slice D)
+### N1. Supply reduction (slice 1)
 
 Royal Stables lowers the amount of the Travel's `SpendSupply` by 1, never
 below 1, when the Travel has one. Tents removes the `SpendSupply` entirely, so
 with both selected Tents wins and the Travel costs nothing. The two
 Transforms commute, so their order does not matter.
 
-### N2. Ignored defense faces (slice C)
+### N2. Ignored defense faces (slice 2)
 
 Bag of Siegeworks makes each single-shield defense die score 0. Two shields
 and doublers score as usual, so a roll of Blank, OneShield and Doubler scores
@@ -93,7 +93,7 @@ and doublers score as usual, so a roll of Blank, OneShield and Doubler scores
 contribution. The reviewed-catalog stub `CampaignPowers.BagOfSiegeworks`
 retires.
 
-### N3. Campaign kill replacement (slice C)
+### N3. Campaign kill replacement (slice 2)
 
 Hospital is a battle plan. Once chosen, each `Kill` of its user's warbands
 during that Campaign becomes a move to Hospital's site, while the user still
@@ -101,7 +101,7 @@ rules that site when the kill happens. It is a later hook at the Campaign's
 loss windows, like Sticky Fire's. Kills at Hospital's own site, when that
 site is a Conquest target the attacker won, stay kills.
 
-### N4. Shuffle (slice A)
+### N4. Shuffle (slice 3)
 
 A new `Shuffle` operation reorders the world deck or one region's discard
 pile. The server generates the new order and the journal records it, as dice
@@ -109,7 +109,7 @@ faces are generated and recorded, so replay reproduces it. Setup shuffles are
 unchanged: the Chronicle generator shuffles once when a game is created, and
 its result is the stored starting state.
 
-### N5. The card-list view (slice A)
+### N5. The card-list view (slice 3)
 
 Scryer can look at a whole discard pile, which may hold dozens of cards, and
 later powers look at the Dispossessed. One reusable view serves them:
@@ -133,7 +133,7 @@ later powers look at the Dispossessed. One reusable view serves them:
 - **UI work.** Design and build the overlay, and any other UI element this
   batch needs, with the `/impeccable` skill.
 
-### N6. Drawing a Vision (slice A)
+### N6. Drawing a Vision (slice 3)
 
 Oracle finds the first Vision from the top of the world deck. The cards above
 it stay where they are, unseen. The Vision is then played or discarded
@@ -142,13 +142,13 @@ the Vision restrictions of the rule gaps phase), facedown as an adviser, or
 discarded. The draw advances the Visions Drawn track, as a Vision drawn in a
 world-deck Search does.
 
-### N7. A title-change window (slice E)
+### N7. A title-change window (slice 5)
 
 `OathkeeperProcedure` gains a window after its `SetOathkeeper`, so Chaos Cult
 can act when the title changes hands. Its comment already expected one "until
 a real power needs to".
 
-### N8. Forced Wake steps (slice E)
+### N8. Forced Wake steps (slice 5)
 
 Hunger's WAKE is mandatory. The start of Wake gains a step that runs every
 forced Wake power its holder has, before the holder may use optional Wake
@@ -169,16 +169,17 @@ when it starts.
 
 | Slice | Cards | Additions |
 |---|---|---|
-| D. Modifiers and restrictions | Animal Playmates, Birdsong, Royal Stables, Forgotten Vault | N1 |
-| C. Battle plans | Fire Talkers, Nature Worship, Cracked Sage, Horse Archers, Storm Caller, Longbows, Black Sword, Bag of Siegeworks, Hospital | N2, N3 |
-| A. Actions on yourself | Tutor, Spirit Snare, Wizard School, Scryer, Oracle, Shifting Map, Demon Tail, Oracular Pig, Clay Rattle | N4, N5, N6 |
-| B. Actions on others | Spoiled Supplies, Charming Friend, Siege Engines, Barbed Net, Book of Records | none |
-| E. Triggers and when played | Shifting Fog, Hunger, Twin Brother, Chaos Cult | N7, N8 |
+| 1. Modifiers and restrictions | Animal Playmates, Birdsong, Royal Stables, Forgotten Vault | N1 |
+| 2. Battle plans | Fire Talkers, Nature Worship, Cracked Sage, Horse Archers, Storm Caller, Longbows, Black Sword, Bag of Siegeworks, Hospital | N2, N3 |
+| 3. Actions on yourself | Tutor, Spirit Snare, Wizard School, Scryer, Oracle, Shifting Map, Demon Tail, Oracular Pig, Clay Rattle | N4, N5, N6 |
+| 4. Actions on others | Spoiled Supplies, Charming Friend, Siege Engines, Barbed Net, Book of Records | none |
+| 5. Triggers and when played | Shifting Fog, Hunger, Twin Brother, Chaos Cult | N7, N8 |
 
-D and C come first because most of their cards copy existing powers. A and B
-follow. E comes last, so a trigger that proves harder than expected does not
-hold up the rest. Hospital's kill replacement (N3) may move to its own
-sub-slice of C if the Campaign's loss paths make it large.
+Slices 1 and 2 come first because most of their cards copy existing powers.
+Slices 3 and 4 follow. Slice 5 comes last, so a trigger that proves harder
+than expected does not hold up the rest. Hospital's kill replacement (N3) may
+move to its own sub-slice of slice 2 if the Campaign's loss paths make it
+large.
 
 ## Log lines
 
