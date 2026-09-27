@@ -43,8 +43,9 @@ decision, nothing records why. Each power should be able to declare the lines
 it contributes where it takes effect, such as "Used Vow of Peace to skip the
 sacrifice step", through one generic mechanism rather than a case per card.
 The generic line stays as a fallback. The mechanism has to cover powers that
-remove or hide something, which record no operation of their own. The Game
-Log design of 2026-09-26 recorded this as a follow-up.
+remove or hide something, which record no operation of their own. The
+[design](superpowers/specs/2026-09-26-power-log-lines-design.md) covers the
+mechanism and the line for every implemented power.
 
 ### Phase - Catalog batch 2
 
