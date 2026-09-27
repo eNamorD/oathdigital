@@ -19,6 +19,6 @@ object PhasePowerCatalog:
       DiceAndRelicDrawPowers.forCatalog(catalog) ++
       TargetPowers.forCatalog(catalog) ++
       MovementPowers.forCatalog(catalog) ++
-      SelfActionPowers.powers ++
+      SelfActionPowers.forCatalog(catalog) ++
       BannerFacePowers.phasePowers ++
       RiverSitePower.forCatalog(catalog))
