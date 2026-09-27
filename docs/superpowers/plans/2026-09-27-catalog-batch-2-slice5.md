@@ -46,7 +46,7 @@
 - **Hunger's keys are `buried` and `none`, not `used`.** The run is a `ForcedWake`, not a `UsePower`, so the lines are Trigger lines and no "Used Hunger" line exists to replace.
 - **Shifting Fog writes its line only when some favor moved.** With every bank empty it writes nothing, as the spec's "amounts are what happened" rule implies.
 - **Twin Brother's candidates are other players' faceup nomad denizen advisers whose restrictions are neither `Locked` nor `LockedAdviserOnly`.** The actor may decline with a "Keep Twin Brother" button, listed last. With no candidate nothing is asked. It writes nothing when declined, as the spec says.
-- **Chaos Cult takes from the new holder's board only when they hold favor.** Its key is `took`. It fires on every title change the Oathkeeper procedure makes, including a holder's forced transfer. Its catalog flag is `persistent: false`, so its resolution must stay the trait default (`Automatic`), as Dazzle's does.
+- **Chaos Cult takes from the new holder's board only when they hold favor.** Its key is `took`. It fires on every title change the Oathkeeper procedure makes, including a holder's forced transfer. Its catalog flag is `persistent: true` (a rule, not a modifier), and its resolution is the trait default, `Automatic`. (Corrected while executing: the plan first said `false`.)
 
 ## Global Constraints
 
@@ -811,8 +811,8 @@ class ChaosCultSuite extends munit.FunSuite:
 In `PowerKindsCatalogSuite`, add after the Vow of Obedience test:
 
 ```scala
-  test("Chaos Cult fires on every title change whatever its flag"):
-    assertEquals(flag("denizen.chaos-cult"), Some(false))
+  test("Chaos Cult is a persistent rule and fires on every title change"):
+    assertEquals(flag("denizen.chaos-cult"), Some(true))
     assertEquals(oathdigital.gameplay.powers.title.ChaosCult
       .forCatalog(catalog).get.resolution, PowerResolution.Automatic)
 ```
@@ -879,8 +879,9 @@ import oathdigital.model._
   * on who holds Chaos Cult faceup, which a title change does not alter, so
   * the fold is the same while the choice is parked.
   *
-  * The card is catalogued `persistent: false`, so its resolution stays the
-  * trait default: it fires on every title change.
+  * The card is catalogued persistent, a rule rather than a modifier, so its
+  * resolution is the trait default, `Automatic`: it fires on every title
+  * change.
   */
 final case class ChaosCult private (cardId: DenizenId)
     extends ContributingPower:

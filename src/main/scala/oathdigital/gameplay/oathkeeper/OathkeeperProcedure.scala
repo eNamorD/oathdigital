@@ -8,14 +8,17 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * action boundary).
   *
   * {{{
-  * Transfer(holder)  -> Sequence(SetOathkeeper(holder))
-  * Choose(holder, c) -> Sequence(Decide(recipient, owner = holder), BuildOps(SetOathkeeper))
+  * Transfer(holder)  -> Sequence(SetOathkeeper(holder))              // window = OathkeeperTitleChange
+  * Choose(holder, c) -> Sequence(Decide(recipient, owner = holder),
+  *                        BuildOps(SetOathkeeper))                  // window = OathkeeperTitleChange
   * }}}
   *
   * A single leader is a forced choice, so it omits the `Decide` and applies the
   * transfer itself. `build` is also `rebuild`: only resume commands are
-  * accepted while this parks, so the outcome cannot change under it. No window:
-  * nothing may transform a title change until a real power needs to.
+  * accepted while this parks, so the outcome cannot change under it. The
+  * window (catalog batch 2, N7) lets a power append what follows a change
+  * of holder, after the change: every applied `SetOathkeeper` changes the
+  * holder, since the operation rejects an unchanged one.
   */
 object OathkeeperProcedure:
   val recipientDecisionId: String = "oathkeeper.recipient"
@@ -29,7 +32,8 @@ object OathkeeperProcedure:
       case OathkeeperOutcome.NoChange => Left(OathViolation.InvalidEventOrder(
         "no Oathkeeper change to perform"))
       case OathkeeperOutcome.Transfer(holder) =>
-        Right(Sequence(Vector(SetOathkeeper(holder))))
+        Right(Sequence(Vector(SetOathkeeper(holder)),
+          Some(PowerWindow.OathkeeperTitleChange)))
       case OathkeeperOutcome.Choose(holder, candidates) => Right(Sequence(Vector(
         Decide(
           decisionId = recipientDecisionId,
@@ -43,5 +47,5 @@ object OathkeeperProcedure:
             Right(Vector[CoreOperation](SetOathkeeper(Some(chosen))))
           case _ => Left(OathViolation.InvalidEventOrder(
             "no Oathkeeper recipient answer is recorded"))
-        }))))
+        })), Some(PowerWindow.OathkeeperTitleChange)))
   yield tree
