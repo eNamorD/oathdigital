@@ -19,8 +19,13 @@ class GameLogSetupSuite extends munit.FunSuite:
     assertEquals(lines.count(_.contains(" placed pawn at ")),
       script.players.size, lines)
     assertEquals(lines.count(_.contains(" kept ")), script.players.size, lines)
-    // The script's first player is p2, so the turn runs P2, P3, P1.
-    val order = Vector("P2", "P3", "P1")
+    // Turn order runs from the first player through the seats.
+    val ready = script.history.steps.last.after match
+      case OathState.Ready(value) => value
+      case other => fail(s"expected a ready game, got $other")
+    val seats = ready.game.current.players.map(_.player)
+    val first = seats.indexOf(ready.setup.firstPlayer)
+    val order = (seats.drop(first) ++ seats.take(first)).map(_.value.capitalize)
     assertEquals(lines.filter(_.contains(" placed pawn at "))
       .map(_.takeWhile(_ != ' ')), order)
     assertEquals(lines.filter(_.contains(" kept ")).map(_.takeWhile(_ != ' ')),
