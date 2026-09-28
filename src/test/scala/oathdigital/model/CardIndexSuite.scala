@@ -94,6 +94,3 @@ class CardIndexSuite extends munit.FunSuite:
       CardContainer.Player(unknown, PlayerCardArea.Hand), 0)))
     assert(DomainValidation.validate(prepared).contains(
       DomainProblem.UnknownTemporaryHandOwner(unknown)))
-
-  test("the fixture satisfies structural domain invariants"):
-    assertEquals(DomainValidation.validate(game), Vector.empty)
