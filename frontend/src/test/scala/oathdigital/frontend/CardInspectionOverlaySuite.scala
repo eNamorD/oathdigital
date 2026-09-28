@@ -140,13 +140,59 @@ class CardInspectionOverlaySuite extends munit.FunSuite:
     assertEquals(dom.document.activeElement, opener)
     overlay.dispose(); root.remove(); opener.remove()
 
+  /** A pane as `GameTableShell` builds one: a kept heading and a content
+    * box that a poll rebuilds. Returns the section, heading and content.
+    */
+  private def pane(): (dom.Element, dom.html.Element, dom.Element) =
+    val section = dom.document.createElement("section")
+    section.setAttribute("class", "game-pane")
+    val heading = dom.document.createElement("h2").asInstanceOf[dom.html.Element]
+    heading.setAttribute("class", "pane-heading")
+    heading.tabIndex = -1
+    val content = dom.document.createElement("div")
+    section.appendChild(heading)
+    section.appendChild(content)
+    dom.document.body.appendChild(section)
+    (section, heading, content)
+
+  private def faces(cards: CardDetails*): dom.Element =
+    val row = dom.document.createElement("div")
+    cards.foreach(c => row.appendChild(CardFace.render(c)))
+    row
+
   test("focus return survives the opener being rebuilt out from under it"):
+    val (root, overlay) = fixture()
+    val (section, heading, content) = pane()
+    // Two backs that look alike: focus must go to the second one's twin.
+    content.appendChild(faces(hidden, hidden))
+    val opener = all(content, ".card-face")(1).asInstanceOf[dom.html.Element]
+    overlay.show(hidden, opener)
+    PanelContent.replace(content, faces(hidden, hidden), heading)
+    overlay.hide()
+    assert(!dom.document.contains(opener))
+    assertEquals(dom.document.activeElement, all(content, ".card-face")(1))
+    overlay.dispose(); root.remove(); section.remove()
+
+  test("focus falls back to the pane heading when the rebuild dropped the opener"):
+    val (root, overlay) = fixture()
+    val (section, heading, content) = pane()
+    content.appendChild(faces(card))
+    overlay.show(card, content.querySelector(".card-face")
+      .asInstanceOf[dom.html.Element])
+    PanelContent.replace(content, faces(hidden), heading)
+    overlay.hide()
+    assertEquals(dom.document.activeElement, heading)
+    overlay.dispose(); root.remove(); section.remove()
+
+  test("an opener gone from outside any pane leaves focus off the hidden close button"):
     val (root, overlay) = fixture()
     val opener = origin()
     overlay.show(card, opener)
     opener.remove()
     overlay.hide()
-    assert(!overlay.isOpen)
+    assertNotEquals(dom.document.activeElement,
+      root.querySelector(".card-overlay-close"))
+    assertEquals(dom.document.activeElement, dom.document.body)
     overlay.dispose(); root.remove()
 
   test("a projection update while the overlay is open leaves it open and unchanged"):

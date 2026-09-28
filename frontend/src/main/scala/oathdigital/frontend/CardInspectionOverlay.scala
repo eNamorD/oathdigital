@@ -25,7 +25,16 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
   root.appendChild(node)
   TokenSprite.mount(root)
 
-  private var opener = Option.empty[dom.html.Element]
+  /** What opened the overlay, and where focus goes back to when it closes.
+    * `pane` is the opener's `.game-pane`: a poll rebuilds a pane's content
+    * but keeps the pane and its heading, so the pane is where a rebuilt
+    * opener is looked for, and its heading is the fallback when none is
+    * found -- the same fallback `PanelContent.replace` uses.
+    */
+  private final case class Opener(node: dom.html.Element,
+      pane: Option[dom.Element], place: Option[PanelContent.Place])
+
+  private var opener = Option.empty[Opener]
 
   def isOpen: Boolean = !node.hasAttribute("hidden")
 
@@ -72,16 +81,31 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     while body.firstChild != null do body.removeChild(body.firstChild)
 
   private def open(origin: dom.html.Element): Unit =
-    opener = Some(origin)
+    val pane = Option(origin.closest(".game-pane"))
+    opener = Some(Opener(origin, pane,
+      pane.map(PanelContent.place(_, origin)).filter(_.index >= 0)))
     node.removeAttribute("hidden")
     close.focus()
 
   def hide(): Unit =
     node.setAttribute("hidden", "")
-    // The opener can have been rebuilt away by a poll while the overlay was
-    // open; focusing a detached node silently does nothing, so guard instead.
-    opener.filter(dom.document.contains).foreach(_.focus())
+    opener.flatMap(returnTarget) match
+      case Some(target) => target.focus()
+      // Nowhere to return to: at least do not leave focus on the hidden
+      // close button.
+      case None => close.blur()
     opener = None
+
+  /** The opener if it is still in the document; else, when a poll rebuilt
+    * it away while the overlay was open, its rebuilt twin in the same pane;
+    * else that pane's heading.
+    */
+  private def returnTarget(from: Opener): Option[dom.html.Element] =
+    val pane = from.pane.filter(dom.document.contains)
+    Option(from.node).filter(dom.document.contains)
+      .orElse(for p <- pane; at <- from.place; n <- PanelContent.find(p, at) yield n)
+      .orElse(pane.flatMap(p => Option(p.querySelector(".pane-heading")))
+        .map(_.asInstanceOf[dom.html.Element]))
 
   private def details(card: CardDetails): dom.Element =
     val panel = element("div", "card-overlay-details")
