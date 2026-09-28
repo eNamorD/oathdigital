@@ -216,6 +216,18 @@ final case class Table private (private val game: ReadyGame,
     update(_.updateCurrent(c => c.copy(banners = c.banners.copy(darkestSecret =
       c.banners.darkestSecret.copy(holder = holder, secrets = secrets)))))
 
+  /** `viewer` knows `card`, a relic lying at `at`, as a peek records it. */
+  def knowsRelicAt(viewer: PlayerId, card: String | RelicId,
+      at: String | SiteId)(using munit.Location): Table =
+    val id = CatalogNames.relic(card)
+    val site = CatalogNames.site(at)
+    if !game.game.current.map.sites(site).relics.exists(_.id == id) then
+      munit.Assertions.fail(s"${CatalogNames.nameOf(id)} is not at $site")
+    update(r => r.copy(knowledge = r.knowledge.copy(siteRelics =
+      r.knowledge.siteRelics.updated(viewer, r.knowledge.siteRelics
+        .getOrElse(viewer, Map.empty).updatedWith(site)(known =>
+          Some(known.getOrElse(Vector.empty) :+ id))))))
+
   def oathkeeper(holder: Option[PlayerId],
       side: TitleSide = TitleSide.Oathkeeper): Table =
     update(_.updateCurrent(_.copy(title = OathkeeperState(holder, side))))

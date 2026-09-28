@@ -160,6 +160,14 @@ class TableSuite extends munit.FunSuite:
     assertEquals(ready.game.current.title.holder, Some(p2))
     assertEquals(ready.banks.favor(Suit.Arcane), 1)
 
+  test("a viewer can know a relic lying at a site"):
+    val ready = Table.start.relicAt("Sticky Fire", at = "Dunes")
+      .knowsRelicAt(p2, "Sticky Fire", at = "Dunes").ready
+    assertEquals(ready.knowledge.siteRelics(p2)(CatalogNames.site("Dunes")),
+      Vector(CatalogNames.relic("Sticky Fire")))
+    intercept[munit.FailException](
+      Table.start.knowsRelicAt(p2, "Sticky Fire", at = "Dunes"))
+
   test("the world deck's top can be named"):
     val ready = Table.start.worldDeckTop("Alchemist", "Magician's Code").ready
     assertEquals(ready.game.current.commonCards.worldDeck.take(2), Vector(
