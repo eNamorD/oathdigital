@@ -120,8 +120,10 @@ Table.start
   denizen and relic sharing a name. An overload takes ids, for power suites
   that already hold `X.cardId`. An unknown name fails the test and lists
   close matches.
-- **Knowledge.** A facedown adviser, or a relic taken into hand, updates
-  `CardKnowledge` the way real play does: its owner knows it.
+- **Knowledge.** An owner's knowledge of their own cards is implicit (setup
+  records none for kept advisers), so placing a card records nothing. A
+  moved card is forgotten by every viewer, since it left the place they saw
+  it.
 - **Escape hatch.** `.update(f: ReadyGame => ReadyGame)` is a documented last
   resort for a fact no step states. A fact needed by three or more suites
   becomes a step.
@@ -158,8 +160,12 @@ changes to say that a rules-adapter situation may also start at a Table.
 
 ## Migration
 
-The migration runs one task per fixture. Each task moves the fixture's suites
-onto `Table`, deletes the fixture's board-building, and ends green.
+The migration runs one task per fixture, or per fixture family where
+fixtures build on each other. Each task moves the suites onto `Table`,
+deletes the board-building it emptied, and ends green. The implementation
+plan orders the tasks by dependency, and may differ from the list below:
+it takes the Campaign fixtures before the `PowerFixture` family and
+splits that family by power folder.
 
 1. `Table`, `Look` and `situation`, with `TableSuite`.
 2. Pilot: `EconomyFixture` (13 users).
@@ -224,8 +230,10 @@ keep `initialReady`, `execute()` or `Situation.wake`:
   `.ready` rejects a card placed in two zones.
 - An unknown name fails and lists close matches.
 - `OathRules` accepts real commands from a `Table` state:
-  - a Travel, a Muster and a Begin Rest from `Table.start`;
-  - a phase power staged with `.adviser`.
+  - a Travel, a Muster and a Begin Rest from `Table.start`.
+
+  A phase power staged with `.adviser` is covered by the migrated power
+  suites.
 - `situation(Situation.rules(catalog)).after(...)` answers parks and lands
   where real play would.
 
