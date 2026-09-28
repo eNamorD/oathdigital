@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.powers.PowerFixture
+import oathdigital.gameplay.powers.{PowerFixture, ReviewedPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 
 class RuleResolutionSuite extends munit.FunSuite:
@@ -41,3 +41,8 @@ class RuleResolutionSuite extends munit.FunSuite:
       RuleSourceRef.Foundation(FoundationNumber.III),
       RuleSourceRef.Legacy(LineageId("l"), LegacyId("legacy:x")))
     assertEquals(values.map(v => RuleSourceRef.parse(v.stableKey)), values.map(Some(_)))
+
+  test("Recover registry uses exact power-ID data"):
+    val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
+    assert(registry.lookup(PowerId("edifice.e17.intact")).nonEmpty)
+    assert(registry.lookup(PowerId("denizen.future-recover-text")).isEmpty)

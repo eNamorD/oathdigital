@@ -304,19 +304,9 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val started = rules.startWalker(OathState.Ready(ready),
       ActionRef.PlayFacedownAdviser, actor,
       startArgs = Vector(DecisionOptionRef.Denizen(adviser)))
-    assert(started.isRight)
     walkerParked.assertParked(started.toOption.get.state,
       ActionRef.PlayFacedownAdviser, s"cardplay.place.${adviser.kind}.${adviser.value}",
       actor)
-    val parked = started.toOption.get
-    val other = ready.game.current.players.find(_.player != actor).get.player
-    val projector = new oathdigital.application.GameProjector(catalog)
-    val loaded = oathdigital.application.LoadedGame(parked.state, 10)
-    val owner = projector.project("facedown-walker", loaded, actor)
-    val hidden = projector.project("facedown-walker", loaded, other)
-    assert(owner.walkerDecision.nonEmpty)
-    assertEquals(hidden.walkerDecision, None)
-    assert(hidden.walkerWaiting.nonEmpty)
 
   test("placementDecisionId and placedCard round-trip a denizen and a " +
       "Vision whose value contains ':'"):

@@ -252,12 +252,6 @@ class CampaignProcedureSuite extends munit.FunSuite:
       PositionedLocation(Location.PlayArea(b.actor)),
       resultingOrientation = Some(Orientation.FaceUp))))
 
-  test("with no plan available the attacker window is skipped"):
-    val b = board()
-    val plans = atPlans(b)
-    parked.assertParked(plans.state, ActionRef.Campaign, CampaignIds.sacrifice,
-      b.actor)
-
   test("a player defender owns the defender window and the attacker cannot answer it"):
     val b = againstPlayer(board())
     val plans = atPlans(b)

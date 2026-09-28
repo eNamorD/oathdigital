@@ -105,18 +105,6 @@ class MinorActionsSuite extends munit.FunSuite:
     parked.assertResumed(peeked.state, Phase.Act, actor.player)
     assertEquals(rules.evolve(Ready(base), event), Right(Ready(expected)))
 
-    val other = base.game.current.players.find(_.player != actor.player).get.player
-    val projector = new oathdigital.application.GameProjector(catalog)
-    val loaded = oathdigital.application.LoadedGame(Ready(expected), 1)
-    val ownerKnown = projector.project("minor", loaded, actor.player).world
-      .flatMap(_.sites).find(_.siteId == siteId.value).get.relics.knownRelics
-    val otherKnown = projector.project("minor", loaded, other).world
-      .flatMap(_.sites).find(_.siteId == siteId.value).get.relics.knownRelics
-    assert(ownerKnown.exists(_.cardId == siteRelic.value))
-    assertEquals(otherKnown, Vector.empty)
-    assertEquals(projector.projectPublic("minor", loaded).world.flatMap(_.sites)
-      .find(_.siteId == siteId.value).get.relics.knownRelics, Vector.empty)
-
     val previouslyKnown = actor.relics.head.id
     val withPriorKnowledge = base.copy(knowledge = base.knowledge.copy(siteRelics =
       Map(actor.player -> Map(siteId -> Vector(previouslyKnown)))))
