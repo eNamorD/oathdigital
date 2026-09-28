@@ -218,3 +218,18 @@ class PhasePowerSuite extends munit.FunSuite:
         DecisionOptionRef.Banner(Banner.PeoplesFavor)))
     assertEquals(PhasePowerProcedure.usable(catalog, state(None), p1, powers),
       Vector.empty)
+
+  test("a held relic's power is usable only while the relic is faceup"):
+    val relicPower = TestPower(PowerId("relic.brass-horse"), PowerTiming.Act)
+    val relic = CatalogNames.relic("Brass Horse")
+    def holdingRelic(facedown: Boolean) = Table.start
+      .relic(p1, relic, facedown = facedown).turn(p1, Phase.Act).ready
+    val powers = PhasePowers(Vector(relicPower))
+    assert(PhasePowerProcedure.usable(catalog, holdingRelic(facedown = false), p1,
+      powers).nonEmpty)
+    assertEquals(PhasePowerProcedure.usable(catalog, holdingRelic(facedown = true),
+      p1, powers), Vector.empty)
+    assertEquals(rules(relicPower).startWalker(Ready(holdingRelic(facedown = true)),
+      ActionRef.UsePower(relicPower.id), p1, Vector.empty,
+      Vector(DecisionOptionRef.Relic(relic))).left.toOption, Some(OathViolation.InvalidEventOrder(
+        s"relic/${relic.value} is not an accessible source of relic.brass-horse")))

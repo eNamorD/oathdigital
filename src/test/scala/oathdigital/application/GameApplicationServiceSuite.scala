@@ -1784,14 +1784,18 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
       val begun = service.handle(gameId, act.nextSequence,
         GameCommand.BeginRest(actor)).toOption.get
-      begun
+      (begun, actor)
     finally first.close()
+    val (done, restedActor) = finished
     val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     try
       val loaded = new GameApplicationService(catalog, reopened)
         .load(gameId).toOption.flatten.get
-      assertEquals(loaded.state, finished.state)
+      assertEquals(loaded.state, done.state)
       val Ready(ready) = loaded.state: @unchecked
+      // Begin Rest finished the Rest and woke the next player.
+      assertEquals(ready.game.current.turn.phase, Phase.Wake)
+      assertNotEquals(ready.game.current.turn.activePlayer, restedActor)
       val rested = ready.game.current.players.find(_.player !=
         ready.game.current.turn.activePlayer).get
       val summary = oathdigital.gameplay.PlayerSecretSummary

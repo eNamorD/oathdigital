@@ -54,6 +54,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     assert(gateway.load("trusted", TrustedSeat("trusted", "p3")).toOption.get.walkerDecision.isEmpty)
     assertEquals(gateway.load("other", seat), Left(TrustedSeatFailure.Forbidden))
     assertEquals(gateway.submit("other", seat, command), Left(TrustedSeatFailure.Forbidden))
+    assertEquals(gateway.log("other", seat, 0L), Left(TrustedSeatFailure.Forbidden))
     assertEquals(gateway.submit("trusted", seat, command),
       Left(TrustedSeatFailure.Application(GameApplicationError.StaleClientPosition(
         begun.nextSequence, accepted.nextSequence))))

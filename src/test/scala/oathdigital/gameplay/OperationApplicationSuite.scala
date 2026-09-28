@@ -127,6 +127,10 @@ class OperationApplicationSuite extends munit.FunSuite:
 
     assertEquals(codes(OperationApplication.validate(ready, claim)),
       Vector("insufficient-pieces"))
+    // The executor refuses the same claim.
+    assertEquals(new OperationExecutor().executeAll(ready, Vector(claim)).left.toOption,
+      Some(OperationError.InsufficientPieces(Piece.Banner(Banner.PeoplesFavor),
+        Location.SharedBank, 0)))
 
   test("moving a pawn that is not at the source site is a missing-piece"):
     val operation = Move(Piece.Pawn(playerId),

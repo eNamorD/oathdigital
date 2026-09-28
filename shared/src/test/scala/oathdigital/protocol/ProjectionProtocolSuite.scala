@@ -41,9 +41,12 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     worldDeckTopCardKind = Some("denizen"),
     playerBoards = Vector(PlayerBoardProjection("red", 3, 2, 1, 1, 2, 4, 4,
       Some("site:a"), Vector(hidden), Vector(known), None)),
+    // A decided game and an unheld banner: the optional fields the other
+    // fixtures leave empty.
     oathkeeper = Some(OathkeeperProjection("supremacy", Some("red"), "oathkeeper",
-      false, None)),
-    banners = Vector(BannerProjection("peoples-favor", "mob", Some("red"), 2)),
+      false, Some("red"), Some("oathkeeper"))),
+    banners = Vector(BannerProjection("peoples-favor", "mob", Some("red"), 2),
+      BannerProjection("darkest-secret", "wandering-flame", None, 0)),
     minorActions = Some(MinorActionsProjection(
       Vector(MinorAdviserProjection(known, Vector(CardResolutionProjection("discard")))),
       true, Vector(hidden), Some("site:a"), 1, 1)),

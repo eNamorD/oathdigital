@@ -53,7 +53,8 @@ class SelectionPaymentsSuite extends munit.FunSuite:
         detail.contains("cannot all be paid together")
       case _ => false
     }), refused.toString)
-    // Each payment alone is affordable, so the refusal is about the pair.
+    // Either payment alone is affordable (b is a's twin), so the refusal is
+    // about the pair.
     assert(muster(1, a).isRight)
 
   test("a free power adds nothing to the payments"):
