@@ -17,11 +17,12 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
   // Plain cards the tests muster on: none has a Muster or Trade power.
   private val beast = CatalogNames.denizen("Errand Boy")
   private val order = CatalogNames.denizen("Wrestlers")
-  /** A Beast edifice whose intact face has no Muster or Trade power. */
-  private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
+  /** A Beast edifice whose intact face has no Muster or Trade power (its
+    * power is about challenging banners). */
+  private val beastEdifice = CatalogNames.edifice("School of Vines")
 
   /** p1 holds Animal Playmates as an adviser and stands at Ancient City,
-    * which holds Alchemist. p1 has 4 favor and 7 Supply. */
+    * which holds Alchemist. p1 has 4 favor and the start's 7 Supply. */
   private def advised(facedown: Boolean = false): Table = Table.start
     .adviser(p1, playmates, facedown = facedown)
     .denizen("Alchemist", at = Table.homeOf(p1))

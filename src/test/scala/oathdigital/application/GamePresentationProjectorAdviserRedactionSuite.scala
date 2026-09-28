@@ -15,12 +15,6 @@ class GamePresentationProjectorAdviserRedactionSuite extends munit.FunSuite:
   private val projector = new GamePresentationProjector(catalog)
   private val visionId = VisionId("vision:vision-of-conquest")
 
-  /** p1 holds a facedown Magician's Code and a facedown Vision of Conquest. */
-  private def facedownAdvisers: ReadyGame = Table.start
-    .adviser(p1, "Magician's Code", facedown = true)
-    .adviser(p1, visionId, facedown = true)
-    .ready
-
   private def assertRedacted(details: Vector[CardDetailsProjection]): Unit =
     assertEquals(details.map(_.cardKind), Vector("denizen", "vision"))
     assertEquals(details.map(_.name), Vector("Facedown denizen", "Facedown vision"))
@@ -30,12 +24,19 @@ class GamePresentationProjectorAdviserRedactionSuite extends munit.FunSuite:
     assert(details.forall(_.hidden))
 
   test("playerBoards tells an unidentifying viewer the adviser's kind, not its identity"):
-    val board = projector.playerBoards(facedownAdvisers, Some(p2))
+    val ready = Table.start
+      .adviser(p1, "Magician's Code", facedown = true)
+      .adviser(p1, visionId, facedown = true)
+      .ready
+    val board = projector.playerBoards(ready, Some(p2))
       .find(_.playerId == p1.value).get
     assertRedacted(board.advisers)
 
   test("setupPlayerBoards tells every viewer the adviser's kind, not its identity"):
-    val ready = facedownAdvisers
+    val ready = Table.start
+      .adviser(p1, "Magician's Code", facedown = true)
+      .adviser(p1, visionId, facedown = true)
+      .ready
     val material = FirstGameSetupMaterial(ready.game.current.players,
       ready.game.current.map, ready.game.current.commonCards,
       ready.game.current.banners, ready.game.current.tracks, ready.banks.favor,

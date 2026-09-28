@@ -34,7 +34,8 @@ class SelectionPaymentsSuite extends munit.FunSuite:
       : Either[OathViolation, OathTransition] =
     val rules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowers(Vector(a, b, free)))
-    // p1 can afford a Muster from the Alchemist at their site.
+    // The start's 1 favor and 7 Supply pay for a Muster from the Alchemist
+    // at p1's site; only the selected powers' secrets are in question.
     val ready = Table.start.denizen("Alchemist", at = Table.homeOf(p1))
       .secrets(p1, faceUp = secrets).ready
     rules.startWalker(Ready(ready), ActionRef.Muster, p1,

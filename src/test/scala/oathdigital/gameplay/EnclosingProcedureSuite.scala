@@ -30,31 +30,31 @@ class EnclosingProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowers(Vector(probe)))
 
-  /** p1 can Muster from the Alchemist at their site. */
+  /** p1 stands at Ancient City with the Alchemist; the start's 1 favor and
+    * 7 Supply pay for a Muster from it. */
   private def staged: ReadyGame =
     Table.start.denizen("Alchemist", at = Table.homeOf(p1)).ready
-  private def actor: PlayerId = p1
 
   test("a modifier is selected for the procedure that will run it"):
     seen.clear()
-    rules.offerableWalkerPowers(staged, actor, ActionRef.Muster)
+    rules.offerableWalkerPowers(staged, p1, ActionRef.Muster)
     assertEquals(seen.toVector, Vector[(PowerWindow, Option[ProcedureRef])](
       PowerWindow.MusterModifierSelection -> Some(ActionRef.Muster)))
 
   test("the command that starts a procedure has not recorded it yet, and a " +
       "resume walks its windows for it"):
     seen.clear()
-    val started = rules.startWalker(Ready(staged), ActionRef.Muster, actor,
+    val started = rules.startWalker(Ready(staged), ActionRef.Muster, p1,
       Vector(probe.id)).toOption.get
     assert(seen.contains(PowerWindow.MusterSourceSelection -> None), seen.toString)
     seen.clear()
-    rules.resolveWalker(started.state, actor, MusterProcedure.decisionId,
+    rules.resolveWalker(started.state, p1, MusterProcedure.decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(
         CatalogNames.denizen("Alchemist")))).toOption.get
     assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),
       seen.toString)
 
   test("a context built without one names none"):
-    val ctx = PowerCtx(staged, actor, probe.source, PowerWindow.MusterCost,
+    val ctx = PowerCtx(staged, p1, probe.source, PowerWindow.MusterCost,
       Vector.empty, Sequence(Vector.empty))
     assertEquals(ctx.procedure, None)

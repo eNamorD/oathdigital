@@ -17,7 +17,8 @@ class RowdyPubSuite extends munit.FunSuite:
   private val modifiers = Vector(RowdyPub.id)
 
   /** p1's site, Ancient City, holds Rowdy Pub (Hearth) and Alchemist, both
-    * token-free. p1 has 3 warbands. */
+    * token-free. p1 has the start's 3 warbands, and its 1 favor and 7
+    * Supply pay for a Muster. */
   private def pubAtSite: Table = Table.start
     .denizen(alchemist, at = Table.homeOf(p1))
     .denizen(pub, at = Table.homeOf(p1))

@@ -20,9 +20,6 @@ class TradeProcedureSuite extends munit.FunSuite:
     .favor(p1, 4).secrets(p1, faceUp = 2)
     .bankFavor(Suit.Arcane, 5)
 
-  /** Magician's Code is Arcane, like Alchemist. */
-  private def withMatchingAdviser: Table = atAlchemist.adviser(p1, "Magician's Code")
-
   private def trade(ready: ReadyGame, args: Vector[DecisionOptionRef]): ReadyGame =
     val tree = TradeProcedure.build(catalog, ready, p1, args)
       .getOrElse(fail("a legal Trade must build"))
@@ -36,7 +33,11 @@ class TradeProcedureSuite extends munit.FunSuite:
       .asInstanceOf[WalkerOutcome.Finished].treeless
 
   test("Trade for favor moves a secret and its yield is capped by the bank"):
-    val after = trade(withMatchingAdviser.bankFavor(Suit.Arcane, 1).ready, favor)
+    val ready = atAlchemist
+      .adviser(p1, "Magician's Code")       // Arcane, like Alchemist
+      .bankFavor(Suit.Arcane, 1)
+      .ready
+    val after = trade(ready, favor)
     assertEquals(Look(after).faceUpSecrets(p1), 1)
     assertEquals(Look(after).favor(p1), 5)
     assertEquals(after.banks.favor(Suit.Arcane), 0)
@@ -47,7 +48,8 @@ class TradeProcedureSuite extends munit.FunSuite:
     assertEquals(after.banks.favor(Suit.Arcane), 4)
 
   test("Trade for secrets places one favor, burns one and yields the matches"):
-    val after = Look(trade(withMatchingAdviser.ready, secret))
+    val ready = atAlchemist.adviser(p1, "Magician's Code").ready  // Arcane too
+    val after = Look(trade(ready, secret))
     assertEquals(after.favor(p1), 2)
     assertEquals(after.faceUpSecrets(p1), 3)
     assertEquals(after.tokensOn(alchemist), Tokens(1, 0))

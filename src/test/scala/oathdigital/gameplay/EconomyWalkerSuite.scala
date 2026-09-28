@@ -38,8 +38,9 @@ class EconomyWalkerSuite extends munit.FunSuite:
     rules.resolveWalker(state, actor, decisionId,
       DecisionAnswer.ChooseOneAnswer(ref))
 
-  private def current(state: OathState): CurrentGameState =
-    state.asInstanceOf[Ready].value.game.current
+  private def current(state: OathState): CurrentGameState = state match
+    case Ready(ready) => ready.game.current
+    case other => fail(s"expected a ready game, got $other")
 
   test("starting Muster parks on the source decision and changes nothing yet"):
     val started = start(atAlchemist.ready)
