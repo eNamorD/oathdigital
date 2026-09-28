@@ -42,6 +42,6 @@ class GamePresentationProjectorPrintedFacesSuite extends munit.FunSuite:
       ("river", "River", Some("WAKE: You may place your pawn at another " +
         "River. This is not a Travel action."))))
     assertEquals(powers("site:deep-woods"), Vector(("homeland-beast",
-      "Homeland", Some("There is a Homeland of each suit. When playing a card " +
+      "Beast Homeland", Some("There is a Homeland of each suit. When playing a card " +
         "of its Homeland suit to this site, you may discard a card from the " +
         "site first (even one of matching suit)."))))

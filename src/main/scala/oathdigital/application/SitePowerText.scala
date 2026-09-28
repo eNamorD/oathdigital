@@ -2,7 +2,8 @@ package oathdigital.application
 
 /** Each site power's name and printed text (CR p. 31, NF p. 11), by the kind
   * its handler ends in: `site.riverbank.river` is a River. The six Homelands,
-  * `homeland-<suit>`, share one text. */
+  * `homeland-<suit>`, share one text and are each named for their suit:
+  * `homeland-beast` is the Beast Homeland. */
 private[application] object SitePowerText:
   final case class Printed(label: String, text: String)
 
@@ -10,11 +11,14 @@ private[application] object SitePowerText:
     handler.split('.').lastOption.getOrElse(handler)
 
   def of(kind: String): Option[Printed] =
-    if kind.startsWith("homeland-") then Some(homeland) else printed.get(kind)
+    if kind.startsWith("homeland-") then
+      Some(Printed(s"${kind.stripPrefix("homeland-").capitalize} Homeland",
+        homeland))
+    else printed.get(kind)
 
-  private val homeland = Printed("Homeland", "There is a Homeland of each " +
-    "suit. When playing a card of its Homeland suit to this site, you may " +
-    "discard a card from the site first (even one of matching suit).")
+  private val homeland = "There is a Homeland of each suit. When playing a " +
+    "card of its Homeland suit to this site, you may discard a card from " +
+    "the site first (even one of matching suit)."
 
   private val printed: Map[String, Printed] = Map(
     "plains" -> Printed("Plains", "This site has no power."),
