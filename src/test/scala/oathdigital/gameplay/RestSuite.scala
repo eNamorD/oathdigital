@@ -203,16 +203,18 @@ class RestSuite extends munit.FunSuite:
       val rested = rest(state, player).toOption.get
       events ++= rested.events
       state = rested.state
-      if player != order.last then
+      // A Wake with nothing to decide has already ended by itself.
+      val turn = state.asInstanceOf[Ready].value.game.current.turn
+      if player != order.last && turn.phase == Phase.Wake then
         val woke = rules.startWalker(state, PhaseTransitionRef.EndWake,
-          state.asInstanceOf[Ready].value.game.current.turn.activePlayer).toOption.get
+          turn.activePlayer).toOption.get
         events ++= woke.events
         state = woke.state
     }
     val Ready(after) = state: @unchecked
     assertEquals(after.game.current.tracks.round, 2)
     assertEquals(after.game.current.turn.activePlayer, after.setup.firstPlayer)
-    assertEquals(after.game.current.turn.phase, Phase.Wake)
+    assertNotEquals(after.game.current.turn.phase, Phase.Rest)
     assertEquals(events.foldLeft[Either[OathViolation, OathState]](
       Right(Ready(act)))((next, event) => next.flatMap(rules.evolve(_, event))),
       Right(state))

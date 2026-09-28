@@ -8,7 +8,8 @@ import oathdigital.gameplay.phases.rest.{TurnBoundary,
 import oathdigital.model._
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.phases.wake.ForcedWakeProcedure
+import oathdigital.gameplay.phases.wake.{ForcedWakeProcedure,
+  TakeWealthProcedure}
 import oathdigital.gameplay.powerresolver.{PhasePowers}
 import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerCompleted,
   WalkerDice, WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
@@ -136,6 +137,11 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
     PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog).nonEmpty
+
+  protected def wakeOptionOpen(ready: ReadyGame, player: PlayerId): Boolean =
+    PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog)
+      .nonEmpty || TakeWealthProcedure.candidates(catalog, ready, player,
+        walkerPowers(ready, player, Vector.empty)).nonEmpty
 
   /** The boundary decides only WHETHER the title changes; the triggered
     * procedure performs the change, so every title change is one walker step.

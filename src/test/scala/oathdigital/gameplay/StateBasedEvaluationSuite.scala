@@ -118,8 +118,12 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       val accepted = transition.toOption.get
       state = accepted.state
       events ++= accepted.events
+    // A Wake with nothing to decide has already ended by itself.
+    def endWake(player: PlayerId): Unit =
+      if state.asInstanceOf[Ready].value.game.current.turn.phase == Phase.Wake
+      then accept(rules.startWalker(state, PhaseTransitionRef.EndWake, player))
     def finishTurn(player: PlayerId): Unit =
-      accept(rules.startWalker(state, PhaseTransitionRef.EndWake, player))
+      endWake(player)
       accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, player))
 
     turnOrder.foreach(finishTurn)
@@ -130,7 +134,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       OathkeeperState(Some(holder), TitleSide.Usurper))
     assert(events.contains(UsurperFlipped(holder)))
 
-    accept(rules.startWalker(state, PhaseTransitionRef.EndWake, holder))
+    endWake(holder)
     val holderState = state.asInstanceOf[Ready].value
     val destination = holderState.game.current.map.inPlay.find(
       _ != holderState.game.current.players.find(_.player == holder)

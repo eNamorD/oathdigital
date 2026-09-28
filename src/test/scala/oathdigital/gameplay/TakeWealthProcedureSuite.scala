@@ -66,11 +66,11 @@ object TakeWealthFixture extends munit.Assertions:
 /** Take Wealth on the generic walker (batch 1, Tasks 7-8).
   *
   * This is the first registered action that runs in a phase other than Act,
-  * which is the point of porting it: a completed Take Wealth returns the
-  * player to their own Wake phase -- and still runs the action boundary
-  * there, because the boundary follows the completed procedure's family
-  * (Task 8), not the phase it ran in. Both facts are asserted here, not
-  * inferred.
+  * which is the point of porting it: a completed Take Wealth runs the action
+  * boundary, because the boundary follows the completed procedure's family
+  * (Task 8), not the phase it ran in. Take Wealth is once per site per turn,
+  * so on a board with no other Wake option the take is Wake's last choice,
+  * and Wake ends in the same command.
   */
 class TakeWealthProcedureSuite extends munit.FunSuite:
   private val powers: WalkerPowers = WalkerPowerCatalog.default(catalog)
@@ -107,7 +107,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       case Ready(value) => value
       case other => fail(s"expected Ready, got $other")
 
-  test("a take moves the favor, records its use and stays in Wake"):
+  test("a take moves the favor, records its use and ends a Wake with nothing left"):
     val ready = wake()
     val site = pawnSite(ready)
     val before = board(ready).favor
@@ -118,9 +118,10 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     assertEquals(state.game.current.map.sites(site).tokens.favor, 0)
     assert(state.game.current.turn.usedPowers.contains(
       TakeWealthLimit.useRef(site)))
-    parked.assertResumed(transition.state, Phase.Wake, actor(ready))
-    assertEquals(transition.events.map(_.productPrefix),
-      Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
+    parked.assertResumed(transition.state, Phase.Act, actor(ready))
+    assertEquals(transition.events.collect {
+      case oathdigital.gameplay.walker.WalkerCompleted(procedure) => procedure
+    }, Vector(ActionRef.TakeWealth, PhaseTransitionRef.EndWake))
     assertEquals(state.game.current.walkerPending, None)
     assertEquals(state.game.current.walkerProcedure, None)
 
@@ -131,7 +132,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     assertEquals(board(state).faceUpSecrets, before + 1)
     assertEquals(state.game.current.map.sites(pawnSite(ready)).tokens.secrets, 0)
 
-  test("a completed Take Wealth runs the action boundary and stays in Wake"):
+  test("a completed Take Wealth runs the action boundary before Wake ends"):
     // An empty site with capacity makes the boundary observable; the
     // precondition proves it has something to do here.
     val base = wake()
@@ -145,13 +146,22 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       .toOption.flatten.nonEmpty,
       "precondition: the boundary would refill bandits in this state")
     val result = accepted(ready)
+    val refilled = result.events.indexWhere(_.isInstanceOf[BanditsRefilled])
     assertEquals(result.events.collect { case event: BanditsRefilled => event }.size, 1)
-    parked.assertResumed(result.state, Phase.Wake,
+    assert(refilled >= 0 && refilled < result.events.indexWhere {
+      case oathdigital.gameplay.walker.WalkerCompleted(procedure) =>
+        procedure == PhaseTransitionRef.EndWake
+      case _ => false
+    }, result.events.toString)
+    parked.assertResumed(result.state, Phase.Act,
       ready.game.current.turn.activePlayer)
 
   test("a second take at the same site this turn is blocked"):
     val ready = wake(favor = 2)
-    val once = after(accepted(ready))
+    // The take ends Wake; put the turn back in Wake to try the site again.
+    val took = after(accepted(ready))
+    val once = took.updateCurrent(current => current.copy(turn =
+      current.turn.copy(phase = Phase.Wake)))
     assert(take(once).left.toOption.get.isInstanceOf[PowerAlreadyUsed],
       "the once-per-turn restriction must reject the second take")
 
@@ -240,7 +250,10 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
   test("the recorded operations are the resource move and the use record"):
     val ready = wake()
     val site = pawnSite(ready)
-    val recorded = accepted(ready).events.collect {
+    val recorded = accepted(ready).events.takeWhile {
+      case _: oathdigital.gameplay.walker.WalkerCompleted => false
+      case _ => true
+    }.collect {
       case step: oathdigital.gameplay.walker.WalkerStepRecorded => step.ops
     }.flatten
     assertEquals(recorded, Vector(

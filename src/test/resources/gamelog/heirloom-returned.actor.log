@@ -1,15 +1,20 @@
 0.0 round 0 | Setup
 3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
-6.0 decision 1 | [player:p2|P2] kept [card:208|Wizard's Conclave]
+6.0 decision 1 | [player:p2|P2] kept a Denizen
 11.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
-14.0 decision 1 | [player:p3|P3] kept a Denizen
+14.0 decision 1 | [player:p3|P3] kept [card:176|Birdsong]
 19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
 22.0 decision 1 | [player:p1|P1] kept a Denizen
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
 25.2 phase 0 | Wake
-28.0 action 1 | Nothing happened in Wake
-28.1 phase 0 | Act
-30.0 action 1 | Playing Facedown Adviser
-32.0 action 1 | Played [card:133|Family Heirloom] as an adviser
-37.0 trigger 1 | [card:133|Family Heirloom]: [player:p2|P2] drew [card:R09|Dowsing Sticks] and put it on the bottom of the relic deck.
+27.0 action 1 | Nothing happened in Wake
+27.1 phase 0 | Act
+30.0 phase 0 | Rest
+32.0 turn 0 | [player:p3|P3]'s turn
+32.1 phase 0 | Wake
+34.0 action 1 | Nothing happened in Wake
+34.1 phase 0 | Act
+36.0 action 1 | Playing Facedown Adviser
+38.0 action 1 | Played [card:133|Family Heirloom] as an adviser
+43.0 trigger 1 | [card:133|Family Heirloom]: [player:p3|P3] drew [card:R09|Dowsing Sticks] and put it on the bottom of the relic deck.

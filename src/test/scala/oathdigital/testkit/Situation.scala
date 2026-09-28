@@ -55,6 +55,13 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
     case Ready(ready) => ready
     case other => munit.Assertions.fail(s"expected a ready game, got $other")
 
+  /** Ends `player`'s Wake, unless it has already ended by itself for having
+    * nothing to decide. */
+  def endingWake(player: PlayerId)(using munit.Location): Situation =
+    if ready.game.current.turn.phase == Phase.Wake then
+      after(GameCommand.EndWake(player))
+    else this
+
   /** Issues each step and answers every parked decision it causes, the last
     * step's included: the result is not parked. With no steps, answers the
     * park this situation holds. */
@@ -161,7 +168,8 @@ object Situation:
   def start(driver: SituationDriver): Situation =
     Situation(OathState.NoGame, Vector.empty, 0L, driver)
 
-  /** Setup complete: the first player's Wake. */
+  /** Setup complete: the first player's turn. It is in Wake when Wake has
+    * an option; a Wake with nothing to decide has already ended, in Act. */
   def wake(driver: SituationDriver,
       chronicle: Chronicle = FirstGameSetupFixture.chronicle,
       orders: SetupOrders = FirstGameSetupFixture.orders)(
@@ -173,7 +181,7 @@ object Situation:
       chronicle: Chronicle = FirstGameSetupFixture.chronicle,
       orders: SetupOrders = FirstGameSetupFixture.orders)(
       using munit.Location): Situation =
-    wake(driver, chronicle, orders).after(GameCommand.EndWake(actor))
+    wake(driver, chronicle, orders).endingWake(actor)
 
   /** `actor`'s Act ended, stopped at the Rest action. */
   def rest(driver: SituationDriver, actor: PlayerId,

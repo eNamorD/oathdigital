@@ -128,9 +128,12 @@ class HungerSuite extends munit.FunSuite:
       "none", "No adviser could be buried.", covers = true)))
 
   test("a facedown Hunger does nothing"):
+    // With no forced step and no other option, the next player's Wake ends
+    // at once.
     val t = rested(staged(Orientation.FaceDown))
-    parked.assertResumed(t.state, Phase.Wake, next)
+    parked.assertResumed(t.state, Phase.Act, next)
     assert(!t.events.contains(WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
+    assert(t.events.contains(WalkerCompleted(PhaseTransitionRef.EndWake)))
 
   test("a Hunger revealed in Setup's Reveal Cards runs at the first Wake"):
     val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
@@ -173,7 +176,11 @@ class HungerSuite extends munit.FunSuite:
     assert(woken.events.contains(
       WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
     assertEquals(woken.ready.game.current.turn.activePlayer, first)
-    assertEquals(woken.ready.game.current.turn.phase, Phase.Wake)
+    // The forced step was that Wake's only business, so Wake ended after it.
+    assertEquals(woken.events.collect { case WalkerCompleted(procedure) =>
+      procedure }.takeRight(2),
+      Vector(TriggeredProcedureRef.ForcedWake, PhaseTransitionRef.EndWake))
+    assertEquals(woken.ready.game.current.turn.phase, Phase.Act)
     assertEquals(NoteText.said(hunger, woken.events).map(_.key),
       Vector("buried"))
 

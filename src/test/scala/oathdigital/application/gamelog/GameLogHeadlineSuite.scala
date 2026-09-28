@@ -23,20 +23,22 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val all = headlines(format(script, Some(script.actor)))
     assertEquals(all.take(2), Vector("Setup", "Round 1"))
     assertEquals(all.count(_.endsWith("'s turn")), script.players.size + 1)
-    assertEquals(all.takeRight(3),
-      Vector("Round 2", s"${name(script.actor)}'s turn", "Wake"))
+    // Round 2's first Wake has nothing to decide, so it ends at once.
+    assertEquals(all.takeRight(4),
+      Vector("Round 2", s"${name(script.actor)}'s turn", "Wake", "Act"))
 
   test("each turn posts its Wake, Act and Rest headlines in order"):
     val script = round
     val entries = format(script, Some(script.actor))
     val all = headlines(entries)
     val turns = all.indices.filter(all(_).endsWith("'s turn"))
-    // Every turn but Round 2's first is played through its Rest.
+    // Every turn but Round 2's first is played through its Rest; that one
+    // stops in Act, its Wake having had nothing to decide.
     turns.init.foreach { at =>
       assertEquals(all.slice(at + 1, at + 4), Vector("Wake", "Act", "Rest"),
         all.toString)
     }
-    assertEquals(all.drop(turns.last + 1), Vector("Wake"))
+    assertEquals(all.drop(turns.last + 1), Vector("Wake", "Act"))
     val phases = entries.filter(entry => entry.depth == 0 &&
       Set("Wake", "Act", "Rest")(text(entry)))
     assert(phases.forall(_.kind == LogKind.Phase), phases.toString)
@@ -52,12 +54,12 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     }
 
   test("a Wake that did something posts no Nothing line"):
-    val script = tookWealthThenActed
+    val script = takeWealth
     val all = texts(format(script, Some(script.actor)))
-    val wake = all.indexOf("Wake")
-    assert(wake >= 0 && all.indexOf("Act") > wake + 1, all)
-    assert(all(wake + 1).startsWith("Took 1 favor from "), all)
-    assert(!all.contains("Nothing happened in Wake"), all)
+    val wake = all.indexOf("Wake", all.indexOf(s"${name(script.actor)}'s turn"))
+    assert(wake >= 0, all)
+    assertEquals(all.drop(wake + 1).take(2).map(_.takeWhile(_ != ' ')),
+      Vector("Took", "Act"), all.toString)
 
   test("the turn headline names the player with a player span"):
     val script = woken

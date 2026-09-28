@@ -92,7 +92,7 @@ object ForgeWalkerFixture extends munit.Assertions:
         ChooseAmountAnswer(2)
       case park if park.decisionId == CampaignIds.placement =>
         ChooseAmountAnswer(1)
-    }.after(GameCommand.EndWake(actor),
+    }.endingWake(actor).after(
       GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
 
     // Each Search keeps the first drawn card playable at the site and plays
@@ -119,10 +119,10 @@ object ForgeWalkerFixture extends munit.Assertions:
     def roundTo(situation: Situation): Situation =
       val active = situation.ready.game.current.turn.activePlayer
       if active == actor then situation
-      else roundTo(situation.after(GameCommand.EndWake(active),
-        GameCommand.BeginRest(active)))
+      else roundTo(situation.endingWake(active)
+        .after(GameCommand.BeginRest(active)))
     val ready = roundTo(searching.after(search, search,
-      GameCommand.BeginRest(actor))).after(GameCommand.EndWake(actor), search)
+      GameCommand.BeginRest(actor))).endingWake(actor).after(search)
     (ready, actor, forgeSite)
 
   /** The position a mixed-cost Forge PARKS from: the fixture board above,

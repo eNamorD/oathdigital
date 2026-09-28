@@ -5,6 +5,7 @@ import java.nio.file.Paths
 import oathdigital.catalog._
 import oathdigital.model._
 import oathdigital.model.OathState._
+import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.testkit.Situation
 
 /** Shared fixture for the whole gameplay test suite: a real catalog, three
@@ -97,11 +98,23 @@ object FirstGameSetupFixture:
     Situation.wake(Situation.rules(catalog)
       .withAnswers(Situation.pawnsAt(placementSites)), chronicle, orders)
 
-  /** [[initialSituation]]'s state and real event history, in `Phase.Wake`. */
+  /** [[initialSituation]]'s state and real event history as the first
+    * player's Wake begins, in `Phase.Wake`. Real play ends a Wake with
+    * nothing to decide in the command that begins it, so this stops before
+    * that End Wake: the rule suites built on it start from the Wake and add
+    * whatever option they test. */
   def execute(placementSites: Vector[SiteId] = sites)
       : (OathState, Vector[OathEvent]) =
     val woken = initialSituation(placementSites)
-    (woken.state, woken.events)
+    val setupEnd = woken.events.indexWhere {
+      case WalkerCompleted(TriggeredProcedureRef.Setup) => true
+      case _ => false
+    }
+    val events = woken.events.take(setupEnd + 1)
+    val rules = new oathdigital.gameplay.OathRules(catalog)
+    val state = events.foldLeft[Either[OathViolation, OathState]](
+      Right(NoGame))((state, event) => state.flatMap(rules.evolve(_, event)))
+    (state.toOption.get, events)
 
   /** The game `execute()` sets up. Immutable, so suites share one. */
   lazy val initialReady: ReadyGame =

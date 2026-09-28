@@ -33,7 +33,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
     val woken = initialSituation()
     val actor = woken.ready.game.current.turn.activePlayer
     val other = woken.ready.game.current.players.find(_.player != actor).get
-    val traveled = woken.parkedAfter(GameCommand.EndWake(actor),
+    val traveled = woken.endingWake(actor).parkedAfter(
       GameCommand.StartWalker(oathdigital.model.ActionRef.Travel,
         StartPayload(actor, Vector.empty,
           Vector(oathdigital.model.DecisionOptionRef.Site(

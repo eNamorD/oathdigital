@@ -8,3 +8,5 @@
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
 25.2 phase 0 | Wake
+27.0 action 1 | Nothing happened in Wake
+27.1 phase 0 | Act

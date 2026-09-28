@@ -27,20 +27,25 @@ class SituationSuite extends munit.FunSuite:
       campaignDicePort = blankDice)
     (Situation.journaled(service, catalog, repository, gameId), repository)
 
+  /** `ready` once its Wake has ended. */
+  private def inAct(ready: ReadyGame): ReadyGame =
+    ready.updateCurrent(current => current.copy(turn =
+      current.turn.copy(phase = Phase.Act)))
+
   private def recordCount(repository: InMemoryEventStreamRepository,
       gameId: String): Int =
     repository.load(gameId).toOption.flatten.get.records.size
 
-  test("wake is the fixture's first game: the first player in Wake, pawns " +
-      "on the first sites and one adviser each"):
+  test("wake is the fixture's first game: the first player's Wake, with " +
+      "nothing to decide, ended; pawns on the first sites and one adviser each"):
     // Before FirstGameSetupFixture delegated to it, this compared `wake`
     // with the fixture's own hand-written walk, state and events alike.
     val ready = Situation.wake(Situation.rules(catalog)
       .withAnswers(Situation.pawnsAt(sites))).ready
     val current = ready.game.current
-    assertEquals(ready, FirstGameSetupFixture.initialReady)
+    assertEquals(ready, inAct(FirstGameSetupFixture.initialReady))
     assertEquals((current.turn.phase, current.turn.activePlayer),
-      (Phase.Wake, orders.firstPlayer))
+      (Phase.Act, orders.firstPlayer))
     assertEquals(current.players.find(_.player == orders.firstPlayer)
       .flatMap(_.pawnSite), Some(sites.head))
     assertEquals(current.players.flatMap(_.pawnSite).toSet,
@@ -59,7 +64,6 @@ class SituationSuite extends munit.FunSuite:
         .initialReady.game.current.title.holder.contains(player)).get
     val steps = Vector[GameCommand | Step](
       Step.Arrange(Vector(SetOathkeeper(Some(other)))),
-      GameCommand.EndWake(actor),
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
     val byRules = Situation.wake(Situation.serviceRules(catalog, blankDice))
@@ -126,7 +130,7 @@ class SituationSuite extends munit.FunSuite:
     val parked = Situation.start(Situation.rules(catalog))
       .parkedAfter(GameCommand.Begin(chronicle, orders))
     val woken = parked.withAnswers(Situation.pawnsAt(sites)).after()
-    assertEquals(woken.ready, FirstGameSetupFixture.initialReady)
+    assertEquals(woken.ready, inAct(FirstGameSetupFixture.initialReady))
 
   test("the rules adapter refuses ordered modifiers rather than skip their " +
       "check"):

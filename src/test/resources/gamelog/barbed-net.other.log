@@ -8,8 +8,14 @@
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
 25.2 phase 0 | Wake
-27.0 delta 1 | Gained 3 secrets
-28.0 phase 0 | Act
-32.0 action 1 | [card:R36|Barbed Net]: [player:p2|P2] peeked at the relics at [site:site:ancient-city|Ancient City]: a Relic.
-34.0 decision 1 | Chose a Relic
-36.0 action 1 | [card:R36|Barbed Net]: [player:p2|P2] took a Relic facedown from [site:site:ancient-city|Ancient City].
+27.0 action 1 | Nothing happened in Wake
+27.1 phase 0 | Act
+29.0 delta 1 | [player:p3|P3] gained 3 secrets
+30.0 phase 0 | Rest
+32.0 turn 0 | [player:p3|P3]'s turn
+32.1 phase 0 | Wake
+34.0 action 1 | Nothing happened in Wake
+34.1 phase 0 | Act
+38.0 action 1 | [card:R36|Barbed Net]: [player:p3|P3] peeked at the relics at [site:site:broken-peaks|Broken Peaks]: 3 Relics.
+40.0 decision 1 | Chose a Relic
+42.0 action 1 | [card:R36|Barbed Net]: [player:p3|P3] took a Relic facedown from [site:site:broken-peaks|Broken Peaks].

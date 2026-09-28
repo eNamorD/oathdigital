@@ -69,8 +69,12 @@ class HornedMaskSuite extends munit.FunSuite:
       Some(Orientation.FaceDown))
     assertEquals(player(after(done)).advisers.size, 2)
     assert(after(done).game.current.turn.usedPowers.contains(used))
-    parked.assertResumed(done.state, Phase.Wake, actor)
-    assertEquals(use(after(done), power, source).left.toOption,
+    // It was Wake's only option, so Wake ended with it: put the turn back in
+    // Wake, its uses kept, to try again.
+    parked.assertResumed(done.state, Phase.Act, actor)
+    val again = after(done).updateCurrent(current =>
+      current.copy(turn = current.turn.copy(phase = Phase.Wake)))
+    assertEquals(use(again, power, source).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
 

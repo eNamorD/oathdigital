@@ -48,7 +48,11 @@ class MarbleFountainsSuite extends munit.FunSuite:
       MarbleFountains.id)
     assert(first.asInstanceOf[Ready].value.game.current.turn.usedPowers
       .contains(used))
-    assertEquals(use(first.asInstanceOf[Ready].value).left.toOption,
+    // It was Wake's only option, so Wake ended with it: put the turn back in
+    // Wake, its uses kept, to try again.
+    val again = first.asInstanceOf[Ready].value.updateCurrent(current =>
+      current.copy(turn = current.turn.copy(phase = Phase.Wake)))
+    assertEquals(use(again).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
 
   test("it is unusable when the pawn is at another site"):

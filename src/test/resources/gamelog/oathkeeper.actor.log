@@ -1,7 +1,7 @@
 0.0 round 0 | Setup
-3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
+3.0 action 1 | [player:p2|P2] placed pawn at [site:site:broken-peaks|Broken Peaks]
 6.0 decision 1 | [player:p2|P2] kept [card:208|Wizard's Conclave]
-11.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
+11.0 action 1 | [player:p3|P3] placed pawn at [site:site:ancient-city|Ancient City]
 14.0 decision 1 | [player:p3|P3] kept a Denizen
 19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
 22.0 decision 1 | [player:p1|P1] kept a Denizen

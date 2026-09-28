@@ -66,7 +66,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val woken = initialSituation()
     val ready = woken.ready
     val actor = ready.game.current.turn.activePlayer
-    val act = woken.parkedAfter(GameCommand.EndWake(actor))
+    val act = woken.endingWake(actor)
     act.seedInto(repository, "preview")
     val service = new GameApplicationService(catalog, repository)
     val gateway = new TrustedGameGateway(service, new GameProjector(catalog))

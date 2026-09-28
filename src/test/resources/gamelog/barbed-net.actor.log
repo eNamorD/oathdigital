@@ -1,15 +1,21 @@
 0.0 round 0 | Setup
 3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
-6.0 decision 1 | [player:p2|P2] kept [card:208|Wizard's Conclave]
+6.0 decision 1 | [player:p2|P2] kept a Denizen
 11.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
-14.0 decision 1 | [player:p3|P3] kept a Denizen
+14.0 decision 1 | [player:p3|P3] kept [card:176|Birdsong]
 19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
 22.0 decision 1 | [player:p1|P1] kept a Denizen
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
 25.2 phase 0 | Wake
-27.0 delta 1 | Gained 3 secrets
-28.0 phase 0 | Act
-32.0 action 1 | [card:R36|Barbed Net]: [player:p2|P2] peeked at the relics at [site:site:ancient-city|Ancient City]: [card:R09|Dowsing Sticks].
-34.0 decision 1 | Chose [card:R09|Dowsing Sticks]
-36.0 action 1 | [card:R36|Barbed Net]: [player:p2|P2] took [card:R09|Dowsing Sticks] facedown from [site:site:ancient-city|Ancient City].
+27.0 action 1 | Nothing happened in Wake
+27.1 phase 0 | Act
+29.0 delta 1 | [player:p3|P3] gained 3 secrets
+30.0 phase 0 | Rest
+32.0 turn 0 | [player:p3|P3]'s turn
+32.1 phase 0 | Wake
+34.0 action 1 | Nothing happened in Wake
+34.1 phase 0 | Act
+38.0 action 1 | [card:R36|Barbed Net]: [player:p3|P3] peeked at the relics at [site:site:broken-peaks|Broken Peaks]: [card:R01|Sticky Fire], [card:R02|Cursed Cauldron] and [card:R09|Dowsing Sticks].
+40.0 decision 1 | Chose [card:R09|Dowsing Sticks]
+42.0 action 1 | [card:R36|Barbed Net]: [player:p3|P3] took [card:R09|Dowsing Sticks] facedown from [site:site:broken-peaks|Broken Peaks].

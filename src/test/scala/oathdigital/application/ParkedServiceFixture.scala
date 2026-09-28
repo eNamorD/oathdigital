@@ -28,14 +28,26 @@ object ParkedServiceFixture:
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
 
   /** Setup driven through `service` as `gameId`, the n-th pawn placed at
-    * `placementSites(n)`: the accepted position the first player's Wake
-    * starts from, holding every event Setup journaled. */
+    * `placementSites(n)`: the accepted position after Setup, holding every
+    * event Setup journaled. The first player is in Wake if Wake has an
+    * option, else in Act: a Wake with nothing to decide ends by itself. */
   def setUp(service: GameApplicationService, gameId: String,
       placementSites: Vector[SiteId] = sites,
       setupChronicle: Chronicle = chronicle,
       setupOrders: SetupOrders = orders): GameAccepted =
     accepted(woken(Situation.journaled(service, catalog, gameId),
       placementSites, setupChronicle, setupOrders))
+
+  /** Ends `player`'s Wake through `service` from `from`, unless that Wake
+    * has already ended by itself for having nothing to decide. */
+  def endingWake(service: GameApplicationService, gameId: String,
+      from: GameAccepted, player: PlayerId): GameAccepted =
+    from.state match
+      case OathState.Ready(ready) if ready.game.current.turn.phase == Phase.Wake =>
+        service.handle(gameId, from.nextSequence, GameCommand.EndWake(player))
+          .fold(error => throw new AssertionError(s"End Wake rejected: $error"),
+            identity)
+      case _ => from
 
   private def woken(driver: SituationDriver,
       placementSites: Vector[SiteId] = sites,
@@ -120,8 +132,7 @@ object ParkedServiceFixture:
         PositionedLocation(Location.PlayArea(ruler)),
         PositionedLocation(Location.Site(site))),
       Move(Piece.Favor(2), PositionedLocation(Location.FavorBank(suit)),
-        PositionedLocation(Location.OnCard(treatyCard))))),
-      GameCommand.EndWake(active))
+        PositionedLocation(Location.OnCard(treatyCard)))))).endingWake(active)
     val parked = act.parkedAfter(GameCommand.BeginRest(active))
     parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       LeagueTreatyContribution.destinationDecisionId(base, active, site,
@@ -160,7 +171,7 @@ object ParkedServiceFixture:
       : (GameAccepted, PlayerId, Vector[PlayerId]) =
     val actor = orders.firstPlayer
     val act = woken(Situation.journaled(service, catalog, gameId),
-      recoverSites, recoverChronicle, orders).after(GameCommand.EndWake(actor))
+      recoverSites, recoverChronicle, orders).endingWake(actor)
     val parked = act.parkedAfter(
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
     parkedAssertions.assertParked(parked.state, ActionRef.Recover,
@@ -168,13 +179,19 @@ object ParkedServiceFixture:
     (accepted(parked, act), actor, orders.participants.map(_.playerId))
 
   /** The off-turn Oathkeeper tie from the service suite: the holder must
-    * pick between two tied leaders after the active player's Travel.
+    * pick between two tied leaders after the active player's Travel. The
+    * first pawn starts at a site with wealth to take, so the first Wake
+    * waits, and the board is arranged in it.
     */
   def oathkeeperTiePark(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, gameId: String)
       : (GameAccepted, PlayerId, PlayerId, PlayerId) =
+    val wealthSite = catalog.sites.find(site =>
+      sites.contains(site.id) && !site.startingResources.isEmpty).get.id
     val setup = woken(Situation.journaled(service, catalog, repository,
-      gameId))
+      gameId), wealthSite +: sites.filterNot(_ == wealthSite))
+    assert(setup.ready.game.current.turn.phase == Phase.Wake,
+      "the first Wake must wait, or the arrangement joins the Travel's run")
     val base = setup.ready
     val active = base.game.current.turn.activePlayer
     val players = base.game.current.players.map(_.player)
@@ -191,8 +208,7 @@ object ParkedServiceFixture:
           PositionedLocation(Location.Site(siteA))),
         Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaders(1))), 1),
           PositionedLocation(Location.PlayArea(leaders(1))),
-          PositionedLocation(Location.Site(siteB))))),
-      GameCommand.EndWake(active))
+          PositionedLocation(Location.Site(siteB)))))).endingWake(active)
     val inAct = act.ready
     val activePlayer = inAct.game.current.players.find(_.player == active).get
     val destination = inAct.game.current.map.inPlay.find(id =>
@@ -233,8 +249,8 @@ object ParkedServiceFixture:
     val resting = setup.after(arrange(gameId, Vector(
       topOfWorldDeck(silverTongueCard, Location.PlayArea(active)),
       topOfWorldDeck(first._1, Location.Site(pawn)),
-      topOfWorldDeck(second._1, Location.Site(pawn)))),
-      GameCommand.EndWake(active), GameCommand.BeginRest(active))
+      topOfWorldDeck(second._1, Location.Site(pawn)))))
+      .endingWake(active).after(GameCommand.BeginRest(active))
     parkedAssertions.assertResumed(resting.state, Phase.Rest, active)
     val parked = resting.parkedAfter(GameCommand.UsePower(active,
       SilverTongue.id, DecisionOptionRef.Denizen(silverTongueCard)))

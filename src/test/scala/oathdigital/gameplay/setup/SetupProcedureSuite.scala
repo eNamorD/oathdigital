@@ -52,7 +52,7 @@ class SetupProcedureSuite extends munit.FunSuite:
     assert(revealable.nonEmpty, advisers(woken))
     assert(revealable.forall(_.orientation == Orientation.FaceUp),
       advisers(woken))
-    assertEquals(woken.ready.game.current.turn.phase, Phase.Wake)
+    assertNotEquals(woken.ready.game.current.turn.phase, Phase.Setup)
 
   test("Reveal Cards chosen empty keeps every adviser facedown"):
     val woken = Situation.wake(Situation.rules(catalog))

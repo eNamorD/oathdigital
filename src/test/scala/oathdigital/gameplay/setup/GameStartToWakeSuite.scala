@@ -19,11 +19,13 @@ class GameStartToWakeSuite extends munit.FunSuite:
     parked.assertParked(transition.state, TriggeredProcedureRef.Setup,
       SetupProcedure.pawnDecisionId(orders.firstPlayer), orders.firstPlayer)
 
-  test("driving every player's two decisions ends in Wake with the recorded seating"):
+  test("driving every player's two decisions starts the first turn with the " +
+      "recorded seating"):
     val ready = Situation.wake(Situation.rules(catalog), chronicle, orders)
       .ready
 
-    parked.assertResumed(Ready(ready), Phase.Wake, orders.firstPlayer)
+    // The first Wake has nothing to decide, so it has already ended.
+    parked.assertResumed(Ready(ready), Phase.Act, orders.firstPlayer)
     assertEquals(ready.game.current.players.count(_.pawnSite.nonEmpty),
       orders.participants.size)
     assertEquals(ready.game.current.players.count(_.advisers.size == 1),

@@ -59,7 +59,11 @@ class RestWalkerSuite extends munit.FunSuite:
     val after = ready(rested.state).game.current
     assertEquals(after.tracks.round, act.game.current.tracks.round + 1)
     assertEquals(after.turn.activePlayer, order.head)
-    assertEquals(after.turn.phase, Phase.Wake)
+    // The first player's Wake has nothing to decide on this board, so it
+    // ends in the same command.
+    assertEquals(after.turn.phase, Phase.Act)
+    assert(rested.events.contains(
+      oathdigital.gameplay.walker.WalkerCompleted(PhaseTransitionRef.EndWake)))
 
   test("the last player of round eight finishes the game by War Exhaustion"):
     val order =

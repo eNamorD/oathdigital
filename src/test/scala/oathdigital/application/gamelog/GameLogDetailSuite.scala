@@ -23,14 +23,17 @@ class GameLogDetailSuite extends munit.FunSuite:
     val all = lines(recoverFailed)
     assert(all.indexWhere(_.startsWith("Rolled ")) >
       all.indexWhere(_.startsWith("Started Recover")), all)
+  // Trade's favor is arranged in the first player's turn, before their
+  // Rest, so its gain names the second player, whose turn it is not yet.
   test("an arranged favor gain reads as a gain from its bank"):
-    val all = lines(trade)
-    assert(all.exists(line =>
-      "^Gained 1 favor from the \\w+ bank$".r.matches(line)), all)
+    val script = trade
+    val all = lines(script)
+    assert(all.contains(
+      s"${name(script.actor)} gained 1 favor from the Discord bank"), all)
 
   test("Trade's own gain is its action line, not a second gain line"):
     val all = lines(trade)
-    assertEquals(all.count(_.startsWith("Gained ")), 1, all)
+    assertEquals(all.count(_.contains("ained 1 favor")), 1, all)
 
   test("Search: the kept card's placement posts after the draw line"):
     val all = lines(search)

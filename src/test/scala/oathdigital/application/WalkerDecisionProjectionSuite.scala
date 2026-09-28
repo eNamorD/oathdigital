@@ -99,8 +99,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       campaignDicePort = dice)
     val setup = ParkedServiceFixture.setUp(service, gameId, recoverSites,
       recoverChronicle, orders)
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
     val started = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
     (service, actor, started)

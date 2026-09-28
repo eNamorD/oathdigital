@@ -26,6 +26,11 @@ class PhasePowerSuite extends munit.FunSuite:
     rules(power).startWalker(state, ActionRef.UsePower(power.id), by,
       Vector.empty, Vector(source))
   private def ready(state: OathState) = state.asInstanceOf[Ready].value
+  /** `state`'s turn put back in Wake, its uses kept: a once-per-turn power
+    * that was Wake's last option ended Wake. */
+  private def rewoken(state: OathState): OathState =
+    Ready(ready(state).updateCurrent(current => current.copy(turn =
+      current.turn.copy(phase = Phase.Wake))))
 
   test("a WAKE power is usable only in Wake, once per source, and runs the " +
       "action boundary"):
@@ -40,11 +45,13 @@ class PhasePowerSuite extends munit.FunSuite:
     val used = use(power, Ready(inPhase(Phase.Wake))).toOption.get
     val ref = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
     assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
-    walkerParked(power).assertResumed(used.state, Phase.Wake, actor)
+    // It was Wake's only option, so Wake ended with it.
+    walkerParked(power).assertResumed(used.state, Phase.Act, actor)
     assert(ready(used.state).game.current.turn.usedPowers.contains(ref))
-    assertEquals(use(power, used.state).left.toOption,
+    val again = rewoken(used.state)
+    assertEquals(use(power, again).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(ref)))
-    assertEquals(PhasePowerProcedure.usable(catalog, ready(used.state), actor,
+    assertEquals(PhasePowerProcedure.usable(catalog, ready(again), actor,
       powers), Vector.empty)
 
   test("a use is scoped to its source card: the same power stays usable " +
@@ -187,7 +194,7 @@ class PhasePowerSuite extends munit.FunSuite:
     assertEquals(heldOnCard(ready(used.state)), Tokens(0, 1))
     val recorded = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
     assert(ready(used.state).game.current.turn.usedPowers.contains(recorded))
-    assertEquals(use(power, used.state).left.toOption,
+    assertEquals(use(power, rewoken(used.state)).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(recorded)))
 
   test("an edifice at the pawn's site is a source, on either face"):

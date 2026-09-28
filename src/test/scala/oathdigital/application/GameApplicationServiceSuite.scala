@@ -158,8 +158,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       campaignDicePort = walkerDice)
     val walkerSetup = execute(walkerService, "walker-recover", recoverSites,
       recoverChronicle)
-    val walkerAct = walkerService.handle("walker-recover",
-      walkerSetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
+    val walkerAct = ParkedServiceFixture.endingWake(walkerService, "walker-recover", walkerSetup, actor)
 
     // The start rolls on its way through: two shields and a doubler reach
     // this site's difficulty, so the command that begins Recover is also the
@@ -245,8 +244,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
         DefenseDieFace.Doubler)))
     val setup = execute(service, "walker-unknown-modifier", recoverSites,
       recoverChronicle)
-    val act = service.handle("walker-unknown-modifier", setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, "walker-unknown-modifier", setup, actor)
 
     // No `ContributingPower` is registered yet (Task 5 ports the first one),
     // so any non-empty `modifiers` names an id the catalog cannot recognize:
@@ -284,8 +282,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       campaignDicePort = dice)
     val setup = execute(service, "walker-continue", recoverSites, recoverChronicle)
     val actor = orders.firstPlayer
-    val act = service.handle("walker-continue", setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, "walker-continue", setup, actor)
     // Both dice come up blank, so the start's own roll fails and parks the
     // Continue/Stop Decide.
     val failed = service.handle("walker-continue", act.nextSequence,
@@ -350,8 +347,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       campaignDicePort = walkerDice)
     val walkerSetup = execute(walkerService, "walker-cross-roll-doubler",
       orderedSites, saltFlatsChronicle)
-    val walkerAct = walkerService.handle("walker-cross-roll-doubler",
-      walkerSetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
+    val walkerAct = ParkedServiceFixture.endingWake(walkerService, "walker-cross-roll-doubler", walkerSetup, actor)
     val walkerFirst = walkerService.handle("walker-cross-roll-doubler",
       walkerAct.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
@@ -424,8 +420,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val actor = orders.firstPlayer
     val setup = execute(service, "walker-pool-mismatch", recoverSites,
       recoverChronicle)
-    val act = service.handle("walker-pool-mismatch", setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, "walker-pool-mismatch", setup, actor)
     val started = service.handle("walker-pool-mismatch", act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
       .toOption.get
@@ -450,8 +445,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       setupChronicle, setupOrders)
     val Ready(ready) = setup.state: @unchecked
     val actor = ready.game.current.turn.activePlayer
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
     // Runs one full Recover through the walker -- the only path left -- to
     // put a relic in `actor`'s hand, purely as setup for playing Catacombs
     // as a facedown adviser below; the specific relic recovered is
@@ -630,8 +624,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       assert(safety <= 24, "all-Exile game should finish after eight rounds")
       val Ready(wake) = accepted.state: @unchecked
       val actor = wake.game.current.turn.activePlayer
-      accepted = service.handle("powered-playability", accepted.nextSequence,
-        GameCommand.EndWake(actor)).toOption.get
+      accepted = ParkedServiceFixture.endingWake(service, "powered-playability", accepted, actor)
       if !played(actor) then
         val Ready(act) = accepted.state: @unchecked
         val adviser = act.game.current.players.find(_.player == actor).get.advisers.head.id
@@ -680,8 +673,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val setup = execute(service, "game-preview")
     val Ready(ready) = setup.state: @unchecked
     val actor = ready.game.current.turn.activePlayer
-    val act = service.handle("game-preview", setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, "game-preview", setup, actor)
     val before = repository.load("game-preview").toOption.flatten.get.records
     val preview = service.preview("game-preview", act.nextSequence, actor,
       oathdigital.model.ActionKind.Travel, Vector.empty).toOption.get
@@ -715,8 +707,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val actor = ready.game.current.turn.activePlayer
     val adviser = ready.game.current.players.find(_.player == actor).get.advisers.head.id
       .asInstanceOf[WorldCardId]
-    val act = service.handle("game-minor-replay", setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, "game-minor-replay", setup, actor)
     val started = service.handle("game-minor-replay", act.nextSequence,
       GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
         StartPayload(actor, Vector.empty, Vector(adviser match {
@@ -753,8 +744,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("favor"))))).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    accepted = ParkedServiceFixture.endingWake(service, gameId, accepted, actor)
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.StartWalker(ActionRef.Challenge, StartPayload(actor)))
       .toOption.get
@@ -1040,11 +1030,12 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // Setup now runs as an ordinary triggered walker procedure (2026-09-21
     // Chronicle design, slice 2): `GameStarted` plus a `WalkerParked`/
     // `WalkerStepRecorded`/`WalkerCompleted` fact per player decision and
-    // delta, not one event per legacy setup command.
-    assertEquals(reloaded.nextSequence, 27L)
+    // delta, not one event per legacy setup command. The first Wake has
+    // nothing to decide, so its End Wake step and completion follow.
+    assertEquals(reloaded.nextSequence, 29L)
     assert(reloaded.state.isInstanceOf[Ready])
     val records = repository.load("game-v2").toOption.flatten.get.records
-    assertEquals(records.size, 27)
+    assertEquals(records.size, 29)
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
@@ -1070,29 +1061,20 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val wealth = service.handle("game-wake", setup.nextSequence,
       GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active,
         Vector.empty, Vector(DecisionOptionRef.Button(resource))))).toOption.get
-    // Take Wealth is one atomic walker command (batch-1 Task 7): the single
-    // legacy event became the walker's three -- the resource move, the use
-    // record, and the completion -- so the next free position moves by three.
-    assertEquals(wealth.nextSequence, 30L)
+    // Take Wealth is one atomic walker command (batch-1 Task 7): the resource
+    // move, the use record and the completion. It was Wake's only option, so
+    // Wake ends in the same command: its phase-change step and completion
+    // follow, and the next free position moves by five.
+    assertEquals(wealth.nextSequence, 32L)
     assertEquals(
       service.handle("game-wake", 27L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(27L, 30L))
+      Left(GameApplicationError.StaleClientPosition(27L, 32L))
     )
-    val Ready(afterTake) = wealth.state: @unchecked
-    // The phase did not end with the action: a completed Wake action returns
-    // its player to Wake, and the limit it recorded survives the reload below.
-    assertEquals(afterTake.game.current.turn.phase, Phase.Wake)
-    parkedAssertions.assertResumed(wealth.state, Phase.Wake, active)
-    val ended = service.handle(
-      "game-wake",
-      wealth.nextSequence,
-      GameCommand.EndWake(active)
-    ).toOption.get
     val reloaded = new GameApplicationService(catalog, repository)
       .load("game-wake").toOption.flatten.get
     val Ready(after) = reloaded.state: @unchecked
 
-    assertEquals(reloaded.state, ended.state)
+    assertEquals(reloaded.state, wealth.state)
     assertEquals(after.game.current.turn.phase, Phase.Act)
     assert(after.game.current.turn.usedPowers.contains(
       oathdigital.gameplay.powers.wake.TakeWealthLimit.useRef(siteId)),
@@ -1102,8 +1084,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       ujson.read(record)("formatVersion").num.toInt).distinct, Vector(1))
     assertEquals(records.drop(27).map(record =>
       ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1, 1))
-    // Ending Wake is a walker procedure too now (batch-1 Task 7), so the
-    // Wake phase journals nothing of its own: the last two records are its
+    // Ending Wake is a walker procedure too (batch-1 Task 7), so the Wake
+    // phase journals nothing of its own: the last two records are its
     // phase-change step and its completion, not a `gameplay.wake-ended`.
     assertEquals(records.drop(27).map(record =>
       ujson.read(record)("eventType").str),
@@ -1116,8 +1098,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val setup = execute(service, "game-travel")
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
-    val ended = service.handle("game-travel", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
+    val ended = ParkedServiceFixture.endingWake(service, "game-travel", setup, active)
     val Ready(inAct) = ended.state: @unchecked
     val before = inAct.game.current.players.find(_.player == active).get
     val destination = inAct.game.current.map.cradle.find(
@@ -1219,8 +1200,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val setup = execute(service, "game-walker-economy", placements)
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
-    val ended = service.handle("game-walker-economy", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
+    val ended = ParkedServiceFixture.endingWake(service, "game-walker-economy", setup, active)
     val started = service.handle("game-walker-economy", ended.nextSequence,
       GameCommand.StartWalker(ActionRef.Muster, StartPayload(active))).toOption.get
     parkedAssertions.assertParked(started.state, ActionRef.Muster,
@@ -1249,8 +1229,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val setup = execute(service, "game-search-tamper")
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
-    val ended = service.handle("game-search-tamper", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
+    val ended = ParkedServiceFixture.endingWake(service, "game-search-tamper", setup, active)
     assert(service.handle("game-search-tamper", ended.nextSequence,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(active,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
@@ -1265,8 +1244,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val setup = execute(service, gameId)
     val Ready(ready) = setup.state: @unchecked
     val actor = ready.game.current.turn.activePlayer
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
     val started = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
@@ -1304,8 +1282,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       .advisers.collectFirst {
         case DenizenState(id, Orientation.FaceDown, _) => id
       }.get
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
     val started = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
         StartPayload(actor, Vector.empty,
@@ -1324,7 +1301,12 @@ class GameApplicationServiceSuite extends munit.FunSuite:
   test("Wake projection is actor-private and Act boundary is informational"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    val setup = execute(service, "game-projection-wake")
+    // The first pawn starts at a site with wealth to take, so Wake has an
+    // option and waits for the player.
+    val wealthSite = catalog.sites.find(site =>
+      sites.contains(site.id) && !site.startingResources.isEmpty).get.id
+    val setup = execute(service, "game-projection-wake",
+      wealthSite +: sites.filterNot(_ == wealthSite).take(2))
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
     val projector = new GameProjector(catalog)
@@ -1350,7 +1332,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     )
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
-    assertEquals(act.legalControls, Vector("beginRest", "beginCampaign", "facedownAdviserMinorAction"))
+    // The wealth site also holds a relic: Recover and a peek are offered.
+    assertEquals(act.legalControls, Vector("beginRest", "beginRecover",
+      "beginCampaign", "facedownAdviserMinorAction", "peekSiteRelics"))
     assertEquals(act.actionFamilies.size, 9)
     assert(act.boardTargetActions.exists(_.actionKind == "travel"))
     val travel = act.boardTargetActions.find(_.actionKind == "travel").get
@@ -1374,8 +1358,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val setup = execute(service, "game-rest")
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
-    val act = service.handle("game-rest", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, "game-rest", setup, active)
     val begun = service.handle("game-rest", act.nextSequence,
       GameCommand.BeginRest(active)).toOption.get
     val finished = begun
@@ -1725,8 +1708,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val setup = execute(service, gameId)
     val Ready(ready) = setup.state: @unchecked
     val actor = ready.game.current.turn.activePlayer
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
     val started = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
@@ -1764,8 +1746,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       .advisers.collectFirst {
         case DenizenState(id, Orientation.FaceDown, _) => id
       }.get
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
     val started = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
         StartPayload(actor, Vector.empty,
@@ -1882,7 +1863,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       val loaded = new GameApplicationService(catalog, reopened)
         .load("game-hsql-v2").toOption.flatten.get
       assertEquals(loaded.state, accepted.state)
-      assertEquals(loaded.nextSequence, 27L)
+      // Setup's 27 events, then the End Wake of a first Wake with nothing
+      // to decide.
+      assertEquals(loaded.nextSequence, 29L)
     finally reopened.close()
 
   test("HSQL reopen preserves completed Rest cleanup and secret summary"):
@@ -1894,8 +1877,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       val setup = execute(service, gameId)
       val Ready(ready) = setup.state: @unchecked
       val actor = ready.game.current.turn.activePlayer
-      val act = service.handle(gameId, setup.nextSequence,
-        GameCommand.EndWake(actor)).toOption.get
+      val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
       val begun = service.handle(gameId, act.nextSequence,
         GameCommand.BeginRest(actor)).toOption.get
       begun
@@ -1925,8 +1907,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       val setup = execute(service, gameId, placementSites)
       val Ready(ready) = setup.state: @unchecked
       val actor = ready.game.current.turn.activePlayer
-      val act = service.handle(gameId, setup.nextSequence,
-        GameCommand.EndWake(actor)).toOption.get
+      val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
       service.handle(gameId, act.nextSequence,
         GameCommand.PeekSiteRelics(actor)).toOption.get
     finally first.close()
@@ -1956,8 +1937,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val Ready(ready) = setup.state: @unchecked
     val actor = ready.game.current.turn.activePlayer
     val other = ready.game.current.players.find(_.player != actor).get
-    val act = service.handle(gameId, setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
+    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
     val traveled = service.handle(gameId, act.nextSequence,
       GameCommand.StartWalker(ActionRef.Travel, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Site(other.pawnSite.get)))))

@@ -42,6 +42,9 @@ private[gameplay] trait OathRulesWalker:
       : Either[OathViolation, OathTransition]
   /** Whether `player` could use a REST power now. */
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean
+  /** Whether `player` has a Wake option open now: wealth to take or a WAKE
+    * power to use. */
+  protected def wakeOptionOpen(ready: ReadyGame, player: PlayerId): Boolean
 
   /** Starts one action on the generic procedure walker. Recover is the only
     * registered action in this vertical slice.
@@ -409,6 +412,9 @@ private[gameplay] trait OathRulesWalker:
         .flatMap(transition =>
           if procedure == PhaseTransitionRef.BeginRest then autoFinishRest(transition)
           else Right(transition))
+        .flatMap(transition =>
+          if procedure == PhaseTransitionRef.EndWake then Right(transition)
+          else autoEndWake(transition))
 
   /** Diagnostics for unimplemented WHEN PLAYED handlers follow the recorded
     * faceup placement, not the pre-play Search state. Implemented walker
@@ -473,6 +479,24 @@ private[gameplay] trait OathRulesWalker:
       startWalker(transition.state, PhaseTransitionRef.FinishRest,
         ready.game.current.turn.activePlayer).map(finished =>
         finished.copy(events = transition.events ++ finished.events))
+    case _ => Right(transition)
+
+  /** After any procedure that leaves the active player in Wake with no
+    * procedure pending: a player with no Wake option left ends Wake in the
+    * same command. That skips a Wake with nothing to decide, and ends one
+    * once its last option is used. A Finish Rest started by
+    * `autoFinishRest` reaches this through its own completion.
+    */
+  private def autoEndWake(transition: OathTransition)
+      : Either[OathViolation, OathTransition] = transition.state match
+    case Ready(ready) if ready.game.current.result.isEmpty &&
+        ready.game.current.turn.phase == Phase.Wake &&
+        ready.game.current.walkerPending.isEmpty &&
+        ready.game.current.walkerProcedure.isEmpty &&
+        !wakeOptionOpen(ready, ready.game.current.turn.activePlayer) =>
+      startWalker(transition.state, PhaseTransitionRef.EndWake,
+        ready.game.current.turn.activePlayer).map(ended =>
+        ended.copy(events = transition.events ++ ended.events))
     case _ => Right(transition)
 
   /** Folds `evolve` over `events` in order, threading state — the same

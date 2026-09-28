@@ -101,7 +101,8 @@ _Avoid_: setup fixture, setup data, bootstrap
 **Situation**:
 A game reached by real play from a first-game input: every command issued and
 every parked decision answered along the way, in order. Named situations are
-Wake (Setup complete), Act (a player's Wake ended) and Rest (a player's Act
+Wake (Setup complete: the first player's turn, already in Act when that Wake
+had nothing to decide), Act (a player's Wake ended) and Rest (a player's Act
 ended); any other is described by the steps that reach it.
 _Avoid_: position (a journal sequence number), fixture, snapshot, initial
 game, setup state
