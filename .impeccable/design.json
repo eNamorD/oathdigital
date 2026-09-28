@@ -1,95 +1,455 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-25T17:22:55Z",
+  "generatedAt": "2026-09-28T05:31:48Z",
   "title": "Design System: Oath Digital",
   "extensions": {
     "colorMeta": {
-      "brass": { "role": "primary", "displayName": "Brass", "canonical": "#d2a85e", "tonalRamp": ["oklch(22% 0.04 80)", "oklch(34% 0.06 80)", "oklch(46% 0.08 80)", "oklch(58% 0.1 80)", "oklch(74% 0.1 80)", "oklch(82% 0.08 80)", "oklch(90% 0.05 80)", "oklch(96% 0.02 80)"] },
-      "brass-bright": { "role": "primary", "displayName": "Bright Brass", "canonical": "#f1c781" },
-      "brass-label": { "role": "primary", "displayName": "Brass Label", "canonical": "#d5bd8f" },
-      "brass-line": { "role": "primary", "displayName": "Brass Line", "canonical": "#7c694b" },
-      "selection": { "role": "secondary", "displayName": "Selection Blue", "canonical": "#8ecbff", "tonalRamp": ["oklch(20% 0.05 240)", "oklch(32% 0.08 240)", "oklch(45% 0.11 240)", "oklch(58% 0.12 240)", "oklch(70% 0.11 240)", "oklch(82% 0.09 240)", "oklch(90% 0.06 240)", "oklch(96% 0.02 240)"] },
-      "selection-fill": { "role": "secondary", "displayName": "Selection Fill", "canonical": "#243442" },
-      "cream": { "role": "neutral", "displayName": "Cream", "canonical": "#f5ecd7", "tonalRamp": ["oklch(17% 0.01 80)", "oklch(24% 0.015 80)", "oklch(34% 0.02 80)", "oklch(48% 0.025 80)", "oklch(64% 0.03 80)", "oklch(78% 0.03 85)", "oklch(88% 0.03 85)", "oklch(94% 0.03 85)"] },
-      "cream-bright": { "role": "neutral", "displayName": "Bright Cream", "canonical": "#fff2d6" },
-      "cream-focus": { "role": "neutral", "displayName": "Cream Focus", "canonical": "#fff0c9" },
-      "parchment-muted": { "role": "neutral", "displayName": "Parchment Muted", "canonical": "#d9cdb5" },
-      "parchment-dim": { "role": "neutral", "displayName": "Parchment Dim", "canonical": "#c9bfa9" },
-      "ink-dim": { "role": "neutral", "displayName": "Ink Dim", "canonical": "#a99f8c" },
-      "ink-separator": { "role": "neutral", "displayName": "Ink Separator", "canonical": "#6f6455" },
-      "table": { "role": "neutral", "displayName": "Table", "canonical": "#0f0e0c" },
-      "base": { "role": "neutral", "displayName": "Base", "canonical": "#17140f", "tonalRamp": ["#0f0e0c", "#17140f", "#211f1b", "#211d17", "#2b251d", "#302a20", "#3b3123", "#675a43"] },
-      "pane": { "role": "neutral", "displayName": "Pane", "canonical": "#211f1b" },
-      "pane-header": { "role": "neutral", "displayName": "Pane Header", "canonical": "#26231d" },
-      "panel": { "role": "neutral", "displayName": "Panel", "canonical": "#211d17" },
-      "site": { "role": "neutral", "displayName": "Site", "canonical": "#2b251d" },
-      "raised": { "role": "neutral", "displayName": "Raised", "canonical": "#302a20" },
-      "pressed": { "role": "neutral", "displayName": "Pressed", "canonical": "#3b3123" },
-      "line": { "role": "neutral", "displayName": "Line", "canonical": "#675a43" },
-      "line-mid": { "role": "neutral", "displayName": "Line Mid", "canonical": "#88775d" },
-      "line-dim": { "role": "neutral", "displayName": "Line Dim", "canonical": "#40382c" },
-      "line-pane": { "role": "neutral", "displayName": "Line Pane", "canonical": "#443c30" },
-      "region-cradle": { "role": "neutral", "displayName": "Cradle Green", "canonical": "#213a24" },
-      "region-cradle-line": { "role": "neutral", "displayName": "Cradle Line", "canonical": "#3d5f40" },
-      "region-provinces": { "role": "neutral", "displayName": "Provinces Teal", "canonical": "#1d3441" },
-      "region-provinces-line": { "role": "neutral", "displayName": "Provinces Line", "canonical": "#3a5b6d" },
-      "region-hinterland": { "role": "neutral", "displayName": "Hinterland Orange-Red", "canonical": "#46261a" },
-      "region-hinterland-line": { "role": "neutral", "displayName": "Hinterland Line", "canonical": "#7a4a35" },
-      "token-favor": { "role": "tertiary", "displayName": "Favor", "canonical": "#e4ba5a" },
-      "token-favor-burnt": { "role": "tertiary", "displayName": "Burnt Favor", "canonical": "#a28a5a" },
-      "token-secret": { "role": "tertiary", "displayName": "Secret", "canonical": "#66a8d8" },
-      "token-secret-burnt": { "role": "tertiary", "displayName": "Burnt Secret", "canonical": "#60849c" },
-      "token-symbol": { "role": "tertiary", "displayName": "Token Symbol", "canonical": "#d8cdb4" },
-      "suit-arcane": { "role": "tertiary", "displayName": "Arcane", "canonical": "#6e377d" },
-      "suit-beast": { "role": "tertiary", "displayName": "Beast", "canonical": "#8c371e" },
-      "suit-discord": { "role": "tertiary", "displayName": "Discord", "canonical": "#ce2029" },
-      "suit-hearth": { "role": "tertiary", "displayName": "Hearth", "canonical": "#e06a1e" },
-      "suit-nomad": { "role": "tertiary", "displayName": "Nomad", "canonical": "#4b9678" },
-      "suit-order": { "role": "tertiary", "displayName": "Order", "canonical": "#14417d" },
-      "die-attack": { "role": "tertiary", "displayName": "Attack Die", "canonical": "#c0392b" },
-      "die-defense": { "role": "tertiary", "displayName": "Defense Die", "canonical": "#3d6fb4" },
-      "die-round": { "role": "tertiary", "displayName": "Round Die", "canonical": "#9b59b6" },
-      "player-purple": { "role": "tertiary", "displayName": "Purple Player", "canonical": "#d9b8ff" },
-      "player-blue": { "role": "tertiary", "displayName": "Blue Player", "canonical": "#8ecbff" },
-      "player-red": { "role": "tertiary", "displayName": "Red Player", "canonical": "#ffaaa5" },
-      "player-yellow": { "role": "tertiary", "displayName": "Yellow Player", "canonical": "#ffe08a" },
-      "player-white": { "role": "tertiary", "displayName": "White Player", "canonical": "#ffffff" },
-      "player-black": { "role": "tertiary", "displayName": "Black Player", "canonical": "#111111" },
-      "player-black-pill": { "role": "tertiary", "displayName": "Black Pill", "canonical": "#e8dcc2" },
-      "player-pink": { "role": "tertiary", "displayName": "Pink Player", "canonical": "#ffa6d8" },
-      "player-brown": { "role": "tertiary", "displayName": "Brown Player", "canonical": "#d0a075" },
-      "force-bandit": { "role": "tertiary", "displayName": "Bandit Forces", "canonical": "#d7ed72" },
-      "facedown": { "role": "neutral", "displayName": "Face-down", "canonical": "#2a2333" },
-      "facedown-letter": { "role": "neutral", "displayName": "Face-down Letter", "canonical": "#cbb7dd" },
-      "pile-back": { "role": "neutral", "displayName": "Pile Back", "canonical": "#493751" },
-      "unimplemented": { "role": "neutral", "displayName": "Unimplemented", "canonical": "#a15c4a" },
-      "error-line": { "role": "neutral", "displayName": "Error Line", "canonical": "#e27f79" },
-      "error-text": { "role": "neutral", "displayName": "Error Text", "canonical": "#ffd0cd" },
-      "replay": { "role": "neutral", "displayName": "Replay", "canonical": "#9ed59e" },
-      "limiter": { "role": "neutral", "displayName": "Limiter", "canonical": "#ff8c7f" },
-      "dev-panel": { "role": "neutral", "displayName": "Dev Panel", "canonical": "#211d25" },
-      "dev-line": { "role": "neutral", "displayName": "Dev Line", "canonical": "#927da4" }
+      "brass": {
+        "role": "primary",
+        "displayName": "Brass",
+        "canonical": "#d2a85e",
+        "tonalRamp": [
+          "oklch(22% 0.04 80)",
+          "oklch(34% 0.06 80)",
+          "oklch(46% 0.08 80)",
+          "oklch(58% 0.1 80)",
+          "oklch(74% 0.1 80)",
+          "oklch(82% 0.08 80)",
+          "oklch(90% 0.05 80)",
+          "oklch(96% 0.02 80)"
+        ]
+      },
+      "brass-bright": {
+        "role": "primary",
+        "displayName": "Bright Brass",
+        "canonical": "#f1c781"
+      },
+      "brass-label": {
+        "role": "primary",
+        "displayName": "Brass Label",
+        "canonical": "#d5bd8f"
+      },
+      "brass-line": {
+        "role": "primary",
+        "displayName": "Brass Line",
+        "canonical": "#7c694b"
+      },
+      "cream": {
+        "role": "neutral",
+        "displayName": "Cream",
+        "canonical": "#f5ecd7",
+        "tonalRamp": [
+          "oklch(17% 0.01 80)",
+          "oklch(24% 0.015 80)",
+          "oklch(34% 0.02 80)",
+          "oklch(48% 0.025 80)",
+          "oklch(64% 0.03 80)",
+          "oklch(78% 0.03 85)",
+          "oklch(88% 0.03 85)",
+          "oklch(94% 0.03 85)"
+        ]
+      },
+      "cream-bright": {
+        "role": "neutral",
+        "displayName": "Bright Cream",
+        "canonical": "#fff2d6"
+      },
+      "cream-focus": {
+        "role": "neutral",
+        "displayName": "Cream Focus",
+        "canonical": "#fff0c9"
+      },
+      "parchment-muted": {
+        "role": "neutral",
+        "displayName": "Parchment Muted",
+        "canonical": "#d9cdb5"
+      },
+      "parchment-dim": {
+        "role": "neutral",
+        "displayName": "Parchment Dim",
+        "canonical": "#c9bfa9"
+      },
+      "ink-dim": {
+        "role": "neutral",
+        "displayName": "Ink Dim",
+        "canonical": "#a99f8c"
+      },
+      "ink-spent": {
+        "role": "neutral",
+        "displayName": "Ink Spent",
+        "canonical": "#928876",
+        "tonalRamp": [
+          "oklch(22% 0.029 82)",
+          "oklch(34% 0.029 82)",
+          "oklch(46% 0.029 82)",
+          "oklch(58% 0.029 82)",
+          "oklch(74% 0.029 82)",
+          "oklch(82% 0.029 82)",
+          "oklch(90% 0.029 82)",
+          "oklch(96% 0.02 82)"
+        ]
+      },
+      "ink-separator": {
+        "role": "neutral",
+        "displayName": "Ink Separator",
+        "canonical": "#6f6455"
+      },
+      "table": {
+        "role": "neutral",
+        "displayName": "Table",
+        "canonical": "#0f0e0c"
+      },
+      "base": {
+        "role": "neutral",
+        "displayName": "Base",
+        "canonical": "#17140f",
+        "tonalRamp": [
+          "#0f0e0c",
+          "#17140f",
+          "#211f1b",
+          "#211d17",
+          "#2b251d",
+          "#302a20",
+          "#3b3123",
+          "#675a43"
+        ]
+      },
+      "pane": {
+        "role": "neutral",
+        "displayName": "Pane",
+        "canonical": "#211f1b"
+      },
+      "pane-header": {
+        "role": "neutral",
+        "displayName": "Pane Header",
+        "canonical": "#26231d"
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "#211d17"
+      },
+      "site": {
+        "role": "neutral",
+        "displayName": "Site",
+        "canonical": "#2b251d"
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised",
+        "canonical": "#302a20"
+      },
+      "pressed": {
+        "role": "neutral",
+        "displayName": "Pressed",
+        "canonical": "#3b3123"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "canonical": "#675a43"
+      },
+      "line-mid": {
+        "role": "neutral",
+        "displayName": "Line Mid",
+        "canonical": "#88775d"
+      },
+      "line-dim": {
+        "role": "neutral",
+        "displayName": "Line Dim",
+        "canonical": "#40382c"
+      },
+      "line-pane": {
+        "role": "neutral",
+        "displayName": "Line Pane",
+        "canonical": "#443c30"
+      },
+      "region-cradle": {
+        "role": "neutral",
+        "displayName": "Cradle Green",
+        "canonical": "#213a24"
+      },
+      "region-cradle-line": {
+        "role": "neutral",
+        "displayName": "Cradle Line",
+        "canonical": "#3d5f40"
+      },
+      "region-provinces": {
+        "role": "neutral",
+        "displayName": "Provinces Teal",
+        "canonical": "#1d3441"
+      },
+      "region-provinces-line": {
+        "role": "neutral",
+        "displayName": "Provinces Line",
+        "canonical": "#3a5b6d"
+      },
+      "region-hinterland": {
+        "role": "neutral",
+        "displayName": "Hinterland Orange-Red",
+        "canonical": "#46261a"
+      },
+      "region-hinterland-line": {
+        "role": "neutral",
+        "displayName": "Hinterland Line",
+        "canonical": "#7a4a35"
+      },
+      "selection": {
+        "role": "secondary",
+        "displayName": "Selection Blue",
+        "canonical": "#8ecbff",
+        "tonalRamp": [
+          "oklch(20% 0.05 240)",
+          "oklch(32% 0.08 240)",
+          "oklch(45% 0.11 240)",
+          "oklch(58% 0.12 240)",
+          "oklch(70% 0.11 240)",
+          "oklch(82% 0.09 240)",
+          "oklch(90% 0.06 240)",
+          "oklch(96% 0.02 240)"
+        ]
+      },
+      "selection-fill": {
+        "role": "secondary",
+        "displayName": "Selection Fill",
+        "canonical": "#243442"
+      },
+      "facedown": {
+        "role": "neutral",
+        "displayName": "Face-down",
+        "canonical": "#2a2333"
+      },
+      "facedown-letter": {
+        "role": "neutral",
+        "displayName": "Face-down Letter",
+        "canonical": "#cbb7dd"
+      },
+      "pile-back": {
+        "role": "neutral",
+        "displayName": "Pile Back",
+        "canonical": "#493751"
+      },
+      "unimplemented": {
+        "role": "neutral",
+        "displayName": "Unimplemented",
+        "canonical": "#a15c4a"
+      },
+      "error-line": {
+        "role": "neutral",
+        "displayName": "Error Line",
+        "canonical": "#e27f79"
+      },
+      "error-text": {
+        "role": "neutral",
+        "displayName": "Error Text",
+        "canonical": "#ffd0cd"
+      },
+      "replay": {
+        "role": "neutral",
+        "displayName": "Replay",
+        "canonical": "#9ed59e"
+      },
+      "limiter": {
+        "role": "neutral",
+        "displayName": "Limiter",
+        "canonical": "#ff8c7f"
+      },
+      "dev-panel": {
+        "role": "neutral",
+        "displayName": "Dev Panel",
+        "canonical": "#211d25"
+      },
+      "dev-line": {
+        "role": "neutral",
+        "displayName": "Dev Line",
+        "canonical": "#927da4"
+      },
+      "token-favor": {
+        "role": "tertiary",
+        "displayName": "Favor",
+        "canonical": "#e4ba5a"
+      },
+      "token-favor-burnt": {
+        "role": "tertiary",
+        "displayName": "Burnt Favor",
+        "canonical": "#a28a5a"
+      },
+      "token-secret": {
+        "role": "tertiary",
+        "displayName": "Secret",
+        "canonical": "#66a8d8"
+      },
+      "token-secret-burnt": {
+        "role": "tertiary",
+        "displayName": "Burnt Secret",
+        "canonical": "#60849c"
+      },
+      "token-symbol": {
+        "role": "tertiary",
+        "displayName": "Token Symbol",
+        "canonical": "#d8cdb4"
+      },
+      "suit-arcane": {
+        "role": "tertiary",
+        "displayName": "Arcane",
+        "canonical": "#6e377d"
+      },
+      "suit-beast": {
+        "role": "tertiary",
+        "displayName": "Beast",
+        "canonical": "#8c371e"
+      },
+      "suit-discord": {
+        "role": "tertiary",
+        "displayName": "Discord",
+        "canonical": "#ce2029"
+      },
+      "suit-hearth": {
+        "role": "tertiary",
+        "displayName": "Hearth",
+        "canonical": "#e06a1e"
+      },
+      "suit-nomad": {
+        "role": "tertiary",
+        "displayName": "Nomad",
+        "canonical": "#4b9678"
+      },
+      "suit-order": {
+        "role": "tertiary",
+        "displayName": "Order",
+        "canonical": "#14417d"
+      },
+      "die-attack": {
+        "role": "tertiary",
+        "displayName": "Attack Die",
+        "canonical": "#c0392b"
+      },
+      "die-defense": {
+        "role": "tertiary",
+        "displayName": "Defense Die",
+        "canonical": "#3d6fb4"
+      },
+      "die-round": {
+        "role": "tertiary",
+        "displayName": "Round Die",
+        "canonical": "#9b59b6"
+      },
+      "player-purple": {
+        "role": "tertiary",
+        "displayName": "Purple Player",
+        "canonical": "#d9b8ff"
+      },
+      "player-blue": {
+        "role": "tertiary",
+        "displayName": "Blue Player",
+        "canonical": "#8ecbff"
+      },
+      "player-red": {
+        "role": "tertiary",
+        "displayName": "Red Player",
+        "canonical": "#ffaaa5"
+      },
+      "player-yellow": {
+        "role": "tertiary",
+        "displayName": "Yellow Player",
+        "canonical": "#ffe08a"
+      },
+      "player-white": {
+        "role": "tertiary",
+        "displayName": "White Player",
+        "canonical": "#ffffff"
+      },
+      "player-black": {
+        "role": "tertiary",
+        "displayName": "Black Player",
+        "canonical": "#111111"
+      },
+      "player-black-pill": {
+        "role": "tertiary",
+        "displayName": "Black Pill",
+        "canonical": "#e8dcc2"
+      },
+      "player-pink": {
+        "role": "tertiary",
+        "displayName": "Pink Player",
+        "canonical": "#ffa6d8"
+      },
+      "player-brown": {
+        "role": "tertiary",
+        "displayName": "Brown Player",
+        "canonical": "#d0a075"
+      },
+      "force-bandit": {
+        "role": "tertiary",
+        "displayName": "Bandit Forces",
+        "canonical": "#d7ed72"
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "The host page h1 only." },
-      "headline": { "displayName": "Headline", "purpose": "Site names on the map; region labels at 1.15rem; the card overlay name at 1.5em." },
-      "title": { "displayName": "Title", "purpose": "Uppercase pane headings in Brass Label." },
-      "body": { "displayName": "Body", "purpose": "Pane text; the size follows the pane (0.9rem actions, 0.86rem site details, 0.82rem player boards)." },
-      "label": { "displayName": "Label", "purpose": "The brass eyebrow and uppercase region labels on the host page." },
-      "mono": { "displayName": "Mono", "purpose": "The raw event log only." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "the page `h1` on the host page. `clamp(1.8rem, 9vw, 2.5rem)` under 760px."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "site names on the map, centered in the site heading. Region titles on the map are Georgia 1.6rem, 800, mixed case, Bright Cream: the brightest text on the map, like the board's brushed lettering. The card overlay name is Georgia 1.5em, 800, Bright Cream. On the zoomed-out map both are set against the scale (see The Glance Layer Rule): a site name holds 12px on screen, a region title 12.5px."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "pane headings in Brass Label. Under 620px: 0.72rem, 0.025em."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "the reading size follows the pane. Bold runs at 800 for counts, forces, requirements and player references."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "the eyebrow in Brass; region labels on the host page use 0.1em tracking in Ink Dim."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "the raw event log only."
+      }
     },
     "shadows": [
-      { "name": "target-halo", "value": "0 0 0 3px rgba(210, 168, 94, 0.35)", "purpose": "A hovered or focused legal board target. A ring, not a lift." },
-      { "name": "overlay-lift", "value": "0 12px 45px #000b", "purpose": "The developer panel, the one floating aside." },
-      { "name": "overlay-scrim", "value": "background: #0b0a08e8", "purpose": "The card inspection overlay darkens the table instead of casting a shadow." }
+      {
+        "name": "target-halo",
+        "value": "0 0 0 3px rgba(210, 168, 94, 0.35)",
+        "purpose": "A hovered or focused legal board target. A ring, not a lift."
+      },
+      {
+        "name": "overlay-lift",
+        "value": "0 12px 45px #000b",
+        "purpose": "The developer panel, the one floating aside."
+      },
+      {
+        "name": "overlay-scrim",
+        "value": "background: #0b0a08e8",
+        "purpose": "The card inspection overlay darkens the table instead of casting a shadow."
+      }
     ],
     "motion": [],
     "breakpoints": [
-      { "name": "portrait", "value": "620px or aspect-ratio 4/5" },
-      { "name": "narrow", "value": "1050px or aspect-ratio 4/3" },
-      { "name": "host-narrow", "value": "760px" },
-      { "name": "host-phone", "value": "440px" },
-      { "name": "short", "value": "height 500px" }
+      {
+        "name": "portrait",
+        "value": "620px or aspect-ratio 4/5"
+      },
+      {
+        "name": "narrow",
+        "value": "1050px or aspect-ratio 4/3"
+      },
+      {
+        "name": "host-narrow",
+        "value": "760px"
+      },
+      {
+        "name": "host-phone",
+        "value": "440px"
+      },
+      {
+        "name": "short",
+        "value": "height 500px"
+      }
     ]
   },
   "components": [
@@ -100,6 +460,14 @@
       "description": "The header strip of one of the four table panes.",
       "html": "<div class=\"ds-pane-header\"><h2 class=\"ds-pane-heading\">World Map</h2><div class=\"ds-map-controls\"><button class=\"ds-btn-control\" aria-label=\"Zoom out\">−</button><span class=\"ds-zoom-label\">100%</span><button class=\"ds-btn-control\" aria-label=\"Zoom in\">+</button><button class=\"ds-btn-control\">Fit</button></div></div>",
       "css": ".ds-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 39px; padding: 4px 10px; border-bottom: 1px solid #443c30; background: #26231d; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-pane-heading { margin: 0; color: #d5bd8f; font-size: .8rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; } .ds-map-controls { display: flex; align-items: center; gap: 5px; } .ds-zoom-label { font-size: .72rem; color: #c0b398; min-width: 35px; text-align: center; } .ds-btn-control { color: #e8d9bb; background: #302a20; border: 1px solid #7c694b; border-radius: 4px; padding: 4px 9px; min-width: 32px; min-height: 30px; font: inherit; font-size: .78rem; cursor: pointer; } .ds-btn-control:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }"
+    },
+    {
+      "name": "Game Log",
+      "kind": "custom",
+      "refersTo": "pane-heading",
+      "description": "The Log pane's list: headlines for rounds, turns and phases, every other line one gutter in, with the reader's divider and a spent cost in Ink Spent.",
+      "html": "<ol class=\"ds-log\" role=\"log\"><li class=\"ds-log-headline ds-log-round\">Round 3</li><li class=\"ds-log-headline ds-log-turn\"><span class=\"ds-log-player\">White</span>'s turn</li><li class=\"ds-log-headline ds-log-phase\">Act</li><li class=\"ds-log-line\">Started Campaign: Conquest against the bandits<span class=\"ds-log-cost\">−2 Supply</span></li><li class=\"ds-log-divider\">Since you last looked</li><li class=\"ds-log-line\">Placed 1 warband on <span class=\"ds-log-site\">Ancient City</span></li><li class=\"ds-log-line\">Drew <span class=\"ds-log-card\">Town Meeting</span> and <span class=\"ds-log-card\">Old Songs</span> from the World Deck and kept <span class=\"ds-log-card\">Town Meeting</span></li></ol>",
+      "css": ".ds-log { list-style: none; margin: 0; padding: 12px; width: 26rem; background: #211f1b; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; line-height: 1.45; color: #f5ecd7; } .ds-log-headline { font-weight: 800; margin-top: 6px; } .ds-log-headline:first-child { margin-top: 0; } .ds-log-round { color: #9ed59e; } .ds-log-player { color: #ffffff; text-decoration: underline; } .ds-log-phase { margin-top: 3px; padding-left: 6px; font-weight: 700; font-size: max(0.92em, 11px); color: #d5bd8f; } .ds-log-line { padding-left: 22px; text-indent: -10px; color: #a99f8c; } .ds-log-card, .ds-log-site { color: #f5ecd7; } .ds-log-cost { margin-left: 0.5em; color: #928876; } .ds-log-divider { display: flex; align-items: center; gap: 8px; margin: 6px 0; color: #d5bd8f; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; } .ds-log-divider::before, .ds-log-divider::after { content: \"\"; flex: 1 1 0; border-top: 1px solid #7c694b; }"
     },
     {
       "name": "Action Button",
@@ -181,31 +549,69 @@
       "The board's pieces are the color; the table is warm dark.",
       "Suits are told apart by glyph shape first, color second.",
       "Four fixed panes, no page chrome, brand in the details.",
-      "Flat, layered by tone; rings for target and focus, shadows only on true overlays.",
+      "Flat, layered by tone; rings for target and focus, shadows only on true",
       "No animation. Nothing moves on hover, focus or selection.",
       "Cards keep the physical 1:1.4 ratio; relics are square."
     ],
     "rules": [
-      { "name": "The Pieces Carry the Color Rule", "body": "Saturated color belongs to suits, tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only UI accents are brass and selection blue. The three map regions are the one exception, and they carry the board's colors, not new ones.", "section": "colors" },
-      { "name": "The Shape First Rule", "body": "Every suit, token and die has its own glyph. Color only keeps them from blurring; it never carries meaning alone.", "section": "colors" },
-      { "name": "The One Cool Rule", "body": "Selection blue is the only cool UI color, and it means \"selected\". Do not use it for links, information or decoration.", "section": "colors" },
-      { "name": "The Font-Size Handle Rule", "body": "Cards are sized in ex, never in px per context. To make cards smaller on a player board or larger on the overlay, change the container's font size and let the card follow.", "section": "typography" },
-      { "name": "The Serif Names Things Rule", "body": "Georgia is for names of sites, regions and cards and the page title. It is never used for controls, labels or body text.", "section": "typography" },
-      { "name": "The Flat Board Rule", "body": "Board pieces never cast shadows. If something must read as above the table, it is a fixed overlay with a scrim or a lift, and there are two of those.", "section": "elevation" },
-      { "name": "The No-Reflow Rule", "body": "Every hover, focus and selection treatment fits in space reserved at rest: transparent borders, inset rings, negative-offset outlines. Nothing grows.", "section": "elevation" }
+      {
+        "name": "The Pieces Carry the Color Rule",
+        "body": "Saturated color belongs to suits, tokens, dice and players. UI surfaces stay in the warm neutral ramp; the only UI accents are brass and selection blue. The three map regions are the one exception, and they carry the board's colors, not new ones.",
+        "section": "colors"
+      },
+      {
+        "name": "The Shape First Rule",
+        "body": "Every suit, token and die has its own glyph. Color only keeps them from blurring; it never carries meaning alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Cool Rule",
+        "body": "Selection blue is the only cool UI color, and it means \"selected\". Do not use it for links, information or decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Font-Size Handle Rule",
+        "body": "Cards are sized in `ex`, never in px per context. To make cards smaller on a player board or larger on the overlay, change the container's font size and let the card follow.",
+        "section": "typography"
+      },
+      {
+        "name": "The Serif Names Things Rule",
+        "body": "Georgia is for names of sites, regions and cards and the page title. It is never used for controls, labels or body text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Eleven-Pixel Floor",
+        "body": "Functional text is never under 11px on screen. In the panes this is a floor on the text, not the box: a card name is `max(0.95em, 0.7rem)` and a restriction `max(0.72em, 0.7rem)`, so a card scaled down by its pane's font size keeps its box in `ex` and its text readable. The smallest steps in use are `.84em` for a partition option and `.85em` for its order note, both chosen to clear the floor at the pane's 0.9rem.",
+        "section": "typography"
+      },
+      {
+        "name": "The Glance Layer Rule",
+        "body": "The map is a fixed 1500px surface scaled by the viewport, so its text shrinks with it. Below a scale of 0.72, where the map card name (0.95em of 16px) falls under the floor, `.map-content` carries `map-compact` and `--map-scale`, and the glance layer is set against the scale instead: `font-size: clamp(rest, calc(<screen px> / var(--map-scale)), cap)` holds region and site names, pawns, tokens, defense, forces and card names near one screen size while the board keeps shrinking under them, the way a map's place names hold still while the map zooms. The study layer (site powers and requirement, a card's defense, restriction and badge) is hidden; a zoom or the overlay carries it. Nothing in the compact mode may change the map's height, because the Fit scale is computed from it: the site box is fixed and clips, and the region title has a fixed 2.4rem line. The two glance sizes are named once on `.map-compact` (`--glance-name`, `--glance-text`), and the compact site's card row is sized from what they leave: `--card-w` is the least of the row's own ceiling, a third of the width, and the box's height less the name line, the pawn row and, on a site holding forces, the forces line, divided by the card ratio. Above a scale of about 0.35 the ceiling wins and nothing changes; below it the cards, which show initials there anyway, give up height so the forces line is never the thing the box clips.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Board Rule",
+        "body": "Board pieces never cast shadows. If something must read as above the table, it is a fixed overlay with a scrim or a lift, and there are three of those: the developer panel's lift, and the card and log overlays' scrim.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Reflow Rule",
+        "body": "Every hover, focus and selection treatment fits in space reserved at rest: transparent borders, inset rings, negative-offset outlines. Nothing grows.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do keep saturated color on the pieces: suits, tokens, dice, players, plan sides. Keep UI surfaces in the warm neutral ramp with brass as the accent; the three painted map regions are the only colored surfaces.",
-      "Do give every new token or suit its own glyph in TokenSprite before giving it a color.",
-      "Do size cards through the container's font size (ex-based --card-w), never with a per-context pixel width.",
+      "Do give every new token or suit its own glyph in `TokenSprite` before giving it a color.",
+      "Do size cards through the container's font size (`ex`-based `--card-w`), never with a per-context pixel width.",
       "Do reserve space for every state at rest: transparent borders, inset rings, negative-offset outlines.",
       "Do keep every site the same fixed height and every action button at least 44px tall.",
       "Do use Georgia for names of sites, regions, cards and the page title, and Inter for everything else.",
       "Do use a pill for a count or a state of a player, and a dashed border for something not yet real."
     ],
     "donts": [
-      "Don't add transition or animation. State changes by color, ring and outline only.",
-      "Don't put a resting box-shadow on a board piece; only the developer panel lifts and only the card overlay scrims.",
+      "Don't add `transition` or `animation`. State changes by color, ring and outline only.",
+      "Don't put a resting `box-shadow` on a board piece; only the developer panel lifts and only the card and log overlays scrim.",
       "Don't introduce grey or blue-tinted neutrals, blue-purple gradients, glassmorphism or translucent panels.",
       "Don't add parchment textures, scrollwork, blackletter, bevels, gloss or glowing borders beyond the target halo and focus outline.",
       "Don't use selection blue for anything except \"selected\".",
