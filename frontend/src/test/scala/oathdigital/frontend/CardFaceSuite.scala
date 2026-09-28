@@ -25,15 +25,17 @@ class CardFaceSuite extends munit.FunSuite:
     rulesText = Some("Rule"), orientation = Some("face-down"),
     relicValue = Some(3), defense = Some(1))
 
-  test("a denizen and a relic each get their type's box, whichever way they face"):
-    assert(CardFace.render(faceUp).classList.contains("card-face-denizen"))
-    assert(CardFace.render(faceUp.copy(orientation = Some("face-down"),
-      hidden = true)).classList.contains("card-face-denizen"))
-    assert(CardFace.render(knowable).classList.contains("card-face-relic"))
-    assert(CardFace.render(knowable.copy(orientation = Some("face-up")))
-      .classList.contains("card-face-relic"))
-    assertEquals(CardFace.boxClass("edifice"), "card-face-denizen")
-    assertEquals(CardFace.boxClass("vision"), "card-face-denizen")
+  test("each card type gets its box, whichever way it faces"):
+    Vector("denizen" -> "card-face-denizen", "vision" -> "card-face-denizen",
+      "edifice" -> "card-face-denizen", "relic" -> "card-face-relic").foreach {
+      case (kind, box) =>
+        val up = CardFace.render(CardDetails("c", kind, "Name",
+          orientation = Some("face-up")))
+        val down = CardFace.render(CardDetails("hidden", kind,
+          s"Facedown $kind", orientation = Some("face-down"), hidden = true))
+        assert(up.classList.contains(box), kind)
+        assert(down.classList.contains(box), kind)
+    }
 
   test("a face-up card shows its summary with no field names"):
     val node = CardFace.render(faceUp)
@@ -205,14 +207,3 @@ class CardFaceSuite extends munit.FunSuite:
     assert(relic.classList.contains("card-face-down"))
     assertEquals(relic.textContent, "R")
     assertEquals(relic.getAttribute("aria-label"), "Facedown relic")
-
-  test("face-up and face-down cards of one type carry the same box class"):
-    Vector("denizen", "vision", "edifice", "relic").foreach { kind =>
-      val up = CardFace.render(CardDetails("c", kind, "Name",
-        orientation = Some("face-up")))
-      val down = CardFace.render(CardDetails("hidden", kind,
-        s"Facedown $kind", orientation = Some("face-down"), hidden = true))
-      assertEquals(CardFace.boxClass(kind), CardFace.boxClass(kind))
-      assert(up.classList.contains(CardFace.boxClass(kind)), kind)
-      assert(down.classList.contains(CardFace.boxClass(kind)), kind)
-    }

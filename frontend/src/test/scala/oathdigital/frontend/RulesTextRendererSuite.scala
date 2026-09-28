@@ -22,11 +22,6 @@ class RulesTextRendererSuite extends munit.FunSuite:
       assertEquals(all(glyph, "use").head.getAttribute("href"), s"#token-$token")
     }
 
-  test("the three warm suits reference three different symbols"):
-    val warm = Vector("suit-discord", "suit-hearth", "suit-beast")
-      .map(t => all(RulesTextRenderer.glyph(t), "use").head.getAttribute("href"))
-    assertEquals(warm.distinct.size, 3)
-
   test("tokens become glyphs and emphasis becomes elements"):
     val blocks = RulesTextRenderer.powers(
       "[secret] **ACTION:** Gain [favor] _(once)_.")

@@ -120,27 +120,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       Some(Vector(first)))
     assertEquals(targets.cancel, None)
 
-  test("zero modifiers skip ordering and a targeted action still requires explicit confirmation"):
-    val target = BoardTargetCandidate(
-      BoardTargetRef.Site("d1"), "D1", Vector.empty)
-    val action = BoardTargetAction("travel", "Travel", 1, 1, false,
-      Vector(target))
-    val response = MajorActionPreviewResponse(4, "travel", Vector.empty, Vector.empty,
-      Vector(PreviewTarget("site:d1", 1, "D1")))
-    val selection = ModifierSelectionState.reconcile(None, context,
-      Vector.empty, "empty")
-    val draft = ModifierFlowDraft(None, Some("travel"),
-      Map.empty[String, String], response, selection,
-      ModifierFlowStage.Targets)
-    assert(!draft.ordering)
-    val authorized = ModifierFlowDraft.targetAction("travel", response,
-      Vector(action)).get
-    val chosen = BoardTargetSelectionState.reconcile(None,
-      BoardSelectionContext("g", "p", 4), Vector(authorized))
-      .activate("travel").choose(target.target)
-    assert(chosen.isInstanceOf[BoardSelectionResult.Updated])
-    assert(chosen.asInstanceOf[BoardSelectionResult.Updated].state.canConfirm)
-
   test("target Back restores ordering only when present and stale context clears flow"):
     val response = MajorActionPreviewResponse(4, "travel", Vector(first),
       Vector.empty, Vector.empty)

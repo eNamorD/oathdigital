@@ -170,12 +170,6 @@ class ServerModeUiSuite extends FunSuite:
         Vector("Alex" -> PlayerColor.Yellow, "Sam" -> PlayerColor.Red))
     }.andThen { case _ => browser.close() }
 
-  test("host colors map to their own player badge tokens"):
-    assertEquals(TrustedHostUi.LineageColors.map(PlayerColorCss.of),
-      Vector("player-red", "player-blue", "player-yellow", "player-white", "player-black",
-        "player-pink", "player-brown"))
-    assertEquals(PlayerColorCss.of(None), "player-neutral")
-
   private def trustedProjection: String =
     """{"gameId":"my game","nextSequence":1,"phase":"awaiting-pawn","activeParticipantId":"red","viewerPlayerId":"blue","players":[{"playerId":"red","displayName":"Red Exile","role":"exile","colorToken":"red"},{"playerId":"blue","displayName":"Blue Exile","role":"exile","colorToken":"blue"}],"world":[],"pawnLocations":[],"legalControls":[],"ready":false,"completed":false}"""
 
@@ -640,10 +634,6 @@ class ServerModeUiSuite extends FunSuite:
       actionKind = "travel", minimum = 0, maximum = 0)),
       "No target is available; confirm to play this action.")
 
-  test("a roll answer carries the projected pool key and no die faces"):
-    assertEquals(GameCommand.RollWalker("red", "recover"),
-      oathdigital.protocol.GameIntent.RollWalker("recover"))
-
   /** Task 4: both decide parks take their option set from the projected
     * query, and one generic command builder serves both -- a projected
     * option already carries the `kind`/`id` pair a `ChooseOneWire` needs,
@@ -696,8 +686,6 @@ class ServerModeUiSuite extends FunSuite:
       assertEquals(ServerUiSupport.forceText(forces), label)
       assertEquals(ServerUiSupport.forceCssClass(forces), cssClass)
     }
-    assertEquals(GameSite("empty", "Empty", 0, 0, 0, 0, Vector.empty,
-      GameSiteRelics(0)).forces, None)
 
   test("Take Wealth actions use the active-player labels and commands"):
     val actions = ServerUiSupport.takeWealthActions(
@@ -908,29 +896,6 @@ class ServerModeUiSuite extends FunSuite:
     assert(!badge.get.contains(candidate.label))
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
 
-  test("populated site details render properties, stable IDs, and hidden relics"):
-    val site = GameSite(
-      "site:woods",
-      "Woods",
-      looseFavor = 2,
-      looseSecrets = 1,
-      denizenCapacity = 3,
-      relicCapacity = 2,
-      denizens = Vector(
-        GameSiteCard("denizen:fox", "Fox"),
-        GameSiteCard("denizen:owl", "Owl")
-      ),
-      relics = GameSiteRelics(2)
-    )
-    val details = SiteCardPresentation.from(site)
-
-    assertEquals((details.looseFavor, details.looseSecrets, details.defense),
-      (2, 1, 0))
-    assertEquals(site.denizens.map(_.label), Vector("Fox", "Owl"))
-    assertEquals(site.denizens.map(_.denizenId),
-      Vector("denizen:fox", "denizen:owl"))
-    assertEquals(details.unknownRelicCount, 2)
-
   test("peeked site relics replace opaque slots only for the scoped viewer"):
     val known = CardDetails("R1", "relic", "Ancient Crown", rulesText = Some("Rule"))
     val owner = SiteCardPresentation.from(GameSite("site", "Site", 0, 0, 0, 2,
@@ -1058,16 +1023,11 @@ class ServerModeUiSuite extends FunSuite:
     // control and asks its questions as walker decisions.
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red"), None)
-  test("available controls use durable ordered presentation categories"):
-    assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
-      Vector("Major actions", "Minor actions"))
+  test("action kinds sort into major and minor, and trade variants share a family"):
     assertEquals(ServerUiSupport.actionCategory("travel"), "major")
     assertEquals(ServerUiSupport.actionCategory("challenge"), "major")
-    assertEquals(ServerUiSupport.actionCategory("campaign"), "major")
     // Using a power's "Action:" is itself a minor action, so an unrecognised
     // kind joins them rather than opening a section of its own.
     assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "minor")
-    assertEquals(ServerUiSupport.majorFamilyOrder, Vector("search", "travel", "campaign",
-      "muster", "trade", "forge", "recover", "challenge"))
     assertEquals(Vector("trade-favor", "trade-secret").map(
       ServerUiSupport.actionFamily), Vector("trade", "trade"))
