@@ -253,6 +253,18 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(all(render(view(), opened()), ".option-top, .put-on-top"),
       Vector.empty)
 
+  /** The card is the last thing in its option, so every card in a row sits
+    * on the row's floor: a kept card with no controls and a discard with
+    * two of them line up, and the controls stand above the card they act
+    * on. A card that sat under its controls sat higher than its neighbour
+    * in the next zone.
+    */
+  test("an option's controls stand above its card"):
+    val panel = pickPanel(picking())
+    val discard = one(panel, """[data-option-id="denizen:denizen:2"]""")
+    assertEquals(all(discard, ":scope > *").map(_.getAttribute("class")),
+      Vector("move-option", "put-on-top", "option-summary"))
+
   test("the confirm button sits in its own footer strip"):
     val panel = pickPanel(picking())
     assertEquals(confirm(panel).parentNode.asInstanceOf[dom.Element]

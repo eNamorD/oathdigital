@@ -396,7 +396,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .decision-option button, .partition-confirm { min-height: 44px; margin: 5px; }
 /* A partition is read as a row of cards, so the options lay out like a hand.
    Three fit across a docked pane at this size. */
-.partition-options { display: flex; flex-wrap: wrap; align-items: flex-start;
+.partition-options { display: flex; flex-wrap: wrap; align-items: flex-end;
   gap: 6px; }
 /* The heading sits at the top of the zone and holds the cards off instead:
    space above it is the box's own padding twice over. The cards sit at the
@@ -411,17 +411,22 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .partition-zone > .partition-options { margin-top: auto; padding-top: 1.15em; }
 /* The card sets the option's width; a move button's label must not, or the
    zone inherits the widest destination name as its own width. The step is
-   the smallest that keeps the card's name and its picker over 11px. */
+   the smallest that keeps the card's name and its picker over 11px. The
+   controls stand above the card and the card sits on the option's floor,
+   so a kept card with no controls and a discard with two share a baseline
+   across the row. */
 .partition-zone .decision-option { display: flex; flex-direction: column;
-  align-items: center; gap: 4px; margin: 0; padding: 5px;
-  width: calc(var(--card-w) + 12px); font-size: 0.84em; }
-.partition-zone .move-option, .partition-zone .put-on-top { min-height: 36px;
+  justify-content: flex-end; align-items: center; gap: 4px; margin: 0;
+  padding: 5px; width: calc(var(--card-w) + 12px); font-size: 0.84em; }
+/* Movers at the Control height: a step and a place to stand, not an
+   answer, so they do not need the action button's 44px. */
+.partition-zone .move-option, .partition-zone .put-on-top { min-height: 30px;
   width: 100%; margin: 0; padding: 2px 4px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
 /* The card already on top: a state, so a pill, at the button's height so
    putting another card on top never reflows the row. */
 .option-top { display: inline-flex; align-items: center;
-  justify-content: center; min-height: 36px; width: 100%;
+  justify-content: center; min-height: 30px; width: 100%;
   border: 1px solid #7c694b; border-radius: 999px; color: #a99f8c;
   font-size: max(0.85em, 0.7rem); font-weight: 600; }
 .partition-instruction { color: #a99f8c; font-size: 0.9rem; }
