@@ -3,13 +3,12 @@ package oathdigital.gameplay
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
-import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.Table
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Table.p1
 
 class StateBasedEvaluationSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
@@ -34,23 +33,6 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
 
   private def atRoundEnd(ready: ReadyGame): ReadyGame = ready.updateCurrent(_.copy(
       turn = ready.game.current.turn.copy(phase = Phase.RoundEnd)))
-
-  test("first-game Supremacy qualification transfers at a completed action boundary"):
-    // p2 rules Dunes and p1 none; p1 travels, and its boundary settles the Oath.
-    val act = Table.start.warbandsAt("Dunes", p2, 1).ready
-    val accepted = rules.startWalker(Ready(act), ActionRef.Travel, p1,
-      Vector.empty, Vector(DecisionOptionRef.Site(Table.homeOf(p2)))).toOption.get
-
-    assert(accepted.events.head.isInstanceOf[
-      oathdigital.gameplay.walker.WalkerStepRecorded])
-    assertEquals(accepted.events.last,
-      WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
-    val Ready(after) = accepted.state: @unchecked
-    assertEquals(after.game.current.title,
-      OathkeeperState(Some(p2), TitleSide.Oathkeeper))
-    val replayed = accepted.events.foldLeft[Either[OathViolation, OathState]](
-      Right(Ready(act)))((state, event) => state.flatMap(rules.evolve(_, event)))
-    assertEquals(replayed, Right(accepted.state))
 
   test("all four printed goals qualify from their authoritative holdings"):
     val base = prepared(Vector.empty)

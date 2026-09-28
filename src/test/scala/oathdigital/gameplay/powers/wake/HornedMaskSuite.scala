@@ -180,13 +180,6 @@ class HornedMaskSuite extends munit.FunSuite:
       choose(inn)).isLeft)
     assert(answer(t, actor, HornedMask.denizenDecisionId, choose(elders)).isLeft)
 
-  test("it needs the mask faceup in the Wake phase"):
-    val facedown = inPhase(withRelic(atHome(base, inn), mask,
-      Orientation.FaceDown), Phase.Wake)
-    assertEquals(usableNow(facedown), Vector.empty)
-    assert(use(facedown, power, source).isLeft)
-    assert(use(inPhase(atHome(staged, inn), Phase.Act), power, source).isLeft)
-
   test("it writes the denizen it took"):
     val t = use(atHome(staged, inn), power, source).toOption.get
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))

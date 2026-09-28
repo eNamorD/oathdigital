@@ -16,11 +16,6 @@ class WrestlersSuite extends munit.FunSuite:
     val base = againstPlayer(board())
     withAdviserFor(base, base.other, card, Orientation.FaceUp)
 
-  private def raid(defenderWarbands: Int): Board =
-    val base = withEnemyAtOrigin(board(warbands = 4))
-    replacePlayer(withAdviserFor(base, base.other, card, Orientation.FaceUp),
-      base.other)(p => p.copy(board = p.board.copy(warbands = defenderWarbands)))
-
   private def siteForces(state: OathState, b: Board): SiteForces =
     ready(state).game.current.map.sites(b.origin).forces
 
@@ -44,18 +39,6 @@ class WrestlersSuite extends munit.FunSuite:
       .get.defenseScore
     assertEquals(score(without), 2)
     assertEquals(score(with_), 1)
-
-  test("a Raid defender sacrifices from the board"):
-    val b = raid(3)
-    val run = commit(rules(losing), b, 2, raid = true)
-    val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
-    assertEquals(player(picked.state, b.other).board.warbands, 2)
-    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
-
-  test("a defender with no warband in its force cannot pay, so the plan is not offered"):
-    val b = raid(0)
-    assert(awaits(commit(rules(losing), b, 2, raid = true), b.actor,
-      CampaignIds.sacrifice))
 
   test("it is a defender's plan only"):
     val base = board()

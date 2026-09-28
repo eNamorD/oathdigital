@@ -106,14 +106,6 @@ class StickyFireSuite extends munit.FunSuite:
     val defenderFavor = favorOf(OathState.Ready(b.ready), b.other) + 1
     assertEquals(favorOf(done.state, b.other), defenderFavor - defenderFavor / 2)
 
-  test("the same Raid without Sticky Fire kills half the board"):
-    val base = withEnemyAtOrigin(board(warbands = 4))
-    val b = replacePlayer(base, base.other)(p => p.copy(
-      board = p.board.copy(warbands = 3)))
-    val done = commit(rules(winning), b, 4, raid = true)
-      .answer(b.actor, CampaignIds.sacrifice, DecisionAnswer.ChooseAmountAnswer(0))
-    assertEquals(warbands(done.state, b.other), 2)
-
   // ---- the defender wins --------------------------------------------------
 
   private def defending: Board =

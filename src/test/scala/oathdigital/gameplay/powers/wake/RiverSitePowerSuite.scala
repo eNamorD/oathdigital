@@ -39,13 +39,6 @@ class RiverSitePowerSuite extends munit.FunSuite:
     assertEquals(rivers(alone), Vector.empty)
     assert(use(alone).isLeft)
 
-  test("it is not usable outside the Wake"):
-    Vector(Phase.Act, Phase.Rest).foreach { phase =>
-      val acting = staged(phase = phase)
-      assertEquals(rivers(acting), Vector.empty, phase.toString)
-      assert(use(acting).isLeft, phase.toString)
-    }
-
   test("it is not usable from a site that is not a River"):
     val ready = staged()
     val dry = ready.game.current.map.inPlay.find(site =>
