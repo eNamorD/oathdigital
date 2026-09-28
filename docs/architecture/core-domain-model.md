@@ -20,7 +20,7 @@ a gameplay-rules specification.
 - `oathdigital.engine` owns the deterministic transition and journal
   abstractions. Concrete Oath commands, events, continuations, and rules do not
   belong in the state model.
-- `oathdigital.presentation` consumes projections. Presentation IDs and image
+- The frontend consumes projections. Its presentation IDs and image
   references are not domain identities and never become authoritative state.
 - `docs/catalog/new-foundations-component-catalog.json` is component
   definition data. Runtime state refers to its printed component identities;

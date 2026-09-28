@@ -86,8 +86,8 @@ randomness never executes during replay.
 
 `CardRestrictions` remains the typed source for site-only, adviser-only, and
 locked-adviser-only placement. Search does not interpret `rulesText` and does
-not add a JSON rules DSL. The R1 `RuleQuery`/`RuleOutcome` registry remains the
-extension point for activated component modifiers. This bounded profile has no
+not add a JSON rules DSL. Activated component modifiers extend it through power
+windows, as `ContributingPower`s. This bounded profile has no
 supported Search modifier, so it validates unaltered Foundations, exile-only
 roles, and no active legacy/relic Search modifier before using the core typed
 procedure directly. A future supported modifier may contribute typed cost,

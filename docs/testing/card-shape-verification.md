@@ -187,8 +187,8 @@ turns a card the viewer is allowed to read face-up before drawing it; a
 card the viewer cannot identify still shows its back, since there is
 nothing to turn. Removing the badge left the frontend's whole visual
 chain unused, so `VisualDomRenderer` and `VisualRenderPlan` went with it;
-`oathdigital.presentation` itself is untouched and still has its own
-tests.
+`oathdigital.presentation` itself was untouched then (it has since been
+deleted as unused).
 
 **Players pane and partitions, fourth revision.** A player board is now one
 identity line (name, role and resources, with favor and secrets as glyphs)

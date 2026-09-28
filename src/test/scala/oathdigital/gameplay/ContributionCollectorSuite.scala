@@ -5,9 +5,8 @@ import oathdigital.model.PowerId
 import oathdigital.model.{PowerWindow, RuleSourceRef, Sequence}
 import oathdigital.testkit.Table
 
-/** Task 2: the gather protocol as a pure collector. Exercises each of the
-  * five decision-10 steps in isolation, with hand-built fixture powers --
-  * no catalog, no walker.
+/** Task 2: the gather protocol as a pure collector, with hand-built fixture
+  * powers -- no catalog, no walker. Ignores are ContributionIgnoresSuite's.
   */
 class ContributionCollectorSuite extends munit.FunSuite:
 
@@ -23,8 +22,8 @@ class ContributionCollectorSuite extends munit.FunSuite:
       operation = Sequence(Vector.empty, Some(window))
     )
 
-  /** Builds a fixture power. `ignore` names ids this power votes to ignore;
-    * `applicableFlag` controls step 2; `windows` is the set of windows this
+  /** Builds a fixture power. `applicableFlag` controls step 2; `windows` is
+    * the set of windows this
     * power declares contributions at (all mapping to the same
     * `contributions` vector, sufficient for these tests).
     */
@@ -34,8 +33,7 @@ class ContributionCollectorSuite extends munit.FunSuite:
       windows: Set[PowerWindow],
       contribs: Vector[Contribution],
       priorityValue: Int = 0,
-      applicableFlag: Boolean = true,
-      ignore: Set[String] = Set.empty
+      applicableFlag: Boolean = true
   ): ContributingPower =
     new ContributingPower:
       def id: PowerId = PowerId(idValue)
@@ -44,8 +42,6 @@ class ContributionCollectorSuite extends munit.FunSuite:
       def contributions: Map[PowerWindow, Vector[Contribution]] =
         windows.map(_ -> contribs).toMap
       override def applicable(ctx: PowerCtx): Boolean = applicableFlag
-      override def shouldIgnore(other: ContributingPower): Boolean =
-        ignore(other.id.value)
 
   private val window = PowerWindow.RecoverEligibility
   private val otherWindow = PowerWindow.RecoverBeforeFirstRoll

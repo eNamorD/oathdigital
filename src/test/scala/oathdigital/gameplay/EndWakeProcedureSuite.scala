@@ -13,7 +13,8 @@ import oathdigital.model._
 /** Ending the Wake phase, on the generic walker (batch-1 Task 7).
   *
   * Ported from the deleted `WakeSuite`, which drove the deleted `Wake`
-  * object. Every gate it asserted is asserted here against the declared tree;
+  * object. Its live gates are asserted here; the Vision and Oathkeeper gates
+  * it also checked no longer exist;
   * what is new is the pair of facts that separate a phase transition from an
   * action: the player lands in Act action selection, and the Act action
   * boundary does NOT run on the way there.

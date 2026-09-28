@@ -153,10 +153,10 @@ The CPU sums vary by tens of percent with machine load (the Table builder's
 end state measured 93.3s for its 2329 tests), so the fall in root CPU is
 mostly noise; the test count is the measure. Wall time is unchanged.
 
-**Outcomes.** Of 360 findings and 56 leads: 215 deleted or trimmed with
-their proof, 82 strengthened, 13 merged into a survivor, 47 kept with a
-reason, and 7 leads confirmed as duplicates and removed; the other leads
-found no duplicate, were already handled, or were out of scope.
+**Outcomes.** Of 356 findings and 60 leads: 215 findings deleted or trimmed
+with their proof, 82 strengthened, 13 merged into a survivor, and 46 kept
+with a reason; of the leads, 7 were confirmed as duplicates and acted on, and
+the rest found no duplicate, were already handled, or were out of scope.
 
 **Dead production code removed** (about 500 lines): `OperationShadow`; the
 relic placement planners (`PowerOperationPlanner`, `DrawTopRelic`,
@@ -179,7 +179,8 @@ pinned only by deleted tests now sit in `EnumWireKeySuite`.
 
 **Tests that passed by accident.** The Grasping Vines and Toll Roads facedown
 tests used advisers, which never act; Empty Grounds had nothing else in its
-region to discard; Fearsome Shield's checks read the wrong actor's tree; the
+region to discard; Fearsome Shield's checked that no payment was made, not that
+the plan was withheld; the
 Rotting Fortress "facedown" adviser was a faceup Hearth card; the locked
 adviser's faceup half was refused because the card was not a facedown
 adviser; `SelectedModifier`'s eligibility probe applied everywhere. Each now
