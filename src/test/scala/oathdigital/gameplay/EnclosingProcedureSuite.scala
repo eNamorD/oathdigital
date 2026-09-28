@@ -8,6 +8,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 
 /** `PowerCtx.procedure`: the procedure a window is walked for. */
 class EnclosingProcedureSuite extends munit.FunSuite:
@@ -28,8 +30,10 @@ class EnclosingProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowers(Vector(probe)))
 
-  private def staged: ReadyGame = EconomyFixture.act()
-  private def actor: PlayerId = staged.game.current.turn.activePlayer
+  /** p1 can Muster from the Alchemist at their site. */
+  private def staged: ReadyGame =
+    Table.start.denizen("Alchemist", at = Table.homeOf(p1)).ready
+  private def actor: PlayerId = p1
 
   test("a modifier is selected for the procedure that will run it"):
     seen.clear()
@@ -46,7 +50,7 @@ class EnclosingProcedureSuite extends munit.FunSuite:
     seen.clear()
     rules.resolveWalker(started.state, actor, MusterProcedure.decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(
-        EconomyFixture.plainId))).toOption.get
+        CatalogNames.denizen("Alchemist")))).toOption.get
     assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),
       seen.toString)
 

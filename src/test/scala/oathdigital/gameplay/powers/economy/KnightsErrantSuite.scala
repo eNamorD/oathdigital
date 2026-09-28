@@ -1,10 +1,9 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.{CampaignFixture, EconomyFixture, OathRules}
+import oathdigital.gameplay.{CampaignFixture, OathRules}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.economy.MusterProcedure
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.targeting.TargetingFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -12,13 +11,14 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker, W
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.{p1, p2}
 
 class KnightsErrantSuite extends munit.FunSuite:
-  import EconomyFixture.plainId
-
-  private val knights = DenizenId("120")
+  private val knights = CatalogNames.denizen("Knights Errant")
+  private val alchemist = CatalogNames.denizen("Alchemist")
   private val modifiers = Vector(KnightsErrant.id)
-  private val actor = PowerFixture.actor
+  private val actor = p1
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     walkerDice = CampaignFixture.anyDice)
@@ -29,26 +29,24 @@ class KnightsErrantSuite extends munit.FunSuite:
   private val parked = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog))
 
-  /** The actor holds Knights Errant and stands at a site with a token-free card
-    * to muster from. The site is ruled by bandits, so a Conquest is legal,
-    * unless `campaignLegal` is false. The actor has `supply` Supply and 3
-    * warbands.
+  /** p1 holds Knights Errant and stands at Ancient City with the token-free
+    * Alchemist to muster from. Two bandits rule the site, so a Conquest is
+    * legal, unless `campaignLegal` is false. p1 has `supply` Supply, 4 favor
+    * and 3 warbands.
     */
   private def staged(supply: Int = 1, campaignLegal: Boolean = true)
       : ReadyGame =
-    val ready = PowerFixture.asAdviser(CardStaging.without(
-      EconomyFixture.act(supply = supply, favor = 4, boardWarbands = 3), knights),
-      knights)
-    val site = PowerFixture.home(ready)
-    ready.updateCurrent(c => c.copy(map = c.map.copy(sites = c.map.sites.updated(
-      site, c.map.sites(site).copy(forces =
-        if campaignLegal then SiteForces.Occupied(ForceKind.Bandit, 2)
-        else SiteForces.Empty)))))
+    Table.start
+      .adviser(p1, knights)
+      .denizen(alchemist, at = Table.homeOf(p1))
+      .bandits(Table.homeOf(p1), if campaignLegal then 2 else 0)
+      .supply(p1, supply).favor(p1, 4)
+      .ready
 
   private def ready(transition: OathTransition): ReadyGame =
     transition.state.asInstanceOf[Ready].value
 
-  private def me(state: ReadyGame): PlayerState = PowerFixture.player(state)
+  private def me(state: ReadyGame): PlayerState = Look(state).player(p1)
 
   /** Starts a Muster with `selected` and answers its source. */
   private def musterFrom(state: ReadyGame, selected: Vector[PowerId])
@@ -57,7 +55,7 @@ class KnightsErrantSuite extends munit.FunSuite:
       selected).toOption.get
     val done = rules.resolveWalker(started.state, actor,
       MusterProcedure.decisionId,
-      ChooseOneAnswer(DecisionOptionRef.Denizen(plainId))).toOption.get
+      ChooseOneAnswer(DecisionOptionRef.Denizen(alchemist))).toOption.get
     done.copy(events = started.events ++ done.events)
 
   private def answer(from: OathTransition, id: String, choice: DecisionAnswer)
@@ -168,9 +166,12 @@ class KnightsErrantSuite extends munit.FunSuite:
 
   test("Vow of Peace forbids the nested Campaign, so the look-ahead hides " +
       "the option, and declining is still allowed"):
-    val vow = DenizenId(catalog.denizens.find(_.powers.exists(
-      _.id.value == "denizen.vow-of-peace")).get.id.value)
-    val ready = PowerFixture.asAdviser(CardStaging.without(staged(), vow), vow)
+    val ready = Table.start
+      .adviser(p1, knights).adviser(p1, "Vow of Peace")
+      .denizen(alchemist, at = Table.homeOf(p1))
+      .bandits(Table.homeOf(p1), 2)
+      .supply(p1, 1).favor(p1, 4)
+      .ready
     val asked = musterFrom(ready, modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
     assertEquals(query(asked).asInstanceOf[DecisionQuery.ChooseOne].options
@@ -186,8 +187,8 @@ class KnightsErrantSuite extends munit.FunSuite:
     // Nobody rules the site, so a Conquest is not legal. An enemy pawn stands
     // there, so a Raid is, and the Rotting Fortress protects that enemy.
     val base = staged(campaignLegal = false)
-    val other = base.game.current.players.map(_.player).find(_ != actor).get
-    val site = PowerFixture.home(base)
+    val other = p2
+    val site = Table.homeOf(p1)
     val fortified = TargetingFixture.fortressAt(
       TargetingFixture.pawnAt(base, other, site), EdificeSide.Ruined, site)
     val asked = musterFrom(fortified, modifiers)
