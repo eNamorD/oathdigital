@@ -68,8 +68,9 @@ and it keeps the patching indirection.
 - With no stream and a `Ready` genesis, `handle` runs any non-`Begin` command
   at sequence 0 against `genesis`, expecting the stream not to exist. `Begin`
   is rejected: `GameStarted` on a started game is already `GameAlreadyExists`.
-- `load`, `history` and the projections read the reconstructed state as
-  before.
+- With no stream and a `Ready` genesis, `load` returns the genesis at
+  sequence 0, so a test can read or project the start before its first
+  command. `history` of a missing stream stays `None`.
 
 A `BackendArchitectureSuite` check asserts that no code under `src/main`
 passes `genesis`. The seam is for tests only, until the arranged-start event
@@ -97,6 +98,11 @@ plan settles the exact names.
 `SituationSuite` gains a case showing that the rules adapter and the journaled
 adapter agree when both start from the same table.
 
+`Table` gains a `relicDeckTop` step (the Forge and Family Heirloom scripts
+need the relic deck's top). Its docstring's claim that Ancient City's River
+gives a Wake option is corrected: River needs another River in play, and the
+fixture map has none.
+
 ## Scope
 
 **Moves to a table start:**
@@ -120,12 +126,15 @@ adapter agree when both start from the same table.
 
 - The `woken` script and its two goldens: the one end-to-end golden, from the
   real setup lines through Round 1.
-- `GameLogSetupSuite`, `GameLogStartLineSuite`, and `SituationSuite`'s replay
-  checks.
+- `GameLogSetupSuite` and `SituationSuite`'s replay checks.
+  (`GameLogStartLineSuite` tests procedure start lines such as "Started
+  Travel", not `GameStarted`; it follows the scripts it reads.)
 - HungerSuite's "a Hunger revealed in Setup's Reveal Cards runs at the first
   Wake", which keeps `withWorldDeckTop`.
-- `GameApplicationServiceSuite`'s `Begin` and bootstrap tests, and its
-  all-Exile game to round 8 (the full-game smoke test).
+- `GameApplicationServiceSuite`'s `Begin` and bootstrap tests, its
+  all-Exile game to round 8 (the full-game smoke test), its setup-length
+  check, and its Salt Flats Recover (Salt Flats is not in play on the fixture
+  map, and no Table step changes the map).
 - The route, bootstrap and provisioning suites. They issue only `Begin`.
 
 **Deleted once empty:** whatever of `ParkedServiceFixture` and
@@ -156,7 +165,10 @@ remaining test uses it.
 
 ## Tasks
 
-The plan may refine the order. Each task ends green and is its own commit.
+The [plan](../plans/2026-09-28-service-log-start-states.md) refines these
+into seven tasks: the log scripts move in two batches, and the two log
+scripts that reuse the parks move with the parks. Each task ends green and is
+its own commit.
 
 1. **Seam.** The `genesis` parameter, the architecture guard, the formatter's
    opening headlines, and the journaled `table.situation`. Tests: the
