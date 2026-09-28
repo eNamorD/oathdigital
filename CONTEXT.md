@@ -103,6 +103,14 @@ A game reached by real play from a first-game input: every command issued and
 every parked decision answered along the way, in order. Named situations are
 Wake (Setup complete: the first player's turn, already in Act when that Wake
 had nothing to decide), Act (a player's Wake ended) and Rest (a player's Act
-ended); any other is described by the steps that reach it.
+ended); any other is described by the steps that reach it. Driven by the rules
+adapter, a situation may also start at a Table.
 _Avoid_: position (a journal sequence number), fixture, snapshot, initial
 game, setup state
+
+**Table**:
+A game state assembled directly for a rule test, not reached by play: the real
+first-game start made quiet (p1's Act, pawns at their own sites, nothing at the
+sites), plus one stated fact per step. A rule test states every fact it relies
+on and inherits nothing incidental from Setup.
+_Avoid_: board fixture, base state, initial ready
