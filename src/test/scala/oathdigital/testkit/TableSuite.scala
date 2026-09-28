@@ -27,8 +27,16 @@ class TableSuite extends munit.FunSuite:
       assertEquals(look.forces(site), SiteForces.Empty, site.value)
       assertEquals(look.siteTokens(site), Tokens.empty, site.value)
     }
-    Vector(p1, p2, p3).foreach(p => assertEquals(look.advisers(p), Vector.empty))
-    assertEquals(Table.start.ready.game.current.temporaryHands, Map.empty)
+    Vector(p1, p2, p3).foreach { p =>
+      assertEquals(look.advisers(p), Vector.empty)
+      assertEquals(look.relics(p), Vector.empty)
+    }
+    val current = Table.start.ready.game.current
+    assertEquals(current.temporaryHands, Map.empty)
+    assert(Region.all.forall(current.commonCards.discard(_).isEmpty))
+    assertEquals(current.title.holder, None)
+    assertEquals((current.banners.peoplesFavor.holder,
+      current.banners.darkestSecret.holder), (None, None))
 
   test("the turn passes p1, p2, p3"):
     assertEquals(FinishRestProcedure.turnOrder(Table.start.ready),
@@ -54,6 +62,22 @@ class TableSuite extends munit.FunSuite:
     assertEquals(Look(moved.ready).advisers(p1), Vector.empty)
     assertEquals(Look(moved.ready).denizens("Dunes"), Vector(dealt))
 
+  test("placing a card takes it from a discard, a player's relics and every viewer's memory"):
+    val discarded = Table.start.update(_.updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(
+        worldDeck = c.commonCards.worldDeck.filterNot(
+          _ == CatalogNames.denizen("Alchemist")),
+        regionalDiscards = c.commonCards.regionalDiscards.updated(
+          Region.Cradle, Vector(CatalogNames.denizen("Alchemist")))))))
+    val placed = discarded.adviser(p1, "Alchemist").ready
+    assertEquals(placed.game.current.commonCards.discard(Region.Cradle), Vector.empty)
+    val peeked = Table.start.relic(p2, "Brass Horse", facedown = true)
+      .update(r => r.copy(knowledge = r.knowledge.copy(heldRelics =
+        Map(p1 -> Vector(CatalogNames.relic("Brass Horse"))))))
+    val moved = peeked.relicAt("Brass Horse", at = "Dunes").ready
+    assertEquals(Look(moved).relics(p2), Vector.empty)
+    assertEquals(moved.knowledge.heldRelics(p1), Vector.empty)
+
   test("a card the first game did not deal joins the table"):
     val inGame = CardIndex.from(Table.start.ready.game).toOption.get.ids
     val outside = catalog.denizens.map(d => DenizenId(d.id.value))
@@ -70,10 +94,25 @@ class TableSuite extends munit.FunSuite:
     val failure = intercept[munit.FailException](twice.ready)
     assert(failure.getMessage.contains("Alchemist"), failure.getMessage)
 
+  test("a lost card is rejected when the state is read"):
+    val lost = Table.start.update(_.updateCurrent(c => c.copy(commonCards =
+      c.commonCards.copy(worldDeck = c.commonCards.worldDeck.tail))))
+    val failure = intercept[munit.FailException](lost.ready)
+    assert(failure.getMessage.contains("is missing"), failure.getMessage)
+
   test("more warbands than the printed supply are rejected when the state is read"):
-    val failure = intercept[munit.FailException](
+    val bandits = intercept[munit.FailException](
       Table.start.bandits("Dunes", 25).ready)
-    assert(failure.getMessage.contains("Bandit"), failure.getMessage)
+    assert(bandits.getMessage.contains("Bandit"), bandits.getMessage)
+    // A lineage prints 14: 12 on the board and 3 at a site are one too many.
+    val exiles = intercept[munit.FailException](
+      Table.start.warbands(p1, 12).warbandsAt("Dunes", p1, 3).ready)
+    assert(exiles.getMessage.contains("15 warbands"), exiles.getMessage)
+
+  test("an edifice named by one face must be placed on that side"):
+    val failure = intercept[munit.FailException](Table.start.edifice(
+      "Hallowed Spring", EdificeSide.Ruined, at = "Dunes"))
+    assert(failure.getMessage.contains("Hiding Place"), failure.getMessage)
 
   test("an unknown name fails and lists the closest names"):
     val failure = intercept[munit.FailException](CatalogNames.denizen("Mercenary"))
@@ -95,6 +134,7 @@ class TableSuite extends munit.FunSuite:
       .tokens("Magician's Code", favor = 1)
       .siteTokens("Dunes", secrets = 2)
       .peoplesFavor(Some(p3), favor = 2)
+      .oathkeeper(Some(p2))
       .bankFavor(Suit.Arcane, 1)
       .ready
     val look = Look(ready)
@@ -117,6 +157,7 @@ class TableSuite extends munit.FunSuite:
     assertEquals(look.tokensOn("Magician's Code"), Tokens(1, 0))
     assertEquals(look.siteTokens("Dunes"), Tokens(0, 2))
     assertEquals(ready.game.current.banners.peoplesFavor.holder, Some(p3))
+    assertEquals(ready.game.current.title.holder, Some(p2))
     assertEquals(ready.banks.favor(Suit.Arcane), 1)
 
   test("the world deck's top can be named"):

@@ -52,7 +52,8 @@ object CatalogNames:
         .orElse(catalog.edifices.find(e => e.intact.name == name ||
           e.ruined.name == name).map(e => EdificeId(e.id.value)))
         .getOrElse(unknown("card", name, catalog.denizens.map(_.name) ++
-          catalog.relics.map(_.name)))
+          catalog.relics.map(_.name) ++ catalog.edifices.flatMap(e =>
+            Vector(e.intact.name, e.ruined.name))))
 
   /** The printed name of `card`, for failure messages. */
   def nameOf(card: CardId): String = card match
@@ -89,14 +90,17 @@ object CatalogNames:
   * order, and it is p1's Act. Their pawns stand at Ancient City, Broken
   * Peaks and Buried Giant. No site holds a denizen, edifice, relic, bandit
   * or wealth, nobody holds an adviser, and every board keeps its printed
-  * start: 1 favor, 1 faceup secret, 3 warbands and 7 Supply. Ancient City
-  * carries the River site power, a Wake option: a test that puts p1 in Wake
-  * there has something to decide.
+  * start: 1 favor, 1 faceup secret, 3 warbands and 7 Supply. Nobody holds
+  * the Oathkeeper title or a banner, and the regional discards are empty.
+  * Ancient City carries the River site power, a Wake option: a test that
+  * puts p1 in Wake there has something to decide.
   *
   * Each step states one fact. A step that places a card first takes it out
   * of every zone that held it, so the inventory stays whole. A card the
   * first game did not deal joins the table. `ready` checks the card index
-  * and the warband inventory and fails the test naming what is wrong.
+  * and the warband inventory and fails the test naming what is wrong. A
+  * card added through `update` without a step is not checked, since only
+  * lost and doubled cards are visible to the index.
   */
 final case class Table private (private val game: ReadyGame,
     private val joined: Set[CardId]):
@@ -138,9 +142,20 @@ final case class Table private (private val game: ReadyGame,
     moving(id).onSite(CatalogNames.site(at))(s => s.copy(relics = s.relics :+
       RelicState(id, orientation(facedown), Tokens.empty)))
 
+  /** An edifice at a site on `side`. Named by a face, it must be the face
+    * `side` shows. */
   def edifice(card: String | EdificeId, side: EdificeSide,
       at: String | SiteId)(using munit.Location): Table =
     val id = CatalogNames.edifice(card)
+    card match
+      case name: String =>
+        val definition = FirstGameSetupFixture.catalog.edifice(id).get
+        val shown = side match
+          case EdificeSide.Intact => definition.intact.name
+          case EdificeSide.Ruined => definition.ruined.name
+        if shown != name then munit.Assertions.fail(
+          s"\"$name\" is not the $side face; that face is \"$shown\"")
+      case _ => ()
     moving(id).onSite(CatalogNames.site(at))(s => s.copy(denizens =
       s.denizens :+ EdificeState(id, side, Tokens.empty)))
 
@@ -186,7 +201,8 @@ final case class Table private (private val game: ReadyGame,
   /** `n` of `owner`'s warbands at a site, which `owner` then rules. */
   def warbandsAt(at: String | SiteId, owner: PlayerId, n: Int)(
       using munit.Location): Table =
-    forces(at, n, ForceKind.Exile(playerOf(owner).lineage))
+    forces(at, n, PlayerForceKind.of(game, playerOf(owner)).getOrElse(
+      munit.Assertions.fail(s"$owner has no warbands of their own")))
 
   def siteTokens(at: String | SiteId, favor: Int = 0, secrets: Int = 0)(
       using munit.Location): Table =
@@ -199,6 +215,10 @@ final case class Table private (private val game: ReadyGame,
   def darkestSecret(holder: Option[PlayerId], secrets: Int): Table =
     update(_.updateCurrent(c => c.copy(banners = c.banners.copy(darkestSecret =
       c.banners.darkestSecret.copy(holder = holder, secrets = secrets)))))
+
+  def oathkeeper(holder: Option[PlayerId],
+      side: TitleSide = TitleSide.Oathkeeper): Table =
+    update(_.updateCurrent(_.copy(title = OathkeeperState(holder, side))))
 
   def bankFavor(suit: Suit, n: Int): Table =
     update(r => r.copy(banks = r.banks.copy(favor = r.banks.favor.updated(suit, n))))
@@ -214,6 +234,10 @@ final case class Table private (private val game: ReadyGame,
       munit.Assertions.fail("the table's cards are not whole: " +
         problems.map(describe).mkString("; "))
     }
+    val placed = game.game.current.map.sites.values.map(_.forces).collect {
+      case SiteForces.Occupied(kind, _) => kind }.toSet
+    (placed -- game.banks.warbandSupply.keySet).foreach(kind =>
+      munit.Assertions.fail(s"$kind has warbands at a site but no printed supply"))
     game.banks.warbandSupply.foreach { case (kind, printed) =>
       val inPlay = game.game.current.players.filter(p =>
         PlayerForceKind.of(game, p).contains(kind)).map(_.board.warbands).sum +
@@ -256,8 +280,9 @@ final case class Table private (private val game: ReadyGame,
     onSite(CatalogNames.site(at))(_.copy(forces =
       if n == 0 then SiteForces.Empty else SiteForces.Occupied(kind, n)))
 
-  private def playerOf(player: PlayerId): PlayerState =
-    game.game.current.players.find(_.player == player).get
+  private def playerOf(player: PlayerId)(using munit.Location): PlayerState =
+    game.game.current.players.find(_.player == player).getOrElse(
+      munit.Assertions.fail(s"no player $player at the table"))
 
 object Table:
   val p1: PlayerId = PlayerId("p1")
@@ -269,7 +294,8 @@ object Table:
 
   /** Where `player`'s pawn stands on the quiet table. */
   def homeOf(player: PlayerId)(using munit.Location): SiteId =
-    CatalogNames.site(homes(player))
+    CatalogNames.site(homes.getOrElse(player, munit.Assertions.fail(
+      s"no player $player at the table")))
 
   /** The quiet table (see [[Table]]). */
   lazy val start: Table =
@@ -287,9 +313,9 @@ object Table:
   private def orientation(facedown: Boolean): Orientation =
     if facedown then Orientation.FaceDown else Orientation.FaceUp
 
-  /** The start with every hand, site card, relic, force and site wealth
-    * put back: dealt hands and site denizens to the bottom of the world
-    * deck, edifices to the edifice deck, relics to the bottom of the relic
+  /** The start with every hand, discard, site card, relic, force and site
+    * wealth put back: dealt hands, the seeded regional discards and site
+    * denizens to the bottom of the world deck, edifices to the edifice deck, relics to the bottom of the relic
     * deck. `banks.warbandSupply` is the printed inventory and the bank holds
     * whatever is not in play, so clearing a site's forces returns them to
     * the bank with no change there. Pawns go to [[homes]], and the turn is
@@ -301,10 +327,12 @@ object Table:
     val denizens = sites.flatMap(_.denizens).collect { case d: DenizenState => d.id }
     val edifices = sites.flatMap(_.denizens).collect { case e: EdificeState => e.id }
     val relics = sites.flatMap(_.relics).map(_.id)
+    val discards = Region.all.flatMap(c.commonCards.discard)
     c.copy(
       temporaryHands = Map.empty,
       commonCards = c.commonCards.copy(
-        worldDeck = c.commonCards.worldDeck ++ hands ++ denizens,
+        worldDeck = c.commonCards.worldDeck ++ hands ++ discards ++ denizens,
+        regionalDiscards = Region.all.map(_ -> Vector.empty[WorldCardId]).toMap,
         edificeDeck = c.commonCards.edificeDeck ++ edifices,
         relicDeck = c.commonCards.relicDeck ++ relics),
       map = c.map.copy(sites = c.map.sites.view.mapValues(_ =>
@@ -312,7 +340,9 @@ object Table:
         .toMap),
       players = c.players.map(p => p.copy(pawnSite = Some(
         c.map.inPlay.find(id => FirstGameSetupFixture.catalog.sites
-          .exists(s => s.id == id && s.name == homes(p.player))).get))),
+          .exists(s => s.id == id && s.name == homes(p.player)))
+          .getOrElse(throw AssertionError(
+            s"${homes(p.player)} is not in the fixture's first game"))))),
       turn = TurnState(p1, Phase.Act, Set.empty))
   }
 
@@ -357,7 +387,7 @@ object Table:
             edifice = s.edifice.filter(keep))
           case other => other
         }))),
-      knowledge = CardKnowledge(
+      knowledge = ready.knowledge.copy(
         siteRelics = ready.knowledge.siteRelics.view.mapValues(
           _.view.mapValues(_.filter(keep)).toMap).toMap,
         advisers = ready.knowledge.advisers.view.mapValues(_.filter(keep)).toMap,
