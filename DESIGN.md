@@ -12,6 +12,7 @@ colors:
   parchment-muted: "#d9cdb5"
   parchment-dim: "#c9bfa9"
   ink-dim: "#a99f8c"
+  ink-spent: "#928876"
   ink-separator: "#6f6455"
   table: "#0f0e0c"
   base: "#17140f"
@@ -290,9 +291,12 @@ reused for UI meaning.
   text and the round-tracker numerals. **Cream Focus** (`cream-focus`): the
   focus and card-hover outline.
 - **Parchment Muted** (`parchment-muted`), **Parchment Dim** (`parchment-dim`),
-  **Ink Dim** (`ink-dim`), **Ink Separator** (`ink-separator`): descending
-  text emphasis, from site details, to the lede and event log, to helpers and
-  restrictions, to the drawn "·" between identity fields.
+  **Ink Dim** (`ink-dim`), **Ink Spent** (`ink-spent`), **Ink Separator**
+  (`ink-separator`): descending text emphasis, from site details, to the lede
+  and event log, to helpers and restrictions, to a log line's spent cost, to
+  the drawn "·" between identity fields. Ink Spent is the last step that
+  still clears 4.5:1 on the Pane fill; Ink Separator is for drawn marks, not
+  words.
 - **States**: `facedown` and `facedown-letter` for a card back; `pile-back`
   for a stacked pile; `unimplemented` for a card the engine does not run yet;
   `error-line` and `error-text`; `replay` green; `limiter` coral; `dev-panel`
@@ -589,15 +593,23 @@ Fill.
 Four `section`s with a header strip (Pane Header fill, Line-pane bottom
 border, 39px, Brass Label uppercase title) and a scrolling content area. The
 Log pane is an 11px list: round and victory headlines in Replay green, a
-turn headline naming its player in the seat color, and every other line one
-gutter in, in Ink Dim, with card and site names in Cream and a spent cost
-set apart by a lighter weight rather than a separator. Three reading aids
-sit on that list. The current turn's headline sticks to the pane's top edge
-on the Pane fill, so the lines under it scroll beneath their turn. Where the
-reader left off, "Since you last looked" is a Brass Label rule across the
-list, its lines in Brass Line. While the reader is scrolled up, a
-Control-face "New" chip rides the list's bottom edge. The pane heading
-itself opens the log overlay; it answers hover in Bright Cream.
+turn headline naming its player in the seat color, a phase headline in
+Brass Label at the same 11px (it is `0.92em` of the list, floored at the
+Eleven-Pixel Floor, so only the overlay's 13px list shows the step), and
+every other line one gutter in, in Ink Dim, with card and site names in
+Cream and a spent cost set apart in Ink Spent rather than by a separator. A
+line that wraps hangs its continuation 10px past its first word, so the
+start of every entry sits on one edge. Three reading aids sit on that list.
+The current turn's headline sticks to the pane's top edge on the Pane fill,
+so the lines under it scroll beneath their turn. Where the reader left off,
+"Since you last looked" is a Brass Label rule across the list, its lines in
+Brass Line. While the reader is scrolled up, a Control-face "New" chip
+rides the list's bottom edge; like the stuck headline it sits past the
+scroller's padding, so it meets the pane's edge with no line showing under
+it. The pane heading itself opens the log overlay; it answers hover in
+Bright Cream, and because it is a control it wears 6px of padding given
+back as margin, so its hit area is a Control's height and its focus ring
+sits clear of the letters while the header strip stays 39px.
 
 The **log overlay** is the whole log over the table. It takes the card
 overlay's scrim and holds a Pane-fill panel with a Line-pane border, full
