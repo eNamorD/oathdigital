@@ -13,6 +13,16 @@ class GraspingVinesSuite extends munit.FunSuite:
   private val rival = TargetsFixture.others(base).head
   private def warbands(ready: ReadyGame): Int = player(ready).board.warbands
 
+  /** `id` standing facedown at `at`, a site card turned down. */
+  private def facedownAt(ready: ReadyGame, id: DenizenId, at: SiteId): ReadyGame =
+    denizenAt(ready, id, at).updateCurrent(c => c.copy(map = c.map.copy(sites =
+      c.map.sites.updated(at, c.map.sites(at).copy(denizens =
+        c.map.sites(at).denizens.map {
+          case card: DenizenState if card.id == id =>
+            card.copy(orientation = Orientation.FaceDown)
+          case other => other
+        })))))
+
   /** The Vines stand at the actor's own site, which `ruler` rules. */
   private def vinesAtHome(ruler: Option[PlayerId]): ReadyGame =
     val ready = denizenAt(board(), vines, plains.head)
@@ -55,8 +65,9 @@ class GraspingVinesSuite extends munit.FunSuite:
     assertEquals(warbands(result), 0)
 
   test("a facedown Grasping Vines is not active"):
-    val ready = ruledBy(adviser(board(), vines, Orientation.FaceDown),
-      plains.head, rival)
+    // The Vines rule from the site they stand on, and only faceup there.
+    val ready = ruledBy(facedownAt(board(), vines, plains.head), plains.head,
+      rival)
     assertEquals(warbands(after(travel(ready, coast).toOption.get)),
       warbands(ready))
 

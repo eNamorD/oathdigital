@@ -67,7 +67,9 @@ class ForestPathsSuite extends munit.FunSuite:
   test("it cannot be selected without a favor to place"):
     val broke = withBoard(denizenAt(passRuled(held), beast, mountain))(
       _.copy(favor = 0))
-    assert(travel(broke, mountain, modifiers).isLeft)
+    assertEquals(travel(broke, mountain, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.forest-paths is not applicable to this travel")))
 
   // ---- Lines ----
 

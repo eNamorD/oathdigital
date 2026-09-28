@@ -34,18 +34,20 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
       .board.warbands
     assertEquals(after, before + 3)
 
+  /** Empty Grounds' site with two denizens beside it. The fixture's region
+    * holds no other card, so without them there is nothing to discard. */
+  private def withOtherDenizens: ReadyGame =
+    val extra = FirstGameSetupFixture.freshReady.game.current.commonCards
+      .worldDeck.collect { case id: DenizenId => id }.take(2)
+    extra.foldLeft(stagedAt(EdificeSide.Ruined))((ready, id) =>
+      CardStaging.without(ready, id).updateCurrent(c => c.copy(map = c.map.copy(
+        sites = c.map.sites.updated(site, c.map.sites(site).copy(denizens =
+          c.map.sites(site).denizens :+
+            DenizenState(id, Orientation.FaceUp, Tokens.empty)))))))
+
   test("Empty Grounds discards every other denizen in its region"):
-    val staged = stagedAt(EdificeSide.Ruined)
+    val staged = withOtherDenizens
     val region = staged.game.current.map.regionOf(site).get
-    val remainingOtherDenizens = { (state: ReadyGame) =>
-      state.game.current.map.inPlay.filter(s =>
-        state.game.current.map.regionOf(s).contains(region))
-        .flatMap(s => state.game.current.map.sites(s).denizens)
-        .exists:
-          case e: EdificeState => e.id == edifice
-          case _ => true
-    }
-    assert(remainingOtherDenizens(staged), "fixture must have other cards in the region")
     val finished = finish(staged)
     val remaining = finished.game.current.map.inPlay.filter(s =>
       finished.game.current.map.regionOf(s).contains(region))
@@ -74,15 +76,7 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
     assertEquals(said.size, staged.game.current.players.size)
 
   test("Empty Grounds writes the cards it discarded, in place of the Discard line"):
-    // The fixture's region holds no other card, so two denizens join the
-    // edifice's site.
-    val extra = FirstGameSetupFixture.freshReady.game.current.commonCards
-      .worldDeck.collect { case id: DenizenId => id }.take(2)
-    val staged = extra.foldLeft(stagedAt(EdificeSide.Ruined))((ready, id) =>
-      CardStaging.without(ready, id).updateCurrent(c => c.copy(map = c.map.copy(
-        sites = c.map.sites.updated(site, c.map.sites(site).copy(denizens =
-          c.map.sites(site).denizens :+
-            DenizenState(id, Orientation.FaceUp, Tokens.empty)))))))
+    val staged = withOtherDenizens
     val current = staged.game.current
     val region = current.map.regionOf(site).get
     val others = current.map.inPlay

@@ -59,7 +59,9 @@ class RoyalStablesSuite extends munit.FunSuite:
 
   test("it may not be used at a site the actor neither stands at nor rules"):
     val ready = passRuled(denizenAt(board(), stables, plains(2)))
-    assert(travel(ready, plains(1), modifiers).isLeft)
+    assertEquals(travel(ready, plains(1), modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.royal-stables is not applicable to this travel")))
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => rules.offerableWalkerPowers(atHome,

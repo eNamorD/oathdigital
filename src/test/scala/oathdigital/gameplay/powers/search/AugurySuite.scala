@@ -35,9 +35,11 @@ class AugurySuite extends munit.FunSuite:
   test("the player keeps any one of the drawn cards"):
     val top = plain.take(6)
     val kept = top(3)
-    val done = play(withAugury(top), modifiers, kept, "discard")
-    assertEquals(SearchFixture.after(done).game.current.temporaryHands(actor),
-      Vector.empty)
+    val done = play(withAugury(top), modifiers, kept, "adviser-facedown")
+    val after = SearchFixture.after(done)
+    assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
+    assert(player(after).advisers.exists(_.id == kept),
+      "the fourth drawn card is the one kept")
 
   test("the draw still stops after a Vision, wherever the Vision falls"):
     val early = plain.take(2) ++ Vector(VisionRules.Faith) ++ plain.drop(2).take(3)
@@ -75,4 +77,6 @@ class AugurySuite extends munit.FunSuite:
     assert(!offered(ActionRef.Travel).contains(Augury.id))
 
   test("it is not offered when the card is out of reach"):
-    assert(start(SearchFixture.staged(plain.take(6)), modifiers).isLeft)
+    assertEquals(start(SearchFixture.staged(plain.take(6)), modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.augury is not applicable to this search")))

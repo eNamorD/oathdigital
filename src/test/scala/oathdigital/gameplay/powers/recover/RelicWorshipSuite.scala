@@ -111,8 +111,10 @@ class RelicWorshipSuite extends munit.FunSuite:
 
   test("it cannot be selected without a faceup secret, or onto an occupied card"):
     val (broke, _) = staged(secrets = 0)
-    assert(rules.startWalker(Ready(broke), ActionRef.Recover, PowerFixture.actor,
-      modifiers).isLeft)
+    assertEquals(rules.startWalker(Ready(broke), ActionRef.Recover,
+      PowerFixture.actor, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.relic-worship is not applicable to this recover")))
     val (ready, _) = staged()
     val occupied = PowerFixture.updateActor(ready)(p => p.copy(advisers =
       p.advisers.map {
@@ -120,8 +122,10 @@ class RelicWorshipSuite extends munit.FunSuite:
           card.copy(tokens = Tokens(0, 1))
         case other => other
       }))
-    assert(rules.startWalker(Ready(occupied), ActionRef.Recover,
-      PowerFixture.actor, modifiers).isLeft)
+    assertEquals(rules.startWalker(Ready(occupied), ActionRef.Recover,
+      PowerFixture.actor, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.relic-worship is not applicable to this recover")))
 
   test("a Recover with the card in reach records no ignored-rule diagnostic"):
     val (ready, site) = staged()

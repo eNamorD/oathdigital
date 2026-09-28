@@ -36,9 +36,13 @@ class WildCrySuite extends munit.FunSuite:
   test("it is not offered when the card is facedown or out of reach"):
     val facedown = asAdviser(SearchFixture.staged(Vector(beast.head) ++ others),
       wildCry, Orientation.FaceDown)
-    assert(start(facedown, modifiers).isLeft)
+    assertEquals(start(facedown, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.wild-cry is not applicable to this search")))
     val elsewhere = SearchFixture.staged(Vector(beast.head) ++ others)
-    assert(start(elsewhere, modifiers).isLeft)
+    assertEquals(start(elsewhere, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.wild-cry is not applicable to this search")))
 
   test("a beast denizen played to a site gains 1 Supply and 2 warbands"):
     val ready = withCry(beast.head)

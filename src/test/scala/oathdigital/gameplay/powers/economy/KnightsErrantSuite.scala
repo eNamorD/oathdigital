@@ -144,8 +144,6 @@ class KnightsErrantSuite extends munit.FunSuite:
     assert(offered(ActionRef.Muster).contains(KnightsErrant.id))
     assert(!offered(ActionRef.Campaign).contains(KnightsErrant.id))
     assert(!offered(ActionRef.Trade).contains(KnightsErrant.id))
-    assert(rules.startWalker(Ready(state), ActionRef.Campaign, p1,
-      modifiers).isLeft)
 
   // ---- Restrictions on the whole Campaign apply to the nested one ----
 

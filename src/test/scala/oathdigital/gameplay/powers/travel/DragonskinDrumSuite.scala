@@ -36,8 +36,10 @@ class DragonskinDrumSuite extends munit.FunSuite:
     assertEquals(player(result).board.warbands, player(empty).board.warbands)
 
   test("a facedown Drum is not usable"):
-    assert(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
-      modifiers).isLeft)
+    assertEquals(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
+      modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power relic.dragonskin-drum is not applicable to this travel")))
 
   // ---- Lines ----
 

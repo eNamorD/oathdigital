@@ -71,7 +71,9 @@ class TruthfulHarpSuite extends munit.FunSuite:
   test("a facedown Harp cannot be selected"):
     val facedown = withRelic(SearchFixture.staged(plain.take(7)), harp,
       Orientation.FaceDown)
-    assert(start(facedown, onlyHarp).isLeft)
+    assertEquals(start(facedown, onlyHarp).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power relic.truthful-harp is not applicable to this search")))
 
   // ---- Lines ----
 

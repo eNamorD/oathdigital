@@ -48,12 +48,16 @@ class TentsSuite extends munit.FunSuite:
 
   test("it cannot be selected without a favor to place, or onto an occupied card"):
     val broke = withBoard(held)(_.copy(favor = 0))
-    assert(travel(broke, coast, modifiers).isLeft)
+    assertEquals(travel(broke, coast, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.tents is not applicable to this travel")))
     val occupied = updateActor(held)(p => p.copy(advisers = p.advisers.map {
       case card: DenizenState if card.id == tents => card.copy(tokens = Tokens(1, 0))
       case other => other
     }))
-    assert(travel(occupied, coast, modifiers).isLeft)
+    assertEquals(travel(occupied, coast, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.tents is not applicable to this travel")))
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => rules.offerableWalkerPowers(held,
@@ -65,7 +69,9 @@ class TentsSuite extends munit.FunSuite:
   test("it is not offered when the card is facedown"):
     val facedown = withBoard(adviser(board(), tents, Orientation.FaceDown))(
       _.copy(favor = 1))
-    assert(travel(facedown, coast, modifiers).isLeft)
+    assertEquals(travel(facedown, coast, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.tents is not applicable to this travel")))
 
   test("Tents and Forest Paths together need two favor: one favor is refused at " +
       "selection, before anything is paid"):
