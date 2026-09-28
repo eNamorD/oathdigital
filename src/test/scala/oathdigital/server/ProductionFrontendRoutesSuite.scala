@@ -41,7 +41,7 @@ class ProductionFrontendRoutesSuite extends munit.FunSuite:
       )
 
       val font = get(client, binding,
-        "/assets/fonts/ibm-plex-sans-latin-wght-normal.woff2")
+        "/assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2")
       assertEquals(font.statusCode(), 200)
       assert(font.body().nonEmpty)
       assertEquals(

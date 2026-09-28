@@ -15,12 +15,9 @@ class SiteFaceSuite extends munit.FunSuite:
   private def glyphs(node: dom.Element, selector: String): Vector[String] =
     all(node, s"$selector .token-glyph").map(_.getAttribute("aria-label"))
 
-  /** The box classes of a row's cards, without the `name-fits-N` classes the
-    * map's zoom reads: those belong to the name, not to the box.
-    */
+  /** The box classes of a row's cards. */
   private def boxClasses(row: dom.Element): Vector[String] =
-    all(row, ".card-face").map(_.getAttribute("class").split(" ")
-      .filterNot(_.startsWith("name-fits-")).mkString(" "))
+    all(row, ".card-face").map(_.getAttribute("class"))
 
   private def denizen(id: String, name: String, suit: String): GameSiteCard =
     GameSiteCard(id, name, Some(CardDetails(id, "denizen", name,

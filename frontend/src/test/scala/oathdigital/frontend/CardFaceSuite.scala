@@ -64,15 +64,15 @@ class CardFaceSuite extends munit.FunSuite:
     assertEquals(CardFace.initials("Well-Fed Elders"), "WFE")
     assertEquals(CardFace.initials(""), "")
 
-  test("a card is classed by every fit bucket its longest word clears"):
-    assertEquals(CardFace.nameFitClasses("Elders"),
-      Vector("name-fits-6", "name-fits-8", "name-fits-10", "name-fits-12"))
-    assertEquals(CardFace.nameFitClasses("Rotting Fortress"),
-      Vector("name-fits-8", "name-fits-10", "name-fits-12"))
-    assertEquals(CardFace.nameFitClasses("Quartermaster"), Vector.empty)
+  test("a card carries its longest word's width; without a canvas a character is 0.6em"):
+    assertEqualsDouble(CardFace.nameWidthEm("Elders"), 3.6, 0.001)
+    assertEqualsDouble(CardFace.nameWidthEm("Rotting Fortress"), 4.8, 0.001)
+    assertEqualsDouble(CardFace.nameWidthEm("Quartermaster"), 7.8, 0.001)
+    assertEqualsDouble(CardFace.nameWidthEm(""), 0.0, 0.001)
+    // "Old Oak": the longest word is three characters.
     val node = CardFace.render(faceUp)
-    assert(node.classList.contains("name-fits-6"), node.className)
-    assert(!CardFace.render(hidden).className.contains("name-fits"))
+    assertEquals(node.style.getPropertyValue("--name-em"), "1.8")
+    assertEquals(CardFace.render(hidden).style.getPropertyValue("--name-em"), "")
 
   test("rules text never reaches the face"):
     assert(!CardFace.render(faceUp).textContent.contains("ACTION"))

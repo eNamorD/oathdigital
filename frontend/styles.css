@@ -1,19 +1,19 @@
-/* IBM Plex Sans, self-hosted: the archive runs on a LAN or offline, so the
-   face ships beside the stylesheet (frontend/fonts, OFL). One variable file,
-   latin, 100 to 700, preloaded by the page so the swap lands before the
-   table draws. */
+/* Atkinson Hyperlegible Next, self-hosted: the archive runs on a LAN or
+   offline, so the face ships beside the stylesheet (frontend/fonts, OFL).
+   One variable file, latin, 200 to 800, preloaded by the page so the swap
+   lands before the table draws. */
 @font-face {
-  font-family: "IBM Plex Sans";
+  font-family: "Atkinson Hyperlegible Next";
   font-style: normal;
-  font-weight: 100 700;
+  font-weight: 200 800;
   font-display: swap;
-  src: url("fonts/ibm-plex-sans-latin-wght-normal.woff2") format("woff2-variations"),
-       url("fonts/ibm-plex-sans-latin-wght-normal.woff2") format("woff2");
+  src: url("fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2") format("woff2-variations"),
+       url("fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2") format("woff2");
 }
 
 :root {
   color-scheme: dark;
-  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
   background: #17140f;
   color: #f5ecd7;
 
@@ -793,24 +793,24 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-compact .card-hover-summary { justify-content: center;
   align-items: center; text-align: center; }
 /* A name shows whole where its longest word fits one line of floor-sized
-   text, which `GameTableShell.nameFit` turns into the map's one `map-fit-N`
-   class; every other card shows its initials, larger, since two or three
-   letters have the room. The estimate is made for the narrower card of a
-   site holding forces, the common case once bandits are placed, and the
-   name spans the face to its border, so a word the estimate admits has
-   the room a wide letter needs. Initials are the compact face's answer to
-   a word that does not fit, so the name never breaks inside a word or
-   hyphenates here; the rare word past the estimate clips at the border. */
-.map-compact .card-name { display: none; margin: 0 -0.25em; max-width: none;
-  overflow-wrap: normal; hyphens: manual; overflow: hidden; }
+   text. The card carries the word's measured width (`--name-em`,
+   `CardFace.nameWidthEm`), the map carries the width its scale leaves a
+   card on a site holding forces (`--box-em`, `GameTableShell.nameBoxEm`),
+   and `--fits` is 1 where the first is within the second and 0 where it
+   is not. Both the name and the initials are in the DOM; the one that
+   does not apply is folded to no height, so a degraded face-up card can
+   never adopt the face-down letter treatment. Initials are larger, since
+   two or three letters have the room. The name spans the face to its
+   border, never breaks inside a word and never hyphenates: initials are
+   the compact face's answer to a word that does not fit. */
+.map-compact .card-face { --fits: clamp(0,
+  (var(--box-em, 0) - var(--name-em, 99)) * 1000, 1); }
+.map-compact .card-name { display: block; margin: 0 -0.25em; max-width: none;
+  overflow-wrap: normal; hyphens: manual; overflow: hidden;
+  max-height: calc(var(--fits) * 3lh); }
 .map-compact .card-name-short { display: block; font-size: 1.5em;
-  font-weight: 700; letter-spacing: 0.02em; }
-.map-fit-6 .name-fits-6 .card-name, .map-fit-8 .name-fits-8 .card-name,
-.map-fit-10 .name-fits-10 .card-name, .map-fit-12 .name-fits-12 .card-name {
-  display: block; }
-.map-fit-6 .name-fits-6 .card-name-short, .map-fit-8 .name-fits-8 .card-name-short,
-.map-fit-10 .name-fits-10 .card-name-short,
-.map-fit-12 .name-fits-12 .card-name-short { display: none; }
+  font-weight: 700; letter-spacing: 0.02em; overflow: hidden;
+  max-height: calc((1 - var(--fits)) * 2lh); }
 .map-content .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .map-content .sites { grid-template-columns: 1fr; }
 /* The board's three regions each have their own light, in board order:

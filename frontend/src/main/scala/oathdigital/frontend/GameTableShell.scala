@@ -74,15 +74,17 @@ private[frontend] final class GameTableShell(mount: dom.Element,
     // The stylesheet reads the scale to hold the glance layer (names, pawns,
     // tokens) near one screen size while the board shrinks under it.
     mapContent.style.setProperty("--map-scale", scale.toString)
-    // Pure class toggle, no re-render: the face keeps every element and CSS
-    // decides what is visible, so a degraded face-up card can never adopt the
-    // face-down letter treatment.
-    GameTableShell.fitClasses.foreach(mapContent.classList.remove)
-    GameTableShell.nameFit(scale) match
-      case Some(bucket) =>
+    // A class and a property, no re-render: the face keeps every element and
+    // CSS decides what is visible, so a degraded face-up card can never
+    // adopt the face-down letter treatment.
+    GameTableShell.nameBoxEm(scale) match
+      case Some(box) =>
         mapContent.classList.add("map-compact")
-        mapContent.classList.add(s"map-fit-$bucket")
-      case None => mapContent.classList.remove("map-compact")
+        mapContent.style.setProperty("--box-em",
+          (math.round(box * 100) / 100.0).toString)
+      case None =>
+        mapContent.classList.remove("map-compact")
+        mapContent.style.removeProperty("--box-em")
   })
   private val zoomControls = element("div", "map-controls")
   private val out = button("−", "map-control")
@@ -186,28 +188,17 @@ private[frontend] object GameTableShell:
   def compactAtScale(scale: Double): Boolean = scale < CompactBelow
 
   /** A map card on a site holding forces is 7.3rem wide, the common case
-    * once bandits are placed, so the estimate is made for that card; on a
+    * once bandits are placed, so the room is reckoned for that card; on a
     * site without forces the wider card only leaves room over. The compact
-    * name spans the face to its 1px border. IBM Plex Sans at 700 advances
-    * 0.525em per character of a card name's words, measured over the
-    * catalog on screen, but a word heavy in capitals and m or w ("Autumn")
-    * runs to 0.63em; 0.55 keeps such a word inside the box at a bucket's
-    * edge, where the estimate is tightest.
+    * name spans the face to its 1px border.
     */
   private val CardWidthPx = 7.3 * 16
   private val CardBorderScreenPx = 1.0
-  private val AverageAdvanceEm = 0.55
 
-  /** The bucket of `CardFace.NameFitBuckets` in force at this scale: the
-    * longest word a card can show whole on one line of floor-sized text.
-    * `Some(0)` is a scale where no bucket fits and every card shows its
-    * initials; `None` is a scale that is not compact at all.
+  /** The width one line of floor-sized text has on a map card at this
+    * scale, in em of that text: what a name's longest word must fit
+    * (`CardFace.nameWidthEm`). `None` is a scale that is not compact at all.
     */
-  def nameFit(scale: Double): Option[Int] = Option.when(compactAtScale(scale)) {
-    val characters = (CardWidthPx * scale - 2 * CardBorderScreenPx) /
-      (NameFloorPx * AverageAdvanceEm)
-    CardFace.NameFitBuckets.filter(_ <= characters).lastOption.getOrElse(0)
+  def nameBoxEm(scale: Double): Option[Double] = Option.when(compactAtScale(scale)) {
+    (CardWidthPx * scale - 2 * CardBorderScreenPx) / NameFloorPx
   }
-
-  val fitClasses: Vector[String] =
-    (0 +: CardFace.NameFitBuckets).map(bucket => s"map-fit-$bucket")

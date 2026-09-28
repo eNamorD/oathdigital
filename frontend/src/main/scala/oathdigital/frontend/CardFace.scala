@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
+import scala.scalajs.js
 import ServerUiSupport._
 
 /** The one place a projected `CardDetails` becomes DOM.
@@ -32,13 +33,38 @@ private[frontend] object CardFace:
   def faceDown(card: CardDetails): Boolean =
     card.hidden || card.orientation.contains("face-down")
 
-  /** Word lengths a zoomed-out map card can show whole on one line, in
-    * characters. A card carries one `name-fits-N` class per bucket its
-    * longest word clears; the map carries the one `map-fit-N` class its
-    * scale allows (`GameTableShell.nameFit`), and the stylesheet shows the
-    * whole name where the two meet and the initials everywhere else.
+  /** How wide a name's longest word is, in em of the compact face's bold
+    * text. The browser measures it in the body face at 700; where there is
+    * no canvas (the test harness) a character counts 0.6em, wider than any
+    * word's. A card carries it as `--name-em`; the map carries the width
+    * its scale leaves a card (`--box-em`, `GameTableShell.nameBoxEm`), and
+    * the stylesheet shows the whole name where the first is within the
+    * second and the initials everywhere else.
     */
-  val NameFitBuckets: Vector[Int] = Vector(6, 8, 10, 12)
+  def nameWidthEm(name: String): Double =
+    words(name).map(word => measured(word)
+      .getOrElse(word.length * FallbackAdvanceEm)).maxOption.getOrElse(0.0)
+
+  private val FallbackAdvanceEm = 0.6
+  private val MeasurePx = 100.0
+  private val MeasureFont = s"700 ${MeasurePx}px " +
+    "\"Atkinson Hyperlegible Next\", ui-sans-serif, system-ui, sans-serif"
+
+  /** One context for every card, on an offscreen canvas so nothing joins
+    * the document; `None` where the platform has none. The test harness's
+    * jsdom has no `OffscreenCanvas`, and asking its canvas element for a
+    * context throws out of band, so the capability is checked, not tried.
+    */
+  private lazy val measurer: Option[dom.CanvasRenderingContext2D] =
+    Option.when(js.typeOf(js.Dynamic.global.OffscreenCanvas) != "undefined") {
+      js.Dynamic.newInstance(js.Dynamic.global.OffscreenCanvas)(1, 1).getContext("2d")
+    }.filter(context => context != null && !js.isUndefined(context))
+      .map(_.asInstanceOf[dom.CanvasRenderingContext2D])
+
+  private def measured(word: String): Option[Double] = measurer.map { context =>
+    context.font = MeasureFont
+    context.measureText(word).width / MeasurePx
+  }
 
   private def words(name: String): Vector[String] =
     name.split("[\\s-]+").toVector.filter(_.nonEmpty)
@@ -51,19 +77,17 @@ private[frontend] object CardFace:
     case Vector(only) => only.take(2)
     case many => many.map(_.take(1)).mkString
 
-  def nameFitClasses(name: String): Vector[String] =
-    val longest = words(name).map(_.length).maxOption.getOrElse(0)
-    NameFitBuckets.filter(longest <= _).map(bucket => s"name-fits-$bucket")
-
   def render(card: CardDetails): dom.html.Button =
     val node = dom.document.createElement("button").asInstanceOf[dom.html.Button]
     node.`type` = "button"
-    node.className = (Vector("card-face", boxClass(card.cardKind),
+    node.className = Vector("card-face", boxClass(card.cardKind),
       if faceDown(card) then "card-face-down" else "",
       if faceDown(card) && !card.hidden then "card-face-knowable" else "",
-      if card.implemented then "" else "card-face-unimplemented") ++
-      (if card.hidden then Vector.empty else nameFitClasses(card.name)))
+      if card.implemented then "" else "card-face-unimplemented")
       .filter(_.nonEmpty).mkString(" ")
+    if !card.hidden then
+      node.style.setProperty("--name-em",
+        (math.round(nameWidthEm(card.name) * 100) / 100.0).toString)
     node.setAttribute("data-card-id", card.cardId)
     node.setAttribute("aria-label",
       if card.hidden then card.name

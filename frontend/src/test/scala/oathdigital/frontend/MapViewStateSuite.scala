@@ -58,20 +58,14 @@ class MapViewStateSuite extends FunSuite:
     assert(!GameTableShell.compactAtScale(0.8))
     assert(!GameTableShell.compactAtScale(1.0))
 
-  test("the fit bucket is the longest word one line of floor-sized text holds"):
+  test("the name box is the width one line of floor-sized text has on a compact card"):
     // A card on a site holding forces is 116.8px wide in map space, so on
     // screen it is 42px at 0.36 and 52.8px at 0.4524; less the border, that
-    // is 6.6 and 8.4 characters of 11px bold IBM Plex Sans at the wide
-    // 0.55em advance the estimate uses.
-    assertEquals(GameTableShell.nameFit(0.36), Some(6))
-    assertEquals(GameTableShell.nameFit(0.4524), Some(8))
-    assertEquals(GameTableShell.nameFit(0.53), Some(8))
-    assertEquals(GameTableShell.nameFit(0.62), Some(10))
-    assertEquals(GameTableShell.nameFit(0.71), Some(12))
-    assertEquals(GameTableShell.nameFit(0.2), Some(0))
-    assertEquals(GameTableShell.nameFit(0.8), None)
-    assertEquals(GameTableShell.fitClasses,
-      Vector("map-fit-0", "map-fit-6", "map-fit-8", "map-fit-10", "map-fit-12"))
+    // is 3.64em and 4.62em of 11px text.
+    assertEqualsDouble(GameTableShell.nameBoxEm(0.36).get, 3.64, 0.01)
+    assertEqualsDouble(GameTableShell.nameBoxEm(0.4524).get, 4.62, 0.01)
+    assertEqualsDouble(GameTableShell.nameBoxEm(0.2).get, 1.94, 0.01)
+    assertEquals(GameTableShell.nameBoxEm(0.8), None)
 
   test("zoom at an anchor keeps the world point under the anchor fixed"):
     val fitted = MapViewState().resize(bounds)
