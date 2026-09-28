@@ -8,7 +8,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
   WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class OathkeeperProcedureSuite extends munit.FunSuite:
@@ -93,7 +93,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     // Emptying Desolate Shore again makes a boundary observable: if one ran
     // on the resolving command, it would refill bandits there.
     val Ready(waiting) = parked.state: @unchecked
-    val shore = oathdigital.testkit.CatalogNames.site("Desolate Shore")
+    val shore = CatalogNames.site("Desolate Shore")
     val emptied = waiting.updateCurrent(current => current.copy(map =
       current.map.copy(sites = current.map.sites.updated(shore,
         current.map.sites(shore).copy(forces = SiteForces.Empty)))))

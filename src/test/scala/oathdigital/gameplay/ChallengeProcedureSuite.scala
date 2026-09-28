@@ -29,10 +29,9 @@ class ChallengeProcedureSuite extends munit.FunSuite:
   /** Every site holds 10 secrets except those named, so the least sites are
     * the named ones with the fewest. */
   private def siteSecrets(table: Table, named: (String, Int)*): Table =
-    val secretsBySite = named.toMap
+    val secretsBySite = named.map((name, n) => CatalogNames.site(name) -> n).toMap
     table.ready.game.current.map.inPlay.foldLeft(table) { (t, site) =>
-      val name = catalog.sites.find(_.id == site).get.name
-      t.siteTokens(site, secrets = secretsBySite.getOrElse(name, 10))
+      t.siteTokens(site, secrets = secretsBySite.getOrElse(site, 10))
     }
 
   private def start(board: ReadyGame) =
@@ -164,7 +163,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
 
   test("Wandering Flame: an enemy holder gets the retained half back"):
     val board = siteSecrets(challenger.darkestSecret(Some(p2), secrets = 5)
-      .pawn(p2, at = Table.homeOf(p1))).ready
+      .pawn(p2, at = Table.homeOf(p1)).secrets(p2, faceUp = 1)).ready
     val parked = chooseAmount(atAmount(board, ds), 6)
       .getOrElse(fail("the amount must be accepted"))
     // 5 secrets: 2 are placed (5 / 2), 3 return to the holder. All sites tie

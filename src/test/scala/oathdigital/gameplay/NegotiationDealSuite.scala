@@ -27,80 +27,79 @@ class NegotiationDealSuite extends munit.FunSuite:
     .knowsRelicAt(p1, siteRelic, at = site)
 
   private val ready: ReadyGame = gathered.ready
-  private val (a, p, q) = (p1, p2, p3)
   private val dealId = NegotiationDeal.dealDecisionId
 
   private def said(by: PlayerId, answer: DecisionAnswer) =
     Answered(dealId, answer, by)
-  private val gift = NegotiationTerms(Vector(NegotiationTransfer(p, 2, Vector.empty)))
+  private val gift = NegotiationTerms(Vector(NegotiationTransfer(p2, 2, Vector.empty)))
   private def fold(answers: Answered*) =
-    NegotiationDeal.fold(Vector(a, p), answers.toVector)
+    NegotiationDeal.fold(Vector(p1, p2), answers.toVector)
 
   test("a fresh deal is empty, open and not agreed"):
     val deal = fold()
-    assertEquals(deal.terms, Map(a -> NegotiationTerms(), p -> NegotiationTerms()))
+    assertEquals(deal.terms, Map(p1 -> NegotiationTerms(), p2 -> NegotiationTerms()))
     assert(!deal.hasSubstance && !deal.closed && !deal.agreed)
 
   test("a proposal replaces its author's whole terms and clears every acceptance"):
-    val deal = fold(said(a, ProposeTerms(gift)), said(p, AcceptDeal),
-      said(p, ProposeTerms(NegotiationTerms())))
-    assertEquals(deal.terms(a), gift)
-    assertEquals(deal.terms(p), NegotiationTerms())
+    val deal = fold(said(p1, ProposeTerms(gift)), said(p2, AcceptDeal),
+      said(p2, ProposeTerms(NegotiationTerms())))
+    assertEquals(deal.terms(p1), gift)
+    assertEquals(deal.terms(p2), NegotiationTerms())
     assertEquals(deal.accepted, Set.empty[PlayerId])
     assert(deal.hasSubstance)
 
   test("the deal is agreed only when every participant accepted terms with substance"):
-    val once = fold(said(a, ProposeTerms(gift)), said(p, AcceptDeal))
+    val once = fold(said(p1, ProposeTerms(gift)), said(p2, AcceptDeal))
     assert(!once.closed && !once.agreed)
-    val all = fold(said(a, ProposeTerms(gift)), said(p, AcceptDeal),
-      said(a, AcceptDeal))
+    val all = fold(said(p1, ProposeTerms(gift)), said(p2, AcceptDeal),
+      said(p1, AcceptDeal))
     assert(all.closed && all.agreed)
 
   test("a decline closes the deal without agreeing it"):
-    val deal = fold(said(a, ProposeTerms(gift)), said(a, AcceptDeal),
-      said(p, DeclineDeal))
+    val deal = fold(said(p1, ProposeTerms(gift)), said(p1, AcceptDeal),
+      said(p2, DeclineDeal))
     assert(deal.closed && deal.declined && !deal.agreed)
 
   test("answers to other decisions are ignored"):
     val stray = Answered(NegotiationDeal.negotiatorsDecisionId,
-      ChooseManyAnswer(Vector(DecisionOptionRef.Player(p))), a)
+      ChooseManyAnswer(Vector(DecisionOptionRef.Player(p2))), p1)
     assertEquals(fold(stray), fold())
 
   test("eligible lists the other players at the actor's site, in table order"):
-    assertEquals(NegotiationDeal.eligible(ready, a), Vector(p, q))
+    assertEquals(NegotiationDeal.eligible(ready, p1), Vector(p2, p3))
     assertEquals(NegotiationDeal.eligible(
-      gathered.pawn(p3, at = "Dunes").ready, a), Vector(p))
+      gathered.pawn(p3, at = "Dunes").ready, p1), Vector(p2))
     assertEquals(NegotiationDeal.eligible(
-      gathered.pawn(p2, at = "Dunes").pawn(p3, at = "Dunes").ready, a),
+      gathered.pawn(p2, at = "Dunes").pawn(p3, at = "Dunes").ready, p1),
       Vector.empty[PlayerId])
 
   test("participants come from the negotiator answer, else the one candidate"):
     val chosen = PendingTree(Vector("1"), Vector(Answered(
       NegotiationDeal.negotiatorsDecisionId,
-      ChooseManyAnswer(Vector(DecisionOptionRef.Player(q))), a)))
-    assertEquals(NegotiationDeal.participants(ready, a, chosen), Vector(a, q))
+      ChooseManyAnswer(Vector(DecisionOptionRef.Player(p3))), p1)))
+    assertEquals(NegotiationDeal.participants(ready, p1, chosen), Vector(p1, p3))
     val forced = gathered.pawn(p3, at = "Dunes")   // p2 is the one candidate
-    assertEquals(NegotiationDeal.participants(forced.ready, a,
-      PendingTree(Vector.empty, Vector.empty)), Vector(a, p))
+    assertEquals(NegotiationDeal.participants(forced.ready, p1,
+      PendingTree(Vector.empty, Vector.empty)), Vector(p1, p2))
 
   test("the snapshot carries each author's own bounds and who may accept"):
-    val deal = fold(said(a, ProposeTerms(gift)), said(a, AcceptDeal))
+    val deal = fold(said(p1, ProposeTerms(gift)), said(p1, AcceptDeal))
     val query = NegotiationDeal.snapshot(ready, deal)
-    assertEquals(query.participants, Vector(a, p))
-    assertEquals(query.terms(a), gift)
-    assertEquals(query.accepted, Set(a))
-    assertEquals(query.acceptors, Set(p))
-    val own = query.bounds(a)
-    assertEquals(own.recipients, Vector(p))
+    assertEquals(query.participants, Vector(p1, p2))
+    assertEquals(query.terms(p1), gift)
+    assertEquals(query.accepted, Set(p1))
+    assertEquals(query.acceptors, Set(p2))
+    val own = query.bounds(p1)
+    assertEquals(own.recipients, Vector(p2))
     assertEquals(own.maxFavor, 5)
     assertEquals(own.relics, Vector(p1Relic))
     assert(own.disclosures.contains(
-      NegotiationDisclosureRef.HeldRelic(a, p1Relic)))
+      NegotiationDisclosureRef.HeldRelic(p1, p1Relic)))
     assert(own.disclosures.contains(
       NegotiationDisclosureRef.SiteRelic(site, siteRelic)))
-    assert(query.bounds(p).disclosures.contains(
-      NegotiationDisclosureRef.HeldRelic(p, p2Relic)))
-    assert(!query.bounds(p).disclosures.exists {
+    assert(query.bounds(p2).disclosures.contains(
+      NegotiationDisclosureRef.HeldRelic(p2, p2Relic)))
+    assert(!query.bounds(p2).disclosures.exists {
       case NegotiationDisclosureRef.SiteRelic(_, _) => true
       case _ => false
     })
@@ -111,23 +110,23 @@ class NegotiationDealSuite extends munit.FunSuite:
 
   test("settlement records disclosures before transfers, in participant order"):
     val terms = NegotiationTerms(
-      Vector(NegotiationTransfer(p, 3, Vector(p1Relic))),
-      Vector(NegotiationDisclosure(p,
-        NegotiationDisclosureRef.HeldRelic(a, p1Relic))))
+      Vector(NegotiationTransfer(p2, 3, Vector(p1Relic))),
+      Vector(NegotiationDisclosure(p2,
+        NegotiationDisclosureRef.HeldRelic(p1, p1Relic))))
     val ops = NegotiationDeal.settle(ready,
-      fold(said(a, ProposeTerms(terms)))).toOption.get
+      fold(said(p1, ProposeTerms(terms)))).toOption.get
     assertEquals(ops, Vector[CoreOperation](
-      Peek(p, p1Relic, Location.PlayArea(a)),
-      Give(Piece.Favor(3), a, Location.PlayArea(a), Location.PlayArea(p)),
-      Give(Piece.Card(p1Relic), a, Location.PlayArea(a),
-        Location.PlayArea(p))))
+      Peek(p2, p1Relic, Location.PlayArea(p1)),
+      Give(Piece.Favor(3), p1, Location.PlayArea(p1), Location.PlayArea(p2)),
+      Give(Piece.Card(p1Relic), p1, Location.PlayArea(p1),
+        Location.PlayArea(p2))))
 
   test("settlement is refused when an author can no longer afford their terms"):
-    val terms = NegotiationTerms(Vector(NegotiationTransfer(p, 3, Vector.empty)))
+    val terms = NegotiationTerms(Vector(NegotiationTransfer(p2, 3, Vector.empty)))
     val broke = gathered.favor(p1, 1).ready
     assertEquals(NegotiationDeal.settle(broke,
-      fold(said(a, ProposeTerms(terms)))), Left(InsufficientFavor(3, 1)))
-    val gone = terms.copy(transfers = Vector(NegotiationTransfer(p, 0,
+      fold(said(p1, ProposeTerms(terms)))), Left(InsufficientFavor(3, 1)))
+    val gone = terms.copy(transfers = Vector(NegotiationTransfer(p2, 0,
       Vector(p2Relic))))
     assert(NegotiationDeal.settle(ready,
-      fold(said(a, ProposeTerms(gone)))).isLeft)
+      fold(said(p1, ProposeTerms(gone)))).isLeft)

@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.testkit.Table
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
@@ -498,9 +499,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     // It is p1's Act. p2 holds the title while p1 and p3 each rule a site:
     // a tie p2 breaks.
     val (active, holder, leaders) =
-      (Table.p1, Table.p2, Vector(Table.p1, Table.p3))
+      (p1, p2, Vector(p1, p3))
     val ruled = Table.start.oathkeeper(Some(holder))
-      .warbandsAt("Dunes", Table.p1, 1).warbandsAt("Fair Isle", Table.p3, 1)
+      .warbandsAt("Dunes", p1, 1).warbandsAt("Fair Isle", p3, 1)
       .ready
     val ready = ruled.updateCurrent(_.copy(
         walkerProcedure = Some(TriggeredProcedureRef.Oathkeeper),

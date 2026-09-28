@@ -184,8 +184,9 @@ class PhasePowerSuite extends munit.FunSuite:
       Some(OathViolation.PowerAlreadyUsed(recorded)))
 
   test("an edifice at the pawn's site is a source, on either face"):
-    val edifice = catalog.edifices.head
-    val id = EdificeId(edifice.id.value)
+    // Hall of Debate is printed, for this test, with the test power's power.
+    val id = CatalogNames.edifice("Hall of Debate")
+    val edifice = catalog.edifices.find(_.id.value == id.value).get
     val printed = catalog.denizens.find(_.id.value == card.value).get.powers
       .find(_.id == powerId).get
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
