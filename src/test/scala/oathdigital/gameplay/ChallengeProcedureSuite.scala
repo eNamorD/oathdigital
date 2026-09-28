@@ -82,8 +82,9 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     assertEquals(start(board), Left(NoPlayableOption("challenge")))
 
   test("a start with no Supply is rejected"):
-    assert(start(challenger.supply(p1, 0).peoplesFavor(None, favor = 2).ready)
-      .isLeft)
+    assertEquals(start(challenger.supply(p1, 0).peoplesFavor(None, favor = 2)
+      .ready).left.toOption, Some(OathViolation.CoreOperationRejected("insufficient-supply",
+        "a supply spend of 1 exceeds the 0 available")))
 
   test("an enemy-held banner needs co-location"):
     // No faceup secrets, so People's Favor is the only banner in question.

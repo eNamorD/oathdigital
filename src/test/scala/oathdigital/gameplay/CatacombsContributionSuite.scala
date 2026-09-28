@@ -147,8 +147,13 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val restrictedRules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowers(Vector(restrictionOnly)),
       walkerDice = WalkerDiceFixture.blanks)
-    assert(restrictedRules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-      fixture.actor).isRight)
+    val unrestricted = new OathRules(catalog, walkerPowerCatalog =
+      WalkerPowers.empty, walkerDice = WalkerDiceFixture.blanks)
+    // A restriction that forbids nothing leaves the start exactly as it was.
+    assertEquals(restrictedRules.startWalker(Ready(fixture.ready),
+      ActionRef.Recover, fixture.actor).map(_.state),
+      unrestricted.startWalker(Ready(fixture.ready), ActionRef.Recover,
+        fixture.actor).map(_.state))
 
   test("Catacombs is rejected when the site's relic slot is already full " +
       "(finding I1: capacity is enforced, not just the empty-deck case)"):

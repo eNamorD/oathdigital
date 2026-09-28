@@ -112,7 +112,8 @@ class CampaignPowersSuite extends munit.FunSuite:
     val without = passMap.copy(sites = passMap.sites - pass,
       provinces = passMap.provinces.filterNot(_ == pass))
     assertEquals(offered(withPawnAt(ordered.head, without),
-      Vector(ordered(3), ordered(4)).map(siteOption)).size, 2)
+      Vector(ordered(3), ordered(4)).map(siteOption)),
+      Vector(ordered(3), ordered(4)).map(siteOption))
 
   /** The notes the Pass writes when the walk parks on `options`. */
   private def passNotes(ready: ReadyGame,

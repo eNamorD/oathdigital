@@ -99,9 +99,10 @@ class EndWakeProcedureSuite extends munit.FunSuite:
   test("ending Wake selects nothing"):
     val state = ready()
     val active = activePlayer(state)
-    assert(rules.startWalker(state, PhaseTransitionRef.EndWake, active, Vector.empty,
-      Vector(DecisionOptionRef.Button("favor"))).isLeft,
-      "a start selection handed to End Wake must be rejected")
+    assertEquals(rules.startWalker(state, PhaseTransitionRef.EndWake, active,
+      Vector.empty, Vector(DecisionOptionRef.Button("favor"))).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "ending Wake selects nothing, got button/favor")))
 
   test("what the projection offers is what the command accepts"):
     // The projector offers `endWake` unconditionally inside the Wake phase,

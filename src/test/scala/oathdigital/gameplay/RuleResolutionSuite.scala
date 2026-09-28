@@ -44,5 +44,6 @@ class RuleResolutionSuite extends munit.FunSuite:
 
   test("Recover registry uses exact power-ID data"):
     val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
-    assert(registry.lookup(PowerId("edifice.e17.intact")).nonEmpty)
-    assert(registry.lookup(PowerId("denizen.future-recover-text")).isEmpty)
+    assertEquals(registry.lookup(PowerId("edifice.e17.intact")).map(_.id),
+      Some(PowerId("edifice.e17.intact")))
+    assertEquals(registry.lookup(PowerId("denizen.future-recover-text")), None)

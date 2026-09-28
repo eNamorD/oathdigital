@@ -81,4 +81,7 @@ class CoOwnedDecideSuite extends munit.FunSuite:
   test("an answer for a decision that is not open is rejected"):
     val pending = parkedAt(ProcedureWalker.advance(ready, loop, None, noPowers))
     val stale = Answered("other.decision", ChooseOneAnswer(go), guest)
-    assert(ProcedureWalker.resolve(ready, loop, pending, stale, noPowers).isLeft)
+    assertEquals(ProcedureWalker.resolve(ready, loop, pending, stale, noPowers)
+      .left.toOption, Some(OathViolation.InvalidEventOrder(
+      "resolve() answer other.decision does not match the parked Decide " +
+        "shared.deal at 0.0.0")))

@@ -123,7 +123,8 @@ class MusterProcedureSuite extends munit.FunSuite:
 
   test("Muster cannot start outside the Act phase"):
     val ready = atAlchemist.turn(p1, Phase.Wake).ready
-    assert(MusterProcedure.build(catalog, ready, p1).isLeft)
+    assertEquals(MusterProcedure.build(catalog, ready, p1).left.toOption,
+      Some(OathViolation.WrongPhase(Phase.Act, Phase.Wake)))
 
   test("a power that adds an option to the source decision has it previewed, " +
       "and this slice's acceptance rule drops it"):

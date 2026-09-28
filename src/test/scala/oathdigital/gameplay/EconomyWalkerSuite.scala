@@ -100,17 +100,28 @@ class EconomyWalkerSuite extends munit.FunSuite:
       Some(NoPlayableOption("muster")))
 
   test("a start with no token-free card, or a wrong selection, is rejected"):
-    assert(start(atAlchemist.tokens(alchemist, secrets = 1).ready).isLeft)
-    assert(start(atAlchemist.ready, ActionRef.Muster, favor).isLeft)
-    assert(start(atAlchemist.ready, ActionRef.Trade).isLeft)
-    assert(start(atAlchemist.ready, ActionRef.Trade,
-      Vector(DecisionOptionRef.Button("gold"))).isLeft)
+    assertEquals(start(atAlchemist.tokens(alchemist, secrets = 1).ready)
+      .left.toOption, Some(OathViolation.NoPlayableOption("muster")))
+    assertEquals(start(atAlchemist.ready, ActionRef.Muster, favor).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "walker procedure muster takes no start selection, got button")))
+    assertEquals(start(atAlchemist.ready, ActionRef.Trade).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "trade takes exactly one resource button, favor or secret, as its " +
+          "start selection, got ")))
+    assertEquals(start(atAlchemist.ready, ActionRef.Trade,
+      Vector(DecisionOptionRef.Button("gold"))).left.toOption, Some(OathViolation.InvalidEventOrder(
+        "trade takes exactly one resource button, favor or secret, as its " +
+          "start selection, got button/gold")))
 
   test("only the actor can answer, and only with an offered card"):
     val started = start(withMatchingAdviser.ready).toOption.get
-    assert(answer(started.state, p2, MusterProcedure.decisionId, card).isLeft)
-    assert(answer(started.state, p1, MusterProcedure.decisionId,
-      DecisionOptionRef.Denizen(CatalogNames.denizen("Magician's Code"))).isLeft)
+    assertEquals(answer(started.state, p2, MusterProcedure.decisionId, card)
+      .left.toOption, Some(OathViolation.WrongPlayer(p1, p2)))
+    assertEquals(answer(started.state, p1, MusterProcedure.decisionId,
+      DecisionOptionRef.Denizen(CatalogNames.denizen("Magician's Code")))
+      .left.toOption, Some(OathViolation.InvalidEventOrder(
+        "decision muster.source does not offer the selected option")))
     assert(answer(started.state, p1, MusterProcedure.decisionId, card).isRight)
 
   test("an unimplemented optional Economy power does not block a base Trade"):
@@ -120,4 +131,6 @@ class EconomyWalkerSuite extends munit.FunSuite:
       .getOrElse(fail("the Trade must start"))
     val finished = answer(started.state, p1, TradeProcedure.decisionId,
       DecisionOptionRef.Edifice(CatalogNames.edifice("Hallowed Spring")))
-    assert(finished.isRight, finished.toString)
+    // The base Trade runs to its end: nothing is left pending.
+    val done = finished.toOption.get.state.asInstanceOf[OathState.Ready].value
+    assertEquals(done.game.current.walkerPending, None)

@@ -87,8 +87,10 @@ class CampaignRaidSuite extends munit.FunSuite:
   test("the pawn cannot be relocated to its own site"):
     val (b, relic) = raidBoard()
     val (game, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
-    assert(game.resolveWalker(sacrificed.state, b.actor, CampaignIds.relocation,
-      ChooseOneAnswer(DecisionOptionRef.Site(b.origin))).isLeft)
+    assertEquals(game.resolveWalker(sacrificed.state, b.actor,
+      CampaignIds.relocation, ChooseOneAnswer(DecisionOptionRef.Site(b.origin)))
+      .left.toOption, Some(OathViolation.InvalidEventOrder(
+        "decision campaign.relocation does not offer the selected option")))
 
   test("a Raid defeat transfers nothing, moves no pawn and kills half the survivors"):
     val (b, relic) = raidBoard(defenderWarbands = 9)
@@ -114,8 +116,9 @@ class CampaignRaidSuite extends munit.FunSuite:
       .toOption.get
     parked.assertParked(kind.state, ActionRef.Campaign, CampaignIds.defender,
       b.actor)
-    assert(game.resolveWalker(kind.state, b.actor, CampaignIds.defender,
-      ChooseOneAnswer(DecisionOptionRef.Player(b.other))).isRight)
+    val chosen = game.resolveWalker(kind.state, b.actor, CampaignIds.defender,
+      ChooseOneAnswer(DecisionOptionRef.Player(b.other))).toOption.get
+    parked.assertParked(chosen.state, ActionRef.Campaign, CampaignIds.targets, b.actor)
 
   test("the Raid's recorded events replay to the same state as the live walk"):
     val (b, relic) = raidBoard()

@@ -83,8 +83,10 @@ class CampaignProcedureSuite extends munit.FunSuite:
   test("the empty selection is a valid targets answer"):
     val b = board(extras = 1)
     val started = start(b).toOption.get
-    assert(answer(started.state, b.actor, CampaignIds.targets,
-      ChooseManyAnswer(Vector.empty)).isRight)
+    val answered = answer(started.state, b.actor, CampaignIds.targets,
+      ChooseManyAnswer(Vector.empty)).toOption.get
+    parked.assertParked(answered.state, ActionRef.Campaign, CampaignIds.force,
+      b.actor)
 
   test("a pawn shared with an enemy offers both kinds; a lone enemy is the Raid defender"):
     val shared = withEnemyAtOrigin(board())
@@ -119,7 +121,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
 
   test("a Campaign the actor cannot pay for is not offered and does not start"):
     val b = board(supply = 1)
-    assert(start(b).isLeft)
+    assertEquals(start(b).left.toOption, Some(OathViolation.CoreOperationRejected("insufficient-supply",
+      "a supply spend of 2 exceeds the 1 available")))
     assert(!CampaignProcedure.startable(catalog, b.ready, b.actor,
       WalkerPowers.empty))
 
@@ -152,8 +155,9 @@ class CampaignProcedureSuite extends munit.FunSuite:
   test("more force than the board holds is rejected"):
     val b = board(warbands = 2)
     val started = start(b).toOption.get
-    assert(answer(started.state, b.actor, CampaignIds.force,
-      ChooseAmountAnswer(3)).isLeft)
+    assertEquals(answer(started.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(3)).left.toOption, Some(OathViolation.InvalidEventOrder(
+      "decision campaign.force amount 3 is outside 0..2")))
 
   test("a held battle-plan relic does not block the start: its plan is chosen at the plan step"):
     val b = board()
@@ -170,7 +174,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
         id -> site.copy(relics = site.relics.filterNot(_.id == held)) })))
     // Bag of Siegeworks is a battle plan, offered at the plan step, so
     // holding it changes nothing at the start.
-    assert(start(b.copy(ready = holding)).isRight)
+    parked.assertParked(start(b.copy(ready = holding)).toOption.get.state,
+      ActionRef.Campaign, CampaignIds.force, b.actor)
 
   test("a faceup Vow of Peace stops the start, through the walker power catalog"):
     val b = board()
@@ -240,8 +245,10 @@ class CampaignProcedureSuite extends munit.FunSuite:
       Orientation.FaceUp), brass), 1)
     val first = answer(atPlans(b).state, b.actor, CampaignIds.attackerPlan,
       planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
-    assert(answer(first.state, b.actor, CampaignIds.attackerPlan,
-      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).isLeft)
+    assertEquals(answer(first.state, b.actor, CampaignIds.attackerPlan,
+      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "decision campaign.attacker-plan does not offer the selected option")))
 
   test("a facedown Outriders is revealed when chosen"):
     val b = withAdviser(board(), outriders, Orientation.FaceDown)

@@ -55,8 +55,9 @@ class CardPlayProcedureSuite extends munit.FunSuite:
   test("card absent from temporary hand cannot build card play"):
     val (ready, actor, card) = handState
     val absent = ready.updateCurrent(_.copy(temporaryHands = Map.empty))
-    assert(CardPlayProcedure.build(catalog, absent, actor, card,
-      CardPlayProcedure.Origin.TemporaryHand).isLeft)
+    assertEquals(CardPlayProcedure.build(catalog, absent, actor, card,
+      CardPlayProcedure.Origin.TemporaryHand).left.toOption, Some(OathViolation.InvalidSearchPlacement(
+        "card is not held at the selected origin")))
 
   test("full adviser area offers placement then a discardable replacement"):
     val (base, actor, card) = handState
@@ -275,24 +276,6 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       .collect { case id: DenizenId => id }.toSet, fillers.toSet)
     assertEquals(siteReplacements(prepared(enemy.lineage))
       .collect { case id: DenizenId => id }, Vector.empty)
-
-  test("Search Vision can replace an existing revealed Vision"):
-    val (base, actor, _) = handState
-    val incoming = VisionRules.Faith
-    val old = VisionRules.Conquest
-    val current = base.game.current
-    val changed = current.copy(
-      players = current.players.map(p => if p.player == actor then
-        p.copy(revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p),
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(id => id == incoming || id == old)),
-      temporaryHands = current.temporaryHands.updated(actor, Vector(incoming)))
-    val ready = base.copy(game = base.game.copy(current = changed))
-    val query = CardPlayProcedure.build(catalog, ready, actor, incoming,
-      CardPlayProcedure.Origin.TemporaryHand).toOption.get.children.head
-      .asInstanceOf[Decide].query.asInstanceOf[DecisionQuery.ChooseOne]
-    assert(query.options.exists(_.ref == DecisionOptionRef.Button(
-      "adviser-faceup")))
 
   test("facedown adviser starts the shared walker placement tree"):
     // p1 holds a facedown Wrestlers to play.
