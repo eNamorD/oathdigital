@@ -4,6 +4,8 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.Table
+import oathdigital.testkit.Table.{p1, p2, p3}
 
 class IvoryEyeSuite extends munit.FunSuite:
   import PowerFixture._
@@ -11,11 +13,18 @@ class IvoryEyeSuite extends munit.FunSuite:
 
   private val eye = RelicId("R16")
   private val source = DecisionOptionRef.Relic(eye)
-  private val target = others(base)(0)
-  private val third = others(base)(1)
+  private val target = p2
+  private val third = p3
   private val faith = VisionId("vision:vision-of-faith")
 
-  private def staged = inPhase(withRelic(base, eye), Phase.Act)
+  /** p1 holds the Eye faceup and 1 faceup secret. Each player holds one
+    * facedown adviser: p1 Wrestlers, p2 Battle Honors, p3 Rain Boots. */
+  private def staged = Table.start
+    .relic(p1, eye)
+    .adviser(p1, "Wrestlers", facedown = true)
+    .adviser(p2, "Battle Honors", facedown = true)
+    .adviser(p3, "Rain Boots", facedown = true)
+    .ready
   private def relicOf(ready: ReadyGame) = player(ready).relics
     .find(_.id == eye).get
   private def firstAdviser(ready: ReadyGame, owner: PlayerId): CardId =

@@ -26,8 +26,11 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
       id -> site.copy(forces = SiteForces.Empty) }
     val ruled = sites.zip(counts).foldLeft(cleared) { case (all, (id, n)) =>
       all.updated(id, all(id).copy(forces = SiteForces.Occupied(kind, n))) }
-    val staged = base.updateCurrent(_.copy(map = current.map.copy(sites = ruled)))
-    (withBoard(asAdviser(staged, card))(_.copy(warbands = onBoard)), sites)
+    // The card is placed first: placing it checks the warband inventory, which
+    // the board count set last brings back within the printed supply.
+    val staged = asAdviser(base, card)
+      .updateCurrent(_.copy(map = current.map.copy(sites = ruled)))
+    (withBoard(staged)(_.copy(warbands = onBoard)), sites)
 
   private def forcesAt(ready: ReadyGame, site: SiteId): SiteForces =
     ready.game.current.map.sites(site).forces

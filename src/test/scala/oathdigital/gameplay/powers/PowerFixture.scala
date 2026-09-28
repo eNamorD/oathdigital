@@ -1,14 +1,16 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.model._
+import oathdigital.testkit.Table
 
-/** Staging shared by the batch-1 power suites. Every method keeps the card
-  * inventory whole: a card leaves the place it came from when it is placed.
+/** Staging shared by the batch-1 power suites, built on the quiet `Table`:
+  * `base` is p1's Act at Ancient City with nothing at any site and nobody
+  * advised. Every method keeps the card inventory whole: a card leaves the
+  * place it came from when it is placed.
   */
 object PowerFixture:
-  val base: ReadyGame = initialReady
-  val actor: PlayerId = base.game.current.turn.activePlayer
+  val base: ReadyGame = Table.start.ready
+  val actor: PlayerId = Table.p1
 
   def player(ready: ReadyGame, id: PlayerId = actor): PlayerState =
     ready.game.current.players.find(_.player == id).get
@@ -23,26 +25,15 @@ object PowerFixture:
     updateActor(ready)(p => p.copy(board = f(p.board)))
 
   def inPhase(ready: ReadyGame, phase: Phase): ReadyGame =
-    ready.updateCurrent(_.copy(turn = TurnState(actor, phase, Set.empty)))
-
-  /** The first game deals only some denizens, so `id` may not be in the world
-    * deck at all. It is then a card the fixture adds, and there is nothing to
-    * take out.
-    */
-  private def outOfWorldDeck(ready: ReadyGame, id: DenizenId): ReadyGame =
-    ready.updateCurrent(c => c.copy(commonCards = c.commonCards.copy(
-      worldDeck = c.commonCards.worldDeck.filterNot(_ == id))))
+    Table.from(ready).turn(actor, phase).unchecked
 
   def asAdviser(ready: ReadyGame, id: DenizenId,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    updateActor(outOfWorldDeck(ready, id))(p => p.copy(advisers =
-      p.advisers :+ DenizenState(id, orientation, Tokens.empty)))
+    Table.from(ready).adviser(actor, id,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   def atSite(ready: ReadyGame, id: DenizenId, site: SiteId): ReadyGame =
-    outOfWorldDeck(ready, id).updateCurrent(c => c.copy(map = c.map.copy(
-      sites = c.map.sites.updated(site, c.map.sites(site).copy(denizens =
-        c.map.sites(site).denizens :+
-          DenizenState(id, Orientation.FaceUp, Tokens.empty))))))
+    Table.from(ready).denizen(id, at = site).unchecked
 
   def atHome(ready: ReadyGame, id: DenizenId): ReadyGame =
     atSite(ready, id, home(ready))
@@ -52,29 +43,13 @@ object PowerFixture:
     */
   def withRelic(ready: ReadyGame, id: RelicId,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    ready.updateCurrent { c =>
-      val cleared = c.copy(
-        commonCards = c.commonCards.copy(
-          relicDeck = c.commonCards.relicDeck.filterNot(_ == id)),
-        map = c.map.copy(sites = c.map.sites.map { case (site, state) =>
-          site -> state.copy(relics = state.relics.filterNot(_.id == id)) }))
-      cleared.copy(players = cleared.players.map(p =>
-        if p.player != actor then p
-        else p.copy(relics = p.relics :+
-          RelicState(id, orientation, Tokens.empty))))
-    }
+    Table.from(ready).relic(actor, id,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   /** An edifice from the edifice deck, placed at `site` on `side`. */
   def withEdifice(ready: ReadyGame, id: EdificeId, side: EdificeSide,
       site: SiteId): ReadyGame =
-    require(ready.game.current.commonCards.edificeDeck.contains(id),
-      s"${id.value} is not in the edifice deck")
-    ready.updateCurrent(c => c.copy(
-      commonCards = c.commonCards.copy(
-        edificeDeck = c.commonCards.edificeDeck.filterNot(_ == id)),
-      map = c.map.copy(sites = c.map.sites.updated(site,
-        c.map.sites(site).copy(denizens = c.map.sites(site).denizens :+
-          EdificeState(id, side, Tokens.empty))))))
+    Table.from(ready).edifice(id, side, at = site).unchecked
 
   /** Warbands of `kind` still in the bank: the printed supply less every
     * board and site.

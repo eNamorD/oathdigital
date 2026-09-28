@@ -4,6 +4,8 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.{p1, p2}
 
 class CrystalVialSuite extends munit.FunSuite:
   import PowerFixture._
@@ -14,12 +16,17 @@ class CrystalVialSuite extends munit.FunSuite:
   private val power = CrystalVial(catalog)
   private val inn = DenizenId("47")
   private val faith = VisionId("vision:vision-of-faith")
-  private val held: DenizenId = player(base).advisers.collectFirst {
-    case d: DenizenState => d.id }.get
-  private val other = others(base).head
+  /** p1's adviser, and p2's. */
+  private val held = CatalogNames.denizen("Wrestlers")
+  private val theirs = CatalogNames.denizen("Battle Honors")
+  private val other = p2
 
-  private def staged = inPhase(withSecrets(withRelic(base, vial), actor, 2, 0),
-    Phase.Act)
+  /** p1, in Act, holds the Vial and Wrestlers, with 2 faceup secrets; p2
+    * holds Battle Honors. */
+  private def staged = Table.start
+    .relic(p1, vial).adviser(p1, held).secrets(p1, faceUp = 2)
+    .adviser(p2, theirs)
+    .ready
   private def relicOf(ready: ReadyGame) = player(ready).relics
     .find(_.id == vial).get
   private def secretsOf(ready: ReadyGame) =
@@ -41,22 +48,10 @@ class CrystalVialSuite extends munit.FunSuite:
           case d: DenizenState if d.id == card => d.copy(tokens = tokens)
           case unchanged => unchanged }))))
     }
-  /** The actor at a site with no cards, holding no advisers. */
+  /** p1 holds the Vial and 2 faceup secrets, and no adviser; the quiet
+    * site holds no card. */
   private def bare: ReadyGame =
-    val site = base.game.current.map.inPlay.last
-    val cleared = base.updateCurrent { c =>
-      val state = c.map.sites(site)
-      c.copy(
-        map = c.map.copy(sites = c.map.sites.updated(site,
-          state.copy(denizens = Vector.empty))),
-        commonCards = c.commonCards.copy(
-          worldDeck = c.commonCards.worldDeck ++ state.denizens.collect {
-            case d: DenizenState => d.id: WorldCardId },
-          edificeDeck = c.commonCards.edificeDeck ++ state.denizens.collect {
-            case e: EdificeState => e.id }))
-    }
-    inPhase(withSecrets(withRelic(withPawn(withoutAdvisers(cleared, actor),
-      actor, site), vial), actor, 2, 0), Phase.Act)
+    Table.start.relic(p1, vial).secrets(p1, faceUp = 2).ready
 
   test("Crystal Vial is a registered phase power"):
     assert(PhasePowerCatalog.default(catalog).find(CrystalVial.id).isDefined)
@@ -125,8 +120,6 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("only the acting player answers, with an offered card"):
     val t = use(staged, power, source).toOption.get
-    val theirs = player(base, other).advisers.collectFirst {
-      case d: DenizenState => d.id }.get
     assert(answer(t, other, CrystalVial.decisionId,
       pick(DecisionOptionRef.Denizen(held))).isLeft)
     assert(answer(t, actor, CrystalVial.decisionId,

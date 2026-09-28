@@ -39,9 +39,10 @@ object CampaignFixture:
   def withEnemyAtOrigin(b: Board): Board =
     on(b)(_.pawn(b.other, at = b.origin))
 
-  /** `b` continued by Table steps. */
+  /** `b` continued by Table steps. Suites build further on a board by hand,
+    * so nothing is checked here. */
   def on(b: Board)(steps: Table => Table): Board =
-    b.copy(ready = steps(Table.from(b.ready)).ready)
+    b.copy(ready = steps(Table.from(b.ready)).unchecked)
 
   /** Battle plans are powers, so a Campaign runs with the walker power catalog
     * unless a suite asks for none.

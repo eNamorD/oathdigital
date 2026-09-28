@@ -188,6 +188,16 @@ final case class Table private (private val game: ReadyGame,
       temporaryHands = c.temporaryHands.updated(player,
         c.temporaryHands.getOrElse(player, Vector.empty) ++ ids))))
 
+  /** `cards` in `region`'s discard pile, in order: the last named is its
+    * top. */
+  def discarded(region: Region, cards: (String | WorldCardId)*)(
+      using munit.Location): Table =
+    val ids = cards.toVector.map(CatalogNames.worldCard)
+    ids.foldLeft(this)(_.moving(_)).update(_.updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(regionalDiscards =
+        c.commonCards.regionalDiscards.updated(region,
+          c.commonCards.discard(region) ++ ids)))))
+
   /** These cards on top of the world deck, first named on top. */
   def worldDeckTop(cards: (String | WorldCardId)*)(using munit.Location): Table =
     val ids = cards.toVector.map(CatalogNames.worldCard)
@@ -270,6 +280,12 @@ final case class Table private (private val game: ReadyGame,
     game
 
   def state(using munit.Location): OathState = Ready(ready)
+
+  /** The state with nothing checked, for a fixture helper that wraps a step
+    * inside a state its caller is still assembling by hand (a card taken out
+    * to be put back later, say). A test that builds a table itself reads it
+    * with `ready`. */
+  def unchecked: ReadyGame = game
 
   /** A situation at this table, driven by `driver`, which must be a rules
     * adapter: a journal's stream begins with `GameStarted`, so a journaled

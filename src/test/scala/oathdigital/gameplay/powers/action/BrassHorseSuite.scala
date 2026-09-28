@@ -11,7 +11,8 @@ class BrassHorseSuite extends munit.FunSuite:
   import TargetsFixture.{replayed, withPawn}
 
   private val horse = RelicId("R03")
-  private def staged = inPhase(withSecrets(withRelic(base, horse), 2), Phase.Act)
+  private def staged = inPhase(withSecrets(withRelic(homelands(base), horse), 2),
+    Phase.Act)
   private val beastTop = freshDenizen(staged, Suit.Beast)
   private val beastElsewhere = freshDenizen(staged, Suit.Beast, skip = 1)
   private val nomadTop = freshDenizen(staged, Suit.Nomad)
@@ -21,8 +22,8 @@ class BrassHorseSuite extends munit.FunSuite:
   private def reveals(events: Vector[OathEvent]) = ops(events).collect {
     case reveal: Reveal => reveal }
 
-  // The first game puts a ruined beast edifice at deep-woods and a ruined
-  // hearth edifice at golden-valley, and no other card at any site.
+  // `homelands` stands a ruined beast edifice at Deep Woods and a ruined
+  // hearth edifice at Golden Valley, and no other card lies at any site.
 
   test("Brass Horse is a registered phase power"):
     assert(PhasePowerCatalog.default(catalog).find(BrassHorse.id).isDefined)

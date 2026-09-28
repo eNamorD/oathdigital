@@ -100,6 +100,13 @@ class TableSuite extends munit.FunSuite:
     val failure = intercept[munit.FailException](lost.ready)
     assert(failure.getMessage.contains("is missing"), failure.getMessage)
 
+  test("unchecked reads a state a fixture is still assembling, which ready refuses"):
+    val lost = Table.start.update(_.updateCurrent(c => c.copy(commonCards =
+      c.commonCards.copy(worldDeck = c.commonCards.worldDeck.tail))))
+    assertEquals(lost.unchecked.game.current.commonCards.worldDeck.size,
+      Table.start.ready.game.current.commonCards.worldDeck.size - 1)
+    intercept[munit.FailException](lost.ready)
+
   test("more warbands than the printed supply are rejected when the state is read"):
     val bandits = intercept[munit.FailException](
       Table.start.bandits("Dunes", 25).ready)

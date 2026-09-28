@@ -5,9 +5,9 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Restriction}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 import oathdigital.model._
 
 /** Task 5: Catacombs as the first real walker contribution, exercised through
@@ -212,53 +212,30 @@ object CatacombsContributionSuite:
   def fullRelicSite(): Fixture =
     fixture(secrets = 2, placeRelic = false, fillCapacity = true)
 
+  /** On the quiet table: p1 in Act at Fair Isle, the easiest in-play Recover
+    * site with a relic slot, beside a faceup Catacombs, with `secrets` faceup
+    * secrets. The relic deck's top relic lies facedown there if
+    * `placeRelic`; the site's slots are filled faceup if `fillCapacity`. */
   private def fixture(secrets: Int,
       placeRelic: Boolean, fillCapacity: Boolean = false): Fixture =
-    val Ready(base) = FirstGameSetupFixture.execute()._1: @unchecked
-    val current = base.game.current
-    val active = current.players.find(
-      _.player == current.turn.activePlayer).get
-    val candidates = current.map.inPlay.filter(siteId =>
+    val start = Table.start.ready.game.current
+    val candidates = start.map.inPlay.filter(siteId =>
       RecoverRules.difficulty(catalog, siteId).exists(d => d > 0 && d <= 4) &&
         catalog.sites.find(_.id == siteId).exists(_.relicSlots > 0))
-    assert(candidates.nonEmpty,
-      "fixture needs an in-play Recover site with a relic slot")
     val siteId = candidates.minBy(siteId =>
       RecoverRules.difficulty(catalog, siteId).get)
     val slots = catalog.sites.find(_.id == siteId).get.relicSlots
-    val deck = current.commonCards.relicDeck
-    assert(deck.size > slots,
-      "fixture needs enough relics to fill the site and still draw one")
-    val relics =
-      if placeRelic then Vector(RelicState(deck.head, Orientation.FaceDown,
-        Tokens.empty))
-      else if fillCapacity then deck.take(slots).map(id =>
-        RelicState(id, Orientation.FaceUp, Tokens.empty))
+    val deck = start.commonCards.relicDeck
+    val atSite =
+      if placeRelic then Vector(deck.head -> true)
+      else if fillCapacity then deck.take(slots).map(_ -> false)
       else Vector.empty
-    val remainingDeck =
-      if placeRelic then deck.tail
-      else if fillCapacity then deck.drop(slots)
-      else deck
-    val site = current.map.sites(siteId).copy(relics = relics,
-      denizens = Vector(DenizenState(catacombsCard, Orientation.FaceUp,
-        Tokens.empty)))
-    val player = active.copy(pawnSite = Some(siteId),
-      board = active.board.copy(faceUpSecrets = secrets))
-    val ready = base.updateCurrent(_.copy(
-      turn = current.turn.copy(phase = Phase.Act),
-      players = current.players.map(other =>
-        if other.player == player.player then player else other),
-      commonCards = current.commonCards.copy(
-        relicDeck = remainingDeck,
-        worldDeck = current.commonCards.worldDeck.filterNot(
-          _ == catacombsCard),
-        regionalDiscards = current.commonCards.regionalDiscards.map {
-          case (region, cards) =>
-            region -> cards.filterNot(_ == catacombsCard)
-        }),
-      map = current.map.copy(sites =
-        current.map.sites.updated(siteId, site))))
-    Fixture(ready, player.player, siteId, remainingDeck.head)
+    val ready = atSite.foldLeft(Table.start
+      .pawn(Table.p1, at = siteId).secrets(Table.p1, faceUp = secrets)
+      .denizen(catacombsCard, at = siteId)) { case (table, (relic, facedown)) =>
+        table.relicAt(relic, at = siteId, facedown = facedown) }
+      .ready
+    Fixture(ready, Table.p1, siteId, ready.game.current.commonCards.relicDeck.head)
 
   /** The pawn stands on a Recover site that already holds a facedown relic.
     * The Catacombs card sits at a different in-play site with a free relic

@@ -4,6 +4,7 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.Table.{p2, p3}
 
 class WhistleSuite extends munit.FunSuite:
   import PowerFixture._
@@ -12,8 +13,8 @@ class WhistleSuite extends munit.FunSuite:
 
   private val whistle = RelicId("R08")
   private def staged(secrets: Int = 2) = inPhase(
-    withSecrets(withRelic(base, whistle), secrets), Phase.Act)
-  private val target = DecisionOptionRef.Player(p3)
+    withSecrets(withRelic(homelands(base), whistle), secrets), Phase.Act)
+  private val target = DecisionOptionRef.Player(p2)
 
   test("Whistle is a registered phase power"):
     assert(PhasePowerCatalog.default(catalog).find(Whistle.id).isDefined)
@@ -27,31 +28,31 @@ class WhistleSuite extends munit.FunSuite:
     val done = choose(parked.state, Whistle.decisionId, target).toOption.get
     val after = readyOf(done.state)
     assert(backToActing(done))
-    assertEquals(pawnOf(after, p3), ancientCity)
-    assertEquals(pawnOf(after, p1), buriedGiant)
+    assertEquals(pawnOf(after, p2), ancientCity)
+    assertEquals(pawnOf(after, p3), buriedGiant)
     assertEquals(pawnOf(after), ancientCity)
     assertEquals(relicOf(after, whistle).get.tokens, Tokens.empty)
-    assertEquals(player(after, p3).board.faceUpSecrets,
-      player(start, p3).board.faceUpSecrets + 1)
+    assertEquals(player(after, p2).board.faceUpSecrets,
+      player(start, p2).board.faceUpSecrets + 1)
     assertEquals(player(after).board.faceUpSecrets, 1)
     assertEquals(replayed(start, parked.events ++ done.events), Right(done.state))
 
   test("only players at other sites are offered, even when there is one"):
-    val start = withPawn(staged(), p1, ancientCity)
+    val start = withPawn(staged(), p3, ancientCity)
     val parked = use(start, Whistle.id, whistle).toOption.get
     assert(parkedAt(parked, Whistle.decisionId))
     assert(choose(parked.state, Whistle.decisionId,
-      DecisionOptionRef.Player(p1)).isLeft)
+      DecisionOptionRef.Player(p3)).isLeft)
     assert(choose(parked.state, Whistle.decisionId, target).isRight)
 
   test("with nobody to pull, the cost is paid and the secret stays"):
-    val start = withPawn(withPawn(staged(), p1, ancientCity), p3, ancientCity)
+    val start = withPawn(withPawn(staged(), p3, ancientCity), p2, ancientCity)
     val done = use(start, Whistle.id, whistle).toOption.get
     val after = readyOf(done.state)
     assert(backToActing(done))
     assertEquals(relicOf(after, whistle).get.tokens, Tokens(0, 1))
     assertEquals(player(after).board.faceUpSecrets, 1)
-    assertEquals(pawnOf(after, p1), ancientCity)
+    assertEquals(pawnOf(after, p3), ancientCity)
     assert(!ops(done.events).exists {
       case Move(Piece.Pawn(_), _, _, _) => true
       case _ => false
@@ -72,11 +73,11 @@ class WhistleSuite extends munit.FunSuite:
     val parked = use(staged(), Whistle.id, whistle).toOption.get
     val done = choose(parked.state, Whistle.decisionId, target).toOption.get
     assertEquals(NoteText.said(Whistle, done.events), Vector(NoteText.Said(
-      NoteKey.Used, s"Placed ${p3.value} at ${ancientCity.value} and gave " +
-        s"${p3.value} the Whistle's secret.", covers = false)))
+      NoteKey.Used, s"Placed ${p2.value} at ${ancientCity.value} and gave " +
+        s"${p2.value} the Whistle's secret.", covers = false)))
 
   test("with nobody to pull it writes that"):
-    val start = withPawn(withPawn(staged(), p1, ancientCity), p3, ancientCity)
+    val start = withPawn(withPawn(staged(), p3, ancientCity), p2, ancientCity)
     val done = use(start, Whistle.id, whistle).toOption.get
     assertEquals(NoteText.said(Whistle, done.events), Vector(NoteText.Said(
       "used.none", "No pawn could be pulled.", covers = false)))

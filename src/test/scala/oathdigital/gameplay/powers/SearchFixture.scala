@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 
 /** Drives a real Search through the rules, with the production walker powers,
   * for the suites of the modifiers and triggers that act on it. It builds on
@@ -20,24 +21,11 @@ object SearchFixture:
   def after(transition: OathTransition): ReadyGame =
     transition.state.asInstanceOf[Ready].value
 
-  /** The pawn site with nothing at it (its cards go to the bottom of the world
-    * deck, its edifice to the edifice deck), the world deck topped by `top`,
-    * the actor in the Act phase with `supply` Supply.
+  /** The quiet table's p1 in Act at an empty Ancient City, the world deck
+    * topped by `top`, with `supply` Supply.
     */
   def staged(top: Vector[WorldCardId], supply: Int = 5): ReadyGame =
-    val siteId = home(base)
-    val ready = base.updateCurrent { current =>
-      val site = current.map.sites(siteId)
-      val cards = site.denizens.collect { case d: DenizenState => d.id }
-      val edifices = site.denizens.collect { case e: EdificeState => e.id }
-      current.copy(
-        commonCards = current.commonCards.copy(
-          worldDeck = top ++ (current.commonCards.worldDeck.filterNot(top.contains) ++ cards),
-          edificeDeck = current.commonCards.edificeDeck ++ edifices),
-        map = current.map.copy(sites = current.map.sites.updated(siteId,
-          site.copy(denizens = Vector.empty))))
-    }
-    inPhase(withBoard(ready)(_.copy(supply = SupplyTrack(supply))), Phase.Act)
+    Table.start.worldDeckTop(top*).supply(actor, supply).ready
 
   /** The plain denizens of `suit` (unrestricted, with no production walker
     * power of their own) that no player and no site holds: in the world deck,
