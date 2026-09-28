@@ -34,13 +34,15 @@ object ServerRoutes:
   ): Route =
     val publicOrigin = config.publicBaseUrl.getOrElse(
       new java.net.URI("http", null, config.host, config.port, null, null, null))
-    // Development mode binds only to loopback, so a browser may reach it through
-    // any loopback alias; accept those origins on the same port.
+    // A browser on the host itself may reach the server through any loopback
+    // alias on the listen port, for example when a home router cannot loop back
+    // to its own public address. Accept those origins in every mode. A remote
+    // page claiming a loopback origin gains nothing: the seat cookie is
+    // SameSite=Lax, so its cross-site POSTs arrive without a seat, and anyone
+    // may already create games from the public page.
     val loopbackAliases =
-      if config.mode == ServerMode.Development && config.publicBaseUrl.isEmpty then
-        Seq("localhost", "127.0.0.1", "[::1]").map(host =>
-          new java.net.URI(s"http://$host:${config.port}"))
-      else Nil
+      Seq("localhost", "127.0.0.1", "[::1]").map(host =>
+        new java.net.URI(s"http://$host:${config.port}"))
     val trustedSeats = new TrustedSeatRoutes(runtime.identities,
       runtime.trustedGameProvisioning, runtime.trustedGame, publicOrigin,
       blockingExecutionContext, loopbackAliases).route

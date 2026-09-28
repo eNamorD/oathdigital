@@ -27,12 +27,18 @@ class DesktopConsoleSuite extends munit.FunSuite:
       Vector(
         "Oath Digital 0.1.0-alpha.1 is running.",
         "  Players open:  http://192.168.1.20:8080",
+        "  On this computer you can also use: http://localhost:8080",
         s"  Data folder:   ${Paths.get("/data/oathdigital/data")}",
         s"  Settings:      $settingsFile",
         "Seat links contain this address. If it changes, players need the new address.",
         "Close this window or press Ctrl-C to stop."
       ).mkString("", nl, nl)
     )
+
+  test("a loopback public address gets no separate this-computer line"):
+    val loopbackConfig = config(Map("OATH_PUBLIC_BASE_URL" -> "http://localhost:8080"))
+    assert(!DesktopConsole.banner(loopbackConfig, launch(lanDetectionFailed = false))
+      .contains("On this computer"))
 
   test("the no-LAN banner says only this computer can connect"):
     val localConfig = config(Map("OATH_HOST" -> "127.0.0.1"))

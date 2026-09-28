@@ -14,7 +14,12 @@ object DesktopConsole:
     val lines =
       Vector(
         s"Oath Digital ${config.version} is running.",
-        address,
+        address
+      ) ++
+        config.publicBaseUrl
+          .filterNot(url => ServerConfig.isLoopback(url.getHost.stripPrefix("[").stripSuffix("]")))
+          .map(_ => s"  On this computer you can also use: http://localhost:${config.port}") ++
+      Vector(
         s"  Data folder:   ${config.databasePath.getParent}",
         s"  Settings:      ${launch.settingsFile}"
       ) ++

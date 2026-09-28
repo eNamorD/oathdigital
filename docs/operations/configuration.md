@@ -34,6 +34,11 @@ provides the browser-visible HTTP or HTTPS origin. Public base URLs cannot
 contain credentials, a path, query, or fragment. Authenticated public origins
 must use HTTPS except for loopback HTTP origins.
 
+Requests that change state, such as creating a game or making a move, must come
+from a page at the public base URL. In every mode, a page at `localhost`,
+`127.0.0.1`, or `[::1]` on the listen port is also accepted, so the host can
+play through a loopback address when it cannot reach its own public address.
+
 ## Universal archive
 
 Extract either versioned archive, enter its top-level directory, and run:

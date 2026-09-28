@@ -282,5 +282,5 @@ object ServerConfig:
       )
     case ServerMode.TrustedAlpha => None
 
-  private def isLoopback(host: String): Boolean =
+  def isLoopback(host: String): Boolean =
     Set("127.0.0.1", "localhost", "::1").contains(host.toLowerCase)

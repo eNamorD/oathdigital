@@ -112,28 +112,28 @@ above and share the LAN address instead.
 5. **Test from outside your network.** Use a phone on cellular data, with Wi-Fi
    off. Open `http://<public-address>:8080/health/ready`. It should report
    success. If it does not, recheck steps 3 and 4.
-6. **Create the game through the public address.** The server accepts game
-   creation and game commands only from the exact public base URL. A page
-   opened at `http://localhost:8080` or at the host's LAN address will load, but
-   creating a game or making a move from it is refused with
-   `csrf-validation-failed`. So the game has to be created, and played, from
-   the public address.
-
-   Many home routers cannot reliably loop a connection from the inside back to
-   their own public address. On the test router, requests from the host to the
-   public address mostly timed out. If the public address does not load on the
-   host, create the game from a device outside your network, such as the phone
-   from step 5. Then continue with
+6. **Create the game on the host at `localhost`.** Many home routers cannot
+   reliably loop a connection from the inside back to their own public
+   address; on the test router, requests from the host to the public address
+   mostly timed out. On the host, open `http://localhost:8080/` instead. The
+   window shows this address as "On this computer you can also use". Create
+   the game there. The seat links still contain the public address, which is
+   what the other players need. Then continue with
    [Create and distribute seats](#create-and-distribute-seats).
 
 ### Players on the host's own network
 
-A seat link contains the public address. A player on the host's own network
-can open the link and reach the game page through the host's LAN address, but
-their moves are refused for the reason above, and the public address may not
-load from inside the network at all. This includes the host. Have every player,
-including the host, play from a device outside the network, such as a phone on
-cellular data or on a hotspot. A cloud machine (below) has no such limit.
+The server accepts game creation and moves only from the public address, or
+from `localhost` on the host itself. To play on the host, take your seat link
+and replace the public address with `localhost`, keeping the port and the rest
+of the link, for example `http://localhost:8080/s/...`.
+
+Other computers on the host's network cannot do the same. They can open a
+seat link through the host's LAN address, but their moves are refused with
+`csrf-validation-failed`, and the public address may not load from inside the
+network at all. Have those players play from a device outside the network,
+such as a phone on cellular data or on a hotspot. A cloud machine (below) has
+no such limit.
 
 Remove the port forward, or stop the server, whenever nobody is playing.
 

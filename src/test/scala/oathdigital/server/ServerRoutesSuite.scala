@@ -152,13 +152,63 @@ class ServerRoutesSuite extends munit.FunSuite:
       system.terminate()
       Await.result(system.whenTerminated, 10.seconds)
 
+  test("trusted-alpha also accepts the host's own loopback origins on the listen port"):
+    given system: ActorSystem[Nothing] =
+      ActorSystem[Nothing](Behaviors.empty, "trusted-alpha-loopback-origin-test")
+    val blocking = system.dispatchers.lookup(
+      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
+    val runtime = ServerRuntime.open(
+      Files.createTempDirectory("trusted-alpha-loopback-origin-").resolve("database"),
+      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+    ).toOption.get
+    val client = HttpClient.newHttpClient()
+    val binding = bind(ServerRoutes.route(runtime, blocking,
+      config(ServerMode.TrustedAlpha,
+        publicBaseUrl = Some(URI.create("http://203.0.113.7:8080"))),
+      ServerReadiness.starting("test-version")))
+
+    def post(path: String, origin: String, body: String) = client.send(
+      HttpRequest.newBuilder(URI.create(
+        s"http://127.0.0.1:${binding.localAddress.getPort}$path"))
+        .header("Origin", origin)
+        .POST(HttpRequest.BodyPublishers.ofString(body))
+        .build(),
+      JavaResponse.BodyHandlers.ofString())
+    def create(origin: String) = post("/games", origin,
+      """{"participants":[""" +
+        """{"playerId":"Red","color":"red"},""" +
+        """{"playerId":"Blue","color":"blue"}]}""")
+
+    try
+      assertEquals(create("http://203.0.113.7:8080").statusCode(), 201)
+      Seq("http://localhost:8080", "http://127.0.0.1:8080", "http://[::1]:8080")
+        .foreach { origin =>
+          val created = create(origin)
+          assertEquals(created.statusCode(), 201, origin)
+          assert(created.body().contains("\"http://203.0.113.7:8080/s/"), origin)
+        }
+      Seq("http://localhost:9090", "https://localhost:8080",
+          "http://192.168.1.20:8080", "http://example.com:8080")
+        .foreach(origin => assertEquals(create(origin).statusCode(), 403, origin))
+      // Commands pass the same origin gate before the seat cookie is checked.
+      val fromLoopback = post("/games/g/api/commands", "http://localhost:8080", "{}")
+      assert(!fromLoopback.body().contains("csrf-validation-failed"), fromLoopback.body())
+      val fromLan = post("/games/g/api/commands", "http://192.168.1.20:8080", "{}")
+      assert(fromLan.body().contains("csrf-validation-failed"), fromLan.body())
+    finally
+      Await.result(binding.terminate(5.seconds), 10.seconds)
+      runtime.close()
+      system.terminate()
+      Await.result(system.whenTerminated, 10.seconds)
+
   private def config(
       mode: ServerMode,
-      authenticatedRouteMount: Option[AuthenticatedRouteMountConfiguration] = None
+      authenticatedRouteMount: Option[AuthenticatedRouteMountConfiguration] = None,
+      publicBaseUrl: Option[URI] = None
   ): ServerConfig = ServerConfig(
     host = "127.0.0.1",
     port = 8080,
-    publicBaseUrl = None,
+    publicBaseUrl = publicBaseUrl,
     databasePath = Paths.get("var/test-server-routes"),
     catalogPath = Paths.get(
       "docs/catalog/new-foundations-component-catalog.json"),
