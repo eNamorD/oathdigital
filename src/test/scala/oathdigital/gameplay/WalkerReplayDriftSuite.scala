@@ -2,7 +2,8 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.testkit.Table
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -333,12 +334,11 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       case other => fail(s"expected a Finished outcome, got $other")
 
   test("drift check: an Oathkeeper tie parks for the holder and resolves"):
-    val active = OathkeeperFixture.base.game.current.turn.activePlayer
-    val holder = OathkeeperFixture.players.find(_ != active).get
-    val leaders = OathkeeperFixture.players.filterNot(_ == holder).take(2)
-    val ready = OathkeeperFixture.inPhase(OathkeeperFixture.ruled(
-      OathkeeperFixture.base, leaders.map(Some(_)), holder = Some(holder)),
-      Phase.Act)
+    // p2 holds the title while p1 and p3 each rule a site: a tie p2 breaks.
+    val (holder, leaders) = (Table.p2, Vector(Table.p1, Table.p3))
+    val ready = Table.start.oathkeeper(Some(holder))
+      .warbandsAt("Dunes", Table.p1, 1).warbandsAt("Fair Isle", Table.p3, 1)
+      .ready
     val oathkeeperTree: (ReadyGame, Boolean) => Operation = (state, _) =>
       OathkeeperProcedure.build(catalog, state,
         state.game.current.turn.activePlayer, Vector.empty).toOption.get

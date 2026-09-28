@@ -2,18 +2,20 @@ package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperOutcome,
-  OathkeeperRules}
+import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 
 class StateBasedEvaluationSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
 
+  /** p1's Act in `round`, with the Usurper limit as `limited` says. Each
+    * of `owners` rules one site with a warband: the first Dunes, the second
+    * Fair Isle. `holder` holds the title on `side`. */
   private def prepared(
       owners: Vector[Option[PlayerId]],
       holder: Option[PlayerId] = None,
@@ -21,11 +23,13 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       round: Int = 1,
       limited: Boolean = true
   ): ReadyGame =
-    val Ready(base) = execute()._1: @unchecked
-    val ruled = OathkeeperFixture.ruled(base, owners, holder, side)
-    ruled.updateCurrent(_.copy(
-      tracks = ruled.game.current.tracks.copy(round = round,
-        usurperLimited = limited)))
+    owners.flatten.zip(Vector("Dunes", "Fair Isle")).foldLeft(
+      Table.start.oathkeeper(holder, side)) { case (table, (owner, site)) =>
+        table.warbandsAt(site, owner, 1) }
+      // The round track is the subject here, and no other suite sets it.
+      .update(_.updateCurrent(current => current.copy(tracks =
+        current.tracks.copy(round = round, usurperLimited = limited))))
+      .ready
 
   private def atRoundEnd(ready: ReadyGame): ReadyGame = ready.updateCurrent(_.copy(
       turn = ready.game.current.turn.copy(phase = Phase.RoundEnd)))
@@ -104,8 +108,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     assertEquals(OathkeeperRules.outcome(tied), OathkeeperOutcome.NoChange)
 
   test("round four releases limiter and retained Usurper wins next Wake"):
-    val base = execute()._1.asInstanceOf[Ready].value
-    val holder = base.setup.firstPlayer
+    val holder = Table.p1                            // the first player
     val initial = Ready(prepared(Vector(Some(holder)), Some(holder),
       round = 3, limited = true))
     val order = initial.value.game.current.players.map(_.player)

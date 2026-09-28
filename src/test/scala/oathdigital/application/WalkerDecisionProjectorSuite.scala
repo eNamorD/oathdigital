@@ -3,7 +3,8 @@ package oathdigital.application
 import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.testkit.Table
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
@@ -494,12 +495,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     */
   private def parkedOathkeeperTie: (ReadyGame, PlayerId, PlayerId,
       Vector[PlayerId]) =
-    val base = OathkeeperFixture.base
-    val active = base.game.current.turn.activePlayer
-    val holder = OathkeeperFixture.players.find(_ != active).get
-    val leaders = OathkeeperFixture.players.filterNot(_ == holder).take(2)
-    val ruled = OathkeeperFixture.inPhase(OathkeeperFixture.ruled(base,
-      leaders.map(Some(_)), holder = Some(holder)), Phase.Act)
+    // It is p1's Act. p2 holds the title while p1 and p3 each rule a site:
+    // a tie p2 breaks.
+    val (active, holder, leaders) =
+      (Table.p1, Table.p2, Vector(Table.p1, Table.p3))
+    val ruled = Table.start.oathkeeper(Some(holder))
+      .warbandsAt("Dunes", Table.p1, 1).warbandsAt("Fair Isle", Table.p3, 1)
+      .ready
     val ready = ruled.updateCurrent(_.copy(
         walkerProcedure = Some(TriggeredProcedureRef.Oathkeeper),
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))

@@ -5,6 +5,8 @@ import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.rest.{SilverTongue, SilverTongueFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 import oathdigital.protocol.projection.DecisionQueryProjection
 
 class PhasePowerProjectorSuite extends munit.FunSuite:
@@ -26,8 +28,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assert(!theirs.legalControls.exists(_.startsWith("usePower:")))
 
   test("a synthetic WAKE or ACTION power is projected and legal only in its phase"):
-    import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, card,
-      inPhase, powerId}
+    import oathdigital.gameplay.PhasePowerFixture.{TestPower, card, holding,
+      powerId}
     val control = s"usePower:${powerId.value}:${card.value}"
     Vector(PowerTiming.Wake -> Phase.Wake, PowerTiming.Act -> Phase.Act).foreach:
       case (timing, phase) =>
@@ -35,7 +37,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
           PhasePowers(Vector(TestPower(powerId, timing))))
         Vector(Phase.Wake, Phase.Act).foreach { shown =>
           val projected = synthetic.project("synthetic-powers",
-            LoadedGame(Ready(inPhase(shown)), 30L), actor)
+            LoadedGame(Ready(holding(shown)), 30L), p1)
           val legal = shown == phase
           assertEquals(projected.phasePowers.map(_.powerId),
             if legal then Vector(powerId.value) else Vector.empty,
@@ -47,25 +49,18 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
   test("a phase power used from a held relic is projected and legal with the " +
       "relic's printed name and text"):
     import oathdigital.gameplay.{IndexedRuleSource, RuleSourceIndex}
-    import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, base}
-    val current = base.game.current
-    val relic = current.commonCards.relicDeck.find(id => catalog.relics.exists(
-      r => r.id.value == id.value && r.powers.nonEmpty)).get
-    val held = base.updateCurrent(_.copy(
-      turn = TurnState(actor, Phase.Act, Set.empty),
-      players = current.players.map(p => if p.player != actor then p else
-        p.copy(relics = p.relics :+ RelicState(relic, Orientation.FaceUp,
-          Tokens.empty))),
-      commonCards = current.commonCards.copy(relicDeck =
-        current.commonCards.relicDeck.filterNot(_ == relic))))
+    import oathdigital.gameplay.PhasePowerFixture.TestPower
+    // p1 holds the Whistle faceup; a test power stands in for its printed one.
+    val relic = CatalogNames.relic("Whistle")
+    val held = Table.start.relic(p1, relic).ready
     val powerId = RuleSourceIndex.enumerate(catalog, held).collectFirst {
-      case IndexedRuleSource(RuleSourceRef.Relic(`actor`, `relic`), ids, _, _)
+      case IndexedRuleSource(RuleSourceRef.Relic(`p1`, `relic`), ids, _, _)
           if ids.nonEmpty => ids.head
     }.get
     val printed = catalog.relics.find(_.id.value == relic.value).get
     val projected = new GameProjector(catalog,
       PhasePowers(Vector(TestPower(powerId, PowerTiming.Act))))
-      .project("relic-power", LoadedGame(Ready(held), 30L), actor)
+      .project("relic-power", LoadedGame(Ready(held), 30L), p1)
     assertEquals(projected.phasePowers.map(p =>
       (p.powerId, p.source.kind, p.source.id, p.name, p.rulesText)),
       Vector((powerId.value, "relic", relic.value, printed.name,
@@ -75,31 +70,20 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
 
   test("a phase power used from an edifice at the pawn's site is projected " +
       "and legal with the edifice face's printed name"):
-    import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, base, card,
-      powerId}
-    val current = base.game.current
-    val id = current.commonCards.edificeDeck.head
+    import oathdigital.gameplay.PhasePowerFixture.{TestPower, card, powerId}
+    // Hall of Debate stands at p1's site, printed with the test power's power.
+    val id = CatalogNames.edifice("Hall of Debate")
     val edifice = catalog.edifices.find(_.id.value == id.value).get
     val printed = catalog.denizens.find(_.id.value == card.value).get.powers
       .find(_.id == powerId).get
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
       if e.id == edifice.id then e.copy(
         intact = e.intact.copy(powers = e.intact.powers :+ printed)) else e))
-    val home = current.players.find(_.player == actor).get.pawnSite.get
-    val state = base.updateCurrent(c => c.copy(
-      turn = TurnState(actor, Phase.Act, Set.empty),
-      players = c.players.map(p => if p.player != actor then p else
-        p.copy(advisers = Vector.empty)),
-      // The adviser card returns to the deck so the card inventory stays whole.
-      commonCards = c.commonCards.copy(
-        worldDeck = card +: c.commonCards.worldDeck,
-        edificeDeck = c.commonCards.edificeDeck.filterNot(_ == id)),
-      map = c.map.copy(sites = c.map.sites.updated(home,
-        c.map.sites(home).copy(denizens = Vector(
-          EdificeState(id, EdificeSide.Intact, Tokens.empty)))))))
+    val state = Table.start
+      .edifice(id, EdificeSide.Intact, at = Table.homeOf(p1)).ready
     val projected = new GameProjector(powered,
       PhasePowers(Vector(TestPower(powerId, PowerTiming.Act))))
-      .project("edifice-power", LoadedGame(Ready(state), 30L), actor)
+      .project("edifice-power", LoadedGame(Ready(state), 30L), p1)
     assertEquals(projected.phasePowers.map(p => (p.powerId, p.name)),
       Vector((powerId.value, edifice.intact.name)))
     assert(projected.legalControls.exists(_.startsWith(
@@ -138,10 +122,10 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
 
     val tongueRepository = new InMemoryEventStreamRepository
     val tongueService = new GameApplicationService(catalog, tongueRepository)
-    val (tonguePark, actor, _) = ParkedServiceFixture.silverTonguePark(
+    val (tonguePark, tongueActor, _) = ParkedServiceFixture.silverTonguePark(
       tongueService, tongueRepository, "project-silver-tongue")
     val tongueOwner = projector.project("project-silver-tongue",
-      LoadedGame(tonguePark.state, tonguePark.nextSequence), actor)
+      LoadedGame(tonguePark.state, tonguePark.nextSequence), tongueActor)
     assert(tongueOwner.walkerDecision.flatMap(_.query)
       .exists(_.isInstanceOf[DecisionQueryProjection.ChooseOne]))
     assertEquals(tongueOwner.legalControls, Vector("resolveWalkerDecision"))
