@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.gameplay.{CampaignFixture, ChallengeFixture}
+import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.powerresolver.{PowerCtx, Restriction}
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
@@ -8,6 +8,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.testkit.Table
+import oathdigital.testkit.Table.{p1, p2}
 
 class FortressRulesSuite extends munit.FunSuite:
   import CampaignFixture._
@@ -131,14 +133,15 @@ class FortressRulesSuite extends munit.FunSuite:
 
   private def challengeBanners(side: EdificeSide, ruled: Boolean)
       : Vector[DecisionOptionRef] =
-    val (base, _) = ChallengeFixture.ready(resources = 2)
-    val actor = ChallengeFixture.active(base)
-    val held = ChallengeFixture.enemyHolds(base, Banner.PeoplesFavor, 2)
-    val enemy = ChallengeFixture.enemy(held).player
-    val site = playerOf(held, actor).pawnSite.get
+    // p1 challenges at Ancient City, where p2 stands holding People's Favor.
+    val site = Table.homeOf(p1)
+    val held = Table.start
+      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
+      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = site)
+      .ready
     val staged = fortressAt(held, side, site)
-    val ready = if ruled then ruledBy(staged, site, enemy) else staged
-    optionsAt(start(ready, ActionRef.Challenge, actor).toOption.get,
+    val ready = if ruled then ruledBy(staged, site, p2) else staged
+    optionsAt(start(ready, ActionRef.Challenge, p1).toOption.get,
       ActionRef.Challenge)
 
   test("a Challenge may not name a banner a protected player holds"):
@@ -183,14 +186,14 @@ class FortressRulesSuite extends munit.FunSuite:
         s"No player at ${b.origin.value} can be targeted.", covers = false)))
 
   test("a banner a protected player holds is named by its holder"):
-    val (base, _) = ChallengeFixture.ready(resources = 2)
-    val actor = ChallengeFixture.active(base)
-    val held = ChallengeFixture.enemyHolds(base, Banner.PeoplesFavor, 2)
-    val enemy = ChallengeFixture.enemy(held).player
-    val staged = fortressAt(held, EdificeSide.Ruined,
-      playerOf(held, actor).pawnSite.get)
-    assertEquals(hidden(rotting, start(staged, ActionRef.Challenge, actor)
-      .toOption.get), Vector(shielded(enemy)))
+    // p1 challenges at Ancient City, where p2 stands holding People's Favor.
+    val held = Table.start
+      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
+      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.homeOf(p1))
+      .ready
+    val staged = fortressAt(held, EdificeSide.Ruined, Table.homeOf(p1))
+    assertEquals(hidden(rotting, start(staged, ActionRef.Challenge, p1)
+      .toOption.get), Vector(shielded(p2)))
 
   test("a Fortress that protects nobody writes nothing"):
     val b = withEnemyAtOrigin(board(extras = 1, warbands = 4))
