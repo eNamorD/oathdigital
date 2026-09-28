@@ -77,14 +77,14 @@ class GameLogPropertiesSuite extends munit.FunSuite:
         script.name)
     }
 
+  /** Every procedure production can complete, so a new one fails here until
+    * a script completes it. `ProcedureRef.all` lists the finite references;
+    * use-power is parameterized by its power, so it is checked by prefix. */
   test("every ProcedureRef key the formatter handles appears in some script"):
     val keys = scripts.flatMap(_.history.steps.map(_.event.event).collect {
       case completed: WalkerCompleted => completed.procedure.key
     }).toSet
-    val expected = Set("travel", "search", "play-facedown-adviser", "muster",
-      "trade", "take-wealth", "recover", "forge", "challenge",
-      "place-banner-resource", "campaign", "negotiation", "end-wake",
-      "begin-rest", "finish-rest", "oathkeeper", "setup")
+    val expected = ProcedureRef.all.map(_.key).toSet
     assertEquals(expected -- keys, Set.empty[String])
     assert(keys.exists(_.startsWith("use-power:")), keys)
 
