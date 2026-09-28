@@ -34,10 +34,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
     relics = Vector.empty,
     edifices = Vector.empty,
     legacies = Vector.empty,
-    sites = Vector.empty,
-    setupCards = Vector.empty,
-    supplyBoards = Vector.empty,
-    visions = Vector.empty
+    sites = Vector.empty
   )
 
   private def seedSchemaVersions(

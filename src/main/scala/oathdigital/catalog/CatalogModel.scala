@@ -1,7 +1,7 @@
 package oathdigital.catalog
 
 import oathdigital.model.{CardId, CatalogRef, DenizenId, EdificeId, LegacyId,
-  PowerId, RelicId, SiteId, Suit, SupplyRules, Tokens, VisionId}
+  PowerId, RelicId, SiteId, Suit, Tokens}
 
 opaque type DefinitionId = String
 object DefinitionId:
@@ -72,10 +72,8 @@ final case class SiteDefinition(
 )
 
 /**
- * Complete runtime component catalog.
- *
- * The final three vectors remain as empty compatibility projections while
- * setup cards, player boards, and visions move into rules-owned code.
+ * Complete runtime component catalog. Setup cards, player boards and Visions
+ * are rules-owned code, not catalog data.
  */
 final case class ExecutableCatalog(
     schemaVersion: String,
@@ -84,10 +82,7 @@ final case class ExecutableCatalog(
     relics: Vector[RelicDefinition],
     edifices: Vector[EdificeDefinition],
     legacies: Vector[LegacyDefinition],
-    sites: Vector[SiteDefinition],
-    setupCards: Vector[SetupCardDefinition] = Vector.empty,
-    supplyBoards: Vector[SupplyBoardDefinition] = Vector.empty,
-    visions: Vector[VisionDefinition] = Vector.empty
+    sites: Vector[SiteDefinition]
 ):
   def denizen(id: DenizenId): Option[DenizenDefinition] =
     denizenById.get(id.value)
@@ -143,32 +138,12 @@ final case class ExecutableCatalog(
       edifices.flatMap(e => e.intact.powers ++ e.ruined.powers) ++
       legacies.flatMap(_.powers)).map(p => p.id -> p))
 
-/**
- * Compatibility request shape. Runtime catalogs are now loaded atomically,
- * so selection flags are intentionally ignored by CatalogLoader.
- */
-final case class CatalogSelection(
-    setupCards: Boolean = false,
-    supplyBoards: Boolean = false,
-    sites: Boolean = false,
-    visions: Boolean = false
-)
-
-object CatalogSelection:
-  val MetadataOnly: CatalogSelection = CatalogSelection()
-  val SetupFoundation: CatalogSelection =
-    CatalogSelection(setupCards = true, supplyBoards = true)
-
+/** A catalog load. Runtime catalogs load atomically; `expectedCatalog`, if
+  * given, must match the file's catalog reference.
+  */
 final case class CatalogLoadRequest(
-    selection: CatalogSelection = CatalogSelection.MetadataOnly,
     expectedCatalog: Option[CatalogRef] = None
 )
-
-// Temporary source-compatible shells for consumers being migrated to
-// rules-owned setup data. CatalogLoader never constructs these definitions.
-final case class SetupCardDefinition(step: Int)
-final case class SupplyBoardDefinition(rules: SupplyRules)
-final case class VisionDefinition(id: VisionId)
 
 sealed trait CatalogLoadError extends Product with Serializable:
   def path: String

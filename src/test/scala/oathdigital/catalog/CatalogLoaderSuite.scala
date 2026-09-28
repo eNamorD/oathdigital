@@ -237,9 +237,6 @@ class CatalogLoaderSuite extends munit.FunSuite:
       catalog.legacies.map(_.id.value).toSet,
       (1 to 36).map(number => f"L$number%02d").toSet
     )
-    assertEquals(catalog.setupCards, Vector.empty)
-    assertEquals(catalog.supplyBoards, Vector.empty)
-    assertEquals(catalog.visions, Vector.empty)
 
     assertEquals(
       catalog.denizens.groupBy(_.restrictions).view.mapValues(_.size).toMap,
@@ -327,19 +324,6 @@ class CatalogLoaderSuite extends munit.FunSuite:
       sites.find(_.id == SiteId("site:headwaters")).get.relicSlots,
       1
     )
-
-  test("legacy selection flags do not produce partial catalogs"):
-    val catalog = CatalogLoader
-      .load(
-        fixture,
-        CatalogLoadRequest(CatalogSelection(sites = true))
-      )
-      .toOption
-      .get
-
-    assertEquals(catalog.denizens.size, 1)
-    assertEquals(catalog.relics.size, 1)
-    assertEquals(catalog.sites.size, 1)
 
   test("catalog compatibility is checked before returning definitions"):
     val expected = CatalogRef("oath-new-foundations", "fixture-2")
