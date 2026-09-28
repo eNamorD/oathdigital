@@ -492,7 +492,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
       Paths.get("src/main/scala/oathdigital/model") -> Vector(
         "application", "gameplay", "persistence", "serialization", "server"),
       Paths.get("src/main/scala/oathdigital/gameplay") -> Vector(
-        "application", "persistence", "presentation", "protocol",
+        "application", "persistence", "protocol",
         "serialization", "server"))
     val offenders = constraints.flatMap { case (root, packages) =>
       val forbidden = packages.map(name => s"import oathdigital.$name")

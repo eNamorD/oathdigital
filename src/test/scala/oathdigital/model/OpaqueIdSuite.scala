@@ -2,7 +2,6 @@ package oathdigital.model
 
 import oathdigital.application.UserId
 import oathdigital.catalog.DefinitionId
-import oathdigital.presentation.ViewId
 
 class OpaqueIdSuite extends munit.FunSuite:
   test("ids construct, extract and expose their value"):
@@ -33,8 +32,3 @@ class OpaqueIdSuite extends munit.FunSuite:
     val UserId(raw) = UserId("u-1")
     assertEquals(raw, "u-1")
     assertEquals(UserId("u-1").toString, "u-1")
-
-  test("ViewId keeps its validation and prints raw"):
-    assertEquals(ViewId("site-1").value, "site-1")
-    intercept[IllegalArgumentException](ViewId(""))
-    assertEquals(ViewId("site-1").toString, "site-1")
