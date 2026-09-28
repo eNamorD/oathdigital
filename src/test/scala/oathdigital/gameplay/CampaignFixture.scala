@@ -2,16 +2,19 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
 import oathdigital.model._
-import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 
-/** The boards the Campaign suites share. The actor stands at `origin`, ruled
-  * by two Bandits, in the Act phase with Supply and warbands; `extras` further
-  * sites are also Bandit-ruled and every other site is empty and unruled; no
-  * site holds a denizen. The other player stands elsewhere.
+/** The boards the Campaign suites share, built on the quiet `Table`.
+  *
+  * p1, the actor, stands at Ancient City (the origin), which two Bandits
+  * rule, in p1's Act with `warbands` warbands and `supply` Supply. `extras`
+  * further sites are Bandit-ruled too, in map order after the origin: Broken
+  * Peaks, Buried Giant, Deep Woods, and so on. Every other site is empty.
+  * p2, the other player, stands at the first site nobody rules; p3 stays at
+  * Buried Giant unless Bandits rule it.
   */
 object CampaignFixture:
   final case class Board(ready: ReadyGame, actor: PlayerId, other: PlayerId,
@@ -21,43 +24,24 @@ object CampaignFixture:
     def extras: Vector[SiteId] = ready.game.current.map.inPlay.filter(site =>
       site != origin && ready.game.current.map.sites(site).forces ==
         SiteForces.Occupied(ForceKind.Bandit, 2))
+
   def board(extras: Int = 0, warbands: Int = 5, supply: Int = 7): Board =
-    val Ready(base) = execute()._1: @unchecked
-    val current = base.game.current
-    val inPlay = current.map.inPlay
-    val origin = inPlay.find(id => catalog.sites.find(_.id == id).exists(
-      _.handlers.forall(h => !h.endsWith(".mountain") && !h.endsWith(".plains")))).get
-    val ruled = (origin +: inPlay.filter(_ != origin).take(extras)).toSet
-    val elsewhere = inPlay.find(!ruled(_)).getOrElse(inPlay.find(_ != origin).get)
-    val activeId = current.turn.activePlayer
-    val otherId = current.players.map(_.player).find(_ != activeId).get
-    val players = current.players.map { player =>
-      if player.player == activeId then player.copy(pawnSite = Some(origin),
-        board = player.board.copy(warbands = warbands,
-          supply = SupplyTrack(supply)))
-      else player.copy(pawnSite = Some(elsewhere))
-    }
-    val sites = current.map.sites.map { case (id, site) =>
-      id -> site.copy(denizens = Vector.empty, forces =
-        if ruled(id) then SiteForces.Occupied(ForceKind.Bandit, 2)
-        else SiteForces.Empty)
-    }
-    def bandits(forces: SiteForces): Int = forces match
-      case SiteForces.Occupied(ForceKind.Bandit, count) => count
-      case _ => 0
-    val delta = current.map.sites.values.map(s => bandits(s.forces)).sum -
-      sites.values.map(s => bandits(s.forces)).sum
-    val ready = base.updateCurrent(_.copy(players = players,
-      map = current.map.copy(sites = sites),
-      turn = current.turn.copy(phase = Phase.Act))).copy(banks =
-      base.banks.copy(warbandSupply = base.banks.warbandSupply.updated(
-        ForceKind.Bandit, base.banks.warbandSupply.getOrElse(ForceKind.Bandit, 0) + delta)))
-    Board(ready, activeId, otherId, origin)
+    val origin = Table.homeOf(Table.p1)
+    val inPlay = Table.start.ready.game.current.map.inPlay
+    val ruled = origin +: inPlay.filter(_ != origin).take(extras)
+    val elsewhere = inPlay.find(!ruled.contains(_)).get
+    val table = ruled.foldLeft(Table.start)(_.bandits(_, 2))
+      .pawn(Table.p2, at = elsewhere)
+      .warbands(Table.p1, warbands).supply(Table.p1, supply)
+    Board(table.ready, Table.p1, Table.p2, origin)
 
   /** The other player joins the actor at `origin`, so a Raid is legal. */
-  def withEnemyAtOrigin(b: Board): Board = b.copy(ready = b.ready.updateCurrent(
-    current => current.copy(players = current.players.map(p =>
-      if p.player == b.other then p.copy(pawnSite = Some(b.origin)) else p))))
+  def withEnemyAtOrigin(b: Board): Board =
+    on(b)(_.pawn(b.other, at = b.origin))
+
+  /** `b` continued by Table steps. */
+  def on(b: Board)(steps: Table => Table): Board =
+    b.copy(ready = steps(Table.from(b.ready)).ready)
 
   /** Battle plans are powers, so a Campaign runs with the walker power catalog
     * unless a suite asks for none.
@@ -94,83 +78,48 @@ object CampaignFixture:
         OathViolation.InvalidEventOrder(
           s"test dice: ${defense.size} defense faces for a pool of $count"))
 
-  /** Takes a card out of every zone, so placing it keeps the card index valid. */
-  private def scrub(ready: ReadyGame, card: String): ReadyGame =
-    ready.updateCurrent(current => current.copy(
-      commonCards = current.commonCards.copy(
-        worldDeck = current.commonCards.worldDeck.filterNot(_.value == card),
-        relicDeck = current.commonCards.relicDeck.filterNot(_.value == card),
-        regionalDiscards = current.commonCards.regionalDiscards.map {
-          case (region, cards) => region -> cards.filterNot(_.value == card) }),
-      players = current.players.map(p => p.copy(
-        advisers = p.advisers.filter {
-          case held: DenizenState => held.id.value != card
-          case _ => true },
-        relics = p.relics.filterNot(_.id.value == card))),
-      map = current.map.copy(sites = current.map.sites.map { case (id, site) =>
-        id -> site.copy(
-          denizens = site.denizens.filter {
-            case held: DenizenState => held.id.value != card
-            case _ => true },
-          relics = site.relics.filterNot(_.id.value == card)) })))
-
   def replacePlayer(b: Board, id: PlayerId)(f: PlayerState => PlayerState)
       : Board = b.copy(ready = b.ready.updateCurrent(current => current.copy(
     players = current.players.map(p => if p.player == id then f(p) else p))))
 
   def withAdviserFor(b: Board, player: PlayerId, card: String,
       orientation: Orientation, tokens: Tokens = Tokens.empty): Board =
-    replacePlayer(b.copy(ready = scrub(b.ready, card)), player)(p => p.copy(
-      advisers = p.advisers :+ DenizenState(DenizenId(card), orientation, tokens)))
+    on(b)(_.adviser(player, DenizenId(card),
+      facedown = orientation == Orientation.FaceDown)
+      .tokens(DenizenId(card), favor = tokens.favor, secrets = tokens.secrets))
 
   def withAdviser(b: Board, card: String, orientation: Orientation): Board =
     withAdviserFor(b, b.actor, card, orientation)
 
   def withRelic(b: Board, relic: String): Board =
-    replacePlayer(b.copy(ready = scrub(b.ready, relic)), b.actor)(p =>
-    p.copy(relics = p.relics :+ RelicState(RelicId(relic), Orientation.FaceUp,
-      Tokens.empty)))
+    withRelicFor(b, b.actor, relic)
 
   /** `player` holds a faceup relic. */
   def withRelicFor(b: Board, player: PlayerId, relic: String): Board =
-    replacePlayer(b.copy(ready = scrub(b.ready, relic)), player)(p =>
-      p.copy(relics = p.relics :+ RelicState(RelicId(relic), Orientation.FaceUp,
-        Tokens.empty)))
+    on(b)(_.relic(player, RelicId(relic)))
 
   /** An edifice stands at `site`, on the given face. */
   def withEdifice(b: Board, site: SiteId, edifice: String, side: EdificeSide)
-      : Board = b.copy(ready = b.ready.updateCurrent(current => current.copy(
-    commonCards = current.commonCards.copy(edificeDeck =
-      current.commonCards.edificeDeck.filterNot(_.value == edifice)),
-    map = current.map.copy(sites = current.map.sites.updated(site,
-      current.map.sites(site).copy(denizens = current.map.sites(site).denizens
-        :+ EdificeState(EdificeId(edifice), side, Tokens.empty)))))))
+      : Board = on(b)(_.edifice(EdificeId(edifice), side, at = site))
 
-  def withSecrets(b: Board, faceUp: Int): Board = replacePlayer(b, b.actor)(p =>
-    p.copy(board = p.board.copy(faceUpSecrets = faceUp)))
+  def withSecrets(b: Board, faceUp: Int): Board =
+    on(b)(_.secrets(b.actor, faceUp = faceUp,
+      faceDown = b.player(b.actor).board.faceDownSecrets))
 
   /** The origin becomes ruled by the other player, who holds the title. */
   def againstPlayer(b: Board): Board =
-    val lineage = b.player(b.other).lineage
-    b.copy(ready = b.ready.updateCurrent(current => current.copy(
-      map = current.map.copy(sites = current.map.sites.updated(b.origin,
-        current.map.sites(b.origin).copy(forces =
-          SiteForces.Occupied(ForceKind.Exile(lineage), 2)))),
-      title = current.title.copy(holder = Some(b.other),
-        side = TitleSide.Oathkeeper))))
+    on(b)(_.warbandsAt(b.origin, b.other, 2).oathkeeper(Some(b.other)))
 
   /** The actor rules `site`, holding it with two warbands of their own. */
-  def actorRules(b: Board, site: SiteId): Board = b.copy(ready =
-    b.ready.updateCurrent(current => current.copy(map = current.map.copy(
-      sites = current.map.sites.updated(site, current.map.sites(site).copy(
-        forces = SiteForces.Occupied(ForceKind.Exile(
-          b.player(b.actor).lineage), 2)))))))
+  def actorRules(b: Board, site: SiteId): Board =
+    on(b)(_.warbandsAt(site, b.actor, 2))
 
+  /** `site` holds `card` and nothing else. */
   def withSiteCard(b: Board, site: SiteId, card: String): Board =
-    b.copy(ready = scrub(b.ready, card).updateCurrent(current => current.copy(map =
+    val cleared = b.ready.updateCurrent(current => current.copy(map =
       current.map.copy(sites = current.map.sites.updated(site,
-        current.map.sites(site).copy(denizens = Vector(DenizenState(
-          DenizenId(card), Orientation.FaceUp, Tokens.empty))))))))
+        current.map.sites(site).copy(denizens = Vector.empty)))))
+    on(b.copy(ready = cleared))(_.denizen(DenizenId(card), at = site))
 
   def cardWith(handler: String): String =
     catalog.denizens.find(_.handlers.contains(handler)).get.id.value
@@ -188,28 +137,15 @@ object CampaignFixture:
       "relic.brass-army.campaign", "relic.bag-of-siegeworks")
     val relic = RelicId(catalog.relics.find(_.handlers.forall(!plans(_))).get
       .id.value)
-    val ready = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p =>
-        if p.player == b.other then p.copy(
-          board = p.board.copy(warbands = defenderWarbands, favor = 5),
-          advisers = Vector(
-            DenizenState(DenizenId("raid-facedown-denizen"), Orientation.FaceDown,
-              Tokens.empty),
-            VisionState(VisionId("raid-facedown-vision"), Orientation.FaceDown),
-            VisionState(VisionRules.Conspiracy, Orientation.FaceDown)),
-          relics = Vector(
-            RelicState(relic, Orientation.FaceUp, Tokens.empty),
-            RelicState(RelicId("raid-facedown-relic"), Orientation.FaceDown,
-              Tokens.empty)))
-        else p),
-      commonCards = current.commonCards.copy(
-        worldDeck = current.commonCards.worldDeck.filterNot(_ == VisionRules.Conspiracy),
-        relicDeck = current.commonCards.relicDeck.filterNot(_ == relic)),
-      map = current.map.copy(sites = current.map.sites.map { case (id, site) =>
-        id -> site.copy(relics = site.relics.filterNot(_.id == relic)) }),
-      banners = current.banners.copy(
-        peoplesFavor = current.banners.peoplesFavor.copy(
-          holder = Some(b.other), favor = 3),
-        darkestSecret = current.banners.darkestSecret.copy(
-          holder = Some(b.other), secrets = 2))))
-    (b.copy(ready = ready), relic)
+    // Ids no card carries stand for cards whose identity the Raid never
+    // learns: they join the table as they are.
+    val raided = on(b)(_
+      .warbands(b.other, defenderWarbands).favor(b.other, 5)
+      .adviser(b.other, DenizenId("raid-facedown-denizen"), facedown = true)
+      .adviser(b.other, VisionId("raid-facedown-vision"), facedown = true)
+      .adviser(b.other, VisionRules.Conspiracy, facedown = true)
+      .relic(b.other, relic)
+      .relic(b.other, RelicId("raid-facedown-relic"), facedown = true)
+      .peoplesFavor(Some(b.other), favor = 3)
+      .darkestSecret(Some(b.other), secrets = 2))
+    (raided, relic)

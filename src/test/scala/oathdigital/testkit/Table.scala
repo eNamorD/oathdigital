@@ -318,6 +318,11 @@ object Table:
     CatalogNames.site(homes.getOrElse(player, munit.Assertions.fail(
       s"no player $player at the table")))
 
+  /** Steps continued from `ready`, a state a test or a fixture already
+    * holds: its cards are checked against the first game's inventory as the
+    * quiet table's are. For the helpers of fixtures built on the table. */
+  def from(ready: ReadyGame): Table = Table(ready, Set.empty)
+
   /** The quiet table (see [[Table]]). */
   lazy val start: Table =
     val orders = FirstGameSetupFixture.orders.copy(firstPlayer = p1)

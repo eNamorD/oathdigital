@@ -38,6 +38,17 @@
 
 ---
 
+## Amendment (2026-09-27, after Task 4): rebase the big fixtures
+
+Tasks 2–4 rewrote about 40 suites test by test. The remaining shared fixtures are `CampaignFixture` with `PlanDriver` (34 users) and the `PowerFixture` family (about 85). They already read as domain phrases (`withAdviser(b, card, FaceUp)`, `againstPlayer`), and the audit named two of their suites as the repo's DAMP models. The user chose to **rebase** them instead of rewriting every test:
+
+- Each fixture's board builder becomes a documented `Table` chain: no replay, the quiet table, p1 acts.
+- Helpers stay as thin wrappers over `Table` steps. `scrub`, `outOfWorldDeck`, `CardStaging.without` and the `inPhase` copies go.
+- A suite changes only where it relied on an incidental setup fact. It then states that fact with a step or helper.
+- Suites that patch the state by hand (Task 9's inline cases) still get full rewrites.
+
+The Tasks 5–8 step lists below describe the original rewrite. Read them as "rebase the fixture, then fix the suites that break".
+
 ## Shared migration rules (Tasks 2–9)
 
 These are part of every migration task.

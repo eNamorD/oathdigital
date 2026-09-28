@@ -619,9 +619,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * drives (start, force, pick Sticky Fire), rather than hand-assembling a
     * `PendingTree`, so this proves what a real second pass looks like.
     */
-  private lazy val attacker: PlayerId =
-    val Ready(base) = execute()._1: @unchecked
-    base.game.current.turn.activePlayer
+  /** The actor of every `CampaignFixture` board. */
+  private val attacker: PlayerId = p1
 
   private lazy val campaignWithOnePlanPlayed: ReadyGame =
     val relic = CampaignFixture.relicWith("relic.sticky-fire")
