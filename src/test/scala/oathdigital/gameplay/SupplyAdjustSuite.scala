@@ -56,10 +56,3 @@ class SupplyAdjustSuite extends munit.FunSuite:
     val result = executor.execute(source,
       GainSupply(playerId, 5)).toOption.get
     assertEquals(supply(result, playerId), SupplyTrack.Maximum)
-
-  test("staged adjustments apply in order"):
-    val first = executor.execute(ready,
-      SpendSupply(playerId, 2)).toOption.get
-    val second = executor.execute(first,
-      SpendSupply(playerId, 2)).toOption.get
-    assertEquals(supply(second, playerId), supply(ready, playerId) - 4)

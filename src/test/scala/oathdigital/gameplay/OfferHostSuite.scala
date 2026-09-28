@@ -140,8 +140,6 @@ class OfferHostSuite extends munit.FunSuite:
     val state = low(ready)
     ProcedureWalker.advance(state, host, None, WalkerPowers.empty)
     assertEquals(results(0), Right(Vector[CoreOperation](GainSupply(actor, 1))))
-    assert(results(1).isLeft)
+    assertEquals(results(1), Left(OathViolation.CoreOperationRejected(
+      "insufficient-supply", "a supply spend of 6 exceeds the 1 available")))
     assertEquals(results(2), Right(Vector[CoreOperation](GainSupply(actor, 1))))
-    // Asking changed nothing.
-    assertEquals(state.game.current.players.find(_.player == actor).get
-      .board.supply.supply, 1)

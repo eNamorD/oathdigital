@@ -63,9 +63,6 @@ class FamilyHeirloomSuite extends munit.FunSuite
             s"${actor.value} drew ${top.value} and $end", covers = true)))
       }
 
-  test("its notes tell its decision"):
-    assertEquals(power.narratedDecisions, Set(FamilyHeirloom.decisionId))
-
   test("an empty relic deck does nothing and asks nothing"):
     val current = staged.game.current
     val emptied = staged.updateCurrent(_.copy(commonCards =

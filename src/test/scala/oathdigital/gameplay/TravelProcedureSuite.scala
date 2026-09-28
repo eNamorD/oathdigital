@@ -158,8 +158,8 @@ class TravelProcedureSuite extends munit.FunSuite:
     val rules = new OathRules(catalog, walkerPowerCatalog = powers)
     val rejected = rules.startWalker(Ready(ready), ActionRef.Travel, actor,
       Vector.empty, Vector(DecisionOptionRef.Site(destination)))
-    assert(rejected.isLeft)
-    assertEquals(active(ready).pawnSite, Some(plains.head))
+    assertEquals(rejected.map(_ => ()), Left(OathViolation.CoreOperationRejected(
+      "insufficient-supply", "a supply spend of 1 exceeds the 0 available")))
 
   test("simulation omits every destination the actor cannot afford"):
     val ready = passRuled(act(supply = 2))

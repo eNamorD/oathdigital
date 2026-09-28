@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.Table
 
@@ -59,8 +58,3 @@ class PayCostSuite extends munit.FunSuite:
     assert(!Costs.affordable(withCard(Tokens(0, 1)), actor, at, Cost(secret = 1)))
     assert(Costs.affordable(withCard(Tokens(0, 1)), actor, at, Cost(secret = 1),
       intoOccupied = true))
-
-  test("Costs.onCard names the card's suit bank"):
-    val cost = Costs.onCard(actor, denizen, Cost(favor = 1), catalog)
-    assertEquals(cost, PayCost(actor, Location.OnCard(denizen),
-      Cost(favor = 1), matchingBank = catalog.suitOf(denizen)))

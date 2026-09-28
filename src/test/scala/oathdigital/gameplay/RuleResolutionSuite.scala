@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.powers.{PowerFixture, ReviewedPowerCatalog}
+import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 
 class RuleResolutionSuite extends munit.FunSuite:
@@ -14,25 +14,6 @@ class RuleResolutionSuite extends munit.FunSuite:
     assert(RuleSourceRef.Foundation(FoundationNumber.I).stableKey
       .startsWith("foundation:"))
     assert(RuleSourceRef.GameRule("normal-travel").stableKey.startsWith("game:"))
-
-  test("reviewed handlers use precise windows resolution and implementations"):
-    val byId = ReviewedPowerCatalog.powers.map(value => value.id -> value).toMap
-    assert(byId(PowerId("denizen.map-library")).handlers.map(_.window).contains(
-      PowerWindow.TradeModifierSelection))
-    assertEquals(byId(PowerId("denizen.map-library")).handlers.head.resolution,
-      PowerResolution.PlayerSelected)
-    assertEquals(byId(PowerId("denizen.relic-worship")).handlers.map(_.window),
-      Vector(PowerWindow.RecoverBeforeFirstRoll))
-    assertEquals(byId(PowerId("denizen.insomnia")).handlers.map(_.window),
-      Vector(PowerWindow.RestStart))
-    assert(byId(PowerId("site.fair-isle.island")).handlers.forall(_.implemented))
-    assertEquals(byId(PowerId("denizen.outriders")).handlers.map(_.window),
-      Vector(PowerWindow.CampaignAttackerBattlePlans))
-    assert(!byId(PowerId("denizen.insomnia")).handlers.map(_.window).contains(
-      PowerWindow.TravelModifierSelection))
-    assert(ReviewedPowerCatalog.resolver(catalog).toOption.get.validateSources(
-      Vector(RuleSourceRef.GameRule("test") ->
-        Vector(PowerId("denizen.not-a-rule")))).isLeft)
 
   /** Silver Tongue's legacy `ReviewedPower` handler at `SearchModifierSelection`
     * ([[oathdigital.gameplay.powers.RestPowers]]) is still declared

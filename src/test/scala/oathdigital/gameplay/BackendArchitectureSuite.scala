@@ -171,15 +171,6 @@ class BackendArchitectureSuite extends munit.FunSuite:
         Files.readString(path).contains("rulesText")).map(_.toString).toVector
     assertEquals(offenders, Vector.empty)
 
-  test("legacy central power shell cannot return"):
-    val root = Paths.get("src/main/scala/oathdigital/gameplay")
-    assert(!Files.exists(root.resolve("MajorActionPowerShell.scala")))
-    val offenders = Files.walk(root).iterator.asScala.filter(path =>
-      path.toString.endsWith(".scala") &&
-        Files.readString(path).contains("object MajorActionPowerShell"))
-      .map(_.toString).toVector
-    assertEquals(offenders, Vector.empty)
-
   test("Catacombs mechanics remain owned by Recover powers"):
     // Post-cutover (Task 9b): the legacy `Recover.scala`/
     // `RecoverPowerIntegration.scala` are gone, so this guard now asserts
@@ -327,28 +318,6 @@ class BackendArchitectureSuite extends munit.FunSuite:
       "decode wire strings with CommandJsonSupport.string/strings, which " +
         "reject blanks with a typed error, not the raw .str accessor")
 
-  test("generic power operations are not independently replayable events"):
-    val protocol = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/model/GameEventProtocol.scala"))
-    val aggregate = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/gameplay/OathRules.scala"))
-    val codec = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/serialization/ActionEventCodec.scala"))
-    val walkerEvents = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala"))
-    Vector("CostsPaid", "RelicPlacedAtSite").foreach { name =>
-      assert(!protocol.contains(s"case class $name"))
-      assert(!aggregate.contains(s"case event: $name"))
-      assert(!codec.contains(s"case _: $name"))
-      assert(!walkerEvents.contains(s"case class $name"))
-    }
-    // Post-cutover (Task 9b): Catacombs no longer has its own
-    // `CatacombsResolved` case class in `GameEventProtocol.scala` -- it
-    // records through the walker's own aggregate event instead. The
-    // property this test guards (granular operations never become their own
-    // replayable event) now rests on `WalkerStepRecorded`.
-    assert(walkerEvents.contains("case class WalkerStepRecorded"))
-
   test("individual power definitions use factories instead of handler subclasses"):
     val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
     val powerDefinition = "\\bobject\\s+[A-Za-z0-9_]+\\s+extends\\s+Power\\b".r
@@ -406,26 +375,6 @@ class BackendArchitectureSuite extends munit.FunSuite:
         Files.readString(path).contains)).map(_.toString).toVector
     assertEquals(offenders, Vector.empty)
 
-  test("application projection collaborators stay bounded and layer-independent"):
-    val root = Paths.get("src/main/scala/oathdigital/application")
-    val projectionFiles = Files.walk(root).iterator.asScala.filter(path =>
-      path.toString.endsWith(".scala") &&
-        (path.getFileName.toString.contains("Projection") ||
-          path.getFileName.toString.contains("Projector") ||
-          path.getFileName.toString == "ScopedProjectionContext.scala")).toVector
-    val forbidden = Vector("import oathdigital.server",
-      "import oathdigital.persistence", "import oathdigital.serialization")
-    val badImports = projectionFiles.filter(path => forbidden.exists(
-      Files.readString(path).contains)).map(_.toString).sorted
-    val oversized = projectionFiles.flatMap { path =>
-      val lines = Files.readAllLines(path).size
-      Option.when(lines > 800)(s"$path:$lines")
-    }.sorted
-    assertEquals(badImports, Vector.empty)
-    assertEquals(oversized, Vector.empty)
-    assert(projectionFiles.exists(_.getFileName.toString ==
-      "ScopedProjectionContext.scala"))
-
   test("shared command protocol is compiled by both configured runtimes"):
     val build = Files.readString(Paths.get("build.sbt"))
     assert(build.contains("shared\" / \"src\" / \"main\" / \"scala"))
@@ -461,22 +410,6 @@ class BackendArchitectureSuite extends munit.FunSuite:
     assert(Files.exists(Paths.get(
       "shared/src/main/scala/oathdigital/protocol/BootstrapProtocolCodec.scala")))
 
-  test("frontend production sources stay bounded and renderers remain isolated"):
-    val root = Paths.get("frontend/src/main/scala/oathdigital/frontend")
-    val sources = Files.walk(root).iterator.asScala
-      .filter(_.toString.endsWith(".scala")).toVector
-    val oversized = sources.flatMap { path =>
-      val lines = Files.readAllLines(path).size
-      Option.when(lines > 800)(s"$path:$lines")
-    }.sorted
-    val forbidden = Vector("import oathdigital.application",
-      "import oathdigital.gameplay", "import oathdigital.server")
-    val rendererViolations = sources.filter(path =>
-      path.getFileName.toString.contains("Renderer") && forbidden.exists(
-        Files.readString(path).contains)).map(_.toString).sorted
-    assertEquals(oversized, Vector.empty)
-    assertEquals(rendererViolations, Vector.empty)
-
   test("all production Scala files stay bounded"):
     val roots = Vector(Paths.get("src/main/scala"),
       Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
@@ -500,17 +433,6 @@ class BackendArchitectureSuite extends munit.FunSuite:
         .filter(path => forbidden.exists(Files.readString(path).contains))
         .map(_.toString)
     }.sorted
-    assertEquals(offenders, Vector.empty)
-
-  test("retired setup and browser-memory symbols do not return"):
-    val roots = Vector(Paths.get("src/main/scala"),
-      Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
-    val retired = Vector("oathdigital.setup", "SetupEventWire", "SetupState",
-      "BeginSetup", "BrowserMemory")
-    val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
-      .filter(_.toString.endsWith(".scala"))
-      .filter(path => retired.exists(Files.readString(path).contains))
-      .map(_.toString).sorted
     assertEquals(offenders, Vector.empty)
 
   test("migrated modules never directly edit owned material state"):

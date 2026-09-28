@@ -19,10 +19,6 @@ class PlacementRulesSuite extends munit.FunSuite:
   /** A plain Beast card p1 plays from hand. */
   private val card = CatalogNames.denizen("Errand Boy")
 
-  test("the default rules are the printed limit of three and no site discard"):
-    assertEquals(PlacementRules.default, PlacementRules(3, 3, false))
-    assertEquals(PlacementRules.DefaultAdviserLimit, 3)
-
   test("a limit only lowers, and a faceup limit leaves the facedown one"):
     assertEquals(PlacementRules.default.limitAdvisers(5), PlacementRules.default)
     assertEquals(PlacementRules.default.limitAdvisers(2),

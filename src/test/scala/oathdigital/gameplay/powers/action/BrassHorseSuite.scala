@@ -91,6 +91,7 @@ class BrassHorseSuite extends munit.FunSuite:
 
   test("it is unusable without a secret, when occupied, or facedown"):
     val id = BrassHorse.id
+    assert(usable(staged, id))
     assert(!usable(withSecrets(staged, 0), id))
     assert(use(withSecrets(staged, 0), id, horse).isLeft)
     assert(!usable(withRelicTokens(staged, horse, Tokens(0, 1)), id))

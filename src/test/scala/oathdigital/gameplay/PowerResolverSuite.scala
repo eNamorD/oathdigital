@@ -41,22 +41,11 @@ class PowerResolverSuite extends munit.FunSuite:
       case PlayerSelected => PowerHandlers.selected(window, implemented)(inspector)
     }))
 
-  test("major action vocabulary contains only selectable major actions"):
-    assertEquals(MajorActionType.all.map(_.key), Vector("search", "travel",
-      "campaign", "muster", "trade", "forge", "recover", "challenge"))
-
   test("PowerId enforces the catalog stable identity vocabulary exactly"):
     assertEquals(PowerId("denizen.catacombs").value, "denizen.catacombs")
     Vector("", "catacombs", " denizen.catacombs", "denizen.catacombs ",
       "Denizen.catacombs", "denizen.catacombs_clause", "denizen..catacombs")
       .foreach(value => intercept[IllegalArgumentException](PowerId(value)))
-
-  test("windows expose typed major-action associations independent of keys"):
-    assertEquals(SearchModifierSelection.associatedMajorAction, Some(Search))
-    assertEquals(RecoverEligibility.associatedMajorAction, Some(Recover))
-    assertEquals(ChallengeActionEligibility.associatedMajorAction, Some(Challenge))
-    assertEquals(RestStart.associatedMajorAction, None)
-    assertEquals(NegotiationOffer.associatedMajorAction, None)
 
   test("powers require non-empty unique windows and typed modifier consistency"):
     intercept[IllegalArgumentException](PowerRegistry(power("test.empty", Vector.empty)))

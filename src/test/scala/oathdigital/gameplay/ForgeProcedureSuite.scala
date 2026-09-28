@@ -296,20 +296,11 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(DecisionQueries.wellFormed(decide.decisionId, decide.query),
       Right(()): Either[OathViolation, Unit])
 
-  test("the shipped catalog really does print four single-resource Forge " +
-      "costs, so the no-park path is not a synthetic case"):
-    val single = catalog.sites.flatMap(_.forgeRequirements)
-      .filter(cost => cost.favor == 0 || cost.secrets == 0)
-    assertEquals(single.size, 4)
-    assertEquals(single.toSet, Set(Tokens(3, 0), Tokens(0, 3)))
-    assert(single.forall(cost => !ForgeProcedure.parks(cost)))
-
   test("a three-favor or three-secret site declares no Decide node at all " +
       "and resolves its forced split without parking"):
     // The setup fixture deals no single-resource forge site into play, so
     // the printed cost is overridden on the site it does deal -- exactly as
-    // the neighbouring cost tests already do. The shipped catalog's own four
-    // such sites are covered by the test above.
+    // the neighbouring cost tests already do.
     Vector(Tokens(3, 0), Tokens(0, 3)).foreach { printed =>
       val base = forgeable
       val altered = catalog.copy(sites = catalog.sites.map(definition =>

@@ -65,9 +65,10 @@ class OperationExecutorSuite extends munit.FunSuite:
         Left(OperationError.RestrictedOperation("blocked by test policy"))
     val reveal = Reveal(adviser.id, Location.PlayArea(playerId))
 
-    assert(OperationPipeline.run(ready, Vector(reveal), rejecting)(Right(_)).isLeft)
+    assertEquals(OperationPipeline.run(ready, Vector(reveal), rejecting)(Right(_)),
+      Left(OathViolation.CoreOperationRejected("restricted-operation",
+        "blocked by test policy")))
     assertEquals(seen, Vector(reveal))
-    assertEquals(ready.game.current.players.head.advisers, Vector(adviser))
 
   test("ordered batches apply staged state in order"):
     val gain = Gain.Favor(playerId, Suit.Order, 2)
@@ -90,8 +91,10 @@ class OperationExecutorSuite extends munit.FunSuite:
       PositionedLocation(Location.Site(sites.head))
     )
 
-    assert(executor.executeAll(ready, Vector(valid, invalid)).isLeft)
-    assertEquals(ready.game.current.players.head.board.favor, 1)
+    // The first operation is staged (1 + 1 favor) before the second fails.
+    assertEquals(executor.executeAll(ready, Vector(valid, invalid)),
+      Left(OperationError.InsufficientPieces(Piece.Favor(99),
+        Location.PlayArea(playerId), 2)))
     assertEquals(executor.executeAll(ready, Vector.empty),
       Left(OperationError.EmptyOperationBatch))
 

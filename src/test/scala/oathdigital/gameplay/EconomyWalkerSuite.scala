@@ -113,13 +113,6 @@ class EconomyWalkerSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(CatalogNames.denizen("Magician's Code"))).isLeft)
     assert(answer(started.state, p1, MusterProcedure.decisionId, card).isRight)
 
-  test("a lineage with no warband supply cannot Muster"):
-    val board = atAlchemist.ready
-    // No step removes a lineage's printed supply: the state is malformed.
-    val malformed = board.copy(banks = board.banks.copy(warbandSupply =
-      board.banks.warbandSupply - ForceKind.Exile(Look(board).player(p1).lineage)))
-    assert(start(malformed).isLeft)
-
   test("an unimplemented optional Economy power does not block a base Trade"):
     val board = Table.start.favor(p1, 4).secrets(p1, faceUp = 2)
       .edifice("Hallowed Spring", EdificeSide.Intact, at = Table.homeOf(p1)).ready

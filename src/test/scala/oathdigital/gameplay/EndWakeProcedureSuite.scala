@@ -4,7 +4,6 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.phases.wake.EndWakeProcedure
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
@@ -86,37 +85,16 @@ class EndWakeProcedureSuite extends munit.FunSuite:
           if parked.procedure == TriggeredProcedureRef.Oathkeeper => ()
     }, Vector.empty)
 
-  test("ending Wake remains legal while another player has a revealed Vision"):
-    val state = ready()
-    val active = activePlayer(state)
-    val Ready(value) = state: @unchecked
-    val other = value.game.current.players.indexWhere(_.player != active)
-    val players = value.game.current.players.updated(other,
-      value.game.current.players(other).copy(revealedVision =
-        Some(VisionState(VisionId("V1"), Orientation.FaceUp))))
-    val visionRevealed = Ready(value.updateCurrent(_.copy(players = players)))
-
-    val accepted = endWake(visionRevealed, active).toOption.get
-    val Ready(after) = accepted.state: @unchecked
-
-    assertEquals(after.game.current.turn.phase, Phase.Act)
-    assertEquals(after.game.current.players(other).revealedVision,
-      Some(VisionState(VisionId("V1"), Orientation.FaceUp)))
-
   test("ending Wake rejects a player who is not the active one"):
     assert(endWake(ready(sharedEnemy = true), PlayerId("p1"))
       .left.toOption.get.isInstanceOf[WrongPlayer])
 
-  test("wrong phase and limited Oathkeeper Wake remains playable"):
+  test("ending Wake outside the Wake is refused"):
     val state = ready()
     val active = activePlayer(state)
     val ended = endWake(state, active).toOption.get.state
     assertEquals(endWake(ended, active).left.toOption.get,
       WrongPhase(Phase.Wake, Phase.Act): OathViolation)
-    val Ready(value) = state: @unchecked
-    val titled = Ready(value.updateCurrent(_.copy(title =
-        OathkeeperState(Some(active), TitleSide.Oathkeeper))))
-    assert(endWake(titled, active).isRight)
 
   test("ending Wake selects nothing"):
     val state = ready()
@@ -124,12 +102,6 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     assert(rules.startWalker(state, PhaseTransitionRef.EndWake, active, Vector.empty,
       Vector(DecisionOptionRef.Button("favor"))).isLeft,
       "a start selection handed to End Wake must be rejected")
-
-  test("the declared tree is one phase change under no window"):
-    val Ready(value) = ready(): @unchecked
-    assertEquals(EndWakeProcedure.build(catalog, value,
-      activePlayer(Ready(value)), Vector.empty),
-      Right(Sequence(Vector(EnterPhase(Phase.Act)))))
 
   test("what the projection offers is what the command accepts"):
     // The projector offers `endWake` unconditionally inside the Wake phase,

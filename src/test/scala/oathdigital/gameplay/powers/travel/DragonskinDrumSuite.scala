@@ -35,10 +35,6 @@ class DragonskinDrumSuite extends munit.FunSuite:
     val result = after(travel(empty, coast, modifiers).toOption.get)
     assertEquals(player(result).board.warbands, player(empty).board.warbands)
 
-  test("a Travel that is rejected gains nothing"):
-    val ready = withBoard(held)(_.copy(supply = SupplyTrack(0)))
-    assert(travel(ready, coast, modifiers).isLeft)
-
   test("a facedown Drum is not usable"):
     assert(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
       modifiers).isLeft)

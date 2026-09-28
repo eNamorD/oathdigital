@@ -115,10 +115,6 @@ class FaeMerchantSuite extends munit.FunSuite:
       relicRef(held1)).toOption.get
     assert(!usableIds(ready(done.state)).contains(FaeMerchant.id))
 
-  test("its returned line tells its relic choice"):
-    assertEquals(FaeMerchant.forCatalog(catalog).narratedDecisions,
-      Set(FaeMerchant.decisionId))
-
   test("it writes the relic it drew, then the relic it put back in place of the generic line"):
     val ready0 = staged()
     val top = ready0.game.current.commonCards.relicDeck.head

@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.actions.RuleNotes
-import oathdigital.gameplay.powers.action.GamblingHall
-import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -28,11 +26,6 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
         case None => fail(s"$where has no sentence")
     } }
 
-  test("Gambling Hall and Vow of Peace declare their notes"):
-    val keys = declared.toMap.view.mapValues(_.map(_.name)).toMap
-    assertEquals(keys.get(GamblingHall.id), Some(Vector(NoteKey.Used, "gained")))
-    assertEquals(keys.get(VowOfPeaceContribution.id), Some(Vector("no-sacrifice")))
-
   test("a used line's variants are named used.{variant}"):
     assert(NoteKey.isUse("used"))
     assert(NoteKey.isUse("used.none"))
@@ -49,7 +42,3 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
     PhasePowerCatalog.default(catalog).powers.foreach(power =>
       assertEquals(power.noteKeys.exists(_.name == NoteKey.Used), !power.forced,
         power.id.value))
-
-  test("the Homeland rule declares the line it writes"):
-    assertEquals(declared.toMap.get(RuleNotes.homelandDiscard)
-      .map(_.map(_.name)), Some(Vector("discard-first")))

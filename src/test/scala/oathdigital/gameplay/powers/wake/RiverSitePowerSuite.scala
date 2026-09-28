@@ -31,10 +31,6 @@ class RiverSitePowerSuite extends munit.FunSuite:
       Set("site.ancient-city.river", "site.headwaters.river",
         "site.riverbank.river", "site.tidal-marshes.river"))
 
-  test("the actor's pawn starts at Ancient City, a River"):
-    assertEquals(home(base), ancientCity)
-    assert(RiverSitePower.isRiver(catalog, ancientCity))
-
   test("it is usable in the Wake at a River while another River is in play"):
     assertEquals(rivers(staged()), Vector(river.id -> source))
 

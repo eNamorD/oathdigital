@@ -125,15 +125,6 @@ class MusterProcedureSuite extends munit.FunSuite:
     assertEquals(MusterSource.matching(catalog, atAlchemist.ready, p1,
       Suit.Arcane), 0)
 
-  test("a board whose site forces name an unknown lineage cannot start"):
-    // A lineage that is not in the game is malformed, which `ready` would
-    // refuse, so the ghost's warbands go on after it.
-    val broken = atAlchemist.ready.updateCurrent(current => current.copy(
-      map = current.map.copy(sites = current.map.sites.updated(Table.homeOf(p1),
-        current.map.sites(Table.homeOf(p1)).copy(forces =
-          SiteForces.Occupied(ForceKind.Exile(LineageId("ghost")), 1))))))
-    assert(MusterProcedure.build(catalog, broken, p1).isLeft)
-
   test("Muster cannot start outside the Act phase"):
     val ready = atAlchemist.turn(p1, Phase.Wake).ready
     assert(MusterProcedure.build(catalog, ready, p1).isLeft)

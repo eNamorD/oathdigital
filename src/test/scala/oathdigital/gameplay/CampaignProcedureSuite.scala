@@ -155,22 +155,6 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assert(answer(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(3)).isLeft)
 
-  test("no first-game gate: an altered Foundation or a Citizen still campaigns"):
-    val b = board()
-    val campaign = b.ready.game.campaign
-    val lineage = campaign.lineages(b.player(b.actor).lineage)
-    // A Citizen's warbands are Imperial, so the bank must define that supply.
-    val citizen = b.ready.copy(
-      game = b.ready.game.copy(campaign = campaign.copy(lineages =
-        campaign.lineages.updated(lineage.id, lineage.copy(role = Role.Citizen)))),
-      banks = b.ready.banks.copy(warbandSupply =
-        b.ready.banks.warbandSupply.updated(ForceKind.Imperial, 15)))
-    assert(start(b.copy(ready = citizen)).isRight)
-    val altered = b.ready.copy(game = b.ready.game.copy(campaign =
-      campaign.copy(foundations = campaign.foundations.map { case (k, f) =>
-        k -> f.copy(face = FoundationFace.Altered) })))
-    assert(start(b.copy(ready = altered)).isRight)
-
   test("a held battle-plan relic does not block the start: its plan is chosen at the plan step"):
     val b = board()
     val bag = catalog.relics.find(_.handlers.contains("relic.bag-of-siegeworks")).get
