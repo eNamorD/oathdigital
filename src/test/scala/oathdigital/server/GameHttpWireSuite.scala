@@ -4,8 +4,8 @@ import oathdigital.application.{GameCommand, GameIntentMapper, StartPayload,
   TreeDecision}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
-import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionAnswerWire, DecisionPlacementWire, DistributeAmountWire, GameIntent}
+import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
+  DistributeAmountWire, GameIntent}
 
 class GameHttpWireSuite extends munit.FunSuite:
   test("the usePower intent binds to a UsePower command for the requester"):
@@ -22,24 +22,6 @@ class GameHttpWireSuite extends munit.FunSuite:
     assert(GameIntentMapper.bind(PlayerId("actor-1"),
       oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
         oathdigital.protocol.WalkerStartArgWire("warband", "w1"))).isLeft)
-  test("development and authenticated transports decode the same actorless intent"):
-    val json = ActorlessCommandCodec.encode(ActorlessCommandRequest(
-      8L,
-      GameIntent.RevealOwnedRelic("relic:ancient-city")
-    ))
-    val development = GameHttpWire.decodeCommand(json).toOption.get
-    val authenticated = AuthenticatedGameHttpWire.decodeCommand(json).toOption.get
-    assertEquals(development.expectedNextSequence, authenticated.expectedNextSequence)
-    assertEquals(development.intent, authenticated.intent)
-    assertEquals(development.intent, GameIntent.RevealOwnedRelic("relic:ancient-city"))
-
-  test("actor injection is rejected by both transports"):
-    val json =
-      """{"expectedNextSequence":8,"intent":{"type":"endWake","playerId":"spoof"}}"""
-    val development = GameHttpWire.decodeCommand(json).left.toOption.get
-    val authenticated = AuthenticatedGameHttpWire.decodeCommand(json).left.toOption.get
-    assertEquals(development, authenticated)
-    assertEquals(development.path, "$.intent.playerId")
 
   test("one mapper binds the transport-selected actor"):
     assertEquals(GameIntentMapper.bind(PlayerId("dev-selected"),

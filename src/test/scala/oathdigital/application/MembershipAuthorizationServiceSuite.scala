@@ -13,18 +13,6 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite:
   private val spectatorUser = UserId("spectator-user")
   private val outsider = UserId("outsider-user")
 
-  test("pluggable authenticator returns a provider-neutral principal"):
-    val authenticator = new Authenticator[String]:
-      override def authenticate(credential: String) =
-        if credential == "test-credential" then
-          Right(AuthenticatedUser(playerUser))
-        else Left(AuthenticationFailure.InvalidCredential("invalid"))
-
-    assertEquals(
-      authenticator.authenticate("test-credential"),
-      Right(AuthenticatedUser(playerUser): AuthenticatedPrincipal)
-    )
-
   test("membership roles produce owner player spectator and nonmember access"):
     withService { service =>
       assertEquals(

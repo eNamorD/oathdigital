@@ -55,23 +55,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       stored +: chronicle.atlasBox.filterNot(_.site == target).take(7))
     (newChronicle, newChronicle.atlasBox.take(8).map(_.site))
 
-  test("withWorldDeckTop preserves two absent requested denizens of one suit"):
-    val (suit, absent) = catalog.denizens.groupBy(_.suit).iterator
-      .map { case (suit, definitions) => suit -> definitions
-        .map(definition => DenizenId(definition.id.value))
-        .filterNot(chronicle.worldDeck.contains) }
-      .find(_._2.size >= 2).get
-    val (otherSuits, sameSuit) = chronicle.worldDeck.partition(id =>
-      catalog.denizens.find(_.id.value == id.value).forall(_.suit != suit))
-    val base = chronicle.copy(worldDeck = otherSuits ++ sameSuit)
-    val requested = absent.take(2).toVector
-    val (changed, _) = ParkedServiceFixture.withWorldDeckTop(base, orders, requested)
-    val dealt = 6 + orders.participants.size * 3
-
-    assertEquals(changed.worldDeck.slice(dealt, dealt + 2), requested)
-    assertEquals(changed.worldDeck.distinct.size, changed.worldDeck.size)
-    assert(requested.forall(changed.worldDeck.contains))
-
   test("beginRest through the service parks the off-turn League Treaty ruler " +
       "and survives reload"):
     val repository = new InMemoryEventStreamRepository

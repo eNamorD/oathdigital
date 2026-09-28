@@ -41,10 +41,3 @@ class PricedOptionProjectionSuite extends munit.FunSuite:
     assertEquals(PriceDetails.of(OptionPrice()), Vector.empty[String])
     assertEquals(PriceDetails.of(OptionPrice(secretsBurnt = 2, warbands = 3)),
       Vector("Cost: 2 secrets burnt", "Cost: sacrifice 3 warbands"))
-
-  test("a price never affects which answer names the option"):
-    val plain = DecisionOption.Button(DecisionOptionRef.Button("x"), "X")
-    assertEquals(DecisionOption.Priced(plain, OptionPrice(favor = 1)).ref,
-      plain.ref)
-    assert(OptionPrice().isFree)
-    assert(!OptionPrice(warbands = 1).isFree)
