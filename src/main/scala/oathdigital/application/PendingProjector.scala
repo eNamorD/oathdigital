@@ -15,7 +15,7 @@ private[application] final class PendingProjector(
   def project(context: ScopedProjectionContext): PendingProjection =
     val walkerDecision = walkerDecisions.project(context)
     val walkerWaiting = walkerDecisions.waiting(context)
-    PendingProjection(phase(context, walkerDecision), None, walkerDecision,
+    PendingProjection(phase(context, walkerDecision), walkerDecision,
       walkerWaiting)
 
   private def phase(context: ScopedProjectionContext,

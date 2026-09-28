@@ -14,12 +14,8 @@ final case class GameProjection(
     activePlayerResources: Option[ActivePlayerResourcesProjection] = None,
     currentSiteResources: Option[CurrentSiteResourcesProjection] = None,
     actionSelectionOpen: Boolean = false,
-    actionFamilies: Vector[String] = Vector.empty,
-    legalTravelDestinations: Vector[LegalTravelDestinationProjection] =
-      Vector.empty,
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
     boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
-    pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,

@@ -116,9 +116,6 @@ private[application] final class LegalActionProjector(
       else Vector.empty[(SiteId, Int)]
     LegalProjection(
       controls(context, minor, projectedPhasePowers),
-      travelFacts.map { case (site, cost) =>
-        LegalTravelDestinationProjection(site.value, cost)
-      },
       if ordinaryAct then legalSearch(context) else Vector.empty,
       if ordinaryAct then boardTargetActions(context, travelFacts)
       else Vector.empty,

@@ -10,8 +10,9 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
-  WalkerCompleted, WalkerParked, WalkerStepRecorded}
+  WalkerCompleted, WalkerParked, WalkerPowers, WalkerStepRecorded}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.WalkerDiceFixture
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -1282,7 +1283,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // The wealth site also holds a relic: Recover and a peek are offered.
     assertEquals(act.legalControls, Vector("beginRest", "beginRecover",
       "beginCampaign", "facedownAdviserMinorAction", "peekSiteRelics"))
-    assertEquals(act.actionFamilies.size, 9)
     assert(act.boardTargetActions.exists(_.actionKind == "travel"))
     val travel = act.boardTargetActions.find(_.actionKind == "travel").get
     assertEquals(travel.minimum -> travel.maximum, 1 -> 1)
@@ -1290,11 +1290,14 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assert(travel.candidates.forall(_.target.isInstanceOf[
       BoardTargetRefProjection.Site]))
     assert(travel.candidates.forall(_.details.exists(_.endsWith("Supply"))))
+    // Each destination is priced by dry-running the Travel tree.
+    val Ready(atAct) = ended.state: @unchecked
     assertEquals(
       travel.candidates.map(candidate => candidate.target -> candidate.details),
-      act.legalTravelDestinations.map(destination =>
-        BoardTargetRefProjection.Site(destination.siteId) ->
-          Vector(s"${destination.supplyCost} Supply")))
+      TravelProcedure.candidates(catalog, atAct, active,
+        WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty))
+        .map((site, cost) =>
+          BoardTargetRefProjection.Site(site.value) -> Vector(s"$cost Supply")))
     assertEquals(projector.projectPublic("game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence)).boardTargetActions,
       Vector.empty)

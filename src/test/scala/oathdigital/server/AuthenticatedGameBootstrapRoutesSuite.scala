@@ -141,7 +141,6 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite:
 
       val created = post(client, base, Some(owner.value), valid)
       assertEquals(created.statusCode(), 200, created.body())
-      assert(ujson.read(created.body())("pendingCardDecision").isNull)
       assertNoHiddenPlan(created.body())
       assertEquals(
         ujson.read(created.body())("players").arr.map(_("playerId").str)

@@ -83,5 +83,4 @@ final case class CurrentSiteResourcesProjection(
 final case class FavorBankProjection(suit: String, count: Int)
 final case class GameTracksProjection(round: Int, visionsDrawn: Int,
     usurperLimited: Boolean, limiterRound: Int, firstPlayerId: String)
-final case class LegalTravelDestinationProjection(siteId: String, supplyCost: Int)
 final case class LegalSearchSourceProjection(kind: String, region: Option[String], supplyCost: Int)

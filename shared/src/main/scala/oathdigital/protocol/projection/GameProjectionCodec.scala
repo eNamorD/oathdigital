@@ -12,9 +12,8 @@ object GameProjectionCodec:
   private val Fields = Set(
     "gameId", "nextSequence", "phase", "activeParticipantId", "players", "world",
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
-    "currentSiteResources", "actionSelectionOpen", "actionFamilies",
-    "legalTravelDestinations", "legalSearchSources",
-    "boardTargetActions", "pendingCardDecision",
+    "currentSiteResources", "actionSelectionOpen", "legalSearchSources",
+    "boardTargetActions",
     "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
@@ -46,13 +45,9 @@ object GameProjectionCodec:
     "currentSiteResources" -> option(value.currentSiteResources)(r => ujson.Obj(
       "siteId" -> r.siteId, "favor" -> r.favor, "secrets" -> r.secrets)),
     "actionSelectionOpen" -> value.actionSelectionOpen,
-    "actionFamilies" -> encoded(value.actionFamilies)(ujson.Str(_)),
-    "legalTravelDestinations" -> encoded(value.legalTravelDestinations)(d =>
-      ujson.Obj("siteId" -> d.siteId, "supplyCost" -> d.supplyCost)),
     "legalSearchSources" -> encoded(value.legalSearchSources)(s => ujson.Obj(
       "kind" -> s.kind, "region" -> stringOption(s.region), "supplyCost" -> s.supplyCost)),
     "boardTargetActions" -> encoded(value.boardTargetActions)(encodeAction),
-    "pendingCardDecision" -> option(value.pendingCardDecision)(encodePending),
     "worldDeckCount" -> value.worldDeckCount,
     "worldDeckTopCardKind" -> stringOption(value.worldDeckTopCardKind),
     "playerBoards" -> encoded(value.playerBoards)(encodeBoard),
@@ -97,15 +92,10 @@ object GameProjectionCodec:
     resources <- optionalAbsent(value, "activePlayerResources", path)(decodeResources)
     siteResources <- optionalAbsent(value, "currentSiteResources", path)(decodeSiteResources)
     actionOpen <- boolOr(value, "actionSelectionOpen", path, false)
-    families <- stringsOrEmpty(value, "actionFamilies", path)
-    destinationRaws <- default(value, "legalTravelDestinations", path,
-      Vector.empty[ujson.Value])(array)
-    destinations <- traverse(destinationRaws, s"$path.legalTravelDestinations")(decodeDestination)
     sourceRaws <- default(value, "legalSearchSources", path, Vector.empty[ujson.Value])(array)
     sources <- traverse(sourceRaws, s"$path.legalSearchSources")(decodeSearchSource)
     actionRaws <- default(value, "boardTargetActions", path, Vector.empty[ujson.Value])(array)
     actions <- traverse(actionRaws, s"$path.boardTargetActions")(decodeAction)
-    pending <- optionalAbsent(value, "pendingCardDecision", path)(decodePending)
     deckCount <- intOr(value, "worldDeckCount", path, 0)
     deckTop <- optionalAbsent(value, "worldDeckTopCardKind", path)(string)
     boardRaws <- default(value, "playerBoards", path, Vector.empty[ujson.Value])(array)
@@ -139,8 +129,8 @@ object GameProjectionCodec:
     supplyMaximum <- intOr(value, "supplyMaximum", path, 0)
     restGain <- optionalAbsent(value, "restSupplyGain", path)(int)
   yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
-    ready, completed, resources, siteResources, actionOpen, families, destinations,
-    sources, actions, pending,
+    ready, completed, resources, siteResources, actionOpen,
+    sources, actions,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers, viewer,
@@ -158,10 +148,6 @@ object GameProjectionCodec:
     v <- obj(raw, path); _ <- exact(v, Set("siteId", "favor", "secrets"), path)
     site <- string(v, "siteId", path); favor <- int(v, "favor", path); secrets <- int(v, "secrets", path)
   yield CurrentSiteResourcesProjection(site, favor, secrets)
-  private def decodeDestination(raw: ujson.Value, path: String): Result[LegalTravelDestinationProjection] = for
-    v <- obj(raw, path); _ <- exact(v, Set("siteId", "supplyCost"), path)
-    site <- string(v, "siteId", path); cost <- int(v, "supplyCost", path)
-  yield LegalTravelDestinationProjection(site, cost)
   private def decodeSearchSource(raw: ujson.Value, path: String): Result[LegalSearchSourceProjection] = for
     v <- obj(raw, path); _ <- exact(v, Set("kind", "region", "supplyCost"), path)
     kind <- string(v, "kind", path); region <- optionalString(v, "region", path)

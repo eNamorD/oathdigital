@@ -59,14 +59,12 @@ class HttpGameClientSuite extends FunSuite:
       Right(TransportResponse(200, projectionJson(
         sequence = 2,
         phase = "setup-walker-decision",
-        siteId = opaqueSite,
-        adviserId = opaqueAdviser
+        siteId = opaqueSite
       ))),
       Right(TransportResponse(200, projectionJson(
         sequence = 3,
         phase = "setup-walker-decision",
-        siteId = opaqueSite,
-        choices = false
+        siteId = opaqueSite
       )))
     ))
     val client = new HttpGameClient(transport)
@@ -102,7 +100,7 @@ class HttpGameClientSuite extends FunSuite:
 
   test("typed board-target actions decode sites and reject malformed refs"):
     val actions = """[{"actionKind":"travel","prompt":"Choose a destination","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site","siteId":"site:c"},"label":"Site C","details":[]}]}]"""
-    val json = projectionJson(sequence = 10, choices = false)
+    val json = projectionJson(sequence = 10)
       .replace("\"boardTargetActions\":[]",
         s"\"boardTargetActions\":$actions")
     val decoded = GameJson.decodeProjection(json).toOption.get
@@ -229,15 +227,9 @@ class HttpGameClientSuite extends FunSuite:
       sequence: Long,
       phase: String = "act-action-selection",
       siteId: String = "site:001",
-      adviserId: String = "denizen:0612",
       ready: Boolean = false,
-      completed: Boolean = false,
-      choices: Boolean = true
+      completed: Boolean = false
   ): String =
-    val pendingDecision =
-      if choices then
-        s"""{"decisionId":"search-draw-0-red-exile","kind":"search","actorPlayerId":"red-exile","prompt":"Choose adviser","instructions":[],"cards":[${cardJson(adviserId, "denizen", "Printed Adviser")}],"keepMinimum":1,"keepMaximum":1,"orderingRequired":false,"resolutionsByCard":{"$adviserId":[{"kind":"search","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}}"""
-      else "null"
     s"""{
        |"gameId":"game-1",
        |"nextSequence":$sequence,
@@ -257,12 +249,8 @@ class HttpGameClientSuite extends FunSuite:
        |"legalControls":[],
        |"ready":$ready,
        |"completed":$completed,
-       |"boardTargetActions":[],
-       |"pendingCardDecision":$pendingDecision
+       |"boardTargetActions":[]
        |}""".stripMargin
-
-  private def cardJson(id: String, kind: String, name: String): String =
-    s"""{"cardId":"$id","cardKind":"$kind","name":"$name","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-up","hidden":false}"""
 
   private def siteJson(
       siteId: String,

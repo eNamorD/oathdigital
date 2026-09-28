@@ -34,18 +34,6 @@ final case class CardResolutionProjection(
     replacementRequired: Boolean = false,
     replacementTargets: Vector[CardDetailsProjection] = Vector.empty):
   def replacement: Option[CardDetailsProjection] = replacementTargets.headOption
-final case class PendingCardDecisionProjection(
-    decisionId: String,
-    kind: String,
-    actorPlayerId: String,
-    prompt: String,
-    instructions: Vector[String],
-    cards: Vector[CardDetailsProjection],
-    keepMinimum: Int,
-    keepMaximum: Int,
-    orderingRequired: Boolean,
-    resolutionsByCard: Map[String, Vector[CardResolutionProjection]]
-)
 /** A phase power the viewer can use now: its id, the card it is used from,
   * and the card's printed power name and rules text.
   */
@@ -195,11 +183,9 @@ final case class DecisionSectionProjection(key: String, label: String,
 final case class DecisionSlotProjection(option: DecisionOptionProjection,
     minimum: Int, maximum: Int, suggested: Option[Int])
 /** Wire projection of a parked generic-walker decision (Task 6:
-  * `CurrentGameState.walkerPending`/`walkerProcedure`) -- the walker path's
-  * counterpart to [[PendingCardDecisionProjection]] above, which the walker
-  * deliberately never populates.
+  * `CurrentGameState.walkerPending`/`walkerProcedure`).
   *
-  * Owner-private the same way that one is: the projector only ever
+  * Owner-private: the projector only ever
   * returns this for the parked actor, so `GameProjection.walkerDecision`
   * is `None` for every other viewer -- not a redacted copy of this type.
   *

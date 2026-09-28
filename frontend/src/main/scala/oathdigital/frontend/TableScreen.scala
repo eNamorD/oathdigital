@@ -95,7 +95,6 @@ private[frontend] final class TableScreen(
         actionContent.appendChild(pane.element)
         val decisionKey = Vector(selectedPlayer, value.phase,
           value.activeParticipantId.getOrElse(""),
-          value.pendingCardDecision.map(_.decisionId).getOrElse(""),
           value.walkerDecision.map(_.decisionId).getOrElse(""),
           drafts.boardTargets.flatMap(_.activeActionKind).getOrElse(""),
           drafts.modifiers.map(_.stage.toString).getOrElse(""),

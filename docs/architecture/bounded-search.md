@@ -108,12 +108,12 @@ keeps domain events authoritative and projects legal controls from replayed
 state. `SearchRules.legalPlacements` enumerates candidates by running the same
 completion validator used by command handling and replay.
 
-The authorized actor receives one `pendingCardDecision` envelope. The client
-first arranges exactly one card in Keep and orders the remaining Discard zone,
-then locally advances to resolution. Only final confirmation submits an atomic
-resolution. Dragging is supplemented by Move to Keep, Move to Discard, Move
-Left, and Move Right controls. Required adviser or site replacement is always
-explicit. Public and other-player projections omit the entire envelope.
+The authorized actor receives the drawn cards as a parked walker decision
+(`search.cards`, a Keep/Discard `Partition`) on the projection's
+`walkerDecision`. The client arranges exactly one card in Keep and the rest in
+Discard, and only confirmation submits the answer; placing the kept card
+follows as its own decision. Required adviser or site replacement is always
+explicit. Other viewers see only a `walkerWaiting` notice, never the cards.
 
 ## In scope and deferred
 

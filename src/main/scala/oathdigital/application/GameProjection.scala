@@ -80,14 +80,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
           state.tokens.secrets))),
       actionSelectionOpen = current.result.isEmpty &&
         current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
-      actionFamilies = if current.result.isEmpty && current.turn.phase == Phase.Act &&
-        current.walkerPending.isEmpty then
-        Vector("Search", "Travel", "Campaign", "Muster", "Trade", "Forge",
-          "Recover", "Challenge", "Minor Actions") else Vector.empty,
-      legalTravelDestinations = legal.travel,
       legalSearchSources = legal.search,
       boardTargetActions = legal.boardTargets,
-      pendingCardDecision = pending.cardDecision,
       worldDeckCount = current.commonCards.worldDeck.size,
       worldDeckTopCardKind = current.commonCards.worldDeck.headOption
         .map(presentation.cardKind),

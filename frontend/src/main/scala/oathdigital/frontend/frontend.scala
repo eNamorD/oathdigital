@@ -27,8 +27,6 @@ type ActivePlayerResources = protocol.projection.ActivePlayerResourcesProjection
 val ActivePlayerResources = protocol.projection.ActivePlayerResourcesProjection
 type CurrentSiteResources = protocol.projection.CurrentSiteResourcesProjection
 val CurrentSiteResources = protocol.projection.CurrentSiteResourcesProjection
-type LegalTravelDestination = protocol.projection.LegalTravelDestinationProjection
-val LegalTravelDestination = protocol.projection.LegalTravelDestinationProjection
 type LegalSearchSource = protocol.projection.LegalSearchSourceProjection
 val LegalSearchSource = protocol.projection.LegalSearchSourceProjection
 type BoardTargetRef = protocol.projection.BoardTargetRefProjection
@@ -45,8 +43,6 @@ object MinorAdviserPlacement:
       replacement: Option[CardDetails] = None): MinorAdviserPlacement =
     protocol.projection.CardResolutionProjection(kind, None,
       replacement.nonEmpty, replacement.toVector)
-type PendingCardDecision = protocol.projection.PendingCardDecisionProjection
-val PendingCardDecision = protocol.projection.PendingCardDecisionProjection
 type DecisionQueryState = protocol.projection.DecisionQueryProjection
 val DecisionQueryState = protocol.projection.DecisionQueryProjection
 type DecisionOptionState = protocol.projection.DecisionOptionProjection

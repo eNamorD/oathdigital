@@ -235,8 +235,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
   test("projection and bootstrap transport DTOs are defined only in shared protocol"):
     val roots = Vector(Paths.get("src/main/scala"), Paths.get("frontend/src/main/scala"))
     val forbidden = Set("GameProjection", "SetupPlayerProjection",
-      "CardDetailsProjection", "PendingCardDecisionProjection",
-      "PlayerBoardProjection", "FirstGameBootstrapRequest",
+      "CardDetailsProjection", "PlayerBoardProjection", "FirstGameBootstrapRequest",
       "BootstrapParticipantRequest")
     val definition = "\\s*final case class ([A-Za-z0-9_]+).*".r
     val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)

@@ -53,42 +53,6 @@ private[projection] object ActionProjectionCodec:
     targets <- traverse(raws, s"$path.replacementTargets")(decodeCard)
   yield CardResolutionProjection(kind, orientation, required, targets)
 
-  def encodePending(value: PendingCardDecisionProjection): ujson.Value = ujson.Obj(
-    "decisionId" -> value.decisionId, "kind" -> value.kind,
-    "actorPlayerId" -> value.actorPlayerId, "prompt" -> value.prompt,
-    "instructions" -> encoded(value.instructions)(ujson.Str(_)),
-    "cards" -> encoded(value.cards)(encodeCard), "keepMinimum" -> value.keepMinimum,
-    "keepMaximum" -> value.keepMaximum, "orderingRequired" -> value.orderingRequired,
-    "resolutionsByCard" -> ujson.Obj.from(value.resolutionsByCard.toVector.sortBy(_._1).map {
-      case (id, resolutions) => id -> encoded(resolutions)(encodeResolution)
-    }))
-  def decodePending(raw: ujson.Value, path: String): Result[PendingCardDecisionProjection] = for
-    value <- obj(raw, path)
-    _ <- exact(value, Set("decisionId", "kind", "actorPlayerId", "prompt", "instructions",
-      "cards", "keepMinimum", "keepMaximum", "orderingRequired", "resolutionsByCard"), path)
-    decision <- string(value, "decisionId", path); kind <- string(value, "kind", path)
-    actor <- string(value, "actorPlayerId", path); prompt <- string(value, "prompt", path)
-    instructions <- strings(value, "instructions", path)
-    cardRaws <- array(value, "cards", path); cards <- traverse(cardRaws, s"$path.cards")(decodeCard)
-    minimum <- int(value, "keepMinimum", path); maximum <- int(value, "keepMaximum", path)
-    ordering <- bool(value, "orderingRequired", path)
-    resolutionRaw <- field(value, "resolutionsByCard", path)
-    resolutionObject <- obj(resolutionRaw, s"$path.resolutionsByCard")
-    _ <- resolutionObject.value.keys.find(key => !cards.exists(_.cardId == key))
-      .map(key => Left(oathdigital.protocol.ProtocolDecodeFailure.UnexpectedField(
-        s"$path.resolutionsByCard.$key"))).getOrElse(Right(()))
-    resolutions <- cards.foldLeft[Result[Map[String, Vector[CardResolutionProjection]]]](
-      Right(Map.empty)) { case (Right(done), card) =>
-        resolutionObject.value.get(card.cardId).toRight(
-          oathdigital.protocol.ProtocolDecodeFailure.MissingField(
-            s"$path.resolutionsByCard.${card.cardId}")).flatMap(array(_,
-            s"$path.resolutionsByCard.${card.cardId}")).flatMap(traverse(_,
-            s"$path.resolutionsByCard.${card.cardId}")(decodeResolution))
-          .map(values => done.updated(card.cardId, values))
-      case (failure @ Left(_), _) => failure }
-  yield PendingCardDecisionProjection(decision, kind, actor, prompt, instructions,
-    cards, minimum, maximum, ordering, resolutions)
-
   def encodeMinor(value: MinorActionsProjection): ujson.Value = ujson.Obj(
     "advisers" -> encoded(value.advisers)(entry => ujson.Obj(
       "card" -> encodeCard(entry.card),

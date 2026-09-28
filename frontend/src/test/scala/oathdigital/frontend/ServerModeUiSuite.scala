@@ -702,8 +702,7 @@ class ServerModeUiSuite extends FunSuite:
   test("inactive Act viewer sees no action-selection controls"):
     val value = projection(Set("beginRest"), phase = "act-action-selection")
       .copy(actionSelectionOpen = true,
-        legalSearchSources = Vector(LegalSearchSource("world", None, 2)),
-        legalTravelDestinations = Vector(LegalTravelDestination("site:1", 2)))
+        legalSearchSources = Vector(LegalSearchSource("world", None, 2)))
     val inactive = ServerUiSupport.viewerPresentation(value, "blue-exile")
     val active = ServerUiSupport.viewerPresentation(value, "red-exile")
 

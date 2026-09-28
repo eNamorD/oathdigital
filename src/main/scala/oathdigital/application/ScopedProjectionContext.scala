@@ -15,7 +15,6 @@ private[application] final case class ScopedProjectionContext(
 
 private[application] final case class LegalProjection(
     controls: Vector[String],
-    travel: Vector[LegalTravelDestinationProjection],
     search: Vector[LegalSearchSourceProjection],
     boardTargets: Vector[BoardTargetActionProjection],
     minorActions: Option[MinorActionsProjection]
@@ -23,7 +22,6 @@ private[application] final case class LegalProjection(
 
 private[application] final case class PendingProjection(
     phase: String,
-    cardDecision: Option[PendingCardDecisionProjection],
     walkerDecision: Option[WalkerDecisionProjection],
     walkerWaiting: Option[WalkerWaitingProjection]
 )
