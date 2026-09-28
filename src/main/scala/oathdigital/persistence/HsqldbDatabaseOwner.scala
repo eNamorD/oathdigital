@@ -215,11 +215,6 @@ final class OwnedHsqldbIdentityRepository private (
     adapter.revokeSession(digest, now)
   override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long) =
     adapter.touchSession(digest, seen, idle)
-  override def createTrustedSeats(
-      gameId: String,
-      seats: Vector[(SeatCodeDigest, String)],
-      now: Long
-  ) = adapter.createTrustedSeats(gameId, seats, now)
   override def resolveTrustedSeat(digest: SeatCodeDigest) =
     adapter.resolveTrustedSeat(digest)
   private[persistence] def createGameWithBeforeOwnerMembership(

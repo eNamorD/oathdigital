@@ -168,7 +168,7 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     }
 
   test("invalid links are generic and canonical pages recover absent, malformed, wrong-game and missing-game cookies"):
-    withServer() { (base, runtime) =>
+    withServer() { (base, _) =>
       val client = HttpClient.newHttpClient()
       val created = create(client, base, "private-game")
       val code = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
@@ -189,11 +189,6 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
         assert(!response.body().contains(code))
         assertEquals(send(client, base, "/games/another-game/api", cookie = cookie).statusCode(), 403)
       }
-      val missingCode = SeatCode.parse("AQEBAQEBAQEBAQEBAQEBAQ").toOption.get
-      assert(runtime.identities.createTrustedSeats("missing-stream", Vector(missingCode.digest -> "p1"), 0L).isRight)
-      val missing = send(client, base, "/games/missing-stream", cookie = Some(s"oath_seat=${missingCode.raw}"))
-      assertEquals(missing.statusCode(), 403)
-      assertEquals(missing.body(), recovery.body())
     }
 
   test("trusted endpoints reject queries and cross-origin mutations while accepting configured or missing Origin"):

@@ -71,9 +71,7 @@ object IdentityFailure:
   case object SessionNotFound extends IdentityFailure
   case object SessionExpired extends IdentityFailure
   case object SessionRevoked extends IdentityFailure
-  case object DuplicateTrustedSeat extends IdentityFailure
   case object TrustedSeatNotFound extends IdentityFailure
-  final case class InvalidTrustedSeat(message: String) extends IdentityFailure
   final case class StorageFailure(message: String) extends IdentityFailure
 
 trait IdentityRepository:
@@ -112,11 +110,6 @@ trait IdentityRepository:
       digest: SessionTokenDigest,
       lastSeenAtMillis: Long,
       idleExpiresAtMillis: Long
-  ): Either[IdentityFailure, Unit]
-  def createTrustedSeats(
-      gameId: String,
-      seats: Vector[(SeatCodeDigest, String)],
-      nowMillis: Long
   ): Either[IdentityFailure, Unit]
   def resolveTrustedSeat(
       digest: SeatCodeDigest
