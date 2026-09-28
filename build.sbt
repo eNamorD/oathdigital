@@ -31,7 +31,14 @@ lazy val root = (project in file("."))
         baseDirectory.value / "frontend" / "styles.css" ->
           (output / "styles.css"),
         baseDirectory.value / "frontend" / "production-index.html" ->
-          (output / "index.html")
+          (output / "index.html"),
+        // The stylesheet's one font, with the license the OFL asks to travel
+        // with it.
+        baseDirectory.value / "frontend" / "fonts" /
+          "ibm-plex-sans-latin-wght-normal.woff2" ->
+          (output / "fonts" / "ibm-plex-sans-latin-wght-normal.woff2"),
+        baseDirectory.value / "frontend" / "fonts" / "LICENSE-IBM-Plex-Sans.txt" ->
+          (output / "fonts" / "LICENSE-IBM-Plex-Sans.txt")
       )
       IO.copy(files)
       files.map(_._2)

@@ -185,13 +185,18 @@ private[frontend] object GameTableShell:
   private val CompactBelow = NameFloorPx / 15.2
   def compactAtScale(scale: Double): Boolean = scale < CompactBelow
 
-  /** A map card is 8.6rem wide; the compact face pads it 0.25em of its
-    * floor-sized text on each side. Inter at 750 advances about 0.58em per
-    * character of a mixed-case name.
+  /** A map card on a site holding forces is 7.3rem wide, the common case
+    * once bandits are placed, so the estimate is made for that card; on a
+    * site without forces the wider card only leaves room over. The compact
+    * name spans the face to its 1px border. IBM Plex Sans at 700 advances
+    * 0.525em per character of a card name's words, measured over the
+    * catalog on screen, but a word heavy in capitals and m or w ("Autumn")
+    * runs to 0.63em; 0.55 keeps such a word inside the box at a bucket's
+    * edge, where the estimate is tightest.
     */
-  private val CardWidthPx = 8.6 * 16
-  private val CardPaddingScreenPx = 0.25 * NameFloorPx
-  private val AverageAdvanceEm = 0.58
+  private val CardWidthPx = 7.3 * 16
+  private val CardBorderScreenPx = 1.0
+  private val AverageAdvanceEm = 0.55
 
   /** The bucket of `CardFace.NameFitBuckets` in force at this scale: the
     * longest word a card can show whole on one line of floor-sized text.
@@ -199,7 +204,7 @@ private[frontend] object GameTableShell:
     * initials; `None` is a scale that is not compact at all.
     */
   def nameFit(scale: Double): Option[Int] = Option.when(compactAtScale(scale)) {
-    val characters = (CardWidthPx * scale - 2 * CardPaddingScreenPx) /
+    val characters = (CardWidthPx * scale - 2 * CardBorderScreenPx) /
       (NameFloorPx * AverageAdvanceEm)
     CardFace.NameFitBuckets.filter(_ <= characters).lastOption.getOrElse(0)
   }

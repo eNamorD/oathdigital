@@ -77,22 +77,22 @@ typography:
   headline:
     fontFamily: "Georgia, serif"
     fontSize: "1.08rem"
-    fontWeight: 800
+    fontWeight: 700
     lineHeight: 1.2
   title:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.8rem"
-    fontWeight: 750
+    fontWeight: 700
     letterSpacing: "0.06em"
   body:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.9rem"
     fontWeight: 400
     lineHeight: 1.45
   label:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.78rem"
-    fontWeight: 800
+    fontWeight: 700
     letterSpacing: "0.14em"
   mono:
     fontFamily: "ui-monospace, monospace"
@@ -318,28 +318,39 @@ only keeps them from blurring; it never carries meaning alone.
 ## Typography
 
 **Display Font:** Georgia (with serif fallback)
-**Body Font:** Inter (with ui-sans-serif, system-ui, sans-serif fallback)
+**Body Font:** IBM Plex Sans (with ui-sans-serif, system-ui, sans-serif fallback)
 **Label/Mono Font:** ui-monospace for the event log
 
-**Character:** A serif for names of places and things on the board, a plain
-sans for the instrument around them. Georgia stands in for the board's
-hand-brushed titles; Inter never tries to be decorative.
+**Character:** A serif for names of places and things on the board, an
+instrument sans for the table around them. Georgia stands in for the board's
+hand-brushed titles; Plex Sans was drawn for instruments, with the tall
+x-height, open apertures and tabular figures that keep counts and supply
+legible at 11 to 13px on the dark table, and its squared terminals sit
+beside Georgia without competing.
+
+**Delivery:** the face ships with the archive, since the table runs on a LAN
+or offline: one variable woff2 (latin, weights 100 to 700, OFL, in
+`frontend/fonts`) declared by the stylesheet with `font-display: swap` and
+preloaded by both index pages, served at `/assets/fonts/` in production. The
+face tops out at 700, so the system has two weights: 400 for reading and
+700 for everything bold, headings, labels, counts and names alike. Nothing
+asks for 750, 800 or 900.
 
 ### Hierarchy
 - **Display** (400, 2.5rem, Georgia): the page `h1` on the host page.
   `clamp(1.8rem, 9vw, 2.5rem)` under 760px.
-- **Headline** (800, 1.08rem, Georgia): site names on the map, centered in
-  the site heading. Region titles on the map are Georgia 1.6rem, 800, mixed
+- **Headline** (700, 1.08rem, Georgia): site names on the map, centered in
+  the site heading. Region titles on the map are Georgia 1.6rem, 700, mixed
   case, Bright Cream: the brightest text on the map, like the board's brushed
-  lettering. The card overlay name is Georgia 1.5em, 800, Bright Cream. On
+  lettering. The card overlay name is Georgia 1.5em, 700, Bright Cream. On
   the zoomed-out map both are set against the scale (see The Glance Layer
   Rule): a site name holds 12px on screen, a region title 12.5px.
-- **Title** (750, 0.8rem, uppercase, 0.06em, Inter): pane headings in Brass
+- **Title** (700, 0.8rem, uppercase, 0.06em, Plex Sans): pane headings in Brass
   Label. Under 620px: 0.72rem, 0.025em.
 - **Body** (400, 0.9rem in the action pane, 0.86rem/1.45 for site details,
-  0.82rem on player boards, Inter): the reading size follows the pane. Bold
-  runs at 800 for counts, forces, requirements and player references.
-- **Label** (800, 0.78rem, uppercase, 0.14em, Inter): the eyebrow in Brass;
+  0.82rem on player boards, Plex Sans): the reading size follows the pane. Bold
+  runs at 700 for counts, forces, requirements and player references.
+- **Label** (700, 0.78rem, uppercase, 0.14em, Plex Sans): the eyebrow in Brass;
   region labels on the host page use 0.1em tracking in Ink Dim.
 - **Mono** (400, 0.85rem, ui-monospace): the raw event log only.
 
@@ -507,10 +518,10 @@ controls are 30px.
   Line-pane top border, 12px padding), full width, so the answer stays in
   view while the zones scroll.
 - **Board target control**: full width of the site, Panel fill, Bright Cream
-  800 text, brass border. Hover and focus: Pressed fill and a 3px Bright
+  700 text, brass border. Hover and focus: Pressed fill and a 3px Bright
   Cream outline offset 2px. Pressed state prefixes "✓ ".
 - **Pressed option** (`aria-pressed="true"` on many-options and card choices):
-  Pressed fill, Bright Cream border and text, weight 800, "✓ " prefix.
+  Pressed fill, Bright Cream border and text, weight 700, "✓ " prefix.
 - **Focus:** 2px Cream Focus outline, -3px offset, inside the table; 3px white
   outline, 3px offset, on the host page.
 - **Disabled:** opacity 0.5, `cursor: not-allowed` or default.
@@ -527,16 +538,16 @@ controls are 30px.
   has no order controls.
 
 ### Chips and Pills
-- **Site card count**: pill, 1px Line border, Cream 800 text, `2px 6px`
+- **Site card count**: pill, 1px Line border, Cream 700 text, `2px 6px`
   padding, 1.65rem minimum width.
 - **Target detail badge**: pill, `#a98b58` border, Base fill, Bright Brass
-  0.72rem 800 text, absolutely placed top-right of a site.
+  0.72rem 700 text, absolutely placed top-right of a site.
 - **Player title**: pill in Favor color, Favor border, 0.78rem 600, no fill,
   clickable.
 - **Vision slot**: pill, `currentColor` border, 0.85em, no fill.
 - **Plan side**: 1em pill, `0 0.6em` padding, 0.75em; Discord fill for attack,
   Order fill for defense, a Discord-to-Order gradient for both; white text.
-- **Modifier ordinal**: 1.8rem brass disc, Base text, 800.
+- **Modifier ordinal**: 1.8rem brass disc, Base text, 700.
 - **Unimplemented badge**: a band across the card's foot, out to its dashed
   border, in the Unimplemented fill: Cream mixed case at `max(0.62em,
   0.7rem)`, centered. The card keeps the band's height free at its foot, so
@@ -550,7 +561,7 @@ ratio, sized in `ex` from `--card-w: 13ex`.
 - **Border:** 1px, transparent at rest so states never reflow; Line for a
   denizen, `#7a6a4c` for a relic, dashed Unimplemented for a card the engine
   does not run, dashed Line-mid with transparent fill for an empty slot.
-- **Face:** header row of suit glyph (1.2em) and name (750, 0.95em) with
+- **Face:** header row of suit glyph (1.2em) and name (700, 0.95em) with
   defense dice pushed right; a name that does not fit beside the glyph drops
   under it whole rather than breaking mid-word, and a single word too long
   for the box is hyphenated at a syllable; token row at 0.8em;
@@ -560,15 +571,22 @@ ratio, sized in `ex` from `--card-w: 13ex`.
   suit glyph moves to the top-left corner and the name sits centered in the
   box. The face inherits the counter-scaled size from the site, so the name
   holds 11px on screen. A name whose longest word does not fit one line at
-  the current scale shows its initials instead, at 1.5em 800: the first
+  the current scale shows its initials instead, at 1.5em 700: the first
   character of each word as written ("Rotting Fortress" is RF, "Master of
   Disguise" is MoD), or a lone word's first two ("Quartermaster" is Qu).
   Both forms are in the DOM; the card carries `name-fits-N` for each of the
   buckets 6, 8, 10 and 12 its longest word clears, the map carries the one
   `map-fit-N` its scale allows (`GameTableShell.nameFit`), and the
-  stylesheet picks. The whole name stays in the button's label and title.
+  stylesheet picks. The bucket is estimated for the 7.3rem card of a site
+  holding forces, the common case once bandits are placed, at 0.55em per
+  character: Plex Sans at 700 averages 0.525em over the catalog's names,
+  and a word heavy in capitals, m and w runs to 0.63em. The compact name
+  spans the face to its border, never breaks inside a word and never
+  hyphenates: initials are the compact face's answer to a word that does
+  not fit, and the rare word past the estimate clips at the border. The
+  whole name stays in the button's label and title.
   Defense, restriction and the unimplemented badge are hidden; tokens stay.
-- **Face-down:** Facedown fill, centered Facedown Letter at 1.9em 800; a
+- **Face-down:** Facedown fill, centered Facedown Letter at 1.9em 700; a
   knowable card adds a Secret pip top-right and reveals a summary on hover or
   focus (pointer devices only, CSS only, no client state).
 - **Hover / Focus:** 2px Cream Focus outline, -3px offset. No lift, no move.
@@ -691,7 +709,7 @@ in a sideways-scrolling row beside the identity column (Layout).
 - **Do** keep every site the same fixed height and every action button at
   least 44px tall.
 - **Do** use Georgia for names of sites, regions, cards and the page title,
-  and Inter for everything else.
+  and Plex Sans for everything else.
 - **Do** use a pill for a count or a state of a player, and a dashed border
   for something not yet real.
 

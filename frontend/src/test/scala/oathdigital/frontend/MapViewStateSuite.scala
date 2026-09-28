@@ -59,13 +59,14 @@ class MapViewStateSuite extends FunSuite:
     assert(!GameTableShell.compactAtScale(1.0))
 
   test("the fit bucket is the longest word one line of floor-sized text holds"):
-    // A card is 137.6px wide in map space, so on screen it is 49.5px at
-    // 0.36 and 59px at 0.43; less the padding, that is 6.9 and 8.4
-    // characters of 11px bold Inter.
+    // A card on a site holding forces is 116.8px wide in map space, so on
+    // screen it is 42px at 0.36 and 52.8px at 0.4524; less the border, that
+    // is 6.6 and 8.4 characters of 11px bold IBM Plex Sans at the wide
+    // 0.55em advance the estimate uses.
     assertEquals(GameTableShell.nameFit(0.36), Some(6))
-    assertEquals(GameTableShell.nameFit(0.43), Some(8))
-    assertEquals(GameTableShell.nameFit(0.53), Some(10))
-    assertEquals(GameTableShell.nameFit(0.62), Some(12))
+    assertEquals(GameTableShell.nameFit(0.4524), Some(8))
+    assertEquals(GameTableShell.nameFit(0.53), Some(8))
+    assertEquals(GameTableShell.nameFit(0.62), Some(10))
     assertEquals(GameTableShell.nameFit(0.71), Some(12))
     assertEquals(GameTableShell.nameFit(0.2), Some(0))
     assertEquals(GameTableShell.nameFit(0.8), None)

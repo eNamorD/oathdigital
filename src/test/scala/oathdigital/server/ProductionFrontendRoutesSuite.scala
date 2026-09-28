@@ -40,8 +40,19 @@ class ProductionFrontendRoutesSuite extends munit.FunSuite:
         Some("public, max-age=0, must-revalidate")
       )
 
+      val font = get(client, binding,
+        "/assets/fonts/ibm-plex-sans-latin-wght-normal.woff2")
+      assertEquals(font.statusCode(), 200)
+      assert(font.body().nonEmpty)
+      assertEquals(
+        cacheControl(font),
+        Some("public, max-age=0, must-revalidate")
+      )
+
       assertEquals(get(client, binding, "/missing.js").statusCode(), 404)
       assertEquals(get(client, binding, "/assets/missing.js").statusCode(), 404)
+      assertEquals(
+        get(client, binding, "/assets/fonts/missing.woff2").statusCode(), 404)
     finally
       Await.result(binding.terminate(5.seconds), 10.seconds)
       system.terminate()

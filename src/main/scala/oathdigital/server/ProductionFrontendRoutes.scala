@@ -15,6 +15,10 @@ object ProductionFrontendRoutes:
     "public, max-age=0, must-revalidate"
   )
 
+  /** The one font the stylesheet loads, served by name so the assets prefix
+    * stays a fixed list rather than a directory. */
+  private val PlexSans = "ibm-plex-sans-latin-wght-normal.woff2"
+
   val gamePage: Route =
     respondWithHeader(IndexCacheControl):
       getFromResource("oathdigital/frontend/index.html")
@@ -28,5 +32,8 @@ object ProductionFrontendRoutes:
           path("main.js") {
             getFromResource("oathdigital/frontend/main.js")
           } ~
-            path("styles.css"):
+            path("styles.css") {
               getFromResource("oathdigital/frontend/styles.css")
+            } ~
+            path("fonts" / PlexSans):
+              getFromResource(s"oathdigital/frontend/fonts/$PlexSans")

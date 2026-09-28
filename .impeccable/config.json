@@ -2,13 +2,6 @@
   "detector": {
     "ignoreRules": [],
     "ignoreFiles": [],
-    "ignoreValues": [
-      {
-        "rule": "overused-font",
-        "value": "inter",
-        "createdAt": "2026-09-28T05:24:20.237Z",
-        "reason": "DESIGN.md Typography pins Inter as the body face of the committed world; the finding predates this session"
-      }
-    ]
+    "ignoreValues": []
   }
 }

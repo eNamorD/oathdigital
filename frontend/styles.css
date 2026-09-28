@@ -1,6 +1,19 @@
+/* IBM Plex Sans, self-hosted: the archive runs on a LAN or offline, so the
+   face ships beside the stylesheet (frontend/fonts, OFL). One variable file,
+   latin, 100 to 700, preloaded by the page so the swap lands before the
+   table draws. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url("fonts/ibm-plex-sans-latin-wght-normal.woff2") format("woff2-variations"),
+       url("fonts/ibm-plex-sans-latin-wght-normal.woff2") format("woff2");
+}
+
 :root {
   color-scheme: dark;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   background: #17140f;
   color: #f5ecd7;
 
@@ -74,7 +87,7 @@ button { font: inherit; }
 span.color-swatch { display: inline-block; width: 1.25rem; height: 1.25rem; padding: 0;
   border-radius: 50%; background: currentColor; border: 2px solid #f5ecd7; flex: none; }
 .add-player { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
-.add-player-toggle { font-weight: 800; font-size: 1.1rem; padding: 0.85rem 1.5rem;
+.add-player-toggle { font-weight: 700; font-size: 1.1rem; padding: 0.85rem 1.5rem;
   border: 2px solid #d2a85e; border-radius: 0.75rem; background: #2a2418; color: #f5ecd7; cursor: pointer; }
 .add-player-toggle::after { content: " \25BE"; }
 .add-player-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -98,7 +111,7 @@ span.color-swatch { display: inline-block; width: 1.25rem; height: 1.25rem; padd
 .eyebrow {
   color: #d2a85e;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -115,10 +128,10 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 
 .status { padding: 14px 16px; margin: 22px 0; }
 .victory-banner { margin: 12px 0; padding: 18px; border: 3px solid currentColor;
-  border-radius: 10px; background: #17140f; font-size: 1.25rem; font-weight: 900; }
+  border-radius: 10px; background: #17140f; font-size: 1.25rem; font-weight: 700; }
 .panel { padding: 18px; min-width: 0; }
 .participants, .events { margin: 0; padding-left: 22px; }
-.participant-active { font-weight: 800; }
+.participant-active { font-weight: 700; }
 
 .debug-toolbar {
   display: flex;
@@ -151,12 +164,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .round-tracker svg { display: block; width: min(100%, 150px); height: auto; margin: 0 auto; }
 .round-segment { fill: #2b251d; stroke: #88775d; stroke-width: 2; }
 .round-current { fill: #d2a85e; stroke: #fff2d6; stroke-width: 3; }
-.round-tracker text { fill: #fff2d6; font-weight: 800; }
+.round-tracker text { fill: #fff2d6; font-weight: 700; }
 /* Qualified by the tracker so it outranks the tracker's text rule below. */
 .round-tracker .limiter-marker { fill: #ff8c7f; }
 .target-detail-badge { display: inline-block; margin-left: 0.4rem; padding: 0.08rem 0.35rem;
   border: 1px solid #a98b58; border-radius: 999px; background: #17140f;
-  color: #f1c781; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+  color: #f1c781; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
 .track-summary { margin: 0; color: #c9bfa9; font-size: 0.78rem; text-align: center; }
 /* A status readout in the same brass as the Oathkeeper line, not in a
    player's colour: purple text under the tracker read as the purple player. */
@@ -233,7 +246,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   border-radius: 6px;
   background: #211d17;
   color: #fff2d6;
-  font-weight: 800;
+  font-weight: 700;
 }
 .board-target-control:hover, .board-target-control:focus-visible {
   outline: 3px solid #fff2d6;
@@ -252,7 +265,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   text-align: center;
   font-family: Georgia, serif;
   font-size: 1.08rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 .site-details {
   display: flex;
@@ -266,7 +279,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   line-height: 1.45;
 }
 .site-tokens, .site-defense { display: flex; align-items: center;
-  gap: 0.15em; font-weight: 800; }
+  gap: 0.15em; font-weight: 700; }
 .site-defense { justify-content: flex-end; }
 .site-token-count { margin-right: 0.35em; }
 .site-defense-none { color: #a99f8c; }
@@ -278,9 +291,9 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   white-space: nowrap; text-overflow: ellipsis; }
 .site-power { cursor: help; }
 .site-requirement { display: flex; align-items: center; flex: 0 0 auto;
-  gap: 0.15em; align-self: flex-end; color: #fff2d6; font-weight: 800; }
+  gap: 0.15em; align-self: flex-end; color: #fff2d6; font-weight: 700; }
 .site-requirement-label { margin-right: 0.2em; }
-.site-forces { margin: 7px 0 0; font-weight: 800; }
+.site-forces { margin: 7px 0 0; font-weight: 700; }
 .force-red { color: #ffaaa5; }
 .force-blue { color: #8ecbff; }
 .force-yellow { color: #ffe08a; }
@@ -300,7 +313,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   border: 1px solid #675a43;
   border-radius: 999px;
   color: #f5ecd7;
-  font-weight: 800;
+  font-weight: 700;
 }
 /* Keeps its line whether or not a pawn stands here, which is what holds the
    card row at the same height across the board. */
@@ -308,7 +321,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   margin-top: 7px; }
 .pawn { display: inline-block; font-size: 0.9rem; }
 
-.player-ref { font-weight: 800; }
+.player-ref { font-weight: 700; }
 .player-purple { color: #d9b8ff; }
 .player-blue { color: #8ecbff; }
 .player-red { color: #ffaaa5; }
@@ -470,7 +483,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 /* The floor under the name and the restriction is a screen size: a card
    scaled down by its pane's font size keeps its box in ex and its text no
    smaller than 11.2px, which is what a name has to be to be read. */
-.card-name { min-width: 0; max-width: 100%; font-weight: 750;
+.card-name { min-width: 0; max-width: 100%; font-weight: 700;
   font-size: max(0.95em, 0.7rem); overflow-wrap: anywhere; hyphens: auto; }
 /* The initials, for the zoomed-out map only; the name is the button's label. */
 .card-name-short { display: none; }
@@ -496,7 +509,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   padding-bottom: calc(max(0.62em, 0.7rem) * 1.35 + 0.3em); }
 .card-face-down { align-items: center; justify-content: center;
   border-style: solid; background: #2a2333; }
-.card-back-letter { font-size: 1.9em; font-weight: 800; color: #cbb7dd; }
+.card-back-letter { font-size: 1.9em; font-weight: 700; color: #cbb7dd; }
 .card-knowable-pip { position: absolute; top: 0.3em; right: 0.3em;
   width: 0.55em; height: 0.55em; border-radius: 50%;
   background: var(--token-secret); }
@@ -530,7 +543,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   background: #3b3123; }
 .walker-many-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .walker-many-option[aria-pressed="true"] { border-color: #fff2d6;
-  background: #3b3123; color: #fff2d6; font-weight: 800; }
+  background: #3b3123; color: #fff2d6; font-weight: 700; }
 .walker-many-option[aria-pressed="true"]::before { content: "✓ "; }
 .decision-cards, .board-cards { gap: var(--card-gap); }
 .site-cards { display: flex; flex: 0 0 auto; flex-wrap: wrap;
@@ -541,18 +554,18 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .pile-display > .pile-card { display: inline-flex; box-sizing: border-box;
   flex: 0 0 1.65rem; width: 1.65rem; min-width: 1.65rem; height: 2.3rem;
   min-height: 2.3rem; align-items: center; justify-content: center;
-  border: 2px solid #d2a85e; border-radius: 4px; font-weight: 800;
+  border: 2px solid #d2a85e; border-radius: 4px; font-weight: 700;
   line-height: 1; vertical-align: middle; }
 .pile-display > .pile-back { background-color: #493751; color: #fff; }
 .pile-display > .pile-empty { background-color: #17140f; color: transparent; }
 .player-boards { margin-top: 18px; }
 .shared-bank { margin-top: 10px; padding-top: 16px; border-top: 1px solid #675a43; }
-.oathkeeper-status { margin: 0 0 6px; color: #f1c781; font-weight: 800; }
+.oathkeeper-status { margin: 0 0 6px; color: #f1c781; font-weight: 700; }
 .favor-banks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px; margin-top: 12px; }
 .favor-bank { display: flex; align-items: center; justify-content: center;
   gap: 0.3em; padding: 7px; border: 1px solid #675a43; border-radius: 6px;
-  text-align: center; font-weight: 800; }
+  text-align: center; font-weight: 700; }
 .walker-choice .token-glyph { margin-right: 0.3em; vertical-align: -0.15em; }
 /* Which side a battle plan is for, as a chip beside the offer. */
 .option-badge {
@@ -577,7 +590,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   opacity: 0.85; }
 .modifier-ordinal { display: inline-grid; width: 1.8rem; height: 1.8rem;
   place-items: center; border-radius: 50%; background: #d2a85e; color: #17140f;
-  font-weight: 800; }
+  font-weight: 700; }
 .modifier-earlier, .modifier-later, .modifier-confirm, .modifier-back,
 .modifier-cancel { min-height: 44px; }
 .available-action-group { margin: 12px 0; padding: 10px; border: 1px solid #40382c;
@@ -619,7 +632,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-header { display: flex; align-items: center; justify-content: space-between;
   flex: 0 0 auto; gap: 8px; min-height: 39px; padding: 4px 10px;
   border-bottom: 1px solid #443c30; background: #26231d; }
-.pane-heading { margin: 0; color: #d5bd8f; font-size: .8rem; font-weight: 750;
+.pane-heading { margin: 0; color: #d5bd8f; font-size: .8rem; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase; }
 .pane-content { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 12px;
   overflow: auto; overscroll-behavior: contain; scrollbar-width: thin;
@@ -656,7 +669,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .player-board h3 { font-size: 1rem; margin: 0 0 4px; }
 .player-board p { margin: 5px 0; }
 .player-identity { display: flex; align-items: baseline; flex-wrap: wrap;
-  gap: 0 0.45em; font-size: 0.95rem; font-weight: 750; }
+  gap: 0 0.45em; font-size: 0.95rem; font-weight: 700; }
 /* The separator is drawn rather than written so no part of the line has to
    carry a dot that a screen reader would read out. */
 .player-identity > * + *::before { content: "·"; margin-right: 0.45em;
@@ -782,10 +795,16 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 /* A name shows whole where its longest word fits one line of floor-sized
    text, which `GameTableShell.nameFit` turns into the map's one `map-fit-N`
    class; every other card shows its initials, larger, since two or three
-   letters have the room. */
-.map-compact .card-name { display: none; }
+   letters have the room. The estimate is made for the narrower card of a
+   site holding forces, the common case once bandits are placed, and the
+   name spans the face to its border, so a word the estimate admits has
+   the room a wide letter needs. Initials are the compact face's answer to
+   a word that does not fit, so the name never breaks inside a word or
+   hyphenates here; the rare word past the estimate clips at the border. */
+.map-compact .card-name { display: none; margin: 0 -0.25em; max-width: none;
+  overflow-wrap: normal; hyphens: manual; overflow: hidden; }
 .map-compact .card-name-short { display: block; font-size: 1.5em;
-  font-weight: 800; letter-spacing: 0.02em; }
+  font-weight: 700; letter-spacing: 0.02em; }
 .map-fit-6 .name-fits-6 .card-name, .map-fit-8 .name-fits-8 .card-name,
 .map-fit-10 .name-fits-10 .card-name, .map-fit-12 .name-fits-12 .card-name {
   display: block; }
@@ -807,7 +826,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    which the Fit scale is computed from. */
 .map-content .region-label { margin: 0 0 6px; height: 2.4rem;
   line-height: 2.4rem; overflow: hidden; white-space: nowrap; color: #fff2d6;
-  font-family: Georgia, serif; font-weight: 800; letter-spacing: 0.01em;
+  font-family: Georgia, serif; font-weight: 700; letter-spacing: 0.01em;
   text-transform: none;
   font-size: clamp(1.6rem, calc(12.5px / var(--map-scale, 1)), 2.2rem); }
 .map-dragging, .map-dragging * { cursor: grabbing !important; user-select: none !important; }
@@ -861,7 +880,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    and the overlay share the size; the overlay adds room, not scale. */
 .game-log { list-style: none; margin: 0; padding: 0; font-size: 13px;
   line-height: 1.45; color: #f5ecd7; }
-.game-log .log-headline { font-weight: 800; margin-top: 6px; }
+.game-log .log-headline { font-weight: 700; margin-top: 6px; }
 .game-log .log-headline:first-child { margin-top: 0; }
 .game-log .log-round, .game-log .log-victory { color: #9ed59e; }
 /* A phase sits under its turn: lighter, in from the edge, and smaller where
@@ -888,7 +907,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   position: sticky; top: -12px; z-index: 1; background: #211f1b; }
 /* Where the reader left off: a Brass Label rule across the list. */
 .game-log .log-divider { display: flex; align-items: center; gap: 8px;
-  margin: 6px 0; color: #d5bd8f; font-weight: 750; letter-spacing: .06em;
+  margin: 6px 0; color: #d5bd8f; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; }
 .game-log .log-divider::before, .game-log .log-divider::after {
   content: ""; flex: 1 1 0; border-top: 1px solid #7c694b; }
@@ -958,7 +977,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .card-overlay-details { flex: 1 1 22em; min-width: 0; max-width: 34em;
   font-size: 0.82em; }
 .card-overlay-name { margin: 0 0 0.6em; font-family: Georgia, serif;
-  font-size: 1.5em; font-weight: 800; color: #fff2d6; }
+  font-size: 1.5em; font-weight: 700; color: #fff2d6; }
 .card-overlay-properties { display: grid;
   grid-template-columns: auto minmax(0, 1fr); gap: 0.2em 0.9em; margin: 0 0 1em; }
 .card-overlay-property { display: contents; }
@@ -987,7 +1006,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    pane. */
 .card-list { margin: 8px 0; }
 .card-list-title { margin: 0 0 6px; color: #d5bd8f; font-size: max(11px, .78em);
-  font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+  font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .card-list-grid { display: grid; gap: var(--card-gap);
   grid-template-columns: repeat(auto-fill, minmax(var(--card-w), 1fr));
   margin: 0; padding: 0; list-style: none; overflow-y: auto;
