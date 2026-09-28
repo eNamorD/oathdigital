@@ -7,7 +7,9 @@
 22.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
 27.0 delta 1 | Gained 1 favor from the Discord bank
+28.0 phase 0 | Act
 33.0 action 1 | [card:93|Gambling Hall]: [player:p2|P2] rolled [dice:defense two-shields two-shields two-shields two-shields|two shields, two shields, two shields, two shields], Total: 8
 35.0 decision 1 | Chose the Hearth bank
 37.0 trigger 1 | [card:93|Gambling Hall]: [player:p2|P2] gained [amount:4 favor] from the Hearth bank.

@@ -41,10 +41,14 @@ class GameLogStartLineSuite extends munit.FunSuite:
       assertEquals(numbers.size, 2, line)
       assert(numbers(0) < numbers(1), line) }
 
-  test("End Wake and Begin Rest post nothing"):
-    val all = texts(format(round, None))
-    assert(!all.exists(line => line.contains("Wake") || line.contains("Rest")),
-      all)
+  test("End Wake and Begin Rest post only their phase headlines"):
+    val entries = format(round, None)
+    val lines = texts(entries.filter(_.depth == 1))
+      .filterNot(_ == "Nothing happened in Wake")
+    assert(!lines.exists(line => line.contains("Wake") || line.contains("Rest")),
+      lines)
+    assert(entries.exists(entry => entry.kind == LogKind.Phase &&
+      text(entry) == "Rest"), texts(entries))
 
   test("an Oathkeeper change names the new holder"):
     val script = oathkeeper

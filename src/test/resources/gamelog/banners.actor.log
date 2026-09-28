@@ -7,7 +7,9 @@
 22.0 decision 1 | [player:p1|P1] kept a Denizen
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
 27.0 delta 1 | Gained 2 favor from the Discord bank
+28.0 phase 0 | Act
 30.0 action 1 | Started Challenge[cost:1 Supply]
 37.0 action 1 | Took People's Favor from the bank with 2 favor
 43.0 action 1 | Placed 1 favor on People's Favor

@@ -7,6 +7,9 @@
 22.0 decision 1 | [player:p1|P1] kept a Denizen
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
+28.0 action 1 | Nothing happened in Wake
+28.1 phase 0 | Act
 30.0 action 1 | Playing Facedown Adviser
 32.0 action 1 | Played [card:133|Family Heirloom] as an adviser
 37.0 trigger 1 | [card:133|Family Heirloom]: [player:p2|P2] drew [card:R09|Dowsing Sticks] and put it on the bottom of the relic deck.

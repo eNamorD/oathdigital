@@ -218,6 +218,20 @@ object LogScripts:
     start(besideSource(act), ActionRef.Trade, DecisionOptionRef.Button("secret"))
     Script("trade", service, actor)
 
+  /** Take Wealth, then on into Act: the End Wake is sent only while Wake
+    * has not ended by itself. */
+  def tookWealthThenActed(using munit.Location): Script =
+    val (service, _, driver) = journaled("took-wealth-then-acted")
+    val woken = Situation.wake(driver)
+    val actor = active(woken)
+    val arranged = woken.after(Step.Arrange(Vector(Move(Piece.Favor(1),
+      PositionedLocation(Location.FavorBank(Suit.all.head)),
+      PositionedLocation(Location.Site(pawn(woken, actor)))))))
+    val took = start(arranged, ActionRef.TakeWealth, DecisionOptionRef.Button("favor"))
+    if took.ready.game.current.turn.phase == Phase.Wake then
+      took.after(GameCommand.EndWake(actor))
+    Script("took-wealth-then-acted", service, actor)
+
   /** One favor arranged onto the actor's site, then taken in Wake. */
   def takeWealth(using munit.Location): Script =
     val (service, _, driver) = journaled("take-wealth")

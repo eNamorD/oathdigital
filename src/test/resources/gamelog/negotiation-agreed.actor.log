@@ -7,5 +7,8 @@
 22.0 decision 1 | [player:p1|P1] kept a Denizen
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
+27.0 action 1 | Nothing happened in Wake
+27.1 phase 0 | Act
 35.0 action 1 | Negotiated with [player:p3|P3]
 35.1 delta 1 | [player:p2|P2] gave 1 favor to [player:p3|P3]

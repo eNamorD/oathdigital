@@ -107,11 +107,15 @@ private[frontend] final class GameLogPane(content: dom.html.Element,
     val node = GameLogPane.item(entry, colors)
     if entry.depth == 0 then headline(node, entry.kind) else node
 
-  /** In headings mode the headline's spans move into an `h3`, or an `h4` for
-    * a turn. */
+  /** In headings mode the headline's spans move into an `h3`, an `h4` for
+    * a turn, or an `h5` for a phase. */
   private def headline(node: dom.Element, kind: String): dom.Element =
     if headings then
-      val heading = element(if kind == "turn" then "h4" else "h3", "log-heading")
+      val level = kind match
+        case "turn" => "h4"
+        case "phase" => "h5"
+        case _ => "h3"
+      val heading = element(level, "log-heading")
       while node.firstChild != null do heading.appendChild(node.firstChild)
       node.appendChild(heading)
     node

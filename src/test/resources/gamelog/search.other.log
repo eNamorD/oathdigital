@@ -7,6 +7,9 @@
 22.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
+27.0 action 1 | Nothing happened in Wake
+27.1 phase 0 | Act
 29.0 action 1 | Started Search[cost:2 Supply]
 32.0 action 1 | Drew 3 Denizens from the World Deck and kept a Denizen
 33.0 delta 1 | Discarded 2 Denizens to the Provinces discard

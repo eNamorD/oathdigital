@@ -38,10 +38,26 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
     (0 until journal.size).foldLeft(
         (Option.empty[Run], Vector.empty[LogEntry])) {
       case ((run, entries), at) =>
-        val (posted, next) = eventLines(journal, run, at, viewer)
+        val (lines, next) = eventLines(journal, run, at, viewer)
+        val posted = quietWake(entries.lastOption, lines)
         (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
           LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
             entry.spans) })
+    }._2
+
+  /** "Nothing happened in Wake" before an Act headline that follows its
+    * Wake headline directly. It reads only entries already posted, so a
+    * longer journal never takes it back. */
+  private def quietWake(last: Option[LogEntry], posted: Vector[Posted])
+      : Vector[Posted] =
+    val previous = last.map(entry => (entry.kind, entry.depth, entry.spans))
+    posted.foldLeft((previous, Vector.empty[Posted])) {
+      case ((before, done), entry) =>
+        val quiet = entry == phaseHeadline(Phase.Act) &&
+          before.contains((LogKind.Phase, 0, phaseWords(Phase.Wake)))
+        val lines = if quiet then Vector(Posted.line(LogKind.Action,
+          Vector(Text("Nothing happened in Wake"))), entry) else Vector(entry)
+        (Some((entry.kind, entry.depth, entry.spans)), done ++ lines)
     }._2
 
   private def eventLines(journal: LogJournal, run: Option[Run], at: Int,
@@ -50,8 +66,9 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
       case OathEvent.GameStarted(_, _) =>
         (Vector(Posted.headline(LogKind.Round, Vector(Text("Setup")))), run)
       case OathEvent.RoundEnded(_, Some(next)) =>
-        (roundHeadline(next) +: journal.readyAfter(at).toVector.map(ready =>
-          turnHeadline(ready.game.current.turn.activePlayer)), run)
+        (roundHeadline(next) +: journal.readyAfter(at).toVector.flatMap(ready =>
+          Vector(turnHeadline(ready.game.current.turn.activePlayer),
+            phaseHeadline(Phase.Wake))), run)
       // After the eighth round no round begins; the victory headline follows.
       case OathEvent.RoundEnded(_, None) => (Vector.empty, run)
       case OathEvent.UsurperVictory(player) =>
@@ -94,23 +111,36 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
           actions.lines(journal, begun, at, viewer) ++
           details.lines(journal, begun, at, viewer) ++
           notes.own(journal, begun, at, starts.opens(begun.procedure), viewer) ++
-          turnHeadlines(journal, at)
+          headlines(journal, at)
         val next = journal.event(at) match
           case _: WalkerCompleted => None
           case _ => Some(begun)
         (posted, next)
 
-  /** A turn begins at `BeginTurn(player, Wake)`. Setup's closing one also
-    * opens Round 1; a `BeginTurn` into the round's end posts nothing, since
-    * `gameplay.round-ended` posts the next round and its first turn. */
-  private def turnHeadlines(journal: LogJournal, at: Int): Vector[Posted] =
+  /** A turn begins at `BeginTurn(player, Wake)`, with its Wake headline.
+    * Setup's closing one also opens Round 1; a `BeginTurn` into the round's
+    * end posts nothing, since `gameplay.round-ended` posts the next round and
+    * its first turn. Act and Rest begin at the `EnterPhase` into them. */
+  private def headlines(journal: LogJournal, at: Int): Vector[Posted] =
     journal.ops(at).flatMap {
       case OpStep(BeginTurn(player, Phase.Wake), before, _) =>
         if before.game.current.turn.phase == Phase.Setup then
-          Vector(roundHeadline(1), turnHeadline(player))
-        else Vector(turnHeadline(player))
+          Vector(roundHeadline(1), turnHeadline(player),
+            phaseHeadline(Phase.Wake))
+        else Vector(turnHeadline(player), phaseHeadline(Phase.Wake))
+      case OpStep(EnterPhase(phase @ (Phase.Act | Phase.Rest)), before, _)
+          if before.game.current.turn.phase != phase =>
+        Vector(phaseHeadline(phase))
       case _ => Vector.empty
     }
+
+  private def phaseWords(phase: Phase): Vector[LogSpan] = phase match
+    case Phase.Wake => Vector(Text("Wake"))
+    case Phase.Act => Vector(Text("Act"))
+    case _ => Vector(Text("Rest"))
+
+  private def phaseHeadline(phase: Phase): Posted =
+    Posted.headline(LogKind.Phase, phaseWords(phase))
 
   private def roundHeadline(round: Int): Posted =
     Posted.headline(LogKind.Round, Vector(Text(s"Round $round")))

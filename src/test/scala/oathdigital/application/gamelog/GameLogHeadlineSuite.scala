@@ -11,11 +11,11 @@ class GameLogHeadlineSuite extends munit.FunSuite:
   test("setup opens the log and hands the first turn to Round 1"):
     val script = woken
     val entries = format(script, Some(script.actor))
-    assertEquals(headlines(entries),
-      Vector("Setup", "Round 1", s"${name(script.actor)}'s turn"))
+    assertEquals(headlines(entries).take(4),
+      Vector("Setup", "Round 1", s"${name(script.actor)}'s turn", "Wake"))
     // Setup's own lines sit between the Setup and Round 1 headlines.
-    assertEquals(entries.filter(_.depth == 0).map(_.kind).take(3),
-      Vector(LogKind.Round, LogKind.Round, LogKind.Turn))
+    assertEquals(entries.filter(_.depth == 0).map(_.kind).take(4),
+      Vector(LogKind.Round, LogKind.Round, LogKind.Turn, LogKind.Phase))
     assertEquals(entries.head.sequence, 0L)
 
   test("a whole round posts one turn headline per seat and opens Round 2"):
@@ -23,8 +23,41 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val all = headlines(format(script, Some(script.actor)))
     assertEquals(all.take(2), Vector("Setup", "Round 1"))
     assertEquals(all.count(_.endsWith("'s turn")), script.players.size + 1)
-    assertEquals(all.takeRight(2),
-      Vector("Round 2", s"${name(script.actor)}'s turn"))
+    assertEquals(all.takeRight(3),
+      Vector("Round 2", s"${name(script.actor)}'s turn", "Wake"))
+
+  test("each turn posts its Wake, Act and Rest headlines in order"):
+    val script = round
+    val entries = format(script, Some(script.actor))
+    val all = headlines(entries)
+    val turns = all.indices.filter(all(_).endsWith("'s turn"))
+    // Every turn but Round 2's first is played through its Rest.
+    turns.init.foreach { at =>
+      assertEquals(all.slice(at + 1, at + 4), Vector("Wake", "Act", "Rest"),
+        all.toString)
+    }
+    assertEquals(all.drop(turns.last + 1), Vector("Wake"))
+    val phases = entries.filter(entry => entry.depth == 0 &&
+      Set("Wake", "Act", "Rest")(text(entry)))
+    assert(phases.forall(_.kind == LogKind.Phase), phases.toString)
+
+  test("a Wake that did nothing says so before the Act headline"):
+    val script = round
+    val all = texts(format(script, Some(script.actor)))
+    val acts = all.indices.filter(all(_) == "Act")
+    assert(acts.nonEmpty, all)
+    acts.foreach { at =>
+      assertEquals(all.slice(at - 2, at),
+        Vector("Wake", "Nothing happened in Wake"), all.toString)
+    }
+
+  test("a Wake that did something posts no Nothing line"):
+    val script = tookWealthThenActed
+    val all = texts(format(script, Some(script.actor)))
+    val wake = all.indexOf("Wake")
+    assert(wake >= 0 && all.indexOf("Act") > wake + 1, all)
+    assert(all(wake + 1).startsWith("Took 1 favor from "), all)
+    assert(!all.contains("Nothing happened in Wake"), all)
 
   test("the turn headline names the player with a player span"):
     val script = woken

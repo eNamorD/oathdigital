@@ -7,6 +7,8 @@
 22.0 decision 1 | [player:p1|P1] kept a Denizen
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
 27.0 delta 1 | Gained 2 secrets
+28.0 phase 0 | Act
 32.0 action 1 | [card:160|Oracle]: [player:p2|P2] drew [card:vision:vision-of-sanctuary|Vision of Sanctuary] from the world deck.
 35.0 action 1 | Played [card:vision:vision-of-sanctuary|Vision of Sanctuary] as an adviser

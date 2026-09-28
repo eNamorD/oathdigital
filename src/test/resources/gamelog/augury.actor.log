@@ -7,6 +7,9 @@
 22.0 decision 1 | [player:p1|P1] kept a Denizen
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
+28.0 action 1 | Nothing happened in Wake
+28.1 phase 0 | Act
 30.0 action 1 | Started Search with [card:56|Augury][cost:2 Supply]
 33.0 action 1 | Drew [card:180|Fae Merchant], [card:181|Second Chance], [card:182|Pied Piper] and [card:183|Mushrooms] from the World Deck and kept [card:180|Fae Merchant]
 34.0 delta 1 | Discarded [card:181|Second Chance], [card:182|Pied Piper] and [card:183|Mushrooms] to the Provinces discard

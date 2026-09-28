@@ -14,6 +14,8 @@ final case class LogEntry(sequence: Long, ordinal: Int, kind: LogKind,
 enum LogKind(val key: String):
   case Round extends LogKind("round")
   case Turn extends LogKind("turn")
+  /** Wake, Act or Rest, under its turn's headline. */
+  case Phase extends LogKind("phase")
   case Action extends LogKind("action")
   case Decision extends LogKind("decision")
   case Roll extends LogKind("roll")

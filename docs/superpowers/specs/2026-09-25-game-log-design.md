@@ -33,7 +33,7 @@ contract a builder can implement without inventing anything.
 | # | Decision | Choice |
 |---|----------|--------|
 | 1 | Reading direction | Chronological, newest at bottom, sticks to bottom while already there. |
-| 2 | Granularity | Headlines for rounds, turns, and victories only. Everything else is a flat line under the current turn. |
+| 2 | Granularity | Headlines for rounds, turns, phases (Wake, Act, Rest) and victories only. Everything else is a flat line under the current phase. |
 | 3 | Room | The 16% pane row stays. Clicking the pane heading opens a full-height overlay with the whole log. |
 | 4 | Last-looked marker | Client side, `localStorage`, keyed by game and seat. Not on the server. |
 | 5 | Hidden information | Resolved on the server per viewer, per card, from the game state on each side of the operation. Card backs are public. |
@@ -52,7 +52,7 @@ contract a builder can implement without inventing anything.
 ## Vocabulary
 
 - **Entry**: one line of the log, at one depth, with a stable `(sequence, ordinal)` key.
-- **Headline**: an entry at depth 0. Round, turn, and victory entries are headlines.
+- **Headline**: an entry at depth 0. Round, turn, phase, and victory entries are headlines.
 - **Line**: an entry at depth 1. Every entry that is not a headline is a line, in journal order under the current turn.
 - **Start line**: the line that opens an action that can take modifiers.
 - **Span**: one piece of an entry's text. Either plain text or a typed reference.
@@ -189,9 +189,10 @@ client only ever appends.
 | Headline | Signal | Entry |
 |----------|--------|-------|
 | Setup | `setup.game-started` | "Setup" |
-| Round 1 | The Setup procedure's closing `BeginTurn(player, Wake)`, recognised by the phase before it being `Setup` | "Round 1", then that player's turn headline |
-| Round n | `gameplay.round-ended` with `nextRound = Some(n)` | "Round n", then the turn headline for the round's first player (the active player after the event) |
-| Turn | Any other `BeginTurn(player, Wake)` | "Red's turn" |
+| Round 1 | The Setup procedure's closing `BeginTurn(player, Wake)`, recognised by the phase before it being `Setup` | "Round 1", then that player's turn headline and "Wake" |
+| Round n | `gameplay.round-ended` with `nextRound = Some(n)` | "Round n", then the turn headline for the round's first player (the active player after the event) and "Wake" |
+| Turn | Any other `BeginTurn(player, Wake)` | "Red's turn", then "Wake" |
+| Phase | `EnterPhase(Act)` or `EnterPhase(Rest)` from another phase | "Act" or "Rest" |
 | Victory | `gameplay.usurper-victory`, `gameplay.vision-victory`, `gameplay.war-exhaustion-resolved` | See below |
 
 Finish Rest records `BeginTurn(firstPlayer, RoundEnd)` before the round-end
@@ -202,6 +203,9 @@ event, and `gameplay.round-ended` then moves that same player into Wake
 posts both headlines, so the round headline always precedes the turn it
 opens. After round eight, `nextRound` is `None`: no round or turn headline,
 and the victory headline follows.
+
+A Wake that posted no line reads "Nothing happened in Wake" before the Act
+headline. The rule reads only the entry posted last, so it is prefix-stable.
 
 Victory headlines:
 
@@ -518,7 +522,8 @@ for the public formatting plus per-seat overlays; this design does not add it.
 The Log pane renders the tail of the log at the pane floor: 11px Ink, no
 monospace. Lines indent by one card gutter and use Ink Dim. Round and Victory
 headlines use the `replay` green; Turn headlines carry the player's seat
-color on the name span. A `cost` span is set apart from the sentence in a
+color on the name span. Phase headlines sit under their turn, smaller, in
+Brass and a few pixels in, and do not stick. A `cost` span is set apart from the sentence in a
 lighter treatment, with no separator character.
 
 The current turn headline sticks to the pane's top edge while its lines
@@ -561,7 +566,7 @@ The pane heading gets `role="button"` and `aria-expanded`.
 ### Accessibility
 
 The list is `role="log"` with `aria-live="polite"`. Headlines inside the
-overlay are headings (`h3` for rounds, `h4` for turns) so a screen reader can
+overlay are headings (`h3` for rounds, `h4` for turns, `h5` for phases) so a screen reader can
 jump between them; in the pane they are plain list items so the table's
 heading outline stays short. Every line's `title` is its sequence and ordinal.
 

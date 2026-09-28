@@ -7,6 +7,9 @@
 22.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
 25.0 round 0 | Round 1
 25.1 turn 0 | [player:p2|P2]'s turn
+25.2 phase 0 | Wake
+27.0 action 1 | Nothing happened in Wake
+27.1 phase 0 | Act
 29.0 action 1 | Started Campaign: Conquest against the bandits[cost:2 Supply]
 33.0 decision 1 | Targets: [site:site:ancient-city|Ancient City]
 33.1 delta 1 | Attack Pool: 3, Defense Pool: 2
@@ -29,11 +32,23 @@
 63.0 delta 1 | Discarded 2 Denizens to the Provinces discard
 66.0 action 1 | Played [card:183|Mushrooms] to [site:site:ancient-city|Ancient City]
 66.1 delta 1 | Gained 1 favor from the Beast bank
+68.0 phase 0 | Rest
 70.0 delta 1 | Increased supply from 1 to 7
 71.0 turn 0 | [player:p3|P3]'s turn
+71.1 phase 0 | Wake
+73.0 action 1 | Nothing happened in Wake
+73.1 phase 0 | Act
+75.0 phase 0 | Rest
 77.0 turn 0 | [player:p1|P1]'s turn
+77.1 phase 0 | Wake
+79.0 action 1 | Nothing happened in Wake
+79.1 phase 0 | Act
+81.0 phase 0 | Rest
 85.0 round 0 | Round 2
 85.1 turn 0 | [player:p2|P2]'s turn
+85.2 phase 0 | Wake
+86.0 action 1 | Nothing happened in Wake
+86.1 phase 0 | Act
 88.0 action 1 | Started Search[cost:2 Supply]
 91.0 action 1 | Drew 3 Denizens from the World Deck and kept a Denizen
 92.0 delta 1 | Discarded 2 Denizens to the Provinces discard

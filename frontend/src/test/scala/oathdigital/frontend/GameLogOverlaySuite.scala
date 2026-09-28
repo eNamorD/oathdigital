@@ -72,6 +72,14 @@ class GameLogOverlaySuite extends munit.FunSuite:
         overlay(browser).querySelector(".log-overlay-content"))
     }
 
+  test("a phase headline is a heading under its turn's"):
+    withShell() { (browser, shell) =>
+      shell.showLog("g", "red", entries.take(2) :+ entry(4, "phase", 0, "Act"),
+        Map.empty)
+      click(heading(browser))
+      assertEquals(overlay(browser).querySelector("h5").textContent, "Act")
+    }
+
   test("Enter and Space on the heading open it"):
     Vector("Enter", " ").foreach { key =>
       withShell() { (browser, _) =>

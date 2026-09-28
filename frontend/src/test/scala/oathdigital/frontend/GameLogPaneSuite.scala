@@ -35,6 +35,15 @@ class GameLogPaneSuite extends munit.FunSuite:
     new GameLogPane(content).show("g|red", Vector.empty, Map.empty)
     assertEquals(items(content).map(_.textContent), Vector("Setup"))
 
+  test("a phase headline carries its kind and is not a heading in the pane"):
+    val content = box(0, 0, 0)
+    new GameLogPane(content).show("g|red", Vector(setup, turn,
+      entry(4, "phase", 0, LogSpanWire("text", "Wake"))), Map.empty)
+    val shown = items(content)
+    assertEquals(shown(2).getAttribute("class"),
+      "log-entry log-headline log-phase")
+    assertEquals(shown(2).querySelector("h5"), null)
+
   test("headlines and lines carry their depth and kind; a player takes the seat colour"):
     val content = box(0, 0, 0)
     new GameLogPane(content).show("g|red", Vector(setup, turn, travel),
