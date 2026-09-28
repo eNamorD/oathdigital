@@ -74,7 +74,10 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val request = MajorActionPreviewRequest(sequence, "travel")
     assert(gateway.preview("preview", TrustedSeat("preview", actor.value), request).isRight)
     val other = ready.game.current.players.find(_.player != actor).get.player.value
-    assert(gateway.preview("preview", TrustedSeat("preview", other), request).isLeft)
+    assertEquals(gateway.preview("preview", TrustedSeat("preview", other), request)
+      .left.toOption, Some(TrustedSeatFailure.Application(GameApplicationError.CommandRejected(
+        oathdigital.model.OathViolation.InvalidModifierInvocation(
+          "major-action preview is unavailable for this actor or phase")))))
     assertEquals(gateway.preview("other", TrustedSeat("preview", actor.value), request),
       Left(TrustedSeatFailure.Forbidden))
     assertEquals(service.load("preview").toOption.flatten.get.nextSequence, sequence)

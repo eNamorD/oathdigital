@@ -63,8 +63,9 @@ class GameLogActionLineSuite extends munit.FunSuite:
     assert(mine.spans.exists(_.isInstanceOf[LogSpan.Card]), mine.spans)
     val theirs = format(script, Some(other(script)))
       .find(entry => text(entry).startsWith("Recovered ")).get
-    assert(!theirs.spans.exists(_.isInstanceOf[LogSpan.Card]) ||
-      theirs.spans == mine.spans, theirs.spans)
+    // The other seat reads that a relic was recovered, never which.
+    assertEquals(theirs.spans.filterNot(_.isInstanceOf[LogSpan.Site]), Vector[LogSpan](
+      LogSpan.Text("Recovered "), LogSpan.Text("a Relic"), LogSpan.Text(" at ")))
 
   test("Forge: the payment, then the relic, named to the forger"):
     val script = forge

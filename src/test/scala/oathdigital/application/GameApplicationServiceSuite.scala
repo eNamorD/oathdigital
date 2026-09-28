@@ -1203,10 +1203,11 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
     val ended = ParkedServiceFixture.endingWake(service, "game-search-tamper", setup, active)
-    assert(service.handle("game-search-tamper", ended.nextSequence,
+    assertEquals(service.handle("game-search-tamper", ended.nextSequence,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(active,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
-      .left.toOption.get.isInstanceOf[GameApplicationError.CommandRejected])
+      .left.toOption, Some(GameApplicationError.CommandRejected(OathViolation.SearchDrawMismatch(
+        "prepared draw does not match authoritative source order"))))
     assertEquals(repository.load("game-search-tamper").toOption.flatten.get
       .nextSequence, ended.nextSequence)
 

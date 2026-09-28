@@ -7,7 +7,6 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
-import oathdigital.protocol.projection.DecisionQueryProjection
 
 class PhasePowerProjectorSuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
@@ -113,8 +112,11 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       treatyService, treatyRepository, "project-league-treaty")
     val treatyOwner = projector.project("project-league-treaty",
       LoadedGame(treatyPark.state, treatyPark.nextSequence), ruler)
-    assert(treatyOwner.walkerDecision.flatMap(_.query)
-      .exists(_.isInstanceOf[DecisionQueryProjection.ChooseOne]))
+    // The ruler chooses a favor bank to return favor to, or declines.
+    assertEquals(treatyOwner.walkerDecision.flatMap(_.query)
+      .map(_.offeredOptions.map(option => (option.kind, option.id))),
+      Some(Vector("discord", "arcane", "order", "hearth", "beast", "nomad")
+        .map("favor-bank" -> _) :+ ("button" -> "decline")))
     val treatyWaiter = projector.project("project-league-treaty",
       LoadedGame(treatyPark.state, treatyPark.nextSequence), active)
     assertEquals(treatyWaiter.walkerDecision, None)
@@ -126,8 +128,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       tongueService, tongueRepository, "project-silver-tongue")
     val tongueOwner = projector.project("project-silver-tongue",
       LoadedGame(tonguePark.state, tonguePark.nextSequence), tongueActor)
-    assert(tongueOwner.walkerDecision.flatMap(_.query)
-      .exists(_.isInstanceOf[DecisionQueryProjection.ChooseOne]))
+    assertEquals(tongueOwner.walkerDecision.flatMap(_.query)
+      .map(_.offeredOptions.map(option => (option.kind, option.id))),
+      Some(Vector("favor-bank" -> "discord", "favor-bank" -> "order")))
     assertEquals(tongueOwner.legalControls, Vector("resolveWalkerDecision"))
 
   test("a site's phase power is projected under its power's name and printed text"):
