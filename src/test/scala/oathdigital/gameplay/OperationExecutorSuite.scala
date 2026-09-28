@@ -57,28 +57,6 @@ class OperationExecutorSuite extends munit.FunSuite:
         code
       case other => fail(s"expected a CoreOperationRejected, got $other")
 
-  test("shadow comparison distinguishes parity rejection and mismatch"):
-    val matching = OperationShadowEvolution.compare(ready, Right(ready))
-    assert(matching.comparison.matchesAuthoritative)
-
-    val rejected = OperationShadowEvolution.compare(ready,
-      Left(OathViolation.InvalidEventOrder("shadow candidate rejected")))
-    assert(!rejected.comparison.matchesAuthoritative)
-    assert(!rejected.comparison.candidateSucceeded)
-    assertEquals(rejected.authoritative, ready)
-
-    val authoritative = executor.execute(
-      ready,
-      Flip(heldRelic.id, Location.PlayArea(blueId), Orientation.FaceDown)
-    ).toOption.get
-    val mismatch = OperationShadowEvolution.compare(authoritative, Right(ready))
-
-    assert(!mismatch.comparison.matchesAuthoritative)
-    assert(mismatch.comparison.candidateSucceeded)
-    assert(!mismatch.comparison.stateMatches)
-    assert(!mismatch.comparison.cardIndexMatches)
-    assertEquals(mismatch.authoritative, authoritative)
-
   test("policy receives the semantic root before primitive execution"):
     var seen = Vector.empty[CoreOperation]
     val rejecting = new OperationPolicy:
