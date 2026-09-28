@@ -1,6 +1,8 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.actions.RuleNotes
+import oathdigital.gameplay.powers.action.GamblingHall
+import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -25,6 +27,13 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
         case Some(_) => ()
         case None => fail(s"$where has no sentence")
     } }
+
+  // Note keys are journaled in PowerNoted events and the log looks their
+  // wording up by key, so a renamed key orphans the notes of saved games.
+  test("Gambling Hall and Vow of Peace keep their persisted note keys"):
+    val keys = declared.toMap.view.mapValues(_.map(_.name)).toMap
+    assertEquals(keys.get(GamblingHall.id), Some(Vector(NoteKey.Used, "gained")))
+    assertEquals(keys.get(VowOfPeaceContribution.id), Some(Vector("no-sacrifice")))
 
   test("a used line's variants are named used.{variant}"):
     assert(NoteKey.isUse("used"))
