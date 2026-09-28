@@ -35,10 +35,11 @@ lazy val root = (project in file("."))
         // The stylesheet's one font, with the license the OFL asks to travel
         // with it.
         baseDirectory.value / "frontend" / "fonts" /
-          "ibm-plex-sans-latin-wght-normal.woff2" ->
-          (output / "fonts" / "ibm-plex-sans-latin-wght-normal.woff2"),
-        baseDirectory.value / "frontend" / "fonts" / "LICENSE-IBM-Plex-Sans.txt" ->
-          (output / "fonts" / "LICENSE-IBM-Plex-Sans.txt")
+          "atkinson-hyperlegible-next-latin-wght-normal.woff2" ->
+          (output / "fonts" / "atkinson-hyperlegible-next-latin-wght-normal.woff2"),
+        baseDirectory.value / "frontend" / "fonts" /
+          "LICENSE-Atkinson-Hyperlegible-Next.txt" ->
+          (output / "fonts" / "LICENSE-Atkinson-Hyperlegible-Next.txt")
       )
       IO.copy(files)
       files.map(_._2)

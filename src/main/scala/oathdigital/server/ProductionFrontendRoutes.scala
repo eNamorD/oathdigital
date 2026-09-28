@@ -17,7 +17,7 @@ object ProductionFrontendRoutes:
 
   /** The one font the stylesheet loads, served by name so the assets prefix
     * stays a fixed list rather than a directory. */
-  private val PlexSans = "ibm-plex-sans-latin-wght-normal.woff2"
+  private val Atkinson = "atkinson-hyperlegible-next-latin-wght-normal.woff2"
 
   val gamePage: Route =
     respondWithHeader(IndexCacheControl):
@@ -35,5 +35,5 @@ object ProductionFrontendRoutes:
             path("styles.css") {
               getFromResource("oathdigital/frontend/styles.css")
             } ~
-            path("fonts" / PlexSans):
-              getFromResource(s"oathdigital/frontend/fonts/$PlexSans")
+            path("fonts" / Atkinson):
+              getFromResource(s"oathdigital/frontend/fonts/$Atkinson")

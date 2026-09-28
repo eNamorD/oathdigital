@@ -80,17 +80,17 @@ typography:
     fontWeight: 700
     lineHeight: 1.2
   title:
-    fontFamily: "IBM Plex Sans, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.8rem"
     fontWeight: 700
     letterSpacing: "0.06em"
   body:
-    fontFamily: "IBM Plex Sans, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.9rem"
     fontWeight: 400
     lineHeight: 1.45
   label:
-    fontFamily: "IBM Plex Sans, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.78rem"
     fontWeight: 700
     letterSpacing: "0.14em"
@@ -318,23 +318,26 @@ only keeps them from blurring; it never carries meaning alone.
 ## Typography
 
 **Display Font:** Georgia (with serif fallback)
-**Body Font:** IBM Plex Sans (with ui-sans-serif, system-ui, sans-serif fallback)
+**Body Font:** Atkinson Hyperlegible Next (with ui-sans-serif, system-ui,
+sans-serif fallback)
 **Label/Mono Font:** ui-monospace for the event log
 
-**Character:** A serif for names of places and things on the board, an
-instrument sans for the table around them. Georgia stands in for the board's
-hand-brushed titles; Plex Sans was drawn for instruments, with the tall
-x-height, open apertures and tabular figures that keep counts and supply
-legible at 11 to 13px on the dark table, and its squared terminals sit
-beside Georgia without competing.
+**Character:** A serif for names of places and things on the board, a
+legibility sans for the table around them. Georgia stands in for the board's
+hand-brushed titles; Atkinson Hyperlegible Next was drawn for low vision
+and low light, with letterforms that cannot be mistaken for one another
+(a tailed l, a slashed zero, an open-jawed 3, a capital I with serifs), a
+large x-height and wide apertures, so counts, supply and card names hold
+at 11 to 13px on the dark table, and its humanist shapes sit beside
+Georgia without competing.
 
 **Delivery:** the face ships with the archive, since the table runs on a LAN
-or offline: one variable woff2 (latin, weights 100 to 700, OFL, in
+or offline: one variable woff2 (latin, weights 200 to 800, OFL, in
 `frontend/fonts`) declared by the stylesheet with `font-display: swap` and
 preloaded by both index pages, served at `/assets/fonts/` in production. The
-face tops out at 700, so the system has two weights: 400 for reading and
-700 for everything bold, headings, labels, counts and names alike. Nothing
-asks for 750, 800 or 900.
+system uses two of its weights: 400 for reading and 700 for everything
+bold, headings, labels, counts and names alike. Nothing asks for 750, 800
+or 900.
 
 ### Hierarchy
 - **Display** (400, 2.5rem, Georgia): the page `h1` on the host page.
@@ -345,12 +348,12 @@ asks for 750, 800 or 900.
   lettering. The card overlay name is Georgia 1.5em, 700, Bright Cream. On
   the zoomed-out map both are set against the scale (see The Glance Layer
   Rule): a site name holds 12px on screen, a region title 12.5px.
-- **Title** (700, 0.8rem, uppercase, 0.06em, Plex Sans): pane headings in Brass
+- **Title** (700, 0.8rem, uppercase, 0.06em, Atkinson): pane headings in Brass
   Label. Under 620px: 0.72rem, 0.025em.
 - **Body** (400, 0.9rem in the action pane, 0.86rem/1.45 for site details,
-  0.82rem on player boards, Plex Sans): the reading size follows the pane. Bold
+  0.82rem on player boards, Atkinson): the reading size follows the pane. Bold
   runs at 700 for counts, forces, requirements and player references.
-- **Label** (700, 0.78rem, uppercase, 0.14em, Plex Sans): the eyebrow in Brass;
+- **Label** (700, 0.78rem, uppercase, 0.14em, Atkinson): the eyebrow in Brass;
   region labels on the host page use 0.1em tracking in Ink Dim.
 - **Mono** (400, 0.85rem, ui-monospace): the raw event log only.
 
@@ -574,17 +577,18 @@ ratio, sized in `ex` from `--card-w: 13ex`.
   the current scale shows its initials instead, at 1.5em 700: the first
   character of each word as written ("Rotting Fortress" is RF, "Master of
   Disguise" is MoD), or a lone word's first two ("Quartermaster" is Qu).
-  Both forms are in the DOM; the card carries `name-fits-N` for each of the
-  buckets 6, 8, 10 and 12 its longest word clears, the map carries the one
-  `map-fit-N` its scale allows (`GameTableShell.nameFit`), and the
-  stylesheet picks. The bucket is estimated for the 7.3rem card of a site
-  holding forces, the common case once bandits are placed, at 0.55em per
-  character: Plex Sans at 700 averages 0.525em over the catalog's names,
-  and a word heavy in capitals, m and w runs to 0.63em. The compact name
-  spans the face to its border, never breaks inside a word and never
-  hyphenates: initials are the compact face's answer to a word that does
-  not fit, and the rare word past the estimate clips at the border. The
-  whole name stays in the button's label and title.
+  Both forms are in the DOM. The fit is measured, not estimated: the card
+  carries its longest word's width in em of the compact text, measured in
+  the body face at 700 (`--name-em`, `CardFace.nameWidthEm`; 0.6em a
+  character where there is no canvas), the map carries the width its scale
+  leaves one line on the 7.3rem card of a site holding forces, the common
+  case once bandits are placed (`--box-em`, `GameTableShell.nameBoxEm`),
+  and the stylesheet folds whichever form does not apply to no height. A
+  character count could not do this: in Atkinson "Summon" is 4.09em and
+  "Dazzle" 3.2em at the same six letters. The compact name spans the face
+  to its border, never breaks inside a word and never hyphenates: initials
+  are the compact face's answer to a word that does not fit. The whole
+  name stays in the button's label and title.
   Defense, restriction and the unimplemented badge are hidden; tokens stay.
 - **Face-down:** Facedown fill, centered Facedown Letter at 1.9em 700; a
   knowable card adds a Secret pip top-right and reveals a summary on hover or
@@ -709,7 +713,7 @@ in a sideways-scrolling row beside the identity column (Layout).
 - **Do** keep every site the same fixed height and every action button at
   least 44px tall.
 - **Do** use Georgia for names of sites, regions, cards and the page title,
-  and Plex Sans for everything else.
+  and Atkinson for everything else.
 - **Do** use a pill for a count or a state of a player, and a dashed border
   for something not yet real.
 
