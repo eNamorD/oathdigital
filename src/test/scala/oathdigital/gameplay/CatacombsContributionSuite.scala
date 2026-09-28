@@ -246,17 +246,12 @@ object CatacombsContributionSuite:
     val home = relicSite()
     val current = home.ready.game.current
     val lineage = current.players.find(_.player == home.actor).get.lineage
-    // Setup fills every relic slot, so the far site's relics go to the bottom
-    // of the relic deck to free a slot. The top of the deck stays the same.
     val far = current.map.inPlay.find(id => id != home.site &&
       catalog.sites.find(_.id == id).exists(_.relicSlots > 0)).get
-    val freed = current.map.sites(far).relics.map(_.id)
     val forces =
       if ruled then SiteForces.Occupied(ForceKind.Exile(lineage), 1)
       else SiteForces.Occupied(ForceKind.Bandit, 1)
     val moved = home.ready.updateCurrent(c => c.copy(
-      commonCards = c.commonCards.copy(relicDeck =
-        c.commonCards.relicDeck ++ freed),
       map = c.map.copy(sites = c.map.sites
         .updated(home.site, c.map.sites(home.site).copy(denizens = Vector.empty))
         .updated(far, c.map.sites(far).copy(forces = forces, relics =

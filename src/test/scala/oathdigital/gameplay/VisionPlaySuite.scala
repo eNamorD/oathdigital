@@ -23,9 +23,7 @@ class VisionPlaySuite extends munit.FunSuite:
 
   private def placeId(card: VisionId) = s"cardplay.place.${card.kind}.${card.value}"
 
-  private def acting: ReadyGame =
-    val state = Table.start.ready
-    state
+  private def acting: ReadyGame = Table.start.ready
 
   private def player(ready: ReadyGame, id: PlayerId): PlayerState =
     ready.game.current.players.find(_.player == id).get

@@ -40,14 +40,6 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
   private val rollTree: Operation =
     Sequence(Roll(PoolKey("test.roll"), DiceSpec(DiceKind.Defense)))
 
-  /** A ready game parked on `rollTree`'s single node, owned by `action`.
-    *
-    * `atSite` moves the acting player's pawn, which the disclosure tests
-    * below need: `identifiesCard` names a site's facedown relics to a
-    * viewer standing there, so proving both sides of that clause means
-    * choosing where the pawn stands rather than taking whichever site the
-    * setup fixture happened to pick.
-    */
   /** The quiet table with Sticky Fire lying facedown at Broken Peaks, the
     * site relic the disclosure tests reveal or hide, and Cursed Cauldron
     * facedown at Dunes, away from every pawn. p1 holds a facedown Wrestlers
@@ -60,6 +52,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     .adviser(p2, "Birdsong", facedown = true)
     .ready
 
+  /** A ready game parked on `rollTree`'s single node, owned by `action`.
+    *
+    * `atSite` moves the acting player's pawn, which the disclosure tests
+    * below need: `identifiesCard` names a site's facedown relics to a
+    * viewer standing there, so proving both sides of that clause means
+    * choosing where the pawn stands.
+    */
   private def parked(action: ActionRef, atSite: Option[SiteId] = None)
       : (ScopedProjectionContext, PlayerId) =
     val base = board

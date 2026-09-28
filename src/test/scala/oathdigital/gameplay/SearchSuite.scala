@@ -6,9 +6,7 @@ import oathdigital.testkit.Table
 
 class SearchSuite extends munit.FunSuite:
 
-  private def ready: ReadyGame =
-    val state = Table.start.ready
-    state
+  private def ready: ReadyGame = Table.start.ready
 
   test("world Search cost follows Visions Drawn track bands"):
     val base = ready

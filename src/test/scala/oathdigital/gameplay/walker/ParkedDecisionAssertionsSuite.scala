@@ -25,7 +25,7 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
     * .build`/`rebuild` require a site with a declared Recover difficulty, so
     * every test below -- not only the successful-completion one -- needs
     * this rather than `OathRulesWalkerPowerSuite`'s plain `actable`, whose
-    * pawn site (wherever setup happened to place it) may have none.
+    * pawn site (p1's Ancient City) has none.
     */
   private def recoverable: (ReadyGame, PlayerId) =
     val base = Table.start.ready

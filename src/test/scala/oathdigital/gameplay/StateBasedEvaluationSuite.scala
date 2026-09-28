@@ -314,8 +314,10 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     val finished = prepared(Vector.empty).copy(game = prepared(Vector.empty).game
       .copy(current = prepared(Vector.empty).game.current.copy(
         result = Some(GameResult(PlayerId("p1"), VictoryKind.Usurper)))))
-    val active = finished.game.current.turn.activePlayer
-    val act = finished
+    val active = p1
+    // `prepared` is p1's Wake; the Act commands are tried in Act.
+    val act = finished.updateCurrent(_.copy(
+      turn = TurnState(p1, Phase.Act, Set.empty)))
     val destination = act.game.current.map.inPlay.find(_ !=
       act.game.current.players.find(_.player == active).get.pawnSite.get).get
     assertEquals(rules.startWalker(Ready(act), ActionRef.Travel, active,

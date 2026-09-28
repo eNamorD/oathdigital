@@ -10,6 +10,7 @@ import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerOutcome}
 import oathdigital.model._
+import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p3
 
 class PeoplesFavorMobSuite extends munit.FunSuite:
@@ -195,7 +196,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     // holding the People's Favor on Mob, a faceup Silver Tongue and a
     // facedown `adviser`.
     val who = actor
-    val ready = holdingFavor(oathdigital.testkit.Table.start
+    val ready = holdingFavor(Table.start
       .hand(who, played).denizen(kept, at = home(base))
       .adviser(who, tongue).adviser(who, adviser, facedown = true)
       .ready)

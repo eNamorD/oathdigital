@@ -13,9 +13,7 @@ import oathdigital.testkit.Table
   */
 class TravelSitePowersSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
-  private val baseReady = (Table.start.state: OathState) match
-    case OathState.Ready(ready) => ready
-    case other => fail(s"expected Ready state, got $other")
+  private val baseReady = Table.start.ready
   private val actor = baseReady.game.current.turn.activePlayer
   private val powers = TravelSitePowers.forCatalog(catalog)
 

@@ -13,8 +13,7 @@ import oathdigital.testkit.Table
   * rule, in p1's Act with `warbands` warbands and `supply` Supply. `extras`
   * further sites are Bandit-ruled too, in map order after the origin: Broken
   * Peaks, Buried Giant, Deep Woods, and so on. Every other site is empty.
-  * p2, the other player, stands at the first site nobody rules; p3 stays at
-  * Buried Giant unless Bandits rule it.
+  * p2, the other player, and p3 stand at the first site nobody rules.
   */
 object CampaignFixture:
   final case class Board(ready: ReadyGame, actor: PlayerId, other: PlayerId,
@@ -31,7 +30,7 @@ object CampaignFixture:
     val ruled = origin +: inPlay.filter(_ != origin).take(extras)
     val elsewhere = inPlay.find(!ruled.contains(_)).get
     val table = ruled.foldLeft(Table.start)(_.bandits(_, 2))
-      .pawn(Table.p2, at = elsewhere)
+      .pawn(Table.p2, at = elsewhere).pawn(Table.p3, at = elsewhere)
       .warbands(Table.p1, warbands).supply(Table.p1, supply)
     Board(table.ready, Table.p1, Table.p2, origin)
 
@@ -115,12 +114,9 @@ object CampaignFixture:
   def actorRules(b: Board, site: SiteId): Board =
     on(b)(_.warbandsAt(site, b.actor, 2))
 
-  /** `site` holds `card` and nothing else. */
+  /** `site` also holds `card`. The board's sites start empty. */
   def withSiteCard(b: Board, site: SiteId, card: String): Board =
-    val cleared = b.ready.updateCurrent(current => current.copy(map =
-      current.map.copy(sites = current.map.sites.updated(site,
-        current.map.sites(site).copy(denizens = Vector.empty)))))
-    on(b.copy(ready = cleared))(_.denizen(DenizenId(card), at = site))
+    on(b)(_.denizen(DenizenId(card), at = site))
 
   def cardWith(handler: String): String =
     catalog.denizens.find(_.handlers.contains(handler)).get.id.value

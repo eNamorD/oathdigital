@@ -36,7 +36,7 @@ class HungerSuite extends munit.FunSuite:
       .pawn(p3, at = Table.homeOf(p2))
       .ready
 
-  /** `third`'s starting adviser with 1 favor and 2 secrets on it. Set on the
+  /** p3's Rain Boots with 1 favor and 2 secrets on it. Set on the
     * parked state, since the actor's Rest returns every card's tokens. */
   private def stocked(ready: ReadyGame): ReadyGame =
     updatePlayer(ready, third)(p => p.copy(advisers = p.advisers.zipWithIndex.map {

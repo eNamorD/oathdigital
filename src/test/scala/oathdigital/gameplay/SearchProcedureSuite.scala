@@ -14,9 +14,7 @@ class SearchProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val parked = new ParkedDecisionAssertions(catalog)
 
-  private def ready: ReadyGame =
-    val state = Table.start.ready
-    state
+  private def ready: ReadyGame = Table.start.ready
 
   test("world Search starts from one generic source argument and parks on card selection"):
     val initial = ready

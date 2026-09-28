@@ -334,9 +334,9 @@ object Table:
     CatalogNames.site(homes.getOrElse(player, munit.Assertions.fail(
       s"no player $player at the table")))
 
-  /** Steps continued from `ready`, a state a test or a fixture already
-    * holds: its cards are checked against the first game's inventory as the
-    * quiet table's are. For the helpers of fixtures built on the table. */
+  /** Steps continued from `ready`, a state a fixture helper already holds.
+    * Such helpers read the result with `unchecked`: cards that joined the
+    * state earlier are not known here, so `ready` could refuse them. */
   def from(ready: ReadyGame): Table = Table(ready, Set.empty)
 
   /** The quiet table (see [[Table]]). */

@@ -50,8 +50,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     * eligibility gates -- the injected tree source replaces them.
     */
   private def actable: (ReadyGame, PlayerId) =
-    val base = Table.start.ready
-    val ready = base
+    val ready = Table.start.ready
     (ready, ready.game.current.turn.activePlayer)
 
   /** `Sequence(WindowedNode(window, Vector(decide, decide)))`: two decisions,

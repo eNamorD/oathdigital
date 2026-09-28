@@ -4,7 +4,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.Table
 
-/** League Treaty arranged on a first-game Act state, shared with the
+/** League Treaty arranged on the quiet table's Act, shared with the
   * pending-walker invariant (Task 13).
   */
 object LeagueTreatyFixture:
