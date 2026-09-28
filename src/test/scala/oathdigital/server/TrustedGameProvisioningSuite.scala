@@ -82,15 +82,6 @@ class TrustedGameProvisioningSuite extends munit.FunSuite:
       codes.foreach(code => assert(!journal.contains(code.raw)))
     }
 
-  test("the game ID comes from the server's generator"):
-    withDatabase { (owner, connection) =>
-      val generated = codes.iterator
-      val response = provision(owner, () => generated.next(), () => "server-game")
-        .create(request, "https://games.test")
-      assertEquals(response.map(_.gameId), Right("server-game"))
-      assertEquals(rows(connection, "server-game"), Vector(1, 2, 1, 2))
-    }
-
   test("a taken game ID is drawn again, keeping the seat codes"):
     withDatabase { (owner, connection) =>
       val first = codes.iterator

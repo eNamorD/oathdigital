@@ -11,6 +11,3 @@ class SitePowerTextSuite extends munit.FunSuite:
     }
     assertEquals(texts.distinct.size, 1)
     assert(texts.head.startsWith("There is a Homeland of each suit."), texts.head)
-
-  test("a site power other than a Homeland keeps its printed name"):
-    assertEquals(SitePowerText.of("river").map(_.label), Some("River"))

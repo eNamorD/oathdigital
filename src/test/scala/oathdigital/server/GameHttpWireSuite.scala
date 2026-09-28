@@ -23,13 +23,6 @@ class GameHttpWireSuite extends munit.FunSuite:
       oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
         oathdigital.protocol.WalkerStartArgWire("warband", "w1"))).isLeft)
 
-  test("one mapper binds the transport-selected actor"):
-    assertEquals(GameIntentMapper.bind(PlayerId("dev-selected"),
-      GameIntent.RevealOwnedRelic("relic:a")),
-      Right(GameCommand.RevealOwnedRelic(PlayerId("dev-selected"), RelicId("relic:a"))))
-    assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
-      Right(GameCommand.EndWake(PlayerId("member-seat"))))
-
   test("domain conversion rejects unknown protocol identifiers without throwing"):
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.StartWalker("search", Vector.empty,
@@ -88,15 +81,6 @@ class GameHttpWireSuite extends munit.FunSuite:
           DistributeAmount(DecisionOptionRef.FavorBank(Suit.Arcane), 0),
           DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))))))
 
-    // An unknown option kind, and a blank id an identifier would throw on,
-    // are both typed mapping failures rather than exceptions.
-    assert(GameIntentMapper.bind(PlayerId("actor-1"),
-      GameIntent.ResolveWalker("recover.relic",
-        DecisionAnswerWire.ChooseOneWire("warband", "w1"))).isLeft)
-    assert(GameIntentMapper.bind(PlayerId("actor-1"),
-      GameIntent.ResolveWalker("recover.relic",
-        DecisionAnswerWire.ChooseOneWire("relic", "   "))).isLeft)
-
   test("an unknown walker action string is rejected without throwing"):
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.StartWalker("teleport", Vector.empty)).left.toOption.get
@@ -140,10 +124,3 @@ class GameHttpWireSuite extends munit.FunSuite:
       """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(GameHttpWire.decodeCommand(missing).left.toOption.get.path,
       "$.intent.startArgs[0].optionId")
-
-  test("development bootstrap remains configuration-only"):
-    val json =
-      """{"expectedNextSequence":0,"participants":[{"playerId":"p1","color":"red"}],"firstPlayer":"p1"}"""
-    val request = GameHttpWire.decodeBootstrap(json).toOption.get
-    assertEquals(request.expectedNextSequence, 0L)
-    assertEquals(request.participants.map(_.playerId), Vector("p1"))

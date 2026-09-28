@@ -13,7 +13,7 @@ class ServerRuntimeSuite extends munit.FunSuite:
     BootstrapParticipantRequest("p2", PlayerColor.Blue),
     BootstrapParticipantRequest("p3", PlayerColor.Yellow)))
 
-  test("trusted-game provisioning draws a randomized board, not the fixed dev one"):
+  test("trusted-game provisioning draws a randomized board"):
     val runtime = ServerRuntime.open(
       Files.createTempDirectory("server-runtime-wiring-").resolve("database"),
       Paths.get("docs/catalog/new-foundations-component-catalog.json")

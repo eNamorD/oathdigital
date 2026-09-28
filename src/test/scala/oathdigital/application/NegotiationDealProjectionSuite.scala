@@ -118,14 +118,12 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
 
   test("the start control is offered while a candidate exists and not once parked"):
     assert(view(gathered.state, p1).legalControls.contains("beginNegotiation"))
+    // It is a start control, not a board-target selection.
+    assert(!view(gathered.state, p1).boardTargetActions
+      .exists(_.actionKind == "negotiation"))
     val alone = gathered.pawn(p2, at = "Dunes").pawn(p3, at = "Dunes")
     assert(!view(alone.state, p1).legalControls.contains("beginNegotiation"))
     assert(!view(parkedDeal(gathered), p1).legalControls.contains("beginNegotiation"))
-
-  test("Negotiation is offered as a start control, not as a board-target selection"):
-    val projection = view(gathered.state, p1)
-    assert(projection.legalControls.contains("beginNegotiation"))
-    assert(!projection.boardTargetActions.exists(_.actionKind == "negotiation"))
 
   test("a faceup relic in a transfer is shown to every viewer, public included"):
     val faceUp = gathered.relic(p1, p1Relic).tokens(p1Relic, secrets = 1)

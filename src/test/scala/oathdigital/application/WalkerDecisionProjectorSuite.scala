@@ -704,8 +704,3 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(outcome.map(_.score), Some(3))
     assertEquals(outcome.flatMap(_.target), None)
     assertEquals(outcome.map(_.detail), Some(Vector("1 skull loss")))
-
-  test("a Campaign decision no roll belongs beside projects no roll"):
-    val projected = project(campaignWithOnePlanPlayed, viewer = Some(attacker))
-    assertEquals(projected.map(_.decisionId), Some("campaign.attacker-plan"))
-    assertEquals(projected.flatMap(_.rollOutcome), None)

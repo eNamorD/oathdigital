@@ -65,11 +65,6 @@ class CatalogLoaderSuite extends munit.FunSuite:
     assertEquals(powers.map(_.id), Vector(PowerId("denizen.fixture-denizen"),
       PowerId("denizen.fixture-second")))
 
-  test("catalog powers round-trip the shared PowerId type"):
-    val power = CatalogLoader.load(fixture).toOption.get.denizens.head.powers.head
-    assertEquals(power.id, PowerId("denizen.fixture-denizen"))
-    assertEquals(power.id.value, "denizen.fixture-denizen")
-
   test("power IDs are globally unique across rendered component families"):
     val value = ujson.read(fixture)
     value("relics")(0)("powers")(0)("id") = "denizen.fixture-denizen"

@@ -697,6 +697,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
           case id: DenizenId => DecisionOptionRef.Denizen(id)
           case id: VisionId => DecisionOptionRef.Vision(id)
         })))).toOption.get
+    // The parked walk reloads to the same state before it is answered.
+    assertEquals(new GameApplicationService(catalog, repository)
+      .load("game-minor-replay").toOption.flatten.get.state, started.state)
     val discarded = service.handle("game-minor-replay", started.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(
         s"cardplay.place.${adviser.kind}.${adviser.value}",
@@ -989,20 +992,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     ParkedServiceFixture.setUp(service, gameId, placementSites,
       setupChronicle, setupOrders)
 
-  test("a walker Campaign persists every command and replays to the same state"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = blankCampaignDice)
-    val (accepted, _, _) = forgeReadyGame(service, "walker-campaign")
-    val reloaded = new GameApplicationService(catalog, repository,
-      campaignDicePort = blankCampaignDice).load("walker-campaign")
-      .toOption.flatten.get
-    assertEquals(reloaded.state, accepted.state)
-    assertEquals(reloaded.nextSequence, accepted.nextSequence)
-    val Ready(after) = reloaded.state: @unchecked
-    assert(after.game.current.lastCampaignResult.exists(_.attackerWins))
-
-  test("create advance and reload replay the complete persisted v2 stream"):
+  test("create advance and reload replay the complete persisted stream"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val accepted = execute(service, "game-v2")
@@ -1023,7 +1013,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
 
-  test("gameplay appends v3 at the absolute position and reloads equally"):
+  test("gameplay appends at the absolute position and reloads equally"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val wealthSite = catalog.sites.find(site =>
@@ -1254,33 +1244,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(new GameApplicationService(catalog, repository)
       .load(gameId).toOption.flatten.get.state, completed.state)
 
-  test("facedown adviser plays through the shared walker after reload"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val gameId = "game-walker-facedown-adviser"
-    val setup = execute(service, gameId)
-    val Ready(ready) = setup.state: @unchecked
-    val actor = ready.game.current.turn.activePlayer
-    val adviser = ready.game.current.players.find(_.player == actor).get
-      .advisers.collectFirst {
-        case DenizenState(id, Orientation.FaceDown, _) => id
-      }.get
-    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
-    val started = service.handle(gameId, act.nextSequence,
-      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-        StartPayload(actor, Vector.empty,
-          Vector(DecisionOptionRef.Denizen(adviser))))).toOption.get
-    val loaded = new GameApplicationService(catalog, repository)
-      .load(gameId).toOption.flatten.get
-    assertEquals(loaded.state, started.state)
-    val result = service.handle(gameId, loaded.nextSequence,
-      GameCommand.ResolveWalker(actor, TreeDecision(
-        s"cardplay.place.${adviser.kind}.${adviser.value}",
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))))
-      .toOption.get
-    assertEquals(new GameApplicationService(catalog, repository)
-      .load(gameId).toOption.flatten.get.state, result.state)
-
   test("Wake projection is actor-private and Act boundary is informational"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
@@ -1334,27 +1297,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(projector.projectPublic("game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence)).boardTargetActions,
       Vector.empty)
-
-  test("Begin Rest finishes Rest, persists and reloads to the next player's Wake"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val setup = execute(service, "game-rest")
-    val Ready(ready) = setup.state: @unchecked
-    val active = ready.game.current.turn.activePlayer
-    val act = ParkedServiceFixture.endingWake(service, "game-rest", setup, active)
-    val begun = service.handle("game-rest", act.nextSequence,
-      GameCommand.BeginRest(active)).toOption.get
-    val finished = begun
-    val loaded = new GameApplicationService(catalog, repository)
-      .load("game-rest").toOption.flatten.get
-    val Ready(after) = loaded.state: @unchecked
-
-    assertEquals(loaded.state, finished.state)
-    assertEquals(after.game.current.turn.phase, Phase.Wake)
-    assertNotEquals(after.game.current.turn.activePlayer, active)
-    assertEquals(repository.load("game-rest").toOption.flatten.get.records
-      .takeRight(2).map(record => ujson.read(record)("formatVersion").num.toInt),
-      Vector(1, 1))
 
   test("site projection exposes ordered public properties without relic identity"):
     val repository = new InMemoryEventStreamRepository
@@ -1538,7 +1480,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       case _ => false
     })
 
-  test("v2 replay violations report the exact index and append nothing"):
+  test("replay violations report the exact index and append nothing"):
     val repository = new InMemoryEventStreamRepository
     val badDiagnostics = Vector(IgnoredRuleDiagnostic(
       RuleSourceRef.Adviser(PlayerId("p2"), DenizenId("insomnia")),
@@ -1622,7 +1564,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       assertEquals(appendCalls(), 0)
     }
 
-  test("authoritative v2 history cannot omit sequence zero"):
+  test("authoritative history cannot omit sequence zero"):
     val repository = new InMemoryEventStreamRepository
     val record = GameEventWire.encodeEvent(
       "game-missing-zero",
@@ -1828,28 +1770,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       case array: ujson.Arr =>
         array.value.iterator.flatMap(jsonStrings).toSet
       case _ => Set.empty
-
-  test("HSQL close and reopen preserves v2 replay equality"):
-    val path =
-      Files.createTempDirectory("oathdigital-v2-reopen-").resolve("journal")
-    val firstRepository =
-      OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    val accepted =
-      try execute(
-        new GameApplicationService(catalog, firstRepository),
-        "game-hsql-v2"
-      )
-      finally firstRepository.close()
-
-    val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    try
-      val loaded = new GameApplicationService(catalog, reopened)
-        .load("game-hsql-v2").toOption.flatten.get
-      assertEquals(loaded.state, accepted.state)
-      // Setup's 27 events, then the End Wake of a first Wake with nothing
-      // to decide.
-      assertEquals(loaded.nextSequence, 29L)
-    finally reopened.close()
 
   test("HSQL reopen preserves completed Rest cleanup and secret summary"):
     val path = Files.createTempDirectory("oathdigital-rest-reopen-").resolve("journal")

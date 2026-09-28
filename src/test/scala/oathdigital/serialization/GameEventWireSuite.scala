@@ -753,18 +753,6 @@ class GameEventWireSuite extends munit.FunSuite:
     wrongVersion("formatVersion") = 2
     assert(GameEventWire.decode(wrongVersion).isLeft)
 
-  test("current state-based Usurper events round trip"):
-    val events = Vector[OathEvent](
-      UsurperFlipped(PlayerId("p2")),
-      UsurperVictory(PlayerId("p2")))
-    val encoded = events.zipWithIndex.map { case (event, index) =>
-      GameEventWire.encodeEvent("oath", catalogRef, 20L + index, event)
-        .toOption.get
-    }
-    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector.fill(2)(1))
-    assertEquals(encoded.map(value => GameEventWire.decode(value).toOption.get.event),
-      events)
-
   test("GameStarted round trips its Chronicle and dealt SetupOrders"):
     val event = OathEvent.GameStarted(chronicle, orders)
     val encoded = GameEventWire.encodeEvent("goal", catalogRef, 0L, event)

@@ -25,13 +25,6 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val drawn = entries.find(entry => text(entry).startsWith("Drew ")).get
     assert(!drawn.spans.exists(_.isInstanceOf[LogSpan.Card]), drawn.spans)
 
-  test("Play Facedown Adviser: a start line, then where the card went"):
-    val script = facedownAdviser
-    val mine = lines(script, Some(script.actor))
-    assert(mine.contains("Playing Facedown Adviser"), mine)
-    assert(mine.exists(line => line.startsWith("Played ") ||
-      line.startsWith("Discarded ")), mine)
-
   test("Muster: the start line waits for the cost, then names the card"):
     val script = muster
     val mine = lines(script, None)

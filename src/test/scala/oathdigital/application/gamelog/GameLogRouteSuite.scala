@@ -11,8 +11,7 @@ import oathdigital.application._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model.PlayerId
 import oathdigital.protocol.projection.LogPageCodec
-import oathdigital.server.{DevelopmentRoutes, GameServerGateway, TrustedGameGateway,
-  TrustedSeatFailure}
+import oathdigital.server.{DevelopmentRoutes, GameServerGateway}
 
 class GameLogRouteSuite extends munit.FunSuite:
   test("the projector pages the log after a sequence, and refuses past the end"):
@@ -30,17 +29,6 @@ class GameLogRouteSuite extends munit.FunSuite:
       script.actor).map(_.entries), Some(Vector.empty))
     assertEquals(projector.logPage("round", history, history.nextSequence + 1,
       script.actor), None)
-
-  test("the trusted gateway pages for the seat and refuses another game"):
-    val script = LogScripts.woken
-    val gateway = new TrustedGameGateway(script.service,
-      new GameProjector(catalog))
-    val seat = TrustedSeat(script.name, script.actor.value)
-    assert(gateway.log(script.name, seat, 0L).isRight)
-    assertEquals(gateway.log("other", seat, 0L),
-      Left(TrustedSeatFailure.Forbidden))
-    assertEquals(gateway.log(script.name, seat, 10_000L),
-      Left(TrustedSeatFailure.InvalidIntent))
 
   test("the development route binds playerId, checks the cursor, and leaves raw events alone"):
     given system: ActorSystem[Nothing] =

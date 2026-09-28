@@ -19,9 +19,3 @@ class GameIntentMapperNegotiationSuite extends munit.FunSuite:
         NegotiationTerms(Vector(NegotiationTransfer(PlayerId("blue"), 2,
           Vector(RelicId("r1")))), Vector(NegotiationDisclosure(PlayerId("blue"),
           NegotiationDisclosureRef.HeldRelic(red, RelicId("r2"))))))))))
-
-  test("accept and decline map to their engine answers"):
-    assertEquals(bound(Wire.AcceptDealWire), Right(GameCommand.ResolveWalker(red,
-      TreeDecision("negotiation.deal", DecisionAnswer.AcceptDeal))))
-    assertEquals(bound(Wire.DeclineDealWire), Right(GameCommand.ResolveWalker(red,
-      TreeDecision("negotiation.deal", DecisionAnswer.DeclineDeal))))

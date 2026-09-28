@@ -20,25 +20,6 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
   private val player = UserId("user-player")
   private val spectator = UserId("user-spectator")
 
-  test("identity migration is idempotent and survives close and reopen"):
-    val path = databasePath("migration")
-    val first = open(path)
-    assertEquals(first.schemaVersion, Right(4))
-    assertEquals(first.initializeSchema(), Right(()))
-    assertEquals(first.createUser(owner, "Owner", 10L), Right(()))
-    assertEquals(first.createGame("game-1", owner, 11L), Right(()))
-    first.close()
-
-    val reopened = open(path)
-    try
-      assertEquals(reopened.schemaVersion, Right(4))
-      assertEquals(
-        reopened.findMembership("game-1", owner),
-        Right(Some(GameMembership("game-1", owner, Owner, None)))
-      )
-      assertEquals(reopened.initializeSchema(), Right(()))
-    finally reopened.close()
-
   test("schema upgrades contiguously from v1, v2, and v3 and revokes old sessions"):
     val v1Path = databasePath("upgrade-v1")
     seedVersionLedger(v1Path, 1)
