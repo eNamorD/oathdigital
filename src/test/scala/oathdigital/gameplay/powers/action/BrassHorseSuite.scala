@@ -69,7 +69,9 @@ class BrassHorseSuite extends munit.FunSuite:
     val parked = use(start, BrassHorse.id, horse).toOption.get
     assert(parkedAt(parked, BrassHorse.decisionId))
     assertEquals(reveals(parked.events), Vector.empty)
-    assert(choose(parked.state, BrassHorse.decisionId, site(dunes)).isRight)
+    val done = choose(parked.state, BrassHorse.decisionId, site(dunes))
+      .toOption.get
+    assertEquals(pawnOf(readyOf(done.state)), dunes)
 
   test("a Vision on top has no suit, so any other site may be chosen"):
     val vision = aVision(staged)
@@ -78,7 +80,9 @@ class BrassHorseSuite extends munit.FunSuite:
     assert(parkedAt(parked, BrassHorse.decisionId))
     assertEquals(reveals(parked.events),
       Vector(Reveal(vision, Location.RegionalDiscard(Region.Cradle))))
-    assert(choose(parked.state, BrassHorse.decisionId, site(deepWoods)).isRight)
+    val done = choose(parked.state, BrassHorse.decisionId, site(deepWoods))
+      .toOption.get
+    assertEquals(pawnOf(readyOf(done.state)), deepWoods)
 
   test("the region is the one the pawn's site is in"):
     val provincesTop = freshDenizen(staged, Suit.Beast)

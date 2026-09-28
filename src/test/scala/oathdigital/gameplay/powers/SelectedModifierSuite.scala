@@ -15,11 +15,13 @@ class SelectedModifierSuite extends munit.FunSuite:
 
   /** A test double on a catalog modifier id, so its resolution is the catalog's. */
   private final case class Probe(cardId: CardId, override val cost: Cost,
-      actions: Set[MajorActionType], idValue: String = "denizen.tents")
+      actions: Set[MajorActionType], idValue: String = "denizen.tents",
+      applies: Boolean = true)
       extends SelectedModifier:
     def catalog = oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
     def id: PowerId = PowerId(idValue)
     def effects: Map[PowerWindow, Vector[Contribution]] = Map.empty
+    override def appliesAt(ctx: PowerCtx): Boolean = applies
 
   private def ctx(ready: ReadyGame, power: SelectedModifier,
       window: PowerWindow): PowerCtx = PowerCtx(ready, actor, power.source,
@@ -73,14 +75,19 @@ class SelectedModifierSuite extends munit.FunSuite:
     assertEquals(free.contributions, Map.empty[PowerWindow, Vector[Contribution]])
 
   test("at the action's eligibility window a selected modifier always applies"):
-    val priced = Probe(card, Cost(favor = 1), travel)
+    // A probe that applies at no node still applies at the eligibility
+    // window, where its payment is made, and nowhere else.
+    val priced = Probe(card, Cost(favor = 1), travel, applies = false)
     assert(priced.applicable(ctx(base, priced,
       PowerWindow.TravelActionEligibility)))
+    assert(!priced.applicable(ctx(base, priced, PowerWindow.TravelCost)))
 
   test("the payment is what selecting it pays, for the combined check"):
     val priced = Probe(card, Cost(favor = 1), travel)
     val ready = atHomeWith(1)
-    assertEquals(priced.selectionPayments(ready, actor).size, 1)
+    assertEquals(priced.selectionPayments(ready, actor), Vector(
+      oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
+        catalog)))
     assertEquals(free.selectionPayments(ready, actor), Vector.empty)
 
   test("a payment and an effect at the same window keep the payment first"):
@@ -93,7 +100,14 @@ class SelectedModifierSuite extends munit.FunSuite:
       def effects: Map[PowerWindow, Vector[Contribution]] = Map(
         PowerWindow.TravelActionEligibility ->
           Vector(oathdigital.gameplay.powerresolver.Transform((_, ops) => ops)))
-    assertEquals(both.contributions(PowerWindow.TravelActionEligibility).size, 2)
+    val Vector(first, second) = both.contributions(
+      PowerWindow.TravelActionEligibility).collect {
+        case oathdigital.gameplay.powerresolver.Transform(fn) => fn }: @unchecked
+    val at = ctx(base, both, PowerWindow.TravelActionEligibility)
+    assertEquals(first(at, Vector.empty), Vector[Operation](
+      oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
+        catalog)))
+    assertEquals(second(at, Vector.empty), Vector.empty[Operation])
 
   test("the catalog cards helper finds a power's card, or nothing"):
     assertEquals(CatalogCards.denizen(catalog, PowerId("denizen.tents")),

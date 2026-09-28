@@ -25,7 +25,7 @@ class BannerFaceSourcesSuite extends munit.FunSuite:
 
   test("the reviewed catalog audits the banner powers, so options resolve " +
       "for a game whose banner is on that face"):
-    assert(PowerRuntime.options(catalog, base, PowerFixture.actor,
-      ActionKind.Travel).isRight)
-    assert(PowerRuntime.options(catalog, holdingFlame(base), PowerFixture.actor,
-      ActionKind.Travel).isRight)
+    assertEquals(PowerRuntime.options(catalog, base, PowerFixture.actor,
+      ActionKind.Travel), Right(Vector.empty))
+    assertEquals(PowerRuntime.options(catalog, holdingFlame(base),
+      PowerFixture.actor, ActionKind.Travel), Right(Vector.empty))
