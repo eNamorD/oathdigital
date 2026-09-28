@@ -237,8 +237,11 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     val gain = Gain.Favor(actor, Suit.Order, 99)
     ProcedureWalker.advance(ready, Sequence(gain), None, noPowers) match
       case Right(WalkerOutcome.Finished(state, _)) =>
-        assert(state.game.current.players.find(_.player == actor).get
-          .board.favor > tooMuchFavor - 1)
+        // It takes all the Order bank holds rather than rejecting.
+        assertEquals(state.game.current.players.find(_.player == actor).get
+          .board.favor, ready.game.current.players.find(_.player == actor).get
+          .board.favor + ready.banks.favor(Suit.Order))
+        assertEquals(state.banks.favor(Suit.Order), 0)
       case other => fail(s"expected a Finished walk, got $other")
 
   test("a Decide at the head parks with no events, then the answered resume finishes"):

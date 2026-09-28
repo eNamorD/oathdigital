@@ -62,7 +62,9 @@ class PayCostSettlementSuite extends munit.FunSuite:
     assertEquals(tokensOn(done.state), Tokens(1, 1))
 
   test("an off-turn placed favor with no matching bank is rejected"):
-    assert(run(arranged(), offTurnPay(Cost(favor = 1), bank = None)).isLeft)
+    assertEquals(run(arranged(), offTurnPay(Cost(favor = 1), bank = None))
+      .left.toOption, Some(OathViolation.CoreOperationRejected("no-matching-bank",
+        "favor paid outside the payer's turn needs the card's suit bank")))
     assert(run(arranged(), offTurnPay(Cost(secret = 1), bank = None)).isRight)
 
   test("the recorded operation is the requested one, and replay reaches the same state"):

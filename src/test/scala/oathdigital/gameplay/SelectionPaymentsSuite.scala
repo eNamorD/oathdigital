@@ -63,7 +63,8 @@ class SelectionPaymentsSuite extends munit.FunSuite:
     val fixture = CatacombsContributionSuite.reliclessSite(secrets = 1)
     val power = oathdigital.gameplay.powers.recover.CatacombsContribution
       .forCatalog(catalog).get
-    assertEquals(power.selectionPayments(fixture.ready, fixture.actor).size, 1)
+    assertEquals(power.selectionPayments(fixture.ready, fixture.actor),
+      Vector(oathdigital.gameplay.operations.Costs.onCard(fixture.actor, power.cardId, Cost(secret = 1), catalog)))
     val rules = new OathRules(catalog, walkerPowerCatalog = WalkerPowers(
       Vector(power)), walkerDice = WalkerDiceFixture.blanks)
     assert(rules.startWalker(Ready(fixture.ready), ActionRef.Recover,

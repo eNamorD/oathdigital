@@ -27,7 +27,10 @@ class RevealDiscardSuite extends munit.FunSuite:
 
   test("a card that is not in that discard cannot be revealed there"):
     val other = CatalogNames.denizen("Wrestlers")
-    assert(run(Reveal(other, at)).isLeft)
+    assertEquals(run(Reveal(other, at)).left.toOption, Some(OathViolation.CoreOperationRejected("missing-piece",
+      "denizen card is not present at regional discard")))
 
   test("a facedown flip of a discarded card stays unsupported"):
-    assert(run(Flip(top, at, Orientation.FaceDown)).isLeft)
+    assertEquals(run(Flip(top, at, Orientation.FaceDown)).left.toOption, Some(OathViolation.CoreOperationRejected(
+      "unsupported-orientation",
+      "card kind denizen cannot use orientation at RegionalDiscard(Cradle)")))

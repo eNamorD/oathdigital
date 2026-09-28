@@ -13,18 +13,25 @@ class OperationStateAdapterSuite extends munit.FunSuite:
     ))
 
   test("card lookup maps precise containers to semantic locations"):
-    assert(OperationStateAdapter.card(ready, worldDenizen,
-      Location.Deck(CardDeck.World)).isRight)
-    assert(OperationStateAdapter.card(ready, siteDenizen.id,
-      Location.Site(sites.head)).isRight)
-    assert(OperationStateAdapter.card(ready, adviser.id,
-      Location.PlayArea(playerId)).isRight)
-    assert(OperationStateAdapter.card(ready, storedEdifice.id,
-      Location.Atlas).isRight)
-    assert(OperationStateAdapter.card(ready, reliquaryRelic,
-      Location.Reliquary).isRight)
-    assert(OperationStateAdapter.card(ready, dispossessed,
-      Location.Dispossessed).isRight)
+    val found = Vector(
+      worldDenizen -> Location.Deck(CardDeck.World),
+      siteDenizen.id -> Location.Site(sites.head),
+      adviser.id -> Location.PlayArea(playerId),
+      storedEdifice.id -> Location.Atlas,
+      reliquaryRelic -> Location.Reliquary,
+      dispossessed -> Location.Dispossessed).map { case (id, at) =>
+        OperationStateAdapter.card(ready, id, at).map(card =>
+          (card.id, card.location)) }
+    assertEquals(found, Vector(
+      Right(worldDenizen -> CardLocation(CardContainer.Deck(CardDeck.World), 0)),
+      Right(siteDenizen.id -> CardLocation(CardContainer.Site(sites.head,
+        SiteCardArea.Denizens), 0)),
+      Right(adviser.id -> CardLocation(CardContainer.Player(playerId,
+        PlayerCardArea.Advisers), 0)),
+      Right(storedEdifice.id -> CardLocation(CardContainer.AtlasSite(0,
+        SiteId("S9"), SiteCardArea.Denizens), 0)),
+      Right(reliquaryRelic -> CardLocation(CardContainer.Reliquary, 0)),
+      Right(dispossessed -> CardLocation(CardContainer.Dispossessed, 0))))
     assert(OperationStateAdapter.card(ready, worldDenizen,
       Location.PlayArea(playerId)).left.toOption.get
       .isInstanceOf[OperationError.MissingPiece])
@@ -72,3 +79,5 @@ class OperationStateAdapterSuite extends munit.FunSuite:
     assert(OperationStateAdapter.knows(ready, playerId, siteRelic.id))
     assert(OperationStateAdapter.knows(ready, playerId, adviser.id))
     assert(OperationStateAdapter.knows(ready, playerId, reliquaryRelic))
+    assert(!OperationStateAdapter.knows(ready, playerId, worldDenizen),
+      "a card the player never saw is not known")

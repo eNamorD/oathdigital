@@ -110,8 +110,9 @@ class OperationApplicationSuite extends munit.FunSuite:
       PositionedLocation(Location.FavorBank(Suit.Order)),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top))
     val reasons = OperationApplication.validate(ready, operation)
-    assert(reasons.exists(_.kind == OperationReasonKind.Impossible))
-    assert(reasons.exists(_.kind == OperationReasonKind.Invalid))
+    assertEquals(reasons.map(reason => (reason.kind, reason.code)), Vector(
+      (OperationReasonKind.Impossible, "insufficient-pieces"),
+      (OperationReasonKind.Invalid, "incompatible-location")))
 
   test("a supply spend beyond the track is an insufficient-supply"):
     assertEquals(codes(OperationApplication.validate(ready,

@@ -36,10 +36,12 @@ class PayCostSuite extends munit.FunSuite:
     assertEquals(tokensOn(state), Tokens(1, 1))
 
   test("a placed cost onto an occupied card is rejected"):
-    assert(pay(withCard(Tokens(1, 0)), PayCost(actor,
-      Location.OnCard(denizen), Cost(secret = 1))).isLeft)
-    assert(pay(withCard(Tokens(0, 1)), PayCost(actor,
-      Location.OnCard(denizen), Cost(favor = 1))).isLeft)
+    assertEquals(pay(withCard(Tokens(1, 0)), PayCost(actor,
+      Location.OnCard(denizen), Cost(secret = 1))).left.toOption, Some(OathViolation.CoreOperationRejected("card-occupied",
+        s"${denizen.value} already holds favor or secrets, so a cost cannot be placed on it")))
+    assertEquals(pay(withCard(Tokens(0, 1)), PayCost(actor,
+      Location.OnCard(denizen), Cost(favor = 1))).left.toOption, Some(OathViolation.CoreOperationRejected("card-occupied",
+        s"${denizen.value} already holds favor or secrets, so a cost cannot be placed on it")))
 
   test("intoOccupied places onto an occupied card"):
     val state = pay(withCard(Tokens(1, 0)), PayCost(actor,

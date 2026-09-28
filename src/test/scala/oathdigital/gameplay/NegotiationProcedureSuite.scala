@@ -185,10 +185,12 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     assert(declined.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]),
       "a decline must run the action boundary and its bandit refill")
     val proposed = say(deal.state, p1, gift(p2, 1)).getOrElse(fail("terms"))
-    val agreed = Vector(p2, p1).foldLeft(proposed.state):
-      (state, by) => say(state, by, AcceptDeal).getOrElse(fail(s"$by accepts"))
-        .state
-    assertEquals(ready(agreed).game.current.walkerPending, None)
+    val accepted = say(proposed.state, p2, AcceptDeal)
+      .getOrElse(fail("p2 accepts"))
+    val agreed = say(accepted.state, p1, AcceptDeal).getOrElse(fail("p1 accepts"))
+    assert(agreed.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]),
+      "an agreed deal must run the action boundary and its bandit refill")
+    assertEquals(ready(agreed.state).game.current.walkerPending, None)
 
   test("unsupported Negotiation rules are recorded as ignored, not blocking"):
     val powered = gathered.adviser(p1, "Council Arbiter").ready

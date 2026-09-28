@@ -176,7 +176,9 @@ class TravelProcedureSuite extends munit.FunSuite:
     val citizen = ready.updateCampaign(_.copy(lineages = ready.game.campaign.lineages.map {
         case (id, lineage) => id -> lineage.copy(role = Role.Citizen)
       }))
-    assert(TravelProcedure.build(catalog, citizen, actor,
+    val altered = citizen.updateCampaign(campaign => campaign.copy(foundations =
+      campaign.foundations.map { case (k, f) => k -> f.copy(face = FoundationFace.Altered) }))
+    assert(TravelProcedure.build(catalog, altered, actor,
       Vector(DecisionOptionRef.Site(destination))).isRight)
 
   // (e) projection uses automatic powers; preview uses the selected vector.

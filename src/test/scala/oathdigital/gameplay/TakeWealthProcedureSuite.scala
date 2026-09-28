@@ -176,8 +176,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       WrongPhase(Phase.Wake, Phase.Act): OathViolation)
 
   test("an enemy pawn at the site blocks the take"):
-    assert(take(wake(sharedEnemy = true)).left.toOption.get
-      .isInstanceOf[EnemyPawnBlocksTakeWealth])
+    assertEquals(take(wake(sharedEnemy = true)).left.toOption, Some(EnemyPawnBlocksTakeWealth(SiteId("site:ancient-city"),
+      Vector(PlayerId("p2"), PlayerId("p3")))))
 
   test("the requested resource must be present at the site"):
     val ready = wake(favor = 0)
@@ -186,15 +186,19 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
 
   test("the start selection must name exactly one known resource"):
     val ready = wake()
-    Vector(
+    assertEquals(Vector(
       Vector.empty[DecisionOptionRef],
       Vector[DecisionOptionRef](DecisionOptionRef.Site(pawnSite(ready))),
       favorArg ++ secretArg,
       Vector[DecisionOptionRef](DecisionOptionRef.Button("warbands"))
-    ).foreach { args =>
-      assert(take(ready, args).isLeft,
-        s"start selection $args must be rejected")
-    }
+    ).map(args => take(ready, args).left.toOption), Vector(
+      "take wealth requires favor or secret as its start selection",
+      "take wealth takes exactly one resource as its start selection, got " +
+        "site/site:ancient-city",
+      "take wealth takes exactly one resource as its start selection, got " +
+        "button/favor, button/secret",
+      "take wealth does not recognise the resource 'warbands'")
+      .map(detail => Some(InvalidEventOrder(detail))))
 
   test("the start selection spelling is one definition in both directions"):
     // The literals here are the wire spelling a client must send. `selection`

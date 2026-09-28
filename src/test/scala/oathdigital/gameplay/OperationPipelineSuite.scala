@@ -94,8 +94,9 @@ class OperationPipelineSuite extends munit.FunSuite:
     val (state, actor) = holding(denizen)
     val box = Move(Piece.Card(denizen), PositionedLocation(Location.Hand(actor)),
       PositionedLocation(Location.SharedBank))
-    assert(OperationPipeline.run(state, Vector(box),
-      OperationPolicy.Permissive)(Right(_)).isLeft)
+    assertEquals(OperationPipeline.run(state, Vector(box),
+      OperationPolicy.Permissive)(Right(_)).left.toOption, Some(OathViolation.CoreOperationRejected("invalid-destination",
+        "shared bank cannot receive denizen card")))
 
   test("a card that leaves the game without a boxing move still fails the " +
       "inventory check"):
@@ -104,5 +105,6 @@ class OperationPipelineSuite extends munit.FunSuite:
     val vanish: ReadyGame => Either[OathViolation, ReadyGame] = ready =>
       Right(ready.updateCurrent(current => current.copy(temporaryHands =
         current.temporaryHands.updated(actor, Vector.empty))))
-    assert(OperationPipeline.run(state, Vector(GainSupply(actor, 1)),
-      OperationPolicy.Permissive)(vanish).isLeft)
+    assertEquals(OperationPipeline.run(state, Vector(GainSupply(actor, 1)),
+      OperationPolicy.Permissive)(vanish).left.toOption, Some(OathViolation.CoreOperationRejected("card-inventory-changed",
+        "card inventory changed: 1 missing, 0 unexpected")))

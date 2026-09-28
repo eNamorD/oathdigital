@@ -5,8 +5,7 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powerresolver.Transform
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
-  WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
 
@@ -19,11 +18,11 @@ class SearchProcedureSuite extends munit.FunSuite:
   test("world Search starts from one generic source argument and parks on card selection"):
     val initial = ready
     val actor = initial.game.current.turn.activePlayer
-    val tree = SearchProcedure.build(catalog, initial, actor,
-      Vector(DecisionOptionRef.Button("search:world"))).toOption.get
-    val outcome = ProcedureWalker.advance(initial, tree, None,
-      WalkerPowers.empty).toOption.get
-    assert(outcome.isInstanceOf[WalkerOutcome.Parked])
+    val started = rules.startWalker(OathState.Ready(initial), ActionRef.Search,
+      actor, startArgs = Vector(DecisionOptionRef.Button("search:world")))
+      .toOption.get
+    parked.assertParked(started.state, ActionRef.Search,
+      SearchProcedure.cardDecisionId, actor)
 
   test("Search rejects a source in another region"):
     val initial = ready
@@ -120,6 +119,8 @@ class SearchProcedureSuite extends munit.FunSuite:
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
     assertEquals(after.game.current.walkerPending, None)
     withPowersParked.assertNotParked(result.state)
+    assert(!CardIndex.from(after.game).toOption.get.ids.contains(vision),
+      "the played Conspiracy is boxed")
 
   test("a single-card Search settles from its placement answer, so a " +
       "power's Decide added after the play still resolves (5c2597ee)"):
@@ -160,11 +161,16 @@ class SearchProcedureSuite extends munit.FunSuite:
   test("Search uses its registered modifier-selection window"):
     val initial = ready
     val actor = initial.game.current.turn.activePlayer
-    assertEquals(rules.offerableWalkerPowers(initial, actor, ActionRef.Search),
-      Right(Vector.empty))
-    assert(rules.startWalker(OathState.Ready(initial), ActionRef.Search, actor,
-      modifiers = Vector(PowerId("unoffered.search")),
-      startArgs = Vector(DecisionOptionRef.Button("search:world"))).isLeft)
+    // A power applicable only at Search's modifier window is offered for
+    // Search; one applicable only at Forge's is not.
+    val atSearch = OathRulesWalkerPowerSuite.WindowScopedPower(
+      PowerId("test.search-windowed"), PowerWindow.SearchModifierSelection)
+    val atForge = OathRulesWalkerPowerSuite.WindowScopedPower(
+      PowerId("test.forge-windowed"), PowerWindow.ForgeModifierSelection)
+    val scoped = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowers(Vector(atSearch, atForge)))
+    assertEquals(scoped.offerableWalkerPowers(initial, actor, ActionRef.Search)
+      .map(_.map(_.id)), Right(Vector(atSearch.id)))
 
   private def ref(card: WorldCardId): DecisionOptionRef = card match
     case id: DenizenId => DecisionOptionRef.Denizen(id)
