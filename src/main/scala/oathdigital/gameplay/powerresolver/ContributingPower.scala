@@ -172,3 +172,6 @@ trait NotingPower:
     * of its source. A site power four sites share names itself, so its line
     * reads "River: ..." wherever it was used. */
   def noteSource: Option[String] = None
+  /** The ids of this power's decisions whose answer its notes tell, so the
+    * log posts no "Chose ..." line for them. */
+  def narratedDecisions: Set[String] = Set.empty

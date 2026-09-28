@@ -459,3 +459,27 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       assertEquals(all(at).contains(" buried a Denizen from "),
         viewer != script.actor, all(at))
     }
+
+  test("Family Heirloom tells its draw and choice in one line, naming the " +
+      "relic to its drawer alone, with no Chose or Buried line"):
+    Vector(heirloomKept -> "kept it.",
+        heirloomReturned -> "put it on the bottom of the relic deck.")
+      .foreach { case (script, end) =>
+        val actor = name(script.actor)
+        val other = script.players.find(_ != script.actor).get
+        Vector(script.actor, other).foreach { viewer =>
+          val shown = format(script, Some(viewer)).filter(_.depth == 1)
+          val all = texts(shown)
+          val at = all.indexWhere(line =>
+            line.startsWith(s"Family Heirloom: $actor drew ") && line.endsWith(end))
+          assert(at >= 0, all)
+          assertEquals(shown(at).kind, LogKind.Trigger)
+          assert(!all.exists(_.startsWith("Chose ")), all)
+          assert(!all.exists(_.startsWith("Buried ")), all)
+          val named = shown(at).spans.exists {
+            case LogSpan.Card(id, _) => id.startsWith("R")
+            case _ => false
+          }
+          assertEquals(named, viewer == script.actor, shown(at).spans.toString)
+        }
+      }

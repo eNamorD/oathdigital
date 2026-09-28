@@ -45,6 +45,12 @@ class GameLogDetailSuite extends munit.FunSuite:
       "^Discarded .+ to the (Cradle|Provinces|Hinterland) discard$".r
         .matches(line)), all)
 
+  test("a facedown adviser played faceup is told once, by the action line"):
+    val all = lines(facedownAdviser("revealed-adviser", Some("adviser-faceup")))
+    assert(all.exists(line => line.startsWith("Played ") &&
+      line.endsWith(" as an adviser")), all)
+    assert(!all.exists(_.startsWith("Revealed ")), all)
+
   test("the placement discard is told once, by the action line"):
     val all = lines(facedownAdviser)
     assertEquals(all.count(_.startsWith("Discarded ")), 1, all)

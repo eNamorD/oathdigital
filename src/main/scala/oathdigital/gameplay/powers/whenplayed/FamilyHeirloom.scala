@@ -14,11 +14,17 @@ import oathdigital.model._
   * sit in a once-guarded `Repeat`: the guard runs only at pass boundaries,
   * so the draw emptying the relic deck cannot make the walker lose the
   * parked decision on resume.
+  *
+  * One line tells the draw and the choice, "{player} drew {relic} and kept
+  * it." or "... and put it on the bottom of the relic deck.", in place of the
+  * choice's "Chose" line and the burial's line.
   */
 final case class FamilyHeirloom private (cardId: DenizenId)
     extends WhenPlayedPower:
   import FamilyHeirloom._
   def id: PowerId = FamilyHeirloom.id
+  override def noteKeys: Vector[NoteKey] = Vector(kept, returned)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     val actor = ctx.activePlayer
@@ -33,13 +39,35 @@ final case class FamilyHeirloom private (cardId: DenizenId)
             "Put it on the bottom of the relic deck")),
           heading = Some("Family Heirloom: take the relic you drew, or put it " +
             "on the bottom of the relic deck"))),
-        BuildOps((ready, pending) => settle(ready, actor, pending))))))
+        BuildOps((ready, pending) => settle(ready, actor, pending)),
+        Note(id, note(_, actor), covers = true)))))
+
+  /** The relic the choice was about: the last one the player held before
+    * the step that settled it, as `settle` reads it. */
+  private def note(states: NoteStates, actor: PlayerId): Option[PowerNote] =
+    for
+      (before, _) <- states.previous
+      held <- PlayerFacts.player(before, actor).toOption
+      relic <- held.relics.lastOption
+      choice <- states.answered.collectFirst {
+        case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(
+            DecisionOptionRef.Button(button)), _) => button
+      }
+      key <- Vector(kept, returned).find(_.name == choice)
+    yield key(PowerSourceRef.Card(cardId), NoteArg.Player(actor),
+      NoteArg.Card(relic.id))
 
 object FamilyHeirloom:
   val id: PowerId = PowerId("denizen.family-heirloom")
   val decisionId: String = "cardplay.family-heirloom.keep"
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
   val bottom: DecisionOptionRef.Button = DecisionOptionRef.Button("bottom")
+  /** A note key is named for the choice it tells. */
+  val kept: NoteKey = NoteKey(keep.key, Vector(NotePart.Arg(0),
+    NotePart.Text(" drew "), NotePart.Arg(1), NotePart.Text(" and kept it.")))
+  val returned: NoteKey = NoteKey(bottom.key, Vector(NotePart.Arg(0),
+    NotePart.Text(" drew "), NotePart.Arg(1),
+    NotePart.Text(" and put it on the bottom of the relic deck.")))
 
   def forCatalog(catalog: ExecutableCatalog): Option[FamilyHeirloom] =
     WhenPlayedPower.cardOf(catalog, id).map(new FamilyHeirloom(_))

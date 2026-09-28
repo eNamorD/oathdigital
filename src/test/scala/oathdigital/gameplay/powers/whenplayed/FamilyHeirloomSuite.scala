@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ProcedureWalker
 import oathdigital.gameplay.WalkerRecordedOpsReducer
@@ -52,6 +52,22 @@ class FamilyHeirloomSuite extends munit.FunSuite
     assert(!player(done.treeless).relics.exists(_.id == top))
     assertEquals(done.treeless.game.current.commonCards.relicDeck.last, top)
     assertEquals(replayed(staged, first.events ++ done.events), done.treeless)
+
+  test("it writes the relic it drew and what became of it, covering the burial"):
+    Vector(FamilyHeirloom.keep -> "kept it.",
+        FamilyHeirloom.bottom -> "put it on the bottom of the relic deck.")
+      .foreach { case (choice, end) =>
+        val (first, state) = atChoice
+        assertEquals(NoteText.said(power.id, power.noteKeys, first.events),
+          Vector.empty)
+        val done = finished(answer(state, first.tree, choice))
+        assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
+          Vector(NoteText.Said(choice.key,
+            s"${actor.value} drew ${top.value} and $end", covers = true)))
+      }
+
+  test("its notes tell its decision"):
+    assertEquals(power.narratedDecisions, Set(FamilyHeirloom.decisionId))
 
   test("an empty relic deck does nothing and asks nothing"):
     val current = staged.game.current

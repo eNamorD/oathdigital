@@ -246,6 +246,10 @@ private[gamelog] final class ActionLines(words: LogWords, choices: ChoiceWords,
       case "site" => action(Vector(Text("Played ")) ++ named ++
         LogJournal.pawnSite(before, actor).toVector.flatMap(site =>
           Vector(Text(" to "), words.site(site))))
+      // A Vision played faceup takes the revealed Vision slot, not an
+      // adviser's.
+      case "adviser-faceup" if card.isInstanceOf[VisionId] =>
+        action(Vector(Text("Revealed ")) ++ named)
       case _ => action(Vector(Text("Played ")) ++ named ++
         Vector(Text(" as an adviser")))
 

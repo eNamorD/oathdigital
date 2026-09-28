@@ -250,8 +250,9 @@ effects log nothing but "Used {card}": `GainSupply`, `Kill`, pawn moves, a
 relic drawn by a power, and secrets moved between players have no generic
 line at all. Those notes cover nothing and fill the gap.
 
-A "Chose …" line from the power's own decision stays (see "Covering"). The
-cost payment logs nothing today and still logs nothing.
+A "Chose …" line from the power's own decision stays (see "Covering"),
+unless the power declares that decision narrated (see "Narrated
+decisions"). The cost payment logs nothing today and still logs nothing.
 
 | Card | Line | Covers |
 |---|---|---|
@@ -271,7 +272,7 @@ cost payment logs nothing today and still logs nothing.
 | Dowsing Sticks | Dowsing Sticks: {Red} drew {relic} facedown. | |
 | Dowsing Sticks, empty deck | Dowsing Sticks: The relic deck was empty. | |
 | Fae Merchant | Fae Merchant: {Red} drew {relic} facedown. | |
-| Fae Merchant, key `returned` | Fae Merchant: {Red} put {relic} on the bottom of the relic deck. | the Buried line |
+| Fae Merchant, key `returned` | Fae Merchant: {Red} put {relic} on the bottom of the relic deck. | the Buried line, and its "Chose" line |
 | Crystal Vial | Crystal Vial: {Red} buried {card}. | the Buried line |
 | Ivory Eye | Ivory Eye: {Red} peeked at {card} in {Blue}'s advisers. | the Peeked line |
 | Sleight of Hand | Sleight of Hand: {Red} took 1 secret from {Blue}. | |
@@ -326,6 +327,8 @@ cost payment logs nothing today and still logs nothing.
 | Truthful Harp | Truthful Harp: Revealed {cards}. | the Peeked lines |
 | Forest Paths, destination with a beast card | Forest Paths: Ignoring site powers. | |
 | Dragonskin Drum | Dragonskin Drum: {Red} gained {1 warband}. | |
+| Family Heirloom, key `keep` | Family Heirloom: {Red} drew {relic} and kept it. | its "Chose" line |
+| Family Heirloom, key `bottom` | Family Heirloom: {Red} drew {relic} and put it on the bottom of the relic deck. | its "Chose" line and the Buried line |
 
 ### Altered procedures
 
@@ -413,6 +416,8 @@ Formatter:
 - A power line never precedes its run's start line.
 - A `used` note replaces "Used {card}". A run without one still posts it.
 - A covering note drops the covered step's detail line and nothing else.
+- A power's narrated decision posts no "Chose" line; every other decision
+  still does.
 - A note with no template renders nothing.
 - A line identical to an earlier line of the same action is dropped; the same
   line in the next action is not.
@@ -572,6 +577,19 @@ The fifth slice settled these:
   sentence.
 - The Setup procedure has no start line, so its notes post where they
   fall, among the setup lines.
+
+## Narrated decisions
+
+A power may declare `narratedDecisions`, the ids of its own decisions whose
+answer its notes tell. The formatter posts no "Chose …" line for them, as it
+posts none for a decision an action line names. The declaration lives beside
+`noteKeys` on `NotingPower`, and `NoteWordings` collects it from the
+catalogs. It reads no later event, so prefix stability holds.
+
+Family Heirloom is the first: its note after the settling step tells both the
+draw and the choice, and covers that step's Buried line. Fae Merchant's
+`returned` line names the relic chosen, so it opts in too. Other powers whose
+note restates their own choice may opt in the same way.
 
 ## Slices
 

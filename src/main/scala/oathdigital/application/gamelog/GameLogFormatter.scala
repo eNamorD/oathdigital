@@ -28,7 +28,7 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
   private val choices = new ChoiceWords(words,
     new WalkerDecisionProjector(catalog, presentation))
   private val actions = new ActionLines(words, choices, catalog)
-  private val details = new DetailLines(words, choices)
+  private val details = new DetailLines(words, choices, wordings.narrated)
   private val events = new EventLines(words)
   private val notes = new PowerLines(words, wordings)
 

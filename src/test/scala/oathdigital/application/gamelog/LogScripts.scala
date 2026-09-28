@@ -9,6 +9,7 @@ import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.action.{BarbedNet, GamblingHall, Oracle,
   Wolves}
 import oathdigital.gameplay.powers.search.Augury
+import oathdigital.gameplay.powers.whenplayed.FamilyHeirloom
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.PowerNoted
@@ -457,23 +458,26 @@ object LogScripts:
   /** Oracle at the actor's site, used in Act with two secrets arranged. A
     * first game's world deck holds its first Vision below ten denizens;
     * Oracle draws it, and the actor keeps it as a facedown adviser. */
-  def oracle(using munit.Location): Script =
+  def oracle(using munit.Location): Script = oracle("oracle", "adviser-facedown")
+
+  /** Oracle, its drawn Vision placed by `placement`. */
+  def oracle(name: String, placement: String)(using munit.Location): Script =
     val card = DenizenId("160")
     val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
       FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
-    val (service, _, driver) = journaled("oracle")
+    val (service, _, driver) = journaled(name)
     val woken = Situation.wake(driver, chronicle, orders)
     val actor = active(woken)
     woken.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
-        ChooseOneAnswer(DecisionOptionRef.Button("adviser-facedown"))
+        ChooseOneAnswer(DecisionOptionRef.Button(placement))
     }.after(Step.Arrange(Vector(
         ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(woken, actor))),
         Move(Piece.Secrets(2), PositionedLocation(Location.SharedBank),
           PositionedLocation(Location.PlayArea(actor))))),
       GameCommand.EndWake(actor),
       GameCommand.UsePower(actor, Oracle.id, DecisionOptionRef.Denizen(card)))
-    Script("oracle", service, actor)
+    Script(name, service, actor)
 
   /** Barbed Net in the actor's play area and a relic from the relic deck at
     * the actor's site, used in Act with three secrets arranged. The relic
@@ -523,6 +527,34 @@ object LogScripts:
       GameCommand.EndWake(first), GameCommand.BeginRest(first))
     Script("hunger", service, holder)
 
+  /** Family Heirloom held as a facedown adviser, then played faceup as an
+    * adviser: its When Played draw is kept or put on the bottom by `choice`. */
+  def familyHeirloom(name: String, choice: DecisionOptionRef.Button)
+      (using munit.Location): Script =
+    val card = FamilyHeirloom.forCatalog(catalog).get.cardId
+    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
+    val (service, _, driver) = journaled(name)
+    val woken = Situation.wake(driver, chronicle, orders)
+    val actor = active(woken)
+    woken.withAnswers {
+      case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
+        ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup"))
+      case park if park.decisionId == FamilyHeirloom.decisionId =>
+        ChooseOneAnswer(choice)
+    }.after(Step.Arrange(Vector(ParkedServiceFixture.topOfWorldDeck(card,
+        Location.PlayArea(actor), Orientation.FaceDown))),
+      GameCommand.EndWake(actor),
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty, Vector(DecisionOptionRef.Denizen(card)))))
+    Script(name, service, actor)
+
+  def heirloomKept(using munit.Location): Script =
+    familyHeirloom("heirloom-kept", FamilyHeirloom.keep)
+
+  def heirloomReturned(using munit.Location): Script =
+    familyHeirloom("heirloom-returned", FamilyHeirloom.bottom)
+
   /** Every script by its stream name, for the suites that hold for each. */
   val named: Vector[(String, () => Script)] = Vector(
     "woken" -> (() => woken), "round" -> (() => round),
@@ -541,6 +573,8 @@ object LogScripts:
     "use-power" -> (() => usePower),
     "gambling-hall" -> (() => gamblingHall), "wolves" -> (() => wolves),
     "oracle" -> (() => oracle), "barbed-net" -> (() => barbedNet),
-    "hunger" -> (() => hunger))
+    "hunger" -> (() => hunger),
+    "heirloom-kept" -> (() => heirloomKept),
+    "heirloom-returned" -> (() => heirloomReturned))
 
   def all: Vector[Script] = named.map(_._2())

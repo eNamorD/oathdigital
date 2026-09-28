@@ -13,12 +13,15 @@ import oathdigital.model._
   * decision and reads the relics after the draw, and the bury. The bury reads
   * the eligible relics again, so it needs the recorded answer only when the
   * decision was asked. It returns any secrets on the relic to their holder.
+  * Its `returned` line names the relic chosen, so the choice posts no "Chose"
+  * line.
   */
 final case class FaeMerchant private (scepters: Set[RelicId])
     extends PaidAction("denizen.fae-merchant", Cost(secret = 1)):
   import FaeMerchant._
 
   override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew, returned)
+  override def narratedDecisions: Set[String] = Set(decisionId)
 
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](

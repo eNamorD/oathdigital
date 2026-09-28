@@ -260,7 +260,7 @@ the actor's own turn.
 |--------|------|-----------|
 | travel | Travelled to {site} | the pawn `Move` |
 | search | Drew {cards} from the {World Deck \| Provinces discard} and kept {cards} | the keep/discard answer, or the run's completion when only one card was drawn |
-| play-facedown-adviser | Played {card} as an adviser \| Played {card} to {site} \| Discarded {card} | the placement step |
+| play-facedown-adviser | Played {card} as an adviser \| Revealed {Vision}, for a Vision played faceup \| Played {card} to {site} \| Discarded {card} | the placement step |
 | muster | Mustered {n} warbands with {card} | `Gain.Warbands`; the card from the earlier cost step |
 | trade | Traded with {card} for {n} {favor \| secrets} | `Gain.Favor` or `Gain.Secrets`; the card from the earlier cost step |
 | take-wealth | Took 1 {favor \| secret} from {site} | the `Take` |
@@ -302,7 +302,7 @@ line that closes the action.
 
 | Kind | Template | Source |
 |------|----------|--------|
-| Decision | Chose {option} | `ChooseOneAnswer` not already covered by an action line |
+| Decision | Chose {option} | `ChooseOneAnswer` not already covered by an action line or narrated by its power's notes |
 | Decision | Chose {options} | `ChooseManyAnswer`, names joined with commas |
 | Roll | Rolled {dice}, with " for the attack" or " for the defense" on a Campaign's pools | `RollPayload` faces, as a `dice` span |
 | Delta | Gained {n} favor from the {suit} bank | `Gain.Favor` not covered by an action line |
@@ -312,7 +312,7 @@ line that closes the action.
 | Delta | Discarded {cards} to the {region} discard | `Discard.Denizen` |
 | Delta | Buried {card} | `Bury` |
 | Delta | Peeked at {cards} | `SiteRelicsPeeked`, `Peek` |
-| Delta | Revealed {card} | `Reveal`, `OwnedRelicRevealed` |
+| Delta | Revealed {card} | `Reveal`, `OwnedRelicRevealed`, and a card in its owner's play area turned faceup, unless Card Play's placement answer played it faceup as an adviser (its action line tells it) |
 | Trigger | {card}: {effect} | `RecordPowerUse` followed by its batch |
 | Trigger | {player} became the Usurper | `UsurperFlipped` |
 | Trigger | Bandits returned to {sites} | `BanditsRefilled` |

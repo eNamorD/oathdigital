@@ -17,10 +17,11 @@ import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
 /** The detail lines of a walker run (spec, "Detail lines"): decisions, rolls
   * and deltas, between a start line and the action line that closes the
   * action. A rule here stays silent wherever an action line, a start line or
-  * another procedure's own lines already say the same thing.
+  * another procedure's own lines already say the same thing, and for a
+  * power's decision in `narrated`, whose answer the power's notes tell.
   */
 private[gamelog] final class DetailLines(words: LogWords,
-    choices: ChoiceWords):
+    choices: ChoiceWords, narrated: Set[String]):
   def lines(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
     decision(journal, run, at, viewer) ++ (if journal.covered(at) then
@@ -36,7 +37,7 @@ private[gamelog] final class DetailLines(words: LogWords,
   private def decision(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] = journal.event(at) match
     case WalkerStepRecorded(_, ChoicePayload(id, answer, by), _, _)
-        if !DetailLines.narrated(id) =>
+        if !DetailLines.narrated(id) && !narrated(id) =>
       val refs = answer match
         // Pressing Done after looking at cards is not a choice (N5).
         case ChooseOneAnswer(DecisionQuery.Inspect.Done) => Vector.empty
@@ -55,11 +56,12 @@ private[gamelog] final class DetailLines(words: LogWords,
     * discards to the same pile by the same player read as one line. */
   private def deltas(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId]): Vector[Posted] =
-    val placedDiscard = discardedPlacement(journal, run, at)
+    val placedDiscard = placement(journal, run, at, "discard")
+    val playedFaceup = placement(journal, run, at, "adviser-faceup")
     val found = journal.ops(at).flatMap(step =>
       DetailLines.parts(step.operation).flatMap(part =>
         delta(run, OpStep(part, step.before, step.after), placedDiscard,
-          viewer)))
+          playedFaceup, viewer)))
     found.foldLeft(Vector.empty[DetailLines.Found]) {
       case (done :+ DetailLines.Discarded(who, region, cards),
           DetailLines.Discarded(next, again, more))
@@ -74,7 +76,8 @@ private[gamelog] final class DetailLines(words: LogWords,
     }
 
   private def delta(run: Run, step: OpStep, placedDiscard: Option[CardId],
-      viewer: Option[PlayerId]): Vector[DetailLines.Found] =
+      playedFaceup: Option[CardId], viewer: Option[PlayerId])
+      : Vector[DetailLines.Found] =
     import DetailLines.{Discarded, Line}
     val actor = run.actor
     val OpStep(operation, before, after) = step
@@ -121,7 +124,8 @@ private[gamelog] final class DetailLines(words: LogWords,
       case Reveal(id, _) => line(LogSpan.Text("Revealed ") +: words.one(card(id)))
       case Move(Piece.Card(id), PositionedLocation(Location.PlayArea(owner), _),
           PositionedLocation(Location.PlayArea(same), _),
-          Some(Orientation.FaceUp)) if owner == same && faceDown(before, id) =>
+          Some(Orientation.FaceUp)) if owner == same && faceDown(before, id) &&
+          !playedFaceup.contains(id) =>
         line(words.subject(owner, actor, "revealed") ++ words.one(card(id)))
       case _ => Vector.empty
 
@@ -146,12 +150,13 @@ private[gamelog] final class DetailLines(words: LogWords,
       .flatMap(located => GamePresentationProjector.orientationOf(located.state))
       .contains(Orientation.FaceDown)
 
-  /** The card Card Play's placement answer sent to the discard, which the
-    * "Discarded {card}" action line already tells. */
-  private def discardedPlacement(journal: LogJournal, run: Run, at: Int)
+  /** The card Card Play's last placement answer sent by `key`, which its
+    * action line already tells: "Discarded {card}" for the discard, and
+    * "Played {card} as an adviser" for a facedown adviser turned faceup. */
+  private def placement(journal: LogJournal, run: Run, at: Int, key: String)
       : Option[CardId] =
     journal.answers(run, at).reverse.collectFirst {
-      case Answered(id, ChooseOneAnswer(DecisionOptionRef.Button("discard")), _)
+      case Answered(id, ChooseOneAnswer(DecisionOptionRef.Button(`key`)), _)
           if id.startsWith(ActionLines.PlacePrefix) =>
         ActionLines.subjectCard(id.stripPrefix(ActionLines.PlacePrefix))
     }.flatten
