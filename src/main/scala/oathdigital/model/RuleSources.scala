@@ -77,23 +77,3 @@ object RuleSourceRef:
     def stableKey: String = s"legacy:${lineageId.value}:${id.value}"
   final case class GameRule(id: String) extends RuleSourceRef:
     def stableKey: String = s"game:$id"
-
-sealed trait RuleQueryContext extends Product with Serializable
-
-final case class RuleActivation(
-    source: RuleSourceRef,
-    handlerId: String,
-    priority: Int
-)
-
-sealed trait RuleOutcome extends Product with Serializable
-object RuleOutcome:
-  case object Allow extends RuleOutcome
-  final case class Block(violation: OathViolation) extends RuleOutcome
-  final case class UnsupportedRelevantRule(handlerId: String)
-      extends RuleOutcome
-
-final case class ResolvedRule(
-    activation: RuleActivation,
-    outcome: RuleOutcome
-)
