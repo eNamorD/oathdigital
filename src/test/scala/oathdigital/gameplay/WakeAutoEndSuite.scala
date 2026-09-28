@@ -6,6 +6,7 @@ import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** A Wake with nothing left to decide ends by itself, in the command that
   * left it so: at the turn boundary, and after the last Wake option. */
@@ -15,7 +16,7 @@ class WakeAutoEndSuite extends munit.FunSuite:
   /** Every site empty of favor and secrets, and each pawn alone at a site
     * with no River, so no Wake option is open unless a test adds one. */
   private val quiet: ReadyGame =
-    val initial = initialReady
+    val initial = Table.start.ready
     val current = initial.game.current
     val plain = current.map.inPlay.filter(site => !catalog.sites
       .find(_.id.value == site.value).exists(_.handlers.exists(_.contains("river"))))

@@ -1,16 +1,16 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Restriction, Transform}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The restriction traversal selects a `Branch` with the answers recorded so
   * far, so a Restriction hooked inside a subtree that only exists once a
   * decision is answered is checked once it does.
   */
 class RestrictionAnswersSuite extends munit.FunSuite:
-  private val actor = initialReady.game.current.turn.activePlayer
+  private val actor = Table.start.ready.game.current.turn.activePlayer
   private val nested = PowerWindow.CampaignActionEligibility
   private val ask = "test.ask"
   private val yes = DecisionOptionRef.Button("yes")
@@ -37,7 +37,7 @@ class RestrictionAnswersSuite extends munit.FunSuite:
     Vector(Answered(ask, DecisionAnswer.ChooseOneAnswer(ref), actor))
 
   private def violations(answers: Vector[Answered]): Vector[OathViolation] =
-    ProcedureWalker.restrictionViolations(tree, powers, initialReady, actor,
+    ProcedureWalker.restrictionViolations(tree, powers, Table.start.ready, actor,
       answers)
 
   test("a Restriction inside a subtree the answers have not opened is not checked"):
@@ -49,7 +49,7 @@ class RestrictionAnswersSuite extends munit.FunSuite:
 
   test("the answers default to none, so every existing caller is unchanged"):
     assertEquals(ProcedureWalker.restrictionViolations(tree, powers,
-      initialReady, actor), Vector.empty[OathViolation])
+      Table.start.ready, actor), Vector.empty[OathViolation])
 
   // ---- What a Transform inserts ----
 
@@ -65,7 +65,7 @@ class RestrictionAnswersSuite extends munit.FunSuite:
   test("a subtree a Transform inserts is checked too, not only the declared tree"):
     val without = WalkerPowers(Vector(forbidding))
     assertEquals(ProcedureWalker.restrictionViolations(root, without,
-      initialReady, actor), Vector.empty[OathViolation])
+      Table.start.ready, actor), Vector.empty[OathViolation])
     val both = WalkerPowers(Vector(forbidding, inserting))
     assertEquals(ProcedureWalker.restrictionViolations(root, both,
-      initialReady, actor), Vector[OathViolation](violation))
+      Table.start.ready, actor), Vector[OathViolation](violation))

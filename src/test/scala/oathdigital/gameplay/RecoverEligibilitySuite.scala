@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Covers `LegalActionProjector.recoverEligible`: projection delegates to the
   * same Recover procedure builder as command execution, and relic availability
@@ -15,7 +16,7 @@ class RecoverEligibilitySuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
 
   private def baseReady: (ReadyGame, PlayerState, SiteId) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = Table.start.ready
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val siteId = base.game.current.map.inPlay.find { id =>
@@ -23,7 +24,6 @@ class RecoverEligibilitySuite extends munit.FunSuite:
     }.get
     val moved = active.copy(pawnSite = Some(siteId))
     val ready = base.updateCurrent(_.copy(
-      turn = base.game.current.turn.copy(phase = Phase.Act),
       players = base.game.current.players.map(p =>
         if p.player == active.player then moved else p)))
     (ready, moved, siteId)

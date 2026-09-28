@@ -5,6 +5,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Travel terrain rules are proved against contribution collection, before
   * Travel owns a walker tree. Every cost node has R25's real shape: a
@@ -12,7 +13,7 @@ import oathdigital.model._
   */
 class TravelSitePowersSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
-  private val baseReady = FirstGameSetupFixture.execute()._1 match
+  private val baseReady = (Table.start.state: OathState) match
     case OathState.Ready(ready) => ready
     case other => fail(s"expected Ready state, got $other")
   private val actor = baseReady.game.current.turn.activePlayer

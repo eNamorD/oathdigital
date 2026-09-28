@@ -1,14 +1,14 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class ShuffleOperationSuite extends munit.FunSuite:
   private val executor = new OperationExecutor()
   private val cradle = SearchSource.RegionalDiscard(Region.Cradle)
 
   /** The Cradle discard pile holds the world deck's top three cards. */
-  private val discarded = initialReady.updateCurrent(c => c.copy(
+  private val discarded = Table.start.ready.updateCurrent(c => c.copy(
     commonCards = c.commonCards.copy(
       worldDeck = c.commonCards.worldDeck.drop(3),
       regionalDiscards = c.commonCards.regionalDiscards.updated(Region.Cradle,

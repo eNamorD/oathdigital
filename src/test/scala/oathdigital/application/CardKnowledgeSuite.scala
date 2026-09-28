@@ -1,8 +1,9 @@
 package oathdigital.application
 
 import oathdigital.gameplay.operations.OperationExecutor
-import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, initialReady}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
 
 /** Knowledge follows the card (spec, "Knowledge follows the card"). The
   * board and the log read knowledge through the same `identifiesAt`, so
@@ -10,19 +11,20 @@ import oathdigital.model._
 class CardKnowledgeSuite extends munit.FunSuite:
   private val executor = new OperationExecutor
   private val presentation = new GamePresentationProjector(catalog)
-  private val current = initialReady.game.current
-
-  /** A site with a relic, and three players whose pawns stand elsewhere, so
-    * the pawn-at-site rule never identifies the relic for them. */
-  private val (site, relic) = current.map.sites.collectFirst {
-    case (id, state) if state.relics.nonEmpty => id -> state.relics.head.id
-  }.get
-  private val away = current.players.filterNot(_.pawnSite.contains(site))
-    .map(_.player)
-  private val Vector(owner, other, third) = away.take(3): @unchecked
+  /** Sticky Fire lies at Dunes, where no pawn stands, so the pawn-at-site
+    * rule never identifies it for p1, p2 or p3. p1 holds a facedown
+    * Wrestlers. */
+  private val board: ReadyGame = Table.start
+    .relicAt("Sticky Fire", at = "Dunes")
+    .adviser(Table.p1, "Wrestlers", facedown = true)
+    .ready
+  private val current = board.game.current
+  private val (site, relic) =
+    (CatalogNames.site("Dunes"), CatalogNames.relic("Sticky Fire"))
+  private val (owner, other, third) = (Table.p1, Table.p2, Table.p3)
 
   private def run(ops: CoreOperation*)(using munit.Location): ReadyGame =
-    ops.foldLeft(initialReady) { (ready, op) =>
+    ops.foldLeft(board) { (ready, op) =>
       executor.execute(ready, op).fold(error => fail(s"$op: $error"), identity) }
 
   private def knows(ready: ReadyGame, player: PlayerId, id: CardId) =
@@ -91,7 +93,7 @@ class CardKnowledgeSuite extends munit.FunSuite:
     * forgotten, so a record of a card still in one comes from such a peek. */
   test("a card peeked in the world deck or a discard pile is named to its peeker alone"):
     val Vector(top, next) = current.commonCards.worldDeck.take(2): @unchecked
-    val staged = initialReady.updateCurrent(c => c.copy(commonCards =
+    val staged = board.updateCurrent(c => c.copy(commonCards =
       c.commonCards.copy(worldDeck = c.commonCards.worldDeck.filterNot(_ == next),
         regionalDiscards = c.commonCards.regionalDiscards.updated(Region.Cradle,
           c.commonCards.discard(Region.Cradle) :+ next))))

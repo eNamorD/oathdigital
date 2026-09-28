@@ -7,6 +7,7 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Tran
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Staging and driving shared by the card-play placement suites. The powers
   * built here are test doubles: they change `PlacementRules` and nothing else.
@@ -51,7 +52,7 @@ object PlacementFixture:
     */
   def staged(card: DenizenId, site: Vector[SiteDenizenState],
       at: Option[SiteId] = None): (ReadyGame, PlayerId, SiteId) =
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = actorOf(base)
     val siteId = at.getOrElse(actor.pawnSite.get)
@@ -72,7 +73,7 @@ object PlacementFixture:
       actor.player, siteId)
 
   /** The first in-play Homeland of the first game, and its suit. */
-  lazy val homeland: (SiteId, Suit) = initialReady.game.current.map.inPlay
+  lazy val homeland: (SiteId, Suit) = Table.start.ready.game.current.map.inPlay
     .flatMap(site => CardPlay.homelandSuit(catalog, site).map(site -> _)).head
 
   /** The actor rules the pawn site, so a Hall of Ministers does not protect it. */

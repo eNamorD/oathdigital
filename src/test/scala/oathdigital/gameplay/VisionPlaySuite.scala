@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
+import oathdigital.testkit.Table
 import oathdigital.model.OathState.Ready
 
 class VisionPlaySuite extends munit.FunSuite:
@@ -23,9 +24,8 @@ class VisionPlaySuite extends munit.FunSuite:
   private def placeId(card: VisionId) = s"cardplay.place.${card.kind}.${card.value}"
 
   private def acting: ReadyGame =
-    val state = initialReady
-    state.updateCurrent(_.copy(
-      turn = state.game.current.turn.copy(phase = Phase.Act)))
+    val state = Table.start.ready
+    state
 
   private def player(ready: ReadyGame, id: PlayerId): PlayerState =
     ready.game.current.players.find(_.player == id).get

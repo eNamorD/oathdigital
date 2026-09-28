@@ -3,15 +3,15 @@ package oathdigital.gameplay
 import scala.collection.mutable
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, Offer, OfferHost, PowerCtx, Transform}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The `Offer` contribution and the node that hosts it: what the walker hands a
   * host, in which order, and how a host is told the walk is resuming inside it.
   */
 class OfferHostSuite extends munit.FunSuite:
-  private val ready = initialReady
+  private val ready = Table.start.ready
   private val actor = ready.game.current.turn.activePlayer
   private val window = PowerWindow.CampaignAttackerBattlePlans
 

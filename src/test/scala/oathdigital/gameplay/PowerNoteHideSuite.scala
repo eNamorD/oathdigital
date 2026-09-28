@@ -2,10 +2,10 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, Restriction}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.gameplay.walker.{PowerNoted, ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 object PowerNoteHideSuite:
   val hideSource: PowerSourceRef = PowerSourceRef.Site(SiteId("test-site"))
@@ -46,7 +46,7 @@ class PowerNoteHideSuite extends munit.FunSuite:
   private def notes(events: Vector[OathEvent]): Vector[OathEvent] =
     events.filter(_.isInstanceOf[PowerNoted])
 
-  private val ready = initialReady
+  private val ready = Table.start.ready
   private val actor = ready.game.current.turn.activePlayer
   private val hider = PowerId("test.hider")
 

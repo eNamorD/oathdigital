@@ -1,9 +1,9 @@
 package oathdigital.model
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.testkit.Table
 
 class PlayerForceKindSuite extends munit.FunSuite:
-  private val ready = initialReady
+  private val ready = Table.start.ready
   private val actor = ready.game.current.players.head
 
   private def withRole(role: Role): ReadyGame =

@@ -3,9 +3,10 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class PayCostSettlementSuite extends munit.FunSuite:
-  private val base = initialReady
+  private val base = Table.start.ready
   private val current = base.game.current
   private val active = current.turn.activePlayer
   private val payer = current.players.map(_.player).find(_ != active).get

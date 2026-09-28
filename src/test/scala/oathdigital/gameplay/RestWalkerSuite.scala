@@ -6,15 +6,19 @@ import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Walker Begin Rest and Finish Rest, driven through `startWalker`. */
 class RestWalkerSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
 
-  private val act: ReadyGame =
-    val initial = initialReady
-    initial.updateCurrent(_.copy(
-      turn = initial.game.current.turn.copy(phase = Phase.Act)))
+  /** p1's Act. Broken Peaks and Buried Giant, where p2 and p3 stand, each
+    * hold two secrets, so their Wakes have wealth to take and wait; p1's
+    * Ancient City holds none. */
+  private val act: ReadyGame = Table.start
+    .siteTokens(Table.homeOf(Table.p2), secrets = 2)
+    .siteTokens(Table.homeOf(Table.p3), secrets = 2)
+    .ready
   private val actor = act.game.current.turn.activePlayer
   private def inRest(ready: ReadyGame) = ready.updateCurrent(_.copy(turn = ready.game.current.turn.copy(
       phase = Phase.Rest)))

@@ -4,7 +4,7 @@ import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
@@ -48,9 +48,21 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * choosing where the pawn stands rather than taking whichever site the
     * setup fixture happened to pick.
     */
+  /** The quiet table with Sticky Fire lying facedown at Broken Peaks, the
+    * site relic the disclosure tests reveal or hide, and Cursed Cauldron
+    * facedown at Dunes, away from every pawn. p1 holds a facedown Wrestlers
+    * and p2 a facedown Birdsong, whose three-digit id (176) cannot turn up
+    * in a projection by chance. */
+  private val board: ReadyGame = Table.start
+    .relicAt("Sticky Fire", at = "Broken Peaks")
+    .relicAt("Cursed Cauldron", at = "Dunes")
+    .adviser(p1, "Wrestlers", facedown = true)
+    .adviser(p2, "Birdsong", facedown = true)
+    .ready
+
   private def parked(action: ActionRef, atSite: Option[SiteId] = None)
       : (ScopedProjectionContext, PlayerId) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = board
     val actor = base.game.current.turn.activePlayer
     val moved = atSite.fold(base.game.current.players)(site =>
       base.game.current.players.map(player =>
@@ -58,24 +70,17 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
         else player))
     val ready: ReadyGame = base.updateCurrent(_.copy(
         players = moved,
-        turn = base.game.current.turn.copy(phase = Phase.Act),
         walkerProcedure = Some(action),
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
     (ScopedProjectionContext(ready, Some(actor)), actor)
 
-  /** The first site holding a facedown relic, so the disclosure tests can
-    * stand the pawn where Recover's own option shape is observable. The
-    * setup fixture's board carries no site denizens at all, which is why
-    * Forge's faceup-denizen shape is proven end to end in
-    * `GameApplicationServiceSuite` rather than here.
+  /** Where `board`'s facedown relic lies, so the disclosure tests can stand
+    * the pawn where Recover's own option shape is observable. The board
+    * carries no site denizens at all, which is why Forge's faceup-denizen
+    * shape is proven end to end in `GameApplicationServiceSuite` rather than
+    * here.
     */
-  private lazy val facedownRelicSite: SiteId =
-    val Ready(base) = execute()._1: @unchecked
-    base.game.current.map.sites.collectFirst {
-      case (siteId, site)
-          if site.relics.exists(_.orientation == Orientation.FaceDown) =>
-        siteId
-    }.getOrElse(fail("the fixture board must hold a facedown site relic"))
+  private val facedownRelicSite: SiteId = CatalogNames.site("Broken Peaks")
 
   /** Whatever the action, the tree is [[rollTree]] -- so the two calls
     * below differ in nothing but the `ActionRef` that parked.
@@ -464,14 +469,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     */
   private def parkedOffTurn: (ReadyGame, PlayerId, PlayerId,
       WalkerDecisionProjector) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = board
     val active = base.game.current.turn.activePlayer
     val owner = base.game.current.players.map(_.player).find(_ != active).get
     val tree: Operation = Sequence(Decide("test.off-turn", owner,
       DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
         DecisionOptionRef.Button("ok"), "OK")), heading = Some("Answer"))))
     val ready = base.updateCurrent(_.copy(
-        turn = base.game.current.turn.copy(phase = Phase.Act),
         walkerProcedure = Some(ActionRef.Recover),
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
     val projector = new WalkerDecisionProjector(catalog,

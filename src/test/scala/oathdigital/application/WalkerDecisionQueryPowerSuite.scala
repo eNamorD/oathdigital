@@ -6,6 +6,7 @@ import oathdigital.gameplay.walker.{WalkerParked, WalkerPowers}
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The point of Task 4, in one suite: a power that transforms a parked
   * decision moves what the projector OFFERS and what the walker ACCEPTS in
@@ -41,9 +42,8 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     * eligibility gates, so the command never consults them.
     */
   private def actable: (ReadyGame, PlayerId) =
-    val Ready(base) = execute()._1: @unchecked
-    val ready = base.updateCurrent(_.copy(turn = base.game.current.turn.copy(
-        phase = Phase.Act)))
+    val base = Table.start.ready
+    val ready = base
     (ready, ready.game.current.turn.activePlayer)
 
   /** One windowed composite holding one `Decide`: the transform below sees

@@ -315,8 +315,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
       .copy(current = prepared(Vector.empty).game.current.copy(
         result = Some(GameResult(PlayerId("p1"), VictoryKind.Usurper)))))
     val active = finished.game.current.turn.activePlayer
-    val act = finished.updateCurrent(_.copy(turn = finished.game.current.turn.copy(
-        phase = Phase.Act)))
+    val act = finished
     val destination = act.game.current.map.inPlay.find(_ !=
       act.game.current.players.find(_.player == active).get.pawnSite.get).get
     assertEquals(rules.startWalker(Ready(act), ActionRef.Travel, active,

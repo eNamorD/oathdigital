@@ -2,8 +2,8 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.ProcedureWalkerSuite.TestTransformPower
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewOutcome
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class WalkerPreviewSuite extends munit.FunSuite:
   private val cheap = DecisionOptionRef.Button("cheap")
@@ -12,7 +12,7 @@ class WalkerPreviewSuite extends munit.FunSuite:
   private val hooked = PowerWindow.SearchEligibility
 
   private def withSupply(amount: Int): (ReadyGame, PlayerId) =
-    val base = initialReady
+    val base = Table.start.ready
     val actor = base.game.current.turn.activePlayer
     val players = base.game.current.players.map(player =>
       if player.player == actor then

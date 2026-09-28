@@ -3,13 +3,12 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, DecisionQueries,
   ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
-import oathdigital.model.OathState.Ready
 import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Task 2: the declared Forge tree reproduces the legacy `Forge.handle`/
   * `Forge.evolve` observable flow on `ProcedureWalker.advance`/`resolve`.
@@ -44,7 +43,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     cost.favor > 0 && cost.secrets > 0)
 
   private def forgeableWhere(printed: Tokens => Boolean): Forgeable =
-    val Ready(base) = execute()._1: @unchecked
+    val base = Table.start.ready
     val actor0 = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val actor = actor0.copy(board = actor0.board.copy(favor = 5,
@@ -61,7 +60,6 @@ class ForgeProcedureSuite extends munit.FunSuite
       denizens = denizens)
     val moved = actor.copy(pawnSite = Some(siteId))
     val ready = base.updateCurrent(_.copy(
-        turn = base.game.current.turn.copy(phase = Phase.Act),
         commonCards = base.game.current.commonCards.copy(worldDeck =
           base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
         players = base.game.current.players.map(p =>

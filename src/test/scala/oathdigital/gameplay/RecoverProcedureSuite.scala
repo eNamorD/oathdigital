@@ -3,15 +3,14 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.WalkerDiceFixture.scripted
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.model.OathState.Ready
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Task 5: the declared Recover tree reproduces the legacy Recover flow on
   * `ProcedureWalker.advance`/`roll`/`resolve` — success (single- and
@@ -45,7 +44,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     * is removed to conserve card identity). Supply is full.
     */
   private def recoverable: (ReadyGame, PlayerState, SiteId, RelicState, Int) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = Table.start.ready
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val candidates = base.game.current.map.inPlay.filter(siteId =>
@@ -60,7 +59,6 @@ class RecoverProcedureSuite extends munit.FunSuite
     val site = base.game.current.map.sites(siteId).copy(relics = Vector(relic))
     val moved = active.copy(pawnSite = Some(siteId))
     val ready = base.updateCurrent(_.copy(
-        turn = base.game.current.turn.copy(phase = Phase.Act),
         commonCards = base.game.current.commonCards.copy(
           relicDeck = base.game.current.commonCards.relicDeck.tail),
         players = base.game.current.players.map(p =>

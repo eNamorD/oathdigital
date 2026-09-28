@@ -3,12 +3,12 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Travel on the generic walker (batch 1, Task 5).
   *
@@ -35,7 +35,7 @@ class TravelProcedureSuite extends munit.FunSuite:
       supply: Int = 7,
       passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1)
   ): ReadyGame =
-    val Ready(initial) = execute()._1: @unchecked
+    val initial = Table.start.ready
     val chosen = Vector(source, coast, plains(1), mountain, pass, plains(2),
       island, plains(3))
     val ids = (chosen.distinct ++ catalog.sites.map(_.id)
@@ -56,8 +56,7 @@ class TravelProcedureSuite extends munit.FunSuite:
           player.board.copy(supply = SupplyTrack(supply)) else player.board)
     initial.updateCurrent(_.copy(
       players = players,
-      map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states),
-      turn = initial.game.current.turn.copy(phase = Phase.Act)))
+      map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states)))
 
   private def active(ready: ReadyGame): PlayerState =
     ready.game.current.players.find(

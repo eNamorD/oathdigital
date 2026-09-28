@@ -6,10 +6,10 @@ import oathdigital.gameplay.powers.travel.{NarrowPassSitePower, TravelSitePowers
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
-import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 
 class CampaignPowersSuite extends munit.FunSuite:
-  private val Ready(initial) = execute()._1: @unchecked
+  private val initial = Table.start.ready
   private val actor: PlayerId = initial.game.current.turn.activePlayer
   private val other: PlayerId =
     initial.game.current.players.map(_.player).find(_ != actor).get

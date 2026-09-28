@@ -2,8 +2,8 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.model._
+import oathdigital.testkit.Table
 import oathdigital.model.TestGameFixtures._
 
 class OperationPipelineSuite extends munit.FunSuite:
@@ -64,7 +64,7 @@ class OperationPipelineSuite extends munit.FunSuite:
     assertEquals(run.skipped.map(_.requested), Vector[CoreOperation](blocked))
 
   private def holding(card: WorldCardId): (ReadyGame, PlayerId) =
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     (base.updateCurrent(_.copy(
@@ -87,7 +87,7 @@ class OperationPipelineSuite extends munit.FunSuite:
     assertEquals(OperationRun.boxed(run.executed), Set[CardId](card))
 
   test("a card that is not a Vision cannot be moved to the shared bank"):
-    val base = initialReady
+    val base = Table.start.ready
     val denizen = base.game.current.commonCards.worldDeck.collectFirst {
       case id: DenizenId => id
     }.get

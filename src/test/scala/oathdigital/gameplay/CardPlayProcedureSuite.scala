@@ -6,11 +6,12 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerOutcome, WalkerPowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
 
 class CardPlayProcedureSuite extends munit.FunSuite:
 
   private def handState: (ReadyGame, PlayerId, DenizenId) =
-    val base = initialReady
+    val base = Table.start.ready
     val actor = base.game.current.turn.activePlayer
     val card = base.game.current.commonCards.worldDeck.collectFirst {
       case id: DenizenId => id
@@ -156,7 +157,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       SearchPlacement.Adviser(Orientation.FaceUp, None)))
 
   test("a faceup Conspiracy is planned as no placement and offers no replacement"):
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     val vision = VisionRules.Conspiracy
@@ -181,7 +182,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       CardPlay.Origin.TemporaryHand).isLeft)
 
   test("a facedown Vision is offered discard and faceup play only, with no replacement"):
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     val held = Vector(VisionRules.Faith, VisionRules.Conspiracy)
@@ -294,14 +295,10 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       "adviser-faceup")))
 
   test("facedown adviser starts the shared walker placement tree"):
-    val setup = initialReady
-    val actor = setup.game.current.turn.activePlayer
-    val adviser = setup.game.current.players.find(_.player == actor).get
-      .advisers.collectFirst {
-        case DenizenState(id, Orientation.FaceDown, _) => id
-      }.get
-    val ready = setup.updateCurrent(_.copy(turn = setup.game.current.turn.copy(
-        phase = Phase.Act)))
+    // p1 holds a facedown Wrestlers to play.
+    val adviser = CatalogNames.denizen("Wrestlers")
+    val ready = Table.start.adviser(Table.p1, adviser, facedown = true).ready
+    val actor = Table.p1
     val rules = new OathRules(catalog)
     val walkerParked = new ParkedDecisionAssertions(catalog)
     val started = rules.startWalker(OathState.Ready(ready),
@@ -323,7 +320,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
 
   test("placementDecisionId and placedCard round-trip a denizen and a " +
       "Vision whose value contains ':'"):
-    val actor = initialReady.game.current.turn.activePlayer
+    val actor = Table.start.ready.game.current.turn.activePlayer
     def pendingFor(id: String): PendingTree = PendingTree(at = Vector.empty,
       answered = Vector(Answered(id, DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Button("adviser-faceup")), actor)))

@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{DeltaMeaning, ProcedureWalker, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.Table
 import oathdigital.model.OathState.Ready
 
 /** Replay applies a recorded `PayCost` the way the pipeline ran it: a payer who
@@ -12,7 +13,7 @@ import oathdigital.model.OathState.Ready
   * defender's payment on the card it was settled off.
   */
 class WalkerReplaySettlementSuite extends munit.FunSuite:
-  private val base = initialReady
+  private val base = Table.start.ready
   private val current = base.game.current
   private val active = current.turn.activePlayer
   private val payer = current.players.map(_.player).find(_ != active).get

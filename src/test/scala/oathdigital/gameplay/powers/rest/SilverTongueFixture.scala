@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Silver Tongue arranged in the Rest phase, shared by its own suite, the
   * projection suite and the pending-walker invariant (Task 13).
@@ -15,10 +16,12 @@ object SilverTongueFixture:
     * The pawn site shows one faceup denizen per suit in `siteSuits`, every
     * bank in `stocked` holds 3 favor and every other bank is empty. A site
     * with capacity is emptied so the action boundary visibly refills it.
+    * Broken Peaks holds two secrets, so p2, waking next, has wealth to take
+    * and the Wake waits.
     */
   def arranged(siteSuits: Vector[Suit], stocked: Set[Suit])
       : (ReadyGame, PlayerId) =
-    val ready = initialReady
+    val ready = Table.start.siteTokens(Table.homeOf(Table.p2), secrets = 2).ready
     val current = ready.game.current
     val actor = current.turn.activePlayer
     val pawn = current.players.find(_.player == actor).get.pawnSite.get

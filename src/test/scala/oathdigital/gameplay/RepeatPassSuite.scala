@@ -1,16 +1,16 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** When a `Repeat` stops. Its guard reads only state and answers, so a pass that
   * records nothing and asks nothing cannot change what the guard reads, and the
   * loop ends instead of repeating for ever.
   */
 class RepeatPassSuite extends munit.FunSuite:
-  private val actor = initialReady.game.current.turn.activePlayer
-  private val low: ReadyGame = initialReady.updateCurrent(current =>
+  private val actor = Table.start.ready.game.current.turn.activePlayer
+  private val low: ReadyGame = Table.start.ready.updateCurrent(current =>
     current.copy(players = current.players.map(p =>
       if p.player == actor then p.copy(board = p.board.copy(supply = SupplyTrack(1)))
       else p)))

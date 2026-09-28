@@ -8,15 +8,15 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerOutcome, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class SearchProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val parked = new ParkedDecisionAssertions(catalog)
 
   private def ready: ReadyGame =
-    val state = initialReady
-    state.updateCurrent(_.copy(
-      turn = state.game.current.turn.copy(phase = Phase.Act)))
+    val state = Table.start.ready
+    state
 
   test("world Search starts from one generic source argument and parks on card selection"):
     val initial = ready

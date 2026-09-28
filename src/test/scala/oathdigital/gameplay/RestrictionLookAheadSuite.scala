@@ -1,10 +1,10 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.{OfferHost, PowerCtx}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers,
   WalkerSimulation}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The walker hides an option whose answer would break a `Restriction`, even
   * when the restriction's window exists only once that answer is given, so a
@@ -13,7 +13,7 @@ import oathdigital.model._
 class RestrictionLookAheadSuite extends munit.FunSuite:
   import ProcedureWalkerSuite.TestRestrictionPower
 
-  private val ready = initialReady
+  private val ready = Table.start.ready
   private val actor = ready.game.current.turn.activePlayer
   private val nested = PowerWindow.CampaignActionEligibility
   private val ask = "test.ask"
