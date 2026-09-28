@@ -5,9 +5,9 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.model._
 
-/** Staging shared by the banner-face suites. The first game seats three
-  * players: the actor (p2) at ancient-city, p1 at buried-giant and p3 at
-  * broken-peaks. Both banners start unheld, on Mob and Wandering Flame.
+/** Staging shared by the banner-face suites, on the quiet table: the actor
+  * p1 at Ancient City, p2 at Broken Peaks and p3 at Buried Giant. Both
+  * banners start unheld, on Mob and Wandering Flame.
   */
 object BannerFixture:
   import PowerFixture._
@@ -18,9 +18,6 @@ object BannerFixture:
     * fixture.
     */
   val parked = TargetsFixture.parked
-
-  val p1: PlayerId = PlayerId("p1")
-  val p3: PlayerId = PlayerId("p3")
 
   val ancientCity: SiteId = SiteId("site:ancient-city")
   val brokenPeaks: SiteId = SiteId("site:broken-peaks")

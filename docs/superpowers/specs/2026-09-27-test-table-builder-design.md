@@ -1,6 +1,6 @@
 # Test Table builder
 
-Date: 2026-09-27. Status: approved in brainstorming, pending spec review.
+Date: 2026-09-27. Status: implemented (see Result).
 
 This is the first of five test-suite improvement projects that came out of the
 2026-09-27 test audit. The other four are queued behind it:
@@ -240,3 +240,53 @@ keep `initialReady`, `execute()` or `Situation.wake`:
 After each migration task, the full root suite runs green, and the task
 records the suite's CPU time from the munit timings. The last task runs the
 brittleness check from the success criteria.
+
+## Result
+
+Implemented on `test/table-builder`, 2026-09-27.
+
+**`Table`**
+- `Table`, `Look` and `CatalogNames` are in `src/test/scala/oathdigital/testkit`, with `TableSuite` (21 tests).
+- Steps added beyond the design, each needed by three or more suites: `hand`, `discarded`, `knowsRelicAt`, `oathkeeper`.
+- Two ways to continue from a state a test already holds:
+  - `Table.from(ready)` continues building from that state.
+  - `unchecked` reads a state that a fixture helper is still assembling by hand.
+
+**Migration.** The user chose the approach mid-way:
+- Rewritten test by test, with the fixture deleted or reduced:
+  - Economy: reduced to its test powers.
+  - Negotiation, Challenge and Oathkeeper: deleted.
+  - Placement: five of its seven suites.
+  - PhasePower: reduced to its test power and `holding(phase)`.
+- Rebased, keeping their helpers as thin `Table` wrappers:
+  - `CampaignFixture` and `PlanDriver`;
+  - the `PowerFixture` family: `PowerFixture`, `TargetsFixture`, `SearchFixture`, `MovementFixture`, `BannerFixture`, `WhenPlayedHarness`;
+  - the Catacombs fixture that four suites borrow.
+
+  The audit named the Campaign and Power suites as DAMP models, so their domain phrases stay.
+- Every other rule suite that used `initialReady` or `execute()` as a base now starts from the quiet table. Where a test relied on a setup fact, it now states that fact as a step.
+
+**Kept on replay, as planned:**
+- setup, `SituationSuite`, replay drift, the wire suite, End Wake;
+- the service and route suites, the game-log suites, and their fixtures (`ParkedServiceFixture`, `ForgeWalkerFixture`);
+- the three replay-from-journal tests in the Minor Action, Negotiation and Challenge suites.
+
+**Brittleness check.** Disabling the Wake auto-end makes `wakeOptionOpen` always true. This change, the same one that failed 158 tests before this work, now fails 24:
+
+- **16 are about the auto-end itself.** Examples: Wake auto-end, Take Wealth ending Wake, a facedown Hunger, Rest waking the first player, the Game Start to Wake suite, and the log headlines and goldens that record "Nothing happened in Wake".
+- **8 are service-level, log-level or `Situation`-level.** Examples: three service sequence-number tests, three golden logs, two `SituationSuite` tests, and one test of a Hunger revealed in Setup. These are the next project's: a built start state for service and log tests.
+- **None is a rule suite failing on an incidental setup fact.**
+
+**CPU** (sum of munit per-test times; wall time stays about 19 s, parallel):
+
+| Scope | Before | After |
+|---|---|---|
+| Whole root suite | 156.9 s over 2308 tests | 93.3 s over 2329 |
+| Campaign and targeting | 60.6 s over 281 | 24.2 s over 281 |
+| Power suites | 64.1 s over 805 | 31.2 s over 805 |
+
+**For the pruning and readability projects:**
+- `CardStaging.without` is still used by about twenty power suites to take a card out before placing it by hand. A `Table` step does both.
+- `PlacementFixture.staged` remains for People's Favor (Mob) and the card-play procedure suite.
+- About 20 hand-written `TurnState` / `phase =` patches remain. Their subject is the phase: Rest, RoundEnd, putting the turn back in Wake, or asserting the turn.
+- One weak assertion was found and fixed. A projector test checked that an adviser's id did not appear in a row. The id was "2", which appears in "p2:0", so the check could not pass. The test now uses a card with a three-digit id.

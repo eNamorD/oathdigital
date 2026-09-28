@@ -6,10 +6,12 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 
 /** Staging and driving shared by the Whistle, Brass Horse and Magic Carpet
-  * suites. The first game seats three players: the actor (p2) at
-  * ancient-city, p1 at buried-giant and p3 at broken-peaks.
+  * suites, on the quiet table: the actor p1 at Ancient City, p2 at Broken
+  * Peaks and p3 at Buried Giant. `homelands` adds the ruined edifices the
+  * first game stands at its two Homelands.
   */
 object MovementFixture:
   import PowerFixture._
@@ -21,8 +23,6 @@ object MovementFixture:
     */
   val parked = TargetsFixture.parked
 
-  val p1: PlayerId = PlayerId("p1")
-  val p3: PlayerId = PlayerId("p3")
 
   val ancientCity: SiteId = SiteId("site:ancient-city")
   val brokenPeaks: SiteId = SiteId("site:broken-peaks")
@@ -30,6 +30,14 @@ object MovementFixture:
   val deepWoods: SiteId = SiteId("site:deep-woods")
   val desolateShore: SiteId = SiteId("site:desolate-shore")
   val dunes: SiteId = SiteId("site:dunes")
+
+  /** A ruined Beast edifice (Hiding Place) at Deep Woods and a ruined Hearth
+    * one (Squalid District) at Golden Valley, as the first game stands them
+    * at its Homelands; no other card lies at any site. */
+  def homelands(ready: ReadyGame): ReadyGame = Table.from(ready)
+    .edifice("Hiding Place", EdificeSide.Ruined, at = deepWoods)
+    .edifice("Squalid District", EdificeSide.Ruined, at = "Golden Valley")
+    .unchecked
 
   def pawnOf(ready: ReadyGame, id: PlayerId = actor): SiteId =
     player(ready, id).pawnSite.get

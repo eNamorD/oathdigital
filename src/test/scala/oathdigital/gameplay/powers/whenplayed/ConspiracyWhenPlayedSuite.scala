@@ -8,6 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   private val powers = WalkerPowers(Vector(ConspiracyWhenPlayed))
@@ -27,7 +28,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       origin: CardPlayProcedure.Origin = CardPlayProcedure.Origin.TemporaryHand)
       (edit: (ReadyGame, PlayerId) => ReadyGame = (ready, _) => ready)
       : Staged =
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     val site = current.players.find(_.player == actor).get.pawnSite

@@ -10,167 +10,172 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerParked
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.NoPlayableOption
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.{p1, p2}
 
 /** Challenge through the rules, as a client drives it: start, answer the
   * banner, answer the amount, and (Wandering Flame) the tied sites.
   */
 class ChallengeProcedureSuite extends munit.FunSuite:
-  import ChallengeFixture._
   private val rules = new OathRules(catalog)
   private val pf = DecisionOptionRef.Banner(Banner.PeoplesFavor)
   private val ds = DecisionOptionRef.Banner(Banner.DarkestSecret)
 
+  /** p1, in Act at Ancient City, has 6 favor, 6 faceup and 4 facedown
+    * secrets, and the start's 7 Supply. Nobody holds a banner. */
+  private def challenger: Table = Table.start
+    .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
+
+  /** Every site holds 10 secrets except those named, so the least sites are
+    * the named ones with the fewest. */
+  private def siteSecrets(table: Table, named: (String, Int)*): Table =
+    val secretsBySite = named.map((name, n) => CatalogNames.site(name) -> n).toMap
+    table.ready.game.current.map.inPlay.foldLeft(table) { (t, site) =>
+      t.siteTokens(site, secrets = secretsBySite.getOrElse(site, 10))
+    }
+
   private def start(board: ReadyGame) =
-    rules.startWalker(Ready(board), ActionRef.Challenge, active(board))
+    rules.startWalker(Ready(board), ActionRef.Challenge, p1)
 
-  private def chooseBanner(state: OathState, actor: PlayerId,
-      banner: DecisionOptionRef) = rules.resolveWalker(state, actor,
-    "challenge.banner", DecisionAnswer.ChooseOneAnswer(banner))
+  private def chooseBanner(state: OathState, banner: DecisionOptionRef) =
+    rules.resolveWalker(state, p1, "challenge.banner",
+      DecisionAnswer.ChooseOneAnswer(banner))
 
-  private def chooseAmount(state: OathState, actor: PlayerId, amount: Int) =
-    rules.resolveWalker(state, actor, "challenge.amount",
+  private def chooseAmount(state: OathState, amount: Int) =
+    rules.resolveWalker(state, p1, "challenge.amount",
       DecisionAnswer.ChooseAmountAnswer(amount))
 
-  private def chooseSites(state: OathState, actor: PlayerId,
-      sites: Vector[SiteId]) = rules.resolveWalker(state, actor,
-    "challenge.ribbon-site", DecisionAnswer.ChooseManyAnswer(
-      sites.map(DecisionOptionRef.Site(_))))
+  private def chooseSites(state: OathState, sites: Vector[SiteId]) =
+    rules.resolveWalker(state, p1, "challenge.ribbon-site",
+      DecisionAnswer.ChooseManyAnswer(sites.map(DecisionOptionRef.Site(_))))
 
   private def ready(state: OathState): ReadyGame = state match
     case Ready(value) => value
     case other => fail(s"expected a ready game, got $other")
 
-  private def player(board: ReadyGame, id: PlayerId): PlayerState =
-    board.game.current.players.find(_.player == id).get
-
   /** Starts, answers the banner, and returns the state parked at the amount. */
   private def atAmount(board: ReadyGame, banner: DecisionOptionRef): OathState =
     val started = start(board).getOrElse(fail("a legal Challenge must start"))
-    chooseBanner(started.state, active(board), banner)
+    chooseBanner(started.state, banner)
       .getOrElse(fail("the banner must be accepted")).state
 
   test("starting spends the Supply and parks on the banner decision"):
-    val (board, actor) = ChallengeFixture.ready(resources = 2)
+    val board = challenger.peoplesFavor(None, favor = 2).ready
     val started = start(board).getOrElse(fail("a legal Challenge must start"))
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(player(ready(started.state), actor.player).board.supply,
-      SupplyTrack(actor.board.supply.supply - 1))
+    assertEquals(Look(started.state).supply(p1), 7 - 1)
     assertEquals(ready(started.state).game.current.banners,
       board.game.current.banners)
 
   test("only banners the actor could take are offered"):
-    val (board, actor) = ChallengeFixture.ready(resources = 2, faceup = 0)
+    // No faceup secrets, so Darkest Secret is out of reach.
+    val board = challenger.secrets(p1, faceUp = 0, faceDown = 4)
+      .peoplesFavor(None, favor = 2).ready
     val started = start(board).getOrElse(fail("People's Favor is legal"))
-    assert(chooseBanner(started.state, actor.player, ds).isLeft)
-    assert(chooseBanner(started.state, actor.player, pf).isRight)
+    assert(chooseBanner(started.state, ds).isLeft)
+    assert(chooseBanner(started.state, pf).isRight)
 
   test("a start with no legal banner is rejected and changes nothing"):
-    val (board, _) = ChallengeFixture.ready(resources = 6, favor = 6, faceup = 0)
+    // 6 favor cannot exceed People's Favor's 6, and there are no faceup secrets.
+    val board = challenger.secrets(p1, faceUp = 0, faceDown = 4)
+      .peoplesFavor(None, favor = 6).ready
     assertEquals(start(board), Left(NoPlayableOption("challenge")))
 
   test("a start with no Supply is rejected"):
-    val (board, _) = ChallengeFixture.ready(resources = 2, supply = 0)
-    assert(start(board).isLeft)
+    assert(start(challenger.supply(p1, 0).peoplesFavor(None, favor = 2).ready)
+      .isLeft)
 
   test("an enemy-held banner needs co-location"):
     // No faceup secrets, so People's Favor is the only banner in question.
-    val (base, _) = ChallengeFixture.ready(resources = 2, faceup = 0)
-    val apart = enemyHolds(base, Banner.PeoplesFavor, 2, colocated = false)
-    assertEquals(start(apart), Left(NoPlayableOption("challenge")))
-    assert(start(enemyHolds(base, Banner.PeoplesFavor, 2)).isRight)
+    val base = challenger.secrets(p1, faceUp = 0, faceDown = 4)
+      .peoplesFavor(Some(p2), favor = 2)
+    // p2 stands at Broken Peaks, away from p1.
+    assertEquals(start(base.ready), Left(NoPlayableOption("challenge")))
+    assert(start(base.pawn(p2, at = Table.homeOf(p1)).ready).isRight)
 
   test("the amount must exceed the banner and fit the actor's resources"):
-    val (board, actor) = ChallengeFixture.ready(resources = 2, favor = 6)
-    val parked = atAmount(board, pf)
-    assert(chooseAmount(parked, actor.player, 2).isLeft)
-    assert(chooseAmount(parked, actor.player, 7).isLeft)
-    assert(chooseAmount(parked, actor.player, 3).isRight)
-    assert(chooseAmount(parked, actor.player, 6).isRight)
+    val parked = atAmount(challenger.peoplesFavor(None, favor = 2).ready, pf)
+    assert(chooseAmount(parked, 2).isLeft)
+    assert(chooseAmount(parked, 7).isLeft)
+    assert(chooseAmount(parked, 3).isRight)
+    assert(chooseAmount(parked, 6).isRight)
 
   test("People's Favor: an unclaimed banner is taken and its favor returns to the least banks"):
-    val (board, actor) = ChallengeFixture.ready(resources = 2)
-    val done = chooseAmount(atAmount(board, pf), actor.player, 3)
+    val board = challenger.peoplesFavor(None, favor = 2).ready
+    val done = chooseAmount(atAmount(board, pf), 3)
       .getOrElse(fail("the amount must be accepted"))
     val after = ready(done.state)
     val current = after.game.current
-    assertEquals(current.banners.peoplesFavor.holder, Some(actor.player))
+    assertEquals(current.banners.peoplesFavor.holder, Some(p1))
     assertEquals(current.banners.peoplesFavor.favor, 3)
-    assertEquals(player(after, actor.player).board.favor, actor.board.favor - 3)
-    assertEquals(player(after, actor.player).board.supply,
-      SupplyTrack(actor.board.supply.supply - 1))
+    assertEquals(Look(after).favor(p1), 6 - 3)
+    assertEquals(Look(after).supply(p1), 7 - 1)
     val expected = BannerRules.addFavor(board.banks.favor,
       BannerRules.raidFavorReturn(board.banks.favor, 2))
     assertEquals(after.banks.favor, expected)
     assertEquals(current.walkerPending, None)
 
   test("People's Favor: an enemy-held banner moves to the challenger"):
-    val (base, actor) = ChallengeFixture.ready(resources = 2)
-    val board = enemyHolds(base, Banner.PeoplesFavor, 2)
-    val done = chooseAmount(atAmount(board, pf), actor.player, 3)
+    val board = challenger.peoplesFavor(Some(p2), favor = 2)
+      .pawn(p2, at = Table.homeOf(p1)).ready
+    val done = chooseAmount(atAmount(board, pf), 3)
       .getOrElse(fail("the amount must be accepted"))
     val after = ready(done.state).game.current
-    assertEquals(after.banners.peoplesFavor.holder, Some(actor.player))
+    assertEquals(after.banners.peoplesFavor.holder, Some(p1))
     assertEquals(after.banners.peoplesFavor.favor, 3)
 
   test("Wandering Flame: a unique least site takes secrets one at a time, with no site decision"):
-    val (base, actor) = ChallengeFixture.ready(resources = 3,
-      banner = Banner.DarkestSecret)
-    val Vector(a, b, c) = base.game.current.map.inPlay.take(3): @unchecked
-    val board = withSiteSecrets(base, Map(a -> 0, b -> 1, c -> 5))
-    val done = chooseAmount(atAmount(board, ds), actor.player, 4)
+    val board = siteSecrets(challenger.darkestSecret(None, secrets = 3),
+      "Ancient City" -> 0, "Broken Peaks" -> 1, "Buried Giant" -> 5).ready
+    val done = chooseAmount(atAmount(board, ds), 4)
       .getOrElse(fail("the amount must be accepted"))
-    val after = ready(done.state)
-    val sites = after.game.current.map.sites
-    assertEquals((sites(a).tokens.secrets, sites(b).tokens.secrets,
-      sites(c).tokens.secrets), (2, 2, 5))
-    assertEquals(after.game.current.banners.darkestSecret.holder,
-      Some(actor.player))
-    assertEquals(after.game.current.banners.darkestSecret.secrets, 4)
-    assertEquals(player(after, actor.player).board.faceUpSecrets,
-      actor.board.faceUpSecrets - 4)
+    val after = Look(done.state)
+    // 3 secrets go one at a time to the least site: 0 -> 1, then the two
+    // least sites at 1 take one each.
+    assertEquals((after.siteTokens("Ancient City").secrets,
+      after.siteTokens("Broken Peaks").secrets,
+      after.siteTokens("Buried Giant").secrets), (2, 2, 5))
+    assertEquals(ready(done.state).game.current.banners.darkestSecret.holder,
+      Some(p1))
+    assertEquals(ready(done.state).game.current.banners.darkestSecret.secrets, 4)
+    assertEquals(after.faceUpSecrets(p1), 6 - 4)
 
   test("Wandering Flame: fewer secrets than tied sites parks one choose-many, then finishes"):
-    val (base, actor) = ChallengeFixture.ready(resources = 2,
-      banner = Banner.DarkestSecret)
-    val Vector(a, b, c) = base.game.current.map.inPlay.take(3): @unchecked
-    val board = withSiteSecrets(base, Map(a -> 0, b -> 0, c -> 0))
-    val parked = chooseAmount(atAmount(board, ds), actor.player, 3)
+    val (a, b, c) = ("Ancient City", "Broken Peaks", "Buried Giant")
+    val board = siteSecrets(challenger.darkestSecret(None, secrets = 2),
+      a -> 0, b -> 0, c -> 0).ready
+    val parked = chooseAmount(atAmount(board, ds), 3)
       .getOrElse(fail("the amount must be accepted"))
     assert(parked.events.last.isInstanceOf[WalkerParked])
-    assert(chooseSites(parked.state, actor.player, Vector(a)).isLeft)
-    assert(chooseSites(parked.state, actor.player, Vector(a, a)).isLeft)
-    val outsider = base.game.current.map.inPlay.find(id =>
-      !Set(a, b, c).contains(id)).get
-    assert(chooseSites(parked.state, actor.player, Vector(a, outsider)).isLeft)
-    val done = chooseSites(parked.state, actor.player, Vector(a, c))
+    val Vector(siteA, siteC) = Vector(a, c).map(CatalogNames.site(_))
+    assert(chooseSites(parked.state, Vector(siteA)).isLeft)
+    assert(chooseSites(parked.state, Vector(siteA, siteA)).isLeft)
+    assert(chooseSites(parked.state, Vector(siteA,
+      CatalogNames.site("Dunes"))).isLeft)          // Dunes holds 10, not tied
+    val done = chooseSites(parked.state, Vector(siteA, siteC))
       .getOrElse(fail("two tied sites must be accepted"))
-    val after = ready(done.state)
-    val sites = after.game.current.map.sites
-    assertEquals((sites(a).tokens.secrets, sites(b).tokens.secrets,
-      sites(c).tokens.secrets), (1, 0, 1))
-    assertEquals(after.game.current.banners.darkestSecret.holder,
-      Some(actor.player))
-    assertEquals(after.game.current.walkerPending, None)
+    val after = Look(done.state)
+    assertEquals((after.siteTokens(a).secrets, after.siteTokens(b).secrets,
+      after.siteTokens(c).secrets), (1, 0, 1))
+    assertEquals(ready(done.state).game.current.banners.darkestSecret.holder,
+      Some(p1))
+    assertEquals(ready(done.state).game.current.walkerPending, None)
 
   test("Wandering Flame: an enemy holder gets the retained half back"):
-    val (base, actor) = ChallengeFixture.ready(resources = 5,
-      banner = Banner.DarkestSecret)
-    val board = withSiteSecrets(enemyHolds(base, Banner.DarkestSecret, 5), Map.empty)
-    val rival = enemy(board)
-    val sites = board.game.current.map.inPlay
-    val parked = chooseAmount(atAmount(board, ds), actor.player, 6)
+    val board = siteSecrets(challenger.darkestSecret(Some(p2), secrets = 5)
+      .pawn(p2, at = Table.homeOf(p1)).secrets(p2, faceUp = 1)).ready
+    val parked = chooseAmount(atAmount(board, ds), 6)
       .getOrElse(fail("the amount must be accepted"))
     // 5 secrets: 2 are placed (5 / 2), 3 return to the holder. All sites tie
     // at 10, and 2 secrets are fewer than the tied sites, so the actor picks.
     assert(parked.events.last.isInstanceOf[WalkerParked])
-    val done = chooseSites(parked.state, actor.player, sites.take(2))
+    val done = chooseSites(parked.state,
+      Vector("Ancient City", "Broken Peaks").map(CatalogNames.site(_)))
       .getOrElse(fail("two tied sites must be accepted"))
-    val after = ready(done.state)
-    assertEquals(player(after, rival.player).board.faceUpSecrets,
-      rival.board.faceUpSecrets + 3)
-    assertEquals(after.game.current.banners.darkestSecret.holder,
-      Some(actor.player))
-    assertEquals(after.game.current.banners.darkestSecret.secrets, 6)
+    assertEquals(Look(done.state).faceUpSecrets(p2), 1 + 3)
+    assertEquals(ready(done.state).game.current.banners.darkestSecret.holder,
+      Some(p1))
+    assertEquals(ready(done.state).game.current.banners.darkestSecret.secrets, 6)
 
   /** Adds Darkest Secret to the banner decision and widens the amount by two,
     * which is exactly what a power hooking those windows would do.
@@ -199,8 +204,9 @@ class ChallengeProcedureSuite extends munit.FunSuite:
         })))
 
   test("a power's transforms reach the banner and amount selections"):
-    val (board, actor) = ChallengeFixture.ready(resources = 2, faceup = 0)
-    val tree = ChallengeProcedure.build(catalog, board, actor.player, Vector.empty)
+    val board = challenger.secrets(p1, faceUp = 0, faceDown = 4)
+      .peoplesFavor(None, favor = 2).ready
+    val tree = ChallengeProcedure.build(catalog, board, p1, Vector.empty)
       .getOrElse(fail("the tree must build"))
     val powers = WalkerPowers(Vector(WidenChallenge(PowerId("test.widen-challenge"))))
     val Right(WalkerOutcome.Parked(atBanner, _)) =
@@ -213,13 +219,13 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     }, Vector[DecisionOptionRef](pf, ds))
     val Right(WalkerOutcome.Parked(atAmount, _)) = ProcedureWalker.resolve(board,
       tree, atBanner, Answered("challenge.banner",
-        DecisionAnswer.ChooseOneAnswer(pf), actor.player), powers): @unchecked
+        DecisionAnswer.ChooseOneAnswer(pf), p1), powers): @unchecked
     val amount = ProcedureWalker.parkedDecide(board, tree, atAmount, powers)
       .getOrElse(fail("the walk must park on the amount decision"))
     assertEquals(amount.query match {
       case query: DecisionQuery.ChooseAmount => (query.min, query.max)
       case _ => (0, 0)
-    }, (3, actor.board.favor + 2))
+    }, (3, 6 + 2))
 
   test("a completed Challenge replays exactly from its journal"):
     val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
@@ -234,10 +240,10 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       Banner.PeoplesFavor)
     val started = rules.startWalker(act.state, ActionRef.Challenge, activeId)
       .getOrElse(fail("Challenge must start"))
-    val banner = chooseBanner(started.state, activeId, pf)
-      .getOrElse(fail("banner"))
-    val done = chooseAmount(banner.state, activeId, prior + 1)
-      .getOrElse(fail("amount"))
+    val banner = rules.resolveWalker(started.state, activeId, "challenge.banner",
+      DecisionAnswer.ChooseOneAnswer(pf)).getOrElse(fail("banner"))
+    val done = rules.resolveWalker(banner.state, activeId, "challenge.amount",
+      DecisionAnswer.ChooseAmountAnswer(prior + 1)).getOrElse(fail("amount"))
     val events = setupEvents ++ wealth.events ++ act.events ++ started.events ++
       banner.events ++ done.events
     val replayed = new EventReplayEngine(rules).replay(events.zipWithIndex.map {

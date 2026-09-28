@@ -7,11 +7,20 @@ import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.{ReviewedPowerCatalog, ReviewedPowerFacts,
   ReviewedPowerInspector}
-import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class BackendArchitectureSuite extends munit.FunSuite:
+  /** A board with a source of every category the rule-source index names:
+    * Sticky Fire facedown at Broken Peaks, the ruined Hiding Place at Deep
+    * Woods, and a facedown Wrestlers advising p1. */
+  private val board: ReadyGame = Table.start
+    .relicAt("Sticky Fire", at = "Broken Peaks")
+    .edifice("Hiding Place", EdificeSide.Ruined, at = "Deep Woods")
+    .adviser(Table.p1, "Wrestlers", facedown = true)
+    .ready
+
   test("shared transition helper applies ordered events and stops at failure"):
     val events = Vector(OathEvent.BanditsRefilled(Vector.empty),
       OathEvent.BanditsRefilled(Vector.empty))
@@ -25,7 +34,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     assertEquals(applied, 2)
 
   test("factual source index enumerates every source category deterministically"):
-    val ready = FirstGameSetupFixture.initialReady
+    val ready = board
     val facts = RuleSourceIndex.enumerate(catalog, ready)
     val printed = facts.collectFirst {
       case value @ IndexedRuleSource(RuleSourceRef.Site(id), _, _, _)
@@ -40,7 +49,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     assertEquals(facts.map(_.source.stableKey).distinct.size, facts.size)
 
   test("site relics retain site identity, orientation, and declared handlers"):
-    val ready = FirstGameSetupFixture.initialReady
+    val ready = board
     val (siteId, relic) = ready.game.current.map.inPlay.iterator.flatMap(id =>
       ready.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
     val indexed = RuleSourceIndex.enumerate(catalog, ready).find(
@@ -58,7 +67,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     })
 
   test("resolver treats a faceup relic at the actor pawn site as accessible"):
-    val base = FirstGameSetupFixture.initialReady
+    val base = board
     val actor = base.game.current.turn.activePlayer
     val (siteId, relic) = base.game.current.map.inPlay.iterator.flatMap(id =>
       base.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
@@ -88,7 +97,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     assertEquals(result.offered.map(_.source), Vector(source))
 
   test("both banners expose faces, holdings, and exact synthetic handlers"):
-    val base = FirstGameSetupFixture.initialReady
+    val base = board
     val changed = base.updateCurrent(_.copy(banners =
       BannersState(
         PeoplesFavorState(PeoplesFavorFace.GrandCouncil, Some(PlayerId("p1")), 3),
@@ -107,7 +116,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
       Vector("banner.darkest-secret.festival")))
 
   test("all six Foundations expose ordered identities, faces, and state"):
-    val base = FirstGameSetupFixture.initialReady
+    val base = board
     val altered = base.updateCampaign(_.copy(foundations = base.game.campaign.foundations.updated(
         FoundationNumber.III, FoundationState(FoundationFace.Altered,
           Set(LegacyId("L23"), LegacyId("L01"))))))
@@ -127,7 +136,7 @@ class BackendArchitectureSuite extends munit.FunSuite:
     })
 
   test("legacy inventory remains declared and lineage-qualified"):
-    val base = FirstGameSetupFixture.initialReady
+    val base = board
     val lineageId = base.game.campaign.lineages.keys.toVector.sortBy(_.value).head
     val legacyDefinition = catalog.legacies.head
     val legacy = LegacyState(LegacyId(legacyDefinition.id.value), active = false)

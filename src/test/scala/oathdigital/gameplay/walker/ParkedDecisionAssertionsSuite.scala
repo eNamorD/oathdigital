@@ -3,9 +3,9 @@ package oathdigital.gameplay.walker
 import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite, WalkerDiceFixture}
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.Table
 import oathdigital.model.OathState.Ready
 
 /** `ParkedDecisionAssertions` is tested here, driving a real `RecoverProcedure`
@@ -25,10 +25,10 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
     * .build`/`rebuild` require a site with a declared Recover difficulty, so
     * every test below -- not only the successful-completion one -- needs
     * this rather than `OathRulesWalkerPowerSuite`'s plain `actable`, whose
-    * pawn site (wherever setup happened to place it) may have none.
+    * pawn site (p1's Ancient City) has none.
     */
   private def recoverable: (ReadyGame, PlayerId) =
-    val Ready(base) = FirstGameSetupFixture.execute()._1: @unchecked
+    val base = Table.start.ready
     val active = base.game.current.turn.activePlayer
     val candidates = base.game.current.map.inPlay.filter(siteId =>
       RecoverRules.difficulty(catalog, siteId).exists(d => d > 0 && d <= 4))
@@ -38,7 +38,6 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
       site).get)
     val site = base.game.current.map.sites(siteId).copy(relics = Vector.empty)
     val ready = base.updateCurrent(_.copy(
-      turn = base.game.current.turn.copy(phase = Phase.Act),
       players = base.game.current.players.map(p =>
         if p.player == active then p.copy(pawnSite = Some(siteId)) else p),
       map = base.game.current.map.copy(

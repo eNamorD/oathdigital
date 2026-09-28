@@ -1,31 +1,46 @@
 package oathdigital.application
 
-import oathdigital.gameplay.NegotiationFixture
-import oathdigital.gameplay.NegotiationFixture.Board
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.negotiation.NegotiationDeal
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, ProposeTerms}
-import oathdigital.model.OathState.Ready
 import oathdigital.protocol.projection.{DecisionQueryProjection,
   GameProjection, NegotiationDealProjection}
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** What each viewer of a parked deal is shown. */
 class NegotiationDealProjectionSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val projector = new GameProjector(catalog)
   private val dealId = NegotiationDeal.dealDecisionId
+  private val site = CatalogNames.site("Broken Peaks")
+  private val p1Relic = CatalogNames.relic("Brass Horse")
+  private val p2Relic = CatalogNames.relic("Truthful Harp")
+  private val siteRelic = CatalogNames.relic("Sticky Fire")
 
-  private def parkedDeal(b: Board, terms: Option[NegotiationTerms] = None,
+  /** Every player stands at Broken Peaks with 5 favor and one facedown
+    * relic: p1 holds Brass Horse with a secret on it, p2 Truthful Harp and
+    * p3 Grand Mask. Broken Peaks also holds Sticky Fire, which p1 knows. */
+  private def gathered: Table = Table.start
+    .pawn(p1, at = site).pawn(p3, at = site)       // p2 already stands there
+    .favor(p1, 5).favor(p2, 5).favor(p3, 5)
+    .relic(p1, p1Relic, facedown = true).tokens(p1Relic, secrets = 1)
+    .relic(p2, p2Relic, facedown = true)
+    .relic(p3, "Grand Mask", facedown = true)
+    .relicAt(siteRelic, at = site)
+    .knowsRelicAt(p1, siteRelic, at = site)
+
+  private def parkedDeal(table: Table, terms: Option[NegotiationTerms] = None,
       who: Vector[PlayerId] = Vector.empty): OathState =
-    val started = rules.startWalker(Ready(b.ready), ActionRef.Negotiation,
-      b.actor).getOrElse(fail("Negotiation must start"))
-    val chosen = rules.resolveWalker(started.state, b.actor,
+    val started = rules.startWalker(table.state, ActionRef.Negotiation, p1)
+      .getOrElse(fail("Negotiation must start"))
+    val chosen = rules.resolveWalker(started.state, p1,
       NegotiationDeal.negotiatorsDecisionId, ChooseManyAnswer(
-        (if who.isEmpty then Vector(b.second, b.third) else who)
+        (if who.isEmpty then Vector(p2, p3) else who)
           .map(DecisionOptionRef.Player(_)))).getOrElse(fail("negotiators"))
-    terms.fold(chosen.state)(value => rules.resolveWalker(chosen.state, b.actor,
+    terms.fold(chosen.state)(value => rules.resolveWalker(chosen.state, p1,
       dealId, ProposeTerms(value)).getOrElse(fail("terms")).state)
 
   private def view(state: OathState, viewer: PlayerId): GameProjection =
@@ -38,9 +53,8 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       .getOrElse(fail("the deal must be projected"))
 
   test("the actor and every co-owner get the full decision with editing inputs"):
-    val b = NegotiationFixture.board()
-    val state = parkedDeal(b)
-    Vector(b.actor, b.second, b.third).foreach { viewer =>
+    val state = parkedDeal(gathered)
+    Vector(p1, p2, p3).foreach { viewer =>
       val projection = view(state, viewer)
       assertEquals(projection.walkerWaiting, None, viewer.value)
       val decision = projection.walkerDecision.getOrElse(fail("owner decision"))
@@ -54,15 +68,14 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
     }
 
   test("a player outside the deal and the public view see it read-only"):
-    val b = NegotiationFixture.board()
-    val state = parkedDeal(b, who = Vector(b.second))
-    val outsider = view(state, b.third)
+    val state = parkedDeal(gathered, who = Vector(p2))
+    val outsider = view(state, p3)
     assertEquals(outsider.walkerDecision, None)
     val waiting = outsider.walkerWaiting.getOrElse(fail("waiting"))
-    assertEquals(waiting.playerId, b.actor.value)
-    assertEquals(waiting.coOwnerPlayerIds, Vector(b.second.value))
+    assertEquals(waiting.playerId, p1.value)
+    assertEquals(waiting.coOwnerPlayerIds, Vector(p2.value))
     assertEquals(deal(outsider).participantPlayerIds,
-      Vector(b.actor.value, b.second.value))
+      Vector(p1.value, p2.value))
     assertEquals(deal(outsider).editing, None)
     assert(!outsider.legalControls.contains("resolveWalkerDecision"))
     val public = projector.projectPublic("negotiation", LoadedGame(state, 30))
@@ -70,18 +83,17 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
     assertEquals(public.walkerDecision, None)
 
   test("terms show amounts to everyone but hide identities from everyone but their author"):
-    val b = NegotiationFixture.board()
     val terms = NegotiationTerms(
-      Vector(NegotiationTransfer(b.second, 3, Vector(b.actorRelic))),
-      Vector(NegotiationDisclosure(b.second,
-        NegotiationDisclosureRef.HeldRelic(b.actor, b.actorRelic))))
-    val state = parkedDeal(b, Some(terms), Vector(b.second))
-    val author = deal(view(state, b.actor))
+      Vector(NegotiationTransfer(p2, 3, Vector(p1Relic))),
+      Vector(NegotiationDisclosure(p2,
+        NegotiationDisclosureRef.HeldRelic(p1, p1Relic))))
+    val state = parkedDeal(gathered, Some(terms), Vector(p2))
+    val author = deal(view(state, p1))
     assertEquals(author.transfers.head.favor, 3)
     assertEquals(author.transfers.head.relicCount, 1)
-    assertEquals(author.transfers.head.relics.map(_.cardId), Vector(b.actorRelic.value))
-    assertEquals(author.disclosures.head.card.map(_.cardId), Some(b.actorRelic.value))
-    val others = Vector(view(state, b.second), view(state, b.third),
+    assertEquals(author.transfers.head.relics.map(_.cardId), Vector(p1Relic.value))
+    assertEquals(author.disclosures.head.card.map(_.cardId), Some(p1Relic.value))
+    val others = Vector(view(state, p2), view(state, p3),
       projector.projectPublic("negotiation", LoadedGame(state, 30)))
     others.foreach { projection =>
       val seen = deal(projection)
@@ -89,47 +101,40 @@ class NegotiationDealProjectionSuite extends munit.FunSuite:
       assertEquals(seen.transfers.head.relicCount, 1)
       assertEquals(seen.transfers.head.relics, Vector.empty)
       assertEquals(seen.disclosures.head.kind, "held-relic")
-      assertEquals(seen.disclosures.head.recipientPlayerId, b.second.value)
+      assertEquals(seen.disclosures.head.recipientPlayerId, p2.value)
       assertEquals(seen.disclosures.head.card, None)
     }
 
   test("acceptances and the right to accept are projected"):
-    val b = NegotiationFixture.board()
-    val proposed = parkedDeal(b, Some(NegotiationTerms(
-      Vector(NegotiationTransfer(b.second, 1, Vector.empty)))), Vector(b.second))
-    assert(deal(view(proposed, b.second)).editing.exists(_.canAccept))
-    val accepted = rules.resolveWalker(proposed, b.second, dealId, AcceptDeal)
+    val proposed = parkedDeal(gathered, Some(NegotiationTerms(
+      Vector(NegotiationTransfer(p2, 1, Vector.empty)))), Vector(p2))
+    assert(deal(view(proposed, p2)).editing.exists(_.canAccept))
+    val accepted = rules.resolveWalker(proposed, p2, dealId, AcceptDeal)
       .getOrElse(fail("accept")).state
-    val seen = deal(view(accepted, b.third))
-    assertEquals(seen.acceptedPlayerIds, Vector(b.second.value))
-    assert(!deal(view(accepted, b.second)).editing.exists(_.canAccept))
-    assert(deal(view(accepted, b.actor)).editing.exists(_.canAccept))
+    val seen = deal(view(accepted, p3))
+    assertEquals(seen.acceptedPlayerIds, Vector(p2.value))
+    assert(!deal(view(accepted, p2)).editing.exists(_.canAccept))
+    assert(deal(view(accepted, p1)).editing.exists(_.canAccept))
 
   test("the start control is offered while a candidate exists and not once parked"):
-    val b = NegotiationFixture.board()
-    assert(view(Ready(b.ready), b.actor).legalControls.contains("beginNegotiation"))
-    assert(!view(Ready(NegotiationFixture.isolated(b).ready), b.actor)
-      .legalControls.contains("beginNegotiation"))
-    assert(!view(parkedDeal(b), b.actor).legalControls.contains("beginNegotiation"))
+    assert(view(gathered.state, p1).legalControls.contains("beginNegotiation"))
+    val alone = gathered.pawn(p2, at = "Dunes").pawn(p3, at = "Dunes")
+    assert(!view(alone.state, p1).legalControls.contains("beginNegotiation"))
+    assert(!view(parkedDeal(gathered), p1).legalControls.contains("beginNegotiation"))
 
   test("Negotiation is offered as a start control, not as a board-target selection"):
-    val b = NegotiationFixture.board()
-    val projection = view(Ready(b.ready), b.actor)
+    val projection = view(gathered.state, p1)
     assert(projection.legalControls.contains("beginNegotiation"))
     assert(!projection.boardTargetActions.exists(_.actionKind == "negotiation"))
 
   test("a faceup relic in a transfer is shown to every viewer, public included"):
-    val b = NegotiationFixture.board()
-    val faceUp = b.copy(ready = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => if p.player == b.actor then
-        p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceUp)))
-        else p))))
-    val terms = NegotiationTerms(Vector(NegotiationTransfer(b.second, 1,
-      Vector(b.actorRelic))))
-    val state = parkedDeal(faceUp, Some(terms), Vector(b.second))
-    val views = Vector(view(state, b.actor), view(state, b.second),
-      view(state, b.third),
+    val faceUp = gathered.relic(p1, p1Relic).tokens(p1Relic, secrets = 1)
+    val terms = NegotiationTerms(Vector(NegotiationTransfer(p2, 1,
+      Vector(p1Relic))))
+    val state = parkedDeal(faceUp, Some(terms), Vector(p2))
+    val views = Vector(view(state, p1), view(state, p2),
+      view(state, p3),
       projector.projectPublic("negotiation", LoadedGame(state, 30)))
     views.foreach(projection => assertEquals(
       deal(projection).transfers.head.relics.map(_.cardId),
-      Vector(b.actorRelic.value)))
+      Vector(p1Relic.value)))

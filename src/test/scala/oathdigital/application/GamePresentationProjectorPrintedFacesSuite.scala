@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.{EdificeId, EdificeSide, EdificeState, Tokens, VisionId}
+import oathdigital.testkit.Table
 
 /** Card presentation must echo the authoritative printed text, independent
   * of which plan factory derived the game. */
@@ -33,7 +34,7 @@ class GamePresentationProjectorPrintedFacesSuite extends munit.FunSuite:
     }
 
   test("a site's powers show their printed text"):
-    val sites = projector.readyWorld(initialReady, None).flatMap(_.sites)
+    val sites = projector.readyWorld(Table.start.ready, None).flatMap(_.sites)
     def powers(id: String) = sites.find(_.siteId == id).get.powers
       .map(p => (p.kind, p.label, p.description))
     assertEquals(powers("site:ancient-city"), Vector(

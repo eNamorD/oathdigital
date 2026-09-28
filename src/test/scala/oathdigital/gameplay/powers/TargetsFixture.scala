@@ -8,6 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.protocol.projection.{DecisionQueryProjection, PlayerBoardProjection}
+import oathdigital.testkit.Table
 
 /** Staging and driving shared by the slice 1c suites. `PowerFixture` (slice
   * 1a) stays untouched so that parallel slices do not collide on it.
@@ -40,20 +41,16 @@ object TargetsFixture:
   def withPawn(ready: ReadyGame, id: PlayerId, site: SiteId): ReadyGame =
     updatePlayer(ready, id)(_.copy(pawnSite = Some(site)))
 
-  private def outOfWorldDeck(ready: ReadyGame, card: WorldCardId): ReadyGame =
-    ready.updateCurrent(c => c.copy(commonCards = c.commonCards.copy(
-      worldDeck = c.commonCards.worldDeck.filterNot(_ == card))))
-
-  /** `card` becomes an adviser of `owner`, taken from the world deck. */
+  /** `card` becomes an adviser of `owner`, taken from wherever it lay. */
   def giveAdviser(ready: ReadyGame, owner: PlayerId, card: DenizenId,
       orientation: Orientation): ReadyGame =
-    updatePlayer(outOfWorldDeck(ready, card), owner)(p => p.copy(advisers =
-      p.advisers :+ DenizenState(card, orientation, Tokens.empty)))
+    Table.from(ready).adviser(owner, card,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   def giveVision(ready: ReadyGame, owner: PlayerId, card: VisionId,
       orientation: Orientation): ReadyGame =
-    updatePlayer(outOfWorldDeck(ready, card), owner)(p => p.copy(advisers =
-      p.advisers :+ VisionState(card, orientation)))
+    Table.from(ready).adviser(owner, card,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   /** Puts `owner`'s advisers at the bottom of the world deck. */
   def withoutAdvisers(ready: ReadyGame, owner: PlayerId): ReadyGame =

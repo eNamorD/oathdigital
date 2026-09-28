@@ -2,9 +2,8 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.model._
-import oathdigital.gameplay.setup._
+import oathdigital.testkit.Table
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
 import oathdigital.catalog.CatalogPower
 
@@ -19,7 +18,7 @@ import oathdigital.catalog.CatalogPower
   */
 class ForgeRulesSuite extends munit.FunSuite:
   private def forgeable: (ReadyGame, PlayerState, SiteId, Vector[SiteDenizenTarget], RelicId) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = Table.start.ready
     val actor = base.game.current.players.find(_.player == base.game.current.turn.activePlayer).get
     val siteId = catalog.sites.find(_.forgeRequirements.nonEmpty).get.id
     val ids = catalog.denizens.take(3).map(d => DenizenId(d.id.value))
@@ -29,7 +28,6 @@ class ForgeRulesSuite extends munit.FunSuite:
       denizens = denizens)
     val moved = actor.copy(pawnSite = Some(siteId))
     val ready = base.updateCurrent(_.copy(
-      turn = base.game.current.turn.copy(phase = Phase.Act),
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
       players = base.game.current.players.map(p => if p.player == actor.player then moved else p),

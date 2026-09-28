@@ -67,7 +67,7 @@ class HornedMaskSuite extends munit.FunSuite:
     assert(!denizensHere(after(done)).contains(inn))
     assertEquals(adviser(after(done), inn).map(_.orientation),
       Some(Orientation.FaceDown))
-    assertEquals(player(after(done)).advisers.size, 2)
+    assertEquals(player(after(done)).advisers.map(_.id), Vector(inn))
     assert(after(done).game.current.turn.usedPowers.contains(used))
     // It was Wake's only option, so Wake ended with it: put the turn back in
     // Wake, its uses kept, to try again.

@@ -5,6 +5,8 @@ import oathdigital.gameplay.actions.{MinorActionCommand,
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.p1
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathEvent._
@@ -14,36 +16,20 @@ class MinorActionsSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val parked = new ParkedDecisionAssertions(catalog)
 
+  /** p1 in Act at Broken Peaks (where p2 also stands), ruling it with 3
+    * warbands and holding 4 more, a facedown Magician's Code and a facedown
+    * Cursed Cauldron. Broken Peaks holds Sticky Fire, facedown. */
   private def ready(): (ReadyGame, PlayerState, SiteId, WorldCardId, RelicId) =
-    val base = initialReady
-    val active0 = base.game.current.players.find(
-      _.player == base.game.current.turn.activePlayer).get
-    val siteId = base.game.current.map.inPlay.find(id =>
-      base.game.current.map.sites(id).relics.nonEmpty).get
-    val adviser = DenizenId(catalog.denizens.find(d =>
-      d.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted &&
-      !d.rulesText.toUpperCase.contains("WHEN PLAYED")).get.id.value)
-    val siteRelic = base.game.current.map.sites(siteId).relics.head.id
-    val heldRelic = base.game.current.map.sites.valuesIterator.flatMap(_.relics)
-      .map(_.id).find(_ != siteRelic).get
-    val active = active0.copy(pawnSite = Some(siteId),
-      board = active0.board.copy(warbands = 4),
-      advisers = Vector(DenizenState(adviser, Orientation.FaceDown, Tokens.empty)),
-      relics = Vector(RelicState(heldRelic, Orientation.FaceDown, Tokens.empty)))
-    val site = base.game.current.map.sites(siteId).copy(
-      forces = SiteForces.Occupied(ForceKind.Exile(active.lineage), 3),
-      denizens = Vector.empty)
-    val current = base.game.current.copy(
-      players = base.game.current.players.map(p => if p.player == active.player then active else p),
-      map = base.game.current.map.copy(sites = base.game.current.map.sites.map {
-        case (id, _) if id == siteId => id -> site
-        case (id, value) => id -> value.copy(relics = value.relics.filterNot(_.id == heldRelic))
-      }),
-      commonCards = base.game.current.commonCards.copy(
-        worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == adviser)),
-      turn = base.game.current.turn.copy(phase = Phase.Act))
-    (base.copy(game = base.game.copy(current = current)), active, siteId,
-      adviser, siteRelic)
+    val site = CatalogNames.site("Broken Peaks")
+    val adviser = CatalogNames.denizen("Magician's Code")
+    val siteRelic = CatalogNames.relic("Sticky Fire")
+    val staged = Table.start
+      .pawn(p1, at = site).warbands(p1, 4).warbandsAt(site, p1, 3)
+      .adviser(p1, adviser, facedown = true)
+      .relic(p1, "Cursed Cauldron", facedown = true)
+      .relicAt(siteRelic, at = site)
+      .ready
+    (staged, Look(staged).player(p1), site, adviser, siteRelic)
 
   private def withRevealedRelic(
       ready: ReadyGame,

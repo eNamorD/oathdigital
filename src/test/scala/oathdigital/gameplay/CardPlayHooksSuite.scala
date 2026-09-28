@@ -7,6 +7,7 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Tran
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The played-card windows: a faceup play and a facedown play each visit their
   * own window, and a discard visits neither.
@@ -35,7 +36,7 @@ class CardPlayHooksSuite extends munit.FunSuite:
 
   /** The active player holds `card` in a temporary hand, with Supply 3. */
   private def inHand(card: WorldCardId): (ReadyGame, PlayerId) =
-    val base = initialReady
+    val base = Table.start.ready
     val actor = base.game.current.turn.activePlayer
     val current = base.game.current
     (base.updateCurrent(_.copy(
@@ -71,20 +72,20 @@ class CardPlayHooksSuite extends munit.FunSuite:
       "action.card-played-facedown")
 
   test("a card played to a site visits the faceup window only"):
-    val card = plainDenizen(initialReady)
+    val card = plainDenizen(Table.start.ready)
     val (ready, actor) = inHand(card)
     val done = play(ready, actor, card, "site")
     assertEquals(supplyOf(done.treeless, actor), startSupply + 1)
     assert(attributed(done))
 
   test("a card played as a faceup adviser visits the faceup window only"):
-    val card = plainDenizen(initialReady)
+    val card = plainDenizen(Table.start.ready)
     val (ready, actor) = inHand(card)
     val done = play(ready, actor, card, "adviser-faceup")
     assertEquals(supplyOf(done.treeless, actor), startSupply + 1)
 
   test("a denizen played as a facedown adviser visits the facedown window only"):
-    val card = plainDenizen(initialReady)
+    val card = plainDenizen(Table.start.ready)
     val (ready, actor) = inHand(card)
     val done = play(ready, actor, card, "adviser-facedown")
     assertEquals(supplyOf(done.treeless, actor), startSupply + 2)
@@ -96,15 +97,15 @@ class CardPlayHooksSuite extends munit.FunSuite:
     assertEquals(supplyOf(done.treeless, actor), startSupply + 2)
 
   test("a discard visits neither window"):
-    val card = plainDenizen(initialReady)
+    val card = plainDenizen(Table.start.ready)
     val (ready, actor) = inHand(card)
     val done = play(ready, actor, card, "discard")
     assertEquals(supplyOf(done.treeless, actor), startSupply)
     assert(!attributed(done))
 
   test("a facedown adviser played faceup visits the faceup window"):
-    val card = plainDenizen(initialReady)
-    val base = initialReady
+    val card = plainDenizen(Table.start.ready)
+    val base = Table.start.ready
     val actor = base.game.current.turn.activePlayer
     val current = base.game.current
     val ready = base.updateCurrent(_.copy(

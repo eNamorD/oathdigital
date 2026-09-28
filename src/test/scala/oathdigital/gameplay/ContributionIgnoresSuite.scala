@@ -1,8 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.{Contribution, ContributionCollector, ContributingPower, PowerCtx, Transform}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The named ignore is decided with the context the powers are gathered in, so
   * a power can ignore another only for the node at hand. `shouldIgnore` (with no
@@ -10,7 +10,7 @@ import oathdigital.model._
   */
 class ContributionIgnoresSuite extends munit.FunSuite:
   private val window = PowerWindow.TravelCost
-  private val actor = initialReady.game.current.turn.activePlayer
+  private val actor = Table.start.ready.game.current.turn.activePlayer
 
   private def power(name: String,
       ignoring: (PowerCtx, ContributingPower) => Boolean = (_, _) => false)
@@ -23,7 +23,7 @@ class ContributionIgnoresSuite extends munit.FunSuite:
       ignoring(ctx, candidate)
 
   private def ctxAt(operation: Operation)(candidate: ContributingPower)
-      : PowerCtx = PowerCtx(initialReady, actor, candidate.source, window,
+      : PowerCtx = PowerCtx(Table.start.ready, actor, candidate.source, window,
     Vector.empty, operation)
 
   private def survivors(powers: Vector[ContributingPower], operation: Operation)

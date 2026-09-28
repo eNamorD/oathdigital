@@ -3,12 +3,12 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   WalkerCompleted, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerStepRecorded}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Task 3 wiring at the aggregate boundary: `OathRules` gathers restrictions
   * once per command, at command entry, and rejects the whole command before
@@ -50,9 +50,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     * eligibility gates -- the injected tree source replaces them.
     */
   private def actable: (ReadyGame, PlayerId) =
-    val Ready(base) = execute()._1: @unchecked
-    val ready = base.updateCurrent(_.copy(turn = base.game.current.turn.copy(
-        phase = Phase.Act)))
+    val ready = Table.start.ready
     (ready, ready.game.current.turn.activePlayer)
 
   /** `Sequence(WindowedNode(window, Vector(decide, decide)))`: two decisions,

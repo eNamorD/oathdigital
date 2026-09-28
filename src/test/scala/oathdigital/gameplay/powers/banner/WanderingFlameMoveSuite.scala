@@ -5,6 +5,7 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.Table.p3
 
 class WanderingFlameMoveSuite extends munit.FunSuite:
   import PowerFixture._
@@ -79,7 +80,7 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
       brokenPeaks, 1), Phase.Act)
     assert(!usable(notHeld, power.id))
     assert(use(notHeld, power, darkestSecret).isLeft)
-    val theirs = inPhase(withSiteSecrets(holdingFlame(base, holder = Some(p1)),
+    val theirs = inPhase(withSiteSecrets(holdingFlame(base, holder = Some(p3)),
       brokenPeaks, 1), Phase.Act)
     assert(!usable(theirs, power.id))
     val festival = inPhase(withSiteSecrets(

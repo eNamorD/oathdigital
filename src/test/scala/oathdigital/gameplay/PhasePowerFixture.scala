@@ -1,11 +1,12 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 
-/** A synthetic phase power on the active player's faceup adviser, shared
-  * by the engine suite and the projection suite (Task 11).
+/** A synthetic phase power on p1's faceup adviser, shared by the engine suite
+  * and the projection suite (Task 11).
   */
 object PhasePowerFixture:
   final case class TestPower(id: PowerId, timing: PowerTiming,
@@ -16,34 +17,13 @@ object PhasePowerFixture:
     def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Either[OathViolation, Operation] =
       Right(tree(player))
 
-  /** The active player holds one faceup adviser with a catalog power, and a
-    * site with capacity has no force, so the action boundary visibly refills
-    * bandits.
-    */
-  val (base, actor, card, powerId) =
-    val ready = initialReady
-    val current = ready.game.current
-    val actor = current.turn.activePlayer
-    val deck = current.commonCards.worldDeck.collect { case id: DenizenId => id }
-    val card = catalog.denizens.collectFirst {
-      case d if d.powers.nonEmpty && deck.contains(DenizenId(d.id.value)) =>
-        DenizenId(d.id.value)
-    }.get
-    val empty = current.map.inPlay.find(id =>
-      catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
-    val arranged = ready.updateCurrent(_.copy(
-      players = current.players.map(p => if p.player != actor then p else
-        p.copy(advisers = Vector(DenizenState(card, Orientation.FaceUp,
-          Tokens.empty)))),
-      map = current.map.copy(sites = current.map.sites.updated(empty,
-        current.map.sites(empty).copy(forces = SiteForces.Empty))),
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == card))))
-    val powerId = RuleSourceIndex.enumerate(catalog, arranged).collectFirst {
-      case IndexedRuleSource(RuleSourceRef.Adviser(`actor`, `card`), ids, _, _)
-          if ids.nonEmpty => ids.head
-    }.get
-    (arranged, actor, card, powerId)
+  /** The card whose printed power the test powers stand in for, and that
+    * power's id. */
+  val card: DenizenId = CatalogNames.denizen("Magician's Code")
+  val powerId: PowerId = PowerId("denizen.magicians-code")
+  val source: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
-  def inPhase(phase: Phase) = base.updateCurrent(_.copy(turn = TurnState(actor, phase, Set.empty)))
-  val source = DecisionOptionRef.Denizen(card)
+  /** p1 holds Magician's Code faceup, in `phase` of p1's turn. No site holds
+    * forces, so an action boundary visibly refills bandits. */
+  def holding(phase: Phase): ReadyGame =
+    Table.start.adviser(p1, card).turn(p1, phase).ready

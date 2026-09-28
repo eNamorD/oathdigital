@@ -5,13 +5,13 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
+import oathdigital.testkit.Table.p1
 
 /** Selecting modifiers refuses a combination the player cannot pay, at
   * selection, because every selected modifier pays at the start of its action.
   */
 class SelectionPaymentsSuite extends munit.FunSuite:
-  private val actor = EconomyFixture.act().game.current.turn.activePlayer
-
   /** A selectable Muster modifier that burns `secrets` secrets when selected. */
   private def burning(name: String, secrets: Int): ContributingPower =
     new ContributingPower:
@@ -34,8 +34,12 @@ class SelectionPaymentsSuite extends munit.FunSuite:
       : Either[OathViolation, OathTransition] =
     val rules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowers(Vector(a, b, free)))
-    rules.startWalker(Ready(EconomyFixture.act(secrets = secrets)),
-      ActionRef.Muster, actor, selected.map(_.id).toVector)
+    // The start's 1 favor and 7 Supply pay for a Muster from the Alchemist
+    // at p1's site; only the selected powers' secrets are in question.
+    val ready = Table.start.denizen("Alchemist", at = Table.homeOf(p1))
+      .secrets(p1, faceUp = secrets).ready
+    rules.startWalker(Ready(ready), ActionRef.Muster, p1,
+      selected.map(_.id).toVector)
 
   test("a selection whose payments can all be made is accepted"):
     assert(muster(2, a, b).isRight)

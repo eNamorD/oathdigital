@@ -3,7 +3,9 @@ package oathdigital.application
 import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
@@ -38,17 +40,28 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
   private val rollTree: Operation =
     Sequence(Roll(PoolKey("test.roll"), DiceSpec(DiceKind.Defense)))
 
+  /** The quiet table with Sticky Fire lying facedown at Broken Peaks, the
+    * site relic the disclosure tests reveal or hide, and Cursed Cauldron
+    * facedown at Dunes, away from every pawn. p1 holds a facedown Wrestlers
+    * and p2 a facedown Birdsong, whose three-digit id (176) cannot turn up
+    * in a projection by chance. */
+  private val board: ReadyGame = Table.start
+    .relicAt("Sticky Fire", at = "Broken Peaks")
+    .relicAt("Cursed Cauldron", at = "Dunes")
+    .adviser(p1, "Wrestlers", facedown = true)
+    .adviser(p2, "Birdsong", facedown = true)
+    .ready
+
   /** A ready game parked on `rollTree`'s single node, owned by `action`.
     *
     * `atSite` moves the acting player's pawn, which the disclosure tests
     * below need: `identifiesCard` names a site's facedown relics to a
     * viewer standing there, so proving both sides of that clause means
-    * choosing where the pawn stands rather than taking whichever site the
-    * setup fixture happened to pick.
+    * choosing where the pawn stands.
     */
   private def parked(action: ActionRef, atSite: Option[SiteId] = None)
       : (ScopedProjectionContext, PlayerId) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = board
     val actor = base.game.current.turn.activePlayer
     val moved = atSite.fold(base.game.current.players)(site =>
       base.game.current.players.map(player =>
@@ -56,24 +69,17 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
         else player))
     val ready: ReadyGame = base.updateCurrent(_.copy(
         players = moved,
-        turn = base.game.current.turn.copy(phase = Phase.Act),
         walkerProcedure = Some(action),
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
     (ScopedProjectionContext(ready, Some(actor)), actor)
 
-  /** The first site holding a facedown relic, so the disclosure tests can
-    * stand the pawn where Recover's own option shape is observable. The
-    * setup fixture's board carries no site denizens at all, which is why
-    * Forge's faceup-denizen shape is proven end to end in
-    * `GameApplicationServiceSuite` rather than here.
+  /** Where `board`'s facedown relic lies, so the disclosure tests can stand
+    * the pawn where Recover's own option shape is observable. The board
+    * carries no site denizens at all, which is why Forge's faceup-denizen
+    * shape is proven end to end in `GameApplicationServiceSuite` rather than
+    * here.
     */
-  private lazy val facedownRelicSite: SiteId =
-    val Ready(base) = execute()._1: @unchecked
-    base.game.current.map.sites.collectFirst {
-      case (siteId, site)
-          if site.relics.exists(_.orientation == Orientation.FaceDown) =>
-        siteId
-    }.getOrElse(fail("the fixture board must hold a facedown site relic"))
+  private val facedownRelicSite: SiteId = CatalogNames.site("Broken Peaks")
 
   /** Whatever the action, the tree is [[rollTree]] -- so the two calls
     * below differ in nothing but the `ActionRef` that parked.
@@ -462,14 +468,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     */
   private def parkedOffTurn: (ReadyGame, PlayerId, PlayerId,
       WalkerDecisionProjector) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = board
     val active = base.game.current.turn.activePlayer
     val owner = base.game.current.players.map(_.player).find(_ != active).get
     val tree: Operation = Sequence(Decide("test.off-turn", owner,
       DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
         DecisionOptionRef.Button("ok"), "OK")), heading = Some("Answer"))))
     val ready = base.updateCurrent(_.copy(
-        turn = base.game.current.turn.copy(phase = Phase.Act),
         walkerProcedure = Some(ActionRef.Recover),
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
     val projector = new WalkerDecisionProjector(catalog,
@@ -494,12 +499,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     */
   private def parkedOathkeeperTie: (ReadyGame, PlayerId, PlayerId,
       Vector[PlayerId]) =
-    val base = OathkeeperFixture.base
-    val active = base.game.current.turn.activePlayer
-    val holder = OathkeeperFixture.players.find(_ != active).get
-    val leaders = OathkeeperFixture.players.filterNot(_ == holder).take(2)
-    val ruled = OathkeeperFixture.inPhase(OathkeeperFixture.ruled(base,
-      leaders.map(Some(_)), holder = Some(holder)), Phase.Act)
+    // It is p1's Act. p2 holds the title while p1 and p3 each rule a site:
+    // a tie p2 breaks.
+    val (active, holder, leaders) =
+      (p1, p2, Vector(p1, p3))
+    val ruled = Table.start.oathkeeper(Some(holder))
+      .warbandsAt("Dunes", p1, 1).warbandsAt("Fair Isle", p3, 1)
+      .ready
     val ready = ruled.updateCurrent(_.copy(
         walkerProcedure = Some(TriggeredProcedureRef.Oathkeeper),
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
@@ -616,9 +622,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     * drives (start, force, pick Sticky Fire), rather than hand-assembling a
     * `PendingTree`, so this proves what a real second pass looks like.
     */
-  private lazy val attacker: PlayerId =
-    val Ready(base) = execute()._1: @unchecked
-    base.game.current.turn.activePlayer
+  /** The actor of every `CampaignFixture` board. */
+  private val attacker: PlayerId = p1
 
   private lazy val campaignWithOnePlanPlayed: ReadyGame =
     val relic = CampaignFixture.relicWith("relic.sticky-fire")

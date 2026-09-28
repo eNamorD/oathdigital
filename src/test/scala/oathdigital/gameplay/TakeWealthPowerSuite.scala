@@ -5,6 +5,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Take Wealth's once-per-turn-per-site limit, proved against contribution
   * collection before Wake owns a walker tree (batch-1 Task 6). The rule is
@@ -23,9 +24,7 @@ import oathdigital.model._
   */
 class TakeWealthPowerSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
-  private val baseReady = FirstGameSetupFixture.execute()._1 match
-    case OathState.Ready(ready) => ready
-    case other => fail(s"expected Ready state, got $other")
+  private val baseReady = Table.start.ready
   private val actor = baseReady.game.current.turn.activePlayer
   private val powers: Vector[ContributingPower] = Vector(TakeWealthLimit)
 

@@ -1,8 +1,7 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture
-import oathdigital.model.OathState._
 import oathdigital.model._
+import oathdigital.testkit.Table
 import oathdigital.model.TestGameFixtures._
 
 class OperationMutationSuite extends munit.FunSuite:
@@ -34,7 +33,7 @@ class OperationMutationSuite extends munit.FunSuite:
     )
 
   private def titled(holder: Option[PlayerId], side: TitleSide): ReadyGame =
-    val Ready(base) = FirstGameSetupFixture.execute()._1: @unchecked
+    val base = Table.start.ready
     base.updateCurrent(_.copy(
       title = OathkeeperState(holder, side)))
   private def set(ready: ReadyGame, holder: Option[PlayerId]) =

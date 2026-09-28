@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.gameplay.{CampaignFixture, ChallengeFixture}
+import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.CampaignFixture.raidBoard
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
@@ -11,6 +11,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.testkit.Table
+import oathdigital.testkit.Table.{p1, p2}
 
 class CircletOfCommandSuite extends munit.FunSuite:
   import TargetingFixture._
@@ -64,15 +66,16 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   // ---- Challenge ----
 
-  /** The enemy holding the People's Favor, and the Challenge started. */
+  /** p1 challenges at Ancient City, where p2 stands holding People's Favor
+    * and, on `circletSide`, the Circlet. */
   private def challenge(circletSide: Option[Orientation])
       : (PlayerId, OathTransition) =
-    val (base, _) = ChallengeFixture.ready(resources = 2)
-    val actor = ChallengeFixture.active(base)
-    val withHolder = ChallengeFixture.enemyHolds(base, Banner.PeoplesFavor, 2)
-    val enemy = ChallengeFixture.enemy(withHolder).player
-    val held = circletSide.fold(withHolder)(holds(withHolder, enemy, circlet, _))
-    (enemy, start(held, ActionRef.Challenge, actor).toOption.get)
+    val table = Table.start
+      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
+      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.homeOf(p1))
+    val held = circletSide.fold(table)(side => table.relic(p2, circlet,
+      facedown = side == Orientation.FaceDown))
+    (p2, start(held.ready, ActionRef.Challenge, p1).toOption.get)
 
   private def challengeBanners(circletSide: Option[Orientation])
       : Vector[DecisionOptionRef] =

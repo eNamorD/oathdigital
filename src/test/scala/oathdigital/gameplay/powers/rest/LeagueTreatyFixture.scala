@@ -2,17 +2,19 @@ package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.Table
 
-/** League Treaty arranged on a first-game Act state, shared with the
+/** League Treaty arranged on the quiet table's Act, shared with the
   * pending-walker invariant (Task 13).
   */
 object LeagueTreatyFixture:
   val treatyCard = DenizenId("237")
 
-  def act: ReadyGame =
-    val initial = initialReady
-    initial.updateCurrent(_.copy(
-      turn = initial.game.current.turn.copy(phase = Phase.Act)))
+  /** p1's Act. Broken Peaks holds two secrets, so p2, waking after p1's
+    * Rest, has wealth to take and the Wake waits. */
+  def act: ReadyGame = Table.start
+    .siteTokens(Table.homeOf(Table.p2), secrets = 2)
+    .ready
 
   def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get
 

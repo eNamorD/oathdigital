@@ -1,16 +1,28 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.economy.{MusterProcedure, MusterSource}
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathViolation._
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.p1
 
 class MusterProcedureSuite extends munit.FunSuite:
-  import EconomyFixture._
+  import EconomyFixture.{AddAdviserSource, FreePayment}
+
+  private val alchemist = CatalogNames.denizen("Alchemist")
+  private val magiciansCode = CatalogNames.denizen("Magician's Code")
+  private val hallowedSpring = CatalogNames.edifice("Hallowed Spring")
+
+  /** p1 stands at Ancient City, which holds the token-free Alchemist
+    * (Arcane) and nothing else; p1 has 4 favor. */
+  private def atAlchemist: Table = Table.start
+    .denizen(alchemist, at = Table.homeOf(p1))
+    .favor(p1, 4)
 
   private def parked(ready: ReadyGame): (Operation, PendingTree) =
-    val tree = MusterProcedure.build(catalog, ready, player(ready).player)
+    val tree = MusterProcedure.build(catalog, ready, p1)
       .getOrElse(fail("a legal Muster must build"))
     val outcome = ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty)
       .getOrElse(fail("the Muster tree must walk to its source decision"))
@@ -19,69 +31,69 @@ class MusterProcedureSuite extends munit.FunSuite:
   private def muster(ready: ReadyGame, ref: DecisionOptionRef): ReadyGame =
     val (tree, pending) = parked(ready)
     ProcedureWalker.resolve(ready, tree, pending, Answered(
-      MusterProcedure.decisionId, DecisionAnswer.ChooseOneAnswer(ref),
-      player(ready).player), WalkerPowers.empty)
+      MusterProcedure.decisionId, DecisionAnswer.ChooseOneAnswer(ref), p1),
+      WalkerPowers.empty)
       .getOrElse(fail("the answer must be accepted"))
       .asInstanceOf[WalkerOutcome.Finished].treeless
 
-  private def siteTokens(ready: ReadyGame): Tokens =
-    ready.game.current.map.sites(player(ready).pawnSite.get).denizens.head.tokens
-
   test("the tree parks on the token-free cards at the pawn site"):
-    val ready = act()
+    val ready = atAlchemist.ready
     val (tree, pending) = parked(ready)
     val decide = ProcedureWalker.parkedDecide(ready, tree, pending,
       WalkerPowers.empty).getOrElse(fail("the walk must park on a decision"))
     assertEquals(decide.decisionId, "muster.source")
     assertEquals(decide.query, DecisionQuery.ChooseOne(
-      Vector(DecisionOption.Denizen(DecisionOptionRef.Denizen(plainId))),
+      Vector(DecisionOption.Denizen(DecisionOptionRef.Denizen(alchemist))),
       Some("Choose a card to Muster from")))
 
   test("Muster costs one Supply and one favor and gains one warband per " +
       "matching adviser plus one"):
-    val after = muster(act(advisers = Vector(matchingAdviser)),
-      DecisionOptionRef.Denizen(plainId))
-    assertEquals(player(after).board.favor, 3)
-    assertEquals(player(after).board.supply.supply, 6)
-    assertEquals(player(after).board.warbands, 5)
-    assertEquals(siteTokens(after), Tokens(1, 0))
+    val ready = atAlchemist.adviser(p1, magiciansCode)   // Arcane, like Alchemist
+      .ready
+    val after = Look(muster(ready, DecisionOptionRef.Denizen(alchemist)))
+    assertEquals(after.favor(p1), 3)
+    assertEquals(after.supply(p1), 6)
+    assertEquals(after.warbands(p1), 5)                  // 3 + 1 matching + 1
+    assertEquals(after.tokensOn(alchemist), Tokens(1, 0))
 
   test("the gain shrinks to the warbands the supply still holds"):
-    val after = muster(act(boardWarbands = 14), DecisionOptionRef.Denizen(plainId))
-    assertEquals(player(after).board.warbands, 14)
-    assertEquals(player(after).board.supply.supply, 6)
-    assertEquals(player(after).board.favor, 3)
+    // An Exile lineage has 14 warbands; all of them are on p1's board.
+    val after = Look(muster(atAlchemist.warbands(p1, 14).ready,
+      DecisionOptionRef.Denizen(alchemist)))
+    assertEquals(after.warbands(p1), 14)
+    assertEquals(after.supply(p1), 6)
+    assertEquals(after.favor(p1), 3)
 
   test("an edifice of either side is a legal source and takes the favor"):
     Vector(EdificeSide.Ruined, EdificeSide.Intact).foreach { side =>
-      val ready = spring(act(), side)
-      val options = MusterProcedure.startOptions(catalog, ready,
-        player(ready).player, WalkerPowers.empty).map(_.option.ref)
-      assertEquals(options, Vector(DecisionOptionRef.Edifice(springId)), side.toString)
-      assertEquals(siteTokens(muster(ready, DecisionOptionRef.Edifice(springId))),
-        Tokens(1, 0), side.toString)
+      val ready = Table.start.favor(p1, 4)
+        .edifice(hallowedSpring, side, at = Table.homeOf(p1)).ready
+      val options = MusterProcedure.startOptions(catalog, ready, p1,
+        WalkerPowers.empty).map(_.option.ref)
+      assertEquals(options, Vector(DecisionOptionRef.Edifice(hallowedSpring)),
+        side.toString)
+      assertEquals(Look(muster(ready, DecisionOptionRef.Edifice(hallowedSpring)))
+        .tokensOn(hallowedSpring), Tokens(1, 0), side.toString)
     }
 
   test("a card carrying tokens is not offered, so there is nothing to start"):
-    val ready = act(tokens = Tokens(0, 1))
-    val actor = player(ready).player
+    val ready = atAlchemist.tokens(alchemist, secrets = 1).ready
     // The start itself is legal, so an empty preview is the absence of a
     // source and not a build failure swallowed by `startOptions`.
-    assert(MusterProcedure.build(catalog, ready, actor).isRight)
-    assertEquals(MusterProcedure.startOptions(catalog, ready, actor,
+    assert(MusterProcedure.build(catalog, ready, p1).isRight)
+    assertEquals(MusterProcedure.startOptions(catalog, ready, p1,
       WalkerPowers.empty), Vector.empty)
-    assert(MusterProcedure.startOptions(catalog, act(), player(act()).player,
+    assert(MusterProcedure.startOptions(catalog, atAlchemist.ready, p1,
       WalkerPowers.empty).nonEmpty)
 
   test("a power that removes the cost lets an unaffordable Muster start"):
-    val ready = act(favor = 0)
-    val actor = player(ready).player
-    assert(MusterProcedure.startOptions(catalog, ready, actor,
+    val ready = atAlchemist.favor(p1, 0).ready
+    assert(MusterProcedure.startOptions(catalog, ready, p1,
       WalkerPowers.empty).forall(_.outcome.isLeft))
-    val previewed = MusterProcedure.startOptions(catalog, ready, actor,
+    val previewed = MusterProcedure.startOptions(catalog, ready, p1,
       WalkerPowers(Vector(FreePayment(PowerId("test.free-payment")))))
     assertEquals(previewed.map(_.option.ref),
-      Vector(DecisionOptionRef.Denizen(plainId)))
+      Vector(DecisionOptionRef.Denizen(alchemist)))
     previewed.head.outcome match
       case Right(outcome) =>
         assertEquals(outcome.operations.collect { case SpendSupply(_, n, _) => n },
@@ -90,53 +102,51 @@ class MusterProcedureSuite extends munit.FunSuite:
       case Left(error) => fail(s"the free Muster must be playable: $error")
 
   test("an option the actor cannot pay for is previewed as dropped"):
-    val ready = act(favor = 0)
-    val previewed = MusterProcedure.startOptions(catalog, ready,
-      player(ready).player, WalkerPowers.empty)
+    val ready = atAlchemist.favor(p1, 0).ready
+    val previewed = MusterProcedure.startOptions(catalog, ready, p1,
+      WalkerPowers.empty)
     assertEquals(previewed.map(_.option.ref),
-      Vector(DecisionOptionRef.Denizen(plainId)))
+      Vector(DecisionOptionRef.Denizen(alchemist)))
     assert(previewed.forall(_.outcome.isLeft))
 
   test("resolve names why a reference is not a source"):
-    val actor = player(act()).player
-    val siteId = player(act()).pawnSite.get
-    assertEquals(MusterSource.resolve(catalog, act(tokens = Tokens(0, 1)), actor,
-      DecisionOptionRef.Denizen(plainId)), Left(EconomyCardNotEmpty(plainId)))
-    assertEquals(MusterSource.resolve(catalog, act(), actor,
-      DecisionOptionRef.Denizen(matchingId)),
-      Left(EconomyCardUnavailable(siteId, matchingId)))
-    assert(MusterSource.resolve(catalog, act(), actor,
+    assertEquals(MusterSource.resolve(catalog,
+      atAlchemist.tokens(alchemist, secrets = 1).ready, p1,
+      DecisionOptionRef.Denizen(alchemist)), Left(EconomyCardNotEmpty(alchemist)))
+    assertEquals(MusterSource.resolve(catalog, atAlchemist.ready, p1,
+      DecisionOptionRef.Denizen(magiciansCode)),
+      Left(EconomyCardUnavailable(Table.homeOf(p1), magiciansCode)))
+    assert(MusterSource.resolve(catalog, atAlchemist.ready, p1,
       DecisionOptionRef.Button("site")).isLeft)
 
   test("matching counts the actor's faceup advisers of the source's suit"):
-    val ready = act(advisers = Vector(matchingAdviser))
-    assertEquals(MusterSource.matching(catalog, ready, player(ready).player,
-      plain.suit), 1)
-    assertEquals(MusterSource.matching(catalog, act(), player(act()).player,
-      plain.suit), 0)
+    assertEquals(MusterSource.matching(catalog,
+      atAlchemist.adviser(p1, magiciansCode).ready, p1, Suit.Arcane), 1)
+    assertEquals(MusterSource.matching(catalog, atAlchemist.ready, p1,
+      Suit.Arcane), 0)
 
   test("a board whose site forces name an unknown lineage cannot start"):
-    val ready = act()
-    val siteId = player(ready).pawnSite.get
-    val broken = ready.updateCurrent(current => current.copy(map =
-      current.map.copy(sites = current.map.sites.updated(siteId,
-        current.map.sites(siteId).copy(forces =
+    // A lineage that is not in the game is malformed, which `ready` would
+    // refuse, so the ghost's warbands go on after it.
+    val broken = atAlchemist.ready.updateCurrent(current => current.copy(
+      map = current.map.copy(sites = current.map.sites.updated(Table.homeOf(p1),
+        current.map.sites(Table.homeOf(p1)).copy(forces =
           SiteForces.Occupied(ForceKind.Exile(LineageId("ghost")), 1))))))
-    assert(MusterProcedure.build(catalog, broken, player(broken).player).isLeft)
+    assert(MusterProcedure.build(catalog, broken, p1).isLeft)
 
   test("Muster cannot start outside the Act phase"):
-    val ready = act().updateCurrent(current =>
-      current.copy(turn = current.turn.copy(phase = Phase.Wake)))
-    assert(MusterProcedure.build(catalog, ready, player(ready).player).isLeft)
+    val ready = atAlchemist.turn(p1, Phase.Wake).ready
+    assert(MusterProcedure.build(catalog, ready, p1).isLeft)
 
   test("a power that adds an option to the source decision has it previewed, " +
       "and this slice's acceptance rule drops it"):
-    val ready = act(advisers = Vector(matchingAdviser))
-    val previewed = MusterProcedure.startOptions(catalog, ready,
-      player(ready).player, WalkerPowers(Vector(AddAdviserSource(
-        PowerId("test.add-adviser-source")))))
+    val ready = atAlchemist.adviser(p1, magiciansCode).ready
+    val previewed = MusterProcedure.startOptions(catalog, ready, p1,
+      WalkerPowers(Vector(AddAdviserSource(
+        PowerId("test.add-adviser-source"), magiciansCode))))
     assertEquals(previewed.map(_.option.ref), Vector(
-      DecisionOptionRef.Denizen(plainId), DecisionOptionRef.Denizen(matchingId)))
+      DecisionOptionRef.Denizen(alchemist),
+      DecisionOptionRef.Denizen(magiciansCode)))
     assert(previewed.head.outcome.isRight)
     previewed.last.outcome match
       case Left(_: EconomyCardUnavailable) => ()

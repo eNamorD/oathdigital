@@ -3,26 +3,24 @@ package oathdigital.gameplay.oathkeeper
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.oathkeeper.OathkeeperFixture._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
   WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 
 class OathkeeperProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val walkerParked = new ParkedDecisionAssertions(catalog)
 
-  /** A Travel by the active player: the cheapest walker action whose
+  /** p1 travels to Broken Peaks: the cheapest walker action whose
     * completion runs the action boundary and moves no forces.
     */
   private def travel(ready: ReadyGame) =
-    val active = ready.game.current.turn.activePlayer
-    val pawn = ready.game.current.players.find(_.player == active).get.pawnSite.get
-    val destination = ready.game.current.map.inPlay.find(_ != pawn).get
-    rules.startWalker(Ready(ready), ActionRef.Travel, active, Vector.empty,
-      Vector(DecisionOptionRef.Site(destination)))
+    rules.startWalker(Ready(ready), ActionRef.Travel, p1, Vector.empty,
+      Vector(DecisionOptionRef.Site(Table.homeOf(p2))))
 
   private def replays(start: ReadyGame, events: Vector[OathEvent],
       expected: OathState): Unit =
@@ -30,17 +28,18 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
       Right(Ready(start)))((state, event) => state.flatMap(rules.evolve(_, event))),
       Right(expected))
 
-  /** Holder is not the active player; the two leaders are everyone else. */
+  /** p2 holds the Oathkeeper title while p1 and p3 each rule one site, a
+    * tie p2 must break off turn. It is p1's Act. */
+  private def tied: Table = Table.start
+    .oathkeeper(Some(p2))
+    .warbandsAt("Dunes", p1, 1).warbandsAt("Fair Isle", p3, 1)
+
   private def tie: (ReadyGame, PlayerId, PlayerId, Vector[PlayerId]) =
-    val active = base.game.current.turn.activePlayer
-    val holder = players.find(_ != active).get
-    val leaders = players.filterNot(_ == holder).take(2)
-    (inPhase(ruled(base, leaders.map(Some(_)), holder = Some(holder)),
-      Phase.Act), active, holder, leaders)
+    (tied.ready, p1, p2, Vector(p1, p3))
 
   test("a single new leader takes the title inside the action's own command"):
-    val leader = players.last
-    val ready = inPhase(ruled(base, Vector(Some(leader))), Phase.Act)
+    val leader = p3
+    val ready = Table.start.warbandsAt("Dunes", p3, 1).ready
     val accepted = travel(ready).toOption.get
     assert(accepted.events.exists {
       case step: WalkerStepRecorded => step.ops == Vector(SetOathkeeper(Some(leader)))
@@ -90,16 +89,14 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
   test("completing the Oathkeeper procedure runs no action boundary"):
     val (ready, _, holder, leaders) = tie
     val parked = travel(ready).toOption.get
-    // An empty site with capacity makes a boundary observable: if one ran on
-    // the resolving command, it would refill bandits here.
+    // The Travel's own boundary refilled every empty site before the park.
+    // Emptying Desolate Shore again makes a boundary observable: if one ran
+    // on the resolving command, it would refill bandits there.
     val Ready(waiting) = parked.state: @unchecked
-    val empty = waiting.game.current.map.inPlay.find(id =>
-      catalog.sites.find(_.id == id).exists(_.capacity > 0) &&
-        waiting.game.current.map.sites(id).forces ==
-          SiteForces.Occupied(ForceKind.Bandit, 1)).get
-    val emptied = waiting.updateCurrent(_.copy(map = waiting.game.current.map.copy(sites =
-        waiting.game.current.map.sites.updated(empty,
-          waiting.game.current.map.sites(empty).copy(forces = SiteForces.Empty)))))
+    val shore = CatalogNames.site("Desolate Shore")
+    val emptied = waiting.updateCurrent(current => current.copy(map =
+      current.map.copy(sites = current.map.sites.updated(shore,
+        current.map.sites(shore).copy(forces = SiteForces.Empty)))))
     assert(StateBasedEvaluation.banditRefill(catalog, Ready(emptied))
       .toOption.flatten.nonEmpty, "precondition: a boundary would refill here")
     val chosen = rules.resolveWalker(Ready(emptied), holder,
@@ -108,11 +105,10 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     assertEquals(chosen.events.collect { case e: BanditsRefilled => e }, Vector.empty)
 
   test("a tie found after Take Wealth parks in Wake and returns the player to Wake"):
-    val active = base.game.current.turn.activePlayer
-    val holder = players.find(_ != active).get
-    val leaders = players.filterNot(_ == holder).take(2)
-    val ready = TakeWealthFixture.wakeReady(ruled(base, leaders.map(Some(_)),
-      holder = Some(holder)))
+    val (active, holder, leaders) = (p1, p2, Vector(p1, p3))
+    // p1 wakes at Ancient City, which holds a favor and a secret to take.
+    val ready = tied.turn(p1, Phase.Wake)
+      .siteTokens(Table.homeOf(p1), favor = 1, secrets = 1).ready
     val parked = TakeWealthFixture.take(rules, ready).toOption.get
     walkerParked.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
       OathkeeperProcedure.recipientDecisionId, holder)
@@ -131,10 +127,9 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
       s"expected a typed rejection, got $result")
 
   test("the procedure rejects a start selection and a state with nothing to change"):
-    val ready = inPhase(base, Phase.Act)
-    assertEquals(OathkeeperProcedure.build(catalog, ready,
-      ready.game.current.turn.activePlayer, Vector.empty),
+    assertEquals(OathkeeperProcedure.build(catalog, Table.start.ready, p1,
+      Vector.empty),
       Left(OathViolation.InvalidEventOrder("no Oathkeeper change to perform")))
-    assert(OathkeeperProcedure.build(catalog, ruled(ready, Vector(Some(players.last))),
-      ready.game.current.turn.activePlayer,
-      Vector(DecisionOptionRef.Site(ready.game.current.map.inPlay.head))).isLeft)
+    assert(OathkeeperProcedure.build(catalog,
+      Table.start.warbandsAt("Dunes", p3, 1).ready, p1,
+      Vector(DecisionOptionRef.Site(Table.homeOf(p1)))).isLeft)

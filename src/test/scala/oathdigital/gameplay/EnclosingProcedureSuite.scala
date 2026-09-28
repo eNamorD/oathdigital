@@ -8,6 +8,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 
 /** `PowerCtx.procedure`: the procedure a window is walked for. */
 class EnclosingProcedureSuite extends munit.FunSuite:
@@ -28,29 +30,31 @@ class EnclosingProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowers(Vector(probe)))
 
-  private def staged: ReadyGame = EconomyFixture.act()
-  private def actor: PlayerId = staged.game.current.turn.activePlayer
+  /** p1 stands at Ancient City with the Alchemist; the start's 1 favor and
+    * 7 Supply pay for a Muster from it. */
+  private def staged: ReadyGame =
+    Table.start.denizen("Alchemist", at = Table.homeOf(p1)).ready
 
   test("a modifier is selected for the procedure that will run it"):
     seen.clear()
-    rules.offerableWalkerPowers(staged, actor, ActionRef.Muster)
+    rules.offerableWalkerPowers(staged, p1, ActionRef.Muster)
     assertEquals(seen.toVector, Vector[(PowerWindow, Option[ProcedureRef])](
       PowerWindow.MusterModifierSelection -> Some(ActionRef.Muster)))
 
   test("the command that starts a procedure has not recorded it yet, and a " +
       "resume walks its windows for it"):
     seen.clear()
-    val started = rules.startWalker(Ready(staged), ActionRef.Muster, actor,
+    val started = rules.startWalker(Ready(staged), ActionRef.Muster, p1,
       Vector(probe.id)).toOption.get
     assert(seen.contains(PowerWindow.MusterSourceSelection -> None), seen.toString)
     seen.clear()
-    rules.resolveWalker(started.state, actor, MusterProcedure.decisionId,
+    rules.resolveWalker(started.state, p1, MusterProcedure.decisionId,
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(
-        EconomyFixture.plainId))).toOption.get
+        CatalogNames.denizen("Alchemist")))).toOption.get
     assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),
       seen.toString)
 
   test("a context built without one names none"):
-    val ctx = PowerCtx(staged, actor, probe.source, PowerWindow.MusterCost,
+    val ctx = PowerCtx(staged, p1, probe.source, PowerWindow.MusterCost,
       Vector.empty, Sequence(Vector.empty))
     assertEquals(ctx.procedure, None)

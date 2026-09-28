@@ -1,15 +1,12 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.SearchRules
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class SearchSuite extends munit.FunSuite:
 
-  private def ready: ReadyGame =
-    val state = initialReady
-    state.updateCurrent(_.copy(
-      turn = state.game.current.turn.copy(phase = Phase.Act)))
+  private def ready: ReadyGame = Table.start.ready
 
   test("world Search cost follows Visions Drawn track bands"):
     val base = ready

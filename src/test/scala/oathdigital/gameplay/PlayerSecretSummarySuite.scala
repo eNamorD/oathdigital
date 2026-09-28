@@ -2,10 +2,11 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class PlayerSecretSummarySuite extends munit.FunSuite:
   import FirstGameSetupFixture._
-  private val base = initialReady
+  private val base = Table.start.ready
   private val actor = base.game.current.players.find(
     _.player == base.game.current.turn.activePlayer).get
 

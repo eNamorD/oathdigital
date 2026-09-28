@@ -4,7 +4,7 @@ import oathdigital.gameplay.phases.RestCleanupPlan
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
-import oathdigital.gameplay.setup._
+import oathdigital.testkit.Table
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathEvent.IgnoredRulesRecorded
 import oathdigital.model.OathState.Ready
@@ -16,10 +16,12 @@ import oathdigital.catalog.CatalogPower
 class RestSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
 
-  private def act: ReadyGame =
-    val Ready(initial) = execute()._1: @unchecked
-    initial.updateCurrent(_.copy(
-      turn = initial.game.current.turn.copy(phase = Phase.Act)))
+  /** p1's Act, with Wrestlers as p1's adviser. Broken Peaks holds two
+    * secrets, so p2, waking next, has wealth to take and the Wake waits. */
+  private def act: ReadyGame = Table.start
+    .adviser(Table.p1, "Wrestlers")
+    .siteTokens(Table.homeOf(Table.p2), secrets = 2)
+    .ready
 
   private def rest(state: OathState, player: PlayerId,
       using: OathRules = rules) =

@@ -7,11 +7,12 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class DazzleSuite extends munit.FunSuite:
 
   test("Dazzle discards Hearth and Order site cards from the actor region"):
-    val base = initialReady
+    val base = Table.start.ready
     val actor = base.game.current.turn.activePlayer
     val dazzle = catalog.denizens.find(_.powers.exists(
       _.id == Dazzle.id)).map(d => DenizenId(d.id.value)).get
@@ -64,7 +65,7 @@ class DazzleSuite extends munit.FunSuite:
       Vector.empty)
 
   test("Dazzle skips a rule-immune target and still discards another"):
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     val player = current.players.find(_.player == actor).get
@@ -113,7 +114,7 @@ class DazzleSuite extends munit.FunSuite:
       Vector(targets.head))
 
   test("Dazzle rejects a site denizen absent from the catalog"):
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     val siteId = current.players.find(_.player == actor).get.pawnSite.get
@@ -131,7 +132,7 @@ class DazzleSuite extends munit.FunSuite:
       WalkerPowers(Vector(dazzle))).isLeft)
 
   test("Dazzle discards ruined Hearth and Order edifices, not intact ones or other suits"):
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     val dazzle = DenizenId(catalog.denizens.find(_.powers.exists(
@@ -169,7 +170,7 @@ class DazzleSuite extends munit.FunSuite:
     assertEquals(after.commonCards.edificeDeck.lastOption, Some(ruinedHearth))
 
   test("Dazzle leaves other suits and other regions alone"):
-    val base = initialReady
+    val base = Table.start.ready
     val current = base.game.current
     val actor = current.turn.activePlayer
     val dazzle = DenizenId(catalog.denizens.find(_.powers.exists(

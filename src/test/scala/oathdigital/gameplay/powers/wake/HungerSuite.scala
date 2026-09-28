@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.application.{GameCommand, ParkedServiceFixture}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   TargetsFixture}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
@@ -11,11 +10,12 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Answers, Situation}
+import oathdigital.testkit.{Answers, Situation, Table}
+import oathdigital.testkit.Table.{p2, p3}
 
 class HungerSuite extends munit.FunSuite:
-  import PowerFixture.{actor, base, player}
-  import TargetsFixture.{giveAdviser, updatePlayer, withPawn}
+  import PowerFixture.{actor, player}
+  import TargetsFixture.updatePlayer
 
   private val phasePowers = PhasePowerCatalog.default(catalog)
   private val rules = new OathRules(catalog, phasePowerCatalog = phasePowers)
@@ -23,19 +23,20 @@ class HungerSuite extends munit.FunSuite:
     phasePowerCatalog = phasePowers)
   private val hunger = Hunger.forCatalog(catalog).get
   private val card = hunger.cardId
-  private val next = FinishRestProcedure.turnOrder(base)(1)
-  private val third = base.game.current.players.map(_.player)
-    .find(p => p != actor && p != next).get
+  /** p2 wakes after p1's Rest; p3 is the third player. */
+  private val (next, third) = (p2, p3)
 
-  /** The actor in Act. `next` holds Hunger (faceup unless told otherwise)
-    * and shares its site with `third`. */
+  /** p1 in Act. p2 holds Hunger (faceup unless told otherwise) and Wrestlers;
+    * p3 holds Rain Boots and shares p2's site, Broken Peaks. */
   private def staged(orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    val act = base.updateCurrent(_.copy(turn = TurnState(actor, Phase.Act,
-      Set.empty)))
-    val site = player(act, next).pawnSite.get
-    withPawn(giveAdviser(act, next, card, orientation), third, site)
+    Table.start
+      .adviser(p2, card, facedown = orientation == Orientation.FaceDown)
+      .adviser(p2, "Wrestlers")
+      .adviser(p3, "Rain Boots")
+      .pawn(p3, at = Table.homeOf(p2))
+      .ready
 
-  /** `third`'s starting adviser with 1 favor and 2 secrets on it. Set on the
+  /** p3's Rain Boots with 1 favor and 2 secrets on it. Set on the
     * parked state, since the actor's Rest returns every card's tokens. */
   private def stocked(ready: ReadyGame): ReadyGame =
     updatePlayer(ready, third)(p => p.copy(advisers = p.advisers.zipWithIndex.map {
@@ -115,13 +116,12 @@ class HungerSuite extends munit.FunSuite:
     assert(bury(t, DecisionOptionRef.AdviserSlot(actor, 0)).isLeft)
 
   test("with nothing to bury, Hunger says so and Wake goes on"):
-    val ready = staged()
-    val site = player(ready, next).pawnSite
-    val elsewhere = ready.game.current.map.inPlay.find(s => !site.contains(s)).get
-    val moved = Vector(actor, third).foldLeft(ready)((r, p) =>
-      withPawn(r, p, elsewhere))
-    val alone = updatePlayer(moved, next)(p =>
-      p.copy(advisers = p.advisers.filter(_.id == card)))
+    // p2 wakes alone at Broken Peaks, holding only Hunger. The site's two
+    // secrets give p2 a Wake option, so the Wake goes on once Hunger is done.
+    val alone = Table.start
+      .adviser(p2, card)
+      .siteTokens(Table.homeOf(p2), secrets = 2)
+      .ready
     val t = rested(alone)
     parked.assertResumed(t.state, Phase.Wake, next)
     assertEquals(NoteText.said(hunger, t.events), Vector(NoteText.Said(

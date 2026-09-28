@@ -3,13 +3,15 @@ package oathdigital.gameplay.powers.banner
 import oathdigital.gameplay.PlacementFixture
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture, TargetsFixture,
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerOutcome}
 import oathdigital.model._
+import oathdigital.testkit.Table
+import oathdigital.testkit.Table.p3
 
 class PeoplesFavorMobSuite extends munit.FunSuite:
   import PowerFixture._
@@ -138,7 +140,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "not the other banner, not an unheld banner"):
     val kept = denizensOf(Suit.Hearth).head
     val unheld: Vector[ReadyGame => ReadyGame] = Vector(
-      holdingFavor(_, holder = Some(p1)),
+      holdingFavor(_, holder = Some(p3)),
       holdingFavor(_, PeoplesFavorFace.GrandCouncil),
       holdingFavor(_, holder = None),
       holdingFlame(_))
@@ -190,12 +192,14 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val tongue = DenizenId("92")
     val hearth = denizensOf(Suit.Hearth)
     val (kept, adviser) = (hearth(0), hearth(1))
-    val (built, who, _) = PlacementFixture.staged(played,
-      Vector(PlacementFixture.denizen(kept)))
-    val bare = TargetsFixture.withoutAdvisers(built, who)
-    val ready = holdingFavor(TargetsFixture.giveAdviser(
-      TargetsFixture.giveAdviser(bare, who, tongue, Orientation.FaceUp), who,
-      adviser, Orientation.FaceDown))
+    // p1 plays `played` from hand at Ancient City, which holds `kept`, while
+    // holding the People's Favor on Mob, a faceup Silver Tongue and a
+    // facedown `adviser`.
+    val who = actor
+    val ready = holdingFavor(Table.start
+      .hand(who, played).denizen(kept, at = home(base))
+      .adviser(who, tongue).adviser(who, adviser, facedown = true)
+      .ready)
     val powers = WalkerPowerCatalog.default(catalog)
     val tree = PlacementFixture.build(ready, who, played)
     val parked = PlacementFixture.park(ready, tree, powers)

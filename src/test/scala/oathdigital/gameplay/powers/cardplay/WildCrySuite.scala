@@ -6,6 +6,7 @@ import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 class WildCrySuite extends munit.FunSuite:
   import PowerFixture._
@@ -114,10 +115,11 @@ class WildCrySuite extends munit.FunSuite:
       "as the replacement of a faceup adviser"):
     val extra = denizensOf(Suit.Arcane).head
     val kept = beast.head
-    // The actor starts with one facedown adviser. With one more and Wild Cry,
-    // the area of three is full and a faceup play asks for a replacement.
-    val holding = asAdviser(CardStaging.without(asAdviser(withCry(kept), extra,
-      Orientation.FaceDown), wildCry), wildCry)
+    // The actor holds a facedown Wrestlers. With one more and Wild Cry, the
+    // area of three is full and a faceup play asks for a replacement.
+    val holding = asAdviser(CardStaging.without(asAdviser(asAdviser(
+      withCry(kept), CatalogNames.denizen("Wrestlers"), Orientation.FaceDown),
+      extra, Orientation.FaceDown), wildCry), wildCry)
     val before = player(holding).advisers.map(_.id).toSet
     assertEquals(before.size, 3)
     val started = start(holding, modifiers).toOption.get

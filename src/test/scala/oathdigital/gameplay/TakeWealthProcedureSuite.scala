@@ -9,6 +9,7 @@ import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** Take Wealth's board setup and command, extracted from
   * `TakeWealthProcedureSuite` (batch 1, Task 8) so
@@ -22,9 +23,9 @@ object TakeWealthFixture extends munit.Assertions:
   val secretArg: Vector[DecisionOptionRef] = Vector(
     DecisionOptionRef.Button("secret"))
 
+  /** p1's Wake on the quiet table. */
   private def freshBase: ReadyGame =
-    val value = initialReady
-    value
+    Table.start.turn(Table.p1, Phase.Wake).ready
 
   /** The active player's pawn site holds `favor`/`secrets`; `sharedEnemy`
     * parks another player's pawn on it. Mirrors `WakeSuite`'s board so the
