@@ -408,8 +408,6 @@ private[frontend] object WalkerPanelSupport:
     // duplicate announcement, and in front of a modal trigger it is a dead
     // stop the user has to pass through to reach the card.
     DragClickGuard.attach(node.asInstanceOf[dom.html.Element])
-    node.appendChild(option.card.fold[dom.Element](
-      text("span", "option-summary", option.label))(CardFace.render))
     node.addEventListener("dragstart", (event: dom.Event) =>
       event.asInstanceOf[dom.DragEvent].dataTransfer
         .setData("text/plain", item))
@@ -457,6 +455,12 @@ private[frontend] object WalkerPanelSupport:
         control.setAttribute("title", label)
         control.onclick = _ => update(draft.putLast(item), draft, controls)
         node.appendChild(control)
+    // The face comes last, under the controls: every option ends in its
+    // card, so the cards in a row sit on the row's floor whether the option
+    // above them holds two controls or none, and the kept card lines up
+    // with the discards beside it.
+    node.appendChild(option.card.fold[dom.Element](
+      text("span", "option-summary", option.label))(CardFace.render))
     node
 
   private def moveOption(draft: WalkerPartitionDraft, item: String,

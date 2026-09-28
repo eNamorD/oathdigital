@@ -508,9 +508,12 @@ controls are 30px.
   has no mover, because Keep on another card swaps them; each discard card
   that is not last carries one Control-face "Put on top" button, and the
   last carries a "Top" pill of the same height (Line-mid border, Ink Dim
-  text, 999px radius). The order note reads "The last one lands on top of
-  the pile." Forge's payment partition keeps its minimum lines and movers
-  and has no order controls.
+  text, 999px radius). The movers and the pill stand above the card at the
+  30px Control height, and the card is the last thing in its option, so the
+  cards in a row sit on one floor whether the option above them holds two
+  controls or none. The order note reads "The last one lands on top of the
+  pile." Forge's payment partition keeps its minimum lines and movers and
+  has no order controls.
 
 ### Chips and Pills
 - **Site card count**: pill, 1px Line border, Cream 800 text, `2px 6px`
