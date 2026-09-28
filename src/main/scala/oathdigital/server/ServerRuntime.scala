@@ -7,7 +7,7 @@ import oathdigital.application.{
   IdentityRepository,
   MembershipAuthorizationService
 }
-import oathdigital.catalog.{CatalogLoadRequest, CatalogLoader}
+import oathdigital.catalog.CatalogLoader
 import oathdigital.persistence.HsqldbDatabaseOwner
 final class ServerRuntime private (
     val firstGame: GameServerGateway,
@@ -37,10 +37,7 @@ object ServerRuntime:
     }.flatMap { database =>
       val repository = database.eventStreams
       CatalogLoader
-        .load(
-          catalogPath,
-          CatalogLoadRequest()
-        )
+        .load(catalogPath)
         .left
         .map(errors =>
           errors.map(error => s"${error.path}: ${error.message}").mkString(
