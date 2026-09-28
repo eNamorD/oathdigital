@@ -48,7 +48,8 @@ class GameStartRulesSuite extends munit.FunSuite:
     val polluted = chronicle.copy(atlasBox = chronicle.atlasBox.updated(
       0, chronicle.atlasBox.head.copy(items = Vector(denizen))))
     val result = GameStartRules.evolve(catalog, polluted, orders)
-    assert(result.isLeft)
+    assertEquals(result.left.toOption, Some(OathViolation.UnsupportedChronicle(
+      "stored denizens or relics on an atlas site are not supported yet")))
 
   test("too few atlas sites is refused"):
     val short = chronicle.copy(atlasBox = chronicle.atlasBox.take(7))
@@ -59,4 +60,5 @@ class GameStartRulesSuite extends munit.FunSuite:
   test("an unknown denizen id is refused"):
     val polluted = chronicle.copy(
       worldDeck = chronicle.worldDeck.updated(0, DenizenId("no-such-denizen")))
-    assert(GameStartRules.evolve(catalog, polluted, orders).isLeft)
+    assertEquals(GameStartRules.evolve(catalog, polluted, orders).left.toOption,
+      Some(OathViolation.UnsupportedChronicle("unknown denizen no-such-denizen")))

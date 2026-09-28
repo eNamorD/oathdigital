@@ -56,19 +56,23 @@ class WalkerPreviewSuite extends munit.FunSuite:
   test("a tree that never parks, or runs an operation first, or parks on another " +
       "query shape has nothing to preview"):
     val (ready, actor) = withSupply(5)
-    assert(WalkerSimulation.preview(Sequence(Vector[Operation](
-      SpendSupply(actor, 1))), ready, WalkerPowers.empty).isLeft)
-    assert(WalkerSimulation.preview(Sequence(Vector[Operation](
+    assertEquals(WalkerSimulation.preview(Sequence(Vector[Operation](
+      SpendSupply(actor, 1))), ready, WalkerPowers.empty).left.toOption, Some(OathViolation.InvalidEventOrder(
+        "a previewed tree finished without parking on a decision")))
+    assertEquals(WalkerSimulation.preview(Sequence(Vector[Operation](
       SpendSupply(actor, 1),
       Decide("late", actor, DecisionQuery.ChooseOne(Vector(
         DecisionOption.Button(cheap, "Cheap")))))), ready,
-      WalkerPowers.empty).isLeft)
+      WalkerPowers.empty).left.toOption, Some(OathViolation.InvalidEventOrder(
+        "a previewed tree may not run operations before its first decision")))
     val distribute = Sequence(Vector[Operation](Decide("split", actor,
       DecisionQuery.Distribute.exactly(Vector(
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
         total = 2, heading = Some("League Treaty"), confirmLabel = "Move"))))
-    assert(WalkerSimulation.preview(distribute, ready, WalkerPowers.empty).isLeft)
+    assertEquals(WalkerSimulation.preview(distribute, ready, WalkerPowers.empty)
+      .left.toOption, Some(OathViolation.InvalidEventOrder(
+        "decision split is not a choose-one, so it cannot be previewed")))
 
   test("a transform on the decision's window changes what is previewed"):
     val (ready, actor) = withSupply(5)

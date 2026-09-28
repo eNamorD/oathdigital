@@ -9,7 +9,7 @@ class SetupProcedureSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
   private val ready = FirstGameSetupFixture.freshReady
 
-  test("each player places a pawn, then chooses an adviser, in turn order"):
+  test("the setup walk opens on the first player's pawn placement"):
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
     val first = ready.game.current.turn.activePlayer

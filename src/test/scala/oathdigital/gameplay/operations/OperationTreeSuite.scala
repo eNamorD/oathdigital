@@ -16,4 +16,5 @@ class OperationTreeSuite extends munit.FunSuite:
     // children (favor then secret) flatten depth-first to exactly 2 leaves.
     val pay = PayCost(PlayerId("p"), Location.OnCard(DenizenId("pay:target")),
       Cost(favor = 1, secret = 1))
-    assertEquals(Operation.flatten(pay).size, 2) // one leaf per placed portion
+    assertEquals(Operation.flatten(pay).collect { case move: Move => move.piece },
+      Vector[Piece](Piece.Favor(1), Piece.Secrets(1)))

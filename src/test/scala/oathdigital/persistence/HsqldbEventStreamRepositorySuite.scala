@@ -64,13 +64,17 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
 
   test("rejects newer and non-contiguous schema ledgers and releases files"):
     Vector(
-      "newer" -> Vector(5),
-      "gapped" -> Vector(0, 1)
-    ).foreach { case (label, versions) =>
+      ("newer", Vector(5),
+        "schema version 5 is newer than supported version 4"),
+      ("gapped", Vector(0, 1),
+        "schema version ledger must be contiguous from 1; found 0,1")
+    ).foreach { case (label, versions, reason) =>
       val path = databasePath(label)
       seedSchemaVersions(path, versions)
       val result = HsqldbDatabaseOwner.open(path)
-      assert(result.left.toOption.nonEmpty)
+      assertEquals(result.left.toOption, Some(
+        oathdigital.application.RepositoryFailure.StorageFailure(
+          s"initialize schema failed: $reason")), label)
 
       val reopened = DriverManager.getConnection(
         s"jdbc:hsqldb:file:${path.toAbsolutePath}",
