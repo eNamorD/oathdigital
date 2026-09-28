@@ -610,7 +610,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 #app { width: 100%; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; }
 .game-table { width: 100%; height: 100%; display: grid; gap: 4px; padding: 4px;
   background: #0f0e0c; grid-template-columns: minmax(0, 2.4fr) minmax(300px, 1fr);
-  grid-template-rows: minmax(150px, 26%) minmax(88px, 16%) minmax(0, 1fr);
+  grid-template-rows: minmax(150px, 26%) minmax(120px, 24%) minmax(0, 1fr);
   grid-template-areas: "players players" "world log" "world actions"; }
 .game-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column;
   background: #211f1b; border: 1px solid #40382b; overflow: hidden; }
@@ -854,10 +854,12 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .pane-actions .decision-zones { grid-template-columns: 1fr; gap: 10px; }
 .pane-actions .decision-zone { min-height: 100px; }
 .pane-actions .decision-final-row { flex-wrap: wrap; }
-/* The game log: 11px Ink at the pane floor, lines one gutter in and dimmed,
-   round and victory headlines in the replay green, a spent cost set apart
-   by a lighter treatment rather than a separator. */
-.game-log { list-style: none; margin: 0; padding: 0; font-size: 11px;
+/* The game log: 13px Ink, one step under the Actions pane's body so the
+   two reading surfaces on the right column read as a pair, lines one gutter
+   in and dimmed, round and victory headlines in the replay green, a spent
+   cost set apart by a lighter treatment rather than a separator. The pane
+   and the overlay share the size; the overlay adds room, not scale. */
+.game-log { list-style: none; margin: 0; padding: 0; font-size: 13px;
   line-height: 1.45; color: #f5ecd7; }
 .game-log .log-headline { font-weight: 800; margin-top: 6px; }
 .game-log .log-headline:first-child { margin-top: 0; }
@@ -873,7 +875,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .game-log .log-card, .game-log .log-site { color: #f5ecd7; }
 .game-log .log-cost { margin-left: 0.5em; color: #928876; font-weight: 400; }
 /* A roll's dice sit on the line without growing it: the chip is a pixel
-   shorter than the 11px line, so it hangs from the line's top. */
+   shorter than the line, so it hangs from the line's top. */
 .game-log .log-dice { vertical-align: top; }
 /* Reading aids. In the pane the current turn's headline stays at the top
    while its lines scroll under it; in the overlay the round's does. The
@@ -918,7 +920,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .game-table [tabindex]:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }
 @media (max-aspect-ratio: 4/3), (max-width: 1050px) {
   .game-table { grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
-    grid-template-rows: minmax(150px, 26%) minmax(0, 1fr) minmax(80px, 14%);
+    /* A point under the wide layout's 24%: at 1024x768 that point is what
+       keeps the starting-site decision, three cards and Confirm, out of
+       scroll in the Actions pane above. */
+    grid-template-rows: minmax(150px, 26%) minmax(0, 1fr) minmax(120px, 23%);
     grid-template-areas: "players players" "world actions" "world log"; }
 }
 @media (max-aspect-ratio: 4/5), (max-width: 620px) {
@@ -972,7 +977,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .log-overlay[hidden] { display: none; }
 .log-overlay-panel { display: flex; flex-direction: column; min-height: 0;
   width: min(46rem, 100%); background: #211f1b; border: 1px solid #443c30; }
-.log-overlay .game-log { font-size: 13px; }
 .log-overlay .log-heading { margin: 0; font: inherit; }
 .log-overlay button { cursor: pointer; }
 .log-overlay button:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }

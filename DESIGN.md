@@ -387,10 +387,17 @@ The play surface is one fixed viewport, no page scroll: `html, body` are
 CSS grid with 4px gaps on a Table background, four panes:
 
 - Wide (default): columns `minmax(0, 2.4fr) minmax(300px, 1fr)`; rows
-  `minmax(150px, 26%) minmax(88px, 16%) minmax(0, 1fr)`; areas Players across
-  the top, World left spanning two rows, Log then Actions stacked right.
+  `minmax(150px, 26%) minmax(120px, 24%) minmax(0, 1fr)`; areas Players
+  across the top, World left spanning two rows, Log then Actions stacked
+  right. The Log row is a reading pane, not a footer: at 1440×900 it shows
+  nine lines of the log, and Actions keeps the larger share under it.
 - Narrow or squarer than 4:3, or under 1050px: columns `1.65fr / minmax(260px,
-  1fr)`, Actions above Log on the right.
+  1fr)`, Actions above Log on the right; the Log row is `minmax(120px, 23%)`,
+  seven lines at 1024×768. The point under the wide layout's share is what
+  keeps the starting-site decision (three cards in hand and Confirm) out of
+  scroll in the Actions pane at that size. The World pane spans both
+  right-column rows in either layout, so the Log's share never moves the
+  map's Fit scale.
 - Portrait-ish (under 4:5 or 620px): World spans the full width in the middle
   row; Actions and Log share the bottom row side by side. Pane padding drops
   to 8px and headings shrink.
@@ -575,7 +582,7 @@ Brass Line border, 0.25em radius, Base fill, symbols in Token Symbol at 0.9em
 700. A blank face is a dashed `#5d5144` chip with nothing on it. Faces sit in
 an inline wrap with 0.25em gaps; a walk's roll shows the faces, then one line
 of totals. A roll in the game log draws the same chips inline in its line,
-hung from the line's top so the 11px line never grows; the totals follow as
+hung from the line's top so the 13px line never grows; the totals follow as
 their own log lines.
 
 ### Sites
@@ -592,10 +599,12 @@ Fill.
 ### Panes
 Four `section`s with a header strip (Pane Header fill, Line-pane bottom
 border, 39px, Brass Label uppercase title) and a scrolling content area. The
-Log pane is an 11px list: round and victory headlines in Replay green, a
-turn headline naming its player in the seat color, a phase headline in
-Brass Label at the same 11px (it is `0.92em` of the list, floored at the
-Eleven-Pixel Floor, so only the overlay's 13px list shows the step), and
+Log pane is a 13px list, one step under the Actions pane's 0.9rem body so
+the two reading surfaces on the right column read as a pair (the Arcs table
+this layout follows sets its log at its body size for the same reason):
+round and victory headlines in Replay green, a turn headline naming its
+player in the seat color, a phase headline in Brass Label at `0.92em`,
+floored at the Eleven-Pixel Floor, and
 every other line one gutter in, in Ink Dim, with card and site names in
 Cream and a spent cost set apart in Ink Spent rather than by a separator. A
 line that wraps hangs its continuation 10px past its first word, so the
@@ -613,8 +622,9 @@ sits clear of the letters while the header strip stays 39px.
 
 The **log overlay** is the whole log over the table. It takes the card
 overlay's scrim and holds a Pane-fill panel with a Line-pane border, full
-height, at a 46rem measure, under a pane header with Close. Its list reads
-at 13px, and there the round headlines stick instead of the turns.
+height, at a 46rem measure, under a pane header with Close. Its list is the
+pane's list at the pane's 13px; the overlay adds room, not scale, and there
+the round headlines stick instead of the turns.
 
 The **card list** shows cards in pile order: what Scryer or Oracular Pig
 looked at, or a log line's list of more than five cards. It is a count title

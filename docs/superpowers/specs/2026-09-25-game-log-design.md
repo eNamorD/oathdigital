@@ -34,7 +34,7 @@ contract a builder can implement without inventing anything.
 |---|----------|--------|
 | 1 | Reading direction | Chronological, newest at bottom, sticks to bottom while already there. |
 | 2 | Granularity | Headlines for rounds, turns, phases (Wake, Act, Rest) and victories only. Everything else is a flat line under the current phase. |
-| 3 | Room | The 16% pane row stays. Clicking the pane heading opens a full-height overlay with the whole log. |
+| 3 | Room | The pane row is 24% of the table (amended 2026-09-27 from 16%, see "Resolved decisions"). Clicking the pane heading opens a full-height overlay with the whole log. |
 | 4 | Last-looked marker | Client side, `localStorage`, keyed by game and seat. Not on the server. |
 | 5 | Hidden information | Resolved on the server per viewer, per card, from the game state on each side of the operation. Card backs are public. |
 | 6 | Entry shape | Typed spans, not a string: text, player, card, site, amount, and cost refs. |
@@ -519,8 +519,9 @@ for the public formatting plus per-seat overlays; this design does not add it.
 
 ### Pane
 
-The Log pane renders the tail of the log at the pane floor: 11px Ink, no
-monospace. Lines indent by one card gutter and use Ink Dim. Round and Victory
+The Log pane renders the tail of the log at 13px Ink (amended 2026-09-27
+from 11px, see "Resolved decisions"), no monospace. Lines indent by one card
+gutter and use Ink Dim. Round and Victory
 headlines use the `replay` green; Turn headlines carry the player's seat
 color on the name span. Phase headlines sit under their turn, smaller, in
 Brass and a few pixels in, and do not stick. A `cost` span is set apart from the sentence in a
@@ -749,6 +750,24 @@ The third slice (2026-09-26) settled these:
   stuck round headline. A pane at the end opens the overlay at the end.
 - The overlay's list reads at 13px; the die chips, sized in `em`, scale with
   it.
+
+A layout pass on 2026-09-27 amended the pane's room and size after
+comparing it with the Arcs table it follows. There the log pane is about
+21em wide and 9em tall in its own font, six lines like ours, but the font is
+the table's body size (body `2vh`, the pane fitted from a layout unit and
+raised 10%), roughly 16 to 19px on a laptop, with an "Expanded" setting that
+triples the pane's height. Our overlay is that expansion; the pane itself was
+the outlier at 11px in a 16% row:
+
+- The pane row is `minmax(120px, 24%)` in the wide table layout and
+  `minmax(120px, 23%)` in the narrow one: nine lines at 1440×900, seven at
+  1024×768. Actions gives up the room; the one point less in the narrow
+  layout is what keeps the starting-site decision out of scroll at
+  1024×768. The World pane spans both right-column rows, so the map's Fit
+  scale does not move.
+- The pane reads at 13px, the overlay's size, one step under the Actions
+  pane's 0.9rem body. The pane and the overlay now share one list size, and
+  the overlay is the same list with room.
 - On open, focus goes to the overlay's scrolling list, so arrow keys and Page
   Down scroll it at once; Close is one Shift+Tab away. Escape, from anywhere
   on the page, Close and a click on the scrim shut it and return focus to
