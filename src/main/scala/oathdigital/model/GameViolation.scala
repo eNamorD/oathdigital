@@ -72,7 +72,6 @@ object OathViolation:
   final case class SearchCostMismatch(expected: Int, actual: Int)
       extends OathViolation
   final case class UnsupportedRecoverState(reason: String) extends OathViolation
-  final case class RecoverOutcomeMismatch(detail: String) extends OathViolation
   final case class CampaignUnavailable(reason: String) extends OathViolation
   final case class RecoverUnavailable(detail: String) extends OathViolation
   final case class UnsupportedForgeState(reason: String) extends OathViolation

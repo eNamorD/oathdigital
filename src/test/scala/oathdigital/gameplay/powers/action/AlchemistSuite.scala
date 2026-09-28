@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
 
@@ -28,9 +26,6 @@ class AlchemistSuite extends munit.FunSuite:
   private def rows(amounts: (Suit, Int)*) = DecisionAnswer.DistributeAnswer(
     amounts.toVector.map { case (suit, n) =>
       DistributeAmount(DecisionOptionRef.FavorBank(suit), n) })
-
-  test("Alchemist is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Alchemist.id).isDefined)
 
   test("the cost is one secret placed and one burnt"):
     val ready = staged(Suit.Nomad -> 9)

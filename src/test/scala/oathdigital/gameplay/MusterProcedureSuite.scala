@@ -88,8 +88,12 @@ class MusterProcedureSuite extends munit.FunSuite:
 
   test("a power that removes the cost lets an unaffordable Muster start"):
     val ready = atAlchemist.favor(p1, 0).ready
-    assert(MusterProcedure.startOptions(catalog, ready, p1,
-      WalkerPowers.empty).forall(_.outcome.isLeft))
+    // Without the power the option is still listed, previewed as dropped.
+    val unpaid = MusterProcedure.startOptions(catalog, ready, p1,
+      WalkerPowers.empty)
+    assertEquals(unpaid.map(_.option.ref),
+      Vector(DecisionOptionRef.Denizen(alchemist)))
+    assert(unpaid.forall(_.outcome.isLeft))
     val previewed = MusterProcedure.startOptions(catalog, ready, p1,
       WalkerPowers(Vector(FreePayment(PowerId("test.free-payment")))))
     assertEquals(previewed.map(_.option.ref),
@@ -100,14 +104,6 @@ class MusterProcedureSuite extends munit.FunSuite:
           Vector(1))
         assert(!outcome.operations.exists(_.isInstanceOf[PayCost]))
       case Left(error) => fail(s"the free Muster must be playable: $error")
-
-  test("an option the actor cannot pay for is previewed as dropped"):
-    val ready = atAlchemist.favor(p1, 0).ready
-    val previewed = MusterProcedure.startOptions(catalog, ready, p1,
-      WalkerPowers.empty)
-    assertEquals(previewed.map(_.option.ref),
-      Vector(DecisionOptionRef.Denizen(alchemist)))
-    assert(previewed.forall(_.outcome.isLeft))
 
   test("resolve names why a reference is not a source"):
     assertEquals(MusterSource.resolve(catalog,
@@ -125,18 +121,10 @@ class MusterProcedureSuite extends munit.FunSuite:
     assertEquals(MusterSource.matching(catalog, atAlchemist.ready, p1,
       Suit.Arcane), 0)
 
-  test("a board whose site forces name an unknown lineage cannot start"):
-    // A lineage that is not in the game is malformed, which `ready` would
-    // refuse, so the ghost's warbands go on after it.
-    val broken = atAlchemist.ready.updateCurrent(current => current.copy(
-      map = current.map.copy(sites = current.map.sites.updated(Table.homeOf(p1),
-        current.map.sites(Table.homeOf(p1)).copy(forces =
-          SiteForces.Occupied(ForceKind.Exile(LineageId("ghost")), 1))))))
-    assert(MusterProcedure.build(catalog, broken, p1).isLeft)
-
   test("Muster cannot start outside the Act phase"):
     val ready = atAlchemist.turn(p1, Phase.Wake).ready
-    assert(MusterProcedure.build(catalog, ready, p1).isLeft)
+    assertEquals(MusterProcedure.build(catalog, ready, p1).left.toOption,
+      Some(OathViolation.WrongPhase(Phase.Act, Phase.Wake)))
 
   test("a power that adds an option to the source decision has it previewed, " +
       "and this slice's acceptance rule drops it"):

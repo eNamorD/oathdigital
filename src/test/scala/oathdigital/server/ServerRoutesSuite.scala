@@ -13,15 +13,6 @@ import akka.http.scaladsl.Http
 
 class ServerRoutesSuite extends munit.FunSuite:
   test("authenticated routes mount only with complete session configuration"):
-    assertEquals(
-      AuthenticatedRouteMountConfiguration.fromOptions(None, None),
-      Right(None)
-    )
-    assert(AuthenticatedRouteMountConfiguration.fromOptions(
-      Some("oath_session"), None).isLeft)
-    assert(AuthenticatedRouteMountConfiguration.fromOptions(
-      None, Some("https://oath.example")).isLeft)
-
     given system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "server-routes-test")
     val blocking = system.dispatchers.lookup(

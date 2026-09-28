@@ -163,23 +163,6 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite:
     assert(answering(state, actor, removing, stopOption).isRight,
       "the surviving option must still be answerable")
 
-  test("a transform applied to the walk but not to the projection makes the " +
-      "two disagree, which is the failure this contract removes"):
-    val (ready, actor) = actable
-
-    // The walk folds `adding`, so the walker accepts the added option...
-    val state = parked(ready, actor, adding)
-    assert(answering(state, actor, adding, extraOption).isRight)
-
-    // ...but a projector folding a DIFFERENT power set describes a query
-    // the walker is not actually parked on. Both directions are visible:
-    // an unfolded projection hides an option the walker accepts, and a
-    // projection folding `removing` offers one it rejects.
-    assert(!offered(state, actor, WalkerPowers.empty).contains("extra"))
-    assertEquals(offered(state, actor, removing), Vector("stop"))
-    assert(answering(state, actor, adding, continueOption).isRight,
-      "the walker accepts an option the mismatched projection dropped")
-
   test("a power that rewrites a decision's heading changes what is " +
       "projected, in the same edit that moves its options"):
     val (ready, actor) = actable

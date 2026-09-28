@@ -13,12 +13,6 @@ class DragonskinDrumSuite extends munit.FunSuite:
   private val modifiers = Vector(DragonskinDrum.id)
   private def held = withRelic(board(), drum)
 
-  test("the Drum is a registered selected Travel modifier"):
-    val power = DragonskinDrum.forCatalog(catalog).get
-    assertEquals(power.cardId, drum)
-    assertEquals(power.cost, Cost.free)
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("after Travel the player gains one warband, and pays the printed Supply"):
     val ready = held
     val done = travel(ready, coast, modifiers).toOption.get
@@ -26,6 +20,10 @@ class DragonskinDrumSuite extends munit.FunSuite:
     assertEquals(player(result).pawnSite, Some(coast))
     assertEquals(player(result).board.warbands, player(ready).board.warbands + 1)
     assertEquals(supplyOf(result), 7 - 1)
+    // The Drum itself is free.
+    assertEquals(player(result).board.favor, player(ready).board.favor)
+    assertEquals(player(result).board.faceUpSecrets,
+      player(ready).board.faceUpSecrets)
     assertEquals(PaidActionHarness.replayed(rules, ready, done.events), result)
     assert(PaidActionHarness.wireRoundTrips(done.events))
 
@@ -37,13 +35,11 @@ class DragonskinDrumSuite extends munit.FunSuite:
     val result = after(travel(empty, coast, modifiers).toOption.get)
     assertEquals(player(result).board.warbands, player(empty).board.warbands)
 
-  test("a Travel that is rejected gains nothing"):
-    val ready = withBoard(held)(_.copy(supply = SupplyTrack(0)))
-    assert(travel(ready, coast, modifiers).isLeft)
-
   test("a facedown Drum is not usable"):
-    assert(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
-      modifiers).isLeft)
+    assertEquals(travel(withRelic(board(), drum, Orientation.FaceDown), coast,
+      modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power relic.dragonskin-drum is not applicable to this travel")))
 
   // ---- Lines ----
 

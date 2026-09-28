@@ -4,7 +4,6 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Hospital: once chosen, each of its user's warbands the Campaign kills is
@@ -183,6 +182,3 @@ class HospitalSuite extends munit.FunSuite:
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!ready(run.state).game.current.rollPools.contains(
       CampaignPlans.appliedMarker(ref)))
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(PlanRules.forCatalog(catalog).count(_.id == Hospital.id), 1)

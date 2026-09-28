@@ -1,6 +1,6 @@
 # Prune low-value tests
 
-Date: 2026-09-27. Status: approved design.
+Date: 2026-09-27. Status: implemented (see Result).
 
 This is the second of five test-suite improvement projects from the
 2026-09-27 test audit. The first, the [Table builder](2026-09-27-test-table-builder-design.md),
@@ -135,3 +135,75 @@ Work happens in a worktree on branch `test/prune-low-value`, forked from local
 Every ledger entry is ticked with an outcome, both suites are green, and a
 Result section here records the test count and summed CPU time before and
 after.
+
+## Result
+
+Implemented on branch `test/prune-low-value`, 2026-09-28. Every ledger entry
+carries an outcome; the ledger's Progress table has the counts after each
+step.
+
+| | Before | After |
+|---|---|---|
+| Root tests | 2331 | 2101 |
+| Frontend tests (with the 49 shared) | 508 | 464 |
+| Root CPU, summed per test | 131.9s | 88.4s |
+| Frontend CPU | 3.1s | 1.7s |
+
+The CPU sums vary by tens of percent with machine load (the Table builder's
+end state measured 93.3s for its 2329 tests), so the fall in root CPU is
+mostly noise; the test count is the measure. Wall time is unchanged.
+
+**Outcomes.** Of 356 findings and 60 leads: 215 findings deleted or trimmed
+with their proof, 82 strengthened, 13 merged into a survivor, and 46 kept
+with a reason; of the leads, 7 were confirmed as duplicates and acted on, and
+the rest found no duplicate, were already handled, or were out of scope.
+
+**Dead production code removed** (about 500 lines): `OperationShadow`; the
+relic placement planners (`PowerOperationPlanner`, `DrawTopRelic`,
+`PlaceRelicAtSite`, `RelicPlacement`) and `RecoverOutcomeMismatch`;
+`RuleRegistry`, `TypedRuleHandler` and the rule query types; the
+`presentation` package; `AtlasState`'s methods and `AtlasRemoval`;
+`IdentityRepository.createTrustedSeats` with its validation and failure
+cases; `CatalogSelection` and the empty catalog shells. The frontend's
+modifier submission now takes a `StartWalker`, which removes a branch no
+caller reached.
+
+**Structure.** `ForgeRulesSuite`, `RestWalkerSuite`, `ContributingPowerSuite`,
+`EnumShapeSuite`, `GameStartedSuite`, the three `PowerWindow` key suites,
+`VisualResolverSuite` and the frontend `ProtocolTestCommands` fixture are
+gone; `BackendArchitectureSuite` is source-text guards only, its behavior
+tests moved to the suites of what they test. About 75 per-power
+"registered" tests became one `PowerCatalogUniquenessSuite`, and the
+per-power copies of the generic phase-power gates went. Wire keys that were
+pinned only by deleted tests now sit in `EnumWireKeySuite`.
+
+**Tests that passed by accident.** The Grasping Vines and Toll Roads facedown
+tests used advisers, which never act; Empty Grounds had nothing else in its
+region to discard; Fearsome Shield's checked that no payment was made, not that
+the plan was withheld; the
+Rotting Fortress "facedown" adviser was a faceup Hearth card; the locked
+adviser's faceup half was refused because the card was not a facedown
+adviser; `SelectedModifier`'s eligibility probe applied everywhere. Each now
+fails when its rule is broken; thirteen mutations were run to show it.
+
+**Review fixes.** The Task 4 review found that deleting the per-power
+facedown-relic copies left no test of that gate through the power path, so
+`PhasePowerSuite` has one generic test for it (mutation checked); it also
+restored two projection codec cases to the shared fixture, the log gateway's
+other-game refusal, an executor-level banner check and two Rest assertions
+the survivors lacked.
+
+**Kept on purpose.** The catalog corpus-count alarm and the handler
+vocabulary fingerprint (deliberate tripwires); every pin of a value that is
+journaled or sent to the frontend; focused game-log tests; tests at a
+different entry point from their look-alike; five harness suites' catalog
+presence tests and the four Rivers' registration test, their only proof of
+catalog wiring.
+
+**Raised, not changed here.** The server still projects
+`legalTravelDestinations` and `actionFamilies`, which the frontend never
+reads. The card inspection overlay leaves focus on its hidden close button
+when its opener has been rebuilt away. `GameLogPropertiesSuite` checks
+script coverage against a hand-kept list of procedures, which has no
+forced-wake script.
+

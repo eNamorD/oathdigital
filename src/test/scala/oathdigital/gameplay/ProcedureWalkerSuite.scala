@@ -237,8 +237,11 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     val gain = Gain.Favor(actor, Suit.Order, 99)
     ProcedureWalker.advance(ready, Sequence(gain), None, noPowers) match
       case Right(WalkerOutcome.Finished(state, _)) =>
-        assert(state.game.current.players.find(_.player == actor).get
-          .board.favor > tooMuchFavor - 1)
+        // It takes all the Order bank holds rather than rejecting.
+        assertEquals(state.game.current.players.find(_.player == actor).get
+          .board.favor, ready.game.current.players.find(_.player == actor).get
+          .board.favor + ready.banks.favor(Suit.Order))
+        assertEquals(state.banks.favor(Suit.Order), 0)
       case other => fail(s"expected a Finished walk, got $other")
 
   test("a Decide at the head parks with no events, then the answered resume finishes"):
@@ -837,17 +840,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
           Vector(outerId, innerId))
       case other => fail(s"expected the answered resume to finish, got $other")
 
-  test("a node with no window records contributions as Vector.empty"):
-    val tree: Operation = Sequence(adjust)
-
-    ProcedureWalker.advance(ready, tree, None, noPowers) match
-      case Right(WalkerOutcome.Finished(_, events)) =>
-        assertEquals(events.size, 1)
-        assertEquals(recordedStep(events.head).contributions,
-          Vector.empty[PowerId])
-      case other => fail(s"expected a Finished walk, got $other")
-
-  test("a Restriction violation rejects the command with no events appended"):
+  test("a Restriction's violation is collected before any node runs"):
     val violation: OathViolation = OathViolation.InvalidEventOrder(
       "test restriction forbids this action")
     val power = ProcedureWalkerSuite.TestRestrictionPower(
@@ -859,14 +852,6 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     val violations = ProcedureWalker.restrictionViolations(tree, powers,
       ready, actor)
     assertEquals(violations, Vector(violation))
-
-    // Mirrors OathRules' command-entry check (Task 3 wiring rule): the first
-    // violation rejects the command outright, before any node runs -- no
-    // events, no walk. `OathRulesWalkerPowerSuite` drives the real command.
-    val command: Either[OathViolation, WalkerOutcome] =
-      violations.headOption.toLeft(()).flatMap(_ =>
-        ProcedureWalker.advance(ready, tree, None, powers))
-    assertEquals(command, Left(violation))
 
   test("a Restriction declared inside a Branch's selected children is " +
       "collected"):

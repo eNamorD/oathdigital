@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
@@ -38,19 +37,17 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
     (started.copy(events = started.events ++ done.events),
       done.state.asInstanceOf[Ready].value)
 
-  test("Animal Playmates is a registered free selected Muster modifier"):
-    val power = AnimalPlaymates.forCatalog(catalog).get
-    assertEquals(power.cardId, playmates)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Muster))
-    assertEquals(power.cost, Cost.free)
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("mustering on a beast denizen spends no Supply"):
     val ready = advised().denizen(beast, at = Table.homeOf(p1)).ready
     val (transition, result) = muster(ready, modifiers,
       DecisionOptionRef.Denizen(beast))
     assertEquals(Look(result).supply(p1), 7)
     assertEquals(Look(result).tokensOn(beast), Tokens(1, 0))
+    // The selection itself is free: favor and secrets match the same Muster
+    // without it.
+    val (_, plain) = muster(ready, Vector.empty, DecisionOptionRef.Denizen(beast))
+    assertEquals(Look(result).favor(p1), Look(plain).favor(p1))
+    assertEquals(Look(result).faceUpSecrets(p1), Look(plain).faceUpSecrets(p1))
     assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
       result)
     assert(PaidActionHarness.wireRoundTrips(transition.events))

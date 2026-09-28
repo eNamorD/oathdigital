@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
-  PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture,
+  TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -46,9 +46,6 @@ class SiegeEnginesSuite extends munit.FunSuite:
     val done = answer(t, actor, SiegeEngines.decisionId, choose(site(ready)))
       .toOption.get
     (ready, t, done)
-
-  test("Siege Engines is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(SiegeEngines.id).isDefined)
 
   test("it places a favor on its card and offers every site in the " +
       "actor's region"):

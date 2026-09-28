@@ -9,10 +9,6 @@ class AdviserLimitSuite extends munit.FunSuite:
 
   private val tongue = DenizenId("92")
 
-  test("the limit is three by default"):
-    assertEquals(AdviserLimit.of(catalog, base, actor), AdviserLimit.Default)
-    assertEquals(AdviserLimit.Default, 3)
-
   test("a faceup Silver Tongue lowers its holder's limit to two, and no one " +
       "else's"):
     val ready = giveAdviser(base, actor, tongue, Orientation.FaceUp)

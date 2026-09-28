@@ -9,16 +9,12 @@ class SeatCodeSuite extends munit.FunSuite:
   test("generated seat codes are unpadded URL-safe encodings of 128 random bits"):
     val code = SeatCode.generate(randomBytes(0 to 15))
 
-    assertEquals(Base64.getUrlDecoder.decode(code.raw).length, 16)
+    // The code carries exactly the random source's bytes.
+    assertEquals(Base64.getUrlDecoder.decode(code.raw).toVector,
+      (0 to 15).map(_.toByte).toVector)
     assert(code.raw.matches("[A-Za-z0-9_-]{22}"))
     assert(!code.raw.contains("="))
     assert(!code.toString.contains(code.raw))
-
-  test("distinct random bytes produce distinct seat codes"):
-    val first = SeatCode.generate(randomBytes(0 to 15))
-    val second = SeatCode.generate(randomBytes(1 to 16))
-
-    assertNotEquals(first.raw, second.raw)
 
   test("malformed and non-22-character seat codes fail with one generic error"):
     Vector("", "short", "a" * 21, "a" * 23, "a" * 21 + "=", "a" * 21 + "+", null)

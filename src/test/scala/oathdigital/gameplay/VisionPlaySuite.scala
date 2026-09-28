@@ -210,4 +210,6 @@ class VisionPlaySuite extends munit.FunSuite:
 
   test("a Vision answer naming a site is rejected -- it is not declared"):
     val state = visionInTemporaryHand()
-    assert(answerPlacementResult(state, DecisionOptionRef.Button("site")).isLeft)
+    assertEquals(answerPlacementResult(state, DecisionOptionRef.Button("site"))
+      .left.toOption, Some(OathViolation.InvalidEventOrder(
+        s"decision ${placeId(newVision)} does not offer the selected option")))

@@ -66,11 +66,6 @@ class CardPlayHooksSuite extends munit.FunSuite:
     finished.events.collect { case step: WalkerStepRecorded => step }
       .exists(_.contributions.contains(probeId))
 
-  test("the faceup window keeps the persisted key of the single window"):
-    assertEquals(PowerWindow.ActionCardPlayedFaceup.key, "action.card-played")
-    assertEquals(PowerWindow.ActionCardPlayedFacedown.key,
-      "action.card-played-facedown")
-
   test("a card played to a site visits the faceup window only"):
     val card = plainDenizen(Table.start.ready)
     val (ready, actor) = inHand(card)
@@ -124,9 +119,3 @@ class CardPlayHooksSuite extends munit.FunSuite:
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup")),
       actor), powers).toOption.get.asInstanceOf[WalkerOutcome.Finished]
     assertEquals(supplyOf(done.treeless, actor), startSupply + 1)
-
-  test("the facedown hook names the card and the player who played it"):
-    val hook = CardPlayedFacedown(VisionRules.Faith, PlayerId("p1"))
-    assertEquals(hook.window, Some(PowerWindow.ActionCardPlayedFacedown))
-    assertEquals(hook.children, Vector.empty[Operation])
-    assertEquals((hook.card, hook.player), (VisionRules.Faith, PlayerId("p1")))

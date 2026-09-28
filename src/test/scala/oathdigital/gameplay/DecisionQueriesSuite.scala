@@ -16,19 +16,26 @@ class DecisionQueriesSuite extends FunSuite:
     val answer = DecisionAnswer.PartitionAnswer(Vector(
       DecisionPlacement(first.ref, "keep"),
       DecisionPlacement(second.ref, "keep")))
-    assert(DecisionQueries.accepts("cards", query, answer, PlayerId("player-red")).isLeft)
+    assertEquals(DecisionQueries.accepts("cards", query, answer,
+      PlayerId("player-red")).left.toOption, Some(OathViolation.InvalidEventOrder(
+      "decision cards puts section 'keep' above its maximum of 1")))
 
   test("partition rejects a declared maximum below minimum"):
     val query = DecisionQuery.Partition(Vector(
       DecisionSection("keep", "Keep", 1, Some(0)),
       DecisionSection("discard", "Discard", 0)), options)
-    assert(DecisionQueries.wellFormed("cards", query).isLeft)
+    assertEquals(DecisionQueries.wellFormed("cards", query).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+      "decision cards declares section 'keep' with a maximum below its minimum")))
 
   test("partition rejects maxima that leave only one possible section"):
     val query = DecisionQuery.Partition(Vector(
       DecisionSection("blocked", "Blocked", 0, Some(0)),
       DecisionSection("only", "Only", 0, Some(2))), options)
-    assert(DecisionQueries.wellFormed("cards", query).isLeft)
+    assertEquals(DecisionQueries.wellFormed("cards", query).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+      "decision cards declares fewer than two sections that can take " +
+        "options, leaving nothing to decide")))
 
   test("unbounded partition still accepts existing allocations"):
     val query = DecisionQuery.Partition(Vector(

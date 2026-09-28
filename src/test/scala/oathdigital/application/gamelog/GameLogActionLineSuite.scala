@@ -25,13 +25,6 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val drawn = entries.find(entry => text(entry).startsWith("Drew ")).get
     assert(!drawn.spans.exists(_.isInstanceOf[LogSpan.Card]), drawn.spans)
 
-  test("Play Facedown Adviser: a start line, then where the card went"):
-    val script = facedownAdviser
-    val mine = lines(script, Some(script.actor))
-    assert(mine.contains("Playing Facedown Adviser"), mine)
-    assert(mine.exists(line => line.startsWith("Played ") ||
-      line.startsWith("Discarded ")), mine)
-
   test("Muster: the start line waits for the cost, then names the card"):
     val script = muster
     val mine = lines(script, None)
@@ -70,8 +63,9 @@ class GameLogActionLineSuite extends munit.FunSuite:
     assert(mine.spans.exists(_.isInstanceOf[LogSpan.Card]), mine.spans)
     val theirs = format(script, Some(other(script)))
       .find(entry => text(entry).startsWith("Recovered ")).get
-    assert(!theirs.spans.exists(_.isInstanceOf[LogSpan.Card]) ||
-      theirs.spans == mine.spans, theirs.spans)
+    // The other seat reads that a relic was recovered, never which.
+    assertEquals(theirs.spans.filterNot(_.isInstanceOf[LogSpan.Site]), Vector[LogSpan](
+      LogSpan.Text("Recovered "), LogSpan.Text("a Relic"), LogSpan.Text(" at ")))
 
   test("Forge: the payment, then the relic, named to the forger"):
     val script = forge

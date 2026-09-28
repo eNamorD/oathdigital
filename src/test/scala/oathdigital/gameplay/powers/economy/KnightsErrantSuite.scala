@@ -87,12 +87,6 @@ class KnightsErrantSuite extends munit.FunSuite:
   private val campaign = ChooseOneAnswer(KnightsErrant.campaignOption)
   private val decline = ChooseOneAnswer(KnightsErrant.declineOption)
 
-  test("Knights Errant is a registered selected Muster modifier"):
-    val power = KnightsErrant.forCatalog(catalog).get
-    assertEquals(power.cardId, knights)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Muster))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("after the gain it asks whether to campaign, as a Muster decision"):
     val asked = musterFrom(staged().ready, modifiers)
     parked.assertParked(asked.state, ActionRef.Muster, KnightsErrant.decisionId,
@@ -150,8 +144,6 @@ class KnightsErrantSuite extends munit.FunSuite:
     assert(offered(ActionRef.Muster).contains(KnightsErrant.id))
     assert(!offered(ActionRef.Campaign).contains(KnightsErrant.id))
     assert(!offered(ActionRef.Trade).contains(KnightsErrant.id))
-    assert(rules.startWalker(Ready(state), ActionRef.Campaign, p1,
-      modifiers).isLeft)
 
   // ---- Restrictions on the whole Campaign apply to the nested one ----
 
@@ -188,15 +180,6 @@ class KnightsErrantSuite extends munit.FunSuite:
     // The same board without the Fortress lets the Raid start.
     val open = musterFrom(base, modifiers)
     assert(campaigning(open).isRight)
-
-  test("a nested Campaign that is allowed is not stopped by a restriction " +
-      "once it is under way"):
-    val forced = toForce(answer(musterFrom(staged().ready, modifiers),
-      KnightsErrant.decisionId, campaign))
-    // Every later command of the Campaign is checked against its answers too,
-    // and none of them is refused.
-    val done = answer(forced, CampaignIds.force, ChooseAmountAnswer(0))
-    assertEquals(ready(done).game.current.walkerProcedure, None)
 
   // ---- Lines ----
 

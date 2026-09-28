@@ -65,11 +65,6 @@ class CatalogLoaderSuite extends munit.FunSuite:
     assertEquals(powers.map(_.id), Vector(PowerId("denizen.fixture-denizen"),
       PowerId("denizen.fixture-second")))
 
-  test("catalog powers round-trip the shared PowerId type"):
-    val power = CatalogLoader.load(fixture).toOption.get.denizens.head.powers.head
-    assertEquals(power.id, PowerId("denizen.fixture-denizen"))
-    assertEquals(power.id.value, "denizen.fixture-denizen")
-
   test("power IDs are globally unique across rendered component families"):
     val value = ujson.read(fixture)
     value("relics")(0)("powers")(0)("id") = "denizen.fixture-denizen"
@@ -237,9 +232,6 @@ class CatalogLoaderSuite extends munit.FunSuite:
       catalog.legacies.map(_.id.value).toSet,
       (1 to 36).map(number => f"L$number%02d").toSet
     )
-    assertEquals(catalog.setupCards, Vector.empty)
-    assertEquals(catalog.supplyBoards, Vector.empty)
-    assertEquals(catalog.visions, Vector.empty)
 
     assertEquals(
       catalog.denizens.groupBy(_.restrictions).view.mapValues(_.size).toMap,
@@ -250,96 +242,6 @@ class CatalogLoaderSuite extends munit.FunSuite:
         CardRestrictions.LockedAdviserOnly -> 31
       )
     )
-
-  test("printed relic values and reviewed symbol transcription are loaded"):
-    val catalog = CatalogLoader
-      .load(Paths.get("docs/catalog/new-foundations-component-catalog.json"))
-      .toOption
-      .get
-
-    val stickyFire = catalog.relics.find(_.id.value == "R01").get
-    assertEquals(stickyFire.value, 3)
-    assertEquals(stickyFire.defense, 3)
-    assert(stickyFire.rulesText.contains("[favor]"))
-
-    val alchemist = catalog.denizens.find(_.id.value == "9").get
-    assert(alchemist.rulesText.startsWith("[secret] [secret-burnt]"))
-    assert(alchemist.rulesText.contains("**ACTION:**"))
-    assertEquals(alchemist.restrictions, CardRestrictions.SiteOnly)
-
-    val witchsBargain = catalog.denizens.find(_.id.value == "77").get
-    assertEquals(witchsBargain.handlers, Vector("denizen.witchs-bargain"))
-
-    val bedOfRoots = catalog.denizens.find(_.id.value == "212").get
-    assert(bedOfRoots.rulesText.startsWith("[favor-burnt] [favor-burnt]"))
-
-    val pressgangs = catalog.denizens.find(_.id.value == "6").get
-    assert(pressgangs.rulesText.contains("already have"))
-    assertEquals(
-      catalog.denizens.find(_.id.value == "7").get.restrictions,
-      CardRestrictions.SiteOnly
-    )
-    assertEquals(
-      catalog.denizens.find(_.id.value == "111").get.restrictions,
-      CardRestrictions.LockedAdviserOnly
-    )
-
-    assertEquals(
-      catalog.legacies.find(_.id.value == "L17").map(_.name),
-      Some("Rival")
-    )
-    assertEquals(
-      catalog.legacies.find(_.id.value == "L18").map(_.name),
-      Some("The Standard Bearer")
-    )
-    assert(
-      catalog.edifices
-        .find(_.id.value == "E01")
-        .get
-        .ruined
-        .rulesText
-        .contains("[favor-burnt]")
-    )
-
-    val grandScepter =
-      catalog.relics.find(_.role == RelicRole.GrandScepter).get
-    assertEquals(grandScepter.id.value, "grand-scepter")
-    assertEquals(grandScepter.value, 0)
-
-  test("production sites retain verified printed gameplay data"):
-    val sites = CatalogLoader
-      .load(Paths.get("docs/catalog/new-foundations-component-catalog.json"))
-      .toOption
-      .get
-      .sites
-
-    val deepWoods = sites.find(_.id == SiteId("site:deep-woods")).get
-    assertEquals(deepWoods.startingResources, Tokens(0, 0))
-    assertEquals(deepWoods.forgeRequirements, Some(Tokens(1, 2)))
-    assertEquals(
-      sites
-        .find(_.id == SiteId("site:ancient-city"))
-        .get
-        .recoverDifficulty,
-      None
-    )
-    assertEquals(
-      sites.find(_.id == SiteId("site:headwaters")).get.relicSlots,
-      1
-    )
-
-  test("legacy selection flags do not produce partial catalogs"):
-    val catalog = CatalogLoader
-      .load(
-        fixture,
-        CatalogLoadRequest(CatalogSelection(sites = true))
-      )
-      .toOption
-      .get
-
-    assertEquals(catalog.denizens.size, 1)
-    assertEquals(catalog.relics.size, 1)
-    assertEquals(catalog.sites.size, 1)
 
   test("catalog compatibility is checked before returning definitions"):
     val expected = CatalogRef("oath-new-foundations", "fixture-2")

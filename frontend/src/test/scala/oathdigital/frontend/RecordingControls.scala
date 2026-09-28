@@ -25,4 +25,4 @@ private[frontend] class RecordingControls extends ActionControls:
   def beginTargetedMajorAction(actionKind: String): Unit = ()
   def backFromTargets(): Unit = ()
   def cancelTargetAction(): Unit = ()
-  def submitTargetCommand(command: Intent): Unit = ()
+  def submitTargetCommand(command: Intent.StartWalker): Unit = ()

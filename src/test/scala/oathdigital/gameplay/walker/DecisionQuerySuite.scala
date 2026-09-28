@@ -109,14 +109,6 @@ class DecisionQuerySuite extends munit.FunSuite:
 
   // (d) Partition accepts a complete, legal placement.
 
-  test("a partition query accepts a placement of every option into a " +
-      "declared section"):
-    val answer = DecisionAnswer.PartitionAnswer(Vector(
-      DecisionPlacement(denizenRef("d1"), "favor"),
-      DecisionPlacement(denizenRef("d2"), "favor"),
-      DecisionPlacement(denizenRef("d3"), "secret")))
-    assertEquals(accepts(partition, answer), Right(()))
-
   test("a partition section may hold more than its minimum"):
     val answer = DecisionAnswer.PartitionAnswer(Vector(
       DecisionPlacement(denizenRef("d1"), "secret"),

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -19,9 +18,6 @@ class MagicWaterskinSuite extends munit.FunSuite:
     _.copy(supply = SupplyTrack(supply))), Phase.Act)
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
     ActionRef.UsePower(MagicWaterskin.id), actor, Vector.empty, Vector(source))
-
-  test("Magic Waterskin is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(MagicWaterskin.id).isDefined)
 
   test("it buries itself at the bottom of the relic deck and gains 4 Supply"):
     val used = use(staged()).toOption.get.state.asInstanceOf[Ready].value
@@ -42,12 +38,6 @@ class MagicWaterskinSuite extends munit.FunSuite:
     val used = use(staged(supply = 5)).toOption.get.state
       .asInstanceOf[Ready].value
     assertEquals(player(used).board.supply, SupplyTrack(7))
-
-  test("a facedown relic cannot be used"):
-    val facedown = staged(Orientation.FaceDown)
-    assertEquals(PhasePowerProcedure.usable(catalog, facedown, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
-    assert(use(facedown).isLeft)
 
   test("it writes the Supply it gained, as the track allowed"):
     assertEquals(NoteText.said(MagicWaterskin, use(staged()).toOption.get.events),

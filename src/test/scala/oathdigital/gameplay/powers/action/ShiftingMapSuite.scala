@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 
 class ShiftingMapSuite extends munit.FunSuite:
@@ -14,9 +13,6 @@ class ShiftingMapSuite extends munit.FunSuite:
   private def staged(supply: Int = 2, faceUp: Int = 1): ReadyGame =
     act(withBoard(withRelic(base, map))(
       _.copy(supply = SupplyTrack(supply), faceUpSecrets = faceUp)))
-
-  test("Shifting Map is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(ShiftingMap.id).isDefined)
 
   test("it places a secret on the relic and gains 1 Supply"):
     val ready0 = staged()

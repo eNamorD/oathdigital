@@ -34,7 +34,9 @@ class ShuffleOperationSuite extends munit.FunSuite:
         Shuffle(cradle, Some(order))).isLeft, order.toString))
 
   test("a shuffle the walker never ordered is refused"):
-    assert(executor.execute(discarded, Shuffle(SearchSource.WorldDeck)).isLeft)
+    assertEquals(executor.execute(discarded, Shuffle(SearchSource.WorldDeck))
+      .left.toOption, Some(OperationError.InvalidDescription(
+        "a shuffle of the world deck has no order")))
 
   test("a pile is named for a log line or a label"):
     assertEquals(SearchSource.name(SearchSource.WorldDeck), "world deck")

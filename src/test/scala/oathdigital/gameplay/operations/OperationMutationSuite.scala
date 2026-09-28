@@ -99,4 +99,5 @@ class OperationMutationSuite extends munit.FunSuite:
       Move(Piece.Pawn(playerId),
         PositionedLocation(Location.PlayArea(playerId)),
         PositionedLocation(Location.Site(sites.head)))))
-    assert(result.isLeft)
+    assertEquals(result.left.toOption, Some(OperationError.MissingPiece(Piece.Pawn(playerId),
+      Location.PlayArea(playerId))))

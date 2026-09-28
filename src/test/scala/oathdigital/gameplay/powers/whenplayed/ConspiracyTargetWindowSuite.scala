@@ -65,8 +65,6 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
     (powers, ProcedureWalker.advance(staged, hook, None, powers).toOption.get)
 
   test("the target decision carries the Conspiracy target window"):
-    assertEquals(PowerWindow.ConspiracyTargetSelection.key,
-      "conspiracy.target-selection")
     val (powers, parked) = walk(None)
     val decide = ProcedureWalker.parkedDecide(staged, hook,
       parked.asInstanceOf[WalkerOutcome.Parked].tree, powers).get

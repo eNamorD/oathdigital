@@ -91,10 +91,13 @@ class PhasePowerSuite extends munit.FunSuite:
     val power = TestPower(powerId, PowerTiming.Act)
     assertEquals(use(power, Ready(holding(Phase.Act)), p2).left.toOption,
       Some(OathViolation.WrongPlayer(p1, p2)))
-    assert(use(power, Ready(holding(Phase.Wake))).isLeft)
-    assert(rules(power).startWalker(Ready(holding(Phase.Act)),
+    assertEquals(use(power, Ready(holding(Phase.Wake))).left.toOption, Some(OathViolation.InvalidEventOrder(
+      "denizen.magicians-code is a Act power and cannot be used in the Wake phase")))
+    assertEquals(rules(power).startWalker(Ready(holding(Phase.Act)),
       ActionRef.UsePower(powerId), p1, Vector.empty,
-      Vector(DecisionOptionRef.Denizen(DenizenId("no-such-card")))).isLeft)
+      Vector(DecisionOptionRef.Denizen(DenizenId("no-such-card")))).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "denizen/no-such-card is not an accessible source of denizen.magicians-code")))
 
   test("a card at a site the player rules is a source, and one at an unruled " +
       "site is not"):
@@ -165,7 +168,7 @@ class PhasePowerSuite extends munit.FunSuite:
     val broke = withSecrets(Phase.Act, 0)
     assertEquals(PhasePowerProcedure.usable(catalog, broke, p1,
       PhasePowers(Vector(power))), Vector.empty)
-    assert(use(power, Ready(broke)).isLeft)
+    assertEquals(use(power, Ready(broke)).left.toOption, Some(OathViolation.InsufficientSecrets(1, 0)))
 
   test("a free ACTION power is unlimited and records no use"):
     val power = TestPower(powerId, PowerTiming.Act)
@@ -215,3 +218,18 @@ class PhasePowerSuite extends munit.FunSuite:
         DecisionOptionRef.Banner(Banner.PeoplesFavor)))
     assertEquals(PhasePowerProcedure.usable(catalog, state(None), p1, powers),
       Vector.empty)
+
+  test("a held relic's power is usable only while the relic is faceup"):
+    val relicPower = TestPower(PowerId("relic.brass-horse"), PowerTiming.Act)
+    val relic = CatalogNames.relic("Brass Horse")
+    def holdingRelic(facedown: Boolean) = Table.start
+      .relic(p1, relic, facedown = facedown).turn(p1, Phase.Act).ready
+    val powers = PhasePowers(Vector(relicPower))
+    assert(PhasePowerProcedure.usable(catalog, holdingRelic(facedown = false), p1,
+      powers).nonEmpty)
+    assertEquals(PhasePowerProcedure.usable(catalog, holdingRelic(facedown = true),
+      p1, powers), Vector.empty)
+    assertEquals(rules(relicPower).startWalker(Ready(holdingRelic(facedown = true)),
+      ActionRef.UsePower(relicPower.id), p1, Vector.empty,
+      Vector(DecisionOptionRef.Relic(relic))).left.toOption, Some(OathViolation.InvalidEventOrder(
+        s"relic/${relic.value} is not an accessible source of relic.brass-horse")))

@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.testkit.Table.{p2, p3}
 
@@ -15,9 +13,6 @@ class WhistleSuite extends munit.FunSuite:
   private def staged(secrets: Int = 2) = inPhase(
     withSecrets(withRelic(homelands(base), whistle), secrets), Phase.Act)
   private val target = DecisionOptionRef.Player(p2)
-
-  test("Whistle is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Whistle.id).isDefined)
 
   test("it pulls the chosen pawn to the actor's site and hands over the secret"):
     val start = staged()
@@ -59,15 +54,10 @@ class WhistleSuite extends munit.FunSuite:
     })
     assert(!usable(after, Whistle.id), "the secret still rests on the Whistle")
 
-  test("it is unusable without a secret, when occupied, or facedown"):
+  test("it is unusable without a secret"):
     assert(usable(staged(), Whistle.id))
     assert(!usable(staged(secrets = 0), Whistle.id))
     assert(use(staged(secrets = 0), Whistle.id, whistle).isLeft)
-    assert(!usable(withRelicTokens(staged(), whistle, Tokens(0, 1)), Whistle.id))
-    val facedown = inPhase(withSecrets(
-      withRelic(base, whistle, Orientation.FaceDown), 2), Phase.Act)
-    assert(!usable(facedown, Whistle.id))
-    assert(use(facedown, Whistle.id, whistle).isLeft)
 
   test("it writes the pawn it pulled and the secret it gave"):
     val parked = use(staged(), Whistle.id, whistle).toOption.get

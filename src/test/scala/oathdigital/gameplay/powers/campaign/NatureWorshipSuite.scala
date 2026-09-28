@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Nature Worship: a secret placed for one attack die, added or removed, per
@@ -69,7 +68,3 @@ class NatureWorshipSuite extends munit.FunSuite:
     val run = commit(rules(winning), b, 4)
       .pick(b.other, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(SimplePlans.forCatalog(catalog).count(_.id == NatureWorship.id),
-      1)

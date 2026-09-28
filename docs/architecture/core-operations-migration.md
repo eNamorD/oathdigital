@@ -239,9 +239,8 @@ Live handling and replay must call the same event planner and executor path.
 Command handling must not calculate one operation plan for the returned state
 and a different plan for the emitted event.
 
-Power event adapters now map their recorded `Payment` and `RelicPlacement`
-facts to Give, Burn, or Play operations through `PowerOperationPlanner`; the
-separate `RecordedPowerOperation` executor has been removed. Power-specific
+Power procedures now build their Give, Burn, or Play operations directly;
+the separate `RecordedPowerOperation` executor has been removed. Power-specific
 events remain procedure-scoped.
 
 Pre-release event format may change under the repository's existing
@@ -358,9 +357,8 @@ continuations, replay, public projection, and player-scoped projections. No
 event, codec, or projection shape changed.
 
 Phase 4 is complete because orientation, private knowledge, and counted-piece
-movement each passed the expand-shadow-cutover cycle. Later migration phases
-reuse the internal shadow comparison as a per-procedure safety gate without
-reopening phase 4. Rollback restores each small legacy mutation without state or
+movement each passed the expand-shadow-cutover cycle. The shadow comparison
+has since been removed; no later phase used it. Rollback restores each small legacy mutation without state or
 history conversion.
 
 ### 5. Migrate simple operations (complete)
@@ -390,9 +388,8 @@ tests remain green. No event, codec, or projection shape changed.
 - Convert executable power payments and placements, then remove
   `RecordedPowerOperation` (complete).
 
-`PowerOperationPlanner` converts canonical `Payment` and `RelicPlacement` facts
-into Give, Burn, and Play operations, and the separate `RecordedPowerOperation`
-executor is removed. `Economy` (Muster and Trade), `Forge`, `Recover`, and the
+Power procedures build their Give, Burn, and Play operations directly, and the
+separate `RecordedPowerOperation` executor is removed. `Economy` (Muster and Trade), `Forge`, `Recover`, and the
 Catacombs power path each reconstruct their semantic roots from the accepted
 event and apply them through `OperationTransaction`; supply and
 pending-procedure changes are applied as the transaction's direct update.

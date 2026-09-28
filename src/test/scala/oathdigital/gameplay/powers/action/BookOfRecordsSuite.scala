@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 
 class BookOfRecordsSuite extends munit.FunSuite:
@@ -46,9 +44,6 @@ class BookOfRecordsSuite extends munit.FunSuite:
   private def takeFrom(ready: ReadyGame, banner: Banner) =
     val t = use(ready, BookOfRecords, source).toOption.get
     (t, answer(t, actor, BookOfRecords.decisionId, choose(banner)).toOption.get)
-
-  test("Book of Records is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(BookOfRecords.id).isDefined)
 
   test("it places a secret, burns two, and offers the banners held at the " +
       "actor's site"):

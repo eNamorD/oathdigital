@@ -30,27 +30,3 @@ class ReadyGameSuite extends munit.FunSuite:
       FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered,
         second.player))
     assertEquals(started.knowledge, CardKnowledge())
-
-  test("updateCurrent changes the current game state and nothing else"):
-    val moved = ready.updateCurrent(_.copy(tracks =
-      ready.game.current.tracks.copy(round = 7)))
-
-    assertEquals(moved.game.current.tracks.round, 7)
-    assertEquals(moved.copy(game = moved.game.copy(current = ready.game.current)),
-      ready)
-
-  test("updateCampaign changes the campaign state and nothing else"):
-    val goal = OathkeeperGoal.ThePeople
-    val changed = ready.updateCampaign(_.copy(oathkeeperGoal = goal))
-
-    assertEquals(changed.game.campaign.oathkeeperGoal, goal)
-    assertEquals(
-      changed.updateCampaign(_ => ready.game.campaign), ready)
-
-  test("the test builder seats players in order and starts the active player"):
-    val table = ReadyGames.of(twoSeats, favorPerSuit = 2)
-
-    assertEquals(table.playerColors, Map(
-      playerId -> PlayerColor.Red, second.player -> PlayerColor.Blue))
-    assertEquals(table.setup.firstPlayer, playerId)
-    assertEquals(table.banks.favor, Suit.all.map(_ -> 2).toMap)

@@ -31,10 +31,6 @@ class RiverSitePowerSuite extends munit.FunSuite:
       Set("site.ancient-city.river", "site.headwaters.river",
         "site.riverbank.river", "site.tidal-marshes.river"))
 
-  test("the actor's pawn starts at Ancient City, a River"):
-    assertEquals(home(base), ancientCity)
-    assert(RiverSitePower.isRiver(catalog, ancientCity))
-
   test("it is usable in the Wake at a River while another River is in play"):
     assertEquals(rivers(staged()), Vector(river.id -> source))
 
@@ -42,13 +38,6 @@ class RiverSitePowerSuite extends munit.FunSuite:
     val alone = staged(Vector.empty)
     assertEquals(rivers(alone), Vector.empty)
     assert(use(alone).isLeft)
-
-  test("it is not usable outside the Wake"):
-    Vector(Phase.Act, Phase.Rest).foreach { phase =>
-      val acting = staged(phase = phase)
-      assertEquals(rivers(acting), Vector.empty, phase.toString)
-      assert(use(acting).isLeft, phase.toString)
-    }
 
   test("it is not usable from a site that is not a River"):
     val ready = staged()

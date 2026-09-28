@@ -89,6 +89,6 @@ class CardChoicePanelSuite extends munit.FunSuite:
     val ui = new RecordingControls()
     val panel = recoverRelics(ui)
     all(panel, ".recover-relic-choice").last.asInstanceOf[dom.html.Element].click()
-    assertEquals(ui.submitted.size, 1)
-    assert(ui.submitted.head.toString.contains("relic:horn"),
-      ui.submitted.head.toString)
+    assertEquals(ui.submitted, Vector(oathdigital.protocol.GameIntent.ResolveWalker(
+      ParkedDecision.recoverRelicDecisionId,
+      oathdigital.protocol.DecisionAnswerWire.ChooseOneWire("relic", "relic:horn"))))

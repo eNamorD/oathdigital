@@ -128,5 +128,6 @@ class NegotiationDealSuite extends munit.FunSuite:
       fold(said(p1, ProposeTerms(terms)))), Left(InsufficientFavor(3, 1)))
     val gone = terms.copy(transfers = Vector(NegotiationTransfer(p2, 0,
       Vector(p2Relic))))
-    assert(NegotiationDeal.settle(ready,
-      fold(said(p1, ProposeTerms(gone)))).isLeft)
+    assertEquals(NegotiationDeal.settle(ready,
+      fold(said(p1, ProposeTerms(gone)))), Left(OathViolation.NegotiationUnavailable(
+      "an offered relic is no longer held by its author")))

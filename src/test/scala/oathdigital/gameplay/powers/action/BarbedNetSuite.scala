@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 
 class BarbedNetSuite extends munit.FunSuite:
@@ -43,9 +41,6 @@ class BarbedNetSuite extends munit.FunSuite:
     ready.knowledge.siteRelics.getOrElse(actor, Map.empty)
       .valuesIterator.exists(_.contains(relic))
   private def choose(relic: RelicId) = pick(DecisionOptionRef.Relic(relic))
-
-  test("Barbed Net is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(BarbedNet.id).isDefined)
 
   test("it burns three secrets, peeks at every relic at the site and asks " +
       "which to take"):

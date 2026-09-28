@@ -294,12 +294,6 @@ class TableSessionSuite extends munit.FunSuite:
       }
     }
 
-  test("reload leaves the page to the browser"):
-    displayed(2).map { fixture =>
-      fixture.session.reloadClient()
-      assertEquals(fixture.navigation.reloads, 1)
-    }
-
   test("a transient poll failure disconnects and stops polling"):
     displayed(2).flatMap { fixture =>
       fixture.clock.fire()
@@ -353,9 +347,12 @@ class TableSessionSuite extends munit.FunSuite:
     displayed(2).flatMap { fixture =>
       fixture.session.send(GameCommand.BeginRest, Vector.empty)
       assertEquals(fixture.client.submits, Vector(2L -> GameCommand.BeginRest))
+      val before = fixture.redraws
       val stale = GameClientFailure.StalePosition("moved")
       fixture.client.answerSubmit(Left(stale))
       settle().flatMap { _ =>
+        // Spec, Fix 1: the failure is drawn before the reload lands.
+        assertEquals(fixture.redraws, before + 1)
         assertEquals(fixture.session.viewedDrafts, SessionDrafts.empty)
         assertEquals(fixture.client.loads.size, 2)
         fixture.client.answerLoad(Right(snapshot(3)))
@@ -364,27 +361,6 @@ class TableSessionSuite extends munit.FunSuite:
         assertEquals(fixture.session.viewedProjection.map(_.nextSequence), Some(3L))
         assertEquals(fixture.session.shownFailure, Some(stale))
       }
-    }
-
-  /** Spec, Fix 1. */
-  test("a stale-position submit redraws before the reload lands"):
-    displayed(2).flatMap { fixture =>
-      fixture.session.send(GameCommand.BeginRest, Vector.empty)
-      val before = fixture.redraws
-      val stale = GameClientFailure.StalePosition("moved")
-      fixture.client.answerSubmit(Left(stale))
-      settle().map { _ =>
-        assertEquals(fixture.redraws, before + 1)
-        assertEquals(fixture.session.shownFailure, Some(stale))
-        assertEquals(fixture.session.viewedDrafts, SessionDrafts.empty)
-      }
-    }
-
-  test("the flow's preview carries the session's game and seat"):
-    displayed(2).map { fixture =>
-      val request = MajorActionPreviewRequest(2L, "recover", Map.empty)
-      fixture.session.preview(request)
-      assertEquals(fixture.client.previews, Vector(("g", "red", request)))
     }
 
   /** Spec, Fix 2. */

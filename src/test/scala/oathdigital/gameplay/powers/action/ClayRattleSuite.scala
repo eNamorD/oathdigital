@@ -47,9 +47,6 @@ class ClayRattleSuite extends munit.FunSuite:
     (ready0, started, answer(under, started.state, ClayRattle.decisionId,
       ClayRattle.ref(pile)))
 
-  test("Clay Rattle is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(ClayRattle.id).isDefined)
-
   test("it places two secrets and asks which pile to shuffle"):
     val started = use(shuffling, staged(), ClayRattle.id, source).toOption.get
     assertEquals(parked.parkedDecision(started.state).map(_.decision),

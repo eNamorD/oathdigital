@@ -26,12 +26,6 @@ class GossipSuite extends munit.FunSuite:
   private def discordBank(ready: ReadyGame): Int =
     ready.banks.favor.getOrElse(Suit.Discord, 0)
 
-  test("Gossip is a registered persistent rule, so it is automatic"):
-    val power = Gossip.forCatalog(catalog).get
-    assertEquals(power.cardId, gossip)
-    assertEquals(power.resolution, PowerResolution.Automatic)
-    assert(WalkerPowerCatalogHas.gossip)
-
   test("another player's facedown play gains the holder 1 favor from the " +
       "Discord bank"):
     val ready = held(plain)
@@ -74,10 +68,6 @@ class GossipSuite extends munit.FunSuite:
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-facedown"))
     assertEquals(favor(after, holder), favor(ready, holder))
-
-  private object WalkerPowerCatalogHas:
-    def gossip: Boolean = oathdigital.gameplay.powers.WalkerPowerCatalog
-      .default(catalog).powers.exists(_.id == Gossip.id)
 
   // ---- Lines ----
 

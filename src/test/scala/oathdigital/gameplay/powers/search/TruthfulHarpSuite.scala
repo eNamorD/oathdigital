@@ -25,11 +25,6 @@ class TruthfulHarpSuite extends munit.FunSuite:
       : Vector[WorldCardId] = SearchFixture.after(transition).knowledge
     .advisers.getOrElse(viewer, Vector.empty)
 
-  test("the Harp is a registered selected Search modifier"):
-    val power = TruthfulHarp.forCatalog(catalog).get
-    assertEquals(power.cardId, harp)
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("a Search draws two more cards, and every card drawn is revealed"):
     val top = plain.take(7)
     val ready = withHarp(top)
@@ -76,7 +71,9 @@ class TruthfulHarpSuite extends munit.FunSuite:
   test("a facedown Harp cannot be selected"):
     val facedown = withRelic(SearchFixture.staged(plain.take(7)), harp,
       Orientation.FaceDown)
-    assert(start(facedown, onlyHarp).isLeft)
+    assertEquals(start(facedown, onlyHarp).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power relic.truthful-harp is not applicable to this search")))
 
   // ---- Lines ----
 

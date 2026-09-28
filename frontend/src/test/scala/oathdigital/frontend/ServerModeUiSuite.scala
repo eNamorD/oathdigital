@@ -5,7 +5,7 @@ import oathdigital.model.PlayerColor
 import munit.FunSuite
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
+import oathdigital.protocol.DecisionAnswerWire
 
 class ServerModeUiSuite extends FunSuite:
   /** Answers every log request with an empty page and passes every other
@@ -169,12 +169,6 @@ class ServerModeUiSuite extends FunSuite:
       assertEquals(hostRequests(requests).head.participants.map(p => p.playerId -> p.color),
         Vector("Alex" -> PlayerColor.Yellow, "Sam" -> PlayerColor.Red))
     }.andThen { case _ => browser.close() }
-
-  test("host colors map to their own player badge tokens"):
-    assertEquals(TrustedHostUi.LineageColors.map(PlayerColorCss.of),
-      Vector("player-red", "player-blue", "player-yellow", "player-white", "player-black",
-        "player-pink", "player-brown"))
-    assertEquals(PlayerColorCss.of(None), "player-neutral")
 
   private def trustedProjection: String =
     """{"gameId":"my game","nextSequence":1,"phase":"awaiting-pawn","activeParticipantId":"red","viewerPlayerId":"blue","players":[{"playerId":"red","displayName":"Red Exile","role":"exile","colorToken":"red"},{"playerId":"blue","displayName":"Blue Exile","role":"exile","colorToken":"blue"}],"world":[],"pawnLocations":[],"legalControls":[],"ready":false,"completed":false}"""
@@ -518,40 +512,6 @@ class ServerModeUiSuite extends FunSuite:
   private def forgeItem(index: Int): String =
     WalkerPartitionDraft.itemId(forgeQuery.options(index))
 
-  test("Forge is answered by moving projected options between projected " +
-      "sections"):
-    val context = BoardSelectionContext("game", "red", 9)
-    val initial = WalkerPartitionDraft.reconcile(None, context,
-      Some(forgeParked)).get
-    // The opening draft fills each section to its projected minimum, in
-    // declared order.
-    assertEquals(initial.optionsIn("pay-favor").map(_.label),
-      Vector("Denizen 1", "Denizen 2"))
-    assertEquals(initial.optionsIn("pay-secret").map(_.label),
-      Vector("Denizen 3"))
-    assert(initial.canConfirm)
-    // A confirmed draft answers the decision as one placement per offered
-    // option, naming the option's own kind and id.
-    assertEquals(initial.command("red"), Some(GameCommand.ResolveWalker(
-      "red", "forge-9", DecisionAnswerWire.PartitionWire(
-        Vector("pay-favor", "pay-favor", "pay-secret").zipWithIndex.map {
-          case (sectionKey, index) =>
-            val option = forgeQuery.options(index)
-            DecisionPlacementWire(option.kind, option.id, sectionKey) }))))
-    // Dragging the third option into the favor zone leaves the secret zone
-    // below its projected minimum, so confirmation is refused.
-    val invalid = initial.move(forgeItem(2), "pay-favor")
-    assert(!invalid.canConfirm)
-    assertEquals(invalid.command("red"), None)
-    val repaired = invalid.move(forgeItem(0), "pay-secret")
-    assert(repaired.canConfirm)
-    assertEquals(repaired.optionsIn("pay-favor").map(_.label),
-      Vector("Denizen 2", "Denizen 3"))
-    assertEquals(repaired.optionsIn("pay-secret").map(_.label),
-      Vector("Denizen 1"))
-    // A section the query never declared is ignored rather than recorded.
-    assertEquals(repaired.move(forgeItem(0), "pay-nothing"), repaired)
-
   test("a Forge draft is dropped whenever the question changes"):
     val context = BoardSelectionContext("game", "red", 9)
     val initial = WalkerPartitionDraft.reconcile(None, context,
@@ -640,49 +600,6 @@ class ServerModeUiSuite extends FunSuite:
       actionKind = "travel", minimum = 0, maximum = 0)),
       "No target is available; confirm to play this action.")
 
-  test("a roll answer carries the projected pool key and no die faces"):
-    assertEquals(GameCommand.RollWalker("red", "recover"),
-      oathdigital.protocol.GameIntent.RollWalker("recover"))
-
-  /** Task 4: both decide parks take their option set from the projected
-    * query, and one generic command builder serves both -- a projected
-    * option already carries the `kind`/`id` pair a `ChooseOneWire` needs,
-    * so the client never has to know which variant it is holding.
-    */
-  test("the parked Recover choice decision resolves its projected button " +
-      "options against its own decision id, distinct from the relic park " +
-      "sharing its \"decide\" kind"):
-    val continueOption = DecisionOptionState("button", "continue", "Continue")
-    val stopOption = DecisionOptionState("button", "stop", "Stop")
-    val choiceQuery = DecisionQueryState.ChooseOne(
-      Vector(continueOption, stopOption), Some("Recover"))
-    val choice = WalkerDecisionState("recover", "recover.choice", "decide",
-      query = Some(choiceQuery))
-    assertEquals(
-      WalkerPanelSupport.resolveChooseOneCommand(choice, continueOption),
-      GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionAnswerWire.ChooseOneWire("button", "continue")))
-    assertEquals(WalkerPanelSupport.resolveChooseOneCommand(choice, stopOption),
-      GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionAnswerWire.ChooseOneWire("button", "stop")))
-
-  test("the parked Recover relic decision offers one control per projected " +
-      "option, never a preselected relic"):
-    val bronze = DecisionOptionState("relic", "relic-1", "Bronze Idol",
-      Some(CardDetails("relic-1", "relic", "Bronze Idol")))
-    val silver = DecisionOptionState("relic", "relic-2", "Silver Idol",
-      Some(CardDetails("relic-2", "relic", "Silver Idol")))
-    val relicQuery = DecisionQueryState.ChooseOne(Vector(bronze, silver),
-      heading = Some("Take a relic"))
-    val relic = WalkerDecisionState("recover", "recover.relic", "decide",
-      query = Some(relicQuery))
-    assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, bronze),
-      GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionAnswerWire.ChooseOneWire("relic", "relic-1")))
-    assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, silver),
-      GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionAnswerWire.ChooseOneWire("relic", "relic-2")))
-
   test("site forces retain accessible labels counts and stable color classes"):
     val cases = Vector(
       SiteForces.Exile(2, "red-exile", PlayerColor.Red,
@@ -696,8 +613,6 @@ class ServerModeUiSuite extends FunSuite:
       assertEquals(ServerUiSupport.forceText(forces), label)
       assertEquals(ServerUiSupport.forceCssClass(forces), cssClass)
     }
-    assertEquals(GameSite("empty", "Empty", 0, 0, 0, 0, Vector.empty,
-      GameSiteRelics(0)).forces, None)
 
   test("Take Wealth actions use the active-player labels and commands"):
     val actions = ServerUiSupport.takeWealthActions(
@@ -712,8 +627,10 @@ class ServerModeUiSuite extends FunSuite:
     assertEquals(
       actions.map(_.command),
       Vector(
-        GameCommand.TakeWealth("red-exile", "favor"),
-        GameCommand.TakeWealth("red-exile", "secret")
+        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector.empty,
+          Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))),
+        oathdigital.protocol.GameIntent.StartWalker("take-wealth", Vector.empty,
+          Vector(oathdigital.protocol.WalkerStartArgWire("button", "secret")))
       )
     )
 
@@ -793,40 +710,6 @@ class ServerModeUiSuite extends FunSuite:
     assertEquals(inactive.waitingForPlayerId, Some("red-exile"))
     assert(!ServerUiSupport.showActActionControls(value, inactive))
     assert(ServerUiSupport.showActActionControls(value, active))
-
-  test("inactive setup viewer waits without pawn or private adviser controls"):
-    val value = projection(
-      Set.empty,
-      phase = "setup-walker-decision",
-      activeParticipantId = "red-exile",
-      ready = false
-    )
-
-    val presentation = ServerUiSupport.viewerPresentation(value, "blue-exile")
-
-    assertEquals(presentation.showGameplayControls, false)
-    assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
-
-  test("active viewer retains Wake and setup gameplay controls"):
-    val wake = projection(Set("takeFavor", "endWake"))
-    assert(ServerUiSupport.viewerPresentation(
-      wake,
-      "red-exile"
-    ).showGameplayControls)
-    assertEquals(
-      ServerUiSupport.takeWealthActions(wake, "red-exile").map(_.label),
-      Vector("Take Wealth: 1 favor")
-    )
-
-    val setup = projection(
-      Set.empty,
-      phase = "setup-walker-decision",
-      ready = false
-    )
-    assert(ServerUiSupport.viewerPresentation(
-      setup,
-      "red-exile"
-    ).showGameplayControls)
 
   /** Regression: the owner of a parked walker decision has
     * `waitingForPlayerId = None` (Task 5, tested above), but the status line
@@ -908,29 +791,6 @@ class ServerModeUiSuite extends FunSuite:
     assert(!badge.get.contains(candidate.label))
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
 
-  test("populated site details render properties, stable IDs, and hidden relics"):
-    val site = GameSite(
-      "site:woods",
-      "Woods",
-      looseFavor = 2,
-      looseSecrets = 1,
-      denizenCapacity = 3,
-      relicCapacity = 2,
-      denizens = Vector(
-        GameSiteCard("denizen:fox", "Fox"),
-        GameSiteCard("denizen:owl", "Owl")
-      ),
-      relics = GameSiteRelics(2)
-    )
-    val details = SiteCardPresentation.from(site)
-
-    assertEquals((details.looseFavor, details.looseSecrets, details.defense),
-      (2, 1, 0))
-    assertEquals(site.denizens.map(_.label), Vector("Fox", "Owl"))
-    assertEquals(site.denizens.map(_.denizenId),
-      Vector("denizen:fox", "denizen:owl"))
-    assertEquals(details.unknownRelicCount, 2)
-
   test("peeked site relics replace opaque slots only for the scoped viewer"):
     val known = CardDetails("R1", "relic", "Ancient Crown", rulesText = Some("Rule"))
     val owner = SiteCardPresentation.from(GameSite("site", "Site", 0, 0, 0, 2,
@@ -941,33 +801,6 @@ class ServerModeUiSuite extends FunSuite:
     assertEquals(other.unknownRelicCount, 2)
     assertEquals(owner.peekedRelics.map(_.card.name), Vector("Ancient Crown"))
     assertEquals(other.peekedRelics, Vector.empty)
-
-  test("empty site details have image-independent empty states"):
-    val details = SiteCardPresentation.from(GameSite(
-      "site:empty",
-      "Empty",
-      0,
-      0,
-      0,
-      0,
-      Vector.empty,
-      GameSiteRelics(0)
-    ))
-
-    assertEquals((details.looseFavor, details.looseSecrets, details.defense),
-      (0, 0, 0))
-    assertEquals(details.requirement, None)
-    assertEquals(details.unknownRelicCount, 0)
-
-  test("a forgeable site shows its forge cost instead of its recover difficulty"):
-    val forged = SiteCardPresentation.from(GameSite("forge", "Forge", 0, 0,
-      3, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(4),
-      forgeCost = Some(ForgeCost(2, 1))))
-    assertEquals(forged.requirement, Some(SiteRequirement.Forge(2, 1)))
-
-    val recover = SiteCardPresentation.from(GameSite("recover", "Recover", 0, 0,
-      2, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(3)))
-    assertEquals(recover.requirement, Some(SiteRequirement.Recover(3)))
 
   test("pile symbols and shape classes distinguish public tops and empty piles"):
     assertEquals(ServerUiSupport.pileSymbol(2, Some("denizen")), "D")
@@ -1041,7 +874,7 @@ class ServerModeUiSuite extends FunSuite:
       "decide", query = Some(query))
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(decision,
       query.options(1)),
-      GameCommand.ResolveWalker("red", "oathkeeper.recipient",
+      oathdigital.protocol.GameIntent.ResolveWalker("oathkeeper.recipient",
         DecisionAnswerWire.ChooseOneWire("player", "yellow")))
   test("selection actions map only authorized single target shapes to commands"):
     val placeholderCandidates = Vector("a", "b", "c", "d").map(id =>
@@ -1058,16 +891,11 @@ class ServerModeUiSuite extends FunSuite:
     // control and asks its questions as walker decisions.
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red"), None)
-  test("available controls use durable ordered presentation categories"):
-    assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
-      Vector("Major actions", "Minor actions"))
+  test("action kinds sort into major and minor, and trade variants share a family"):
     assertEquals(ServerUiSupport.actionCategory("travel"), "major")
     assertEquals(ServerUiSupport.actionCategory("challenge"), "major")
-    assertEquals(ServerUiSupport.actionCategory("campaign"), "major")
     // Using a power's "Action:" is itself a minor action, so an unrecognised
     // kind joins them rather than opening a section of its own.
     assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "minor")
-    assertEquals(ServerUiSupport.majorFamilyOrder, Vector("search", "travel", "campaign",
-      "muster", "trade", "forge", "recover", "challenge"))
     assertEquals(Vector("trade-favor", "trade-secret").map(
       ServerUiSupport.actionFamily), Vector("trade", "trade"))

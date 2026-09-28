@@ -68,9 +68,6 @@ class OracleSuite extends munit.FunSuite:
         case other => fail(s"not a choose-one: $other")
       case other => fail(s"not parked on a decision: $other")
 
-  test("Oracle is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Oracle.id).isDefined)
-
   test("it places two secrets and draws the first Vision, the cards above " +
       "it staying in place"):
     val ready = staged()

@@ -19,11 +19,6 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
 
-  test("the Circlet is a registered persistent rule, so it is automatic"):
-    val power = CircletOfCommand.forCatalog(catalog).get
-    assertEquals(power.cardId, circlet)
-    assertEquals(power.resolution, PowerResolution.Automatic)
-
   // ---- Raid ----
 
   /** The Raid board with the Circlet on the defender (or the attacker),

@@ -18,12 +18,6 @@ class ForestPathsSuite extends munit.FunSuite:
       d.id.value != paths.value).map(d => DenizenId(d.id.value)).head
   private def held = withBoard(adviser(board(), paths))(_.copy(favor = 1))
 
-  test("Forest Paths is a registered selected Travel modifier that costs 1 favor"):
-    val power = ForestPaths.forCatalog(catalog).get
-    assertEquals(power.cardId, paths)
-    assertEquals(power.cost, Cost(favor = 1))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("a destination with a beast card costs no Supply and ignores the " +
       "terrain of sites"):
     val ready = denizenAt(passRuled(held), beast, mountain)
@@ -73,7 +67,9 @@ class ForestPathsSuite extends munit.FunSuite:
   test("it cannot be selected without a favor to place"):
     val broke = withBoard(denizenAt(passRuled(held), beast, mountain))(
       _.copy(favor = 0))
-    assert(travel(broke, mountain, modifiers).isLeft)
+    assertEquals(travel(broke, mountain, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.forest-paths is not applicable to this travel")))
 
   // ---- Lines ----
 

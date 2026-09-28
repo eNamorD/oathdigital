@@ -28,11 +28,3 @@ class GameLogDecisionSuite extends munit.FunSuite:
       val all = lines(script)
       assert(!all.exists(_.startsWith("Chose ")), s"${script.name}: $all")
     }
-
-  test("the narrated list names setup, card play, campaign and negotiation"):
-    Vector("setup.pawn-placement.p1", "cardplay.place.denizen.12",
-      "cardplay.replace.denizen.12", "campaign.force", "negotiation.deal",
-      "search.cards", "recover.choice", "muster.source", "oathkeeper.recipient")
-      .foreach(id => assert(DetailLines.narrated(id), id))
-    assert(!DetailLines.narrated("power.whistle.target"))
-    assert(!DetailLines.narrated("challenge.ribbon-site"))

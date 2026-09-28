@@ -83,14 +83,8 @@ class GameLogPaneSuite extends munit.FunSuite:
     assert(items(content).head eq first)
     assertEquals(items(content).size, 3)
     assertEquals(content.scrollTop, 500.0)
-
-  test("a reader scrolled up is not moved by new entries"):
-    val content = box(500, 100, 0)
-    val pane = new GameLogPane(content)
-    pane.show("g|red", Vector(setup, turn), Map.empty)
-    content.scrollTop = 40
-    pane.show("g|red", Vector(setup, turn, travel), Map.empty)
-    assertEquals(content.scrollTop, 40.0)
+    // A reader who is followed is never offered the New chip.
+    assert(content.querySelector(".log-new").hasAttribute("hidden"))
 
   test("a different session redraws the whole list"):
     val content = box(0, 0, 0)
@@ -165,14 +159,6 @@ class GameLogPaneSuite extends munit.FunSuite:
     scroll(content)
     assert(content.querySelector(".log-new").hasAttribute("hidden"))
     assertEquals(told, 1)
-
-  test("a reader at the end is followed and never shown the chip"):
-    val content = box(500, 100, 400)
-    val pane = new GameLogPane(content)
-    pane.show("g|red", Vector(setup, turn), Map.empty)
-    content.scrollTop = 400
-    pane.show("g|red", Vector(setup, turn, travel), Map.empty)
-    assert(content.querySelector(".log-new").hasAttribute("hidden"))
 
   test("in headings mode rounds and victories are h3, turns h4, lines neither"):
     val content = box(0, 0, 0)

@@ -32,10 +32,6 @@ class ForgottenVaultSuite extends munit.FunSuite:
       site)
     ruler.fold(placed)(ruledBy(placed, site, _))
 
-  test("the Vault is a registered persistent rule, so it is automatic"):
-    assertEquals(power.cardId, vault)
-    assertEquals(power.resolution, PowerResolution.Automatic)
-
   // ---- Raid ----
 
   enum Ruler:

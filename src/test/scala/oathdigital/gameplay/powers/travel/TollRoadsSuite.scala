@@ -12,17 +12,22 @@ class TollRoadsSuite extends munit.FunSuite:
   private val toll = DenizenId("118")
   private val rival = TargetsFixture.others(base).head
 
+  /** `id` standing facedown at `at`, a site card turned down. */
+  private def facedownAt(ready: ReadyGame, id: DenizenId, at: SiteId): ReadyGame =
+    denizenAt(ready, id, at).updateCurrent(c => c.copy(map = c.map.copy(sites =
+      c.map.sites.updated(at, c.map.sites(at).copy(denizens =
+        c.map.sites(at).denizens.map {
+          case card: DenizenState if card.id == id =>
+            card.copy(orientation = Orientation.FaceDown)
+          case other => other
+        })))))
+
   /** Toll Roads stands at `plains(1)`, and `rival` rules it and the coast. The
     * actor, at the first plains, holds 1 favor and travels to the coast.
     */
   private def rivalRules: ReadyGame =
     val ready = withBoard(denizenAt(board(), toll, plains(1)))(_.copy(favor = 1))
     ruledBy(ruledBy(ready, plains(1), rival), coast, rival)
-
-  test("Toll Roads is a registered persistent rule, so it is automatic"):
-    val power = TollRoads.forCatalog(catalog).get
-    assertEquals(power.cardId, toll)
-    assertEquals(power.resolution, PowerResolution.Automatic)
 
   test("an enemy pays the ruler 1 favor to travel to a site the ruler rules"):
     val ready = rivalRules
@@ -68,9 +73,11 @@ class TollRoadsSuite extends munit.FunSuite:
     assertEquals(candidates(withBoard(ready)(_.copy(favor = 0))).get(coast), None)
 
   test("a facedown Toll Roads is not active"):
-    val ready = withBoard(adviser(board(), toll, Orientation.FaceDown))(
-      _.copy(favor = 0))
-    assert(travel(ready, coast).isRight)
+    // Toll Roads charges from the site it stands on, and only faceup there.
+    val ready = withBoard(facedownAt(board(), toll, plains(1)))(_.copy(favor = 1))
+    val ruled = ruledBy(ruledBy(ready, plains(1), rival), coast, rival)
+    val result = after(travel(ruled, coast).toOption.get)
+    assertEquals(player(result).board.favor, 1)
 
   // ---- Lines ----
 

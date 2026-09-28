@@ -180,9 +180,4 @@ class SessionSecuritySuite extends munit.FunSuite:
     override def revokeSession(digest: SessionTokenDigest, now: Long): Either[IdentityFailure, Unit] = unused
     override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long): Either[IdentityFailure, Unit] =
       unused
-    override def createTrustedSeats(
-        gameId: String,
-        seats: Vector[(SeatCodeDigest, String)],
-        now: Long
-    ): Either[IdentityFailure, Unit] = unused
     override def resolveTrustedSeat(digest: SeatCodeDigest): Either[IdentityFailure, TrustedSeat] = unused

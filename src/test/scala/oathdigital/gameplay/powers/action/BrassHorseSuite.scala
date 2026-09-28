@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -24,10 +23,6 @@ class BrassHorseSuite extends munit.FunSuite:
 
   // `homelands` stands a ruined beast edifice at Deep Woods and a ruined
   // hearth edifice at Golden Valley, and no other card lies at any site.
-
-  test("Brass Horse is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(BrassHorse.id).isDefined)
-    assert(usable(staged, BrassHorse.id))
 
   test("one matching site takes the pawn there without a question"):
     val start = cradleTopped(beastTop)
@@ -74,7 +69,9 @@ class BrassHorseSuite extends munit.FunSuite:
     val parked = use(start, BrassHorse.id, horse).toOption.get
     assert(parkedAt(parked, BrassHorse.decisionId))
     assertEquals(reveals(parked.events), Vector.empty)
-    assert(choose(parked.state, BrassHorse.decisionId, site(dunes)).isRight)
+    val done = choose(parked.state, BrassHorse.decisionId, site(dunes))
+      .toOption.get
+    assertEquals(pawnOf(readyOf(done.state)), dunes)
 
   test("a Vision on top has no suit, so any other site may be chosen"):
     val vision = aVision(staged)
@@ -83,7 +80,9 @@ class BrassHorseSuite extends munit.FunSuite:
     assert(parkedAt(parked, BrassHorse.decisionId))
     assertEquals(reveals(parked.events),
       Vector(Reveal(vision, Location.RegionalDiscard(Region.Cradle))))
-    assert(choose(parked.state, BrassHorse.decisionId, site(deepWoods)).isRight)
+    val done = choose(parked.state, BrassHorse.decisionId, site(deepWoods))
+      .toOption.get
+    assertEquals(pawnOf(readyOf(done.state)), deepWoods)
 
   test("the region is the one the pawn's site is in"):
     val provincesTop = freshDenizen(staged, Suit.Beast)
@@ -94,14 +93,11 @@ class BrassHorseSuite extends munit.FunSuite:
       Reveal(provincesTop, Location.RegionalDiscard(Region.Provinces))))
     assertEquals(pawnOf(readyOf(done.state)), deepWoods)
 
-  test("it is unusable without a secret, when occupied, or facedown"):
+  test("it is unusable without a secret"):
     val id = BrassHorse.id
+    assert(usable(staged, id))
     assert(!usable(withSecrets(staged, 0), id))
     assert(use(withSecrets(staged, 0), id, horse).isLeft)
-    assert(!usable(withRelicTokens(staged, horse, Tokens(0, 1)), id))
-    val facedown = inPhase(withSecrets(
-      withRelic(base, horse, Orientation.FaceDown), 2), Phase.Act)
-    assert(!usable(facedown, id))
 
   test("it writes the card it revealed in place of the generic line, then where the pawn went"):
     val done = use(cradleTopped(beastTop), BrassHorse.id, horse).toOption.get

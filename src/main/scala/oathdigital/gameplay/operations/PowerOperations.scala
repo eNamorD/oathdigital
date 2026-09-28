@@ -4,9 +4,6 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathViolation._
 import oathdigital.model._
 
-final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,
-    siteId: SiteId, orientation: Orientation)
-
 object Costs:
   def affordable(ready: ReadyGame, actor: PlayerId, placedAt: Location,
       cost: Cost, intoOccupied: Boolean = false): Boolean =
@@ -60,42 +57,3 @@ object Costs:
         case _: DenizenState | _: EdificeState | _: RelicState => true
         case _ => false
     }
-
-/** Converts canonical power-event facts into glossary operations. Event-owned
-  * handlers validate affordability, source identity, and placement legality
-  * (Costs.plan / affordable) before calling this adapter; the executor
-  * then re-checks the emitted batch atomically, so this adapter never needs
-  * its own sufficiency audit.
-  */
-object PowerOperationPlanner:
-  def placement(placement: RelicPlacement): CoreOperation = Play(
-    placement.relicId,
-    PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
-    Location.Site(placement.siteId),
-    placement.orientation)
-
-object DrawTopRelic:
-  def plan(ready: ReadyGame): Either[OathViolation, RelicId] =
-    ready.game.current.commonCards.relicDeck.headOption.toRight(
-      RecoverUnavailable("relic deck is empty"))
-  def validate(ready: ReadyGame, relic: RelicId): Either[OathViolation, Unit] =
-    DrawTopRelic.plan(ready).flatMap(top => Either.cond(top == relic, (),
-      RecoverOutcomeMismatch("relic is not the top of the relic deck")))
-
-object PlaceRelicAtSite:
-  def plan(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      relic: RelicId, site: SiteId, orientation: Orientation)
-      : Either[OathViolation, RelicPlacement] = for
-    _ <- validate(catalog, ready, relic, site, orientation)
-  yield RelicPlacement(actor, relic, site, orientation)
-
-  private def validate(catalog: ExecutableCatalog, ready: ReadyGame,
-      relic: RelicId, siteId: SiteId, orientation: Orientation) = for
-    _ <- Either.cond(orientation == Orientation.FaceDown, (),
-      InvalidEventOrder("initial relic placement must be facedown"))
-    _ <- DrawTopRelic.validate(ready, relic)
-    site <- ready.game.current.map.sites.get(siteId).toRight(SiteNotInPlay(siteId))
-    definition <- catalog.site(siteId).toRight(SiteNotInPlay(siteId))
-    _ <- Either.cond(site.relics.size < definition.relicSlots, (),
-      RecoverUnavailable("site has no empty relic slot"))
-  yield ()

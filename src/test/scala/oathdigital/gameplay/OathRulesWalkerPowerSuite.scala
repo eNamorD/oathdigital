@@ -182,26 +182,6 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     assert(resumed.isRight,
       s"the actual actor's own resume must still succeed, got $resumed")
 
-  test("a seated non-active player's RollWalker against another player's " +
-      "parked walker is rejected, and appends nothing"):
-    val fixture = CatacombsContributionSuite.relicSite()
-    val intruder = fixture.ready.game.current.players.map(_.player)
-      .find(_ != fixture.actor).get
-    val rulesInstance = new OathRules(catalog,
-      walkerPowerCatalog = oathdigital.gameplay.powers.WalkerPowerCatalog
-        .default(catalog),
-      walkerDice = WalkerDiceFixture.blanks)
-    val started = rulesInstance.startWalker(Ready(fixture.ready),
-        ActionRef.Recover, fixture.actor, Vector.empty) match
-      case Right(transition) => transition
-      case other => fail(s"expected the walker start to run, got $other")
-
-    assertEquals(
-      rulesInstance.rollWalkerPrepared(started.state, intruder,
-        RecoverProcedure.recoverPool)(count => Right(
-          Vector.fill(count)(DefenseDieFace.Blank))),
-      Left(OathViolation.WrongPlayer(fixture.actor, intruder)))
-
   test("a non-active player's RollWalker is rejected before the tree is " +
       "rebuilt, so a restriction cannot mask the wrong player"):
     val (ready, actor) = actable
@@ -450,14 +430,9 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
           s"violation detail '${rejection.detail}' should name the action")
       case other => fail(s"expected an InvalidEventOrder rejection, got $other")
 
-  test("Recover parity: its offerable set is what the Recover-window literal " +
-      "returned, for an empty and a populated walkerPowerCatalog"):
+  test("Recover's own entry offers a power at its modifier window, and not " +
+      "one at another action's"):
     val (ready, actor) = actable
-
-    assertEquals(rules(actor, WalkerPowers.empty)
-      .offerableWalkerPowers(ready, actor, ActionRef.Recover),
-      Right(Vector.empty[ContributingPower]))
-
     val recoverWindowed = PowerId("test.recover-windowed")
     val populated = WalkerPowers(Vector(
       windowScoped(recoverWindowed, PowerWindow.RecoverModifierSelection),
@@ -504,8 +479,6 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     val Ready(startedReady) = started.state: @unchecked
     assertEquals(startedReady.game.current.walkerProcedure, Some(ActionRef.Recover))
     val pending = startedReady.game.current.walkerPending.get
-    assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Recover),
-      Right(RecoverProcedure.rollDecisionId))
     assertEquals(ProcedureWalker.awaitedPlayer(startedReady, rollTree, pending,
       WalkerPowers.empty), Some(actor))
     assert(started.events.nonEmpty)

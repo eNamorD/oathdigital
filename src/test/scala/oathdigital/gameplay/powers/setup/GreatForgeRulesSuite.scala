@@ -44,8 +44,10 @@ class GreatForgeRulesSuite extends munit.FunSuite:
         staged.game.current.map.sites(s).relics.nonEmpty).get
     val relicsBefore = staged.game.current.map.sites(relicSite).relics.map(_.id).toSet
     val finished = finish(staged)
-    assert(finished.game.current.map.sites(relicSite).relics.isEmpty)
     assert(relicsBefore.nonEmpty)
+    assert(finished.game.current.map.sites(relicSite).relics.isEmpty)
+    assert(relicsBefore.subsetOf(finished.game.current.setAsideRelics.toSet),
+      "the discarded relics are set aside")
 
   // ---- Lines ----
 

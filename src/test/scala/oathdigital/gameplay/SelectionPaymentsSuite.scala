@@ -53,10 +53,9 @@ class SelectionPaymentsSuite extends munit.FunSuite:
         detail.contains("cannot all be paid together")
       case _ => false
     }), refused.toString)
-
-  test("each payment alone is affordable, so the refusal is about the pair"):
+    // Either payment alone is affordable (b is a's twin), so the refusal is
+    // about the pair.
     assert(muster(1, a).isRight)
-    assert(muster(1, b).isRight)
 
   test("a free power adds nothing to the payments"):
     assert(muster(1, a, free).isRight)
@@ -65,7 +64,8 @@ class SelectionPaymentsSuite extends munit.FunSuite:
     val fixture = CatacombsContributionSuite.reliclessSite(secrets = 1)
     val power = oathdigital.gameplay.powers.recover.CatacombsContribution
       .forCatalog(catalog).get
-    assertEquals(power.selectionPayments(fixture.ready, fixture.actor).size, 1)
+    assertEquals(power.selectionPayments(fixture.ready, fixture.actor),
+      Vector(oathdigital.gameplay.operations.Costs.onCard(fixture.actor, power.cardId, Cost(secret = 1), catalog)))
     val rules = new OathRules(catalog, walkerPowerCatalog = WalkerPowers(
       Vector(power)), walkerDice = WalkerDiceFixture.blanks)
     assert(rules.startWalker(Ready(fixture.ready), ActionRef.Recover,

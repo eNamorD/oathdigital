@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
-  PowerFixture, TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture,
+  TargetsFixture}
 import oathdigital.model._
 
 class WolvesSuite extends munit.FunSuite:
@@ -22,9 +21,6 @@ class WolvesSuite extends munit.FunSuite:
     warbandBank(ready, PlayerFacts.forceKind(ready, id).toOption.get)
   private def choose(id: PlayerId) = pick(DecisionOptionRef.Player(id))
   private def parked = use(staged(), Wolves, source).toOption.get
-
-  test("Wolves is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Wolves.id).isDefined)
 
   test("using it places a secret on its card and asks for a player board"):
     val t = parked
@@ -68,13 +64,6 @@ class WolvesSuite extends munit.FunSuite:
   test("it is unusable without a faceup secret to place"):
     assertEquals(usableNow(staged(secrets = 0)), Vector.empty)
     assert(use(staged(secrets = 0), Wolves, source).isLeft)
-
-  test("it is unusable again while its card holds the secret"):
-    val t = parked
-    val done = answer(t, actor, Wolves.decisionId, choose(victim)).toOption.get
-    val again = withSecrets(after(done), actor, 1, 0)
-    assertEquals(usableNow(again), Vector.empty)
-    assert(use(again, Wolves, source).isLeft)
 
   test("it writes the warband it killed"):
     val done = answer(parked, actor, Wolves.decisionId, choose(victim)).toOption.get

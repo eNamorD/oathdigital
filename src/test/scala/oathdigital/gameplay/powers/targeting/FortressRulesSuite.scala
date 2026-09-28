@@ -34,14 +34,6 @@ class FortressRulesSuite extends munit.FunSuite:
 
   private def startOf(b: Board) = start(b.ready, ActionRef.Campaign, b.actor)
 
-  test("the Fortress faces are registered persistent rules, so they are automatic"):
-    assertEquals(OakenFortress.forCatalog(catalog).get.resolution,
-      PowerResolution.Automatic)
-    assertEquals(RottingFortress.forCatalog(catalog).get.resolution,
-      PowerResolution.Automatic)
-    assertEquals(OakenFortress.forCatalog(catalog).get.id,
-      PowerId("edifice.e28.intact"))
-
   // ---- Oaken Fortress ----
 
   test("the Oaken Fortress removes its ruler from a Raid: only the Conquest is left"):
@@ -87,13 +79,23 @@ class FortressRulesSuite extends munit.FunSuite:
     assert(startOf(b).left.toOption.exists(
       _.isInstanceOf[OathViolation.CampaignUnavailable]))
 
-  test("a faceup beast adviser lifts the Rotting Fortress's protection"):
+  test("a faceup beast adviser lifts the Rotting Fortress's protection; a " +
+      "facedown one, or one of another suit, does not"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
     val armed = b.copy(ready = adviserOf(b.ready, b.actor, Suit.Beast))
     assert(CampaignProcedure.startable(catalog, armed.ready, armed.actor, powers))
     assert(startOf(armed).isRight)
-    val facedown = b.copy(ready = adviserOf(b.ready, b.actor, Suit.Hearth))
-    assert(startOf(facedown).isLeft)
+    val hearth = b.copy(ready = adviserOf(b.ready, b.actor, Suit.Hearth))
+    assertEquals(startOf(hearth).left.toOption, Some(OathViolation.CampaignUnavailable(
+      "a Fortress protects every player a Raid could target")))
+    val beast = DenizenId(catalog.denizens.find(_.suit == Suit.Beast).get.id.value)
+    val hidden = b.copy(ready = oathdigital.gameplay.powers.CardStaging
+      .without(b.ready, beast).updateCurrent(c => c.copy(players =
+        c.players.map(p => if p.player == b.actor then p.copy(advisers =
+          p.advisers :+ DenizenState(beast, Orientation.FaceDown, Tokens.empty))
+          else p))))
+    assertEquals(startOf(hidden).left.toOption, Some(OathViolation.CampaignUnavailable(
+      "a Fortress protects every player a Raid could target")))
 
   test("the Rotting Fortress protects every player at the site, so a second " +
       "enemy does not open the Raid"):

@@ -27,8 +27,8 @@ final case class CatacombsContribution private (cardId: DenizenId,
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RecoverActionEligibility -> Vector(
       Transform((ctx, ops) => place(ctx.activePlayer) +: ops)))
-  // Mirrors the legacy capacity guard: no generic execution path enforces
-  // `relicSlots` for a card Move (PowerOperations.PlaceRelicAtSite:93).
+  // No generic execution path enforces a site's `relicSlots` for a card
+  // Move, so the placement checks the capacity itself.
   private def place(actor: PlayerId): Operation = BuildOps((ready, _) => for
     siteId <- PowerAccess.siteOf(ready, actor, cardId)
       .toRight(OathViolation.PawnSiteMissing(actor))

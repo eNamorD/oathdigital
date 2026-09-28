@@ -28,7 +28,9 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
         case None => fail(s"$where has no sentence")
     } }
 
-  test("Gambling Hall and Vow of Peace declare their notes"):
+  // Note keys are journaled in PowerNoted events and the log looks their
+  // wording up by key, so a renamed key orphans the notes of saved games.
+  test("Gambling Hall and Vow of Peace keep their persisted note keys"):
     val keys = declared.toMap.view.mapValues(_.map(_.name)).toMap
     assertEquals(keys.get(GamblingHall.id), Some(Vector(NoteKey.Used, "gained")))
     assertEquals(keys.get(VowOfPeaceContribution.id), Some(Vector("no-sacrifice")))
@@ -39,17 +41,9 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
     assert(!NoteKey.isUse("usedx"))
     assert(!NoteKey.isUse("gained"))
 
-  test("a banner option names its banner as a note's source"):
-    assertEquals(PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
-      Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
-
   test("every phase power but a forced one declares its own used line"):
     // A forced power is never a `UsePower`, so it has no "Used" line to
     // replace, and its lines are trigger lines.
     PhasePowerCatalog.default(catalog).powers.foreach(power =>
       assertEquals(power.noteKeys.exists(_.name == NoteKey.Used), !power.forced,
         power.id.value))
-
-  test("the Homeland rule declares the line it writes"):
-    assertEquals(declared.toMap.get(RuleNotes.homelandDiscard)
-      .map(_.map(_.name)), Some(Vector("discard-first")))

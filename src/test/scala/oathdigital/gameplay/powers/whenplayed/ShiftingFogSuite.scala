@@ -17,10 +17,6 @@ class ShiftingFogSuite extends munit.FunSuite:
   test("Shifting Fog is in the default walker catalog"):
     assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
 
-  test("the next bank to the right, Nomad's going to Discord"):
-    assertEquals(Suit.all.map(ShiftingFog.next), Vector(Suit.Arcane,
-      Suit.Order, Suit.Hearth, Suit.Beast, Suit.Nomad, Suit.Discord))
-
   test("every bank's favor moves at once to the next bank"):
     val ready = banked(staged, Suit.all.zipWithIndex.map((suit, i) =>
       suit -> (i + 1)).toMap)

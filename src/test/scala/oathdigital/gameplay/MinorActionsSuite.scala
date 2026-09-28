@@ -105,18 +105,6 @@ class MinorActionsSuite extends munit.FunSuite:
     parked.assertResumed(peeked.state, Phase.Act, actor.player)
     assertEquals(rules.evolve(Ready(base), event), Right(Ready(expected)))
 
-    val other = base.game.current.players.find(_.player != actor.player).get.player
-    val projector = new oathdigital.application.GameProjector(catalog)
-    val loaded = oathdigital.application.LoadedGame(Ready(expected), 1)
-    val ownerKnown = projector.project("minor", loaded, actor.player).world
-      .flatMap(_.sites).find(_.siteId == siteId.value).get.relics.knownRelics
-    val otherKnown = projector.project("minor", loaded, other).world
-      .flatMap(_.sites).find(_.siteId == siteId.value).get.relics.knownRelics
-    assert(ownerKnown.exists(_.cardId == siteRelic.value))
-    assertEquals(otherKnown, Vector.empty)
-    assertEquals(projector.projectPublic("minor", loaded).world.flatMap(_.sites)
-      .find(_.siteId == siteId.value).get.relics.knownRelics, Vector.empty)
-
     val previouslyKnown = actor.relics.head.id
     val withPriorKnowledge = base.copy(knowledge = base.knowledge.copy(siteRelics =
       Map(actor.player -> Map(siteId -> Vector(previouslyKnown)))))
@@ -155,11 +143,12 @@ class MinorActionsSuite extends munit.FunSuite:
     val (base, actor, _, _, siteRelic) = ready()
     val held = actor.relics.head.id
     val revealEvent = OwnedRelicRevealed(actor.player, held)
-    assert(MinorActions.evolve(catalog, Ready(base),
-      OwnedRelicRevealed(actor.player, siteRelic)).isLeft)
+    assertEquals(MinorActions.evolve(catalog, Ready(base),
+      OwnedRelicRevealed(actor.player, siteRelic)).left.toOption, Some(OathViolation.MinorActionUnavailable("relic is not held by the actor")))
     val alreadyFaceUp = withRevealedRelic(base, actor.player, held)
-    assert(MinorActions.evolve(catalog, Ready(alreadyFaceUp),
-      revealEvent).isLeft)
+    assertEquals(MinorActions.evolve(catalog, Ready(alreadyFaceUp),
+      revealEvent).left.toOption, Some(OathViolation.MinorActionOutcomeMismatch(
+        "recorded relic was not facedown")))
 
   test("minor-action operation policy permits roots only in validated context"):
     val (base, actor, _, _, _) = ready()
@@ -170,8 +159,10 @@ class MinorActionsSuite extends munit.FunSuite:
       oathdigital.model.Location.PlayArea(actor.player),
       Orientation.FaceUp)
 
-    assert(MinorActionOperationPolicy.validate(base, reveal).isRight)
-    assert(MinorActionOperationPolicy.validate(base, directFlip).isLeft)
+    assertEquals(MinorActionOperationPolicy.validate(base, reveal), Right(()))
+    assertEquals(MinorActionOperationPolicy.validate(base, directFlip).left.toOption,
+      Some(OperationError.RestrictedOperation(
+        "minor-action semantic root is not permitted")))
 
   test("warband moves use core operations in both directions and replay"):
     val (base, actor, siteId, _, _) = ready()
@@ -219,10 +210,13 @@ class MinorActionsSuite extends munit.FunSuite:
     assertEquals(expected.map(_.handlerId), Vector("denizen.revelation"))
     assertEquals(PowerRuntime.ignoredAtSource(catalog, changed, active.player,
       ActionKind.WhenPlayed, source).toOption.get, Vector.empty)
+    // Replay accepts the off-turn player's diagnostics and changes no state.
     val event = IgnoredRulesRecorded(other.player, ActionKind.WhenPlayed, expected)
-    assert(rules.evolve(Ready(changed), event).isRight)
+    assertEquals(rules.evolve(Ready(changed), event), Right(Ready(changed)))
 
-  test("locked restriction applies only faceup and does not prevent facedown discard"):
+  // The lock itself, which stops a faceup adviser being discarded, is
+  // DiscardRestrictionsSuite's; this is the facedown side of it.
+  test("a locked adviser held facedown can still be played and discarded"):
     val (base, actor, _, _, _) = ready()
     val locked = DenizenId(catalog.denizens.find(_.restrictions ==
       oathdigital.catalog.CardRestrictions.LockedAdviserOnly).get.id.value)
@@ -234,14 +228,11 @@ class MinorActionsSuite extends munit.FunSuite:
     val started = rules.startWalker(Ready(modified), ActionRef.PlayFacedownAdviser,
       actor.player, startArgs = Vector(DecisionOptionRef.Denizen(locked)))
       .toOption.get
-    assert(rules.resolveWalker(started.state, actor.player,
+    val discarded = rules.resolveWalker(started.state, actor.player,
       s"cardplay.place.denizen.${locked.value}",
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))).isRight)
-    val faceup = modified.updateCurrent(_.copy(
-      players = modified.game.current.players.map(p => if p.player == actor.player then
-        p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceUp, Tokens.empty))) else p)))
-    assert(oathdigital.gameplay.actions.cardplay.CardPlayProcedure.buildFacedown(
-      catalog, faceup, actor.player, Vector(DecisionOptionRef.Denizen(locked))).isLeft)
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))
+      .toOption.get
+    assertEquals(Look(discarded.state).advisers(actor.player), Vector.empty)
 
   test("valid setup history replays exactly through a completed minor action"):
     val (setupState, setupEvents) = execute()

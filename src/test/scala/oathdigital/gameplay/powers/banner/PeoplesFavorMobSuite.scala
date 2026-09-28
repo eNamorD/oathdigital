@@ -59,12 +59,6 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   private def siteCards(ready: ReadyGame): Vector[CardId] =
     ready.game.current.map.sites(home(ready)).denizens.map(_.id)
 
-  test("Mob is a registered persistent rule, so it is automatic"):
-    val registered = WalkerPowerCatalog.default(catalog).powers
-      .find(_.id == PeoplesFavorMob.id)
-    assertEquals(registered.map(_.resolution), Some(PowerResolution.Automatic))
-    assertEquals(PeoplesFavorMob.id.value, "banner.peoples-favor.mob")
-
   test("the source index lists Mob on the Mob face and the Grand Council's " +
       "own power on the other"):
     def favor(ready: ReadyGame) = oathdigital.gameplay.RuleSourceIndex

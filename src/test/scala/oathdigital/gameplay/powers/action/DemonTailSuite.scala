@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 
 class DemonTailSuite extends munit.FunSuite:
@@ -14,9 +13,6 @@ class DemonTailSuite extends munit.FunSuite:
   private def staged(supply: Int = 2, faceUp: Int = 3): ReadyGame =
     act(withBoard(withRelic(base, tail))(_.copy(supply = SupplyTrack(supply),
       faceUpSecrets = faceUp, faceDownSecrets = 0)))
-
-  test("Demon Tail is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(DemonTail.id).isDefined)
 
   test("it burns three secrets and gains 2 Supply"):
     val ready0 = staged()

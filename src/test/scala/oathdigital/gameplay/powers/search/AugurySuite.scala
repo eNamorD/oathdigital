@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.search
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class AugurySuite extends munit.FunSuite:
@@ -19,12 +18,6 @@ class AugurySuite extends munit.FunSuite:
 
   private def hand(transition: OathTransition): Vector[WorldCardId] =
     SearchFixture.after(transition).game.current.temporaryHands(actor)
-
-  test("Augury is a registered selected Search modifier"):
-    val power = Augury.forCatalog(catalog).get
-    assertEquals(power.cardId, augury)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Search))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
 
   test("a world Search draws one card more than the printed three"):
     val top = plain.take(6)
@@ -42,9 +35,11 @@ class AugurySuite extends munit.FunSuite:
   test("the player keeps any one of the drawn cards"):
     val top = plain.take(6)
     val kept = top(3)
-    val done = play(withAugury(top), modifiers, kept, "discard")
-    assertEquals(SearchFixture.after(done).game.current.temporaryHands(actor),
-      Vector.empty)
+    val done = play(withAugury(top), modifiers, kept, "adviser-facedown")
+    val after = SearchFixture.after(done)
+    assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
+    assert(player(after).advisers.exists(_.id == kept),
+      "the fourth drawn card is the one kept")
 
   test("the draw still stops after a Vision, wherever the Vision falls"):
     val early = plain.take(2) ++ Vector(VisionRules.Faith) ++ plain.drop(2).take(3)
@@ -74,9 +69,14 @@ class AugurySuite extends munit.FunSuite:
     // The pile is drawn from its end, and Augury takes a fourth card.
     assertEquals(hand(started), pile.reverse.take(4))
 
-  test("without the selection the draw is the printed three"):
-    val top = plain.take(6)
-    assertEquals(hand(start(withAugury(top)).toOption.get), top.take(3))
+  test("it is offered for Search, and not for another action"):
+    val ready = withAugury(plain.take(6))
+    val offered = (action: ActionRef) =>
+      rules.offerableWalkerPowers(ready, actor, action).toOption.get.map(_.id)
+    assert(offered(ActionRef.Search).contains(Augury.id))
+    assert(!offered(ActionRef.Travel).contains(Augury.id))
 
   test("it is not offered when the card is out of reach"):
-    assert(start(SearchFixture.staged(plain.take(6)), modifiers).isLeft)
+    assertEquals(start(SearchFixture.staged(plain.take(6)), modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.augury is not applicable to this search")))

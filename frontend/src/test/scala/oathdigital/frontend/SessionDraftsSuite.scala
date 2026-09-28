@@ -183,7 +183,3 @@ class SessionDraftsSuite extends munit.FunSuite:
     assertEquals(stepped.copy(facedownAdviser = None), full.copy(facedownAdviser = None))
     assertEquals(full.copy(facedownAdviser = None).step(FlowStep.ChooseFacedown("a2")),
       full.copy(facedownAdviser = None))
-
-  test("empty has no context and nothing staged"):
-    assertEquals(SessionDrafts.empty, SessionDrafts(None, None, None, None,
-      None, None, None, None))

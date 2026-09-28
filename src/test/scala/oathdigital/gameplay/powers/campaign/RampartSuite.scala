@@ -89,11 +89,3 @@ class RampartSuite extends munit.FunSuite:
     val run = commit(rules(losing), b, 2)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assertEquals(defensePoolChanges(run), defensePoolChanges(before) + 1)
-
-  test("the two faces are two powers of one card, registered once each"):
-    assertEquals(ToweringRampart.id.value, "edifice.e20.intact")
-    assertEquals(CrackedRampart.id.value, "edifice.e20.ruined")
-    val ids = SimplePlans.forCatalog(oathdigital.gameplay.setup
-      .FirstGameSetupFixture.catalog).map(_.id)
-    assertEquals(ids.count(id => id == ToweringRampart.id ||
-      id == CrackedRampart.id), 2)

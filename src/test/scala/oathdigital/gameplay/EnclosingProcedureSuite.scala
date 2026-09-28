@@ -53,8 +53,3 @@ class EnclosingProcedureSuite extends munit.FunSuite:
         CatalogNames.denizen("Alchemist")))).toOption.get
     assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),
       seen.toString)
-
-  test("a context built without one names none"):
-    val ctx = PowerCtx(staged, p1, probe.source, PowerWindow.MusterCost,
-      Vector.empty, Sequence(Vector.empty))
-    assertEquals(ctx.procedure, None)

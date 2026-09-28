@@ -30,7 +30,8 @@ class DevelopmentIdentityShimSuite extends munit.FunSuite:
     ).left.toOption.get.isInstanceOf[AuthenticationFailure.InvalidCredential])
 
   test("enabled shim refuses wildcard and non-loopback bindings"):
-    Vector("0.0.0.0", "192.168.1.20", "example.com").foreach { host =>
+    // The host list is DevelopmentTrustBoundarySuite's; one shows the check applies.
+    Vector("0.0.0.0").foreach { host =>
       assert(DevelopmentIdentityShim.configure(true, host)
         .left.toOption.get.isInstanceOf[NonLoopbackBinding])
     }

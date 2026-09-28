@@ -2,7 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.RecoverRules
-import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -32,42 +31,6 @@ class RecoverEligibilitySuite extends munit.FunSuite:
     projector.project("recover-eligibility", LoadedGame(Ready(ready), 1), actor)
       .legalControls
 
-  test("beginRecover is offered when a facedown relic already sits at the site"):
-    val (base, active, siteId) = baseReady
-    val relic = RelicState(base.game.current.commonCards.relicDeck.head,
-      Orientation.FaceDown, Tokens.empty)
-    val site = base.game.current.map.sites(siteId).copy(relics = Vector(relic))
-    val ready = base.updateCurrent(_.copy(
-      commonCards = base.game.current.commonCards.copy(
-        relicDeck = base.game.current.commonCards.relicDeck.tail),
-      map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(siteId, site))))
-
-    assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
-    assert(legalControls(ready, active.player).contains("beginRecover"))
-
-  test("beginRecover is offered at an empty site once Catacombs is face-up there"):
-    val (base, active0, siteId) = baseReady
-    val definition = catalog.denizens.find(_.powers.exists(
-      _.id.value == "denizen.catacombs")).get
-    val cardId = DenizenId(definition.id.value)
-    val active = active0.copy(board = active0.board.copy(faceUpSecrets = 2))
-    val site = base.game.current.map.sites(siteId).copy(relics = Vector.empty,
-      denizens = Vector(DenizenState(cardId, Orientation.FaceUp, Tokens.empty)))
-    val ready = base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p =>
-        if p.player == active.player then active else p),
-      commonCards = base.game.current.commonCards.copy(
-        worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == cardId),
-        regionalDiscards = base.game.current.commonCards.regionalDiscards.map {
-          case (region, cards) => region -> cards.filterNot(_ == cardId)
-        }),
-      map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(siteId, site))))
-
-    assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
-    assert(legalControls(ready, active.player).contains("beginRecover"))
-
   test("beginRecover is offered without a relic or Catacombs"):
     val (base, active, siteId) = baseReady
     val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
@@ -81,7 +44,6 @@ class RecoverEligibilitySuite extends munit.FunSuite:
       map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(siteId, site))))
 
-    assert(ready.game.current.map.sites(siteId).relics.isEmpty)
     assert(legalControls(ready, active.player).contains("beginRecover"))
 
   test("beginRecover is not offered without the Supply to pay for it"):

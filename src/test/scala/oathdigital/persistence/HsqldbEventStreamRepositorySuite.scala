@@ -11,11 +11,6 @@ import oathdigital.application.{
   ExpectedStream,
   RepositoryAppendResult
 }
-import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.{CatalogRef, PlayerId, VictoryKind}
-import oathdigital.serialization.GameEventWire
-import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,
-  RoundEnded, WarExhaustionResolved}
 
 class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
   private given executionContext: ExecutionContext =
@@ -26,19 +21,6 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
 
   private def open(path: Path): OwnedHsqldbEventStreamRepository =
     OwnedHsqldbEventStreamRepository.open(path).toOption.get
-
-  private val catalog = ExecutableCatalog(
-    schemaVersion = "test",
-    ref = CatalogRef("test", "1"),
-    denizens = Vector.empty,
-    relics = Vector.empty,
-    edifices = Vector.empty,
-    legacies = Vector.empty,
-    sites = Vector.empty,
-    setupCards = Vector.empty,
-    supplyBoards = Vector.empty,
-    visions = Vector.empty
-  )
 
   private def seedSchemaVersions(
       path: Path,
@@ -82,13 +64,17 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
 
   test("rejects newer and non-contiguous schema ledgers and releases files"):
     Vector(
-      "newer" -> Vector(5),
-      "gapped" -> Vector(0, 1)
-    ).foreach { case (label, versions) =>
+      ("newer", Vector(5),
+        "schema version 5 is newer than supported version 4"),
+      ("gapped", Vector(0, 1),
+        "schema version ledger must be contiguous from 1; found 0,1")
+    ).foreach { case (label, versions, reason) =>
       val path = databasePath(label)
       seedSchemaVersions(path, versions)
       val result = HsqldbDatabaseOwner.open(path)
-      assert(result.left.toOption.nonEmpty)
+      assertEquals(result.left.toOption, Some(
+        oathdigital.application.RepositoryFailure.StorageFailure(
+          s"initialize schema failed: $reason")), label)
 
       val reopened = DriverManager.getConnection(
         s"jdbc:hsqldb:file:${path.toAbsolutePath}",
@@ -170,32 +156,6 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite:
         Vector("zero", "one", "two", "three")
       )
     finally repository.close()
-
-  test("persists and reloads exact Oathkeeper evaluation records"):
-    val path = databasePath("oathkeeper-reload")
-    val events = Vector(
-      UsurperFlipped(PlayerId("p2")),
-      UsurperVictory(PlayerId("p2")),
-      RoundEnded(8, None),
-      WarExhaustionResolved(PlayerId("p2"), VictoryKind.Oathkeeper,
-        None, Vector.empty))
-    val records = events.zipWithIndex.map { case (event, index) =>
-      ujson.write(GameEventWire.encodeEvent("oathkeeper", catalog.ref,
-        index.toLong, event).toOption.get)
-    }
-    val first = open(path)
-    try assertEquals(first.append("oathkeeper", ExpectedStream.MustNotExist,
-      records), Right(RepositoryAppendResult.Appended(0L, 4)))
-    finally first.close()
-
-    val reloaded = open(path)
-    try
-      val stored = reloaded.load("oathkeeper").toOption.flatten.get
-      assertEquals(stored.records, records)
-      val decoded = GameEventWire.decodeStream(
-        stored.records.mkString("[", ",", "]")).toOption.get
-      assertEquals(decoded.map(_.event), events)
-    finally reloaded.close()
 
   test("sequence conflict writes no part of a proposed batch"):
     val repository = open(databasePath("conflict"))

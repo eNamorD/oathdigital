@@ -48,8 +48,9 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val ui = new RecordingControls()
     val panel = draw(parked, ui)
     all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
-    assertEquals(ui.submitted,
-      Vector(WalkerPanelSupport.resolveChooseOneCommand(parked, oak)))
+    assertEquals(ui.submitted, Vector(oathdigital.protocol.GameIntent.ResolveWalker(
+      "muster.source",
+      oathdigital.protocol.DecisionAnswerWire.ChooseOneWire("denizen", "d1"))))
 
   test("a battle-plan offer draws its card and its side as a chip"):
     val card = CardDetails("relic:sticky-fire", "relic", "Sticky Fire",

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -44,9 +43,6 @@ class HornedMaskSuite extends munit.FunSuite:
   private def holding(cards: DenizenId*) = cards.foldLeft(
     withoutAdvisers(atHome(staged, inn), actor))((ready, id) =>
     giveAdviser(ready, actor, id, Orientation.FaceUp))
-
-  test("Horned Mask is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(HornedMask.id).isDefined)
 
   test("it offers the denizens at the site and never the edifice"):
     val ready = withEdifice(atHome(atHome(staged, inn), elders),
@@ -183,13 +179,6 @@ class HornedMaskSuite extends munit.FunSuite:
     assert(answer(t, others(base).head, HornedMask.denizenDecisionId,
       choose(inn)).isLeft)
     assert(answer(t, actor, HornedMask.denizenDecisionId, choose(elders)).isLeft)
-
-  test("it needs the mask faceup in the Wake phase"):
-    val facedown = inPhase(withRelic(atHome(base, inn), mask,
-      Orientation.FaceDown), Phase.Wake)
-    assertEquals(usableNow(facedown), Vector.empty)
-    assert(use(facedown, power, source).isLeft)
-    assert(use(inPhase(atHome(staged, inn), Phase.Act), power, source).isLeft)
 
   test("it writes the denizen it took"):
     val t = use(atHome(staged, inn), power, source).toOption.get

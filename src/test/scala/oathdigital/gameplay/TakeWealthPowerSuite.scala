@@ -1,9 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
 import oathdigital.testkit.Table
 
@@ -23,7 +21,6 @@ import oathdigital.testkit.Table
   * indistinguishable from a correct one in every green assertion.
   */
 class TakeWealthPowerSuite extends munit.FunSuite:
-  private val catalog = FirstGameSetupFixture.catalog
   private val baseReady = Table.start.ready
   private val actor = baseReady.game.current.turn.activePlayer
   private val powers: Vector[ContributingPower] = Vector(TakeWealthLimit)
@@ -112,7 +109,3 @@ class TakeWealthPowerSuite extends munit.FunSuite:
     // literal, which is what keeps the two sides from drifting.
     assertEquals(TakeWealthLimit.useRef(site), PowerUseRef(PowerTiming.Wake,
       PowerSourceRef.Site(site), PowerId("site.take-wealth")))
-
-  test("the walker catalog registers the limit"):
-    assert(WalkerPowerCatalog.default(catalog).powers.map(_.id)
-      .contains(TakeWealthLimit.id))

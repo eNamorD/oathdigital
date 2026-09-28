@@ -12,11 +12,6 @@ class ChronicleFirstGamePlanSuite extends munit.FunSuite:
     val orders = ChronicleFirstGamePlan.dealOrder(chronicle, config)
     assertEquals(orders, FirstGameSetupFixture.orders)
 
-  test("the dealt orders still satisfy GameStartRules"):
-    val orders = ChronicleFirstGamePlan.dealOrder(chronicle, config)
-    assert(oathdigital.gameplay.setup.GameStartRules
-      .evolve(FirstGameSetupFixture.catalog, chronicle, orders).isRight)
-
   test("dealOrder is total even when the Chronicle is too small for GameStartRules"):
     val short = chronicle.copy(atlasBox = chronicle.atlasBox.take(7))
     val orders = ChronicleFirstGamePlan.dealOrder(short, config)

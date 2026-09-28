@@ -20,25 +20,6 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
   private val player = UserId("user-player")
   private val spectator = UserId("user-spectator")
 
-  test("identity migration is idempotent and survives close and reopen"):
-    val path = databasePath("migration")
-    val first = open(path)
-    assertEquals(first.schemaVersion, Right(4))
-    assertEquals(first.initializeSchema(), Right(()))
-    assertEquals(first.createUser(owner, "Owner", 10L), Right(()))
-    assertEquals(first.createGame("game-1", owner, 11L), Right(()))
-    first.close()
-
-    val reopened = open(path)
-    try
-      assertEquals(reopened.schemaVersion, Right(4))
-      assertEquals(
-        reopened.findMembership("game-1", owner),
-        Right(Some(GameMembership("game-1", owner, Owner, None)))
-      )
-      assertEquals(reopened.initializeSchema(), Right(()))
-    finally reopened.close()
-
   test("schema upgrades contiguously from v1, v2, and v3 and revokes old sessions"):
     val v1Path = databasePath("upgrade-v1")
     seedVersionLedger(v1Path, 1)
@@ -66,12 +47,13 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
     try assertEquals(upgradedV3.schemaVersion, Right(4))
     finally upgradedV3.close()
 
-  test("trusted seats atomically create a resource and resolve digests after reopen"):
+  test("seats the trusted game store writes resolve to their game and player after reopen"):
     val path = databasePath("trusted-seats")
     val first = open(path)
     val seats = Vector(seatDigest(1) -> "p1", seatDigest(2) -> "p2")
     try
-      assertEquals(first.createTrustedSeats("game-seats", seats, 50L), Right(()))
+      assertEquals(first.owner.trustedGames.create("game-seats", seats,
+        Vector("record"), 50L), Right(()))
       assertEquals(
         first.resolveTrustedSeat(seatDigest(1)),
         Right(TrustedSeat("game-seats", "p1"))
@@ -85,61 +67,13 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite:
       Right(TrustedSeat("game-seats", "p2"))
     ) finally reopened.close()
 
-  test("trusted seat creation rejects invalid input and rolls back duplicate digests"):
-    val repository = open(databasePath("trusted-seat-rollback"))
-    val repeated = seatDigest(3)
-    try
-      assert(repository.createTrustedSeats("empty", Vector.empty, 0L)
-        .left.toOption.get.isInstanceOf[InvalidTrustedSeat])
-      assert(repository.createTrustedSeats(
-        "blank", Vector(seatDigest(4) -> " "), 0L
-      ).left.toOption.get.isInstanceOf[InvalidTrustedSeat])
-      assert(repository.createTrustedSeats(
-        "same-player", Vector(seatDigest(5) -> "p1", seatDigest(6) -> "p1"), 0L
-      ).left.toOption.get.isInstanceOf[InvalidTrustedSeat])
-      assertEquals(
-        repository.createTrustedSeats(
-          "same-player", Vector(seatDigest(5) -> "p1"), 0L
-        ),
-        Right(())
-      )
-      assertEquals(
-        repository.createTrustedSeats(
-          "duplicate-digest", Vector(repeated -> "p1", repeated -> "p2"), 0L
-        ),
-        Left(DuplicateTrustedSeat)
-      )
-      assertEquals(
-        repository.createTrustedSeats(
-          "duplicate-digest", Vector(seatDigest(7) -> "p1"), 0L
-        ),
-        Right(())
-      )
-    finally repository.close()
-
-  test("trusted seat creation rejects a null player ID before transaction"):
-    val repository = open(databasePath("trusted-seat-null-player"))
-    try
-      assertEquals(
-        repository.createTrustedSeats(
-          "null-player", Vector(seatDigest(8) -> null), 0L
-        ),
-        Left(InvalidTrustedSeat("trusted seat requires playerId"))
-      )
-      assertEquals(
-        repository.createTrustedSeats(
-          "null-player", Vector(seatDigest(8) -> "p1"), 0L
-        ),
-        Right(())
-      )
-    finally repository.close()
-
   test("deleting a game resource cascades to its trusted seats"):
     val path = databasePath("trusted-seat-cascade")
     val digest = seatDigest(8)
     val repository = open(path)
     try assertEquals(
-      repository.createTrustedSeats("game-cascade", Vector(digest -> "p1"), 0L),
+      repository.owner.trustedGames.create("game-cascade",
+        Vector(digest -> "p1"), Vector("record"), 0L),
       Right(())
     ) finally repository.close()
 

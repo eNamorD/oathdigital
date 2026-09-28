@@ -7,7 +7,7 @@ import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
@@ -101,13 +101,8 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
 
     // Forge declares none, so there is nothing to project at all.
     val (forgeContext, _) = parked(ActionRef.Forge)
+    // WalkerProcedureRegistrySuite pins the accessor's typed rejection.
     assertEquals(projector.project(forgeContext), None)
-
-    // ...and the reason is the accessor's typed rejection, not a rebuild
-    // failure or an ownership mismatch: both were satisfied above.
-    assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Forge),
-      Left(OathViolation.InvalidEventOrder(
-        "walker procedure forge declares no roll decision id")))
 
   /** The spec's presentation-failure rule (Task 4): an option whose identity
     * cannot be presented suppresses the ENTIRE decision projection rather
@@ -704,8 +699,3 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(outcome.map(_.score), Some(3))
     assertEquals(outcome.flatMap(_.target), None)
     assertEquals(outcome.map(_.detail), Some(Vector("1 skull loss")))
-
-  test("a Campaign decision no roll belongs beside projects no roll"):
-    val projected = project(campaignWithOnePlanPlayed, viewer = Some(attacker))
-    assertEquals(projected.map(_.decisionId), Some("campaign.attacker-plan"))
-    assertEquals(projected.flatMap(_.rollOutcome), None)

@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Black Sword: an attacker burns two secrets for five attack dice. */
@@ -32,6 +31,3 @@ class BlackSwordSuite extends munit.FunSuite:
     // is asked; Black Sword is not among the options.
     assert(awaits(run, b.other, CampaignIds.defenderPlan))
     assert(!run.offered(b.actor).contains(ref))
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(SimplePlans.forCatalog(catalog).count(_.id == BlackSword.id), 1)

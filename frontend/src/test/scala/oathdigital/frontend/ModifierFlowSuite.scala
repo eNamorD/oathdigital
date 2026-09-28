@@ -33,7 +33,7 @@ class ModifierFlowSuite extends munit.FunSuite:
   /** A flow draft the flow would have opened for `action`, with `modifier`
     * offered and (when `chosen`) selected.
     */
-  private def draft(action: String, command: Option[GameCommand],
+  private def draft(action: String, command: Option[GameCommand.StartWalker],
       actionKind: Option[String], stage: ModifierFlowStage,
       chosen: Boolean = true): ModifierFlowDraft =
     val fresh = ModifierFlowDraft.fromPreview(command, actionKind, Map.empty,
@@ -250,8 +250,10 @@ class ModifierFlowSuite extends munit.FunSuite:
 
   test("a target command outside Targets behaves as a plain submit"):
     val (host, ui) = flow()
-    ui.submitTargetCommand(GameCommand.BeginRest)
-    assertEquals(host.sent, Vector(GameCommand.BeginRest -> Vector.empty))
+    // Take Wealth offers no modifiers, so the command goes out unchanged.
+    val takeWealth = GameCommand.StartWalker("take-wealth", Vector.empty)
+    ui.submitTargetCommand(takeWealth)
+    assertEquals(host.sent, Vector(takeWealth -> Vector.empty))
     assertEquals(host.previews, Vector.empty)
 
   test("cancelling from either stage leaves Cancelled with the restored board targets"):

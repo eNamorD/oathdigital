@@ -2,9 +2,8 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
-import oathdigital.gameplay.powers.{CampaignPowers, NoteText}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 
@@ -80,8 +79,3 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
     val b = withSecrets(withRelic(raid, relic), 1)
     val run = commit(rules(winning), b, 2, raid = true)
     assert(!awaits(run, b.actor, CampaignIds.attackerPlan))
-
-  test("the reviewed-catalog stub is retired and the plan registered once"):
-    assertEquals(PlanRules.forCatalog(catalog).count(_.id == BagOfSiegeworks.id),
-      1)
-    assert(!CampaignPowers.powers.exists(_.id == BagOfSiegeworks.id))

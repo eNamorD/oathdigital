@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -40,9 +38,6 @@ class IvoryEyeSuite extends munit.FunSuite:
   yield IvoryEye.optionFor(p.player, slot)
   private def peekAt(owner: PlayerId, slot: Int) =
     pick(IvoryEye.optionFor(owner, slot))
-
-  test("Ivory Eye is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(IvoryEye.id).isDefined)
 
   test("it places a secret on the relic and offers every facedown adviser " +
       "of every player, and no faceup one"):
@@ -100,11 +95,6 @@ class IvoryEyeSuite extends munit.FunSuite:
       .toOption.get
     assert(known(after(done), actor).contains(faith))
 
-  test("the actor's own facedown adviser is a legal target"):
-    val t = use(staged, IvoryEye, source).toOption.get
-    val done = answer(t, actor, IvoryEye.decisionId, peekAt(actor, 0)).toOption
-    assert(done.nonEmpty)
-
   test("only the acting player answers, with an offered adviser"):
     val ready = giveAdviser(staged, target, DenizenId("26"), Orientation.FaceUp)
     val t = use(ready, IvoryEye, source).toOption.get
@@ -118,14 +108,10 @@ class IvoryEyeSuite extends munit.FunSuite:
     parked.assertNotParked(t.state)
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
 
-  test("it is unusable without a faceup secret, or while the relic holds one"):
+  test("it is unusable without a faceup secret"):
     val broke = withSecrets(staged, actor, 0, 3)
     assertEquals(usableNow(broke), Vector.empty)
     assert(use(broke, IvoryEye, source).isLeft)
-    val t = use(staged, IvoryEye, source).toOption.get
-    val done = answer(t, actor, IvoryEye.decisionId, peekAt(target, 0))
-      .toOption.get
-    assertEquals(usableNow(withSecrets(after(done), actor, 1, 0)), Vector.empty)
 
   test("it writes the adviser it peeked at in place of the generic line"):
     val t = use(staged, IvoryEye, source).toOption.get

@@ -47,10 +47,6 @@ class RestrictionAnswersSuite extends munit.FunSuite:
   test("once the answer opens the subtree its Restriction is checked"):
     assertEquals(violations(answered(yes)), Vector[OathViolation](violation))
 
-  test("the answers default to none, so every existing caller is unchanged"):
-    assertEquals(ProcedureWalker.restrictionViolations(tree, powers,
-      Table.start.ready, actor), Vector.empty[OathViolation])
-
   // ---- What a Transform inserts ----
 
   private val inserting: ContributingPower = new ContributingPower:

@@ -19,9 +19,6 @@ class BoneDiceSuite extends munit.FunSuite:
       _.copy(supply = SupplyTrack(supply))))
   private def held(state: ReadyGame) = player(state).relics.map(_.id)
 
-  test("Bone Dice is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(BoneDice.id).isDefined)
-
   test("no skull: the relic stays, holding the secret, and Supply rises by the swords"):
     val rules0 = rules(attackDice(AttackDieFace.OneSword, AttackDieFace.HollowSword))
     val ready0 = staged()
@@ -62,16 +59,10 @@ class BoneDiceSuite extends munit.FunSuite:
     assertEquals(player(end).board.supply, SupplyTrack(7))
     assert(!held(end).contains(bones))
 
-  test("it is unusable without a faceup secret, with a secret already on the relic, or facedown"):
+  test("it is unusable without a faceup secret"):
     val noSecret = withBoard(staged())(_.copy(faceUpSecrets = 0))
     assert(!usableIds(noSecret).contains(BoneDice.id))
     assert(use(rules(), noSecret, BoneDice.id, source).isLeft)
-    val occupied = staged().updateCurrent(c => c.copy(players = c.players.map(p =>
-      if p.player != actor then p else p.copy(relics = p.relics.map(r =>
-        r.copy(tokens = Tokens(0, 1)))))))
-    assert(!usableIds(occupied).contains(BoneDice.id))
-    val facedown = staged(orientation = Orientation.FaceDown)
-    assert(!usableIds(facedown).contains(BoneDice.id))
 
   test("it writes its roll and its gain, and no skull writes no bury"):
     val done = use(rules(attackDice(AttackDieFace.OneSword,

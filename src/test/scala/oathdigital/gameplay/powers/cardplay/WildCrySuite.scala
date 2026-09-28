@@ -4,7 +4,7 @@ import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{CardStaging, PlayerFacts, PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
 import oathdigital.testkit.CatalogNames
 
@@ -24,12 +24,6 @@ class WildCrySuite extends munit.FunSuite:
   private val supplyAfterCost = 3
   private def warbands(ready: ReadyGame): Int = player(ready).board.warbands
 
-  test("Wild Cry is a registered selected Search modifier"):
-    val power = WildCry.forCatalog(catalog).get
-    assertEquals(power.cardId, wildCry)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Search))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("it is offered for a Search when the card is usable, and for no other action"):
     val ready = withCry(beast.head)
     def offered(action: ActionRef) = rules.offerableWalkerPowers(ready, actor,
@@ -42,9 +36,13 @@ class WildCrySuite extends munit.FunSuite:
   test("it is not offered when the card is facedown or out of reach"):
     val facedown = asAdviser(SearchFixture.staged(Vector(beast.head) ++ others),
       wildCry, Orientation.FaceDown)
-    assert(start(facedown, modifiers).isLeft)
+    assertEquals(start(facedown, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.wild-cry is not applicable to this search")))
     val elsewhere = SearchFixture.staged(Vector(beast.head) ++ others)
-    assert(start(elsewhere, modifiers).isLeft)
+    assertEquals(start(elsewhere, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.wild-cry is not applicable to this search")))
 
   test("a beast denizen played to a site gains 1 Supply and 2 warbands"):
     val ready = withCry(beast.head)
@@ -99,17 +97,6 @@ class WildCrySuite extends munit.FunSuite:
     val after = SearchFixture.after(play(ready, modifiers, beast.head, "site"))
     assertEquals(warbands(after), warbands(ready) + 1)
     assertEquals(player(after).board.supply.supply, supplyAfterCost + 1)
-
-  test("a hook walked with the power alone applies it once"):
-    val ready = withBoard(atHome(base, wildCry))(
-      _.copy(supply = SupplyTrack(supplyAfterCost)))
-    val hook = CardPlayedFaceup(beast.head,
-      RuleSourceRef.Adviser(actor, beast.head))
-    val outcome = ProcedureWalker.advance(ready, hook, None,
-      WalkerPowers(Vector(WildCry.forCatalog(catalog).get))).toOption.get
-    val steps = outcome.asInstanceOf[WalkerOutcome.Finished].events
-      .collect { case step: WalkerStepRecorded => step.ops }.flatten
-    assertEquals(steps.count(_.isInstanceOf[GainSupply]), 1)
 
   test("Wild Cry cannot be discarded while it is selected: it is not offered " +
       "as the replacement of a faceup adviser"):

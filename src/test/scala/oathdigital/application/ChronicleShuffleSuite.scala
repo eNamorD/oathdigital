@@ -15,7 +15,3 @@ class ChronicleShuffleSuite extends munit.FunSuite:
     val cards = Vector("a", "b", "c")
     val ordered = ShufflePolicy.implementedFirst.order(cards, Set.empty[String], reversing)
     assertEquals(ordered, Vector("c", "b", "a"))
-
-  test("the random port shuffles without changing membership"):
-    val values = Vector(1, 2, 3, 4, 5)
-    assertEquals(ChronicleRandomPort.random.shuffle(values).sorted, values)

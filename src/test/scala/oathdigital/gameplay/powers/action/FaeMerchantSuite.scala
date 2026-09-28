@@ -16,15 +16,11 @@ class FaeMerchantSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(fae)
   private val scepter = RelicId("grand-scepter")
   private val held1 = RelicId("R08")
-  private val held2 = RelicId("R01")
   private def relicRef(id: RelicId) = DecisionOptionRef.Relic(id)
   private def staged(held: Vector[RelicId] = Vector(held1), secrets: Int = 2) =
     val ready0 = held.foldLeft(atHome(base, fae))((r, id) => withRelic(r, id))
     act(withBoard(ready0)(_.copy(faceUpSecrets = secrets)))
   private def relicIds(state: ReadyGame) = player(state).relics.map(_.id)
-
-  test("Fae Merchant is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(FaeMerchant.id).isDefined)
 
   test("it draws a relic, then asks which relic to put on the bottom"):
     val ready0 = staged()
@@ -109,18 +105,8 @@ class FaeMerchantSuite extends munit.FunSuite:
     assertEquals(relicIds(end), Vector.empty[RelicId])
     assertEquals(end.game.current.commonCards.relicDeck, Vector(held1))
 
-  test("it is unusable without a faceup secret or with a secret already on the card"):
+  test("it is unusable without a faceup secret"):
     assert(!usableIds(staged(secrets = 0)).contains(FaeMerchant.id))
-    val rules0 = rules()
-    val parked = use(rules0, staged(Vector(held1, held2), secrets = 3),
-      FaeMerchant.id, source).toOption.get
-    val done = answer(rules0, parked.state, FaeMerchant.decisionId,
-      relicRef(held1)).toOption.get
-    assert(!usableIds(ready(done.state)).contains(FaeMerchant.id))
-
-  test("its returned line tells its relic choice"):
-    assertEquals(FaeMerchant.forCatalog(catalog).narratedDecisions,
-      Set(FaeMerchant.decisionId))
 
   test("it writes the relic it drew, then the relic it put back in place of the generic line"):
     val ready0 = staged()

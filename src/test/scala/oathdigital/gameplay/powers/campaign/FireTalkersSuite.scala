@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Fire Talkers: a secret placed for three attack dice, added or removed,
@@ -53,6 +52,3 @@ class FireTalkersSuite extends munit.FunSuite:
     assertEquals(adviserTokens(picked.state, b.other), Some(Tokens.empty))
     assertEquals(player(picked.state, b.other).board.faceUpSecrets, 0)
     assertEquals(player(picked.state, b.other).board.faceDownSecrets, facedown + 1)
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(SimplePlans.forCatalog(catalog).count(_.id == FireTalkers.id), 1)

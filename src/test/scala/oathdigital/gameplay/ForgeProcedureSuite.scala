@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.catalog.CatalogPower
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -236,6 +237,41 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(rejects(ForgeProcedure.build(catalog, empty, f.actor.player)),
       OathViolation.ForgeUnavailable("relic deck is empty"): OathViolation)
 
+  test("P1: build rejects an actor who cannot fund the printed cost from " +
+      "their own faceup favor and secrets"):
+    // A Forge that starts unable to pay would spend Supply, walk to its last
+    // node and fail there with nothing recoverable, so this is a start gate.
+    val f = forgeable
+    def withFunds(favor: Int, faceUp: Int, faceDown: Int = 0) =
+      mapPlayer(f.ready, f.actor.player)(p => p.copy(board = p.board.copy(
+        favor = favor, faceUpSecrets = faceUp, faceDownSecrets = faceDown)))
+    def build(state: ReadyGame) =
+      ForgeProcedure.build(catalog, state, f.actor.player)
+    assert(build(withFunds(f.cost.favor, f.cost.secrets)).isRight,
+      "exactly enough of each resource is affordable")
+    assertEquals(rejects(build(withFunds(f.cost.favor - 1, f.cost.secrets))),
+      OathViolation.InsufficientFavor(f.cost.favor, f.cost.favor - 1): OathViolation)
+    assertEquals(rejects(build(withFunds(f.cost.favor, f.cost.secrets - 1))),
+      OathViolation.InsufficientSecrets(f.cost.secrets, f.cost.secrets - 1)
+        : OathViolation)
+    // Facedown secrets are not spendable, so they do not fund a Forge.
+    assertEquals(rejects(build(withFunds(f.cost.favor, 0, f.cost.secrets + 3))),
+      OathViolation.InsufficientSecrets(f.cost.secrets, 0): OathViolation)
+
+  test("P1: build refuses a site whose denizen carries a power outside the " +
+      "audited vocabulary"):
+    val f = forgeable
+    val active = f.targets.head.denizenId
+    val altered = catalog.copy(denizens = catalog.denizens.map { definition =>
+      if definition.id.value != active.value then definition
+      else definition.copy(powers = definition.powers :+ CatalogPower(
+        PowerId("denizen.future-forge-interaction"), persistent = false,
+        "Future power."))
+    })
+    // The violation names the catalog digests, so only its kind is stable.
+    assert(rejects(ForgeProcedure.build(altered, f.ready, f.actor.player))
+      .isInstanceOf[OathViolation.UnsupportedRuleCatalog])
+
   // ---------------------------------------------------------------------
   // P2 / P3: tree shape and park.
   // ---------------------------------------------------------------------
@@ -296,20 +332,11 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(DecisionQueries.wellFormed(decide.decisionId, decide.query),
       Right(()): Either[OathViolation, Unit])
 
-  test("the shipped catalog really does print four single-resource Forge " +
-      "costs, so the no-park path is not a synthetic case"):
-    val single = catalog.sites.flatMap(_.forgeRequirements)
-      .filter(cost => cost.favor == 0 || cost.secrets == 0)
-    assertEquals(single.size, 4)
-    assertEquals(single.toSet, Set(Tokens(3, 0), Tokens(0, 3)))
-    assert(single.forall(cost => !ForgeProcedure.parks(cost)))
-
   test("a three-favor or three-secret site declares no Decide node at all " +
       "and resolves its forced split without parking"):
     // The setup fixture deals no single-resource forge site into play, so
     // the printed cost is overridden on the site it does deal -- exactly as
-    // the neighbouring cost tests already do. The shipped catalog's own four
-    // such sites are covered by the test above.
+    // the neighbouring cost tests already do.
     Vector(Tokens(3, 0), Tokens(0, 3)).foreach { printed =>
       val base = forgeable
       val altered = catalog.copy(sites = catalog.sites.map(definition =>

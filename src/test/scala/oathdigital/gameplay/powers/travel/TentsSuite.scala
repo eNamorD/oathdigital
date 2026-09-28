@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class TentsSuite extends munit.FunSuite:
@@ -13,13 +12,6 @@ class TentsSuite extends munit.FunSuite:
   private val modifiers = Vector(Tents.id)
   /** The actor holds Tents as a faceup adviser and 1 favor, at the first plains. */
   private def held = withBoard(adviser(board(), tents))(_.copy(favor = 1))
-
-  test("Tents is a registered selected Travel modifier that costs 1 favor"):
-    val power = Tents.forCatalog(catalog).get
-    assertEquals(power.cardId, tents)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Travel))
-    assertEquals(power.cost, Cost(favor = 1))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
 
   test("a destination in the region of the pawn's site costs no Supply, and is " +
       "still offered"):
@@ -56,12 +48,16 @@ class TentsSuite extends munit.FunSuite:
 
   test("it cannot be selected without a favor to place, or onto an occupied card"):
     val broke = withBoard(held)(_.copy(favor = 0))
-    assert(travel(broke, coast, modifiers).isLeft)
+    assertEquals(travel(broke, coast, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.tents is not applicable to this travel")))
     val occupied = updateActor(held)(p => p.copy(advisers = p.advisers.map {
       case card: DenizenState if card.id == tents => card.copy(tokens = Tokens(1, 0))
       case other => other
     }))
-    assert(travel(occupied, coast, modifiers).isLeft)
+    assertEquals(travel(occupied, coast, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.tents is not applicable to this travel")))
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => rules.offerableWalkerPowers(held,
@@ -73,7 +69,9 @@ class TentsSuite extends munit.FunSuite:
   test("it is not offered when the card is facedown"):
     val facedown = withBoard(adviser(board(), tents, Orientation.FaceDown))(
       _.copy(favor = 1))
-    assert(travel(facedown, coast, modifiers).isLeft)
+    assertEquals(travel(facedown, coast, modifiers).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
+        "power denizen.tents is not applicable to this travel")))
 
   test("Tents and Forest Paths together need two favor: one favor is refused at " +
       "selection, before anything is paid"):

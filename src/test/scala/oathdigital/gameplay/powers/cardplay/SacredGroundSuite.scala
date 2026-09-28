@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{CardStaging, CatalogCards, NoteText,
-  PowerFixture,
-  PowerImplementationStatus, SearchFixture, WalkerPowerCatalog}
+  PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -27,11 +26,6 @@ class SacredGroundSuite extends munit.FunSuite:
   private def search(site: SiteId, vision: VisionId = VisionRules.Faith,
       side: EdificeSide = EdificeSide.Intact): OathTransition =
     searched(withE08(SearchFixture.staged(Vector(vision)), site, side), vision)
-
-  test("Sacred Ground is a registered, implemented rule"):
-    assert(WalkerPowerCatalog.default(catalog).powers.exists(
-      _.id == SacredGround.id))
-    assert(PowerImplementationStatus.implemented(catalog)(SacredGround.id))
 
   test("a player whose pawn is elsewhere cannot play a Vision faceup"):
     val parkedAt = search(elsewhere)

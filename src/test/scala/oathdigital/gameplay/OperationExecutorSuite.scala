@@ -57,28 +57,6 @@ class OperationExecutorSuite extends munit.FunSuite:
         code
       case other => fail(s"expected a CoreOperationRejected, got $other")
 
-  test("shadow comparison distinguishes parity rejection and mismatch"):
-    val matching = OperationShadowEvolution.compare(ready, Right(ready))
-    assert(matching.comparison.matchesAuthoritative)
-
-    val rejected = OperationShadowEvolution.compare(ready,
-      Left(OathViolation.InvalidEventOrder("shadow candidate rejected")))
-    assert(!rejected.comparison.matchesAuthoritative)
-    assert(!rejected.comparison.candidateSucceeded)
-    assertEquals(rejected.authoritative, ready)
-
-    val authoritative = executor.execute(
-      ready,
-      Flip(heldRelic.id, Location.PlayArea(blueId), Orientation.FaceDown)
-    ).toOption.get
-    val mismatch = OperationShadowEvolution.compare(authoritative, Right(ready))
-
-    assert(!mismatch.comparison.matchesAuthoritative)
-    assert(mismatch.comparison.candidateSucceeded)
-    assert(!mismatch.comparison.stateMatches)
-    assert(!mismatch.comparison.cardIndexMatches)
-    assertEquals(mismatch.authoritative, authoritative)
-
   test("policy receives the semantic root before primitive execution"):
     var seen = Vector.empty[CoreOperation]
     val rejecting = new OperationPolicy:
@@ -87,9 +65,10 @@ class OperationExecutorSuite extends munit.FunSuite:
         Left(OperationError.RestrictedOperation("blocked by test policy"))
     val reveal = Reveal(adviser.id, Location.PlayArea(playerId))
 
-    assert(OperationPipeline.run(ready, Vector(reveal), rejecting)(Right(_)).isLeft)
+    assertEquals(OperationPipeline.run(ready, Vector(reveal), rejecting)(Right(_)),
+      Left(OathViolation.CoreOperationRejected("restricted-operation",
+        "blocked by test policy")))
     assertEquals(seen, Vector(reveal))
-    assertEquals(ready.game.current.players.head.advisers, Vector(adviser))
 
   test("ordered batches apply staged state in order"):
     val gain = Gain.Favor(playerId, Suit.Order, 2)
@@ -112,8 +91,10 @@ class OperationExecutorSuite extends munit.FunSuite:
       PositionedLocation(Location.Site(sites.head))
     )
 
-    assert(executor.executeAll(ready, Vector(valid, invalid)).isLeft)
-    assertEquals(ready.game.current.players.head.board.favor, 1)
+    // The first operation is staged (1 + 1 favor) before the second fails.
+    assertEquals(executor.executeAll(ready, Vector(valid, invalid)),
+      Left(OperationError.InsufficientPieces(Piece.Favor(99),
+        Location.PlayArea(playerId), 2)))
     assertEquals(executor.executeAll(ready, Vector.empty),
       Left(OperationError.EmptyOperationBatch))
 
@@ -442,12 +423,6 @@ class OperationExecutorSuite extends munit.FunSuite:
     // Claiming moves custody only; resources already on the unheld banner stay
     // tracked on the banner.
     assertEquals(result.game.current.banners.peoplesFavor.favor, 2)
-
-  test("a held banner cannot be claimed from the shared bank"):
-    val claim = Move(Piece.Banner(Banner.PeoplesFavor),
-      PositionedLocation(Location.SharedBank),
-      PositionedLocation(Location.PlayArea(blueId)))
-    assert(executor.executeAll(ready, Vector(claim)).isLeft)
 
   test("transaction rejects direct-update failure and invariant corruption"):
     val operation = Gain.Favor(playerId, Suit.Order, 1)

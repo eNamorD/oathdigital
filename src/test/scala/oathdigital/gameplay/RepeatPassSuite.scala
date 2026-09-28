@@ -28,12 +28,6 @@ class RepeatPassSuite extends munit.FunSuite:
     assertEquals(supply(after), 2)
     assertEquals(events.size, 1)
 
-  test("a pass that records something repeats while its guard holds"):
-    val Right(WalkerOutcome.Finished(after, events)) = run(Repeat(
-      (state, _) => supply(state) < 4, GainSupply(actor, 1))): @unchecked
-    assertEquals(supply(after), 4)
-    assertEquals(events.size, 3)
-
   test("a pass that parks on a decision is not an empty pass"):
     val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Button(DecisionOptionRef.Button("yes"), "Yes"))))

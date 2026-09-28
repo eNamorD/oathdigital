@@ -313,7 +313,8 @@ private[frontend] object ServerUiSupport:
       if selected then "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
 
   private[frontend] def commandForSelection(action: BoardTargetAction,
-      targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
+      targets: Vector[BoardTargetRef], playerId: String)
+      : Option[GameCommand.StartWalker] =
     (action.actionKind, targets) match
       // Travel moved onto the generic walker (batch-1 Task 5), so the
       // destination the player just picked rides `StartWalker`'s start

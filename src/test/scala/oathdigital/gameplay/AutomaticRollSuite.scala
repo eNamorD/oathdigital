@@ -90,4 +90,4 @@ class AutomaticRollSuite extends munit.FunSuite:
 
   test("a simulated tree rolls placeholder faces instead of failing"):
     val walk = tree(ModifyDicePool(pool, 2), automatic)
-    assert(WalkerSimulation.run(walk, ready, noPowers).isRight)
+    assertEquals(WalkerSimulation.run(walk, ready, noPowers), Right(Vector[CoreOperation](ModifyDicePool(pool, 2))))

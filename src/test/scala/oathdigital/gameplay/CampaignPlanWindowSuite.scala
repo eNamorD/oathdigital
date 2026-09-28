@@ -444,7 +444,14 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       CampaignIds.finish)
     assert(awaits(finished.state, Vector(plan), b.actor, CampaignIds.sacrifice))
     assert(!ops(finished.events).exists(_.isInstanceOf[ModifyDicePool]))
-    val taken = pick(g, forced, b.actor, CampaignIds.attackerPlan,
+    // With a second plan left the window stays open, and the source already
+    // chosen is no longer offered.
+    val second = Plan("second", hearthCard, attacker, effects =
+      Vector(CampaignPlanEffect.AddAttackDice(1)))
+    val both = withAdviserFor(b, b.actor, hearthCard, Orientation.FaceUp)
+    val g2 = rulesWith(Vector(plan, second))
+    val (_, forced2) = committed(g2, both)
+    val taken = pick(g2, forced2, both.actor, CampaignIds.attackerPlan,
       denizen(orderCard))
-    assert(g.resolveWalker(taken.state, b.actor, CampaignIds.attackerPlan,
-      ChooseOneAnswer(denizen(orderCard))).isLeft)
+    assertEquals(optionsOf(parked(Vector(plan, second), both, taken))
+      .map(_.ref).toSet, Set(denizen(hearthCard), CampaignIds.finish))

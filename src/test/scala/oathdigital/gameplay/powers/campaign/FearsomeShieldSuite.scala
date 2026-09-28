@@ -40,16 +40,22 @@ class FearsomeShieldSuite extends munit.FunSuite:
     val run = commit(rules(losing), b, 4)
     // Only the title's plan is left to choose.
     assert(awaits(run, b.other, CampaignIds.defenderPlan))
+    assert(!run.offered(b.actor).contains(ref))
     val done = run.finish
     assertEquals(secretsOf(done.state, b.other), (1, 0))
     assert(!done.ops.exists(_.isInstanceOf[PayCost]))
 
   test("the relic must be faceup, and it is not the attacker's plan"):
     val base = againstPlayer(board())
-    val down = replacePlayer(withRelicFor(base, base.other, relic), base.other)(
-      p => p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceDown)),
-        board = p.board.copy(faceUpSecrets = 3)))
-    assertEquals(commit(rules(losing), down, 4).ops.count(_.isInstanceOf[PayCost]), 0)
+    val up = replacePlayer(withRelicFor(base, base.other, relic), base.other)(
+      p => p.copy(board = p.board.copy(faceUpSecrets = 3)))
+    // Faceup, the same board offers it; facedown, it does not.
+    assert(commit(rules(losing), up, 4).offered(up.actor).contains(ref))
+    val down = replacePlayer(up, up.other)(p => p.copy(relics =
+      p.relics.map(_.copy(orientation = Orientation.FaceDown))))
+    val facedown = commit(rules(losing), down, 4)
+    assert(!facedown.offered(down.actor).contains(ref))
+    assertEquals(facedown.ops.count(_.isInstanceOf[PayCost]), 0)
     val attacker = replacePlayer(withRelic(board(), relic), board().actor)(p =>
       p.copy(board = p.board.copy(faceUpSecrets = 3)))
     assert(awaits(commit(rules(losing), attacker, 2), attacker.actor,

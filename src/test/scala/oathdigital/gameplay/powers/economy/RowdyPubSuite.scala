@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
@@ -33,12 +32,6 @@ class RowdyPubSuite extends munit.FunSuite:
       .toOption.get
     (started.copy(events = started.events ++ done.events),
       done.state.asInstanceOf[Ready].value)
-
-  test("Rowdy Pub is a registered selected Muster modifier"):
-    val power = RowdyPub.forCatalog(catalog).get
-    assertEquals(power.cardId, pub)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Muster))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
 
   test("mustering from Rowdy Pub gains one more warband"):
     val ready = pubAtSite.ready

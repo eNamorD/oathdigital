@@ -11,7 +11,7 @@ private[frontend] final case class FacedownAdviserDraft(
   def choose(cardId: String): FacedownAdviserDraft =
     if advisers.exists(_.card.cardId == cardId) then copy(selectedCardId = Some(cardId))
     else this
-  def command: Option[GameIntent] = selected.map { adviser =>
+  def command: Option[GameIntent.StartWalker] = selected.map { adviser =>
     GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
       Vector(WalkerStartArgWire(adviser.card.cardKind,
         adviser.card.cardId)))

@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
 
@@ -34,9 +32,6 @@ class ScryerSuite extends munit.FunSuite:
   private def peekAt(from: OathTransition, region: Region) =
     answer(from, actor, Scryer.pileDecisionId, pick(Scryer.ref(region)))
       .toOption.get
-
-  test("Scryer is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Scryer.id).isDefined)
 
   test("it places a secret and asks which discard pile"):
     val t = started

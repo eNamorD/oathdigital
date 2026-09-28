@@ -77,7 +77,11 @@ class OfferHostSuite extends munit.FunSuite:
       low(ready), host, None, WalkerPowers(Vector(first))): @unchecked
     assertEquals(after.game.current.players.find(_.player == actor).get
       .board.supply.supply, 4)
-    assertEquals(events.size, 2)
+    // The transform's gain is recorded before the expansion's.
+    assertEquals(events.map(_.asInstanceOf[
+      oathdigital.gameplay.walker.WalkerStepRecorded].ops),
+      Vector(Vector[CoreOperation](GainSupply(actor, 1)),
+        Vector[CoreOperation](GainSupply(actor, 2))))
 
   test("a host is told the walk is resuming inside it, and sees the answers recorded so far"):
     val question = Decide("test.question", actor, DecisionQuery.ChooseOne(
@@ -140,8 +144,6 @@ class OfferHostSuite extends munit.FunSuite:
     val state = low(ready)
     ProcedureWalker.advance(state, host, None, WalkerPowers.empty)
     assertEquals(results(0), Right(Vector[CoreOperation](GainSupply(actor, 1))))
-    assert(results(1).isLeft)
+    assertEquals(results(1), Left(OathViolation.CoreOperationRejected(
+      "insufficient-supply", "a supply spend of 6 exceeds the 1 available")))
     assertEquals(results(2), Right(Vector[CoreOperation](GainSupply(actor, 1))))
-    // Asking changed nothing.
-    assertEquals(state.game.current.players.find(_.player == actor).get
-      .board.supply.supply, 1)

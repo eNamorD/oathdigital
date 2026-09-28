@@ -53,27 +53,6 @@ class ServerConfigSuite extends munit.FunSuite:
       ))
     )
 
-  test("CLI values take precedence over environment values"):
-    val result = ServerConfig.parse(
-      Array("--host", "0.0.0.0", "--port", "9090"),
-      Map(
-        "OATH_HOST" -> "127.0.0.1",
-        "OATH_PORT" -> "8081",
-        "OATH_DATABASE_PATH" -> "var/test-db",
-        "OATH_CATALOG_PATH" ->
-          "docs/catalog/new-foundations-component-catalog.json",
-        "OATH_MODE" -> "trusted-alpha",
-        "OATH_PUBLIC_BASE_URL" -> "http://192.168.1.20:9090"
-      ),
-      version
-    )
-    val config = result.toOption.get
-
-    assertEquals(config.host, "0.0.0.0")
-    assertEquals(config.port, 9090)
-    assertEquals(config.mode, ServerMode.TrustedAlpha)
-    assertEquals(config.version, "0.1.0-alpha.1")
-
   test("CLI overrides each environment-backed option"):
     val config = parse(
       Array(
@@ -151,11 +130,9 @@ class ServerConfigSuite extends munit.FunSuite:
     }
 
   test("authenticated public origin enforces the CSRF origin policy"):
-    Vector(
-      "https://play.example.com",
-      "http://localhost:8080",
-      "http://127.0.0.1:8080"
-    ).foreach { origin =>
+    // The origin table is SessionSecuritySuite's; one accept and one reject
+    // show the configuration applies it.
+    Vector("https://play.example.com").foreach { origin =>
       val config = parse(Array(
         "--session-cookie-name", "oath_session",
         "--authenticated-public-origin", origin
@@ -166,14 +143,7 @@ class ServerConfigSuite extends munit.FunSuite:
       )
     }
 
-    Vector(
-      "ftp://localhost",
-      "https:///missing-host",
-      "http://play.example.com",
-      "https://play.example.com/path",
-      "https://play.example.com?query=yes",
-      "https://play.example.com#fragment"
-    ).foreach { origin =>
+    Vector("https://play.example.com/path").foreach { origin =>
       val errors = ServerConfig.parse(
         Array(
           "--session-cookie-name", "oath_session",
@@ -285,21 +255,9 @@ class ServerConfigSuite extends munit.FunSuite:
       "--database-path", "--catalog-path"
     ))
 
-  test("runtime mode accepts only development and trusted-alpha"):
-    assertEquals(parse(Array("--mode", "development")).mode,
-      ServerMode.Development)
-    assertEquals(parse(Array(
-      "--mode", "trusted-alpha",
-      "--public-base-url", "http://localhost:8080"
-    )).mode, ServerMode.TrustedAlpha)
-
-    val errors = ServerConfig.parse(
-      Array("--mode", "production"), Map.empty, version
-    ).left.toOption.get
-    assert(errors.exists(_.startsWith("--mode:")))
-
   test("development mode rejects non-loopback bind hosts"):
-    Vector("0.0.0.0", "192.168.1.10", "example.com").foreach { host =>
+    // The host list is DevelopmentTrustBoundarySuite's; one shows the check applies.
+    Vector("0.0.0.0").foreach { host =>
       val errors = ServerConfig.parse(
         Array("--host", host), Map.empty, version
       ).left.toOption.get

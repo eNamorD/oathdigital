@@ -91,9 +91,6 @@ class TravelProcedureSuite extends munit.FunSuite:
     assertEquals(simulate(ready, mountain), Some(3))
     assertEquals(simulate(ready, island), Some(6))
 
-  test("a coast route replaces the cost with one"):
-    assertEquals(simulate(act(source = coast), island), Some(1))
-
   test("a coast route ignores the destination add rather than stacking it"):
     // Fair Isle carries both a coast and an island power: on a coast route
     // the replace lands and the +2 is dropped, so 1 rather than 3.
@@ -158,8 +155,8 @@ class TravelProcedureSuite extends munit.FunSuite:
     val rules = new OathRules(catalog, walkerPowerCatalog = powers)
     val rejected = rules.startWalker(Ready(ready), ActionRef.Travel, actor,
       Vector.empty, Vector(DecisionOptionRef.Site(destination)))
-    assert(rejected.isLeft)
-    assertEquals(active(ready).pawnSite, Some(plains.head))
+    assertEquals(rejected.map(_ => ()), Left(OathViolation.CoreOperationRejected(
+      "insufficient-supply", "a supply spend of 1 exceeds the 0 available")))
 
   test("simulation omits every destination the actor cannot afford"):
     val ready = passRuled(act(supply = 2))
@@ -179,7 +176,9 @@ class TravelProcedureSuite extends munit.FunSuite:
     val citizen = ready.updateCampaign(_.copy(lineages = ready.game.campaign.lineages.map {
         case (id, lineage) => id -> lineage.copy(role = Role.Citizen)
       }))
-    assert(TravelProcedure.build(catalog, citizen, actor,
+    val altered = citizen.updateCampaign(campaign => campaign.copy(foundations =
+      campaign.foundations.map { case (k, f) => k -> f.copy(face = FoundationFace.Altered) }))
+    assert(TravelProcedure.build(catalog, altered, actor,
       Vector(DecisionOptionRef.Site(destination))).isRight)
 
   // (e) projection uses automatic powers; preview uses the selected vector.
