@@ -3,6 +3,8 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 
 /** The Homeland site power (CR p. 31): "When playing a card of its Homeland
   * suit to this site, you may discard a card from the site first (even one of
@@ -10,24 +12,25 @@ import oathdigital.model._
   * offered whether or not the site is full.
   */
 class HomelandRuleSuite extends munit.FunSuite:
-  import PlacementFixture._
+  /** The Beast Homeland, with room for three cards. */
+  private val deepWoods = "Deep Woods"
+  // Plain, unrestricted cards: two Beast, the rest of other suits.
+  private val (errandBoy, wolves) = ("Errand Boy", "Wolves")
+  private val (rainBoots, ancientBinding, wrestlers, battleHonors) =
+    ("Rain Boots", "Ancient Binding", "Wrestlers", "Battle Honors")
 
-  private val (homeSite, homeSuit) = homeland
-  private val capacity = catalog.site(homeSite).get.capacity
-
-  private def ofSuit(matching: Boolean): Vector[DenizenId] =
-    plain(initialReady).filter(id =>
-      catalog.suitOf(id).contains(homeSuit) == matching)
-
-  private def siteChoice(ready: ReadyGame, actor: PlayerId, card: DenizenId) =
-    CardPlay.legalChoices(catalog, ready, actor, card,
+  private def siteChoice(ready: ReadyGame, card: String) =
+    CardPlay.legalChoices(catalog, ready, p1, CatalogNames.denizen(card),
       CardPlay.Origin.TemporaryHand)
       .find(_.placement.isInstanceOf[SearchPlacement.Site])
 
-  /** `card` played at the Homeland holding `cards`, which the actor rules. */
-  private def at(card: DenizenId, cards: Vector[DenizenId]) =
-    val (ready, actor, site) = staged(card, cards.map(denizen(_)), Some(homeSite))
-    (ruledByActor(ready, site), actor)
+  /** p1 stands at Deep Woods, which p1 rules and which holds `cards`, with
+    * `card` in hand to play. */
+  private def atDeepWoods(card: String, cards: String*): ReadyGame =
+    cards.foldLeft(Table.start
+      .pawn(p1, at = deepWoods).warbandsAt(deepWoods, p1, 1)
+      .hand(p1, card))((table, held) => table.denizen(held, at = deepWoods))
+      .ready
 
   test("the Homeland suit is read from the site's handler"):
     assertEquals(CardPlay.homelandSuit(catalog, SiteId("site:deep-woods")),
@@ -35,46 +38,36 @@ class HomelandRuleSuite extends munit.FunSuite:
     assertEquals(CardPlay.homelandSuit(catalog, SiteId("site:ancient-city")), None)
 
   test("a matching Homeland with room offers an optional discard"):
-    val card = ofSuit(true).head
-    val kept = ofSuit(false).head
-    assert(capacity > 1, s"the Homeland must have room, capacity $capacity")
-    val (ready, actor) = at(card, Vector(kept))
-    val choice = siteChoice(ready, actor, card).get
-    assertEquals(choice.replacements, Vector[CardId](kept))
+    val choice = siteChoice(atDeepWoods(errandBoy, rainBoots), errandBoy).get
+    assertEquals(choice.replacements,
+      Vector[CardId](CatalogNames.denizen(rainBoots)))
     assert(choice.replacementOptional)
 
   test("a card of another suit is offered no discard at a Homeland with room"):
-    val Vector(card, kept) = ofSuit(false).take(2)
-    val (ready, actor) = at(card, Vector(kept))
-    val choice = siteChoice(ready, actor, card).get
+    val choice = siteChoice(atDeepWoods(rainBoots, ancientBinding), rainBoots).get
     assertEquals(choice.replacements, Vector.empty)
     assert(!choice.replacementOptional)
 
   test("a full matching Homeland requires a discard, even of a matching card"):
-    val card = ofSuit(true).head
-    val fillers = (ofSuit(true).tail.take(1) ++ ofSuit(false)).take(capacity)
-    assertEquals(fillers.size, capacity)
-    val (ready, actor) = at(card, fillers)
-    val choice = siteChoice(ready, actor, card).get
-    assertEquals(choice.replacements.toSet, fillers.toSet[CardId])
+    val fillers = Vector(wolves, rainBoots, ancientBinding)
+    val choice = siteChoice(atDeepWoods(errandBoy, fillers*), errandBoy).get
+    assertEquals(choice.replacements.toSet,
+      fillers.map(CatalogNames.denizen(_): CardId).toSet)
     assert(!choice.replacementOptional)
 
   test("a full Homeland refuses a card of another suit"):
-    val card = ofSuit(false).head
-    val fillers = ofSuit(false).tail.take(capacity)
-    assertEquals(fillers.size, capacity)
-    val (ready, actor) = at(card, fillers)
-    assertEquals(siteChoice(ready, actor, card), None)
+    val ready = atDeepWoods(rainBoots, ancientBinding, wrestlers, battleHonors)
+    assertEquals(siteChoice(ready, rainBoots), None)
 
   test("an edifice of the card's suit does not make a site a Homeland"):
-    val hall = EdificeId("E16")
-    val hallSuit = catalog.suitOf(hall).get
-    val cards = plain(initialReady)
-    val card = cards.find(catalog.suitOf(_).contains(hallSuit)).get
-    val (_, _, pawnSite) = staged(card, Vector.empty)
-    assertEquals(CardPlay.homelandSuit(catalog, pawnSite), None)
-    val fillers = cards.filter(_ != card)
-      .take(catalog.site(pawnSite).get.capacity - 1)
-    val (built, actor, site) = staged(card, fillers.map(denizen(_)) :+
-      EdificeState(hall, EdificeSide.Intact, Tokens.empty))
-    assertEquals(siteChoice(ruledByActor(built, site), actor, card), None)
+    // Ancient City is no Homeland; the Order Hall of Ministers and two cards
+    // fill it, so an Order card has nowhere to go without a discard.
+    val home = Table.homeOf(p1)
+    assertEquals(CardPlay.homelandSuit(catalog, home), None)
+    val ready = Table.start
+      .warbandsAt(home, p1, 1)
+      .hand(p1, wrestlers)
+      .denizen(rainBoots, at = home).denizen(ancientBinding, at = home)
+      .edifice("Hall of Ministers", EdificeSide.Intact, at = home)
+      .ready
+    assertEquals(siteChoice(ready, wrestlers), None)

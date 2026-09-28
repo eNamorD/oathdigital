@@ -168,6 +168,13 @@ class TableSuite extends munit.FunSuite:
     intercept[munit.FailException](
       Table.start.knowsRelicAt(p2, "Sticky Fire", at = "Dunes"))
 
+  test("a card can be put in a player's hand"):
+    val ready = Table.start.hand(p1, "Alchemist", "Magician's Code").ready
+    assertEquals(ready.game.current.temporaryHands(p1), Vector(
+      CatalogNames.denizen("Alchemist"), CatalogNames.denizen("Magician's Code")))
+    assert(!ready.game.current.commonCards.worldDeck.contains(
+      CatalogNames.denizen("Alchemist")))
+
   test("the world deck's top can be named"):
     val ready = Table.start.worldDeckTop("Alchemist", "Magician's Code").ready
     assertEquals(ready.game.current.commonCards.worldDeck.take(2), Vector(

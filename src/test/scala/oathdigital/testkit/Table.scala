@@ -179,6 +179,15 @@ final case class Table private (private val game: ReadyGame,
         relics = p.relics.map(r => if r.id == id then r.copy(tokens = set)
           else r))))))
 
+  /** `cards` in `player`'s hand, after any already there: the hand a
+    * Search draws into and a card play takes from. */
+  def hand(player: PlayerId, cards: (String | WorldCardId)*)(
+      using munit.Location): Table =
+    val ids = cards.toVector.map(CatalogNames.worldCard)
+    ids.foldLeft(this)(_.moving(_)).update(_.updateCurrent(c => c.copy(
+      temporaryHands = c.temporaryHands.updated(player,
+        c.temporaryHands.getOrElse(player, Vector.empty) ++ ids))))
+
   /** These cards on top of the world deck, first named on top. */
   def worldDeckTop(cards: (String | WorldCardId)*)(using munit.Location): Table =
     val ids = cards.toVector.map(CatalogNames.worldCard)

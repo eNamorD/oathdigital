@@ -3,9 +3,10 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.{PlacementRules, RuleNotes}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.NoteText
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 
 /** The Homeland rule's line (power log lines design, "Game rules"): a play to
   * the Homeland of the card's suit asks for a discard, and the Homeland says
@@ -15,20 +16,22 @@ class HomelandLineSuite extends munit.FunSuite:
   import PlacementFixture._
 
   private val none = WalkerPowers.empty
-  private val (homeSite, homeSuit) = homeland
+  /** The Beast Homeland, with room for three cards. */
+  private val homeSite = CatalogNames.site("Deep Woods")
 
-  /** The Homeland, full or with room, ruled by the actor, and a card in hand
-    * whose suit is the Homeland's or not. */
+  /** p1 stands at Deep Woods, which p1 rules, with a card in hand: the Beast
+    * Errand Boy if `matching`, else the Nomad Rain Boots. Deep Woods holds
+    * three other-suit cards if `full`, else one. */
   private def atHomeland(matching: Boolean, full: Boolean = true)
       : (ReadyGame, PlayerId, DenizenId) =
-    val cards = plain(initialReady)
-    val card = cards.find(id =>
-      catalog.suitOf(id).contains(homeSuit) == matching).get
-    val capacity = catalog.site(homeSite).get.capacity
-    val fillers = cards.filter(_ != card).take(if full then capacity else 1)
-    val (ready, actor, site) = staged(card, fillers.map(denizen(_)),
-      Some(homeSite))
-    (ruledByActor(ready, site), actor, card)
+    val card = if matching then "Errand Boy" else "Rain Boots"
+    val fillers = Vector("Ancient Binding", "Wrestlers", "Battle Honors")
+      .take(if full then 3 else 1)
+    val ready = fillers.foldLeft(Table.start
+      .pawn(p1, at = homeSite).warbandsAt(homeSite, p1, 1)
+      .hand(p1, card))((table, held) => table.denizen(held, at = homeSite))
+      .ready
+    (ready, p1, CatalogNames.denizen(card))
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(RuleNotes.homelandDiscard, Vector(PlacementRules.discardFirst),
