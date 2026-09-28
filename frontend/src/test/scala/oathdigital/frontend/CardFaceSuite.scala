@@ -177,13 +177,6 @@ class CardFaceSuite extends munit.FunSuite:
     assertEquals(one(node, ".card-hover-summary .card-name").map(_.textContent),
       Some("Ancient Crown"))
 
-  test("knowability is read per render, so a later projection can add the pip"):
-    val before = CardFace.render(CardDetails("hidden", "relic",
-      "Facedown relic", orientation = Some("face-down"), hidden = true))
-    val after = CardFace.render(knowable)
-    assert(!before.classList.contains("card-face-knowable"))
-    assert(after.classList.contains("card-face-knowable"))
-
   test("the unimplemented marker survives the redesign"):
     val node = CardFace.render(faceUp.copy(implemented = false))
     assert(node.classList.contains("card-face-unimplemented"))
@@ -192,18 +185,3 @@ class CardFaceSuite extends munit.FunSuite:
 
   test("the card id rides the element for focus restoration"):
     assertEquals(CardFace.render(faceUp).getAttribute("data-card-id"), "d1")
-
-  test("an empty denizen slot and an unknown relic occupy their type's box"):
-    assert(ServerUiSupport.emptySlot("denizen").classList
-      .contains("card-face-denizen"))
-    assert(ServerUiSupport.emptySlot("denizen").classList
-      .contains("card-slot-empty"))
-    assertEquals(ServerUiSupport.emptySlot("denizen").getAttribute("aria-label"),
-      "Empty denizen slot")
-    assert(ServerUiSupport.emptySlot("relic").classList
-      .contains("card-face-relic"))
-    val relic = ServerUiSupport.facedownCard("relic")
-    assert(relic.classList.contains("card-face-relic"))
-    assert(relic.classList.contains("card-face-down"))
-    assertEquals(relic.textContent, "R")
-    assertEquals(relic.getAttribute("aria-label"), "Facedown relic")

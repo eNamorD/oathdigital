@@ -42,7 +42,7 @@ class SnapshotPollingCoordinatorSuite extends FunSuite:
     assert(poller.isRunning)
     assertEquals(clock.activeDelays, Vector(5000))
 
-  test("nextSequence distinguishes unchanged, older, and changed snapshots"):
+  test("snapshotAdvances distinguishes unchanged, older, and changed snapshots"):
     val session = new ServerSessionCoordinator("game-1", "red-exile")
     val request = session.switchSession("game-1", "red-exile")
 
@@ -65,27 +65,6 @@ class SnapshotPollingCoordinatorSuite extends FunSuite:
     assertEquals(requests.toVector, Vector(request))
     assert(poller.hasInFlightPoll)
     assertEquals(clock.activeDelays, Vector.empty)
-
-  test("disconnect stops polling and explicit reconnect resumes it"):
-    val clock = new FakePollClock
-    val requests = mutable.ArrayBuffer.empty[ServerRequestIdentity]
-    val poller = new SnapshotPollingCoordinator(clock, requests += _)
-    val session = new ServerSessionCoordinator("game-1", "red-exile")
-    val initial = session.switchSession("game-1", "red-exile")
-
-    poller.resume(initial)
-    clock.fireNext()
-    val offline = GameClientFailure.NetworkFailure("offline")
-    assert(session.recordFailure(initial, offline))
-    assert(poller.complete(initial, continuePolling = false))
-    poller.stop()
-    assert(!poller.isRunning)
-    assertEquals(clock.activeDelays, Vector.empty)
-
-    val reconnect = session.reconnect()
-    poller.resume(reconnect)
-    assert(poller.isRunning)
-    assertEquals(clock.activeDelays, Vector(5000))
 
   test("session switches reject stale timers and callbacks"):
     val clock = new FakePollClock

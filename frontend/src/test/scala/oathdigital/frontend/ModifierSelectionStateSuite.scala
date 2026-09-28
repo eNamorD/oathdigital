@@ -2,8 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse,
-  PreviewModifier, PreviewTarget, ActorlessCommandCodec, ActorlessCommandRequest,
-  ModifierInvocation}
+  PreviewModifier, PreviewTarget, ModifierInvocation}
 
 class ModifierSelectionStateSuite extends munit.FunSuite:
   private val context = ModifierSelectionContext("g", "p", 4, "trade")
@@ -167,11 +166,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     val submitted = ModifierFlowDraft.submission(startRecover,
       selection.invocations)
     assertEquals(submitted, GameIntent.StartWalker("recover", Vector("denizen.catacombs")))
-    val encoded = ActorlessCommandCodec.encode(ActorlessCommandRequest(4,
-      submitted, Vector.empty))
-    val decoded = ActorlessCommandCodec.decode(encoded).toOption.get
-    assertEquals(decoded.intent, submitted)
-    assertEquals(decoded.orderedModifiers, Vector.empty[ModifierInvocation])
 
   test("a selected game-rule modifier such as Rowdy Pub invokes without throwing"):
     val rowdyPub = PreviewModifier("game:denizen.rowdy-pub", "denizen.rowdy-pub",

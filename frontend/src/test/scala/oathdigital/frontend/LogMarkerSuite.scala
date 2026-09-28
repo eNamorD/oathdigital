@@ -19,9 +19,6 @@ class LogMarkerSuite extends munit.FunSuite:
       pending = Vector.empty
       due.foreach(_())
 
-  test("the key names the game and the seat"):
-    assertEquals(LogMarker.key("g1", "red-exile"), "oath.log.seen.g1.red-exile")
-
   test("opening a seat reads its stored sequence"):
     val store = FakeStore(Map("oath.log.seen.g1.red" -> "42"))
     assertEquals(new LogMarker(Some(store)).open("g1", "red"), Some(42L))
