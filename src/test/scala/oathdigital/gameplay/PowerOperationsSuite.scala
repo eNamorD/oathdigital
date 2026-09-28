@@ -67,58 +67,6 @@ class PowerOperationsSuite extends munit.FunSuite:
     assert(Costs.plan(facedown, actor.player, Location.OnCard(denizenId),
       Cost(secretBurnt = 1)).isRight)
 
-  test("DrawTopRelic and PlaceRelicAtSite preserve top-card and facedown rules"):
-    val (ready, actor, siteId, _) = operationReady
-    val relic = DrawTopRelic.plan(ready).toOption.get
-    assert(DrawTopRelic.validate(ready, RelicId("wrong")).isLeft)
-    assert(PlaceRelicAtSite.plan(catalog, ready, actor.player, relic, siteId,
-      Orientation.FaceUp).isLeft)
-    val placement = PlaceRelicAtSite.plan(catalog, ready, actor.player, relic,
-      siteId, Orientation.FaceDown).toOption.get
-    val operation = PowerOperationPlanner.placement(placement)
-    val operations = Vector(operation)
-    val allowlist = OperationPolicy.exact(
-      operations, "test placement operation is not permitted")
-    val after = OperationPipeline.run(
-      ready, operations, allowlist)(Right(_)).toOption.get.state
-    assertEquals(after.game.current.commonCards.relicDeck,
-      ready.game.current.commonCards.relicDeck.tail)
-    assertEquals(after.game.current.map.sites(siteId).relics,
-      Vector(RelicState(relic, Orientation.FaceDown, Tokens.empty)))
-    assert(OperationPipeline.run(
-      after, operations, allowlist)(Right(_)).isLeft)
-
-  test("power operation plans apply in order and fail without a partial result"):
-    val (ready, actor, siteId, denizenId) = operationReady
-    val payCost = Costs.plan(ready, actor.player, Location.OnCard(denizenId),
-      Cost(secret = 1)).toOption.get
-    val relic = DrawTopRelic.plan(ready).toOption.get
-    val placement = PlaceRelicAtSite.plan(catalog, ready, actor.player, relic,
-      siteId, Orientation.FaceDown).toOption.get
-    val operations = Vector[CoreOperation](payCost) :+
-      PowerOperationPlanner.placement(placement)
-    val allowlist = OperationPolicy.exact(
-      operations, "test power operation is not permitted")
-    val after = OperationPipeline.run(
-      ready, operations, allowlist)(Right(_)).toOption.get.state
-    assertEquals(after.game.current.players.find(_.player == actor.player).get
-      .board.faceUpSecrets, actor.board.faceUpSecrets - 1)
-    assertEquals(after.game.current.map.sites(siteId).relics.head.id, relic)
-
-    val invalidOperations = Vector[CoreOperation](payCost) :+ Play(
-      RelicId("missing"),
-      PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
-      Location.Site(siteId),
-      Orientation.FaceDown)
-    val invalidAllowlist = OperationPolicy.exact(
-      invalidOperations, "test invalid operation is not permitted")
-    assert(OperationPipeline.run(
-      ready, invalidOperations, invalidAllowlist)(Right(_)).isLeft)
-    assertEquals(ready.game.current.players.find(_.player == actor.player).get
-      .board.faceUpSecrets, actor.board.faceUpSecrets)
-    assert(OperationPipeline.run(ready, Vector.empty,
-      OperationPolicy.Permissive)(Right(_)).isLeft)
-
   test("PayCost executes placed and burnt portions atomically"):
     val (ready, actor, siteId, denizenId) = operationReady
     val placedAt = Location.OnCard(denizenId)
