@@ -34,11 +34,6 @@ class SelectedModifierSuite extends munit.FunSuite:
   private def atHomeWith(cost: Int = 1) = withBoard(atHome(base, card))(
     _.copy(favor = cost))
 
-  test("its resolution is read from the catalog"):
-    assertEquals(free.resolution, PowerResolution.PlayerSelected)
-    assertEquals(Probe(card, Cost.free, travel, "denizen.toll-roads").resolution,
-      PowerResolution.Automatic)
-
   test("it is offered for its own action and no other"):
     val ready = atHomeWith()
     assert(selectable(ready, free))

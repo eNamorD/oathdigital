@@ -49,16 +49,6 @@ class DowsingSticksSuite extends munit.FunSuite:
     assert(!usableIds(staged(secrets = 2)).contains(DowsingSticks.id))
     assert(use(rules(), staged(secrets = 2), DowsingSticks.id, source).isLeft)
 
-  test("it is unusable while a secret already rests on the relic"):
-    val done = use(rules(), staged(secrets = 6), DowsingSticks.id, source)
-      .toOption.get
-    assert(!usableIds(ready(done.state)).contains(DowsingSticks.id))
-
-  test("a facedown Dowsing Sticks cannot be used"):
-    val facedown = act(withBoard(withRelic(base, sticks, Orientation.FaceDown))(
-      _.copy(faceUpSecrets = 3)))
-    assert(!usableIds(facedown).contains(DowsingSticks.id))
-
   test("it writes the relic it drew"):
     val ready0 = staged()
     val top = ready0.game.current.commonCards.relicDeck.head

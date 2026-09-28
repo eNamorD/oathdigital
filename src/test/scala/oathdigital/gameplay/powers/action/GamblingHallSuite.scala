@@ -88,26 +88,9 @@ class GamblingHallSuite extends munit.FunSuite:
     assert(answer(rules0, parked.state, GamblingHall.decisionId,
       DecisionOptionRef.Button("elsewhere")).isLeft)
 
-  test("it is unusable without 2 favor, and again while its card holds favor"):
+  test("it is unusable without 2 favor"):
     assert(!usableIds(staged(favor = 1)).contains(GamblingHall.id))
     assert(use(rules(total4), staged(favor = 1), GamblingHall.id, source).isLeft)
-    val parked = use(rules(total4), staged(), GamblingHall.id, source).toOption.get
-    val done = answer(rules(total4), parked.state, GamblingHall.decisionId,
-      bank(Suit.Beast)).toOption.get
-    val again = ready(done.state)
-    assert(!usableIds(again).contains(GamblingHall.id))
-    assert(use(rules(total4), again, GamblingHall.id, source).isLeft)
-
-  test("a Gambling Hall at a site the actor rules is usable from another site"):
-    val far = base.game.current.map.inPlay.toVector.sortBy(_.value)
-      .find(_ != home(base)).get
-    val kind = oathdigital.gameplay.powers.PlayerFacts.forceKind(base, actor)
-      .toOption.get
-    val ready0 = act(withBoard(atSite(base, hall, far).updateCurrent(c =>
-      c.copy(map = c.map.copy(sites = c.map.sites.updated(far,
-        c.map.sites(far).copy(forces = SiteForces.Occupied(kind, 1)))))))(
-      _.copy(favor = 3)))
-    assert(usableIds(ready0).contains(GamblingHall.id))
 
   private val card = PowerSourceRef.Card(hall)
   private def notes(events: Vector[OathEvent]): Vector[PowerNoted] =

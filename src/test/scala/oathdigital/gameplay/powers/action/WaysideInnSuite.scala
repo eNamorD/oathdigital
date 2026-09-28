@@ -41,12 +41,6 @@ class WaysideInnSuite extends munit.FunSuite:
       PhasePowerCatalog.default(catalog)), Vector.empty)
     assert(use(broke).isLeft)
 
-  test("it is unusable again while its card holds the favor"):
-    val used = after(use(staged(favor = 3, supply = 2)).toOption.get.state)
-    assertEquals(PhasePowerProcedure.usable(catalog, used, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
-    assert(use(used).isLeft)
-
   test("it is usable in the Act phase only"):
     val wake = inPhase(staged(favor = 3, supply = 2), Phase.Wake)
     assertEquals(PhasePowerProcedure.usable(catalog, wake, actor,

@@ -111,9 +111,12 @@ class PowerNoteWalkerSuite extends munit.FunSuite:
     val state = OathState.Ready(ready)
     assertEquals(ProcedureWalker.applyRecorded(state, noted("x")), Right(state))
 
-  test("a phase power's selected card, relic, edifice or site is its note source"):
+  test("a phase power's selected card, relic, edifice, site or banner is its " +
+      "note source"):
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Denizen(DenizenId("93"))),
       Some(PowerSourceRef.Card(DenizenId("93"))))
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Site(SiteId("s"))),
       Some(PowerSourceRef.Site(SiteId("s"))))
+    assertEquals(PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
+      Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
     assertEquals(PowerSourceRef.of(DecisionOptionRef.Button("b")), None)

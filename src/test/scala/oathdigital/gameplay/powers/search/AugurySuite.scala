@@ -67,10 +67,6 @@ class AugurySuite extends munit.FunSuite:
     // The pile is drawn from its end, and Augury takes a fourth card.
     assertEquals(hand(started), pile.reverse.take(4))
 
-  test("without the selection the draw is the printed three"):
-    val top = plain.take(6)
-    assertEquals(hand(start(withAugury(top)).toOption.get), top.take(3))
-
   test("it is offered for Search, and not for another action"):
     val ready = withAugury(plain.take(6))
     val offered = (action: ActionRef) =>

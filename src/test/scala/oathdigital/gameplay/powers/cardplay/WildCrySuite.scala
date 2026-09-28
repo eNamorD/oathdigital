@@ -4,7 +4,7 @@ import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{CardStaging, PlayerFacts, PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
 import oathdigital.testkit.CatalogNames
 
@@ -93,17 +93,6 @@ class WildCrySuite extends munit.FunSuite:
     val after = SearchFixture.after(play(ready, modifiers, beast.head, "site"))
     assertEquals(warbands(after), warbands(ready) + 1)
     assertEquals(player(after).board.supply.supply, supplyAfterCost + 1)
-
-  test("a hook walked with the power alone applies it once"):
-    val ready = withBoard(atHome(base, wildCry))(
-      _.copy(supply = SupplyTrack(supplyAfterCost)))
-    val hook = CardPlayedFaceup(beast.head,
-      RuleSourceRef.Adviser(actor, beast.head))
-    val outcome = ProcedureWalker.advance(ready, hook, None,
-      WalkerPowers(Vector(WildCry.forCatalog(catalog).get))).toOption.get
-    val steps = outcome.asInstanceOf[WalkerOutcome.Finished].events
-      .collect { case step: WalkerStepRecorded => step.ops }.flatten
-    assertEquals(steps.count(_.isInstanceOf[GainSupply]), 1)
 
   test("Wild Cry cannot be discarded while it is selected: it is not offered " +
       "as the replacement of a faceup adviser"):

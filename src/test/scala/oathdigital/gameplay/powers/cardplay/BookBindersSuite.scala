@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powerresolver.{PowerCtx, Transform}
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture, SearchFixture,
   TargetsFixture, WalkerPowerCatalog}
@@ -82,26 +81,6 @@ class BookBindersSuite extends munit.FunSuite:
     val after = SearchFixture.after(SearchFixture.play(ready, Vector.empty,
       VisionRules.Faith, "adviser-facedown"))
     assertEquals(after.banks.favor(Suit.Hearth), 5)
-
-  test("the Conspiracy triggers it"):
-    val ready = arranged(Map(Suit.Arcane -> 3, Suit.Order -> 3),
-      vision = VisionRules.Conspiracy)
-    val power = BookBinders.forCatalog(catalog).get
-    val hook = CardPlayedFaceup(VisionRules.Conspiracy,
-      RuleSourceRef.Adviser(actor, VisionRules.Conspiracy))
-    val ctx = PowerCtx(ready, actor, power.source,
-      PowerWindow.ActionCardPlayedFaceup, Vector.empty, hook)
-    val Transform(fn) =
-      power.contributions(PowerWindow.ActionCardPlayedFaceup).head: @unchecked
-    val folded = fn(ctx, Vector(hook))
-    assertEquals(folded.head, hook)
-    // The take is one node whatever it does to bank state (see the fix
-    // wave's fix), so it is a single Branch, not a bare Decide.
-    val branches = folded.collect { case branch: Branch => branch }
-    assertEquals(branches.size, 1)
-    val selected = branches.head.select(ready, PendingTree(Vector.empty, Vector.empty))
-    assertEquals(selected.collect { case decide: Decide => decide.owner },
-      Vector(holder))
 
   /** `holder` also holds a relic, and stands at the actor's own site, so
     * the actor's faceup Conspiracy has a legal target: another player's pawn

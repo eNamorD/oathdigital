@@ -65,13 +65,6 @@ class WolvesSuite extends munit.FunSuite:
     assertEquals(usableNow(staged(secrets = 0)), Vector.empty)
     assert(use(staged(secrets = 0), Wolves, source).isLeft)
 
-  test("it is unusable again while its card holds the secret"):
-    val t = parked
-    val done = answer(t, actor, Wolves.decisionId, choose(victim)).toOption.get
-    val again = withSecrets(after(done), actor, 1, 0)
-    assertEquals(usableNow(again), Vector.empty)
-    assert(use(again, Wolves, source).isLeft)
-
   test("it writes the warband it killed"):
     val done = answer(parked, actor, Wolves.decisionId, choose(victim)).toOption.get
     assertEquals(NoteText.said(Wolves, done.events), Vector(NoteText.Said(

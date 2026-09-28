@@ -41,10 +41,6 @@ class PowerNoteCatalogSuite extends munit.FunSuite:
     assert(!NoteKey.isUse("usedx"))
     assert(!NoteKey.isUse("gained"))
 
-  test("a banner option names its banner as a note's source"):
-    assertEquals(PowerSourceRef.of(DecisionOptionRef.Banner(Banner.DarkestSecret)),
-      Some(PowerSourceRef.Banner(Banner.DarkestSecret)))
-
   test("every phase power but a forced one declares its own used line"):
     // A forced power is never a `UsePower`, so it has no "Used" line to
     // replace, and its lines are trigger lines.

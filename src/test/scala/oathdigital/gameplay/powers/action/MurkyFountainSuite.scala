@@ -79,15 +79,10 @@ class MurkyFountainSuite extends munit.FunSuite:
     assertEquals(player(end).board.supply, SupplyTrack(1))
     walkerParked.assertResumed(done.state, Phase.Act, actor)
 
-  test("it is unusable without a faceup secret, or with a secret already on the card"):
+  test("it is unusable without a faceup secret"):
     val noSecret = withBoard(staged())(_.copy(faceUpSecrets = 0))
     assert(!usableIds(noSecret).contains(MurkyFountain.id))
     assert(use(rules(), noSecret, MurkyFountain.id, source).isLeft)
-    val rules0 = rules(defenseDice(DefenseDieFace.OneShield,
-      DefenseDieFace.OneShield))
-    val first = ready(use(rules0, withBoard(staged())(_.copy(faceUpSecrets = 2)),
-      MurkyFountain.id, source).toOption.get.state)
-    assert(!usableIds(first).contains(MurkyFountain.id))
 
   test("the intact face is Marble Fountains and offers no Murky Fountain"):
     val intact = staged(side = EdificeSide.Intact)

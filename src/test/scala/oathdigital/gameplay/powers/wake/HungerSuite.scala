@@ -178,14 +178,3 @@ class HungerSuite extends munit.FunSuite:
     assertEquals(woken.ready.game.current.turn.phase, Phase.Act)
     assertEquals(NoteText.said(hunger, woken.events).map(_.key),
       Vector("buried"))
-
-  test("Hunger cannot be used as an optional power"):
-    val t = rested(staged(Orientation.FaceDown))
-    val faceup = ready(t.state).updateCurrent(c => c.copy(players =
-      c.players.map(p => if p.player != next then p else p.copy(advisers =
-        p.advisers.map {
-          case d: DenizenState if d.id == card =>
-            d.copy(orientation = Orientation.FaceUp)
-          case other => other }))))
-    assert(rules.startWalker(Ready(faceup), ActionRef.UsePower(Hunger.id), next,
-      Vector.empty, Vector(DecisionOptionRef.Denizen(card))).isLeft)

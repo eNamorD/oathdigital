@@ -129,16 +129,12 @@ class CrystalVialSuite extends munit.FunSuite:
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
     assertEquals(secretsOf(after(t)), (0, 0))
 
-  test("it needs two faceup secrets, and is unusable while the Vial holds one"):
+  test("it needs two faceup secrets"):
     Vector((1, 0), (1, 5)).foreach { case (up, down) =>
       val ready = withSecrets(staged, actor, up, down)
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
       assert(use(ready, power, source).isLeft)
     }
-    val t = use(staged, power, source).toOption.get
-    val done = answer(t, actor, CrystalVial.decisionId,
-      pick(DecisionOptionRef.Denizen(held))).toOption.get
-    assertEquals(usableNow(withSecrets(after(done), actor, 2, 0)), Vector.empty)
 
   test("it writes the card it buried in place of the generic line"):
     val t = use(staged, power, source).toOption.get

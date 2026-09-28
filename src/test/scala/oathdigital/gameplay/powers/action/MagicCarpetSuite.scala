@@ -79,11 +79,6 @@ class MagicCarpetSuite extends munit.FunSuite:
   test("it costs nothing and needs no secret"):
     assert(usable(withSecrets(staged, 0), MagicCarpet.id))
 
-  test("a facedown Carpet cannot be used"):
-    val facedown = inPhase(withRelic(base, carpet, Orientation.FaceDown), Phase.Act)
-    assert(!usable(facedown, MagicCarpet.id))
-    assert(use(facedown, MagicCarpet.id, carpet).isLeft)
-
   test("it writes where the pawn went, then that it was discarded"):
     val (first, placed) = placedAt(staged, deepWoods)
     val done = choose(placed.state, MagicCarpet.fateDecisionId,

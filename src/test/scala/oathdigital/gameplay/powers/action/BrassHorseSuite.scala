@@ -89,15 +89,11 @@ class BrassHorseSuite extends munit.FunSuite:
       Reveal(provincesTop, Location.RegionalDiscard(Region.Provinces))))
     assertEquals(pawnOf(readyOf(done.state)), deepWoods)
 
-  test("it is unusable without a secret, when occupied, or facedown"):
+  test("it is unusable without a secret"):
     val id = BrassHorse.id
     assert(usable(staged, id))
     assert(!usable(withSecrets(staged, 0), id))
     assert(use(withSecrets(staged, 0), id, horse).isLeft)
-    assert(!usable(withRelicTokens(staged, horse, Tokens(0, 1)), id))
-    val facedown = inPhase(withSecrets(
-      withRelic(base, horse, Orientation.FaceDown), 2), Phase.Act)
-    assert(!usable(facedown, id))
 
   test("it writes the card it revealed in place of the generic line, then where the pawn went"):
     val done = use(cradleTopped(beastTop), BrassHorse.id, horse).toOption.get

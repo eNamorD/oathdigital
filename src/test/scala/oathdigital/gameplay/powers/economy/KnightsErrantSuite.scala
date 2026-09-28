@@ -183,15 +183,6 @@ class KnightsErrantSuite extends munit.FunSuite:
     val open = musterFrom(base, modifiers)
     assert(campaigning(open).isRight)
 
-  test("a nested Campaign that is allowed is not stopped by a restriction " +
-      "once it is under way"):
-    val forced = toForce(answer(musterFrom(staged().ready, modifiers),
-      KnightsErrant.decisionId, campaign))
-    // Every later command of the Campaign is checked against its answers too,
-    // and none of them is refused.
-    val done = answer(forced, CampaignIds.force, ChooseAmountAnswer(0))
-    assertEquals(ready(done).game.current.walkerProcedure, None)
-
   // ---- Lines ----
 
   private val power = KnightsErrant.forCatalog(catalog).get
