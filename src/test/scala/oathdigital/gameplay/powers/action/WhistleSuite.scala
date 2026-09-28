@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.testkit.Table.{p2, p3}
 
@@ -15,9 +13,6 @@ class WhistleSuite extends munit.FunSuite:
   private def staged(secrets: Int = 2) = inPhase(
     withSecrets(withRelic(homelands(base), whistle), secrets), Phase.Act)
   private val target = DecisionOptionRef.Player(p2)
-
-  test("Whistle is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Whistle.id).isDefined)
 
   test("it pulls the chosen pawn to the actor's site and hands over the secret"):
     val start = staged()

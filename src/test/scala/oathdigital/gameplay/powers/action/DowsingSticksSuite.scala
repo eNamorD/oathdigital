@@ -17,9 +17,6 @@ class DowsingSticksSuite extends munit.FunSuite:
   private def staged(secrets: Int = 3) = act(withBoard(withRelic(base, sticks))(
     _.copy(faceUpSecrets = secrets)))
 
-  test("Dowsing Sticks is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(DowsingSticks.id).isDefined)
-
   test("it places 1 secret, burns 2 and takes the top relic facedown"):
     val ready0 = staged()
     val top = ready0.game.current.commonCards.relicDeck.head

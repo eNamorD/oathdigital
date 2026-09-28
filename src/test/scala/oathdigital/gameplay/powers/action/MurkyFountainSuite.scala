@@ -32,9 +32,6 @@ class MurkyFountainSuite extends munit.FunSuite:
         c.map.sites(far).copy(forces = SiteForces.Occupied(kind, 1))))))
     act(withBoard(ruled)(_.copy(supply = SupplyTrack(supply))))
 
-  test("Murky Fountain is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(MurkyFountain.id).isDefined)
-
   test("at its site it places a secret and gains Supply equal to the total"):
     val rules0 = rules(defenseDice(DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields))

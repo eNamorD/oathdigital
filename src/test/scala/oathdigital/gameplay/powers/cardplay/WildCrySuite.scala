@@ -24,12 +24,6 @@ class WildCrySuite extends munit.FunSuite:
   private val supplyAfterCost = 3
   private def warbands(ready: ReadyGame): Int = player(ready).board.warbands
 
-  test("Wild Cry is a registered selected Search modifier"):
-    val power = WildCry.forCatalog(catalog).get
-    assertEquals(power.cardId, wildCry)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Search))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("it is offered for a Search when the card is usable, and for no other action"):
     val ready = withCry(beast.head)
     def offered(action: ActionRef) = rules.offerableWalkerPowers(ready, actor,

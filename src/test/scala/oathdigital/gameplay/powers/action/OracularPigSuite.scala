@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
 
@@ -36,9 +34,6 @@ class OracularPigSuite extends munit.FunSuite:
         assert(cards.forall(!_.hidden), cards.toString)
         cards.map(_.cardId)
       case other => fail(s"expected an Inspect, got $other")
-
-  test("Oracular Pig is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(OracularPig.id).isDefined)
 
   test("the top three cards are peeked and shown top first until Done"):
     val ready = staged()

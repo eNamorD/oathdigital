@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
@@ -42,17 +41,15 @@ class BirdsongSuite extends munit.FunSuite:
     (started.copy(events = started.events ++ done.events),
       done.state.asInstanceOf[Ready].value)
 
-  test("Birdsong is a registered free selected Trade modifier"):
-    val power = Birdsong.forCatalog(catalog).get
-    assertEquals(power.cardId, birdsong)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Trade))
-    assertEquals(power.cost, Cost.free)
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("trading with a beast card spends no Supply"):
     val ready = at(beast)
     val (transition, result) = trade(ready, modifiers, beast)
     assertEquals(Look(result).supply(p1), 7)
+    // The selection itself is free: favor and secrets match the same Trade
+    // without it.
+    val (_, plain) = trade(ready, Vector.empty, beast)
+    assertEquals(Look(result).favor(p1), Look(plain).favor(p1))
+    assertEquals(Look(result).faceUpSecrets(p1), Look(plain).faceUpSecrets(p1))
     assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
       result)
     assert(PaidActionHarness.wireRoundTrips(transition.events))

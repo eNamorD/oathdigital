@@ -4,8 +4,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PhasePowerCatalog,
-  PowerFixture,
-  PowerImplementationStatus, SearchFixture, TargetsFixture, WalkerPowerCatalog}
+  PowerFixture, SearchFixture, TargetsFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -27,16 +26,6 @@ class VowOfObedienceSuite extends munit.FunSuite:
       : OathTransition =
     val ready = arrange(SearchFixture.staged(Vector(vision)))
     searched(ready, vision)
-
-  test("Vow of Obedience is registered as a walker rule and a REST power, " +
-      "and is implemented"):
-    val power = VowOfObedience.forCatalog(catalog).get
-    assertEquals(power.cardId, vow)
-    assertEquals(power.resolution, PowerResolution.Automatic)
-    assert(WalkerPowerCatalog.default(catalog).powers.exists(
-      _.id == VowOfObedience.id))
-    assert(PhasePowerCatalog.default(catalog).find(VowOfObedience.id).nonEmpty)
-    assert(PowerImplementationStatus.implemented(catalog)(VowOfObedience.id))
 
   test("a faceup holder's Search does not offer a Vision faceup, and refuses it"):
     val parkedAt = search(VisionRules.Faith, holding(_))

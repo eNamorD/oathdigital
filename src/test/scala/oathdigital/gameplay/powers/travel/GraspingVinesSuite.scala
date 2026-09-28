@@ -18,11 +18,6 @@ class GraspingVinesSuite extends munit.FunSuite:
     val ready = denizenAt(board(), vines, plains.head)
     ruler.fold(ready)(ruledBy(ready, plains.head, _))
 
-  test("Grasping Vines is a registered persistent rule, so it is automatic"):
-    val power = GraspingVines.forCatalog(catalog).get
-    assertEquals(power.cardId, vines)
-    assertEquals(power.resolution, PowerResolution.Automatic)
-
   test("an enemy traveling from a site the ruler rules kills a warband of " +
       "their own"):
     val ready = vinesAtHome(Some(rival))

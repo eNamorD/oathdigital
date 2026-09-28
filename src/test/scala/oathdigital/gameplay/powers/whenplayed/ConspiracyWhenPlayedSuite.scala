@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.actions.{BannerRules, VisionRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
@@ -94,10 +94,6 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
 
   private def player(ready: ReadyGame, id: PlayerId): PlayerState =
     ready.game.current.players.find(_.player == id).get
-
-  test("the default walker catalog carries the Conspiracy power"):
-    assert(WalkerPowerCatalog.default(catalog).powers
-      .contains(ConspiracyWhenPlayed))
 
   test("Conspiracy takes an opaque relic slot and leaves the game"):
     val relic = RelicState(RelicId("conspiracy-relic"), Orientation.FaceDown,

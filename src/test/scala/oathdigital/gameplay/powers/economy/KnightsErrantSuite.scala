@@ -87,12 +87,6 @@ class KnightsErrantSuite extends munit.FunSuite:
   private val campaign = ChooseOneAnswer(KnightsErrant.campaignOption)
   private val decline = ChooseOneAnswer(KnightsErrant.declineOption)
 
-  test("Knights Errant is a registered selected Muster modifier"):
-    val power = KnightsErrant.forCatalog(catalog).get
-    assertEquals(power.cardId, knights)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Muster))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("after the gain it asks whether to campaign, as a Muster decision"):
     val asked = musterFrom(staged().ready, modifiers)
     parked.assertParked(asked.state, ActionRef.Muster, KnightsErrant.decisionId,

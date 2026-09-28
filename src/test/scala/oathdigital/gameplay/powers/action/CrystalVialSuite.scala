@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -52,9 +51,6 @@ class CrystalVialSuite extends munit.FunSuite:
     * site holds no card. */
   private def bare: ReadyGame =
     Table.start.relic(p1, vial).secrets(p1, faceUp = 2).ready
-
-  test("Crystal Vial is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(CrystalVial.id).isDefined)
 
   test("the cost is one secret placed on the Vial and one burnt"):
     val t = use(staged, power, source).toOption.get

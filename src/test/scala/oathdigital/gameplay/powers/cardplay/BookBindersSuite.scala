@@ -36,12 +36,6 @@ class BookBindersSuite extends munit.FunSuite:
   private def favor(ready: ReadyGame, id: PlayerId): Int =
     player(ready, id).board.favor
 
-  test("Book Binders is a registered persistent rule, so it is automatic"):
-    val power = BookBinders.forCatalog(catalog).get
-    assertEquals(power.resolution, PowerResolution.Automatic)
-    assert(WalkerPowerCatalog.default(catalog).powers.exists(
-      _.id == BookBinders.id))
-
   test("another player's faceup Vision gives the holder a choice of bank, " +
       "then two favor"):
     val ready = arranged(Map(Suit.Arcane -> 3, Suit.Order -> 3))

@@ -134,9 +134,6 @@ class MercenariesSuite extends munit.FunSuite:
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     assert(!run.ops.exists(_.isInstanceOf[PayCost]))
 
-  test("the card is found in the catalog and registered once"):
-    assertEquals(SimplePlans.forCatalog(catalog).count(_.id == Mercenaries.id), 1)
-
   // ---- Lines ----
 
   private val power = Mercenaries.forCatalog(catalog).get

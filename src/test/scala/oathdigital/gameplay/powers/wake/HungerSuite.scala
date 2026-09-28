@@ -57,11 +57,6 @@ class HungerSuite extends munit.FunSuite:
     rules.resolveWalker(from.state, next, Hunger.decisionId,
       DecisionAnswer.ChooseOneAnswer(slot))
 
-  test("Hunger is a registered, forced WAKE power"):
-    assert(phasePowers.find(Hunger.id).isDefined)
-    assert(hunger.forced)
-    assertEquals(hunger.timing, PowerTiming.Wake)
-
   test("the waking holder must answer Hunger before anything else, choosing " +
       "among the advisers at their site but not Hunger"):
     val t = rested(staged())

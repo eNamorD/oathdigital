@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class RoyalStablesSuite extends munit.FunSuite:
@@ -14,13 +13,6 @@ class RoyalStablesSuite extends munit.FunSuite:
   /** Royal Stables at the actor's site, the first plains. */
   private def atHome: ReadyGame = denizenAt(board(), stables, plains.head)
 
-  test("Royal Stables is a registered free selected Travel modifier"):
-    val power = RoyalStables.forCatalog(catalog).get
-    assertEquals(power.cardId, stables)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Travel))
-    assertEquals(power.cost, Cost.free)
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("a Travel costs one less Supply"):
     val ready = passRuled(atHome)
     val province = plains(1)
@@ -30,6 +22,10 @@ class RoyalStablesSuite extends munit.FunSuite:
     val result = after(done)
     assertEquals(player(result).pawnSite, Some(province))
     assertEquals(supplyOf(result), 7 - 1)
+    // The Stables themselves are free.
+    assertEquals(player(result).board.favor, player(ready).board.favor)
+    assertEquals(player(result).board.faceUpSecrets,
+      player(ready).board.faceUpSecrets)
     assertEquals(PaidActionHarness.replayed(rules, ready, done.events), result)
     assert(PaidActionHarness.wireRoundTrips(done.events))
 

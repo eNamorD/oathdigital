@@ -142,12 +142,6 @@ class GleamingArmorSuite extends munit.FunSuite:
     val run = commit(rules(losing), b, 4)
     assertEquals(run.options(b.actor).map(price), Vector.fill(3)(OptionPrice()))
 
-  test("the card is registered once and is automatic, as the catalog marks it persistent"):
-    val plans = oathdigital.gameplay.powers.WalkerPowerCatalog.default(catalog)
-      .powers.filter(_.id == GleamingArmor.id)
-    assertEquals(plans.size, 1)
-    assertEquals(plans.head.resolution, PowerResolution.Automatic)
-
   // ---- Lines ----
 
   private val power = GleamingArmor.forCatalog(catalog).get

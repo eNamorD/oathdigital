@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.search
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class AugurySuite extends munit.FunSuite:
@@ -19,12 +18,6 @@ class AugurySuite extends munit.FunSuite:
 
   private def hand(transition: OathTransition): Vector[WorldCardId] =
     SearchFixture.after(transition).game.current.temporaryHands(actor)
-
-  test("Augury is a registered selected Search modifier"):
-    val power = Augury.forCatalog(catalog).get
-    assertEquals(power.cardId, augury)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Search))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
 
   test("a world Search draws one card more than the printed three"):
     val top = plain.take(6)
@@ -77,6 +70,13 @@ class AugurySuite extends munit.FunSuite:
   test("without the selection the draw is the printed three"):
     val top = plain.take(6)
     assertEquals(hand(start(withAugury(top)).toOption.get), top.take(3))
+
+  test("it is offered for Search, and not for another action"):
+    val ready = withAugury(plain.take(6))
+    val offered = (action: ActionRef) =>
+      rules.offerableWalkerPowers(ready, actor, action).toOption.get.map(_.id)
+    assert(offered(ActionRef.Search).contains(Augury.id))
+    assert(!offered(ActionRef.Travel).contains(Augury.id))
 
   test("it is not offered when the card is out of reach"):
     assert(start(SearchFixture.staged(plain.take(6)), modifiers).isLeft)

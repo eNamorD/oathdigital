@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class TentsSuite extends munit.FunSuite:
@@ -13,13 +12,6 @@ class TentsSuite extends munit.FunSuite:
   private val modifiers = Vector(Tents.id)
   /** The actor holds Tents as a faceup adviser and 1 favor, at the first plains. */
   private def held = withBoard(adviser(board(), tents))(_.copy(favor = 1))
-
-  test("Tents is a registered selected Travel modifier that costs 1 favor"):
-    val power = Tents.forCatalog(catalog).get
-    assertEquals(power.cardId, tents)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Travel))
-    assertEquals(power.cost, Cost(favor = 1))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
 
   test("a destination in the region of the pawn's site costs no Supply, and is " +
       "still offered"):

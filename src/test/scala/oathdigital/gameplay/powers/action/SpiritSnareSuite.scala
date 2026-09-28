@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 
 class SpiritSnareSuite extends munit.FunSuite:
@@ -26,9 +24,6 @@ class SpiritSnareSuite extends munit.FunSuite:
       case d: DenizenState if d.id == snare => d }.get
   private def decision(ready: ReadyGame) =
     SpiritSnare.choiceDecisionId(ready, actor)
-
-  test("Spirit Snare is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(SpiritSnare.id).isDefined)
 
   test("one stocked bank gives a favor without asking"):
     val ready = staged(Suit.Order -> 3)

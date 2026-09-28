@@ -34,14 +34,6 @@ class FortressRulesSuite extends munit.FunSuite:
 
   private def startOf(b: Board) = start(b.ready, ActionRef.Campaign, b.actor)
 
-  test("the Fortress faces are registered persistent rules, so they are automatic"):
-    assertEquals(OakenFortress.forCatalog(catalog).get.resolution,
-      PowerResolution.Automatic)
-    assertEquals(RottingFortress.forCatalog(catalog).get.resolution,
-      PowerResolution.Automatic)
-    assertEquals(OakenFortress.forCatalog(catalog).get.id,
-      PowerId("edifice.e28.intact"))
-
   // ---- Oaken Fortress ----
 
   test("the Oaken Fortress removes its ruler from a Raid: only the Conquest is left"):

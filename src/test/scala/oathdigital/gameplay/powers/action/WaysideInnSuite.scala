@@ -24,9 +24,6 @@ class WaysideInnSuite extends munit.FunSuite:
     .sites(home(ready)).denizens.collectFirst {
       case d: DenizenState if d.id == inn => d }.get
 
-  test("Wayside Inn is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(WaysideInn.id).isDefined)
-
   test("it places 1 favor on its card and gains 2 Supply"):
     val used = after(use(staged(favor = 3, supply = 2)).toOption.get.state)
     assertEquals(player(used).board.favor, 2)

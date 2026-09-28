@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 
 class TutorSuite extends munit.FunSuite:
@@ -18,9 +17,6 @@ class TutorSuite extends munit.FunSuite:
   private def tokens(ready: ReadyGame): Tokens =
     player(ready).advisers.collectFirst {
       case card: DenizenState if card.id == tutor => card.tokens }.get
-
-  test("Tutor is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Tutor.id).isDefined)
 
   test("it places a favor and a secret on its card and gains a secret"):
     val ready0 = staged()

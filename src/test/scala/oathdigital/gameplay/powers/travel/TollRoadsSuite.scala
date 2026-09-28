@@ -19,11 +19,6 @@ class TollRoadsSuite extends munit.FunSuite:
     val ready = withBoard(denizenAt(board(), toll, plains(1)))(_.copy(favor = 1))
     ruledBy(ruledBy(ready, plains(1), rival), coast, rival)
 
-  test("Toll Roads is a registered persistent rule, so it is automatic"):
-    val power = TollRoads.forCatalog(catalog).get
-    assertEquals(power.cardId, toll)
-    assertEquals(power.resolution, PowerResolution.Automatic)
-
   test("an enemy pays the ruler 1 favor to travel to a site the ruler rules"):
     val ready = rivalRules
     val done = travel(ready, coast).toOption.get

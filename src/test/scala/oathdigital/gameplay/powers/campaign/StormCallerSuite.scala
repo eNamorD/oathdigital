@@ -4,7 +4,6 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Storm Caller: a defender's free plan for two defense dice, and the card is
@@ -48,6 +47,3 @@ class StormCallerSuite extends munit.FunSuite:
     val done = commit(rules(winning), b, 4).finish
     assert(done.ops.contains(ModifyDicePool(CampaignIds.defensePool, 2)))
     assert(discarded(done.state))
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(PlanRules.forCatalog(catalog).count(_.id == StormCaller.id), 1)

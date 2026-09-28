@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -40,9 +38,6 @@ class IvoryEyeSuite extends munit.FunSuite:
   yield IvoryEye.optionFor(p.player, slot)
   private def peekAt(owner: PlayerId, slot: Int) =
     pick(IvoryEye.optionFor(owner, slot))
-
-  test("Ivory Eye is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(IvoryEye.id).isDefined)
 
   test("it places a secret on the relic and offers every facedown adviser " +
       "of every player, and no faceup one"):

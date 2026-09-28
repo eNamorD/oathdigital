@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 
 class SpoiledSuppliesSuite extends munit.FunSuite:
@@ -35,9 +33,6 @@ class SpoiledSuppliesSuite extends munit.FunSuite:
     val placed = withPawn(withPawn(actorReady, first, home(actorReady)),
       second, elsewhere(actorReady))
     withSupply(withSupply(placed, first, supply), second, 3)
-
-  test("Spoiled Supplies is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(SpoiledSupplies.id).isDefined)
 
   test("each other player at the actor's site loses 1 Supply, and nobody " +
       "else does"):

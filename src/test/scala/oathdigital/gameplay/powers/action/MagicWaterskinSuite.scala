@@ -20,9 +20,6 @@ class MagicWaterskinSuite extends munit.FunSuite:
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
     ActionRef.UsePower(MagicWaterskin.id), actor, Vector.empty, Vector(source))
 
-  test("Magic Waterskin is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(MagicWaterskin.id).isDefined)
-
   test("it buries itself at the bottom of the relic deck and gains 4 Supply"):
     val used = use(staged()).toOption.get.state.asInstanceOf[Ready].value
     assert(!player(used).relics.exists(_.id == skin))

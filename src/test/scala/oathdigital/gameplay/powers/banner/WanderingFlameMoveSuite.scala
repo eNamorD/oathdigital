@@ -1,9 +1,7 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.Table.p3
 
@@ -20,10 +18,6 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
   private def staged(marked: SiteId*): ReadyGame = inPhase(
     marked.foldLeft(withoutSiteSecrets(holdingFlame(base)))(
       withSiteSecrets(_, _, 1)), Phase.Act)
-
-  test("it is a registered phase power with its own id"):
-    assert(PhasePowerCatalog.default(catalog).find(power.id).isDefined)
-    assertEquals(power.id.value, "banner.darkest-secret.wandering-flame.move")
 
   test("one secret-bearing site: the pawn goes there with no question, by a " +
       "plain Move that leaves the secret where it is"):

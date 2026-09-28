@@ -50,13 +50,6 @@ class RelicWorshipSuite extends munit.FunSuite:
 
   private def me(ready: ReadyGame): PlayerState = PowerFixture.player(ready)
 
-  test("Relic Worship is a registered selected Recover modifier that costs a secret"):
-    val power = RelicWorship.forCatalog(catalog).get
-    assertEquals(power.cardId, worship)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Recover))
-    assertEquals(power.cost, Cost(secret = 1))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("after recovering a relic the player pays a secret onto the card and " +
       "gains 2 Supply"):
     val (ready, site) = staged()

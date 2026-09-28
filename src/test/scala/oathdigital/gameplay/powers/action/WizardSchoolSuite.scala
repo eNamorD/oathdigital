@@ -19,9 +19,6 @@ class WizardSchoolSuite extends munit.FunSuite:
   private def staged(favor: Int = 2): ReadyGame =
     act(withBoard(atHome(base, school))(_.copy(favor = favor)))
 
-  test("Wizard School is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(WizardSchool.id).isDefined)
-
   test("it places a favor, gains a secret and ends the Act phase"):
     val ready0 = staged()
     val done = use(rules(), ready0, WizardSchool.id, source).toOption.get

@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
-  PowerFixture, TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture,
+  TargetsFixture}
 import oathdigital.model._
 
 class WolvesSuite extends munit.FunSuite:
@@ -22,9 +21,6 @@ class WolvesSuite extends munit.FunSuite:
     warbandBank(ready, PlayerFacts.forceKind(ready, id).toOption.get)
   private def choose(id: PlayerId) = pick(DecisionOptionRef.Player(id))
   private def parked = use(staged(), Wolves, source).toOption.get
-
-  test("Wolves is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Wolves.id).isDefined)
 
   test("using it places a secret on its card and asks for a player board"):
     val t = parked

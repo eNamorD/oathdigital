@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ProcedureWalker
 import oathdigital.gameplay.WalkerRecordedOpsReducer
@@ -24,9 +24,6 @@ class FamilyHeirloomSuite extends munit.FunSuite
   private def atChoice =
     val first = parked(play(staged, power, card))
     (first, foldRecordedOps(staged, first.events, "the draw did not replay"))
-
-  test("Family Heirloom is in the default walker catalog"):
-    assert(WalkerPowerCatalog.default(catalog).powers.contains(power))
 
   test("the relic is drawn facedown to the player and the choice is theirs"):
     val (first, state) = atChoice

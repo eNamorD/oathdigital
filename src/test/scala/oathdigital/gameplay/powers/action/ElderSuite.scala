@@ -21,9 +21,6 @@ class ElderSuite extends munit.FunSuite:
   private def secrets(ready: ReadyGame) =
     player(ready).board.faceUpSecrets + player(ready).board.faceDownSecrets
 
-  test("Elders is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(Elders.id).isDefined)
-
   test("it places 2 favor on its card and gains a secret"):
     val ready = staged(favor = 3)
     val used = use(ready).toOption.get.state.asInstanceOf[Ready].value

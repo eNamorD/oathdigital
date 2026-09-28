@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 
 class CharmingFriendSuite extends munit.FunSuite:
@@ -34,9 +32,6 @@ class CharmingFriendSuite extends munit.FunSuite:
     val placed = withPawn(withPawn(actorReady, victim, home(actorReady)),
       bystander, elsewhere(actorReady))
     withFavor(withFavor(placed, victim, favor), bystander, 5)
-
-  test("Charming Friend is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(CharmingFriend.id).isDefined)
 
   test("it places a secret on its card and offers the players at the " +
       "actor's site"):

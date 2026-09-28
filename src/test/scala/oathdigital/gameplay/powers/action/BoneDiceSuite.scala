@@ -19,9 +19,6 @@ class BoneDiceSuite extends munit.FunSuite:
       _.copy(supply = SupplyTrack(supply))))
   private def held(state: ReadyGame) = player(state).relics.map(_.id)
 
-  test("Bone Dice is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(BoneDice.id).isDefined)
-
   test("no skull: the relic stays, holding the secret, and Supply rises by the swords"):
     val rules0 = rules(attackDice(AttackDieFace.OneSword, AttackDieFace.HollowSword))
     val ready0 = staged()

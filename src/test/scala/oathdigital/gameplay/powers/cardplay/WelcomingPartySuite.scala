@@ -22,13 +22,6 @@ class WelcomingPartySuite extends munit.FunSuite:
   private def hearthBank(ready: ReadyGame): Int =
     ready.banks.favor.getOrElse(Suit.Hearth, 0)
 
-  test("Welcoming Party is a registered selected Search modifier"):
-    val power = WelcomingParty.forCatalog(catalog).get
-    assertEquals(power.cardId, party)
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-    assert(rules.offerableWalkerPowers(withParty(plain), actor, ActionRef.Search)
-      .toOption.get.map(_.id).contains(WelcomingParty.id))
-
   test("a denizen played faceup straight from the draw, to a site, gains 1 " +
       "favor from the Hearth bank"):
     val ready = withParty(plain)

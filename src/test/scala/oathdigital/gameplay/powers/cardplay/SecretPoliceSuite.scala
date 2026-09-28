@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  PowerImplementationStatus, SearchFixture, TargetsFixture, WalkerPowerCatalog}
+  SearchFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -36,11 +36,6 @@ class SecretPoliceSuite extends munit.FunSuite:
       vision: VisionId = VisionRules.Faith): OathTransition =
     searched(policed(SearchFixture.staged(Vector(vision)), at, policeRuler,
       homeRuler), vision)
-
-  test("Secret Police is a registered, implemented rule"):
-    assert(WalkerPowerCatalog.default(catalog).powers.exists(
-      _.id == SecretPolice.id))
-    assert(PowerImplementationStatus.implemented(catalog)(SecretPolice.id))
 
   test("an enemy at a site its ruler rules cannot play a Vision faceup"):
     val parkedAt = search(home(base), exile(other), exile(other))

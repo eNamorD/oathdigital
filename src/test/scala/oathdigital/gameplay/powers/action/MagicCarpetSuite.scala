@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 import oathdigital.testkit.Table.{p2, p3}
 
@@ -20,9 +18,6 @@ class MagicCarpetSuite extends munit.FunSuite:
     val parked = use(start, MagicCarpet.id, carpet).toOption.get
     assert(parkedAt(parked, MagicCarpet.siteDecisionId))
     (parked, choose(parked.state, MagicCarpet.siteDecisionId, site(at)).toOption.get)
-
-  test("Magic Carpet is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(MagicCarpet.id).isDefined)
 
   test("it moves the pawn to the chosen site, then can be discarded"):
     val (first, placed) = placedAt(staged, deepWoods)

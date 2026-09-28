@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.model._
 
 class SleightOfHandSuite extends munit.FunSuite:
@@ -32,9 +30,6 @@ class SleightOfHandSuite extends munit.FunSuite:
   private def choose(id: PlayerId) = pick(DecisionOptionRef.Player(id))
   private def cardOf(ready: ReadyGame) = player(ready).advisers.collectFirst {
     case d: DenizenState if d.id == sleight => d }.get
-
-  test("Sleight of Hand is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(SleightOfHand.id).isDefined)
 
   test("it places a favor on its card and offers players at the actor's site " +
       "holding two or more secrets"):

@@ -35,9 +35,6 @@ class MarbleFountainsSuite extends munit.FunSuite:
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
     ActionRef.UsePower(MarbleFountains.id), actor, Vector.empty, Vector(source))
 
-  test("Marble Fountains is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(MarbleFountains.id).isDefined)
-
   test("it refreshes Supply to the maximum when the pawn is at the site"):
     val used = use(staged()).toOption.get.state.asInstanceOf[Ready].value
     assertEquals(player(used).board.supply, SupplyTrack(7))

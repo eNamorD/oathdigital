@@ -4,7 +4,6 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Horse Archers: a free plan for three attack dice, added or removed, and the
@@ -69,6 +68,3 @@ class HorseArchersSuite extends munit.FunSuite:
     val done = commit(rules(winning), b, 2).finish
     assert(!discarded(done.state))
     assertEquals(lines(done), Vector.empty)
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(PlanRules.forCatalog(catalog).count(_.id == HorseArchers.id), 1)

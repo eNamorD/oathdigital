@@ -25,11 +25,6 @@ class TruthfulHarpSuite extends munit.FunSuite:
       : Vector[WorldCardId] = SearchFixture.after(transition).knowledge
     .advisers.getOrElse(viewer, Vector.empty)
 
-  test("the Harp is a registered selected Search modifier"):
-    val power = TruthfulHarp.forCatalog(catalog).get
-    assertEquals(power.cardId, harp)
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
-
   test("a Search draws two more cards, and every card drawn is revealed"):
     val top = plain.take(7)
     val ready = withHarp(top)

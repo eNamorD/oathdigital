@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.SearchFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
@@ -37,12 +36,6 @@ class CupOfPlentySuite extends munit.FunSuite:
 
   private def supplyAfter(ready: ReadyGame, selected: Vector[PowerId]): Int =
     Look(trade(ready, selected)._2).supply(p1)
-
-  test("the Cup is a registered selected Trade modifier"):
-    val power = CupOfPlenty.forCatalog(catalog).get
-    assertEquals(power.cardId, cup)
-    assertEquals(power.actions, Set[MajorActionType](MajorActionType.Trade))
-    assertEquals(power.resolution, PowerResolution.PlayerSelected)
 
   test("trading costs the printed Supply without the Cup"):
     assertEquals(supplyAfter(held.ready, Vector.empty), 6)

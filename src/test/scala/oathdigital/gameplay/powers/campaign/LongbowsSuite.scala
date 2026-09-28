@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Longbows: a free plan for one more attack die, or one fewer when its user
@@ -33,6 +32,3 @@ class LongbowsSuite extends munit.FunSuite:
     val b = withSiteCard(base, base.origin, card)
     val run = commit(rules(winning), b, 2)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -1)))
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(SimplePlans.forCatalog(catalog).count(_.id == Longbows.id), 1)

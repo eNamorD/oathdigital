@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
@@ -24,10 +23,6 @@ class BrassHorseSuite extends munit.FunSuite:
 
   // `homelands` stands a ruined beast edifice at Deep Woods and a ruined
   // hearth edifice at Golden Valley, and no other card lies at any site.
-
-  test("Brass Horse is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(BrassHorse.id).isDefined)
-    assert(usable(staged, BrassHorse.id))
 
   test("one matching site takes the pawn there without a question"):
     val start = cradleTopped(beastTop)

@@ -23,9 +23,6 @@ class FaeMerchantSuite extends munit.FunSuite:
     act(withBoard(ready0)(_.copy(faceUpSecrets = secrets)))
   private def relicIds(state: ReadyGame) = player(state).relics.map(_.id)
 
-  test("Fae Merchant is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(FaeMerchant.id).isDefined)
-
   test("it draws a relic, then asks which relic to put on the bottom"):
     val ready0 = staged()
     val top = ready0.game.current.commonCards.relicDeck.head

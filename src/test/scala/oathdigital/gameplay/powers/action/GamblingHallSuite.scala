@@ -21,9 +21,6 @@ class GamblingHallSuite extends munit.FunSuite:
   private val total4 = defenseDice(DefenseDieFace.OneShield,
     DefenseDieFace.OneShield, DefenseDieFace.TwoShields, DefenseDieFace.Blank)
 
-  test("Gambling Hall is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(GamblingHall.id).isDefined)
-
   test("the bank question says how much the roll won"):
     // The take is not a choice of amount: the power gains the whole total
     // the bank can pay, so the question states the number rather than

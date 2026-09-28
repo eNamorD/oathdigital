@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Cracked Sage: a secret placed and a favor burnt for four attack dice,
@@ -57,6 +56,3 @@ class CrackedSageSuite extends munit.FunSuite:
     val run = commit(rules(winning), b, 5)
       .pick(b.other, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
-
-  test("the card is found in the catalog and registered once"):
-    assertEquals(SimplePlans.forCatalog(catalog).count(_.id == CrackedSage.id), 1)

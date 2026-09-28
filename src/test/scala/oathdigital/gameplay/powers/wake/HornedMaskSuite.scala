@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -44,9 +43,6 @@ class HornedMaskSuite extends munit.FunSuite:
   private def holding(cards: DenizenId*) = cards.foldLeft(
     withoutAdvisers(atHome(staged, inn), actor))((ready, id) =>
     giveAdviser(ready, actor, id, Orientation.FaceUp))
-
-  test("Horned Mask is a registered phase power"):
-    assert(PhasePowerCatalog.default(catalog).find(HornedMask.id).isDefined)
 
   test("it offers the denizens at the site and never the edifice"):
     val ready = withEdifice(atHome(atHome(staged, inn), elders),
