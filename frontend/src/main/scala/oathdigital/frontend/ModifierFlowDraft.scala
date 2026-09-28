@@ -9,7 +9,7 @@ private[frontend] enum ModifierFlowStage { case Ordering, Targets }
   * is at. `ModifierFlow` is the behavior; this is the value it steps.
   */
 private[frontend] final case class ModifierFlowDraft(
-    command: Option[GameIntent],
+    command: Option[GameIntent.StartWalker],
     actionKind: Option[String],
     baseParameters: Map[String, String],
     preview: MajorActionPreviewResponse,
@@ -46,7 +46,8 @@ private[frontend] object ModifierFlowDraft:
     * offers modifiers, Targets otherwise; the selection is reconciled from
     * `previous` so a re-preview of the same shape keeps the viewer's order.
     */
-  def fromPreview(command: Option[GameIntent], actionKind: Option[String],
+  def fromPreview(command: Option[GameIntent.StartWalker],
+      actionKind: Option[String],
       parameters: Map[String, String], response: MajorActionPreviewResponse,
       previous: Option[ModifierSelectionState],
       context: ModifierSelectionContext): ModifierFlowDraft =
@@ -76,30 +77,19 @@ private[frontend] object ModifierFlowDraft:
     case _ => None
 
   /** The command actually transmitted once modifier ordering is confirmed.
-    * `StartWalker`'s own `modifiers` field is the walker command surface's
-    * carrier for player-selected power ids (Task 6/7b) -- distinct from the
-    * legacy `orderedModifiers`/`WithModifiers` wrapping every other major
-    * action still uses. `GameApplicationService.majorAction` does not
-    * recognize `StartWalker`, so wrapping it in `WithModifiers` would reject
-    * with "ordered modifiers are only valid on a major-action start" the
-    * moment a modifier (e.g. Catacombs) is actually selected. Folding the
-    * SAME ordered `invocations` (by `handlerId`, the stable power id string
-    * both the legacy and walker power catalogs share) into the intent
-    * itself, and sending no outer modifiers, keeps this command through the
-    * path the engine actually accepts.
+    * Every action with a modifier stage starts on the generic walker, and
+    * `StartWalker`'s own `modifiers` field carries the player-selected power
+    * ids: the SAME ordered `invocations`, by `handlerId`, folded into the
+    * intent itself, with no outer modifiers sent.
+    *
+    * The start argument survives the fold untouched: an action that is both
+    * walker-registered and board-targeted (Travel) picks its target in the
+    * stage AFTER modifier ordering, so by the time this runs the destination
+    * is already on the intent and only the modifiers are missing.
     */
-  def submission(command: GameIntent, invocations: Vector[ModifierInvocation])
-      : (GameIntent, Vector[ModifierInvocation]) = command match
-    // The start argument survives the fold untouched: an action that is both
-    // walker-registered and board-targeted (Travel, batch-1 Task 5) picks its
-    // target in the stage AFTER modifier ordering, so by the time this runs
-    // the destination is already on the intent and only the modifiers are
-    // missing. Rebuilding the intent without it would submit a Travel with no
-    // route.
-    case GameIntent.StartWalker(action, _, startArgs) =>
-      GameIntent.StartWalker(action, invocations.map(_.handlerId),
-        startArgs) -> Vector.empty
-    case other => other -> invocations
+  def submission(command: GameIntent.StartWalker,
+      invocations: Vector[ModifierInvocation]): GameIntent.StartWalker =
+    command.copy(modifiers = invocations.map(_.handlerId))
 
   def targetAction(actionKind: String, response: MajorActionPreviewResponse,
       actions: Vector[BoardTargetAction]): Option[BoardTargetAction] =

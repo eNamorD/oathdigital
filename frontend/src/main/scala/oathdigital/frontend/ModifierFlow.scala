@@ -47,15 +47,18 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
     host.replaceDrafts(drafts.leave(value))
     host.redraw()
 
-  private def submit(command: GameCommand): Unit = ModifierFlowDraft.action(command) match
+  private def submit(command: GameCommand): Unit = (command match
+    case walker: GameCommand.StartWalker =>
+      ModifierFlowDraft.action(walker).map(walker -> _)
+    case _ => None) match
     case None => host.send(command, Vector.empty)
-    case Some((action, parameters)) => host.displayedProjection.foreach { current =>
+    case Some((walker, (action, parameters))) => host.displayedProjection.foreach { current =>
       val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
       host.preview(request).foreach:
         case Right(response) if response.modifiers.isEmpty =>
           host.send(command, Vector.empty)
         case Right(response) =>
-          step(FlowStep.Ordering(ModifierFlowDraft.fromPreview(Some(command), None,
+          step(FlowStep.Ordering(ModifierFlowDraft.fromPreview(Some(walker), None,
             parameters, response, drafts.modifiers.map(_.selection),
             selectionContext(current.nextSequence, action))))
         case Left(error) => host.fail(error)
@@ -99,22 +102,20 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
       case Right(response) => draft.command match
         case Some(command) =>
           host.replaceDrafts(drafts.leave(FlowExit.OrderingLeft))
-          val (submitted, modifiers) = ModifierFlowDraft.submission(command,
-            draft.selection.invocations)
-          host.send(submitted, modifiers)
+          host.send(ModifierFlowDraft.submission(command,
+            draft.selection.invocations), Vector.empty)
         case None => enterTargets(draft, response)
       case Left(error) =>
         host.replaceDrafts(drafts.leave(FlowExit.Failed))
         host.fail(error)
   }
 
-  private def completeTargetCommand(command: GameCommand): Unit =
+  private def completeTargetCommand(command: GameCommand.StartWalker): Unit =
     drafts.modifiers.filter(_.stage == ModifierFlowStage.Targets) match
       case Some(draft) =>
         host.replaceDrafts(drafts.leave(FlowExit.Completed))
-        val (submitted, modifiers) = ModifierFlowDraft.submission(command,
-          draft.selection.invocations)
-        host.send(submitted, modifiers)
+        host.send(ModifierFlowDraft.submission(command,
+          draft.selection.invocations), Vector.empty)
       case None => submit(command)
 
   private def restoredTargets: Option[BoardTargetSelectionState] = for
@@ -143,4 +144,5 @@ private[frontend] final class ModifierFlow(host: FlowHost) extends ActionControl
   // Guarded as before: nothing happens when no flow is in flight.
   def backFromTargets(): Unit = drafts.modifiers.foreach(_ => exit(FlowExit.TargetsLeft))
   def cancelTargetAction(): Unit = exit(FlowExit.Cancelled(restoredTargets))
-  def submitTargetCommand(command: GameCommand): Unit = completeTargetCommand(command)
+  def submitTargetCommand(command: GameCommand.StartWalker): Unit =
+    completeTargetCommand(command)

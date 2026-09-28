@@ -185,12 +185,11 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     // The Catacombs id lands inside StartWalker's own `modifiers`, not in a
     // WithModifiers wrapper -- GameApplicationService.majorAction does not
     // recognize StartWalker, so the legacy wrapper would reject it outright.
-    val (submitted, outerModifiers) = ModifierFlowDraft.submission(startRecover,
+    val submitted = ModifierFlowDraft.submission(startRecover,
       selection.invocations)
     assertEquals(submitted, GameIntent.StartWalker("recover", Vector("denizen.catacombs")))
-    assertEquals(outerModifiers, Vector.empty[ModifierInvocation])
     val encoded = ActorlessCommandCodec.encode(ActorlessCommandRequest(4,
-      submitted, outerModifiers))
+      submitted, Vector.empty))
     val decoded = ActorlessCommandCodec.decode(encoded).toOption.get
     assertEquals(decoded.intent, submitted)
     assertEquals(decoded.orderedModifiers, Vector.empty[ModifierInvocation])
@@ -203,22 +202,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       .toggle(rowdyPub)
     assertEquals(selection.invocations, Vector(
       ModifierInvocation("game", "denizen.rowdy-pub", None, "denizen.rowdy-pub")))
-    val (submitted, outer) = ModifierFlowDraft.submission(
-      GameIntent.StartWalker("muster", Vector.empty), selection.invocations)
-    assertEquals(submitted, GameIntent.StartWalker("muster",
-      Vector("denizen.rowdy-pub")))
-    assertEquals(outer, Vector.empty[ModifierInvocation])
-
-  test("submission leaves non-walker commands on the legacy ordered-modifiers " +
-      "channel untouched"):
-    val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
-      "denizen.some-power")
-    val (submitted, outerModifiers) = ModifierFlowDraft.submission(
-      GameIntent.PeekSiteRelics,
-      Vector(invocation))
-    assertEquals(submitted,
-      GameIntent.PeekSiteRelics)
-    assertEquals(outerModifiers, Vector(invocation))
+    assertEquals(ModifierFlowDraft.submission(
+      GameIntent.StartWalker("muster", Vector.empty), selection.invocations),
+      GameIntent.StartWalker("muster", Vector("denizen.rowdy-pub")))
 
   test("Search and facedown-adviser walker starts retain their card arguments"):
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
@@ -229,13 +215,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
       GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1"))))
       .foreach { intent =>
-        val (submitted, outer) = ModifierFlowDraft.submission(intent,
-          Vector(invocation))
-        assertEquals(submitted.asInstanceOf[GameIntent.StartWalker].startArgs,
-          intent.asInstanceOf[GameIntent.StartWalker].startArgs)
-        assertEquals(submitted.asInstanceOf[GameIntent.StartWalker].modifiers,
-          Vector("denizen.some-power"))
-        assertEquals(outer, Vector.empty)
+        val submitted = ModifierFlowDraft.submission(intent, Vector(invocation))
+        assertEquals(submitted.startArgs, intent.startArgs)
+        assertEquals(submitted.modifiers, Vector("denizen.some-power"))
       }
 
   test("a modifier option draws its card and names the action it modifies"):

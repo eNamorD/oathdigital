@@ -26,7 +26,7 @@ private[frontend] trait ActionControls extends TableControls:
   def beginTargetedMajorAction(actionKind: String): Unit
   def backFromTargets(): Unit
   def cancelTargetAction(): Unit
-  def submitTargetCommand(command: GameCommand): Unit
+  def submitTargetCommand(command: GameCommand.StartWalker): Unit
 
 /** The development toolbar's view of the session: which game and seat,
   * whether it is connected, and the three ways to change it.
