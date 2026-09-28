@@ -359,6 +359,10 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 - [ ] **Table UI rework.** Rework the layout of player areas and sites, and
   port the map to haunt-roll-fail's canvas approach. Recorded in the card
   shape and inspection design.
+- [ ] **Clicking a banner shows its details.** Dark Revolution and The
+  People's Favor are clickable like other cards, opening their details.
+- [ ] **Match the map's aspect ratio to the physical board.** The rendered
+  map's proportions differ from the actual game map's.
 - [ ] **In-game chat.**
 - [ ] **Public Chronicle pages.** The winner of a game may write their summary
   of it, and players can browse all the summaries.
