@@ -14,6 +14,25 @@ wins.
 Categories: TAUTOLOGY, WEAK, DUPLICATE, COVERED-PLUMBING, TYPE-PREVENTED,
 SOURCE-TEXT, OBSOLETE, OTHER (defined in the design).
 
+## Progress
+
+Test counts come from `./sbtw root/test` and `./sbtw frontend/test` (the
+frontend run includes the 49 shared-project tests). CPU is the sum of munit's
+per-test times; it varies with machine load by tens of percent, so compare
+counts first.
+
+| After | Root tests | Frontend tests | Root CPU | Frontend CPU |
+|---|---|---|---|---|
+| Baseline | 2331 | 508 | 131.9s | 3.1s |
+
+## Found during execution
+
+Dead code found beside a listed unit, removed under the same rule.
+
+- [x] `catalog/CatalogModel.scala`: `SetupCardDefinition`,
+  `SupplyBoardDefinition` and `VisionDefinition`, "temporary
+  source-compatible shells" with no user anywhere. **done** (with
+  `CatalogSelection`)
 
 ## Gameplay suites A–M
 
