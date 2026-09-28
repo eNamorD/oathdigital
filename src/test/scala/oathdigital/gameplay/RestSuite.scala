@@ -27,6 +27,10 @@ class RestSuite extends munit.FunSuite:
       using: OathRules = rules) =
     using.startWalker(state, PhaseTransitionRef.BeginRest, player)
 
+  private def inRest(ready: ReadyGame) = ready.updateCurrent(_.copy(
+    turn = ready.game.current.turn.copy(phase = Phase.Rest)))
+  private def ready(state: OathState) = state.asInstanceOf[Ready].value
+
   /** Picks `count` denizens still sitting in the world deck (never physically
     * placed) and removes them from that deck, so a prepared state stays
     * CardIndex-consistent when those cards are placed elsewhere. When
@@ -359,3 +363,38 @@ class RestSuite extends munit.FunSuite:
       "round-eight", oathdigital.application.LoadedGame(
         Ready(unsupported), 30L), last)
     assert(projection.legalControls.contains("beginRest"))
+
+  test("Finish Rest belongs to the active player in the Rest phase"):
+    val act = this.act
+    val actor = act.game.current.turn.activePlayer
+    val other = act.game.current.players.map(_.player).find(_ != actor).get
+    assertEquals(rules.startWalker(Ready(inRest(act)),
+      PhaseTransitionRef.FinishRest, other).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, other)))
+    assertEquals(rules.startWalker(Ready(act), PhaseTransitionRef.FinishRest,
+      actor).left.toOption, Some(OathViolation.WrongPhase(Phase.Rest, Phase.Act)))
+    assertEquals(rules.startWalker(Ready(inRest(act)),
+      PhaseTransitionRef.BeginRest, actor).left.toOption,
+      Some(OathViolation.WrongPhase(Phase.Act, Phase.Rest)))
+    val finished = rules.startWalker(Ready(inRest(act)),
+      PhaseTransitionRef.FinishRest, actor).toOption.get
+    assertEquals(ready(finished.state).game.current.turn.phase, Phase.Wake)
+
+  test("the last player's Rest ends the round and wakes the first player"):
+    val act = this.act
+    val order =
+      val participants = act.game.current.players.map(_.player)
+      val start = participants.indexOf(act.setup.firstPlayer)
+      participants.drop(start) ++ participants.take(start)
+    val last = act.updateCurrent(_.copy(
+      turn = TurnState(order.last, Phase.Act, Set.empty)))
+    val rested = rest(Ready(last), order.last).toOption.get
+    assert(rested.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
+    val after = ready(rested.state).game.current
+    assertEquals(after.tracks.round, act.game.current.tracks.round + 1)
+    assertEquals(after.turn.activePlayer, order.head)
+    // The first player's Wake has nothing to decide on this board, so it
+    // ends in the same command.
+    assertEquals(after.turn.phase, Phase.Act)
+    assert(rested.events.contains(
+      oathdigital.gameplay.walker.WalkerCompleted(PhaseTransitionRef.EndWake)))

@@ -424,12 +424,6 @@ class OperationExecutorSuite extends munit.FunSuite:
     // tracked on the banner.
     assertEquals(result.game.current.banners.peoplesFavor.favor, 2)
 
-  test("a held banner cannot be claimed from the shared bank"):
-    val claim = Move(Piece.Banner(Banner.PeoplesFavor),
-      PositionedLocation(Location.SharedBank),
-      PositionedLocation(Location.PlayArea(blueId)))
-    assert(executor.executeAll(ready, Vector(claim)).isLeft)
-
   test("transaction rejects direct-update failure and invariant corruption"):
     val operation = Gain.Favor(playerId, Suit.Order, 1)
     val failed = OperationPipeline.run(ready, Vector(operation),

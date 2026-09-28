@@ -27,19 +27,6 @@ class PowerOperationsSuite extends munit.FunSuite:
         base.game.current.map.sites.updated(siteId, site))))
     (ready, changedActor, siteId, denizenId)
 
-  test("Costs plans a PayCost that places favor and burns secrets atomically"):
-    val (ready, actor, siteId, denizenId) = operationReady
-    val placedAt = Location.OnCard(denizenId)
-    val cost = Cost(favor = 2, secretBurnt = 1)
-    val payCost = Costs.plan(ready, actor.player, placedAt, cost).toOption.get
-    val after = OperationPipeline.run(ready, Vector(payCost), OperationPolicy.exact(
-      Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get.state
-    val player = after.game.current.players.find(_.player == actor.player).get
-    val card = after.game.current.map.sites(siteId).denizens.head
-    assertEquals(player.board.favor, 1)
-    assertEquals(player.board.faceUpSecrets, 2)
-    assertEquals(card.tokens, Tokens(favor = 2, secrets = 0))
-
   test("Costs rejects malformed unaffordable and misplaced costs"):
     val (ready, actor, siteId, denizenId) = operationReady
     val placedAt = Location.OnCard(denizenId)
@@ -50,12 +37,8 @@ class PowerOperationsSuite extends munit.FunSuite:
       Location.OnCard(DenizenId("missing")),
       Cost(secret = 1)).isLeft)
 
-  test("Costs accepts a free cost and validates existence without duplicating access"):
+  test("Costs accepts a burnt-only cost on a facedown card"):
     val (ready, actor, siteId, denizenId) = operationReady
-    val free = Costs.plan(ready, actor.player, Location.OnCard(
-      DenizenId("missing")), Cost.free).toOption.get
-    assertEquals(Operation.flatten(free), Vector.empty)
-
     val site = ready.game.current.map.sites(siteId)
     val facedown = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(siteId,

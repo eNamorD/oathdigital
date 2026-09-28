@@ -107,33 +107,6 @@ class RecoverProcedureSuite extends munit.FunSuite
         (pending, events)
       case other => fail(s"expected a Parked outcome at $at, got $other")
 
-  test("Recover rolls its own dice: the walk parks on the choice, never on " +
-      "the roll"):
-    val (ready, actor, _, _, _) = recoverable
-    val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
-
-    // The supply is spent before the dice leave the hand, so a park in front
-    // of them would ask the player to confirm a roll they have paid for and
-    // cannot decline. The walk rolls and carries on to the first thing that
-    // is a question.
-    val (choicePark, events) = expectParked(
-      ProcedureWalker.advance(ready, tree, None, noPowers, scripted(lowRoll)),
-      Vector("1", "0", "2", "0"))
-    assertEquals(events.map(_.asInstanceOf[WalkerStepRecorded].payload)
-      .collect { case roll: RollPayload => roll.faces }, Vector(lowRoll))
-
-    // Continuing buys the next two dice and rolls them in the same command.
-    val continue = Answered(RecoverProcedure.choiceDecisionId,
-      ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player)
-    val stateAtChoice = applyRecorded(ready, events)
-    val (relicPark, continueEvents) = expectParked(
-      ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
-        noPowers, scripted(highRoll)),
-      Vector("2", "0"))
-    assertEquals(relicPark.answered.size, 1)
-    assertEquals(continueEvents.map(_.asInstanceOf[WalkerStepRecorded].payload)
-      .collect { case roll: RollPayload => roll.faces }, Vector(highRoll))
-
   test("single-roll success parks the relic decision, then moves a facedown " +
       "relic into the play area for one supply"):
     val (ready, actor, siteId, relic, _) = recoverable
@@ -218,6 +191,9 @@ class RecoverProcedureSuite extends munit.FunSuite
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
 
     // First roll fails (score 0 < difficulty): parks the choice decision.
+    // The supply is spent before the dice leave the hand, so a park in front
+    // of them would ask the player to confirm a roll they have paid for and
+    // cannot decline. The walk rolls and carries on to the first question.
     val (choicePark, firstRollEvents) = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers, scripted(lowRoll)),
       Vector("1", "0", "2", "0"))

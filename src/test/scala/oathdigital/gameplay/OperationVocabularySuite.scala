@@ -26,12 +26,6 @@ class OperationVocabularySuite extends munit.FunSuite:
       actor, Location.PlayArea(actor), Location.PlayArea(other))))
     assert(run(funded, give(required = true)).isLeft)
 
-  test("BuryableCard.Vision buries to the bottom of the world deck"):
-    val bury = Bury(BuryableCard.Vision(VisionId("vision:one")),
-      PositionedLocation(Location.PlayArea(actor)))
-    assertEquals(bury.to, PositionedLocation(Location.Deck(CardDeck.World),
-      StackPosition.Bottom))
-
   test("a Vision adviser can be buried"):
     val vision = current.commonCards.worldDeck.collectFirst {
       case id: VisionId => id

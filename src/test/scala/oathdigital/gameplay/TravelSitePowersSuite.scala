@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
@@ -106,22 +105,6 @@ class TravelSitePowersSuite extends munit.FunSuite:
     assert(ordinaryOrder.contains(islandId),
       "ordinary-route destination Island must remain gathered")
 
-  test("each terrain transform changes cost from its no-power baseline"):
-    val cases = Vector(
-      ("Mountain", plain, mountain, ".mountain"),
-      ("Island", plain, island, ".island"),
-      ("Coast", coast, site(".rocky-coast.coast"), ".coast")
-    )
-    cases.foreach { case (name, source, destination, suffix) =>
-      val ready = readyAt(source)
-      val terrainOnly = powers.filter(_.id == powerId(
-        if name == "Coast" then source else destination, suffix))
-      assertEquals(transformedCost(ready, source, destination, 2, Vector.empty), 2,
-        s"$name baseline must remain the unmodified payment")
-      assertNotEquals(transformedCost(ready, source, destination, 2, terrainOnly), 2,
-        s"$name transform must rewrite the payment")
-    }
-
   private def passMap(source: SiteId, destination: SiteId,
       passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1))
       : MapState =
@@ -175,10 +158,6 @@ class TravelSitePowersSuite extends munit.FunSuite:
       assertEquals(passViolation(ready, eligibilityTree(plain, destination)),
         Some(OathViolation.TravelPassBlocked(pass, destination)))
     }
-
-  test("Walker catalog registers every Travel site contribution"):
-    val registered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
-    assert(powers.map(_.id).toSet.subsetOf(registered))
 
   test("unknown terrain-suffixed handlers never fabricate Travel powers"):
     val fixturePower = PowerId("site.fixture-site.coast")

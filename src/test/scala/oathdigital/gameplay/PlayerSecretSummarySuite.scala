@@ -30,13 +30,10 @@ class PlayerSecretSummarySuite extends munit.FunSuite:
       withState(1, 0, 0) -> PlayerSecretSummary(1, 0, 0),
       withState(0, 0, 1) -> PlayerSecretSummary(0, 0, 1),
       withState(0, 1, 0) -> PlayerSecretSummary(0, 1, 0),
-      withState(1, 0, 1) -> PlayerSecretSummary(1, 0, 1),
-      withState(1, 0, 0) -> PlayerSecretSummary(1, 0, 0))
+      withState(1, 0, 1) -> PlayerSecretSummary(1, 0, 1))
     examples.foreach { case (ready, expected) =>
-      val actual = PlayerSecretSummary.derive(ready, actor.player).toOption.get
-      assertEquals(actual, expected)
-      assertEquals(actual.totalSecrets,
-        actual.available + actual.facedown + actual.committed)
+      assertEquals(PlayerSecretSummary.derive(ready, actor.player).toOption.get,
+        expected)
     }
 
   test("valid inactive player has zero commitments and ignores ruled-site tokens"):

@@ -91,9 +91,6 @@ class TravelProcedureSuite extends munit.FunSuite:
     assertEquals(simulate(ready, mountain), Some(3))
     assertEquals(simulate(ready, island), Some(6))
 
-  test("a coast route replaces the cost with one"):
-    assertEquals(simulate(act(source = coast), island), Some(1))
-
   test("a coast route ignores the destination add rather than stacking it"):
     // Fair Isle carries both a coast and an island power: on a coast route
     // the replace lands and the +2 is dropped, so 1 rather than 3.

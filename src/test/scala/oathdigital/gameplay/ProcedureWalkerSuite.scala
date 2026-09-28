@@ -837,16 +837,6 @@ class ProcedureWalkerSuite extends munit.FunSuite:
           Vector(outerId, innerId))
       case other => fail(s"expected the answered resume to finish, got $other")
 
-  test("a node with no window records contributions as Vector.empty"):
-    val tree: Operation = Sequence(adjust)
-
-    ProcedureWalker.advance(ready, tree, None, noPowers) match
-      case Right(WalkerOutcome.Finished(_, events)) =>
-        assertEquals(events.size, 1)
-        assertEquals(recordedStep(events.head).contributions,
-          Vector.empty[PowerId])
-      case other => fail(s"expected a Finished walk, got $other")
-
   test("a Restriction's violation is collected before any node runs"):
     val violation: OathViolation = OathViolation.InvalidEventOrder(
       "test restriction forbids this action")

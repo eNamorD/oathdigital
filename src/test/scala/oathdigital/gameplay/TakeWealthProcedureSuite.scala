@@ -157,14 +157,16 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     parked.assertResumed(result.state, Phase.Act,
       ready.game.current.turn.activePlayer)
 
-  test("a second take at the same site this turn is blocked"):
+  test("a second take at the same site this turn is refused by the walker"):
     val ready = wake(favor = 2)
     // The take ends Wake; put the turn back in Wake to try the site again.
     val took = after(accepted(ready))
     val once = took.updateCurrent(current => current.copy(turn =
       current.turn.copy(phase = Phase.Wake)))
-    assert(take(once).left.toOption.get.isInstanceOf[PowerAlreadyUsed],
-      "the once-per-turn restriction must reject the second take")
+    val site = once.game.current.players.find(_.player == actor(once))
+      .flatMap(_.pawnSite).get
+    assertEquals(take(once).left.toOption,
+      Some(PowerAlreadyUsed(TakeWealthLimit.useRef(site))))
 
   test("a take outside the Wake phase is rejected"):
     val ready = wake()
