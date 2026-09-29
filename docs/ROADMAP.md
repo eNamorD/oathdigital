@@ -132,9 +132,7 @@ requested UI changes are in the
    seat links opening on another machine, reconnect and restart, HTTPS proxy
    and origin behavior, and the bundled archives' first launch on each OS),
    ideally something a release run can execute or that takes minutes by hand.
-   Then decide what happens to the record. Also check whether `0.1.0-alpha.3`
-   starts cleanly on an `0.1.0-alpha.2` player's existing data folder, which
-   its release notes leave untested.
+   Then decide what happens to the record.
 
 ### Setup deferred items
 
