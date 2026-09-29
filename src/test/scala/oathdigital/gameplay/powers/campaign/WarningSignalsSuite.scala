@@ -140,6 +140,21 @@ class WarningSignalsSuite extends munit.FunSuite:
     assert(ready(done.state).game.current.commonCards.regionalDiscards.values
       .exists(_.contains(id)))
 
+  test("a defender with an empty board and one warband on each ruled site has nothing to move, so nothing is asked, and the card is still discarded"):
+    val two = defending
+    val spare = secondSite(two)
+    val sparse = replacePlayer(two.copy(ready = two.ready.updateCurrent(
+      current => current.copy(map = current.map.copy(sites =
+        Vector(two.origin, spare).foldLeft(current.map.sites)((sites, site) =>
+          sites.updated(site, sites(site).copy(forces = exile(two, 1)))))))),
+      two.other)(p => p.copy(board = p.board.copy(warbands = 0)))
+    val run = commit(rules(losing), sparse, 4).pick(sparse.other,
+      CampaignIds.defenderPlan, ref)
+    assert(!awaits(run, sparse.other, decision))
+    assertEquals(said(run.events), Vector.empty)
+    assert(ready(run.finish.state).game.current.commonCards.regionalDiscards
+      .values.exists(_.contains(id)))
+
   test("a bandit defender never uses it, and the attacker's own copy is no defender's plan"):
     val two = board(extras = 1)
     val bandit = withSiteCard(two, two.extras.head, card)
