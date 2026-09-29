@@ -79,7 +79,7 @@ class GameLogActionLineSuite extends munit.FunSuite:
     assert(lines(script, Some(other(script))).contains("Forged a Relic"))
 
   test("Campaign: a start line naming kind and defender, and the winner"):
-    val all = lines(forge, None)
+    val all = lines(raid, None)
     val start = all.indexWhere(_.startsWith("Started Campaign: "))
     val wins = all.indexWhere(line => line.endsWith(" wins!") ||
       line == "The bandits win!")

@@ -53,6 +53,12 @@ class TableSuite extends munit.FunSuite:
       SiteForces.Occupied(ForceKind.Bandit,
         catalog.site(CatalogNames.site("Broken Peaks")).get.capacity))
 
+  test("relicDeckTop puts relics on top of the relic deck, first named on top"):
+    val ready = Table.start.relicDeckTop("Dowsing Sticks", "Sticky Fire").ready
+    assertEquals(ready.game.current.commonCards.relicDeck.take(2),
+      Vector(CatalogNames.relic("Dowsing Sticks"),
+        CatalogNames.relic("Sticky Fire")))
+
   test("the turn passes p1, p2, p3"):
     assertEquals(FinishRestProcedure.turnOrder(Table.start.ready),
       Vector(p1, p2, p3))

@@ -295,14 +295,12 @@ object LogScripts:
     recovered.after(GameCommand.RevealOwnedRelic(actor, relic))
     Script("reveal-relic", service, actor)
 
-  /** The Forge fixture's journal (a Conquest, Searches, rounds) and then the
-    * Forge itself, which never parks at a single-resource site. */
+  /** The Forge fixture's table, then the Forge itself, which never parks at
+    * a single-resource site. */
   def forge(using munit.Location): Script =
-    val service = new GameApplicationService(catalog,
-      new InMemoryEventStreamRepository,
-      campaignDicePort = ForgeWalkerFixture.blankCampaignDice)
-    val (ready, actor, _) = ForgeWalkerFixture.forgeReadyGame(service, "forge")
-    service.handle("forge", ready.nextSequence, GameCommand.StartWalker(
+    val (service, _) = ForgeWalkerFixture.forgeService()
+    val actor = Table.p1
+    service.handle("forge", 0L, GameCommand.StartWalker(
       ActionRef.Forge, StartPayload(actor))).fold(
       error => munit.Assertions.fail(s"Forge refused: $error"), identity)
     Script("forge", service, actor)

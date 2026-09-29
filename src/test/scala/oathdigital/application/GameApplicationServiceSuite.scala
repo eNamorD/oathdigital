@@ -26,8 +26,8 @@ import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.application.ForgeWalkerFixture.{blankCampaignDice,
-  forgeReadyGame, mixedForgeCostCatalog}
+import oathdigital.application.ForgeWalkerFixture.{forgeService, forgeSite,
+  forgeTable, mixedForgeCostCatalog}
 import oathdigital.model.OathViolation.WrongPlayer
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.OathRules
@@ -690,7 +690,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
   test("walker Forge completes through StartWalker/ResolveWalker alone and " +
       "replays to the same final state"):
-    val repository = new InMemoryEventStreamRepository
     // The only non-homeland forgeable site prints three favor, which is a
     // forced split the engine resolves without prompting (the next test
     // covers that). Overriding just that site's printed cost is what gives
@@ -703,12 +702,10 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // would rebuild the unmodified, unparked tree instead.
     val parkedAssertions = new ParkedDecisionAssertions(forgeCatalog,
       WalkerPowerCatalog.default(forgeCatalog), PhasePowerCatalog.default(forgeCatalog))
-    val service = new GameApplicationService(forgeCatalog, repository,
-      campaignDicePort = blankCampaignDice)
+    val (service, repository) = forgeService(forgeCatalog)
     val gameId = "game-walker-forge"
-    val (ready, actor, forgeSite) = forgeReadyGame(service, gameId,
-      forgeCatalog)
-    val Ready(beforeStart) = ready.state: @unchecked
+    val actor = p1
+    val Ready(beforeStart) = forgeTable.state: @unchecked
     val supplyBefore = beforeStart.game.current.players
       .find(_.player == actor).get.board.supply.supply
     val relic = beforeStart.game.current.commonCards.relicDeck.head
@@ -718,7 +715,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val favorBefore = actorBefore.board.favor
     val secretsBefore = actorBefore.board.faceUpSecrets
 
-    val started = service.handle(gameId, ready.nextSequence,
+    val started = service.handle(gameId, 0L,
       GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
       .fold(error => fail(s"walker Forge start rejected: $error"), identity)
     assert(started.events.last.isInstanceOf[WalkerParked])
@@ -838,8 +835,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       secretsBefore - secretMinimum)
 
     // P2: reconstructing purely from the journal reproduces that state.
-    val replayed = new GameApplicationService(forgeCatalog, repository)
-      .load(gameId).toOption.flatten.get
+    val replayed = new GameApplicationService(forgeCatalog, repository,
+      genesis = service.genesis).load(gameId).toOption.flatten.get
     assertEquals(replayed.state, finished.state)
 
     // The forged relic stays private to its owner.
@@ -851,12 +848,10 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
   test("a Forge whose printed cost is three of one resource completes in " +
       "the command that starts it, with no decision to answer"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = blankCampaignDice)
+    val (service, repository) = forgeService()
     val gameId = "game-walker-forge-forced"
-    val (ready, actor, forgeSite) = forgeReadyGame(service, gameId)
-    val Ready(beforeStart) = ready.state: @unchecked
+    val actor = p1
+    val Ready(beforeStart) = forgeTable.state: @unchecked
     val cost = catalog.sites.find(_.id == forgeSite).get.forgeRequirements.get
     assert(cost.favor == 0 || cost.secrets == 0,
       s"this test needs a single-resource printed cost, got $cost")
@@ -865,7 +860,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       .find(_.player == actor).get
     val banksBefore = beforeStart.banks.favor
 
-    val finished = service.handle(gameId, ready.nextSequence,
+    val finished = service.handle(gameId, 0L,
       GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
       .fold(error => fail(s"walker Forge start rejected: $error"), identity)
 
@@ -895,7 +890,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
     // The journal replays to the same state even though it carries a
     // completion that was never preceded by a park.
-    assertEquals(new GameApplicationService(catalog, repository)
+    assertEquals(reopened(service, repository)
       .load(gameId).toOption.flatten.get.state, finished.state)
 
   /** Setup driven through `service`, for the tests that stay on the real
