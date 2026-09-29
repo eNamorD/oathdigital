@@ -57,12 +57,31 @@ module list in `packaging/jlink-modules.txt`: `oathdigital-0.1.0-alpha.1-macos-a
 [quick start](quick-start.md) describes the one-time macOS and Windows prompts.
 Intel Macs and Linux arm64 use the all-platform archive or the OCI image.
 
-No compatibility with another release's database is promised for this initial
-alpha. Restore only with the exact release that created the backup. Before any
-upgrade, stop the server and back up the complete database directory as described
-in the [data policy](data-policy.md). For subsequent tags, update these release
-notes with the exact supported source versions, migration behavior, and rollback
-limits before tagging. Schema checks do not replace release-specific policy.
+During alpha, no release promises to open another release's saved games.
+Each release's notes name the earlier releases whose databases it supports,
+which is usually none, and warn that saved games may not survive the upgrade.
+Alpha releases do not work out migration behavior or rollback limits. Restore
+only with the exact release that created the backup. Before any upgrade, stop
+the server and back up the complete database directory as described in the
+[data policy](data-policy.md).
+
+## Release notes
+
+Each version has its own notes at
+`docs/operations/release-notes/<version>.md`, for example
+`0.1.0-alpha.3.md`. The workflow publishes that file as the GitHub release body
+word for word, so write it for players. Start from the previous version's
+notes. Every version's notes carry:
+
+- what changed since the previous release;
+- a **Saved games** section naming the earlier releases whose saved games this
+  one loads (during alpha, usually none) with the disclaimer that saved games
+  may not survive an upgrade;
+- what is not in the game yet, how to get started, and known caveats.
+
+Mark anything still to be written with an HTML comment containing `TODO`. The
+verifier refuses notes that are missing or still contain `TODO`, before it
+starts the build.
 
 ## Operator sequence
 
@@ -72,10 +91,12 @@ limits before tagging. Schema checks do not replace release-specific policy.
    dispatch executes repository code: only dispatch reviewed tags and reviewed
    workflow revisions. The publisher needs `contents: write` and `packages:
    write`; verification jobs have only `contents: read`.
-2. Complete the manual [LAN/TLS acceptance record](alpha-acceptance.md) on the
-   intended build and add release-specific compatibility notes. Create and push
-   the chosen prerelease tag through your normal reviewed release process.
-   This implementation does not create or push a tag.
+2. Write the version's [release notes](#release-notes). The manual
+   [LAN/TLS acceptance record](alpha-acceptance.md) is optional during alpha:
+   `0.1.0-alpha.3` shipped without one while a lighter way to test
+   separate-machine play is worked out. Create and push the chosen prerelease
+   tag through your normal reviewed release process. This implementation does
+   not create or push a tag.
 3. In Actions, select **Alpha release**, enter the exact existing tag, and leave
    **publish** false. The workflow checks out that tag, verifies its commit,
    runs JVM/frontend tests and architecture/catalog/Markdown/version/mapping

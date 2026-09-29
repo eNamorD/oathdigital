@@ -64,6 +64,13 @@ case "${1:-}" in
     check_tag "$release_tag"
     git diff --quiet && git diff --cached --quiet || fail "tracked source has uncommitted changes"
     [ ! -e "$3" ] || fail "output directory already exists"
+    # The notes become the GitHub release body, so check them before the long build.
+    release_notes_source=docs/operations/release-notes/$release_version.md
+    [ -f "$release_notes_source" ] ||
+      fail "missing per-version release notes: $release_notes_source"
+    if grep -n 'TODO' "$release_notes_source" >&2; then
+      fail "release notes still contain TODO: $release_notes_source"
+    fi
     java_version=$(java -version 2>&1)
     printf '%s\n' "$java_version" | grep -Eq 'version "21\.' || fail "Java 21 is required"
     [ -n "${JAVA_HOME:-}" ] || fail "JAVA_HOME must select Java 21 for sbtw and smoke"
@@ -103,9 +110,6 @@ case "${1:-}" in
       printf 'Archive smoke: readiness, frontend, three private seats, command, seat restoration across restart, database close, shutdown.\n'
       printf 'Separate-machine LAN/TLS and browser acceptance: not executed by CI.\n'
     } >"$output/archive-evidence.txt"
-    release_notes_source=docs/operations/release-notes/$release_version.md
-    [ -f "$release_notes_source" ] ||
-      fail "missing per-version release notes: $release_notes_source"
     cp "$release_notes_source" "$output/release-notes.md"
     (cd "$output" && shasum -a 256 "$root.zip" "$root.tgz" archive-evidence.txt release-notes.md >SHA256SUMS)
     echo "alpha archive release verification passed: $release_tag"
