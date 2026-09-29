@@ -95,7 +95,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
       Vector("Took", "Act"), all.toString)
 
   test("the turn headline names the player with a player span"):
-    val script = woken
+    val script = board
     val turn = format(script, None).find(_.kind == LogKind.Turn).get
     assertEquals(turn.spans, Vector(
       LogSpan.Player(script.actor.value, name(script.actor)),
@@ -118,7 +118,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     }, None)
 
   test("each victory posts one victory headline naming the winner"):
-    val script = woken
+    val script = board
     val winner = script.actor
     val vision = VisionId("vision:vision-of-faith")
     val headlines = Vector(
@@ -142,6 +142,6 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     }
 
   test("the last round's end posts no round headline"):
-    val script = woken
+    val script = board
     val before = format(script, None)
     assertEquals(ending(script, OathEvent.RoundEnded(8, None)), before)

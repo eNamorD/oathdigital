@@ -44,7 +44,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
       all.last.contains(" was sent to "), all)
 
   test("a battle plan answer names who activated it; a flipped plan card names itself"):
-    val script = woken
+    val script = board
     val steps = script.history.steps
     val last = steps.last.after
     val ready = last match
@@ -74,7 +74,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
       && line != s"${name(defender)} revealed a Denizen"), shown)
 
   test("a plan the bandits apply is named like any other activation"):
-    val script = woken
+    val script = board
     val steps = script.history.steps
     val last = steps.last.after
     val ready = last match
@@ -101,7 +101,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
 
   test("a total a plan rewrites in the same segment is told once, as rewritten"):
     // Outriders ignores the skulls: it writes the attack again after the cap.
-    val script = woken
+    val script = board
     val steps = script.history.steps
     val last = steps.last.after
     val tail = Vector[OathEvent](

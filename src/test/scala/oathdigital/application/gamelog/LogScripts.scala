@@ -16,9 +16,8 @@ import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
-import oathdigital.testkit.{CatalogNames, Park, Situation, SituationDriver,
-  Step, Table}
-import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.{CatalogNames, Park, Situation, Step, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** A journal built by real play through `GameApplicationService` on every
   * run (spec, "Test journals"). No stored game is a fixture: a script a new
@@ -44,17 +43,6 @@ object LogScripts:
     def rollDefense(count: Int): Vector[DefenseDieFace] =
       Vector.fill(count)(DefenseDieFace.TwoShields)
 
-  /** A fresh service and its journaled driver, the stream named `name`, with
-    * pawns spread one per site so no two players share a site by accident. */
-  def journaled(name: String, dice: CampaignDicePort = steadyDice,
-      spread: Vector[SiteId] = FirstGameSetupFixture.sites)
-      : (GameApplicationService, InMemoryEventStreamRepository, SituationDriver) =
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = dice)
-    (service, repository, Situation.journaled(service, catalog, repository,
-      name).withAnswers(Situation.pawnsAt(spread)))
-
   def active(situation: Situation)(using munit.Location): PlayerId =
     situation.ready.game.current.turn.activePlayer
 
@@ -63,10 +51,32 @@ object LogScripts:
     situation.ready.game.current.players.find(_.player == player)
       .flatMap(_.pawnSite).get
 
-  /** Setup to the first player's Wake. */
+  /** A short journal on a table, for the suites that append their own
+    * recorded events to a real board and read the lines they post. The board
+    * holds the facts those suites lean on, each stated here: a relic lying at
+    * Broken Peaks, a homeland edifice at Deep Woods, and a facedown adviser
+    * with each of p2 and p3. p1, the actor, wakes and ends Wake, and it is
+    * their Act. */
+  def board(using munit.Location): Script =
+    val (service, waking) = atTable("board", Table.start.turn(p1, Phase.Wake)
+      .relicAt("Sticky Fire", "Broken Peaks")
+      .edifice("Hiding Place", EdificeSide.Ruined, "Deep Woods")
+      .adviser(p2, "Birdsong", facedown = true)
+      .adviser(p3, "Wizard's Conclave", facedown = true)
+      .banditsRefilled)
+    waking.after(GameCommand.EndWake(p1))
+    Script("board", service, p1)
+
+  /** Setup to the first player's Wake, on the real start: the one script
+    * that replays Setup, so its log carries the setup lines. Pawns are spread
+    * one per site. */
   def woken(using munit.Location): Script =
-    val (service, _, driver) = journaled("woken")
-    val situation = Situation.wake(driver)
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = steadyDice)
+    val situation = Situation.wake(Situation.journaled(service, catalog,
+      repository, "woken").withAnswers(
+        Situation.pawnsAt(FirstGameSetupFixture.sites)))
     Script("woken", service, active(situation))
 
   /** The first player wakes, travels and rests; every other player rests;
