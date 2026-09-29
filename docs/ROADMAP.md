@@ -8,41 +8,17 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase - Catalog batch 2** is complete. **Phase - Cleanup tasks** is next.
+**Phase - Cleanup tasks** is done except for one item blocked on the
+Chronicle Phase. **Phase - Catalog batch 3** is next.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
 
-### Phase - Catalog batch 2
+### Phase - Catalog batch 3
 
-Implement 23 denizens and 8 relics, which brings every suit to the 10
-denizens a generated world deck holds, so every card in it works. 37 of 255
-denizens and 16 of 48 relics were implemented before this phase; after it 60
-and 24 are. The [design](superpowers/specs/2026-09-26-catalog-batch-2-design.md)
-lists the cards, eight engine additions, five slices by kind of power and
-every card's log line, and its
-[rulings appendix](superpowers/specs/2026-09-26-catalog-batch-2-rulings.md)
-settles each card. Each card writes its Game Log line through the Power log
-lines `Note` mechanism as it lands.
-
-Slice 1 is done: Animal Playmates, Birdsong, Royal Stables and Forgotten
-Vault, with the Travel Supply reduction. Slice 2 is done: the battle plans
-Fire Talkers, Nature Worship, Cracked Sage, Horse Archers, Storm Caller,
-Longbows, Black Sword, Bag of Siegeworks and Hospital, with ignored defense
-faces and the Campaign kill replacement. Slice 3 runs as three plans. Slice
-3a is done: Tutor, Spirit Snare, Wizard School, Shifting Map, Demon Tail and
-Clay Rattle, with the `Shuffle` operation. Slice 3b is done: Scryer and
-Oracular Pig, with the `Inspect` decision and the card list. Slice 3c is
-done: Oracle, which draws a Vision and plays it through Search's placement.
-Slice 4 is done: the actions on others, Spoiled Supplies, Charming Friend,
-Siege Engines, Book of Records and Barbed Net. Slice 5 is done: the
-triggers and When Played powers, Shifting Fog, Twin Brother, Chaos Cult and
-Hunger, with the Oathkeeper title-change window and forced Wake steps.
-Catalog batch 2 is complete.
-
-Cards left for a later batch because they need engine work first:
+Cards deferred from Catalog batch 2 because they need engine work first:
 
 - The Gathering and Whispering Stone need a nested Negotiation with its own
   participants.
@@ -60,27 +36,9 @@ Cards left for a later batch because they need engine work first:
 
 ### Phase - Cleanup tasks
 
-- [x] **Implement every site power.** The River is a Wake power of its site
-  that places the pawn at another River, and Homeland offers its discard at
-  any capacity, read from the site. Plains has no power; Coast, Island,
-  Mountain and Pass were already built. See the
-  [site powers design](superpowers/specs/2026-09-27-site-powers-design.md).
-- [x] **Setup's Reveal Cards step.** After keeping an adviser, each player
-  may reveal any number of their facedown advisers and relics, except
-  site-only advisers (CR p. 13). `SetupProcedure` asks it as a `ChooseMany`
-  only when there is something to reveal, and turns the chosen cards faceup
-  with `Reveal`, so no When Played power triggers. The Game Log writes
-  "{player} revealed {card}." A revealed Hunger runs at the first Wake
-  (`HungerSuite`).
 - [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
   not discarded in the Chronicle Phase's Shape Empire step, which the engine
   does not have yet. The Pass's consent waits for the Consent system phase.
-- [x] **Log the post-action checks.** Already done by the Game Log phase: the
-  bandit refill posts "Bandits returned to {sites}" (`EventLines`), the
-  Oathkeeper check posts "Oathkeeper passed to {player}" (`ActionLines`), and
-  the Usurper flip at Wake posts "{player} became the Usurper". The Game Log
-  design's trigger table lists them, and `GameLogEventSuite` and the
-  `oathkeeper` golden log test them.
 
 ### Phase - Consent system
 
@@ -136,12 +94,6 @@ requested UI changes are in the
 
 ### Setup deferred items
 
-- [x] **derive the lineage from the color on the server.** Creation
-  requests name only each player and color, and `FirstGameBootstrapMapper`
-  derives `<color>-lineage` (server-side setup IDs, 2026-09-27).
-- [x] **generate the game ID on the server.** `TrustedGameProvisioning` draws
-  `game-<12 base32 characters>` and draws again, up to 8 times, when the ID is
-  taken. The creation response returns it (server-side setup IDs, 2026-09-27).
 - [ ] **Simultaneous setup effects.** Simultaneous setup effects are resolved by
   the Chancellor or first player (site order is used until then). Player choices
   earlier in setup once foundations and legacies exist, such as the Chancellor
@@ -217,8 +169,6 @@ requested UI changes are in the
   and Horned Mask's filter, and needs an audit of every step that legitimately
   moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
   lines, with regression risk in the Negotiation and Campaign suites.
-- [x] **an adviser-slot decision option.** Hunger and Ivory Eye offer
-  `AdviserSlot`s (catalog batch 2, slice 5).
 - [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
@@ -357,7 +307,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
   in the phased sequence above; the next denizens and relics are
-  **Phase - Catalog batch 2**)
+  **Phase - Catalog batch 3**)
 - [ ] **L7 — Incremental synchronization transport**
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
