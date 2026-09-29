@@ -2,6 +2,7 @@ package oathdigital.testkit
 
 import oathdigital.application.{GameApplicationService, GameCommand,
   InMemoryEventStreamRepository, StartPayload}
+import oathdigital.gameplay.StateBasedEvaluation
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, GameStartRules}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -37,6 +38,25 @@ class TableSuite extends munit.FunSuite:
     assertEquals(current.title.holder, None)
     assertEquals((current.banners.peoplesFavor.holder,
       current.banners.darkestSecret.holder), (None, None))
+
+  test("banditsRefilled leaves the refill nothing to add and keeps the forces " +
+      "already at a site"):
+    val held = Table.start.warbandsAt("Ancient City", p1, 1).warbands(p1, 2)
+    val table = held.banditsRefilled
+    assertEquals(StateBasedEvaluation.banditRefill(catalog, table.state),
+      Right(None))
+    val look = Look(table.ready)
+    assertEquals(look.forces(CatalogNames.site("Ancient City")),
+      Look(held.ready).forces(CatalogNames.site("Ancient City")))
+    assertEquals(look.forces(CatalogNames.site("Broken Peaks")),
+      SiteForces.Occupied(ForceKind.Bandit,
+        catalog.site(CatalogNames.site("Broken Peaks")).get.capacity))
+
+  test("relicDeckTop puts relics on top of the relic deck, first named on top"):
+    val ready = Table.start.relicDeckTop("Dowsing Sticks", "Sticky Fire").ready
+    assertEquals(ready.game.current.commonCards.relicDeck.take(2),
+      Vector(CatalogNames.relic("Dowsing Sticks"),
+        CatalogNames.relic("Sticky Fire")))
 
   test("the turn passes p1, p2, p3"):
     assertEquals(FinishRestProcedure.turnOrder(Table.start.ready),

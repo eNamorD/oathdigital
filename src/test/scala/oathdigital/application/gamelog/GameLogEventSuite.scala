@@ -34,7 +34,7 @@ class GameLogEventSuite extends munit.FunSuite:
     }
 
   test("a site peek names the relics for the peeker only"):
-    val script = woken
+    val script = board
     val state = ready(script.history.steps.last.after)
     val (site, relics) = state.game.current.map.sites.collectFirst {
       case (id, site) if site.relics.nonEmpty => id -> site.relics.map(_.id)
@@ -57,7 +57,7 @@ class GameLogEventSuite extends munit.FunSuite:
       s" at ${presentation.siteLabel(site)}")
 
   test("warbands moved, bandits returned and a new Usurper each post one line"):
-    val script = woken
+    val script = board
     val state = ready(script.history.steps.last.after)
     val site = state.game.current.map.inPlay.head
     val other = script.players.find(_ != script.actor).get

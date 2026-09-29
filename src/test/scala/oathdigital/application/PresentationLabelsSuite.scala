@@ -1,27 +1,30 @@
 package oathdigital.application
 
-import oathdigital.application.gamelog.LogScripts
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.Table
+import oathdigital.testkit.Table.p1
 
 class PresentationLabelsSuite extends munit.FunSuite:
   private val presentation = new GamePresentationProjector(catalog)
 
-  private def woken: ReadyGame = LogScripts.woken.history.steps.last.after match
-    case OathState.Ready(ready) => ready
-    case other => fail(s"expected a ready game, got $other")
+  /** A homeland edifice lies at Deep Woods, and p1 holds a facedown
+    * adviser. */
+  private lazy val board: ReadyGame = Table.start
+    .edifice("Hiding Place", EdificeSide.Ruined, "Deep Woods")
+    .adviser(p1, "Wizard's Conclave", facedown = true).ready
 
   test("a player's label is the one the Players strip shows"):
-    val ready = woken
+    val ready = board
     val player = ready.game.current.players.head.player
     assertEquals(presentation.playerLabel(player),
       presentation.readyPlayers(ready).head.displayName)
 
   test("a site denizen is identified to everyone; a facedown adviser to its owner only"):
-    val ready = woken
+    val ready = board
     val current = ready.game.current
-    // A first game deals no denizen to a site, only homeland edifices, which
-    // lie in the same denizen slots.
+    // The board holds no denizen at a site, only a homeland edifice, which
+    // lies in the same denizen slots.
     val denizen: CardId = current.map.inPlay
       .flatMap(current.map.sites(_).denizens).collectFirst {
         case DenizenState(id, _, _) => id
@@ -38,13 +41,13 @@ class PresentationLabelsSuite extends munit.FunSuite:
     assert(!presentation.identifiesAt(ready, None, adviser))
 
   test("a card in the world deck is identified to nobody"):
-    val ready = woken
+    val ready = board
     val top = ready.game.current.commonCards.worldDeck.head
     ready.game.current.players.map(p => Some(p.player)).foreach { viewer =>
       assert(!presentation.identifiesAt(ready, viewer, top)) }
 
   test("a card's label is its printed name"):
-    val ready = woken
+    val ready = board
     val denizen = catalog.denizens.head
     assertEquals(presentation.cardLabel(ready, DenizenId(denizen.id.value)),
       denizen.name)

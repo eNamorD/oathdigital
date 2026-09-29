@@ -206,6 +206,17 @@ class BackendArchitectureSuite extends munit.FunSuite:
     }.map(_.toString)
     assertEquals(offenders, Vector.empty)
 
+  test("only tests seed a service's genesis"):
+    // The seam lets a test's Table start a stream. Production streams begin
+    // at GameStarted until an arranged-start event exists (docs/ROADMAP.md).
+    val root = Paths.get("src/main/scala")
+    val owner = Paths.get(
+      "src/main/scala/oathdigital/application/GameApplicationService.scala")
+    val offenders = Files.walk(root).iterator.asScala.filter(path =>
+      path.toString.endsWith(".scala") && path != owner &&
+        Files.readString(path).contains("genesis")).map(_.toString).toVector
+    assertEquals(offenders, Vector.empty)
+
   test("application never imports server or serialization layers"):
     val root = Paths.get("src/main/scala/oathdigital/application")
     val forbidden = Vector("import oathdigital.server", "import oathdigital.persistence",

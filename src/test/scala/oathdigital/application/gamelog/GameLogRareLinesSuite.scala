@@ -9,10 +9,10 @@ import oathdigital.model._
 import LogScripts._
 
 /** Lines no cheap script reaches: each is driven by one recorded batch
-  * appended to the woken game, the way the victory headlines are, so the
+  * appended to the board script, the way the victory headlines are, so the
   * rule is read against real state. */
 class GameLogRareLinesSuite extends munit.FunSuite:
-  private lazy val script = woken
+  private lazy val script = board
   private lazy val steps = script.history.steps
   private lazy val ready = steps.last.after match
     case OathState.Ready(ready) => ready

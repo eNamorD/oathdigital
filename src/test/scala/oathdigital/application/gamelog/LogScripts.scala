@@ -16,7 +16,8 @@ import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
-import oathdigital.testkit.{Park, Situation, SituationDriver, Step}
+import oathdigital.testkit.{CatalogNames, Park, Situation, Step, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** A journal built by real play through `GameApplicationService` on every
   * run (spec, "Test journals"). No stored game is a fixture: a script a new
@@ -42,17 +43,6 @@ object LogScripts:
     def rollDefense(count: Int): Vector[DefenseDieFace] =
       Vector.fill(count)(DefenseDieFace.TwoShields)
 
-  /** A fresh service and its journaled driver, the stream named `name`, with
-    * pawns spread one per site so no two players share a site by accident. */
-  def journaled(name: String, dice: CampaignDicePort = steadyDice,
-      spread: Vector[SiteId] = FirstGameSetupFixture.sites)
-      : (GameApplicationService, InMemoryEventStreamRepository, SituationDriver) =
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = dice)
-    (service, repository, Situation.journaled(service, catalog, repository,
-      name).withAnswers(Situation.pawnsAt(spread)))
-
   def active(situation: Situation)(using munit.Location): PlayerId =
     situation.ready.game.current.turn.activePlayer
 
@@ -61,17 +51,39 @@ object LogScripts:
     situation.ready.game.current.players.find(_.player == player)
       .flatMap(_.pawnSite).get
 
-  /** Setup to the first player's Wake. */
+  /** A short journal on a table, for the suites that append their own
+    * recorded events to a real board and read the lines they post. The board
+    * holds the facts those suites lean on, each stated here: a relic lying at
+    * Broken Peaks, a homeland edifice at Deep Woods, and a facedown adviser
+    * with each of p2 and p3. p1, the actor, wakes and ends Wake, and it is
+    * their Act. */
+  def board(using munit.Location): Script =
+    val (service, waking) = atTable("board", Table.start.turn(p1, Phase.Wake)
+      .relicAt("Sticky Fire", "Broken Peaks")
+      .edifice("Hiding Place", EdificeSide.Ruined, "Deep Woods")
+      .adviser(p2, "Birdsong", facedown = true)
+      .adviser(p3, "Wizard's Conclave", facedown = true)
+      .banditsRefilled)
+    waking.after(GameCommand.EndWake(p1))
+    Script("board", service, p1)
+
+  /** Setup to the first player's Wake, on the real start: the one script
+    * that replays Setup, so its log carries the setup lines. Pawns are spread
+    * one per site. */
   def woken(using munit.Location): Script =
-    val (service, _, driver) = journaled("woken")
-    val situation = Situation.wake(driver)
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = steadyDice)
+    val situation = Situation.wake(Situation.journaled(service, catalog,
+      repository, "woken").withAnswers(
+        Situation.pawnsAt(FirstGameSetupFixture.sites)))
     Script("woken", service, active(situation))
 
-  /** Setup; the first player travels and rests; every other player rests;
+  /** The first player wakes, travels and rests; every other player rests;
     * Round 2 begins. */
   def round(using munit.Location): Script =
-    val (service, _, driver) = journaled("round")
-    val woken = Situation.wake(driver)
+    val (service, woken) = atTable("round",
+      Table.start.turn(p1, Phase.Wake).banditsRefilled)
     val first = active(woken)
     val acting = woken.endingWake(first)
     val destination = acting.ready.game.current.map.inPlay
@@ -134,23 +146,26 @@ object LogScripts:
       munit.Location): Vector[LogEntry] =
     formatter.format(withoutNotes(script.history.steps), viewer)
 
-  /** The service suite's Oathkeeper tie: an arranged board, the active
-    * player's Travel, and the holder's choice of the next Oathkeeper. */
-  def oathkeeper(using munit.Location): Script =
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = steadyDice)
-    val (parked, active, _, _) = ParkedServiceFixture.oathkeeperTiePark(
-      service, repository, "oathkeeper")
-    Situation(parked.state, Vector.empty, parked.nextSequence,
-      Situation.journaled(service, catalog, repository, "oathkeeper")).after()
-    Script("oathkeeper", service, active)
+  /** A fresh service whose stream `name` begins at `table`, and the
+    * journaled situation there. A script's table ends with `banditsRefilled`,
+    * or its first command journals the bandit refill as well and the log
+    * reads a "Bandits returned" line no script means to test. */
+  def atTable(name: String, table: Table, dice: CampaignDicePort = steadyDice)(
+      using munit.Location): (GameApplicationService, Situation) =
+    val (service, repository) = table.service(campaignDice = dice)
+    (service, table.situation(Situation.journaled(service, catalog, repository,
+      name)))
 
-  private def acting(name: String)(using munit.Location)
-      : (GameApplicationService, InMemoryEventStreamRepository, Situation) =
-    val (service, repository, driver) = journaled(name)
-    val woken = Situation.wake(driver)
-    (service, repository, woken.endingWake(active(woken)))
+  /** The service suite's Oathkeeper tie: a table with two tied leaders, the
+    * active player's Travel, and the holder's choice of the next
+    * Oathkeeper. */
+  def oathkeeper(using munit.Location): Script =
+    val (game, active, _, _) = ParkedServiceFixture.oathkeeperTiePark(
+      "oathkeeper")
+    Situation(game.accepted.state, Vector.empty, game.accepted.nextSequence,
+      Situation.journaled(game.service, catalog, game.repository,
+        "oathkeeper")).after()
+    Script("oathkeeper", game.service, active)
 
   private def start(situation: Situation, action: StartableRef,
       args: DecisionOptionRef*)(using munit.Location): Situation =
@@ -164,12 +179,11 @@ object LogScripts:
     * run that follows here is the Rest, which tells only its deltas, so the
     * action a script tests stays whole. `ops` reads the situation it is
     * arranged in and the second player. */
-  private def arrangedForNext(woken: Situation)(
+  private def arrangedForNext(acting: Situation)(
       ops: (Situation, PlayerId) => Vector[CoreOperation])(
       using munit.Location): (Situation, PlayerId) =
-    val first = active(woken)
-    val next = FinishRestProcedure.turnOrder(woken.ready)(1)
-    val acting = woken.endingWake(first)
+    val first = active(acting)
+    val next = FinishRestProcedure.turnOrder(acting.ready)(1)
     val resting = acting.after(Step.Arrange(ops(acting, next)),
       GameCommand.BeginRest(first))
     val rested = if active(resting) == first then
@@ -178,11 +192,14 @@ object LogScripts:
 
   /** Search of the world deck, every decision answered by default. */
   def search(using munit.Location): Script =
-    val (service, _, act) = acting("search")
+    // Three denizens on top of the world deck, so the Search offers a choice.
+    val (service, act) = atTable("search", Table.start
+      .worldDeckTop("Threatening Roar", "Fae Merchant", "Second Chance")
+      .banditsRefilled)
     start(act, ActionRef.Search, DecisionOptionRef.Button("search:world"))
     Script("search", service, active(act))
 
-  /** The setup adviser played from its facedown slot. */
+  /** p1's facedown adviser played from its slot. */
   def facedownAdviser(using munit.Location): Script =
     facedownAdviser("facedown-adviser", None)
 
@@ -190,7 +207,8 @@ object LogScripts:
     * is given, else by default (the first button, discard). */
   def facedownAdviser(name: String, placement: Option[String])
       (using munit.Location): Script =
-    val (service, _, acted) = acting(name)
+    val (service, acted) = atTable(name, Table.start
+      .adviser(p1, "Wizard's Conclave", facedown = true).banditsRefilled)
     val act = placement.fold(acted)(key => acted.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
         ChooseOneAnswer(DecisionOptionRef.Button(key))
@@ -206,55 +224,48 @@ object LogScripts:
     start(act, ActionRef.PlayFacedownAdviser, held)
     Script(name, service, actor)
 
-  /** The actor stands on a site with a card to Muster or Trade from,
-    * travelling there first if the pawn's own site has none. A first game
-    * deals no denizen to a site, so on this board the card is a homeland
-    * edifice. */
-  private def besideSource(act: Situation)(using munit.Location): Situation =
-    val actor = active(act)
-    def hasSource(site: SiteId) = act.ready.game.current.map.sites(site)
-      .denizens.exists(_.tokens.isEmpty)
-    if hasSource(pawn(act, actor)) then act
-    else start(act, ActionRef.Travel, DecisionOptionRef.Site(
-      act.ready.game.current.map.inPlay.find(hasSource).get))
+  /** Deep Woods with a card to Muster or Trade from: a first game deals no
+    * denizen to a site, so on this board the card is a homeland edifice. The
+    * actor's pawn must stand there. */
+  private def source(table: Table): Table =
+    table.edifice("Hiding Place", EdificeSide.Ruined, "Deep Woods")
 
+  /** p1 musters at Deep Woods. */
   def muster(using munit.Location): Script =
-    val (service, _, act) = acting("muster")
-    start(besideSource(act), ActionRef.Muster)
+    val (service, act) = atTable("muster",
+      source(Table.start.pawn(p1, "Deep Woods")).banditsRefilled)
+    start(act, ActionRef.Muster)
     Script("muster", service, active(act))
 
-  /** Trade for secrets, on the second player's turn. It costs two favor and
-    * a player starts with one, so a second is arranged into their area. With
-    * no adviser matching the source's suit, it gains nothing. */
+  /** Trade for secrets, on the second player's turn, at the site with the
+    * source. It costs two favor and a player starts with one, so a second
+    * is arranged into their area. With no adviser matching the source's
+    * suit, it gains nothing. */
   def trade(using munit.Location): Script =
-    val (service, _, driver) = journaled("trade")
-    val (waking, actor) = arrangedForNext(Situation.wake(driver))((_, next) =>
+    val (service, act) = atTable("trade",
+      source(Table.start.pawn(p2, "Deep Woods")).banditsRefilled)
+    val (waking, actor) = arrangedForNext(act)((_, next) =>
       Vector(Move(Piece.Favor(1),
         PositionedLocation(Location.FavorBank(Suit.all.head)),
         PositionedLocation(Location.PlayArea(next)))))
-    start(besideSource(waking.endingWake(actor)), ActionRef.Trade,
+    start(waking.endingWake(actor), ActionRef.Trade,
       DecisionOptionRef.Button("secret"))
     Script("trade", service, actor)
 
-  /** One favor arranged onto the second player's site; the first player
-    * rests, and the second takes it in Wake. That is Wake's only option, so
-    * Wake ends with the take. */
+  /** One favor lies on p2's site, and p2 wakes there and takes it. That is
+    * Wake's only option, so Wake ends with the take. */
   def takeWealth(using munit.Location): Script =
-    val (service, _, driver) = journaled("take-wealth")
-    val (waking, next) = arrangedForNext(Situation.wake(driver))(
-      (acting, next) => Vector(Move(Piece.Favor(1),
-        PositionedLocation(Location.FavorBank(Suit.all.head)),
-        PositionedLocation(Location.Site(pawn(acting, next))))))
+    val (service, waking) = atTable("take-wealth", Table.start
+      .turn(p2, Phase.Wake).siteTokens("Broken Peaks", favor = 1)
+      .banditsRefilled)
     start(waking, ActionRef.TakeWealth, DecisionOptionRef.Button("favor"))
-    Script("take-wealth", service, next)
+    Script("take-wealth", service, p2)
 
   private def recovering(name: String, dice: CampaignDicePort)
       (using munit.Location): (GameApplicationService, Situation) =
-    val (service, _, driver) = journaled(name, dice,
-      ParkedServiceFixture.recoverSites)
-    val woken = Situation.wake(driver,
-      ParkedServiceFixture.recoverChronicle)
-    (service, woken.endingWake(active(woken)))
+    // p2 is off Broken Peaks (see `recoverTable`), so the relics stay hidden
+    // from the other seat.
+    atTable(name, ParkedServiceFixture.recoverTable.banditsRefilled, dice)
 
   /** Dice that fail every Recover roll: continue once, then stop. */
   def recoverFailed(using munit.Location): Script =
@@ -288,14 +299,12 @@ object LogScripts:
     recovered.after(GameCommand.RevealOwnedRelic(actor, relic))
     Script("reveal-relic", service, actor)
 
-  /** The Forge fixture's journal (a Conquest, Searches, rounds) and then the
-    * Forge itself, which never parks at a single-resource site. */
+  /** The Forge fixture's table, then the Forge itself, which never parks at
+    * a single-resource site. */
   def forge(using munit.Location): Script =
-    val service = new GameApplicationService(catalog,
-      new InMemoryEventStreamRepository,
-      campaignDicePort = ForgeWalkerFixture.blankCampaignDice)
-    val (ready, actor, _) = ForgeWalkerFixture.forgeReadyGame(service, "forge")
-    service.handle("forge", ready.nextSequence, GameCommand.StartWalker(
+    val (service, _) = ForgeWalkerFixture.forgeService()
+    val actor = Table.p1
+    service.handle("forge", 0L, GameCommand.StartWalker(
       ActionRef.Forge, StartPayload(actor))).fold(
       error => munit.Assertions.fail(s"Forge refused: $error"), identity)
     Script("forge", service, actor)
@@ -303,18 +312,13 @@ object LogScripts:
   /** A Challenge for a banner from the bank, then resources placed on it.
     * A Challenge needs strictly more favor than the banner holds, and a
     * player starts with too little to challenge and still have favor to
-    * place, so two favor are arranged into the actor's area. The actor is
-    * the second player.
+    * place, so p1 holds three.
     */
   def banners(using munit.Location): Script =
-    val (service, _, driver) = journaled("banners")
-    val (waking, actor) = arrangedForNext(Situation.wake(driver))((_, next) =>
-      Vector(Move(Piece.Favor(2),
-        PositionedLocation(Location.FavorBank(Suit.all.head)),
-        PositionedLocation(Location.PlayArea(next)))))
-    start(start(waking.endingWake(actor), ActionRef.Challenge),
-      ActionRef.PlaceBannerResource)
-    Script("banners", service, actor)
+    val (service, act) = atTable("banners",
+      Table.start.favor(p1, 3).banditsRefilled)
+    start(start(act, ActionRef.Challenge), ActionRef.PlaceBannerResource)
+    Script("banners", service, p1)
 
   /** Attack dice all swords, defense dice all blank. */
   val raidDice: CampaignDicePort = new CampaignDicePort:
@@ -323,17 +327,16 @@ object LogScripts:
     def rollDefense(count: Int): Vector[DefenseDieFace] =
       Vector.fill(count)(DefenseDieFace.Blank)
 
-  /** A Raid on the player whose pawn shares the actor's site. Every board
-    * warband goes into the force and every survivor is sacrificed, so the
-    * attack is twice the force against the defender's board warbands and
-    * blank dice: the attacker wins. No battle plan is chosen. */
+  /** A Raid on p2, whose pawn shares p1's site and who holds a facedown
+    * adviser to lose. Every board warband goes into the force and every
+    * survivor is sacrificed, so the attack is twice the force against the
+    * defender's board warbands and blank dice: the attacker wins. No battle
+    * plan is chosen. */
   def raid(using munit.Location): Script =
-    val sites = FirstGameSetupFixture.sites
-    val (service, _, driver) = journaled("raid", raidDice,
-      Vector(sites(0), sites(0)) ++ sites.drop(1))
-    val woken = Situation.wake(driver)
-    val actor = active(woken)
-    woken.withAnswers {
+    val (service, act) = atTable("raid", Table.start
+      .pawn(p2, "Ancient City")
+      .adviser(p2, "Birdsong", facedown = true).banditsRefilled, raidDice)
+    act.withAnswers {
       case park if park.decisionId == CampaignIds.kind =>
         ChooseOneAnswer(DecisionOptionRef.Button("raid"))
       case Park(Decide(CampaignIds.force, _,
@@ -345,25 +348,19 @@ object LogScripts:
       case park if park.decisionId == CampaignIds.attackerPlan ||
           park.decisionId == CampaignIds.defenderPlan =>
         ChooseOneAnswer(CampaignIds.finish)
-    }.endingWake(actor)
-      .after(GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
-    Script("raid", service, actor)
+    }.after(GameCommand.StartWalker(ActionRef.Campaign, StartPayload(p1)))
+    Script("raid", service, p1)
 
-  /** The first two pawns share a site, so the first player can negotiate
-    * with exactly one other: the negotiators decision is not asked. */
-  private def negotiating(name: String)(using munit.Location)
+  /** p1 and p2 share Ancient City, so p1 can negotiate with exactly one
+    * other: the negotiators decision is not asked. `extra` adds to the
+    * table. */
+  private def negotiating(name: String, extra: Table => Table = identity)(
+      using munit.Location)
       : (GameApplicationService, Situation, PlayerId, PlayerId) =
-    val sites = FirstGameSetupFixture.sites
-    val (service, _, driver) = journaled(name,
-      spread = Vector(sites(0), sites(0)) ++ sites.drop(1))
-    val woken = Situation.wake(driver)
-    val actor = active(woken)
-    val act = woken.endingWake(actor)
-    val partner = act.ready.game.current.players.find(player =>
-      player.player != actor && player.pawnSite == Some(pawn(act, actor)))
-      .get.player
+    val (service, act) = atTable(name,
+      extra(Table.start.pawn(p2, "Ancient City")).banditsRefilled)
     (service, act.parkedAfter(GameCommand.StartWalker(ActionRef.Negotiation,
-      StartPayload(actor))), actor, partner)
+      StartPayload(p1))), p1, p2)
 
   private def deal(by: PlayerId, answer: DecisionAnswer): GameCommand =
     GameCommand.ResolveWalker(by, TreeDecision(NegotiationDeal.dealDecisionId,
@@ -383,10 +380,10 @@ object LogScripts:
       .after(deal(actor, AcceptDeal))
     Script("negotiation-agreed", service, actor)
 
-  /** The partner shows the actor its facedown starting adviser. */
+  /** The partner shows the actor its facedown adviser. */
   def negotiationDisclosed(using munit.Location): Script =
-    val (service, parked, actor, partner) =
-      negotiating("negotiation-disclosed")
+    val (service, parked, actor, partner) = negotiating(
+      "negotiation-disclosed", _.adviser(p2, "Birdsong", facedown = true))
     val adviser = parked.ready.game.current.players
       .find(_.player == partner).get.advisers.collectFirst {
         case DenizenState(id, Orientation.FaceDown, _) => id: WorldCardId
@@ -402,168 +399,122 @@ object LogScripts:
 
   /** Silver Tongue used in Rest, its bank choice answered by default. */
   def usePower(using munit.Location): Script =
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = steadyDice)
-    val (parked, actor, _) = ParkedServiceFixture.silverTonguePark(service,
-      repository, "use-power")
-    Situation(parked.state, Vector.empty, parked.nextSequence,
-      Situation.journaled(service, catalog, repository, "use-power")).after()
-    Script("use-power", service, actor)
+    val (game, actor, _) = ParkedServiceFixture.silverTonguePark("use-power",
+      steadyDice)
+    Situation(game.accepted.state, Vector.empty, game.accepted.nextSequence,
+      Situation.journaled(game.service, catalog, game.repository,
+        "use-power")).after()
+    Script("use-power", game.service, actor)
 
-  /** Augury, a free Search modifier, stands at the actor's site; the Search
-    * selects it. The actor is the second player. */
+  /** Augury, a free Search modifier, stands at p1's site; the Search selects
+    * it. */
   def augury(using munit.Location): Script =
-    val card = DenizenId("56")
-    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders,
-      Vector(card))
-    val (service, _, driver) = journaled("augury")
-    val (waking, actor) = arrangedForNext(Situation.wake(driver, chronicle,
-      orders))((acting, next) => Vector(ParkedServiceFixture.topOfWorldDeck(
-        card, Location.Site(pawn(acting, next)))))
-    waking.endingWake(actor)
-      .after(GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
-        Vector(Augury.id), Vector(DecisionOptionRef.Button("search:world")))))
-    Script("augury", service, actor)
+    val (service, act) = atTable("augury", Table.start
+      .denizen("Augury", "Ancient City").banditsRefilled)
+    act.after(GameCommand.StartWalker(ActionRef.Search, StartPayload(p1,
+      Vector(Augury.id), Vector(DecisionOptionRef.Button("search:world")))))
+    Script("augury", service, p1)
 
-  /** Gambling Hall at the actor's site, used in Act with a second favor
-    * arranged. The steady dice total 8, and the richest bank is chosen so
-    * the gain is never empty. */
+  /** Gambling Hall at p1's site, used in Act by a player holding two favor.
+    * The steady dice total 8, and the richest bank is chosen so the gain is
+    * never empty. */
   def gamblingHall(using munit.Location): Script =
-    val card = DenizenId("93")
-    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
-    val (service, _, driver) = journaled("gambling-hall")
-    val woken = Situation.wake(driver, chronicle, orders)
-    val richest = Suit.all.maxBy(suit => woken.ready.banks.favor(suit))
-    val spare = Suit.all.find(suit => suit != richest &&
-      woken.ready.banks.favor(suit) > 0).get
-    val (waking, actor) = arrangedForNext(woken.withAnswers {
+    val card = CatalogNames.denizen("Gambling Hall")
+    val table = Table.start.denizen("Gambling Hall", "Ancient City")
+      .favor(p1, 2).banditsRefilled
+    val richest = Suit.all.maxBy(suit => table.ready.banks.favor(suit))
+    val (service, act) = atTable("gambling-hall", table)
+    act.withAnswers {
       case park if park.decisionId == GamblingHall.decisionId =>
         ChooseOneAnswer(DecisionOptionRef.FavorBank(richest))
-    })((acting, next) => Vector(
-        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(acting, next))),
-        Move(Piece.Favor(1), PositionedLocation(Location.FavorBank(spare)),
-          PositionedLocation(Location.PlayArea(next)))))
-    waking.endingWake(actor).after(GameCommand.UsePower(actor, GamblingHall.id,
+    }.after(GameCommand.UsePower(p1, GamblingHall.id,
       DecisionOptionRef.Denizen(card)))
-    Script("gambling-hall", service, actor)
+    Script("gambling-hall", service, p1)
 
-  /** Wolves at the actor's site, used in Act with a secret arranged. The
+  /** Wolves at p1's site, used in Act by a player holding two secrets. The
     * board question parks; the answer kills one of the other player's
     * warbands with the most of them. */
   def wolves(using munit.Location): Script =
-    val card = DenizenId("39")
-    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
-    val (service, _, driver) = journaled("wolves")
-    val woken = Situation.wake(driver, chronicle, orders)
-    val actor = FinishRestProcedure.turnOrder(woken.ready)(1)
-    val victim = woken.ready.game.current.players.filter(_.player != actor)
+    val card = CatalogNames.denizen("Wolves")
+    // p3 has fewer warbands on its board, so p2 is the one with the most.
+    val table = Table.start.denizen("Wolves", "Ancient City")
+      .secrets(p1, faceUp = 2).warbands(p3, 2).banditsRefilled
+    val victim = table.ready.game.current.players.filter(_.player != p1)
       .maxBy(_.board.warbands).player
-    val (waking, _) = arrangedForNext(woken.withAnswers {
+    val (service, act) = atTable("wolves", table)
+    act.withAnswers {
       case park if park.decisionId == Wolves.decisionId =>
         ChooseOneAnswer(DecisionOptionRef.Player(victim))
-    })((acting, next) => Vector(
-        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(acting, next))),
-        Move(Piece.Secrets(1), PositionedLocation(Location.SharedBank),
-          PositionedLocation(Location.PlayArea(next)))))
-    waking.endingWake(actor).after(GameCommand.UsePower(actor, Wolves.id,
+    }.after(GameCommand.UsePower(p1, Wolves.id,
       DecisionOptionRef.Denizen(card)))
-    Script("wolves", service, actor)
+    Script("wolves", service, p1)
 
-  /** Oracle at the actor's site, used in Act with two secrets arranged. A
+  /** Oracle at p1's site, used in Act by a player holding three secrets. A
     * first game's world deck holds its first Vision below ten denizens;
     * Oracle draws it, and the actor keeps it as a facedown adviser. */
   def oracle(using munit.Location): Script = oracle("oracle", "adviser-facedown")
 
   /** Oracle, its drawn Vision placed by `placement`. */
   def oracle(name: String, placement: String)(using munit.Location): Script =
-    val card = DenizenId("160")
-    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
-    val (service, _, driver) = journaled(name)
-    val woken = Situation.wake(driver, chronicle, orders)
-    val (waking, actor) = arrangedForNext(woken.withAnswers {
+    val card = CatalogNames.denizen("Oracle")
+    val (service, act) = atTable(name, Table.start
+      .denizen("Oracle", "Ancient City").secrets(p1, faceUp = 3)
+      .banditsRefilled)
+    act.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
         ChooseOneAnswer(DecisionOptionRef.Button(placement))
-    })((acting, next) => Vector(
-        ParkedServiceFixture.topOfWorldDeck(card, Location.Site(pawn(acting, next))),
-        Move(Piece.Secrets(2), PositionedLocation(Location.SharedBank),
-          PositionedLocation(Location.PlayArea(next)))))
-    waking.endingWake(actor).after(GameCommand.UsePower(actor, Oracle.id,
+    }.after(GameCommand.UsePower(p1, Oracle.id,
       DecisionOptionRef.Denizen(card)))
-    Script(name, service, actor)
+    Script(name, service, p1)
 
-  /** Barbed Net in the actor's play area and a relic from the relic deck at
-    * the actor's site, used in Act with three secrets arranged. The relic
-    * question parks; the answer takes that relic. */
+  /** Barbed Net in p1's play area and two relics at p1's site, used in Act
+    * by a player holding four secrets. The relic question parks; the answer
+    * takes Dowsing Sticks. */
   def barbedNet(using munit.Location): Script =
-    val net = RelicId("R36")
-    val (service, _, driver) = journaled("barbed-net")
-    val woken = Situation.wake(driver, FirstGameSetupFixture.chronicle,
-      FirstGameSetupFixture.orders)
-    val current = woken.ready.game.current
-    val from = current.map.sites.collectFirst {
-      case (site, state) if state.relics.exists(_.id == net) =>
-        Location.Site(site)
-    }.getOrElse(Location.Deck(CardDeck.Relic))
-    val target = current.commonCards.relicDeck.find(_ != net).get
-    val (waking, actor) = arrangedForNext(woken.withAnswers {
+    val net = CatalogNames.relic("Barbed Net")
+    val target = CatalogNames.relic("Dowsing Sticks")
+    val (service, act) = atTable("barbed-net", Table.start
+      .relic(p1, "Barbed Net")
+      .relicAt("Dowsing Sticks", "Ancient City")
+      .relicAt("Sticky Fire", "Ancient City")
+      .secrets(p1, faceUp = 4).banditsRefilled)
+    act.withAnswers {
       case park if park.decisionId == BarbedNet.decisionId =>
         ChooseOneAnswer(DecisionOptionRef.Relic(target))
-    })((acting, next) => Vector(
-        Move(Piece.Card(net), PositionedLocation(from),
-          PositionedLocation(Location.PlayArea(next)),
-          resultingOrientation = Some(Orientation.FaceUp)),
-        Move(Piece.Card(target), PositionedLocation(Location.Deck(CardDeck.Relic)),
-          PositionedLocation(Location.Site(pawn(acting, next))),
-          resultingOrientation = Some(Orientation.FaceDown)),
-        Move(Piece.Secrets(3), PositionedLocation(Location.SharedBank),
-          PositionedLocation(Location.PlayArea(next)))))
-    waking.endingWake(actor).after(GameCommand.UsePower(actor, BarbedNet.id,
+    }.after(GameCommand.UsePower(p1, BarbedNet.id,
       DecisionOptionRef.Relic(net)))
-    Script("barbed-net", service, actor)
+    Script("barbed-net", service, p1)
 
-  /** Hunger faceup with the second player, whose Wake begins when the first
-    * player rests. The forced step parks for them. Pawns are spread, so the
-    * only candidate is their own starting adviser, which the default answer
-    * buries. The script's actor is Hunger's holder. */
+  /** Hunger faceup with p2, added after their facedown adviser (so that
+    * adviser is slot 1), whose Wake begins when p1 rests. The forced step
+    * parks for them. Their only candidate is their own facedown adviser,
+    * which the default answer buries, and nothing else keeps Wake open, so
+    * it ends and the log ends with Act. The script's actor is Hunger's
+    * holder, p2. */
   def hunger(using munit.Location): Script =
-    val card = DenizenId("216")
-    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
-    val (service, _, driver) = journaled("hunger")
-    val woken = Situation.wake(driver, chronicle, orders)
-    val first = active(woken)
-    val holder = FinishRestProcedure.turnOrder(woken.ready)(1)
-    woken.after(Step.Arrange(Vector(ParkedServiceFixture.topOfWorldDeck(card,
-        Location.PlayArea(holder)))))
-      .endingWake(first).after(GameCommand.BeginRest(first))
-    Script("hunger", service, holder)
+    val (service, act) = atTable("hunger", Table.start
+      .adviser(p2, "Birdsong", facedown = true).adviser(p2, "Hunger")
+      .banditsRefilled)
+    act.after(GameCommand.BeginRest(p1))
+    Script("hunger", service, p2)
 
-  /** Family Heirloom held by the second player as a facedown adviser, then
-    * played faceup as an adviser: its When Played draw is kept or put on the
-    * bottom by `choice`. */
+  /** Family Heirloom held by p1 as a facedown adviser, then played faceup as
+    * an adviser: its When Played draw is kept or put on the bottom by
+    * `choice`. Dowsing Sticks tops the relic deck. */
   def familyHeirloom(name: String, choice: DecisionOptionRef.Button)
       (using munit.Location): Script =
     val card = FamilyHeirloom.forCatalog(catalog).get.cardId
-    val (chronicle, orders) = ParkedServiceFixture.withWorldDeckTop(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders, Vector(card))
-    val (service, _, driver) = journaled(name)
-    val woken = Situation.wake(driver, chronicle, orders)
-    val (waking, actor) = arrangedForNext(woken.withAnswers {
+    val (service, act) = atTable(name, Table.start
+      .adviser(p1, "Family Heirloom", facedown = true)
+      .relicDeckTop("Dowsing Sticks").banditsRefilled)
+    act.withAnswers {
       case park if park.decisionId.startsWith(ActionLines.PlacePrefix) =>
         ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup"))
       case park if park.decisionId == FamilyHeirloom.decisionId =>
         ChooseOneAnswer(choice)
-    })((_, next) => Vector(ParkedServiceFixture.topOfWorldDeck(card,
-        Location.PlayArea(next), Orientation.FaceDown)))
-    waking.endingWake(actor)
-      .after(GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-        StartPayload(actor, Vector.empty, Vector(DecisionOptionRef.Denizen(card)))))
-    Script(name, service, actor)
+    }.after(GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+      StartPayload(p1, Vector.empty, Vector(DecisionOptionRef.Denizen(card)))))
+    Script(name, service, p1)
 
   def heirloomKept(using munit.Location): Script =
     familyHeirloom("heirloom-kept", FamilyHeirloom.keep)

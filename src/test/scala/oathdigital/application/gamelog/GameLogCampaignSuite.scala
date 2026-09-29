@@ -44,13 +44,13 @@ class GameLogCampaignSuite extends munit.FunSuite:
       all.last.contains(" was sent to "), all)
 
   test("a battle plan answer names who activated it; a flipped plan card names itself"):
-    val script = woken
+    val script = board
     val steps = script.history.steps
     val last = steps.last.after
     val ready = last match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
-    // Any other player whose starting adviser is a face-down Denizen.
+    // Any other player whose adviser is a face-down Denizen: the board's p2.
     val (defender, plan) = ready.game.current.players
       .filter(_.player != script.actor).flatMap(player => player.advisers
         .collectFirst { case DenizenState(id, Orientation.FaceDown, _) =>
@@ -74,14 +74,14 @@ class GameLogCampaignSuite extends munit.FunSuite:
       && line != s"${name(defender)} revealed a Denizen"), shown)
 
   test("a plan the bandits apply is named like any other activation"):
-    val script = woken
+    val script = board
     val steps = script.history.steps
     val last = steps.last.after
     val ready = last match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
-    // A first game deals each homeland site its edifice, which sits among
-    // the site's cards; a site card is what a bandit plan's source is.
+    // The board holds a homeland edifice among a site's cards; a site card
+    // is what a bandit plan's source is.
     val edifice = ready.game.current.map.sites.values.flatMap(_.denizens)
       .collectFirst { case held: EdificeState => held.id }.get
     val tail = Vector[OathEvent](
@@ -101,7 +101,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
 
   test("a total a plan rewrites in the same segment is told once, as rewritten"):
     // Outriders ignores the skulls: it writes the attack again after the cap.
-    val script = woken
+    val script = board
     val steps = script.history.steps
     val last = steps.last.after
     val tail = Vector[OathEvent](

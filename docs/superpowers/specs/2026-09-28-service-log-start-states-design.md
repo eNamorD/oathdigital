@@ -1,6 +1,6 @@
 # Service and game-log start states
 
-Date: 2026-09-28. Status: approved design.
+Date: 2026-09-28. Status: implemented (see Result).
 
 This is the third of five test-suite improvement projects from the
 2026-09-27 test audit. The [Table builder](2026-09-27-test-table-builder-design.md)
@@ -187,3 +187,124 @@ its own commit.
    sequence and speed checks, record the Result here, and update the
    **Situation** entry in `CONTEXT.md` to say a journaled situation may also
    start at a Table.
+
+## Result
+
+One commit per task moved the tests, with two small follow-ups from the
+reviews. The root suite has 2114 tests and the frontend 466, all green after
+every commit.
+
+**What changed beyond the design.**
+- `Table.banditsRefilled`. The quiet table has empty sites, so a journaled
+  first command also journals the bandit refill (`BanditsRefilled`). A test
+  that counts a command's events, or a script whose log is read, starts from a
+  table that ends with this step. It fills only empty in-play sites that have
+  a printed capacity, as `StateBasedEvaluation.banditRefill` does.
+- `Table.relicDeckTop`, for the Forge and Family Heirloom scripts.
+- `LogScripts.atTable(name, table, dice)`: a fresh service begun at a table,
+  and the journaled situation there.
+- `LogScripts.board`: a short table journal (a relic at Broken Peaks, a
+  homeland edifice at Deep Woods, a facedown adviser each with p2 and p3, p1
+  in Act). `GameLogRareLinesSuite`, `GameLogEventSuite`,
+  `GameLogCampaignSuite`, three `GameLogHeadlineSuite` tests and the banner
+  test in `GameLogExchangeSuite` appended synthetic events to the replayed
+  `woken` game and leaned on its setup facts. They read `board` now.
+  `PresentationLabelsSuite` reads its own small table.
+- `SituationDriver`'s `Arrange` appends with `MustNotExist` when it is a
+  table journal's first record.
+- A table journal's opening headlines (`GameLogFormatter.opening`) and
+  `Table#service` are the design's seam, as specified. `GameLogStartLineSuite`
+  tests procedure start lines, not `GameStarted`, so it moved with its
+  scripts instead of staying on replay.
+
+**Brittleness.** Disabling the Wake auto-end (`wakeOptionOpen` always true)
+fails 21 tests, down from 24 before the table-builder project's service and
+log tests moved. Every one is about the auto-end itself or stays on replay:
+- about the auto-end: `WakeAutoEndSuite` (2), `TakeWealthProcedureSuite` (2),
+  `RestSuite` (1), `PhasePowerSuite`, `HornedMaskSuite`, `HungerSuite`'s
+  facedown case; in this project's scope, `GameApplicationServiceSuite`'s Take
+  Wealth test (Wake ends in the same command), `GameLogHeadlineSuite` (3, the
+  Wake headlines and "Nothing happened in Wake") and the round, take-wealth and
+  hunger goldens;
+- on replay by design: `SituationSuite` (3), `HungerSuite`'s Setup test, the
+  `woken` golden and `GameApplicationServiceSuite`'s setup-length test.
+
+None is a service or log test failing on an incidental setup fact.
+
+**Sequence independence.** Adding one event to `beginGame` (a no-op walker
+step after `GameStarted`) fails 78 tests, all in suites that keep the real
+start: the route, provisioning and bootstrap suites (27), `SituationSuite`
+(7), `EndWakeProcedureSuite` (7), the wire suite (5), `SetupProcedureSuite`
+and `GameStartToWakeSuite` (5), `WalkerReplayDriftSuite` (3), the three
+replay-from-journal tests, `GameHistorySuite`, `GameLogSetupSuite` (3),
+`GameLogPropertiesSuite` (5, which runs every script including `woken`),
+`GameLogRouteSuite`, and one test each in `GameLogGoldenSuite`,
+`GameLogDecisionSuite`, `GameLogHeadlineSuite` and `GameLogPowerLinesSuite`
+that read `woken`'s setup lines. In `GameApplicationServiceSuite` it fails six:
+the setup-length check, Salt Flats, the all-Exile game and the three `Begin`
+tests. Before the `board` script, the check also failed about twenty log and
+presentation tests that used `woken` only as a base state; they are why
+`board` exists.
+
+**Speed** (CPU seconds summed over munit's per-test times, one parallel run
+each, on the same machine):
+
+| Suite | Before | After |
+|---|---|---|
+| The 14 game-log suites | 38.8 | 7.8 |
+| `GameApplicationServiceSuite` | 6.9 | 4.5 |
+| `WalkerDecisionProjectionSuite` | 2.0 | 0.5 |
+| `PendingWalkerInvariantSuite` | 1.7 | 0.1 |
+| `PhasePowerProjectorSuite` | 0.4 | 0.1 |
+
+The largest drops are the ones that replayed Setup on every command:
+`GameLogPropertiesSuite` (11.3 to 2.1), `GameLogGoldenSuite` (9.5 to 2.2) and
+`GameLogActionLineSuite` (6.7 to 0.5).
+
+**Kept on the replayed setup**, and why:
+- the `woken` script and its goldens: the one end-to-end log through Setup;
+- `GameLogSetupSuite`, `SituationSuite`'s replay checks, HungerSuite's Setup
+  test, the route, bootstrap and provisioning suites, the wire, End Wake and
+  drift suites, and the replay-from-journal tests, which test the real start;
+- in `GameApplicationServiceSuite`: the all-Exile game, the setup-length
+  check, the three `Begin` tests, and Salt Flats (not in play on a Table's
+  map, and no Table step changes the map).
+
+`ParkedServiceFixture.setUp`, `endingWake` and `withWorldDeckTop`, and
+`GameApplicationServiceSuite.execute`, remain for those tests only.
+
+**Goldens.** Every golden changed by dropping its Setup lines, renumbering,
+and opening with its round, turn and phase. Beyond that, these changed for a
+fact the table now states differently (the action lines read as before):
+- `oathkeeper`, `use-power`: the actor is p1, and the Oathkeeper passes to P1,
+  the default first leader under the new seats;
+- `forge`: the conquest, Searches and rounds are gone; p1 forges;
+- `muster`, `trade`: the pawn stands at Deep Woods, so the Travel line is
+  gone;
+- `banners`, `take-wealth`: the favor is in the table, not an arranged gain;
+  take-wealth starts at p2's Wake, so the first player's Rest is gone;
+- `round`: the turn order is p1, p2, p3, and p1's first Wake ends at once;
+- `augury`: the Search draws Threatening Roar, Fae Merchant, Second Chance and
+  Pied Piper, since the moved card no longer leaves a gap at the deck's top;
+- `barbed-net`: it peeks at two relics at Ancient City, not three at Broken
+  Peaks;
+- `hunger`: p2 buries their own adviser (slot 1), as before, and the log now
+  ends with Act, since nothing else keeps p2's Wake open;
+- `wolves`: p3 holds two warbands on its board, so p2 is the one with the
+  most, and Wolves kills p2's;
+- `raid`: the defender is p2 and loses Birdsong;
+- `negotiation-*`: the partner is p2. The `other` view of these and of
+  `raid` is therefore the partner or defender, not a bystander; the
+  bystander's wording is still pinned by `GameLogExchangeSuite`;
+- `recover-*`, `reveal-relic`: p1 recovers at Broken Peaks and p2 stands at
+  Deep Woods, since a player at a site sees the relics lying there.
+
+**For the readability and speed projects.**
+- Log scripts and service tests now read as facts. The remaining coupling is
+  the real-start tests above, on purpose.
+- `trade` still uses `Step.Arrange` for its gain line, which the detail suite
+  tests, through `arrangedForNext`.
+- Each script's table ends with `banditsRefilled`, and each script says so
+  once, on `atTable`. A reader who sees it in a table elsewhere can find why.
+- `GameApplicationServiceSuite` is 1900 lines; its tests read a table and a
+  service in their own bodies, and could be split by area.

@@ -39,11 +39,25 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
         (Option.empty[Run], Vector.empty[LogEntry])) {
       case ((run, entries), at) =>
         val (lines, next) = eventLines(journal, run, at, viewer)
-        val posted = quietWake(entries.lastOption, lines)
+        val opened = if at == 0 then opening(journal) ++ lines else lines
+        val posted = quietWake(entries.lastOption, opened)
         (next, entries ++ posted.zipWithIndex.map { case (entry, ordinal) =>
           LogEntry(journal.sequence(at), ordinal, entry.kind, entry.depth,
             entry.spans) })
     }._2
+
+  /** A journal that does not begin with `GameStarted` began at a position
+    * already in play (a test's Table): it opens with that position's round,
+    * turn and phase, the headlines a `RoundEnded` would have posted. */
+  private def opening(journal: LogJournal): Vector[Posted] =
+    journal.event(0) match
+      case OathEvent.GameStarted(_, _) => Vector.empty
+      case _ => journal.readyBefore(0).toVector.flatMap { ready =>
+        val current = ready.game.current
+        Vector(roundHeadline(current.tracks.round),
+          turnHeadline(current.turn.activePlayer),
+          phaseHeadline(current.turn.phase))
+      }
 
   /** "Nothing happened in Wake" before an Act headline that follows its
     * Wake headline directly. It reads only entries already posted, so a

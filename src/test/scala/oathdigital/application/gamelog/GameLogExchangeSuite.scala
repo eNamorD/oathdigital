@@ -52,7 +52,7 @@ class GameLogExchangeSuite extends munit.FunSuite:
     assert(all.contains("Used Silver Tongue"), all)
 
   test("a banner's power is named by its banner, not its id"):
-    val script = woken
+    val script = board
     val ready = script.history.steps.last.after match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")

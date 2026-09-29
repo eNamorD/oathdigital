@@ -103,8 +103,9 @@ A game reached by real play from a first-game input: every command issued and
 every parked decision answered along the way, in order. Named situations are
 Wake (Setup complete: the first player's turn, already in Act when that Wake
 had nothing to decide), Act (a player's Wake ended) and Rest (a player's Act
-ended); any other is described by the steps that reach it. Driven by the rules
-adapter, a situation may also start at a Table.
+ended); any other is described by the steps that reach it. A situation may
+also start at a Table: the rules adapter directly, the journaled adapter
+through a service begun at that Table.
 _Avoid_: position (a journal sequence number), fixture, snapshot, initial
 game, setup state
 

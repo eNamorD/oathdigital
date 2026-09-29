@@ -1,7 +1,11 @@
 package oathdigital.application.gamelog
 
+import oathdigital.application.GameCommand
 import oathdigital.engine.{RecordedEvent, ReplayStep}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{Situation, Table}
+import oathdigital.testkit.Table.p1
 import LogScripts._
 
 class GameLogHeadlineSuite extends munit.FunSuite:
@@ -18,10 +22,39 @@ class GameLogHeadlineSuite extends munit.FunSuite:
       Vector(LogKind.Round, LogKind.Round, LogKind.Turn, LogKind.Phase))
     assertEquals(entries.head.sequence, 0L)
 
+  test("a journal that starts at a table opens with its round, turn and " +
+      "phase"):
+    val table = Table.start.turn(p1, Phase.Wake)
+    val (service, repository) = table.service()
+    table.situation(Situation.journaled(service, catalog, repository, "t"))
+      .after(GameCommand.EndWake(p1))
+    val entries = formatter.format(service.history("t").toOption.flatten.get
+      .steps, Some(p1))
+    assertEquals(texts(entries).take(5), Vector("Round 1",
+      s"${name(p1)}'s turn", "Wake", "Nothing happened in Wake", "Act"))
+    assertEquals(entries.take(3).map(entry => (entry.sequence, entry.ordinal)),
+      Vector((0L, 0), (0L, 1), (0L, 2)))
+
+  test("a table journal opens with its phase, and a prefix formats as a " +
+      "prefix of the whole log"):
+    val table = Table.start
+    val (service, repository) = table.service()
+    table.situation(Situation.journaled(service, catalog, repository, "t"))
+      .after(GameCommand.BeginRest(p1))
+    val steps = service.history("t").toOption.flatten.get.steps
+    val whole = formatter.format(steps, Some(p1))
+    assertEquals(texts(whole).take(3), Vector("Round 1",
+      s"${name(p1)}'s turn", "Act"))
+    (1 to steps.size).foreach { k =>
+      val prefix = formatter.format(steps.take(k), Some(p1))
+      assertEquals(prefix, whole.take(prefix.size), s"prefix of $k events")
+    }
+
   test("a whole round posts one turn headline per seat and opens Round 2"):
     val script = round
     val all = headlines(format(script, Some(script.actor)))
-    assertEquals(all.take(2), Vector("Setup", "Round 1"))
+    assertEquals(all.take(2), Vector("Round 1",
+      s"${name(script.actor)}'s turn"))
     assertEquals(all.count(_.endsWith("'s turn")), script.players.size + 1)
     // Round 2's first Wake has nothing to decide, so it ends at once.
     assertEquals(all.takeRight(4),
@@ -62,7 +95,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
       Vector("Took", "Act"), all.toString)
 
   test("the turn headline names the player with a player span"):
-    val script = woken
+    val script = board
     val turn = format(script, None).find(_.kind == LogKind.Turn).get
     assertEquals(turn.spans, Vector(
       LogSpan.Player(script.actor.value, name(script.actor)),
@@ -85,7 +118,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     }, None)
 
   test("each victory posts one victory headline naming the winner"):
-    val script = woken
+    val script = board
     val winner = script.actor
     val vision = VisionId("vision:vision-of-faith")
     val headlines = Vector(
@@ -109,6 +142,6 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     }
 
   test("the last round's end posts no round headline"):
-    val script = woken
+    val script = board
     val before = format(script, None)
     assertEquals(ending(script, OathEvent.RoundEnded(8, None)), before)

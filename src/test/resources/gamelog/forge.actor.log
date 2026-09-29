@@ -1,59 +1,6 @@
-0.0 round 0 | Setup
-3.0 action 1 | [player:p2|P2] placed pawn at [site:site:ancient-city|Ancient City]
-6.0 decision 1 | [player:p2|P2] kept [card:208|Wizard's Conclave]
-11.0 action 1 | [player:p3|P3] placed pawn at [site:site:broken-peaks|Broken Peaks]
-14.0 decision 1 | [player:p3|P3] kept a Denizen
-19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
-22.0 decision 1 | [player:p1|P1] kept a Denizen
-25.0 round 0 | Round 1
-25.1 turn 0 | [player:p2|P2]'s turn
-25.2 phase 0 | Wake
-27.0 action 1 | Nothing happened in Wake
-27.1 phase 0 | Act
-29.0 action 1 | Started Campaign: Conquest against the bandits[cost:2 Supply]
-33.0 decision 1 | Targets: [site:site:ancient-city|Ancient City]
-33.1 delta 1 | Attack Pool: 3, Defense Pool: 2
-35.0 roll 1 | Rolled [dice:attack one-sword one-sword one-sword|sword, sword, sword] for the attack
-36.0 roll 1 | Attack: 3
-38.0 decision 1 | Sacrificed 2 warbands for an attack of 5
-39.0 roll 1 | Rolled [dice:defense blank blank|blank, blank] for the defense
-40.0 roll 1 | Defense: 3
-41.0 action 1 | [player:p2|P2] wins!
-46.0 delta 1 | Placed 1 warband on [site:site:ancient-city|Ancient City]
-46.1 delta 1 | The bandits lost 3 warbands
-47.0 trigger 1 | Oathkeeper passed to [player:p2|P2]
-49.0 action 1 | Started Search[cost:2 Supply]
-52.0 action 1 | Drew [card:179|Threatening Roar], [card:180|Fae Merchant] and [card:181|Second Chance] from the World Deck and kept [card:179|Threatening Roar]
-53.0 delta 1 | Discarded [card:180|Fae Merchant] and [card:181|Second Chance] to the Provinces discard
-56.0 action 1 | Played [card:179|Threatening Roar] to [site:site:ancient-city|Ancient City]
-56.1 delta 1 | Gained 1 favor from the Beast bank
-59.0 action 1 | Started Search[cost:2 Supply]
-62.0 action 1 | Drew [card:183|Mushrooms], [card:100|Bandit Chief] and [card:102|Defame] from the World Deck and kept [card:183|Mushrooms]
-63.0 delta 1 | Discarded [card:100|Bandit Chief] and [card:102|Defame] to the Provinces discard
-66.0 action 1 | Played [card:183|Mushrooms] to [site:site:ancient-city|Ancient City]
-66.1 delta 1 | Gained 1 favor from the Beast bank
-68.0 phase 0 | Rest
-70.0 delta 1 | Increased supply from 1 to 7
-71.0 turn 0 | [player:p3|P3]'s turn
-71.1 phase 0 | Wake
-73.0 action 1 | Nothing happened in Wake
-73.1 phase 0 | Act
-75.0 phase 0 | Rest
-77.0 turn 0 | [player:p1|P1]'s turn
-77.1 phase 0 | Wake
-79.0 action 1 | Nothing happened in Wake
-79.1 phase 0 | Act
-81.0 phase 0 | Rest
-85.0 round 0 | Round 2
-85.1 turn 0 | [player:p2|P2]'s turn
-85.2 phase 0 | Wake
-86.0 action 1 | Nothing happened in Wake
-86.1 phase 0 | Act
-88.0 action 1 | Started Search[cost:2 Supply]
-91.0 action 1 | Drew [card:182|Pied Piper], [card:101|Chaos Cult] and [card:12|Mercenaries] from the World Deck and kept [card:12|Mercenaries]
-92.0 delta 1 | Discarded [card:182|Pied Piper] and [card:101|Chaos Cult] to the Provinces discard
-95.0 action 1 | Played [card:12|Mercenaries] to [site:site:ancient-city|Ancient City]
-95.1 delta 1 | Gained 1 favor from the Discord bank
-97.0 action 1 | Started Forge[cost:1 Supply]
-98.0 action 1 | Placed favor on [card:179|Threatening Roar], [card:183|Mushrooms] and [card:12|Mercenaries]
-98.1 action 1 | Forged [card:R09|Dowsing Sticks]
+0.0 round 0 | Round 1
+0.1 turn 0 | [player:p1|P1]'s turn
+0.2 phase 0 | Act
+0.3 action 1 | Started Forge[cost:1 Supply]
+1.0 action 1 | Placed favor on [card:179|Threatening Roar], [card:183|Mushrooms] and [card:12|Mercenaries]
+1.1 action 1 | Forged [card:R09|Dowsing Sticks]
