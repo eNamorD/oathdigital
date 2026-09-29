@@ -3,5 +3,4 @@
 0.2 phase 0 | Act
 0.3 action 1 | Started Travel[cost:2 Supply]
 1.0 action 1 | Travelled to [site:site:buried-giant|Buried Giant]
-3.0 trigger 1 | Bandits returned to [site:site:buried-giant|Buried Giant], [site:site:deep-woods|Deep Woods], [site:site:desolate-shore|Desolate Shore], [site:site:dunes|Dunes], [site:site:fair-isle|Fair Isle] and [site:site:golden-valley|Golden Valley]
-6.0 trigger 1 | Oathkeeper passed to [player:p1|P1]
+5.0 trigger 1 | Oathkeeper passed to [player:p1|P1]

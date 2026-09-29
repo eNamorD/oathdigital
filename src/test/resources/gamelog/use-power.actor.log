@@ -4,4 +4,3 @@
 0.3 phase 0 | Rest
 3.0 decision 1 | Chose the Discord bank
 5.0 action 1 | [card:92|Silver Tongue]: [player:p1|P1] took [amount:1 favor] from the Discord bank.
-8.0 trigger 1 | Bandits returned to [site:site:ancient-city|Ancient City], [site:site:broken-peaks|Broken Peaks], [site:site:buried-giant|Buried Giant], [site:site:deep-woods|Deep Woods], [site:site:desolate-shore|Desolate Shore], [site:site:dunes|Dunes], [site:site:fair-isle|Fair Isle] and [site:site:golden-valley|Golden Valley]

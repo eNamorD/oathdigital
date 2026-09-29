@@ -6,7 +6,6 @@ import oathdigital.gameplay.{CatacombsContributionSuite, OathRules,
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Table
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
@@ -14,6 +13,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.protocol.projection.{DecisionOptionProjection,
   DecisionQueryProjection, DecisionSectionProjection, GameProjectionCodec,
   WalkerDecisionProjection, WalkerRollOutcomeProjection}
+import oathdigital.testkit.Table
 
 /** Task 7 (Recover slice, controller ruling (b)) established the
   * application-projector surface: [[WalkerDecisionProjector]] plus the
@@ -201,8 +201,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     // is always ONE specific relic at this site. With only one candidate in
     // play, a regression that echoed that marker instead of reading live
     // site state would produce a byte-identical single-element result and
-    // pass here undetected. `startedAtRoll(..., minRelicSlots = 2)` above
-    // deliberately selects a site with a second relic slot so the expected
+    // pass here undetected. `ParkedServiceFixture.recoverTable` deliberately
+    // places two relics at the Recover site so the expected
     // set below has two distinguishable elements -- echoing the marker
     // would then yield a one-element vector and fail the equality check.
     assert(facedownRelics.size >= 2,

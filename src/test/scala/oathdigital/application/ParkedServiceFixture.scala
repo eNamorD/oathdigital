@@ -109,9 +109,11 @@ object ParkedServiceFixture:
       table.situation(Situation.journaled(service, catalog, repository, gameId)))
 
   /** League Treaty at Ancient City, ruled by p2's warband and holding 2
-    * favor of its own suit. p1 begins Rest, which finishes Rest and parks on
-    * p2's destination decision. Broken Peaks' secrets give p2's coming Wake
-    * an option, so that Wake waits once p2 has answered. */
+    * favor of its own suit, taken from that suit's bank. p2's board keeps
+    * the 3 warbands it started with, 1 at the site and 2 at home. p1 begins
+    * Rest, which finishes Rest and parks on p2's destination decision.
+    * Broken Peaks' secrets give p2's coming Wake an option, so that Wake
+    * waits once p2 has answered. */
   def leagueTreatyPark(gameId: String)(using munit.Location)
       : (ParkedGame, PlayerId, PlayerId) =
     val base = Table.start
@@ -176,9 +178,11 @@ object ParkedServiceFixture:
       orders.participants.map(_.playerId))
 
   /** The off-turn Oathkeeper tie: p3 holds the title, and p1 and p2 each
-    * rule a site with one warband. The holder must pick between the two tied
-    * leaders after p1's Travel to Buried Giant. The returned players are the
-    * mover, the holder and the second leader. */
+    * rule a site with one warband (the other 2 stay on their boards). The
+    * holder must pick between the two tied leaders after p1's Travel to
+    * Buried Giant. Bandits fill the empty sites first, so the refill that
+    * follows a first command does not journal an event of its own. The
+    * returned players are the mover, the holder and the second leader. */
   def oathkeeperTiePark(gameId: String)(using munit.Location)
       : (ParkedGame, PlayerId, PlayerId, PlayerId) =
     val table = Table.start
@@ -187,6 +191,7 @@ object ParkedServiceFixture:
       .warbandsAt("Broken Peaks", p2, 1)
       .warbands(p1, 2)
       .warbands(p2, 2)
+      .banditsRefilled
     val (service, repository, act) = journaled(table, gameId)
     val parked = act.parkedAfter(
       GameCommand.StartWalker(ActionRef.Travel, StartPayload(p1,
@@ -201,7 +206,9 @@ object ParkedServiceFixture:
 
   /** Silver Tongue as p1's faceup adviser, with Wrestlers (Order) and
     * Bandit Chief (Discord) faceup at p1's pawn site. p2 holds a facedown
-    * adviser, which the log scripts read. Every favor bank starts with at
+    * adviser, so the use-power log has another player's hidden card to show
+    * (or hide) from each viewer. Bandits fill the empty sites first, so no
+    * refill is journaled after the first command. Every favor bank starts with at
     * least 3 favor, so Begin Rest stops at the Rest action, and using Silver
     * Tongue parks on its bank choice. The returned suit is the first site
     * card's, which that choice offers. */
@@ -213,6 +220,7 @@ object ParkedServiceFixture:
       .denizen("Wrestlers", "Ancient City")
       .denizen("Bandit Chief", "Ancient City")
       .adviser(p2, "Birdsong", facedown = true)
+      .banditsRefilled
     val (service, repository, act) = journaled(table, gameId, dice)
     val resting = act.after(GameCommand.BeginRest(p1))
     parkedAssertions.assertResumed(resting.state, Phase.Rest, p1)

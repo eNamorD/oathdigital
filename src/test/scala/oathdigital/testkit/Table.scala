@@ -226,6 +226,19 @@ final case class Table private (private val game: ReadyGame,
     forces(at, n, PlayerForceKind.of(game, playerOf(owner)).getOrElse(
       munit.Assertions.fail(s"$owner has no warbands of their own")))
 
+  /** A bandit stack of its printed capacity at every empty in-play site: the
+    * board real play reaches once the refill after a command has run. A
+    * journaled test that counts a command's events, or reads a log, starts
+    * here: otherwise its first command journals that refill as well. */
+  def banditsRefilled(using munit.Location): Table =
+    val current = game.game.current
+    current.map.inPlay.foldLeft(this) { (table, site) =>
+      val capacity = FirstGameSetupFixture.catalog.site(site).fold(0)(_.capacity)
+      if capacity > 0 && current.map.sites(site).forces == SiteForces.Empty then
+        table.bandits(site, capacity)
+      else table
+    }
+
   def siteTokens(at: String | SiteId, favor: Int = 0, secrets: Int = 0)(
       using munit.Location): Table =
     onSite(CatalogNames.site(at))(_.copy(tokens = Tokens(favor, secrets)))

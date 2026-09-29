@@ -77,14 +77,16 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
   test("over a parked Recover choice in Act, only its answer is accepted"):
     val (game, actor, players) =
       ParkedServiceFixture.recoverChoicePark("invariant-recover")
-    assertOnlyItsResume(game, "invariant-recover", players, GameCommand.ResolveWalker(actor, TreeDecision(
+    assertOnlyItsResume(game, "invariant-recover", players,
+      GameCommand.ResolveWalker(actor, TreeDecision(
         RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("stop")))))
 
   test("over an off-turn Oathkeeper recipient, only the holder's answer is accepted"):
     val (game, _, holder, leaderB) = ParkedServiceFixture.oathkeeperTiePark(
       "invariant-oathkeeper")
-    assertOnlyItsResume(game, "invariant-oathkeeper", everyone, GameCommand.ResolveWalker(holder, TreeDecision(
+    assertOnlyItsResume(game, "invariant-oathkeeper", everyone,
+      GameCommand.ResolveWalker(holder, TreeDecision(
         OathkeeperProcedure.recipientDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Player(leaderB)))))
 
@@ -94,7 +96,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
       "invariant-league-treaty")
     val decision = parkedAssertions.parkedDecision(game.accepted.state).get
       .decision
-    assertOnlyItsResume(game, "invariant-league-treaty", everyone, GameCommand.ResolveWalker(ruler, TreeDecision(decision,
+    assertOnlyItsResume(game, "invariant-league-treaty", everyone,
+      GameCommand.ResolveWalker(ruler, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.Button("decline")))))
 
   test("over a Silver Tongue bank choice in Rest, only its answer is accepted"):
@@ -102,5 +105,6 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
       "invariant-silver-tongue")
     val decision = parkedAssertions.parkedDecision(game.accepted.state).get
       .decision
-    assertOnlyItsResume(game, "invariant-silver-tongue", everyone, GameCommand.ResolveWalker(active, TreeDecision(decision,
+    assertOnlyItsResume(game, "invariant-silver-tongue", everyone,
+      GameCommand.ResolveWalker(active, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.FavorBank(bank)))))
