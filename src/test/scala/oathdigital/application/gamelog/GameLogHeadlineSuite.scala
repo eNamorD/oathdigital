@@ -53,7 +53,8 @@ class GameLogHeadlineSuite extends munit.FunSuite:
   test("a whole round posts one turn headline per seat and opens Round 2"):
     val script = round
     val all = headlines(format(script, Some(script.actor)))
-    assertEquals(all.take(2), Vector("Setup", "Round 1"))
+    assertEquals(all.take(2), Vector("Round 1",
+      s"${name(script.actor)}'s turn"))
     assertEquals(all.count(_.endsWith("'s turn")), script.players.size + 1)
     // Round 2's first Wake has nothing to decide, so it ends at once.
     assertEquals(all.takeRight(4),

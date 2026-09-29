@@ -157,9 +157,11 @@ object ParkedServiceFixture:
     recoverChronicle.atlasBox.take(8).map(_.site)
 
   /** p1 at Broken Peaks, where Recover has difficulty 4, holding two
-    * facedown relics. */
+    * facedown relics. p2 stands at Deep Woods, since a player at the site
+    * sees the relics lying there and only p1 should. */
   lazy val recoverTable: Table = Table.start
     .pawn(p1, "Broken Peaks")
+    .pawn(p2, "Deep Woods")
     .relicAt("Sticky Fire", "Broken Peaks")
     .relicAt("Cursed Cauldron", "Broken Peaks")
 

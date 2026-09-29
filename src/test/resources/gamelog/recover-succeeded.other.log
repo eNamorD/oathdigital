@@ -1,15 +1,6 @@
-0.0 round 0 | Setup
-3.0 action 1 | [player:p2|P2] placed pawn at [site:site:broken-peaks|Broken Peaks]
-6.0 decision 1 | [player:p2|P2] kept a Denizen
-11.0 action 1 | [player:p3|P3] placed pawn at [site:site:ancient-city|Ancient City]
-14.0 decision 1 | [player:p3|P3] kept a Denizen
-19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
-22.0 decision 1 | [player:p1|P1] kept [card:205|Disciples]
-25.0 round 0 | Round 1
-25.1 turn 0 | [player:p2|P2]'s turn
-25.2 phase 0 | Wake
-27.0 action 1 | Nothing happened in Wake
-27.1 phase 0 | Act
-29.0 action 1 | Started Recover[cost:1 Supply]
-31.0 roll 1 | Rolled [dice:defense two-shields two-shields|two shields, two shields]
-34.0 action 1 | Recovered a Relic at [site:site:broken-peaks|Broken Peaks]
+0.0 round 0 | Round 1
+0.1 turn 0 | [player:p1|P1]'s turn
+0.2 phase 0 | Act
+0.3 action 1 | Started Recover[cost:1 Supply]
+2.0 roll 1 | Rolled [dice:defense two-shields two-shields|two shields, two shields]
+5.0 action 1 | Recovered a Relic at [site:site:broken-peaks|Broken Peaks]
