@@ -1,6 +1,9 @@
 package oathdigital.testkit
 
+import oathdigital.application.{CampaignDicePort, DefenseDicePort,
+  GameApplicationService, InMemoryEventStreamRepository}
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, GameStartRules}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -92,8 +95,8 @@ object CatalogNames:
   * or wealth, nobody holds an adviser, and every board keeps its printed
   * start: 1 favor, 1 faceup secret, 3 warbands and 7 Supply. Nobody holds
   * the Oathkeeper title or a banner, and the regional discards are empty.
-  * Ancient City carries the River site power, a Wake option: a test that
-  * puts p1 in Wake there has something to decide.
+  * Ancient City's River moves a pawn only to another River, and none is in
+  * play, so a Wake at Ancient City has no option unless the test adds one.
   *
   * Each step states one fact. A step that places a card first takes it out
   * of every zone that held it, so the inventory stays whole. A card the
@@ -287,15 +290,31 @@ final case class Table private (private val game: ReadyGame,
     * with `ready`. */
   def unchecked: ReadyGame = game
 
-  /** A situation at this table, driven by `driver`, which must be a rules
-    * adapter: a journal's stream begins with `GameStarted`, so a journaled
-    * situation cannot start here. */
+  /** A fresh in-memory service whose streams begin at this table, and its
+    * repository. `catalog` may be an edited copy of the fixture's with the
+    * same ids (a changed Forge cost, say). */
+  def service(catalog: ExecutableCatalog = FirstGameSetupFixture.catalog,
+      campaignDice: CampaignDicePort = CampaignDicePort.random,
+      defenseDice: DefenseDicePort = DefenseDicePort.random,
+      warExhaustion: WarExhaustionRandomPort = WarExhaustionRandomPort.random)(
+      using munit.Location)
+      : (GameApplicationService, InMemoryEventStreamRepository) =
+    val repository = new InMemoryEventStreamRepository
+    (new GameApplicationService(catalog, repository,
+      defenseDicePort = defenseDice, campaignDicePort = campaignDice,
+      warExhaustionRandomPort = warExhaustion, genesis = state), repository)
+
+  /** A situation at this table, with no events and the sequence at 0. A
+    * rules adapter starts here directly. A journaled adapter must drive a
+    * service from [[service]] (its `genesis` is this table), on a stream
+    * that does not exist yet. */
   def situation(driver: SituationDriver)(using munit.Location): Situation =
     driver match
-      case _: SituationDriver.Journaled => munit.Assertions.fail(
-        "a Table has no journal; start a journaled situation with " +
-          "Situation.wake")
-      case rules => Situation(state, Vector.empty, 0L, rules)
+      case journaled: SituationDriver.Journaled
+          if journaled.service.genesis != state => munit.Assertions.fail(
+        "a journaled situation at a Table drives a service begun at that " +
+          "table; build it with table.service")
+      case driver => Situation(state, Vector.empty, 0L, driver)
 
   private def moving(card: CardId): Table =
     Table(without(game, card), if inventory(card) then joined else joined + card)

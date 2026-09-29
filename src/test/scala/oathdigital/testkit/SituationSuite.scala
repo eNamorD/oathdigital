@@ -10,6 +10,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.{catalog, chronicle,
   orders, sites}
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.Table.p1
 
 class SituationSuite extends munit.FunSuite:
   /** Dice that always come up the same way, so two adapters given them
@@ -20,11 +21,15 @@ class SituationSuite extends munit.FunSuite:
     def rollDefense(count: Int): Vector[DefenseDieFace] =
       Vector.fill(count)(DefenseDieFace.Blank)
 
+  private def journaledService()
+      : (GameApplicationService, InMemoryEventStreamRepository) =
+    val repository = new InMemoryEventStreamRepository
+    (new GameApplicationService(catalog, repository,
+      campaignDicePort = blankDice), repository)
+
   private def journaled(gameId: String)
       : (SituationDriver, InMemoryEventStreamRepository) =
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = blankDice)
+    val (service, repository) = journaledService()
     (Situation.journaled(service, catalog, repository, gameId), repository)
 
   /** `ready` once its Wake has ended. */
@@ -74,6 +79,28 @@ class SituationSuite extends munit.FunSuite:
     assertEquals(byJournal.nextSequence, byRules.nextSequence)
     assertEquals(recordCount(repository, "agree").toLong,
       byJournal.nextSequence)
+
+  test("the rules and journaled adapters agree from a table"):
+    val table = Table.start
+    val (service, repository) = table.service(campaignDice = blankDice)
+    val steps = Vector[GameCommand | Step](GameCommand.StartWalker(
+      ActionRef.Search, StartPayload(p1, Vector.empty,
+        Vector(DecisionOptionRef.Button("search:world")))))
+    val byRules = table.situation(Situation.serviceRules(catalog, blankDice))
+      .after(steps*)
+    val byJournal = table.situation(Situation.journaled(service, catalog,
+      repository, "table")).after(steps*)
+    assertEquals(byJournal.state, byRules.state)
+    assertEquals(byJournal.events, byRules.events)
+    assertEquals(byJournal.nextSequence, byRules.nextSequence)
+    assertEquals(recordCount(repository, "table").toLong,
+      byJournal.nextSequence)
+
+  test("a journaled situation at a table needs a service begun there"):
+    val (service, repository) = journaledService()
+    val failure = intercept[AssertionError](Table.start.situation(
+      Situation.journaled(service, catalog, repository, "elsewhere")))
+    assert(failure.getMessage.contains("table.service"), failure.getMessage)
 
   test("an unanswerable park fails naming the decision"):
     val partitionless: Answers =

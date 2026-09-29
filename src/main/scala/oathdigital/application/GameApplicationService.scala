@@ -1,7 +1,8 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.engine.{EventReplayEngine, RecordedEvent, ReplayStep}
+import oathdigital.engine.{EventEvolution, EventReplayEngine, RecordedEvent,
+  ReplayStep}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -84,7 +85,12 @@ final class GameApplicationService(
     campaignDicePort: CampaignDicePort = CampaignDicePort.random,
     warExhaustionRandomPort: WarExhaustionRandomPort =
       WarExhaustionRandomPort.random,
-    eventCodec: GameEventCodec = GameEventCodec.default
+    eventCodec: GameEventCodec = GameEventCodec.default,
+    /** Where every stream of this service begins: `NoGame`, so a stream's
+      * first event is `GameStarted`, unless a test seeds a start state. Only
+      * tests pass it (`BackendArchitectureSuite`), until a journaled
+      * arranged-start event replaces it (`docs/ROADMAP.md`). */
+    val genesis: OathState = OathState.NoGame
 ):
   import GameApplicationError._
   import RepositoryAppendResult._
@@ -96,7 +102,11 @@ final class GameApplicationService(
     walkerDice = CampaignDicePort.walkerDice(campaignDicePort))
   private val presentation = new GamePresentationProjector(catalog)
   private val descriptions = new PreviewModifierDescriptions(catalog, presentation)
-  private val replay = new EventReplayEngine(rules)
+  private val replay = new EventReplayEngine(
+    new EventEvolution[OathState, OathEvent, OathViolation]:
+      def initialState: OathState = genesis
+      def evolve(state: OathState, event: OathEvent)
+          : Either[OathViolation, OathState] = rules.evolve(state, event))
 
   /** Derives a validated initial journal and state without accessing storage. */
   def prepareBootstrap(
@@ -125,7 +135,9 @@ final class GameApplicationService(
       gameId: String
   ): Either[GameApplicationError, Option[LoadedGame]] =
     repository.load(gameId).left.map(storageError).flatMap:
-      case None => Right(None)
+      case None => Right(genesis match
+        case OathState.NoGame => None
+        case started => Some(LoadedGame(started, 0L)))
       case Some(stream) =>
         reconstruct(gameId, stream).map(state =>
           Some(LoadedGame(state, stream.nextSequence)))
@@ -246,18 +258,17 @@ final class GameApplicationService(
       case None =>
         if expectedNextSequence != 0L then
           Left(StaleClientPosition(expectedNextSequence, 0L))
+        else if genesis == rules.initialState &&
+            !command.isInstanceOf[GameCommand.Begin] then
+          Left(GameApplicationError.StreamNotFound(gameId))
         else
-          command match
-            case GameCommand.Begin(_, _) =>
-              handleAgainst(
-                gameId,
-                rules.initialState,
-                command,
-                ExpectedStream.MustNotExist,
-                0L
-              )
-            case _ =>
-              Left(GameApplicationError.StreamNotFound(gameId))
+          handleAgainst(
+            gameId,
+            genesis,
+            command,
+            ExpectedStream.MustNotExist,
+            0L
+          )
       case Some(stream) =>
         if expectedNextSequence != stream.nextSequence then
           Left(StaleClientPosition(

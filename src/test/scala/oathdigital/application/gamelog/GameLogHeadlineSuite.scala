@@ -1,7 +1,11 @@
 package oathdigital.application.gamelog
 
+import oathdigital.application.GameCommand
 import oathdigital.engine.{RecordedEvent, ReplayStep}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{Situation, Table}
+import oathdigital.testkit.Table.p1
 import LogScripts._
 
 class GameLogHeadlineSuite extends munit.FunSuite:
@@ -17,6 +21,19 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     assertEquals(entries.filter(_.depth == 0).map(_.kind).take(4),
       Vector(LogKind.Round, LogKind.Round, LogKind.Turn, LogKind.Phase))
     assertEquals(entries.head.sequence, 0L)
+
+  test("a journal that starts at a table opens with its round, turn and " +
+      "phase"):
+    val table = Table.start.turn(p1, Phase.Wake)
+    val (service, repository) = table.service()
+    table.situation(Situation.journaled(service, catalog, repository, "t"))
+      .after(GameCommand.EndWake(p1))
+    val entries = formatter.format(service.history("t").toOption.flatten.get
+      .steps, Some(p1))
+    assertEquals(texts(entries).take(5), Vector("Round 1",
+      s"${name(p1)}'s turn", "Wake", "Nothing happened in Wake", "Act"))
+    assertEquals(entries.take(3).map(entry => (entry.sequence, entry.ordinal)),
+      Vector((0L, 0), (0L, 1), (0L, 2)))
 
   test("a whole round posts one turn headline per seat and opens Round 2"):
     val script = round
