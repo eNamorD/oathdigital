@@ -9,16 +9,104 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 ## Now
 
 **Phase - Cleanup tasks** is done except for one item blocked on the
-Chronicle Phase. **Phase - Catalog batch 3** is next.
+Chronicle Phase. **Phase - Global operation restrictions** is next, then
+**Phase - Catalog batch 3**, which depends on it.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
 
+### Phase - Global operation restrictions
+
+Let powers register an `OperationRestriction` that every walker step,
+`MinorActions` and `StateBasedEvaluation` apply, rather than one a `BuildOps`
+node passes to `OperationPipeline.run`. A restriction that needs a power
+window to hook is an oversight: a persistent rule such as Lost Tongue's
+"cannot take" must hold for every power. The phase includes:
+
+- **The seam.** Restrictions are a per-call argument of
+  `OperationPipeline.run` today, supplied only by a `BuildOps` node. Walker
+  steps all run through `ProcedureWalker.recordBatch`, so registration is a
+  `restrictions` field on `WalkerPowers` merged there and built by `OathRules`
+  from the catalog and the state. `MinorActions` and `StateBasedEvaluation`
+  call the pipeline directly and need it too.
+- **Locked cards as a generic operation restriction.** Locking is enforced
+  today by `DiscardRestrictions` (a faceup locked adviser, an intact edifice,
+  a modifier selected for the running action, and the Hall of Ministers). Each
+  path that discards a card in play attaches it, and a coverage test fails
+  when a new discarding file forgets to. The intended design is a `Locked`
+  `OperationRestriction` that any locked card mixes in. It refuses any
+  `Move`, `Flip` or `Swap` of that particular card (a discard is a `Move`),
+  and skips `Bury`, which ignores locked. It would retire
+  `DiscardRestrictions`' locked rules, `CardPlay`'s locked-adviser check and
+  Horned Mask's filter, and needs an audit of every step that legitimately
+  moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
+  lines, with regression risk in the Negotiation and Campaign suites.
+- **The Grand Scepter's "cannot be removed from play"**, which refuses its
+  discard and bury. Fae Merchant's own filter then retires.
+
+It needs its own design. Catalog batch 3 depends on it.
+
 ### Phase - Catalog batch 3
 
-Cards deferred from Catalog batch 2 because they need engine work first:
+69 denizens and relics that copy an implemented power's shape and need no
+engine change, in eight slices, plus a fix to Circlet of Command and Forgotten
+Vault. Designed in the
+[Catalog batch 3 design](superpowers/specs/2026-09-29-catalog-batch-3-design.md)
+with its [rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md).
+Starts after **Phase - Global operation restrictions**.
+
+### Catalog - to verify
+
+Cards that probably need no engine change, each with one point to check
+first. A check that passes moves the card into a later no-engine batch, and
+one that fails moves it to the engine-blocked phase. From the survey of
+2026-09-29:
+
+- **Challenge modifier:** Magician's Code (the first Challenge modifier; the
+  `ChallengePlacement` window exists).
+- **Battle plan rescoring:** Rusting Ray, Fae Battalion (hollow swords, as
+  Outriders rescores), War Tortoise (both sides), Lancers (doubling the
+  score), Mounted Patrol (half the pool, computed at application),
+  Fearsome General (a passive attack-score change).
+- **Battle plan loss interception:** Billowing Fog, Traveling Doctor, Shield
+  Wall (Hospital and Sticky Fire's `CampaignLosses` wrapping; "ignore powers
+  that kill all").
+- **Other battle plans:** Kindred Warriors ("up to X" needs a ruling),
+  Rangers (the defense pool changing after the attacker's plan), Salt the
+  Earth (a `later` hook with a decision), Cursed Cauldron (a count of enemy
+  kills), Sealing Ward (a persistent `CampaignGatherPools` dice add).
+- **ACTION powers:** Terror Spells (two kills across sites and boards),
+  Witch's Bargain (an exchange loop with no consent system), Inquisitor
+  (guessing among Vision ids), Roving Terror, Homesteaders and Resettle
+  (moving a card between sites or play areas, with capacity), Relic Thief (an
+  automatic roll with a dynamic pool), Ancient Binding (which secret is kept),
+  Convoys (moving a whole pile), Singing Mask (moving favor between a bank and
+  a banner).
+- **When played:** Revelation, Blackmail and Dissent (other players' decisions
+  inside a when-played power), Wizard's Conclave (taking a banner, with a tie
+  choice), Bandit Chief (which color to kill), A Round of Ale (reusing the Rest
+  return steps), Search Party (one of 3 peeked cards, then Oracle-style
+  placement), Call for Help (reveal, then discard from a regional pile).
+- **Modifiers, restrictions and triggers:** Vow of Poverty (restricting Trade
+  for favor, plus Vow of Obedience's Rest), Vow of Beastkin (a Muster source
+  restriction), Assassin (Silver Tongue's limit plus Hunger), Defame (a
+  decision and a burn after a Trade), Herald (an after-Campaign hook at the
+  Campaign root), Diplomat (a `CampaignBeforeTargets` restriction with
+  answers), Special Envoy (`EnterPhase(Rest)` inside a Travel tree), Way
+  Station (an optional payment to the ruler, the inverse of Toll Roads),
+  Moving Market and Mounted Library (a site move after a Trade; doubling the
+  gain plus a discard), Forced Labor and Curfew (a Search or Trade restriction
+  with a payment, the Toll Roads shape), Hunting Party (a nested Campaign after
+  Search, the Knights Errant shape), Tyrant (a Travel transform with a choice
+  of warband to kill).
+- **Text that does not name its action** (needs a ruling first): News from
+  Afar, Awaited Return, A Fast Steed, Scouts.
+
+### Phase - Catalog batch - engine-blocked
+
+Cards that need an engine change first, grouped by the missing mechanism.
 
 - The Gathering and Whispering Stone need a nested Negotiation with its own
   participants.
@@ -33,6 +121,48 @@ Cards deferred from Catalog batch 2 because they need engine work first:
   battle plans a side may choose, which no contribution can hook yet.
 - Council Arbiter, Deed Writer and Traveling Negotiator widen who may
   negotiate and what a deal may hold.
+
+Found by the survey of 2026-09-29:
+
+- **A reroll operation:** Jinx, Master at Arms, Silver Charm, Unstable Summon
+  (which also needs a variable X).
+- **A Search source or draw other than the world deck or the actor's own
+  regional discard** (a bottom draw, a single-card draw): Observatory, Errand
+  Boy, Mushrooms, Spinning Bee, Painted Trumpet, Wine of Welcome, Land Warden,
+  Cracked Horn, Ring of Devotion.
+- **A choice of discard or placement destination:** Bracken, Baron, New
+  Growth, Forest Warden, Vow of Wisdom.
+- **A Muster or Trade source rule** (`MusterSource.resolve` accepts only
+  token-free cards at the pawn's site): Map Library, Skilled Merchants, Old
+  Songs, Pressgangs.
+- **Acting as if elsewhere, or overriding a suit:** Small Friends, Friendly
+  Familiar, Master of Disguise, Acting Troupe, Pledge to Discord, Spiteful
+  Mirror, Yew Staff.
+- **A nested Campaign or Travel, or an overridden actor site:** Wild Allies,
+  Captains, Second Wind, Palanquin.
+- **Raising or exempting the adviser limit** (`AdviserLimit` only lowers it):
+  Pied Piper, Marriage, Family Wagon, Vow of Union, Vow of Wandering (which
+  also blocks placing warbands), Lost Tapestry.
+- **Plans that a power restricts or changes:** Beast Tamer, Specialist, Wild
+  Mounts.
+- **Overriding scoring or the victor:** Hearts and Minds, Careful Plans,
+  Weeping Banner, Zealots.
+- **A variable X or dice set to a face:** Ward of Silence, Arcane Armor,
+  Mountain Giant.
+- **New target kinds:** Relic Hunter, Glamor.
+- **Restricting other cards' powers or placements:** Spell Breaker, Forest
+  Council, City Wall, Giant Python, Ancient Bloodline.
+- **New triggers** (a burn, a banner taken, a pawn move): Vow of Silence, Vow
+  of Division, Secret Testament, Brass Army.
+- **Challenge** (`legalBanners` is hard-coded, no ribbon adjustment): Sigil of
+  the Eye, Sigil of the Heart, Favored Son.
+- **Lowering the attacker's force after it is answered:** Bear Traps.
+- **A Travel that can pause on a decision:** Hospitality.
+- **Other:** Pilgrimage (shuffling the Dispossessed), Autumn Wind (a combined
+  shuffle and deal), Signal Trees (a plan effect that depends on state it
+  changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
+  Obsidian Cage (a new warband store), Secret Signal (no generic gain window),
+  and False Prophet, True Oath and The Red Seer (the Oathkeeper goal is not modelled).
 
 ### Phase - Cleanup tasks
 
@@ -151,24 +281,6 @@ requested UI changes are in the
   so it needs its own spec. Until then Mob uses a single `PlacementRules` value
   on `PlacementTree` that carries the adviser limits and a
   "may discard a site card first" permission.
-- [ ] **locked cards as a generic operation restriction.** Locking is
-  enforced today by `DiscardRestrictions` (a faceup locked adviser, an intact
-  edifice, a modifier selected for the running action, and the Hall of
-  Ministers). Each path that discards a card in play attaches it, and a coverage
-  test fails when a new discarding file forgets to. The intended design is a
-  `Locked` `OperationRestriction` that any locked card mixes in. It is
-  registered once with the validator when powers and restrictions are scanned,
-  and it refuses any `Move`, `Flip` or `Swap` of that particular card (a discard
-  is a `Move`), and skips `Bury`, which ignores locked. Restrictions are a
-  per-call argument of `OperationPipeline.run` today, supplied only by a
-  `BuildOps` node. Walker steps all run through `ProcedureWalker.recordBatch`,
-  so registration is a `restrictions` field on `WalkerPowers` merged there and
-  built by `OathRules` from the catalog and the state. `MinorActions` and
-  `StateBasedEvaluation` call the pipeline directly and need it too. It would
-  retire `DiscardRestrictions`' locked rules, `CardPlay`'s locked-adviser check
-  and Horned Mask's filter, and needs an audit of every step that legitimately
-  moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
-  lines, with regression risk in the Negotiation and Campaign suites.
 - [ ] **plan-restricting powers, Bag of Siegeworks and Empire defenders.**
   Peace Envoy and other powers that restrict which plans a side may choose have
   no contribution to hook on yet. Bag of Siegeworks has a reviewed-catalog entry
@@ -330,6 +442,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   People's Favor are clickable like other cards, opening their details.
 - [ ] **Match the map's aspect ratio to the physical board.** The rendered
   map's proportions differ from the actual game map's.
+- [ ] **Undo system.**
 - [ ] **In-game chat.**
 - [ ] **Public Chronicle pages.** The winner of a game may write their summary
   of it, and players can browse all the summaries.
