@@ -58,12 +58,11 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
   test("beginRest through the service parks the off-turn League Treaty ruler " +
       "and survives reload"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val (parked, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
-      service, repository, "game-league-treaty")
-    val reloaded = new GameApplicationService(catalog, repository)
-      .load("game-league-treaty").toOption.flatten.get
+    val (game, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
+      "game-league-treaty")
+    val (service, parked) = (game.service, game.accepted)
+    val reloaded = new GameApplicationService(catalog, game.repository,
+      genesis = service.genesis).load("game-league-treaty").toOption.flatten.get
     assertEquals(reloaded.state, parked.state)
     val decision = parkedAssertions.parkedDecision(parked.state).get.decision
     val decline = GameCommand.ResolveWalker(_: PlayerId, TreeDecision(
@@ -1126,11 +1125,11 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     */
   test("an off-turn Oathkeeper tie parks through the application service " +
       "and survives reload"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
     val gameId = "game-oathkeeper-tie"
-    val (parked, active, holder, leaderB) =
-      ParkedServiceFixture.oathkeeperTiePark(service, repository, gameId)
+    val (game, active, holder, leaderB) =
+      ParkedServiceFixture.oathkeeperTiePark(gameId)
+    val (service, repository, parked) = (game.service, game.repository,
+      game.accepted)
     assertEquals(
       repository.load(gameId).toOption.flatten.get.records.size.toLong,
       parked.nextSequence)

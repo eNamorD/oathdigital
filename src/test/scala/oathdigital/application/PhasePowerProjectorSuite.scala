@@ -106,10 +106,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assert(projected.legalControls.contains("finishRest"))
 
   test("real League Treaty and Silver Tongue parks project their panels"):
-    val treatyRepository = new InMemoryEventStreamRepository
-    val treatyService = new GameApplicationService(catalog, treatyRepository)
-    val (treatyPark, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
-      treatyService, treatyRepository, "project-league-treaty")
+    val (treatyGame, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
+      "project-league-treaty")
+    val treatyPark = treatyGame.accepted
     val treatyOwner = projector.project("project-league-treaty",
       LoadedGame(treatyPark.state, treatyPark.nextSequence), ruler)
     // The ruler chooses a favor bank to return favor to, or declines.
@@ -122,10 +121,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     assertEquals(treatyWaiter.walkerDecision, None)
     assertEquals(treatyWaiter.walkerWaiting.map(_.playerId), Some(ruler.value))
 
-    val tongueRepository = new InMemoryEventStreamRepository
-    val tongueService = new GameApplicationService(catalog, tongueRepository)
-    val (tonguePark, tongueActor, _) = ParkedServiceFixture.silverTonguePark(
-      tongueService, tongueRepository, "project-silver-tongue")
+    val (tongueGame, tongueActor, _) = ParkedServiceFixture.silverTonguePark(
+      "project-silver-tongue")
+    val tonguePark = tongueGame.accepted
     val tongueOwner = projector.project("project-silver-tongue",
       LoadedGame(tonguePark.state, tonguePark.nextSequence), tongueActor)
     assertEquals(tongueOwner.walkerDecision.flatMap(_.query)

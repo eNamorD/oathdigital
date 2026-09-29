@@ -1,16 +1,7 @@
-0.0 round 0 | Setup
-3.0 action 1 | [player:p2|P2] placed pawn at [site:site:broken-peaks|Broken Peaks]
-6.0 decision 1 | [player:p2|P2] kept [card:208|Wizard's Conclave]
-11.0 action 1 | [player:p3|P3] placed pawn at [site:site:ancient-city|Ancient City]
-14.0 decision 1 | [player:p3|P3] kept a Denizen
-19.0 action 1 | [player:p1|P1] placed pawn at [site:site:buried-giant|Buried Giant]
-22.0 decision 1 | [player:p1|P1] kept a Denizen
-25.0 round 0 | Round 1
-25.1 turn 0 | [player:p2|P2]'s turn
-25.2 phase 0 | Wake
-27.0 delta 1 | Moved 1 warband to [site:site:ancient-city|Ancient City]
-27.1 delta 1 | Moved 1 of [player:p3|P3]'s warbands to [site:site:broken-peaks|Broken Peaks]
-28.0 phase 0 | Act
-30.0 action 1 | Started Travel[cost:2 Supply]
-31.0 action 1 | Travelled to [site:site:buried-giant|Buried Giant]
-35.0 trigger 1 | Oathkeeper passed to [player:p2|P2]
+0.0 round 0 | Round 1
+0.1 turn 0 | [player:p1|P1]'s turn
+0.2 phase 0 | Act
+0.3 action 1 | Started Travel[cost:2 Supply]
+1.0 action 1 | Travelled to [site:site:buried-giant|Buried Giant]
+3.0 trigger 1 | Bandits returned to [site:site:buried-giant|Buried Giant], [site:site:deep-woods|Deep Woods], [site:site:desolate-shore|Desolate Shore], [site:site:dunes|Dunes], [site:site:fair-isle|Fair Isle] and [site:site:golden-valley|Golden Valley]
+6.0 trigger 1 | Oathkeeper passed to [player:p1|P1]

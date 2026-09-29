@@ -6,6 +6,7 @@ import oathdigital.gameplay.{CatacombsContributionSuite, OathRules,
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
@@ -51,13 +52,6 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       Vector.fill(count)(AttackDieFace.HollowSword)
     def rollDefense(count: Int): Vector[DefenseDieFace] = faces
 
-  private def recoverSiteWithDifficulty(maxDifficulty: Int,
-      minRelicSlots: Int) =
-    catalog.sites.find(site =>
-      site.recoverDifficulty.exists(d => d > 0 && d <= maxDifficulty) &&
-        site.relicSlots >= minRelicSlots &&
-        !site.handlers.exists(_.contains(".homeland-"))).get.id
-
   /** The continue/stop query as `RecoverProcedure` declares it: two button
     * options, in declaration order, carrying the action's own prompt copy.
     * A button has no game object behind it, so it projects no card details.
@@ -76,8 +70,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
 
   /** The same difficulty `WalkerDecisionProjector.rollOutcome` reads (I5):
     * derived live from `ready`/`catalog` rather than hardcoded, so this
-    * stays correct if `recoverSiteWithDifficulty`'s fixture selection ever
-    * picks a different site.
+    * stays correct if `ParkedServiceFixture.recoverTable`'s site ever changes.
     */
   private def expectedDifficulty(ready: ReadyGame, actor: PlayerId): Int =
     RecoverProcedure.actorSite(ready, actor)
@@ -86,21 +79,11 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
   /** Starts Recover with `dice` in the cup: the roll happens inside the
     * start command, so where the walk parks is settled by those faces.
     */
-  private def startedRolling(gameId: String, dice: CampaignDicePort,
-      maxDifficulty: Int = 8, minRelicSlots: Int = 1) =
-    val recoverSite = recoverSiteWithDifficulty(maxDifficulty, minRelicSlots)
-    val recoverChronicle = chronicle.copy(atlasBox =
-      chronicle.atlasBox.find(_.site == recoverSite).get +:
-        chronicle.atlasBox.filterNot(_.site == recoverSite))
-    val recoverSites = recoverChronicle.atlasBox.take(8).map(_.site)
-    val actor = orders.firstPlayer
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = dice)
-    val setup = ParkedServiceFixture.setUp(service, gameId, recoverSites,
-      recoverChronicle, orders)
-    val act = ParkedServiceFixture.endingWake(service, gameId, setup, actor)
-    val started = service.handle(gameId, act.nextSequence,
+  private def startedRolling(gameId: String, dice: CampaignDicePort) =
+    val actor = Table.p1
+    val (service, _) = ParkedServiceFixture.recoverTable
+      .service(campaignDice = dice)
+    val started = service.handle(gameId, 0L,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
     (service, actor, started)
 
@@ -205,7 +188,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       "placeholder relic marker"):
     val (service, actor, rolled) = startedRolling("walker-projection-relic",
       new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
-        DefenseDieFace.Doubler)), maxDifficulty = 4, minRelicSlots = 2)
+        DefenseDieFace.Doubler)))
     val Ready(ready) = rolled.state: @unchecked
     val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val owner = ScopedProjectionContext(ready, Some(actor))

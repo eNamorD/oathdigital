@@ -16,7 +16,7 @@ import oathdigital.gameplay.walker.PowerNoted
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer,
   ChooseOneAnswer, DeclineDeal, ProposeTerms}
-import oathdigital.testkit.{Park, Situation, SituationDriver, Step}
+import oathdigital.testkit.{Park, Situation, SituationDriver, Step, Table}
 
 /** A journal built by real play through `GameApplicationService` on every
   * run (spec, "Test journals"). No stored game is a fixture: a script a new
@@ -134,17 +134,24 @@ object LogScripts:
       munit.Location): Vector[LogEntry] =
     formatter.format(withoutNotes(script.history.steps), viewer)
 
-  /** The service suite's Oathkeeper tie: an arranged board, the active
-    * player's Travel, and the holder's choice of the next Oathkeeper. */
+  /** A fresh service whose stream `name` begins at `table`, and the
+    * journaled situation there. */
+  def atTable(name: String, table: Table, dice: CampaignDicePort = steadyDice)(
+      using munit.Location): (GameApplicationService, Situation) =
+    val (service, repository) = table.service(campaignDice = dice)
+    (service, table.situation(Situation.journaled(service, catalog, repository,
+      name)))
+
+  /** The service suite's Oathkeeper tie: a table with two tied leaders, the
+    * active player's Travel, and the holder's choice of the next
+    * Oathkeeper. */
   def oathkeeper(using munit.Location): Script =
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = steadyDice)
-    val (parked, active, _, _) = ParkedServiceFixture.oathkeeperTiePark(
-      service, repository, "oathkeeper")
-    Situation(parked.state, Vector.empty, parked.nextSequence,
-      Situation.journaled(service, catalog, repository, "oathkeeper")).after()
-    Script("oathkeeper", service, active)
+    val (game, active, _, _) = ParkedServiceFixture.oathkeeperTiePark(
+      "oathkeeper")
+    Situation(game.accepted.state, Vector.empty, game.accepted.nextSequence,
+      Situation.journaled(game.service, catalog, game.repository,
+        "oathkeeper")).after()
+    Script("oathkeeper", game.service, active)
 
   private def acting(name: String)(using munit.Location)
       : (GameApplicationService, InMemoryEventStreamRepository, Situation) =
@@ -402,14 +409,12 @@ object LogScripts:
 
   /** Silver Tongue used in Rest, its bank choice answered by default. */
   def usePower(using munit.Location): Script =
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = steadyDice)
-    val (parked, actor, _) = ParkedServiceFixture.silverTonguePark(service,
-      repository, "use-power")
-    Situation(parked.state, Vector.empty, parked.nextSequence,
-      Situation.journaled(service, catalog, repository, "use-power")).after()
-    Script("use-power", service, actor)
+    val (game, actor, _) = ParkedServiceFixture.silverTonguePark("use-power",
+      steadyDice)
+    Situation(game.accepted.state, Vector.empty, game.accepted.nextSequence,
+      Situation.journaled(game.service, catalog, game.repository,
+        "use-power")).after()
+    Script("use-power", game.service, actor)
 
   /** Augury, a free Search modifier, stands at the actor's site; the Search
     * selects it. The actor is the second player. */

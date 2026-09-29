@@ -140,18 +140,14 @@ class SituationSuite extends munit.FunSuite:
 
   test("the rules adapter parks a Recover on its continue-or-stop choice " +
       "the way ParkedServiceFixture does"):
-    // ParkedServiceFixture.recoverChoicePark's board, under the rules the
+    // ParkedServiceFixture.recoverChoicePark's table, under the rules the
     // service builds and dice that fail every Recover roll.
-    val actor = orders.firstPlayer
-    val driver = Situation.serviceRules(catalog, blankDice).withAnswers(
-      Situation.pawnsAt(ParkedServiceFixture.recoverSites))
-    val parked = Situation.wake(driver, ParkedServiceFixture.recoverChronicle,
-      orders)
-      .parkedAfter(GameCommand.EndWake(actor),
-        GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
+    val parked = ParkedServiceFixture.recoverTable
+      .situation(Situation.serviceRules(catalog, blankDice))
+      .parkedAfter(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
     new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog)).assertParked(parked.state,
-        ActionRef.Recover, RecoverProcedure.choiceDecisionId, actor)
+        ActionRef.Recover, RecoverProcedure.choiceDecisionId, p1)
 
   test("after with no steps answers the park a situation holds"):
     val parked = Situation.start(Situation.rules(catalog))

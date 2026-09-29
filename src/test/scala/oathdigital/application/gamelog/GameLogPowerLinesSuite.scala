@@ -259,7 +259,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val first = steps.indexWhere(_.event.event.isInstanceOf[WalkerStepRecorded])
     assert(first < take(steps))
     val noted = inserted(inserted(steps, take(steps), note), first, note)
-    // The card is not public during setup, so the first line shows its back.
+    // The first note lands in Begin Rest's run, the second in Silver Tongue's.
     assertEquals(lines(noted).count(_.endsWith(s"${name(script.actor)} said 2 favor.")),
       2, lines(noted))
 
@@ -346,7 +346,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
       PlacementRules.discardFirst.name), Some(PlacementRules.discardFirst.template))
 
   test("a setup note posts under the Setup headline, among the setup lines"):
-    val script = usePower
+    val script = woken
     val steps = withoutNotes(script.history.steps)
     val placed = steps.indexWhere(_.event.event match
       case step: WalkerStepRecorded => step.ops.exists {

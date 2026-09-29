@@ -57,10 +57,9 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     * so they are refused too. Then `resume`, the parked walker's own answer,
     * is accepted and appends: only a matching resume runs.
     */
-  private def assertOnlyItsResume(service: GameApplicationService,
-      repository: InMemoryEventStreamRepository, gameId: String,
-      parked: GameAccepted, players: Vector[PlayerId],
-      resume: GameCommand): Unit =
+  private def assertOnlyItsResume(game: ParkedServiceFixture.ParkedGame,
+      gameId: String, players: Vector[PlayerId], resume: GameCommand): Unit =
+    val ParkedServiceFixture.ParkedGame(service, repository, parked) = game
     def records = repository.load(gameId).toOption.flatten.get.records
     val before = records
     for
@@ -76,43 +75,32 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
   private val everyone = participants.map(_.playerId)
 
   test("over a parked Recover choice in Act, only its answer is accepted"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository,
-      campaignDicePort = ParkedServiceFixture.failingDice)
-    val (parked, actor, players) =
-      ParkedServiceFixture.recoverChoicePark(service, "invariant-recover")
-    assertOnlyItsResume(service, repository, "invariant-recover", parked,
-      players, GameCommand.ResolveWalker(actor, TreeDecision(
+    val (game, actor, players) =
+      ParkedServiceFixture.recoverChoicePark("invariant-recover")
+    assertOnlyItsResume(game, "invariant-recover", players, GameCommand.ResolveWalker(actor, TreeDecision(
         RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("stop")))))
 
   test("over an off-turn Oathkeeper recipient, only the holder's answer is accepted"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val (parked, _, holder, leaderB) = ParkedServiceFixture.oathkeeperTiePark(
-      service, repository, "invariant-oathkeeper")
-    assertOnlyItsResume(service, repository, "invariant-oathkeeper", parked,
-      everyone, GameCommand.ResolveWalker(holder, TreeDecision(
+    val (game, _, holder, leaderB) = ParkedServiceFixture.oathkeeperTiePark(
+      "invariant-oathkeeper")
+    assertOnlyItsResume(game, "invariant-oathkeeper", everyone, GameCommand.ResolveWalker(holder, TreeDecision(
         OathkeeperProcedure.recipientDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Player(leaderB)))))
 
   test("over an off-turn League Treaty decision in Rest, only the ruler's answer " +
       "is accepted"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val (parked, _, ruler) = ParkedServiceFixture.leagueTreatyPark(service,
-      repository, "invariant-league-treaty")
-    val decision = parkedAssertions.parkedDecision(parked.state).get.decision
-    assertOnlyItsResume(service, repository, "invariant-league-treaty", parked,
-      everyone, GameCommand.ResolveWalker(ruler, TreeDecision(decision,
+    val (game, _, ruler) = ParkedServiceFixture.leagueTreatyPark(
+      "invariant-league-treaty")
+    val decision = parkedAssertions.parkedDecision(game.accepted.state).get
+      .decision
+    assertOnlyItsResume(game, "invariant-league-treaty", everyone, GameCommand.ResolveWalker(ruler, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.Button("decline")))))
 
   test("over a Silver Tongue bank choice in Rest, only its answer is accepted"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val (parked, active, bank) = ParkedServiceFixture.silverTonguePark(service,
-      repository, "invariant-silver-tongue")
-    val decision = parkedAssertions.parkedDecision(parked.state).get.decision
-    assertOnlyItsResume(service, repository, "invariant-silver-tongue", parked,
-      everyone, GameCommand.ResolveWalker(active, TreeDecision(decision,
+    val (game, active, bank) = ParkedServiceFixture.silverTonguePark(
+      "invariant-silver-tongue")
+    val decision = parkedAssertions.parkedDecision(game.accepted.state).get
+      .decision
+    assertOnlyItsResume(game, "invariant-silver-tongue", everyone, GameCommand.ResolveWalker(active, TreeDecision(decision,
         ChooseOneAnswer(DecisionOptionRef.FavorBank(bank)))))
