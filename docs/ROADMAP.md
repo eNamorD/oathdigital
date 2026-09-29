@@ -337,6 +337,15 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   suit and restriction icons on card faces.
 - [ ] **L4 — Saved-game browser and replay navigation** (campaign-continuity
   phase)
+- [ ] **Arranged-start event for game save and load.** A journal must begin
+  with `GameStarted`, and no codec exists for a full `ReadyGame`. A journaled
+  event that carries a whole arranged position (players, sites, decks, banks,
+  turn, walker state) would let a stream begin mid-game: loading a saved game,
+  scenarios, tutorials, and bug reproductions from a pasted position. It needs
+  a `ReadyGame` wire codec, a game-log line, projection handling, and a
+  decision on who may start one. The test-only replay origin from the service
+  and log start-state project (2026-09-28) is the seam it would grow from.
+  Recorded in that project's design.
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
   in the phased sequence above; the next denizens and relics are
