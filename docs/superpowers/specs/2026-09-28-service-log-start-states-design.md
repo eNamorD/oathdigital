@@ -288,9 +288,14 @@ fact the table now states differently (the action lines read as before):
   Pied Piper, since the moved card no longer leaves a gap at the deck's top;
 - `barbed-net`: it peeks at two relics at Ancient City, not three at Broken
   Peaks;
-- `hunger`: p2 buries their own adviser (slot 1), as before;
+- `hunger`: p2 buries their own adviser (slot 1), as before, and the log now
+  ends with Act, since nothing else keeps p2's Wake open;
+- `wolves`: p3 holds two warbands on its board, so p2 is the one with the
+  most, and Wolves kills p2's;
 - `raid`: the defender is p2 and loses Birdsong;
-- `negotiation-*`: the partner is p2;
+- `negotiation-*`: the partner is p2. The `other` view of these and of
+  `raid` is therefore the partner or defender, not a bystander; the
+  bystander's wording is still pinned by `GameLogExchangeSuite`;
 - `recover-*`, `reveal-relic`: p1 recovers at Broken Peaks and p2 stands at
   Deep Woods, since a player at a site sees the relics lying there.
 

@@ -288,8 +288,7 @@ class GameLogPowerLinesSuite extends munit.FunSuite:
     val gained = all.filter(_.startsWith(s"Gambling Hall: $actor gained "))
     assertEquals(gained.size, 1, all)
     assert(gained.head.endsWith(" bank."), gained.head)
-    // The favor arranged before the power posts its own line; only the
-    // power's lines are held to this.
+    // Only the power's own lines are held to this.
     val used = all.dropWhile(!_.startsWith("Gambling Hall: "))
     assert(!used.exists(line => line.startsWith("Used ") ||
       line.startsWith("Rolled ") || line.startsWith("Gained ")), all)

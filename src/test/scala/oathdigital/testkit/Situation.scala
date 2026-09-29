@@ -40,8 +40,9 @@ final case class Park(decide: Decide, ready: ReadyGame, awaiting: PlayerId,
   * [[Situation.defaultAnswer]] otherwise. */
 type Answers = PartialFunction[Park, DecisionAnswer]
 
-/** A game reached by real play from a first-game input: every command issued
-  * and every parked decision answered along the way, in order (`CONTEXT.md`).
+/** A game reached by real play from a first-game input or from a [[Table]]:
+  * every command issued and every parked decision answered along the way, in
+  * order (`CONTEXT.md`).
   *
   * `driver` is the adapter that reached it, so a test keeps driving from
   * where the situation left off. `nextSequence` is the journal sequence the

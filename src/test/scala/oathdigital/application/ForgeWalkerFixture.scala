@@ -8,8 +8,8 @@ import oathdigital.testkit.Table.p1
 /** The board a walker Forge is driven from, shared by every suite that needs
   * one.
   *
-  * It was `GameApplicationServiceSuite`'s private fixture until Task 5b
-  * needed a parked Forge in [[WalkerDecisionProjectionSuite]] too. It was
+  * It was `GameApplicationServiceSuite`'s private fixture until
+  * [[WalkerDecisionProjectionSuite]] needed a parked Forge too. It was
   * once reached by real commands (a conquest, Searches, a Rest round); it is
   * now stated as a [[Table]], so a change to Setup or to those actions no
   * longer moves the Forge's board.

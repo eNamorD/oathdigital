@@ -50,7 +50,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
     val ready = last match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
-    // Any other player whose starting adviser is a face-down Denizen.
+    // Any other player whose adviser is a face-down Denizen: the board's p2.
     val (defender, plan) = ready.game.current.players
       .filter(_.player != script.actor).flatMap(player => player.advisers
         .collectFirst { case DenizenState(id, Orientation.FaceDown, _) =>
@@ -80,8 +80,8 @@ class GameLogCampaignSuite extends munit.FunSuite:
     val ready = last match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")
-    // A first game deals each homeland site its edifice, which sits among
-    // the site's cards; a site card is what a bandit plan's source is.
+    // The board holds a homeland edifice among a site's cards; a site card
+    // is what a bandit plan's source is.
     val edifice = ready.game.current.map.sites.values.flatMap(_.denizens)
       .collectFirst { case held: EdificeState => held.id }.get
     val tail = Vector[OathEvent](

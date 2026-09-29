@@ -179,12 +179,11 @@ object LogScripts:
     * run that follows here is the Rest, which tells only its deltas, so the
     * action a script tests stays whole. `ops` reads the situation it is
     * arranged in and the second player. */
-  private def arrangedForNext(woken: Situation)(
+  private def arrangedForNext(acting: Situation)(
       ops: (Situation, PlayerId) => Vector[CoreOperation])(
       using munit.Location): (Situation, PlayerId) =
-    val first = active(woken)
-    val next = FinishRestProcedure.turnOrder(woken.ready)(1)
-    val acting = woken.endingWake(first)
+    val first = active(acting)
+    val next = FinishRestProcedure.turnOrder(acting.ready)(1)
     val resting = acting.after(Step.Arrange(ops(acting, next)),
       GameCommand.BeginRest(first))
     val rested = if active(resting) == first then
@@ -437,8 +436,9 @@ object LogScripts:
     * warbands with the most of them. */
   def wolves(using munit.Location): Script =
     val card = CatalogNames.denizen("Wolves")
+    // p3 has fewer warbands on its board, so p2 is the one with the most.
     val table = Table.start.denizen("Wolves", "Ancient City")
-      .secrets(p1, faceUp = 2).banditsRefilled
+      .secrets(p1, faceUp = 2).warbands(p3, 2).banditsRefilled
     val victim = table.ready.game.current.players.filter(_.player != p1)
       .maxBy(_.board.warbands).player
     val (service, act) = atTable("wolves", table)
@@ -485,10 +485,12 @@ object LogScripts:
       DecisionOptionRef.Relic(net)))
     Script("barbed-net", service, p1)
 
-  /** Hunger faceup with p2, added after their facedown adviser as it was
-    * dealt, whose Wake begins when p1 rests. The forced step parks for them.
-    * Their only candidate is their own facedown adviser, which the default
-    * answer buries. The script's actor is Hunger's holder, p2. */
+  /** Hunger faceup with p2, added after their facedown adviser (so that
+    * adviser is slot 1), whose Wake begins when p1 rests. The forced step
+    * parks for them. Their only candidate is their own facedown adviser,
+    * which the default answer buries, and nothing else keeps Wake open, so
+    * it ends and the log ends with Act. The script's actor is Hunger's
+    * holder, p2. */
   def hunger(using munit.Location): Script =
     val (service, act) = atTable("hunger", Table.start
       .adviser(p2, "Birdsong", facedown = true).adviser(p2, "Hunger")

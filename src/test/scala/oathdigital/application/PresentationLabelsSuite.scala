@@ -23,8 +23,8 @@ class PresentationLabelsSuite extends munit.FunSuite:
   test("a site denizen is identified to everyone; a facedown adviser to its owner only"):
     val ready = board
     val current = ready.game.current
-    // A first game deals no denizen to a site, only homeland edifices, which
-    // lie in the same denizen slots.
+    // The board holds no denizen at a site, only a homeland edifice, which
+    // lies in the same denizen slots.
     val denizen: CardId = current.map.inPlay
       .flatMap(current.map.sites(_).denizens).collectFirst {
         case DenizenState(id, _, _) => id
