@@ -85,7 +85,7 @@ or the tests of the power it comes from.
 | P4 | Silver Tongue's adviser limit as a class parameterised by card. `AdviserLimit.of` takes the lowest limit | Insomnia | 2 |
 | P5 | `PowerAnswers.amount`, reading a `ChooseAmount` answer | Blood Pact | 3a |
 | P6 | Warning Signals' warband distribution as a helper taking the site set | Messenger | 3a |
-| P7 | Dazzle's region discard with a suit filter | Threatening Roar, Riots | 4 |
+| P7 | Dazzle's region discard with a suit filter. Dazzle gains the `none` line its users log | Dazzle, Threatening Roar, Riots | 4 |
 | P8 | Alchemist's favor split with the amount as a parameter | Town Meeting, Memory of Nature | 3c |
 
 ## Seams used for the first time
@@ -270,6 +270,7 @@ Scryer.
 
 | Card | Line | Covers |
 |---|---|---|
+| Dazzle, key `none` (new) | Dazzle: Nothing was discarded. | |
 | Threatening Roar, key `discarded` | Threatening Roar: Discarded {cards}. | the Discard lines |
 | Threatening Roar, key `none` | Threatening Roar: Nothing was discarded. | |
 | Riots, key `discarded` | Riots: Discarded {cards}. | the Discard lines |
