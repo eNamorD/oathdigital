@@ -89,11 +89,6 @@ object ParkedServiceFixture:
       baseOrders.firstPlayer)
     (newChronicle, ChronicleFirstGamePlan.dealOrder(newChronicle, config))
 
-  def topOfWorldDeck(card: DenizenId, to: Location,
-      orientation: Orientation = Orientation.FaceUp): Move =
-    Move(Piece.Card(card), PositionedLocation(Location.Deck(CardDeck.World),
-      StackPosition.Top), PositionedLocation(to), Some(orientation))
-
   /** A park: the service and journal it was driven through, and the
     * position it stopped at. */
   final case class ParkedGame(service: GameApplicationService,
@@ -142,23 +137,10 @@ object ParkedServiceFixture:
     def rollDefense(count: Int): Vector[DefenseDieFace] =
       Vector.fill(count)(DefenseDieFace.Blank)
 
-  /** The Chronicle with the first catalog site Recover can target in the
-    * first atlas slot, so the first player's pawn starts there, and the
-    * sites in play under it in atlas order. */
-  lazy val recoverChronicle: Chronicle =
-    val recoverSite = catalog.sites.find(site =>
-      site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
-        site.relicSlots > 0 &&
-        !site.handlers.exists(_.contains(".homeland-"))).get.id
-    chronicle.copy(atlasBox =
-      chronicle.atlasBox.find(_.site == recoverSite).get +:
-        chronicle.atlasBox.filterNot(_.site == recoverSite))
-  lazy val recoverSites: Vector[SiteId] =
-    recoverChronicle.atlasBox.take(8).map(_.site)
-
   /** p1 at Broken Peaks, where Recover has difficulty 4, holding two
-    * facedown relics. p2 stands at Deep Woods, since a player at the site
-    * sees the relics lying there and only p1 should. */
+    * facedown relics. p2 stands at Deep Woods (any site but Broken Peaks
+    * would do), since a player at the site sees the relics lying there and
+    * only p1 should. */
   lazy val recoverTable: Table = Table.start
     .pawn(p1, "Broken Peaks")
     .pawn(p2, "Deep Woods")

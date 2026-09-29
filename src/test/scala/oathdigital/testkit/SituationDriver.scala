@@ -215,15 +215,16 @@ object SituationDriver:
             from.events ++ accepted.events, accepted.nextSequence, this))
       case Step.Arrange(ops, label) =>
         val event = arranging(ops, label)
+        // A situation begun at a Table has no stream until its first record.
+        val expected = if from.nextSequence == 0L then
+          ExpectedStream.MustNotExist
+        else ExpectedStream.AtNextSequence(from.nextSequence)
         for
           record <- GameEventWire.encodeEvent(gameId, catalog.ref,
             from.nextSequence, event).left.map(_.toString)
           journal <- repository.toRight(
             "a journaled driver without its repository cannot arrange")
-          // A situation begun at a Table has no stream until its first record.
-          _ <- journal.append(gameId, if from.nextSequence == 0L then
-              ExpectedStream.MustNotExist
-            else ExpectedStream.AtNextSequence(from.nextSequence),
+          _ <- journal.append(gameId, expected,
             Vector(ujson.write(record))).left.map(_.toString)
           loaded <- service.load(gameId).left.map(_.toString)
             .flatMap(_.toRight(s"no stream $gameId after arranging"))

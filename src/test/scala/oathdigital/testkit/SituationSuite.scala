@@ -138,6 +138,19 @@ class SituationSuite extends munit.FunSuite:
     assertArranges(wokenByJournal)
     assertEquals(recordCount(repository, "arrange"), before + 1)
 
+  test("an Arrange as the first step of a table journals against a stream " +
+      "that does not exist yet"):
+    val table = Table.start
+    val (service, repository) = table.service()
+    val driver = Situation.journaled(service, catalog, repository, "first")
+    val arranged = table.situation(driver).after(Step.Arrange(Vector(
+      SetOathkeeper(Some(p1)))))
+    assertEquals(arranged.nextSequence, 1L)
+    assertEquals(recordCount(repository, "first"), 1)
+    assertEquals(arranged.ready.game.current.title.holder, Some(p1))
+    assertEquals(service.load("first").toOption.flatten.get.state,
+      arranged.state)
+
   test("the rules adapter parks a Recover on its continue-or-stop choice " +
       "the way ParkedServiceFixture does"):
     // ParkedServiceFixture.recoverChoicePark's table, under the rules the
