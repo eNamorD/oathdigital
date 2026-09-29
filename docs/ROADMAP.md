@@ -125,6 +125,16 @@ requested UI changes are in the
    the test `index.html` fixture shadowing the generated one, the hardcoded
    `oathdigital:root` assertion, and no Docker `HEALTHCHECK`. Also document
    host bind mounts at `/var/lib/oathdigital` in the configuration guide.
+6. [ ] **A lighter way to test separate-machine play.** The manual
+   [acceptance record](operations/alpha-acceptance.md) takes two physical
+   machines and a lot of hand-recorded evidence, so `0.1.0-alpha.3` shipped
+   without one. Find a cheaper check for what it covers (LAN reachability,
+   seat links opening on another machine, reconnect and restart, HTTPS proxy
+   and origin behavior, and the bundled archives' first launch on each OS),
+   ideally something a release run can execute or that takes minutes by hand.
+   Then decide what happens to the record. Also check whether `0.1.0-alpha.3`
+   starts cleanly on an `0.1.0-alpha.2` player's existing data folder, which
+   its release notes leave untested.
 
 ### Setup deferred items
 
