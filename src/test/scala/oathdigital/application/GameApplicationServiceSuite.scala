@@ -47,7 +47,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
   /** A second service over the same journal, replaying it from the same
     * start as `service`. */
-  private def reopened(service: GameApplicationService,
+  private def replayingSecond(service: GameApplicationService,
       repository: InMemoryEventStreamRepository): GameApplicationService =
     new GameApplicationService(catalog, repository, genesis = service.genesis)
 
@@ -123,7 +123,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
   test("walker Recover persists every park and replays to the same final state"):
     // p1 stands at Broken Peaks, difficulty 4, with two facedown relics.
-    val recoverSite = Table.homeOf(p2)
+    val recoverSite = CatalogNames.site("Broken Peaks")
     val actor = p1
 
     val walkerDice = new CountingRecoverDice
@@ -149,7 +149,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(walkerService.load("walker-recover").toOption.flatten.get
       .nextSequence, started.nextSequence)
 
-    val reloadedAtRelic = reopened(walkerService, walkerRepository)
+    val reloadedAtRelic = replayingSecond(walkerService, walkerRepository)
       .load("walker-recover").toOption.flatten.get
     assertEquals(reloadedAtRelic.state, started.state)
     val relic = atRelic.game.current.map.sites(recoverSite).relics.head.id
@@ -257,7 +257,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       Vector(Answered(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)))
     assertEquals(ready.game.current.walkerProcedure, Some(ActionRef.Recover))
-    assertEquals(reopened(service, repository)
+    assertEquals(replayingSecond(service, repository)
       .load("walker-continue").toOption.flatten.get.state, continued.state)
     assert(repository.load("walker-continue").toOption.flatten.get.records
       .exists(record => record.contains(
@@ -270,7 +270,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       RecoverProcedure.recoverPool)
     assertEquals(accumulated.count, 4)
     assertEquals(accumulated.faces.size, 4)
-    assertEquals(reopened(service, repository)
+    assertEquals(replayingSecond(service, repository)
       .load("walker-continue").toOption.flatten.get.state, failedAgain.state)
 
     val rules = new OathRules(catalog)
@@ -438,7 +438,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
     // Replay from the journal alone reproduces the same state: the ops did
     // not merely encode, they decode back to the operations that built it.
-    val reloaded = reopened(service, repository)
+    val reloaded = replayingSecond(service, repository)
       .load(gameId).toOption.flatten.get
     assertEquals(reloaded.state, started.state)
     assertEquals(reloaded.nextSequence, started.nextSequence)
@@ -450,7 +450,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Relic(recovered))))).toOption.get
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
-    assertEquals(reopened(service, repository).load(gameId)
+    assertEquals(replayingSecond(service, repository).load(gameId)
       .toOption.flatten.get.state, finished.state)
 
   test("preview offers the walker Catacombs contribution, and " +
@@ -622,7 +622,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
           case id: VisionId => DecisionOptionRef.Vision(id)
         })))).toOption.get
     // The parked walk reloads to the same state before it is answered.
-    assertEquals(reopened(service, repository)
+    assertEquals(replayingSecond(service, repository)
       .load("game-minor-replay").toOption.flatten.get.state, started.state)
     val discarded = service.handle("game-minor-replay", started.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(
@@ -637,7 +637,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
         })))).isLeft)
     assertEquals(repository.load("game-minor-replay").toOption.flatten.get.records,
       beforeRetry)
-    val reloaded = reopened(service, repository)
+    val reloaded = replayingSecond(service, repository)
       .load("game-minor-replay").toOption.flatten.get
     assertEquals(reloaded.state, discarded.state)
     assertEquals(reloaded.nextSequence, discarded.nextSequence)
@@ -654,7 +654,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       GameCommand.ResolveWalker(actor, TreeDecision("challenge.banner",
         ChooseOneAnswer(DecisionOptionRef.Banner(Banner.PeoplesFavor)))))
       .toOption.get
-    val reloaded = reopened(service, repository)
+    val reloaded = replayingSecond(service, repository)
       .load(gameId).toOption.flatten.get
     assertEquals(reloaded.state, accepted.state)
     val Ready(pendingReady) = reloaded.state: @unchecked
@@ -666,7 +666,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       Vector("resolveWalkerDecision"))
     assertEquals(projector.project(gameId, reloaded, other).legalControls,
       Vector.empty)
-    val completed = reopened(service, repository).handle(gameId,
+    val completed = replayingSecond(service, repository).handle(gameId,
       reloaded.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
         "challenge.amount", ChooseAmountAnswer(2)))).toOption.get
     val Ready(after) = completed.state: @unchecked
@@ -890,7 +890,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
 
     // The journal replays to the same state even though it carries a
     // completion that was never preceded by a park.
-    assertEquals(reopened(service, repository)
+    assertEquals(replayingSecond(service, repository)
       .load(gameId).toOption.flatten.get.state, finished.state)
 
   /** Setup driven through `service`, for the tests that stay on the real
@@ -930,7 +930,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
   test("gameplay appends at the absolute position and reloads equally"):
     // p2 wakes at Broken Peaks, whose 2 secrets are its only Wake option.
     val (service, repository) = Table.start.turn(p2, Phase.Wake)
-      .siteTokens("Broken Peaks", secrets = 2).banditsRefilled.service()
+      .siteTokens("Broken Peaks", secrets = 2)
+      // Bandits at every empty site keep the refill out of the five events.
+      .banditsRefilled.service()
     val active = p2
     val siteId = Table.homeOf(p2)
 
@@ -946,7 +948,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       service.handle("game-wake", 0L, GameCommand.EndWake(active)),
       Left(GameApplicationError.StaleClientPosition(0L, 5L))
     )
-    val reloaded = reopened(service, repository)
+    val reloaded = replayingSecond(service, repository)
       .load("game-wake").toOption.flatten.get
     val Ready(after) = reloaded.state: @unchecked
 
@@ -981,7 +983,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
         Vector.empty, Vector(DecisionOptionRef.Site(destination))))
       ).toOption.get
-    val loaded = reopened(service, repository)
+    val loaded = replayingSecond(service, repository)
       .load("game-travel").toOption.flatten.get
     val Ready(after) = loaded.state: @unchecked
     val moved = after.game.current.players.find(_.player == active).get
@@ -1068,7 +1070,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val mustered = service.handle("game-walker-economy", started.nextSequence,
       GameCommand.ResolveWalker(active, TreeDecision(MusterProcedure.decisionId,
         ChooseOneAnswer(DecisionOptionRef.Edifice(edificeId))))).toOption.get
-    val loaded = reopened(service, repository)
+    val loaded = replayingSecond(service, repository)
       .load("game-walker-economy").toOption.flatten.get
     assertEquals(loaded.state, mustered.state)
     val Ready(after) = loaded.state: @unchecked
@@ -1084,9 +1086,11 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val port = new SearchDrawPort:
       def prepare(ready: ReadyGame, source: SearchSource, origin: Region): Either[OathViolation, Vector[WorldCardId]] =
         Right(Vector(DenizenId("denizen:tampered")))
+    // Built by hand: `Table#service` takes no draw port.
+    val repository = new InMemoryEventStreamRepository
     val table = Table.start
-    val service = new GameApplicationService(catalog,
-      new InMemoryEventStreamRepository, port, genesis = table.state)
+    val service = new GameApplicationService(catalog, repository, port,
+      genesis = table.state)
     val active = p1
     assertEquals(service.handle("game-search-tamper", 0L,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(active,
@@ -1095,6 +1099,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
         "prepared draw does not match authoritative source order"))))
     assertEquals(service.load("game-search-tamper").toOption.flatten.get
       .nextSequence, 0L)
+    assertEquals(repository.load("game-search-tamper"), Right(None))
 
   test("walker Search persists its card choice and completes after reload"):
     // Three denizens on top of the world deck, so the Search offers a choice.
@@ -1107,7 +1112,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
       .toOption.get
-    val reloaded = reopened(service, repository)
+    val reloaded = replayingSecond(service, repository)
       .load(gameId).toOption.flatten.get
     assertEquals(reloaded.state, started.state)
     val Ready(afterDraw) = reloaded.state: @unchecked
@@ -1126,14 +1131,14 @@ class GameApplicationServiceSuite extends munit.FunSuite:
         s"cardplay.place.${drawn.head.kind}.${drawn.head.value}",
         DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))))
       .toOption.get
-    assertEquals(reopened(service, repository)
+    assertEquals(replayingSecond(service, repository)
       .load(gameId).toOption.flatten.get.state, completed.state)
 
   test("Wake projection is actor-private and Act boundary is informational"):
-    // p2 wakes alone at Broken Peaks: its secrets are a Wake option, so Wake
-    // waits for the player. Its relic, a bandit and p2's facedown adviser
-    // are what Act then offers: Recover, a Campaign, a peek and the minor
-    // action.
+    // p2 wakes at Broken Peaks, where no other pawn stands. Its secrets are a
+    // Wake option, so Wake waits for the player. Its relic, a bandit and
+    // p2's facedown adviser (any facedown adviser will do) are what Act then
+    // offers: Recover, a Campaign, a peek and the minor action.
     val table = Table.start.turn(p2, Phase.Wake)
       .siteTokens("Broken Peaks", secrets = 2)
       .relicAt("Sticky Fire", "Broken Peaks")
@@ -1164,7 +1169,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     )
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
-    // The wealth site also holds a relic: Recover and a peek are offered.
+    // Broken Peaks also holds a relic: Recover and a peek are offered.
     assertEquals(act.legalControls, Vector("beginRest", "beginRecover",
       "beginCampaign", "facedownAdviserMinorAction", "peekSiteRelics"))
     assert(act.boardTargetActions.exists(_.actionKind == "travel"))
@@ -1187,6 +1192,9 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       Vector.empty)
 
   test("site projection exposes ordered public properties without relic identity"):
+    // A projection needs only a ready game, so the base is the quiet table
+    // and every fact the test asserts is patched in below. `Table` has no
+    // step for Imperial warbands or for a site's loose favor and secrets.
     val ready = Table.start.ready
     val siteId = ready.game.current.map.cradle.head
     val emptySiteId = ready.game.current.map.cradle(1)

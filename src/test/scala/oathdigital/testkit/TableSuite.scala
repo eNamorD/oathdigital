@@ -41,14 +41,13 @@ class TableSuite extends munit.FunSuite:
 
   test("banditsRefilled leaves the refill nothing to add and keeps the forces " +
       "already at a site"):
-    val table = Table.start.warbandsAt("Ancient City", p1, 1).warbands(p1, 2)
-      .banditsRefilled
+    val held = Table.start.warbandsAt("Ancient City", p1, 1).warbands(p1, 2)
+    val table = held.banditsRefilled
     assertEquals(StateBasedEvaluation.banditRefill(catalog, table.state),
       Right(None))
     val look = Look(table.ready)
     assertEquals(look.forces(CatalogNames.site("Ancient City")),
-      Look(Table.start.warbandsAt("Ancient City", p1, 1).warbands(p1, 2).ready)
-        .forces(CatalogNames.site("Ancient City")))
+      Look(held.ready).forces(CatalogNames.site("Ancient City")))
     assertEquals(look.forces(CatalogNames.site("Broken Peaks")),
       SiteForces.Occupied(ForceKind.Bandit,
         catalog.site(CatalogNames.site("Broken Peaks")).get.capacity))

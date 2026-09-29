@@ -233,8 +233,9 @@ final case class Table private (private val game: ReadyGame,
     forces(at, n, PlayerForceKind.of(game, playerOf(owner)).getOrElse(
       munit.Assertions.fail(s"$owner has no warbands of their own")))
 
-  /** A bandit stack of its printed capacity at every empty in-play site: the
-    * board real play reaches once the refill after a command has run. A
+  /** A bandit stack of its printed capacity at every empty in-play site that
+    * has one: the board real play reaches once the refill after a command
+    * has run. A
     * journaled test that counts a command's events, or reads a log, starts
     * here: otherwise its first command journals that refill as well. */
   def banditsRefilled(using munit.Location): Table =
