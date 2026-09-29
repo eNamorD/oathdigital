@@ -35,6 +35,21 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     assertEquals(entries.take(3).map(entry => (entry.sequence, entry.ordinal)),
       Vector((0L, 0), (0L, 1), (0L, 2)))
 
+  test("a table journal opens with its phase, and a prefix formats as a " +
+      "prefix of the whole log"):
+    val table = Table.start
+    val (service, repository) = table.service()
+    table.situation(Situation.journaled(service, catalog, repository, "t"))
+      .after(GameCommand.BeginRest(p1))
+    val steps = service.history("t").toOption.flatten.get.steps
+    val whole = formatter.format(steps, Some(p1))
+    assertEquals(texts(whole).take(3), Vector("Round 1",
+      s"${name(p1)}'s turn", "Act"))
+    (1 to steps.size).foreach { k =>
+      val prefix = formatter.format(steps.take(k), Some(p1))
+      assertEquals(prefix, whole.take(prefix.size), s"prefix of $k events")
+    }
+
   test("a whole round posts one turn headline per seat and opens Round 2"):
     val script = round
     val all = headlines(format(script, Some(script.actor)))

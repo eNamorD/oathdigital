@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.model.OathViolation
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
 
@@ -27,10 +28,16 @@ class GenesisServiceSuite extends munit.FunSuite:
     assertEquals(reloaded.load("g").map(_.map(_.state)),
       Right(Some(accepted.state)))
 
-  test("a started genesis refuses Begin"):
+  test("a started genesis refuses Begin, and appends nothing"):
+    val (service, repository) = Table.start.service()
+    assertEquals(service.handle("g", 0L, GameCommand.Begin(
+      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders)),
+      Left(GameApplicationError.CommandRejected(OathViolation.GameAlreadyExists)))
+    assertEquals(repository.load("g"), Right(None))
+
+  test("a genesis has no history until its first command"):
     val (service, _) = Table.start.service()
-    assert(service.handle("g", 0L, GameCommand.Begin(
-      FirstGameSetupFixture.chronicle, FirstGameSetupFixture.orders)).isLeft)
+    assertEquals(service.history("g"), Right(None))
 
   test("without a genesis, a missing stream still accepts only Begin"):
     val service = new GameApplicationService(catalog,
