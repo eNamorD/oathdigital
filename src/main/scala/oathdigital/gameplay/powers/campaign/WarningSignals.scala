@@ -14,7 +14,7 @@ import oathdigital.model._
   * again, before their force is scored: one distribution over their board and
   * every site they rule, whether or not it is targeted, that keeps the total and
   * leaves each site at least one warband. Nothing is asked when there is nowhere
-  * to move to. The card is discarded when the Campaign has resolved, whether or
+  * to move to: no ruled site, or no warband beyond the one each site keeps. The card is discarded when the Campaign has resolved, whether or
   * not the defender won.
   *
   * Once the defender has answered it writes "{Blue} redistributed their
@@ -53,7 +53,7 @@ final case class WarningSignals private (cardId: DenizenId,
   private def rearrange(user: PlayerId): Operation = Branch((ready, _) => {
     val (board, sites) = holdings(ready, user)
     val total = board + sites.map(_._2).sum
-    if sites.isEmpty || total == 0 then Vector.empty
+    if sites.isEmpty || total <= sites.size then Vector.empty
     else {
       val room = total - (sites.size - 1)
       val slots = DistributeSlot(DecisionOptionRef.Player(user), 0, total,
