@@ -99,3 +99,32 @@ class LazyPruningSuite extends munit.FunSuite:
       Answered(ask, DecisionAnswer.ChooseOneAnswer(ref("discard")), p1),
       powers), Left(OathViolation.InvalidEventOrder(
         s"decision $ask does not offer the selected option")))
+
+  test("a park read again with the same powers is not searched again"):
+    var builds = 0
+    val tree = Sequence(Vector[Operation](
+      Decide(ask, p1, DecisionQuery.ChooseOne(Vector(button("a"),
+        button("b")))),
+      BuildOps((_, _) => { builds += 1; Right(Vector.empty) })))
+    val Right(WalkerOutcome.Parked(pending, _)) =
+      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
+    val searched = builds
+    assert(searched > 0, "the park's search must reach the build")
+    ProcedureWalker.openDecisions(ready, tree, pending, powers)
+    ProcedureWalker.openDecisions(ready, tree, pending, powers)
+    assertEquals(builds, searched)
+
+  test("a verdict is not reused for another state"):
+    val tree = discarding(required = true)
+    def offeredIn(state: ReadyGame): Vector[DecisionOptionRef] =
+      val Right(WalkerOutcome.Parked(pending, _)) =
+        ProcedureWalker.advance(state, tree, None, powers): @unchecked
+      ProcedureWalker.openDecisions(state, tree, pending, powers).head.query
+        match
+          case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
+          case other => fail(s"expected a choose-one, got $other")
+    assertEquals(offeredIn(ready), Vector(ref("keep")))
+    val facedown = Table.start.adviser(p1, lockedCard, facedown = true).ready
+    assertEquals(offeredIn(facedown), Vector(ref("discard"), ref("keep")))
+    assertEquals(offeredIn(ready), Vector(ref("keep")))
+

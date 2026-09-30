@@ -538,17 +538,24 @@ object ProcedureWalker:
     * a required operation fails the path. */
   private def verdict(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : DecisionAnswer => Either[OathViolation, Unit] =
-    val baseline = WalkerPowerGather.breaches(ctx.root, ctx.state,
+    lazy val baseline = WalkerPowerGather.breaches(ctx.root, ctx.state,
       ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure).toSet
     val searching = ctx.copy(events = Vector.empty, searching = true,
       visited = ctx.visited + ((path, ctx.state)))
-    answer =>
+    def reached(answer: DecisionAnswer): Either[OathViolation, Unit] =
       val hypothetical = Answered(decide.decisionId, answer, decide.owner)
       WalkerPowerGather.breaches(ctx.root, ctx.state, ctx.activePlayer,
           ctx.powers, ctx.answered :+ hypothetical, ctx.procedure)
         .find(!baseline(_)).toLeft(())
         .flatMap(_ => searched(walk(ctx.root, searching, Vector.empty,
           Some(path), AnswerResume(hypothetical), WalkerHooks.none)))
+    // Only the live walk's verdicts are kept: one asked inside a search also
+    // depends on the decisions that search stands at.
+    if ctx.searching then reached
+    else
+      val base = new SearchMemo.Base(ctx.root, path, ctx.state, ctx.answered,
+        ctx.procedure, ctx.activePlayer, decide.decisionId, decide.owner)
+      answer => ctx.powers.searchMemo.verdict(base, answer)(reached(answer))
 
   /** A search's walk as a verdict. A broken position is a rejection, as it
     * is for a simulation. */

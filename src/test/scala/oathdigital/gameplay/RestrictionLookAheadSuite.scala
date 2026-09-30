@@ -142,10 +142,11 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
         button("no")))), host))
     val _ = ProcedureWalker.advance(ready, root, None,
       WalkerPowers(Vector(counting)))
-    // One traversal for the baseline and one per option, each meeting the
-    // root's window once. A probe inside the host's dry run would add four
-    // more traversals per host fold.
-    assertEquals(calls, 3)
+    // One traversal per option, each meeting the root's window once. The
+    // baseline is taken only when an option adds a violation, and none does
+    // here. A probe inside the host's dry run would add four more traversals
+    // per host fold.
+    assertEquals(calls, 2)
 
   test("a Restriction reads the answers so far from its context"):
     val reading = TestRestrictionPower(PowerId("test.reading"), nested,

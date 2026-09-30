@@ -130,9 +130,10 @@ class OfferHostSuite extends munit.FunSuite:
     ProcedureWalker.resolve(state, tree, pending, Answered("test.question",
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("yes")), actor),
       powers)
-    // The answer is searched again when it is checked, then the walk goes on.
+    // The answer check reuses the park's verdict, so only the walk that goes
+    // on folds the host again.
     assertEquals(host.folds.toVector.map(_._1.map(_.offer.label)), Vector(
-      Vector("answered"), Vector("answered"), Vector("answered")))
+      Vector("answered"), Vector("answered")))
 
   test("a host can ask whether an operation would run, and what it would record"):
     val results: mutable.Buffer[Either[OathViolation, Vector[CoreOperation]]] =

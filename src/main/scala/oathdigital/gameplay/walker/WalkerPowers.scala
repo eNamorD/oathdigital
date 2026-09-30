@@ -33,6 +33,9 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
   lazy val operationRestrictions: Vector[OperationRestriction] =
     restrictionSet.active(powers.flatMap(_.operationRestrictions), modifiers)
 
+  /** The verdicts this instance's searches have found (see [[SearchMemo]]). */
+  private[walker] lazy val searchMemo: SearchMemo = new SearchMemo
+
   /** These powers without the search, for a dry run inside one. It is built
     * once per instance, so repeated dry runs share one copy and build its
     * restrictions once. */
