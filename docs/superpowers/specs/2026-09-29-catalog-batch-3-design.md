@@ -61,12 +61,14 @@ checked against the code of the power it copies. Two failed and are dropped
 
 ## Prerequisite
 
-The **Global operation restrictions** phase lets powers register an
-`OperationRestriction` that every walker step, `MinorActions` and
-`StateBasedEvaluation` apply. The same phase moves Locked onto that seam, so a
-locked card refuses Move, Flip and Swap. It also adds the Grand Scepter's
-"cannot be removed from play", which refuses its discard and bury. This batch
-uses the seam in three places:
+The **Global operation restrictions** phase
+([design](2026-09-30-global-operation-restrictions-design.md)) makes operation
+restrictions hold for every walker step, `MinorActions` and
+`StateBasedEvaluation`, checked against composites before they are split. It
+moves Locked onto that seam, so a locked card refuses Move, Flip and Swap, and
+adds the Grand Scepter's "cannot be removed from play". Its search hides every
+option that has no legal path, and Challenge custody and Conspiracy's banner
+transfer become `Take`. This batch uses the seam in three places:
 
 - **Lost Tongue** registers a restriction on `Take`.
 - **Enchantress** relies on Locked to refuse swapping a locked adviser.
@@ -334,11 +336,12 @@ Great Herd declined, as for Twin Brother. Key to the City's gain, which the
 
 ## Verify at plan time
 
-- **Prerequisite.** Which operation Conspiracy, Challenge and Campaign spoils
-  use to move a relic or banner. Lost Tongue refuses only `Take`.
-- **Restriction look-ahead.** That options a registered restriction refuses
-  are hidden (Enchantress' locked advisers, the Grand Scepter for Arcane
-  Brokers, Bog and Relic Breaker).
+- **Prerequisite.** That Conspiracy's banner, Challenge custody and Campaign
+  spoils all move by `Take` after the prerequisite phase, and Conspiracy's
+  relic by `Give`. Lost Tongue refuses only `Take`.
+- **Pruned options.** That the prerequisite's search hides options a
+  registered restriction refuses (Enchantress' locked advisers, the Grand
+  Scepter for Arcane Brokers, Bog and Relic Breaker).
 - **Bandit Prince.** That a `BuildOps` violation after the answer leaves the
   decision parked, so an over-large answer is refused. If it does not, stop
   and ask the product owner before choosing another ruling.

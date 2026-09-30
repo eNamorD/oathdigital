@@ -10,7 +10,8 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 **Phase - Cleanup tasks** is done except for one item blocked on the
 Chronicle Phase. **Phase - Global operation restrictions** is next, then
-**Phase - Catalog batch 3**, which depends on it.
+**Phase - Catalog batch 3**, which depends on it, then **Phase - Card
+classes**.
 
 ## Next
 
@@ -19,34 +20,22 @@ campaign-continuity rules.
 
 ### Phase - Global operation restrictions
 
-Let powers register an `OperationRestriction` that every walker step,
-`MinorActions` and `StateBasedEvaluation` apply, rather than one a `BuildOps`
-node passes to `OperationPipeline.run`. A restriction that needs a power
-window to hook is an oversight: a persistent rule such as Lost Tongue's
-"cannot take" must hold for every power. The phase includes:
+Operation restrictions that hold wherever an operation runs, rather than only
+where a `BuildOps` node passes them. Designed in the
+[Global operation restrictions design](superpowers/specs/2026-09-30-global-operation-restrictions-design.md),
+in three slices:
 
-- **The seam.** Restrictions are a per-call argument of
-  `OperationPipeline.run` today, supplied only by a `BuildOps` node. Walker
-  steps all run through `ProcedureWalker.recordBatch`, so registration is a
-  `restrictions` field on `WalkerPowers` merged there and built by `OathRules`
-  from the catalog and the state. `MinorActions` and `StateBasedEvaluation`
-  call the pipeline directly and need it too.
-- **Locked cards as a generic operation restriction.** Locking is enforced
-  today by `DiscardRestrictions` (a faceup locked adviser, an intact edifice,
-  a modifier selected for the running action, and the Hall of Ministers). Each
-  path that discards a card in play attaches it, and a coverage test fails
-  when a new discarding file forgets to. The intended design is a `Locked`
-  `OperationRestriction` that any locked card mixes in. It refuses any
-  `Move`, `Flip` or `Swap` of that particular card (a discard is a `Move`),
-  and skips `Bury`, which ignores locked. It would retire
-  `DiscardRestrictions`' locked rules, `CardPlay`'s locked-adviser check and
-  Horned Mask's filter, and needs an audit of every step that legitimately
-  moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
-  lines, with regression risk in the Negotiation and Campaign suites.
-- **The Grand Scepter's "cannot be removed from play"**, which refuses its
-  discard and bury. Fae Merchant's own filter then retires.
-
-It needs its own design. Catalog batch 3 depends on it.
+1. [ ] **The seam.** A restriction set gathered from rules and the cards in
+   play, a required argument of `OperationPipeline.run`, checked against
+   composites before the walker splits them. Locked (per card, faceup only),
+   the active-modifier rule and the Hall of Ministers move onto it, and
+   `DiscardRestrictions` retires.
+2. [ ] **Lazy pruning.** A depth-first search at every park and action start
+   hides each option with no legal path, stopping at hidden information, with
+   no depth cap. It replaces the restriction look-ahead, within a measured
+   performance budget.
+3. [ ] **Grand Scepter and Take.** The Grand Scepter cannot leave play, and
+   Challenge custody and Conspiracy's banner transfer become `Take`.
 
 ### Phase - Catalog batch 3
 
@@ -163,6 +152,21 @@ Found by the survey of 2026-09-29:
   changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
   Obsidian Cage (a new warband store), Secret Signal (no generic gain window),
   and False Prophet, True Oath and The Red Seer (the Oathkeeper goal is not modelled).
+
+### Phase - Card classes
+
+Starts after **Phase - Catalog batch 3**, and needs its own design.
+`docs/catalog/new-foundations-component-catalog.json` is hand-authored JSON,
+read at runtime and validated against its schema. Move denizens, relics,
+edifices, legacies, and sites into typed Scala classes, so suit, restrictions
+and roles are compile-checked fields, and printed properties such as Locked
+and the Grand Scepter become traits a card mixes in. This replaces the catalog
+function the Global operation restrictions phase uses to build `Locked` and
+`GrandScepter` restrictions, and the `forCatalog` lookup from a power to its
+card. The catalog already indexes components by ID and by the powers they
+print. Costs to weigh: 393 components, the `CatalogRef` version games are
+pinned to, packaging and `--catalog-path`, `validate-component-catalog.py`,
+and the architecture docs that call the JSON authoritative.
 
 ### Phase - Cleanup tasks
 
@@ -428,13 +432,6 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     the viewer's current sequence (or a 304), fetching the projection only
     when it advanced. See the
     [Phase 5 follow-ups](operations/phase-5-follow-ups.md#snapshot-polling-sends-a-full-projection-on-every-tick).
-- [ ] **L8 — Migrate the component catalog into typed Scala objects.**
-  `docs/catalog/new-foundations-component-catalog.json` is hand-authored JSON,
-  read at runtime and validated against its schema. Move denizens, relics,
-  edifices, legacies, and sites into typed Scala objects (or a compile-time
-  generated loader) so suit, restrictions, and modifiers are looked up as
-  fields instead of string-keyed JSON traversal. The catalog already indexes
-  components by ID and by the powers they print.
 - [ ] **Table UI rework.** Rework the layout of player areas and sites, and
   port the map to haunt-roll-fail's canvas approach. Recorded in the card
   shape and inspection design.

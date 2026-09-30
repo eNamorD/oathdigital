@@ -34,7 +34,7 @@
   phase comes first. After it, a locked card refuses Move, Flip and Swap, and
   the Grand Scepter cannot be discarded or buried. No power in this batch
   filters locked cards or the Grand Scepter itself: the restriction refuses
-  the operation, and the restriction look-ahead hides the option. `Bury`
+  the operation, and the prerequisite's search hides the option. `Bury`
   still ignores locked.
 - **"X to gain Y".** Y is gained only when X happened: Taming Charm, Arcane
   Brokers, Bog, Second Chance, Bandit Paymaster, Relic Breaker and Great Feast.
