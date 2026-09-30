@@ -246,6 +246,8 @@ target is hidden is decided with Lost Tongue, the first restriction on `Take`.
 That decision must also cover the order inside the batch: the banner's leaving
 operations (the Darkest Secret burn, the People's Favor return) run before the
 `Take`, so a skipped `Take` would leave the banner emptied and not taken.
+Lost Tongue can probably handle this by making the leaving operations children
+of the `Take` itself, so a refused `Take` skips them with it.
 
 ## Slicing
 
