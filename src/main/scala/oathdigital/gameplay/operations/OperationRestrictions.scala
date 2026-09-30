@@ -1,6 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.catalog.{CardRestrictions, ExecutableCatalog, RelicRole}
 import oathdigital.model._
 
 /** The operation restrictions that hold for a command, wherever its
@@ -8,7 +8,8 @@ import oathdigital.model._
   * set").
   *
   * `printed` are the restrictions a catalog's cards print: [[LockedCards]],
-  * holding every lock-icon card, and the [[HallOfMinisters]]. `active` adds the
+  * holding every lock-icon card, the [[HallOfMinisters]], and one
+  * [[GrandScepter]] per scepter relic. `active` adds the
   * [[ActiveModifier]] rule for the modifiers selected for the running action,
   * and the restrictions the offered powers register. Every one refuses as
   * `Impossible`: an optional operation is skipped, a required one rejects.
@@ -49,7 +50,9 @@ object OperationRestrictions:
         .map(d => DenizenId(d.id.value): CardId) ++
         catalog.edifices.filter(e => locking(e.intact.restrictions))
           .map(e => EdificeId(e.id.value): CardId)).toSet
-    Vector(LockedCards(locked), HallOfMinisters(catalog))
+    val scepters = catalog.relics.filter(_.role == RelicRole.GrandScepter)
+      .map(relic => GrandScepter(RelicId(relic.id.value)))
+    Vector(LockedCards(locked), HallOfMinisters(catalog)) ++ scepters
 
 /** A card that prints a power selected for the running action cannot be
   * discarded while the action runs: a modifier a player selected at the start

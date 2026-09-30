@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{LockedCards, OperationRestrictions}
+import oathdigital.gameplay.operations.{GrandScepter, LockedCards, OperationRestrictions}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -21,6 +21,7 @@ class OperationRestrictionsSuite extends munit.FunSuite:
   /** A plain Beast card, unrestricted. */
   private val plainCard = CatalogNames.denizen("Errand Boy")
   private val drum = CatalogNames.relic("Dragonskin Drum")
+  private val scepter = RelicId("grand-scepter")
 
   private def refusal(ready: ReadyGame, operation: CoreOperation,
       modifiers: PowerId*): Option[String] =
@@ -125,6 +126,28 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     assertEquals(refusal(ready, byEnemy), Some("discard-immune"))
     assertEquals(refusal(ready, relicByEnemy), Some("discard-immune"))
     assertEquals(refusal(ready, byEnemy.copy(actingPlayer = p1)), None)
+
+  test("the Grand Scepter refuses a discard, a return to the relic deck and " +
+      "a Bury, and allows a Take and a Give"):
+    val ready = Table.start.relic(p1, scepter).ready
+    val mine = PositionedLocation(Location.PlayArea(p1))
+    val removals = Vector[CoreOperation](
+      Discard.Relic(scepter, mine, 0, p1),
+      Move(Piece.Card(scepter), mine, PositionedLocation(
+        Location.Deck(CardDeck.Relic), StackPosition.Bottom)),
+      Bury(BuryableCard.Relic(scepter), mine))
+    assertEquals(removals.map(refusal(ready, _)),
+      Vector.fill(3)(Some("grand-scepter")))
+    val passes = Vector[CoreOperation](
+      Take(Piece.Card(scepter), p2, Location.PlayArea(p1),
+        Location.PlayArea(p2)),
+      Give(Piece.Card(scepter), p1, Location.PlayArea(p1),
+        Location.PlayArea(p2)))
+    assertEquals(passes.map(refusal(ready, _)), Vector.fill(2)(None))
+
+  test("the catalog prints one Grand Scepter restriction, for its scepter"):
+    assertEquals(set.printed.collect { case value: GrandScepter => value.relic },
+      Vector(scepter))
 
   test("the catalog prints a lock for every lock-icon card and only those"):
     val locked = set.printed.collect { case value: LockedCards => value.cards }
