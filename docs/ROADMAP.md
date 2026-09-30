@@ -25,6 +25,10 @@ Vault. Designed in the
 [Catalog batch 3 design](superpowers/specs/2026-09-29-catalog-batch-3-design.md)
 with its [rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md).
 
+Slice 1a is done: the battle plans Cracking Ground, Walled Garden, Banner
+Breakers, Extra Provisions, Village Constable, Encirclement, Bandit Standard
+and Rival Khan. Slices 1b to 4 remain.
+
 ### Catalog - to verify
 
 Cards that probably need no engine change, each with one point to check
