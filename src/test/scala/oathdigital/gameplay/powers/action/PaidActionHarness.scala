@@ -2,7 +2,8 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.{CampaignFixture, OathRules}
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
 import oathdigital.model._
@@ -21,6 +22,15 @@ object PaidActionHarness:
     */
   def rules(dice: WalkerDice = WalkerDice.unavailable): OathRules =
     new OathRules(catalog,
+      phasePowerCatalog = PhasePowerCatalog.default(catalog),
+      walkerDice = dice)
+
+  /** `rules` with the production walker powers too, so the printed operation
+    * restrictions hold: a suite about a power that the search prunes by them
+    * needs this. */
+  def restrictedRules(dice: WalkerDice = WalkerDice.unavailable): OathRules =
+    new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
       phasePowerCatalog = PhasePowerCatalog.default(catalog),
       walkerDice = dice)
 

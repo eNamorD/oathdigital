@@ -1,24 +1,29 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.{ExecutableCatalog, RelicRole}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, RelicDraws}
 import oathdigital.model._
 
 /** Fae Merchant (card 180), ACTION: place 1 secret on this card, draw a relic
   * and take it facedown, then put exactly one relic you hold, except the
   * Grand Scepter, on the bottom of the relic deck. The relic just taken is
-  * eligible. The choice is asked only when more than one relic is eligible.
+  * eligible.
   *
   * Three siblings run in order: the draw, a live `Branch` that holds only the
-  * decision and reads the relics after the draw, and the bury. The bury reads
-  * the eligible relics again, so it needs the recorded answer only when the
-  * decision was asked. It returns any secrets on the relic to their holder.
-  * Its `returned` line names the relic chosen, so the choice posts no "Chose"
-  * line.
+  * decision and reads the relics after the draw, and the bury. The decision
+  * offers every relic held, so a lone relic is confirmed with one click. The
+  * Grand Scepter's restriction refuses its bury, and the bury is a required
+  * batch, so the search hides the scepter. The decision is passed when the
+  * search leaves it empty (`Decide.passWhenEmpty`): with only the scepter held
+  * and the relic deck empty, nothing goes back. The bury returns any secrets
+  * on the relic to their holder. Its `returned` line names the relic chosen,
+  * so the choice posts no "Chose" line.
   */
-final case class FaeMerchant private (scepters: Set[RelicId])
-    extends PaidAction("denizen.fae-merchant", Cost(secret = 1)):
-  import FaeMerchant._
+case object FaeMerchant extends PaidAction("denizen.fae-merchant",
+    Cost(secret = 1)):
+  val decisionId: String = "fae-merchant.relic"
+  val returned: NoteKey = NoteKey("returned", Vector(NotePart.Arg(0),
+    NotePart.Text(" put "), NotePart.Arg(1),
+    NotePart.Text(" on the bottom of the relic deck.")))
 
   override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew, returned)
   override def narratedDecisions: Set[String] = Set(decisionId)
@@ -27,15 +32,17 @@ final case class FaeMerchant private (scepters: Set[RelicId])
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     BuildOps((state, _) => Right(RelicDraws.takeTop(state, player))),
     Note(this.id, RelicDraws.drawNote(source, player)),
-    Branch((state, _) => candidates(state, player) match {
-      case several if several.size > 1 => Vector(Decide(decisionId, player,
-        DecisionQuery.ChooseOne(several.map(id =>
+    Branch((state, _) => held(state, player) match {
+      case Vector() => Vector.empty
+      case relics => Vector(Decide(decisionId, player,
+        DecisionQuery.ChooseOne(relics.map(id =>
           DecisionOption.Relic(DecisionOptionRef.Relic(id))),
           heading = Some("Fae Merchant: put a relic on the bottom of the " +
-            "relic deck"))))
-      case _ => Vector.empty
+            "relic deck")),
+        passWhenEmpty = true))
     }),
-    BuildOps((state, pending) => putBack(state, player, pending)),
+    BuildOps((state, pending) => putBack(state, player, pending),
+      required = true),
     Note(this.id, returnNote(_, player, source), covers = true))))
 
   /** The relic the bury took from the player, in place of its Buried line. */
@@ -46,40 +53,23 @@ final case class FaeMerchant private (scepters: Set[RelicId])
     relic <- NoteSupport.relicsLost(step, player).headOption
   yield returned(card, NoteArg.Player(player), NoteArg.Card(relic))
 
-  /** The relics the player holds, in play-area order, that may go back. */
-  private def candidates(state: ReadyGame, player: PlayerId): Vector[RelicId] =
+  /** The relics the player holds, in play-area order. */
+  private def held(state: ReadyGame, player: PlayerId): Vector[RelicId] =
     PlayerFacts.player(state, player).toOption.toVector.flatMap(_.relics)
-      .map(_.id).filterNot(scepters)
+      .map(_.id)
 
+  /** Buries the chosen relic. No answer means the search left the decision
+    * no relic to offer, so nothing goes back. */
   private def putBack(state: ReadyGame, player: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
-    val chosen: Either[OathViolation, Option[RelicId]] =
-      candidates(state, player) match
-        case Vector() => Right(None)
-        case Vector(only) => Right(Some(only))
-        case _ => pending.answered.collectFirst {
-          case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(
-              DecisionOptionRef.Relic(id)), _) => id
-        }.toRight(OathViolation.InvalidEventOrder(
-          "no Fae Merchant relic is recorded")).map(Some(_))
-    for
-      pick <- chosen
-      held <- PlayerFacts.player(state, player)
-    yield pick.toVector.flatMap { id =>
-      val secrets = held.relics.find(_.id == id).fold(0)(_.tokens.secrets)
-      Bury.standard(BuryableCard.Relic(id),
-        PositionedLocation(Location.PlayArea(player)), None, 0, secrets,
-        player)
+    val chosen = pending.answered.collectFirst {
+      case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(
+          DecisionOptionRef.Relic(id)), _) => id
     }
-
-object FaeMerchant:
-  val decisionId: String = "fae-merchant.relic"
-  val id: PowerId = PowerId("denizen.fae-merchant")
-  val returned: NoteKey = NoteKey("returned", Vector(NotePart.Arg(0),
-    NotePart.Text(" put "), NotePart.Arg(1),
-    NotePart.Text(" on the bottom of the relic deck.")))
-
-  /** The Grand Scepter is read from the catalog's relic roles, not by name. */
-  def forCatalog(catalog: ExecutableCatalog): FaeMerchant = new FaeMerchant(
-    catalog.relics.filter(_.role == RelicRole.GrandScepter)
-      .map(relic => RelicId(relic.id.value)).toSet)
+    PlayerFacts.player(state, player).map(holder => chosen.toVector.flatMap {
+      id =>
+        val secrets = holder.relics.find(_.id == id).fold(0)(_.tokens.secrets)
+        Bury.standard(BuryableCard.Relic(id),
+          PositionedLocation(Location.PlayArea(player)), None, 0, secrets,
+          player)
+    })

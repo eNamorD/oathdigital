@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.PhasePower
 
 /** The phase powers of slice 1b, registered by [[oathdigital.gameplay.powers.PhasePowerCatalog]]
@@ -8,6 +7,6 @@ import oathdigital.gameplay.powerresolver.PhasePower
   * editing the same lines.
   */
 object DiceAndRelicDrawPowers:
-  def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
+  val powers: Vector[PhasePower] =
     Vector[PhasePower](GamblingHall, BoneDice, MurkyFountain, DowsingSticks,
-      FaeMerchant.forCatalog(catalog))
+      FaeMerchant)

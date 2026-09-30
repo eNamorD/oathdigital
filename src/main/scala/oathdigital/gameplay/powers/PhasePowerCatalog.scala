@@ -17,7 +17,7 @@ object PhasePowerCatalog:
     PhasePowers(SilverTongue.forCatalog(catalog).toVector ++
       VowOfObedience.forCatalog(catalog).toVector ++
       Vector[PhasePower](WaysideInn, Elders, MagicWaterskin, MarbleFountains) ++
-      DiceAndRelicDrawPowers.forCatalog(catalog) ++
+      DiceAndRelicDrawPowers.powers ++
       TargetPowers.forCatalog(catalog) ++
       MovementPowers.forCatalog(catalog) ++
       SelfActionPowers.forCatalog(catalog) ++

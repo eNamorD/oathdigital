@@ -44,7 +44,7 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
     val ready0 = act(withBoard(withRelic(atHome(base, fae), held))(
       _.copy(faceUpSecrets = 2)))
     val top = ready0.game.current.commonCards.relicDeck.head
-    val parked = ready(use(rules(), ready0, FaeMerchant.id,
+    val parked = ready(use(restrictedRules(), ready0, FaeMerchant.id,
       DecisionOptionRef.Denizen(fae)).toOption.get.state)
     val projection = owner(parked).get
     assertEquals(projection.decisionId, FaeMerchant.decisionId)
@@ -53,3 +53,15 @@ class DicePowerDecisionProjectionSuite extends munit.FunSuite:
     assert(projection.query.get.offeredOptions
       .forall(_.card.exists(!_.hidden)))
     assertEquals(other(parked), None)
+
+  test("Fae Merchant does not offer the Grand Scepter"):
+    val fae = DenizenId("180")
+    val held = RelicId("R08")
+    val scepter = RelicId("grand-scepter")
+    val ready0 = act(withBoard(withRelic(withRelic(atHome(base, fae), scepter),
+      held))(_.copy(faceUpSecrets = 2)))
+    val top = ready0.game.current.commonCards.relicDeck.head
+    val parked = ready(use(restrictedRules(), ready0, FaeMerchant.id,
+      DecisionOptionRef.Denizen(fae)).toOption.get.state)
+    assertEquals(owner(parked).get.query.get.offeredOptions.map(_.id),
+      Vector(held.value, top.value))
