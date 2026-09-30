@@ -8,7 +8,8 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * two faces of the Rampart, Battle Honors, Longbows, Black Sword, Fire
   * Talkers, Nature Worship, Cracked Sage, Village Constable, Banner Breakers,
   * Cracking Ground, Walled Garden, Bandit Standard, Extra Provisions and
-  * Encirclement, registered together. A plan whose card is absent from `catalog` is omitted.
+  * Encirclement, registered together. A plan whose card is absent from
+  * `catalog` is omitted.
   */
 object SimplePlans:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =

@@ -46,6 +46,22 @@ class RivalKhanSuite extends munit.FunSuite:
     assert(!commit(rules(losing), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 
+  test("it is not offered when the enemy's faceup adviser is not a nomad"):
+    val base = againstPlayer(board())
+    val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
+      base.other, inert(Suit.Arcane, 1).head, Orientation.FaceUp)
+    assert(!commit(rules(losing), b, 3).offers(b.actor, b.actor,
+      CampaignIds.attackerPlan, ref))
+
+  test("a bandit defender applies it against a nomad adviser, and it is " +
+      "discarded"):
+    val base = board()
+    val b = withAdviser(withSiteCard(base, base.origin, card), nomad,
+      Orientation.FaceUp)
+    val done = commit(rules(winning), b, 5).finish
+    assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
+    assert(discarded(done.state))
+
   test("it is never offered against bandits"):
     val b = withAdviser(board(), card, Orientation.FaceUp)
     assert(!commit(rules(losing), b, 2).offers(b.actor, b.actor,

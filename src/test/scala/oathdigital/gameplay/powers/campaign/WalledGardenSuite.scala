@@ -11,7 +11,9 @@ import oathdigital.model._
 class WalledGardenSuite extends munit.FunSuite:
   private val card = cardWith("denizen.walled-garden")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
-  private val beast = inert(Suit.Beast, 1).head
+  private val beasts = inert(Suit.Beast, 2)
+  private val beast = beasts.head
+  private val arcane = inert(Suit.Arcane, 1).head
   private val beastEdifice =
     catalog.edifices.find(_.suit == Suit.Beast).get.id.value
 
@@ -29,12 +31,23 @@ class WalledGardenSuite extends munit.FunSuite:
       "counting itself and cards nobody rules"):
     val base = againstPlayer(board())
     val sites = others(base)
-    val b = withEdifice(withSiteCard(withSiteCard(base, base.origin, card),
-      sites(0), beast), sites(1), beastEdifice, EdificeSide.Ruined)
+    // A faceup non-beast card and a facedown beast card count nothing.
+    val b = on(withSiteCard(withEdifice(withSiteCard(withSiteCard(base,
+      base.origin, card), sites(0), beast), sites(1), beastEdifice,
+      EdificeSide.Ruined), sites(2), arcane))(
+      _.denizen(DenizenId(beasts(1)), at = sites(3), facedown = true))
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 3)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
+
+  test("a beast edifice counts on either face"):
+    val base = againstPlayer(board())
+    val b = withEdifice(withSiteCard(base, base.origin, card),
+      others(base).head, beastEdifice, EdificeSide.Intact)
+    val run = commit(rules(winning), b, 3)
+    val picked = run.pick(b.other, CampaignIds.defenderPlan, ref)
+    assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 2)))
 
   test("it is offered only when its site is a target"):
     val base = againstPlayer(board())

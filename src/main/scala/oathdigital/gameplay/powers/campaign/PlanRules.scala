@@ -7,9 +7,9 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * them, registered together: Sticky Fire (a question in the losses), Warning
   * Signals (a decision of its own and a discard at the end), Gleaming Armor (an
   * added cost on the enemy's plans), Horse Archers, Storm Caller and Rival Khan
-  * (a discard at the end), Bag of Siegeworks (the defense scored again) and Hospital
-  * (killed warbands saved until the end). A power whose card is absent from
-  * `catalog` is omitted.
+  * (a discard at the end), Bag of Siegeworks (the defense scored again) and
+  * Hospital (killed warbands saved until the end). A power whose card is absent
+  * from `catalog` is omitted.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =

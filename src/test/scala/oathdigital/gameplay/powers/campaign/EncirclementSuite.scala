@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
-import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
 
@@ -53,6 +53,13 @@ class EncirclementSuite extends munit.FunSuite:
     val run = commit(rules(winning), b, 2)
       .pick(b.other, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
+
+  test("a bandit defender never applies it, since it costs a favor"):
+    val base = board()
+    val b = withSiteCard(base, base.origin, card)
+    // Two bandits against one committed warband: the bandits' force is larger.
+    assert(!commit(rules(winning), b, 1).finish.ops.contains(
+      ModifyDicePool(CampaignPlans.appliedMarker(ref), 1)))
 
   test("a plan chosen earlier in the window counts: a Wrestlers sacrifice " +
       "evens the forces"):
