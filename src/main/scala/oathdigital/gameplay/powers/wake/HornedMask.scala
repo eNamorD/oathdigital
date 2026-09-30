@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{AdviserLimit, NoteSupport, PlayerFacts,
   PowerAnswers}
@@ -21,9 +20,9 @@ import oathdigital.model._
   *
   * The discard follows card play: a denizen or Vision goes to the next
   * region's discard pile, and a faceup locked card cannot be discarded (a
-  * facedown one can). Its locked filter goes when the restriction search hides
-  * refused options (global operation restrictions, slice 2).
-  * When the area is full and nothing is discardable, nothing can be taken.
+  * facedown one can). The discard is a required operation, so the walker's
+  * search hides an adviser whose discard is refused, and every denizen when
+  * no adviser can go.
   * "Full" is the player's adviser limit, [[AdviserLimit.of]]: 3, or 2 for a
   * Silver Tongue holder.
   */
@@ -68,13 +67,8 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   private def full(ready: ReadyGame, actor: PlayerId): Boolean =
     advisers(ready, actor).size >= AdviserLimit.of(catalog, ready, actor)
 
-  private def discardable(ready: ReadyGame, actor: PlayerId)
-      : Vector[AdviserState] = advisers(ready, actor).filterNot(adviser =>
-    OperationRestrictions.isLocked(catalog, ready, adviser.id))
-
   private def takeable(ready: ReadyGame, actor: PlayerId): Vector[DenizenState] =
-    if full(ready, actor) && discardable(ready, actor).isEmpty then Vector.empty
-    else site(ready, actor).toVector.flatMap(_._2.denizens.collect {
+    site(ready, actor).toVector.flatMap(_._2.denizens.collect {
       case d: DenizenState => d })
 
   private def ref(adviser: AdviserState): DecisionOptionRef = adviser match
@@ -93,7 +87,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
     if !full(ready, actor) ||
         PowerAnswers.one(pending, denizenDecisionId).isEmpty then Vector.empty
     else Vector(Decide(discardDecisionId, actor, DecisionQuery.ChooseOne(
-      discardable(ready, actor).flatMap(a => DecisionOption.forRef(ref(a))),
+      advisers(ready, actor).flatMap(a => DecisionOption.forRef(ref(a))),
       heading = Some("Horned Mask: choose an adviser to discard"))))
 
   private def take(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
@@ -134,7 +128,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
       : Either[OathViolation, Vector[CoreOperation]] = for
     answered <- PowerAnswers.one(pending, discardDecisionId)
       .toRight(PowerAnswers.missing(discardDecisionId))
-    chosen <- discardable(ready, actor).find(ref(_) == answered)
+    chosen <- advisers(ready, actor).find(ref(_) == answered)
       .toRight(OathViolation.InvalidEventOrder(
         s"${answered.wireId} is not an adviser Horned Mask can discard"))
     region <- PowerAccess.pawnSite(ready, actor)

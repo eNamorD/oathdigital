@@ -1,6 +1,10 @@
 package oathdigital.gameplay.powers.wake
 
+import oathdigital.gameplay.operations.OperationRestrictions
+import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -146,11 +150,10 @@ class HornedMaskSuite extends munit.FunSuite:
       Right(done.state))
 
   test("a Silver Tongue holder holding two advisers, one of them Silver " +
-      "Tongue and nothing else discardable, takes nothing"):
+      "Tongue and nothing else discardable, cannot use it"):
     val ready = holding(tongue, locked.head)
-    val t = use(ready, power, source).toOption.get
-    parked.assertNotParked(t.state)
-    assert(denizensHere(after(t)).contains(inn))
+    assert(use(ready, power, source).isLeft)
+    assert(denizensHere(ready).contains(inn))
 
   test("a facedown Silver Tongue does not lower the limit"):
     val ready = giveAdviser(giveAdviser(withoutAdvisers(atHome(staged, inn),
@@ -170,12 +173,13 @@ class HornedMaskSuite extends munit.FunSuite:
     parked.assertNotParked(done.state)
     assertEquals(player(after(done)).advisers.size, 3)
 
-  test("a full area of locked advisers takes nothing and asks nothing"):
+  test("a full area of locked advisers cannot use it, and it is not offered"):
     val ready = holding(locked*)
-    val t = use(ready, power, source).toOption.get
-    parked.assertNotParked(t.state)
-    assert(denizensHere(after(t)).contains(inn))
-    assertEquals(player(after(t)).advisers, player(ready).advisers)
+    assert(use(ready, power, source).isLeft)
+    assertEquals(PhasePowerProcedure.usable(catalog, ready, actor,
+      PhasePowers(Vector(power)), WalkerPowers(Vector.empty,
+        restrictionSet = OperationRestrictions.forCatalog(catalog))),
+      Vector.empty)
 
   test("with no denizen at the site nothing is asked and nothing moves"):
     val ready = staged

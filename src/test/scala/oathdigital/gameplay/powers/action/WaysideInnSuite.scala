@@ -4,6 +4,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -38,13 +39,13 @@ class WaysideInnSuite extends munit.FunSuite:
   test("it is unusable without favor to place"):
     val broke = staged(favor = 0, supply = 2)
     assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     assert(use(broke).isLeft)
 
   test("it is usable in the Act phase only"):
     val wake = inPhase(staged(favor = 3, supply = 2), Phase.Wake)
     assertEquals(PhasePowerProcedure.usable(catalog, wake, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
 
   test("it writes the Supply it gained as its own line"):
     val done = use(staged(favor = 3, supply = 2)).toOption.get

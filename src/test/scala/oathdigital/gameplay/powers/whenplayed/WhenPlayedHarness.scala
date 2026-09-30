@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy, OperationRestrictions}
 import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.PowerFixture.actor
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
@@ -15,7 +16,8 @@ object WhenPlayedHarness:
     CardPlayedFaceup(card, RuleSourceRef.Adviser(actor, card))
 
   def powers(power: ContributingPower): WalkerPowers =
-    WalkerPowers(Vector(power))
+    WalkerPowers(Vector(power),
+      restrictionSet = OperationRestrictions.forCatalog(catalog))
 
   def play(ready: ReadyGame, power: ContributingPower, card: DenizenId)
       : Either[OathViolation, WalkerOutcome] =

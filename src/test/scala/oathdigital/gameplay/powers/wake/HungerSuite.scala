@@ -7,7 +7,7 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
   TargetsFixture}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{Answers, Situation, Table}
@@ -77,7 +77,7 @@ class HungerSuite extends munit.FunSuite:
       Some(Vector("adviser-slot")))
     assertEquals(TargetsFixture.offered(t, next).map(_.size), Some(expected.size))
     assert(rules.startWalker(t.state, PhaseTransitionRef.EndWake, next).isLeft)
-    assert(PhasePowerProcedure.usable(catalog, now, next, phasePowers)
+    assert(PhasePowerProcedure.usable(catalog, now, next, phasePowers, WalkerPowers.empty)
       .forall(_.power.id != Hunger.id))
 
   test("burying another player's adviser returns its favor and gives its " +

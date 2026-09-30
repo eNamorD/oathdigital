@@ -56,7 +56,7 @@ class SilverTongueSuite extends munit.FunSuite:
   test("without matching favor Silver Tongue is not usable and Rest skips ahead"):
     val (ready, actor) = arranged(Vector(Suit.Arcane), Set(Suit.Nomad))
     assertEquals(PhasePowerProcedure.usable(catalog, ready, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     val act = ready.copy(game = ready.game.copy(current = ready.game.current
       .copy(turn = TurnState(actor, Phase.Act, Set.empty))))
     val rested = rules.startWalker(Ready(act), PhaseTransitionRef.BeginRest,

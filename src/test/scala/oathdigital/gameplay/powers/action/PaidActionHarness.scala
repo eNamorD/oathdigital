@@ -4,7 +4,7 @@ import oathdigital.gameplay.{CampaignFixture, OathRules}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerDice
+import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
 import oathdigital.model.OathState.Ready
@@ -47,7 +47,7 @@ object PaidActionHarness:
   /** Ids of the phase powers the actor can use now. */
   def usableIds(ready: ReadyGame): Vector[PowerId] =
     PhasePowerProcedure.usable(catalog, ready, actor,
-      PhasePowerCatalog.default(catalog)).map(_.power.id)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty).map(_.power.id)
 
   /** The state a journal replay of `events` reaches from `from`. */
   def replayed(rules: OathRules, from: ReadyGame, events: Vector[OathEvent])

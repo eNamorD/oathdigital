@@ -4,7 +4,7 @@ import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.WalkerCompleted
+import oathdigital.gameplay.walker.{WalkerCompleted, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.Table
 
@@ -51,7 +51,7 @@ class WakeAutoEndSuite extends munit.FunSuite:
     assertNotEquals(next.activePlayer, actor)
     assertEquals(PhasePowerProcedure.usable(catalog, ready(rested.state)
       .updateCurrent(c => c.copy(turn = c.turn.copy(phase = Phase.Wake))),
-      next.activePlayer, PhasePowerCatalog.default(catalog)), Vector.empty)
+      next.activePlayer, PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     assertEquals(completed(rested.events), Vector(PhaseTransitionRef.BeginRest,
       PhaseTransitionRef.FinishRest, PhaseTransitionRef.EndWake))
     assertEquals(next.phase, Phase.Act)

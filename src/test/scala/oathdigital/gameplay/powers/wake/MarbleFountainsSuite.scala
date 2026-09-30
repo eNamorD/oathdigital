@@ -6,6 +6,7 @@ import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
   PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -57,13 +58,13 @@ class MarbleFountainsSuite extends munit.FunSuite:
     assert(PowerAccess.locate(away, actor, fountains).isDefined,
       "the edifice must be reachable, or this test proves nothing")
     assertEquals(PhasePowerProcedure.usable(catalog, away, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     assert(use(away).isLeft)
 
   test("a ruined Marble Fountains offers nothing"):
     val ruined = staged(EdificeSide.Ruined)
     assertEquals(PhasePowerProcedure.usable(catalog, ruined, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
 
   test("it writes the Supply it refreshed to"):
     val done = use(staged()).toOption.get

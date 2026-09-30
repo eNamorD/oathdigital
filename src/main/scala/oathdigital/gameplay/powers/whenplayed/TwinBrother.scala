@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
@@ -11,9 +10,10 @@ import oathdigital.model._
   *
   * It fires only when played faceup, and card play places the card before
   * the hook, so it is the actor's faceup adviser when this runs. The
-  * candidates are every other player's faceup nomad denizen advisers that
-  * are not locked, read live. With none, nothing is asked. Otherwise the
-  * actor picks one or keeps Twin Brother. The `Swap` exchanges the two cards
+  * candidates are every other player's faceup nomad denizen advisers, read
+  * live. With none, nothing is asked. Otherwise the actor picks one or keeps
+  * Twin Brother. The swap is a required batch, so the walker's search hides a
+  * candidate whose swap a restriction refuses (a locked adviser). The `Swap` exchanges the two cards
   * between the play areas. Each keeps its orientation and the tokens on it,
   * so both stay faceup and carry their favor and secrets.
   *
@@ -22,8 +22,6 @@ import oathdigital.model._
   * question and the swap changes the candidates, so the `Branch` selects the
   * same children on resume.
   *
-  * Its locked filter goes when the restriction search hides refused options
-  * (global operation restrictions, slice 2).
   */
 final case class TwinBrother private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends WhenPlayedPower:
@@ -43,7 +41,8 @@ final case class TwinBrother private (cardId: DenizenId,
             DecisionOption.Button(keep, "Keep Twin Brother"),
           heading = Some("Twin Brother: swap it for another player's faceup " +
             "nomad adviser?"))),
-        BuildOps((ready, pending) => swap(ready, actor, pending)),
+        BuildOps((ready, pending) => swap(ready, actor, pending),
+          required = true),
         Note(id, swappedNote(actor)))))
 
   private def candidates(ready: ReadyGame, actor: PlayerId): Vector[Candidate] =
@@ -52,8 +51,7 @@ final case class TwinBrother private (cardId: DenizenId,
       card <- held.advisers.collect {
         case DenizenState(id, Orientation.FaceUp, _) => id }
       definition <- catalog.denizen(card).toVector
-      if definition.suit == Suit.Nomad &&
-        !OperationRestrictions.isLocked(catalog, ready, card)
+      if definition.suit == Suit.Nomad
     yield Candidate(held.player, card)
 
   private def swap(ready: ReadyGame, actor: PlayerId, pending: PendingTree)

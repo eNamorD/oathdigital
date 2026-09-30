@@ -133,14 +133,6 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     assert(locked.contains(hall))
     assert(!locked.contains(plainCard))
 
-  test("isLocked is faceup-aware"):
-    assert(OperationRestrictions.isLocked(catalog, holding(lockedCard),
-      lockedCard))
-    assert(!OperationRestrictions.isLocked(catalog,
-      holding(lockedCard, facedown = true), lockedCard))
-    assert(!OperationRestrictions.isLocked(catalog, holding(lockedCard),
-      plainCard))
-
   test("no catalog holds only the powers' restrictions"):
     assertEquals(OperationRestrictions.none.active(Vector.empty,
       Vector(PowerId("denizen.wild-cry"))), Vector.empty)

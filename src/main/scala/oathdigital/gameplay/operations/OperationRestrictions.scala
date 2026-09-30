@@ -33,12 +33,6 @@ object OperationRestrictions:
   def forCatalog(catalog: ExecutableCatalog): OperationRestrictions =
     new OperationRestrictions(Some(catalog))
 
-  /** `card` is locked now: it prints the lock icon and shows it. The option
-    * filters that hide locked cards before slice 2's search read this. */
-  def isLocked(catalog: ExecutableCatalog, ready: ReadyGame,
-      card: CardId): Boolean =
-    lockIcon(catalog, card) && LockedCards.showing(ready, card)
-
   /** Only a card at a site or in a play area is in play. A card drawn by a
     * Search and discarded from the temporary hand is not. */
   private[operations] def inPlay(from: Location): Boolean = from match
@@ -48,13 +42,6 @@ object OperationRestrictions:
   private def locking(restrictions: CardRestrictions): Boolean =
     restrictions == CardRestrictions.Locked ||
       restrictions == CardRestrictions.LockedAdviserOnly
-
-  private def lockIcon(catalog: ExecutableCatalog, card: CardId): Boolean =
-    card match
-      case id: DenizenId => catalog.denizen(id).exists(d => locking(d.restrictions))
-      case id: EdificeId =>
-        catalog.edifice(id).exists(e => locking(e.intact.restrictions))
-      case _ => false
 
   private def printedBy(catalog: ExecutableCatalog): Vector[OperationRestriction] =
     val locked: Set[CardId] =

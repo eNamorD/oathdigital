@@ -696,8 +696,8 @@ object ProcedureWalker:
         Right(Stopped(ctx))
       else if ops.isEmpty then
         Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
-      else recordBatch(ops, contributions, ctx, path, leafLabel(build))
-        .map(Done(_))
+      else recordBatch(ops, contributions, ctx, path, leafLabel(build),
+        requireAll = build.required).map(Done(_))
     }
 
   /** Executes `ops` through the pipeline as one atomic batch and records ONE
@@ -711,7 +711,7 @@ object ProcedureWalker:
   private def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
       label: String,
-      requireAll: Boolean = false)
+      requireAll: Boolean)
       : Either[OathViolation, WalkCtx] =
     OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
       ctx.powers.operationRestrictions, requireAll)(

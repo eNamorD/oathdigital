@@ -48,3 +48,18 @@ class GlobalRestrictionsWalkerSuite extends munit.FunSuite:
     unchanged(ready, Sequence(Vector(Discard.Denizen(lockedCard,
       PositionedLocation(Location.PlayArea(p1)), Region.Provinces,
       catalog.suitOf(lockedCard).get, 0, 0, p1))), powers)
+
+  private val swapping = Table.start.adviser(p1, lockedCard)
+    .adviser(p2, wildCry).ready
+  private def swapBatch(required: Boolean): Operation = Sequence(Vector(
+    BuildOps((_, _) => Right(Vector(Swap(lockedCard,
+      PositionedLocation(Location.PlayArea(p1)), wildCry,
+      PositionedLocation(Location.PlayArea(p2))))), required = required)))
+
+  test("a plain BuildOps skips a refused swap"):
+    unchanged(swapping, swapBatch(required = false), powers)
+
+  test("a required BuildOps rejects the whole batch when one operation is " +
+      "refused"):
+    assert(ProcedureWalker.advance(swapping, swapBatch(required = true), None,
+      powers).isLeft)

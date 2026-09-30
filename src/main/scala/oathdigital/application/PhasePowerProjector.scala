@@ -3,7 +3,8 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.gameplay.powers.PhasePowerCatalog
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.model._
 import oathdigital.protocol.projection.PhasePowerProjection
@@ -17,12 +18,15 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
   def this(catalog: ExecutableCatalog, walkerDecisions: WalkerDecisionProjector) =
     this(catalog, walkerDecisions, PhasePowerCatalog.default(catalog))
 
+  private val walkerPowers =
+    WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty)
+
   def project(context: ScopedProjectionContext): Vector[PhasePowerProjection] =
     if !context.viewerIsActive then Vector.empty
     else
       val index = CardIndex.from(context.ready.game).toOption
       PhasePowerProcedure.usable(catalog, context.ready, context.active.player,
-        powers).flatMap { usable =>
+        powers, walkerPowers).flatMap { usable =>
         for
           (name, power) <- printed(usable.source, usable.power.id)
           option <- DecisionOption.forRef(usable.ref)

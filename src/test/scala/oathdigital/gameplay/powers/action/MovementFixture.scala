@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerStepRecorded
+import oathdigital.gameplay.walker.{WalkerStepRecorded, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.Table
@@ -89,7 +89,7 @@ object MovementFixture:
 
   def usable(ready: ReadyGame, power: PowerId): Boolean =
     PhasePowerProcedure.usable(catalog, ready, actor,
-      PhasePowerCatalog.default(catalog)).exists(_.power.id == power)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty).exists(_.power.id == power)
 
   def parkedAt(transition: OathTransition, decisionId: String): Boolean =
     parked.parkedDecision(transition.state).exists(facts =>

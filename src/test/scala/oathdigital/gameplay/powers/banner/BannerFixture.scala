@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.banner
 import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 
 /** Staging shared by the banner-face suites, on the quiet table: the actor
@@ -72,7 +73,7 @@ object BannerFixture:
 
   def usable(ready: ReadyGame, power: PowerId): Boolean =
     PhasePowerProcedure.usable(catalog, ready, actor,
-      PhasePowerCatalog.default(catalog)).exists(_.power.id == power)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty).exists(_.power.id == power)
 
   def readyOf(state: OathState): ReadyGame =
     state.asInstanceOf[OathState.Ready].value

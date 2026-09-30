@@ -4,6 +4,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -32,7 +33,7 @@ class ElderSuite extends munit.FunSuite:
   test("one favor is not enough"):
     val broke = staged(favor = 1)
     assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
-      PhasePowerCatalog.default(catalog)), Vector.empty)
+      PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     assert(use(broke).isLeft)
 
   test("it writes its gain as its own line, covering the generic one"):

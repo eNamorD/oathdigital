@@ -608,10 +608,15 @@ final case class Decide(decisionId: String, owner: PlayerId,
   * (e.g. a chosen relic id from an earlier answered decision). A `build` that
   * returns `Vector.empty` runs nothing and records no step (nothing ran).
   * Flatten sees a leaf: `Operation.flatten(BuildOps(...))` is itself.
+  *
+  * A `required` batch runs whole or rejects: an operation a restriction
+  * refuses rejects the batch instead of being skipped, so a search counts the
+  * path as failed.
   */
 final case class BuildOps(
     build: (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]],
-    override val window: Option[PowerWindow] = None)
+    override val window: Option[PowerWindow] = None,
+    override val required: Boolean = false)
     extends PrimitiveOperation
 
 /** Re-executes `body` until `guard` is false. The guard runs only at command

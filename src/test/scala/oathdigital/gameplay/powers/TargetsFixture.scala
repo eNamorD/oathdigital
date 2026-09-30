@@ -2,10 +2,11 @@ package oathdigital.gameplay.powers
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.protocol.projection.{DecisionQueryProjection, PlayerBoardProjection}
 import oathdigital.testkit.Table
@@ -17,6 +18,8 @@ object TargetsFixture:
   import PowerFixture._
 
   val rules = new OathRules(catalog,
+    walkerPowerCatalog = WalkerPowers(Vector.empty,
+      restrictionSet = OperationRestrictions.forCatalog(catalog)),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
   private val projector = new GameProjector(catalog)
 
@@ -87,7 +90,8 @@ object TargetsFixture:
       state.flatMap(rules.evolve(_, event)))
 
   def usableNow(ready: ReadyGame) = PhasePowerProcedure.usable(catalog, ready,
-    actor, PhasePowerCatalog.default(catalog))
+    actor, PhasePowerCatalog.default(catalog), WalkerPowers(Vector.empty,
+      restrictionSet = OperationRestrictions.forCatalog(catalog)))
 
   /** The parked decision as `viewer` is offered it. */
   def queryOf(transition: OathTransition, viewer: PlayerId)
