@@ -9,24 +9,13 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 ## Now
 
 **Phase - Cleanup tasks** is done except for one item blocked on the
-Chronicle Phase. **Phase - Global operation restrictions** is next, then
-**Phase - Catalog batch 3**, which depends on it, then **Phase - Card
+Chronicle Phase. **Phase - Catalog batch 3** is next, then **Phase - Card
 classes**.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
-
-### Phase - Global operation restrictions
-
-Operation restrictions that hold wherever an operation runs, rather than only
-where a `BuildOps` node passes them. Designed in the
-[Global operation restrictions design](superpowers/specs/2026-09-30-global-operation-restrictions-design.md),
-in one slice:
-
-1. [ ] **Grand Scepter and Take.** The Grand Scepter cannot leave play, and
-   Challenge custody and Conspiracy's banner transfer become `Take`.
 
 ### Phase - Catalog batch 3
 
@@ -35,7 +24,6 @@ engine change, in eight slices, plus a fix to Circlet of Command and Forgotten
 Vault. Designed in the
 [Catalog batch 3 design](superpowers/specs/2026-09-29-catalog-batch-3-design.md)
 with its [rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md).
-Starts after **Phase - Global operation restrictions**.
 
 ### Catalog - to verify
 

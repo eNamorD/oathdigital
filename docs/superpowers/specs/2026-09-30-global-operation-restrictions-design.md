@@ -1,7 +1,8 @@
 # Global Operation Restrictions
 
-**Status:** designed 2026-09-30. It is the prerequisite of
-[Catalog batch 3](2026-09-29-catalog-batch-3-design.md), which starts after it.
+**Status:** designed and implemented 2026-09-30, in three slices. It is the
+prerequisite of [Catalog batch 3](2026-09-29-catalog-batch-3-design.md), which
+starts next.
 
 **Builds on** [Powers batch 1](2026-09-20-powers-design.md) (contributions,
 windows and the restriction look-ahead) and the
