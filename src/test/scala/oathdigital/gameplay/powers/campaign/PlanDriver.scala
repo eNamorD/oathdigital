@@ -91,6 +91,13 @@ object PlanDriver:
     def offered(actor: PlayerId): Vector[DecisionOptionRef] =
       options(actor).map(_.ref)
 
+    /** Whether the run is parked on the plan decision `id`, awaiting `who`,
+      * with `ref` among its options. `actor` is the Campaign's actor, which
+      * the parked decision is rebuilt with. */
+    def offers(actor: PlayerId, who: PlayerId, id: String,
+        ref: DecisionOptionRef): Boolean =
+      awaits(this, who, id) && offered(actor).contains(ref)
+
     def refused(who: PlayerId, id: String, answer: DecisionAnswer)
         : Option[OathViolation] =
       game.resolveWalker(state, who, id, answer).left.toOption

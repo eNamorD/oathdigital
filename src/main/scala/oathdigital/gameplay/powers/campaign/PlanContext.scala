@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds, CampaignPlans, CampaignSetup}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
@@ -74,6 +76,30 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
   /** Whether any target of a Conquest is in `region`. A Raid targets no site. */
   def targetsIn(region: Region): Boolean = setup.targetSites.exists(site =>
     ready.game.current.map.regionOf(site).contains(region))
+
+  /** The other side: for an attacker's plan the defender, a player or
+    * bandits; for a defender's plan the attacker. */
+  def enemy: CampaignDefender = side match
+    case CampaignPlanSide.Attacker => setup.defender
+    case CampaignPlanSide.Defender => CampaignDefender.Player(setup.actor)
+
+  private def enemyPlayer: Option[PlayerState] = enemy match
+    case CampaignDefender.Player(player) =>
+      ready.game.current.players.find(_.player == player)
+    case CampaignDefender.Bandits => None
+
+  /** Whether the enemy has a faceup adviser of `suit`. Only a faceup card has
+    * a suit, and bandits hold no advisers. */
+  def enemyHasAdviser(catalog: ExecutableCatalog, suit: Suit): Boolean =
+    enemyPlayer.exists(_.advisers.exists {
+      case DenizenState(held, Orientation.FaceUp, _) =>
+        catalog.suitOf(held).contains(suit)
+      case _ => false
+    })
+
+  /** Whether the enemy holds `banner`. Bandits hold none. */
+  def enemyHolds(banner: Banner): Boolean = enemyPlayer.exists(held =>
+    BannerRules.holder(ready.game.current, banner).contains(held.player))
 
 object PlanContext:
   /** The context of the plan window `ctx` is gathered for; `None` at any other

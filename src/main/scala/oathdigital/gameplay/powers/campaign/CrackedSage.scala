@@ -20,27 +20,12 @@ final case class CrackedSage private (cardId: DenizenId,
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
 
   def plan(context: PlanContext): Option[CampaignPlanOffer] =
-    context.denizen(cardId).filter(_ => enemyHasArcane(context))
+    context.denizen(cardId)
+      .filter(_ => context.enemyHasAdviser(catalog, Suit.Arcane))
       .map(source => CampaignPlanOffer(source,
         PlanDice.label("Cracked Sage", context.side, CrackedSage.Dice),
         Vector(CampaignPlanCost.Secret(1), CampaignPlanCost.FavorBurnt(1)),
         Vector(PlanDice.effect(context.side, CrackedSage.Dice))))
-
-  /** The other side's player: the defender for an attacker's plan, when a
-    * player defends, and the attacker for a defender's. */
-  private def enemy(context: PlanContext): Option[PlayerId] = context.side match
-    case CampaignPlanSide.Attacker => context.setup.defender match
-      case CampaignDefender.Player(player) => Some(player)
-      case CampaignDefender.Bandits => None
-    case CampaignPlanSide.Defender => Some(context.setup.actor)
-
-  private def enemyHasArcane(context: PlanContext): Boolean =
-    enemy(context).exists(player => context.ready.game.current.players
-      .find(_.player == player).exists(_.advisers.exists {
-        case DenizenState(held, Orientation.FaceUp, _) =>
-          catalog.suitOf(held).contains(Suit.Arcane)
-        case _ => false
-      }))
 
 object CrackedSage:
   val id: PowerId = PowerId("denizen.cracked-sage")
