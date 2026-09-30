@@ -187,6 +187,30 @@ class ProcedureWalkerSuite extends munit.FunSuite:
           Vector(Vector[CoreOperation](GainSupply(actor, 1))))
       case other => fail(s"expected a Finished walk, got $other")
 
+  /** Refuses the `Discard.Denizen` composite only, never the `Move`s it holds,
+    * so it can only act if the walker checks the composite before splitting
+    * it. */
+  private val wholeDiscard = new OperationRestriction:
+    override def reason(state: ReadyGame, operation: CoreOperation)
+        : Option[OperationReason] = operation match
+      case _: Discard.Denizen => Some(OperationReason("immune",
+        "the discard is refused", OperationReasonKind.Impossible))
+      case _ => None
+
+  test("a composite in the tree is checked whole before it is split"):
+    val discard = Discard.Denizen(siteDenizen.id,
+      PositionedLocation(Location.Site(sites.head)), Region.Cradle,
+      Suit.Order, 1, 0, actor)
+    ProcedureWalker.advance(ready, Sequence(Vector(discard)), None,
+      restricting(wholeDiscard)) match
+      case Right(WalkerOutcome.Finished(state, events)) =>
+        assertEquals(state, ready)
+        assertEquals(events, Vector.empty)
+      case other => fail(s"expected a Finished walk, got $other")
+    assert(ProcedureWalker.advance(ready,
+      Sequence(Vector(discard.copy(required = true))), None,
+      restricting(wholeDiscard)).isLeft)
+
   test("BuildOps filters immune discard and replays the legal discard"):
     val first = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,

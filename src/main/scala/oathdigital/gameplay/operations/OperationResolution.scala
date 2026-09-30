@@ -46,6 +46,22 @@ object OperationResolution:
           case None => Right(Execute(requested))
       case None => optional(ready, requested, restrictions, requestedReasons)
 
+  /** Whether `operation` may run under `restrictions` alone. The walker asks
+    * it for a composite before splitting it into its children, so a
+    * restriction sees `Take` or `Discard.Denizen` rather than their `Move`s
+    * (global operation restrictions design, "Composites are checked whole").
+    * `Right(false)` skips an optional operation a restriction refuses. A
+    * refusal of a required one, or an `Invalid` refusal, rejects.
+    */
+  def screen(ready: ReadyGame, operation: CoreOperation,
+      restrictions: Vector[OperationRestriction], required: Boolean)
+      : Either[OathViolation, Boolean] =
+    val refusals = restrictions.flatMap(_.reason(ready, operation))
+    refusals.find(reason =>
+      required || reason.kind == OperationReasonKind.Invalid) match
+      case Some(reason) => Left(rejection(reason))
+      case None => Right(refusals.isEmpty)
+
   private def optional(ready: ReadyGame, requested: CoreOperation,
       restrictions: Vector[OperationRestriction],
       reasons: Vector[OperationReason]): Either[OathViolation, Result] =

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy, OperationResolution}
 import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, Shuffle, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
@@ -381,8 +381,17 @@ object ProcedureWalker:
     val required = composite match
       case core: CoreOperation => core.required
       case _ => false
-    walkFolded(composite.window, composite, composite.children, ctx, path, cursor,
-      resume, if required then hooks.copy(strict = true) else hooks)
+    // A fresh composite is checked whole first; a resumed one already was.
+    val runs = composite match
+      case core: CoreOperation if cursor.isEmpty =>
+        OperationResolution.screen(ctx.state, core,
+          ctx.powers.operationRestrictions, required || hooks.strict)
+      case _ => Right(true)
+    runs.flatMap { run =>
+      if !run then Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
+      else walkFolded(composite.window, composite, composite.children, ctx,
+        path, cursor, resume, if required then hooks.copy(strict = true) else hooks)
+    }
 
   /** A `Branch` has no static children: its `select` chooses the children to
     * walk at walk time, and a resume cursor addresses the selected vector the
