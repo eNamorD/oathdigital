@@ -90,7 +90,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
 
   private def replayed(f: Staged, done: WalkerOutcome.Finished): ReadyGame =
     OperationPipeline.run(f.ready, recorded(done),
-      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
 
   private def player(ready: ReadyGame, id: PlayerId): PlayerState =
     ready.game.current.players.find(_.player == id).get

@@ -141,7 +141,7 @@ class ProcedureWalkerSuite extends munit.FunSuite:
         case step: WalkerStepRecorded => step
         case other => fail(s"expected a WalkerStepRecorded, got $other")
       OperationPipeline.run(current, recorded.ops,
-        OperationPolicy.Permissive)(Right(_)).toOption.get.state
+        OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
     }
 
   test("fresh walk of a legal delta pair finishes and records one event per leaf"):

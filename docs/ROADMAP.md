@@ -23,18 +23,13 @@ campaign-continuity rules.
 Operation restrictions that hold wherever an operation runs, rather than only
 where a `BuildOps` node passes them. Designed in the
 [Global operation restrictions design](superpowers/specs/2026-09-30-global-operation-restrictions-design.md),
-in three slices:
+in two slices:
 
-1. [ ] **The seam.** A restriction set gathered from rules and the cards in
-   play, a required argument of `OperationPipeline.run`, checked against
-   composites before the walker splits them. Locked (per card, faceup only),
-   the active-modifier rule and the Hall of Ministers move onto it, and
-   `DiscardRestrictions` retires.
-2. [ ] **Lazy pruning.** A depth-first search at every park and action start
+1. [ ] **Lazy pruning.** A depth-first search at every park and action start
    hides each option with no legal path, stopping at hidden information, with
    no depth cap. It replaces the restriction look-ahead, within a measured
    performance budget.
-3. [ ] **Grand Scepter and Take.** The Grand Scepter cannot leave play, and
+2. [ ] **Grand Scepter and Take.** The Grand Scepter cannot leave play, and
    Challenge custody and Conspiracy's banner transfer become `Take`.
 
 ### Phase - Catalog batch 3

@@ -217,7 +217,9 @@ private[gameplay] trait OathRulesWalker:
       .filter(power => modifiers.contains(power.id))
       .flatMap(_.selectionPayments(ready, actor))
     if payments.isEmpty then Right(())
-    else OperationPipeline.run(ready, payments, OperationPolicy.Permissive)(
+    else OperationPipeline.run(ready, payments, OperationPolicy.Permissive,
+      WalkerPowers.selected(walkerPowerCatalog, modifiers)
+        .operationRestrictions)(
       Right(_)).left.map(violation => InvalidEventOrder(
       "the selected modifiers cannot all be paid together: " +
         violation)).map(_ => ())

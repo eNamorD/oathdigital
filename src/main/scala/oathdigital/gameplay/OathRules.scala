@@ -41,6 +41,13 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     with OathRulesWalker:
   override val initialState: OathState = NoGame
 
+  /** The global operation restrictions outside a walker action: the catalog's
+    * printed ones and the automatic powers', with no modifiers, since no
+    * action is running. Minor actions and state-based effects run under
+    * them. */
+  private lazy val outsideActions: Vector[OperationRestriction] =
+    WalkerPowers.selected(walkerPowerCatalog, Vector.empty).operationRestrictions
+
   /** Walker-ownership invariant: while a walker procedure is parked, only
     * its resume commands run. `GameApplicationService.applyCommand` refuses
     * other commands first; this keeps the rules boundary honest for every
@@ -56,7 +63,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state):
-    MinorActions.handle(catalog, state, command).flatMap(completeAction)
+    MinorActions.handle(catalog, state, command, outsideActions).flatMap(completeAction)
 
   override def evolve(
       state: OathState,
@@ -85,16 +92,16 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       // rejects here instead of escaping as a `MatchError`.
       case other: WalkerEvent =>
         Left(InvalidEventOrder(s"unsupported walker event: ${other.productPrefix}"))
-      case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
-      case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
-      case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
-      case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
-      case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
-      case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)
-      case event: VisionVictory => StateBasedEvaluation.evolve(catalog, state, event)
-      case event: RoundEnded => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event, outsideActions)
+      case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event, outsideActions)
+      case event: WarbandsMoved => MinorActions.evolve(catalog, state, event, outsideActions)
+      case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
+      case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
+      case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
+      case event: VisionVictory => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
+      case event: RoundEnded => StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
       case event: WarExhaustionResolved =>
-        StateBasedEvaluation.evolve(catalog, state, event)
+        StateBasedEvaluation.evolve(catalog, state, event, outsideActions)
       case GameStarted(chronicle, orders) =>
         state match
           case NoGame =>
@@ -128,7 +135,8 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       : Either[OathViolation, OathTransition] =
     val rounded = transition.state match
       case Ready(ready) if ready.game.current.turn.phase == Phase.RoundEnd =>
-        TurnBoundary.finishRound(catalog, transition, warExhaustionRandomPort)
+        TurnBoundary.finishRound(catalog, transition, warExhaustionRandomPort,
+          outsideActions)
       case _ => Right(transition)
     rounded.flatMap(next => next.state match {
       case Ready(ready) if ready.game.current.result.nonEmpty => Right(next)

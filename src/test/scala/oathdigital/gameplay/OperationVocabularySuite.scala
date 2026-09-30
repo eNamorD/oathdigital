@@ -13,7 +13,7 @@ class OperationVocabularySuite extends munit.FunSuite:
 
   private def run(state: ReadyGame, operations: CoreOperation*) =
     OperationPipeline.run(state, operations.toVector,
-      OperationPolicy.Permissive)(Right(_))
+      OperationPolicy.Permissive, Vector.empty)(Right(_))
 
   test("a default Give shrinks to what the giver holds and a required Give rejects"):
     val funded = base.updateCurrent(_.copy(players = current.players.map(p =>

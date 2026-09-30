@@ -18,7 +18,7 @@ class RevealDiscardSuite extends munit.FunSuite:
     .ready
   private val top = CatalogNames.denizen("Errand Boy")
   private def run(ops: CoreOperation*) = OperationPipeline.run(base,
-    ops.toVector, OperationPolicy.Permissive)(Right(_))
+    ops.toVector, OperationPolicy.Permissive, Vector.empty)(Right(_))
 
   test("revealing a discarded card is accepted and changes no state"):
     val result = run(Reveal(top, at)).toOption.get

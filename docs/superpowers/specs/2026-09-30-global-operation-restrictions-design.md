@@ -90,10 +90,12 @@ three sources:
 - **Rule restrictions** that always apply: the active-modifier rule, bound to
   the modifiers selected for the running action.
 - **Printed restrictions.** A single catalog function turns a card's printed
-  properties into restrictions: `LockedCard(cardId)` from the lock icon, the Hall
-  of Ministers from its intact face, and `GrandScepter(relicId)` from
-  `RelicRole.GrandScepter`. Each restriction names its card, so a refusal is
-  attributable. The Hall is printed rather than a power because
+  properties into restrictions: `LockedCards(cardIds)` from the lock icon, the
+  Hall of Ministers from its intact face, and `GrandScepter(relicId)` from
+  `RelicRole.GrandScepter`. `LockedCards` is one restriction holding every
+  lock-icon card, so an operation is flattened once however many cards are
+  locked; a refusal still names the card. The Hall is printed rather than a
+  power because
   `CardPlay.legalChoices` runs inside a tree builder, which holds only the
   catalog.
 - **Power restrictions.** A power registers them through a new member,
@@ -122,6 +124,11 @@ The walker checks the restriction set against a composite before
 `walkComposite` splits it into child steps. A restriction therefore sees
 `Take`, `Give`, `Swap` or `Discard.Denizen`, never only the `Move`s they
 contain. A composite refused as optional is skipped whole.
+
+A container (`Sequence`, `Repeat`, `Branch` and the card-played windows) only
+holds other operations, so it is never screened: its children are screened when
+the walker reaches them, and refusing the container would skip its unrelated
+children.
 
 ### Lazy pruning
 
@@ -187,7 +194,7 @@ are, so a restriction on taking sees them. Conspiracy's relic transfer stays a
 
 | Slice | Content |
 |---|---|
-| 1. The seam | The restriction set and the power member. The pipeline's required argument and its four callers, plus `CardPlay.legalChoices`. Composites checked before they are split. `LockedCard` per card, the active-modifier rule and the Hall of Ministers. The facedown fix. `DiscardRestrictions`, its coverage suite, `BuildOps.restrictions` and `CardPlay`'s locked check retire. |
+| 1. The seam | The restriction set and the power member. The pipeline's required argument and its four callers, plus `CardPlay.legalChoices`. Composites checked before they are split. `LockedCards`, the active-modifier rule and the Hall of Ministers. The facedown fix. `DiscardRestrictions`, its coverage suite, `BuildOps.restrictions` and `CardPlay`'s locked check retire. |
 | 2. Lazy pruning | The baseline measurement and benchmark suite first. The depth-first search at parks and action start, stopping at hidden information. Notes for pruned options. `probe` and the Horned Mask and Twin Brother filters retire. |
 | 3. Grand Scepter and Take | `GrandScepter` per relic, and Fae Merchant's filter retires. Challenge custody and Conspiracy's banner transfer become `Take`. |
 
@@ -242,6 +249,11 @@ lands on a seam that is already in place.
   reuse the same simulation.
 - **Challenge and Conspiracy log lines.** That turning the `Move` into a
   `Take` keeps their Game Log lines.
+- **The set's cost inside the search.** `WalkerPowers.operationRestrictions` is
+  a lazy value per instance, and `powers.copy(probing = false)` (the probe and
+  the look-ahead) builds a fresh instance that recomputes it. The search must
+  carry the computed vector through such copies, or it rebuilds the set at
+  every step.
 
 ## Out of scope
 

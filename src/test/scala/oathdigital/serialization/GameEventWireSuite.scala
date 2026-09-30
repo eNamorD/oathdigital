@@ -27,7 +27,7 @@ class GameEventWireSuite extends munit.FunSuite:
       .asInstanceOf[WalkerStepRecorded]
     val base = TestGameFixtures.ready
     val replayed = OperationPipeline.run(base, decoded.ops,
-      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
     assertEquals(replayed.game.current.tracks.visionsDrawn,
       base.game.current.tracks.visionsDrawn + 1)
   test("reduced optional spend is canonical in memory and on the wire"):
@@ -37,7 +37,7 @@ class GameEventWireSuite extends munit.FunSuite:
       }))
     val run = OperationPipeline.run(one,
       Vector(SpendSupply(playerId, 3, required = false)),
-      OperationPolicy.Permissive)(Right(_)).toOption.get
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
     val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
       DeltaMeaning.SupplySpent(playerId, 1)), run.executed, Vector.empty)
     val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, event)
@@ -64,7 +64,7 @@ class GameEventWireSuite extends munit.FunSuite:
     val decoded = GameEventWire.decode(encoded).toOption.get.event
       .asInstanceOf[WalkerStepRecorded]
     val replayed = OperationPipeline.run(prepared, decoded.ops,
-      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
     assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
 
   test("ignored-rule diagnostics round trip durable source timing and reason"):

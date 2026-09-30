@@ -28,7 +28,7 @@ class PayCostSettlementSuite extends munit.FunSuite:
 
   private def run(state: ReadyGame, operation: PayCost) =
     OperationPipeline.run(state, Vector(operation),
-      OperationPolicy.Permissive)(Right(_))
+      OperationPolicy.Permissive, Vector.empty)(Right(_))
   private def board(state: ReadyGame, player: PlayerId) =
     state.game.current.players.find(_.player == player).get.board
   private def tokensOn(state: ReadyGame): Tokens =
@@ -73,7 +73,7 @@ class PayCostSettlementSuite extends munit.FunSuite:
     val first = run(start, requested).toOption.get
     assertEquals(first.executed, Vector[CoreOperation](requested))
     val replayed = OperationPipeline.run(start, first.executed,
-      OperationPolicy.Permissive)(Right(_)).toOption.get
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
     assertEquals(replayed.state, first.state)
 
   test("the active player's payment still rests on the card"):

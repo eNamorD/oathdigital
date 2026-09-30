@@ -50,7 +50,7 @@ class DazzleSuite extends munit.FunSuite:
     assertEquals(ops.collect { case value: Discard.Denizen => value.card }, targets)
     assertEquals(finished.treeless.banks.favor(Suit.Hearth), hearthBefore)
     val replayed = OperationPipeline.run(prepared, ops,
-      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
     assertEquals(replayed, finished.treeless)
     assertEquals(PowerRuntime.ignoredAtSource(catalog, prepared, actor,
       ActionKind.WhenPlayed, RuleSourceRef.Adviser(actor, dazzle)),

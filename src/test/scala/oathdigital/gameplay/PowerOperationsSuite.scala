@@ -56,7 +56,7 @@ class PowerOperationsSuite extends munit.FunSuite:
     val cost = Cost(favor = 1, secret = 1, favorBurnt = 1, secretBurnt = 1)
     val payCost = Costs.plan(ready, actor.player, placedAt, cost).toOption.get
     val after = OperationPipeline.run(ready, Vector(payCost), OperationPolicy.exact(
-      Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get.state
+      Vector(payCost), "test payment operation is not permitted"), Vector.empty)(Right(_)).toOption.get.state
     val player = after.game.current.players.find(_.player == actor.player).get
     val card = after.game.current.map.sites(siteId).denizens.head
     assertEquals(player.board.favor, actor.board.favor - 2)
@@ -69,6 +69,6 @@ class PowerOperationsSuite extends munit.FunSuite:
       DenizenId("irrelevant")), Cost.free).toOption.get
     assertEquals(Operation.flatten(payCost), Vector.empty)
     val after = OperationPipeline.run(ready, Vector(payCost), OperationPolicy.exact(
-      Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get.state
+      Vector(payCost), "test payment operation is not permitted"), Vector.empty)(Right(_)).toOption.get.state
     assertEquals(after.game, ready.game)
     assertEquals(after.banks, ready.banks)

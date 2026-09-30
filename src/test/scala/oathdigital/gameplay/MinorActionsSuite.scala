@@ -92,7 +92,7 @@ class MinorActionsSuite extends munit.FunSuite:
   test("site relic peek uses core operations and preserves knowledge"):
     val (base, actor, siteId, _, siteRelic) = ready()
     val command = MinorActionCommand.PeekSiteRelics(actor.player)
-    val peeked = MinorActions.handle(catalog, Ready(base), command).toOption.get
+    val peeked = MinorActions.handle(catalog, Ready(base), command, Vector.empty).toOption.get
     val Ready(peekReady) = peeked.state: @unchecked
     assert(peekReady.knowledge.siteRelics(actor.player)(siteId).contains(siteRelic))
     val event = peeked.events.collectFirst { case value: SiteRelicsPeeked => value }.get
@@ -111,14 +111,14 @@ class MinorActionsSuite extends munit.FunSuite:
     val expectedMerged = withPriorKnowledge.copy(knowledge =
       withPriorKnowledge.knowledge.copy(siteRelics = Map(actor.player -> Map(
         siteId -> (Vector(previouslyKnown) ++ event.relics)))))
-    assertEquals(MinorActions.evolve(catalog, Ready(withPriorKnowledge), event),
+    assertEquals(MinorActions.evolve(catalog, Ready(withPriorKnowledge), event, Vector.empty),
       Right(Ready(expectedMerged)))
 
   test("owned relic reveal uses core operation and preserves replay"):
     val (base, actor, _, _, _) = ready()
     val held = actor.relics.head.id
     val revealCommand = MinorActionCommand.RevealOwnedRelic(actor.player, held)
-    val revealed = MinorActions.handle(catalog, Ready(base), revealCommand)
+    val revealed = MinorActions.handle(catalog, Ready(base), revealCommand, Vector.empty)
       .toOption.get
     val completed = rules.handle(Ready(base), revealCommand).toOption.get
     val Ready(revealedReady) = revealed.state: @unchecked
@@ -144,10 +144,10 @@ class MinorActionsSuite extends munit.FunSuite:
     val held = actor.relics.head.id
     val revealEvent = OwnedRelicRevealed(actor.player, held)
     assertEquals(MinorActions.evolve(catalog, Ready(base),
-      OwnedRelicRevealed(actor.player, siteRelic)).left.toOption, Some(OathViolation.MinorActionUnavailable("relic is not held by the actor")))
+      OwnedRelicRevealed(actor.player, siteRelic), Vector.empty).left.toOption, Some(OathViolation.MinorActionUnavailable("relic is not held by the actor")))
     val alreadyFaceUp = withRevealedRelic(base, actor.player, held)
     assertEquals(MinorActions.evolve(catalog, Ready(alreadyFaceUp),
-      revealEvent).left.toOption, Some(OathViolation.MinorActionOutcomeMismatch(
+      revealEvent, Vector.empty).left.toOption, Some(OathViolation.MinorActionOutcomeMismatch(
         "recorded relic was not facedown")))
 
   test("minor-action operation policy permits roots only in validated context"):
@@ -167,7 +167,7 @@ class MinorActionsSuite extends munit.FunSuite:
   test("warband moves use core operations in both directions and replay"):
     val (base, actor, siteId, _, _) = ready()
     val toSite = MinorActions.handle(catalog, Ready(base),
-      MinorActionCommand.MoveWarbands(actor.player, toSite = true, 2)).toOption.get
+      MinorActionCommand.MoveWarbands(actor.player, toSite = true, 2), Vector.empty).toOption.get
     val toSiteEvent = toSite.events.collectFirst { case value: WarbandsMoved => value }.get
     val Ready(atSite) = toSite.state: @unchecked
     val expectedAtSite = withMovedWarbands(base, actor.player, siteId,
@@ -183,7 +183,7 @@ class MinorActionsSuite extends munit.FunSuite:
     assert(rules.handle(Ready(base), MinorActionCommand.MoveWarbands(
       actor.player, toSite = false, 3)).isLeft)
     val toBoard = MinorActions.handle(catalog, Ready(base), MinorActionCommand.MoveWarbands(
-      actor.player, toSite = false, 2)).toOption.get
+      actor.player, toSite = false, 2), Vector.empty).toOption.get
     val toBoardEvent = toBoard.events.collectFirst { case value: WarbandsMoved => value }.get
     val Ready(onBoard) = toBoard.state: @unchecked
     val expectedOnBoard = withMovedWarbands(base, actor.player, siteId,
@@ -193,6 +193,16 @@ class MinorActionsSuite extends munit.FunSuite:
     assertEquals(onBoard.game.current.players.find(_.player == actor.player).get.board.warbands, 6)
     assertEquals(onBoard.game.current.map.sites(siteId).forces,
       SiteForces.Occupied(ForceKind.Exile(actor.lineage), 1))
+
+  test("minor actions run under the global restrictions"):
+    val (base, actor, _, _, _) = ready()
+    val refuseAll = new OperationRestriction:
+      override def reason(state: ReadyGame, operation: CoreOperation)
+          : Option[OperationReason] = Some(OperationReason("refused",
+        "every operation is refused", OperationReasonKind.Impossible))
+    assert(MinorActions.handle(catalog, Ready(base),
+      MinorActionCommand.MoveWarbands(actor.player, toSite = true, 2),
+      Vector(refuseAll)).isLeft)
 
   test("source-scoped fallback and replay use the recorded off-turn actor"):
     val (base, active, _, _, _) = ready()

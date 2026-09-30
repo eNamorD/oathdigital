@@ -89,7 +89,9 @@ object StateBasedEvaluation:
       Right(Vector(RoundEnded(8, None), usurper.orElse(visionary).getOrElse(fallback)))
   }
 
-  def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent): Either[OathViolation, OathState] =
+  def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent,
+      restrictions: Vector[OperationRestriction])
+      : Either[OathViolation, OathState] =
     event match
       case recorded: BanditsRefilled => banditRefill(catalog, state).flatMap:
         case Some(expected: BanditsRefilled) if expected == recorded =>
@@ -102,7 +104,7 @@ object StateBasedEvaluation:
               )
             }
             OperationPipeline.run(
-              ready, operations, operationAllowlist)(Right(_))
+              ready, operations, operationAllowlist, restrictions)(Right(_))
               .flatMap(_.expectEffects(operations,
                 "Bandit refill effect differs from recorded outcome"))
               .map(Ready(_))

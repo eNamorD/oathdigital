@@ -24,7 +24,7 @@ class PayCostSuite extends munit.FunSuite:
 
   private def pay(state: ReadyGame, operation: PayCost) =
     OperationPipeline.run(state, Vector(operation),
-      OperationPolicy.Permissive)(Right(_))
+      OperationPolicy.Permissive, Vector.empty)(Right(_))
 
   private def tokensOn(state: ReadyGame): Tokens =
     state.game.current.map.sites(siteId).denizens.collectFirst {

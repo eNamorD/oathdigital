@@ -53,13 +53,16 @@ object OperationRun:
   * `requireAll` treats every operation as `required` (a reduced or skipped
   * effect rejects the batch). The walker sets it for the `Move` children of a
   * required composite, which carry no flag of their own.
+  *
+  * `restrictions` has no default, so a new caller cannot run operations outside
+  * the global restrictions (global operation restrictions design).
   */
 object OperationPipeline:
   def run(
       ready: ReadyGame,
       operations: Vector[CoreOperation],
       allowlist: OperationPolicy,
-      restrictions: Vector[OperationRestriction] = Vector.empty,
+      restrictions: Vector[OperationRestriction],
       requireAll: Boolean = false
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]

@@ -43,7 +43,7 @@ class OperationApplicationSuite extends munit.FunSuite:
 
   private def rejection(state: ReadyGame, operation: CoreOperation,
       allowlist: OperationPolicy = OperationPolicy.Permissive): String =
-    OperationPipeline.run(state, Vector(operation), allowlist)(Right(_)) match
+    OperationPipeline.run(state, Vector(operation), allowlist, Vector.empty)(Right(_)) match
       case Left(OathViolation.CoreOperationRejected(code, _)) => code
       case other => fail(s"expected a CoreOperationRejected, got $other")
 
@@ -173,7 +173,7 @@ class OperationApplicationSuite extends munit.FunSuite:
     corpus.foreach { operation =>
       val reasons = OperationApplication.validate(ready, operation)
       val pipeline = OperationPipeline.run(ready, Vector(operation),
-        OperationPolicy.Permissive)(Right(_))
+        OperationPolicy.Permissive, Vector.empty)(Right(_))
       (reasons.headOption, pipeline) match
         case (None, Right(after)) =>
           assertEquals(after.state.game,

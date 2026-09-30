@@ -22,7 +22,9 @@ object MinorActions:
     MinorActionOperationPolicy
 
   def handle(catalog: ExecutableCatalog, state: OathState,
-      command: MinorActionCommand): Either[OathViolation, OathTransition] =
+      command: MinorActionCommand,
+      restrictions: Vector[OperationRestriction])
+      : Either[OathViolation, OathTransition] =
     val event = command match
       case MinorActionCommand.PeekSiteRelics(player) =>
         for
@@ -69,10 +71,11 @@ object MinorActions:
                yield ()
         yield WarbandsMoved(player, siteId, toSite, amount,
           actor.board.warbands, occupied.count)
-    event.flatMap(e => transition(catalog, state, e))
+    event.flatMap(e => transition(catalog, state, e, restrictions))
 
   def evolve(catalog: ExecutableCatalog, state: OathState,
-      event: OathEvent): Either[OathViolation, OathState] = event match
+      event: OathEvent, restrictions: Vector[OperationRestriction])
+      : Either[OathViolation, OathState] = event match
     case e: SiteRelicsPeeked =>
       for
         ready <- validateAct(catalog, state, e.playerId)
@@ -82,7 +85,7 @@ object MinorActions:
           e.relics.nonEmpty, (), MinorActionOutcomeMismatch(
           "recorded site relic peek does not match the pawn's site"))
         evolved <- evolveOperations(
-          ready,
+          restrictions, ready,
           e.relics.map(relic => CorePeek(e.playerId, relic, Location.Site(e.siteId)))
         )
       yield Ready(evolved)
@@ -97,7 +100,7 @@ object MinorActions:
         _ <- Either.cond(held.orientation == Orientation.FaceDown, (),
           MinorActionOutcomeMismatch("recorded relic was not facedown"))
         evolved <- evolveOperations(
-          ready,
+          restrictions, ready,
           Vector(CoreReveal(e.relicId, Location.PlayArea(e.playerId)))
         )
       yield Ready(evolved)
@@ -132,7 +135,7 @@ object MinorActions:
         siteLocation = Location.Site(e.siteId)
         (from, to) = if e.toSite then (board, siteLocation) else (siteLocation, board)
         evolved <- evolveOperations(
-          ready,
+          restrictions, ready,
           Vector(CoreMove(
             Piece.Warbands(ForceKind.Exile(actor.lineage), e.amount),
             PositionedLocation(from),
@@ -164,13 +167,17 @@ object MinorActions:
     }
 
   private def evolveOperations(
+      restrictions: Vector[OperationRestriction],
       ready: ReadyGame,
       operations: Vector[CoreOperation]
   ): Either[OathViolation, ReadyGame] =
-    OperationPipeline.run(ready, operations, operationAllowlist)(Right(_))
+    OperationPipeline.run(ready, operations, operationAllowlist,
+      restrictions)(Right(_))
       .flatMap(_.expectEffects(operations,
         "Minor action effect differs from recorded outcome"))
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
-      event: OathEvent): Either[OathViolation, OathTransition] =
-    evolve(catalog, state, event).map(OathTransition(_, Vector(event)))
+      event: OathEvent, restrictions: Vector[OperationRestriction])
+      : Either[OathViolation, OathTransition] =
+    evolve(catalog, state, event, restrictions)
+      .map(OathTransition(_, Vector(event)))

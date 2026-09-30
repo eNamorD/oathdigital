@@ -16,7 +16,7 @@ class OperationPipelineSuite extends munit.FunSuite:
         player.copy(board = player.board.copy(supply = SupplyTrack(6)))
       }))
     val run = OperationPipeline.run(oneBelow, operations,
-      OperationPolicy.Permissive)(Right(_)).toOption.get
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
     assertEquals(run.executed,
       Vector[CoreOperation](GainSupply(playerId, 1), SpendSupply(playerId, 7)))
     assertEquals(run.state.game.current.players.head.board.supply.supply, 0)
@@ -27,7 +27,7 @@ class OperationPipelineSuite extends munit.FunSuite:
       }))
     val run = OperationPipeline.run(one,
       Vector(SpendSupply(playerId, 3, required = false)),
-      OperationPolicy.Permissive)(Right(_)).toOption.get
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
     assertEquals(run.executed, Vector(SpendSupply(playerId, 1)))
     assertEquals(run.state.game.current.players.head.board.supply.supply, 0)
 
@@ -36,17 +36,17 @@ class OperationPipelineSuite extends munit.FunSuite:
       ready.banks.favor.updated(Suit.Order, 0)))
     val run = OperationPipeline.run(empty,
       Vector(Gain.Favor(playerId, Suit.Order, 2)),
-      OperationPolicy.Permissive)(Right(_)).toOption.get
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
     assertEquals(run.executed, Vector.empty)
     assertEquals(run.skipped.size, 1)
     assertEquals(run.state, empty)
     assert(OperationPipeline.run(empty, Vector.empty,
-      OperationPolicy.Permissive)(Right(_)).isLeft)
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).isLeft)
 
   test("legacy claimed count cannot silently accept a partial effect"):
     val claimed = Vector[CoreOperation](Gain.Favor(playerId, Suit.Order, 7))
     val run = OperationPipeline.run(ready, claimed,
-      OperationPolicy.exact(claimed, "test effect"))(Right(_)).toOption.get
+      OperationPolicy.exact(claimed, "test effect"), Vector.empty)(Right(_)).toOption.get
     assertEquals(run.executed,
       Vector[CoreOperation](Gain.Favor(playerId, Suit.Order, 5)))
     assert(run.expectEffects(claimed, "recorded favor mismatch").isLeft)
@@ -80,7 +80,7 @@ class OperationPipelineSuite extends munit.FunSuite:
     val box = Move(Piece.Card(card), PositionedLocation(Location.Hand(actor)),
       PositionedLocation(Location.SharedBank))
     val run = OperationPipeline.run(state, Vector(box),
-      OperationPolicy.Permissive)(Right(_)).toOption.get
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get
     assertEquals(run.executed, Vector[CoreOperation](box))
     assertEquals(run.state.game.current.temporaryHands(actor), Vector.empty)
     assert(!CardIndex.from(run.state.game).toOption.get.ids.contains(card))
@@ -95,7 +95,7 @@ class OperationPipelineSuite extends munit.FunSuite:
     val box = Move(Piece.Card(denizen), PositionedLocation(Location.Hand(actor)),
       PositionedLocation(Location.SharedBank))
     assertEquals(OperationPipeline.run(state, Vector(box),
-      OperationPolicy.Permissive)(Right(_)).left.toOption, Some(OathViolation.CoreOperationRejected("invalid-destination",
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).left.toOption, Some(OathViolation.CoreOperationRejected("invalid-destination",
         "shared bank cannot receive denizen card")))
 
   test("a card that leaves the game without a boxing move still fails the " +
@@ -106,5 +106,5 @@ class OperationPipelineSuite extends munit.FunSuite:
       Right(ready.updateCurrent(current => current.copy(temporaryHands =
         current.temporaryHands.updated(actor, Vector.empty))))
     assertEquals(OperationPipeline.run(state, Vector(GainSupply(actor, 1)),
-      OperationPolicy.Permissive)(vanish).left.toOption, Some(OathViolation.CoreOperationRejected("card-inventory-changed",
+      OperationPolicy.Permissive, Vector.empty)(vanish).left.toOption, Some(OathViolation.CoreOperationRejected("card-inventory-changed",
         "card inventory changed: 1 missing, 0 unexpected")))

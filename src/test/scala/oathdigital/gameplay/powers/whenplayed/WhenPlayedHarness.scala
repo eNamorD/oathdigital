@@ -35,4 +35,4 @@ object WhenPlayedHarness:
   /** The state a journal replay of `events` reaches from `from`. */
   def replayed(from: ReadyGame, events: Vector[OathEvent]): ReadyGame =
     OperationPipeline.run(from, recorded(events),
-      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+      OperationPolicy.Permissive, Vector.empty)(Right(_)).toOption.get.state
