@@ -52,15 +52,22 @@ object OperationResolution:
     * (global operation restrictions design, "Composites are checked whole").
     * `Right(false)` skips an optional operation a restriction refuses. A
     * refusal of a required one, or an `Invalid` refusal, rejects.
+    *
+    * A container (`Sequence`, `Repeat`, `Branch` and the card-played windows)
+    * only holds other operations, which are screened when the walker reaches
+    * them, so it always runs: refusing it would skip its unrelated children.
     */
   def screen(ready: ReadyGame, operation: CoreOperation,
       restrictions: Vector[OperationRestriction], required: Boolean)
-      : Either[OathViolation, Boolean] =
-    val refusals = restrictions.flatMap(_.reason(ready, operation))
-    refusals.find(reason =>
-      required || reason.kind == OperationReasonKind.Invalid) match
-      case Some(reason) => Left(rejection(reason))
-      case None => Right(refusals.isEmpty)
+      : Either[OathViolation, Boolean] = operation match
+    case _: Sequence | _: Repeat | _: Branch | _: CardPlayedFaceup |
+        _: CardPlayedFacedown => Right(true)
+    case _ =>
+      val refusals = restrictions.flatMap(_.reason(ready, operation))
+      refusals.find(reason =>
+        required || reason.kind == OperationReasonKind.Invalid) match
+        case Some(reason) => Left(rejection(reason))
+        case None => Right(refusals.isEmpty)
 
   private def optional(ready: ReadyGame, requested: CoreOperation,
       restrictions: Vector[OperationRestriction],

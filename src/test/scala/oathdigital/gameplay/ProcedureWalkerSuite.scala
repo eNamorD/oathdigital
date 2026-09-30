@@ -228,9 +228,8 @@ class ProcedureWalkerSuite extends munit.FunSuite:
       override def reason(state: ReadyGame, operation: CoreOperation) =
         Option.when(operation == first)(OperationReason("immune",
           "first card cannot be discarded", OperationReasonKind.Impossible))
-    val tree = Sequence(Vector(BuildOps((_, _) => Right(Vector(first, second)),
-      restrictions = (_, _) => Vector(immunity))))
-    ProcedureWalker.advance(source, tree, None, noPowers) match
+    val tree = Sequence(Vector(BuildOps((_, _) => Right(Vector(first, second)))))
+    ProcedureWalker.advance(source, tree, None, restricting(immunity)) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
           Vector(Vector[CoreOperation](second)))
@@ -251,15 +250,15 @@ class ProcedureWalkerSuite extends munit.FunSuite:
         Some(OperationReason("immune", "site card cannot be discarded",
           OperationReasonKind.Impossible))
     def tree(operation: CoreOperation): Operation = Sequence(Vector(
-      BuildOps((_, _) => Right(Vector(operation)),
-        restrictions = (_, _) => Vector(immunity))))
-    ProcedureWalker.advance(ready, tree(discard), None, noPowers) match
+      BuildOps((_, _) => Right(Vector(operation)))))
+    ProcedureWalker.advance(ready, tree(discard), None,
+      restricting(immunity)) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(state, ready)
         assertEquals(events, Vector.empty)
       case other => fail(s"expected a Finished walk, got $other")
     assert(ProcedureWalker.advance(ready,
-      tree(discard.copy(required = true)), None, noPowers).isLeft)
+      tree(discard.copy(required = true)), None, restricting(immunity)).isLeft)
 
   // `required` lives on the composite (PayCost, Draw, Exchange, a required
   // Play/Replace/Discard), but the walker walks a composite's `Move` children

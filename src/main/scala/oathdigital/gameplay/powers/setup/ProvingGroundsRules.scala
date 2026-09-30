@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.setup
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
 import oathdigital.model._
@@ -112,9 +111,7 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     val effect = Vector(Transform((ctx, ops) => at(ctx.state) match {
-      case Some(site) => ops :+ BuildOps((ready, _) => build(ready, site),
-        restrictions = (ready, _) =>
-          Vector(new DiscardRestrictions(catalog, ready.setup.firstPlayer))) :+
+      case Some(site) => ops :+ BuildOps((ready, _) => build(ready, site)) :+
         Note(id, discardNote(ctx.state, site), covers = true)
       case None => ops
     }))

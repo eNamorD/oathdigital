@@ -140,8 +140,7 @@ class OperationResolutionSuite extends munit.FunSuite:
       current = current.copy(players = current.players :+ bluePlayer,
         map = current.map.copy(sites = current.map.sites
           .updated(sites.head, first).updated(sites(1), second)))))
-    val restriction = new DiscardRestrictions(FirstGameSetupFixture.catalog,
-      blue)
+    val restriction = HallOfMinisters(FirstGameSetupFixture.catalog)
     val discard = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, 1, 0, blue)
@@ -151,11 +150,9 @@ class OperationResolutionSuite extends munit.FunSuite:
     assert(OperationResolution.resolve(changed, discard,
       OperationPolicy.Permissive, Vector(restriction))
       .toOption.get.isInstanceOf[OperationResolution.Skip])
-    val rulerRestriction = new DiscardRestrictions(FirstGameSetupFixture.catalog,
-      playerId)
     assertEquals(OperationResolution.resolve(changed,
       discard.copy(actingPlayer = playerId),
-      OperationPolicy.Permissive, Vector(rulerRestriction)),
+      OperationPolicy.Permissive, Vector(restriction)),
       Right(OperationResolution.Execute(discard.copy(actingPlayer = playerId))))
 
   test("discard resource fields describe the card and cannot shrink"):

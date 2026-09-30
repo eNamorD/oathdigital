@@ -611,9 +611,7 @@ final case class Decide(decisionId: String, owner: PlayerId,
   */
 final case class BuildOps(
     build: (ReadyGame, PendingTree) => Either[OathViolation, Vector[CoreOperation]],
-    override val window: Option[PowerWindow] = None,
-    restrictions: (ReadyGame, PendingTree) => Vector[OperationRestriction] =
-      (_, _) => Vector.empty)
+    override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
 /** Re-executes `body` until `guard` is false. The guard runs only at command

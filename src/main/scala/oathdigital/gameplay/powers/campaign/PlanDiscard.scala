@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
 /** The standard discard of a denizen a battle plan used, once the plan is spent:
@@ -14,15 +13,12 @@ import oathdigital.model._
   * (`CardPlay.nextRegion` is the one rule for the region after). Nothing happens
   * when the card is no longer in either place.
   *
-  * Like every discard of a card in play, it attaches `DiscardRestrictions`.
-  *
   * `afterCampaign` is the discard of a plan that says "At end, discard" (Horse
   * Archers, Storm Caller), with its line.
   */
 object PlanDiscard:
   def denizen(catalog: ExecutableCatalog, user: PlayerId, card: DenizenId)
-      : Operation = BuildOps((ready, _) => operations(catalog, ready, user, card),
-    restrictions = (_, _) => Vector(new DiscardRestrictions(catalog, user)))
+      : Operation = BuildOps((ready, _) => operations(catalog, ready, user, card))
 
   /** "Discarded after the Campaign." */
   val discarded: NoteKey = NoteKey("discarded",

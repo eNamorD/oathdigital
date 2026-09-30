@@ -144,7 +144,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val full = base.updateCurrent(_.copy(
       players = current.players.map(p => if p.player == actor then
         p.copy(advisers = locked.map(id =>
-          DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
+          DenizenState(id, Orientation.FaceUp, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(locked.contains))))
     val tree = CardPlayProcedure.build(catalog, full, actor, card,
@@ -154,6 +154,23 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     assert(!query.options.exists(_.ref == DecisionOptionRef.Button(
       "adviser-faceup")))
     assert(!CardPlay.legalChoices(catalog, full, actor, card,
+      CardPlay.Origin.TemporaryHand).exists(_.placement ==
+      SearchPlacement.Adviser(Orientation.FaceUp, None)))
+
+  test("a full adviser area of facedown locked advisers offers the adviser " +
+      "placement, since a facedown card has no restrictions"):
+    val (base, actor, card) = handState
+    val current = base.game.current
+    val locked = catalog.denizens.filter(
+      _.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
+      .map(d => DenizenId(d.id.value)).filterNot(_ == card).take(3)
+    val full = base.updateCurrent(_.copy(
+      players = current.players.map(p => if p.player == actor then
+        p.copy(advisers = locked.map(id =>
+          DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(locked.contains))))
+    assert(CardPlay.legalChoices(catalog, full, actor, card,
       CardPlay.Origin.TemporaryHand).exists(_.placement ==
       SearchPlacement.Adviser(Orientation.FaceUp, None)))
 

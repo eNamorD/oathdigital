@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{LockedCard, OperationRestrictions}
+import oathdigital.gameplay.operations.{LockedCards, OperationRestrictions}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -127,9 +127,11 @@ class OperationRestrictionsSuite extends munit.FunSuite:
     assertEquals(refusal(ready, byEnemy.copy(actingPlayer = p1)), None)
 
   test("the catalog prints a lock for every lock-icon card and only those"):
-    assert(set.printed.contains(LockedCard(lockedCard)))
-    assert(set.printed.contains(LockedCard(hall)))
-    assert(!set.printed.contains(LockedCard(plainCard)))
+    val locked = set.printed.collect { case value: LockedCards => value.cards }
+      .flatten.toSet
+    assert(locked.contains(lockedCard))
+    assert(locked.contains(hall))
+    assert(!locked.contains(plainCard))
 
   test("isLocked is faceup-aware"):
     assert(OperationRestrictions.isLocked(catalog, holding(lockedCard),

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -28,9 +27,7 @@ final case class Dazzle private (cardId: DenizenId,
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      children :+ BuildOps((ready, _) => effects(ready, ctx.activePlayer),
-        restrictions = (_, _) => Vector(
-        new DiscardRestrictions(catalog, ctx.activePlayer))) :+
+      children :+ BuildOps((ready, _) => effects(ready, ctx.activePlayer)) :+
         Note(id, discardNote(ctx.state, ctx.activePlayer), covers = true))))
 
   /** The cards Dazzle would discard in `before` that no site holds now. */

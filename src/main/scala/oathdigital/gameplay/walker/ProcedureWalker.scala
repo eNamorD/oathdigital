@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy, OperationResolution}
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, Shuffle, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, Shuffle, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 
@@ -614,8 +614,7 @@ object ProcedureWalker:
     val tree = PendingTree(at = path, answered = ctx.answered)
     build.build(ctx.state, tree).flatMap { ops =>
       if ops.isEmpty then Right(ctx.copy(previous = Some((ctx.state, ctx.state))))
-      else recordBatch(ops, contributions, ctx, path, leafLabel(build),
-        build.restrictions(ctx.state, tree))
+      else recordBatch(ops, contributions, ctx, path, leafLabel(build))
     }
 
   /** Executes `ops` through the pipeline as one atomic batch and records ONE
@@ -629,11 +628,10 @@ object ProcedureWalker:
   private def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
       label: String,
-      restrictions: Vector[OperationRestriction] = Vector.empty,
       requireAll: Boolean = false)
       : Either[OathViolation, WalkCtx] =
     OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
-      ctx.powers.operationRestrictions ++ restrictions, requireAll)(
+      ctx.powers.operationRestrictions, requireAll)(
       Right(_)).map { updated =>
       val nodeId = if path.isEmpty then label else path.mkString(".")
       val events = if updated.executed.isEmpty then ctx.events else

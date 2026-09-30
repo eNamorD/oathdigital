@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.operations.DiscardRestrictions
+import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{AdviserLimit, NoteSupport, PlayerFacts,
   PowerAnswers}
@@ -20,7 +20,9 @@ import oathdigital.model._
   * `Flip` it facedown.
   *
   * The discard follows card play: a denizen or Vision goes to the next
-  * region's discard pile, and a `LockedAdviserOnly` card cannot be discarded.
+  * region's discard pile, and a faceup locked card cannot be discarded (a
+  * facedown one can). Its locked filter goes when the restriction search hides
+  * refused options (global operation restrictions, slice 2).
   * When the area is full and nothing is discardable, nothing can be taken.
   * "Full" is the player's adviser limit, [[AdviserLimit.of]]: 3, or 2 for a
   * Silver Tongue holder.
@@ -38,9 +40,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => askDenizen(live, player)),
     Branch((live, pending) => askDiscard(live, player, pending)),
-    BuildOps((live, pending) => take(live, player, pending),
-      restrictions = (_, _) => Vector(
-        new DiscardRestrictions(catalog, player))),
+    BuildOps((live, pending) => take(live, player, pending)),
     Note(this.id, takeNote(_, player, source)))))
 
   /** After a discard question the take lands in a later command than the
@@ -68,14 +68,9 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   private def full(ready: ReadyGame, actor: PlayerId): Boolean =
     advisers(ready, actor).size >= AdviserLimit.of(catalog, ready, actor)
 
-  private def lockedAdviser(id: DenizenId): Boolean = catalog.denizens
-    .find(_.id.value == id.value)
-    .exists(_.restrictions == CardRestrictions.LockedAdviserOnly)
-
   private def discardable(ready: ReadyGame, actor: PlayerId)
-      : Vector[AdviserState] = advisers(ready, actor).filter:
-    case d: DenizenState => !lockedAdviser(d.id)
-    case _ => true
+      : Vector[AdviserState] = advisers(ready, actor).filterNot(adviser =>
+    OperationRestrictions.isLocked(catalog, ready, adviser.id))
 
   private def takeable(ready: ReadyGame, actor: PlayerId): Vector[DenizenState] =
     if full(ready, actor) && discardable(ready, actor).isEmpty then Vector.empty

@@ -7,8 +7,8 @@ import oathdigital.model._
   * operations run (global operation restrictions design, "The restriction
   * set").
   *
-  * `printed` are the restrictions a catalog's cards print: a [[LockedCard]]
-  * for every lock-icon card, and the [[HallOfMinisters]]. `active` adds the
+  * `printed` are the restrictions a catalog's cards print: [[LockedCards]],
+  * holding every lock-icon card, and the [[HallOfMinisters]]. `active` adds the
   * [[ActiveModifier]] rule for the modifiers selected for the running action,
   * and the restrictions the offered powers register. Every one refuses as
   * `Impossible`: an optional operation is skipped, a required one rejects.
@@ -37,7 +37,7 @@ object OperationRestrictions:
     * filters that hide locked cards before slice 2's search read this. */
   def isLocked(catalog: ExecutableCatalog, ready: ReadyGame,
       card: CardId): Boolean =
-    lockIcon(catalog, card) && LockedCard.showing(ready, card)
+    lockIcon(catalog, card) && LockedCards.showing(ready, card)
 
   /** Only a card at a site or in a play area is in play. A card drawn by a
     * Search and discarded from the temporary hand is not. */
@@ -57,11 +57,12 @@ object OperationRestrictions:
       case _ => false
 
   private def printedBy(catalog: ExecutableCatalog): Vector[OperationRestriction] =
-    catalog.denizens.filter(d => locking(d.restrictions))
-      .map(d => LockedCard(DenizenId(d.id.value))) ++
-      catalog.edifices.filter(e => locking(e.intact.restrictions))
-        .map(e => LockedCard(EdificeId(e.id.value))) :+
-      HallOfMinisters(catalog)
+    val locked: Set[CardId] =
+      (catalog.denizens.filter(d => locking(d.restrictions))
+        .map(d => DenizenId(d.id.value): CardId) ++
+        catalog.edifices.filter(e => locking(e.intact.restrictions))
+          .map(e => EdificeId(e.id.value): CardId)).toSet
+    Vector(LockedCards(locked), HallOfMinisters(catalog))
 
 /** A card that prints a power selected for the running action cannot be
   * discarded while the action runs: a modifier a player selected at the start

@@ -215,7 +215,7 @@ class MinorActionsSuite extends munit.FunSuite:
     assertEquals(rules.evolve(Ready(changed), event), Right(Ready(changed)))
 
   // The lock itself, which stops a faceup adviser being discarded, is
-  // DiscardRestrictionsSuite's; this is the facedown side of it.
+  // OperationRestrictionsSuite's; this is the facedown side of it.
   test("a locked adviser held facedown can still be played and discarded"):
     val (base, actor, _, _, _) = ready()
     val locked = DenizenId(catalog.denizens.find(_.restrictions ==

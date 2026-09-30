@@ -67,8 +67,6 @@ object OathViolation:
       extends OathViolation
   final case class ConspiracyUnavailable(detail: String) extends OathViolation
   final case class NegotiationUnavailable(detail: String) extends OathViolation
-  final case class LockedAdviserCannotBeDiscarded(id: CardId)
-      extends OathViolation
   final case class SearchCostMismatch(expected: Int, actual: Int)
       extends OathViolation
   final case class UnsupportedRecoverState(reason: String) extends OathViolation

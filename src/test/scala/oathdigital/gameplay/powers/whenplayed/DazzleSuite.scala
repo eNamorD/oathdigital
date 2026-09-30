@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay._
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
+  OperationRestrictions}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
@@ -103,8 +104,9 @@ class DazzleSuite extends munit.FunSuite:
         .updated(actorSite, friendly).updated(enemySite, hostile))))
     val finished = ProcedureWalker.advance(prepared,
       CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle)), None,
-      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
-      .asInstanceOf[WalkerOutcome.Finished]
+      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get),
+        restrictionSet = OperationRestrictions.forCatalog(catalog)))
+      .toOption.get.asInstanceOf[WalkerOutcome.Finished]
     val after = finished.treeless.game.current
     assert(!after.map.sites(actorSite).denizens.exists(_.id == targets.head))
     assert(after.map.sites(enemySite).denizens.exists(_.id == targets(1)))

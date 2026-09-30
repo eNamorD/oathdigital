@@ -3,7 +3,6 @@ package oathdigital.gameplay.actions.cardplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, PlacementRules, RuleNotes}
-import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
 /** Embeddable card-placement tree using CardPlay's pure operation planner. */
@@ -213,8 +212,7 @@ object CardPlayProcedure:
               }
               chosen.flatMap(CardPlay.plannedOperations(catalog, state, actor,
                 card, _, legacyOrigin, rules))
-            }, restrictions = (_, _) => Vector(
-              new DiscardRestrictions(catalog, actor)))
+            })
             val hook: Vector[Operation] = placement match {
               case SearchPlacement.Adviser(Orientation.FaceDown, _) =>
                 Vector(CardPlayedFacedown(card, actor))

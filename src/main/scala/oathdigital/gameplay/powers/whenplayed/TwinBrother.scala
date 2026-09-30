@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
@@ -20,6 +21,9 @@ import oathdigital.model._
   * card-played window never depends on live state. Nothing between the
   * question and the swap changes the candidates, so the `Branch` selects the
   * same children on resume.
+  *
+  * Its locked filter goes when the restriction search hides refused options
+  * (global operation restrictions, slice 2).
   */
 final case class TwinBrother private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends WhenPlayedPower:
@@ -48,7 +52,8 @@ final case class TwinBrother private (cardId: DenizenId,
       card <- held.advisers.collect {
         case DenizenState(id, Orientation.FaceUp, _) => id }
       definition <- catalog.denizen(card).toVector
-      if definition.suit == Suit.Nomad && !Locked(definition.restrictions)
+      if definition.suit == Suit.Nomad &&
+        !OperationRestrictions.isLocked(catalog, ready, card)
     yield Candidate(held.player, card)
 
   private def swap(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
@@ -89,9 +94,6 @@ object TwinBrother:
   val swapped: NoteKey = NoteKey("swapped", Vector(NotePart.Arg(0),
     NotePart.Text(" swapped it for "), NotePart.Arg(1), NotePart.Text("'s "),
     NotePart.Arg(2), NotePart.Text(".")))
-
-  private val Locked: Set[CardRestrictions] =
-    Set(CardRestrictions.Locked, CardRestrictions.LockedAdviserOnly)
 
   private final case class Candidate(owner: PlayerId, card: DenizenId)
 

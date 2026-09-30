@@ -119,6 +119,16 @@ class HornedMaskSuite extends munit.FunSuite:
     assert(answer(asked, actor, HornedMask.discardDecisionId,
       choose(locked.head)).isLeft)
 
+  test("a facedown locked adviser can be offered for discard"):
+    val ready = giveAdviser(holding(elders, fresh), actor, locked.head,
+      Orientation.FaceDown)
+    val t = use(ready, power, source).toOption.get
+    val asked = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
+      .toOption.get
+    assertEquals(offered(asked, actor).map(_.toSet), Some(Set(
+      "denizen" -> elders.value, "denizen" -> fresh.value,
+      "denizen" -> locked.head.value)))
+
   test("a Silver Tongue holder is full at two advisers, and Silver Tongue " +
       "itself is locked so only the other adviser can go"):
     val ready = holding(tongue, elders)

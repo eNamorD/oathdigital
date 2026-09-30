@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay._
-import oathdigital.gameplay.operations.DiscardRestrictions
+import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.model._
@@ -26,11 +26,16 @@ object CardPlay:
       actor: PlayerId, card: WorldCardId, origin: Origin,
       rules: PlacementRules = PlacementRules.default): Vector[Choice] =
     val player = ready.game.current.players.find(_.player == actor)
-    val restriction = new DiscardRestrictions(catalog, actor)
-    // A placement whose plan discards a card the actor may not discard (a
-    // site protected by an enemy's intact Hall of Ministers) is not a choice.
+    // A placement whose plan discards a card the global restrictions refuse
+    // (a faceup locked adviser, an intact edifice, an active modifier, a site
+    // an enemy's intact Hall of Ministers protects) is not a choice. A tree
+    // builder holds only the catalog, so powers' own restrictions are not
+    // consulted here; slice 2's search covers them.
+    val restrictions = OperationRestrictions.forCatalog(catalog)
+      .active(Vector.empty, ready.game.current.walkerModifiers)
     def permitted(operations: Vector[CoreOperation]): Boolean =
-      operations.forall(restriction.reason(ready, _).isEmpty)
+      operations.forall(operation =>
+        restrictions.forall(_.reason(ready, operation).isEmpty))
     val placements = Vector[SearchPlacement](SearchPlacement.Discard,
       SearchPlacement.Site(None),
       SearchPlacement.Adviser(Orientation.FaceUp, None),
@@ -175,7 +180,7 @@ object CardPlay:
           // required; the vector below is validation-only (never written back).
           remaining = if origin == Origin.FacedownAdviser then
             player.advisers.filter(_.id != card) else player.advisers
-          removed <- validateAdviserReplacement(catalog, remaining, replace,
+          removed <- validateAdviserReplacement(remaining, replace,
             rules.adviserLimit(orientation))
         yield adviserPlan(origin, player, card, id, orientation, removed)
       case id: VisionId =>
@@ -272,7 +277,7 @@ object CardPlay:
           Vector.empty)
       }
     case Origin.TemporaryHand =>
-      validateAdviserReplacement(catalog, player.advisers, replace,
+      validateAdviserReplacement(player.advisers, replace,
         adviserLimit).map { removed =>
         val from = keptSource(origin, player.player)
         PlacementPlan(
@@ -341,8 +346,8 @@ object CardPlay:
       suit.map(value => Discard.Denizen(id, from, destination, value,
         tokens.favor, tokens.secrets, actor, required = true))
 
-  private def validateAdviserReplacement(catalog: ExecutableCatalog,
-      advisers: Vector[AdviserState], replace: Option[CardId], limit: Int)
+  private def validateAdviserReplacement(advisers: Vector[AdviserState],
+      replace: Option[CardId], limit: Int)
       : Either[OathViolation, Option[WorldCardId]] =
     val mustReplace = advisers.size >= limit
     if mustReplace != replace.nonEmpty then Left(InvalidSearchPlacement(
@@ -352,20 +357,10 @@ object CardPlay:
       case None => Right(None)
       case Some(id) => advisers.find(_.id == id).toRight(
         InvalidSearchPlacement("replacement adviser is not held")).flatMap { _ =>
-        val discardable = id match
-          case d: DenizenId => catalog.denizen(d)
-            .toRight(UnknownWorldCard(d)).map(
-              _.restrictions != CardRestrictions.LockedAdviserOnly)
-          case _: VisionId => Right(true)
+        id match
+          case world: WorldCardId => Right(Some(world))
           case _ => Left(InvalidSearchPlacement(
             "replacement adviser is not a world card"))
-        discardable.flatMap { allowed =>
-          if !allowed then Left(LockedAdviserCannotBeDiscarded(id))
-          else id match
-            case world: WorldCardId => Right(Some(world))
-            case _ => Left(InvalidSearchPlacement(
-              "replacement adviser is not a world card"))
-        }
       }
 
   private def validateSiteReplacement(catalog: ExecutableCatalog, siteId: SiteId,
@@ -377,8 +372,9 @@ object CardPlay:
     if siteDiscardAllowed(catalog, siteId, suit, rules) then replace match
       // At any capacity: the discard is optional with room and required
       // without, and it may name any card of the site's card list.
-      // `DiscardRestrictions` decide what may actually be discarded: a locked
-      // card, an intact edifice and an active modifier may not.
+      // The global operation restrictions decide what may actually be
+      // discarded: a faceup locked card, an intact edifice and an active
+      // modifier may not.
       case None if full => Left(InvalidSearchPlacement(
         "a full site requires a site-card discard"))
       case None => Right(None)
