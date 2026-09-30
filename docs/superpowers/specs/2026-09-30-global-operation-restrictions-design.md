@@ -83,17 +83,23 @@ Both stay as they are.
 
 ### The restriction set
 
-`OperationRestrictions.active(ready, catalog, selectedModifiers)` returns the
-restrictions that hold in a state. It merges two sources:
+`OperationRestrictions.forCatalog(catalog).active(powerRestrictions,
+selectedModifiers)` returns the restrictions that hold for a command. It merges
+three sources:
 
-- **Rule restrictions** that always apply: the active-modifier rule.
-- **Card restrictions**, gathered from the cards in play. Powers contribute
-  them through a new contribution kind, `OperationRestrictionContribution`,
-  beside `Restriction` and `OptionRestriction`, and the Hall of Ministers
-  becomes one. A single catalog function turns a card's printed properties
-  into restrictions: `Locked(cardId)` from the lock icon and
-  `GrandScepter(relicId)` from `RelicRole.GrandScepter`. Each restriction
-  names its card, so a refusal is attributable.
+- **Rule restrictions** that always apply: the active-modifier rule, bound to
+  the modifiers selected for the running action.
+- **Printed restrictions.** A single catalog function turns a card's printed
+  properties into restrictions: `LockedCard(cardId)` from the lock icon, the Hall
+  of Ministers from its intact face, and `GrandScepter(relicId)` from
+  `RelicRole.GrandScepter`. Each restriction names its card, so a refusal is
+  attributable. The Hall is printed rather than a power because
+  `CardPlay.legalChoices` runs inside a tree builder, which holds only the
+  catalog.
+- **Power restrictions.** A power registers them through a new member,
+  `ContributingPower.operationRestrictions`. It is not a window-keyed
+  contribution, since it hooks no window: it holds wherever the power is
+  offered. Lost Tongue is its first user, in Catalog batch 3.
 
 That function is the seam the card-classes phase replaces. When cards become
 Scala classes, Locked and Grand Scepter become traits a card mixes in, and
@@ -106,7 +112,9 @@ no default, so a new caller cannot forget it. Its callers are:
 - `MinorActions.evolveOperations` and `StateBasedEvaluation.evolve`;
 - `OathRulesWalker.requirePayable`, the modifier payment dry run.
 
-`CardPlay.legalChoices` asks the same set instead of `DiscardRestrictions`.
+`CardPlay.legalChoices` asks the catalog's rule and printed restrictions,
+with the modifiers recorded in the state, instead of `DiscardRestrictions`.
+Until slice 2, that is the only option filter that consults the set.
 
 ### Composites are checked whole
 
@@ -159,8 +167,13 @@ owner. Lowering a depth cap is not one of them.
 ### What retires
 
 - `DiscardRestrictions`, its coverage suite, and `BuildOps.restrictions`.
-- The locked filters of `CardPlay`, Horned Mask and Twin Brother, and Fae
-  Merchant's Grand Scepter filter.
+- `CardPlay`'s locked-adviser check, in slice 1: the pipeline refuses the
+  discard instead.
+- The option filters of Horned Mask and Twin Brother, in slice 2. Until the
+  search hides refused options, deleting them would offer a locked card and
+  then skip it silently, so slice 1 points them at the shared, faceup-aware
+  `OperationRestrictions.isLocked`.
+- Fae Merchant's Grand Scepter filter, in slice 3.
 - `WalkerPowerGather.probe`.
 
 ### Take for Challenge and Conspiracy
@@ -174,8 +187,8 @@ are, so a restriction on taking sees them. Conspiracy's relic transfer stays a
 
 | Slice | Content |
 |---|---|
-| 1. The seam | The restriction set and its contribution kind. The pipeline's required argument and its four callers, plus `CardPlay.legalChoices`. Composites checked before they are split. `Locked` per card, the active-modifier rule and the Hall of Ministers. The facedown fix. `DiscardRestrictions`, its coverage suite, `BuildOps.restrictions` and the locked filters retire. |
-| 2. Lazy pruning | The baseline measurement and benchmark suite first. The depth-first search at parks and action start, stopping at hidden information. Notes for pruned options. `probe` retires. |
+| 1. The seam | The restriction set and the power member. The pipeline's required argument and its four callers, plus `CardPlay.legalChoices`. Composites checked before they are split. `LockedCard` per card, the active-modifier rule and the Hall of Ministers. The facedown fix. `DiscardRestrictions`, its coverage suite, `BuildOps.restrictions` and `CardPlay`'s locked check retire. |
+| 2. Lazy pruning | The baseline measurement and benchmark suite first. The depth-first search at parks and action start, stopping at hidden information. Notes for pruned options. `probe` and the Horned Mask and Twin Brother filters retire. |
 | 3. Grand Scepter and Take | `GrandScepter` per relic, and Fae Merchant's filter retires. Challenge custody and Conspiracy's banner transfer become `Take`. |
 
 Slice 1 alone closes the relic-discard gap. Slice 2 is the riskiest, so it
