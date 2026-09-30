@@ -168,15 +168,13 @@ reach, computed only when the player reaches it.
   the other answers.
 - **Atomic batches.** A `BuildOps` marked `required` runs whole or rejects,
   so a refused operation inside it fails the path instead of being skipped.
-- **Forced choices.** A choose-one `Decide` marked `autoAnswer` is asked only
-  when the search leaves a real choice. With one option left, the walker
-  answers it for the owner and records a `ChoicePayload` marked `automatic`,
-  which posts no "Chose" line. With none left, the walker passes the
-  decision, as it passes an empty optional choose-many, and a search passes it
-  too. Replay checks only an automatic answer's node id and adds the answer to
-  the pending answers, so a later park restores it. Fae Merchant is the first
-  user: its bury choice hides the Grand Scepter and still puts the one other
-  relic back without asking.
+- **Empty choices.** A choose-one `Decide` marked `passWhenEmpty` is passed
+  when the search leaves it no option, as an empty optional choose-many is,
+  instead of failing the path. The walk passes it without asking, and a
+  search passes it too. With one option left it still parks: the player sees
+  the one option and confirms it. Fae Merchant is the first user: it offers
+  every relic held, the search hides the Grand Scepter, and with only the
+  scepter held and an empty relic deck it asks nothing and puts nothing back.
 - **Phase powers.** A phase power's use is offered only when the same dry run
   a start runs accepts it.
 - **Memo.** A verdict asked from the live walk is kept on its `WalkerPowers`
@@ -224,8 +222,9 @@ The memo brought it to 9 to 10 s, with summed per-test time +9.4% (73.07 s to
   `OperationRestrictions.isLocked`. Both retired in slice 2, with
   `isLocked`.
 - Fae Merchant's Grand Scepter filter, in slice 3, with its own "ask only
-  when more than one relic is eligible" rule: its choice becomes a forced
-  choice.
+  when more than one relic is eligible" rule. It now asks whenever it holds a
+  relic, so a lone relic is confirmed with one click, and its choice is passed
+  when empty.
 - `WalkerPowerGather.probe`.
 
 ### Take for Challenge and Conspiracy
@@ -250,7 +249,7 @@ target is hidden is decided with Lost Tongue, the first restriction on `Take`.
 |---|---|
 | 1. The seam | The restriction set and the power member. The pipeline's required argument and its four callers, plus `CardPlay.legalChoices`. Composites checked before they are split. `LockedCards`, the active-modifier rule and the Hall of Ministers. The facedown fix. `DiscardRestrictions`, its coverage suite, `BuildOps.restrictions` and `CardPlay`'s locked check retire. |
 | 2. Lazy pruning | The baseline measurement and the benchmark first. The depth-first search at parks and action start, stopping at hidden information, with its per-instance memo. Notes for pruned options are deferred until a card needs one. `probe` and the Horned Mask and Twin Brother filters retire. |
-| 3. Grand Scepter and Take | `GrandScepter` per relic. Forced choices, and Fae Merchant's filter retires. Challenge custody and Conspiracy's banner transfer become `Take`. |
+| 3. Grand Scepter and Take | `GrandScepter` per relic. Choices passed when empty, and Fae Merchant's filter retires. Challenge custody and Conspiracy's banner transfer become `Take`. |
 
 Slice 1 alone closes the relic-discard gap. Slice 2 is the riskiest, so it
 lands on a seam that is already in place.
@@ -284,14 +283,14 @@ lands on a seam that is already in place.
 - **Slice 3.**
   - On a hand-built state, the Grand Scepter refuses a discard, a return to
     the relic deck and a `Bury`, and allows a `Take` and a `Give`.
-  - A forced choice with one option left is answered without a park, one
-    with none left is passed, and one with several parks. Its automatic
-    answer round-trips the wire, replays before a later park, and posts no
-    "Chose" line.
+  - A choose-one marked `passWhenEmpty` with no option left is passed, by the
+    walk and by a search. With one option left it parks, offering that
+    option.
   - Fae Merchant does not offer the Grand Scepter without its own filter.
-    Holding the scepter and one other relic, it puts that relic back without
-    asking. Holding only the scepter, with an empty relic deck, it puts
-    nothing back.
+    Holding the scepter and one other relic, it offers that relic alone.
+    Holding one relic, it offers it for the player to confirm. Holding only
+    the scepter, with an empty relic deck, it asks nothing and puts nothing
+    back.
   - A restriction on `Take` sees Challenge custody. Conspiracy records a
     `Take` for the banner. Both Game Log lines are unchanged.
 - `BackendArchitectureSuite` still applies: no power names in walker sources,

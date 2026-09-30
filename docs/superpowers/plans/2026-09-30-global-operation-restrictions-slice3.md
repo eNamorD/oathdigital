@@ -1,22 +1,22 @@
-# Global Operation Restrictions, Slice 3 (Grand Scepter, Forced Choices and Take) Implementation Plan
+# Global Operation Restrictions, Slice 3 (Grand Scepter, Empty Choices and Take) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Keep the Grand Scepter in play wherever an operation runs, let a decision the search leaves with one option answer itself, retire Fae Merchant's own scepter filter, and move the banner by `Take` in Challenge and Conspiracy.
+**Goal:** Keep the Grand Scepter in play wherever an operation runs, let a choice the search leaves empty be passed instead of failing, retire Fae Merchant's own scepter filter, and move the banner by `Take` in Challenge and Conspiracy.
 
-**Architecture:** A printed `GrandScepter` restriction joins `LockedCards` and the Hall of Ministers in `OperationRestrictions.printed`. A choose-one `Decide` can be a forced choice (`autoAnswer`): after the search narrows it, the walker answers one surviving option itself, recording a `ChoicePayload` marked `automatic`, and passes a decision with none left. Replay checks an automatic answer's node id only and adds the answer to the pending answers. Fae Merchant then offers every held relic in a forced choice and lets the restriction and the search hide the scepter. Challenge custody becomes a required `Take`, and Conspiracy's banner transfer an optional `Take`.
+**Architecture:** A printed `GrandScepter` restriction joins `LockedCards` and the Hall of Ministers in `OperationRestrictions.printed`. A choose-one `Decide` marked `passWhenEmpty` is treated by the search like an optional choose-many: with no surviving option it is passed, by the walk and by a search, instead of failing the path. With one option left it parks as any decision does, so the player confirms it. Fae Merchant then offers every held relic in such a choice and lets the restriction and the search hide the scepter. Challenge custody becomes a required `Take`, and Conspiracy's banner transfer an optional `Take`.
 
 **Tech Stack:** Scala 3, sbt through `./sbtw`, munit.
 
-**Spec:** [Global operation restrictions design](../specs/2026-09-30-global-operation-restrictions-design.md): "Rules" (Grand Scepter), "Lazy pruning" (Forced choices), "What retires", "Take for Challenge and Conspiracy", and slice 3 of "Slicing" and "Testing". Read both documents before starting.
+**Spec:** [Global operation restrictions design](../specs/2026-09-30-global-operation-restrictions-design.md): "Rules" (Grand Scepter), "Lazy pruning" (Empty choices), "What retires", "Take for Challenge and Conspiracy", and slice 3 of "Slicing" and "Testing". Read both documents before starting.
 
 ## Global Constraints
 
 - Build and test with `./sbtw`. The compiler runs with `-Werror` and `-Wunused:imports,privates,locals,implicits,nowarn`, so an unused import fails the build.
-- No production Scala file may exceed 800 lines (`BackendArchitectureSuite`, "all production Scala files stay bounded"; also `python3 scripts/check-architecture.py`). `ProcedureWalker.scala` has exactly 800 lines at the start, so Task 3 moves the answer checks out before it adds anything.
+- No production Scala file may exceed 800 lines (`BackendArchitectureSuite`, "all production Scala files stay bounded"; also `python3 scripts/check-architecture.py`). `ProcedureWalker.scala` has exactly 800 lines at the start. This plan does not change it: the walker already passes an optional decision the search leaves empty.
 - `BackendArchitectureSuite` still applies: no power names in walker sources (comments included), and powers do not import `gameplay.walker`.
 - Every global restriction refuses as `Impossible`. An optional operation it refuses is skipped; a required one rejects the batch.
-- Replay applies recorded operations without re-checking restrictions. The only replay change is Task 2's automatic answer.
+- Replay applies recorded operations without re-checking restrictions. Do not change `WalkerReplay`.
 - No timing check joins `sbt test`. The `SearchBudget` benchmark stays a program run by hand.
 - Never touch the live database under `var/oathdigital`.
 - Commits end with the trailer the session's system reminder names.
@@ -24,21 +24,20 @@
 ## Decisions taken at plan time
 
 These answer the questions put to the product owner on 2026-09-30. The spec
-already records them (committed with this plan).
+already records them.
 
-- **Forced choices.** Removing Fae Merchant's filter without them would change
-  two edge cases: holding the scepter and one drawn relic would park on a
-  one-option confirm, and holding only the scepter with an empty relic deck
-  would refuse the action. The product owner asked for a look-ahead that keeps
-  both. `Decide.autoAnswer` does it for any choose-one: one option left is
-  answered by the walker, none left is passed. Only a choose-one may be a
-  forced choice.
-- **Recording.** The automatic answer is a `ChoicePayload` with
-  `automatic = true`, like an automatic roll's `RollPayload`. It is on the
-  wire only when true. Replay checks its node id only (there is no park before
-  it) and appends the answer to the pending answers, starting them when
-  nothing is pending, so a later `WalkerParked` finds the same answers. It
-  posts no "Chose" line.
+- **One option still parks.** When the search leaves a decision one option,
+  the player sees that option and clicks to confirm it. The walker never
+  answers for the player.
+- **Empty choices are passed.** Removing Fae Merchant's filter would otherwise
+  refuse the action for a player holding only the scepter with an empty relic
+  deck: the scepter's bury is refused, so the choice has no option left.
+  `Decide.passWhenEmpty` makes such a choose-one pass instead, as an empty
+  optional choose-many already does. Only a choose-one may carry the flag.
+- **Fae Merchant always asks.** It declares its choice whenever it holds a
+  relic, so a lone relic is confirmed with one click, where today it goes
+  back silently. Declaring the choice is what lets the search prune the
+  scepter and pass an empty choice.
 - **Challenge custody** sits directly in the tree, so the walker checks the
   `Take` whole and records its `Move` leaf: the Game Log line, which reads that
   `Move`, needs no change. The custody is a required `Take` (`Take` gains
@@ -55,19 +54,12 @@ already records them (committed with this plan).
 
 - Create `src/main/scala/oathdigital/gameplay/operations/GrandScepter.scala`: the printed restriction.
 - Modify `src/main/scala/oathdigital/gameplay/operations/OperationRestrictions.scala`: `printed` adds one `GrandScepter` per scepter relic.
-- Modify `src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala`: `ChoicePayload.automatic`.
-- Modify `src/main/scala/oathdigital/serialization/WalkerEventCodec.scala`: the `automatic` flag on the wire.
-- Modify `src/main/scala/oathdigital/gameplay/walker/WalkerReplay.scala`: the automatic answer's replay.
-- Modify `src/main/scala/oathdigital/application/gamelog/DetailLines.scala`: no "Chose" line for an automatic answer.
-- Modify the other `ChoicePayload` patterns (a fourth `_`): `application/gamelog/CampaignLines.scala`, `LogJournal.scala`, `NegotiationLines.scala`, `ActionLines.scala`, and three test suites.
-- Modify `src/main/scala/oathdigital/model/CoreOperations.scala`: `Decide.autoAnswer`; `Take.required`.
-- Modify `src/main/scala/oathdigital/gameplay/walker/DecisionQueries.scala`: `answerable`, the answer checks moved out of the walker.
-- Modify `src/main/scala/oathdigital/gameplay/walker/WalkerSearch.scala`: forced choices in `narrow`, `narrowed` and `reach`; new `forced`.
-- Modify `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`: answer a forced choice; `nodeId` helper; `answerDecide` slimmed.
+- Modify `src/main/scala/oathdigital/model/CoreOperations.scala`: `Decide.passWhenEmpty`; `Take.required`.
+- Modify `src/main/scala/oathdigital/gameplay/walker/WalkerSearch.scala`: a choose-one passed when empty, in `narrow`, `narrowed` and `reach`.
 - Modify `src/main/scala/oathdigital/gameplay/powers/action/FaeMerchant.scala` (becomes a `case object`), `DiceAndRelicDrawPowers.scala` and `gameplay/powers/PhasePowerCatalog.scala`.
 - Modify `src/main/scala/oathdigital/gameplay/actions/challenge/ChallengeProcedure.scala` and `gameplay/powers/whenplayed/ConspiracyWhenPlayed.scala`: `Take`.
 - Modify `src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala` and `application/gamelog/CampaignLines.scala`: the `Take` patterns gain a sixth `_`.
-- Tests: `OperationRestrictionsSuite`, `GameEventWireSuite`, new `gameplay/walker/AutomaticChoiceReplaySuite`, `GameLogPowerLinesSuite`, `WalkerSearchSuite`, new `gameplay/ForcedChoiceSuite`, `FaeMerchantSuite`, `DicePowerDecisionProjectionSuite`, `ChallengeProcedureSuite`, `ConspiracyWhenPlayedSuite`.
+- Tests: `OperationRestrictionsSuite`, `WalkerSearchSuite`, new `gameplay/PassWhenEmptySuite`, `FaeMerchantSuite`, `DicePowerDecisionProjectionSuite`, `ChallengeProcedureSuite`, `ConspiracyWhenPlayedSuite`.
 - Docs: the spec's status line and `docs/ROADMAP.md`.
 
 ---
@@ -175,259 +167,44 @@ git commit -m "feat(restrictions): keep the Grand Scepter in play"
 
 ---
 
-### Task 2: Automatic answer steps
-
-**Files:**
-- Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala:45-55`
-- Modify: `src/main/scala/oathdigital/serialization/WalkerEventCodec.scala:75-96`
-- Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerReplay.scala:79-88`
-- Modify: `src/main/scala/oathdigital/application/gamelog/DetailLines.scala:39-40`
-- Modify (pattern arity only): `application/gamelog/CampaignLines.scala:26,37,45`, `LogJournal.scala:85`, `NegotiationLines.scala:33`, `ActionLines.scala:192,199,220`; tests `gameplay/OathRulesWalkerPowerSuite.scala:100`, `gameplay/oathkeeper/OathkeeperProcedureSuite.scala:80`, `application/GameApplicationServiceSuite.scala:1048`
-- Create: `src/test/scala/oathdigital/gameplay/walker/AutomaticChoiceReplaySuite.scala`
-- Test: `src/test/scala/oathdigital/serialization/GameEventWireSuite.scala`, `src/test/scala/oathdigital/application/gamelog/GameLogPowerLinesSuite.scala`
-
-**Interfaces:**
-- Produces: `ChoicePayload(decisionId: String, answer: DecisionAnswer, by: PlayerId, automatic: Boolean = false)`. Wire key `"automatic": true`, written only when true. Replay of an automatic answer: node id checked, answer appended to `walkerPending.answered`, or `walkerPending = Some(PendingTree(nodeId segments, Vector(answer)))` when nothing is pending.
-
-- [ ] **Step 1: Write the failing tests**
-
-Create `AutomaticChoiceReplaySuite.scala`:
-
-```scala
-package oathdigital.gameplay.walker
-
-import oathdigital.model._
-import oathdigital.model.TestGameFixtures._
-
-/** Replay of an answer the walker gave to a forced choice (global operation
-  * restrictions design, "Forced choices"). No park comes before it, so only
-  * its node id is checked, and the answer joins the pending answers that a
-  * later park carries.
-  */
-class AutomaticChoiceReplaySuite extends munit.FunSuite:
-  private val answer = Answered("test.ask",
-    DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("keep")), playerId)
-
-  private def step(nodeId: String, automatic: Boolean) =
-    WalkerStepRecorded(nodeId, ChoicePayload(answer.decisionId, answer.answer,
-      answer.by, automatic), Vector.empty, Vector.empty)
-
-  private def pending(state: OathState): Option[PendingTree] = state match
-    case OathState.Ready(value) => value.game.current.walkerPending
-    case other => fail(s"expected a ready game, got $other")
-
-  test("an automatic answer with no park before it starts the pending answers"):
-    val replayed = ProcedureWalker.applyRecorded(OathState.Ready(ready),
-      step("0.1", automatic = true))
-    assertEquals(replayed.map(pending), Right(Some(PendingTree(
-      at = Vector("0", "1"), answered = Vector(answer)))))
-
-  test("a player's answer still needs the park it answers"):
-    assert(ProcedureWalker.applyRecorded(OathState.Ready(ready),
-      step("0.1", automatic = false)).isLeft)
-
-  test("an automatic answer after a park joins its answers and keeps its " +
-      "position"):
-    val earlier = Answered("test.first",
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("a")), playerId)
-    val parked = ready.updateCurrent(_.copy(walkerPending = Some(PendingTree(
-      at = Vector("0"), answered = Vector(earlier)))))
-    val replayed = ProcedureWalker.applyRecorded(OathState.Ready(parked),
-      step("2", automatic = true))
-    assertEquals(replayed.map(pending), Right(Some(PendingTree(
-      at = Vector("0"), answered = Vector(earlier, answer)))))
-
-  test("a later park carrying the automatic answer replays"):
-    val park = WalkerParked(ActionRef.Challenge, Vector("1"), Vector(answer),
-      Vector.empty, Vector.empty)
-    val replayed = ProcedureWalker.applyRecorded(OathState.Ready(ready),
-      step("0", automatic = true))
-      .flatMap(ProcedureWalker.applyRecorded(_, park))
-    assertEquals(replayed.map(pending), Right(Some(PendingTree(
-      at = Vector("1"), answered = Vector(answer)))))
-```
-
-In `GameEventWireSuite.scala`, after the test "a choose-amount answer round trips through the journal", add:
-
-```scala
-  test("an automatic answer round trips through the journal, and a player's " +
-      "answer writes no automatic flag"):
-    val player = PlayerId("red")
-    val answer = ChooseOneAnswer(DecisionOptionRef.Button("keep"))
-    val events = Vector[OathEvent](
-      WalkerStepRecorded("1", ChoicePayload("test.ask", answer, player,
-        automatic = true), Vector.empty, Vector.empty),
-      WalkerStepRecorded("2", ChoicePayload("test.ask", answer, player),
-        Vector.empty, Vector.empty))
-    val encoded = GameEventWire.encodeStream("automatic", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
-      events)
-    val records = ujson.read(encoded).arr
-    assert(records(0).toString.contains("\"automatic\":true"), records(0).toString)
-    assert(!records(1).toString.contains("automatic"), records(1).toString)
-```
-
-In `GameLogPowerLinesSuite.scala`, after the test "pressing Done on an Inspect writes no Chose line", add:
-
-```scala
-  test("an answer the walker gave to a forced choice writes no Chose line"):
-    val script = usePower
-    val steps = withoutNotes(script.history.steps)
-    def answered(automatic: Boolean) = inserted(steps, take(steps),
-      WalkerStepRecorded("inspect", ChoicePayload("power.scryer.inspect",
-        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("other")),
-        script.actor, automatic), Vector.empty, Vector.empty))
-    def chose(lines: Vector[String]) = lines.count(_.startsWith("Chose "))
-    val before = chose(lines(steps))
-    assertEquals(chose(lines(answered(automatic = false))), before + 1)
-    assertEquals(chose(lines(answered(automatic = true))), before)
-```
-
-- [ ] **Step 2: Run the tests to verify they fail**
-
-Run: `./sbtw "testOnly oathdigital.gameplay.walker.AutomaticChoiceReplaySuite"`
-Expected: compile failure: `ChoicePayload` takes three arguments.
-
-- [ ] **Step 3: Add the flag, its wire form, its replay and its log rule**
-
-In `WalkerEvents.scala`, replace the `ChoicePayload` doc and declaration with:
-
-```scala
-/** Records a resolved parked decision (Task 5 ruling 5.3), or, when
-  * `automatic`, the answer the walker gave a forced choice left with one
-  * option (global operation restrictions design, "Forced choices"). The
-  * step's `ops` stay empty: appending the answer to `pending.answered` is a
-  * state write (the walker rebuilds `answered` from these events at replay),
-  * not an operation batch.
-  *
-  * @param by who answered: the decision's owner for an automatic answer.
-  */
-final case class ChoicePayload(decisionId: String, answer: DecisionAnswer,
-    by: PlayerId, automatic: Boolean = false)
-    extends WalkerStepPayload
-```
-
-In `WalkerEventCodec.scala`, replace the `ChoicePayload` encode case with:
-
-```scala
-      case ChoicePayload(decisionId, answer, by, automatic) =>
-        val encoded = ujson.Obj(
-          "kind" -> "choice", "decisionId" -> decisionId,
-          "payload" -> DecisionAnswerCodec.encode(answer),
-          "byPlayerId" -> by.value)
-        if automatic then encoded("automatic") = ujson.True
-        encoded
-```
-
-and the `"choice"` decode case with:
-
-```scala
-      case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
-        .map(ChoicePayload(value("decisionId").str, _,
-          PlayerId(value("byPlayerId").str),
-          value.obj.get("automatic").exists(_.bool)))
-```
-
-In `WalkerReplay.scala`, replace the `ChoicePayload` case with:
-
-```scala
-      // An automatic answer has no park before it: only its node id is
-      // checked, and with nothing pending it starts the pending answers. A
-      // later park carries the same answers, and a completion clears them.
-      case step @ WalkerStepRecorded(_,
-          ChoicePayload(decisionId, payload, by, automatic), ops, _) =>
-        for
-          pending <- if automatic then validateStep(step).map(_ =>
-              ready.game.current.walkerPending.getOrElse(PendingTree(
-                at = step.nodeId.split('.').toVector, answered = Vector.empty)))
-            else validateParkedStep(step)
-          _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
-            "recorded ChoicePayload must not contain operations"))
-          answered = pending.copy(answered = pending.answered :+
-            Answered(decisionId, payload, by))
-        yield ready.copy(game = ready.game.copy(current =
-          ready.game.current.copy(walkerPending = Some(answered))))
-```
-
-In `DetailLines.scala`, change the `decision` case head to:
-
-```scala
-    case WalkerStepRecorded(_, ChoicePayload(id, answer, by, automatic), _, _)
-        if !automatic && !DetailLines.narrated(id) && !narrated(id) =>
-```
-
-- [ ] **Step 4: Fix the remaining patterns**
-
-Every other `ChoicePayload(a, b, c)` pattern now has the wrong arity. Add a
-fourth `_` to each, changing nothing else:
-`CampaignLines.scala` lines 26, 37 and 45, `LogJournal.scala` line 85,
-`NegotiationLines.scala` line 33, `ActionLines.scala` lines 192, 199 and 220,
-and the tests `OathRulesWalkerPowerSuite.scala` line 100,
-`OathkeeperProcedureSuite.scala` line 80 and
-`GameApplicationServiceSuite.scala` line 1048. Constructor calls with three
-arguments keep compiling through the default.
-
-Run: `./sbtw Test/compile`
-Expected: success. If the compiler names another three-argument pattern, add `_` there too.
-
-- [ ] **Step 5: Run the tests to verify they pass**
-
-Run: `./sbtw "testOnly oathdigital.gameplay.walker.AutomaticChoiceReplaySuite oathdigital.serialization.GameEventWireSuite oathdigital.application.gamelog.GameLogPowerLinesSuite"`
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add -A src
-git commit -m "feat(walker): record, replay and log an automatic answer"
-```
-
----
-
-### Task 3: Forced choices in the walker and the search
+### Task 2: Choices passed when empty
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/CoreOperations.scala:589-600` (`Decide`)
-- Modify: `src/main/scala/oathdigital/gameplay/walker/DecisionQueries.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerSearch.scala`
-- Modify: `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`
-- Create: `src/test/scala/oathdigital/gameplay/ForcedChoiceSuite.scala`
+- Create: `src/test/scala/oathdigital/gameplay/PassWhenEmptySuite.scala`
 - Test: `src/test/scala/oathdigital/gameplay/walker/WalkerSearchSuite.scala`
 
 **Interfaces:**
-- Consumes: `ChoicePayload(..., automatic)` from Task 2.
-- Produces: `Decide(decisionId, owner, query, window = None, coOwners = Vector.empty, autoAnswer: Boolean = false)`, with `autoAnswer` allowed only on a `ChooseOne`. `WalkerSearch.forced(decide: Decide): Option[DecisionAnswer]`. `DecisionQueries.answerable(decide: Decide, answer: Answered): Either[OathViolation, Unit]`.
+- Produces: `Decide(decisionId, owner, query, window = None, coOwners = Vector.empty, passWhenEmpty: Boolean = false)`, with `passWhenEmpty` allowed only on a `ChooseOne`. `WalkerSearch.narrow` returns `Right(None)` and `WalkerSearch.reach` returns `Right(Reach.Skipped)` for such a decision with no surviving option. `ProcedureWalker` is unchanged: its `runLeaf` already passes a decision `narrow` returns as `None`.
 
 - [ ] **Step 1: Write the failing tests**
 
 In `WalkerSearchSuite.scala`, add after `private val abc`:
 
 ```scala
-  private def forcedAsk(query: DecisionQuery) =
-    decide(query).copy(autoAnswer = true)
+  private def passable(query: DecisionQuery) =
+    decide(query).copy(passWhenEmpty = true)
 ```
 
 and these tests after "an optional choose-many with no survivor is not asked":
 
 ```scala
-  test("a forced choice with no survivor is not asked, and a search passes it"):
-    val asked = forcedAsk(DecisionQuery.ChooseOne(Vector(button("a"))))
+  test("a choose-one passed when empty, with no survivor, is not asked, and " +
+      "a search passes it"):
+    val asked = passable(DecisionQuery.ChooseOne(Vector(button("a"))))
     assertEquals(WalkerSearch.narrow(asked, only(_ => false)), Right(None))
     assertEquals(WalkerSearch.reach(asked, only(_ => false)),
       Right(WalkerSearch.Reach.Skipped))
 
-  test("only a forced choice left with one option is answered by the walker"):
-    assertEquals(WalkerSearch.forced(forcedAsk(DecisionQuery.ChooseOne(
-      Vector(button("b"))))), Some(ChooseOneAnswer(ref("b"))))
-    assertEquals(WalkerSearch.forced(forcedAsk(DecisionQuery.ChooseOne(
-      Vector(button("a"), button("b"))))), None)
-    assertEquals(WalkerSearch.forced(decide(DecisionQuery.ChooseOne(
-      Vector(button("b"))))), None)
+  test("a choose-one passed when empty keeps its one survivor to ask"):
+    val asked = passable(DecisionQuery.ChooseOne(Vector(button("a"),
+      button("b"))))
+    assertEquals(WalkerSearch.narrow(asked, only(_ == ChooseOneAnswer(ref("b")))),
+      Right(Some(passable(DecisionQuery.ChooseOne(Vector(button("b")))))))
 ```
 
-Create `ForcedChoiceSuite.scala`:
+Create `PassWhenEmptySuite.scala`:
 
 ```scala
 package oathdigital.gameplay
@@ -435,18 +212,17 @@ package oathdigital.gameplay
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
-  WalkerOutcome, WalkerParked, WalkerSimulation, WalkerStepRecorded}
+  WalkerOutcome, WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
 
-/** A forced choice (`Decide.autoAnswer`) is asked only when the search
-  * leaves a real choice: the walker answers the one option left itself and
-  * passes a decision with none left (global operation restrictions design,
-  * "Forced choices"). Locked refuses to discard the faceup Sealing Ward,
-  * which is what prunes an option here.
+/** A choose-one marked `passWhenEmpty` is passed when the search leaves it
+  * no option, and parks as any decision does when one is left (global
+  * operation restrictions design, "Empty choices"). Locked refuses to discard
+  * the faceup Sealing Ward, which is what prunes an option here.
   */
-class ForcedChoiceSuite extends munit.FunSuite:
+class PassWhenEmptySuite extends munit.FunSuite:
   private val powers = WalkerPowerCatalog.default(catalog)
   private val lockedCard = CatalogNames.denizen("Sealing Ward")
   private val ready = Table.start.adviser(p1, lockedCard).ready
@@ -462,83 +238,60 @@ class ForcedChoiceSuite extends munit.FunSuite:
     PositionedLocation(Location.PlayArea(p1)), Region.Provinces,
     catalog.suitOf(lockedCard).get, 0, 0, p1, required = true)
 
-  /** A forced choice of `keys`, then the discard when "discard" was chosen. */
-  private def forced(keys: String*): Operation = Sequence(Vector[Operation](
+  /** A choice of `keys` passed when empty, then the discard when "discard"
+    * was chosen. */
+  private def passable(keys: String*): Operation = Sequence(Vector[Operation](
     Decide(ask, p1, DecisionQuery.ChooseOne(keys.toVector.map(button)),
-      autoAnswer = true),
+      passWhenEmpty = true),
     Branch((_, pending) => pending.answered.collectFirst {
       case Answered(`ask`, answer, _) => answer
     }.filter(_ == chose("discard")).toVector.map(_ => discardLocked))))
 
-  private def choices(events: Vector[OathEvent]): Vector[ChoicePayload] =
-    events.collect { case WalkerStepRecorded(_, choice: ChoicePayload, _, _) =>
-      choice }
-
-  private def finished(tree: Operation): Vector[OathEvent] =
+  private def offered(tree: Operation): Vector[DecisionOptionRef] =
     ProcedureWalker.advance(ready, tree, None, powers) match
-      case Right(WalkerOutcome.Finished(_, events)) => events
-      case other => fail(s"expected a finished walk, got $other")
-
-  test("one option left is answered by the walker, without a park"):
-    assertEquals(choices(finished(forced("discard", "keep"))),
-      Vector(ChoicePayload(ask, chose("keep"), p1, automatic = true)))
-
-  test("a single declared option is answered by the walker"):
-    assertEquals(choices(finished(forced("keep"))),
-      Vector(ChoicePayload(ask, chose("keep"), p1, automatic = true)))
-
-  test("with no option left the decision is passed and the action still runs"):
-    val tree = forced("discard")
-    assert(WalkerSimulation.starts(tree, ready, powers))
-    assertEquals(choices(finished(tree)), Vector.empty)
-
-  test("several options left park as usual"):
-    ProcedureWalker.advance(ready, forced("keep", "other"), None, powers) match
       case Right(WalkerOutcome.Parked(pending, _)) =>
-        assertEquals(pending.at, Vector("0"))
+        ProcedureWalker.openDecisions(ready, tree, pending, powers).head
+          .query match
+          case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
+          case other => fail(s"expected a choose-one, got $other")
       case other => fail(s"expected a park, got $other")
 
-  test("a search passes a later forced choice with nothing left, so the " +
-      "earlier option stays offered"):
+  test("one option left parks, offering it for the player to confirm"):
+    assertEquals(offered(passable("discard", "keep")), Vector(ref("keep")))
+
+  test("a single declared option parks"):
+    assertEquals(offered(passable("keep")), Vector(ref("keep")))
+
+  test("with no option left the decision is passed and the action still runs"):
+    val tree = passable("discard")
+    assert(WalkerSimulation.starts(tree, ready, powers))
+    ProcedureWalker.advance(ready, tree, None, powers) match
+      case Right(WalkerOutcome.Finished(_, events)) =>
+        assertEquals(events.collect {
+          case WalkerStepRecorded(_, choice: ChoicePayload, _, _) => choice
+        }, Vector.empty)
+      case other => fail(s"expected a finished walk, got $other")
+
+  test("a search passes a later choice with nothing left, so the earlier " +
+      "option stays offered"):
     val tree = Sequence(Vector[Operation](
       Decide(next, p1, DecisionQuery.ChooseOne(Vector(button("onward"),
         button("stop")))),
       Branch((_, pending) =>
         if pending.answered.exists(_.answer == chose("onward"))
-        then Vector(forced("discard")) else Vector.empty)))
-    val Right(WalkerOutcome.Parked(pending, _)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
-    val offered = ProcedureWalker.openDecisions(ready, tree, pending, powers)
-      .head.query match
-      case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
-      case other => fail(s"expected a choose-one, got $other")
-    assertEquals(offered, Vector(ref("onward"), ref("stop")))
+        then Vector(passable("discard")) else Vector.empty)))
+    assertEquals(offered(tree), Vector(ref("onward"), ref("stop")))
 
-  test("an answer given before a later park is kept for its resume and " +
-      "replays"):
-    val tree = Sequence(Vector[Operation](forced("discard", "keep"),
-      Decide(next, p1, DecisionQuery.ChooseOne(Vector(button("a"),
-        button("b"))))))
-    val Right(WalkerOutcome.Parked(pending, events)) =
-      ProcedureWalker.advance(ready, tree, None, powers): @unchecked
-    assertEquals(pending.answered, Vector(Answered(ask, chose("keep"), p1)))
-    val park = WalkerParked(ActionRef.Challenge, pending.at, pending.answered,
-      Vector.empty, Vector.empty)
-    val replayed = (events.collect { case event: WalkerEvent => event } :+ park)
-      .foldLeft[Either[OathViolation, OathState]](Right(OathState.Ready(ready)))(
-        (state, event) => state.flatMap(ProcedureWalker.applyRecorded(_, event)))
-    assert(replayed.isRight, replayed.toString)
-
-  test("only a choose-one can be a forced choice"):
+  test("only a choose-one may be passed when empty"):
     intercept[IllegalArgumentException](Decide(ask, p1,
       DecisionQuery.ChooseMany(0, 1, Vector(button("a")), None),
-      autoAnswer = true))
+      passWhenEmpty = true))
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.ForcedChoiceSuite oathdigital.gameplay.walker.WalkerSearchSuite"`
-Expected: compile failure: `autoAnswer` is not a member of `Decide`.
+Run: `./sbtw "testOnly oathdigital.gameplay.PassWhenEmptySuite oathdigital.gameplay.walker.WalkerSearchSuite"`
+Expected: compile failure: `passWhenEmpty` is not a member of `Decide`.
 
 - [ ] **Step 3: Add the flag to `Decide`**
 
@@ -546,10 +299,10 @@ In `CoreOperations.scala`, add to the end of the `Decide` doc, after the `window
 
 ```scala
   *
-  * `autoAnswer` makes a choose-one a forced choice (global operation
-  * restrictions design, "Forced choices"): it is asked only when the search
-  * leaves more than one option. The walker answers the one option left
-  * itself, and passes the decision when none is left.
+  * `passWhenEmpty` lets the search leave a choose-one with no option (global
+  * operation restrictions design, "Empty choices"): the walker then passes
+  * it, as it passes an empty optional choose-many, instead of failing the
+  * path. With one option left it still parks, so the player confirms it.
 ```
 
 and change the declaration to:
@@ -559,26 +312,26 @@ final case class Decide(decisionId: String, owner: PlayerId,
     query: DecisionQuery,
     override val window: Option[PowerWindow] = None,
     coOwners: Vector[PlayerId] = Vector.empty,
-    autoAnswer: Boolean = false)
+    passWhenEmpty: Boolean = false)
     extends PrimitiveOperation:
-  require(!autoAnswer || query.isInstanceOf[DecisionQuery.ChooseOne],
-    "only a choose-one can be a forced choice")
+  require(!passWhenEmpty || query.isInstanceOf[DecisionQuery.ChooseOne],
+    "only a choose-one can be passed when empty")
 ```
 
-- [ ] **Step 4: Teach the search forced choices**
+- [ ] **Step 4: Teach the search to pass it**
 
 In `WalkerSearch.scala`:
 
 In `narrow`, change the choose-one case's `required = true` to
-`required = !decide.autoAnswer`, and extend its doc's last sentence: "`Right(None)` is an optional one with nothing left, which is not asked; a forced choice with nothing left is optional."
+`required = !decide.passWhenEmpty`, and change its doc's last sentence to "`Right(None)` is an optional one with nothing left, which is not asked: a choose-many whose minimum is zero, or a choose-one passed when empty."
 
 Replace `reach` with:
 
 ```scala
   /** What a search does at `decide`: it passes an optional decision with
     * nothing to ask, stops at the first answer that survives, and fails when
-    * none does. A forced choice with no surviving answer is passed. A kind
-    * whose answers are not tried (`Partition`, `Distribute`) counts as
+    * none does. A choose-one passed when empty is passed when none does. A
+    * kind whose answers are not tried (`Partition`, `Distribute`) counts as
     * answerable, and the answer-time check stays.
     */
   def reach(decide: Decide,
@@ -589,7 +342,7 @@ Replace `reach` with:
       case Some(_) => answers(decide) match
         case None => Right(Reach.Answerable)
         case Some(all) => survivor(all, verdict, None) match
-          case Left(_) if decide.autoAnswer => Right(Reach.Skipped)
+          case Left(_) if decide.passWhenEmpty => Right(Reach.Skipped)
           case found => found.map(_ => Reach.Answerable)
 ```
 
@@ -598,135 +351,27 @@ In `narrowed`, replace the choose-one case with:
 ```scala
       case one: DecisionQuery.ChooseOne =>
         val options = one.options.filter(o => permitted(o.ref))
-        if decide.autoAnswer && options.isEmpty then None
+        if decide.passWhenEmpty && options.isEmpty then None
         else Some(decide.copy(query = one.copy(options = options)))
 ```
 
-and change its doc's second sentence to "`None` is an optional choose-many or a forced choice with nothing left, which is not asked."
+and change its doc's second sentence to "`None` is an optional choose-many or a choose-one passed when empty, with nothing left, which is not asked."
 
-Add after `narrowed`:
+- [ ] **Step 5: Run the tests to verify they pass**
 
-```scala
-  /** The answer the walker gives a forced choice left with one option, else
-    * `None`. */
-  def forced(decide: Decide): Option[DecisionAnswer] = decide.query match
-    case DecisionQuery.ChooseOne(Vector(only), _) if decide.autoAnswer =>
-      Some(DecisionAnswer.ChooseOneAnswer(only.ref))
-    case _ => None
-```
+Run: `./sbtw "testOnly oathdigital.gameplay.PassWhenEmptySuite oathdigital.gameplay.walker.WalkerSearchSuite oathdigital.gameplay.LazyPruningSuite oathdigital.gameplay.BackendArchitectureSuite"`
+Expected: PASS. `LazyPruningSuite`'s "a later required decision, another player's, with every option pruned hides the earlier option" still holds: a decision without the flag still fails the path.
 
-- [ ] **Step 5: Move the answer checks into `DecisionQueries`**
-
-In `DecisionQueries.scala`, add `Answered` and `Decide` to the model import, and add after `wellFormed`:
-
-```scala
-  /** Whether `answer` may answer `decide`: its submitter is one of the
-    * node's owners, the query is answerable at all, and the query accepts the
-    * answer. The checks read no game state, so the walker learns nothing here
-    * about which action parked: a legality fact that used to live in a
-    * per-node `validate` closure now lives in the declared option set, which
-    * is also what the projector offers.
-    */
-  def answerable(decide: Decide, answer: Answered): Either[OathViolation, Unit] =
-    for
-      _ <- Either.cond(decide.owners.contains(answer.by), (),
-        OathViolation.WrongPlayer(decide.owner, answer.by))
-      _ <- wellFormed(decide.decisionId, decide.query)
-      _ <- accepts(decide.decisionId, decide.query, answer.answer, answer.by)
-    yield ()
-```
-
-- [ ] **Step 6: Answer a forced choice in the walker**
-
-In `ProcedureWalker.scala`:
-
-Add after `leafLabel`:
-
-```scala
-  /** A step's node id: its path, or its leaf label at the root. */
-  private def nodeId(path: Vector[String], leaf: Operation): String =
-    if path.isEmpty then leafLabel(leaf) else path.mkString(".")
-```
-
-Replace the whole of `answerDecide`, its doc included, with:
-
-```scala
-  /** Checks an answer against its Decide ([[DecisionQueries.answerable]]) and
-    * records it: `answer` is appended to `answered`, and ONE
-    * [[WalkerStepRecorded]] carrying a [[ChoicePayload]] (ops empty -- the
-    * answer is a state write into `pending.answered`) is appended. An
-    * `automatic` answer is one the walker gave a forced choice.
-    */
-  private def answerDecide(decide: Decide, ctx: WalkCtx,
-      path: Vector[String], answer: Answered, contributions: Vector[PowerId],
-      automatic: Boolean = false): Either[OathViolation, WalkCtx] =
-    DecisionQueries.answerable(decide, answer).map(_ => ctx.copy(
-      answered = ctx.answered :+ answer,
-      previous = Some((ctx.state, ctx.state)),
-      events = ctx.events :+ WalkerStepRecorded(
-        nodeId = nodeId(path, decide),
-        payload = ChoicePayload(answer.decisionId, answer.answer, answer.by,
-          automatic),
-        ops = Vector.empty, contributions = contributions)))
-```
-
-In `recordRoll`, delete the two lines
-
-```scala
-      val nodeId =
-        if path.isEmpty then leafLabel(roll) else path.mkString(".")
-```
-
-and change `nodeId = nodeId, payload = RollPayload(...)` to `nodeId = nodeId(path, roll), payload = RollPayload(...)`.
-
-In `narrowAt`, change `if !ctx.powers.probing then Right(Some(decide))` to:
-
-```scala
-    if !ctx.powers.probing then
-      Right(if decide.autoAnswer then WalkerSearch.narrowed(decide, _ => true)
-        else Some(decide))
-```
-
-In `runLeaf`, replace the `case Some(narrowed) =>` branch with:
-
-```scala
-          case Some(narrowed) =>
-            // Reached fresh, so this is the only time it is asked this pass.
-            val hidden = if cursor.nonEmpty then Vector.empty
-              else WalkerPowerGather.lookAheadNotes(ctx.root, decide, narrowed,
-                ctx.state, ctx.activePlayer, ctx.powers, ctx.answered,
-                ctx.procedure)
-            val noted = ctx.copy(events = ctx.events ++ hidden)
-            WalkerSearch.forced(narrowed).filter(_ => cursor.isEmpty) match
-              case Some(answer) => answerDecide(narrowed, noted, path,
-                Answered(narrowed.decisionId, answer, narrowed.owner),
-                contributions, automatic = true).map(Done(_))
-              case None => runNarrowed(narrowed, noted, path, cursor, resume,
-                contributions, strict)
-```
-
-and add to `runLeaf`'s doc, after "…is passed without asking.": "A forced choice left with one option is answered here, without a park."
-
-- [ ] **Step 7: Check the line bound**
-
-Run: `wc -l src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`
-Expected: at most 800 (about 791).
-
-- [ ] **Step 8: Run the tests to verify they pass**
-
-Run: `./sbtw "testOnly oathdigital.gameplay.ForcedChoiceSuite oathdigital.gameplay.walker.WalkerSearchSuite oathdigital.gameplay.LazyPruningSuite oathdigital.gameplay.ProcedureWalkerSuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS.
-
-- [ ] **Step 9: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add -A src
-git commit -m "feat(walker): answer a forced choice the search leaves with one option"
+git commit -m "feat(walker): pass a choose-one the search leaves empty when it asks to be"
 ```
 
 ---
 
-### Task 4: Fae Merchant asks a forced choice
+### Task 3: Fae Merchant offers every relic held
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/gameplay/powers/action/FaeMerchant.scala` (whole file)
@@ -735,53 +380,91 @@ git commit -m "feat(walker): answer a forced choice the search leaves with one o
 - Test: `src/test/scala/oathdigital/gameplay/powers/action/FaeMerchantSuite.scala`, `src/test/scala/oathdigital/application/DicePowerDecisionProjectionSuite.scala`
 
 **Interfaces:**
-- Consumes: `Decide(..., autoAnswer = true)` (Task 3), `ChoicePayload(..., automatic)` (Task 2), `GrandScepter` (Task 1), `BuildOps(build, required = true)` (slice 2).
+- Consumes: `Decide(..., passWhenEmpty = true)` (Task 2), `GrandScepter` (Task 1), `BuildOps(build, required = true)` (slice 2).
 - Produces: `case object FaeMerchant extends PaidAction` with `decisionId` and `returned` unchanged; `FaeMerchant.forCatalog` is gone. `DiceAndRelicDrawPowers.powers: Vector[PhasePower]` replaces `DiceAndRelicDrawPowers.forCatalog`.
 
-- [ ] **Step 1: Write the tests**
+- [ ] **Step 1: Write the failing tests**
 
-In `FaeMerchantSuite.scala`, change the walker import to
-`import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions, WalkerStepRecorded}`,
-and change `val merchant = FaeMerchant.forCatalog(catalog)` to `val merchant = FaeMerchant`.
+In `FaeMerchantSuite.scala`, change `val merchant = FaeMerchant.forCatalog(catalog)` to `val merchant = FaeMerchant`.
 
 Replace the test "with only the Grand Scepter held, the drawn relic is the one relic eligible and goes straight back" with:
 
 ```scala
-  test("with only the Grand Scepter held, the drawn relic is the one relic " +
-      "left and goes straight back"):
+  test("with only the Grand Scepter held, the drawn relic is offered alone " +
+      "for the player to confirm"):
     val ready0 = staged(Vector(scepter))
     val top = ready0.game.current.commonCards.relicDeck.head
     val rules0 = rules()
-    val done = use(rules0, ready0, FaeMerchant.id, source).toOption.get
-    val end = ready(done.state)
+    val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
+    walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
+      FaeMerchant.decisionId, actor)
+    assert(answer(rules0, parked.state, FaeMerchant.decisionId,
+      relicRef(scepter)).isLeft)
+    val done = answer(rules0, parked.state, FaeMerchant.decisionId,
+      relicRef(top)).toOption.get
     walkerParked.assertResumed(done.state, Phase.Act, actor)
+    val end = ready(done.state)
     assertEquals(relicIds(end), Vector(scepter))
     assertEquals(end.game.current.commonCards.relicDeck.last, top)
-    assert(done.events.exists {
-      case WalkerStepRecorded(_, ChoicePayload(FaeMerchant.decisionId, _, _,
-          true), _, _) => true
-      case _ => false
-    }, done.events.toString)
-    assertEquals(replayed(rules0, ready0, done.events), end)
-    assert(wireRoundTrips(done.events))
+    assertEquals(replayed(rules0, ready0, parked.events ++ done.events), end)
+```
 
-  test("with only the Grand Scepter held and an empty relic deck, it puts " +
-      "nothing back"):
-    val ready0 = staged(Vector(scepter))
+Replace the test "with no other relic the drawn one is the only candidate and no decision is asked" with:
+
+```scala
+  test("with no other relic the drawn one is offered alone, and confirming " +
+      "puts it back"):
+    val ready0 = staged(Vector.empty)
+    val top = ready0.game.current.commonCards.relicDeck.head
+    val rules0 = rules()
+    val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
+    walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
+      FaeMerchant.decisionId, actor)
+    val done = answer(rules0, parked.state, FaeMerchant.decisionId,
+      relicRef(top)).toOption.get
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
+    val end = ready(done.state)
+    assertEquals(relicIds(end), Vector.empty[RelicId])
+    assertEquals(end.game.current.commonCards.relicDeck.last, top)
+```
+
+Replace the test "an empty relic deck still puts one held relic on the bottom" with the two tests below. `emptied` is the same state that test built:
+
+```scala
+  /** `ready0` with the relic deck moved to the reliquary. */
+  private def emptied(ready0: ReadyGame): ReadyGame =
     val current = ready0.game.current
-    val emptied = ready0.updateCurrent(_.copy(commonCards =
+    ready0.updateCurrent(_.copy(commonCards =
       current.commonCards.copy(relicDeck = Vector.empty)))
       .updateCampaign(c => c.copy(reliquary = c.reliquary ++
         current.commonCards.relicDeck))
-    assert(usableIds(emptied).contains(FaeMerchant.id))
+
+  test("an empty relic deck still offers the one held relic, and confirming " +
+      "puts it on the bottom"):
+    val ready0 = emptied(staged(Vector(held1)))
     val rules0 = rules()
-    val done = use(rules0, emptied, FaeMerchant.id, source).toOption.get
+    val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
+    walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
+      FaeMerchant.decisionId, actor)
+    val done = answer(rules0, parked.state, FaeMerchant.decisionId,
+      relicRef(held1)).toOption.get
+    walkerParked.assertResumed(done.state, Phase.Act, actor)
+    val end = ready(done.state)
+    assertEquals(relicIds(end), Vector.empty[RelicId])
+    assertEquals(end.game.current.commonCards.relicDeck, Vector(held1))
+
+  test("with only the Grand Scepter held and an empty relic deck, it asks " +
+      "nothing and puts nothing back"):
+    val ready0 = emptied(staged(Vector(scepter)))
+    assert(usableIds(ready0).contains(FaeMerchant.id))
+    val rules0 = rules()
+    val done = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     walkerParked.assertResumed(done.state, Phase.Act, actor)
     val end = ready(done.state)
     assertEquals(relicIds(end), Vector(scepter))
     assertEquals(end.game.current.commonCards.relicDeck, Vector.empty[RelicId])
     assertEquals(tokensOn(end, fae), Tokens(0, 1))
-    assertEquals(replayed(rules0, emptied, done.events), end)
+    assertEquals(replayed(rules0, ready0, done.events), end)
 ```
 
 In `DicePowerDecisionProjectionSuite.scala`, after the test "Fae Merchant names both eligible relics to its owner, including the facedown one just taken", add:
@@ -800,10 +483,10 @@ In `DicePowerDecisionProjectionSuite.scala`, after the test "Fae Merchant names 
       Vector(held.value, top.value))
 ```
 
-- [ ] **Step 2: Run the tests to verify the new assertion fails**
+- [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.action.FaeMerchantSuite oathdigital.application.DicePowerDecisionProjectionSuite"`
-Expected: compile failure on `FaeMerchant` used as a value (`merchant = FaeMerchant` needs the object). The behaviour tests are regression guards: with the old filter they already pass, and they must still pass once the filter is gone. The automatic-answer assertion is the one that fails on the old code.
+Expected: compile failure on `val merchant = FaeMerchant` (the companion object is not a power). With that line reverted, the three one-relic tests fail because today's Fae Merchant asks nothing when one relic is eligible. "Fae Merchant does not offer the Grand Scepter" and the scepter-only test already pass on the old filter; they are regression guards for its removal.
 
 - [ ] **Step 3: Rewrite Fae Merchant**
 
@@ -822,13 +505,13 @@ import oathdigital.model._
   *
   * Three siblings run in order: the draw, a live `Branch` that holds only the
   * decision and reads the relics after the draw, and the bury. The decision
-  * offers every relic held and is a forced choice (`Decide.autoAnswer`). The
+  * offers every relic held, so a lone relic is confirmed with one click. The
   * Grand Scepter's restriction refuses its bury, and the bury is a required
-  * batch, so the search hides the scepter. With one relic left it goes back
-  * without asking; with none left (only the scepter held and the relic deck
-  * empty) nothing goes back. The bury returns any secrets on the relic to
-  * their holder. Its `returned` line names the relic chosen, so the choice
-  * posts no "Chose" line.
+  * batch, so the search hides the scepter. The decision is passed when the
+  * search leaves it empty (`Decide.passWhenEmpty`): with only the scepter held
+  * and the relic deck empty, nothing goes back. The bury returns any secrets
+  * on the relic to their holder. Its `returned` line names the relic chosen,
+  * so the choice posts no "Chose" line.
   */
 case object FaeMerchant extends PaidAction("denizen.fae-merchant",
     Cost(secret = 1)):
@@ -851,7 +534,7 @@ case object FaeMerchant extends PaidAction("denizen.fae-merchant",
           DecisionOption.Relic(DecisionOptionRef.Relic(id))),
           heading = Some("Fae Merchant: put a relic on the bottom of the " +
             "relic deck")),
-        autoAnswer = true))
+        passWhenEmpty = true))
     }),
     BuildOps((state, pending) => putBack(state, player, pending),
       required = true),
@@ -870,8 +553,8 @@ case object FaeMerchant extends PaidAction("denizen.fae-merchant",
     PlayerFacts.player(state, player).toOption.toVector.flatMap(_.relics)
       .map(_.id)
 
-  /** Buries the chosen relic. No answer means the forced choice had no relic
-    * left to offer, so nothing goes back. */
+  /** Buries the chosen relic. No answer means the search left the decision
+    * no relic to offer, so nothing goes back. */
   private def putBack(state: ReadyGame, player: PlayerId, pending: PendingTree)
       : Either[OathViolation, Vector[CoreOperation]] =
     val chosen = pending.answered.collectFirst {
@@ -887,8 +570,6 @@ case object FaeMerchant extends PaidAction("denizen.fae-merchant",
     })
 ```
 
-Check that `NoteSupport`, `PlayerFacts` and `RelicDraws` are still all used (they are: `relicsLost`, `player`, `takeTop`), so no import warning appears.
-
 Replace `DiceAndRelicDrawPowers.scala`'s object with (and drop the `ExecutableCatalog` import):
 
 ```scala
@@ -903,7 +584,7 @@ In `PhasePowerCatalog.scala`, change `DiceAndRelicDrawPowers.forCatalog(catalog)
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.action.FaeMerchantSuite oathdigital.application.DicePowerDecisionProjectionSuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS, including the unchanged tests "the Grand Scepter is never offered, and cannot be chosen", "with no other relic the drawn one is the only candidate and no decision is asked" and "an empty relic deck still puts one held relic on the bottom".
+Expected: PASS, including the unchanged tests "it draws a relic, then asks which relic to put on the bottom", "the Grand Scepter is never offered, and cannot be chosen" and "a secret on the relic put back returns to its holder facedown".
 
 Run: `grep -rn "FaeMerchant.forCatalog\|DiceAndRelicDrawPowers.forCatalog" src`
 Expected: no output.
@@ -917,7 +598,7 @@ git commit -m "refactor(powers): hide the Grand Scepter from Fae Merchant throug
 
 ---
 
-### Task 5: Challenge and Conspiracy take the banner
+### Task 4: Challenge and Conspiracy take the banner
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/CoreOperations.scala:434-444` (`Take`)
@@ -1034,7 +715,7 @@ git commit -m "feat(actions): take the banner by Take in Challenge and Conspirac
 
 ---
 
-### Task 6: Close the phase
+### Task 5: Close the phase
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-09-30-global-operation-restrictions-design.md:3-4`
