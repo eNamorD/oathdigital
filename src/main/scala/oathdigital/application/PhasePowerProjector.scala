@@ -18,7 +18,7 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
   def this(catalog: ExecutableCatalog, walkerDecisions: WalkerDecisionProjector) =
     this(catalog, walkerDecisions, PhasePowerCatalog.default(catalog))
 
-  private val walkerPowers =
+  private def walkerPowers =
     WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty)
 
   def project(context: ScopedProjectionContext): Vector[PhasePowerProjection] =
