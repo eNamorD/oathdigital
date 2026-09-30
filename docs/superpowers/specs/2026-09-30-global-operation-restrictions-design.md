@@ -170,6 +170,9 @@ time and add a benchmark of a Campaign park on a full board. After
 slice 2, `sbt test` may grow by at most 15% and the park must answer in under
 50 ms. If either fails, stop and bring alternative designs to the product
 owner. Lowering a depth cap is not one of them.
+The baseline, measured on 2026-09-30 before slice 2: `sbt test` took 9 s (two
+warm runs took 9 s and 8 s), and the `SearchBudget` benchmark measured 12 ms for
+the Campaign start and 2 ms for reading its park.
 
 ### What retires
 
