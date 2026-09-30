@@ -243,6 +243,9 @@ banner. Conspiracy's transfer runs in a `BuildOps`, so it is recorded as a
 `Take`, and its Game Log line is a note, which reads no operation. It stays
 optional, like the relic `Give` beside it. Whether a refused Conspiracy
 target is hidden is decided with Lost Tongue, the first restriction on `Take`.
+That decision must also cover the order inside the batch: the banner's leaving
+operations (the Darkest Secret burn, the People's Favor return) run before the
+`Take`, so a skipped `Take` would leave the banner emptied and not taken.
 
 ## Slicing
 
