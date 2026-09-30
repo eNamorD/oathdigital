@@ -23,13 +23,9 @@ campaign-continuity rules.
 Operation restrictions that hold wherever an operation runs, rather than only
 where a `BuildOps` node passes them. Designed in the
 [Global operation restrictions design](superpowers/specs/2026-09-30-global-operation-restrictions-design.md),
-in two slices:
+in one slice:
 
-1. [ ] **Lazy pruning.** A depth-first search at every park and action start
-   hides each option with no legal path, stopping at hidden information, with
-   no depth cap. It replaces the restriction look-ahead, within a measured
-   performance budget.
-2. [ ] **Grand Scepter and Take.** The Grand Scepter cannot leave play, and
+1. [ ] **Grand Scepter and Take.** The Grand Scepter cannot leave play, and
    Challenge custody and Conspiracy's banner transfer become `Take`.
 
 ### Phase - Catalog batch 3

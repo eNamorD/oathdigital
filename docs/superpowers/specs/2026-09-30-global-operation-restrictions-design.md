@@ -153,14 +153,38 @@ reach, computed only when the player reaches it.
   `Peek`, a `Reveal`, a facedown card flipped faceup). A path that reaches one
   counts as valid. Pruning past that point would leak the outcome. A refusal
   there happens at execution, as today.
+- **Any rejection prunes.** The search runs the real pipeline, so a path
+  fails when any required operation is rejected, for whatever reason, not
+  only when a restriction refuses it.
+- **Answers tried.** A choose-many keeps an option when some accepted
+  selection holding it survives; selections are tried smallest first, and the
+  search stops at the first survivor. A choose-amount is tried value by value
+  and narrowed when the survivors form one range. Partition and Distribute are
+  not enumerated: a search that reaches one counts the path as legal, and the
+  answer-time check stays. A decision owned by another player is answered by
+  its owner in the same simulation.
+- **Loops.** A search that reaches a decision it already stands at, in the
+  same state, stops there and counts the path as legal. The first visit tries
+  the other answers.
+- **Atomic batches.** A `BuildOps` marked `required` runs whole or rejects,
+  so a refused operation inside it fails the path instead of being skipped.
+- **Phase powers.** A phase power's use is offered only when the same dry run
+  a start runs accepts it.
+- **Memo.** A verdict asked from the live walk is kept on its `WalkerPowers`
+  instance (`SearchMemo`), keyed by the tree's identity, the position, the
+  state, the answers so far and the answer. One command reads a park several
+  times: the walk, the answer check and each projection or preview. A verdict
+  asked from inside a search is not kept, since it also depends on the
+  decisions that search already stands at.
 - **No depth cap.** A cap would count the paths it cut off as valid, which is
   an incorrect validation. If the search is too slow, the architecture is
   re-evaluated instead (see the budget below).
-- **One look-ahead.** The search replaces `WalkerPowerGather.probe`. It checks
-  tree-level `Restriction`s and operation restrictions in one pass.
-- **Notes.** An operation restriction may carry a `note`, like `Restriction`,
-  that the Game Log writes when it hides an option. Locked and the Grand
-  Scepter are silent.
+- **One look-ahead.** The search replaces `WalkerPowerGather.probe`. A path
+  also fails when an answer adds a tree-level `Restriction` violation that the
+  answers so far do not already produce.
+- **Notes.** The notes that tree-level `Restriction`s write for the options
+  they hide stay. An operation restriction's note is deferred until a card
+  needs one: Lost Tongue's refused `Take` writes no line (Catalog batch 3).
 
 The search reuses the walker's simulation (`WalkerSimulation`), which runs the
 real pipeline on a copy of the state, so it cannot disagree with execution.
@@ -173,6 +197,12 @@ owner. Lowering a depth cap is not one of them.
 The baseline, measured on 2026-09-30 before slice 2: `sbt test` took 9 s (two
 warm runs took 9 s and 8 s), and the `SearchBudget` benchmark measured 12 ms for
 the Campaign start and 2 ms for reading its park.
+After slice 2, without the memo, `sbt test` took 11 s (summed per-test time
++35%, mostly the Campaign suites), so the budget failed. A profile put the cost
+in the existing pipeline run once per searched answer (`ContributionCollector.gather`
+and `CardIndex.from`), not in the two caches named under "Verify at plan time".
+The memo brought it to 9 to 10 s, with summed per-test time +9.4% (73.07 s to
+79.91 s), the Campaign start at 13 ms and reading its park at 0 ms.
 
 ### What retires
 
@@ -182,7 +212,8 @@ the Campaign start and 2 ms for reading its park.
 - The option filters of Horned Mask and Twin Brother, in slice 2. Until the
   search hides refused options, deleting them would offer a locked card and
   then skip it silently, so slice 1 points them at the shared, faceup-aware
-  `OperationRestrictions.isLocked`.
+  `OperationRestrictions.isLocked`. Both retired in slice 2, with
+  `isLocked`.
 - Fae Merchant's Grand Scepter filter, in slice 3.
 - `WalkerPowerGather.probe`.
 
@@ -198,7 +229,7 @@ are, so a restriction on taking sees them. Conspiracy's relic transfer stays a
 | Slice | Content |
 |---|---|
 | 1. The seam | The restriction set and the power member. The pipeline's required argument and its four callers, plus `CardPlay.legalChoices`. Composites checked before they are split. `LockedCards`, the active-modifier rule and the Hall of Ministers. The facedown fix. `DiscardRestrictions`, its coverage suite, `BuildOps.restrictions` and `CardPlay`'s locked check retire. |
-| 2. Lazy pruning | The baseline measurement and the benchmark first. The depth-first search at parks and action start, stopping at hidden information. Notes for pruned options. `probe` and the Horned Mask and Twin Brother filters retire. |
+| 2. Lazy pruning | The baseline measurement and the benchmark first. The depth-first search at parks and action start, stopping at hidden information, with its per-instance memo. Notes for pruned options are deferred until a card needs one. `probe` and the Horned Mask and Twin Brother filters retire. |
 | 3. Grand Scepter and Take | `GrandScepter` per relic, and Fae Merchant's filter retires. Challenge custody and Conspiracy's banner transfer become `Take`. |
 
 Slice 1 alone closes the relic-discard gap. Slice 2 is the riskiest, so it
@@ -249,9 +280,8 @@ lands on a seam that is already in place.
 - **The procedure at action start.** `PowerCtx.procedure` is `None` at an
   action's start command (walker follow-ups). No global restriction may read
   it until that is fixed.
-- **Search inputs.** How the search enumerates `ChooseMany` and
-  `ChooseAmount` answers, and whether a decision owned by another player can
-  reuse the same simulation.
+- **Search inputs.** Resolved in the slice 2 plan: see **Answers tried** under
+  Lazy pruning.
 - **Challenge and Conspiracy log lines.** That turning the `Move` into a
   `Take` keeps their Game Log lines.
 - **The set's cost inside the search.** `WalkerPowers.operationRestrictions` is
@@ -261,7 +291,9 @@ lands on a seam that is already in place.
   every step. `CardPlay.legalChoices` also builds `forCatalog(catalog).active`
   on every call, which scans the catalog's denizens and edifices, and
   `LockedCards.showing` scans every site per check; cache the catalog-level set
-  and index the locked cards in play if the measured budget needs it.
+  and index the locked cards in play if the measured budget needs it. Slice 2
+  did not need either: the profile showed neither, and the memo under Lazy
+  pruning met the budget.
 
 ## Out of scope
 
