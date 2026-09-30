@@ -166,7 +166,7 @@ The search reuses the walker's simulation (`WalkerSimulation`), which runs the
 real pipeline on a copy of the state, so it cannot disagree with execution.
 
 **Performance budget.** Before slice 2 starts, record the full `sbt test` wall
-time and add a benchmark suite with a Campaign park on a full board. After
+time and add a benchmark of a Campaign park on a full board. After
 slice 2, `sbt test` may grow by at most 15% and the park must answer in under
 50 ms. If either fails, stop and bring alternative designs to the product
 owner. Lowering a depth cap is not one of them.
@@ -195,7 +195,7 @@ are, so a restriction on taking sees them. Conspiracy's relic transfer stays a
 | Slice | Content |
 |---|---|
 | 1. The seam | The restriction set and the power member. The pipeline's required argument and its four callers, plus `CardPlay.legalChoices`. Composites checked before they are split. `LockedCards`, the active-modifier rule and the Hall of Ministers. The facedown fix. `DiscardRestrictions`, its coverage suite, `BuildOps.restrictions` and `CardPlay`'s locked check retire. |
-| 2. Lazy pruning | The baseline measurement and benchmark suite first. The depth-first search at parks and action start, stopping at hidden information. Notes for pruned options. `probe` and the Horned Mask and Twin Brother filters retire. |
+| 2. Lazy pruning | The baseline measurement and the benchmark first. The depth-first search at parks and action start, stopping at hidden information. Notes for pruned options. `probe` and the Horned Mask and Twin Brother filters retire. |
 | 3. Grand Scepter and Take | `GrandScepter` per relic, and Fae Merchant's filter retires. Challenge custody and Conspiracy's banner transfer become `Take`. |
 
 Slice 1 alone closes the relic-discard gap. Slice 2 is the riskiest, so it
@@ -224,7 +224,9 @@ lands on a seam that is already in place.
   - The search stops at a roll: an option whose refusal lies after a roll
     stays offered.
   - The existing look-ahead and hidden-option note suites stay green.
-  - The benchmark suite and the `sbt test` time meet the budget.
+  - The benchmark and the `sbt test` time meet the budget. The benchmark is a
+    program run by hand, never part of `sbt test`: a timing check is not
+    deterministic.
 - **Slice 3.**
   - On a hand-built state, the Grand Scepter refuses a discard, a return to
     the relic deck and a `Bury`, and allows a `Take` and a `Give`.

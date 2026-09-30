@@ -67,15 +67,15 @@ the product owner on 2026-09-30. Task 5 records them in the spec.
 - Modify `src/main/scala/oathdigital/gameplay/powers/whenplayed/TwinBrother.scala` and `src/main/scala/oathdigital/gameplay/powers/wake/HornedMask.scala`: their locked filters retire.
 - Modify `src/main/scala/oathdigital/gameplay/operations/OperationRestrictions.scala`: `isLocked` retires.
 - Modify `src/main/scala/oathdigital/gameplay/phases/PhasePowerProcedure.scala`, `src/main/scala/oathdigital/gameplay/OathRules.scala` and `src/main/scala/oathdigital/application/PhasePowerProjector.scala`: the phase power dry run.
-- Tests: create `SearchBudgetSuite`, `WalkerSearchSuite` and `LazyPruningSuite`; update `HornedMaskSuite`, `WhenPlayedHarness`, `TargetsFixture`, `PhasePowerSuite` and whichever suites Task 3's triage names.
+- Tests: create the `SearchBudget` benchmark (a program run by hand, not a suite), `WalkerSearchSuite` and `LazyPruningSuite`; update `HornedMaskSuite`, `WhenPlayedHarness`, `TargetsFixture`, `PhasePowerSuite` and whichever suites Task 3's triage names.
 - Docs: the spec and `docs/ROADMAP.md`.
 
 ---
 
-### Task 1: Baseline and budget suite
+### Task 1: Baseline and budget benchmark
 
 **Files:**
-- Create: `src/test/scala/oathdigital/gameplay/SearchBudgetSuite.scala`
+- Create: `src/test/scala/oathdigital/gameplay/SearchBudget.scala`
 - Modify: `docs/superpowers/specs/2026-09-30-global-operation-restrictions-design.md` (section "Lazy pruning", paragraph "Performance budget")
 
 **Interfaces:**
@@ -96,9 +96,14 @@ Run the full server suite twice, so the second run reuses the compiled classes:
 
 Expected: both end with `[info] Passed: Total 2130, Failed 0` and a `[success] Total time: N s` line. Keep the second run's `N`. Call it `BASELINE`.
 
-- [ ] **Step 2: Write the budget suite**
+- [ ] **Step 2: Write the budget benchmark**
 
-Create `src/test/scala/oathdigital/gameplay/SearchBudgetSuite.scala`:
+The benchmark is a program in the test sources, not a munit suite, so
+`sbt test` never runs it: a timing check is not deterministic and must not
+become part of the suite. It prints its measures and exits non-zero when one
+is over budget.
+
+Create `src/test/scala/oathdigital/gameplay/SearchBudget.scala`:
 
 ```scala
 package oathdigital.gameplay
@@ -112,14 +117,16 @@ import oathdigital.model.OathState.Ready
 
 /** The lazy pruning's budget (global operation restrictions design,
   * "Performance budget"): a Campaign park on a full board answers in under
-  * 50 ms. Each measure is the best of five runs after three warm-up runs, so
-  * a cold first run does not fail it.
+  * 50 ms. A benchmark run by hand, never by `sbt test`:
+  *
+  * {{{./sbtw "Test/runMain oathdigital.gameplay.SearchBudget"}}}
+  *
+  * Each measure is the best of five runs after three warm-up runs, so a cold
+  * first run does not count. It exits with status 1 when a measure is over
+  * budget.
   */
-class SearchBudgetSuite extends munit.FunSuite:
+object SearchBudget:
   private val budgetMillis = 50L
-  private val r = rules(CampaignFixture.anyDice)
-  private val walkerPowers = WalkerPowerCatalog.default(catalog)
-  private val b = board(extras = 3)
 
   private def best(body: => Any): Long =
     (1 to 3).foreach(_ => body)
@@ -129,34 +136,35 @@ class SearchBudgetSuite extends munit.FunSuite:
       (System.nanoTime() - start) / 1000000L
     }.min
 
-  private def started: ReadyGame =
-    r.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor) match
-      case Right(transition) => transition.state match
-        case Ready(value) => value
-        case other => fail(s"expected a ready game, got $other")
-      case Left(violation) => fail(s"Campaign must start: $violation")
-
-  test("starting a Campaign parks within the budget"):
-    val millis = best(started)
-    assert(millis < budgetMillis, s"the start took $millis ms")
-
-  test("reading the Campaign park's options stays within the budget"):
+  def main(args: Array[String]): Unit =
+    val r = rules(CampaignFixture.anyDice)
+    val walkerPowers = WalkerPowerCatalog.default(catalog)
+    val b = board(extras = 3)
+    def started: ReadyGame =
+      r.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor) match
+        case Right(transition) => transition.state match
+          case Ready(value) => value
+          case other => sys.error(s"expected a ready game, got $other")
+        case Left(violation) => sys.error(s"Campaign must start: $violation")
+    val start = best(started)
     val ready = started
     val pending = ready.game.current.walkerPending.get
     val procedure = ready.game.current.walkerProcedure.get
     val tree = WalkerProcedureRegistry.rebuild(procedure, catalog, ready,
       b.actor, Vector.empty).toOption.get
-    val millis = best(ProcedureWalker.openDecisions(ready, tree, pending,
+    val read = best(ProcedureWalker.openDecisions(ready, tree, pending,
       walkerPowers))
-    assert(millis < budgetMillis, s"reading the park took $millis ms")
+    println(s"Campaign start: $start ms; reading its park: $read ms " +
+      s"(budget $budgetMillis ms each)")
+    if start >= budgetMillis || read >= budgetMillis then sys.exit(1)
 ```
 
 - [ ] **Step 3: Run it**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.SearchBudgetSuite"`
-Expected: PASS, 2 tests. If it does not compile because `walkerProcedure` is not an `Option[ProcedureRef]` or `rebuild` takes other arguments, read `CampaignProcedureSuite.parkedDecision` and match its calls. If the start does not park, raise `extras` until it does.
+Run: `./sbtw "Test/runMain oathdigital.gameplay.SearchBudget"`
+Expected: it prints the two measures, both under 50 ms, and sbt reports success. Keep the two numbers as `START` and `READ`. If it does not compile because `walkerProcedure` is not an `Option[ProcedureRef]` or `rebuild` takes other arguments, read `CampaignProcedureSuite.parkedDecision` and match its calls. If the start does not park, raise `extras` until it does.
 
-To see the times, temporarily lower `budgetMillis` to `0L`, run the suite, read the two numbers from the failure messages, then restore `50L`.
+Then check that `sbt test` does not pick it up: `./sbtw test 2>&1 | grep -c SearchBudget` prints `0`.
 
 - [ ] **Step 4: Record the baseline in the spec**
 
@@ -164,15 +172,15 @@ In the spec's "Performance budget" paragraph, after the sentence that ends "the 
 
 ```markdown
 The baseline, measured on 2026-09-30 before slice 2: `sbt test` took
-BASELINE s, and `SearchBudgetSuite` measured START ms for the Campaign start
+BASELINE s, and the `SearchBudget` benchmark measured START ms for the Campaign start
 and READ ms for reading its park.
 ```
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/test/scala/oathdigital/gameplay/SearchBudgetSuite.scala docs/superpowers/specs/2026-09-30-global-operation-restrictions-design.md
-git commit -m "test(walker): add the lazy pruning budget suite and record the baseline"
+git add src/test/scala/oathdigital/gameplay/SearchBudget.scala docs/superpowers/specs/2026-09-30-global-operation-restrictions-design.md
+git commit -m "test(walker): add the lazy pruning budget benchmark and record the baseline"
 ```
 
 ---
@@ -965,10 +973,10 @@ For each failing test, read it and decide which case applies:
 
 Repeat until the suite is green. List every test changed under case 1 or 3 in the commit message.
 
-- [ ] **Step 10: Run the budget suite**
+- [ ] **Step 10: Run the budget benchmark**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.SearchBudgetSuite"`
-Expected: PASS. If it fails, do not tune it here: finish the task and let Task 5 handle the budget.
+Run: `./sbtw "Test/runMain oathdigital.gameplay.SearchBudget"`
+Expected: both measures under 50 ms. If it fails, do not tune it here: finish the task and let Task 5 handle the budget.
 
 - [ ] **Step 11: Commit**
 
@@ -1197,9 +1205,9 @@ git commit -m "refactor(restrictions): retire the locked filters for the search"
 
 - [ ] **Step 1: Measure**
 
-Run the full suite twice and keep the second `Total time`, as in Task 1, Step 1. Run `./sbtw "testOnly oathdigital.gameplay.SearchBudgetSuite"`.
+Run the full suite twice and keep the second `Total time`, as in Task 1, Step 1. Run `./sbtw "Test/runMain oathdigital.gameplay.SearchBudget"`.
 
-The budget holds when the second run's time is at most `BASELINE × 1.15` and the budget suite passes.
+The budget holds when the second run's time is at most `BASELINE × 1.15` and the benchmark reports both measures under 50 ms.
 
 - [ ] **Step 2: If the budget fails, apply the spec's caches and re-measure**
 
@@ -1242,7 +1250,7 @@ In `docs/superpowers/specs/2026-09-30-global-operation-restrictions-design.md`:
   needs one: Lost Tongue's refused `Take` writes no line (Catalog batch 3).
 ```
 
-- In "Performance budget", after the baseline sentence from Task 1, add the result: `After slice 2, sbt test took N s (+P%), and SearchBudgetSuite measured START ms and READ ms.` Fill in the numbers, and say which caches from Step 2 were applied, if any.
+- In "Performance budget", after the baseline sentence from Task 1, add the result: `After slice 2, sbt test took N s (+P%), and the SearchBudget benchmark measured START ms and READ ms.` Fill in the numbers, and say which caches from Step 2 were applied, if any.
 - In "What retires", in the bullet about Horned Mask and Twin Brother, add at the end: "Both retired in slice 2, with `OperationRestrictions.isLocked`."
 - In "Verify at plan time", under **Search inputs.**, add: "Resolved in the slice 2 plan: see **Answers tried** under Lazy pruning. A decision owned by another player reuses the same simulation, answered by its owner."
 
