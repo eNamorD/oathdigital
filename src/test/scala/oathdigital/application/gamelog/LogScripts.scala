@@ -340,10 +340,10 @@ object LogScripts:
       case park if park.decisionId == CampaignIds.kind =>
         ChooseOneAnswer(DecisionOptionRef.Button("raid"))
       case Park(Decide(CampaignIds.force, _,
-          DecisionQuery.ChooseAmount(_, max, _, _, _), _, _), _, _, _) =>
+          DecisionQuery.ChooseAmount(_, max, _, _, _), _, _, _), _, _, _) =>
         ChooseAmountAnswer(max)
       case Park(Decide(CampaignIds.sacrifice, _,
-          DecisionQuery.ChooseAmount(_, max, _, _, _), _, _), _, _, _) =>
+          DecisionQuery.ChooseAmount(_, max, _, _, _), _, _, _), _, _, _) =>
         ChooseAmountAnswer(max)
       case park if park.decisionId == CampaignIds.attackerPlan ||
           park.decisionId == CampaignIds.defenderPlan =>

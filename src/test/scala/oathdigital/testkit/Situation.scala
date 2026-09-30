@@ -100,20 +100,20 @@ object Situation:
     * answered by default and fails the walk naming the decision.
     */
   val defaultAnswer: Answers =
-    case Park(Decide(_, _, DecisionQuery.ChooseOne(options, _), _, _), _, _, _)
+    case Park(Decide(_, _, DecisionQuery.ChooseOne(options, _), _, _, _), _, _, _)
         if options.nonEmpty =>
       DecisionAnswer.ChooseOneAnswer(options.head.ref)
     case Park(Decide(_, _, DecisionQuery.Partition(sections, options, _, _),
-        _, _), _, _, _) if sections.nonEmpty && options.nonEmpty =>
+        _, _, _), _, _, _) if sections.nonEmpty && options.nonEmpty =>
       val keep = sections.find(_.minRequired > 0).getOrElse(sections.head)
       val discard = sections.find(_.key != keep.key).getOrElse(keep)
       val refs = options.map(_.ref)
       DecisionAnswer.PartitionAnswer(DecisionPlacement(refs.head, keep.key) +:
         refs.tail.map(DecisionPlacement(_, discard.key)))
-    case Park(Decide(_, _, DecisionQuery.ChooseMany(min, _, options, _), _, _),
+    case Park(Decide(_, _, DecisionQuery.ChooseMany(min, _, options, _), _, _, _),
         _, _, _) if options.size >= min =>
       DecisionAnswer.ChooseManyAnswer(options.take(min).map(_.ref))
-    case Park(Decide(_, _, DecisionQuery.ChooseAmount(min, _, _, _, _), _, _),
+    case Park(Decide(_, _, DecisionQuery.ChooseAmount(min, _, _, _, _), _, _, _),
         _, _, _) =>
       DecisionAnswer.ChooseAmountAnswer(min)
 

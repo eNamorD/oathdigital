@@ -36,7 +36,8 @@ private[walker] object WalkerSearch:
     * form one range; with a gap it is left whole. Other kinds are not
     * narrowed. `Left` is a required decision with nothing left, carrying the
     * first option's rejection. `Right(None)` is an optional one with nothing
-    * left, which is not asked.
+    * left, which is not asked: a choose-many whose minimum is zero, or a
+    * choose-one passed when empty.
     */
   def narrow(decide: Decide,
       verdict: DecisionAnswer => Either[OathViolation, Unit])
@@ -46,7 +47,7 @@ private[walker] object WalkerSearch:
         val refs = one.options.map(_.ref)
         kept(decide, refs, refs.map(ref =>
           ref -> verdict(DecisionAnswer.ChooseOneAnswer(ref))).toMap,
-          required = true)
+          required = !decide.passWhenEmpty)
       case many: DecisionQuery.ChooseMany =>
         val refs = many.options.map(_.ref)
         kept(decide, refs, refs.map(ref => ref -> survivor(
@@ -69,8 +70,9 @@ private[walker] object WalkerSearch:
 
   /** What a search does at `decide`: it passes an optional decision with
     * nothing to ask, stops at the first answer that survives, and fails when
-    * none does. A kind whose answers are not tried (`Partition`,
-    * `Distribute`) counts as answerable, and the answer-time check stays.
+    * none does. A choose-one passed when empty is passed when none does. A
+    * kind whose answers are not tried (`Partition`, `Distribute`) counts as
+    * answerable, and the answer-time check stays.
     */
   def reach(decide: Decide,
       verdict: DecisionAnswer => Either[OathViolation, Unit])
@@ -79,17 +81,21 @@ private[walker] object WalkerSearch:
       case None => Right(Reach.Skipped)
       case Some(_) => answers(decide) match
         case None => Right(Reach.Answerable)
-        case Some(all) => survivor(all, verdict, None).map(_ => Reach.Answerable)
+        case Some(all) => survivor(all, verdict, None) match
+          case Left(_) if decide.passWhenEmpty => Right(Reach.Skipped)
+          case found => found.map(_ => Reach.Answerable)
 
   /** `decide` offering only the permitted options. `None` is an optional
-    * choose-many with nothing left, which is not asked. Other query kinds
-    * are returned unchanged.
+    * choose-many or a choose-one passed when empty, with nothing left, which
+    * is not asked. Other query kinds are returned unchanged.
     */
   def narrowed(decide: Decide,
       permitted: DecisionOptionRef => Boolean): Option[Decide] =
     decide.query match
-      case one: DecisionQuery.ChooseOne => Some(decide.copy(query =
-        one.copy(options = one.options.filter(o => permitted(o.ref)))))
+      case one: DecisionQuery.ChooseOne =>
+        val options = one.options.filter(o => permitted(o.ref))
+        if decide.passWhenEmpty && options.isEmpty then None
+        else Some(decide.copy(query = one.copy(options = options)))
       case many: DecisionQuery.ChooseMany =>
         val options = many.options.filter(o => permitted(o.ref))
         if many.min == 0 && options.isEmpty then None

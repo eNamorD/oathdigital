@@ -20,6 +20,8 @@ class WalkerSearchSuite extends munit.FunSuite:
       : DecisionAnswer => Either[OathViolation, Unit] =
     answer => Either.cond(allowed(answer), (), refused)
   private val abc = Vector(button("a"), button("b"), button("c"))
+  private def passable(query: DecisionQuery) =
+    decide(query).copy(passWhenEmpty = true)
 
   test("a choose-one keeps the options whose answer survives"):
     val asked = decide(DecisionQuery.ChooseOne(Vector(button("a"),
@@ -41,6 +43,19 @@ class WalkerSearchSuite extends munit.FunSuite:
   test("an optional choose-many with no survivor is not asked"):
     val asked = decide(DecisionQuery.ChooseMany(0, 1, abc, None))
     assertEquals(WalkerSearch.narrow(asked, only(_ => false)), Right(None))
+
+  test("a choose-one passed when empty, with no survivor, is not asked, and " +
+      "a search passes it"):
+    val asked = passable(DecisionQuery.ChooseOne(Vector(button("a"))))
+    assertEquals(WalkerSearch.narrow(asked, only(_ => false)), Right(None))
+    assertEquals(WalkerSearch.reach(asked, only(_ => false)),
+      Right(WalkerSearch.Reach.Skipped))
+
+  test("a choose-one passed when empty keeps its one survivor to ask"):
+    val asked = passable(DecisionQuery.ChooseOne(Vector(button("a"),
+      button("b"))))
+    assertEquals(WalkerSearch.narrow(asked, only(_ == ChooseOneAnswer(ref("b")))),
+      Right(Some(passable(DecisionQuery.ChooseOne(Vector(button("b")))))))
 
   test("a choose-amount narrows to the surviving range, and a gap leaves it " +
       "whole"):

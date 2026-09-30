@@ -587,12 +587,21 @@ final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
   * `window` makes the decision hookable: the walker folds the gathered
   * transforms over `Vector(this)` before walking it, so a power may insert
   * operations around the decision, or replace its query.
+  *
+  * `passWhenEmpty` lets the search leave a choose-one with no option (global
+  * operation restrictions design, "Empty choices"): the walker then passes
+  * it, as it passes an empty optional choose-many, instead of failing the
+  * path. With one option left it still parks, so the player confirms it.
   */
 final case class Decide(decisionId: String, owner: PlayerId,
     query: DecisionQuery,
     override val window: Option[PowerWindow] = None,
-    coOwners: Vector[PlayerId] = Vector.empty)
+    coOwners: Vector[PlayerId] = Vector.empty,
+    passWhenEmpty: Boolean = false)
     extends PrimitiveOperation:
+  require(!passWhenEmpty || query.isInstanceOf[DecisionQuery.ChooseOne],
+    "only a choose-one can be passed when empty")
+
   /** Everyone who may answer: `owner` first, then the co-owners, each once.
     * `owner` stays the primary owner, the player `awaitedPlayer` names.
     */
