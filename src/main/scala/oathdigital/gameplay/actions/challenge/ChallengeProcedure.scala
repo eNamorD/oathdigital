@@ -126,13 +126,17 @@ object ChallengeProcedure:
     }, PositionedLocation(Location.PlayArea(actor)),
       PositionedLocation(Location.OnBanner(banner)))
 
+  /** The banner moves to the challenger by a required `Take`: the payment
+    * buys it, so a refused custody fails the path and the search hides that
+    * banner. The walker checks the `Take` whole and records its `Move`, which
+    * the Game Log reads.
+    */
   private def custody(ready: ReadyGame, actor: PlayerId,
       banner: Banner): Operation =
-    Move(Piece.Banner(banner),
-      BannerRules.holder(ready.game.current, banner).fold(
-        PositionedLocation(Location.SharedBank))(holder =>
-        PositionedLocation(Location.PlayArea(holder))),
-      PositionedLocation(Location.PlayArea(actor)))
+    Take(Piece.Banner(banner), actor,
+      BannerRules.holder(ready.game.current, banner)
+        .fold[Location](Location.SharedBank)(Location.PlayArea(_)),
+      Location.PlayArea(actor), required = true)
 
   private def bannerOf(pending: PendingTree): Option[Banner] =
     pending.answered.collectFirst:

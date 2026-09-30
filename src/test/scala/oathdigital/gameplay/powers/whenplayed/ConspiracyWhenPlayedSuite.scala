@@ -160,6 +160,9 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     // The burn returns the secrets to the untracked shared bank; none lands on
     // a site.
     assertEquals(siteSecrets(after), siteSecrets(f.ready))
+    assert(recorded(done).contains(Take(Piece.Banner(Banner.DarkestSecret),
+      f.actor, Location.PlayArea(f.enemy), Location.PlayArea(f.actor))),
+      recorded(done).toString)
     assertEquals(replayed(f, done), after)
 
   test("with no legal target Conspiracy asks nothing and only leaves the game"):

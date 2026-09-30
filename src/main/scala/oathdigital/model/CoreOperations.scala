@@ -431,10 +431,14 @@ final case class Swap(firstCard: CardId, firstLocation: PositionedLocation,
   override val children: Vector[Operation] = Vector(first, second)
   override val simultaneous: Boolean = true
 
-/** Moves a piece into the prompted player's custody. */
+/** Moves a piece into the prompted player's custody. A required `Take`
+  * rejects its batch, or fails the search's path, when a restriction refuses
+  * it.
+  */
 final case class Take(piece: Piece, player: PlayerId,
     from: Location, to: Location,
-    sourcePosition: StackPosition = StackPosition.Unspecified)
+    sourcePosition: StackPosition = StackPosition.Unspecified,
+    override val required: Boolean = false)
     extends CoreOperation:
   require(Location.ownedBy(to, player),
     "take destination must belong to the taking player")

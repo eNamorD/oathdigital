@@ -228,6 +228,23 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       case _ => (0, 0)
     }, (3, 6 + 2))
 
+  test("a restriction on Take sees Challenge's custody and hides the banner"):
+    val board = challenger.secrets(p1, faceUp = 0, faceDown = 4)
+      .peoplesFavor(None, favor = 2).ready
+    val tree = ChallengeProcedure.build(catalog, board, p1, Vector.empty)
+      .getOrElse(fail("the tree must build"))
+    val noBannerTaken = new OperationRestriction:
+      override def reason(ready: ReadyGame,
+          operation: CoreOperation): Option[OperationReason] = operation match
+        case Take(Piece.Banner(_), _, _, _, _, _) => Some(OperationReason(
+          "test.no-banner", "no banner may be taken",
+          OperationReasonKind.Impossible))
+        case _ => None
+    val powers = WalkerPowers(Vector(
+      ProcedureWalkerSuite.TestOperationRestrictionPower(
+        PowerId("test.no-banner"), noBannerTaken)))
+    assert(ProcedureWalker.advance(board, tree, None, powers).isLeft)
+
   test("a completed Challenge replays exactly from its journal"):
     val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
     val orderedSites = wealthSite +: sites.filterNot(_ == wealthSite).take(7)

@@ -16,6 +16,9 @@ import oathdigital.model._
   *  - the take effects for the chosen target, then the card's removal, in one
   *    batch, so the card leaves the game even when there was nothing to take.
   *
+  * The banner moves by a `Take`, so a restriction on taking sees it; a relic
+  * moves by a `Give`. Both are optional.
+  *
   * A legal target cannot be declined. The decision id sits under the
   * `cardplay.` prefix, shared with both Search and the facedown-adviser play.
   *
@@ -105,9 +108,9 @@ case object ConspiracyWhenPlayed extends ContributingPower:
   private def take(ready: ReadyGame, actor: PlayerId, ref: DecisionOptionRef)
       : Vector[CoreOperation] =
     val current = ready.game.current
-    def banner(held: Banner, owner: PlayerId): CoreOperation = Move(
-      Piece.Banner(held), PositionedLocation(Location.PlayArea(owner)),
-      PositionedLocation(Location.PlayArea(actor)))
+    def banner(held: Banner, owner: PlayerId): CoreOperation = Take(
+      Piece.Banner(held), actor, Location.PlayArea(owner),
+      Location.PlayArea(actor))
     ref match
       case DecisionOptionRef.RelicSlot(owner, slot) =>
         current.players.find(_.player == owner).flatMap(_.relics.lift(slot))

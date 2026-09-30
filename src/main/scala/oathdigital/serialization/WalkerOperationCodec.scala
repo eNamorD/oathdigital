@@ -148,7 +148,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
           value => ujson.Str(orientationKey(value))))
-      case Take(piece, player, from, to, sourcePosition) => ujson.Obj(
+      case Take(piece, player, from, to, sourcePosition, _) => ujson.Obj(
         "kind" -> "take", "piece" -> encodePiece(piece),
         "playerId" -> player.value, "from" -> encodeLocation(from),
         "to" -> encodeLocation(to),
