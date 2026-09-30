@@ -292,8 +292,13 @@ class RecoverProcedureSuite extends munit.FunSuite
     // OperationPipeline rejects that payment before another roll is recorded.
     val continue = Answered(RecoverProcedure.choiceDecisionId,
       ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player)
+    // With the search on, the unaffordable option is not offered at all.
+    assertEquals(ProcedureWalker.resolve(stateAtChoice, tree, choicePark,
+      continue, noPowers).left.toOption, Some(OathViolation.InvalidEventOrder(
+        s"decision ${RecoverProcedure.choiceDecisionId} does not offer the " +
+          "selected option")))
     ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
-      noPowers) match
+      noPowers.copy(probing = false)) match
       case Left(violation: OathViolation.CoreOperationRejected) =>
         assertEquals(violation.code, "insufficient-supply")
         assert(violation.detail.contains("1 exceeds the 0 available"))

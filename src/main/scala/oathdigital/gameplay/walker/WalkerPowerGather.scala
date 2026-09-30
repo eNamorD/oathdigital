@@ -223,66 +223,18 @@ private[walker] object WalkerPowerGather:
       case _ => Vector.empty
     (rejected, emptied)
 
-  /** The restriction look-ahead (rule-gaps design, section 1): `decide`
-    * without the options whose answer would break a `Restriction` somewhere in
-    * `root`. Each option is probed by appending a hypothetical answer by the
-    * decision's owner to `answered` and running [[restrictionViolations]]. An
-    * option is removed only when that adds a violation the answers so far do
-    * not already produce, so a violation no option causes never empties a
-    * decision; the answer-time check still reports it.
-    *
-    * `ChooseOne` and `ChooseMany` are probed option by option and narrowed as
-    * [[restrictOptions]] narrows them. `ChooseAmount` is probed value by value
-    * and narrowed to the permitted values when they form one range; with a
-    * gap it is left whole and the answer-time check decides. Other query
-    * kinds are not probed. `Left` is a required decision with nothing left,
-    * carrying the first option's violation. `Right(None)` is an optional one
-    * with nothing left, which is not asked.
-    *
-    * The traversal runs with probing off, so a dry run inside it never probes
-    * in turn, and against the state as the walk sees it (no pending tree, the
-    * walk's procedure), so the live walk and [[leafAt]] offer the same
-    * options.
+  /** The tree-level `Restriction` violations of `root` with `answered`,
+    * against the state as the walk sees it: no pending tree, the walk's
+    * procedure. Empty without a power that restricts. The traversal runs on
+    * the quiet powers, so a dry run inside it never searches.
     */
-  def probe(root: Operation, decide: Decide, state: ReadyGame,
-      activePlayer: PlayerId, powers: WalkerPowers, answered: Vector[Answered],
-      procedure: Option[ProcedureRef]): Either[OathViolation, Option[Decide]] =
-    if !powers.probing || !powers.hasRestrictions then Right(Some(decide))
-    else
-      val quiet = powers.copy(probing = false)
-      val seen = state.updateCurrent(_.copy(walkerPending = None,
-        walkerProcedure = procedure))
-      def violations(answers: Vector[Answered]): Vector[OathViolation] =
-        restrictionViolations(root, quiet, seen, activePlayer, answers)
-      val baseline = violations(answered).toSet
-      def added(answer: DecisionAnswer): Option[OathViolation] =
-        violations(answered :+ Answered(decide.decisionId, answer,
-          decide.owner)).find(!baseline(_))
-      def byOption(refs: Vector[DecisionOptionRef],
-          answer: DecisionOptionRef => DecisionAnswer,
-          required: Boolean): Either[OathViolation, Option[Decide]] =
-        val verdicts = refs.map(ref => ref -> added(answer(ref))).toMap
-        if required && refs.nonEmpty && refs.forall(verdicts(_).nonEmpty) then
-          Left(verdicts(refs.head).get)
-        else Right(WalkerSearch.narrowed(decide, ref => verdicts(ref).isEmpty))
-      decide.query match
-        case one: DecisionQuery.ChooseOne => byOption(one.options.map(_.ref),
-          DecisionAnswer.ChooseOneAnswer(_), required = true)
-        case many: DecisionQuery.ChooseMany => byOption(
-          many.options.map(_.ref),
-          ref => DecisionAnswer.ChooseManyAnswer(Vector(ref)), many.min >= 1)
-        case amount: DecisionQuery.ChooseAmount =>
-          val verdicts = (amount.min to amount.max).toVector.map(value =>
-            value -> added(DecisionAnswer.ChooseAmountAnswer(value)))
-          val allowed = verdicts.collect { case (value, None) => value }
-          if verdicts.isEmpty then Right(Some(decide))
-          else if allowed.isEmpty then Left(verdicts.flatMap(_._2).head)
-          else if allowed.last - allowed.head + 1 != allowed.size then
-            Right(Some(decide))
-          else Right(Some(decide.copy(query = amount.copy(min = allowed.head,
-            max = allowed.last, suggested = amount.suggested.map(value =>
-              math.max(allowed.head, math.min(allowed.last, value)))))))
-        case _ => Right(Some(decide))
+  def breaches(root: Operation, state: ReadyGame, activePlayer: PlayerId,
+      powers: WalkerPowers, answered: Vector[Answered],
+      procedure: Option[ProcedureRef]): Vector[OathViolation] =
+    if !powers.hasRestrictions then Vector.empty
+    else restrictionViolations(root, powers.quiet, state.updateCurrent(
+      _.copy(walkerPending = None, walkerProcedure = procedure)),
+      activePlayer, answered)
 
   /** The notes the look-ahead writes for the options `narrowed` no longer
     * offers: for each, the note of the restriction whose violation answering
@@ -296,7 +248,7 @@ private[walker] object WalkerPowerGather:
     val hidden = optionRefs(decide).filterNot(offered)
     if hidden.isEmpty then Vector.empty
     else
-      val quiet = powers.copy(probing = false)
+      val quiet = powers.quiet
       val seen = state.updateCurrent(_.copy(walkerPending = None,
         walkerProcedure = procedure))
       def found(answers: Vector[Answered]): Vector[Attributed] =
@@ -333,20 +285,18 @@ private[walker] object WalkerPowerGather:
     * (like [[applyWindow]]/[[restrictionViolations]] above) to keep
     * `ProcedureWalker.scala` under the project's line bound.
     *
-    * When `powers.probing` is on, a `Decide` is narrowed by the restriction
-    * look-ahead ([[probe]]), exactly as the walk narrowed it before
-    * parking. A position the walk would not have parked at, whose probe
-    * empties the decision, is returned as declared, and the answer-time
-    * check refuses it.
+    * When `powers.probing` is on, a `Decide` is narrowed by the search
+    * ([[ProcedureWalker.narrowParked]]), exactly as the walk narrowed it
+    * before parking. A position the walk would not have parked at, whose
+    * search empties the decision, is returned as declared, and the
+    * answer-time check refuses it.
     */
   def leafAt(state: ReadyGame, action: Operation, pending: PendingTree,
       powers: WalkerPowers): Option[Operation] =
     resolveAt(state, pending, powers, action, pending.at, Vector.empty,
       Set.empty).map:
-        case decide: Decide => probe(action, decide, state,
-          state.game.current.turn.activePlayer, powers, pending.answered,
-          state.game.current.walkerProcedure).toOption.flatten
-          .getOrElse(decide)
+        case decide: Decide => ProcedureWalker.narrowParked(state, action,
+          pending, powers, decide)
         case other => other
 
   private def resolveAt(state: ReadyGame, pending: PendingTree,

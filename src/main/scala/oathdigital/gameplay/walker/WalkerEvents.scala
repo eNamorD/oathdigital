@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, PowerNote, ProcedureRef, RelicId, SiteId, WalkerEvent}
+import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptionRef, DieFace, Location, ModifyDicePool, Move, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerNote, ProcedureRef, RelicId, SiteId, SpendSupply, WalkerEvent}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -23,6 +23,20 @@ object DeltaMeaning:
   final case class RelicAcquired(player: PlayerId, relic: RelicId,
       site: SiteId) extends DeltaMeaning
   final case class OperationApplied(label: String) extends DeltaMeaning
+
+  /** What an executed batch means, for logs and projections: the single
+    * operations they name, or `fallback` for anything else. */
+  def of(ops: Vector[CoreOperation], fallback: String): DeltaMeaning =
+    ops match
+      case Vector(ModifyDicePool(pool, delta, _)) =>
+        DicePoolModified(pool, delta)
+      case Vector(SpendSupply(player, amount, _)) =>
+        SupplySpent(player, amount)
+      case Vector(Move(Piece.Card(relic: RelicId),
+          PositionedLocation(Location.Site(site), _),
+          PositionedLocation(Location.PlayArea(player), _), _)) =>
+        RelicAcquired(player, relic, site)
+      case _ => OperationApplied(fallback)
 
 object WalkerStepPayload:
   /** Semantic fact for an executed delta node. */

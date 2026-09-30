@@ -1,9 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy, OperationResolution}
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, Shuffle, SpendSupply, WalkerEvent}
-import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
-  OperationApplied, RelicAcquired, SupplySpent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DieFace, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Outcome of one walker `advance`/`roll`/`resolve` command.
   *
@@ -115,7 +113,7 @@ object ProcedureWalker:
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice,
       state.game.current.walkerProcedure, action),
-      Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)
+      Vector.empty, cursor, PlainResume, WalkerHooks.none).flatMap(toOutcome)
 
   /** Resumes the `Roll` park recorded by `advance` (Task 4 roll contract).
     *
@@ -142,7 +140,7 @@ object ProcedureWalker:
       state.game.current.turn.activePlayer, pending.answered, powers, dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
-      .map(toOutcome)
+      .flatMap(toOutcome)
 
   /** Resolves the `Decide` park recorded by `advance`/`roll` (Task 5 ruling
     * 5.3).
@@ -167,7 +165,7 @@ object ProcedureWalker:
       state.game.current.turn.activePlayer, pending.answered, powers, dice,
       state.game.current.walkerProcedure, action),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
-      .map(toOutcome)
+      .flatMap(toOutcome)
 
   /** Collects every restriction violation from every windowed node in `tree`
     * (spec decision 9's `Restriction` kind), run against the tree root --
@@ -198,7 +196,7 @@ object ProcedureWalker:
     */
   def parkedRoll(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Option[(PoolKey, Int)] =
-    WalkerPowerGather.leafAt(state, action, pending, powers.copy(probing = false))
+    WalkerPowerGather.leafAt(state, action, pending, powers.quiet)
       .collect:
         case roll: Roll if roll.mode == RollMode.Parked =>
           (roll.pool, WalkerRolls.poolCount(state, roll.pool))
@@ -218,7 +216,7 @@ object ProcedureWalker:
   def openDecisions(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers,
       probing: Boolean = true): Vector[Decide] =
-    val looked = if probing then powers else powers.copy(probing = false)
+    val looked = if probing then powers else powers.quiet
     WalkerPowerGather.leafAt(state, action, pending, looked).collect {
       case decide: Decide => decide
     }.toVector
@@ -276,12 +274,18 @@ object ProcedureWalker:
       dice: WalkerDice,
       /** The procedure of the parked position being resumed. */
       procedure: Option[oathdigital.model.ProcedureRef],
-      /** The whole action tree, which the restriction look-ahead probes. */
+      /** The whole action tree, which the search reads. */
       root: Operation,
       /** The states before and after the leaf this command ran last, which
         * a note reads. A leaf that changed nothing gives the same state
         * twice. */
-      previous: Option[(ReadyGame, ReadyGame)] = None
+      previous: Option[(ReadyGame, ReadyGame)] = None,
+      /** Set on a search's walk (global operation restrictions design, "Lazy
+        * pruning"): it stops at hidden information and at a decision some
+        * answer leads on from, and its events are thrown away. */
+      searching: Boolean = false,
+      /** The decisions this search stands at, with the state at each. */
+      visited: Set[(Vector[String], ReadyGame)] = Set.empty
   )
 
   private sealed trait Step extends Product with Serializable
@@ -290,6 +294,11 @@ object ProcedureWalker:
   /** A park bubbled up from a Decide/Roll leaf at `position`. */
   private final case class Park(position: Vector[String], ctx: WalkCtx)
       extends Step
+  /** A search stopped here and counts the path as legal: at hidden
+    * information, at a decision some answer leads on from, or back at a
+    * decision it already stands at in the same state. Only a search's walk
+    * returns it. */
+  private final case class Stopped(ctx: WalkCtx) extends Step
 
   /** How a resumed command treats the leaf parked at `pending.at`: a plain
     * `advance` re-parks an unanswered Decide/Roll (or passes a Decide the
@@ -303,12 +312,14 @@ object ProcedureWalker:
   private final case class RollResume(faces: Vector[DieFace]) extends Resume
   private final case class AnswerResume(answer: Answered) extends Resume
 
-  private def toOutcome(step: Step): WalkerOutcome = step match
-    case Done(ctx) =>
-      WalkerOutcome.Finished(finish(ctx), ctx.events)
-    case Park(position, ctx) =>
-      WalkerOutcome.Parked(PendingTree(at = position,
-        answered = ctx.answered), ctx.events)
+  private def toOutcome(step: Step): Either[OathViolation, WalkerOutcome] =
+    step match
+      case Done(ctx) =>
+        Right(WalkerOutcome.Finished(finish(ctx), ctx.events))
+      case Park(position, ctx) =>
+        Right(WalkerOutcome.Parked(PendingTree(at = position,
+          answered = ctx.answered), ctx.events))
+      case Stopped(_) => contractViolation("only a search stops short of a park")
 
   private def strip(state: ReadyGame): ReadyGame =
     state.copy(game = state.game.copy(current =
@@ -367,7 +378,8 @@ object ProcedureWalker:
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] =
     val (folded, order, hidden) = WalkerPowerGather.applyWindowNoted(window,
-      operation, ctx.state, ctx.activePlayer, ctx.powers, path, children,
+      operation, ctx.state, ctx.activePlayer,
+      if ctx.searching then ctx.powers.quiet else ctx.powers, path, children,
       ctx.procedure, ctx.answered, cursor.isDefined, noting = cursor.isEmpty)
     walkChildren(folded, ctx.copy(events = ctx.events ++ hidden), path, cursor,
       resume, hooks.withOrder(order))
@@ -375,23 +387,29 @@ object ProcedureWalker:
   private def walkComposite(composite: Operation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, hooks: WalkerHooks): Either[OathViolation, Step] =
-    // The composite is walked as its children, and a bare child is
-    // best-effort: without this its own `required` would be lost, and an
-    // unaffordable `PayCost` would shrink to what the player holds.
-    val required = composite match
-      case core: CoreOperation => core.required
-      case _ => false
-    // A fresh composite is checked whole first; a resumed one already was.
-    val runs = composite match
-      case core: CoreOperation if cursor.isEmpty =>
-        OperationResolution.screen(ctx.state, core,
-          ctx.powers.operationRestrictions, required || hooks.strict)
-      case _ => Right(true)
-    runs.flatMap { run =>
-      if !run then Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
-      else walkFolded(composite.window, composite, composite.children, ctx,
-        path, cursor, resume, if required then hooks.copy(strict = true) else hooks)
-    }
+    // A search stops at a composite that shows hidden information (a `Draw`,
+    // a `Reveal`) before any of it runs.
+    if ctx.searching && cursor.isEmpty && WalkerSearch.hides(composite) then
+      Right(Stopped(ctx))
+    else
+      // The composite is walked as its children, and a bare child is
+      // best-effort: without this its own `required` would be lost, and an
+      // unaffordable `PayCost` would shrink to what the player holds.
+      val required = composite match
+        case core: CoreOperation => core.required
+        case _ => false
+      // A fresh composite is checked whole first; a resumed one already was.
+      val runs = composite match
+        case core: CoreOperation if cursor.isEmpty =>
+          OperationResolution.screen(ctx.state, core,
+            ctx.powers.operationRestrictions, required || hooks.strict)
+        case _ => Right(true)
+      runs.flatMap { run =>
+        if !run then Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
+        else walkFolded(composite.window, composite, composite.children, ctx,
+          path, cursor, resume,
+          if required then hooks.copy(strict = true) else hooks)
+      }
 
   /** A `Branch` has no static children: its `select` chooses the children to
     * walk at walk time, and a resume cursor addresses the selected vector the
@@ -423,7 +441,7 @@ object ProcedureWalker:
         at: Option[Vector[String]]): Either[OathViolation, Step] =
       walkFolded(repeat.window, repeat, repeat.children, current, path, at, resume,
         hooks).flatMap:
-          case park: Park => Right(park)
+          case stop @ (_: Park | _: Stopped) => Right(stop)
           // A pass that recorded nothing and asked nothing cannot change what
           // the guard reads, so it would only repeat itself for ever.
           case Done(next) if recorded(next) == recorded(current) &&
@@ -466,19 +484,21 @@ object ProcedureWalker:
   /** Executes or parks one leaf at its own position, recording
     * `contributions` (every enclosing window's gather order, this leaf's own
     * included) on whatever event it emits. A `Decide` where it is asked --
-    * reached fresh or being answered -- is first narrowed by the restriction
-    * look-ahead ([[WalkerPowerGather.probe]]). A required decision with
-    * nothing left rejects the command, and an optional one with nothing left
-    * is passed without asking.
+    * reached fresh or being answered -- is first narrowed by the search
+    * ([[narrowAt]]). A required decision with nothing left rejects the
+    * command, and an optional one with nothing left is passed without
+    * asking. A search's walk does not park at a decision it reaches: it asks
+    * whether some answer leads on ([[reach]]).
     */
   private def runLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, contributions: Vector[PowerId],
       strict: Boolean): Either[OathViolation, Step] =
     leaf match
-      case decide: Decide if asked(cursor, resume) =>
-        WalkerPowerGather.probe(ctx.root, decide, ctx.state, ctx.activePlayer,
-            ctx.powers, ctx.answered, ctx.procedure).flatMap:
+      case decide: Decide if ctx.searching && cursor.isEmpty =>
+        reach(decide, ctx, path)
+      case decide: Decide if !ctx.searching && asked(cursor, resume) =>
+        narrowAt(decide, ctx, path).flatMap:
           case Some(narrowed) =>
             // Reached fresh, so this is the only time it is asked this pass.
             val hidden = if cursor.nonEmpty then Vector.empty
@@ -492,6 +512,63 @@ object ProcedureWalker:
             s"decision ${decide.decisionId} has nothing left to offer"))
       case _ => runNarrowed(leaf, ctx, path, cursor, resume, contributions,
         strict)
+
+  /** `decide` narrowed to the options from which some path reaches a legal
+    * end (global operation restrictions design, "Lazy pruning"), or as
+    * declared when the powers do not search. */
+  private def narrowAt(decide: Decide, ctx: WalkCtx, path: Vector[String])
+      : Either[OathViolation, Option[Decide]] =
+    if !ctx.powers.probing then Right(Some(decide))
+    else WalkerSearch.narrow(decide, verdict(decide, ctx, path))
+
+  /** A search at a decision it reaches. Back at a decision it already stands
+    * at in the same state, it stops: the loop leads on exactly when the first
+    * visit does, and the first visit tries the other answers. */
+  private def reach(decide: Decide, ctx: WalkCtx, path: Vector[String])
+      : Either[OathViolation, Step] =
+    if ctx.visited((path, ctx.state)) then Right(Stopped(ctx))
+    else WalkerSearch.reach(decide, verdict(decide, ctx, path)).map:
+      case WalkerSearch.Reach.Skipped => Done(ctx)
+      case WalkerSearch.Reach.Answerable => Stopped(ctx)
+
+  /** Whether one answer to `decide`, given by its owner, can reach a legal
+    * end: it adds no tree-level `Restriction` violation the answers so far do
+    * not already produce, and a search's walk from it on a copy of the state
+    * is not rejected. The search runs the real pipeline, so any rejection of
+    * a required operation fails the path. */
+  private def verdict(decide: Decide, ctx: WalkCtx, path: Vector[String])
+      : DecisionAnswer => Either[OathViolation, Unit] =
+    val baseline = WalkerPowerGather.breaches(ctx.root, ctx.state,
+      ctx.activePlayer, ctx.powers, ctx.answered, ctx.procedure).toSet
+    val searching = ctx.copy(events = Vector.empty, searching = true,
+      visited = ctx.visited + ((path, ctx.state)))
+    answer =>
+      val hypothetical = Answered(decide.decisionId, answer, decide.owner)
+      WalkerPowerGather.breaches(ctx.root, ctx.state, ctx.activePlayer,
+          ctx.powers, ctx.answered :+ hypothetical, ctx.procedure)
+        .find(!baseline(_)).toLeft(())
+        .flatMap(_ => searched(walk(ctx.root, searching, Vector.empty,
+          Some(path), AnswerResume(hypothetical), WalkerHooks.none)))
+
+  /** A search's walk as a verdict. A broken position is a rejection, as it
+    * is for a simulation. */
+  private def searched(walked: => Either[OathViolation, Step])
+      : Either[OathViolation, Unit] =
+    try walked.map(_ => ())
+    catch
+      case error: IllegalArgumentException => Left(
+        OathViolation.InvalidEventOrder(Option(error.getMessage)
+          .getOrElse("invalid searched walker position")))
+
+  /** `decide`, parked at `pending`, narrowed as the walk narrowed it before
+    * parking. A position whose search empties a required decision is
+    * returned as declared, and the answer-time check refuses it. */
+  private[walker] def narrowParked(state: ReadyGame, action: Operation,
+      pending: PendingTree, powers: WalkerPowers, decide: Decide): Decide =
+    val ctx = WalkCtx(strip(state), Vector.empty,
+      state.game.current.turn.activePlayer, pending.answered, powers,
+      WalkerDice.placeholder, state.game.current.walkerProcedure, action)
+    narrowAt(decide, ctx, pending.at).toOption.flatten.getOrElse(decide)
 
   /** Whether the leaf is where a decision is asked: reached fresh, or at the
     * cursor's end while an answer resumes. A plain resume only re-parks it.
@@ -550,14 +627,15 @@ object ProcedureWalker:
                   s"is not a Decide/Roll park (leaf ${leafLabel(leaf)})")
       case None =>
         leaf match
+          case hidden if ctx.searching && WalkerSearch.hides(hidden) =>
+            Right(Stopped(ctx))
           case roll: Roll if roll.mode == RollMode.Automatic =>
             runAutomaticRoll(roll, ctx, path, contributions).map(Done(_))
           case shuffle: Shuffle if shuffle.order.isEmpty =>
             WalkerShuffles.ordered(shuffle, ctx.state, ctx.dice).flatMap(
               record(_, ctx, path, contributions, strict)).map(Done(_))
           case _: Decide | _: Roll => Right(Park(path, ctx))
-          case build: BuildOps =>
-            runBuildOps(build, ctx, path, contributions).map(Done(_))
+          case build: BuildOps => runBuildOps(build, ctx, path, contributions)
           case delta =>
             record(delta, ctx, path, contributions, strict).map(Done(_))
 
@@ -593,7 +671,7 @@ object ProcedureWalker:
     else
       walk(children(index), ctx, path :+ index.toString, cursorAt, resume,
         hooks).flatMap:
-          case park: Park => Right(park)
+          case stop @ (_: Park | _: Stopped) => Right(stop)
           case Done(next) => continue(children, index + 1, next, path, None,
             resume, hooks)
 
@@ -607,14 +685,19 @@ object ProcedureWalker:
   /** Executes a [[oathdigital.model.BuildOps]] leaf: `build(state, pending)` returns the delta
     * batch to run through the pipeline, recorded as the node's step ops. An
     * empty batch runs nothing and records nothing, and a note after it reads
-    * that nothing changed.
+    * that nothing changed. A search stops at a batch that shows hidden
+    * information.
     */
   private def runBuildOps(build: BuildOps, ctx: WalkCtx, path: Vector[String],
-      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
+      contributions: Vector[PowerId]): Either[OathViolation, Step] =
     val tree = PendingTree(at = path, answered = ctx.answered)
     build.build(ctx.state, tree).flatMap { ops =>
-      if ops.isEmpty then Right(ctx.copy(previous = Some((ctx.state, ctx.state))))
+      if ctx.searching && ops.exists(WalkerSearch.hides) then
+        Right(Stopped(ctx))
+      else if ops.isEmpty then
+        Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
       else recordBatch(ops, contributions, ctx, path, leafLabel(build))
+        .map(Done(_))
     }
 
   /** Executes `ops` through the pipeline as one atomic batch and records ONE
@@ -638,24 +721,12 @@ object ProcedureWalker:
         ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId,
           payload = WalkerStepPayload.DeltaRecorded(
-            deltaMeaning(updated.executed, label)),
+            DeltaMeaning.of(updated.executed, label)),
           ops = updated.executed,
           contributions = contributions)
       ctx.copy(state = updated.state, events = events,
         previous = Some((ctx.state, updated.state)))
     }
-
-  private def deltaMeaning(ops: Vector[CoreOperation],
-      fallback: String): DeltaMeaning = ops match
-    case Vector(ModifyDicePool(pool, delta, _)) =>
-      DicePoolModified(pool, delta)
-    case Vector(SpendSupply(player, amount, _)) =>
-      SupplySpent(player, amount)
-    case Vector(Move(Piece.Card(relic: RelicId),
-        PositionedLocation(Location.Site(site), _),
-        PositionedLocation(Location.PlayArea(player), _), _)) =>
-      RelicAcquired(player, relic, site)
-    case _ => OperationApplied(fallback)
 
   /** Validates a resolved answer against the parked Decide and records its
     * step: the answer's submitter must be the node's owner, the query must

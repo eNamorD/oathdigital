@@ -98,7 +98,10 @@ class OfferHostSuite extends munit.FunSuite:
     val state = low(ready)
     val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(state,
       tree, None, WalkerPowers.empty): @unchecked
-    assertEquals(seen.toVector, Vector((false, Vector.empty[Answered])))
+    // The first fold is the walk's own. The park's search then walks on from
+    // the question, which folds the host again, inside it.
+    assertEquals(seen.toVector, Vector((false, Vector.empty[Answered]),
+      (true, Vector.empty[Answered])))
     val answer = Answered("test.question", DecisionAnswer.ChooseOneAnswer(
       DecisionOptionRef.Button("yes")), actor)
     assert(ProcedureWalker.resolve(state, tree, pending, answer,
@@ -120,12 +123,16 @@ class OfferHostSuite extends munit.FunSuite:
     val state = low(ready)
     val Right(WalkerOutcome.Parked(pending, _)) = ProcedureWalker.advance(state,
       tree, None, powers): @unchecked
-    assertEquals(host.folds.size, 0)
+    // Only the park's search reaches the host, and it does so with the
+    // hypothetical answer in the context.
+    assertEquals(host.folds.toVector.map(_._1.map(_.offer.label)), Vector(
+      Vector("answered")))
     ProcedureWalker.resolve(state, tree, pending, Answered("test.question",
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("yes")), actor),
       powers)
+    // The answer is searched again when it is checked, then the walk goes on.
     assertEquals(host.folds.toVector.map(_._1.map(_.offer.label)), Vector(
-      Vector("answered")))
+      Vector("answered"), Vector("answered"), Vector("answered")))
 
   test("a host can ask whether an operation would run, and what it would record"):
     val results: mutable.Buffer[Either[OathViolation, Vector[CoreOperation]]] =

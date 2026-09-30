@@ -5,7 +5,6 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted, WalkerParked}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.model.OathViolation.NoPlayableOption
 import oathdigital.testkit.{CatalogNames, Look, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
@@ -92,12 +91,12 @@ class EconomyWalkerSuite extends munit.FunSuite:
     }
 
   test("a start with nothing playable is rejected before anything is persisted"):
-    assertEquals(start(atAlchemist.favor(p1, 0).ready).left.toOption,
-      Some(NoPlayableOption("muster")))
-    assertEquals(start(atAlchemist.secrets(p1, faceUp = 0).ready,
-      ActionRef.Trade, favor).left.toOption, Some(NoPlayableOption("trade")))
-    assertEquals(start(atAlchemist.supply(p1, 0).ready).left.toOption,
-      Some(NoPlayableOption("muster")))
+    // The search finds no legal path from any source, so the start is refused
+    // with the first rejection it met rather than parking on a decision.
+    assert(start(atAlchemist.favor(p1, 0).ready).isLeft)
+    assert(start(atAlchemist.secrets(p1, faceUp = 0).ready, ActionRef.Trade,
+      favor).isLeft)
+    assert(start(atAlchemist.supply(p1, 0).ready).isLeft)
 
   test("a start with no token-free card, or a wrong selection, is rejected"):
     assertEquals(start(atAlchemist.tokens(alchemist, secrets = 1).ready)

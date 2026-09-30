@@ -9,9 +9,10 @@ import oathdigital.model.{OperationRestriction, PowerId, PowerResolution}
   * takes one -- replay applies recorded ops only (spec decision 5) and must
   * never re-gather or re-transform.
   *
-  * `probing` is on for every command. The restriction look-ahead turns it off
-  * for the traversal it runs, so a dry run inside a probe (an `OfferHost`
-  * pass) never probes in turn.
+  * `probing` is on for every command: the walker searches before a decision
+  * parks and hides the options from which no path reaches a legal end
+  * (global operation restrictions design, "Lazy pruning"). [[quiet]] turns
+  * it off for a dry run inside a search, so that run never searches in turn.
   *
   * `restrictionSet` is the catalog's global operation restrictions and
   * `modifiers` the powers selected for this command. Together with the
@@ -22,8 +23,8 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
     probing: Boolean = true,
     restrictionSet: OperationRestrictions = OperationRestrictions.none,
     modifiers: Vector[PowerId] = Vector.empty):
-  /** Whether any power can reject an action. The restriction look-ahead
-    * ([[WalkerPowerGather.probe]]) has nothing to find without one.
+  /** Whether any power can reject an action through a tree-level
+    * `Restriction`. The search's tree check has nothing to find without one.
     */
   lazy val hasRestrictions: Boolean = powers.exists(_.contributions.values
     .exists(_.exists(_.isInstanceOf[Restriction])))
@@ -31,6 +32,12 @@ final case class WalkerPowers(powers: Vector[ContributingPower],
   /** The operation restrictions every step of this command runs with. */
   lazy val operationRestrictions: Vector[OperationRestriction] =
     restrictionSet.active(powers.flatMap(_.operationRestrictions), modifiers)
+
+  /** These powers without the search, for a dry run inside one. It is built
+    * once per instance, so repeated dry runs share one copy and build its
+    * restrictions once. */
+  lazy val quiet: WalkerPowers =
+    if probing then copy(probing = false) else this
 
 object WalkerPowers:
   val empty: WalkerPowers = WalkerPowers(Vector.empty)

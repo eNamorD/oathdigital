@@ -88,12 +88,10 @@ class MusterProcedureSuite extends munit.FunSuite:
 
   test("a power that removes the cost lets an unaffordable Muster start"):
     val ready = atAlchemist.favor(p1, 0).ready
-    // Without the power the option is still listed, previewed as dropped.
-    val unpaid = MusterProcedure.startOptions(catalog, ready, p1,
-      WalkerPowers.empty)
-    assertEquals(unpaid.map(_.option.ref),
-      Vector(DecisionOptionRef.Denizen(alchemist)))
-    assert(unpaid.forall(_.outcome.isLeft))
+    // Without the power the search finds no legal path from the only source,
+    // so the decision is left with nothing to offer and the start is refused.
+    assertEquals(MusterProcedure.startOptions(catalog, ready, p1,
+      WalkerPowers.empty), Vector.empty)
     val previewed = MusterProcedure.startOptions(catalog, ready, p1,
       WalkerPowers(Vector(FreePayment(PowerId("test.free-payment")))))
     assertEquals(previewed.map(_.option.ref),
@@ -126,16 +124,12 @@ class MusterProcedureSuite extends munit.FunSuite:
     assertEquals(MusterProcedure.build(catalog, ready, p1).left.toOption,
       Some(OathViolation.WrongPhase(Phase.Act, Phase.Wake)))
 
-  test("a power that adds an option to the source decision has it previewed, " +
-      "and this slice's acceptance rule drops it"):
+  test("a power that adds an option to the source decision has it hidden, " +
+      "because the acceptance rule leaves it no legal path"):
     val ready = atAlchemist.adviser(p1, magiciansCode).ready
     val previewed = MusterProcedure.startOptions(catalog, ready, p1,
       WalkerPowers(Vector(AddAdviserSource(
         PowerId("test.add-adviser-source"), magiciansCode))))
     assertEquals(previewed.map(_.option.ref), Vector(
-      DecisionOptionRef.Denizen(alchemist),
-      DecisionOptionRef.Denizen(magiciansCode)))
+      DecisionOptionRef.Denizen(alchemist)))
     assert(previewed.head.outcome.isRight)
-    previewed.last.outcome match
-      case Left(_: EconomyCardUnavailable) => ()
-      case other => fail(s"expected the acceptance rule to drop it, got $other")

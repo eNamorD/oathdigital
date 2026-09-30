@@ -534,14 +534,15 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer, Vector.empty)
       .getOrElse(fail("the tie must build a tree"))
     val substituted: Operation = production match
-      case Sequence(children, window) => Sequence(children.map {
+      // Only the decision stays: with the operations after it, the walker's
+      // search would hide the unseated candidate before the projector saw it.
+      case Sequence(children, window) => Sequence(children.collect {
         case decide: Decide => decide.query match {
           case query: DecisionQuery.ChooseOne => decide.copy(query = query.copy(
             options = query.options.updated(1,
               DecisionOption.Player(DecisionOptionRef.Player(unseated)))))
           case other => fail(s"expected a choose-one query, got $other")
         }
-        case other => other
       }, window)
       case other => fail(s"expected a Sequence, got $other")
     val broken = projectorFor(substituted)

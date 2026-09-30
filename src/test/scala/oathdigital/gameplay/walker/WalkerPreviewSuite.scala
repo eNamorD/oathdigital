@@ -35,12 +35,19 @@ class WalkerPreviewSuite extends munit.FunSuite:
 
   test("each option of a parked choose-one is answered against the tree"):
     val (ready, actor) = withSupply(2)
+    // The search hides the unaffordable option before the preview reads it.
     val previewed = WalkerSimulation.preview(tree(actor), ready, WalkerPowers.empty)
       .getOrElse(fail("a tree parked on a choose-one must preview"))
-    assertEquals(previewed.map(_.option.ref), Vector(cheap, dear))
+    assertEquals(previewed.map(_.option.ref), Vector(cheap))
     assertEquals(previewed.head.outcome, Right(PreviewOutcome(
       Vector(SpendSupply(actor, 1)), complete = true)))
-    assert(previewed(1).outcome.isLeft, "three Supply is not affordable with two")
+    // With the search off, the preview reports why each option cannot run.
+    val unsearched = WalkerSimulation.preview(tree(actor), ready,
+      WalkerPowers.empty.copy(probing = false))
+      .getOrElse(fail("a tree parked on a choose-one must preview"))
+    assertEquals(unsearched.map(_.option.ref), Vector(cheap, dear))
+    assert(unsearched(1).outcome.isLeft,
+      "three Supply is not affordable with two")
 
   test("an option that finishes the tree is complete and one that parks again is not"):
     val (ready, actor) = withSupply(5)

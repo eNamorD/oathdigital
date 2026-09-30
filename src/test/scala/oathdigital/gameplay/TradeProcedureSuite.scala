@@ -59,14 +59,13 @@ class TradeProcedureSuite extends munit.FunSuite:
     assertEquals(after.favor(p1), 2)
     assertEquals(after.faceUpSecrets(p1), 2)
 
-  test("a Trade the actor cannot pay for is previewed as dropped"):
-    val previewed = TradeProcedure.startOptions(catalog,
-      atAlchemist.favor(p1, 1).ready, p1, TradeResource.Secret, WalkerPowers.empty)
-    assert(previewed.nonEmpty && previewed.forall(_.outcome.isLeft))
-    val unaffordable = TradeProcedure.startOptions(catalog,
+  test("a Trade the actor cannot pay for is not offered at all"):
+    assertEquals(TradeProcedure.startOptions(catalog,
+      atAlchemist.favor(p1, 1).ready, p1, TradeResource.Secret,
+      WalkerPowers.empty), Vector.empty)
+    assertEquals(TradeProcedure.startOptions(catalog,
       atAlchemist.secrets(p1, faceUp = 0).ready, p1, TradeResource.Favor,
-      WalkerPowers.empty)
-    assert(unaffordable.nonEmpty && unaffordable.forall(_.outcome.isLeft))
+      WalkerPowers.empty), Vector.empty)
 
   test("the start selection must be exactly one resource button"):
     val ready = atAlchemist.ready
