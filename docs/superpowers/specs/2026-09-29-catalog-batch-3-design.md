@@ -370,9 +370,11 @@ Great Herd declined, as for Twin Brother. Key to the City's gain, which the
 - **Same-bank gains.** A gain that follows a discard or kill returning to the
   same bank runs as its own step (Taming Charm, Second Chance on the player's
   own board).
-- **Discard coverage.** Every file that builds a discard attaches
-  `DiscardRestrictions` and filters its options with it, or
-  `DiscardRestrictionsCoverageSuite` fails.
+- **Discard coverage.** Every discard runs under the global operation
+  restrictions, so a new discard needs no attachment. Until the restriction
+  search lands ([global operation restrictions](2026-09-30-global-operation-restrictions-design.md),
+  slice 2), an option filter that hides locked cards reads
+  `OperationRestrictions.isLocked`.
 - **Generic lines.** Which generic lines exist for `Discard.Relic`,
   `Discard.RuinedEdifice`, `Bury`, a bandit `Kill`, a pawn `Move`, a `Give`
   to a bank or card, a bank-to-bank `Move` and `Gain.Warbands`, so each

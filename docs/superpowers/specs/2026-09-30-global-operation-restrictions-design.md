@@ -253,7 +253,10 @@ lands on a seam that is already in place.
   a lazy value per instance, and `powers.copy(probing = false)` (the probe and
   the look-ahead) builds a fresh instance that recomputes it. The search must
   carry the computed vector through such copies, or it rebuilds the set at
-  every step.
+  every step. `CardPlay.legalChoices` also builds `forCatalog(catalog).active`
+  on every call, which scans the catalog's denizens and edifices, and
+  `LockedCards.showing` scans every site per check; cache the catalog-level set
+  and index the locked cards in play if the measured budget needs it.
 
 ## Out of scope
 
