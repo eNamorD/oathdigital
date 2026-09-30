@@ -73,7 +73,8 @@ Both stay as they are.
   ruler is the acting player's enemy and rules a site with the intact Hall.
 - **Grand Scepter.** It refuses any operation that moves it out of play: a
   discard to the set-aside relics, a return to the relic deck, or a `Bury`.
-  Passing it between players (`Take`, `Give`) is allowed.
+  Passing it between players (`Take`, `Give`) is allowed. The Grand Scepter is
+  never facedown, so pruning on it reveals nothing.
 - **Take is the keyword.** A restriction on `Take` refuses the `Take`
   operation only. A `Give` is not a `Take`, so a Negotiation transfer is
   allowed.
@@ -223,9 +224,6 @@ lands on a seam that is already in place.
 - **The procedure at action start.** `PowerCtx.procedure` is `None` at an
   action's start command (walker follow-ups). No global restriction may read
   it until that is fixed.
-- **A hidden Grand Scepter.** A facedown relic's identity must not decide
-  whether an option is pruned. Confirm the search treats an operation on a
-  card the chooser cannot see as accepted.
 - **Search inputs.** How the search enumerates `ChooseMany` and
   `ChooseAmount` answers, and whether a decision owned by another player can
   reuse the same simulation.
