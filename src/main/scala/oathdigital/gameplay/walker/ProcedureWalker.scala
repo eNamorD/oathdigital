@@ -1,8 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.powerresolver.{ContributingPower, Restriction}
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, Shuffle, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, Shuffle, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 
@@ -32,36 +31,6 @@ object WalkerOutcome:
     */
   final case class Finished(treeless: ReadyGame, events: Vector[OathEvent])
       extends WalkerOutcome
-
-/** The powers available to one `advance`/`roll`/`resolve` command (Task 3).
-  * `OathRules` supplies it at command entry; `applyRecorded` (replay) never
-  * takes one -- replay applies recorded ops only (spec decision 5) and must
-  * never re-gather or re-transform.
-  *
-  * `probing` is on for every command. The restriction look-ahead turns it off
-  * for the traversal it runs, so a dry run inside a probe (an `OfferHost`
-  * pass) never probes in turn.
-  */
-final case class WalkerPowers(powers: Vector[ContributingPower],
-    probing: Boolean = true):
-  /** Whether any power can reject an action. The restriction look-ahead
-    * ([[WalkerPowerGather.probe]]) has nothing to find without one.
-    */
-  lazy val hasRestrictions: Boolean = powers.exists(_.contributions.values
-    .exists(_.exists(_.isInstanceOf[Restriction])))
-object WalkerPowers:
-  val empty: WalkerPowers = WalkerPowers(Vector.empty)
-
-  /** Powers offered to one command out of a full catalog: an `Automatic`
-    * power fires unconditionally; a `PlayerSelected` power fires only when
-    * its id appears in `modifiers`. Shared by `OathRules.walkerPowers`
-    * (command time) and `WalkerDecisionProjector` (park-time projection) so
-    * both always fold a shared window identically (Task 5 projector seam).
-    */
-  def selected(catalog: WalkerPowers, modifiers: Vector[PowerId]): WalkerPowers =
-    catalog.copy(powers = catalog.powers.filter(power =>
-      power.resolution == PowerResolution.Automatic ||
-        modifiers.contains(power.id)))
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -655,7 +624,7 @@ object ProcedureWalker:
       requireAll: Boolean = false)
       : Either[OathViolation, WalkCtx] =
     OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
-      restrictions, requireAll)(
+      ctx.powers.operationRestrictions ++ restrictions, requireAll)(
       Right(_)).map { updated =>
       val nodeId = if path.isEmpty then label else path.mkString(".")
       val events = if updated.executed.isEmpty then ctx.events else

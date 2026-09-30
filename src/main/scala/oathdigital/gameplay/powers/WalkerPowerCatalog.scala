@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.economy.KnightsErrant
@@ -38,6 +39,8 @@ import oathdigital.gameplay.walker.WalkerPowers
   * The battle plans are inert until a Campaign folds its plan windows: each
   * offers itself there, and the title's defense, which no card prints, is always
   * present.
+  * `restrictionSet` gives every walker step the catalog's global operation
+  * restrictions.
   */
 object WalkerPowerCatalog:
   def default(catalog: ExecutableCatalog): WalkerPowers =
@@ -65,4 +68,5 @@ object WalkerPowerCatalog:
       Dazzle.forCatalog(catalog) ++ GreatMarket.forCatalog(catalog) ++
       BanditMarket.forCatalog(catalog) ++ GreatForge.forCatalog(catalog) ++
       BrokenForge.forCatalog(catalog) ++ ProvingGrounds.forCatalog(catalog) ++
-      EmptyGrounds.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
+      EmptyGrounds.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed,
+      restrictionSet = OperationRestrictions.forCatalog(catalog))

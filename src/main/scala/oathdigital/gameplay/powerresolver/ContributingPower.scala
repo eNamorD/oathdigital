@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, PlayerId, PowerId, PowerNote, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, DecisionOptionRef, NoteKey, OathViolation, OfferedPlan, Operation, OperationRestriction, PlayerId, PowerId, PowerNote, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -131,6 +131,11 @@ trait ContributingPower extends NotingPower:
   def priority: Int = 0
   def contributions: Map[PowerWindow, Vector[Contribution]]
   def applicable(ctx: PowerCtx): Boolean = true
+  /** Operation restrictions that hold wherever this power is offered: every
+    * walker step checks them, and a composite is checked whole before it is
+    * split (global operation restrictions design). Unlike a `Restriction`, it
+    * hooks no window. None by default. */
+  def operationRestrictions: Vector[OperationRestriction] = Vector.empty
   /** What selecting this power pays, as the operations its action runs first.
     * A command that selects several powers dry-runs all of their payments
     * together (`OathRules.validateModifiers`), so a combination the player

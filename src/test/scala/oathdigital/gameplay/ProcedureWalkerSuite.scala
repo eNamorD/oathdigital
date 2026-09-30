@@ -54,6 +54,14 @@ object ProcedureWalkerSuite:
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Restriction(fn)))
 
+  /** A `ContributingPower` registering exactly one operation restriction. */
+  final case class TestOperationRestrictionPower(id: PowerId,
+      restriction: OperationRestriction) extends ContributingPower:
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
+    override def operationRestrictions: Vector[OperationRestriction] =
+      Vector(restriction)
+
 /** Task 3 spec: ProcedureWalker auto-walks delta leaves (recording one
   * `WalkerStepRecorded` per executed leaf), parks at Decide/Roll, honors
   * Repeat(guard, body) with pure command-time guards, and never re-executes or
@@ -67,6 +75,31 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     * production walks with powers.
     */
   private val noPowers: WalkerPowers = WalkerPowers.empty
+
+  import ProcedureWalkerSuite.TestOperationRestrictionPower
+
+  /** The powers of one test power that registers `restriction`. */
+  private def restricting(restriction: OperationRestriction): WalkerPowers =
+    WalkerPowers(Vector(TestOperationRestrictionPower(
+      PowerId("test.restriction"), restriction)))
+
+  /** Refuses every `SpendSupply`. */
+  private val noSpending = new OperationRestriction:
+    override def reason(state: ReadyGame, operation: CoreOperation)
+        : Option[OperationReason] = operation match
+      case _: SpendSupply => Some(OperationReason("no-spending",
+        "supply cannot be spent", OperationReasonKind.Impossible))
+      case _ => None
+
+  test("a power's operation restriction holds at a plain delta leaf"):
+    val optional = Sequence(Vector(SpendSupply(actor, 1, required = false)))
+    ProcedureWalker.advance(ready, optional, None, restricting(noSpending)) match
+      case Right(WalkerOutcome.Finished(state, events)) =>
+        assertEquals(state, ready)
+        assertEquals(events, Vector.empty)
+      case other => fail(s"expected a Finished walk, got $other")
+    assert(ProcedureWalker.advance(ready, Sequence(Vector(SpendSupply(actor, 1))),
+      None, restricting(noSpending)).isLeft)
 
   import ProcedureWalkerSuite.{continueOption, stopOption}
 
