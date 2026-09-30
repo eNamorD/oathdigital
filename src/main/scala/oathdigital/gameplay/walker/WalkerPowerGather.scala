@@ -126,25 +126,8 @@ private[walker] object WalkerPowerGather:
     else
       val permitted = permits(restrictions, ctxFor, byId)
       ops.flatMap:
-        case decide: Decide => narrowed(decide, permitted).toVector
+        case decide: Decide => WalkerSearch.narrowed(decide, permitted).toVector
         case other => Vector(other)
-
-  /** `decide` offering only the permitted options. `None` is an optional
-    * choose-many with nothing left, which is not asked. Other query kinds
-    * are returned unchanged.
-    */
-  private def narrowed(decide: Decide,
-      permitted: DecisionOptionRef => Boolean): Option[Decide] =
-    decide.query match
-      case one: DecisionQuery.ChooseOne => Some(decide.copy(query =
-        one.copy(options = one.options.filter(o => permitted(o.ref)))))
-      case many: DecisionQuery.ChooseMany =>
-        val options = many.options.filter(o => permitted(o.ref))
-        if many.min == 0 && options.isEmpty then None
-        else Some(decide.copy(query = many.copy(
-          min = math.min(many.min, options.size),
-          max = math.min(many.max, options.size), options = options)))
-      case _ => Some(decide)
 
   /** A required decision with every option forbidden cannot be answered: the
     * violation is the first restriction's, for the first option.
@@ -281,7 +264,7 @@ private[walker] object WalkerPowerGather:
         val verdicts = refs.map(ref => ref -> added(answer(ref))).toMap
         if required && refs.nonEmpty && refs.forall(verdicts(_).nonEmpty) then
           Left(verdicts(refs.head).get)
-        else Right(narrowed(decide, ref => verdicts(ref).isEmpty))
+        else Right(WalkerSearch.narrowed(decide, ref => verdicts(ref).isEmpty))
       decide.query match
         case one: DecisionQuery.ChooseOne => byOption(one.options.map(_.ref),
           DecisionAnswer.ChooseOneAnswer(_), required = true)
