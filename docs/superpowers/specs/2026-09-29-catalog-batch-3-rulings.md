@@ -30,7 +30,7 @@
   they may be chosen, as for Wolves and Hunger. Armed Mob, Second Chance and
   Whispering Leaves follow this.
 - **Locked and the Grand Scepter.** The
-  [Global operation restrictions](../../ROADMAP.md#phase---global-operation-restrictions)
+  [Global operation restrictions](2026-09-30-global-operation-restrictions-design.md)
   phase comes first. After it, a locked card refuses Move, Flip and Swap, and
   the Grand Scepter cannot be discarded or buried. No power in this batch
   filters locked cards or the Grand Scepter itself: the restriction refuses

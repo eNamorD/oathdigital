@@ -1,7 +1,7 @@
 # Catalog Batch 3: Cards Without Engine Changes
 
 **Status:** designed 2026-09-29. Implementation starts after the
-[Global operation restrictions](../../ROADMAP.md#phase---global-operation-restrictions)
+[Global operation restrictions](2026-09-30-global-operation-restrictions-design.md)
 phase, which it depends on. The per-card rulings are in
 [the rulings appendix](2026-09-29-catalog-batch-3-rulings.md).
 
