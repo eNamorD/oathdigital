@@ -61,13 +61,11 @@ kind, Vision, candidate order, or an ineligible random winner.
 ## Bounded support and powers
 
 The slice accepts only fixed, unaltered Foundations and all-Exile lineages.
-Before Rest, a SHA-256 fingerprint pins the complete handler vocabulary for
-denizens, relics, both edifice faces, Legacies, and sites. Runtime discovery
-then compares active, accessible sources only against an explicit audited set
+Runtime discovery compares active, accessible sources only against an
+explicit audited set
 of five relevant Rest handlers: `denizen.vow-of-poverty`,
 `denizen.naysayers`, `denizen.silver-tongue`, `denizen.insomnia`, and
 `denizen.vow-of-obedience`. An applicable unimplemented handler blocks with its
-stable source key and exact handler ID. Any changed catalog handler inventory
-blocks before discovery with the expected and actual fingerprints; mechanics
+stable source key and exact handler ID. Mechanics
 are never inferred from rules text or handler-name fragments. The fixed Mob and
 Wandering Flame banner faces and fixed Foundations remain separate typed checks.

@@ -22,17 +22,17 @@ a gameplay-rules specification.
   belong in the state model.
 - The frontend consumes projections. Its presentation IDs and image
   references are not domain identities and never become authoritative state.
-- `docs/catalog/new-foundations-component-catalog.json` is component
-  definition data. Runtime state refers to its printed component identities;
-  card text and handlers remain catalog/application concerns.
+- The Scala card catalog (`catalog/Cards.scala`, `catalog/holding/`, and the
+  list in `gameplay/cards/NewFoundations.scala`) is component definition
+  data. Runtime state refers to its printed component identities; card text
+  and handlers remain catalog/application concerns.
 
 ## Accepted identity and state decisions
 
 - Printed cards are singletons. A typed `CardId` is both definition identity
   and physical-card identity; there is no `CardInstanceId`.
-- `CatalogRef(ruleset, version)` pins an `OathGame` to the catalog's
-  `ruleset.id` and `catalogVersion`. Catalog schema versioning is independent
-  of saved-game versioning.
+- An `OathGame` carries no catalog reference; the build is the pin, so the
+  catalog is versioned with the code rather than with saved games.
 - State is owned by its container. Decks, discards, the Reliquary,
   Dispossessed, and reserves store IDs because cards there have no mutable
   runtime state. Placed denizens, advisers, relics, edifices, and legacies
@@ -80,7 +80,6 @@ The case classes are the in-memory model, not a permanent wire format. A saved
 game must use an explicit envelope containing:
 
 - a save-format version;
-- the `CatalogRef`;
 - deterministic random state or a replayable record of random outcomes; and
 - either a versioned state payload or the authoritative action/event journal.
 
@@ -93,7 +92,7 @@ envelopes and reconstructs state through deterministic replay; see
 
 The identity, Atlas, Supply, banner, card-location, map-region, player/lineage,
 campaign/current-game, and projection decisions above are accepted. The
-machine-readable component catalog is authoritative for its inventory, printed
+Scala card catalog is authoritative for its inventory, printed
 identities, reviewed text, restrictions, and stable handler keys. Catalog
 validity does not imply that every handler has executable behavior;
 unsupported relevant powers must fail explicitly.

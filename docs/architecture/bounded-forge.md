@@ -29,7 +29,4 @@ continues to hide facedown relic identity.
 
 This milestone implements only the printed base procedure. The complete
 pre-release handler vocabulary was audited and has no component that modifies
-the base Forge procedure. Forge pins the exact audited handler-vocabulary
-fingerprint; any added or changed vocabulary makes active component handlers
-block with `UnsupportedForgeState` until the catalog is explicitly re-audited.
-Forge never interprets component `rulesText`.
+the base Forge procedure. Forge never interprets component `rulesText`.

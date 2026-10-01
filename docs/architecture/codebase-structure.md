@@ -24,7 +24,9 @@ model/engine -> no outer adapter packages
   `ReadyGame`/`OathState`, the `OathEvent` and `OathViolation` vocabularies,
   the operation algebra (`CoreOperation`, `Location`, `Piece`), power windows,
   and rule-source identities. It holds data only, never rules.
-- `oathdigital.catalog` owns typed, source-verified component definitions.
+- `oathdigital.catalog` owns the typed card classes (`Cards.scala`) and the
+  not-yet-implemented card objects in `holding/`; the full list and the
+  production `ExecutableCatalog` are in `gameplay/cards/NewFoundations.scala`.
 - `oathdigital.engine` owns generic event evolution and replay machinery.
 - `oathdigital.gameplay` owns legality, procedures, and deterministic
   evolution over the model's events and operations. `actions`, `phases`, and `setup` group cohesive behavior.
@@ -67,7 +69,7 @@ python3 scripts/check-architecture.py
 - Recorded random facts are prepared by application-owned ports and validated
   during replay; clients never provide dice, draws, or hidden order.
 - `RuleSourceIndex` enumerates active factual sources.
-  `CatalogHandlerInventory` fingerprints the complete catalog handler
+  `CatalogHandlerInventory` lists the complete catalog handler
   vocabulary. Explicit Scala registries decide which handler IDs execute.
   Catalog `rulesText` is never interpreted.
 - Player/public projection scope and redaction are decided in the application

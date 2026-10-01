@@ -1,7 +1,17 @@
-# Runtime component catalog
+# Component catalog
 
-`new-foundations-component-catalog.json` is the complete component data loaded
-by the game engine. It deliberately contains only:
+The component catalog is Scala. Card types live in
+`src/main/scala/oathdigital/catalog/Cards.scala`. Cards that are not yet
+implemented live in `src/main/scala/oathdigital/catalog/holding/`; an
+implemented card sits beside its power. The full list of components and the
+production `ExecutableCatalog` are in
+`src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala`. That code is
+authoritative for inventory, printed identities, text, restrictions, and
+handler keys.
+
+`reference/new-foundations-component-catalog.json` is the last JSON catalog the
+game loaded. It is reference data only: the game does not read it, and it is
+not kept in sync with the Scala. The catalog holds only:
 
 - 255 final denizens (retained base cards plus final New Foundations cards)
 - 48 relics, including the Grand Scepter
@@ -12,24 +22,24 @@ by the game engine. It deliberately contains only:
 Setup cards, player boards, foundations, visions, and banners are rules-owned
 engine concepts and are not catalog entries.
 
-The runtime format keeps only `schemaVersion` and `catalogVersion` as top-level
-metadata. Rendered component records contain stable identities and ordered
-`powers` entries with stable ID, persistence, and exact rules text. Sites retain
-handler-only records because they have no rendered power text. Source paths,
-provenance, ingestion status,
-confidence, unresolved-task lists, and corpus claims live in
-`reference/catalog-ingestion` instead.
+Games and event envelopes carry no catalog reference. The build is the pin.
 
 Components use their lower-right printed identifiers wherever one exists:
 denizens use their numeric ID, relics use `R01` through `R47`, edifices use
 `E01` through `E30`, and legacies use `L01` through `L36`. The Grand Scepter
-has no lower-right identifier and uses the explicit `grand-scepter` fallback.
-Site IDs remain stable name-based IDs because sites have no printed component
-ID. Power IDs remain name-based, so changing catalog identity does not
-change the engine's behavior bindings.
+has no lower-right identifier; the game identifies it by `TheGrandScepterCard.id`.
+Site IDs are stable name-based IDs because sites have no printed component ID.
+Power IDs remain name-based, so changing a component's identity does not change
+the engine's behavior bindings.
 
 Relics record both printed corner statistics: `value` is the upper-left relic
 value and `defense` is the upper-right defense.
+
+A power is a `PrintedPower`: a stable ID, a persistence flag, the run of favor
+and secret symbols its text opens with, and the rest of the printed text.
+Gameplay never reads that text; `scripts/check-architecture.py` forbids
+`rulesText` and `.text` under `gameplay/`. Only the presentation layer reads
+`PrintedPower.rulesText` (cost symbols, then text).
 
 Rules text is Markdown. Printed resource symbols use `[favor]`,
 `[favor-burnt]`, `[secret]`, and `[secret-burnt]`. Other printed gameplay
@@ -38,61 +48,26 @@ symbols use the same bracket convention, including `[attack-die]`,
 `[skull]`, and `[suit-arcane]` through `[suit-order]`. Bold and italic
 printing is preserved with standard Markdown.
 
-Every denizen has a required `restrictions` field. JSON `null` is the canonical
-explicit representation of an unrestricted denizen; an empty array is not
-accepted. The only restricted forms are `["site-only"]`,
-`["adviser-only"]`, and `["adviser-only", "locked"]`. A locked card is always
-adviser-only, so `locked` is invalid by itself or in any other combination.
-Edifice restrictions are face-specific: every intact face is `["locked"]` and
-every ruined face is `null`. Edifices have no top-level restriction field.
+Restrictions are marker traits a card mixes in: `Locked`, `SiteOnly`, and
+`AdviserOnly`. An unrestricted denizen mixes in none. The only restricted forms
+are site-only, adviser-only, and locked adviser-only; a locked card is always
+adviser-only, so a locked denizen mixes in both `Locked` and `AdviserOnly`, and
+a denizen is never `Locked` without `AdviserOnly`, and never `SiteOnly` together with either. Edifice restrictions are
+face-specific: every intact face is `Locked` and every ruined face is
+unrestricted. Edifices have no restriction of their own.
 
-Schema `1.3.0` stores edifice restrictions on each face: intact faces are
-locked and ruined faces are unrestricted. Schema `1.2.0` replaced each
-rendered component's handler array and combined
-rules text with ordered `{id, persistent, rulesText}` power entries. Catalog
-`2026.08.29-pre5` is intentionally incompatible with the earlier prerelease
-format; no migration is provided because no production data uses it.
+## Adding or changing a card
 
-The ordered power clauses, stable IDs, exact text, and persistence flags are the
-completed manual runtime review. They are authoritative for runtime behavior
-discovery and presentation; older ingestion transcriptions must not rederive or
-collapse them.
+Add or edit the card object, keeping each component's powers in printed order.
+When splitting independently timed clauses, retain a stable base and assign
+stable suffixed power IDs, and set `persistent` for each clause from its printed
+black braid. Changing or splitting a power ID means updating the registry and
+any handler that binds to it.
 
-## Manual power review
-
-Edit only `docs/catalog/new-foundations-component-catalog.json` during manual
-review, and preserve each component's power order. When splitting independently
-timed clauses, retain a stable base and assign stable suffixed IDs; set
-`persistent` for each clause from its printed black braid. Changing or splitting
-an ID requires later registry and handler-fingerprint reconciliation.
-
-`reference/catalog-ingestion/reviewed-runtime-powers.json` is the authoritative
-generator mirror for reviewed power IDs, order, text, persistence, and edifice
-face restrictions. The generator may still derive non-power component metadata
-from ingestion inputs, but it replaces all generated powers with this keyed
-mirror before comparing or writing output. This prevents stale transcription
-records from overwriting reviewed clause boundaries.
-
-Run:
-
-```sh
-python3 scripts/validate-component-catalog.py
-```
-
-Running the reference generator with no arguments is a non-writing structural
-equality check:
-
-```sh
-python3 reference/catalog-ingestion/build_runtime_catalog.py
-```
-
-To inspect regenerated output, pass `--output` with a temporary path. This
-deliberately avoids overwriting the runtime catalog before equality has been
-established.
-
-The validator checks the JSON schema, exact component counts, globally unique
-component identities, power-ID uniqueness and syntax, ordered non-empty power
-arrays, persistence booleans, exact printed ID
-ranges, denizen restriction combinations, relic values, symbol vocabulary,
-edifice pairing, the single Grand Scepter role, and the absence of
-ingestion-only fields.
+List a new card in `NewFoundations`. `CardCatalogSuite`
+(`src/test/scala/oathdigital/gameplay/cards/CardCatalogSuite.scala`) pins the
+component counts, so a forgotten card fails a test. It also checks the printed
+ID ranges, globally unique card identities, power-ID and site-handler
+uniqueness, non-blank text, the symbol vocabulary, non-negative printed numbers,
+the Forge requirements of three-slot sites, and that every registered card power
+is printed in the catalog.

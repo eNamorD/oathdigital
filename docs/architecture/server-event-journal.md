@@ -158,7 +158,7 @@ game resource. Its participant list must exactly match every provisioned
 `player` membership; owner and spectator memberships are never setup seats.
 The request selects only participant order, lineage, color, and first player.
 The server derives every hidden site, deck, denizen, and relic ordering from the
-executable catalog and creates the event stream once. The current membership
+executable catalog (built into the server) and creates the event stream once. The current membership
 model deliberately does not let the owner also occupy a player seat. The
 existing `/api/dev` API and bootstrap creation remain unchanged.
 
@@ -168,10 +168,10 @@ Cookie flags and lifecycle belong to the later issuance boundary.
 
 ## Run and shutdown
 
-Start the server with a database path and optional catalog path:
+Start the server with a database path:
 
 ```sh
-./sbtw 'runMain oathdigital.server.OathServer var/oathdigital docs/catalog/new-foundations-component-catalog.json'
+./sbtw 'runMain oathdigital.server.OathServer --database-path var/oathdigital'
 ```
 
 The default bind address is `127.0.0.1:8080`; override it with JVM properties
@@ -257,7 +257,7 @@ For same-origin local development, build the frontend and start the server:
 
 ```sh
 ./sbtw frontend/fastLinkJS
-./sbtw 'runMain oathdigital.server.OathServer var/oathdigital docs/catalog/new-foundations-component-catalog.json'
+./sbtw 'runMain oathdigital.server.OathServer --database-path var/oathdigital'
 ```
 
 Open `http://127.0.0.1:8080/`. The server serves `frontend/index.html`, styles,

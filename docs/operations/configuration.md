@@ -2,8 +2,7 @@
 
 Oath Digital reads command-line options first, environment variables second,
 and defaults last. A command-line value therefore overrides the matching
-environment variable. Packaged launchers provide `trusted-alpha` and their
-bundled catalog path only when `OATH_MODE` and `OATH_CATALOG_PATH` are absent;
+environment variable. Packaged launchers provide `trusted-alpha` only when `OATH_MODE` is absent;
 explicit environment or command-line values still win.
 
 Universal archives require Java 21 on the host. They do not require sbt or
@@ -25,7 +24,6 @@ firewall, HTTPS proxy, and provisional browser guidance is in
 | `--session-cookie-name NAME` | `OATH_SESSION_COOKIE_NAME` | unset; development mode only; must be supplied with authenticated public origin |
 | `--authenticated-public-origin ORIGIN` | `OATH_AUTHENTICATED_PUBLIC_ORIGIN` | unset; development mode only; must be supplied with session cookie name |
 | `--database-path PATH` | `OATH_DATABASE_PATH` | `var/oathdigital` |
-| `--catalog-path PATH` | `OATH_CATALOG_PATH` | `docs/catalog/new-foundations-component-catalog.json`; packaged launcher uses bundled `share/oathdigital/new-foundations-component-catalog.json` |
 | `--mode development\|trusted-alpha` | `OATH_MODE` | `development`; packaged launcher uses `trusted-alpha` |
 
 `development` accepts loopback bind hosts only. `trusted-alpha` accepts a
@@ -52,8 +50,7 @@ OATH_DATABASE_PATH=/home/alex/oathdigital-data/alpha-1/database \
 bin/oathdigital
 ```
 
-The example data directory must exist and be writable by the process. For the
-catalog bundled in the archive, omit `OATH_CATALOG_PATH` as shown. For loopback
+The example data directory must exist and be writable by the process. For loopback
 use, omit `OATH_HOST` and `OATH_PUBLIC_BASE_URL`. Windows users can set the
 same environment variables and run `bin\oathdigital.bat`; complete commands
 for all three host operating systems are in the quick start.
@@ -91,9 +88,8 @@ For host-local access only, replace `--publish 8080:8080` with
 `--publish 127.0.0.1:8080:8080` and use a loopback public base URL such as
 `http://127.0.0.1:8080`.
 
-The container launcher supplies `trusted-alpha` mode and the bundled catalog
-path. Add `--env OATH_MODE=...` or `--env OATH_CATALOG_PATH=...` to override
-them. Command-line options placed after the image name override environment
+The container launcher supplies `trusted-alpha` mode. Add
+`--env OATH_MODE=...` to override it. Command-line options placed after the image name override environment
 values.
 
 End users run the published image and need neither sbt nor Node. For developers,

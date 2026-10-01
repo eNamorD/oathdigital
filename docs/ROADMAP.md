@@ -156,18 +156,14 @@ Found by the survey of 2026-09-29:
 
 ### Phase - Card classes
 
-Starts after **Phase - Catalog batch 3**, and needs its own design.
-`docs/catalog/new-foundations-component-catalog.json` is hand-authored JSON,
-read at runtime and validated against its schema. Move denizens, relics,
-edifices, legacies, and sites into typed Scala classes, so suit, restrictions
-and roles are compile-checked fields, and printed properties such as Locked
-and the Grand Scepter become traits a card mixes in. This replaces the catalog
-function the Global operation restrictions phase uses to build `Locked` and
-`GrandScepter` restrictions, and the `forCatalog` lookup from a power to its
-card. The catalog already indexes components by ID and by the powers they
-print. Costs to weigh: 393 components, the `CatalogRef` version games are
-pinned to, packaging and `--catalog-path`, `validate-component-catalog.py`,
-and the architecture docs that call the JSON authoritative.
+Design: [Card classes design](superpowers/specs/2026-10-01-card-classes-design.md).
+
+- [x] **Slice 1 - data to Scala.** Every component is a Scala object; the
+  runtime JSON, its loader, validator, schema, path option, packaging entry,
+  `CatalogRef` and the audit fingerprints are gone.
+- [ ] **Slice 2 - denizens beside their powers.**
+- [ ] **Slice 3 - relics and edifices.**
+- [ ] **Slice 4 - sites and legacies.**
 
 ### Phase - Cleanup tasks
 
@@ -184,6 +180,12 @@ and the architecture docs that call the JSON authoritative.
   out of the Hsqldb suite. Backend-only behavior (schema versions, file
   ownership) stays in the Hsqldb suite. This is the first use of the
   scala-testing skill's rule that every fake has a contract suite.
+- [ ] **Shrink cached catalog fields.** About 242 powers hold a
+  `catalog: ExecutableCatalog` field. Static card references (card classes
+  slices 2-4) make many unnecessary; remove them as powers are touched.
+- [ ] **Migrate `CatalogNames` to card objects.** About 76 test files look
+  cards up by name through `CatalogNames`. Move them to direct object
+  references such as `AlchemistCard`.
 
 ### Phase - Consent system
 
@@ -473,8 +475,8 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 ## Standing rules
 
 - The verification gate is the complete JVM and Scala.js suites, the optimized
-  Scala.js linker, runtime-catalog validation and equality, the architecture and
-  documentation-link checks, and diff validation.
+  Scala.js linker, the card catalog suite, the architecture and documentation-link
+  checks, and diff validation.
 - Before the first public release, event formats and fixtures may change in
   place; backward compatibility, migrations, and version bumps are not required.
   Update the current writer, reader, replay tests, fixtures, and development

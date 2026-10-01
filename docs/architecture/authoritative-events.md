@@ -30,14 +30,14 @@ for setup and gameplay. It delegates explicit payload cases to cohesive codecs:
 - `ActionEventCodec` for ordinary actions and pending decisions;
 - `EndingEventCodec` for title, Vision, round, and victory facts.
 
-Readers reject unknown discriminators, malformed values, catalog disagreement,
+Readers reject unknown discriminators, malformed values,
 unsafe/non-contiguous sequences, and stream identity changes. No Scala class
 name, reflection metadata, command, projection, or transport request is stored.
 
-The setup-start payload repeats the pinned catalog reference because it is
-domain data; the envelope and payload must agree. It also records the complete
-setup plan and selected Oathkeeper goal so replay never consults mutable
-defaults or randomness.
+The setup-start payload records the complete setup plan and selected
+Oathkeeper goal so replay never consults mutable defaults or randomness.
+Envelopes carry no catalog reference; stored events that still contain a
+`catalog` field load, and the field is ignored.
 
 ## Facts and randomness
 

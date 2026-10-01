@@ -62,10 +62,9 @@ card.
 `ReadyGame`: site cards and faces, advisers, relics, banners, Foundations,
 legacies, and other typed sources. It does not decide mechanics.
 
-`CatalogHandlerInventory` collects and fingerprints the complete handler
-vocabulary across catalog families. Bounded modules use that fingerprint to
-detect unaudited catalog changes before execution. Explicit registries and
-exact-ID classifications then map relevant handlers to typed Scala behavior.
+`CatalogHandlerInventory` collects the complete handler vocabulary
+(`handlerIds`) across catalog families. Explicit registries and
+exact-ID classifications map relevant handlers to typed Scala behavior.
 Unknown relevant handlers fail with stable source/handler identity. Gameplay
 never reads `rulesText`.
 

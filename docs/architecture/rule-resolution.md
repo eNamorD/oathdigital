@@ -18,8 +18,8 @@ advisers, relics, banners, Foundations, legacies, and game rules together with
 their declared handler IDs and state.
 
 `CatalogHandlerInventory` independently enumerates the complete catalog
-handler vocabulary and produces a stable fingerprint. Bounded modules pin or
-classify that inventory so a catalog change cannot silently bypass an audit.
+handler vocabulary (`handlerIds`). Bounded modules classify the handlers they
+reach through explicit registries and exact-ID sets.
 
 A command/query chooses which factual sources are active and relevant. Facedown,
 remote, inaccessible, or wrong-window sources remain factual but are activated
@@ -112,11 +112,9 @@ itself is one node, however many children its own `select` produces.
 `PowerRegistry` and `PowerResolver` keep four concepts separate: factual sources
 discovered by `RuleSourceIndex`, precise procedure windows, implemented typed
 handlers, and reviewed powers that the pre-alpha deliberately ignores. Reviewed
-definitions live under `gameplay/powers`. Their audited catalog fingerprint
-makes that last category closed:
-optional unimplemented handlers are neither options nor blockers, reached
-mandatory/triggered handlers emit durable `IgnoredRulesRecorded` diagnostics,
-and a changed handler vocabulary still rejects.
+definitions live under `gameplay/powers`. Optional unimplemented
+handlers are neither options nor blockers, and reached mandatory/triggered
+handlers emit durable `IgnoredRulesRecorded` diagnostics.
 
 Actorless preview requests contain the expected journal position, base action
 parameters, and ordered source/handler references. Preview is stateless and

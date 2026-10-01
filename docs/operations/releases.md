@@ -99,7 +99,7 @@ starts the build.
    not create or push a tag.
 3. In Actions, select **Alpha release**, enter the exact existing tag, and leave
    **publish** false. The workflow checks out that tag, verifies its commit,
-   runs JVM/frontend tests and architecture/catalog/Markdown/version/mapping
+   runs JVM/frontend tests and architecture/Markdown/version/mapping
    checks, extracts and smokes both archives under Java 21, builds each bundled
    archive from the tested all-platform archive on macOS, Windows, and Linux
    runners and smokes it with no system Java, and smokes loaded `linux/amd64`

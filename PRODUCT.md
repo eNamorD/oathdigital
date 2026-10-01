@@ -80,7 +80,9 @@ is heavily inspired by the HRF (haunt-roll-fail) implementation of Arcs.
 ## Evidence on Hand
 
 - Rules reference, glossary, rule index and traceability: `docs/rules/`.
-- Component catalog: `docs/catalog/new-foundations-component-catalog.json`.
+- Component catalog: the Scala card catalog, listed in
+  `src/main/scala/oathdigital/gameplay/cards/NewFoundations.scala`; the old JSON
+  is kept as reference data in `docs/catalog/reference/`.
 - Operations and release docs: `docs/operations/`; acceptance records:
   `docs/testing/`.
 - HRF Arcs sources, as MIT-licensed reference material only:
