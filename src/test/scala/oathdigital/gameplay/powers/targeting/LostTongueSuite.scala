@@ -176,3 +176,24 @@ class LostTongueSuite extends munit.FunSuite:
     val (options, pending, _) = targets(ready)
     assertEquals(options, Vector.empty)
     assertEquals(pending, None)
+
+  // ---- Challenge ----
+
+  /** p1 challenges at Ancient City, where p2 stands holding Lost Tongue and
+    * People's Favor; p1 holds a faceup nomad adviser when `nomad`. */
+  private def challengeBanners(nomad: Boolean): Vector[DecisionOptionRef] =
+    val table = Table.start
+      .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
+      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.homeOf(p1))
+      .adviser(p2, tongue)
+    val ready = if nomad then table.adviser(p1, nomadCard).ready else table.ready
+    optionsAt(start(ready, ActionRef.Challenge, p1).toOption.get,
+      ActionRef.Challenge)
+
+  test("a Challenge is not offered the holder's banner: its custody Take " +
+      "would be refused"):
+    assertEquals(challengeBanners(nomad = false),
+      Vector[DecisionOptionRef](DecisionOptionRef.Banner(Banner.DarkestSecret)))
+    assertEquals(challengeBanners(nomad = true).toSet, Set[DecisionOptionRef](
+      DecisionOptionRef.Banner(Banner.PeoplesFavor),
+      DecisionOptionRef.Banner(Banner.DarkestSecret)))
