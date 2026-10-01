@@ -14,4 +14,5 @@ object OtherActionPowers:
     Vector[PhasePower](SpoiledSupplies, CharmingFriend, SiegeEngines,
       BookOfRecords, BarbedNet, QuickExit, DreamThief, WhisperingLeaves,
       Enchantress) ++
-      SecondChance.forCatalog(catalog).toVector
+      SecondChance.forCatalog(catalog).toVector ++
+      ArmedMob.forCatalog(catalog).toVector
