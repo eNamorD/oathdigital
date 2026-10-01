@@ -13,4 +13,4 @@ object SelfActionPowers:
     Vector[PhasePower](Tutor, ShiftingMap, DemonTail, WizardSchool,
       SpiritSnare, ClayRattle, Scryer, OracularPig) ++
       Oracle.forCatalog(catalog).toVector ++
-      Vector[PhasePower](BloodPact)
+      Vector[PhasePower](BloodPact, ArcaneBrokers, Bog, RelicBreaker)
