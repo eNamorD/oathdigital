@@ -5,14 +5,14 @@ import oathdigital.gameplay.powerresolver.ContributingPower
 
 /** The battle plans that reach beyond the plan window, and the rules that tax
   * them, registered together: Sticky Fire (a question in the losses), Warning
-  * Signals (a decision of its own and a discard at the end), Gleaming Armor and Insect Swarm
-  * (an added cost on the enemy's plans), Horse Archers, Storm Caller, Rival Khan,
-  * Great Crusade and Pledge of Defense (a discard at the end), Bag of
+  * Signals (a decision of its own and a discard at the end), Gleaming Armor and
+  * Insect Swarm (an added cost on the enemy's plans), Horse Archers, Storm
+  * Caller, Rival Khan, Great Crusade and Pledge of Defense (a discard at the end), Bag of
   * Siegeworks (the defense scored again), Rain Boots (the defense scored again
   * and a discard at the end), The Great Levy (the attack scored again),
-  * Garrison Armory (the targets' warbands added again) and Hospital (killed
-  * warbands saved until the end). A power whose card is absent from `catalog`
-  * is omitted.
+  * Garrison Armory (the targets' warbands added again), Hospital (killed
+  * warbands saved until the end) and Book Burning (secrets burnt at the
+  * end). A power whose card is absent from `catalog` is omitted.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -29,4 +29,5 @@ object PlanRules:
       RainBoots.forCatalog(catalog).toVector ++
       GreatLevy.forCatalog(catalog).toVector ++
       GarrisonArmory.forCatalog(catalog).toVector ++
-      Hospital.forCatalog(catalog).toVector
+      Hospital.forCatalog(catalog).toVector ++
+      BookBurning.forCatalog(catalog).toVector
