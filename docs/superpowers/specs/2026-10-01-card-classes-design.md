@@ -28,8 +28,11 @@ Scala becomes the only source of truth for card facts. Three payoffs:
   authoritative, and the file is not kept in sync.
 - Deleted: the JSON schema, `scripts/validate-component-catalog.py`, the
   ingestion generator `reference/catalog-ingestion/build_runtime_catalog.py`
-  and its reviewed mirrors, `CatalogLoader`, `CatalogLoaderSuite` and
-  `src/test/resources/catalog/executable-subset.json`.
+  and its reviewed mirrors (`reviewed-runtime-powers.json`,
+  `runtime-denizen-definitions.json`), `CatalogLoader`, `CatalogLoaderSuite`
+  and `src/test/resources/catalog/executable-subset.json`. The OCR files and
+  transcriptions under `reference/catalog-ingestion/` stay as source evidence,
+  and its README says the pipeline is retired.
 
 ### Types (package `oathdigital.catalog`)
 
@@ -39,11 +42,18 @@ Scala becomes the only source of truth for card facts. Three payoffs:
   uses the existing `model.Cost`. `text` is the rest, with the timing keyword
   (`**ACTION:**`, `**WHEN PLAYED:**`) left in place. There is no separate
   timing field: timing already lives on the behaviour (`PowerTiming`).
+  `PrintedPower.rulesText` renders the printed line: the cost symbols, then
+  `text`.
+- `PrintsPowers`, the trait of every card kind and edifice face with
+  powers: `powers`, plus the derived `handlers` (power ids as strings) and
+  `rulesText` (the powers' lines joined by a blank line).
 - `Denizen(id: DenizenId, name: String, suit: Suit)`, `Relic(id: RelicId,
   name, value, defense)`, `Legacy(id: LegacyId, name)`, and
   `Site(id: SiteId, name, defense, capacity, relicSlots, recoverDifficulty,
   startingResources, forgeRequirements, homeland: Option[Suit],
-  handlers: Vector[PowerId])`. Each card kind exposes `powers:
+  handlers: Vector[String])`. Site handlers stay strings until slice 4:
+  as `PowerId`s, the tests' `handlers.contains("…")` lookups would still
+  compile and silently match nothing. Each card kind exposes `powers:
   Vector[PrintedPower]`.
 - `Edifice(id: EdificeId, suit: Suit)` with two nested face objects, `intact`
   and `ruined`, each carrying a name and its powers.
@@ -118,10 +128,10 @@ case object Storyteller extends PaidAction(StorytellerCard.power)
 
 ### Rules text in the UI
 
-- `GamePresentationProjector` rebuilds the displayed text for each power: the
-  cost tokens in printed order (`[favor]`, then `[secret]`, then
+- `GamePresentationProjector` shows `PrintedPower.rulesText` for each
+  power: the cost tokens in printed order (`[favor]`, then `[secret]`, then
   `[favor-burnt]`, then `[secret-burnt]`, each repeated by count), a space,
-  then `text`.
+  then `text`. All 127 printed costs already use that order.
 - The `CardDetailsProjection` DTO is unchanged.
 - Slice 1 checks once, in the throwaway generator, that this rebuilds every
   power's original `rulesText` exactly. A power whose printed token order
@@ -153,10 +163,12 @@ case object Storyteller extends PaidAction(StorytellerCard.power)
 ### Architecture rule
 
 `scripts/check-architecture.py` today forbids the string `rulesText` under
-`gameplay/`. It becomes: no file under `gameplay/` reads a printed power's
-`text` (no `.text` access on a `PrintedPower`, `power.text`, `printed.text`).
-Declaring text in a card object is allowed. The intent is unchanged: gameplay
-never interprets card text.
+`gameplay/`. That rule stays, and a second joins it: no file under
+`gameplay/` reads `.text`. Declaring text in a card object
+(`text = "…"`) is allowed. The intent is unchanged: gameplay never
+interprets card text. A third rule makes the existing dependency direction
+checked: `catalog/` imports none of `application`, `gameplay`,
+`persistence`, `serialization` or `server`.
 
 ### Tests
 
@@ -194,11 +206,12 @@ both gate scripts green.
    `CatalogCards` and the power index.
 2. **Denizens beside their powers.** Implemented denizens move from holding
    files into their power files. `CatalogCards.denizen` is replaced by static
-   references, and `OperationRestrictions.printedBy` builds `LockedCards` from
-   the `Locked` trait. `PaidAction` takes the `PrintedPower`.
+   references, and `PaidAction` takes the `PrintedPower`. (Slice 1 already
+   has `OperationRestrictions.printedBy` read the `Locked` trait.)
 3. **Relics and edifices.** The same move. The Grand Scepter's restriction
    comes from its declaration. `CatalogCards.relic` and `edifice` go.
-4. **Sites and legacies.** Site powers refer to site objects
+4. **Sites and legacies.** Site handlers become `Vector[PowerId]`, with every
+   test lookup moved off string `contains`. Site powers refer to site objects
    (`RiverSitePower`, `TravelSitePowers`, `siteWithHandler`).
    `FirstGameChronicleGenerator` reads `homeland` instead of parsing handler
    strings. `RuleSourceIndex` reads legacies statically.
