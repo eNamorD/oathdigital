@@ -44,3 +44,26 @@ class SuitGlyphSuite extends munit.FunSuite:
     val choice = panel.querySelector(".walker-choice").asInstanceOf[dom.Element]
     assertEquals(choice.textContent, "Hearth")
     assertEquals(glyphs(choice), Vector("token-glyph token-suit-hearth"))
+
+  test("a bank offered beside a button keeps its symbol, and the button " +
+      "has none"):
+    val query = DecisionQueryState.ChooseOne(
+      Vector(DecisionOptionState("favor-bank", "order", "Order"),
+        DecisionOptionState("button", "burn",
+          "Burn 1 favor from the People's Favor")),
+      Some("Firebrand: add 1 favor to the People's Favor from a bank, or " +
+        "burn 1 from it"))
+    val parked = WalkerDecisionState("use-power", "power.firebrand.choice",
+      "decide", query = Some(query))
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderChooseOnePanel(
+      ParkedDecision.Surface.ChooseOne(parked, query),
+      GameProjection("game", 9L, "act", Some("red"), Vector.empty,
+        Vector.empty, Vector.empty, Vector.empty, ready = true,
+        completed = false),
+      canControl = true, panel, new RecordingControls())
+    val choices = panel.querySelectorAll(".walker-choice").toVector
+      .map(_.asInstanceOf[dom.Element])
+    assertEquals(choices.map(_.textContent),
+      Vector("Order", "Burn 1 favor from the People's Favor"))
+    assertEquals(choices.map(glyphs(_).size), Vector(1, 0))

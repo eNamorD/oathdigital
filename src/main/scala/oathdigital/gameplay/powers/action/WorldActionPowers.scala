@@ -11,4 +11,5 @@ import oathdigital.gameplay.powerresolver.PhasePower
   */
 object WorldActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
-    MemoryOfNature.forCatalog(catalog).toVector
+    Vector[PhasePower](Storyteller, Firebrand) ++
+      MemoryOfNature.forCatalog(catalog).toVector
