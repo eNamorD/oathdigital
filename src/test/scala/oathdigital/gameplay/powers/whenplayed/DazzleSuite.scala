@@ -58,12 +58,12 @@ class DazzleSuite extends munit.FunSuite:
     assertEquals(NoteText.said(power.id, power.noteKeys, finished.events),
       Vector(NoteText.Said("discarded",
         s"Discarded ${targets.map(_.value).mkString(", ")}.", covers = true)))
-    // A second Dazzle finds nothing left to discard, and writes nothing.
+    // A second Dazzle finds nothing left to discard, and says so.
     val again = ProcedureWalker.advance(finished.treeless, hook, None,
       WalkerPowers(Vector(power))).toOption.get
       .asInstanceOf[WalkerOutcome.Finished]
     assertEquals(NoteText.said(power.id, power.noteKeys, again.events),
-      Vector.empty)
+      Vector(NoteText.Said("none", "Nothing was discarded.", covers = true)))
 
   test("Dazzle skips a rule-immune target and still discards another"):
     val base = Table.start.ready

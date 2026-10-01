@@ -13,7 +13,7 @@ import oathdigital.gameplay.powers.targeting.TargetProtections
 import oathdigital.gameplay.powers.title.ChaosCult
 import oathdigital.gameplay.powers.travel.{TravelModifiers, TravelSitePowers}
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.powers.whenplayed.{ASmallFavor, ConspiracyWhenPlayed, Dazzle, FaithfulFriend, FamilyHeirloom, Garrison, ShiftingFog, TwinBrother}
+import oathdigital.gameplay.powers.whenplayed.{ASmallFavor, ConspiracyWhenPlayed, Dazzle, FaithfulFriend, FamilyHeirloom, Garrison, ShiftingFog, TwinBrother, WhenPlayedPowers}
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
@@ -57,6 +57,7 @@ object WalkerPowerCatalog:
       FamilyHeirloom.forCatalog(catalog).toVector ++
       ShiftingFog.forCatalog(catalog).toVector ++
       TwinBrother.forCatalog(catalog).toVector ++
+      WhenPlayedPowers.forCatalog(catalog) ++
       ChaosCult.forCatalog(catalog).toVector ++
       ActionModifiers.forCatalog(catalog) ++
       TargetProtections.forCatalog(catalog) ++
