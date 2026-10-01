@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.catalog.{CardRestrictions, ExecutableCatalog, RelicRole}
+import oathdigital.catalog.{ExecutableCatalog, Locked}
+import oathdigital.catalog.holding.TheGrandScepterCard
 import oathdigital.model._
 
 /** The operation restrictions that hold for a command, wherever its
@@ -14,8 +15,8 @@ import oathdigital.model._
   * and the restrictions the offered powers register. Every one refuses as
   * `Impossible`: an optional operation is skipped, a required one rejects.
   *
-  * The card-classes phase replaces `printed`: a card class will mix its
-  * restriction in instead of this reading the catalog.
+  * `printed` reads the cards' `Locked` trait and the Grand Scepter's card.
+  * Card classes slice 3 has the Grand Scepter declare its own restriction.
   */
 final class OperationRestrictions private (catalog: Option[ExecutableCatalog]):
   val printed: Vector[OperationRestriction] =
@@ -40,19 +41,14 @@ object OperationRestrictions:
     case _: Location.Site | _: Location.PlayArea => true
     case _ => false
 
-  private def locking(restrictions: CardRestrictions): Boolean =
-    restrictions == CardRestrictions.Locked ||
-      restrictions == CardRestrictions.LockedAdviserOnly
-
   private def printedBy(catalog: ExecutableCatalog): Vector[OperationRestriction] =
     val locked: Set[CardId] =
-      (catalog.denizens.filter(d => locking(d.restrictions))
-        .map(d => DenizenId(d.id.value): CardId) ++
-        catalog.edifices.filter(e => locking(e.intact.restrictions))
-          .map(e => EdificeId(e.id.value): CardId)).toSet
-    val scepters = catalog.relics.filter(_.role == RelicRole.GrandScepter)
-      .map(relic => GrandScepter(RelicId(relic.id.value)))
-    Vector(LockedCards(locked), HallOfMinisters(catalog)) ++ scepters
+      (catalog.denizens.collect { case d: Locked => d.id: CardId } ++
+        catalog.edifices.collect {
+          case e if e.intact.isInstanceOf[Locked] => e.id: CardId }).toSet
+    val scepter = catalog.relic(TheGrandScepterCard.id)
+      .map(relic => GrandScepter(relic.id))
+    Vector(LockedCards(locked), HallOfMinisters(catalog)) ++ scepter
 
 /** A card that prints a power selected for the running action cannot be
   * discarded while the action runs: a modifier a player selected at the start

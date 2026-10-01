@@ -2,7 +2,6 @@ package oathdigital.application
 
 import java.nio.file.Files
 
-import oathdigital.catalog.RelicRole
 import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.model.{OathState, PlayerId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
@@ -87,7 +86,7 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
     assert(!json.contains("relicOrder"))
     assert(!json.contains("worldDeckOrder"))
     assert(!json.contains("denizenOrder"))
-    catalog.relics.filter(_.role == RelicRole.Ordinary)
+    catalog.relics.filter(_.id != oathdigital.catalog.holding.TheGrandScepterCard.id)
       .foreach(relic => assert(!json.contains(relic.id.value)))
 
     val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get

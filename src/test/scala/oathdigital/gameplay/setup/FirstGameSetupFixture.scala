@@ -1,8 +1,8 @@
 package oathdigital.gameplay.setup
 
-import java.nio.file.Paths
-
 import oathdigital.catalog._
+import oathdigital.catalog.holding.TheGrandScepterCard
+import oathdigital.gameplay.cards.NewFoundations
 import oathdigital.model._
 import oathdigital.model.OathState._
 import oathdigital.gameplay.walker.WalkerCompleted
@@ -18,16 +18,8 @@ import oathdigital.testkit.Situation
   * builds its own fixture on top of.
   */
 object FirstGameSetupFixture:
-  val catalogRef =
-    CatalogRef("oath-new-foundations", "2026.08.29-pre5")
-  val catalog: ExecutableCatalog =
-    CatalogLoader
-      .load(
-        Paths.get("docs/catalog/new-foundations-component-catalog.json"),
-        CatalogLoadRequest(expectedCatalog = Some(catalogRef))
-      )
-      .toOption
-      .get
+  val catalog: ExecutableCatalog = NewFoundations.catalog
+  val catalogRef: CatalogRef = catalog.ref
   val participants = Vector(
     FirstGameParticipant(
       PlayerId("p1"),
@@ -55,7 +47,7 @@ object FirstGameSetupFixture:
       catalog.denizens.filter(_.suit == suit).take(10)
         .map(d => DenizenId(d.id.value))
   val relics: Vector[RelicId] = catalog.relics
-    .filter(_.role == RelicRole.Ordinary)
+    .filter(_.id != TheGrandScepterCard.id)
     .map(r => RelicId(r.id.value))
   val homelandEdifices: Vector[(SiteId, EdificeId)] = sites.flatMap { siteId =>
     catalog.sites.find(_.id == siteId).get.handlers.collectFirst:

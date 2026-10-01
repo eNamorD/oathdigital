@@ -2,7 +2,7 @@ package oathdigital.server
 
 import oathdigital.model.PlayerColor
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 
 import oathdigital.application.TrustedSeat
 import oathdigital.protocol._
@@ -15,8 +15,7 @@ class ServerRuntimeSuite extends munit.FunSuite:
 
   test("trusted-game provisioning draws a randomized board"):
     val runtime = ServerRuntime.open(
-      Files.createTempDirectory("server-runtime-wiring-").resolve("database"),
-      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+      Files.createTempDirectory("server-runtime-wiring-").resolve("database")
     ).toOption.get
     try
       def siteOrder(): Vector[String] =

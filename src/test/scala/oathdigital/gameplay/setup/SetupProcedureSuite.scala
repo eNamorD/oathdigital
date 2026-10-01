@@ -1,6 +1,6 @@
 package oathdigital.gameplay.setup
 
-import oathdigital.catalog.CardRestrictions
+import oathdigital.testkit.TestCards
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.testkit.{Answers, Situation}
@@ -48,7 +48,7 @@ class SetupProcedureSuite extends munit.FunSuite:
     val woken = Situation.wake(Situation.rules(catalog).withAnswers(revealAll))
     val revealable = advisers(woken).collect { case d: DenizenState => d }
       .filterNot(d => catalog.denizen(d.id).exists(
-        _.restrictions == CardRestrictions.SiteOnly))
+        _.isInstanceOf[oathdigital.catalog.SiteOnly]))
     assert(revealable.nonEmpty, advisers(woken))
     assert(revealable.forall(_.orientation == Orientation.FaceUp),
       advisers(woken))
@@ -66,11 +66,11 @@ class SetupProcedureSuite extends munit.FunSuite:
     val woken = Situation.wake(Situation.rules(catalog))
     val player = woken.ready.game.current.players.head.player
     val siteOnly = catalog.denizens.find(
-      _.restrictions == CardRestrictions.SiteOnly).get.id
+      _.isInstanceOf[oathdigital.catalog.SiteOnly]).get.id
     val open = catalog.denizens.find(
-      _.restrictions == CardRestrictions.Unrestricted).map(_.id).get
+      TestCards.unrestricted(_)).map(_.id).get
     val faceup = catalog.denizens.filter(
-      _.restrictions == CardRestrictions.Unrestricted).map(_.id)(1)
+      TestCards.unrestricted(_)).map(_.id)(1)
     val relic = FirstGameSetupFixture.relics.head
     val staged = woken.ready.updateCurrent(current => current.copy(
       players = current.players.map(p => if p.player != player then p else

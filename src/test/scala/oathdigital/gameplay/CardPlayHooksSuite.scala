@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.catalog.CardRestrictions
+import oathdigital.testkit.TestCards
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
@@ -31,7 +31,7 @@ class CardPlayHooksSuite extends munit.FunSuite:
   private def plainDenizen(ready: ReadyGame): DenizenId =
     ready.game.current.commonCards.worldDeck.collectFirst {
       case id: DenizenId if catalog.denizens.exists(d => d.id.value == id.value &&
-        d.restrictions == CardRestrictions.Unrestricted) => id
+        TestCards.unrestricted(d)) => id
     }.get
 
   /** The active player holds `card` in a temporary hand, with Supply 3. */

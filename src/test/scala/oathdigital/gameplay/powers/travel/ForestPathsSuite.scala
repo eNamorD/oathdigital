@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.catalog.CardRestrictions
+import oathdigital.testkit.TestCards
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -14,7 +14,7 @@ class ForestPathsSuite extends munit.FunSuite:
   private val paths = DenizenId("43")
   private val modifiers = Vector(ForestPaths.id)
   private val beast: DenizenId = catalog.denizens.filter(d =>
-    d.suit == Suit.Beast && d.restrictions == CardRestrictions.Unrestricted &&
+    d.suit == Suit.Beast && TestCards.unrestricted(d) &&
       d.id.value != paths.value).map(d => DenizenId(d.id.value)).head
   private def held = withBoard(adviser(board(), paths))(_.copy(favor = 1))
 

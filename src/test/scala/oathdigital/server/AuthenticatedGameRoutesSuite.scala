@@ -261,7 +261,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite:
       // Reveal Cards follows, unless the kept adviser is site-only. Only its
       // owner is offered the card; everyone else sees no decision.
       if !catalog.denizen(p2Hand).exists(
-          _.restrictions == oathdigital.catalog.CardRestrictions.SiteOnly) then
+          _.isInstanceOf[oathdigital.catalog.SiteOnly]) then
         val reveal = ujson.read(accepted.body())("walkerDecision")
         assertEquals(reveal("decisionId").str,
           SetupProcedure.revealDecisionId(PlayerId("p2")))

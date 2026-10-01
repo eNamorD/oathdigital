@@ -228,8 +228,7 @@ class MinorActionsSuite extends munit.FunSuite:
   // OperationRestrictionsSuite's; this is the facedown side of it.
   test("a locked adviser held facedown can still be played and discarded"):
     val (base, actor, _, _, _) = ready()
-    val locked = DenizenId(catalog.denizens.find(_.restrictions ==
-      oathdigital.catalog.CardRestrictions.LockedAdviserOnly).get.id.value)
+    val locked = DenizenId(catalog.denizens.find(_.isInstanceOf[oathdigital.catalog.Locked & oathdigital.catalog.AdviserOnly]).get.id.value)
     val modified = base.updateCurrent(_.copy(
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(_ == locked)),

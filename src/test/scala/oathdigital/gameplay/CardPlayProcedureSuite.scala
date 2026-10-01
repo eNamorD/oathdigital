@@ -139,7 +139,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val (base, actor, card) = handState
     val current = base.game.current
     val locked = catalog.denizens.filter(
-      _.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
+      _.isInstanceOf[oathdigital.catalog.Locked & oathdigital.catalog.AdviserOnly])
       .map(d => DenizenId(d.id.value)).filterNot(_ == card).take(3)
     val full = base.updateCurrent(_.copy(
       players = current.players.map(p => if p.player == actor then
@@ -162,7 +162,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val (base, actor, card) = handState
     val current = base.game.current
     val locked = catalog.denizens.filter(
-      _.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
+      _.isInstanceOf[oathdigital.catalog.Locked & oathdigital.catalog.AdviserOnly])
       .map(d => DenizenId(d.id.value)).filterNot(_ == card).take(3)
     val full = base.updateCurrent(_.copy(
       players = current.players.map(p => if p.player == actor then

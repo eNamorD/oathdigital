@@ -1,6 +1,7 @@
 package oathdigital.application
 
-import oathdigital.catalog.{ExecutableCatalog, RelicRole}
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.holding.TheGrandScepterCard
 import oathdigital.model._
 
 sealed trait ChronicleGeneratorFailure extends Product with Serializable
@@ -36,8 +37,8 @@ object FirstGameChronicleGenerator:
       (worldPool, dispossessedPool) = pools
       implementedDenizens = ImplementedCardCatalog.denizens(catalog, implemented)
       implementedRelics = ImplementedCardCatalog.ordinaryRelics(catalog, implemented)
-      relicPool = catalog.relics.filter(_.role == RelicRole.Ordinary)
-        .map(r => RelicId(r.id.value))
+      relicPool = catalog.relics.filter(_.id != TheGrandScepterCard.id)
+        .map(_.id)
       chronicle = Chronicle(
         atlas,
         worldDeck = policy.order(worldPool, implementedDenizens, random),

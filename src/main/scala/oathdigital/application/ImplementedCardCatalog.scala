@@ -1,6 +1,7 @@
 package oathdigital.application
 
-import oathdigital.catalog.{CatalogPower, ExecutableCatalog, RelicRole}
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower}
+import oathdigital.catalog.holding.TheGrandScepterCard
 import oathdigital.model.{DenizenId, EdificeId, PowerId, RelicId, Suit}
 
 /**
@@ -23,7 +24,7 @@ object ImplementedCardCatalog:
   def ordinaryRelics(catalog: ExecutableCatalog,
       implemented: PowerId => Boolean): Set[RelicId] =
     catalog.relics.collect {
-      case definition if definition.role == RelicRole.Ordinary &&
+      case definition if definition.id != TheGrandScepterCard.id &&
           fullyImplemented(definition.powers, implemented) =>
         RelicId(definition.id.value)
     }.toSet
@@ -39,6 +40,6 @@ object ImplementedCardCatalog:
       .headOption
       .map(e => EdificeId(e.id.value))
 
-  private def fullyImplemented(powers: Vector[CatalogPower],
+  private def fullyImplemented(powers: Vector[PrintedPower],
       implemented: PowerId => Boolean): Boolean =
     powers.forall(power => implemented(power.id))

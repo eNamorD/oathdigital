@@ -4,7 +4,7 @@ import oathdigital.model.PlayerColor
 
 import java.net.{CookieManager, CookiePolicy, URI}
 import java.net.http.{HttpClient, HttpRequest, HttpResponse => JavaResponse}
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -286,13 +286,12 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val database = Files.createTempDirectory("trusted-seat-restart-").resolve("database")
-    val catalogPath = Paths.get("docs/catalog/new-foundations-component-catalog.json")
-    val config = ServerConfig("127.0.0.1", 8080, None, database, catalogPath,
+    val config = ServerConfig("127.0.0.1", 8080, None, database,
       ServerMode.TrustedAlpha, None, "test")
     val client = HttpClient.newHttpClient()
 
     def openServer(): (ServerRuntime, akka.http.scaladsl.Http.ServerBinding, String) =
-      val runtime = ServerRuntime.open(database, catalogPath, reversing, gameIds).toOption.get
+      val runtime = ServerRuntime.open(database, reversing, gameIds).toOption.get
       val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
         ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
       (runtime, binding, s"http://127.0.0.1:${binding.localAddress.getPort}")
@@ -411,9 +410,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
     given system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "trusted-seat-route-test")
     val blocking = system.dispatchers.lookup(DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val database = Files.createTempDirectory("trusted-seat-routes-").resolve("database")
-    val catalogPath = Paths.get("docs/catalog/new-foundations-component-catalog.json")
-    val runtime = ServerRuntime.open(database, catalogPath, reversing, gameIds).toOption.get
-    val config = ServerConfig("127.0.0.1", 8080, origin.map(URI.create), database, catalogPath,
+    val runtime = ServerRuntime.open(database, reversing, gameIds).toOption.get
+    val config = ServerConfig("127.0.0.1", 8080, origin.map(URI.create), database,
       ServerMode.TrustedAlpha, None, "test")
     val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
       ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)

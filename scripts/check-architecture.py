@@ -40,6 +40,9 @@ forbidden_imports = {
     "src/main/scala/oathdigital/application": (
         "persistence", "serialization", "server"
     ),
+    "src/main/scala/oathdigital/catalog": (
+        "application", "gameplay", "persistence", "serialization", "server"
+    ),
 }
 for prefix, packages in forbidden_imports.items():
     root = ROOT / prefix
@@ -67,9 +70,13 @@ for path in scala_sources(ROOT / "shared/src/main/scala"):
                 f"{relative(path)}:{line_number}: shared protocol imports {match.group(1)}"
             )
 
+printed_text = re.compile(r"\.text\b")
 for path in scala_sources(ROOT / "src/main/scala/oathdigital/gameplay"):
-    if "rulesText" in path.read_text(encoding="utf-8"):
+    text = path.read_text(encoding="utf-8")
+    if "rulesText" in text:
         errors.append(f"{relative(path)}: gameplay must not inspect catalog rulesText")
+    if printed_text.search(text):
+        errors.append(f"{relative(path)}: gameplay must not read printed power text")
 
 power_root = ROOT / "src/main/scala/oathdigital/gameplay/powers"
 bespoke_handler = re.compile(

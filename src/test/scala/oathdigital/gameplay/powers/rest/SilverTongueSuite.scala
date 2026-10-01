@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.rest
 
+import oathdigital.testkit.TestCards
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
@@ -71,7 +72,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val current = base.game.current
     val ids = current.commonCards.worldDeck.collect { case id: DenizenId => id }
       .filter(id => catalog.denizens.find(_.id.value == id.value).exists(
-        _.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted))
+        TestCards.unrestricted(_)))
     val second = ids.head
     val played = ids(1)
     val ready = base.updateCurrent(_.copy(

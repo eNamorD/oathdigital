@@ -1,6 +1,6 @@
 package oathdigital.gameplay.setup
 
-import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.catalog.{ExecutableCatalog, SiteOnly}
 import oathdigital.model._
 import oathdigital.model.OathViolation._
 
@@ -66,8 +66,7 @@ object SetupProcedure:
     ready.game.current.players.find(_.player == player).toVector.flatMap { state =>
       state.advisers.zipWithIndex.collect {
         case (DenizenState(id, Orientation.FaceDown, _), slot)
-            if !catalog.denizen(id).exists(
-              _.restrictions == CardRestrictions.SiteOnly) =>
+            if !catalog.denizen(id).exists(_.isInstanceOf[SiteOnly]) =>
           DecisionOption.AdviserSlot(DecisionOptionRef.AdviserSlot(player, slot))
       } ++ state.relics.zipWithIndex.collect {
         case (RelicState(_, Orientation.FaceDown, _), slot) =>

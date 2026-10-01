@@ -7,7 +7,7 @@ import oathdigital.application.{
   IdentityRepository,
   MembershipAuthorizationService
 }
-import oathdigital.catalog.CatalogLoader
+import oathdigital.gameplay.cards.NewFoundations
 import oathdigital.persistence.HsqldbDatabaseOwner
 final class ServerRuntime private (
     val firstGame: GameServerGateway,
@@ -23,7 +23,6 @@ final class ServerRuntime private (
 object ServerRuntime:
   def open(
       databasePath: Path,
-      catalogPath: Path,
       random: ChronicleRandomPort = ChronicleRandomPort.random,
       gameIds: () => String = () => TrustedGameProvisioning.generateGameId()
   ): Either[String, ServerRuntime] =
@@ -34,53 +33,40 @@ object ServerRuntime:
             message
           ) =>
         message
-    }.flatMap { database =>
+    }.map { database =>
       val repository = database.eventStreams
-      CatalogLoader
-        .load(catalogPath)
-        .left
-        .map(errors =>
-          errors.map(error => s"${error.path}: ${error.message}").mkString(
-            "; "
-          ))
-        .map { catalog =>
-          val firstGameService =
-            new oathdigital.application.GameApplicationService(
-              catalog,
-              repository
-            )
-          val projector =
-            new oathdigital.application.GameProjector(catalog)
-          val generatedPlanFactory =
-            new oathdigital.application.GeneratedFirstGamePlanFactory(
-              catalog,
-              random
-            )
-          val authorization =
-            new MembershipAuthorizationService(database.identities)
-          new ServerRuntime(
-            new GameServerGateway(
-              firstGameService,
-              projector
-            ),
-            new AuthenticatedGameGateway(
-              firstGameService,
-              projector,
-              authorization,
-              database.identities,
-              generatedPlanFactory
-            ),
-            authorization,
-            database.identities,
-            new TrustedGameProvisioning(firstGameService, generatedPlanFactory,
-              database.trustedGames, generateGameId = gameIds),
-            new TrustedGameGateway(firstGameService, projector),
-            database
-          )
-        }
-        .left
-        .map { error =>
-          database.close()
-          error
-        }
+      val catalog = NewFoundations.catalog
+      val firstGameService =
+        new oathdigital.application.GameApplicationService(
+          catalog,
+          repository
+        )
+      val projector =
+        new oathdigital.application.GameProjector(catalog)
+      val generatedPlanFactory =
+        new oathdigital.application.GeneratedFirstGamePlanFactory(
+          catalog,
+          random
+        )
+      val authorization =
+        new MembershipAuthorizationService(database.identities)
+      new ServerRuntime(
+        new GameServerGateway(
+          firstGameService,
+          projector
+        ),
+        new AuthenticatedGameGateway(
+          firstGameService,
+          projector,
+          authorization,
+          database.identities,
+          generatedPlanFactory
+        ),
+        authorization,
+        database.identities,
+        new TrustedGameProvisioning(firstGameService, generatedPlanFactory,
+          database.trustedGames, generateGameId = gameIds),
+        new TrustedGameGateway(firstGameService, projector),
+        database
+      )
     }

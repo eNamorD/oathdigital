@@ -8,7 +8,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, DecisionQueries,
   WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Table, TestCards}
 
 /** Task 2: the declared Forge tree reproduces the legacy `Forge.handle`/
   * `Forge.evolve` observable flow on `ProcedureWalker.advance`/`resolve`.
@@ -198,7 +198,8 @@ class ForgeProcedureSuite extends munit.FunSuite
     val f = forgeable
     val altered = catalog.copy(sites = catalog.sites.map(definition =>
       if definition.id != f.siteId then definition
-      else definition.copy(forgeRequirements = Some(Tokens(1, 1)))))
+      else TestCards.siteLike(definition)(
+        forgeRequirements = Some(Tokens(1, 1)))))
     assertEquals(rejects(ForgeProcedure.build(altered, f.ready, f.actor.player)),
       OathViolation.ForgeUnavailable(
         "printed Forge cost must contain three resources"): OathViolation)
@@ -326,7 +327,8 @@ class ForgeProcedureSuite extends munit.FunSuite
       val base = forgeable
       val altered = catalog.copy(sites = catalog.sites.map(definition =>
         if definition.id != base.siteId then definition
-        else definition.copy(forgeRequirements = Some(printed))))
+        else TestCards.siteLike(definition)(
+          forgeRequirements = Some(printed))))
       val f = base.copy(cost = printed)
       assert(!ForgeProcedure.parks(f.cost), s"${f.cost} should not park")
       val tree = ForgeProcedure.build(altered, f.ready, f.actor.player)

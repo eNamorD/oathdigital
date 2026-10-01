@@ -61,7 +61,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
 
   test("the relic deck has every ordinary relic exactly once, implemented ones first"):
     val chronicle = generated
-    val ordinary = catalog.relics.filter(_.role == oathdigital.catalog.RelicRole.Ordinary)
+    val ordinary = catalog.relics.filter(_.id != oathdigital.catalog.holding.TheGrandScepterCard.id)
       .map(r => oathdigital.model.RelicId(r.id.value))
     assertEquals(chronicle.relicDeck.toSet, ordinary.toSet)
     assertEquals(chronicle.relicDeck.size, ordinary.size)

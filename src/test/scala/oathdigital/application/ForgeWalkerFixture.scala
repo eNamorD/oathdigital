@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Table, TestCards}
 import oathdigital.testkit.Table.p1
 
 /** The board a walker Forge is driven from, shared by every suite that needs
@@ -54,7 +54,7 @@ object ForgeWalkerFixture:
   lazy val mixedForgeCostCatalog: oathdigital.catalog.ExecutableCatalog =
     catalog.copy(sites = catalog.sites.map(site =>
       if site.id != forgeSite then site
-      else site.copy(forgeRequirements = Some(Tokens(2, 1)))))
+      else TestCards.siteLike(site)(forgeRequirements = Some(Tokens(2, 1)))))
 
   /** A fresh service begun at [[forgeTable]] under `cat`, and its
     * repository. The stream is empty, so the Forge starts at sequence 0. */

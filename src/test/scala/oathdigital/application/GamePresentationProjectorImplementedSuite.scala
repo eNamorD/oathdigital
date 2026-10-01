@@ -1,8 +1,8 @@
 package oathdigital.application
 
-import oathdigital.catalog.{CardRestrictions, DefinitionId, DenizenDefinition}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.TestCards
 
 /** `implemented` on a projected [[oathdigital.protocol.projection.CardDetailsProjection]]
   * must agree across the game's three separate power catalogs: a
@@ -36,8 +36,8 @@ class GamePresentationProjectorImplementedSuite extends munit.FunSuite:
     // Every production denizen prints at least one power, so this shape --
     // a card with none at all -- is exercised with a card grafted onto the
     // real catalog rather than one already in it.
-    val blank = DenizenDefinition(DefinitionId("test-blank"), "Blank",
-      catalog.denizens.head.suit, CardRestrictions.Unrestricted, Vector.empty)
+    val blank = TestCards.denizen(DenizenId("test-blank"), "Blank",
+      catalog.denizens.head.suit, Vector.empty)
     val blankProjector = new GamePresentationProjector(
       catalog.copy(denizens = catalog.denizens :+ blank))
     assert(!blankProjector.cardDetails(DenizenId("test-blank"), None,

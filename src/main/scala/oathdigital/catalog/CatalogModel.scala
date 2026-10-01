@@ -1,112 +1,42 @@
 package oathdigital.catalog
 
 import oathdigital.model.{CardId, CatalogRef, DenizenId, EdificeId, LegacyId,
-  PowerId, RelicId, SiteId, Suit, Tokens}
-
-opaque type DefinitionId = String
-object DefinitionId:
-  def apply(value: String): DefinitionId =
-    require(value.trim.nonEmpty, "catalog definition ID must not be blank")
-    value
-  def unapply(id: DefinitionId): Some[String] = Some(id)
-  extension (id: DefinitionId) def value: String = id
-
-final case class CatalogPower(id: PowerId, persistent: Boolean, rulesText: String):
-  require(rulesText.trim.nonEmpty, "power rules text must not be blank")
-
-trait CatalogPoweredDefinition:
-  def powers: Vector[CatalogPower]
-  final def handlers: Vector[String] = powers.map(_.id.value)
-  final def rulesText: String = powers.map(_.rulesText).mkString("\n\n")
-
-final case class DenizenDefinition(
-    id: DefinitionId,
-    name: String,
-    suit: Suit,
-    restrictions: CardRestrictions,
-    powers: Vector[CatalogPower]
-) extends CatalogPoweredDefinition
-
-enum CardRestrictions { case Unrestricted, Locked, SiteOnly, AdviserOnly, LockedAdviserOnly }
-
-enum RelicRole { case Ordinary, GrandScepter }
-
-final case class RelicDefinition(
-    id: DefinitionId,
-    name: String,
-    role: RelicRole,
-    value: Int,
-    defense: Int,
-    powers: Vector[CatalogPower]
-) extends CatalogPoweredDefinition
-
-final case class EdificeFaceDefinition(
-    name: String,
-    restrictions: CardRestrictions,
-    powers: Vector[CatalogPower]
-) extends CatalogPoweredDefinition
-
-final case class EdificeDefinition(
-    id: DefinitionId,
-    suit: Suit,
-    intact: EdificeFaceDefinition,
-    ruined: EdificeFaceDefinition
-)
-
-final case class LegacyDefinition(
-    id: DefinitionId,
-    name: String,
-    powers: Vector[CatalogPower]
-) extends CatalogPoweredDefinition
-
-final case class SiteDefinition(
-    id: SiteId,
-    name: String,
-    defense: Int,
-    capacity: Int,
-    relicSlots: Int,
-    recoverDifficulty: Option[Int],
-    startingResources: Tokens,
-    forgeRequirements: Option[Tokens],
-    handlers: Vector[String]
-)
+  PowerId, RelicId, SiteId, Suit}
 
 /**
- * Complete runtime component catalog. Setup cards, player boards and Visions
- * are rules-owned code, not catalog data.
+ * The complete runtime component catalog: card objects indexed by id and by
+ * printed power. `gameplay.cards.NewFoundations.catalog` is the production
+ * one; a test may `copy` in variant cards. Setup cards, player boards and
+ * Visions are rules-owned code, not catalog data.
  */
 final case class ExecutableCatalog(
-    schemaVersion: String,
     ref: CatalogRef,
-    denizens: Vector[DenizenDefinition],
-    relics: Vector[RelicDefinition],
-    edifices: Vector[EdificeDefinition],
-    legacies: Vector[LegacyDefinition],
-    sites: Vector[SiteDefinition]
+    denizens: Vector[Denizen],
+    relics: Vector[Relic],
+    edifices: Vector[Edifice],
+    legacies: Vector[Legacy],
+    sites: Vector[Site]
 ):
-  def denizen(id: DenizenId): Option[DenizenDefinition] =
-    denizenById.get(id.value)
-  def relic(id: RelicId): Option[RelicDefinition] = relicById.get(id.value)
-  def edifice(id: EdificeId): Option[EdificeDefinition] =
-    edificeById.get(id.value)
-  def legacy(id: LegacyId): Option[LegacyDefinition] = legacyById.get(id.value)
-  def site(id: SiteId): Option[SiteDefinition] = siteById.get(id)
+  def denizen(id: DenizenId): Option[Denizen] = denizenById.get(id.value)
+  def relic(id: RelicId): Option[Relic] = relicById.get(id.value)
+  def edifice(id: EdificeId): Option[Edifice] = edificeById.get(id.value)
+  def legacy(id: LegacyId): Option[Legacy] = legacyById.get(id.value)
+  def site(id: SiteId): Option[Site] = siteById.get(id)
 
   /** The card whose printed powers include `power`. */
-  def denizenWithPower(power: PowerId): Option[DenizenDefinition] =
+  def denizenWithPower(power: PowerId): Option[Denizen] =
     denizenByPower.get(power)
-  def relicWithPower(power: PowerId): Option[RelicDefinition] =
-    relicByPower.get(power)
+  def relicWithPower(power: PowerId): Option[Relic] = relicByPower.get(power)
   /** Either face's powers count. */
-  def edificeWithPower(power: PowerId): Option[EdificeDefinition] =
+  def edificeWithPower(power: PowerId): Option[Edifice] =
     edificeByPower.get(power)
-  def siteWithHandler(handler: PowerId): Option[SiteDefinition] =
+  def siteWithHandler(handler: PowerId): Option[Site] =
     siteByHandler.get(handler)
 
   /** A power printed on a denizen, relic, edifice face or legacy. Sites carry
     * handler IDs only, so a site handler has no printed power.
     */
-  def printedPower(id: PowerId): Option[CatalogPower] = powerById.get(id)
+  def printedPower(id: PowerId): Option[PrintedPower] = powerById.get(id)
 
   /** Suit of a denizen or edifice; other card kinds have none. */
   def suitOf(id: CardId): Option[Suit] =
@@ -137,64 +67,3 @@ final case class ExecutableCatalog(
     (denizens.flatMap(_.powers) ++ relics.flatMap(_.powers) ++
       edifices.flatMap(e => e.intact.powers ++ e.ruined.powers) ++
       legacies.flatMap(_.powers)).map(p => p.id -> p))
-
-/** A catalog load. Runtime catalogs load atomically; `expectedCatalog`, if
-  * given, must match the file's catalog reference.
-  */
-final case class CatalogLoadRequest(
-    expectedCatalog: Option[CatalogRef] = None
-)
-
-sealed trait CatalogLoadError extends Product with Serializable:
-  def path: String
-  def message: String
-
-object CatalogLoadError:
-  final case class InvalidJson(detail: String) extends CatalogLoadError:
-    override val path: String = "$"
-    override val message: String = detail
-
-  final case class FileReadFailed(pathValue: String, detail: String)
-      extends CatalogLoadError:
-    override val path: String = pathValue
-    override val message: String = detail
-
-  final case class MissingField(path: String) extends CatalogLoadError:
-    override val message: String = "required field is missing"
-
-  final case class WrongType(path: String, expected: String, actual: String)
-      extends CatalogLoadError:
-    override val message: String = s"expected $expected, found $actual"
-
-  final case class InvalidValue(path: String, detail: String)
-      extends CatalogLoadError:
-    override val message: String = detail
-
-  final case class UnsupportedSchemaVersion(
-      path: String,
-      expected: String,
-      actual: String
-  ) extends CatalogLoadError:
-    override val message: String =
-      s"expected schema $expected, found $actual"
-
-  final case class IncompatibleCatalog(
-      path: String,
-      expected: CatalogRef,
-      actual: CatalogRef
-  ) extends CatalogLoadError:
-    override val message: String =
-      s"expected ${expected.ruleset}@${expected.version}, " +
-        s"found ${actual.ruleset}@${actual.version}"
-
-  final case class DuplicateDefinitionId(path: String, id: DefinitionId)
-      extends CatalogLoadError:
-    override val message: String = s"duplicate definition ID ${id.value}"
-
-  final case class DuplicatePowerId(
-      path: String,
-      id: PowerId,
-      firstPath: String
-  ) extends CatalogLoadError:
-    override val message: String =
-      s"duplicate power ID ${id.value}; first declared at $firstPath"

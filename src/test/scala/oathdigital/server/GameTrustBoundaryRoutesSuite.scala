@@ -16,7 +16,6 @@ import oathdigital.model.CatalogRef
 
 class GameTrustBoundaryRoutesSuite extends munit.FunSuite:
   private val catalog = ExecutableCatalog(
-    "test",
     CatalogRef("test", "1"),
     Vector.empty,
     Vector.empty,

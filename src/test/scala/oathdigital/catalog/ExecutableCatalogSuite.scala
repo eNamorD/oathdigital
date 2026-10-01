@@ -1,15 +1,12 @@
 package oathdigital.catalog
 
-import java.nio.file.Paths
-
+import oathdigital.gameplay.cards.NewFoundations
 import oathdigital.model.{DenizenId, EdificeId, LegacyId, PowerId, RelicId,
   SiteId, Suit}
+import oathdigital.testkit.TestCards
 
 class ExecutableCatalogSuite extends munit.FunSuite:
-  private val catalog = CatalogLoader
-    .load(Paths.get("docs/catalog/new-foundations-component-catalog.json"))
-    .toOption
-    .get
+  private val catalog = NewFoundations.catalog
 
   test("each card kind is found by its typed ID"):
     assertEquals(catalog.denizen(DenizenId("9")).map(_.name), Some("Alchemist"))
@@ -66,12 +63,13 @@ class ExecutableCatalogSuite extends munit.FunSuite:
   test("a copied catalog indexes its own components"):
     val alchemist = catalog.denizen(DenizenId("9")).get
     val renamed = catalog.copy(denizens = catalog.denizens.map(d =>
-      if d.id == alchemist.id then d.copy(name = "Renamed") else d))
+      if d.id == alchemist.id then TestCards.denizenLike(d)(name = "Renamed")
+      else d))
     assertEquals(renamed.denizen(DenizenId("9")).map(_.name), Some("Renamed"))
     assertEquals(catalog.denizen(DenizenId("9")).map(_.name), Some("Alchemist"))
 
   test("the first of two components sharing an ID wins, as a scan would"):
     val alchemist = catalog.denizen(DenizenId("9")).get
     val shadowed = catalog.copy(denizens =
-      alchemist +: (alchemist.copy(name = "Shadow") +: catalog.denizens))
+      alchemist +: (TestCards.denizenLike(alchemist)(name = "Shadow") +: catalog.denizens))
     assertEquals(shadowed.denizen(DenizenId("9")).map(_.name), Some("Alchemist"))

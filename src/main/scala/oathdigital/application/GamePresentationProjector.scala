@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.catalog.{CardRestrictions, CatalogPoweredDefinition, ExecutableCatalog}
+import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked, PrintsPowers, SiteOnly}
 import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.powers.PowerImplementationStatus
 import oathdigital.model._
@@ -15,7 +15,7 @@ private[application] final class GamePresentationProjector(
   // trivially done.
   private val powerImplemented = PowerImplementationStatus.implemented(catalog)
 
-  private def cardImplemented(definition: CatalogPoweredDefinition): Boolean =
+  private def cardImplemented(definition: PrintsPowers): Boolean =
     definition.powers.nonEmpty && definition.powers.forall(power =>
       powerImplemented(power.id))
 
@@ -42,7 +42,7 @@ private[application] final class GamePresentationProjector(
     })
     CardDetailsProjection(value.id.value, "edifice", edificeLabel(value.id, value.side),
       suit = definition.map(_.suit.key),
-      restrictions = face.map(e => restrictionName(e.restrictions)),
+      restrictions = face.map(restrictionName),
       rulesText = face.map(_.rulesText),
       side = Some(value.side match {
         case EdificeSide.Intact => "intact"
@@ -345,7 +345,7 @@ private[application] final class GamePresentationProjector(
       CardDetailsProjection(value.value, "denizen", worldCardLabel(value),
         orientation = orientation.map(orientationName), hidden = hidden)) { d =>
       CardDetailsProjection(value.value, "denizen", d.name, Some(d.suit.key),
-        Some(restrictionName(d.restrictions)), Some(d.rulesText),
+        Some(restrictionName(d)), Some(d.rulesText),
         orientation.map(orientationName), hidden = hidden,
         implemented = cardImplemented(d))
     }
@@ -366,12 +366,12 @@ private[application] final class GamePresentationProjector(
     case other => CardDetailsProjection(other.value, other.getClass.getSimpleName,
       safeLabel(other.value), orientation = orientation.map(orientationName), hidden = hidden)
 
-  private def restrictionName(value: CardRestrictions): String = value match
-    case CardRestrictions.Unrestricted => "unrestricted"
-    case CardRestrictions.Locked => "locked"
-    case CardRestrictions.SiteOnly => "site-only"
-    case CardRestrictions.AdviserOnly => "adviser-only"
-    case CardRestrictions.LockedAdviserOnly => "locked-adviser-only"
+  private def restrictionName(card: AnyRef): String = card match
+    case _: (Locked & AdviserOnly) => "locked-adviser-only"
+    case _: Locked => "locked"
+    case _: SiteOnly => "site-only"
+    case _: AdviserOnly => "adviser-only"
+    case _ => "unrestricted"
   def safeLabel(id: String): String = id.split(":").lastOption.getOrElse(id)
     .split("-").map(_.capitalize).mkString(" ")
   private def worldCardLabel(id: WorldCardId): String = id match

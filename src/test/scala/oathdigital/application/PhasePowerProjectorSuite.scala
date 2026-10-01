@@ -5,7 +5,7 @@ import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.rest.{SilverTongue, SilverTongueFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, Table, TestCards}
 import oathdigital.testkit.Table.p1
 
 class PhasePowerProjectorSuite extends munit.FunSuite:
@@ -76,8 +76,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
     val printed = catalog.denizens.find(_.id.value == card.value).get.powers
       .find(_.id == powerId).get
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
-      if e.id == edifice.id then e.copy(
-        intact = e.intact.copy(powers = e.intact.powers :+ printed)) else e))
+      if e.id == edifice.id then TestCards.edificeLike(e)(
+        intact = e.intact.powers :+ printed) else e))
     val state = Table.start
       .edifice(id, EdificeSide.Intact, at = Table.homeOf(p1)).ready
     val projected = new GameProjector(powered,

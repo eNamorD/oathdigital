@@ -28,12 +28,11 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
       PhasePowerProcedure.usable(catalog, context.ready, context.active.player,
         powers, walkerPowers).flatMap { usable =>
         for
-          (name, power) <- printed(usable.source, usable.power.id)
+          (name, text) <- printed(usable.source, usable.power.id)
           option <- DecisionOption.forRef(usable.ref)
           source <- walkerDecisions.optionProjection(context.ready,
             context.viewer, index, option)
-        yield PhasePowerProjection(usable.power.id.value, source, name,
-          power.rulesText)
+        yield PhasePowerProjection(usable.power.id.value, source, name, text)
       }
 
   def controls(context: ScopedProjectionContext): Vector[String] =
@@ -43,22 +42,20 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
     projected.map(p => s"usePower:${p.powerId}:${p.source.id}")
 
   private def printed(source: PowerSourceRef, power: PowerId)
-      : Option[(String, oathdigital.catalog.CatalogPower)] = source match
+      : Option[(String, String)] = source match
     case PowerSourceRef.Card(id: DenizenId) =>
-      catalog.denizen(id)
-        .flatMap(d => d.powers.find(_.id == power).map(d.name -> _))
+      catalog.denizen(id).flatMap(d =>
+        d.powers.find(_.id == power).map(p => d.name -> p.rulesText))
     case PowerSourceRef.Card(id: RelicId) =>
-      catalog.relic(id)
-        .flatMap(r => r.powers.find(_.id == power).map(r.name -> _))
+      catalog.relic(id).flatMap(r =>
+        r.powers.find(_.id == power).map(p => r.name -> p.rulesText))
     case PowerSourceRef.Card(id: EdificeId) =>
       catalog.edifice(id).flatMap(e =>
         Vector(e.intact, e.ruined).flatMap(face =>
-          face.powers.find(_.id == power).map(face.name -> _)).headOption)
-    case PowerSourceRef.Banner(_) => BannerFacePowers.printed(power).map:
-      case (name, text) =>
-        name -> oathdigital.catalog.CatalogPower(power, persistent = false, text)
+          face.powers.find(_.id == power).map(p => face.name -> p.rulesText))
+          .headOption)
+    case PowerSourceRef.Banner(_) => BannerFacePowers.printed(power)
     case PowerSourceRef.Site(_) =>
       SitePowerText.of(SitePowerText.kindOf(power.value)).map(site =>
-        site.label -> oathdigital.catalog.CatalogPower(power,
-          persistent = false, site.text))
+        site.label -> site.text)
     case _ => None

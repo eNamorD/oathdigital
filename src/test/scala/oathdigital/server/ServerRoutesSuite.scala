@@ -18,8 +18,7 @@ class ServerRoutesSuite extends munit.FunSuite:
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val runtime = ServerRuntime.open(
-      Files.createTempDirectory("server-routes-").resolve("database"),
-      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+      Files.createTempDirectory("server-routes-").resolve("database")
     ).toOption.get
     val client = HttpClient.newHttpClient()
 
@@ -71,8 +70,7 @@ class ServerRoutesSuite extends munit.FunSuite:
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val runtime = ServerRuntime.open(
-      Files.createTempDirectory("trusted-alpha-routes-").resolve("database"),
-      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+      Files.createTempDirectory("trusted-alpha-routes-").resolve("database")
     ).toOption.get
     val client = HttpClient.newHttpClient()
     val binding = bind(ServerRoutes.route(
@@ -108,8 +106,7 @@ class ServerRoutesSuite extends munit.FunSuite:
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val runtime = ServerRuntime.open(
-      Files.createTempDirectory("development-create-routes-").resolve("database"),
-      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+      Files.createTempDirectory("development-create-routes-").resolve("database")
     ).toOption.get
     val client = HttpClient.newHttpClient()
     val binding = bind(ServerRoutes.route(runtime, blocking,
@@ -149,8 +146,7 @@ class ServerRoutesSuite extends munit.FunSuite:
     val blocking = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
     val runtime = ServerRuntime.open(
-      Files.createTempDirectory("trusted-alpha-loopback-origin-").resolve("database"),
-      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+      Files.createTempDirectory("trusted-alpha-loopback-origin-").resolve("database")
     ).toOption.get
     val client = HttpClient.newHttpClient()
     val binding = bind(ServerRoutes.route(runtime, blocking,
@@ -201,8 +197,6 @@ class ServerRoutesSuite extends munit.FunSuite:
     port = 8080,
     publicBaseUrl = publicBaseUrl,
     databasePath = Paths.get("var/test-server-routes"),
-    catalogPath = Paths.get(
-      "docs/catalog/new-foundations-component-catalog.json"),
     mode = mode,
     authenticatedRouteMount = authenticatedRouteMount,
     version = "test-version"

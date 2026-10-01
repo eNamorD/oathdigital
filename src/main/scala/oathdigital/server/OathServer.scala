@@ -42,14 +42,13 @@ object OathServer:
     )
     val readiness = ServerReadiness.starting(config.version)
     system.log.info(
-      "Oath Digital server starting: version={}, mode={}, host={}, port={}, publicBaseUrlPresent={}, databasePath={}, catalogPath={}",
+      "Oath Digital server starting: version={}, mode={}, host={}, port={}, publicBaseUrlPresent={}, databasePath={}",
       config.version,
       config.mode,
       config.host,
       Int.box(config.port),
       Boolean.box(config.publicBaseUrl.nonEmpty),
-      config.databasePath.toAbsolutePath.normalize.toString,
-      config.catalogPath.toAbsolutePath.normalize.toString
+      config.databasePath.toAbsolutePath.normalize.toString
     )
     if config.mode == ServerMode.TrustedAlpha &&
         config.authenticatedRouteMount.isDefined then
@@ -59,7 +58,7 @@ object OathServer:
           "development mode only"
       )
 
-    ServerRuntime.open(config.databasePath, config.catalogPath) match
+    ServerRuntime.open(config.databasePath) match
       case Left(error) =>
         system.log.error("Server startup failed: {}", error)
         system.terminate()

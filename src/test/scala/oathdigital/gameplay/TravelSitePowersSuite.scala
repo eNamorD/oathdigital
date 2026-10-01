@@ -4,7 +4,7 @@ import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Table, TestCards}
 
 /** Travel terrain rules are proved against contribution collection, before
   * Travel owns a walker tree. Every cost node has R25's real shape: a
@@ -161,7 +161,7 @@ class TravelSitePowersSuite extends munit.FunSuite:
 
   test("unknown terrain-suffixed handlers never fabricate Travel powers"):
     val fixturePower = PowerId("site.fixture-site.coast")
-    val fixtureSite = catalog.sites.find(_.id == plain).get.copy(
+    val fixtureSite = TestCards.siteLike(catalog.sites.find(_.id == plain).get)(
       id = SiteId("site:fixture-site"), handlers = Vector(fixturePower.value))
     val augmented = catalog.copy(sites = catalog.sites :+ fixtureSite)
 

@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.catalog.CatalogPower
+import oathdigital.catalog.PrintedPower
 import oathdigital.model._
 
 /** Orientation is a factual property only; callers still own activation rules. */
@@ -168,5 +168,5 @@ object RuleSourceIndex:
     case Orientation.FaceDown => RuleSourceFace.FaceDown
 
   private def rawIds(values: Vector[String]): Vector[PowerId] = values.map(PowerId.apply)
-  private def ids(values: Vector[CatalogPower]): Vector[PowerId] =
+  private def ids(values: Vector[PrintedPower]): Vector[PowerId] =
     values.map(_.id)

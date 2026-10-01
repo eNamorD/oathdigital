@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers
 
+import oathdigital.testkit.TestCards
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -37,7 +38,7 @@ object SearchFixture:
     val powered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
     catalog.denizens.filter(d => d.suit == suit &&
       !d.powers.exists(power => powered(power.id)) &&
-      d.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted)
+      TestCards.unrestricted(d))
       .map(d => DenizenId(d.id.value)).filter(id =>
         index.get(id).forall(_.location.container ==
           CardContainer.Deck(CardDeck.World)))

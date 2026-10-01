@@ -1,6 +1,6 @@
 package oathdigital.gameplay.actions
 
-import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, SiteOnly}
 import oathdigital.gameplay._
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.model.OathViolation._
@@ -151,8 +151,7 @@ object CardPlay:
         for
           definition <- catalog.denizen(id)
             .toRight(UnknownWorldCard(id))
-          _ <- Either.cond(definition.restrictions != CardRestrictions.AdviserOnly &&
-            definition.restrictions != CardRestrictions.LockedAdviserOnly, (),
+          _ <- Either.cond(!definition.isInstanceOf[AdviserOnly], (),
             InvalidSearchPlacement("adviser-only card cannot be played to a site"))
           siteId <- player.pawnSite.toRight(PawnSiteMissing(player.player))
           site <- ready.game.current.map.sites.get(siteId)
@@ -172,7 +171,7 @@ object CardPlay:
             InvalidSearchPlacement(
               "facedown adviser must be played faceup to advisers or the pawn's site"))
           _ <- Either.cond(!(orientation == Orientation.FaceUp &&
-            definition.restrictions == CardRestrictions.SiteOnly), (),
+            definition.isInstanceOf[SiteOnly]), (),
             InvalidSearchPlacement(
               "site-only card can only be held as a facedown adviser"))
           // A facedown-adviser play moves that card within the same play area,

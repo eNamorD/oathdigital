@@ -1628,8 +1628,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // everyone else is told who is deciding, and nothing names the card.
     val kept = privateIds.head
     val revealing =
-      if catalog.denizen(DenizenId(kept)).exists(_.restrictions ==
-          oathdigital.catalog.CardRestrictions.SiteOnly) then chosen
+      if catalog.denizen(DenizenId(kept)).exists(_.isInstanceOf[oathdigital.catalog.SiteOnly]) then chosen
       else
         val waiting = projector.projectPublic("game-private",
           LoadedGame(chosen.state, chosen.nextSequence))

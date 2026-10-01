@@ -13,7 +13,6 @@ final case class ServerConfig(
     port: Int,
     publicBaseUrl: Option[URI],
     databasePath: Path,
-    catalogPath: Path,
     mode: ServerMode,
     authenticatedRouteMount: Option[AuthenticatedRouteMountConfiguration],
     version: String
@@ -23,8 +22,6 @@ object ServerConfig:
   private val DefaultHost = "127.0.0.1"
   private val DefaultPort = "8080"
   private val DefaultDatabasePath = "var/oathdigital"
-  private val DefaultCatalogPath =
-    "docs/catalog/new-foundations-component-catalog.json"
   private val DefaultMode = "development"
 
   private val SupportedOptionOrder = Vector(
@@ -34,7 +31,6 @@ object ServerConfig:
     "--session-cookie-name",
     "--authenticated-public-origin",
     "--database-path",
-    "--catalog-path",
     "--mode"
   )
   private val SupportedOptions = SupportedOptionOrder.toSet
@@ -44,7 +40,7 @@ object ServerConfig:
     "Usage: oathdigital [--host HOST] [--port PORT] " +
       "[--public-base-url URL] [--session-cookie-name NAME] " +
       "[--authenticated-public-origin ORIGIN] [--database-path PATH] " +
-      "[--catalog-path PATH] [--mode development|trusted-alpha]. " +
+      "[--mode development|trusted-alpha]. " +
       "Internet exposure requires HTTPS at a trusted reverse proxy."
 
   def parse(
@@ -87,16 +83,6 @@ object ServerConfig:
         environment
       )
     )
-    val catalogPath = parsePath(
-      "--catalog-path",
-      value(
-        "--catalog-path",
-        "OATH_CATALOG_PATH",
-        DefaultCatalogPath,
-        cli,
-        environment
-      )
-    )
     val mode = parseMode(value(
       "--mode", "OATH_MODE", DefaultMode, cli, environment
     ))
@@ -106,7 +92,6 @@ object ServerConfig:
       "--port" -> port.left.toOption,
       "--public-base-url" -> publicBaseUrl.left.toOption,
       "--database-path" -> databasePath.left.toOption,
-      "--catalog-path" -> catalogPath.left.toOption,
       "--mode" -> mode.left.toOption
     ).collect { case (option, Some(error)) => option -> error } ++
       authenticatedRouteMount.left.toOption.toVector
@@ -129,7 +114,6 @@ object ServerConfig:
         port.toOption.get,
         publicBaseUrl.toOption.get,
         databasePath.toOption.get,
-        catalogPath.toOption.get,
         mode.toOption.get,
         authenticatedRouteMount.toOption.get,
         version

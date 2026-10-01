@@ -1,7 +1,5 @@
 package oathdigital.model
 
-import oathdigital.catalog.DefinitionId
-
 class OpaqueIdSuite extends munit.FunSuite:
 
   test("ids reject the values they always rejected"):
@@ -16,7 +14,3 @@ class OpaqueIdSuite extends munit.FunSuite:
     assertEquals(PlayerId("p1").toString, "p1")
     assertEquals(s"${PowerId("site.coast")}", "site.coast")
 
-  test("DefinitionId keeps its validation and prints raw"):
-    assertEquals(DefinitionId("denizen.coast").value, "denizen.coast")
-    intercept[IllegalArgumentException](DefinitionId(" "))
-    assertEquals(DefinitionId("x").toString, "x")

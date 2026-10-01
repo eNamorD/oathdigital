@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.catalog.CardRestrictions
+import oathdigital.testkit.TestCards
 import oathdigital.gameplay.actions.{CardPlay, PlacementRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
@@ -36,7 +36,7 @@ object PlacementFixture:
   def plain(ready: ReadyGame): Vector[DenizenId] =
     ready.game.current.commonCards.worldDeck.collect:
       case id: DenizenId if catalog.denizens.exists(d => d.id.value == id.value &&
-        d.restrictions == CardRestrictions.Unrestricted) => id
+        TestCards.unrestricted(d)) => id
 
   def actorOf(ready: ReadyGame): PlayerState =
     ready.game.current.players.find(

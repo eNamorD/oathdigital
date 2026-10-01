@@ -7,7 +7,7 @@ import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, Table, TestCards}
 import oathdigital.testkit.Table.{p1, p2}
 
 /** Synthetic WAKE, ACTION and REST powers on a faceup adviser, injected
@@ -63,7 +63,8 @@ class PhasePowerSuite extends munit.FunSuite:
     val printed = catalog.denizens.find(_.id.value == card.value).get
       .powers.find(_.id == powerId).get
     val twice = catalog.copy(denizens = catalog.denizens.map(d =>
-      if d.id.value == second.value then d.copy(powers = d.powers :+ printed)
+      if d.id.value == second.value then
+        TestCards.denizenLike(d)(powers = d.powers :+ printed)
       else d))
     val usedFromFirst = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card),
       powerId)
@@ -193,9 +194,9 @@ class PhasePowerSuite extends munit.FunSuite:
     val printed = catalog.denizens.find(_.id.value == card.value).get.powers
       .find(_.id == powerId).get
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
-      if e.id == edifice.id then e.copy(
-        intact = e.intact.copy(powers = e.intact.powers :+ printed),
-        ruined = e.ruined.copy(powers = e.ruined.powers :+ printed)) else e))
+      if e.id == edifice.id then TestCards.edificeLike(e)(
+        intact = e.intact.powers :+ printed,
+        ruined = e.ruined.powers :+ printed) else e))
     val power = TestPower(powerId, PowerTiming.Act)
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
       val state = Table.start.edifice(id, side, at = Table.homeOf(p1)).ready

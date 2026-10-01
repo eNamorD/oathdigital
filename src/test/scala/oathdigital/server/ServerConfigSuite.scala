@@ -14,9 +14,6 @@ class ServerConfigSuite extends munit.FunSuite:
     assertEquals(config.publicBaseUrl, None)
     assertEquals(config.databasePath,
       Paths.get("var/oathdigital").toAbsolutePath.normalize)
-    assertEquals(config.catalogPath, Paths
-      .get("docs/catalog/new-foundations-component-catalog.json")
-      .toAbsolutePath.normalize)
     assertEquals(config.mode, ServerMode.Development)
     assertEquals(config.authenticatedRouteMount, None)
     assertEquals(config.version, version)
@@ -29,7 +26,6 @@ class ServerConfigSuite extends munit.FunSuite:
         "OATH_PORT" -> "8081",
         "OATH_PUBLIC_BASE_URL" -> "http://192.168.1.20:8081",
         "OATH_DATABASE_PATH" -> "var/test-db/../alpha-db",
-        "OATH_CATALOG_PATH" -> "docs/catalog/../catalog.json",
         "OATH_MODE" -> "trusted-alpha",
         "OATH_SESSION_COOKIE_NAME" -> "oath_session",
         "OATH_AUTHENTICATED_PUBLIC_ORIGIN" -> "https://play.example.com"
@@ -42,8 +38,6 @@ class ServerConfigSuite extends munit.FunSuite:
       Some(new URI("http://192.168.1.20:8081")))
     assertEquals(config.databasePath,
       Paths.get("var/alpha-db").toAbsolutePath.normalize)
-    assertEquals(config.catalogPath,
-      Paths.get("docs/catalog.json").toAbsolutePath.normalize)
     assertEquals(config.mode, ServerMode.TrustedAlpha)
     assertEquals(
       config.authenticatedRouteMount,
@@ -62,7 +56,6 @@ class ServerConfigSuite extends munit.FunSuite:
         "--session-cookie-name", "cli_session",
         "--authenticated-public-origin", "http://localhost:9090",
         "--database-path", "var/cli-db",
-        "--catalog-path", "docs/cli-catalog.json",
         "--mode", "development"
       ),
       Map(
@@ -72,7 +65,6 @@ class ServerConfigSuite extends munit.FunSuite:
         "OATH_SESSION_COOKIE_NAME" -> "env_session",
         "OATH_AUTHENTICATED_PUBLIC_ORIGIN" -> "https://env.example.com",
         "OATH_DATABASE_PATH" -> "var/env-db",
-        "OATH_CATALOG_PATH" -> "docs/env-catalog.json",
         "OATH_MODE" -> "trusted-alpha"
       )
     )
@@ -83,8 +75,6 @@ class ServerConfigSuite extends munit.FunSuite:
       Some(new URI("http://localhost:9090")))
     assertEquals(config.databasePath,
       Paths.get("var/cli-db").toAbsolutePath.normalize)
-    assertEquals(config.catalogPath,
-      Paths.get("docs/cli-catalog.json").toAbsolutePath.normalize)
     assertEquals(config.mode, ServerMode.Development)
     assertEquals(
       config.authenticatedRouteMount,
@@ -189,7 +179,6 @@ class ServerConfigSuite extends munit.FunSuite:
     val errors = ServerConfig.parse(
       Array(
         "--mode", "production",
-        "--catalog-path", " ",
         "--database-path", " ",
         "--public-base-url", "ftp://example.com/path?query=yes#fragment",
         "--port", "70000",
@@ -204,7 +193,6 @@ class ServerConfigSuite extends munit.FunSuite:
       "--port",
       "--public-base-url",
       "--database-path",
-      "--catalog-path",
       "--mode"
     ))
 
@@ -234,26 +222,25 @@ class ServerConfigSuite extends munit.FunSuite:
 
   test("paths are absolute and normalized and malformed paths are errors"):
     val config = parse(Array(
-      "--database-path", "var/data/../database",
-      "--catalog-path", "docs/catalog/../catalog.json"
+      "--database-path", "var/data/../database"
     ))
 
     assert(config.databasePath.isAbsolute)
-    assert(config.catalogPath.isAbsolute)
     assertEquals(config.databasePath,
       Paths.get("var/database").toAbsolutePath.normalize)
-    assertEquals(config.catalogPath,
-      Paths.get("docs/catalog.json").toAbsolutePath.normalize)
 
     val invalidPath = "bad\u0000path"
     val errors = ServerConfig.parse(
-      Array("--database-path", invalidPath, "--catalog-path", invalidPath),
+      Array("--database-path", invalidPath),
       Map.empty,
       version
     ).left.toOption.get
-    assertEquals(errors.map(_.takeWhile(_ != ':')), Vector(
-      "--database-path", "--catalog-path"
-    ))
+    assertEquals(errors.map(_.takeWhile(_ != ':')), Vector("--database-path"))
+
+  test("the retired catalog path option is an unknown option"):
+    val errors = ServerConfig.parse(Array("--catalog-path", "catalog.json"),
+      Map.empty, version).left.toOption.get
+    assert(errors.exists(_.startsWith("unknown option --catalog-path")), errors)
 
   test("development mode rejects non-loopback bind hosts"):
     // The host list is DevelopmentTrustBoundarySuite's; one shows the check applies.
