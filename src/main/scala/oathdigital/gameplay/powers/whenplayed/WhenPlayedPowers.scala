@@ -9,4 +9,6 @@ object WhenPlayedPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Vector[ContributingPower]() ++
       ThreateningRoar.forCatalog(catalog).toVector ++
-      Riots.forCatalog(catalog).toVector
+      Riots.forCatalog(catalog).toVector ++
+      AnimalHost.forCatalog(catalog).toVector ++
+      Charlatan.forCatalog(catalog).toVector
