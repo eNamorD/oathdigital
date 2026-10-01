@@ -237,6 +237,14 @@ object LogScripts:
     start(act, ActionRef.Muster)
     Script("muster", service, active(act))
 
+  /** p1 musters at Deep Woods holding Initiation Rite, so the card mustered
+    * on receives a secret instead of a favor. */
+  def initiatedMuster(using munit.Location): Script =
+    val (service, act) = atTable("initiated-muster", source(Table.start
+      .pawn(p1, "Deep Woods").adviser(p1, "Initiation Rite")).banditsRefilled)
+    start(act, ActionRef.Muster)
+    Script("initiated-muster", service, active(act))
+
   /** Trade for secrets, on the second player's turn, at the site with the
     * source. It costs two favor and a player starts with one, so a second
     * is arranged into their area. With no adviser matching the source's

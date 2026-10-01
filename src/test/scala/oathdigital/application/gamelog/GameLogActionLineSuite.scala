@@ -35,6 +35,15 @@ class GameLogActionLineSuite extends munit.FunSuite:
     assert("^Mustered \\d+ warbands? with .+$".r.matches(mine(mustered)),
       mine(mustered))
 
+  test("Muster under Initiation Rite: the start line still waits for the " +
+      "cost, which places a secret, and shows only the Supply"):
+    val script = initiatedMuster
+    val mine = lines(script, None)
+    val start = mine.indexWhere(_.startsWith("Started Muster"))
+    val mustered = mine.indexWhere(_.startsWith("Mustered "))
+    assert(start >= 0 && mustered > start, mine)
+    assert(mine(start).endsWith("−1 Supply"), mine(start))
+
   test("Trade: the start line waits for the cost, then says what it bought"):
     val script = trade
     val mine = lines(script, None)
