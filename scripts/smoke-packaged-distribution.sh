@@ -86,7 +86,6 @@ mkdir "$package_directory" "$database_directory"
 cp -R "$stage_directory"/. "$package_directory"/
 
 base_url=http://127.0.0.1:$port
-catalog_path=$package_directory/share/oathdigital/new-foundations-component-catalog.json
 database_path=$database_directory/oathdigital
 index_file=$temporary_directory/index.html
 game_path=
@@ -114,7 +113,6 @@ start_server() {
     OATH_PORT="$port" \
     OATH_PUBLIC_BASE_URL="$base_url" \
     OATH_DATABASE_PATH="$database_path" \
-    OATH_CATALOG_PATH="$catalog_path" \
     ./bin/oathdigital >"$log_file" 2>&1 &
   child_pid=$!
 }

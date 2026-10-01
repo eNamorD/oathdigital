@@ -86,8 +86,8 @@ class DesktopLaunchProfileSuite extends munit.FunSuite:
     )
 
   test("unrelated environment variables pass through"):
-    val launch = resolve(environment = Map("OATH_CATALOG_PATH" -> "/catalog.json", "PATH" -> "/usr/bin"))
-    assertEquals(launch.environment.get("OATH_CATALOG_PATH"), Some("/catalog.json"))
+    val launch = resolve(environment = Map("OATH_UNRELATED" -> "/unrelated", "PATH" -> "/usr/bin"))
+    assertEquals(launch.environment.get("OATH_UNRELATED"), Some("/unrelated"))
     assertEquals(launch.environment.get("PATH"), Some("/usr/bin"))
 
   test("prepare leaves the environment untouched and writes nothing without OATH_LAUNCH"):

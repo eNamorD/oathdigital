@@ -79,7 +79,6 @@ case "${1:-}" in
     export OATH_RELEASE_VERSION=$release_version
     sh "$0" self-test
     python3 scripts/check-architecture.py
-    python3 scripts/validate-component-catalog.py
     python3 scripts/check-markdown-links.py
     ./sbtw verifyReleaseVersion test frontend/test verifyPackageMappings Universal/packageBin Universal/packageZipTarball Docker/stage
     mkdir -p "$3"
@@ -106,7 +105,7 @@ case "${1:-}" in
     {
       printf 'Tag: %s\nCommit: %s\n' "$release_tag" "$(git rev-parse HEAD)"
       printf 'Java: 21\nHost: %s\n' "$(uname -sm)"
-      printf 'Passed: JVM/frontend tests; architecture/catalog/Markdown checks; version/mappings; ZIP and TGZ smoke.\n'
+      printf 'Passed: JVM/frontend tests; architecture/Markdown checks; version/mappings; ZIP and TGZ smoke.\n'
       printf 'Archive smoke: readiness, frontend, three private seats, command, seat restoration across restart, database close, shutdown.\n'
       printf 'Separate-machine LAN/TLS and browser acceptance: not executed by CI.\n'
     } >"$output/archive-evidence.txt"

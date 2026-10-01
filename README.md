@@ -51,12 +51,8 @@ Run deterministic repository checks with:
 ```sh
 python3 scripts/check-architecture.py
 python3 scripts/check-markdown-links.py
-python3 scripts/validate-component-catalog.py
-python3 reference/catalog-ingestion/build_runtime_catalog.py
 git diff --check
 ```
-
-The catalog generator without `--output` is a non-writing equality check.
 
 Two commits rewrote the whole code base to Scala 3 indentation and control
 syntax. They are listed in `.git-blame-ignore-revs`; run this once so
@@ -76,7 +72,7 @@ Build the frontend and run the loopback server:
 
 ```sh
 ./sbtw frontend/fastLinkJS
-./sbtw 'runMain oathdigital.server.OathServer --database-path var/oathdigital --catalog-path docs/catalog/new-foundations-component-catalog.json'
+./sbtw 'runMain oathdigital.server.OathServer --database-path var/oathdigital'
 ```
 
 Open `http://127.0.0.1:8080/?mode=server`. The start page is the same one
@@ -98,7 +94,7 @@ Build versioned Universal ZIP and TGZ distributions with:
 Archives are written under `target/universal/`, require Java 21, and need
 neither sbt nor Node at runtime. Build the local non-root Java 21 OCI image
 with `./sbtw Docker/publishLocal`. Packaged launchers default to
-`trusted-alpha` mode and their bundled catalog while preserving command-line,
+`trusted-alpha` mode while preserving command-line,
 environment, then default precedence. See
 [runtime configuration](docs/operations/configuration.md) for every option and
 archive/container examples.

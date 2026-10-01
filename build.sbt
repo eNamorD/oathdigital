@@ -92,15 +92,9 @@ lazy val root = (project in file("."))
       }
     },
     executableScriptName := "oathdigital",
-    Universal / mappings ++= {
-      val operations = ((baseDirectory.value / "docs/operations") ** "*.md")
-        .get
-        .map(file => file -> s"share/oathdigital/${file.getName}")
-      (baseDirectory.value /
-        "docs/catalog/new-foundations-component-catalog.json" ->
-        "share/oathdigital/new-foundations-component-catalog.json") +:
-        operations
-    },
+    Universal / mappings ++= ((baseDirectory.value / "docs/operations") ** "*.md")
+      .get
+      .map(file => file -> s"share/oathdigital/${file.getName}"),
     Universal / mappings ++= Seq(
       "Start Oath Digital.command",
       "start-oathdigital.sh",
@@ -110,15 +104,12 @@ lazy val root = (project in file("."))
     bashScriptExtraDefines ++= Seq(
       """if [ -z "${OATH_MODE+x}" ]; then OATH_MODE=trusted-alpha; fi""",
       "export OATH_MODE",
-      """if [ -z "${OATH_CATALOG_PATH+x}" ]; then OATH_CATALOG_PATH="${app_home}/../share/oathdigital/new-foundations-component-catalog.json"; fi""",
-      "export OATH_CATALOG_PATH",
       // A bundled-runtime archive ships jre/ beside bin/. The template gives
       // bundled_jvm priority over JAVA_HOME; -java-home still overrides it.
       """if [ -x "${app_home}/../jre/bin/java" ]; then bundled_jvm="$(realpath "${app_home}/../jre")"; fi"""
     ),
     batScriptExtraDefines ++= Seq(
       "if not defined OATH_MODE set \"OATH_MODE=trusted-alpha\"",
-      "if not defined OATH_CATALOG_PATH set \"OATH_CATALOG_PATH=%~dp0..\\share\\oathdigital\\new-foundations-component-catalog.json\"",
       """if exist "%APP_HOME%\jre\bin\java.exe" set "BUNDLED_JVM=%APP_HOME%\jre""""
     ),
     Docker / packageName := "oathdigital",
@@ -142,7 +133,6 @@ lazy val root = (project in file("."))
       val requiredFiles = Seq(
         "bin/oathdigital",
         "bin/oathdigital.bat",
-        "share/oathdigital/new-foundations-component-catalog.json",
         "share/oathdigital/configuration.md",
         "share/oathdigital/packaged-smoke-test.md",
         "share/oathdigital/phase-5-follow-ups.md",
