@@ -1,16 +1,10 @@
 package oathdigital.gameplay.actions
 
-import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.PowerRuntime
 import oathdigital.model._
 
 /** Pure Search source and cost rules shared by the walker and projections. */
 object SearchRules:
   import OathViolation._
-
-  def validateSupportedState(catalog: ExecutableCatalog,
-      ready: ReadyGame): Either[OathViolation, Unit] =
-    PowerRuntime.requireAudited(catalog)
 
   def cost(ready: ReadyGame, source: SearchSource,
       origin: Region): Either[OathViolation, Int] = source match

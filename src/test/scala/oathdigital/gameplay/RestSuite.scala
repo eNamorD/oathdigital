@@ -8,10 +8,7 @@ import oathdigital.testkit.Table
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathEvent.IgnoredRulesRecorded
 import oathdigital.model.OathState.Ready
-import oathdigital.model.OathViolation.{UnsupportedRestState,
-  UnsupportedRoundEndCatalogInventory,
-  UnsupportedRuleCatalog}
-import oathdigital.catalog.CatalogPower
+import oathdigital.model.OathViolation.UnsupportedRestState
 
 class RestSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
@@ -285,36 +282,6 @@ class RestSuite extends munit.FunSuite:
       .toOption.get.events.head.asInstanceOf[IgnoredRulesRecorded]
     assert(siteAccepted.diagnostics.head.source.stableKey
       .startsWith(s"site-card:${siteId.value}:"))
-
-  test("changed inventory in every catalog family fails before runtime discovery"):
-    val base = act
-    val actor = base.game.current.turn.activePlayer
-    def rejects(c: oathdigital.catalog.ExecutableCatalog) =
-      rest(Ready(base), actor, new OathRules(c))
-        .left.toOption.exists(error =>
-          error.isInstanceOf[UnsupportedRoundEndCatalogInventory] ||
-          error.isInstanceOf[UnsupportedRuleCatalog])
-    val changed = Vector(
-      catalog.copy(denizens = catalog.denizens.updated(0,
-        catalog.denizens.head.copy(powers = catalog.denizens.head.powers :+
-          CatalogPower(PowerId("test.changed-denizen"), persistent = false, "Changed.")))),
-      catalog.copy(relics = catalog.relics.updated(0,
-        catalog.relics.head.copy(powers = catalog.relics.head.powers :+
-          CatalogPower(PowerId("test.changed-relic"), persistent = false, "Changed.")))),
-      catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
-        intact = catalog.edifices.head.intact.copy(
-          powers = catalog.edifices.head.intact.powers :+
-            CatalogPower(PowerId("test.changed-intact"), persistent = false, "Changed."))))),
-      catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
-        ruined = catalog.edifices.head.ruined.copy(
-          powers = catalog.edifices.head.ruined.powers :+
-            CatalogPower(PowerId("test.changed-ruined"), persistent = false, "Changed."))))),
-      catalog.copy(legacies = catalog.legacies.updated(0,
-        catalog.legacies.head.copy(powers = catalog.legacies.head.powers :+
-          CatalogPower(PowerId("test.changed-legacy"), persistent = false, "Changed.")))),
-      catalog.copy(sites = catalog.sites.updated(0,
-        catalog.sites.head.copy(handlers = catalog.sites.head.handlers :+ "changed"))))
-    assert(changed.forall(rejects))
 
   test("altered banner and Foundation types record stable fallback identities"):
     val base = act

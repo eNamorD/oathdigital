@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.powers.{PowerImplementationStatus, ReviewedPowerCatalog}
+import oathdigital.gameplay.powers.PowerImplementationStatus
 
 /**
  * Production first-game Chronicle derivation: draws a random Chronicle
@@ -23,8 +23,6 @@ final class GeneratedFirstGamePlanFactory(
       : Either[BootstrapPlanFailure, FirstGamePlan] =
     val resolvedConfig = shuffledSeating(config)
     for
-      _ <- ReviewedPowerCatalog.requireAudited(catalog)
-        .left.map(violation => BootstrapPlanFailure(violation.toString))
       chronicle <- FirstGameChronicleGenerator.generate(catalog,
           PowerImplementationStatus.implemented(catalog), random, policy)
         .left.map(failure => BootstrapPlanFailure(failure.toString))

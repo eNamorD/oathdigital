@@ -11,9 +11,6 @@ import oathdigital.model.{IgnoredRuleDiagnostic, ActionKind, OathViolation, Orde
   * PowerResolver; these methods only translate established public shapes.
   */
 object PowerRuntime:
-  def requireAudited(catalog: ExecutableCatalog): Either[OathViolation, Unit] =
-    ReviewedPowerCatalog.requireAudited(catalog)
-
   def options(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       action: ActionKind): Either[OathViolation, Vector[OrderedRuleInvocation]] =
     resolve(catalog, ready, actor, window(action)).map(_.offered.map(invocation =>
@@ -40,8 +37,7 @@ object PowerRuntime:
     result <- resolver.resolve(powerWindow, sources,
       ReviewedPowerCatalog.facts(catalog, ready, actor)).left.map:
       case PowerResolverError.UnknownAbility(source, id) =>
-        OathViolation.UnsupportedRuleCatalog(
-          ReviewedPowerCatalog.AuditedCatalogFingerprint,
+        OathViolation.UnsupportedRuleCatalog("a classified handler",
           s"unclassified-handler:${source.stableKey}:${id.value}")
   yield result
 

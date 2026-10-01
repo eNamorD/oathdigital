@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathLifecycle, PowerRuntime}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
@@ -22,7 +22,6 @@ object ChallengeProcedure:
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
-    _ <- PowerRuntime.requireAudited(catalog)
     _ <- supportedFaces(state)
     _ <- Either.cond(legalBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.Challenge.key))

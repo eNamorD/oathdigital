@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.catalog.CatalogPower
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -257,20 +256,6 @@ class ForgeProcedureSuite extends munit.FunSuite
     // Facedown secrets are not spendable, so they do not fund a Forge.
     assertEquals(rejects(build(withFunds(f.cost.favor, 0, f.cost.secrets + 3))),
       OathViolation.InsufficientSecrets(f.cost.secrets, 0): OathViolation)
-
-  test("P1: build refuses a site whose denizen carries a power outside the " +
-      "audited vocabulary"):
-    val f = forgeable
-    val active = f.targets.head.denizenId
-    val altered = catalog.copy(denizens = catalog.denizens.map { definition =>
-      if definition.id.value != active.value then definition
-      else definition.copy(powers = definition.powers :+ CatalogPower(
-        PowerId("denizen.future-forge-interaction"), persistent = false,
-        "Future power."))
-    })
-    // The violation names the catalog digests, so only its kind is stable.
-    assert(rejects(ForgeProcedure.build(altered, f.ready, f.actor.player))
-      .isInstanceOf[OathViolation.UnsupportedRuleCatalog])
 
   // ---------------------------------------------------------------------
   // P2 / P3: tree shape and park.

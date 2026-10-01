@@ -86,8 +86,6 @@ object OathViolation:
   final case class UnsupportedChronicle(reason: String) extends OathViolation
   final case class UnsupportedRoundEndRule(sourceKey: String, handlerId: String)
       extends OathViolation
-  final case class UnsupportedRoundEndCatalogInventory(
-      expected: String, actual: String) extends OathViolation
   case object ParticipantsEmpty extends OathViolation
   final case class DuplicatePlayer(id: PlayerId)
       extends OathViolation

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathLifecycle, PowerRuntime}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
 /** The tree Muster and Trade share:
@@ -44,7 +44,6 @@ private[economy] object EconomyTree:
     _ <- state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
       .toRight(OathViolation.PawnSiteMissing(actor))
     _ <- siteRulers(state)
-    _ <- PowerRuntime.requireAudited(catalog)
   yield tree(catalog, state, actor, kind)
 
   /** Every site's forces must name a ruler the game can identify. Legacy

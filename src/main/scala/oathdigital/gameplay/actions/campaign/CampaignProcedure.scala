@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathLifecycle, PowerRuntime}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerRollFeedback,
   WalkerSimulation}
 import oathdigital.model._
@@ -26,7 +26,6 @@ object CampaignProcedure:
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- noStartArgs(args)
     _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
-    _ <- PowerRuntime.requireAudited(catalog)
     _ <- Either.cond(CampaignSetup.legalKinds(state, actor).nonEmpty, (),
       OathViolation.CampaignUnavailable("Campaign needs a ruled pawn site to " +
         "Conquest or a co-located enemy pawn to Raid"))

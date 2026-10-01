@@ -45,7 +45,6 @@ object SearchProcedure:
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for
     _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
     source <- sourceOf(args)
-    _ <- SearchRules.validateSupportedState(catalog, ready)
     _ <- Either.cond(ready.game.current.temporaryHands.valuesIterator
       .forall(_.isEmpty), (), OathViolation.SearchDrawMismatch(
       "a temporary card hand already exists"))
