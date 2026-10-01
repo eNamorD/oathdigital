@@ -14,4 +14,6 @@ object WorldActionPowers:
     Vector[PhasePower](Storyteller, Firebrand, Levelers, MemoryOfHome,
       PlagueEngines, BanditPaymaster) ++
       MemoryOfNature.forCatalog(catalog).toVector ++
-      BallotBox.forCatalog(catalog).toVector
+      BallotBox.forCatalog(catalog).toVector ++
+      DarkEnforcer.forCatalog(catalog).toVector ++
+      TamingCharm.forCatalog(catalog).toVector
