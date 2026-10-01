@@ -13,7 +13,7 @@ object OtherActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](SpoiledSupplies, CharmingFriend, SiegeEngines,
       BookOfRecords, BarbedNet, QuickExit, DreamThief, WhisperingLeaves,
-      Enchantress) ++
+      Enchantress, AmberFlame) ++
       SecondChance.forCatalog(catalog).toVector ++
       ArmedMob.forCatalog(catalog).toVector ++
       HonorGuard.forCatalog(catalog).toVector

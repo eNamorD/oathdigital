@@ -39,8 +39,9 @@ case object BookOfRecords extends PaidAction("relic.book-of-records",
     BuildOps((live, pending) => take(live, player, pending)),
     Note(id, tookNote(_, player, source)))))
 
-  /** The banners held by a player whose pawn is at the actor's site. */
-  private def banners(ready: ReadyGame, actor: PlayerId): Vector[Banner] =
+  /** The banners held by a player whose pawn is at the actor's site, the
+    * actor included. Amber Flame reads the same banners. */
+  def banners(ready: ReadyGame, actor: PlayerId): Vector[Banner] =
     val current = ready.game.current
     PowerAccess.pawnSite(ready, actor).toVector.flatMap(site =>
       Banner.all.filter(banner => BannerRules.holder(current, banner)
