@@ -9,8 +9,8 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 ## Now
 
 **Phase - Cleanup tasks** is done except for one item blocked on the
-Chronicle Phase. **Phase - Catalog batch 3** is next, then **Phase - Card
-classes**.
+Chronicle Phase. **Phase - Catalog batch 3** is complete. **Phase - Card
+classes** is next.
 
 ## Next
 
@@ -42,7 +42,10 @@ Exit, Dream Thief, Second Chance, Whispering Leaves, Enchantress, Armed Mob,
 Honor Guard and Amber Flame. Slice 3c is done: the ACTION powers Taming
 Charm, Dark Enforcer, Great Feast, Plague Engines, Memory of Nature, Bandit
 Paymaster, Storyteller, Levelers, Memory of Home, Firebrand and Ballot Box.
-Slice 4 remains.
+Slice 4 is done: the When Played powers Threatening Roar, Riots, Animal
+Host, Key to the City, Charlatan, Bandit Prince, Salad Days, Fabled Feast,
+Town Meeting, Great Herd and Royal Tax, with Dazzle's region discard
+shared and its `none` line. Catalog batch 3 is complete.
 
 ### Catalog - to verify
 
@@ -278,6 +281,16 @@ requested UI changes are in the
 
 ### Powers-related deferred items
 
+- [ ] **Town Meeting's ruling.** Town Meeting splits its favor across the
+  banks, as Alchemist does, but its text may mean one bank for all, as
+  Fabled Feast's does. The
+  [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
+  leave it unresolved. A product-owner answer settles it; one bank would
+  reuse Fabled Feast's question.
+- [ ] **a favor bank in a choose-many shows no suit symbol.**
+  `WalkerSelectionPanels` renders a choose-many option as a toggle with
+  its label only, while a choose-one bank option prints the suit symbol
+  (`SuitGlyphSuite`). Salad Days is the first choose-many of banks.
 - [ ] **walker-native card play through card slots.** Card play still
   runs through the legacy `CardPlay.legalChoices` and `plannedOperations` helpers
   rather than through Operations, so a power cannot change the placement
