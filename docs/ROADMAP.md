@@ -31,7 +31,9 @@ and Rival Khan. Slice 1b is done: the battle plans Disgraced Captain, Battle
 Axes, Great Crusade, Pledge of Defense, The Great Levy, Rain Boots and
 Garrison Armory. Slice 1c is done: the battle plans Book Burning, Tribute
 Spoils, Field Promotion and Military Parade, and the plan surcharge Insect
-Swarm. Slices 2 to 4 remain.
+Swarm. Slice 2a is done: the Muster, Trade and Search modifiers Village
+Idiot, Downtrodden, The Old Oak, Disciples and Crop Rotation, and the Muster
+rule Initiation Rite. Slices 2b to 4 remain.
 
 ### Catalog - to verify
 
