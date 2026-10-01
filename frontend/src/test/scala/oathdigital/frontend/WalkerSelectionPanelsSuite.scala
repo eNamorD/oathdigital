@@ -111,3 +111,29 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     val panel = render(new RecordingControls(),
       opened("challenge.amount", amount), "challenge.amount", amount)
     assertEquals(panel.querySelectorAll(".walker-roll-totals").length, 0)
+
+  test("choose-many offers favor banks as toggles and submits the banks " +
+      "chosen"):
+    def bank(suit: String, label: String) =
+      DecisionOptionState("favor-bank", suit, label)
+    val banks = DecisionQueryState.ChooseMany(Vector(bank("discord", "Discord"),
+      bank("order", "Order"), bank("hearth", "Hearth"), bank("beast", "Beast")),
+      minOptions = 3, maxOptions = 3,
+      heading = Some("Salad Days: choose three banks to gain 1 favor from each"))
+    val id = "cardplay.salad-days.banks"
+    val chosen = Vector("discord", "hearth", "beast")
+    val ui = new RecordingControls()
+    val draft = chosen.foldLeft(opened(id, banks)) { (current, suit) =>
+      one(render(ui, current, id, banks),
+        s"""[data-option-id="favor-bank:$suit"]""")
+        .asInstanceOf[dom.html.Button].click()
+      ui.drafts.selection
+    }
+    val panel = render(ui, draft, id, banks)
+    assertEquals(panel.querySelectorAll(".walker-many-option").length, 4)
+    val confirm = one(panel, ".walker-many-confirm").asInstanceOf[dom.html.Button]
+    assert(!confirm.disabled)
+    confirm.click()
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker(id,
+      DecisionAnswerWire.ChooseManyWire(
+        chosen.map(DecisionOptionWire("favor-bank", _))))))

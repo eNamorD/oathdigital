@@ -13,4 +13,5 @@ object WhenPlayedPowers:
       AnimalHost.forCatalog(catalog).toVector ++
       Charlatan.forCatalog(catalog).toVector ++
       KeyToTheCity.forCatalog(catalog).toVector ++
-      BanditPrince.forCatalog(catalog).toVector
+      BanditPrince.forCatalog(catalog).toVector ++
+      SaladDays.forCatalog(catalog).toVector
