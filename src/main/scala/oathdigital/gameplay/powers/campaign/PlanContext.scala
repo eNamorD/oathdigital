@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds, CampaignPlans, CampaignSetup}
 import oathdigital.gameplay.powerresolver.PowerCtx
+import oathdigital.gameplay.powers.RuledCards
 import oathdigital.model._
 
 /** What a battle plan reads when it is asked whether it is usable now: the
@@ -19,7 +20,9 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
   /** The player who would use the plan; `None` for a bandit defender. */
   def user: Option[PlayerId] = CampaignPlans.userOf(setup, side)
 
-  private def ruler: CampaignDefender = user.fold[CampaignDefender](
+  /** The plan's user as a side of the Campaign: the player, or bandits for a
+    * bandit defender. */
+  def ruler: CampaignDefender = user.fold[CampaignDefender](
     CampaignDefender.Bandits)(CampaignDefender.Player(_))
 
   /** Whether the plan's user rules `site`. */
@@ -100,6 +103,15 @@ final case class PlanContext(ready: ReadyGame, setup: CampaignSetup,
   /** Whether the enemy holds `banner`. Bandits hold none. */
   def enemyHolds(banner: Banner): Boolean = enemyPlayer.exists(held =>
     BannerRules.holder(ready.game.current, banner).contains(held.player))
+
+  /** The cards of `suit` that `who` rules (`RuledCards`): the plan's user
+    * (`ruler`), the enemy or the Campaign's defender. */
+  def cardsRuled(catalog: ExecutableCatalog, who: CampaignDefender,
+      suit: Suit): Vector[CardId] =
+    val asRuler: SiteRuler = who match
+      case CampaignDefender.Player(player) => SiteRuler.Player(player)
+      case CampaignDefender.Bandits => SiteRuler.Bandits
+    RuledCards.of(catalog, ready, asRuler, suit)
 
 object PlanContext:
   /** The context of the plan window `ctx` is gathered for; `None` at any other

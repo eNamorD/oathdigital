@@ -7,9 +7,9 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * nothing beyond the plan window: Mercenaries, Wrestlers, Fearsome Shield, the
   * two faces of the Rampart, Battle Honors, Longbows, Black Sword, Fire
   * Talkers, Nature Worship, Cracked Sage, Village Constable, Banner Breakers,
-  * Cracking Ground, Walled Garden, Bandit Standard, Extra Provisions and
-  * Encirclement, registered together. A plan whose card is absent from
-  * `catalog` is omitted.
+  * Cracking Ground, Walled Garden, Bandit Standard, Extra Provisions,
+  * Encirclement, Disgraced Captain and Battle Axes, registered together. A
+  * plan whose card is absent from `catalog` is omitted.
   */
 object SimplePlans:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -30,4 +30,6 @@ object SimplePlans:
       WalledGarden.forCatalog(catalog).toVector ++
       BanditStandard.forCatalog(catalog).toVector ++
       ExtraProvisions.forCatalog(catalog).toVector ++
-      Encirclement.forCatalog(catalog).toVector
+      Encirclement.forCatalog(catalog).toVector ++
+      DisgracedCaptain.forCatalog(catalog).toVector ++
+      BattleAxes.forCatalog(catalog).toVector
