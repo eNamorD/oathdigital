@@ -16,4 +16,5 @@ object WorldActionPowers:
       MemoryOfNature.forCatalog(catalog).toVector ++
       BallotBox.forCatalog(catalog).toVector ++
       DarkEnforcer.forCatalog(catalog).toVector ++
-      TamingCharm.forCatalog(catalog).toVector
+      TamingCharm.forCatalog(catalog).toVector ++
+      GreatFeast.forCatalog(catalog).toVector
