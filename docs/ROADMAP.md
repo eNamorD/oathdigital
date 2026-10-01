@@ -27,7 +27,9 @@ with its [rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md).
 
 Slice 1a is done: the battle plans Cracking Ground, Walled Garden, Banner
 Breakers, Extra Provisions, Village Constable, Encirclement, Bandit Standard
-and Rival Khan. Slices 1b to 4 remain.
+and Rival Khan. Slice 1b is done: the battle plans Disgraced Captain, Battle
+Axes, Great Crusade, Pledge of Defense, The Great Levy, Rain Boots and
+Garrison Armory. Slices 1c to 4 remain.
 
 ### Catalog - to verify
 
