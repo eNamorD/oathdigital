@@ -16,4 +16,5 @@ object WhenPlayedPowers:
       BanditPrince.forCatalog(catalog).toVector ++
       SaladDays.forCatalog(catalog).toVector ++
       FabledFeast.forCatalog(catalog).toVector ++
-      TownMeeting.forCatalog(catalog).toVector
+      TownMeeting.forCatalog(catalog).toVector ++
+      GreatHerd.forCatalog(catalog).toVector
