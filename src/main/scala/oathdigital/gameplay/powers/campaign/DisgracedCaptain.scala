@@ -28,7 +28,8 @@ final case class DisgracedCaptain private (cardId: DenizenId,
       .filter(_ => context.cardsRuled(catalog, context.setup.defender,
         Suit.Order).nonEmpty)
       .map(source => CampaignPlanOffer(source,
-        PlanDice.label("Disgraced Captain", context.side, DisgracedCaptain.Dice),
+        PlanDice.label("Disgraced Captain", context.side,
+          DisgracedCaptain.Dice),
         Vector(CampaignPlanCost.Favor(1), CampaignPlanCost.FavorBurnt(1)),
         Vector(PlanDice.effect(context.side, DisgracedCaptain.Dice))))
 
