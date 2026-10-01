@@ -171,6 +171,16 @@ and the architecture docs that call the JSON authoritative.
 - [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
   not discarded in the Chronicle Phase's Shape Empire step, which the engine
   does not have yet. The Pass's consent waits for the Consent system phase.
+- [ ] **Contract suite for `EventStreamRepository`.** `InMemoryEventStreamRepository`
+  is the fake every service test uses, and `HsqldbEventStreamRepositorySuite`
+  tests the real store, but no suite runs both. The fake can drift from the
+  real repository (append results, `StreamAlreadyExists` / `StreamNotFound` /
+  `SequenceConflict`, load of a missing stream, concurrent appends) with no
+  test noticing. Extract an abstract `EventStreamRepositoryContract` with a
+  `make()` factory, run it against both, and move the shared behavior tests
+  out of the Hsqldb suite. Backend-only behavior (schema versions, file
+  ownership) stays in the Hsqldb suite. This is the first use of the
+  scala-testing skill's rule that every fake has a contract suite.
 
 ### Phase - Consent system
 
