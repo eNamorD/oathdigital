@@ -1,12 +1,13 @@
 package oathdigital.gameplay.cards
 
-import oathdigital.catalog.PrintsPowers
+import oathdigital.catalog.{AdviserOnly, Locked, PrintsPowers, SiteOnly}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.model.PowerId
 
 /** The printed-corpus checks `validate-component-catalog.py` ran on the JSON,
-  * now run on the Scala catalog. Suits, restriction combinations, edifice
-  * faces and the single Grand Scepter are types, so they need no check.
+  * now run on the Scala catalog. Suits, edifice faces and the single Grand
+  * Scepter are types, so they need no check. Restrictions are free-mixing
+  * traits, so a test pins them.
   */
 class CardCatalogSuite extends munit.FunSuite:
   private val catalog = NewFoundations.catalog
@@ -54,6 +55,23 @@ class CardCatalogSuite extends munit.FunSuite:
       assertEquals(unknown, Vector.empty, p.id)
       assert(!p.rulesText.exists("©®�".contains(_)), p.id)
     }
+
+  test("restrictions match the printed corpus"):
+    def kind(card: AnyRef): String = card match
+      case _: (Locked & AdviserOnly) => "locked-adviser-only"
+      case _: Locked => "locked-only"
+      case _: (SiteOnly & AdviserOnly) => "site-and-adviser"
+      case _: SiteOnly => "site-only"
+      case _: AdviserOnly => "adviser-only"
+      case _ => "unrestricted"
+    val counts = catalog.denizens.groupBy(kind).view.mapValues(_.size).toMap
+    assertEquals(counts, Map("unrestricted" -> 133, "site-only" -> 51,
+      "adviser-only" -> 40, "locked-adviser-only" -> 31))
+    assert(catalog.edifices.forall(e => e.intact.isInstanceOf[Locked] &&
+      !e.ruined.isInstanceOf[Locked] && !e.ruined.isInstanceOf[SiteOnly] &&
+      !e.ruined.isInstanceOf[AdviserOnly]))
+    assert(catalog.edifices.forall(e => !e.intact.isInstanceOf[SiteOnly] &&
+      !e.intact.isInstanceOf[AdviserOnly]))
 
   test("a site has Forge requirements exactly when it has three slots"):
     catalog.sites.foreach(s =>

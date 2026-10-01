@@ -37,8 +37,8 @@ Sequence(
     victory: Conquest placement, or Raid transfer and relocation)
 ```
 
-- **Start.** A start is refused unless the actor is in Act, `PowerRuntime.requireAudited`
-  passes and at least one kind is legal. Conquest is legal when the actor's pawn
+- **Start.** A start is refused unless the actor is in Act
+  and at least one kind is legal. Conquest is legal when the actor's pawn
   site is ruled by Bandits or by another player. Raid is legal when another
   player's pawn stands at the actor's site. Supply is not a gate: `SpendSupply`
   owns it, so a start with too little Supply fails at the first step before

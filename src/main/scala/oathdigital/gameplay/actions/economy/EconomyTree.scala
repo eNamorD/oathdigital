@@ -36,7 +36,7 @@ private[economy] object EconomyTree:
       yields: (PlayerId, MusterSource, Int, ForceKind) => Option[CoreOperation])
 
   /** Fresh start: the lifecycle gate, a pawn site, a resolvable ruler for
-    * every site, and the audited catalog.
+    * every site.
     */
   def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       kind: Kind): Either[OathViolation, Operation] = for

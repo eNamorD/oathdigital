@@ -28,7 +28,7 @@ import oathdigital.model.DecisionAnswer.PartitionAnswer
   * window a player-selected power is offered at, answered by `StartWalker`'s
   * `modifiers`. No other node carries a window.
   *
-  * Start gates are `ForgeRules.validate` unchanged -- audited catalog, the
+  * Start gates are `ForgeRules.validate` unchanged -- the
   * actor ruling their pawn site, a printed Forge cost totalling three
   * resources, exactly three empty faceup denizens, supply >= 1, and a
   * non-empty relic deck. Together they are what makes a started Forge always

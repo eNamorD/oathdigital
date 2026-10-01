@@ -84,8 +84,8 @@ randomness never executes during replay.
 
 ## Rule runtime and interaction pattern
 
-`CardRestrictions` remains the typed source for site-only, adviser-only, and
-locked-adviser-only placement. Search does not interpret `rulesText` and does
+The `Locked`, `SiteOnly`, and `AdviserOnly` card traits are the typed source for
+site-only, adviser-only, and locked-adviser-only placement. Search does not interpret `rulesText` and does
 not add a JSON rules DSL. Activated component modifiers extend it through power
 windows, as `ContributingPower`s. This bounded profile has no
 supported Search modifier, so it validates unaltered Foundations, exile-only
