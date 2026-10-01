@@ -12,6 +12,22 @@ object RelicDraws:
       Play(relic, PositionedLocation(Location.Deck(CardDeck.Relic),
         StackPosition.Top), Location.PlayArea(actor), Orientation.FaceDown))
 
+  /** "The relic deck was empty.": a relic draw's line when it drew none. */
+  val emptyDeck: NoteKey = NoteKey("used.empty", Vector(
+    NotePart.Text("The relic deck was empty.")))
+
+  /** A power's draw of the top relic, taken facedown, then its line: the
+    * relic drawn, or the empty deck. Dowsing Sticks and Tinker's Fair.
+    *
+    * The draw sits in a `BuildOps` because whether the deck has a top card
+    * is a fact of the state when the draw runs, not when the tree was built.
+    */
+  def drawSteps(power: PowerId, player: PlayerId, source: DecisionOptionRef)
+      : Vector[Operation] = Vector(
+    BuildOps((state, _) => Right(takeTop(state, player))),
+    Note(power, states => drawNote(source, player)(states)
+      .orElse(PowerSourceRef.of(source).map(emptyDeck(_)))))
+
   /** "{player} drew {relic} facedown.": a relic draw's own line. */
   val drew: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" drew "), NotePart.Arg(1), NotePart.Text(" facedown.")))

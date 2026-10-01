@@ -14,5 +14,5 @@ object SelfActionPowers:
       SpiritSnare, ClayRattle, Scryer, OracularPig) ++
       Oracle.forCatalog(catalog).toVector ++
       Vector[PhasePower](BloodPact, ArcaneBrokers, Bog, RelicBreaker,
-        TavernSongs) ++
+        TavernSongs, TinkersFair) ++
       BedOfRoots.forCatalog(catalog).toVector
