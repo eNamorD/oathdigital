@@ -1,0 +1,46 @@
+package oathdigital.gameplay.powers.search
+
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.PlacementRules
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.powerresolver.{Contribution, Transform}
+import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.model._
+
+/** Crop Rotation (card 128), a selected Search modifier with no cost: "If
+  * playing to a site, you may discard a denizen there first."
+  *
+  * It permits exactly what the Mob face of the People's Favor permits, through
+  * the same `SearchPlayAdviser` window, so the two compose and a full site
+  * takes the play only with a discard. The Play-Facedown-Adviser action
+  * selects its modifiers at the Search's window, so it applies there too. The
+  * generic discard rules decide which cards may go: Crop Rotation itself,
+  * being selected, is refused by the active-modifier restriction.
+  *
+  * Its line, "{Red} may discard a card at their site first.", travels in the
+  * rules, and card play writes it after the discard answer. With the Mob as
+  * well, the rules keep one line, so only one is written.
+  */
+final case class CropRotation private (cardId: DenizenId,
+    catalog: ExecutableCatalog) extends SelectedModifier:
+  def id: PowerId = CropRotation.id
+  def actions: Set[MajorActionType] = Set(MajorActionType.Search)
+  override def noteKeys: Vector[NoteKey] = Vector(PlacementRules.discardFirst)
+
+  def effects: Map[PowerWindow, Vector[Contribution]] = Map(
+    PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
+      ctx.operation match {
+        case tree: CardPlayProcedure.PlacementTree =>
+          tree.adjust(children)(_.withSiteDiscardFirstBy(note(ctx.activePlayer)))
+        case _ => children
+      })))
+
+  private def note(actor: PlayerId): Note = Note(id, _ => Some(
+    PlacementRules.discardFirst(PowerSourceRef.Card(cardId),
+      NoteArg.Player(actor))))
+
+object CropRotation:
+  val id: PowerId = PowerId("denizen.crop-rotation")
+
+  def forCatalog(catalog: ExecutableCatalog): Option[CropRotation] =
+    CatalogCards.denizen(catalog, id).map(new CropRotation(_, catalog))
