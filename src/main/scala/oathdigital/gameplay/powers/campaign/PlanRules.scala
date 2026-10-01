@@ -3,10 +3,10 @@ package oathdigital.gameplay.powers.campaign
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 
-/** The battle plans that reach beyond the plan window, and the rule that taxes
+/** The battle plans that reach beyond the plan window, and the rules that tax
   * them, registered together: Sticky Fire (a question in the losses), Warning
-  * Signals (a decision of its own and a discard at the end), Gleaming Armor (an
-  * added cost on the enemy's plans), Horse Archers, Storm Caller, Rival Khan,
+  * Signals (a decision of its own and a discard at the end), Gleaming Armor and Insect Swarm
+  * (an added cost on the enemy's plans), Horse Archers, Storm Caller, Rival Khan,
   * Great Crusade and Pledge of Defense (a discard at the end), Bag of
   * Siegeworks (the defense scored again), Rain Boots (the defense scored again
   * and a discard at the end), The Great Levy (the attack scored again),
@@ -19,6 +19,7 @@ object PlanRules:
     StickyFire.forCatalog(catalog).toVector ++
       WarningSignals.forCatalog(catalog).toVector ++
       GleamingArmor.forCatalog(catalog).toVector ++
+      InsectSwarm.forCatalog(catalog).toVector ++
       HorseArchers.forCatalog(catalog).toVector ++
       StormCaller.forCatalog(catalog).toVector ++
       RivalKhan.forCatalog(catalog).toVector ++
