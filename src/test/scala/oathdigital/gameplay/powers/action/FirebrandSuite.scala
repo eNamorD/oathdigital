@@ -72,3 +72,11 @@ class FirebrandSuite extends munit.FunSuite:
     assertEquals(NoteText.said(Firebrand, t.events), Vector(NoteText.Said(
       "used.empty", "Every favor bank and the People's Favor were empty.",
       covers = false)))
+
+  test("one stocked bank and an empty People's Favor run as a move, " +
+      "unasked"):
+    val t = use(staged(0, Suit.Order -> 2).ready, Firebrand, source)
+      .toOption.get
+    parked.assertResumed(t.state, Phase.Act, p1)
+    val end = after(t)
+    assertEquals((bank(end, Suit.Order), onBanner(end)), (1, 1))

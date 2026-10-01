@@ -84,3 +84,10 @@ class MemoryOfNatureSuite extends munit.FunSuite:
     assertEquals(bank(after(t), Suit.Arcane), 3)
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.none", "No favor moved to the Beast bank.", covers = false)))
+
+  test("a ruined Beast edifice counts as well as an intact one"):
+    val ready = withBanks(acting.adviser(p1, nature)
+      .edifice(beastEdifice, EdificeSide.Ruined, at = Table.homeOf(p2)),
+      Suit.Arcane -> 5).ready
+    val t = use(ready, power, source).toOption.get
+    assertEquals(bank(after(t), Suit.Beast), 1)

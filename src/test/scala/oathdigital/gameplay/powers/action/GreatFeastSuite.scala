@@ -76,3 +76,14 @@ class GreatFeastSuite extends munit.FunSuite:
     val broke = staged(favor = 0).denizen(beast(0), at = home).ready
     assert(!usableNow(broke).exists(_.power.id == GreatFeast.id))
     assert(use(broke, power, source).isLeft)
+
+  test("a full track gains nothing, and the line says 0 Supply"):
+    val ready = staged(supply = 7).denizen(beast(0), at = home).ready
+    val (_, done) = eat(ready, beast(0))
+    val end = after(done)
+    assertEquals(Look(end).supply(p1), 7)
+    assertEquals(pile(end).lastOption, Some(beast(0)))
+    assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
+      NoteKey.Used,
+      s"${p1.value} discarded ${beast(0).value} and gained 0 Supply.",
+      covers = true)))
