@@ -62,7 +62,8 @@ These settle what the spec and rulings leave open. Each one names what it costs 
 4. **Great Crusade and Pledge of Defense count themselves whatever their orientation.** `PlanContext.denizen` offers a facedown adviser, and choosing a plan reveals its source, as Outriders' comment says. So the count is the other nomad cards ruled, plus 1. That keeps "always at least 1" true for a facedown adviser. If a facedown adviser should count 0 instead, the facedown test in Task 2 changes.
 5. **The Great Levy reuses Outriders' key and rewrite.** Its line has the same text, so it declares `Outriders.ignored`. With Outriders also chosen, both write the score from the faces, so the attack is scored the same, and each card writes its own line.
 6. **Garrison Armory reads the setup inside its step.** A `later` step's `BuildOps` receives the same `PendingTree` the Campaign's own steps receive, so `CampaignSetup.setup(ready, use.actor, pending)` resolves. The step computes `CampaignBattle.defenderForce` and writes the recorded score plus that force. Its note reads the amount from the step's before and after states (`NoteStates.previous`), so the line states what happened.
-7. **The spec's "Verify at plan time" items for this slice**, checked while writing this plan:
+7. **The count is made when the plan is chosen, in the order the plans are chosen.** The plan window re-offers after each pick, and choosing a facedown adviser plan reveals it first. So a facedown nomad adviser that is chosen as a plan before Great Crusade or Pledge of Defense is faceup when their count is made, and it counts. One chosen after does not raise the dice already added, and a facedown nomad adviser that is never chosen as a plan stays facedown and counts nothing. If the dice should be recounted at the end of the window, Task 2 changes to a `later` step, and the two order tests change with it.
+8. **The spec's "Verify at plan time" items for this slice**, checked while writing this plan:
    - **Garrison Armory.** The fold order holds. Bag of Siegeworks and Rain Boots add their rescoring through `wrapping`, before the window's children. The window's own step, `CampaignBattle.defenseResultOps`, writes the dice score plus the force. Garrison Armory's `later` step comes after it. `CampaignBattle.result` reads the recorded score, and nothing else recomputes the defense as dice plus force. The only other readers of `defenseScore` are `CampaignResultCodec` and Encirclement, which reads `defenderForce` at the plan step.
    - **Rain Boots and Bag of Siegeworks.** Both write `SingleShields.score(faces)`, so they compose.
    - **Plan discards.** Great Crusade, Pledge of Defense and Rain Boots use `PlanDiscard.afterCampaign`, so they behave exactly as Horse Archers does.
@@ -650,6 +651,22 @@ class GreatCrusadeSuite extends munit.FunSuite:
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
     assert(discarded(done.state))
     assertEquals(lines(done), Vector(line))
+
+  test("a facedown nomad plan the defender chose first is revealed and " +
+      "counts, and one chosen after does not"):
+    val pledge = cardWith("denizen.pledge-of-defense")
+    val pledgeRef: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(pledge))
+    val base = againstPlayer(board())
+    val b = withAdviserFor(withAdviserFor(base, base.other, card,
+      Orientation.FaceUp), base.other, pledge, Orientation.FaceDown)
+    val run = commit(rules(winning), b, 4)
+    val crusadeFirst = run.pick(b.other, CampaignIds.defenderPlan, ref)
+    assert(crusadeFirst.since(run)
+      .contains(ModifyDicePool(CampaignIds.attackPool, -1)))
+    val pledgeFirst = run.pick(b.other, CampaignIds.defenderPlan, pledgeRef)
+      .pick(b.other, CampaignIds.defenderPlan, ref)
+    assert(pledgeFirst.since(run)
+      .contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 ```
 
 Create `src/test/scala/oathdigital/gameplay/powers/campaign/PledgeOfDefenseSuite.scala`:
@@ -711,6 +728,22 @@ class PledgeOfDefenseSuite extends munit.FunSuite:
       Some(ModifyDicePool(CampaignIds.defensePool, 2)))
     assert(discarded(done.state))
     assertEquals(lines(done), Vector(line))
+
+  test("a facedown nomad plan the defender chose first is revealed and " +
+      "counts, and one chosen after does not"):
+    val crusade = cardWith("denizen.great-crusade")
+    val crusadeRef: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(crusade))
+    val base = againstPlayer(board())
+    val b = withAdviserFor(withAdviserFor(base, base.other, card,
+      Orientation.FaceUp), base.other, crusade, Orientation.FaceDown)
+    val run = commit(rules(winning), b, 3)
+    val crusadeFirst = run.pick(b.other, CampaignIds.defenderPlan, crusadeRef)
+      .pick(b.other, CampaignIds.defenderPlan, ref)
+    assert(crusadeFirst.since(run)
+      .contains(ModifyDicePool(CampaignIds.defensePool, 2)))
+    val pledgeFirst = run.pick(b.other, CampaignIds.defenderPlan, ref)
+    assert(pledgeFirst.since(run)
+      .contains(ModifyDicePool(CampaignIds.defensePool, 1)))
 ```
 
 - [ ] **Step 2: Run the suites to verify they fail**
@@ -852,7 +885,7 @@ object PlanRules:
 - [ ] **Step 5: Run the suites to verify they pass**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.campaign.*"`
-Expected: PASS. 7 new tests (5 and 2), and every existing campaign plan suite still passes.
+Expected: PASS. 9 new tests (6 and 3), and every existing campaign plan suite still passes.
 
 - [ ] **Step 6: Commit**
 
@@ -1753,7 +1786,7 @@ Garrison Armory. Slices 1c to 4 remain.
 - [ ] **Step 2: Run the gates**
 
 Run: `./sbtw "test" "frontend/test"`
-Expected: every server and frontend test passes. The server count is the baseline plus 36 (13 in Task 1, 7 in Task 2, 5 in Task 3, 6 in Task 4, 5 in Task 5). From a baseline of 2196, that is 2232. The frontend count is unchanged at 466.
+Expected: every server and frontend test passes. The server count is the baseline plus 38 (13 in Task 1, 9 in Task 2, 5 in Task 3, 6 in Task 4, 5 in Task 5). From a baseline of 2196, that is 2234. The frontend count is unchanged at 466.
 
 Run: `python3 scripts/check-architecture.py && python3 scripts/check-markdown-links.py`
 Expected: both pass.
