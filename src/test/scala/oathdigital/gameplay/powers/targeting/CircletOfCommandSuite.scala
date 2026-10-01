@@ -76,13 +76,10 @@ class CircletOfCommandSuite extends munit.FunSuite:
       : Vector[DecisionOptionRef] =
     optionsAt(challenge(circletSide)._2, ActionRef.Challenge)
 
-  test("a Challenge may not name a banner its holder's Circlet protects"):
+  test("a Challenge may name any banner: the Circlet protects only a " +
+      "Campaign's targets"):
     val banner = (b: Banner) => DecisionOptionRef.Banner(b): DecisionOptionRef
-    assertEquals(challengeBanners(None).toSet, Set(banner(Banner.PeoplesFavor),
-      banner(Banner.DarkestSecret)))
-    assertEquals(challengeBanners(Some(Orientation.FaceUp)),
-      Vector(banner(Banner.DarkestSecret)))
-    assertEquals(challengeBanners(Some(Orientation.FaceDown)).toSet,
+    assertEquals(challengeBanners(Some(Orientation.FaceUp)).toSet,
       Set(banner(Banner.PeoplesFavor), banner(Banner.DarkestSecret)))
 
   // ---- Conspiracy ----
@@ -120,13 +117,13 @@ class CircletOfCommandSuite extends munit.FunSuite:
       case _ => (Vector.empty, Vector.empty)
     (ready, enemy, options, events)
 
-  test("Conspiracy may take the Circlet, but not the holder's other relic or banner"):
-    val (_, enemy, options, _) = conspiracyTargets(Orientation.FaceUp)
-    val slots = PowerFixture.player(conspiracyTargets(Orientation.FaceUp)._1, enemy)
-      .relics.map(_.id)
-    assertEquals(slots, Vector(other, circlet))
-    assertEquals(options, Vector[DecisionOptionRef](
-      DecisionOptionRef.RelicSlot(enemy, 1)))
+  test("Conspiracy may take any of the holder's relics and banners"):
+    val (ready, enemy, options, _) = conspiracyTargets(Orientation.FaceUp)
+    assertEquals(PowerFixture.player(ready, enemy).relics.map(_.id),
+      Vector(other, circlet))
+    assertEquals(options.toSet, Set[DecisionOptionRef](
+      DecisionOptionRef.RelicSlot(enemy, 0), DecisionOptionRef.RelicSlot(enemy, 1),
+      DecisionOptionRef.Banner(Banner.PeoplesFavor)))
 
   test("a facedown Circlet leaves every target open"):
     val (_, enemy, options, _) = conspiracyTargets(Orientation.FaceDown)
@@ -160,12 +157,9 @@ class CircletOfCommandSuite extends munit.FunSuite:
     assertEquals(hidden(raidKind(Some(Orientation.FaceDown)).events),
       Vector.empty)
 
-  test("the banner the Circlet hides from a Challenge names its holder"):
-    val (enemy, started) = challenge(Some(Orientation.FaceUp))
-    assertEquals(hidden(started.events), Vector(shielded(enemy)))
-
-  test("a Conspiracy whose targets the Circlet narrows names the holder"):
-    val (_, enemy, _, events) = conspiracyTargets(Orientation.FaceUp)
-    assertEquals(hidden(events), Vector(shielded(enemy)))
-    assertEquals(hidden(conspiracyTargets(Orientation.FaceDown)._4),
+  test("a Challenge writes no Circlet line"):
+    assertEquals(hidden(challenge(Some(Orientation.FaceUp))._2.events),
       Vector.empty)
+
+  test("a Conspiracy writes no Circlet line"):
+    assertEquals(hidden(conspiracyTargets(Orientation.FaceUp)._4), Vector.empty)

@@ -106,20 +106,23 @@ class ForgottenVaultSuite extends munit.FunSuite:
           .query.asInstanceOf[DecisionQuery.ChooseOne].options.map(_.ref), events)
       case WalkerOutcome.Finished(_, events) => (enemy, Vector.empty, events)
 
-  test("Conspiracy may take the ruler's banner, but not their relic"):
+  test("Conspiracy may take the ruler's relic as well as their banner"):
     val (enemy, options, events) = conspiracyTargets(banner = true)
-    assertEquals(options, Vector[DecisionOptionRef](
+    assertEquals(options.toSet, Set[DecisionOptionRef](
+      DecisionOptionRef.RelicSlot(enemy, 0),
       DecisionOptionRef.Banner(Banner.PeoplesFavor)))
-    assertEquals(notes(events), Vector(line(enemy)))
+    assertEquals(notes(events), Vector.empty)
 
-  test("Conspiracy may not take the ruler's facedown relic either"):
+  test("Conspiracy may take the ruler's facedown relic too"):
     val (enemy, options, events) = conspiracyTargets(banner = true,
       Orientation.FaceDown)
-    assertEquals(options, Vector[DecisionOptionRef](
-      DecisionOptionRef.Banner(Banner.PeoplesFavor)))
-    assertEquals(notes(events), Vector(line(enemy)))
+    assert(options.contains(DecisionOptionRef.RelicSlot(enemy, 0)),
+      options.toString)
+    assertEquals(notes(events), Vector.empty)
 
-  test("a Conspiracy left with no target asks nothing and still says why"):
+  test("a Conspiracy against the ruler's relic alone asks for it and writes " +
+      "nothing"):
     val (enemy, options, events) = conspiracyTargets(banner = false)
-    assertEquals(options, Vector.empty)
-    assertEquals(notes(events), Vector(line(enemy)))
+    assertEquals(options, Vector[DecisionOptionRef](
+      DecisionOptionRef.RelicSlot(enemy, 0)))
+    assertEquals(notes(events), Vector.empty)

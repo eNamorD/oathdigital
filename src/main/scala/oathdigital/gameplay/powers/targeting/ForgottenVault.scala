@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.targeting
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.SiteRulers
-import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx, Transform}
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
 import oathdigital.model._
 
@@ -12,12 +12,11 @@ import oathdigital.model._
   * site. Ruled by bandits or unruled, it protects nothing, because bandits hold
   * no relics. Empire rulers are not supported.
   *
-  * It restricts the two decisions that name another player's relic:
-  *
-  *  - a Raid's optional targets (`CampaignTargetSelection`), through an
-  *    `OptionRestriction` whose hide hook notes each relic it hides;
-  *  - a played Conspiracy's target (`ConspiracyTargetSelection`), through
-  *    [[ConspiracyTargets]], which writes the same note.
+  * "Target" means a Campaign's target selection only (catalog batch 3
+  * rulings, "Target protections corrected"). So it restricts a Raid's
+  * optional targets (`CampaignTargetSelection`), through an
+  * `OptionRestriction` whose hide hook notes each relic it hides. A played
+  * Conspiracy may take the ruler's relic.
   *
   * The Game Log posts identical notes once per action.
   */
@@ -31,10 +30,7 @@ final case class ForgottenVault private (cardId: DenizenId,
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignTargetSelection ->
-      Vector(OptionRestriction(guard, (ctx, _) => protectedRuler(ctx).map(said))),
-    PowerWindow.ConspiracyTargetSelection -> Vector(Transform((ctx, operations) =>
-      ConspiracyTargets.narrowed(id, operations, shields(ctx, _),
-        protectedRuler(ctx).map(said)))))
+      Vector(OptionRestriction(guard, (ctx, _) => protectedRuler(ctx).map(said))))
 
   private def guard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = Option.when(shields(ctx, ref))(

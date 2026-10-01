@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.targeting
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx, Transform}
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
 import oathdigital.model._
 
@@ -11,23 +11,16 @@ import oathdigital.model._
   * holder's relics other than the Circlet itself. A facedown Circlet does
   * nothing.
   *
-  * It restricts the three decisions that name a banner or a relic of another
-  * player:
-  *
-  *  - a Raid's optional targets (`CampaignTargetSelection`), which lists the
-  *    defender's faceup relics and banners;
-  *  - a Challenge's banner choice (`ChallengeBannerSelection`);
-  *  - a played Conspiracy's target (`ConspiracyTargetSelection`). A decision
-  *    left with no option is dropped there, so a Conspiracy with no target
-  *    left plays and takes nothing.
-  *
-  * A Raid's mandatory target, the defender's pawn, is not a banner or a relic
-  * and stays a target.
+  * "Target" means a Campaign's target selection only (catalog batch 3
+  * rulings, "Target protections corrected"). So it hides options at a Raid's
+  * optional targets (`CampaignTargetSelection`), which list the defender's
+  * faceup relics and banners. A Challenge's banner choice and a played
+  * Conspiracy's target are not targets. A Raid's mandatory target, the
+  * defender's pawn, is not a banner or a relic and stays a target.
   *
   * Each option it hides writes "{Blue}'s banners and relics cannot be
   * targeted.", naming the holder (power log lines design, "Removed and
-  * hidden options"). At a Conspiracy the same line is written by
-  * [[ConspiracyTargets]].
+  * hidden options").
   */
 final case class CircletOfCommand private (cardId: RelicId,
     catalog: ExecutableCatalog) extends ContributingPower:
@@ -40,11 +33,7 @@ final case class CircletOfCommand private (cardId: RelicId,
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.CampaignTargetSelection ->
-      Vector(OptionRestriction(guard, (ctx, _) => note(ctx))),
-    PowerWindow.ChallengeBannerSelection ->
-      Vector(OptionRestriction(guard, (ctx, _) => note(ctx))),
-    PowerWindow.ConspiracyTargetSelection -> Vector(Transform((ctx, operations) =>
-      ConspiracyTargets.narrowed(id, operations, shields(ctx, _), note(ctx)))))
+      Vector(OptionRestriction(guard, (ctx, _) => note(ctx))))
 
   /** The line naming the holder whose things it protects. */
   private def note(ctx: PowerCtx): Option[PowerNote] =
