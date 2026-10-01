@@ -15,4 +15,5 @@ object OtherActionPowers:
       BookOfRecords, BarbedNet, QuickExit, DreamThief, WhisperingLeaves,
       Enchantress) ++
       SecondChance.forCatalog(catalog).toVector ++
-      ArmedMob.forCatalog(catalog).toVector
+      ArmedMob.forCatalog(catalog).toVector ++
+      HonorGuard.forCatalog(catalog).toVector
