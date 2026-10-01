@@ -12,5 +12,6 @@ import oathdigital.gameplay.powerresolver.PhasePower
 object OtherActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](SpoiledSupplies, CharmingFriend, SiegeEngines,
-      BookOfRecords, BarbedNet, QuickExit, DreamThief, WhisperingLeaves) ++
+      BookOfRecords, BarbedNet, QuickExit, DreamThief, WhisperingLeaves,
+      Enchantress) ++
       SecondChance.forCatalog(catalog).toVector
