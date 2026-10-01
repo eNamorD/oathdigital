@@ -33,7 +33,9 @@ Garrison Armory. Slice 1c is done: the battle plans Book Burning, Tribute
 Spoils, Field Promotion and Military Parade, and the plan surcharge Insect
 Swarm. Slice 2a is done: the Muster, Trade and Search modifiers Village
 Idiot, Downtrodden, The Old Oak, Disciples and Crop Rotation, and the Muster
-rule Initiation Rite. Slices 2b to 4 remain.
+rule Initiation Rite. Slice 2b is done: Insomnia, Quartermaster, Saddle
+Makers and Lost Tongue, and the Circlet of Command and the Forgotten Vault now
+protect Campaign targets only. Slices 3a to 4 remain.
 
 ### Catalog - to verify
 

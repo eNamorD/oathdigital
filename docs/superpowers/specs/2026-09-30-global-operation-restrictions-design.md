@@ -241,13 +241,12 @@ whole and then records its `Move` leaf. The Game Log line, which reads that
 buys the banner: a refused custody fails the path, and the search hides that
 banner. Conspiracy's transfer runs in a `BuildOps`, so it is recorded as a
 `Take`, and its Game Log line is a note, which reads no operation. It stays
-optional, like the relic `Give` beside it. Whether a refused Conspiracy
-target is hidden is decided with Lost Tongue, the first restriction on `Take`.
-That decision must also cover the order inside the batch: the banner's leaving
-operations (the Darkest Secret burn, the People's Favor return) run before the
-`Take`, so a skipped `Take` would leave the banner emptied and not taken.
-Lost Tongue can probably handle this by making the leaving operations children
-of the `Take` itself, so a refused `Take` skips them with it.
+optional, like the relic `Give` beside it. Lost Tongue, the first restriction
+on `Take`, settled the rest in catalog batch 3, slice 2b. It hides the
+banners it protects from a Conspiracy's targets, without a line. A banner's
+leaving operations (the Darkest Secret burn, the People's Favor return) are
+children of its `Take`, so a refused `Take` skips them with it and the banner
+stays whole.
 
 ## Slicing
 
