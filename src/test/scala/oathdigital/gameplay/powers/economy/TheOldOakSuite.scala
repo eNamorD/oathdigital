@@ -67,3 +67,12 @@ class TheOldOakSuite extends munit.FunSuite:
     assert(!offered(board(), ActionRef.Muster).contains(TheOldOak.id))
     val without = Table.start.adviser(p1, adviser).ready
     assert(!offered(without, ActionRef.Trade).contains(TheOldOak.id))
+
+  test("several faceup beast advisers still add only one secret to the " +
+      "base gain, which is one per matching adviser"):
+    val third = SearchFixture.denizensOf(Suit.Beast)
+      .filterNot(card => card == adviser || card == otherBeast).head
+    val ready = Table.start.favor(p1, 2).adviser(p1, adviser)
+      .adviser(p1, third).denizen(oak, at = Table.homeOf(p1)).ready
+    assertEquals(secrets(trade(ready, Vector.empty, oak)._2), 1 + 2)
+    assertEquals(secrets(trade(ready, modifiers, oak)._2), 1 + 2 + 1)

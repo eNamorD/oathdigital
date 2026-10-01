@@ -68,3 +68,12 @@ class DisciplesSuite extends munit.FunSuite:
       board(visions = 0, holder = None), p1, action).toOption.get.map(_.id)
     assert(offered(ActionRef.Search).contains(Disciples.id))
     assert(!offered(ActionRef.Muster).contains(Disciples.id))
+
+  test("a holder with only 2 Supply can afford a world Search costing 4"):
+    val ready = Table.start.worldDeckTop(deckTop*).supply(p1, 2)
+      .adviser(p1, disciples).darkestSecret(Some(p1), 1)
+      .update(_.updateCurrent(c => c.copy(tracks =
+        c.tracks.copy(visionsDrawn = 3)))).ready
+    val started = rules.startWalker(Ready(ready), ActionRef.Search, p1,
+      modifiers, Vector(DecisionOptionRef.Button(world))).toOption.get
+    assertEquals(Look(SearchFixture.after(started)).supply(p1), 0)

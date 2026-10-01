@@ -65,3 +65,23 @@ class DowntroddenSuite extends munit.FunSuite:
       p1, action).toOption.get.map(_.id)
     assert(offered(ActionRef.Muster).contains(Downtrodden.id))
     assert(!offered(ActionRef.Trade).contains(Downtrodden.id))
+
+  test("Village Idiot's favor comes after the check: a tie for least stays " +
+      "a tie when both modifiers are selected"):
+    val idiot = CatalogNames.denizen("Village Idiot")
+    // Every bank holds 2, so Hearth, Village Idiot's suit, ties for least.
+    // Village Idiot then takes 1 from the Hearth bank, which must not make
+    // the bank the strict least before Downtrodden reads it.
+    val ready = Suit.all.foldLeft(Table.start.adviser(p1, downtrodden)
+      .denizen(idiot, at = Table.homeOf(p1)))((table, suit) =>
+      table.bankFavor(suit, 2)).ready
+    // The order the player selects them in must not matter.
+    Vector(Downtrodden.id, VillageIdiot.id).permutations.foreach: selected =>
+      val started = rules.startWalker(Ready(ready), ActionRef.Muster, p1,
+        selected).toOption.get
+      val result = rules.resolveWalker(started.state, p1,
+        MusterProcedure.decisionId,
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(idiot)))
+        .toOption.get.state.asInstanceOf[Ready].value
+      assertEquals(result.banks.favor.getOrElse(Suit.Hearth, 0), 1)
+      assertEquals(Look(result).warbands(p1), 3 + 1)
