@@ -13,4 +13,5 @@ object WorldActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Storyteller, Firebrand, Levelers, MemoryOfHome,
       PlagueEngines, BanditPaymaster) ++
-      MemoryOfNature.forCatalog(catalog).toVector
+      MemoryOfNature.forCatalog(catalog).toVector ++
+      BallotBox.forCatalog(catalog).toVector
