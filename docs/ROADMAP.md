@@ -37,7 +37,9 @@ rule Initiation Rite. Slice 2b is done: Insomnia, Quartermaster, Saddle
 Makers and Lost Tongue, and the Circlet of Command and the Forgotten Vault now
 protect Campaign targets only. Slice 3a is done: the ACTION powers Blood
 Pact, Arcane Brokers, Bog, Relic Breaker, Bed of Roots, Tavern Songs, Tinker's
-Fair, Skeleton Key and Messenger. Slices 3b to 4 remain.
+Fair, Skeleton Key and Messenger. Slice 3b is done: the ACTION powers Quick
+Exit, Dream Thief, Second Chance, Whispering Leaves, Enchantress, Armed Mob,
+Honor Guard and Amber Flame. Slices 3c and 4 remain.
 
 ### Catalog - to verify
 
