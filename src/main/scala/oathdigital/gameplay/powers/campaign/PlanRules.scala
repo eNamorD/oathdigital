@@ -9,8 +9,9 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * added cost on the enemy's plans), Horse Archers, Storm Caller, Rival Khan,
   * Great Crusade and Pledge of Defense (a discard at the end), Bag of
   * Siegeworks (the defense scored again), Rain Boots (the defense scored again
-  * and a discard at the end) and Hospital (killed warbands saved until the
-  * end). A power whose card is absent from `catalog` is omitted.
+  * and a discard at the end), The Great Levy (the attack scored again) and
+  * Hospital (killed warbands saved until the end). A power whose card is
+  * absent from `catalog` is omitted.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
@@ -24,4 +25,5 @@ object PlanRules:
       PledgeOfDefense.forCatalog(catalog).toVector ++
       BagOfSiegeworks.forCatalog(catalog).toVector ++
       RainBoots.forCatalog(catalog).toVector ++
+      GreatLevy.forCatalog(catalog).toVector ++
       Hospital.forCatalog(catalog).toVector
