@@ -1,7 +1,6 @@
 package oathdigital.serialization
 
 import oathdigital.application.{DecodedGameEvent, EventCodecFailure, GameEventCodec}
-import oathdigital.model.CatalogRef
 import oathdigital.model.OathEvent
 
 final class GameEventCodecAdapter extends GameEventCodec:
@@ -10,8 +9,8 @@ final class GameEventCodecAdapter extends GameEventCodec:
     .map(_.map(value => DecodedGameEvent(value.gameId, value.sequence,
       value.eventType, value.event)))
 
-  def encodeEvent(gameId: String, catalog: CatalogRef, sequence: Long,
-      event: OathEvent) = GameEventWire.encodeEvent(gameId, catalog, sequence, event)
+  def encodeEvent(gameId: String, sequence: Long, event: OathEvent) =
+    GameEventWire.encodeEvent(gameId, sequence, event)
     .left.map(toFailure).map(ujson.write(_))
 
   private def toFailure(value: WireError): EventCodecFailure =

@@ -23,7 +23,7 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           "priorBoardWarbands" -> board, "priorSiteWarbands" -> atSite)
 
   protected final def actionDecode(eventType: String, payload: ujson.Value,
-      path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] =
+      path: String): Option[Either[WireError, OathEvent]] =
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
         case SiteRelicsPeekedType => Right(SiteRelicsPeeked(
           PlayerId(payload("playerId").str), SiteId(payload("siteId").str),

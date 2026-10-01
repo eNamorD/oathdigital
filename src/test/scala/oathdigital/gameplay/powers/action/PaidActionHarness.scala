@@ -69,7 +69,7 @@ object PaidActionHarness:
   /** Every event survives the journal wire: encoded, decoded and equal. */
   def wireRoundTrips(events: Vector[OathEvent]): Boolean =
     events.zipWithIndex.forall { case (event, index) =>
-      GameEventWire.encodeEvent("g", catalog.ref, index.toLong, event).toOption
+      GameEventWire.encodeEvent("g", index.toLong, event).toOption
         .flatMap(GameEventWire.decode(_).toOption).map(_.event)
         .contains(event)
     }

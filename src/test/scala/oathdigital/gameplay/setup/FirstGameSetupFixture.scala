@@ -19,7 +19,6 @@ import oathdigital.testkit.Situation
   */
 object FirstGameSetupFixture:
   val catalog: ExecutableCatalog = NewFoundations.catalog
-  val catalogRef: CatalogRef = catalog.ref
   val participants = Vector(
     FirstGameParticipant(
       PlayerId("p1"),

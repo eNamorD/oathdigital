@@ -1,6 +1,5 @@
 package oathdigital.serialization
 
-import oathdigital.model.CatalogRef
 
 sealed trait WireError extends Product with Serializable:
   def path: String
@@ -18,11 +17,6 @@ object WireError:
       extends WireError:
     override val message: String = s"unknown event type '$eventType'"
   final case class InvalidValue(path: String, message: String) extends WireError
-  final case class CatalogMismatch(path: String, expected: CatalogRef, actual: CatalogRef)
-      extends WireError:
-    override val message: String =
-      s"catalog ${actual.ruleset}@${actual.version} does not match " +
-        s"${expected.ruleset}@${expected.version}"
   final case class InvalidSequence(path: String, expected: Long, actual: Long)
       extends WireError:
     override val message: String =

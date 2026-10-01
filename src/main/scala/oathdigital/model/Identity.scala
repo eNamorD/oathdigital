@@ -43,10 +43,6 @@ object PowerId:
   def fromValue(value: String): Option[PowerId] =
     if value.matches(pattern) then Some(value) else None
 
-final case class CatalogRef(ruleset: String, version: String):
-  IdentityValidation.nonBlank("ruleset", ruleset)
-  IdentityValidation.nonBlank("catalog version", version)
-
 sealed trait ComponentId extends Product with Serializable:
   def value: String
   def kind: String

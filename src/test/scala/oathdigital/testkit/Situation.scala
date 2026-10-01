@@ -86,8 +86,7 @@ final case class Situation(state: OathState, events: Vector[OathEvent],
   def seedInto(repository: InMemoryEventStreamRepository, gameId: String)(
       using munit.Location): Unit =
     repository.seed(gameId, events.zipWithIndex.map { case (event, index) =>
-      ujson.write(GameEventWire.encodeEvent(gameId, driver.catalog.ref,
-        index.toLong, event).fold(error => munit.Assertions.fail(
+      ujson.write(GameEventWire.encodeEvent(gameId, index.toLong, event).fold(error => munit.Assertions.fail(
           s"event $index ($event) does not encode: $error"), identity))
     })
 

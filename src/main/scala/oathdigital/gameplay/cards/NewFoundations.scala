@@ -1,7 +1,6 @@
 package oathdigital.gameplay.cards
 
 import oathdigital.catalog.{Denizen, Edifice, ExecutableCatalog, Legacy, Relic, Site}
-import oathdigital.model.CatalogRef
 import oathdigital.catalog.holding._
 
 /** Every printed New Foundations component, listed by kind in printed-id
@@ -415,7 +414,6 @@ object NewFoundations:
   /** The production catalog. Each kind is sorted by printed id as a string,
     * the order the JSON loader produced; setup and tests rely on it. */
   val catalog: ExecutableCatalog = ExecutableCatalog(
-    CatalogRef("oath-new-foundations", "2026.08.29-pre5"),
     denizens.sortBy(_.id.value), relics.sortBy(_.id.value),
     edifices.sortBy(_.id.value), legacies.sortBy(_.id.value),
     sites.sortBy(_.id.value))

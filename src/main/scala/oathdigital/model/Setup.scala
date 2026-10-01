@@ -31,8 +31,7 @@ final case class FirstGameSupportState(
 /** The validated shape `FirstGameSetupMaterializer` builds a table from.
   * Built fresh from a Chronicle by `GameStartRules.evolve` (slice 2); no
   * longer a command payload, so it carries no `catalog` field -- Chronicle
-  * validation now checks ids directly against the live catalog instead of
-  * comparing a stored `CatalogRef`.
+  * validation now checks ids directly against the live catalog.
   *
   * `denizenOrder` deals hands and the six seeded regional discards (CR pp.
   * 6-7); it never contains a Vision. `worldDeckOrder` is `denizenOrder`

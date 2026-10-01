@@ -45,7 +45,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
       "note" -> encodeNote(note))
 
   protected final def walkerDecode(eventType: String, payload: ujson.Value,
-      path: String, envelopeCatalog: CatalogRef)
+      path: String)
       : Option[Either[WireError, OathEvent]] =
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
       case WalkerStepRecordedType => decodeStepRecorded(payload, path)

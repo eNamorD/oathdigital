@@ -12,11 +12,9 @@ import akka.http.scaladsl.Http
 
 import oathdigital.application._
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.CatalogRef
 
 class GameTrustBoundaryRoutesSuite extends munit.FunSuite:
   private val catalog = ExecutableCatalog(
-    CatalogRef("test", "1"),
     Vector.empty,
     Vector.empty,
     Vector.empty,

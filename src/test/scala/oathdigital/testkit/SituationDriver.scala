@@ -220,8 +220,7 @@ object SituationDriver:
           ExpectedStream.MustNotExist
         else ExpectedStream.AtNextSequence(from.nextSequence)
         for
-          record <- GameEventWire.encodeEvent(gameId, catalog.ref,
-            from.nextSequence, event).left.map(_.toString)
+          record <- GameEventWire.encodeEvent(gameId, from.nextSequence, event).left.map(_.toString)
           journal <- repository.toRight(
             "a journaled driver without its repository cannot arrange")
           _ <- journal.append(gameId, expected,

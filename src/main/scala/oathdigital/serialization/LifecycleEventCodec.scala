@@ -25,7 +25,7 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
           "reason" -> d.reason))))
 
   protected final def lifecycleDecode(eventType: String, payload: ujson.Value,
-      path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] =
+      path: String): Option[Either[WireError, OathEvent]] =
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
         case GameStartedType => for
           chronicle <- decodeChronicle(payload("chronicle"), s"$path.chronicle")

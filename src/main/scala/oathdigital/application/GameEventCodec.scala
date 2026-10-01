@@ -1,6 +1,5 @@
 package oathdigital.application
 
-import oathdigital.model.CatalogRef
 import oathdigital.model.OathEvent
 
 final case class EventCodecFailure(code: String, path: String, message: String)
@@ -16,7 +15,7 @@ final case class DecodedGameEvent(
 /** Application-owned persisted-event boundary with representation-free values. */
 trait GameEventCodec:
   def decodeStream(json: String): Either[EventCodecFailure, Vector[DecodedGameEvent]]
-  def encodeEvent(gameId: String, catalog: CatalogRef, sequence: Long,
+  def encodeEvent(gameId: String, sequence: Long,
       event: OathEvent): Either[EventCodecFailure, String]
 
 object GameEventCodec:

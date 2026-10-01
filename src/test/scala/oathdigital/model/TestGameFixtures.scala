@@ -120,7 +120,6 @@ object TestGameFixtures:
   )
 
   val game: OathGame = OathGame(
-    CatalogRef("oath-new-foundations", "2026.07.27-pre2"),
     campaign,
     current
   )

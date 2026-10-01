@@ -1382,13 +1382,11 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val records = Vector(
       GameEventWire.encodeEvent(
         "game-replay-corrupt",
-        catalogRef,
         0L,
         OathEvent.GameStarted(chronicle, orders)
       ).toOption.get,
       GameEventWire.encodeEvent(
         "game-replay-corrupt",
-        catalogRef,
         1L,
         OathEvent.IgnoredRulesRecorded(PlayerId("p2"), ActionKind.Rest,
           badDiagnostics)
@@ -1421,7 +1419,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       var appendCalls = 0
       val record = GameEventWire.encodeEvent(
         envelopeGameId,
-        catalogRef,
         0L,
         OathEvent.GameStarted(chronicle, orders)
       ).toOption.get
@@ -1461,7 +1458,6 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     val repository = new InMemoryEventStreamRepository
     val record = GameEventWire.encodeEvent(
       "game-missing-zero",
-      catalogRef,
       1L,
       OathEvent.GameStarted(chronicle, orders)
     ).toOption.get

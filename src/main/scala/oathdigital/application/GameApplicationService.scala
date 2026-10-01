@@ -469,7 +469,6 @@ final class GameApplicationService(
         eventCodec
           .encodeEvent(
             gameId,
-            catalog.ref,
             firstSequence + offset.toLong,
             event
           )

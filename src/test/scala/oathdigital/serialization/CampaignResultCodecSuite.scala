@@ -2,7 +2,6 @@ package oathdigital.serialization
 
 import oathdigital.engine.RecordedEvent
 import oathdigital.gameplay.walker.{WalkerStepPayload, DeltaMeaning, WalkerStepRecorded}
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
 class CampaignResultCodecSuite extends munit.FunSuite:
@@ -29,8 +28,7 @@ class CampaignResultCodecSuite extends munit.FunSuite:
       WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.OperationApplied("campaign")),
         Vector(RecordCampaignResult(result)), Vector.empty): OathEvent)
-    val encoded = GameEventWire.encodeStream("campaign-result", catalog.ref,
-      events.zipWithIndex.map { case (event, index) =>
+    val encoded = GameEventWire.encodeStream("campaign-result", events.zipWithIndex.map { case (event, index) =>
         RecordedEvent(index.toLong, event) }).toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
       events)
@@ -39,7 +37,7 @@ class CampaignResultCodecSuite extends munit.FunSuite:
       Vector("record-campaign-result"))
 
   test("a malformed recorded result is a typed decode failure, not an exception"):
-    val encoded = GameEventWire.encodeEvent("campaign-result", catalog.ref, 0,
+    val encoded = GameEventWire.encodeEvent("campaign-result", 0,
       WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.OperationApplied("campaign")),
         Vector(RecordCampaignResult(conquest)), Vector.empty)).toOption.get

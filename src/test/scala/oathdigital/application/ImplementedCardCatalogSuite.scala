@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.{CatalogRef, DenizenId, EdificeId, PowerId, RelicId, Suit}
+import oathdigital.model.{DenizenId, EdificeId, PowerId, RelicId, Suit}
 import oathdigital.testkit.TestCards
 
 class ImplementedCardCatalogSuite extends munit.FunSuite:
@@ -25,7 +25,6 @@ class ImplementedCardCatalogSuite extends munit.FunSuite:
       powers(intact._2), ruined._1, powers(ruined._2))
 
   private val catalog = ExecutableCatalog(
-    ref = CatalogRef("test", "1"),
     denizens = Vector(
       denizen("solar-hearth-child", Suit.Hearth,
         Vector("denizen.solar-hearth-child.done")),

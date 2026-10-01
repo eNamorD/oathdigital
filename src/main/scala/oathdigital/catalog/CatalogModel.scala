@@ -1,6 +1,6 @@
 package oathdigital.catalog
 
-import oathdigital.model.{CardId, CatalogRef, DenizenId, EdificeId, LegacyId,
+import oathdigital.model.{CardId, DenizenId, EdificeId, LegacyId,
   PowerId, RelicId, SiteId, Suit}
 
 /**
@@ -10,7 +10,6 @@ import oathdigital.model.{CardId, CatalogRef, DenizenId, EdificeId, LegacyId,
  * Visions are rules-owned code, not catalog data.
  */
 final case class ExecutableCatalog(
-    ref: CatalogRef,
     denizens: Vector[Denizen],
     relics: Vector[Relic],
     edifices: Vector[Edifice],

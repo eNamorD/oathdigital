@@ -34,7 +34,7 @@ private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
         "playerId" -> player.value, "visionId" -> vision.value)
 
   protected final def endingDecode(eventType: String, payload: ujson.Value,
-      path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] =
+      path: String): Option[Either[WireError, OathEvent]] =
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] =
         case RoundEndedType => for
           completed <- safeIntField(payload.obj, "completedRound", path)

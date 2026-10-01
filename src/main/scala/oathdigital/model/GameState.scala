@@ -178,7 +178,6 @@ final case class CurrentGameState(
 )
 
 final case class OathGame(
-    catalog: CatalogRef,
     campaign: CampaignState,
     current: CurrentGameState
 )

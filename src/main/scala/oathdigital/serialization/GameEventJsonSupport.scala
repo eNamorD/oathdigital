@@ -204,29 +204,6 @@ private[serialization] trait GameEventJsonSupport:
       Left(InvalidValue(path,
         Option(error.getMessage).getOrElse("invalid setup orders")))
 
-  protected final def validateEventCatalog(
-      event: OathEvent,
-      catalog: CatalogRef,
-      path: String
-  ): Either[WireError, Unit] = Right(())
-
-  protected final def encodeCatalog(ref: CatalogRef): ujson.Value =
-    ujson.Obj("ruleset" -> ref.ruleset, "version" -> ref.version)
-
-  protected final def decodeCatalog(
-      value: ujson.Value,
-      path: String
-  ): Either[WireError, CatalogRef] =
-    try Right(CatalogRef(value("ruleset").str, value("version").str))
-    catch
-      case NonFatal(error) =>
-        Left(
-          InvalidValue(
-            path,
-            Option(error.getMessage).getOrElse("invalid catalog")
-          )
-        )
-
   protected final def requiredField(
       obj: ujson.Obj,
       name: String,

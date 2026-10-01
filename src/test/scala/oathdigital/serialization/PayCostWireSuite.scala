@@ -1,6 +1,5 @@
 package oathdigital.serialization
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 
@@ -11,7 +10,7 @@ class PayCostWireSuite extends munit.FunSuite:
     Vector(operation), Vector.empty)
   private def roundTrip(operation: CoreOperation): ujson.Value =
     val original = event(operation)
-    val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, original)
+    val encoded = GameEventWire.encodeEvent("walker", 0, original)
       .toOption.get
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(original))
     ujson.read(encoded)("payload")("ops")(0)
