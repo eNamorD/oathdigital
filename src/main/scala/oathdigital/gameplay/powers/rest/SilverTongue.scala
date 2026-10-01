@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
@@ -9,13 +8,15 @@ import oathdigital.model._
 /** Silver Tongue (card 92): "You can only have two advisers. REST: Take a
   * favor from a favor bank matching a card at your site."
   *
-  * The REST power is a [[oathdigital.gameplay.powerresolver.PhasePower]]. The adviser limit is a registered
-  * transform at `SearchPlayAdviser` reduces the holder's limit in both
-  * adviser orientations and checks the resulting area after the card play.
+  * The REST power is a [[oathdigital.gameplay.powerresolver.PhasePower]]. The
+  * adviser limit is a [[HolderAdviserLimit]], a registered transform at
+  * `SearchPlayAdviser`, which Insomnia shares.
   */
 final case class SilverTongue private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends PhasePower with ContributingPower:
   import SilverTongue._
+
+  private val limit = HolderAdviserLimit(cardId, HolderLimit, "Silver Tongue")
 
   def id: PowerId = SilverTongue.id
   def timing: PowerTiming = PowerTiming.Rest
@@ -43,37 +44,13 @@ final case class SilverTongue private (cardId: DenizenId,
       Note(id, NoteSupport.tookNote(source, player), covers = true))))
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
-    Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
-      ctx.operation match {
-        case tree: CardPlayProcedure.PlacementTree
-            if limitFor(ctx.state, ctx.activePlayer).nonEmpty =>
-          tree.adjust(children)(_.limitAdvisers(HolderLimit)) :+
-            limitGuard(ctx.activePlayer)
-        case tree: CardPlayProcedure.PlacementTree if tree.card == cardId =>
-          tree.adjust(children)(_.limitFaceupAdvisers(HolderLimit)) :+
-            limitGuard(ctx.activePlayer)
-        case _ => children
-      })))
+    Map(PowerWindow.SearchPlayAdviser -> Vector(limit.contribution))
 
   /** The adviser limit Silver Tongue sets on `player`: its holder, and only
     * while it is faceup.
     */
   def limitFor(ready: ReadyGame, player: PlayerId): Option[Int] =
-    holder(ready).filter(_.player == player).map(_ => HolderLimit)
-
-  private def limitGuard(actor: PlayerId): Operation = BuildOps((state, _) => {
-    val count = state.game.current.players.find(
-      _.player == actor).fold(0)(_.advisers.size)
-    if limitFor(state, actor).forall(count <= _) then Right(Vector.empty)
-    else Left(OathViolation.InvalidEventOrder(
-      s"${actor.value} holds Silver Tongue and can have only two advisers"))
-  })
-
-  private def holder(ready: ReadyGame): Option[PlayerState] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    })
+    limit.limitFor(ready, player)
 
   /** Suits of faceup denizens and edifices at the player's pawn site whose
     * bank holds favor, in suit order.

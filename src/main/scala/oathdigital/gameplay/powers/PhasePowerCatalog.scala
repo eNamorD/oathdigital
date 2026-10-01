@@ -5,7 +5,7 @@ import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.powers.action.{DiceAndRelicDrawPowers, Elders, MagicWaterskin, MovementPowers, OtherActionPowers, SelfActionPowers, TargetPowers, WaysideInn}
 import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.cardplay.VowOfObedience
-import oathdigital.gameplay.powers.rest.SilverTongue
+import oathdigital.gameplay.powers.rest.{Insomnia, SilverTongue}
 import oathdigital.gameplay.powers.wake.{Hunger, MarbleFountains,
   RiverSitePower}
 
@@ -15,6 +15,7 @@ import oathdigital.gameplay.powers.wake.{Hunger, MarbleFountains,
 object PhasePowerCatalog:
   def default(catalog: ExecutableCatalog): PhasePowers =
     PhasePowers(SilverTongue.forCatalog(catalog).toVector ++
+      Insomnia.forCatalog(catalog).toVector ++
       VowOfObedience.forCatalog(catalog).toVector ++
       Vector[PhasePower](WaysideInn, Elders, MagicWaterskin, MarbleFountains) ++
       DiceAndRelicDrawPowers.powers ++

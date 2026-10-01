@@ -24,7 +24,7 @@ import oathdigital.model._
   * search hides an adviser whose discard is refused, and every denizen when
   * no adviser can go.
   * "Full" is the player's adviser limit, [[AdviserLimit.of]]: 3, or 2 for a
-  * Silver Tongue holder.
+  * holder of Silver Tongue or Insomnia.
   */
 final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   import HornedMask._

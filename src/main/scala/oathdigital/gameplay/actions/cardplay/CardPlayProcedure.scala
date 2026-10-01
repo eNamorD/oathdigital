@@ -63,7 +63,8 @@ object CardPlayProcedure:
     * `SearchPlayAdviser` calls [[adjust]] with the children it was handed and
     * the change it wants. Every contributor's change is applied to the same
     * rules, so contributors compose in any order, and the result is the play
-    * planned under all of them.
+    * planned under all of them. A node a contributor appends after the body
+    * is kept by the later ones.
     */
   final class PlacementTree private[cardplay](val card: WorldCardId,
       childrenAt: PlacementRules => Vector[Operation])
@@ -75,10 +76,13 @@ object CardPlayProcedure:
 
     def adjust(current: Vector[Operation])(
         change: PlacementRules => PlacementRules): Vector[Operation] =
-      current match
-        case Vector(body: PlacementBody) => Vector(body.adjust(change))
-        case _ => Vector(new PlacementBody(change(PlacementRules.default),
-          childrenAt))
+      // An earlier contributor may have appended nodes after the body (an
+      // adviser limit's check): change the body in place and keep them.
+      if current.exists(_.isInstanceOf[PlacementBody]) then current.map {
+        case body: PlacementBody => body.adjust(change)
+        case other => other
+      }
+      else Vector(new PlacementBody(change(PlacementRules.default), childrenAt))
 
   /** Whether `card` is still at the origin the play started from. Once it is
     * not, the play has been made and the tree is settled from the answers.

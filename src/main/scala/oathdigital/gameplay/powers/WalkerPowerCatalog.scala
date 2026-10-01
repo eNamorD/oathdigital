@@ -7,7 +7,7 @@ import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans
 import oathdigital.gameplay.powers.economy.KnightsErrant
 import oathdigital.gameplay.powers.cardplay.CardPlayTriggers
 import oathdigital.gameplay.powers.recover.CatacombsContribution
-import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
+import oathdigital.gameplay.powers.rest.{Insomnia, LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.setup.{BanditMarket, BrokenForge, EmptyGrounds, GreatForge, GreatMarket, ProvingGrounds}
 import oathdigital.gameplay.powers.targeting.TargetProtections
 import oathdigital.gameplay.powers.title.ChaosCult
@@ -29,7 +29,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * until an action declares `PowerWindow.WakeTakeWealth` (batch-1 Task 7),
   * since discovery keeps only powers that hook the window being gathered.
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
-  * Silver Tongue's restriction is inert until Search walks
+  * Silver Tongue's and Insomnia's adviser limits are inert until Search walks
   * `SearchPlayAdviser`.
   * Conspiracy's power carries no catalog id (a Vision has no catalog powers),
   * so like Take Wealth's limit it is always present and inert until a card
@@ -50,6 +50,7 @@ object WalkerPowerCatalog:
       TravelModifiers.forCatalog(catalog) ++
       LeagueTreatyContribution.forCatalog(catalog) ++
       SilverTongue.forCatalog(catalog) ++
+      Insomnia.forCatalog(catalog) ++
       ASmallFavor.forCatalog(catalog).toVector ++
       FaithfulFriend.forCatalog(catalog).toVector ++
       Garrison.forCatalog(catalog).toVector ++

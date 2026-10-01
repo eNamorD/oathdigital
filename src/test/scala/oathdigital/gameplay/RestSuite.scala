@@ -254,8 +254,8 @@ class RestSuite extends munit.FunSuite:
     val base = act
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
-    val relevant = Set("denizen.vow-of-poverty", "denizen.naysayers",
-      "denizen.insomnia")
+    // Insomnia's REST runs as a phase power, so it records no diagnostic.
+    val relevant = Set("denizen.vow-of-poverty", "denizen.naysayers")
     relevant.foreach { handler =>
       val definition = catalog.denizens.find(_.handlers.contains(handler)).get
       val adviser = DenizenState(DenizenId(definition.id.value),
@@ -273,7 +273,7 @@ class RestSuite extends munit.FunSuite:
         _.copy(handlerId = "denizen.tampered")))
       assert(rules.evolve(Ready(state), tampered).isLeft)
     }
-    val handler = "denizen.insomnia"
+    val handler = "denizen.naysayers"
     val definition = catalog.denizens.find(_.handlers.contains(handler)).get
     val siteId = actor.pawnSite.get
     val siteState = base.updateCurrent(_.copy(
