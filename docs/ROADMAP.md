@@ -29,7 +29,9 @@ Slice 1a is done: the battle plans Cracking Ground, Walled Garden, Banner
 Breakers, Extra Provisions, Village Constable, Encirclement, Bandit Standard
 and Rival Khan. Slice 1b is done: the battle plans Disgraced Captain, Battle
 Axes, Great Crusade, Pledge of Defense, The Great Levy, Rain Boots and
-Garrison Armory. Slices 1c to 4 remain.
+Garrison Armory. Slice 1c is done: the battle plans Book Burning, Tribute
+Spoils, Field Promotion and Military Parade, and the plan surcharge Insect
+Swarm. Slices 2 to 4 remain.
 
 ### Catalog - to verify
 
