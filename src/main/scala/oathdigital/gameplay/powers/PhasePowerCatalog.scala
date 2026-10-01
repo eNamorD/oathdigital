@@ -7,7 +7,7 @@ import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.cardplay.VowOfObedience
 import oathdigital.gameplay.powers.rest.{Insomnia, SilverTongue}
 import oathdigital.gameplay.powers.wake.{Hunger, MarbleFountains,
-  RiverSitePower}
+  Quartermaster, RiverSitePower}
 
 /** The production phase powers, beside [[WalkerPowerCatalog]]. A power whose
   * card is absent from `catalog` is omitted.
@@ -17,7 +17,8 @@ object PhasePowerCatalog:
     PhasePowers(SilverTongue.forCatalog(catalog).toVector ++
       Insomnia.forCatalog(catalog).toVector ++
       VowOfObedience.forCatalog(catalog).toVector ++
-      Vector[PhasePower](WaysideInn, Elders, MagicWaterskin, MarbleFountains) ++
+      Vector[PhasePower](WaysideInn, Elders, MagicWaterskin, MarbleFountains,
+        Quartermaster) ++
       DiceAndRelicDrawPowers.powers ++
       TargetPowers.forCatalog(catalog) ++
       MovementPowers.forCatalog(catalog) ++
