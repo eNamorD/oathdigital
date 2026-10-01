@@ -17,4 +17,5 @@ object WhenPlayedPowers:
       SaladDays.forCatalog(catalog).toVector ++
       FabledFeast.forCatalog(catalog).toVector ++
       TownMeeting.forCatalog(catalog).toVector ++
-      GreatHerd.forCatalog(catalog).toVector
+      GreatHerd.forCatalog(catalog).toVector ++
+      RoyalTax.forCatalog(catalog).toVector
