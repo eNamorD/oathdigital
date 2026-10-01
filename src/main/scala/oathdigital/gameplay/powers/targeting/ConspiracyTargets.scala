@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.model._
 
 /** Narrows a played Conspiracy's target decision for a rule that protects
-  * some of its targets (the Circlet of Command, the Forgotten Vault).
+  * some of its targets (the Circlet of Command, the Forgotten Vault, Lost
+  * Tongue).
   *
   * An `OptionRestriction` does not fit there: a decision left with no option
   * must be dropped, so that the Conspiracy plays and takes nothing. The rule
