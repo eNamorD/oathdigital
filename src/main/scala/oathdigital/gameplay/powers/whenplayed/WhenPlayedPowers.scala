@@ -8,4 +8,5 @@ import oathdigital.gameplay.powerresolver.ContributingPower
 object WhenPlayedPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Vector[ContributingPower]() ++
-      ThreateningRoar.forCatalog(catalog).toVector
+      ThreateningRoar.forCatalog(catalog).toVector ++
+      Riots.forCatalog(catalog).toVector
