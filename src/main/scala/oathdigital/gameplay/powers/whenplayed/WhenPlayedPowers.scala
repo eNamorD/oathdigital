@@ -12,4 +12,5 @@ object WhenPlayedPowers:
       Riots.forCatalog(catalog).toVector ++
       AnimalHost.forCatalog(catalog).toVector ++
       Charlatan.forCatalog(catalog).toVector ++
-      KeyToTheCity.forCatalog(catalog).toVector
+      KeyToTheCity.forCatalog(catalog).toVector ++
+      BanditPrince.forCatalog(catalog).toVector

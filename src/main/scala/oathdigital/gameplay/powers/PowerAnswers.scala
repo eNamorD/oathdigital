@@ -17,6 +17,11 @@ object PowerAnswers:
       case Answered(`decision`, DecisionAnswer.ChooseAmountAnswer(count), _) =>
         count
 
+  /** The options a power's `ChooseMany` was answered with. */
+  def many(pending: PendingTree, decision: String)
+      : Option[Vector[DecisionOptionRef]] = pending.answered.collectFirst:
+    case Answered(`decision`, DecisionAnswer.ChooseManyAnswer(refs), _) => refs
+
   def distribution(pending: PendingTree, decision: String)
       : Option[Vector[DistributeAmount]] = pending.answered.collectFirst:
     case Answered(`decision`, DecisionAnswer.DistributeAnswer(rows), _) => rows
