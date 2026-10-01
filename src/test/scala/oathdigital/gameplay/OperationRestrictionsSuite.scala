@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{GrandScepter, LockedCards, OperationRestrictions}
+import oathdigital.gameplay.operations.{GrandScepter, LockedCards,
+  OperationPipeline, OperationPolicy, OperationRestrictions}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -159,3 +160,30 @@ class OperationRestrictionsSuite extends munit.FunSuite:
   test("no catalog holds only the powers' restrictions"):
     assertEquals(OperationRestrictions.none.active(Vector.empty,
       Vector(PowerId("denizen.wild-cry"))), Vector.empty)
+
+  test("a refused Take skips its leaving operations with it, so the banner " +
+      "stays whole"):
+    val ready = Table.start.peoplesFavor(Some(p2), favor = 2).ready
+    val take = Take(Piece.Banner(Banner.PeoplesFavor), p1,
+      Location.PlayArea(p2), Location.PlayArea(p1), leaving = Vector(Move(
+        Piece.Favor(2), PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
+        PositionedLocation(Location.FavorBank(Suit.Order)))))
+    val noTake = new OperationRestriction:
+      def reason(ready: ReadyGame, operation: CoreOperation)
+          : Option[OperationReason] = operation match
+        case _: Take => Some(OperationReason("test.no-take", "no take",
+          OperationReasonKind.Impossible))
+        case _ => None
+    def run(restrictions: Vector[OperationRestriction]) = OperationPipeline.run(
+      ready, Vector(take), OperationPolicy.Permissive, restrictions)(Right(_))
+      .toOption.get
+    val order = (state: ReadyGame) => state.banks.favor.getOrElse(Suit.Order, 0)
+    val refused = run(Vector(noTake))
+    assertEquals(refused.executed, Vector.empty)
+    assertEquals(refused.state.game.current.banners.peoplesFavor.holder, Some(p2))
+    assertEquals(refused.state.game.current.banners.peoplesFavor.favor, 2)
+    assertEquals(order(refused.state), order(ready))
+    val taken = run(Vector.empty)
+    assertEquals(taken.state.game.current.banners.peoplesFavor.holder, Some(p1))
+    assertEquals(taken.state.game.current.banners.peoplesFavor.favor, 0)
+    assertEquals(order(taken.state), order(ready) + 2)

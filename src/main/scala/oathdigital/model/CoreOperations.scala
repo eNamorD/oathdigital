@@ -434,17 +434,23 @@ final case class Swap(firstCard: CardId, firstLocation: PositionedLocation,
 /** Moves a piece into the prompted player's custody. A required `Take`
   * rejects its batch, or fails the search's path, when a restriction refuses
   * it.
+  *
+  * `leaving` clears what does not travel with the piece before it moves: a
+  * banner's favor returned to the banks, its secrets burnt. Those operations
+  * are the `Take`'s first children, so a restriction that refuses the `Take`
+  * refuses them with it, and the banner stays whole.
   */
 final case class Take(piece: Piece, player: PlayerId,
     from: Location, to: Location,
     sourcePosition: StackPosition = StackPosition.Unspecified,
-    override val required: Boolean = false)
+    override val required: Boolean = false,
+    leaving: Vector[CoreOperation] = Vector.empty)
     extends CoreOperation:
   require(Location.ownedBy(to, player),
     "take destination must belong to the taking player")
   val move: Move = Move(piece, PositionedLocation(from, sourcePosition),
     PositionedLocation(to))
-  override val children: Vector[Operation] = Vector(move)
+  override val children: Vector[Operation] = leaving :+ move
 
 // ---------------------------------------------------------------------------
 // Walker leaves and composites.

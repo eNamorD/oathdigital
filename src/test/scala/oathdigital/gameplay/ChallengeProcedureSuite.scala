@@ -236,7 +236,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     val noBannerTaken = new OperationRestriction:
       override def reason(ready: ReadyGame,
           operation: CoreOperation): Option[OperationReason] = operation match
-        case Take(Piece.Banner(_), _, _, _, _, _) => Some(OperationReason(
+        case Take(Piece.Banner(_), _, _, _, _, _, _) => Some(OperationReason(
           "test.no-banner", "no banner may be taken",
           OperationReasonKind.Impossible))
         case _ => None

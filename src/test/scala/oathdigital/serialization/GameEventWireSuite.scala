@@ -588,6 +588,33 @@ class GameEventWireSuite extends munit.FunSuite:
       _("payload")("ops")(0)("piece")("kind").str).toVector.distinct.size,
       pieces.map(_.getClass.getSimpleName).distinct.size)
 
+  test("a Take's leaving operations round trip, and a Take without them " +
+      "writes none"):
+    val player = PlayerId("red")
+    val holder = PlayerId("blue")
+    val leaving = Vector[CoreOperation](
+      Move(Piece.Favor(1),
+        PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
+        PositionedLocation(Location.FavorBank(Suit.Order))),
+      Burn.secrets(2, PositionedLocation(Location.OnBanner(Banner.DarkestSecret))))
+    val takes = Vector(
+      Take(Piece.Banner(Banner.PeoplesFavor), player, Location.PlayArea(holder),
+        Location.PlayArea(player), leaving = leaving),
+      Take(Piece.Banner(Banner.DarkestSecret), player, Location.PlayArea(holder),
+        Location.PlayArea(player)))
+    val events = takes.map(take => WalkerStepRecorded("0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("take")),
+      Vector(take), Vector.empty): OathEvent)
+    val encoded = GameEventWire.encodeStream("take-leaving", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
+    assertEquals(ops(0)("leaving").arr.size, 2)
+    assert(!ops(1).obj.contains("leaving"))
+
   test("a walker tree-control node can never be recorded, and surfaces a " +
       "typed WireError instead of an opaque exception"):
     // Decide/BuildOps/Repeat/Branch/Sequence are `encodeOperation`'s five

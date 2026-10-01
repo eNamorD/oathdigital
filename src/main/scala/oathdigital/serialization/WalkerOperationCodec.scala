@@ -148,11 +148,16 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
           value => ujson.Str(orientationKey(value))))
-      case Take(piece, player, from, to, sourcePosition, _) => ujson.Obj(
-        "kind" -> "take", "piece" -> encodePiece(piece),
-        "playerId" -> player.value, "from" -> encodeLocation(from),
-        "to" -> encodeLocation(to),
-        "sourcePosition" -> encodeStackPosition(sourcePosition))
+      case Take(piece, player, from, to, sourcePosition, _, leaving) =>
+        // Written only when present, so a Take without it encodes as before.
+        val optional: Vector[(String, ujson.Value)] =
+          if leaving.isEmpty then Vector.empty
+          else Vector("leaving" -> ujson.Arr.from(leaving.map(encodeOperation)))
+        ujson.Obj.from(Vector[(String, ujson.Value)](
+          "kind" -> "take", "piece" -> encodePiece(piece),
+          "playerId" -> player.value, "from" -> encodeLocation(from),
+          "to" -> encodeLocation(to),
+          "sourcePosition" -> encodeStackPosition(sourcePosition)) ++ optional)
       case Kill(warbands, from) => ujson.Obj("kind" -> "kill",
         "warbands" -> encodePiece(warbands),
         "from" -> encodePositionedLocation(from))
@@ -377,8 +382,12 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
       to <- decodeLocation(value("to"), s"$path.to")
       sourcePosition <- decodeStackPosition(value("sourcePosition").str,
         s"$path.sourcePosition")
+      leaving <- value.obj.get("leaving").fold[Either[WireError,
+          Vector[CoreOperation]]](Right(Vector.empty))(raw =>
+        traverse(raw.arr.zipWithIndex.toVector)({ case (operation, index) =>
+          decodeOperation(operation, s"$path.leaving[$index]") }))
     yield Take(piece, PlayerId(value("playerId").str), from, to,
-      sourcePosition)
+      sourcePosition, leaving = leaving)
     case "kill" => for
       piece <- decodePiece(value("warbands"), s"$path.warbands")
       warbands <- asWarbands(piece, s"$path.warbands")

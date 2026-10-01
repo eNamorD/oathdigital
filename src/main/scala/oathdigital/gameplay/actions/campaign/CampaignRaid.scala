@@ -59,7 +59,9 @@ private[campaign] object CampaignRaid:
       val relicTakes: Vector[CoreOperation] = relics.map(id => Take(
         Piece.Card(id), attacker, Location.PlayArea(defenderId),
         Location.PlayArea(attacker)))
-      val bannerOps: Vector[CoreOperation] = banners.flatMap { banner =>
+      // A banner's favor and secrets leave as its Take's children, so a
+      // refused Take leaves the banner whole.
+      val bannerOps: Vector[CoreOperation] = banners.map { banner =>
         val leaving: Vector[CoreOperation] = banner match
           case Banner.PeoplesFavor =>
             val returned = BannerRules.raidFavorReturn(ready.banks.favor,
@@ -73,8 +75,8 @@ private[campaign] object CampaignRaid:
             val secrets = BannerRules.resources(current, banner)
             Option.when(secrets > 0)(Burn.secrets(secrets,
               PositionedLocation(Location.OnBanner(banner)))).toVector
-        leaving :+ Take(Piece.Banner(banner), attacker,
-          Location.PlayArea(defenderId), Location.PlayArea(attacker))
+        Take(Piece.Banner(banner), attacker, Location.PlayArea(defenderId),
+          Location.PlayArea(attacker), leaving = leaving)
       }
       val facedown: Vector[WorldCardId] = defender.advisers.collect:
         case card: DenizenState if card.orientation == Orientation.FaceDown =>

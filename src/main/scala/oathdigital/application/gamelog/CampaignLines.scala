@@ -125,9 +125,9 @@ private[gamelog] final class CampaignLines(words: LogWords,
     else result.kind match
       case CampaignKind.Raid =>
         val taken = ops.collect {
-          case OpStep(Take(Piece.Card(id), _, _, _, _, _), before, after) =>
+          case OpStep(Take(Piece.Card(id), _, _, _, _, _, _), before, after) =>
             words.one(words.card(id, before, after, viewer))
-          case OpStep(Take(Piece.Banner(banner), _, _, _, _, _), _, _) =>
+          case OpStep(Take(Piece.Banner(banner), _, _, _, _, _, _), _, _) =>
             Vector(words.banner(banner))
         }
         result.defender match

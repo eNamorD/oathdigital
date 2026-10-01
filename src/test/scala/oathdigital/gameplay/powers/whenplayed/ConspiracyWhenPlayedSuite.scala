@@ -131,7 +131,8 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(f.actor))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 0)
     assertEquals(after.banks.favor.values.sum, f.ready.banks.favor.values.sum + 2)
-    val returned = recorded(done).collect:
+    // The favor returns as the banner Take's children.
+    val returned = recorded(done).flatMap(Operation.flatten).collect:
       case Move(Piece.Favor(1), _,
           PositionedLocation(Location.FavorBank(suit), _), _) => suit
     assertEquals(returned, BannerRules.raidFavorReturn(f.ready.banks.favor, 2))
@@ -161,7 +162,9 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     // a site.
     assertEquals(siteSecrets(after), siteSecrets(f.ready))
     assert(recorded(done).contains(Take(Piece.Banner(Banner.DarkestSecret),
-      f.actor, Location.PlayArea(f.enemy), Location.PlayArea(f.actor))),
+      f.actor, Location.PlayArea(f.enemy), Location.PlayArea(f.actor),
+      leaving = Vector(Burn.secrets(3,
+        PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))))),
       recorded(done).toString)
     assertEquals(replayed(f, done), after)
 
