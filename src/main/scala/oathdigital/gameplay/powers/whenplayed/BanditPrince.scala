@@ -31,9 +31,11 @@ final case class BanditPrince private (cardId: DenizenId)
       val sites = banditSites(live)
       if sites.isEmpty then Vector(Note(id, _ =>
         Some(none(PowerSourceRef.Card(cardId)))))
+      else if affordable(live, actor, sites).isEmpty then Vector.empty
       else Vector(
         Decide(decisionId, actor, DecisionQuery.ChooseMany(0, sites.size,
-          sites.map(site => DecisionOption.Site(DecisionOptionRef.Site(site))),
+          affordable(live, actor, sites).map(site =>
+            DecisionOption.Site(DecisionOptionRef.Site(site))),
           heading = Some("Bandit Prince: choose the sites whose bandits your " +
             "warbands replace"))),
         BuildOps((ready, pending) => replace(ready, actor, pending)),
@@ -76,6 +78,15 @@ object BanditPrince:
     ready.game.current.map.sites.get(site).map(_.forces) match
       case Some(SiteForces.Occupied(`kind`, count)) => count
       case _ => 0
+
+  /** The sites whose bandits alone fit the actor's warband bank. The walker
+    * would hide the others, but only after trying every selection holding
+    * them, which grows with the number of sites. */
+  private def affordable(ready: ReadyGame, actor: PlayerId,
+      sites: Vector[SiteId]): Vector[SiteId] =
+    PlayerFacts.forceKind(ready, actor).toOption.fold(Vector.empty) { kind =>
+      val banked = PlayerFacts.banked(ready, kind)
+      sites.filter(bandits(ready, _) <= banked) }
 
   /** The sites answered, in answer order. A question the search did not ask
     * reads as none. */

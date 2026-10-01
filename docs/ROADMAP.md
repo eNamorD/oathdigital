@@ -444,7 +444,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
   in the phased sequence above; the next denizens and relics are
-  **Phase - Catalog batch 3**)
+  **Phase - Card classes**)
 - [ ] **L7 — Incremental synchronization transport**
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
