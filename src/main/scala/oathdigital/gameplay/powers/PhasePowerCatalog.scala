@@ -23,7 +23,7 @@ object PhasePowerCatalog:
       TargetPowers.forCatalog(catalog) ++
       MovementPowers.forCatalog(catalog) ++
       SelfActionPowers.forCatalog(catalog) ++
-      OtherActionPowers.powers ++
+      OtherActionPowers.forCatalog(catalog) ++
       BannerFacePowers.phasePowers ++
       Hunger.forCatalog(catalog).toVector ++
       RiverSitePower.forCatalog(catalog))
