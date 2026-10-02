@@ -1,34 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy, OperationResolution}
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DieFace, Note, NoteStates, OathEvent, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
-
-/** Outcome of one walker `advance`/`roll`/`resolve` command.
-  *
-  * A walk either runs until it must stop for a human/app decision
-  * ([[WalkerOutcome.Parked]]) or consumes the whole action tree ([[WalkerOutcome.Finished]]).
-  */
-sealed trait WalkerOutcome extends Product with Serializable
-object WalkerOutcome:
-  /** The walk parked at a `Decide` (a `Roll` park is *resumed* this slice
-    * through [[ProcedureWalker.roll]], never through a further `advance`).
-    * `tree` is the exact position to resume from on the next command;
-    * `events` holds any steps executed before the park in this command. The
-    * application appends a [[WalkerParked]] fact after these events so replay
-    * can restore the pointer without running the walker.
-    */
-  final case class Parked(tree: PendingTree, events: Vector[OathEvent])
-      extends WalkerOutcome
-
-  /** The whole action tree was consumed. The resulting state no longer
-    * carries a pending tree and its dice pools are cleared (brief behavior
-    * 6); `events` holds every delta executed by this command. Roll outcomes
-    * written during the walk are retained on the finished state for the next
-    * resolution step to consume; the application-level [[WalkerCompleted]]
-    * fact clears them at the completed action boundary.
-    */
-  final case class Finished(treeless: ReadyGame, events: Vector[OathEvent])
-      extends WalkerOutcome
+import oathdigital.gameplay.operations.OperationResolution
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DecisionAnswer, DieFace, Note, NoteStates, OathState, OathViolation, Operation, PendingTree, PlayerId, PoolKey, PowerId, PowerWindow, PrimitiveOperation, ReadyGame, Repeat, Roll, RollMode, Shuffle, WalkerEvent}
 
 /** Auto-walk engine over an [[oathdigital.model.Operation]] action tree (Tasks 3-5).
   *
@@ -261,45 +234,6 @@ object ProcedureWalker:
   // Walking core
   // --------------------------------------------------------------------------
 
-  /** Command-local walk state: the state threaded through executed deltas,
-    * the events recorded so far, the acting player, and every decision
-    * already answered during this action.
-    */
-  private final case class WalkCtx(
-      state: ReadyGame,
-      events: Vector[OathEvent],
-      activePlayer: PlayerId,
-      answered: Vector[Answered],
-      powers: WalkerPowers,
-      dice: WalkerDice,
-      /** The procedure of the parked position being resumed. */
-      procedure: Option[oathdigital.model.ProcedureRef],
-      /** The whole action tree, which the search reads. */
-      root: Operation,
-      /** The states before and after the leaf this command ran last, which
-        * a note reads. A leaf that changed nothing gives the same state
-        * twice. */
-      previous: Option[(ReadyGame, ReadyGame)] = None,
-      /** Set on a search's walk (global operation restrictions design, "Lazy
-        * pruning"): it stops at hidden information and at a decision some
-        * answer leads on from, and its events are thrown away. */
-      searching: Boolean = false,
-      /** The decisions this search stands at, with the state at each. */
-      visited: Set[(Vector[String], ReadyGame)] = Set.empty
-  )
-
-  private sealed trait Step extends Product with Serializable
-  /** The walked region completed; `ctx` carries the result state/events. */
-  private final case class Done(ctx: WalkCtx) extends Step
-  /** A park bubbled up from a Decide/Roll leaf at `position`. */
-  private final case class Park(position: Vector[String], ctx: WalkCtx)
-      extends Step
-  /** A search stopped here and counts the path as legal: at hidden
-    * information, at a decision some answer leads on from, or back at a
-    * decision it already stands at in the same state. Only a search's walk
-    * returns it. */
-  private final case class Stopped(ctx: WalkCtx) extends Step
-
   /** How a resumed command treats the leaf parked at `pending.at`: a plain
     * `advance` re-parks an unanswered Decide/Roll (or passes a Decide the
     * caller already recorded in `answered`); a `roll` consumes the parked
@@ -332,11 +266,6 @@ object ProcedureWalker:
 
   private def contractViolation(message: String): Left[OathViolation, Nothing] =
     Left(OathViolation.InvalidEventOrder(s"walker contract violation: $message"))
-
-  /** Case-class short name used by the generic semantic fallback. */
-  private def leafLabel(node: Operation): String = node match
-    case product: Product => product.productPrefix
-    case other => other.getClass.getSimpleName
 
   /** Walks `node` from `path` (its root-relative child-index address), either
     * from scratch (`cursor = None`) or resuming at `cursor` (the remaining
@@ -595,22 +524,22 @@ object ProcedureWalker:
       case Some(remaining) =>
         if remaining.nonEmpty then
           contractViolation(
-            s"resume path $remaining overruns leaf ${leafLabel(leaf)}")
+            s"resume path $remaining overruns leaf ${WalkerSteps.leafLabel(leaf)}")
         else resume match
           case RollResume(faces) =>
             leaf match
               case roll: Roll =>
-                recordRoll(roll, ctx, path, faces, contributions).map(Done(_))
+                WalkerSteps.recordRoll(roll, ctx, path, faces, contributions).map(Done(_))
               case _: Decide => Left(OathViolation.InvalidEventOrder(
-                s"roll() resumed at a ${leafLabel(leaf)} park; " +
+                s"roll() resumed at a ${WalkerSteps.leafLabel(leaf)} park; " +
                   "expected a Roll"))
               case other =>
                 contractViolation(s"resume position ${path.mkString(".")} " +
-                  s"is not a Decide/Roll park (leaf ${leafLabel(other)})")
+                  s"is not a Decide/Roll park (leaf ${WalkerSteps.leafLabel(other)})")
           case AnswerResume(answer) =>
             leaf match
               case decide: Decide if decide.decisionId == answer.decisionId =>
-                answerDecide(decide, ctx, path, answer, contributions)
+                WalkerSteps.answerDecide(decide, ctx, path, answer, contributions)
                   .map(Done(_))
               case decide: Decide => Left(OathViolation.InvalidEventOrder(
                 s"resolve() answer ${answer.decisionId} does not match the " +
@@ -620,7 +549,7 @@ object ProcedureWalker:
                 s"resolve() resumed at a Roll park; expected a Decide"))
               case other =>
                 contractViolation(s"resume position ${path.mkString(".")} " +
-                  s"is not a Decide/Roll park (leaf ${leafLabel(other)})")
+                  s"is not a Decide/Roll park (leaf ${WalkerSteps.leafLabel(other)})")
           case PlainResume =>
             leaf match
               case _: Decide | _: Roll =>
@@ -631,20 +560,20 @@ object ProcedureWalker:
                 Right(Park(path, ctx))
               case _ =>
                 contractViolation(s"resume position ${path.mkString(".")} " +
-                  s"is not a Decide/Roll park (leaf ${leafLabel(leaf)})")
+                  s"is not a Decide/Roll park (leaf ${WalkerSteps.leafLabel(leaf)})")
       case None =>
         leaf match
           case hidden if ctx.searching && WalkerSearch.hides(hidden) =>
             Right(Stopped(ctx))
           case roll: Roll if roll.mode == RollMode.Automatic =>
-            runAutomaticRoll(roll, ctx, path, contributions).map(Done(_))
+            WalkerSteps.runAutomaticRoll(roll, ctx, path, contributions).map(Done(_))
           case shuffle: Shuffle if shuffle.order.isEmpty =>
             WalkerShuffles.ordered(shuffle, ctx.state, ctx.dice).flatMap(
-              record(_, ctx, path, contributions, strict)).map(Done(_))
+              WalkerSteps.record(_, ctx, path, contributions, strict)).map(Done(_))
           case _: Decide | _: Roll => Right(Park(path, ctx))
-          case build: BuildOps => runBuildOps(build, ctx, path, contributions)
+          case build: BuildOps => WalkerSteps.runBuildOps(build, ctx, path, contributions)
           case delta =>
-            record(delta, ctx, path, contributions, strict).map(Done(_))
+            WalkerSteps.record(delta, ctx, path, contributions, strict).map(Done(_))
 
   /** Walks `children` in order, skipping children already executed before a
     * resume point (`cursor` heads the index of the resumed child inside this
@@ -681,120 +610,3 @@ object ProcedureWalker:
           case stop @ (_: Park | _: Stopped) => Right(stop)
           case Done(next) => continue(children, index + 1, next, path, None,
             resume, hooks)
-
-  /** Executes one delta leaf through the pipeline and records its step. */
-  private def record(delta: CoreOperation, ctx: WalkCtx, path: Vector[String],
-      contributions: Vector[PowerId],
-      strict: Boolean): Either[OathViolation, WalkCtx] =
-    recordBatch(Vector(delta), contributions, ctx, path, leafLabel(delta),
-      requireAll = strict)
-
-  /** Executes a [[oathdigital.model.BuildOps]] leaf: `build(state, pending)` returns the delta
-    * batch to run through the pipeline, recorded as the node's step ops. An
-    * empty batch runs nothing and records nothing, and a note after it reads
-    * that nothing changed. A search stops at a batch that shows hidden
-    * information.
-    */
-  private def runBuildOps(build: BuildOps, ctx: WalkCtx, path: Vector[String],
-      contributions: Vector[PowerId]): Either[OathViolation, Step] =
-    val tree = PendingTree(at = path, answered = ctx.answered)
-    build.build(ctx.state, tree).flatMap { ops =>
-      if ctx.searching && ops.exists(WalkerSearch.hides) then
-        Right(Stopped(ctx))
-      else if ops.isEmpty then
-        Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))
-      else recordBatch(ops, contributions, ctx, path, leafLabel(build),
-        requireAll = build.required).map(Done(_))
-    }
-
-  /** Executes `ops` through the pipeline as one atomic batch and records ONE
-    * [[WalkerStepRecorded]] carrying the whole batch and `contributions` --
-    * the shared mechanic behind a plain delta leaf and a [[oathdigital.model.BuildOps]] leaf,
-    * the two leaf kinds that run rather than park (spec decision 5: one
-    * hookable node, one event, its final operation batch). `ops` must already
-    * be non-empty; callers short-circuit an empty batch themselves (an empty
-    * [[oathdigital.model.BuildOps]] batch records nothing).
-    */
-  private def recordBatch(ops: Vector[CoreOperation],
-      contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
-      label: String,
-      requireAll: Boolean)
-      : Either[OathViolation, WalkCtx] =
-    OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
-      ctx.powers.operationRestrictions, requireAll)(
-      Right(_)).map { updated =>
-      val nodeId = if path.isEmpty then label else path.mkString(".")
-      val events = if updated.executed.isEmpty then ctx.events else
-        ctx.events :+ WalkerStepRecorded(
-          nodeId = nodeId,
-          payload = WalkerStepPayload.DeltaRecorded(
-            DeltaMeaning.of(updated.executed, label)),
-          ops = updated.executed,
-          contributions = contributions)
-      ctx.copy(state = updated.state, events = events,
-        previous = Some((ctx.state, updated.state)))
-    }
-
-  /** Validates a resolved answer against the parked Decide and records its
-    * step: the answer's submitter must be the node's owner, the query must
-    * be answerable at all, and that query must accept the submitted answer.
-    * On success `answer` is appended to `answered` and ONE
-    * [[WalkerStepRecorded]] carrying a [[ChoicePayload]] (ops empty -- the
-    * answer is a state write into `pending.answered`) is appended.
-    *
-    * Both checks are generic and read no game state (see [[DecisionQueries]]),
-    * so the walker learns nothing here about which action parked: a legality
-    * fact that used to live in a per-node `validate` closure now lives in the
-    * declared option set, which is also what the projector offers.
-    */
-  private def answerDecide(decide: Decide, ctx: WalkCtx,
-      path: Vector[String], answer: Answered,
-      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
-    for
-      _ <- Either.cond(decide.owners.contains(answer.by), (),
-        OathViolation.WrongPlayer(decide.owner, answer.by))
-      _ <- DecisionQueries.wellFormed(decide.decisionId, decide.query)
-      _ <- DecisionQueries.accepts(decide.decisionId, decide.query,
-        answer.answer, answer.by)
-    yield
-      val nodeId =
-        if path.isEmpty then leafLabel(decide) else path.mkString(".")
-      ctx.copy(
-        answered = ctx.answered :+ answer,
-        previous = Some((ctx.state, ctx.state)),
-        events = ctx.events :+ WalkerStepRecorded(
-          nodeId = nodeId,
-          payload = ChoicePayload(answer.decisionId, answer.answer, answer.by),
-          ops = Vector.empty,
-          contributions = contributions))
-
-  /** Records one roll step: the outcome is derived and validated by
-    * [[WalkerRolls.outcomeFor]], merged into `ctx.state`, and the step carries
-    * a [[RollPayload]] with no ops (the outcome is a state write).
-    */
-  private def recordRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
-      faces: Vector[DieFace], contributions: Vector[PowerId],
-      automatic: Boolean = false): Either[OathViolation, WalkCtx] =
-    WalkerRolls.outcomeFor(roll, ctx.state, faces).map { outcome =>
-      val nodeId =
-        if path.isEmpty then leafLabel(roll) else path.mkString(".")
-      val written = WalkerRolls.write(ctx.state, outcome)
-      ctx.copy(
-        state = written,
-        previous = Some((ctx.state, written)),
-        events = ctx.events :+ WalkerStepRecorded(
-          nodeId = nodeId, payload = RollPayload(roll.pool, faces, automatic),
-          ops = Vector.empty, contributions = contributions))
-    }
-
-  /** Rolls an `Automatic` node: the faces come from the dice source and the
-    * step is recorded like a resumed roll, marked `automatic`. A pool of zero
-    * dice is skipped and records nothing: replay needs the pool to exist, and
-    * a Campaign with no force and no plans never creates one.
-    */
-  private def runAutomaticRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
-      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
-    val count = WalkerRolls.poolCount(ctx.state, roll.pool)
-    if count == 0 then Right(ctx)
-    else ctx.dice.roll(roll.dice.die, count).flatMap(faces =>
-      recordRoll(roll, ctx, path, faces, contributions, automatic = true))
