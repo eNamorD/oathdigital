@@ -115,10 +115,12 @@ above and share the LAN address instead.
 6. **Create the game on the host at `localhost`.** Many home routers cannot
    reliably loop a connection from the inside back to their own public
    address; on the test router, requests from the host to the public address
-   mostly timed out. On the host, open `http://localhost:8080/` instead. The
-   window shows this address as "On this computer you can also use". Create
-   the game there. The seat links still contain the public address, which is
-   what the other players need. Then continue with
+   mostly timed out. An open tab that got through once can keep working by
+   reusing its connection, which hides the problem; a private window shows it.
+   On the host, open `http://localhost:8080/` instead. The window shows this
+   address as "On this computer you can also use". Create the game there. The
+   seat links still contain the public address, which is what the other
+   players need. Then continue with
    [Create and distribute seats](#create-and-distribute-seats).
 
 ### Players on the host's own network
