@@ -32,7 +32,8 @@ private[application] final class GamePresentationProjector(
         case EdificeSide.Ruined => edifice.ruined.name
   /** A player's display name: the one label the Players strip and the game
     * log both use, so the two never disagree. */
-  def playerLabel(id: PlayerId): String = safeLabel(id.value)
+  /** A player is shown by their ID exactly as the host typed it. */
+  def playerLabel(id: PlayerId): String = id.value
 
   private[application] def edificeCardDetails(value: EdificeState): CardDetailsProjection =
     val definition = catalog.edifice(value.id)

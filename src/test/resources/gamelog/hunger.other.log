@@ -1,9 +1,9 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 0.3 phase 0 | Rest
-2.0 turn 0 | [player:p2|P2]'s turn
+2.0 turn 0 | [player:p2|p2]'s turn
 2.1 phase 0 | Wake
-5.0 decision 1 | Chose [player:p2|P2]'s facedown adviser (slot 1)
-7.0 trigger 1 | [card:216|Hunger]: [player:p2|P2] buried a Denizen from [player:p2|P2]'s advisers.
+5.0 decision 1 | Chose [player:p2|p2]'s facedown adviser (slot 1)
+7.0 trigger 1 | [card:216|Hunger]: [player:p2|p2] buried a Denizen from [player:p2|p2]'s advisers.
 9.0 phase 0 | Act

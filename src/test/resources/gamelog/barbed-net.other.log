@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-2.0 action 1 | [card:R36|Barbed Net]: [player:p1|P1] peeked at the relics at [site:site:ancient-city|Ancient City]: 2 Relics.
+2.0 action 1 | [card:R36|Barbed Net]: [player:p1|p1] peeked at the relics at [site:site:ancient-city|Ancient City]: 2 Relics.
 4.0 decision 1 | Chose a Relic
-6.0 action 1 | [card:R36|Barbed Net]: [player:p1|P1] took a Relic facedown from [site:site:ancient-city|Ancient City].
+6.0 action 1 | [card:R36|Barbed Net]: [player:p1|p1] took a Relic facedown from [site:site:ancient-city|Ancient City].

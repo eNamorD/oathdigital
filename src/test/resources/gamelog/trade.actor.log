@@ -1,9 +1,9 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-0.3 delta 1 | [player:p2|P2] gained 1 favor from the Discord bank
+0.3 delta 1 | [player:p2|p2] gained 1 favor from the Discord bank
 1.0 phase 0 | Rest
-3.0 turn 0 | [player:p2|P2]'s turn
+3.0 turn 0 | [player:p2|p2]'s turn
 3.1 phase 0 | Wake
 5.0 action 1 | Nothing happened in Wake
 5.1 phase 0 | Act
