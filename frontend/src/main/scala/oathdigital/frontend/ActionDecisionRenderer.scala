@@ -26,10 +26,9 @@ private[frontend] object ActionDecisionRenderer:
        // fallback below would show the wrong or no turn indicator at all.
        node.textContent = value.walkerDecision.flatMap(_.query).flatMap(_.heading)
          .getOrElse("Your decision.")
-     case None if value.phase == "act-action-selection" =>
-       node.textContent = "Act phase — choose your first normal action."
-     case None if value.phase == "wake" =>
-       node.textContent = "Wake phase — take available wealth or end Wake."
+     // The Game Log names the phase and the controls below say what can be
+     // done, so Wake and the Act phase print no instruction of their own.
+     case None if value.phase == "act-action-selection" || value.phase == "wake" => ()
      case None if value.phase == "rest" =>
        node.textContent = "Rest phase — finish Rest when ready."
      case None if value.phase == "game-over" =>
@@ -174,9 +173,10 @@ private[frontend] object ActionDecisionRenderer:
          val cancel = button("Cancel", "cancel-board-selection")
          cancel.onclick = _ => cancelTargetAction()
          panel.appendChild(cancel)
-         drafts.modifiers.foreach { draft =>
-           val back = button(if draft.hadModifierStage then "Back to modifiers"
-             else "Back to actions", "back-board-selection")
+         // Without a modifier stage, going back lands on the action list,
+         // which is where Cancel goes too, so only Cancel is offered.
+         drafts.modifiers.filter(_.hadModifierStage).foreach { _ =>
+           val back = button("Back to modifiers", "back-board-selection")
            back.onclick = _ => backFromTargets(); panel.appendChild(back)
          }
        if action.explicitConfirm then

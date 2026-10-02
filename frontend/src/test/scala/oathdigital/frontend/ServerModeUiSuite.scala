@@ -762,6 +762,16 @@ class ServerModeUiSuite extends FunSuite:
       ServerUiSupport.viewerPresentation(value, "blue-exile"))
     assertEquals(ownerStatus.textContent, "Your decision.")
 
+  test("Wake and the Act phase leave the active player's status empty"):
+    // The Game Log names the phase, and the Act prompt went stale after the
+    // first action, so neither phase prints its own instruction.
+    Vector("wake", "act-action-selection").foreach { phase =>
+      val value = projection(Set.empty, phase = phase)
+      val status = ActionDecisionRenderer.status(value,
+        ServerUiSupport.viewerPresentation(value, "red-exile"))
+      assertEquals(status.textContent, "", phase)
+    }
+
   test("board target classes distinguish candidate selected and read-only state"):
     assertEquals(ServerUiSupport.siteTargetClasses(false, false),
       "site site-readonly")

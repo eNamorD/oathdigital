@@ -22,14 +22,6 @@ campaign-continuity and Empire rules.
 From the playtest of 2026-10-01:
 
 - [ ] **Investigate why an incognito browser window does not work.**
-- [ ] **Discard asks to "choose 0 to 1".** Ask the player to reveal any
-  number instead.
-- [ ] **Travel shows both "Cancel" and "Back to Actions",** which seem to do
-  the same thing. Keep one.
-- [ ] **Remove the Wake and Action Phase prompts.** The Wake prompt says
-  "take available wealth or end Wake", and the Action Phase prompt asks for
-  "your first action" even after an action has been taken. The Game Log now
-  shows the phases, so the prompts can go.
 - [ ] **Hide a decision's own log line when its effect has one.** "Chose
   Blue" followed by "Wolves: Killed 1 Blue warband." repeats the decision.
 - [ ] **List relic details in a Negotiation.**

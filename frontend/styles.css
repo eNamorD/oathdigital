@@ -127,6 +127,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .status { padding: 14px 16px; margin: 22px 0; }
+.status:empty { display: none; }
 .victory-banner { margin: 12px 0; padding: 18px; border: 3px solid currentColor;
   border-radius: 10px; background: #17140f; font-size: 1.25rem; font-weight: 700; }
 .panel { padding: 18px; min-width: 0; }

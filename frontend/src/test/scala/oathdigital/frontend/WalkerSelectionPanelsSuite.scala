@@ -63,6 +63,16 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
       DecisionAnswerWire.ChooseManyWire(Vector(DecisionOptionWire("site", "a"),
         DecisionOptionWire("site", "c"))))))
 
+  test("choose-many instruction names its count without a zero lower bound"):
+    def instruction(min: Int, max: Int): String =
+      val query = many.copy(minOptions = min, maxOptions = max)
+      one(render(new RecordingControls(), opened("setup.reveal", query),
+        "setup.reveal", query), ".walker-many-instruction").textContent
+    assertEquals(instruction(0, 3), "Choose any number.")
+    assertEquals(instruction(0, 2), "Choose up to 2.")
+    assertEquals(instruction(2, 2), "Choose 2.")
+    assertEquals(instruction(1, 3), "Choose 1 to 3.")
+
   test("choose-amount renders a dropdown over its range and submits the choice"):
     val ui = new RecordingControls()
     val panel = render(ui, opened("challenge.amount", amount),

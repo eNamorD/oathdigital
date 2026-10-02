@@ -31,6 +31,9 @@ private[frontend] object WalkerSelectionPanels:
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     panel.appendChild(text("p", "walker-many-instruction",
       if query.minOptions == query.maxOptions then s"Choose ${query.minOptions}."
+      else if query.minOptions == 0 && query.maxOptions >= query.options.size then
+        "Choose any number."
+      else if query.minOptions == 0 then s"Choose up to ${query.maxOptions}."
       else s"Choose ${query.minOptions} to ${query.maxOptions}."))
     val rows = element("div", "walker-many-options")
     query.options.foreach { option =>
