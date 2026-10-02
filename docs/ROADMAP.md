@@ -264,7 +264,7 @@ requested UI changes are in the
   choosing Recent or Forgotten sites. Later-game
   setup (Empire `world` sites, stored denizens and relics). WHEN EXPLORED
   triggers once an explore procedure exists. The Chronicle string codec is
-  under **Phase - Empire and campaign continuity**.
+  under **Phase - Chronicle steps**.
 - [ ] **Desecrated Ground.** E08's ruined face lets an Exile at its
   site keep any number of revealed Visions, which turns
   `PlayerState.revealedVision` into a collection across card play, projection,
@@ -415,22 +415,24 @@ banners, remote and private Negotiation, a registry of term kinds, and
 eligibility powers. Record ignored Negotiation rules per participant rather
 than for the actor only. Citizenship offers belong to the Empire phase.
 
-### Phase - Empire and campaign continuity
+### Phase - Empire
 
 After the all-Exile alpha, implement Chancellor/Citizen roles, Imperial forces,
 Grand Scepter and Reliquary behavior, Citizenship through Negotiation,
 Successor goals, forced and self-exile, Imperial setup/turn/end rules, and the
 remaining production authentication work needed for broader hosting.
 
-Then implement the Chronicle and persistent campaign: generalized later-game
-setup, Atlas transitions, Chronicle tasks, world reconstruction, Reliquary
-changes, Foundation mutation, Legacy activation/scoring, Oathkeeper goal
-changes, era scoring, saved-campaign continuation, and campaign browsing.
+### Phase - Chronicle steps
+
+After the Empire phase, implement the Chronicle and persistent campaign:
+generalized later-game setup, Atlas transitions, Chronicle tasks, world
+reconstruction, Reliquary changes, Foundation mutation, Legacy
+activation/scoring, Oathkeeper goal changes, era scoring, saved-campaign
+continuation, and campaign browsing.
 
 - [ ] **End-of-game Chronicle steps.**
 - [ ] **Enduring (Ancient City).** Its cards are not discarded in the
   Chronicle Phase's Shape Empire step, which the engine does not have yet.
-  The Pass's consent waits for the Consent system phase.
 - [ ] **Chronicle import and export.** The Chronicle string codec for the TTS
   format, including the sections that format has not defined yet.
 - [ ] **Foundations.**
