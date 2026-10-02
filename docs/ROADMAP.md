@@ -21,16 +21,6 @@ campaign-continuity rules.
 
 From the playtest of 2026-10-01:
 
-- [ ] **Catacombs is offered during every major action.** It should be
-  offered only during Recover.
-- [ ] **Offer a modifier only when its cost can be paid.** Selecting one
-  whose cost cannot be paid fails with a 422 ("Selected modifier cannot be
-  paid"), seen when Catacombs was selected during a Trade.
-- [ ] **Show modifier costs during modifier selection.**
-- [ ] **Brass Horse does not make its reveal public.**
-- [ ] **Brass Horse works without revealing a card.** Its effect needs a
-  revealed card, so an empty discard pile should not satisfy it.
-- [ ] **Player ids are capitalized automatically.** Keep them as typed.
 - [ ] **Investigate why an incognito browser window does not work.**
 - [ ] **Discard asks to "choose 0 to 1".** Ask the player to reveal any
   number instead.
@@ -42,10 +32,7 @@ From the playtest of 2026-10-01:
   shows the phases, so the prompts can go.
 - [ ] **Hide a decision's own log line when its effect has one.** "Chose
   Blue" followed by "Wolves: Killed 1 Blue warband." repeats the decision.
-- [ ] **Name edifices in decisions.** Decisions show edifice card numbers
-  instead of names.
 - [ ] **List relic details in a Negotiation.**
-- [ ] **Banners say "resources".** They should say "favor" or "secrets".
 - [ ] **Keep site powers visible.** There is enough screen space, and players
   need to see them.
 - [ ] **Shrink the player strip.** It takes up too much space.
