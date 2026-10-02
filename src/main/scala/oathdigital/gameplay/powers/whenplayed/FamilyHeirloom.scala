@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
+
+object FamilyHeirloomCard extends Denizen(DenizenId("133"), "Family Heirloom", Suit.Hearth) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.family-heirloom"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** draw a relic. Take it or put it on the " +
+      "bottom of the relic deck.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Family Heirloom (card 133), WHEN PLAYED: draw a relic. Take it or put it
   * on the bottom of the relic deck.

@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object InitiationRiteCard extends Denizen(DenizenId("73"), "Initiation Rite", Suit.Arcane) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.initiation-rite"),
+    persistent = false, cost = Cost.free,
+    text = "To muster, you **must** place [secret] instead of [favor].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Initiation Rite (card 73, adviser-only, locked): "To muster, you must
   * place [secret] instead of [favor]."

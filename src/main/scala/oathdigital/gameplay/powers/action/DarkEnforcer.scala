@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object DarkEnforcerCard extends Denizen(DenizenId("227"), "Dark Enforcer", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.dark-enforcer"),
+    persistent = false, cost = Cost(favorBurnt = 1),
+    text = "**ACTION:** Discard all [suit-order] and [suit-hearth] " +
+      "cards from your site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Dark Enforcer (card 227), ACTION: burn 1 favor, then discard all Order
   * and Hearth cards from your site.

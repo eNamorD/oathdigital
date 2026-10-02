@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
+
+object ForestPathsCard extends Denizen(DenizenId("43"), "Forest Paths", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.forest-paths"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "Spend no Supply and ignore the powers of sites if you're " +
+      "traveling to a site with a [suit-beast] card.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Forest Paths (card 43), a selected Travel modifier. Cost: 1 favor placed on
   * the card. If the destination holds a beast denizen or edifice, Travel costs

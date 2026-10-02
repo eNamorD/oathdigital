@@ -1,10 +1,18 @@
 package oathdigital.gameplay.powers.title
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
 import oathdigital.model._
+
+object ChaosCultCard extends Denizen(DenizenId("101"), "Chaos Cult", Suit.Discord) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.chaos-cult"),
+    persistent = true, cost = Cost.free,
+    text = "After another player takes the Oathkeeper title, you take " +
+      "[favor] from them.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Chaos Cult (card 101, adviser-only), a rule of a faceup adviser: "After
   * another player takes the Oathkeeper title, you take [favor] from them."

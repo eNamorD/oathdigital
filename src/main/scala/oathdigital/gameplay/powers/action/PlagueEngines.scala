@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object PlagueEnginesCard extends Denizen(DenizenId("65"), "Plague Engines", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.plague-engines"),
+    persistent = false, cost = Cost(secret = 1, secretBurnt = 1),
+    text = "**ACTION:** Each player _(even you)_ places one [favor] per " +
+      "site they rule into the [suit-arcane] bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Plague Engines (card 65), ACTION: place 1 secret on this card and burn
   * 1, then each player, even you, places 1 favor per site they rule into

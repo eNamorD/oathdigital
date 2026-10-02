@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object RainBootsCard extends Denizen(DenizenId("14"), "Rain Boots", Suit.Nomad):
+  val power = PrintedPower(PowerId("denizen.rain-boots"),
+    persistent = false, cost = Cost.free,
+    text = "Ignore all your enemy's rolls of single shields [shield]. " +
+      "At end, discard Rain Boots.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Rain Boots (card 14), an attacker's battle plan: "Ignore all your enemy's
   * rolls of single shields [shield]. At end, discard Rain Boots."

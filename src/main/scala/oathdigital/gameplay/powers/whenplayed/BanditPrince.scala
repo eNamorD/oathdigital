@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
 import oathdigital.model._
+
+object BanditPrinceCard extends Denizen(DenizenId("226"), "Bandit Prince", Suit.Discord) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.bandit-prince"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED,** you may replace all bandits at any sites " +
+      "you choose with your warbands.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Bandit Prince (card 226, adviser-only, locked), WHEN PLAYED: you may
   * replace all bandits at any sites you choose with your warbands.

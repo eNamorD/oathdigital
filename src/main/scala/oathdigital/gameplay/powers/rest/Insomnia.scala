@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
 import oathdigital.model._
+
+object InsomniaCard extends Denizen(DenizenId("97"), "Insomnia", Suit.Discord) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.insomnia"),
+    persistent = false, cost = Cost.free,
+    text = "You can only have two advisers. **REST:** Gain [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Insomnia (card 97, adviser-only, locked): "You can only have two advisers.
   * REST: Gain [secret]."

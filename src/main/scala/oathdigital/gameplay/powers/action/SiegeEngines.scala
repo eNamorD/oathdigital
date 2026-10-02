@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object SiegeEnginesCard extends Denizen(DenizenId("116"), "Siege Engines", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.siege-engines"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Kill two warbands _(even yours)_ at any one " +
+      "site in your region.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Siege Engines (card 116), ACTION: place 1 favor on this card, then kill
   * two warbands, even the player's own, at any one site in the region of the

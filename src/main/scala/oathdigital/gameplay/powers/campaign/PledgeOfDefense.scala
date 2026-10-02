@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object PledgeOfDefenseCard extends Denizen(DenizenId("243"), "Pledge of Defense", Suit.Nomad):
+  val power = PrintedPower(PowerId("denizen.pledge-of-defense"),
+    persistent = false, cost = Cost.free,
+    text = "+X [defense-die] X equals all [suit-nomad] cards you rule. " +
+      "At end, discard this card.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Pledge of Defense (card 243), a defender's battle plan: "+X [defense-die]
   * X equals all [suit-nomad] cards you rule. At end, discard this card."

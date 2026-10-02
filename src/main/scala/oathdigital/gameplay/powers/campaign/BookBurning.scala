@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
 import oathdigital.model._
+
+object BookBurningCard extends Denizen(DenizenId("22"), "Book Burning", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.book-burning"),
+    persistent = false, cost = Cost.free,
+    text = "If you're victorious in a raid, burn all [secret] on the " +
+      "defender's board except their last [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Book Burning (card 22), an attacker's battle plan: "If you're victorious in
   * a raid, burn all [secret] on the defender's board except their last

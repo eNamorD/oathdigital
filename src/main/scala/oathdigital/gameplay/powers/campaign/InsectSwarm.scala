@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object InsectSwarmCard extends Denizen(DenizenId("184"), "Insect Swarm", Suit.Beast) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.insect-swarm"),
+    persistent = true, cost = Cost.free,
+    text = "Your enemy's battle plans each have an added cost of " +
+      "[favor-burnt].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Insect Swarm (card 184), a persistent rule of a faceup adviser: "Your
   * enemy's battle plans each have an added cost of [favor-burnt]."

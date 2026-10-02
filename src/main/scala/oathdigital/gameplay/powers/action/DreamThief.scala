@@ -1,7 +1,14 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object DreamThiefCard extends Denizen(DenizenId("70"), "Dream Thief", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.dream-thief"),
+    persistent = false, cost = Cost(favor = 2),
+    text = "**ACTION:** Swap any two facedown advisers.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Dream Thief (card 70), ACTION: place 2 favor on this card, then swap any
   * two facedown advisers.

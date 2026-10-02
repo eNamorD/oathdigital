@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object DisgracedCaptainCard extends Denizen(DenizenId("20"), "Disgraced Captain", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.disgraced-captain"),
+    persistent = false, cost = Cost(favor = 1, favorBurnt = 1),
+    text = "±4 [attack-die] if the defender rules an [suit-order] card " +
+      "_(even an adviser)_.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Disgraced Captain (card 20), a battle plan for either side: "[favor]
   * [favor-burnt] ±4 [attack-die] if the defender rules an [suit-order] card

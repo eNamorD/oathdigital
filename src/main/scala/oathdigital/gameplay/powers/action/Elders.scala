@@ -1,7 +1,14 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object EldersCard extends Denizen(DenizenId("26"), "Elders", Suit.Nomad):
+  val power = PrintedPower(PowerId("denizen.elders"),
+    persistent = false, cost = Cost(favor = 2),
+    text = "**ACTION:** Gain [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Elders (card 26), ACTION: place 2 favor on this card, then gain 1 secret
   * from the shared bank, which holds an unlimited supply. Its own line

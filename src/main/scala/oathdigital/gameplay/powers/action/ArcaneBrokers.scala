@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object ArcaneBrokersCard extends Denizen(DenizenId("204"), "Arcane Brokers", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.arcane-brokers"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Discard a relic you hold to gain [secret] " +
+      "[secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Arcane Brokers (card 204), ACTION: place 1 favor on this card, then
   * discard a relic you hold, faceup or facedown, to gain 2 secrets.

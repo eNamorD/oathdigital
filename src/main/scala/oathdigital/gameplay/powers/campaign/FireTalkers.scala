@@ -1,9 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object FireTalkersCard extends Denizen(DenizenId("31"), "Fire Talkers", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.fire-talkers"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "±3 [attack-die] if you hold the Darkest Secret.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Fire Talkers (card 31), a battle plan for either side: "[secret] ±3
   * [attack-die] if you hold the Darkest Secret."

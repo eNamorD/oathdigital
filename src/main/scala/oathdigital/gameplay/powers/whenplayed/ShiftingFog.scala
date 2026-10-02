@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
+
+object ShiftingFogCard extends Denizen(DenizenId("214"), "Shifting Fog", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.shifting-fog"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED,** move all favor in each favor bank to the " +
+      "next bank to the right. [suit-nomad] moves to " +
+      "[suit-discord].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Shifting Fog (card 214), WHEN PLAYED: move all favor in each favor bank
   * to the next bank to the right. Nomad's moves to Discord's.

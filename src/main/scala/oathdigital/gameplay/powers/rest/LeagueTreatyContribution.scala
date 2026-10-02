@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
+
+object LeagueTreatyCard extends Denizen(DenizenId("237"), "League Treaty", Suit.Hearth) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.league-treaty"),
+    persistent = true, cost = Cost.free,
+    text = "During the Rest Phase of any player, League Treaty's ruler " +
+      "may move any [favor] from cards in its region to any one " +
+      "favor bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** League Treaty (card 237): before Rest cleanup, the ruler of the treaty's
   * site may send the region's card favor to one bank instead of each card's

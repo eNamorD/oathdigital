@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object GamblingHallCard extends Denizen(DenizenId("93"), "Gambling Hall", Suit.Discord) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.gambling-hall"),
+    persistent = false, cost = Cost(favor = 2),
+    text = "**ACTION:** Roll 4 [defense-die] and take X [favor] equal " +
+      "to the total [shield] result from any one favor bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Gambling Hall (card 93), ACTION: place 2 favor on this card, roll 4
   * defense dice, and when the total X is above zero choose any favor bank

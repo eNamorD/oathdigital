@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object OracleCard extends Denizen(DenizenId("160"), "Oracle", Suit.Nomad) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.oracle"),
+    persistent = false, cost = Cost(secret = 2),
+    text = "**ACTION:** Draw the Vision closest to the top of the world " +
+      "deck. Play or discard it as if you searched.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Oracle (denizen 160), site-only, ACTION: place 2 secrets on this card,
   * then draw the Vision closest to the top of the world deck and play or

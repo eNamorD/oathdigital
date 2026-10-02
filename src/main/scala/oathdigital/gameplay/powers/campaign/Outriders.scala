@@ -1,9 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object OutridersCard extends Denizen(DenizenId("104"), "Outriders", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.outriders"),
+    persistent = false, cost = Cost.free,
+    text = "Ignore all skulls [skull] you roll.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Outriders (card 104), an attacker's battle plan: "Ignore all skulls you roll."
   *

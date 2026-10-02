@@ -1,10 +1,18 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
 import oathdigital.model._
+
+object ForgottenVaultCard extends Denizen(DenizenId("75"), "Forgotten Vault", Suit.Arcane) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.forgotten-vault"),
+    persistent = true, cost = Cost.free,
+    text = "Enemies of Forgotten Vault's ruler **cannot** target relics " +
+      "held by its ruler. If ruled by Empire, all Imperials have " +
+      "this power.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Forgotten Vault (card 75, site-only), a persistent rule: enemies of the
   * Vault's ruler cannot target relics that ruler holds, as the Circlet of

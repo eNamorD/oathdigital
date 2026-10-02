@@ -1,10 +1,16 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts, PowerAnswers, SelectedModifier}
 import oathdigital.model._
+
+object RowdyPubCard extends Denizen(DenizenId("144"), "Rowdy Pub", Suit.Hearth) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.rowdy-pub"),
+    persistent = false, cost = Cost.free,
+    text = "Gain one more warband if mustering from Rowdy Pub.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Rowdy Pub (card 144), a selected Muster modifier: mustering from Rowdy Pub
   * gains one more warband, on top of the bonus for matching advisers.

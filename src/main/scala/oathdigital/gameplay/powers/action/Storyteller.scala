@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.model._
+
+object StorytellerCard extends Denizen(DenizenId("52"), "Storyteller", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.storyteller"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Place [secret] from the shared bank on the " +
+      "Darkest Secret.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Storyteller (card 52), ACTION: place 1 favor on this card, then place 1
   * secret from the shared bank on the Darkest Secret.

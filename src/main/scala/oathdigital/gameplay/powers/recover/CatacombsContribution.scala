@@ -1,11 +1,18 @@
 package oathdigital.gameplay.powers.recover
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
+
+object CatacombsCard extends Denizen(DenizenId("201"), "Catacombs", Suit.Arcane) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.catacombs"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "If this site has an empty relic slot, draw a relic from the " +
+      "relic deck and place it here facedown.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Catacombs (Task 5): a Transform at `RecoverActionEligibility` (ruling C)
   * places a relic facedown here for 1 secret; ruling K keeps permission and

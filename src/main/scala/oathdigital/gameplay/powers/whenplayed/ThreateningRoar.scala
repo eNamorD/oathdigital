@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
+
+object ThreateningRoarCard extends Denizen(DenizenId("179"), "Threatening Roar", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.threatening-roar"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** discard all [suit-nomad] and [suit-beast] " +
+      "cards at sites in your region.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Threatening Roar (card 179), WHEN PLAYED: discard all Nomad and Beast
   * cards at sites in your region.

@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object GreatHerdCard extends Denizen(DenizenId("30"), "Great Herd", Suit.Nomad) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.great-herd"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** you may swap Great Herd with a " +
+      "[suit-nomad] card at any site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Great Herd (card 30, site-only), WHEN PLAYED: you may swap Great Herd
   * with a Nomad card at any site.

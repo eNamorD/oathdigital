@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object GleamingArmorCard extends Denizen(DenizenId("66"), "Gleaming Armor", Suit.Arcane) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.gleaming-armor"),
+    persistent = true, cost = Cost.free,
+    text = "Your enemy's battle plans have an added cost of [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Gleaming Armor (card 66), a persistent rule of a faceup adviser: "Your enemy's
   * battle plans have an added cost of [secret]."

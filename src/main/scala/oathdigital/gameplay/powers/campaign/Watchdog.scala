@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object WatchdogCard extends Denizen(DenizenId("234"), "Watchdog", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.watchdog"),
+    persistent = false, cost = Cost.free,
+    text = "+[defense-die] if any target is in the Cradle.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Watchdog (card 234), a defender's battle plan: "+1 defense die if any target
   * is in the Cradle."

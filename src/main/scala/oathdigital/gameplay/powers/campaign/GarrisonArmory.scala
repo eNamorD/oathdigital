@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds, CampaignSetup}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object GarrisonArmoryCard extends Denizen(DenizenId("255"), "Garrison Armory", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.garrison-armory"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "In a conquest, warbands on targeted sites each add +2 " +
+      "defense _(instead of +1)_.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Garrison Armory (card 255), a defender's battle plan: "[favor] In a
   * conquest, warbands on targeted sites each add +2 defense (instead of

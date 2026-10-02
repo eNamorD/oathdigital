@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object CrackedSageCard extends Denizen(DenizenId("83"), "Cracked Sage", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.cracked-sage"),
+    persistent = false, cost = Cost(secret = 1, favorBurnt = 1),
+    text = "±4 [attack-die] if your enemy has an [suit-arcane] adviser.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Cracked Sage (card 83), a battle plan for either side: "[secret]
   * [favor-burnt] ±4 [attack-die] if your enemy has an [suit-arcane] adviser."

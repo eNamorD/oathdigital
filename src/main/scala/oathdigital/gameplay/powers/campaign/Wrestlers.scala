@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object WrestlersCard extends Denizen(DenizenId("1"), "Wrestlers", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.wrestlers"),
+    persistent = false, cost = Cost.free,
+    text = "+ [defense-die] if you sacrifice one warband in your force.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Wrestlers (card 1), a defender's battle plan: "+1 defense die if you sacrifice
   * one warband in your force."

@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
+
+object ASmallFavorCard extends Denizen(DenizenId("15"), "A Small Favor", Suit.Discord) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.a-small-favor"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** Gain four warbands.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** A Small Favor (card 15), WHEN PLAYED: gain four warbands. The gain is
   * optional, so it is capped by what the warband bank still holds.

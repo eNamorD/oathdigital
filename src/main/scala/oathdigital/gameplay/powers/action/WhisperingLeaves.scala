@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
+
+object WhisperingLeavesCard extends Denizen(DenizenId("211"), "Whispering Leaves", Suit.Beast) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.whispering-leaves"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Choose a player whose pawn is at your site. " +
+      "They **must** place [favor] [favor] on this card.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Whispering Leaves (card 211, adviser-only), ACTION: place 1 secret on this
   * card, then choose a player whose pawn is at your site. They must place 2

@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
+
+object MemoryOfHomeCard extends Denizen(DenizenId("49"), "Memory of Home", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.memory-of-home"),
+    persistent = false, cost = Cost(secret = 1, secretBurnt = 1),
+    text = "**ACTION:** Move all [favor] from any one favor bank to the " +
+      "[suit-hearth] bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Memory of Home (card 49), ACTION: place 1 secret on this card and burn
   * 1, then move all the favor from any one favor bank to the Hearth bank.

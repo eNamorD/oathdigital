@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
+
+object DazzleCard extends Denizen(DenizenId("35"), "Dazzle", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.dazzle"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** discard all [suit-hearth] and [suit-order] " +
+      "cards at sites in your region.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Dazzle (card 35), WHEN PLAYED: discard all Hearth and Order cards at
   * sites in your region.

@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object RivalKhanCard extends Denizen(DenizenId("156"), "Rival Khan", Suit.Nomad):
+  val power = PrintedPower(PowerId("denizen.rival-khan"),
+    persistent = false, cost = Cost.free,
+    text = "±4 [attack-die] if your enemy has a [suit-nomad] adviser. " +
+      "At end, discard Rival Khan.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Rival Khan (card 156), a battle plan for either side: "±4 [attack-die] if
   * your enemy has a [suit-nomad] adviser. At end, discard Rival Khan."

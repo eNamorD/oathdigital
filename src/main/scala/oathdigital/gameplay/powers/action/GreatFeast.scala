@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
 import oathdigital.model._
+
+object GreatFeastCard extends Denizen(DenizenId("257"), "Great Feast", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.great-feast"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Discard a [suit-beast] card at your site to " +
+      "gain 3 Supply.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Great Feast (card 257), ACTION: place 1 favor on this card, then discard
   * a Beast card at your site to gain 3 Supply.

@@ -1,7 +1,14 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object RelicBreakerCard extends Denizen(DenizenId("139"), "Relic Breaker", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.relic-breaker"),
+    persistent = false, cost = Cost.free,
+    text = "**ACTION:** Bury a relic you hold to gain [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Relic Breaker (card 139), ACTION: bury a relic you hold, faceup or
   * facedown, to gain 1 secret.

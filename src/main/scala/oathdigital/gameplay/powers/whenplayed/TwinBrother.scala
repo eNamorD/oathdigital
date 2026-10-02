@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object TwinBrotherCard extends Denizen(DenizenId("170"), "Twin Brother", Suit.Nomad) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.twin-brother"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** you may swap this card with a faceup " +
+      "[suit-nomad] adviser of another player.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Twin Brother (card 170, adviser-only), WHEN PLAYED: you may swap this
   * card with a faceup nomad adviser of another player.

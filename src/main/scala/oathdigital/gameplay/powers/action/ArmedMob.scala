@@ -1,11 +1,18 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.{BannerRules, CardPlay}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts,
   PowerAnswers}
 import oathdigital.model._
+
+object ArmedMobCard extends Denizen(DenizenId("53"), "Armed Mob", Suit.Hearth) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.armed-mob"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Discard a faceup adviser from a player who " +
+      "holds the Darkest Secret but not the People's Favor.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Armed Mob (card 53, site-only), ACTION: place 1 favor on this card, then
   * discard a faceup adviser from a player who holds the Darkest Secret but

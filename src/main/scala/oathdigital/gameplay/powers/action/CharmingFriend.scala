@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object CharmingFriendCard extends Denizen(DenizenId("131"), "Charming Friend", Suit.Hearth) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.charming-friend"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Take [favor] from a player whose pawn is at " +
+      "your site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Charming Friend (card 131, adviser-only), ACTION: place 1 secret on this
   * card, then take 1 favor from a player whose pawn is at the player's site.

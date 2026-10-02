@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.cardplay.FavorBankChoice
 import oathdigital.model._
+
+object SpiritSnareCard extends Denizen(DenizenId("33"), "Spirit Snare", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.spirit-snare"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Take [favor] from any one favor bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Spirit Snare (card 33), ACTION: place 1 secret on this card, then take 1
   * favor from a favor bank the player chooses. One stocked bank is taken

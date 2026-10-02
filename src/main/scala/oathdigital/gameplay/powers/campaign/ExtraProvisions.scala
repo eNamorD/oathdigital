@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object ExtraProvisionsCard extends Denizen(DenizenId("48"), "Extra Provisions", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.extra-provisions"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "+ [defense-die]")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Extra Provisions (card 48), a defender's battle plan: "[favor] +
   * [defense-die]".

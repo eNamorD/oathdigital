@@ -93,3 +93,12 @@ class CardCatalogSuite extends munit.FunSuite:
       .filter(id => cardPrefixes.exists(id.value.startsWith))
       .filterNot(gameRules)
     assertEquals(registered.filterNot(printed).distinct, Vector.empty)
+
+  test("a denizen leaves the holding files once one of its powers is " +
+      "registered"):
+    val registered = (WalkerPowerCatalog.default(catalog).powers.map(_.id) ++
+      PhasePowerCatalog.default(catalog).powers.map(_.id)).toSet
+    val misplaced = catalog.denizens.filter(card =>
+      (card.getClass.getPackageName == "oathdigital.catalog.holding") ==
+        card.powers.exists(power => registered(power.id)))
+    assertEquals(misplaced.map(_.name), Vector.empty)

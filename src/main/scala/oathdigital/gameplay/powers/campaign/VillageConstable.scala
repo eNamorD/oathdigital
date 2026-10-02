@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object VillageConstableCard extends Denizen(DenizenId("132"), "Village Constable", Suit.Hearth) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.village-constable"),
+    persistent = false, cost = Cost.free,
+    text = "±2 [attack-die] unless your enemy has the People's Favor.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Village Constable (card 132), a battle plan for either side: "±2
   * [attack-die] unless your enemy has the People's Favor."

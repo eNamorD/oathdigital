@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
+
+object BloodPactCard extends Denizen(DenizenId("62"), "Blood Pact", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.blood-pact"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Sacrifice an even number of warbands on your " +
+      "board. For every two you sacrifice, gain [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Blood Pact (card 62), ACTION: place 1 secret on this card, then sacrifice
   * an even number of warbands on your board, gaining 1 secret for every two.

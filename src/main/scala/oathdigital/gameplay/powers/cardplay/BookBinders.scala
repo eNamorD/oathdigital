@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
 import oathdigital.model._
+
+object BookBindersCard extends Denizen(DenizenId("140"), "Book Binders", Suit.Hearth) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.book-binders"),
+    persistent = true, cost = Cost.free,
+    text = "After another player plays a Vision faceup, you gain " +
+      "[favor] [favor] from any one favor bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Book Binders (card 140), a persistent rule of a faceup adviser: "After
   * another player plays a Vision faceup, you gain [favor] [favor] from any one

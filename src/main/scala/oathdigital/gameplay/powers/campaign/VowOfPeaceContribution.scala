@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
+
+object VowOfPeaceCard extends Denizen(DenizenId("145"), "Vow of Peace", Suit.Hearth) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.vow-of-peace"),
+    persistent = true, cost = Cost.free,
+    text = "You **cannot** campaign. Attackers **cannot** sacrifice " +
+      "warbands to increase their attack against you.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Vow of Peace: "You cannot campaign. Attackers cannot sacrifice warbands to
   * increase their attack against you." A faceup copy held as an adviser does

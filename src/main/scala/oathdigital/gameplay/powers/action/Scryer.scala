@@ -1,6 +1,13 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.model._
+
+object ScryerCard extends Denizen(DenizenId("19"), "Scryer", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.scryer"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Peek at any one discard pile.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Scryer (denizen 19), ACTION: place 1 secret on this card, then peek at
   * any one discard pile.

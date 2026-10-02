@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object TributeSpoilsCard extends Denizen(DenizenId("239"), "Tribute Spoils", Suit.Nomad):
+  val power = PrintedPower(PowerId("denizen.tribute-spoils"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "If you're victorious in a conquest, take [favor] for each " +
+      "card at targeted sites from the matching favor bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Tribute Spoils (card 239), a battle plan for either side: "[favor] If you're
   * victorious in a conquest, take [favor] for each card at targeted sites from

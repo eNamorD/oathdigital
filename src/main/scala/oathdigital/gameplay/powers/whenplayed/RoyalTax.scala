@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object RoyalTaxCard extends Denizen(DenizenId("117"), "Royal Tax", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.royal-tax"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:**: take [favor] [favor] from each player " +
+      "whose pawn is at a site you rule in your pawn's region.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Royal Tax (card 117), WHEN PLAYED: take 2 favor from each player whose
   * pawn is at a site you rule in your pawn's region.

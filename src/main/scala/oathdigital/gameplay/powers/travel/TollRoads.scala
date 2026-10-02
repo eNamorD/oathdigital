@@ -1,10 +1,18 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
 import oathdigital.model._
+
+object TollRoadsCard extends Denizen(DenizenId("118"), "Toll Roads", Suit.Order) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.toll-roads"),
+    persistent = true, cost = Cost.free,
+    text = "Enemies **cannot** travel to sites ruled by Toll Roads' " +
+      "ruler unless they give [favor] to its ruler. _(Give it to " +
+      "Chancellor if Empire, burn it if bandits.)_")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Toll Roads (card 118), a persistent rule of a faceup site card: enemies
   * cannot travel to a site ruled by Toll Roads' ruler unless they give 1 favor

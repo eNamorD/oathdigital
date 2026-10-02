@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object SpoiledSuppliesCard extends Denizen(DenizenId("228"), "Spoiled Supplies", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.spoiled-supplies"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Enemies with a pawn at your site each lose 1 " +
+      "Supply.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Spoiled Supplies (card 228), ACTION: place 1 favor on this card, then
   * every enemy whose pawn is at the player's site loses 1 Supply. Every game

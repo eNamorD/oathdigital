@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts,
   PowerAnswers}
 import oathdigital.model._
+
+object SecondChanceCard extends Denizen(DenizenId("181"), "Second Chance", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.second-chance"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Kill one warband on the board of a player who " +
+      "has an [suit-order] or [suit-discord] adviser to gain one " +
+      "warband.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Second Chance (card 181), ACTION: place 1 secret on this card, then kill
   * one warband on the board of a player who has an Order or Discord adviser,

@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object StormCallerCard extends Denizen(DenizenId("167"), "Storm Caller", Suit.Nomad):
+  val power = PrintedPower(PowerId("denizen.storm-caller"),
+    persistent = false, cost = Cost.free,
+    text = "+2 [defense-die] At end, discard Storm Caller.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Storm Caller (card 167), a defender's battle plan: "+2 [defense-die] At
   * end, discard Storm Caller."

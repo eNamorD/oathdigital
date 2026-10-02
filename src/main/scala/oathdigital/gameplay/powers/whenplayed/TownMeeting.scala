@@ -1,10 +1,18 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{NoteSupport, RuledCards}
 import oathdigital.gameplay.powers.action.FavorSplit
 import oathdigital.model._
+
+object TownMeetingCard extends Denizen(DenizenId("236"), "Town Meeting", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.town-meeting"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED,** gain [favor] from any favor bank for each " +
+      "[suit-hearth] card you rule. _This includes your advisers, " +
+      "even Town Meeting._")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Town Meeting (card 236), WHEN PLAYED: gain favor from any favor bank for
   * each Hearth card you rule. This includes your advisers, even Town

@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
 import oathdigital.model._
+
+object GraspingVinesCard extends Denizen(DenizenId("178"), "Grasping Vines", Suit.Beast) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.grasping-vines"),
+    persistent = true, cost = Cost.free,
+    text = "Enemies traveling from any site ruled by Grasping Vines' " +
+      "ruler **must** kill one warband on their board if able.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Grasping Vines (card 178), a persistent rule of a faceup site card: an enemy
   * traveling from a site ruled by the Vines' ruler kills one warband on their

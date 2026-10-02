@@ -1,11 +1,19 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, RuledCards}
 import oathdigital.model._
+
+object LostTongueCard extends Denizen(DenizenId("157"), "Lost Tongue", Suit.Nomad) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.lost-tongue"),
+    persistent = true, cost = Cost.free,
+    text = "Other players **cannot** target or take your relics or " +
+      "banners in any way unless they rule a [suit-nomad] card.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Lost Tongue (card 157, adviser-only), a persistent rule of a faceup
   * adviser: "Other players cannot target or take your relics or banners in

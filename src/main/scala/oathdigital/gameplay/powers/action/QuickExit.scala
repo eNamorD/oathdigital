@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object QuickExitCard extends Denizen(DenizenId("58"), "Quick Exit", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.quick-exit"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Place an enemy pawn at your site onto any other " +
+      "site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Quick Exit (card 58), ACTION: place 1 secret on this card, then place an
   * enemy pawn at your site onto any other site.

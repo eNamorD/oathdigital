@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
 import oathdigital.model._
+
+object FieldPromotionCard extends Denizen(DenizenId("106"), "Field Promotion", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.field-promotion"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "If you're victorious, gain three warbands.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Field Promotion (card 106), a battle plan for either side: "[favor] If
   * you're victorious, gain three warbands."

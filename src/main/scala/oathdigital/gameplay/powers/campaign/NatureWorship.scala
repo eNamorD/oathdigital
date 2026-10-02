@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object NatureWorshipCard extends Denizen(DenizenId("175"), "Nature Worship", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.nature-worship"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "± [attack-die] per [suit-beast] adviser you have.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Nature Worship (card 175), a battle plan for either side: "[secret] ±
   * [attack-die] per [suit-beast] adviser you have."

@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
+
+object TavernSongsCard extends Denizen(DenizenId("54"), "Tavern Songs", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.tavern-songs"),
+    persistent = false, cost = Cost.free,
+    text = "**ACTION:** Peek at the top three cards of your region's " +
+      "discard pile.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Tavern Songs (card 54), ACTION: peek at the top three cards of your
   * region's discard pile.

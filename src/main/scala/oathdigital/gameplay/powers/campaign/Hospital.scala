@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts}
 import oathdigital.model._
+
+object HospitalCard extends Denizen(DenizenId("149"), "Hospital", Suit.Hearth) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.hospital"),
+    persistent = false, cost = Cost.free,
+    text = "If any of your warbands would be killed, place them on " +
+      "Hospital's site instead if you still rule it.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Hospital (card 149, site-only), a battle plan for either side: "If any of
   * your warbands would be killed, place them on Hospital's site instead if

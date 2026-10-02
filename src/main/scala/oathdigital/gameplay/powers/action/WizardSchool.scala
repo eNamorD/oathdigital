@@ -1,7 +1,14 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object WizardSchoolCard extends Denizen(DenizenId("34"), "Wizard School", Suit.Arcane) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.wizard-school"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Gain [secret], then end your Act Phase.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Wizard School (card 34, site-only), ACTION: place 1 favor on this card,
   * gain 1 secret, then end the Act phase with `EnterPhase(Rest)`, as Murky

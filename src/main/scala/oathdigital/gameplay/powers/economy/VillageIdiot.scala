@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, PowerAnswers, SelectedModifier}
 import oathdigital.model._
+
+object VillageIdiotCard extends Denizen(DenizenId("231"), "Village Idiot", Suit.Hearth) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.village-idiot"),
+    persistent = false, cost = Cost.free,
+    text = "After mustering with this card, gain [favor] from the " +
+      "[suit-hearth] bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Village Idiot (card 231, site-only), a selected Muster modifier with no
   * cost: "After mustering with this card, gain [favor] from the Hearth bank."

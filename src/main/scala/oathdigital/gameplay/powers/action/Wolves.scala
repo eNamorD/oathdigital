@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
+
+object WolvesCard extends Denizen(DenizenId("39"), "Wolves", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.wolves"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Kill one warband _(even yours)_ on any one " +
+      "board.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Wolves (card 39), ACTION: place 1 secret on this card, then kill one
   * warband on any one player board, the acting player's included. The kill

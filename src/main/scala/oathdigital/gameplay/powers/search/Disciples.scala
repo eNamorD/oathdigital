@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
+
+object DisciplesCard extends Denizen(DenizenId("205"), "Disciples", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.disciples"),
+    persistent = false, cost = Cost.free,
+    text = "If you have the Darkest Secret, spend only 2 Supply if " +
+      "you're searching the world deck.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Disciples (card 205), a selected Search modifier with no cost: "If you
   * have the Darkest Secret, spend only 2 Supply if you're searching the world

@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object MemoryOfNatureCard extends Denizen(DenizenId("191"), "Memory of Nature", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.memory-of-nature"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Move a total of X [favor] from any favor banks " +
+      "to the [suit-beast] bank. X is the number of [suit-beast] " +
+      "cards on the map.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Memory of Nature (card 191), ACTION: place 1 secret on this card, then
   * move a total of X favor from any favor banks to the Beast bank, where X

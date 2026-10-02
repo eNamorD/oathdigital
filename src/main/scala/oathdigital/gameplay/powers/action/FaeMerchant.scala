@@ -1,7 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, RelicDraws}
 import oathdigital.model._
+
+object FaeMerchantCard extends Denizen(DenizenId("180"), "Fae Merchant", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.fae-merchant"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Draw a relic and take it. Put any relic you " +
+      "hold except the Grand Scepter on the bottom of the relic " +
+      "deck.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Fae Merchant (card 180), ACTION: place 1 secret on this card, draw a relic
   * and take it facedown, then put exactly one relic you hold, except the

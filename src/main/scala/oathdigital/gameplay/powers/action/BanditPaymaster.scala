@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
+
+object BanditPaymasterCard extends Denizen(DenizenId("219"), "Bandit Paymaster", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.bandit-paymaster"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Remove a bandit from your site except the last " +
+      "to gain 3 warbands.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Bandit Paymaster (card 219), ACTION: place 1 favor on this card, then
   * remove a bandit from your site, except the last, to gain 3 warbands.

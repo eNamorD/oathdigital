@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object TamingCharmCard extends Denizen(DenizenId("37"), "Taming Charm", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.taming-charm"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Discard a [suit-beast] or [suit-nomad] card at " +
+      "your site to gain [favor] [favor] from the matching favor " +
+      "bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Taming Charm (card 37), ACTION: place 1 secret on this card, then
   * discard a Beast or Nomad card at your site to gain 2 favor from the

@@ -1,10 +1,18 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
+
+object KeyToTheCityCard extends Denizen(DenizenId("18"), "Key to the City", Suit.Discord) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.key-to-the-city"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** if the ruler's pawn is not at this site, " +
+      "kill any warbands at this site, then gain a warband and " +
+      "place it here.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Key to the City (card 18, site-only), WHEN PLAYED: if the ruler's pawn
   * is not at this site, kill any warbands at this site, then gain a warband

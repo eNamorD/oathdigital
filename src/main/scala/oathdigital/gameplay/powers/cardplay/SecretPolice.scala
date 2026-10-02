@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.{PowerAccess, SiteRulers}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
+
+object SecretPoliceCard extends Denizen(DenizenId("113"), "Secret Police", Suit.Order) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.secret-police"),
+    persistent = true, cost = Cost.free,
+    text = "Enemies **cannot** play Visions faceup while their pawn is " +
+      "at any site ruled by Secret Police's ruler.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Secret Police (card 113), a persistent rule of a site card: "Enemies cannot
   * play Visions faceup while their pawn is at any site ruled by Secret

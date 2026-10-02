@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
+
+object RiotsCard extends Denizen(DenizenId("91"), "Riots", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.riots"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED,** discard all denizens at sites in this " +
+      "region. Burn the same number of [favor] from the People's " +
+      "Favor.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Riots (card 91), WHEN PLAYED: discard all denizens at sites in this
   * region. Burn the same number of favor from the People's Favor.

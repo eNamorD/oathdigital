@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object AlchemistCard extends Denizen(DenizenId("9"), "Alchemist", Suit.Arcane) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.alchemist"),
+    persistent = false, cost = Cost(secret = 1, secretBurnt = 1),
+    text = "**ACTION:** Gain [favor] [favor] [favor] [favor] from any " +
+      "favor bank or banks.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Alchemist (card 9), ACTION: place 1 secret on this card and burn 1, then
   * gain 4 favor from any bank or banks.

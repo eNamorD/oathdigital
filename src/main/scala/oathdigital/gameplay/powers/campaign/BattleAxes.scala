@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object BattleAxesCard extends Denizen(DenizenId("256"), "Battle Axes", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.battle-axes"),
+    persistent = false, cost = Cost.free,
+    text = "±2 [attack-die] if your enemy rules a [suit-beast] card.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Battle Axes (card 256), a battle plan for either side: "±2 [attack-die] if
   * your enemy rules a [suit-beast] card."

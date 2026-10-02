@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.wake
 
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object QuartermasterCard extends Denizen(DenizenId("258"), "Quartermaster", Suit.Order) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.quartermaster"),
+    persistent = false, cost = Cost.free,
+    text = "**WAKE:** If you rule this card, gain 1 Supply.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Quartermaster (card 258, site-only), WAKE: "If you rule this card, gain 1
   * Supply."

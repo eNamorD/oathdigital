@@ -1,7 +1,14 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object EnchantressCard extends Denizen(DenizenId("96"), "Enchantress", Suit.Discord) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.enchantress"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Swap this card with any faceup adviser.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Enchantress (card 96, adviser-only), ACTION: place 1 secret on this card,
   * then swap it with any faceup adviser.

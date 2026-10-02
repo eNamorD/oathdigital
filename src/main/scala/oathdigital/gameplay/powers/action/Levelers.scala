@@ -1,7 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
+
+object LevelersCard extends Denizen(DenizenId("135"), "Levelers", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.levelers"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Move [favor] [favor] from the favor bank with " +
+      "the most [favor] to that with the least [favor]. You decide " +
+      "ties.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Levelers (card 135), ACTION: place 1 secret on this card, then move 2
   * favor from the favor bank with the most favor to the bank with the

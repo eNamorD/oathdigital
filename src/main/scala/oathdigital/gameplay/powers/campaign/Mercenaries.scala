@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object MercenariesCard extends Denizen(DenizenId("12"), "Mercenaries", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.mercenaries"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "±3 [attack-die] If you're defeated while using this power, " +
+      "discard Mercenaries.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Mercenaries (card 12), a battle plan for either side: "[favor] +-3 attack
   * dice. If you are defeated while using this power, discard Mercenaries."

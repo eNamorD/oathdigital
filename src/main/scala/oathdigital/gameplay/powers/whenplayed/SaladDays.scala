@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
+
+object SaladDaysCard extends Denizen(DenizenId("147"), "Salad Days", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.salad-days"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** gain [favor] [favor] [favor]- one each " +
+      "from three different favor banks.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Salad Days (card 147), WHEN PLAYED: gain 3 favor, one each from three
   * different favor banks.

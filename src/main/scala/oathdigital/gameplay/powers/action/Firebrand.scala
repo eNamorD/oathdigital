@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object FirebrandCard extends Denizen(DenizenId("233"), "Firebrand", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.firebrand"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Add [favor] to the People's Favor from any " +
+      "favor bank, or burn [favor-burnt] from the People's Favor.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Firebrand (card 233), ACTION: place 1 secret on this card, then add 1
   * favor to the People's Favor from any favor bank, or burn 1 favor from

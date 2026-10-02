@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object HonorGuardCard extends Denizen(DenizenId("251"), "Honor Guard", Suit.Order) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.honor-guard"),
+    persistent = false, cost = Cost(favor = 2, favorBurnt = 1),
+    text = "**ACTION:** Choose a player with no [suit-order] advisers " +
+      "whose pawn is at your site. Bury a faceup adviser they have.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Honor Guard (card 251, adviser-only), ACTION: place 2 favor on this card
   * and burn 1, then choose a player with no Order advisers whose pawn is at

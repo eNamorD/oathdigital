@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
 import oathdigital.model._
+
+object GossipCard extends Denizen(DenizenId("99"), "Gossip", Suit.Discord) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.gossip"),
+    persistent = true, cost = Cost.free,
+    text = "After an enemy plays an adviser facedown _(including a " +
+      "Vision)_, gain [favor] from the [suit-discord] bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Gossip (card 99), a persistent rule of a faceup adviser: when any other
   * player places an adviser facedown, a denizen or a Vision, the holder gains 1

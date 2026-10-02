@@ -1,7 +1,15 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object BogCard extends Denizen(DenizenId("210"), "Bog", Suit.Beast) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.bog"),
+    persistent = false, cost = Cost.free,
+    text = "**ACTION:** Discard a relic you hold to gain [favor] " +
+      "[favor] [favor] from the [suit-beast] bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Bog (card 210, site-only), ACTION: discard a relic you hold, faceup or
   * facedown, to gain 3 favor from the Beast bank.

@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object CrackingGroundCard extends Denizen(DenizenId("71"), "Cracking Ground", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.cracking-ground"),
+    persistent = false, cost = Cost.free,
+    text = "± [attack-die] per site targeted.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Cracking Ground (card 71), a battle plan for either side: "± [attack-die]
   * per site targeted."

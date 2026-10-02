@@ -1,9 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.campaign.CampaignBattle
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object EncirclementCard extends Denizen(DenizenId("124"), "Encirclement", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.encirclement"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "±2 [attack-die] if your force is larger than your enemy's.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Encirclement (card 124), a battle plan for either side: "[favor] ±2
   * [attack-die] if your force is larger than your enemy's."

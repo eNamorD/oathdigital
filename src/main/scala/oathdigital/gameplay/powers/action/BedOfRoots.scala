@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts,
   PowerAnswers}
 import oathdigital.model._
+
+object BedOfRootsCard extends Denizen(DenizenId("212"), "Bed of Roots", Suit.Beast) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.bed-of-roots"),
+    persistent = false, cost = Cost(favorBurnt = 3),
+    text = "**ACTION:** Bury a faceup adviser you have _(even if " +
+      "locked)_ to gain [secret] [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Bed of Roots (card 212, site-only), ACTION: burn 3 favor, then bury a
   * faceup adviser you have, even if locked, to gain 2 secrets.

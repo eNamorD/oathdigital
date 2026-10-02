@@ -1,9 +1,15 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
+
+object AuguryCard extends Denizen(DenizenId("56"), "Augury", Suit.Arcane):
+  val power = PrintedPower(PowerId("denizen.augury"),
+    persistent = false, cost = Cost.free,
+    text = "Draw one more card. _(Stop after a Vision as normal.)_")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Augury (card 56), a selected Search modifier: a Search from the world deck
   * or a regional discard draws one more card. The draw still stops after a

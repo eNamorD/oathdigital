@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
+
+object TentsCard extends Denizen(DenizenId("29"), "Tents", Suit.Nomad):
+  val power = PrintedPower(PowerId("denizen.tents"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "Spend no Supply if you're traveling to a site in your " +
+      "region.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Tents (card 29), a selected Travel modifier. Cost: 1 favor placed on the
   * card. If the destination is in the region of the pawn's current site, Travel

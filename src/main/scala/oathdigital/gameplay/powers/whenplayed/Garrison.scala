@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
+
+object GarrisonCard extends Denizen(DenizenId("7"), "Garrison", Suit.Order) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.garrison"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** gain one warband per site you rule, and " +
+      "put one warband from your board on each site you rule.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Garrison (card 7), WHEN PLAYED: gain one warband per site you rule, and
   * put one warband from your board on each site you rule.

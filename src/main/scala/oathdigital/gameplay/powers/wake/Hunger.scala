@@ -1,10 +1,19 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object HungerCard extends Denizen(DenizenId("216"), "Hunger", Suit.Beast) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.hunger"),
+    persistent = false, cost = Cost.free,
+    text = "**WAKE:** You **must** bury an adviser held by a player " +
+      "whose pawn is at your site _(even yourself)_, but cannot " +
+      "bury this card.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Hunger (card 216, adviser-only, locked), WAKE: you must bury an adviser
   * held by a player whose pawn is at your site, even yourself, but cannot

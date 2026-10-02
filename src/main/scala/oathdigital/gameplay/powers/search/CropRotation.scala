@@ -1,11 +1,17 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.PlacementRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
+
+object CropRotationCard extends Denizen(DenizenId("128"), "Crop Rotation", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.crop-rotation"),
+    persistent = false, cost = Cost.free,
+    text = "If playing to a site, you may discard a denizen there first.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Crop Rotation (card 128), a selected Search modifier with no cost: "If
   * playing to a site, you may discard a denizen there first."

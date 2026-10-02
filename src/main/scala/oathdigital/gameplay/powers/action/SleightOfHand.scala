@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object SleightOfHandCard extends Denizen(DenizenId("17"), "Sleight of Hand", Suit.Discord) with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.sleight-of-hand"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Take [secret] from a player whose pawn is at " +
+      "your site. You cannot take their last [secret].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Sleight of Hand (card 17), ACTION: place 1 favor on this card, then take
   * one secret from a player whose pawn is at your site and who holds two or

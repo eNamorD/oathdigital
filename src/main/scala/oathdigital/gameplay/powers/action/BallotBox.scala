@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts}
 import oathdigital.model._
+
+object BallotBoxCard extends Denizen(DenizenId("141"), "Ballot Box", Suit.Hearth) with SiteOnly:
+  val power = PrintedPower(PowerId("denizen.ballot-box"),
+    persistent = false, cost = Cost(favor = 2),
+    text = "**ACTION:** If you have an adviser matching a card at this " +
+      "site, replace all warbands on this site with your warbands. " +
+      "Remove any that can't be replaced.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Ballot Box (card 141, site-only), ACTION: place 2 favor on this card. If
   * you have an adviser matching a card at this site, replace all warbands on

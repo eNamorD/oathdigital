@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{PowerAnswers, WarbandArrangement}
 import oathdigital.model._
+
+object MessengerCard extends Denizen(DenizenId("105"), "Messenger", Suit.Order):
+  val power = PrintedPower(PowerId("denizen.messenger"),
+    persistent = false, cost = Cost(favor = 1),
+    text = "**ACTION:** Move any warbands to and from your board and " +
+      "any sites you rule _(except the last warband from a site)_.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Messenger (card 105), ACTION: place 1 favor on this card, then move any
   * warbands to and from your board and any sites you rule, except the last

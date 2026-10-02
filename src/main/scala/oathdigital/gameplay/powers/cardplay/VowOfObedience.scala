@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
+
+object VowOfObedienceCard extends Denizen(DenizenId("121"), "Vow of Obedience", Suit.Order) with Locked with AdviserOnly:
+  val power = PrintedPower(PowerId("denizen.vow-of-obedience"),
+    persistent = false, cost = Cost.free,
+    text = "You **cannot** play Visions faceup. **REST:** Take [favor] " +
+      "from any one favor bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Vow of Obedience (card 121): "You cannot play Visions faceup. REST: Take
   * [favor] from any one favor bank."

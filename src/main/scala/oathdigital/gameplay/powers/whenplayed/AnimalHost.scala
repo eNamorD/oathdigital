@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
+
+object AnimalHostCard extends Denizen(DenizenId("190"), "Animal Host", Suit.Beast):
+  val power = PrintedPower(PowerId("denizen.animal-host"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** gain warbands equal to the total number of " +
+      "[suit-beast] cards _(including Animal Host)_ at any sites " +
+      "_(regardless of rule)_.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Animal Host (card 190), WHEN PLAYED: gain warbands equal to the total
   * number of Beast cards (including Animal Host) at any sites (regardless of

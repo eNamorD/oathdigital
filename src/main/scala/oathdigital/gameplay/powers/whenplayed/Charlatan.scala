@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
+
+object CharlatanCard extends Denizen(DenizenId("79"), "Charlatan", Suit.Discord):
+  val power = PrintedPower(PowerId("denizen.charlatan"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** burn all [secret] but one from the Darkest " +
+      "Secret.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Charlatan (card 79), WHEN PLAYED: burn all secrets but one from the
   * Darkest Secret.

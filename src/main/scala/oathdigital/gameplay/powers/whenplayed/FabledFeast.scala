@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers, RuledCards}
 import oathdigital.model._
+
+object FabledFeastCard extends Denizen(DenizenId("136"), "Fabled Feast", Suit.Hearth):
+  val power = PrintedPower(PowerId("denizen.fabled-feast"),
+    persistent = false, cost = Cost.free,
+    text = "**WHEN PLAYED:** take X [favor] equal to the number of " +
+      "[suit-hearth] cards you rule _(including Fabled Feast)_ " +
+      "from any one favor bank.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Fabled Feast (card 136), WHEN PLAYED: take X favor equal to the number of
   * Hearth cards you rule (including Fabled Feast) from any one favor bank.
