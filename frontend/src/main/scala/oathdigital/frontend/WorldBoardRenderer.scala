@@ -159,7 +159,8 @@ private[frontend] object WorldBoardRenderer:
      section.setAttribute("aria-label", name)
      section.appendChild(text("h3", "region-label", name))
      section.appendChild(pileDisplay("Discard", region.discardCount,
-       region.discardTopCardKind))
+       region.discardTopCardKind,
+       Some(s"$name discard pile" -> region.discardCards)))
      val sites = element("div", "sites")
      region.sites.foreach { site =>
        val siteTarget = BoardTargetRef.Site(site.siteId)

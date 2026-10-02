@@ -141,12 +141,25 @@ private[frontend] object ServerUiSupport:
     node.setAttribute("aria-label", s"Empty $cardKind slot")
     node
 
+  /** A deck or a pile: its label, one back for the top card, and the count.
+    * With `opens`, a title and the pile's cards top first, the pile is a
+    * button that lists them in the card overlay, the way a log line's card
+    * list opens (`CardInspection.openCards`). Decks pass nothing: a deck's
+    * order is nobody's to see.
+    */
   private[frontend] def pileDisplay(
       label: String,
       count: Int,
-      topCardKind: Option[String]
+      topCardKind: Option[String],
+      opens: Option[(String, Vector[CardDetails])] = None
   ): dom.Element =
-    val pile = element("div", "pile-display")
+    val pile = opens.fold(element("div", "pile-display")) { case (title, cards) =>
+      val node = button("", "pile-display pile-open")
+      node.setAttribute("aria-label", s"$title, $count cards")
+      node.disabled = count == 0
+      node.onclick = _ => CardInspection.openCards(s"$title ($count)", cards, node)
+      node
+    }
     pile.appendChild(text("span", "pile-label", s"$label:"))
     val css = pileCardClasses(count)
     val symbol = pileSymbol(count, topCardKind)
