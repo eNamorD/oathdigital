@@ -28,8 +28,9 @@ class RiverSitePowerSuite extends munit.FunSuite:
   private def placedAt(ready: ReadyGame, at: SiteId): RiverPlacement =
     val asked = accepted(use(ready))
     assert(awaits(asked, RiverSitePower.siteDecisionId))
-    RiverPlacement(asked, accepted(answer(asked, actor,
-      RiverSitePower.siteDecisionId, pick(DecisionOptionRef.Site(at)))))
+    val siteChoice = pick(DecisionOptionRef.Site(at))
+    RiverPlacement(asked, accepted(
+      answer(asked, actor, RiverSitePower.siteDecisionId, siteChoice)))
 
   test("every River is a registered phase power"):
     assertEquals(PhasePowerCatalog.default(catalog).powers.collect {

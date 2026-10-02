@@ -38,8 +38,8 @@ class RoyalStablesSuite extends munit.FunSuite:
   test("a Travel never costs less than 1 Supply"):
     assertEquals(candidates(stablesAtHome).get(coast), Some(1))
     assertEquals(candidates(stablesAtHome, modifiers).get(coast), Some(1))
-    val result = Outcomes.ready(accepted(travel(stablesAtHome, coast,
-      modifiers)).state)
+    val done = accepted(travel(stablesAtHome, coast, modifiers))
+    val result = Outcomes.ready(done.state)
     assertEquals(Look(result).supply(actor), 7 - 1)
 
   test("terrain applies first: a mountain in the region costs 1 + 1 - 1"):

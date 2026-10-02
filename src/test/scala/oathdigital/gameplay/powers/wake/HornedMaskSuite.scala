@@ -181,7 +181,8 @@ class HornedMaskSuite extends munit.FunSuite:
     assertEquals(denizensHere(ready), Vector.empty)
     val t = accepted(use(ready, power, source))
     parked.assertNotParked(t.state)
-    assertEquals(Look(after(t)).advisers(actor), Look(ready).advisers(actor))
+    assertEquals(Look(after(t)).player(actor).advisers,
+      Look(ready).player(actor).advisers)
 
   test("only the acting player answers, with an offered denizen"):
     val t = accepted(use(innAtHome, power, source))

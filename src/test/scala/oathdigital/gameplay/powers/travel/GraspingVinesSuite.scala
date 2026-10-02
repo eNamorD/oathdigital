@@ -19,9 +19,9 @@ class GraspingVinesSuite extends munit.FunSuite:
   /** The Vines stand at the actor's own site, which `ruler` rules with one
     * warband, or one bandit when `ruler` is None. */
   private def vinesAtHome(ruler: Option[PlayerId]): ReadyGame =
-    val vinesThere = Table.from(board()).denizen(vines, at = cradlePlains)
-    ruler.fold(vinesThere.bandits(cradlePlains, 1))(
-      vinesThere.warbandsAt(cradlePlains, _, 1)).unchecked
+    val vinesTable = Table.from(board()).denizen(vines, at = cradlePlains)
+    ruler.fold(vinesTable.bandits(cradlePlains, 1))(
+      vinesTable.warbandsAt(cradlePlains, _, 1)).unchecked
 
   test("an enemy traveling from a site the ruler rules kills a warband of " +
       "their own"):
@@ -35,19 +35,19 @@ class GraspingVinesSuite extends munit.FunSuite:
 
   test("bandits rule the site: the traveller is still an enemy"):
     val ready = vinesAtHome(None)
-    assertEquals(warbands(Outcomes.ready(accepted(travel(ready, coast))
-      .state)), warbands(ready) - 1)
+    val result = Outcomes.ready(accepted(travel(ready, coast)).state)
+    assertEquals(warbands(result), warbands(ready) - 1)
 
   test("the ruler is exempt"):
     val ready = vinesAtHome(Some(actor))
-    assertEquals(warbands(Outcomes.ready(accepted(travel(ready, coast))
-      .state)), warbands(ready))
+    val result = Outcomes.ready(accepted(travel(ready, coast)).state)
+    assertEquals(warbands(result), warbands(ready))
 
   test("only the site the traveller leaves counts, not the destination"):
     val ready = Table.from(board()).denizen(vines, at = provincePlains)
       .warbandsAt(provincePlains, rival, 1).unchecked
-    assertEquals(warbands(Outcomes.ready(accepted(travel(ready, coast))
-      .state)), warbands(ready))
+    val result = Outcomes.ready(accepted(travel(ready, coast)).state)
+    assertEquals(warbands(result), warbands(ready))
     // Travelling out of the Vines' site does kill.
     val leaving = Table.from(board(source = provincePlains))
       .denizen(vines, at = provincePlains).warbandsAt(provincePlains, rival, 1)
@@ -67,8 +67,8 @@ class GraspingVinesSuite extends munit.FunSuite:
     val ready = Table.from(board())
       .denizen(vines, at = cradlePlains, facedown = true)
       .warbandsAt(cradlePlains, rival, 1).unchecked
-    assertEquals(warbands(Outcomes.ready(accepted(travel(ready, coast))
-      .state)), warbands(ready))
+    val result = Outcomes.ready(accepted(travel(ready, coast)).state)
+    assertEquals(warbands(result), warbands(ready))
 
   // ---- Lines ----
 

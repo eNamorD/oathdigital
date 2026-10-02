@@ -18,8 +18,8 @@ class ForestPathsSuite extends munit.FunSuite:
   // A Beast denizen and a Beast edifice whose powers these tests do not use.
   private val beast = CatalogNames.denizen("Errand Boy")
   private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
-  private def held = Table.from(board()).adviser(actor, paths).favor(actor, 1)
-    .unchecked
+  private def held = Table.from(board(supply = 7)).adviser(actor, paths)
+    .favor(actor, 1).unchecked
 
   test("a destination with a beast card costs no Supply and ignores the " +
       "terrain of sites"):
@@ -48,6 +48,7 @@ class ForestPathsSuite extends munit.FunSuite:
     val result = Outcomes.ready(
       accepted(travel(ready, provincePlains, modifiers)).state)
     assertEquals(Look(result).player(actor).pawnSite, Some(provincePlains))
+    // 7 Supply, nothing paid.
     assertEquals(Look(result).supply(actor), 7)
 
   test("a ruined beast edifice counts as a beast card"):
@@ -59,8 +60,8 @@ class ForestPathsSuite extends munit.FunSuite:
       "no Supply is saved and no site power is ignored"):
     val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
     assertEquals(candidates(ready, modifiers), candidates(ready))
-    val result = Outcomes.ready(accepted(travel(ready, mountain, modifiers))
-      .state)
+    val done = accepted(travel(ready, mountain, modifiers))
+    val result = Outcomes.ready(done.state)
     // The printed 2 and the Mountain's 1, both still charged.
     assertEquals(Look(result).supply(actor), 7 - 3)
     assertEquals(Look(result).favor(actor), 0)

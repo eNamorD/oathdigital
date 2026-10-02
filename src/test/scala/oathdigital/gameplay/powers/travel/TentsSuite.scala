@@ -29,6 +29,7 @@ class TentsSuite extends munit.FunSuite:
     val done = accepted(travel(ready, coast, modifiers))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
+    // 7 Supply, nothing paid.
     assertEquals(Look(result).supply(actor), 7)
     assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
@@ -36,9 +37,10 @@ class TentsSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("the same power at the pawn's site takes its favor onto the site card"):
-    val ready = Table.from(board()).denizen(tents, at = cradlePlains)
+    val ready = Table.from(board(supply = 7)).denizen(tents, at = cradlePlains)
       .favor(actor, 1).unchecked
     val result = Outcomes.ready(accepted(travel(ready, coast, modifiers)).state)
+    // 7 Supply, nothing paid.
     assertEquals(Look(result).supply(actor), 7)
     assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
 
@@ -47,8 +49,8 @@ class TentsSuite extends munit.FunSuite:
     val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
     assertEquals(candidates(ready, modifiers).get(provincePlains),
       candidates(ready).get(provincePlains))
-    val result = Outcomes.ready(accepted(travel(ready, provincePlains,
-      modifiers)).state)
+    val done = accepted(travel(ready, provincePlains, modifiers))
+    val result = Outcomes.ready(done.state)
     // The printed 2 from the Cradle to the Provinces, still charged.
     assertEquals(Look(result).supply(actor), 7 - 2)
     assertEquals(Look(result).favor(actor), 0)
