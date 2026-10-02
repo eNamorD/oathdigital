@@ -81,7 +81,6 @@ final case class CrystalVial(catalog: ExecutableCatalog)
 
 object CrystalVial:
   val id: PowerId = PowerId("relic.crystal-vial")
-  val price: Cost = Cost(secret = 1, secretBurnt = 1)
   val decisionId: String = "power.crystal-vial.card"
   val buried: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" buried "), NotePart.Arg(1), NotePart.Text(".")))

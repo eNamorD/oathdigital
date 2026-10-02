@@ -5,8 +5,8 @@ import oathdigital.gameplay.powerresolver.PhasePower
 
 /** The phase powers of catalog batch 2's slice 3 and catalog batch 3's slice
   * 3a, registered by [[oathdigital.gameplay.powers.PhasePowerCatalog]]
-  * through this one object, like [[DiceAndRelicDrawPowers]]. Each names its denizen
-  * card, so all are always present.
+  * through this one object, like [[DiceAndRelicDrawPowers]]. Each names its
+  * denizen card, so all are always present.
   */
 object SelfActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
