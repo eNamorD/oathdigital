@@ -148,6 +148,31 @@ Examples:
   outcome: "accepted(service.handle(...))".
 - R2 pass: withAdviser(b, card, FaceUp) reads as a domain phrase. Do not
   report it.
+- Keep, not R3: CardIndexSuite builds a card in two containers with a
+  game.copy chain because the test makes an illegal state on purpose. Rule
+  Keep, problem "the illegal state is the subject". Never write R3 on a row
+  whose planned outcome is Keep.
+- R4, not R2: a suite repeats events.zipWithIndex.map { ... RecordedEvent(...) }
+  and encodeStream(...).toOption.get in 17 places. That is repeated
+  mechanics, so one R4 row with Test "suite" and the planned outcome
+  "roundTripStream(label, events) helper that fails with the WireError".
+  R2 is only for a helper whose name or body a reader cannot follow.
+- R6: val (state, events) = execute() reads a tuple by position. Planned
+  outcome: "execute() returns SetupResult(state, events)".
+- R7 pass: the title "faces accumulate shields then apply every doubler"
+  over assertEquals(score(OneShield, TwoShields, Doubler, Doubler), 12). The
+  title and the named faces give the 12 ((1 + 2) shields, doubled twice), so
+  it is neither R7 nor R8. Report R7 only when a body assertion falls outside
+  its title: "usePower names exactly one power and one source" over a test
+  that decodes a usePower carrying an extra field.
+- R8 pass: ExileSupply.refresh(9, 1) under the titles "refreshes to six" and
+  "caps at seven". The titles give the numbers; the argument order is not a
+  rubric finding.
+- R1 pass: assertEquals(DomainValidation.validate(game.copy(...)), Vector.empty)
+  needs the rest of the sample game to be valid. That is the premise of every
+  validate test, not a board fact. Report R1 for a card, a pawn or a count
+  the outcome reads (a Rest test relying on 3 warbands), never for "the rest
+  is valid".
 
 How to report:
 - One row per finding. When the same pattern repeats in many tests of one
@@ -155,6 +180,8 @@ How to report:
   ("12 tests extract Ready with @unchecked").
 - Write only real findings. A file with none gets no rows.
 - Every Planned outcome is concrete.
+- Every count in Problem (tests, call sites, lines) comes from grep -c or a
+  line count, not an estimate.
 - Write rows to .superpowers/readability/rows/<AREA>.md as a Markdown table
   with exactly these columns:
   | ID | File | Test | Rule | Problem | Planned outcome | Outcome | Commit |
