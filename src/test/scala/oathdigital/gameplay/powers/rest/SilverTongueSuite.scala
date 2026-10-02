@@ -91,9 +91,10 @@ class SilverTongueSuite extends munit.FunSuite:
       DecisionAnswer.ChooseOneAnswer(faceupButton), actor)
     val replacing = as[WalkerOutcome.Parked](accepted(
       ProcedureWalker.resolve(ready, tree, parked, faceup, powers))).tree
-    FaceupPlacement(placement, present(
+    val next = present(
       ProcedureWalker.parkedDecide(ready, tree, replacing, powers),
-      "the replacement decision"))
+      "the replacement decision")
+    FaceupPlacement(placement, next)
 
   private def optionRefs(decide: Decide): Vector[DecisionOptionRef] =
     as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref)

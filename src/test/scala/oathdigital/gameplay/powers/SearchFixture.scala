@@ -27,8 +27,9 @@ object SearchFixture:
   def staged(top: Vector[WorldCardId], supply: Int = 5): ReadyGame =
     Table.start.worldDeckTop(top*).supply(actor, supply).ready
 
-  /** Eight Discord denizens for the world deck. None is played faceup or
-    * sits on the board, so no power of theirs applies. */
+  /** Eight Discord denizens for the world deck. None is played faceup, so
+    * no power of theirs applies.
+    */
   val discordCards: Vector[DenizenId] = Vector("Defame", "Second Wind",
     "Scryer", "Bandit Paymaster", "Unstable Summon", "Dark Enforcer",
     "Spoiled Supplies", "Blackmail").map(CatalogNames.denizen(_))

@@ -84,5 +84,6 @@ class ChaosCultSuite extends munit.FunSuite:
     assertEquals(after.game.current.title.holder, Some(leader))
     // The cultist's 2, plus 1 taken from the chosen Oathkeeper.
     assertEquals(Look(after).favor(cultist), 3)
-    assertEquals(ActPowerHarness.replayed(rules, ready,
-      parked.events ++ done.events), after)
+    assertEquals(
+      ActPowerHarness.replayed(rules, ready, parked.events ++ done.events),
+      after)
