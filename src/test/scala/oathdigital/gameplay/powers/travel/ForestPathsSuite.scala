@@ -60,8 +60,8 @@ class ForestPathsSuite extends munit.FunSuite:
       "no Supply is saved and no site power is ignored"):
     val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
     assertEquals(candidates(ready, modifiers), candidates(ready))
-    val result = Outcomes.ready(accepted(travel(ready, mountain, modifiers))
-      .state)
+    val done = accepted(travel(ready, mountain, modifiers))
+    val result = Outcomes.ready(done.state)
     // The printed 2 and the Mountain's 1, both still charged.
     assertEquals(Look(result).supply(actor), 7 - 3)
     assertEquals(Look(result).favor(actor), 0)
