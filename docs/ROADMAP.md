@@ -21,7 +21,15 @@ campaign-continuity and Empire rules.
 
 From the playtest of 2026-10-01:
 
-- [ ] **Investigate why an incognito browser window does not work.**
+- [ ] **Find out why an off-LAN player's new connections time out.** An
+  incognito window failed for the host and for an off-LAN player, while
+  their normal windows worked. On the host, private mode is not the cause: a
+  normal-window reload with the cache disabled fails too, because the router
+  does not reliably loop back to its public address (quick start, step 6), and
+  open tabs kept working only by reusing their connection. An off-LAN player
+  does not loop back. Have them reload with the cache disabled and open
+  `/health/ready` in a private window, then check the port forward and the
+  host firewall.
 - [ ] **Hide a decision's own log line when its effect has one.** "Chose
   Blue" followed by "Wolves: Killed 1 Blue warband." repeats the decision.
 - [ ] **List relic details in a Negotiation.**
