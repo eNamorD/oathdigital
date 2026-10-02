@@ -231,3 +231,13 @@ class TableSuite extends munit.FunSuite:
     val service = new GameApplicationService(catalog, repository)
     val driver = Situation.journaled(service, catalog, repository, "table")
     intercept[munit.FailException](Table.start.situation(driver))
+
+  test("Look.discardAfter reads the discard pile of the region after the site's"):
+    val table = Table.start.discarded(Region.Provinces, "Wolves")
+    assertEquals(Look(table.ready).discardAfter("Ancient City"),
+      Vector(CatalogNames.worldCard("Wolves")))
+
+  test("Look.forceKind reads the kind of a player's own warbands"):
+    val look = Look(Table.start.ready)
+    assertNotEquals(look.forceKind(p1), look.forceKind(p2))
+    assertNotEquals(look.forceKind(p1), ForceKind.Bandit)

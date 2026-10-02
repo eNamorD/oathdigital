@@ -388,6 +388,16 @@ value.
   The frontend accessors (11-014, 11-037, 12-049, 12-029) live in
   `frontend/src/test`; no frontend outcome names the root `Table`.
 
+**Settled (Plan 2, Task 1).** One accessor per shape:
+`Unwrap.accepted` (a Right: also what rows call `rightOf`, `built`,
+`started`, `opened`, `executed`, `replayed`, `authorized`, `created`,
+`begun`, `parsed`, `right`, `encoded`, `decoded`), `Unwrap.rejected` (a Left:
+`leftOf`, `assertLeft`, `refusal`, `refused`, `failureOf`), `Unwrap.present`
+(an Option: `loaded`), `Unwrap.as[T]` (a case: `chooseOne`, `chooseMany`,
+`chooseAmount`, `updated`), and in the root testkit `Outcomes.ready`,
+`Outcomes.parked`, `Outcomes.finished`, `Outcomes.assertWireRoundTrips`,
+`Look.discardAfter` and `Look.forceKind`.
+
 **New Table steps proposed by rows.** Each is a fact that three or more
 suites patch by hand (R3), or one the row says a step must reach.
 
@@ -402,6 +412,14 @@ suites patch by hand (R3), or one the row says a step must reach.
 Rows that ask only for an existing step (`.secrets`, `.tokens`, `.pawn`,
 `.siteTokens`, `.turn`) are not listed. Rows that keep a patch with a
 "no Table step ..." comment are not requests for a step.
+
+## Mutations
+
+Each fix task breaks three to five production rules its rewritten tests
+guard, one at a time, and records the result here.
+
+| Task | Rule broken (file:line: change) | Test that failed | Result |
+|---|---|---|---|
 
 ## Shared fixtures
 

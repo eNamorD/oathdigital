@@ -1,5 +1,7 @@
 package oathdigital.testkit
 
+import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
@@ -43,6 +45,21 @@ final class Look private (ready: ReadyGame):
       p.advisers.collect { case d: DenizenState if d.id == id => d.tokens } ++
         p.relics.filter(_.id == id).map(_.tokens))
     (onSites ++ held).headOption.getOrElse(Tokens.empty)
+
+  /** The discard pile of the region after `site`'s region: where a card a
+    * power discards from that site goes. Fails when the site is in no
+    * region. */
+  def discardAfter(site: String | SiteId)(using munit.Location)
+      : Vector[WorldCardId] =
+    val id = CatalogNames.site(site)
+    val region = current.map.regionOf(id).getOrElse(
+      munit.Assertions.fail(s"$id is in no region"))
+    current.commonCards.discard(CardPlay.nextRegion(region))
+
+  /** The kind of warband `p`'s own warbands are; fails with the rules'
+    * refusal. */
+  def forceKind(p: PlayerId)(using munit.Location): ForceKind =
+    Unwrap.accepted(PlayerFacts.forceKind(ready, p))
 
 object Look:
   def apply(ready: ReadyGame): Look = new Look(ready)
