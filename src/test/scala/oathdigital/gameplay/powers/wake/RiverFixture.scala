@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** Staging for the River. The first game has one River in play, Ancient
   * City, where the actor's pawn stands. `withRivers` puts more in play.
@@ -9,9 +10,9 @@ import oathdigital.model._
 object RiverFixture:
   import PowerFixture._
 
-  val ancientCity: SiteId = SiteId("site:ancient-city")
-  val riverbank: SiteId = SiteId("site:riverbank")
-  val tidalMarshes: SiteId = SiteId("site:tidal-marshes")
+  val ancientCity: SiteId = CatalogNames.site("Ancient City")
+  val riverbank: SiteId = CatalogNames.site("Riverbank")
+  val tidalMarshes: SiteId = CatalogNames.site("Tidal Marshes")
 
   /** Ancient City's River. */
   lazy val river: RiverSitePower = RiverSitePower.all
@@ -31,12 +32,13 @@ object RiverFixture:
       .take(rivers.size)
     val swaps = replaced.zip(rivers).toMap
     def swap(ids: Vector[SiteId]) = ids.map(id => swaps.getOrElse(id, id))
+    // No Table step puts a River in play.
     ready.updateCurrent(c => c.copy(map = c.map.copy(
       cradle = swap(c.map.cradle), provinces = swap(c.map.provinces),
       hinterland = swap(c.map.hinterland),
       sites = swaps.foldLeft(c.map.sites) { case (sites, (from, to)) =>
         sites.removed(from).updated(to, sites(from)) })))
 
-  def staged(rivers: Vector[SiteId] = Vector(riverbank, tidalMarshes),
-      phase: Phase = Phase.Wake): ReadyGame =
+  /** The quiet table in `phase` with `rivers` put in play. */
+  def staged(rivers: Vector[SiteId], phase: Phase): ReadyGame =
     inPhase(withRivers(quietTable, rivers), phase)

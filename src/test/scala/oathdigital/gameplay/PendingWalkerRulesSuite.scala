@@ -8,6 +8,7 @@ import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution,
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The rules half of the pending-walker invariant: over a parked walker,
   * neither a walker start nor any legacy `handle` overload runs.
@@ -22,11 +23,13 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
     "a walker procedure is already pending")
 
   private def leagueTreatyPark: OathState =
-    val act = LeagueTreatyFixture.act
-    val ruler = act.game.current.players.map(_.player)
-      .find(_ != act.game.current.turn.activePlayer).get
-    val (ready, site) = LeagueTreatyFixture.arranged(Some(ruler),
-      Vector(Suit.Arcane -> 2, Suit.Discord -> 2))
+    // p2 rules League Treaty's site, off p1's turn; an Arcane and a Discord
+    // card in the Cradle hold 2 favor each.
+    val ruler = Table.p2
+    val ready = LeagueTreatyFixture.leagueTreatyAct(Some(ruler),
+      ("Disciples", "Ancient City", 2), ("Bandit Chief", "Broken Peaks", 2))
+      .ready
+    val site = LeagueTreatyFixture.treatySite
     val actor = ready.game.current.turn.activePlayer
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       actor).toOption.get
@@ -37,10 +40,12 @@ class PendingWalkerRulesSuite extends munit.FunSuite:
     parked.state
 
   private def silverTonguePark: OathState =
-    val (ready, actor) = SilverTongueFixture.arranged(
-      Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane, Suit.Nomad))
+    val ready = SilverTongueFixture.silverTongueRest(
+      Vector("Golem Legions", "Rain Boots"), Set(Suit.Arcane, Suit.Nomad))
+    val actor = Table.p1
     val parked = rules.startWalker(Ready(ready), ActionRef.UsePower(SilverTongue.id),
-      actor, Vector.empty, Vector(DecisionOptionRef.Denizen(DenizenId("92"))))
+      actor, Vector.empty, Vector(DecisionOptionRef.Denizen(
+        SilverTongueFixture.tongue)))
       .toOption.get
     walkerParked.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
       SilverTongue.choiceDecisionId(ready, actor), actor)

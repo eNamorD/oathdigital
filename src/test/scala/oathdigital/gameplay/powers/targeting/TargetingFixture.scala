@@ -1,11 +1,12 @@
 package oathdigital.gameplay.powers.targeting
 
 import oathdigital.gameplay.{CampaignFixture, OathRules}
-import oathdigital.gameplay.powers.{CardStaging, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Table
 
 /** Shared staging and reading for the suites of the rules that keep a player
   * from being targeted.
@@ -23,10 +24,7 @@ object TargetingFixture:
 
   /** The Fortress on `side` at `site`, taken from wherever it was. */
   def fortressAt(state: ReadyGame, side: EdificeSide, site: SiteId): ReadyGame =
-    CardStaging.without(state, fortress).updateCurrent(c => c.copy(map =
-      c.map.copy(sites = c.map.sites.updated(site, c.map.sites(site).copy(
-        denizens = c.map.sites(site).denizens :+
-          EdificeState(fortress, side, Tokens.empty))))))
+    Table.from(state).edifice(fortress, side, at = site).unchecked
 
   /** `site` ruled by `ruler`. */
   def ruledBy(state: ReadyGame, site: SiteId, ruler: PlayerId): ReadyGame =
@@ -47,16 +45,13 @@ object TargetingFixture:
   /** `player` holds the relic, faceup or facedown. */
   def holds(state: ReadyGame, player: PlayerId, relic: RelicId,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    CardStaging.without(state, relic).updateCurrent(c => c.copy(players =
-      c.players.map(p => if p.player == player then p.copy(relics = p.relics :+
-        RelicState(relic, orientation, Tokens.empty)) else p)))
+    Table.from(state).relic(player, relic,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   /** `player` holds a faceup adviser of `suit`. */
   def adviserOf(state: ReadyGame, player: PlayerId, suit: Suit): ReadyGame =
     val card = DenizenId(catalog.denizens.find(_.suit == suit).get.id.value)
-    CardStaging.without(state, card).updateCurrent(c => c.copy(players =
-      c.players.map(p => if p.player == player then p.copy(advisers = p.advisers :+
-        DenizenState(card, Orientation.FaceUp, Tokens.empty)) else p)))
+    Table.from(state).adviser(player, card).unchecked
 
   /** The options of the decision a parked walk of `procedure` is waiting on. */
   def optionsAt(transition: OathTransition, procedure: ProcedureRef)

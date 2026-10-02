@@ -1,10 +1,9 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  SearchFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{Look, Table}
 
 /** E08 never appears in a generated game (the Nomad Homeland takes E06), so
   * each test places it by hand.
@@ -19,9 +18,7 @@ class SacredGroundSuite extends munit.FunSuite:
 
   private def withE08(ready: ReadyGame, site: SiteId,
       side: EdificeSide = EdificeSide.Intact): ReadyGame =
-    CardStaging.without(ready, e08).updateCurrent(c => c.copy(map = c.map.copy(
-      sites = c.map.sites.updated(site, c.map.sites(site).copy(denizens =
-        c.map.sites(site).denizens :+ EdificeState(e08, side, Tokens.empty))))))
+    Table.from(ready).edifice(e08, side, at = site).unchecked
 
   private def search(site: SiteId, vision: VisionId = VisionRules.Faith,
       side: EdificeSide = EdificeSide.Intact): OathTransition =

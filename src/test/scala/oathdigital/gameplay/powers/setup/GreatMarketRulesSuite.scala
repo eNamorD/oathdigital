@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers.setup
 
-import oathdigital.gameplay.powers.{CardStaging, NoteText, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupWalkDriver}
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class GreatMarketRulesSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
@@ -13,15 +14,15 @@ class GreatMarketRulesSuite extends munit.FunSuite:
   private val site = FirstGameSetupFixture.sites.head
 
   private def stagedAt(side: EdificeSide): ReadyGame =
-    CardStaging.without(FirstGameSetupFixture.freshReady, edifice).updateCurrent(c =>
-      c.copy(map = c.map.copy(sites = c.map.sites.updated(site,
-        c.map.sites(site).copy(denizens = c.map.sites(site).denizens :+
-          EdificeState(edifice, side, Tokens.empty))))))
+    Table.from(FirstGameSetupFixture.freshReady).edifice(edifice, side,
+      at = site)
+      .unchecked
 
   private def finish(ready: ReadyGame): ReadyGame =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveToCompletion(ready, tree, powers)
+    SetupWalkDriver.driveToCompletion(ready, tree,
+      TriggeredProcedureRef.Setup, powers)
 
   test("Great Market places one favor per denizen in its region, itself included"):
     val staged = stagedAt(EdificeSide.Intact)
@@ -56,7 +57,8 @@ class GreatMarketRulesSuite extends munit.FunSuite:
   private def events(ready: ReadyGame): Vector[OathEvent] =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveWithEvents(ready, tree, powers)._2
+    SetupWalkDriver.driveWithEvents(ready, tree,
+      TriggeredProcedureRef.Setup, powers)._2
 
   private val great = GreatMarket.forCatalog(catalog)
   private val bandit = BanditMarket.forCatalog(catalog)

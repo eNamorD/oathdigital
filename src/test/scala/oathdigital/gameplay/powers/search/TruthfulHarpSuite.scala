@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  SearchFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness}
@@ -56,7 +55,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
   test("the Harp and Augury stack, and the reveal covers all six cards"):
     val top = plain.take(8)
     val augury = DenizenId("56")
-    val ready = atActorsSite(CardStaging.without(withHarp(top), augury), augury)
+    val ready = atActorsSite(withHarp(top), augury)
     val started = start(ready, both).toOption.get
     assertEquals(hand(started), top.take(6))
     PhasePowerHarness.others(ready).foreach(viewer =>

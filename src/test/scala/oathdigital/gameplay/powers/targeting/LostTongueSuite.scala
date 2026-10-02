@@ -3,8 +3,8 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.gameplay.CampaignFixture.raidBoard
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  SearchFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
@@ -121,15 +121,14 @@ class LostTongueSuite extends munit.FunSuite:
     val actor = PowerFixture.actor
     val enemy = PhasePowerHarness.others(base).head
     val site = Look(base).player(PowerFixture.actor).pawnSite
-    val staged = CardStaging.without(CardStaging.without(base, conspiracy), relic)
+    val staged = Table.from(base).hand(actor, conspiracy).unchecked
       .updateCurrent(c => c.copy(
         players = c.players.map(p => if p.player == enemy then
           p.copy(pawnSite = site) else p),
         banners = c.banners.copy(
           peoplesFavor = c.banners.peoplesFavor.copy(holder = Some(enemy),
             favor = 2),
-          darkestSecret = c.banners.darkestSecret.copy(holder = None)),
-        temporaryHands = c.temporaryHands.updated(actor, Vector(conspiracy))))
+          darkestSecret = c.banners.darkestSecret.copy(holder = None))))
     val held = adviser(if withRelic then holds(staged, enemy, relic) else staged,
       enemy, tongue)
     (if nomad then adviser(held, actor, nomadCard) else held, actor, enemy)

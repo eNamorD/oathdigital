@@ -3,14 +3,13 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.gameplay.CampaignFixture.raidBoard
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.Look
+import oathdigital.testkit.{Look, Table}
 
 class ForgottenVaultSuite extends munit.FunSuite:
   import TargetingFixture._
@@ -31,8 +30,7 @@ class ForgottenVaultSuite extends munit.FunSuite:
   private def vaultAt(state: ReadyGame, avoid: SiteId,
       ruler: Option[PlayerId]): ReadyGame =
     val site = state.game.current.map.inPlay.find(_ != avoid).get
-    val placed = PowerFixture.atSite(CardStaging.without(state, vault), vault,
-      site)
+    val placed = PowerFixture.atSite(state, vault, site)
     ruler.fold(placed)(ruledBy(placed, site, _))
 
   // ---- Raid ----
@@ -90,15 +88,14 @@ class ForgottenVaultSuite extends munit.FunSuite:
     val actor = PowerFixture.actor
     val enemy = base.game.current.players.map(_.player).find(_ != actor).get
     val site = Look(base).player(PowerFixture.actor).pawnSite
-    val staged = CardStaging.without(CardStaging.without(base, conspiracy), other)
+    val staged = Table.from(base).hand(actor, conspiracy).unchecked
       .updateCurrent(c => c.copy(
         players = c.players.map(p => if p.player == enemy then
           p.copy(pawnSite = site) else p),
         banners = c.banners.copy(
           peoplesFavor = c.banners.peoplesFavor.copy(
             holder = Option.when(banner)(enemy)),
-          darkestSecret = c.banners.darkestSecret.copy(holder = None)),
-        temporaryHands = c.temporaryHands.updated(actor, Vector(conspiracy))))
+          darkestSecret = c.banners.darkestSecret.copy(holder = None))))
     val ready = vaultAt(holds(staged, enemy, other, side), site.get, Some(enemy))
     val hook = CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(actor, conspiracy))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{NoteText, SearchFixture, WalkerPowerCatalog}
-import oathdigital.gameplay.powers.banner.{BannerFixture, PeoplesFavorMob}
+import oathdigital.gameplay.powers.banner.PeoplesFavorMob
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -115,7 +115,8 @@ class CropRotationSuite extends munit.FunSuite:
       s"${p1.value} may discard a card at their site first.", covers = false)))
 
   test("with the Mob as well, only one line is written"):
-    val ready = BannerFixture.holdingFavor(staged(Vector(fillers(0))))
+    val ready = Table.from(staged(Vector(fillers(0)))).peoplesFavor(Some(p1),
+      1).unchecked
     val asked = toSite(ready).toOption.get
     val done = discard(asked, noDiscard).toOption.get
     val mobSaid = NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys,

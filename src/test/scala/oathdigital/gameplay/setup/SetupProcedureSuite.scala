@@ -27,7 +27,8 @@ class SetupProcedureSuite extends munit.FunSuite:
   test("the whole procedure finishes in Wake of round 1 with three pawns and three advisers"):
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    val finished = SetupWalkDriver.driveToCompletion(ready, tree, WalkerPowers.empty)
+    val finished = SetupWalkDriver.driveToCompletion(ready, tree,
+      TriggeredProcedureRef.Setup, WalkerPowers.empty)
     assertEquals(finished.game.current.turn.phase, Phase.Wake)
     assertEquals(finished.game.current.turn.activePlayer,
       ready.game.current.turn.activePlayer)

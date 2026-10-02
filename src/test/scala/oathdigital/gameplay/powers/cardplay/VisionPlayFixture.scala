@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture,
+import oathdigital.gameplay.powers.{PowerFixture, SearchFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -32,7 +32,7 @@ object VisionPlayFixture:
     * phase.
     */
   def fromAdvisers(ready: ReadyGame, vision: VisionId): OathTransition =
-    val holding = Table.from(CardStaging.without(ready, vision)).adviser(actor,
+    val holding = Table.from(ready).adviser(actor,
       vision, facedown = true).unchecked
     orFail(SearchFixture.rules.startWalker(Ready(holding),
       ActionRef.PlayFacedownAdviser, actor, Vector.empty,

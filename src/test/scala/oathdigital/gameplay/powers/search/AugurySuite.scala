@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.search
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture}
+import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look}
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class AugurySuite extends munit.FunSuite:
@@ -15,7 +15,7 @@ class AugurySuite extends munit.FunSuite:
   private val plain: Vector[DenizenId] = Suit.all.flatMap(denizensOf)
 
   private def withAugury(top: Vector[WorldCardId]): ReadyGame =
-    atActorsSite(CardStaging.without(SearchFixture.staged(top), augury), augury)
+    atActorsSite(SearchFixture.staged(top), augury)
 
   private def hand(transition: OathTransition): Vector[WorldCardId] =
     SearchFixture.after(transition).game.current.temporaryHands(actor)
@@ -62,10 +62,8 @@ class AugurySuite extends munit.FunSuite:
     val region = Look(quietTable).player(actor)
       .pawnSite.flatMap(quietTable.game.current.map.regionOf).get
     val pile = plain.take(5)
-    val staged = pile.foldLeft(withAugury(Vector.empty))(CardStaging.without(_, _))
-    val ready = staged.updateCurrent(c => c.copy(commonCards =
-      c.commonCards.copy(regionalDiscards = c.commonCards.regionalDiscards
-        .updated(region, pile))))
+    val ready = Table.from(withAugury(Vector.empty)).discarded(region, pile*)
+      .unchecked
     val started = rules.startWalker(OathState.Ready(ready), ActionRef.Search,
       actor, modifiers, Vector(DecisionOptionRef.Button(
         s"search:regional-discard:${region.key}"))).toOption.get

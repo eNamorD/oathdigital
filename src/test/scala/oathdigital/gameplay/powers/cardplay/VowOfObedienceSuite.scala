@@ -3,8 +3,8 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PhasePowerCatalog,
-  PowerFixture, SearchFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
+  SearchFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
@@ -20,7 +20,7 @@ class VowOfObedienceSuite extends munit.FunSuite:
 
   private def holding(ready: ReadyGame, owner: PlayerId = actor,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    Table.from(CardStaging.without(ready, vow)).adviser(owner, vow,
+    Table.from(ready).adviser(owner, vow,
       facedown = orientation == Orientation.FaceDown).unchecked
 
   private def search(vision: VisionId, arrange: ReadyGame => ReadyGame)

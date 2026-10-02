@@ -12,8 +12,9 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
   private val projector = new GameProjector(catalog)
 
   test("a usable REST power is projected and legal for its active player only"):
-    val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
+    val ready = SilverTongueFixture.silverTongueRest(Vector("Golem Legions"),
       Set(Suit.Arcane))
+    val actor = Table.p1
     val own = projector.project("phase-powers", LoadedGame(Ready(ready), 30L), actor)
     assertEquals(own.phasePowers.map(p => p.powerId -> p.source.id),
       Vector(SilverTongue.id.value -> "92"))
@@ -89,15 +90,17 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
       s"usePower:${powerId.value}:")))
 
   test("an unusable power is neither projected nor legal"):
-    val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
+    val ready = SilverTongueFixture.silverTongueRest(Vector("Golem Legions"),
       Set(Suit.Nomad))
+    val actor = Table.p1
     val own = projector.project("phase-powers", LoadedGame(Ready(ready), 30L), actor)
     assertEquals(own.phasePowers, Vector.empty)
     assert(!own.legalControls.exists(_.startsWith("usePower:")))
 
   test("Rest still offers Finish Rest when catalog drift makes its gate fail"):
-    val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
+    val ready = SilverTongueFixture.silverTongueRest(Vector("Golem Legions"),
       Set(Suit.Arcane))
+    val actor = Table.p1
     val drifted = catalog.copy(denizens = catalog.denizens.filterNot(_.id.value ==
       "92"))
     val projected = new GameProjector(drifted).project("drifted-rest",
@@ -133,7 +136,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
 
   test("a site's phase power is projected under its power's name and printed text"):
     import oathdigital.gameplay.powers.wake.RiverFixture
-    val ready = RiverFixture.staged()
+    val ready = RiverFixture.staged(Vector(RiverFixture.riverbank,
+      RiverFixture.tidalMarshes), Phase.Wake)
     val actor = ready.game.current.turn.activePlayer
     val projected = projector.project("river", LoadedGame(Ready(ready), 30L), actor)
     assertEquals(projected.phasePowers.filter(_.powerId ==

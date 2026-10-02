@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  SearchFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.model._
 import oathdigital.testkit.{Look, PhasePowerHarness}
 
@@ -29,7 +28,7 @@ class SecretPoliceSuite extends munit.FunSuite:
     */
   private def policed(ready: ReadyGame, at: SiteId, policeRuler: SiteForces,
       homeRuler: SiteForces): ReadyGame =
-    withForces(withForces(atSite(CardStaging.without(ready, police), police, at),
+    withForces(withForces(atSite(ready, police, at),
       at, policeRuler), actorsSite(quietTable), homeRuler)
 
   private def search(at: SiteId, policeRuler: SiteForces, homeRuler: SiteForces,

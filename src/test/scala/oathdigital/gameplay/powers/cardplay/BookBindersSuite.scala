@@ -2,8 +2,8 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  SearchFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
@@ -24,8 +24,7 @@ class BookBindersSuite extends munit.FunSuite:
   private def arranged(banks: Map[Suit, Int], owner: PlayerId = holder,
       orientation: Orientation = Orientation.FaceUp,
       vision: VisionId = VisionRules.Faith): ReadyGame =
-    val ready = Table.from(CardStaging.without(
-      SearchFixture.staged(Vector(vision)), binders))
+    val ready = Table.from(SearchFixture.staged(Vector(vision)))
         .adviser(owner, binders, facedown = orientation == Orientation.FaceDown)
           .unchecked
     ready.copy(banks = ready.banks.copy(favor =
@@ -90,8 +89,8 @@ class BookBindersSuite extends munit.FunSuite:
     * arranges one.
     */
   private def withConspiracyTarget(relic: RelicId): ReadyGame =
-    val staged = Table.from(CardStaging.without(
-      SearchFixture.staged(Vector(VisionRules.Conspiracy)), binders))
+    val staged = Table.from(
+      SearchFixture.staged(Vector(VisionRules.Conspiracy)))
         .adviser(holder, binders).unchecked
     val atSite = Table.from(staged).pawn(holder, actorsSite(quietTable))
       .unchecked
@@ -172,8 +171,8 @@ class BookBindersSuite extends munit.FunSuite:
 
   test("a facedown Vision played from the advisers gives the holder favor " +
       "too, off turn, pinning the rebuildFacedown settle path"):
-    val ready = Table.from(CardStaging.without(
-      inPhase(quietTable, Phase.Act), binders)).adviser(holder, binders)
+    val ready = Table.from(
+      inPhase(quietTable, Phase.Act)).adviser(holder, binders)
         .unchecked
       .copy(banks = quietTable.banks.copy(favor =
         Suit.all.map(suit => suit -> Map(Suit.Arcane -> 3, Suit.Order -> 3)

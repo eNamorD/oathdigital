@@ -14,7 +14,6 @@ import oathdigital.testkit.Table.p3
 
 class PeoplesFavorMobSuite extends munit.FunSuite:
   import PowerFixture._
-  import BannerFixture._
   import SearchFixture.{denizensOf, keep, place, rules, start}
 
   /** The parked decision, as this suite rebuilds it: the same catalog and
@@ -35,7 +34,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     * face, unless a test says otherwise). `played` is the card that is kept.
     */
   private def staged(site: Vector[DenizenId],
-      favor: ReadyGame => ReadyGame = holdingFavor(_)): ReadyGame =
+      favor: ReadyGame => ReadyGame = (r => Table.from(r)
+        .peoplesFavor(Some(actor), 1).unchecked)): ReadyGame =
     favor(site.foldLeft(SearchFixture.staged(drawn))(atActorsSite))
 
   private def decisionId(kind: String) = s"cardplay.$kind.denizen.${played.value}"
@@ -65,7 +65,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       .enumerate(catalog, ready).find(_.source ==
         RuleSourceRef.Banner(Banner.PeoplesFavor.key)).get
     assertEquals(favor(quietTable).powerIds, Vector(PeoplesFavorMob.id))
-    assertEquals(favor(holdingFavor(quietTable, PeoplesFavorFace.GrandCouncil))
+    assertEquals(favor(Table.from(quietTable).peoplesFavor(Some(actor), 1,
+      PeoplesFavorFace.GrandCouncil).unchecked)
       .handlerIds, Vector("banner.peoples-favor.grand-council"))
 
   test("its holder is asked whether to discard a site card before a play " +
@@ -91,9 +92,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   test("choosing a card discards it by the standard discard: facedown to the " +
       "next region's pile, its favor to the bank, its secret to the holder"):
     val kept = denizensOf(Suit.Hearth).head
-    val ready = withCardTokens(staged(Vector(kept)), actorsSite(quietTable),
-      kept,
-      Tokens(1, 1))
+    val ready = Table.from(staged(Vector(kept))).tokens(kept, Tokens(1,
+      1).favor, Tokens(1, 1).secrets).unchecked
     val asked = toSite(ready)
     val done = discardAnswer(asked, DecisionOptionRef.Denizen(kept)).toOption.get
     val end = SearchFixture.after(done)
@@ -135,10 +135,11 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "not the other banner, not an unheld banner"):
     val kept = denizensOf(Suit.Hearth).head
     val unheld: Vector[ReadyGame => ReadyGame] = Vector(
-      holdingFavor(_, holder = Some(p3)),
-      holdingFavor(_, PeoplesFavorFace.GrandCouncil),
-      holdingFavor(_, holder = None),
-      holdingFlame(_))
+      (r => Table.from(r).peoplesFavor(Some(p3), 1).unchecked),
+      (r => Table.from(r).peoplesFavor(Some(actor), 1,
+        PeoplesFavorFace.GrandCouncil).unchecked),
+      (r => Table.from(r).peoplesFavor(None, 1).unchecked),
+      (r => Table.from(r).darkestSecret(Some(actor), 1).unchecked))
     unheld.zipWithIndex.foreach { case (favor, index) =>
       val ready = staged(Vector(kept), favor)
       val done = toSite(ready)
@@ -154,7 +155,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       Vector(PlacementFixture.denizen(kept),
         EdificeState(hall, EdificeSide.Intact, Tokens.empty)))
     val ready = PlacementFixture.ruledByActor(built, site)
-    val choice = CardPlay.legalChoices(catalog, holdingFavor(ready), who,
+    val choice = CardPlay.legalChoices(catalog,
+      Table.from(ready).peoplesFavor(Some(actor), 1).unchecked, who,
       played, CardPlay.Origin.TemporaryHand,
       oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
       .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
@@ -167,7 +169,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       Vector(PlacementFixture.denizen(kept),
         EdificeState(hall, EdificeSide.Ruined, Tokens.empty)))
     val ready = PlacementFixture.ruledByActor(built, site)
-    val choice = CardPlay.legalChoices(catalog, holdingFavor(ready), who,
+    val choice = CardPlay.legalChoices(catalog,
+      Table.from(ready).peoplesFavor(Some(actor), 1).unchecked, who,
       played, CardPlay.Origin.TemporaryHand,
       oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
       .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
@@ -191,10 +194,10 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     // holding the People's Favor on Mob, a faceup Silver Tongue and a
     // facedown `adviser`.
     val who = actor
-    val ready = holdingFavor(Table.start
+    val ready = Table.from(Table.start
       .hand(who, played).denizen(kept, at = actorsSite(quietTable))
       .adviser(who, tongue).adviser(who, adviser, facedown = true)
-      .ready)
+      .ready).peoplesFavor(Some(actor), 1).unchecked
     val powers = WalkerPowerCatalog.default(catalog)
     val tree = PlacementFixture.build(ready, who, played)
     val parked = PlacementFixture.park(ready, tree, powers)

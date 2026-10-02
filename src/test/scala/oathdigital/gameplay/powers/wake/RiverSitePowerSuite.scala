@@ -33,15 +33,16 @@ class RiverSitePowerSuite extends munit.FunSuite:
         "site.riverbank.river", "site.tidal-marshes.river"))
 
   test("it is usable in the Wake at a River while another River is in play"):
-    assertEquals(rivers(staged()), Vector(river.id -> source))
+    assertEquals(rivers(staged(Vector(riverbank, tidalMarshes), Phase.Wake)),
+      Vector(river.id -> source))
 
   test("it is not usable when no other River is in play"):
-    val alone = staged(Vector.empty)
+    val alone = staged(Vector.empty, Phase.Wake)
     assertEquals(rivers(alone), Vector.empty)
     assert(use(alone).isLeft)
 
   test("it is not usable from a site that is not a River"):
-    val ready = staged()
+    val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)
     val dry = ready.game.current.map.inPlay.find(site =>
       !RiverSitePower.isRiver(site)).get
     val away = Table.from(ready).pawn(actor, dry).unchecked
@@ -49,7 +50,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
     assert(use(away).isLeft)
 
   test("it offers every other River in play, in map order"):
-    val ready = staged()
+    val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)
     val expected = ready.game.current.map.inPlay
       .filter(Set(riverbank, tidalMarshes).contains)
     assertEquals(expected.size, 2)
@@ -58,7 +59,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
       "site" -> site.value)))
 
   test("it places the pawn at the chosen River without Travel or Supply"):
-    val ready = staged()
+    val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)
     val (parked, done) = placedAt(ready, riverbank)
     val placed = after(done)
     assertEquals(Look(placed).player(actor).pawnSite, Some(riverbank))
@@ -74,7 +75,8 @@ class RiverSitePowerSuite extends munit.FunSuite:
       Right(done.state))
 
   test("it is once per turn from each River"):
-    val (_, done) = placedAt(staged(), riverbank)
+    val (_, done) = placedAt(staged(Vector(riverbank, tidalMarshes),
+      Phase.Wake), riverbank)
     val used = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(ancientCity),
       river.id)
     assert(after(done).game.current.turn.usedPowers.contains(used))
@@ -86,7 +88,8 @@ class RiverSitePowerSuite extends munit.FunSuite:
       Vector(DecisionOptionRef.Site(riverbank)))
 
   test("it writes where it placed the pawn"):
-    val (parked, done) = placedAt(staged(), riverbank)
+    val (parked, done) = placedAt(staged(Vector(riverbank, tidalMarshes),
+      Phase.Wake), riverbank)
     assertEquals(NoteText.said(river, parked.events ++ done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} placed at ${riverbank.value}.",
         covers = false)))

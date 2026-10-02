@@ -89,11 +89,8 @@ class FortressRulesSuite extends munit.FunSuite:
     assertEquals(startOf(hearth).left.toOption, Some(OathViolation.CampaignUnavailable(
       "a Fortress protects every player a Raid could target")))
     val beast = DenizenId(catalog.denizens.find(_.suit == Suit.Beast).get.id.value)
-    val hidden = b.copy(ready = oathdigital.gameplay.powers.CardStaging
-      .without(b.ready, beast).updateCurrent(c => c.copy(players =
-        c.players.map(p => if p.player == b.actor then p.copy(advisers =
-          p.advisers :+ DenizenState(beast, Orientation.FaceDown, Tokens.empty))
-          else p))))
+    val hidden = b.copy(ready = Table.from(b.ready)
+      .adviser(b.actor, beast, facedown = true).unchecked)
     assertEquals(startOf(hidden).left.toOption, Some(OathViolation.CampaignUnavailable(
       "a Fortress protects every player a Raid could target")))
 

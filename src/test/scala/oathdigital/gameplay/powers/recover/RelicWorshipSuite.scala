@@ -3,8 +3,7 @@ package oathdigital.gameplay.powers.recover
 import oathdigital.gameplay.{CatacombsContributionSuite, OathRules,
   WalkerDiceFixture}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -31,8 +30,7 @@ class RelicWorshipSuite extends munit.FunSuite:
   private def staged(secrets: Int = 2)
       : (ReadyGame, CatacombsContributionSuite.Fixture) =
     val withRelic = CatacombsContributionSuite.relicSite()
-    val ready = Table.from(PowerFixture.asAdviser(
-      CardStaging.without(withRelic.ready, worship), worship))
+    val ready = Table.from(PowerFixture.asAdviser(withRelic.ready, worship))
       .supply(PowerFixture.actor, 4)
       .secrets(PowerFixture.actor, secrets).unchecked
     (ready, withRelic.copy(ready = ready))
@@ -103,8 +101,7 @@ class RelicWorshipSuite extends munit.FunSuite:
     val catacombs = PowerId("denizen.catacombs")
     def attempt(secrets: Int) =
       val fixture = CatacombsContributionSuite.reliclessSite(secrets)
-      val ready = PowerFixture.asAdviser(CardStaging.without(fixture.ready,
-        worship), worship)
+      val ready = PowerFixture.asAdviser(fixture.ready, worship)
       rules.startWalker(Ready(ready), ActionRef.Recover, PowerFixture.actor,
         Vector(catacombs, RelicWorship.id))
     val refused = attempt(1)

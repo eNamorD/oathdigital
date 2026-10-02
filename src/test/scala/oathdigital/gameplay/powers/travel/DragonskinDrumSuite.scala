@@ -3,25 +3,26 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.Unwrap.accepted
 
 class DragonskinDrumSuite extends munit.FunSuite:
   import PowerFixture._
   import TravelFixture._
 
-  private val drum = RelicId("R20")
+  private val drum = CatalogNames.relic("Dragonskin Drum")
   private val modifiers = Vector(DragonskinDrum.id)
   private def held = withRelic(board(), drum)
 
   test("after Travel the player gains one warband, and pays the printed Supply"):
     val ready = held
-    val done = travel(ready, coast, modifiers).toOption.get
-    val result = after(done)
+    val done = accepted(travel(ready, coast, modifiers))
+    val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(Look(result).player(actor).board.warbands, Look(ready)
       .player(actor).board.warbands + 1)
-    assertEquals(supplyOf(result), 7 - 1)
+    assertEquals(Look(result).supply(actor), 7 - 1)
     // The Drum itself is free.
     assertEquals(Look(result).player(actor).board.favor, Look(ready)
       .player(actor).board.favor)
@@ -31,12 +32,12 @@ class DragonskinDrumSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("without the selection, or with an empty bank, it gains what it can"):
-    val plain = after(travel(held, coast).toOption.get)
+    val plain = Outcomes.ready(accepted(travel(held, coast)).state)
     assertEquals(Look(plain).player(actor).board.warbands, Look(held)
       .player(actor).board.warbands)
-    val kind = PlayerFacts.forceKind(held, actor).toOption.get
+    val kind = accepted(PlayerFacts.forceKind(held, actor))
     val empty = leaveInBank(held, kind, 0)
-    val result = after(travel(empty, coast, modifiers).toOption.get)
+    val result = Outcomes.ready(accepted(travel(empty, coast, modifiers)).state)
     assertEquals(Look(result).player(actor).board.warbands, Look(empty)
       .player(actor).board.warbands)
 
@@ -53,11 +54,11 @@ class DragonskinDrumSuite extends munit.FunSuite:
     NoteText.said(power.id, power.noteKeys, events)
 
   test("the warband gained is written as the Drum's line"):
-    assertEquals(said(travel(held, coast, modifiers).toOption.get.events),
+    assertEquals(said(accepted(travel(held, coast, modifiers)).events),
       Vector(NoteText.Said("gained", s"${actor.value} gained 1 warband.",
         covers = false)))
 
   test("an empty warband bank gains nothing, and writes nothing"):
-    val kind = PlayerFacts.forceKind(held, actor).toOption.get
-    assertEquals(said(travel(leaveInBank(held, kind, 0), coast, modifiers)
-      .toOption.get.events), Vector.empty)
+    val kind = accepted(PlayerFacts.forceKind(held, actor))
+    assertEquals(said(accepted(travel(leaveInBank(held, kind, 0), coast,
+      modifiers)).events), Vector.empty)

@@ -6,6 +6,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Table.p2
 
 class LeagueTreatySuite extends munit.FunSuite:
   import LeagueTreatyFixture._
@@ -16,11 +18,14 @@ class LeagueTreatySuite extends munit.FunSuite:
     WalkerPowerCatalog.default(catalog))
 
   private def rester(ready: ReadyGame) = ready.game.current.turn.activePlayer
-  private def offTurn(ready: ReadyGame) =
-    ready.game.current.players.map(_.player).find(_ != rester(ready)).get
   private def bank(suit: Suit) = DecisionOptionRef.FavorBank(suit)
   private def banks(state: OathState) = state.asInstanceOf[Ready].value.banks.favor
-  private val example = Vector(Suit.Arcane -> 2, Suit.Discord -> 2,
+  /** The worked example: 2 favor each on an Arcane (Disciples), a Discord
+    * (Bandit Chief) and a Hearth (Homesteaders) card in the Cradle. */
+  private val example = Vector(("Disciples", "Ancient City", 2),
+    ("Bandit Chief", "Broken Peaks", 2), ("Homesteaders", "Ancient City", 2))
+  /** The worked example's favor, by suit. */
+  private val exampleFavorBySuit = Vector(Suit.Arcane -> 2, Suit.Discord -> 2,
     Suit.Hearth -> 2)
 
   /** Nothing is parked, the game is in Wake, and (since a completed Rest
@@ -33,8 +38,9 @@ class LeagueTreatySuite extends munit.FunSuite:
     walkerParked.assertResumed(state, Phase.Wake, next)
 
   test("an unruled treaty site or a region without card favor asks nothing"):
-    Vector(arranged(None, example), arranged(Some(offTurn(act)), Vector.empty))
-      .foreach { case (ready, _) =>
+    Vector(leagueTreatyAct(None, example*).ready,
+      leagueTreatyAct(Some(p2)).ready)
+      .foreach { ready =>
       val rested = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
         rester(ready)).toOption.get
       assertWake(rested.state, rester(ready))
@@ -42,10 +48,10 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   test("the off-turn ruler alone answers the destination, and declining " +
       "leaves cleanup to printed banks"):
-    val owner = offTurn(act)
-    val (ready, site) = arranged(Some(owner), example)
+    val owner = p2 // off p1's turn
+    val ready = leagueTreatyAct(Some(owner), example*).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
-      rester(ready), site, treatyCard)
+      rester(ready), treatySite, treatyCard)
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       rester(ready)).toOption.get
     walkerParked.assertParked(parked.state, PhaseTransitionRef.FinishRest,
@@ -56,17 +62,18 @@ class LeagueTreatySuite extends munit.FunSuite:
     val declined = rules.resolveWalker(parked.state, owner, destination,
       decline).toOption.get
     assertWake(declined.state, rester(ready))
-    example.foreach { case (suit, amount) =>
+    exampleFavorBySuit.foreach { case (suit, amount) =>
       assertEquals(banks(declined.state)(suit), ready.banks.favor(suit) + amount)
     }
 
   test("a destination that is the only source suit moves nothing and asks " +
       "no distribution"):
-    val owner = offTurn(act)
-    val (ready, site) = arranged(Some(owner),
-      Vector(Suit.Nomad -> 2, Suit.Nomad -> 1))
+    val owner = p2 // off p1's turn
+    // Two Nomad cards: Rain Boots with 2 favor, Convoys with 1.
+    val ready = leagueTreatyAct(Some(owner),
+      ("Rain Boots", "Ancient City", 2), ("Convoys", "Broken Peaks", 1)).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
-      rester(ready), site, treatyCard)
+      rester(ready), treatySite, treatyCard)
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       rester(ready)).toOption.get
     val chosen = rules.resolveWalker(parked.state, owner, destination,
@@ -76,12 +83,12 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   test("the worked example moves 2 Arcane and 1 Discord favor to Nomad, " +
       "and a replayed park resumes to the same decision"):
-    val owner = offTurn(act)
-    val (ready, site) = arranged(Some(owner), example)
+    val owner = p2 // off p1's turn
+    val ready = leagueTreatyAct(Some(owner), example*).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
-      rester(ready), site, treatyCard)
+      rester(ready), treatySite, treatyCard)
     val distribution = LeagueTreatyContribution.distributionDecisionId(ready,
-      rester(ready), site, treatyCard)
+      rester(ready), treatySite, treatyCard)
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       rester(ready)).toOption.get
     val chosen = rules.resolveWalker(parked.state, owner, destination,
@@ -108,22 +115,18 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   test("favor on an edifice in the region moves with the rest, on either face"):
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
-      val owner = offTurn(act)
-      val (arrangedReady, site) = arranged(Some(owner), Vector(Suit.Arcane -> 1))
-      val edifice = arrangedReady.game.current.commonCards.edificeDeck.head
-      val edificeSuit = catalog.suitOf(edifice).get
-      val ready = arrangedReady.updateCurrent(c => c.copy(
-        commonCards = c.commonCards.copy(edificeDeck =
-          c.commonCards.edificeDeck.tail),
-        map = c.map.copy(sites = c.map.sites.updated(site,
-          c.map.sites(site).copy(denizens = c.map.sites(site).denizens :+
-            EdificeState(edifice, side, Tokens(2, 0)))))))
+      val owner = p2 // off p1's turn
+      val edifice = CatalogNames.edifice("Hall of Debate")
+      val edificeSuit = Suit.Discord // Hall of Debate's printed suit
+      val ready = leagueTreatyAct(Some(owner), ("Disciples", "Ancient City", 1))
+        .edifice(edifice, side, at = treatySite).tokens(edifice,
+          favor = 2).ready
       val destinationBank = Suit.all.find(s =>
         s != Suit.Arcane && s != edificeSuit).get
       val destination = LeagueTreatyContribution.destinationDecisionId(ready,
-        rester(ready), site, treatyCard)
+        rester(ready), treatySite, treatyCard)
       val distribution = LeagueTreatyContribution.distributionDecisionId(ready,
-        rester(ready), site, treatyCard)
+        rester(ready), treatySite, treatyCard)
       val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
         rester(ready)).toOption.get
       val chosen = rules.resolveWalker(parked.state, owner, destination,
@@ -145,12 +148,12 @@ class LeagueTreatySuite extends munit.FunSuite:
     NoteText.said(power.id, power.noteKeys, events)
 
   test("the treaty's line says how much favor the ruler sent to one bank"):
-    val owner = offTurn(act)
-    val (ready, site) = arranged(Some(owner), example)
+    val owner = p2 // off p1's turn
+    val ready = leagueTreatyAct(Some(owner), example*).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
-      rester(ready), site, treatyCard)
+      rester(ready), treatySite, treatyCard)
     val distribution = LeagueTreatyContribution.distributionDecisionId(ready,
-      rester(ready), site, treatyCard)
+      rester(ready), treatySite, treatyCard)
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       rester(ready)).toOption.get
     val chosen = rules.resolveWalker(parked.state, owner, destination,
@@ -164,10 +167,10 @@ class LeagueTreatySuite extends munit.FunSuite:
       s"${owner.value} sent 3 favor to the Nomad bank.", covers = false)))
 
   test("a ruler who declines sends nothing, and writes nothing"):
-    val owner = offTurn(act)
-    val (ready, site) = arranged(Some(owner), example)
+    val owner = p2 // off p1's turn
+    val ready = leagueTreatyAct(Some(owner), example*).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
-      rester(ready), site, treatyCard)
+      rester(ready), treatySite, treatyCard)
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       rester(ready)).toOption.get
     val declined = rules.resolveWalker(parked.state, owner, destination,

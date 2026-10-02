@@ -2,23 +2,26 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Look
+import oathdigital.testkit.CatalogNames
 
 /** A Travel board for the modifiers and rules of Travel: the map of
-  * `TravelProcedureSuite`, with named sites, every site ruled by bandits, and
-  * the active player at the first plains.
+  * `TravelProcedureSuite`, with named sites and the active player at the
+  * Cradle's plains.
   *
-  * Regions: the cradle holds `plains(0)` and `coast`, the provinces hold
-  * `plains(1)`, `mountain` and `pass`, the hinterland holds `plains(2)`,
-  * `island` and `plains(3)`. The printed base is 1 within the cradle, 2 from the
-  * cradle to the provinces and within them, 4 from the cradle to the
-  * hinterland.
+  * Regions: the Cradle holds `cradlePlains` (Buried Giant) and `coast`
+  * (Desolate Shore); the Provinces hold `provincePlains` (Dunes),
+  * `mountain` (Broken Peaks) and `pass` (Narrow Pass); the Hinterland holds
+  * `hinterlandPlains` (Salt Flats), `island` (Fair Isle) and
+  * `otherHinterlandPlains` (Shrouded Woods). The printed base is 1 within
+  * the Cradle, 2 from the Cradle to the Provinces and within them, 4 from the
+  * Cradle to the Hinterland. Every site holds a bandit stack of its printed
+  * capacity and its printed starting wealth: Fair Isle 3 favor, Broken Peaks
+  * 2 secrets, Shrouded Woods 1 favor and 1 secret.
   */
 object TravelFixture:
   import PowerFixture._
@@ -28,8 +31,10 @@ object TravelFixture:
 
   private def site(power: String): SiteId = catalog.sites.find(
     _.handlers.exists(_.value.endsWith(s".$power"))).get.id
-  val plains: Vector[SiteId] = catalog.sites.filter(
-    _.handlers.exists(_.value.endsWith(".plains"))).map(_.id)
+  val cradlePlains: SiteId = CatalogNames.site("Buried Giant")
+  val provincePlains: SiteId = CatalogNames.site("Dunes")
+  val hinterlandPlains: SiteId = CatalogNames.site("Salt Flats")
+  val otherHinterlandPlains: SiteId = CatalogNames.site("Shrouded Woods")
   val coast: SiteId = site("coast")
   val island: SiteId = site("island")
   val mountain: SiteId = site("mountain")
@@ -38,9 +43,9 @@ object TravelFixture:
   /** The Act phase on the board. `source` is the active player's site; the
     * other players stand on the sites after it.
     */
-  def board(source: SiteId = plains.head, supply: Int = 7): ReadyGame =
-    val chosen = Vector(source, coast, plains(1), mountain, pass, plains(2),
-      island, plains(3))
+  def board(source: SiteId = cradlePlains, supply: Int = 7): ReadyGame =
+    val chosen = Vector(source, coast, provincePlains, mountain, pass,
+      hinterlandPlains, island, otherHinterlandPlains)
     val ids = (chosen.distinct ++ catalog.sites.map(_.id)
       .filterNot(chosen.contains)).take(8)
     val states = ids.map { id =>
@@ -55,37 +60,10 @@ object TravelFixture:
         pawnSite = Some(if player.player == actor then source else ids(index + 1)),
         board = if player.player == actor then
           player.board.copy(supply = SupplyTrack(supply)) else player.board)
+    // No Table step lays out regions: the board replaces the whole map.
     inPhase(quietTable.updateCurrent(_.copy(players = players,
       map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states))),
       Phase.Act)
-
-  /** The pass ruled by the actor, so a cross-region route past it is legal. */
-  def passRuled(ready: ReadyGame): ReadyGame =
-    ruledBy(ready, pass, actor)
-
-  def ruledBy(ready: ReadyGame, site: SiteId, ruler: PlayerId): ReadyGame =
-    ready.updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(site, c.map.sites(site).copy(forces =
-        SiteForces.Occupied(ForceKind.Exile(Look(ready).player(ruler).lineage),
-          1))))))
-
-  /** A denizen or an edifice face put at `site`; it leaves the world or
-    * edifice deck if it was there, so the inventory stays whole.
-    */
-  def denizenAt(ready: ReadyGame, id: DenizenId, at: SiteId): ReadyGame =
-    atSite(CardStaging.without(ready, id), id, at)
-
-  /** `id` as an adviser of the actor, taken from wherever it was dealt. */
-  def adviser(ready: ReadyGame, id: DenizenId,
-      orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    asAdviser(CardStaging.without(ready, id), id, orientation)
-
-  def edificeAt(ready: ReadyGame, id: EdificeId, side: EdificeSide,
-      at: SiteId): ReadyGame = CardStaging.without(ready, id).updateCurrent(c =>
-    c.copy(
-    map = c.map.copy(sites = c.map.sites.updated(at, c.map.sites(at).copy(
-      denizens = c.map.sites(at).denizens :+
-        EdificeState(id, side, Tokens.empty))))))
 
   def powers(modifiers: Vector[PowerId]): WalkerPowers =
     WalkerPowers.selected(WalkerPowerCatalog.default(catalog), modifiers)
@@ -100,15 +78,3 @@ object TravelFixture:
       : Either[OathViolation, OathTransition] =
     rules.startWalker(Ready(ready), ActionRef.Travel, actor, modifiers,
       Vector(DecisionOptionRef.Site(destination)))
-
-  def after(transition: OathTransition): ReadyGame =
-    transition.state.asInstanceOf[Ready].value
-
-  def supplyOf(ready: ReadyGame, id: PlayerId = actor): Int =
-    Look(ready).player(id).board.supply.supply
-
-  /** The favor on an adviser card of the actor. */
-  def adviserTokens(ready: ReadyGame, id: CardId): Tokens =
-    Look(ready).player(actor).advisers.collectFirst {
-      case card: DenizenState if card.id == id => card.tokens
-    }.get

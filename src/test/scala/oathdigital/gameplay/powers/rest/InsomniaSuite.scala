@@ -5,7 +5,6 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{AdviserLimit, NoteText, PhasePowerCatalog,
   SearchFixture, WalkerPowerCatalog}
-import oathdigital.gameplay.powers.banner.BannerFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{WalkerOutcome, WalkerPowers}
 import oathdigital.model._
@@ -89,9 +88,10 @@ class InsomniaSuite extends munit.FunSuite:
 
   test("with Silver Tongue as well the limit stays 2, and both limits keep " +
       "the Mob's discard"):
-    val ready = BannerFixture.holdingFavor(Table.start.hand(p1, plain(0))
+    val ready = Table.start.hand(p1, plain(0))
       .denizen(plain(2), at = Table.quietPawnSite(p1))
-      .adviser(p1, tongue).adviser(p1, insomnia).ready)
+      .adviser(p1, tongue).adviser(p1, insomnia)
+      .peoplesFavor(Some(p1), 1).ready
     assertEquals(AdviserLimit.of(catalog, ready, p1), 2)
     val (tree, site) = placed(ready, plain(0), "site")
     assertEquals(PlacementFixture.options(ready, tree, site.tree, powers).head,

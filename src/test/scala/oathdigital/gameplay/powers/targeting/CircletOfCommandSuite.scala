@@ -5,8 +5,7 @@ import oathdigital.gameplay.CampaignFixture.raidBoard
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers}
@@ -98,14 +97,13 @@ class CircletOfCommandSuite extends munit.FunSuite:
     val actor = PowerFixture.actor
     val enemy = base.game.current.players.map(_.player).find(_ != actor).get
     val site = Look(base).player(PowerFixture.actor).pawnSite
-    val staged = CardStaging.without(CardStaging.without(base, conspiracy), other)
+    val staged = Table.from(base).hand(actor, conspiracy).unchecked
       .updateCurrent(c => c.copy(
         players = c.players.map(p => if p.player == enemy then
           p.copy(pawnSite = site) else p),
         banners = c.banners.copy(
           peoplesFavor = c.banners.peoplesFavor.copy(holder = Some(enemy)),
-          darkestSecret = c.banners.darkestSecret.copy(holder = None)),
-        temporaryHands = c.temporaryHands.updated(actor, Vector(conspiracy))))
+          darkestSecret = c.banners.darkestSecret.copy(holder = None))))
     val ready = holds(holds(staged, enemy, other), enemy, circlet, circletSide)
     val hook = CardPlayedFaceup(conspiracy, RuleSourceRef.Adviser(actor, conspiracy))
     val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),

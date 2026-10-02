@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers.setup
 
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PlayerFacts, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupWalkDriver}
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 class ProvingGroundsRulesSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
@@ -14,15 +15,14 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   private val firstPlayer = PlayerId("p2")
 
   private def stagedAt(side: EdificeSide, at: SiteId = site): ReadyGame =
-    CardStaging.without(FirstGameSetupFixture.freshReady, edifice).updateCurrent(c =>
-      c.copy(map = c.map.copy(sites = c.map.sites.updated(at,
-        c.map.sites(at).copy(denizens = c.map.sites(at).denizens :+
-          EdificeState(edifice, side, Tokens.empty))))))
+    Table.from(FirstGameSetupFixture.freshReady).edifice(edifice, side, at = at)
+      .unchecked
 
   private def finish(ready: ReadyGame): ReadyGame =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveToCompletion(ready, tree, powers)
+    SetupWalkDriver.driveToCompletion(ready, tree,
+      TriggeredProcedureRef.Setup, powers)
 
   test("Proving Grounds gives the placing player three warbands"):
     val staged = stagedAt(EdificeSide.Intact)
@@ -39,11 +39,8 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   private def withOtherDenizens: ReadyGame =
     val extra = FirstGameSetupFixture.freshReady.game.current.commonCards
       .worldDeck.collect { case id: DenizenId => id }.take(2)
-    extra.foldLeft(stagedAt(EdificeSide.Ruined))((ready, id) =>
-      CardStaging.without(ready, id).updateCurrent(c => c.copy(map = c.map.copy(
-        sites = c.map.sites.updated(site, c.map.sites(site).copy(denizens =
-          c.map.sites(site).denizens :+
-            DenizenState(id, Orientation.FaceUp, Tokens.empty)))))))
+    extra.foldLeft(Table.from(stagedAt(EdificeSide.Ruined)))(
+      _.denizen(_, at = site)).unchecked
 
   test("Empty Grounds discards every other denizen in its region"):
     val staged = withOtherDenizens
@@ -62,7 +59,8 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   private def events(ready: ReadyGame): Vector[OathEvent] =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveWithEvents(ready, tree, powers)._2
+    SetupWalkDriver.driveWithEvents(ready, tree,
+      TriggeredProcedureRef.Setup, powers)._2
 
   private val proving = ProvingGrounds.forCatalog(catalog)
   private val empty = EmptyGrounds.forCatalog(catalog)

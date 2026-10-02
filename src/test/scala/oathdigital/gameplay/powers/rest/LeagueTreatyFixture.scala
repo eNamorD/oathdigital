@@ -1,71 +1,28 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 
-/** League Treaty arranged on the quiet table's Act, shared with the
-  * pending-walker invariant (Task 13).
+/** League Treaty staged on p1's Act, shared with the pending-walker
+  * invariant (Task 13).
   */
 object LeagueTreatyFixture:
-  val treatyCard = DenizenId("237")
+  val treatyCard: DenizenId = CatalogNames.denizen("League Treaty")
+  /** The site League Treaty stands at in these tests, in the Cradle with
+    * Broken Peaks. */
+  val treatySite: SiteId = CatalogNames.site("Ancient City")
 
-  /** p1's Act. Broken Peaks holds two secrets, so p2, waking after p1's
-    * Rest, has wealth to take and the Wake waits. */
-  def act: ReadyGame = Table.start
-    .siteTokens(Table.quietPawnSite(Table.p2), secrets = 2)
-    .ready
-
-  def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get
-
-  /** Places League Treaty and `favor` (suit -> amounts per card) on the
-    * treaty site's region, with every placed card pulled out of the decks
-    * and every other in-play card emptied of favor. The treaty site is ruled
-    * by `ruler`'s warband when `ruler` is set, and by bandits otherwise.
+  /** p1's Act with League Treaty at Ancient City, ruled by one of `ruler`'s
+    * warbands, or by one bandit when `ruler` is unset. Each `(card, site,
+    * favor)` of `favored` stands faceup at that Cradle site with that much
+    * favor on it. Broken Peaks holds two secrets, so p2, waking after p1's
+    * Rest, has wealth to take and the Wake waits.
     */
-  def arranged(ruler: Option[PlayerId],
-      favor: Vector[(Suit, Int)]): (ReadyGame, SiteId) =
-    val base = act
-    val current = base.game.current
-    val site = current.map.cradle.head
-    val region = current.map.inPlay.filter(current.map.regionOf(_) ==
-      current.map.regionOf(site))
-    val deck = (current.commonCards.worldDeck ++
-      current.commonCards.regionalDiscards.values.flatten)
-      .collect { case id: DenizenId => id }
-    val picks = favor.foldLeft(Vector.empty[(DenizenId, Int)]):
-      case (chosen, (suit, amount)) => chosen :+ (deck.find(id =>
-        id != treatyCard && !chosen.exists(_._1 == id) && suitOf(id) == suit)
-        .get -> amount)
-    val lineage = current.players.map(p => p.player -> p.lineage).toMap
-    val placed = picks.zipWithIndex.groupBy { case (_, i) =>
-      region(i % region.size) }.map { case (id, rows) => id -> rows.map {
-        case ((card, amount), _) => DenizenState(card, Orientation.FaceUp,
-          Tokens(amount, 0)) } }
-    val sites = current.map.sites.map { case (id, state) =>
-      val emptied = state.copy(denizens = state.denizens.map {
-        case d: DenizenState => d.copy(tokens = d.tokens.copy(favor = 0))
-        case e: EdificeState => e.copy(tokens = e.tokens.copy(favor = 0))
-      })
-      val treaty = Vector(DenizenState(treatyCard, Orientation.FaceUp,
-        Tokens.empty)).filter(_ => id == site)
-      id -> (if id == site then emptied.copy(forces = ruler.fold[SiteForces](
-          SiteForces.Occupied(ForceKind.Bandit, 1))(owner =>
-          SiteForces.Occupied(ForceKind.Exile(lineage(owner)), 1)),
-          denizens = treaty ++ placed.getOrElse(id, Vector.empty))
-        else emptied.copy(denizens = emptied.denizens ++
-          placed.getOrElse(id, Vector.empty)))
-    }
-    val removed = picks.map(_._1).toSet + treatyCard
-    base.copy(game = base.game.copy(current = current.copy(
-      map = current.map.copy(sites = sites),
-      commonCards = current.commonCards.copy(
-        worldDeck = current.commonCards.worldDeck.filterNot {
-          case id: DenizenId => removed(id)
-          case _ => false
-        }, regionalDiscards = current.commonCards.regionalDiscards.map {
-          case (region, cards) => region -> cards.filterNot {
-            case id: DenizenId => removed(id)
-            case _ => false
-          }
-        })))) -> site
+  def leagueTreatyAct(ruler: Option[PlayerId],
+      favored: (String, String, Int)*): Table =
+    val ruled = ruler.fold(Table.start.bandits(treatySite, 1))(
+      Table.start.warbandsAt(treatySite, _, 1))
+    favored.foldLeft(ruled.denizen(treatyCard, at = treatySite)
+      .siteTokens("Broken Peaks", secrets = 2)) {
+      case (table, (card, site, favor)) =>
+        table.denizen(card, at = site).tokens(card, favor = favor) }

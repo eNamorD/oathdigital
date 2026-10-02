@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.testkit.TestCards
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
@@ -12,9 +11,11 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
+import oathdigital.testkit.{Table, TestCards}
 
 class SilverTongueSuite extends munit.FunSuite:
   import SilverTongueFixture._
+  private val actor = Table.p1
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
@@ -26,7 +27,8 @@ class SilverTongueSuite extends munit.FunSuite:
 
   test("one matching bank with favor gives one favor without a decision, " +
       "once per turn, and runs the action boundary"):
-    val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane))
+    val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
+      Set(Suit.Arcane))
     val used = rules.startWalker(Ready(ready), use, actor, Vector.empty,
       Vector(source)).toOption.get
     walkerParked.assertResumed(used.state, Phase.Rest, actor)
@@ -38,7 +40,7 @@ class SilverTongueSuite extends munit.FunSuite:
       Vector(source)).left.toOption, Some(OathViolation.PowerAlreadyUsed(ref)))
 
   test("several matching banks with favor ask the player to choose one of them"):
-    val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad),
+    val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
       Set(Suit.Arcane, Suit.Nomad, Suit.Order))
     val choice = SilverTongue.choiceDecisionId(ready, actor)
     val parked = rules.startWalker(Ready(ready), use, actor, Vector.empty,
@@ -55,7 +57,7 @@ class SilverTongueSuite extends munit.FunSuite:
     walkerParked.assertResumed(taken.state, Phase.Rest, actor)
 
   test("without matching favor Silver Tongue is not usable and Rest skips ahead"):
-    val (ready, actor) = arranged(Vector(Suit.Arcane), Set(Suit.Nomad))
+    val ready = silverTongueRest(Vector("Golem Legions"), Set(Suit.Nomad))
     assertEquals(PhasePowerProcedure.usable(catalog, ready, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
     val act = ready.copy(game = ready.game.copy(current = ready.game.current
@@ -68,7 +70,7 @@ class SilverTongueSuite extends munit.FunSuite:
     walkerParked.assertResumed(rested.state, Phase.Wake, next)
 
   test("Silver Tongue requires replacement when a third adviser is played"):
-    val (base, actor) = arranged(Vector.empty, Set.empty)
+    val base = silverTongueRest(Vector.empty, Set.empty)
     val current = base.game.current
     val ids = current.commonCards.worldDeck.collect { case id: DenizenId => id }
       .filter(id => catalog.denizens.find(_.id.value == id.value).exists(
@@ -100,7 +102,7 @@ class SilverTongueSuite extends munit.FunSuite:
       _.ref == DecisionOptionRef.Denizen(second)))
 
   test("playing Silver Tongue itself as a third adviser requires replacement"):
-    val (base, actor) = arranged(Vector.empty, Set.empty)
+    val base = silverTongueRest(Vector.empty, Set.empty)
     val current = base.game.current
     val others = current.commonCards.worldDeck.collect {
       case id: DenizenId if id != tongue => id
@@ -131,7 +133,8 @@ class SilverTongueSuite extends munit.FunSuite:
       .exists(_.ref == DecisionOptionRef.Denizen(others.head)))
 
   test("its take is written as its own line, covering the generic one"):
-    val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane))
+    val ready = silverTongueRest(Vector("Golem Legions", "Rain Boots"),
+      Set(Suit.Arcane))
     val used = rules.startWalker(Ready(ready), use, actor, Vector.empty,
       Vector(source)).toOption.get
     assertEquals(NoteText.said(SilverTongue.forCatalog(catalog), used.events),
