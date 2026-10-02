@@ -14,8 +14,8 @@ Card classes phases left behind, bugs and small UI fixes from the
 
 ## Next
 
-Work toward a playable all-Exile alpha before expanding into the Empire and
-campaign-continuity rules.
+Work toward a playable all-Exile alpha before expanding into the Chronicle,
+campaign-continuity and Empire rules.
 
 ### Phase - Cleanup tasks
 
@@ -415,16 +415,9 @@ banners, remote and private Negotiation, a registry of term kinds, and
 eligibility powers. Record ignored Negotiation rules per participant rather
 than for the actor only. Citizenship offers belong to the Empire phase.
 
-### Phase - Empire
-
-After the all-Exile alpha, implement Chancellor/Citizen roles, Imperial forces,
-Grand Scepter and Reliquary behavior, Citizenship through Negotiation,
-Successor goals, forced and self-exile, Imperial setup/turn/end rules, and the
-remaining production authentication work needed for broader hosting.
-
 ### Phase - Chronicle steps
 
-After the Empire phase, implement the Chronicle and persistent campaign:
+After the all-Exile alpha, implement the Chronicle and persistent campaign:
 generalized later-game setup, Atlas transitions, Chronicle tasks, world
 reconstruction, Reliquary changes, Foundation mutation, Legacy
 activation/scoring, Oathkeeper goal changes, era scoring, saved-campaign
@@ -438,6 +431,13 @@ continuation, and campaign browsing.
 - [ ] **Foundations.**
 - [ ] **Legacies.**
 - [ ] **Eras.**
+
+### Phase - Empire
+
+After the Chronicle steps phase, implement Chancellor/Citizen roles, Imperial
+forces, Grand Scepter and Reliquary behavior, Citizenship through Negotiation,
+Successor goals, forced and self-exile, Imperial setup/turn/end rules, and the
+remaining production authentication work needed for broader hosting.
 
 ### Phase - Gameplay completeness gate
 
