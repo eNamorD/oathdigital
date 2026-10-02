@@ -41,6 +41,7 @@ object PhasePowerHarness:
   def withoutAdvisers(ready: ReadyGame, owner: PlayerId): ReadyGame =
     val held = Look(ready).player(owner).advisers.map(_.id).collect {
       case id: WorldCardId => id }
+    // No Table step removes advisers.
     ready.updateCurrent(c => c.copy(
       players = c.players.map(p =>
         if p.player == owner then p.copy(advisers = Vector.empty) else p),

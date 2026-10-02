@@ -290,3 +290,7 @@ class TableSuite extends munit.FunSuite:
       .ready.game.current.banners
     assertEquals(banners.peoplesFavor.active, PeoplesFavorFace.GrandCouncil)
     assertEquals(banners.darkestSecret.active, DarkestSecretFace.Festival)
+
+  test("Look.tokensOn fails for a card at no site and in no play area"):
+    // The quiet table deals no denizen to a site or a player.
+    intercept[munit.FailException](Look(Table.start.ready).tokensOn("Alchemist"))

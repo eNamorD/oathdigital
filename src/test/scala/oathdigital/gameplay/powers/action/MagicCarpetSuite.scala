@@ -15,8 +15,8 @@ class MagicCarpetSuite extends munit.FunSuite:
   private val carpet = RelicId("R39")
   private def staged = inPhase(withRelic(homelands(quietTable), carpet),
     Phase.Act)
-  private def site(name: String) = DecisionOptionRef.Site(CatalogNames.site(
-    name))
+  private def site(name: String) =
+    DecisionOptionRef.Site(CatalogNames.site(name))
 
   /** Starts the Carpet and answers the site question. */
   private def placedAt(start: ReadyGame, at: String) =

@@ -69,7 +69,8 @@ class WhistleSuite extends munit.FunSuite:
     val parked = use(staged(), Whistle.id, whistle).toOption.get
     val done = choose(parked.state, Whistle.decisionId, target).toOption.get
     assertEquals(NoteText.said(Whistle, done.events), Vector(NoteText.Said(
-      NoteKey.Used, s"Placed ${p2.value} at ${CatalogNames.site("Ancient City").value} and gave " +
+      NoteKey.Used, s"Placed ${p2.value} at " +
+        s"${CatalogNames.site("Ancient City").value} and gave " +
         s"${p2.value} the Whistle's secret.", covers = false)))
 
   test("with nobody to pull it writes that"):

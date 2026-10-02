@@ -159,13 +159,13 @@ class CatacombsContributionSuite extends munit.FunSuite:
       def contributions: Map[PowerWindow, Vector[Contribution]] =
         Map(PowerWindow.RecoverActionEligibility -> Vector(
           Restriction((_, _) => None)))
-    val rulesWithPrintedRestrictions = new OathRules(catalog,
+    val restrictedRules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowers(Vector(restrictionOnly)),
       walkerDice = WalkerDiceFixture.blanks)
     val unrestricted = new OathRules(catalog, walkerPowerCatalog =
       WalkerPowers.empty, walkerDice = WalkerDiceFixture.blanks)
     // A restriction that forbids nothing leaves the start exactly as it was.
-    assertEquals(rulesWithPrintedRestrictions.startWalker(Ready(fixture.ready),
+    assertEquals(restrictedRules.startWalker(Ready(fixture.ready),
       ActionRef.Recover, fixture.actor).map(_.state),
       unrestricted.startWalker(Ready(fixture.ready), ActionRef.Recover,
         fixture.actor).map(_.state))

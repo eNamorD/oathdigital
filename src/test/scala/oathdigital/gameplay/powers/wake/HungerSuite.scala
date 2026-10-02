@@ -16,7 +16,6 @@ import oathdigital.testkit.Table.{p2, p3}
 class HungerSuite extends munit.FunSuite:
   import PowerFixture.actor
 
-
   private val phasePowers = PhasePowerCatalog.default(catalog)
   private val rules = new OathRules(catalog, phasePowerCatalog = phasePowers)
   private val parked = new ParkedDecisionAssertions(catalog,

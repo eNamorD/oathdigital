@@ -8,9 +8,9 @@ import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
-/** Drives an Act phase power by its id through the rules, with fixed dice
-  * and a journal replay check: the harness of the power suites in every
-  * phase. The acting player is the quiet table's p1.
+/** Drives a phase power by its id through the rules, with fixed dice and a
+  * journal replay check. The power suites of every phase use it. The acting
+  * player is the quiet table's p1, in the Act unless a suite moves the turn.
   */
 object ActPowerHarness:
   private val actor: PlayerId = Table.p1
@@ -64,10 +64,10 @@ object ActPowerHarness:
     * the violation that stopped it. */
   def replayed(rules: OathRules, from: ReadyGame, events: Vector[OathEvent])(
       using munit.Location): ReadyGame =
-    Outcomes.ready(Unwrap.accepted(events.foldLeft[
-      Either[OathViolation, OathState]](Right(Ready(from))) {
-      case (state, event) => state.flatMap(rules.evolve(_, event))
-    }))
+    val replay = events.foldLeft[Either[OathViolation, OathState]](
+      Right(Ready(from)))((state, event) =>
+      state.flatMap(rules.evolve(_, event)))
+    Outcomes.ready(Unwrap.accepted(replay))
 
   /** The actor's secrets, faceup and facedown together. */
   def allSecrets(state: ReadyGame): Int =

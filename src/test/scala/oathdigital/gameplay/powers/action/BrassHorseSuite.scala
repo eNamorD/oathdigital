@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
@@ -22,8 +22,8 @@ class BrassHorseSuite extends munit.FunSuite:
   private val nomadTop = CatalogNames.denizen("Oracle")
   private def cradleTopped(card: WorldCardId) =
     Table.from(staged).discarded(Region.Cradle, card).unchecked
-  private def site(name: String) = DecisionOptionRef.Site(CatalogNames.site(
-    name))
+  private def site(name: String) =
+    DecisionOptionRef.Site(CatalogNames.site(name))
   private def reveals(events: Vector[OathEvent]) = ops(events).collect {
     case reveal: Reveal => reveal }
 

@@ -31,10 +31,10 @@ class RelicWorshipSuite extends munit.FunSuite:
   private def staged(secrets: Int = 2)
       : (ReadyGame, CatacombsContributionSuite.Fixture) =
     val withRelic = CatacombsContributionSuite.relicSite()
-    val ready = Table.from(PowerFixture.asAdviser(CardStaging
-      .without(withRelic.ready, worship), worship))
-        .supply(PowerFixture.actor, 4).secrets(PowerFixture.actor, secrets)
-          .unchecked
+    val ready = Table.from(PowerFixture.asAdviser(
+      CardStaging.without(withRelic.ready, worship), worship))
+      .supply(PowerFixture.actor, 4)
+      .secrets(PowerFixture.actor, secrets).unchecked
     (ready, withRelic.copy(ready = ready))
 
   /** A whole Recover that succeeds and takes the site's relic. */
