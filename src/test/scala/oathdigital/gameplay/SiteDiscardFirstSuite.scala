@@ -40,7 +40,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
   private def toDiscardDecision(ready: ReadyGame): (Operation, PendingTree) =
     val tree = build(ready, p1, card)
     val placed = answer(ready, tree, park(ready, tree, powers), powers,
-      decisionId(card, "place"), DecisionOptionRef.Button("site"), p1)
+      cardPlayDecisionId(card, "place"), DecisionOptionRef.Button("site"), p1)
       .asInstanceOf[WalkerOutcome.Parked]
     (tree, placed.tree)
 
@@ -58,16 +58,17 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val (tree, asked) = toDiscardDecision(ready)
     assertEquals(options(ready, tree, asked, powers),
       Vector(noReplacement, DecisionOptionRef.Denizen(kept)))
-    val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
-      noReplacement, p1).asInstanceOf[WalkerOutcome.Finished].treeless
+    val done = answer(ready, tree, asked, powers,
+      cardPlayDecisionId(card, "replace"), noReplacement, p1)
+      .asInstanceOf[WalkerOutcome.Finished].treeless
     assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))
     assertEquals(done.game.current.temporaryHands(p1), Vector.empty)
 
   test("choosing a site card discards it with the standard returns"):
     val ready = playing(kept).tokens(kept, favor = 1, secrets = 1).ready
     val (tree, asked) = toDiscardDecision(ready)
-    val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
-      DecisionOptionRef.Denizen(kept), p1)
+    val done = answer(ready, tree, asked, powers,
+      cardPlayDecisionId(card, "replace"), DecisionOptionRef.Denizen(kept), p1)
       .asInstanceOf[WalkerOutcome.Finished].treeless
     val region = CardPlay.nextRegion(done.game.current.map.regionOf(home).get)
     assertEquals(Look(done).cardsAt(home), Vector[CardId](card))
@@ -88,7 +89,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     assert(!site.replacementOptional)
     val (tree, asked) = toDiscardDecision(ready)
     assert(!options(ready, tree, asked, powers).contains(noReplacement))
-    val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
+    val done = answer(ready, tree, asked, powers,
+      cardPlayDecisionId(card, "replace"),
       DecisionOptionRef.Denizen(fillers.head), p1)
       .asInstanceOf[WalkerOutcome.Finished].treeless
     assertEquals(Look(done).cardsAt(home).size, 3)
@@ -109,8 +111,9 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     assertEquals(options(ready, tree, asked, powers).toSet,
       Set[DecisionOptionRef](noReplacement, DecisionOptionRef.Denizen(kept),
         ruined))
-    val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
-      ruined, p1).asInstanceOf[WalkerOutcome.Finished].treeless
+    val done = answer(ready, tree, asked, powers,
+      cardPlayDecisionId(card, "replace"), ruined, p1)
+      .asInstanceOf[WalkerOutcome.Finished].treeless
     assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))
     assertEquals(done.game.current.commonCards.edificeDeck.last, hall)
 
@@ -123,15 +126,17 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val tree = build(ready, p1, card)
     val parked = park(ready, tree, both)
     // A limit of two with two advisers held: a faceup adviser needs a discard.
-    val faceup = answer(ready, tree, parked, both, decisionId(card, "place"),
+    val faceup = answer(ready, tree, parked, both,
+      cardPlayDecisionId(card, "place"),
       DecisionOptionRef.Button("adviser-faceup"), p1)
       .asInstanceOf[WalkerOutcome.Parked]
     assertEquals(options(ready, tree, faceup.tree, both).toSet,
       Set[DecisionOptionRef](DecisionOptionRef.Denizen(CatalogNames.denizen(first)),
         DecisionOptionRef.Denizen(CatalogNames.denizen(second))))
     // And the site still offers the optional discard.
-    val site = answer(ready, tree, parked, both, decisionId(card, "place"),
-      DecisionOptionRef.Button("site"), p1).asInstanceOf[WalkerOutcome.Parked]
+    val site = answer(ready, tree, parked, both,
+      cardPlayDecisionId(card, "place"), DecisionOptionRef.Button("site"), p1)
+      .asInstanceOf[WalkerOutcome.Parked]
     assertEquals(options(ready, tree, site.tree, both).head, noReplacement)
 
   test("without the permission a site with room asks no discard"):
@@ -139,6 +144,6 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val none = WalkerPowers.empty
     val tree = build(ready, p1, card)
     val done = answer(ready, tree, park(ready, tree, none), none,
-      decisionId(card, "place"), DecisionOptionRef.Button("site"), p1)
+      cardPlayDecisionId(card, "place"), DecisionOptionRef.Button("site"), p1)
       .asInstanceOf[WalkerOutcome.Finished].treeless
     assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))

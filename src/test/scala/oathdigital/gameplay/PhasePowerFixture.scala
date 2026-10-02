@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.PhasePower
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
@@ -20,7 +21,9 @@ object PhasePowerFixture:
   /** The card whose printed power the test powers stand in for, and that
     * power's id. */
   val card: DenizenId = CatalogNames.denizen("Magician's Code")
-  val powerId: PowerId = PowerId("denizen.magicians-code")
+  val powerId: PowerId = FirstGameSetupFixture.catalog.denizen(card)
+    .flatMap(_.powers.headOption).map(_.id)
+    .getOrElse(throw AssertionError("Magician's Code prints no power"))
   val source: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   /** p1 holds Magician's Code faceup, in `phase` of p1's turn. No site holds

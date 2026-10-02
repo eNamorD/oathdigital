@@ -262,8 +262,11 @@ class CardPlayProcedureSuite extends munit.FunSuite:
     val player = current.players.find(_.player == actor).get
     val enemy = current.players.find(_.player != actor).get
     val hall = EdificeId("E16")
-    // The actor plays a card of its suit to the Homeland, which holds the Hall.
-    val (siteId, homeSuit) = PlacementFixture.homeland
+    // The actor plays a card of its suit to the Homeland, which holds the Hall:
+    // Deep Woods, the Beast Homeland.
+    val siteId = CatalogNames.site("Deep Woods")
+    val homeSuit = Suit.Beast
+    assertEquals(CardPlay.homelandSuit(catalog, siteId), Some(homeSuit))
     val capacity = catalog.sites.find(_.id == siteId).get.capacity
     val denizens = current.commonCards.worldDeck.collect { case id: DenizenId => id }
     val card = denizens.find(id => catalog.suitOf(id).contains(homeSuit)).get

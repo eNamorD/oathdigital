@@ -1,13 +1,12 @@
 package oathdigital.gameplay
 
-import oathdigital.testkit.TestCards
-import oathdigital.gameplay.actions.{CardPlay, PlacementRules}
+import oathdigital.gameplay.actions.PlacementRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** Staging and driving shared by the card-play placement suites. The powers
   * built here are test doubles: they change `PlacementRules` and nothing else.
@@ -32,75 +31,31 @@ object PlacementFixture:
   val limitTwo: ContributingPower =
     rulePower("test.limit-two")(_.limitAdvisers(2))
 
-  /** The unrestricted denizens still in the world deck. */
-  def plain(ready: ReadyGame): Vector[DenizenId] =
-    ready.game.current.commonCards.worldDeck.collect:
-      case id: DenizenId if catalog.denizens.exists(d => d.id.value == id.value &&
-        TestCards.unrestricted(d)) => id
-
-  def actorOf(ready: ReadyGame): PlayerState =
-    ready.game.current.players.find(
-      _.player == ready.game.current.turn.activePlayer).get
-
-  def denizen(id: DenizenId, tokens: Tokens = Tokens.empty): DenizenState =
-    DenizenState(id, Orientation.FaceUp, tokens)
-
-  /** `card` in the actor's hand and the site at `at`, or the actor's pawn
-    * site, holding exactly `site`; the actor's pawn moves to `at`. Every card
-    * that leaves a place goes to the matching deck, so the inventory stays
-    * whole.
-    */
-  def staged(card: DenizenId, site: Vector[SiteDenizenState],
-      at: Option[SiteId] = None): (ReadyGame, PlayerId, SiteId) =
-    val base = Table.start.ready
-    val current = base.game.current
-    val actor = actorOf(base)
-    val siteId = at.getOrElse(actor.pawnSite.get)
-    val placed = site.collect { case d: DenizenState => d.id: CardId } :+ card
-    val edifices = site.collect { case e: EdificeState => e.id }
-    val before = current.map.sites(siteId).denizens
-    (base.updateCurrent(_.copy(
-      players = current.players.map(p =>
-        if p.player == actor.player then p.copy(pawnSite = Some(siteId)) else p),
-      temporaryHands = current.temporaryHands.updated(actor.player, Vector(card)),
-      commonCards = current.commonCards.copy(
-        worldDeck = current.commonCards.worldDeck.filterNot(placed.contains) ++
-          before.collect { case d: DenizenState => d.id },
-        edificeDeck = current.commonCards.edificeDeck.filterNot(edifices.contains) ++
-          before.collect { case e: EdificeState if !edifices.contains(e.id) => e.id }),
-      map = current.map.copy(sites = current.map.sites.updated(siteId,
-        current.map.sites(siteId).copy(denizens = site))))),
-      actor.player, siteId)
-
-  /** The first in-play Homeland of the first game, and its suit. */
-  lazy val homeland: (SiteId, Suit) = Table.start.ready.game.current.map.inPlay
-    .flatMap(site => CardPlay.homelandSuit(catalog, site).map(site -> _)).head
-
-  /** The actor rules the pawn site, so a Hall of Ministers does not protect it. */
-  def ruledByActor(ready: ReadyGame, site: SiteId): ReadyGame =
-    ready.updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(site, c.map.sites(site).copy(forces =
-        SiteForces.Occupied(ForceKind.Exile(actorOf(ready).lineage), 1))))))
-
-  def decisionId(card: WorldCardId, kind: String): String =
+  /** The id of a card play's `kind` decision ("place" or "replace") for
+    * `card`. */
+  def cardPlayDecisionId(card: WorldCardId, kind: String): String =
     s"cardplay.$kind.${card.kind}.${card.value}"
 
-  def build(ready: ReadyGame, actor: PlayerId, card: WorldCardId): Operation =
-    CardPlayProcedure.build(catalog, ready, actor, card,
-      CardPlayProcedure.Origin.TemporaryHand).toOption.get
+  def build(ready: ReadyGame, actor: PlayerId, card: WorldCardId)(
+      using munit.Location): Operation =
+    accepted(CardPlayProcedure.build(catalog, ready, actor, card,
+      CardPlayProcedure.Origin.TemporaryHand))
 
-  def park(ready: ReadyGame, tree: Operation, powers: WalkerPowers)
-      : PendingTree = ProcedureWalker.advance(ready, tree, None, powers)
-    .toOption.get.asInstanceOf[WalkerOutcome.Parked].tree
+  def park(ready: ReadyGame, tree: Operation, powers: WalkerPowers)(
+      using munit.Location): PendingTree =
+    as[WalkerOutcome.Parked](accepted(
+      ProcedureWalker.advance(ready, tree, None, powers))).tree
 
   def answer(ready: ReadyGame, tree: Operation, pending: PendingTree,
       powers: WalkerPowers, id: String, ref: DecisionOptionRef,
-      actor: PlayerId): WalkerOutcome = ProcedureWalker.resolve(ready, tree,
-    pending, Answered(id, DecisionAnswer.ChooseOneAnswer(ref), actor), powers)
-    .toOption.get
+      actor: PlayerId)(using munit.Location): WalkerOutcome =
+    accepted(ProcedureWalker.resolve(ready, tree, pending,
+      Answered(id, DecisionAnswer.ChooseOneAnswer(ref), actor), powers))
 
   /** The options of the decision the walk is parked on. */
   def options(ready: ReadyGame, tree: Operation, pending: PendingTree,
-      powers: WalkerPowers): Vector[DecisionOptionRef] =
-    ProcedureWalker.parkedDecide(ready, tree, pending, powers).get.query
-      .asInstanceOf[DecisionQuery.ChooseOne].options.map(_.ref)
+      powers: WalkerPowers)(using munit.Location): Vector[DecisionOptionRef] =
+    val decide = present(
+      ProcedureWalker.parkedDecide(ready, tree, pending, powers),
+      "the decision the walk is parked on")
+    as[DecisionQuery.ChooseOne](decide.query).options.map(_.ref)

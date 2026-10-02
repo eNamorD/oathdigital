@@ -248,7 +248,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
   test("a completed Challenge replays exactly from its journal"):
     val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
     val orderedSites = wealthSite +: sites.filterNot(_ == wealthSite).take(7)
-    val (setupState, setupEvents) = execute(orderedSites)
+    val SetupResult(setupState, setupEvents) = setupThroughWake(orderedSites)
     val activeId = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
     val wealth = rules.startWalker(setupState, ActionRef.TakeWealth, activeId,
       Vector.empty, Vector(DecisionOptionRef.Button("favor"))).toOption.get

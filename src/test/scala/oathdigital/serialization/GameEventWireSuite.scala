@@ -636,7 +636,7 @@ class GameEventWireSuite extends munit.FunSuite:
     }
 
   test("v2 serialized replay equals command state and preserves ordering"):
-    val (commandState, events) = execute()
+    val SetupResult(commandState, events) = setupThroughWake()
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
     }
@@ -667,7 +667,7 @@ class GameEventWireSuite extends munit.FunSuite:
     )
 
   test("v2 rejects non-contiguous order"):
-    val events = execute()._2
+    val events = setupThroughWake().events
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
     }
@@ -731,7 +731,7 @@ class GameEventWireSuite extends munit.FunSuite:
       41L
     )
 
-    val events = execute()._2.take(2)
+    val events = setupThroughWake().events.take(2)
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(41L + index, event)
     }
@@ -745,7 +745,7 @@ class GameEventWireSuite extends munit.FunSuite:
     assertEquals(decoded.map(_.event), events)
 
   test("mixed contiguous v2 setup and v3 gameplay records round trip"):
-    val setupEvents = execute()._2
+    val setupEvents = setupThroughWake().events
     // Any two v3 gameplay events serve. They used to be the Wake phase's
     // own; the Wake phase no longer has any, since both taking wealth and
     // ending Wake are journalled as walker steps (Task 7).

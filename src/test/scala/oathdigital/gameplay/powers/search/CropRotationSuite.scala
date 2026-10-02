@@ -29,7 +29,7 @@ class CropRotationSuite extends munit.FunSuite:
   private val home = CatalogNames.site("Ancient City")
   private val capacity = 3 // Ancient City's printed capacity
   private val noDiscard = CardPlayProcedure.noReplacement.ref
-  private val replaceId = PlacementFixture.decisionId(played, "replace")
+  private val replaceId = PlacementFixture.cardPlayDecisionId(played, "replace")
 
   /** p1 in Act at Ancient City with 5 Supply, the world deck topped by
     * `played`, and Ancient City holding `site`. p1 holds Crop Rotation as a

@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
@@ -135,7 +135,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     selected
 
   private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) =
-    val Ready(base) = execute()._1: @unchecked
+    val base = Outcomes.ready(setupThroughWake().state)
     val active = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val candidates = base.game.current.map.inPlay.filter(siteId =>

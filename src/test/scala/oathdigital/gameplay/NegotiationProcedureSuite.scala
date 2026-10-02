@@ -202,7 +202,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     assert(choose(started.state, p1, p2).isRight)
 
   test("a completed Negotiation replays exactly from its journal"):
-    val (setupState, setupEvents) = execute()
+    val SetupResult(setupState, setupEvents) = setupThroughWake()
     val Ready(original) = setupState: @unchecked
     val actor = original.game.current.turn.activePlayer
     val other = original.game.current.players.find(_.player != actor).get.player

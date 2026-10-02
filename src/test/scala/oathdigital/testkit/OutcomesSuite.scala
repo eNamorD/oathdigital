@@ -29,4 +29,5 @@ class OutcomesSuite extends munit.FunSuite:
       .contains("NoPlayableOption"))
 
   test("assertWireRoundTrips passes for the events of a real setup"):
-    assertWireRoundTrips(FirstGameSetupFixture.execute()._2.take(3))
+    assertWireRoundTrips(FirstGameSetupFixture.setupThroughWake()
+      .events.take(3))

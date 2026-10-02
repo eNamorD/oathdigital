@@ -6,7 +6,7 @@ import oathdigital.gameplay.operations.TheGrandScepterCard
 import oathdigital.model._
 import oathdigital.model.OathState._
 import oathdigital.gameplay.walker.WalkerCompleted
-import oathdigital.testkit.Situation
+import oathdigital.testkit.{Outcomes, Situation}
 
 /** Shared fixture for the whole gameplay test suite: a real catalog, three
   * Exile participants, and a Chronicle-shaped input for `GameStartRules`
@@ -67,9 +67,12 @@ object FirstGameSetupFixture:
     relicDeck = relics
   )
 
-  val orders: SetupOrders = SetupOrders(
-    participants, PlayerId("p2"), ChronicleFixtureDealOrder.dealOrder(denizens, participants.size),
-    relics)
+  /** The first game's first player. `Table.start` overrides it to p1; a
+    * test that runs from `orders` itself starts with p2. */
+  val firstPlayer: PlayerId = PlayerId("p2")
+
+  val orders: SetupOrders = SetupOrders(participants, firstPlayer,
+    ChronicleFixtureDealOrder.dealOrder(denizens, participants.size), relics)
 
   /** A fresh `Ready` game in `Phase.Setup`: nothing placed, nothing chosen.
     * What `GameStartRulesSuite` and `SetupProcedureSuite` exercise directly.
@@ -86,13 +89,16 @@ object FirstGameSetupFixture:
     Situation.wake(Situation.rules(catalog)
       .withAnswers(Situation.pawnsAt(placementSites)), chronicle, orders)
 
+  /** The state Setup reached and the events that reached it. */
+  final case class SetupResult(state: OathState, events: Vector[OathEvent])
+
   /** [[initialSituation]]'s state and real event history as the first
     * player's Wake begins, in `Phase.Wake`. Real play ends a Wake with
     * nothing to decide in the command that begins it, so this stops before
     * that End Wake: the rule suites built on it start from the Wake and add
     * whatever option they test. */
-  def execute(placementSites: Vector[SiteId] = sites)
-      : (OathState, Vector[OathEvent]) =
+  def setupThroughWake(placementSites: Vector[SiteId] = sites)
+      : SetupResult =
     val woken = initialSituation(placementSites)
     val setupEnd = woken.events.indexWhere {
       case WalkerCompleted(TriggeredProcedureRef.Setup) => true
@@ -102,12 +108,13 @@ object FirstGameSetupFixture:
     val rules = new oathdigital.gameplay.OathRules(catalog)
     val state = events.foldLeft[Either[OathViolation, OathState]](
       Right(NoGame))((state, event) => state.flatMap(rules.evolve(_, event)))
-    (state.toOption.get, events)
+    SetupResult(state.fold(violation =>
+      throw AssertionError(s"the setup events do not replay: $violation"),
+      identity), events)
 
-  /** The game `execute()` sets up. Immutable, so suites share one. */
+  /** The game `setupThroughWake()` sets up. Immutable, so suites share one. */
   lazy val initialReady: ReadyGame =
-    val Ready(value) = execute()._1: @unchecked
-    value
+    Outcomes.ready(setupThroughWake().state)
 
 /** Splices the five fixed Vision identities into the fixture's implemented
   * denizens the same way `ChronicleFirstGamePlan.dealOrder` (Task 6) splices
@@ -115,8 +122,13 @@ object FirstGameSetupFixture:
   * fixture so it has no production dependency of its own.
   */
 private object ChronicleFixtureDealOrder:
-  def dealOrder(denizens: Vector[DenizenId], participantCount: Int): Vector[WorldCardId] =
+  def dealOrder(denizens: Vector[DenizenId], participantCount: Int)
+      : Vector[WorldCardId] =
+    // Set aside first: 3 cards for each participant's hand and 6 for the
+    // seeded regional discards.
     val remaining = denizens.drop(6 + participantCount * 3)
+    // Then the 10+2 and 15+3 packets: 10 cards and 2 Visions, 15 cards and the
+    // other 3 Visions, and the rest of the deck below them.
     remaining.take(10) ++ FirstGameRulesData.visions.take(2) ++
       remaining.slice(10, 25) ++ FirstGameRulesData.visions.drop(2) ++
       remaining.drop(25)

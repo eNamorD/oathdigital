@@ -59,14 +59,15 @@ class PlacementRulesSuite extends munit.FunSuite:
     // Under the default limit of three there is room, so no discard is asked.
     val open = WalkerPowers.empty
     val opened = answer(ready, tree, park(ready, tree, open), open,
-      decisionId(card, "place"), DecisionOptionRef.Button("adviser-faceup"),
-      actor)
+      cardPlayDecisionId(card, "place"),
+      DecisionOptionRef.Button("adviser-faceup"), actor)
     assert(opened.isInstanceOf[WalkerOutcome.Finished])
     // Under a limit of two the area is full and a discard is asked first.
     val limited = WalkerPowers(Vector(limitTwo))
     val asked = answer(ready, tree, park(ready, tree, limited), limited,
-      decisionId(card, "place"), DecisionOptionRef.Button("adviser-faceup"),
-      actor).asInstanceOf[WalkerOutcome.Parked]
+      cardPlayDecisionId(card, "place"),
+      DecisionOptionRef.Button("adviser-faceup"), actor)
+      .asInstanceOf[WalkerOutcome.Parked]
     assertEquals(options(ready, tree, asked.tree, limited).toSet,
       Set[DecisionOptionRef](DecisionOptionRef.Denizen(first),
         DecisionOptionRef.Denizen(second)))

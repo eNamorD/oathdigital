@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{OathRules, PlacementFixture}
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -73,7 +73,7 @@ object SearchFixture:
   def place(from: OathTransition, card: WorldCardId, button: String)
       : Either[OathViolation, OathTransition] =
     rules.resolveWalker(from.state, actor,
-      s"cardplay.place.${card.kind}.${card.value}",
+      PlacementFixture.cardPlayDecisionId(card, "place"),
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button(button)))
 
   /** A whole Search: start, keep `kept`, place it with `button`. The events are
@@ -104,7 +104,7 @@ object SearchFixture:
   def replace(from: OathTransition, card: WorldCardId, chosen: CardId)
       : Either[OathViolation, OathTransition] =
     rules.resolveWalker(from.state, actor,
-      s"cardplay.replace.${card.kind}.${card.value}",
+      PlacementFixture.cardPlayDecisionId(card, "replace"),
       DecisionAnswer.ChooseOneAnswer(chosen match {
         case id: DenizenId => DecisionOptionRef.Denizen(id)
         case id: VisionId => DecisionOptionRef.Vision(id)

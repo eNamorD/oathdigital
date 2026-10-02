@@ -134,7 +134,7 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     // `EnterPhase` that detects it rather than a phase gate in an evolve:
     // entering the phase the turn is already in is rejected, so the repeat
     // fails at the first event of its second copy.
-    val setupEvents = execute()._2
+    val setupEvents = setupThroughWake().events
     assertEquals(ended.events.size, 2)
     val corrupt = new EventReplayEngine(rules).replay(
       (setupEvents ++ ended.events ++ ended.events).zipWithIndex.map {

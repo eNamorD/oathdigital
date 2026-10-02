@@ -42,12 +42,12 @@ class HomelandLineSuite extends munit.FunSuite:
     val (ready, actor, card) = atHomeland(matching = true)
     val tree = build(ready, actor, card)
     val WalkerOutcome.Parked(pending, asked) = answer(ready, tree,
-      park(ready, tree, none), none, decisionId(card, "place"),
+      park(ready, tree, none), none, cardPlayDecisionId(card, "place"),
       DecisionOptionRef.Button("site"), actor): @unchecked
     assertEquals(said(asked), Vector.empty)
     val discarded = options(ready, tree, pending, none).head
     val WalkerOutcome.Finished(_, events) = answer(ready, tree, pending, none,
-      decisionId(card, "replace"), discarded, actor): @unchecked
+      cardPlayDecisionId(card, "replace"), discarded, actor): @unchecked
     assertEquals(said(events), Vector(NoteText.Said("discard-first",
       s"${actor.value} may discard a card at their site first.", covers = false)))
 
@@ -65,12 +65,12 @@ class HomelandLineSuite extends munit.FunSuite:
     val (ready, actor, card) = atHomeland(matching = true, full = false)
     val tree = build(ready, actor, card)
     val WalkerOutcome.Parked(pending, _) = answer(ready, tree,
-      park(ready, tree, none), none, decisionId(card, "place"),
+      park(ready, tree, none), none, cardPlayDecisionId(card, "place"),
       DecisionOptionRef.Button("site"), actor): @unchecked
     val discarded = options(ready, tree, pending, none).collectFirst {
       case ref: DecisionOptionRef.Denizen => ref }.get
     val WalkerOutcome.Finished(_, events) = answer(ready, tree, pending, none,
-      decisionId(card, "replace"), discarded, actor): @unchecked
+      cardPlayDecisionId(card, "replace"), discarded, actor): @unchecked
     assertEquals(said(events), Vector(NoteText.Said("discard-first",
       s"${actor.value} may discard a card at their site first.", covers = false)))
 
@@ -79,10 +79,10 @@ class HomelandLineSuite extends munit.FunSuite:
     val (ready, actor, card) = atHomeland(matching = true, full = false)
     val tree = build(ready, actor, card)
     val WalkerOutcome.Parked(pending, _) = answer(ready, tree,
-      park(ready, tree, none), none, decisionId(card, "place"),
+      park(ready, tree, none), none, cardPlayDecisionId(card, "place"),
       DecisionOptionRef.Button("site"), actor): @unchecked
     val done @ WalkerOutcome.Finished(_, events) = answer(ready, tree, pending,
-      none, decisionId(card, "replace"),
+      none, cardPlayDecisionId(card, "replace"),
       CardPlayProcedure.noReplacement.ref, actor): @unchecked
     assert(done.treeless.game.current.map.sites(homeSite).denizens
       .exists(_.id == card))

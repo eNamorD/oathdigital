@@ -47,7 +47,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     favor(siteCards.foldLeft(SearchFixture.staged(drawn))(atActorsSite))
 
   private def decisionId(kind: String) =
-    PlacementFixture.decisionId(played, kind)
+    PlacementFixture.cardPlayDecisionId(played, kind)
 
   /** Searches, keeps the played card and chooses to play it to the site. */
   private def toSite(ready: ReadyGame): OathTransition = (for
@@ -215,7 +215,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val parkedTree = PlacementFixture.park(ready, tree, powers)
     // Two advisers held under Silver Tongue: a faceup adviser needs a discard,
     // and the faceup Silver Tongue is a locked card, so only the other goes.
-    val place = PlacementFixture.decisionId(played, "place")
+    val place = PlacementFixture.cardPlayDecisionId(played, "place")
     val faceup = as[WalkerOutcome.Parked](
       PlacementFixture.answer(ready, tree, parkedTree, powers, place,
       DecisionOptionRef.Button("adviser-faceup"), who))

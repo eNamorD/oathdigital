@@ -243,7 +243,7 @@ class MinorActionsSuite extends munit.FunSuite:
     assertEquals(Look(discarded.state).advisers(actor.player), Vector.empty)
 
   test("valid setup history replays exactly through a completed minor action"):
-    val (setupState, setupEvents) = execute()
+    val SetupResult(setupState, setupEvents) = setupThroughWake()
     val active = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
     val adviser = setupState.asInstanceOf[Ready].value.game.current.players
       .find(_.player == active).get.advisers.head.id.asInstanceOf[WorldCardId]

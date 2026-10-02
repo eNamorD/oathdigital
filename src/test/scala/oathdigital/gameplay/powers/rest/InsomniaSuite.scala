@@ -47,7 +47,7 @@ class InsomniaSuite extends munit.FunSuite:
     val parked = PlacementFixture.park(ready, tree, powers)
     Placement(tree, as[WalkerOutcome.Parked](
       PlacementFixture.answer(ready, tree, parked, powers,
-      PlacementFixture.decisionId(card, "place"),
+      PlacementFixture.cardPlayDecisionId(card, "place"),
       DecisionOptionRef.Button(button), p1)))
 
   test("REST: its holder gains 1 secret, once per turn"):
