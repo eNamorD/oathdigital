@@ -20,8 +20,9 @@ import oathdigital.testkit.CatalogNames
   * `secondHinterlandPlains` (Shrouded Woods). The printed base is 1 within
   * the Cradle, 2 from the Cradle to the Provinces and within them, 4 from the
   * Cradle to the Hinterland. Every site with a printed capacity holds a
-  * bandit stack of it, and every site its printed starting wealth: Fair Isle 3 favor, Broken Peaks
-  * 2 secrets, Shrouded Woods 1 favor and 1 secret.
+  * bandit stack of it, and every site its printed starting wealth: Fair
+  * Isle 3 favor, Broken Peaks 2 secrets, Shrouded Woods 1 favor and 1
+  * secret.
   */
 object TravelFixture:
   import PowerFixture._
