@@ -1,7 +1,7 @@
 # Test readability ledger
 
 Date: 2026-10-02. Spec: [test readability sweep](2026-10-02-test-readability-design.md).
-Status: surveyed, awaiting review.
+Status: reviewed and approved by the user on 2026-10-02 (see Review).
 The survey used twelve areas, not the spec's ten; the plan (Areas) explains the split.
 
 ## Baseline
@@ -51,6 +51,28 @@ Row 08-020 duplicates 00-150 (TestGameFixtures). The ledger keeps it as a row
 so Plan 2 can find every caller, but the Summary counts it once, under 00-150:
 area 08's R1 and Total exclude it (46 rows in the table, 45 counted). The
 ledger holds 1635 finding rows.
+
+## Review
+
+The user reviewed the ledger on 2026-10-02 and approved it as is, with these
+decisions:
+
+1. **00-040 `againstPlayer`.** The helper stays as a helper and is renamed
+   `rivalRulesOriginAndHoldsOathkeeper`, so its name states the board it
+   builds. This settles the conflict with the spec's example, which named
+   `againstPlayer` as a helper that stays.
+2. **Rule labels.** The differences between areas (R1 vs R8 for hidden
+   defaults, R2 vs R1 for `Table.homeOf`, R2 vs R4 for hand-built decision
+   ids) stay as filed. Plan 2 works from each row's planned outcome.
+3. **R2 renames on documented helpers** (06-084, 07-058, 07-072, 07-118)
+   stay. A helper's name must describe what it does; a doc comment does not
+   replace a descriptive name.
+4. **Placeholders** such as `<printed name>` in planned outcomes are filled
+   in by Plan 2.
+5. **The survey prompt's "R1 pass" example** stays as worded. It matters only
+   if a survey is rerun.
+
+No rows were struck.
 
 ## Calibration
 
@@ -424,7 +446,7 @@ Rows that ask only for an existing step (`.secrets`, `.tokens`, `.pawn`,
 | 00-037 | oathdigital/gameplay/CampaignFixture.scala:65 | anyDice | R2 | Used by 3 files. Same dice as WalkerDiceFixture.blanks (HollowSword attack, Blank defense) and PlanDriver.losing. | Delete; use the one shared `blanks` (00-057). | | |
 | 00-038 | oathdigital/gameplay/CampaignFixture.scala:81 | replacePlayer | R3 | Used by 12 files. Callers patch `p.board.copy(faceUpSecrets = ..)`, `favor = ..` or `warbands = ..`, or the relic orientation, all of which are Table steps (`secrets`, `favor`, `warbands`, `relic`). | Callers state the Table step through `on(b)(_.secrets(..))`; delete replacePlayer. | | |
 | 00-039 | oathdigital/gameplay/CampaignFixture.scala:85 | withAdviserFor, withAdviser, withRelic, withRelicFor, withEdifice, withSiteCard, cardWith, relicWith | R5 | Used by 29, 28, 11, 4, 3, 30, 37 and 12 files. They take card ids as strings (`DenizenId(card)`, `RelicId(relic)`, `EdificeId(edifice)`) and callers get those strings from `cardWith(power id)` and `relicWith(power id)`, so the card itself is never named. | Take card names (String or the typed id) through CatalogNames (as Table does) and name the card in the test; keep `cardWith` only where the power, not the card, is the subject. | | |
-| 00-040 | oathdigital/gameplay/CampaignFixture.scala:110 | againstPlayer | R2 | Used by 38 files. The name says nothing: it makes the other player rule the origin with 2 warbands and hold the Oathkeeper title. | Inline as `.warbandsAt(b.origin, b.other, 2).oathkeeper(Some(b.other))`, or rename `rivalRulesOriginAndHoldsTitle`. | | |
+| 00-040 | oathdigital/gameplay/CampaignFixture.scala:110 | againstPlayer | R2 | Used by 38 files. The name says nothing: it makes the other player rule the origin with 2 warbands and hold the Oathkeeper title. | Rename to `rivalRulesOriginAndHoldsOathkeeper` (the user's choice at review). | | |
 | 00-041 | oathdigital/gameplay/CampaignFixture.scala:130 | raidBoard | R6 | Used by 5 files. Returns the tuple (Board, RelicId). | Return `RaidBoard(board, relic)`. | | |
 | 00-042 | oathdigital/gameplay/CampaignFixture.scala:133 | raidBoard | R2 | The relic is chosen by excluding four hand-typed plan power ids, so a reader cannot say which relic the defender holds. | Name the relic with `CatalogNames.relic("<name>")` and assert in the fixture that it prints no battle plan. | | |
 | 00-043 | oathdigital/gameplay/EconomyFixture.scala:14 | AddAdviserSource, FreePayment | R10 | Used by 2 and 1 files. Hand classes implementing ContributingPower; they return canned Transform contributions and record nothing, so both are stubs. The docs do not say so. | Doc each as "Stub of ContributingPower for the Muster source / cost window". | | |
