@@ -15,8 +15,11 @@ class BrassHorseSuite extends munit.FunSuite:
   import PhasePowerHarness.{awaits, backToActing, ops, replayed}
 
   private val horse = CatalogNames.relic("Brass Horse")
+
   /** p1's Act at Ancient City, in the Cradle, holding Brass Horse with 2
-    * secrets; Buried Giant lies in the Provinces. */
+    * secrets; Buried Giant lies in the Provinces. `homelands` stands a
+    * ruined Beast edifice at Deep Woods and a ruined Hearth one at Golden
+    * Valley, and no other card lies at any site. */
   private def staged = Table.from(homelands(quietTable)).turn(actor, Phase.Act)
     .pawn(actor, "Ancient City").relic(actor, horse).secrets(actor, 2)
     .unchecked
@@ -30,9 +33,6 @@ class BrassHorseSuite extends munit.FunSuite:
     DecisionOptionRef.Site(CatalogNames.site(name))
   private def reveals(events: Vector[OathEvent]) = ops(events).collect {
     case reveal: Reveal => reveal }
-
-  // `homelands` stands a ruined beast edifice at Deep Woods and a ruined
-  // hearth edifice at Golden Valley, and no other card lies at any site.
 
   test("one matching site takes the pawn there without a question"):
     val start = cradleTopped(beastTop)
@@ -59,8 +59,8 @@ class BrassHorseSuite extends munit.FunSuite:
     assert(awaits(parked, BrassHorse.decisionId))
     assert(choose(parked.state, BrassHorse.decisionId, site("Buried Giant"))
       .isLeft)
-    val done = accepted(choose(parked.state, BrassHorse.decisionId, site(
-      "Dunes")))
+    val done = accepted(choose(parked.state, BrassHorse.decisionId,
+      site("Dunes")))
     assert(backToActing(done))
     assertEquals(Look(ready(done.state)).pawn(actor),
       CatalogNames.site("Dunes"))
@@ -98,8 +98,8 @@ class BrassHorseSuite extends munit.FunSuite:
     assert(awaits(parked, BrassHorse.decisionId))
     assertEquals(reveals(parked.events),
       Vector(Reveal(vision, Location.RegionalDiscard(Region.Cradle))))
-    val done = accepted(choose(parked.state, BrassHorse.decisionId, site(
-      "Deep Woods")))
+    val done = accepted(choose(parked.state, BrassHorse.decisionId,
+      site("Deep Woods")))
     assertEquals(Look(ready(done.state)).pawn(actor),
       CatalogNames.site("Deep Woods"))
 

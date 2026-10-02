@@ -44,8 +44,8 @@ class ArcaneBrokersSuite extends munit.FunSuite:
   test("the chosen relic is set aside and 2 secrets are gained"):
     val ready = staged().ready
     val t = accepted(use(ready, ArcaneBrokers, source))
-    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId, relicRef(
-      whistle)))
+    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId,
+      relicRef(whistle)))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).relics(p1), Vector(sticks))
@@ -58,16 +58,16 @@ class ArcaneBrokersSuite extends munit.FunSuite:
     val ready = Table.start.turn(p1, Phase.Act).adviser(p1, brokers)
       .favor(p1, 1).relic(p1, whistle, facedown = true).ready
     val t = accepted(use(ready, ArcaneBrokers, source))
-    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId, relicRef(
-      whistle)))
+    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId,
+      relicRef(whistle)))
     assertEquals(Look(after(done)).relics(p1), Vector.empty[RelicId])
 
   test("the relic's secrets return facedown, and the line counts only the " +
       "2 gained, covering the gain line"):
     val ready = staged(Vector(whistle)).tokens(whistle, secrets = 1).ready
     val t = accepted(use(ready, ArcaneBrokers, source))
-    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId, relicRef(
-      whistle)))
+    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId,
+      relicRef(whistle)))
     assertEquals(Look(after(done)).faceDownSecrets(p1),
       Look(ready).faceDownSecrets(p1) + 1)
     assertEquals(NoteText.said(ArcaneBrokers, done.events), Vector(

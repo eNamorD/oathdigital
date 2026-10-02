@@ -17,7 +17,8 @@ class BoneDiceSuite extends munit.FunSuite:
 
   private val bones = CatalogNames.relic("Bone Dice")
   private val source = DecisionOptionRef.Relic(bones)
-  /** p1's Act holding Bone Dice, with `supply` Supply. */
+  /** p1's Act holding Bone Dice, with `supply` Supply and the quiet table's
+    * one faceup secret. */
   private def staged(supply: Int) =
     Table.start.turn(actor, Phase.Act)
       .relic(actor, bones).supply(actor, supply).ready

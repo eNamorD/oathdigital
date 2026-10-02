@@ -15,9 +15,10 @@ class BarbedNetSuite extends munit.FunSuite:
   private val net = CatalogNames.relic("Barbed Net")
   private val source = DecisionOptionRef.Relic(net)
 
-  // The relics staged at the site, and one left in the relic deck.
-  private val (taken, left) =
-    (CatalogNames.relic("Dowsing Sticks"), CatalogNames.relic("Cracked Horn"))
+  // The relic the tests take from the site, the one they leave there, and
+  // one that stays in the relic deck.
+  private val taken = CatalogNames.relic("Dowsing Sticks")
+  private val left = CatalogNames.relic("Cracked Horn")
   private val inRelicDeck = CatalogNames.relic("Whistle")
 
   /** p1's Act at Ancient City holding Barbed Net faceup with `faceUp`
@@ -39,7 +40,8 @@ class BarbedNetSuite extends munit.FunSuite:
 
   test("it burns three secrets, peeks at every relic at the site and asks " +
       "which to take"):
-    val ready = staged()
+    // 3 faceup secrets, all burnt.
+    val ready = staged(faceUp = 3)
     val relics = atSite(ready)
     val t = accepted(use(ready, BarbedNet, source))
     assert(awaits(t, BarbedNet.decisionId),

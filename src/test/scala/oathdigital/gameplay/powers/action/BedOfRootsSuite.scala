@@ -39,16 +39,16 @@ class BedOfRootsSuite extends munit.FunSuite:
     assert(awaits(t, BedOfRoots.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).favor(p1), 0)
-    assertEquals(offered(t, p1).map(_.map(_._2)), Some(Vector(
-      homesteaders.value)))
+    assertEquals(offered(t, p1).map(_.map(_._2)),
+      Some(Vector(homesteaders.value)))
 
   test("the adviser is buried with its returns, and 2 secrets are gained"):
     val ready = staged().adviser(p1, homesteaders)
       .tokens(homesteaders, favor = 1, secrets = 1).ready
     val hearth = ready.banks.favor.getOrElse(Suit.Hearth, 0)
     val t = accepted(use(ready, power, source))
-    val done = accepted(answer(t, p1, BedOfRoots.decisionId, denizenRef(
-      homesteaders)))
+    val done = accepted(answer(t, p1, BedOfRoots.decisionId,
+      denizenRef(homesteaders)))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).advisers(p1), Vector.empty[CardId])
@@ -66,8 +66,8 @@ class BedOfRootsSuite extends munit.FunSuite:
     val ready = staged().adviser(p1, homesteaders)
       .tokens(homesteaders, secrets = 1).ready
     val t = accepted(use(ready, power, source))
-    val done = accepted(answer(t, p1, BedOfRoots.decisionId, denizenRef(
-      homesteaders)))
+    val done = accepted(answer(t, p1, BedOfRoots.decisionId,
+      denizenRef(homesteaders)))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       NoteKey.Used,
       s"${p1.value} buried ${homesteaders.value} and gained 2 secrets.",
@@ -76,8 +76,8 @@ class BedOfRootsSuite extends munit.FunSuite:
   test("a locked adviser may be buried"):
     val ready = staged().adviser(p1, insomnia).ready
     val t = accepted(use(ready, power, source))
-    val done = accepted(answer(t, p1, BedOfRoots.decisionId, denizenRef(
-      insomnia)))
+    val done = accepted(answer(t, p1, BedOfRoots.decisionId,
+      denizenRef(insomnia)))
     assertEquals(Look(after(done)).advisers(p1), Vector.empty[CardId])
 
   test("with no faceup adviser, the cost stays paid and the line says so"):

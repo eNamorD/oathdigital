@@ -42,8 +42,8 @@ class CharmingFriendSuite extends munit.FunSuite:
   test("the chosen player gives one favor"):
     val ready = staged()
     val t = accepted(use(ready, CharmingFriend, source))
-    val done = accepted(answer(t, actor, CharmingFriend.decisionId, choose(
-      victim)))
+    val done = accepted(answer(t, actor, CharmingFriend.decisionId,
+      choose(victim)))
     assertEquals(favorOf(after(done), victim), 1)
     assertEquals(favorOf(after(done)), favorOf(ready) + 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
@@ -51,8 +51,8 @@ class CharmingFriendSuite extends munit.FunSuite:
 
   test("it writes the favor it took"):
     val t = accepted(use(staged(), CharmingFriend, source))
-    val done = accepted(answer(t, actor, CharmingFriend.decisionId, choose(
-      victim)))
+    val done = accepted(answer(t, actor, CharmingFriend.decisionId,
+      choose(victim)))
     assertEquals(NoteText.said(CharmingFriend, done.events), Vector(
       NoteText.Said(NoteKey.Used,
         s"${actor.value} took 1 favor from ${victim.value}.", covers = false)))
@@ -61,8 +61,8 @@ class CharmingFriendSuite extends munit.FunSuite:
     val ready = staged(favor = 0)
     val t = accepted(use(ready, CharmingFriend, source))
     assertEquals(offered(t, actor), Some(Vector("player" -> victim.value)))
-    val done = accepted(answer(t, actor, CharmingFriend.decisionId, choose(
-      victim)))
+    val done = accepted(answer(t, actor, CharmingFriend.decisionId,
+      choose(victim)))
     assertEquals(favorOf(after(done), victim), 0)
     assertEquals(favorOf(after(done)), favorOf(ready))
     assertEquals(NoteText.said(CharmingFriend, done.events), Vector(

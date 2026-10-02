@@ -39,10 +39,11 @@ class CrystalVialSuite extends munit.FunSuite:
       case d: DenizenState => "denizen" -> d.id.value
       case e: EdificeState => "edifice" -> e.id.value }
   private def worldDeck(ready: ReadyGame) = ready.game.current.commonCards.worldDeck
-  /** p1 holds the Vial and 2 faceup secrets, and no adviser; the quiet
-    * site holds no card. */
+  /** p1, at Ancient City, holds the Vial and 2 faceup secrets, and no
+    * adviser; the site holds no card. */
   private def bare: ReadyGame =
-    Table.start.relic(p1, vial).secrets(p1, faceUp = 2).ready
+    Table.start.pawn(p1, "Ancient City").relic(p1, vial)
+      .secrets(p1, faceUp = 2).ready
 
   test("the cost is one secret placed on the Vial and one burnt"):
     val t = accepted(use(staged, power, source))

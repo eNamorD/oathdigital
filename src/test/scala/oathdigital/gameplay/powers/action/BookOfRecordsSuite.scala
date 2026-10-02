@@ -27,13 +27,13 @@ class BookOfRecordsSuite extends munit.FunSuite:
     * with `favor`; `bystander` (p3) stands at Buried Giant holding the
     * Darkest Secret with 3 secrets, so it is never offered.
     */
-  private def table(favor: Int = 3, faceUp: Int = 3): Table =
+  private def stagedTable(favor: Int = 3, faceUp: Int = 3): Table =
     Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
       .relic(actor, book).secrets(actor, faceUp)
       .pawn(holder, "Ancient City").pawn(bystander, "Buried Giant")
       .peoplesFavor(Some(holder), favor).darkestSecret(Some(bystander), 3)
   private def staged(favor: Int = 3, faceUp: Int = 3): ReadyGame =
-    table(favor, faceUp).ready
+    stagedTable(favor, faceUp).ready
 
   /** The walk Book of Records started and the walk after `banner` was
     * picked. */
@@ -47,7 +47,8 @@ class BookOfRecordsSuite extends munit.FunSuite:
 
   test("it places a secret, burns two, and offers the banners held at the " +
       "actor's site"):
-    val t = accepted(use(staged(), BookOfRecords, source))
+    // 3 faceup secrets less 1 placed and 2 burnt leave 0.
+    val t = accepted(use(staged(faceUp = 3), BookOfRecords, source))
     assert(awaits(t, BookOfRecords.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor),
@@ -70,7 +71,7 @@ class BookOfRecordsSuite extends munit.FunSuite:
 
   test("the Darkest Secret gives two secrets, faceup"):
     // 3 faceup less 1 placed and 2 burnt leave 0, then 2 are gained.
-    val ready = table(faceUp = 3).darkestSecret(Some(holder), 3).ready
+    val ready = stagedTable(faceUp = 3).darkestSecret(Some(holder), 3).ready
     val done = takeFrom(ready, Banner.DarkestSecret).answered
     assertEquals(Look(after(done)).player(actor).board.faceUpSecrets, 2)
     assertEquals(held(after(done), Banner.DarkestSecret), 1)
@@ -87,7 +88,7 @@ class BookOfRecordsSuite extends munit.FunSuite:
         s"${holder.value}'s People's Favor.", covers = false)))
 
   test("the actor's own banner may be chosen"):
-    val ready = table().peoplesFavor(Some(actor), 2).ready
+    val ready = stagedTable().peoplesFavor(Some(actor), 2).ready
     val t = accepted(use(ready, BookOfRecords, source))
     assertEquals(offered(t, actor),
       Some(Vector("banner" -> Banner.PeoplesFavor.key)))
@@ -111,7 +112,7 @@ class BookOfRecordsSuite extends munit.FunSuite:
 
   test("with no banner held at the site the cost is paid and nothing else " +
       "happens"):
-    val ready = table().peoplesFavor(None, 3).ready
+    val ready = stagedTable().peoplesFavor(None, 3).ready
     val t = accepted(use(ready, BookOfRecords, source))
     parked.assertNotParked(t.state)
     assertEquals(Look(after(t)).tokensOn(book), Tokens(0, 1))
