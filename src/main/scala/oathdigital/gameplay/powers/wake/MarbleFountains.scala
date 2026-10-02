@@ -1,9 +1,25 @@
 package oathdigital.gameplay.powers.wake
 
+import oathdigital.catalog.{Edifice, EdificeFace, Locked, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
+
+object MarbleFountainsCard extends Edifice(EdificeId("E15"), Suit.Arcane):
+  object intact extends EdificeFace("Marble Fountains") with Locked:
+    val power = PrintedPower(PowerId("edifice.e15.intact"),
+      persistent = false, cost = Cost.free,
+      text = "**WAKE:** If your pawn is at this site, refresh your Supply " +
+        "marker to the leftmost space.")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Murky Fountain"):
+    val power = PrintedPower(PowerId("edifice.e15.ruined"),
+      persistent = false, cost = Cost(secret = 1),
+      text = "**ACTION:** If your pawn is at this site, roll 2 " +
+        "[defense-die] and gain Supply equal to the total [shield] " +
+        "rolled. If you roll none, end your Act Phase.")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** Marble Fountains (edifice E15, intact), WAKE: if your pawn is at this
   * site, refresh your Supply to the leftmost space. `GainSupply` clamps at

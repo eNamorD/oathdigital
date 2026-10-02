@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.catalog.holding.TheGrandScepterCard
+import oathdigital.gameplay.operations.TheGrandScepterCard
 import oathdigital.model._
 
 sealed trait ChronicleGeneratorFailure extends Product with Serializable

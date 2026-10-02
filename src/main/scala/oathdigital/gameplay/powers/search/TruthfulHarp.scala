@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
+
+object TruthfulHarpCard extends Relic(RelicId("R04"), "Truthful Harp", value = 39, defense = 0):
+  val power = PrintedPower(PowerId("relic.truthful-harp"),
+    persistent = false, cost = Cost.free,
+    text = "You may draw 2 more cards. If you do, you **must** reveal " +
+      "every card you draw and the card you keep.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** The Truthful Harp (relic R04), a selected Search modifier: a Search draws 2
   * more cards, and every card drawn is revealed while it is in the player's

@@ -1,5 +1,6 @@
 package oathdigital.application
 
+import oathdigital.gameplay.operations.TheGrandScepterCard
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.powers.{PowerImplementationStatus, ReviewedPowerCatalog}
 import oathdigital.model.{Chronicle, DenizenId, EdificeId, PowerId, Suit}
@@ -61,7 +62,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
 
   test("the relic deck has every ordinary relic exactly once, implemented ones first"):
     val chronicle = generated
-    val ordinary = catalog.relics.filter(_.id != oathdigital.catalog.holding.TheGrandScepterCard.id)
+    val ordinary = catalog.relics.filter(_.id != TheGrandScepterCard.id)
       .map(r => oathdigital.model.RelicId(r.id.value))
     assertEquals(chronicle.relicDeck.toSet, ordinary.toSet)
     assertEquals(chronicle.relicDeck.size, ordinary.size)

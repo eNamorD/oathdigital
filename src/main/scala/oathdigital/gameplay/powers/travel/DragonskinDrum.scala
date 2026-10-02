@@ -1,9 +1,15 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts, SelectedModifier}
 import oathdigital.model._
+
+object DragonskinDrumCard extends Relic(RelicId("R20"), "Dragonskin Drum", value = 59, defense = 2):
+  val power = PrintedPower(PowerId("relic.dragonskin-drum"),
+    persistent = false, cost = Cost.free,
+    text = "After traveling, gain one warband.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Dragonskin Drum (relic R20), a selected Travel modifier: after traveling,
   * gain one warband. The gain follows the pawn's move in the same cost node, so

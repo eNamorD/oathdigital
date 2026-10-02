@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.MarbleFountainsCard
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.powers.wake.MarbleFountainsCard
 import oathdigital.model._
 
 /** Murky Fountain (edifice E15, ruined), ACTION: place 1 secret on this card.

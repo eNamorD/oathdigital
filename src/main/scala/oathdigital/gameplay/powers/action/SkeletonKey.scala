@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.SkeletonKeyCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
+
+object SkeletonKeyCard extends Relic(RelicId("R13"), "Skeleton Key", value = 18, defense = 2):
+  val power = PrintedPower(PowerId("relic.skeleton-key"),
+    persistent = false, cost = Cost(secret = 1, secretBurnt = 1),
+    text = "**ACTION:** If your pawn is at a Hinterland site, take a " +
+      "relic from your site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Skeleton Key (relic R13), ACTION: place 1 secret on this relic and burn 1
   * secret, then, if your pawn is at a Hinterland site, take a relic from

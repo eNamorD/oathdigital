@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object BlackSwordCard extends Relic(RelicId("R35"), "Black Sword", value = 73, defense = 2):
+  val power = PrintedPower(PowerId("relic.black-sword"),
+    persistent = false, cost = Cost(secretBurnt = 2),
+    text = "+5 [attack-die]")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Black Sword (relic R35), an attacker's battle plan: "[secret-burnt]
   * [secret-burnt] +5 [attack-die]".

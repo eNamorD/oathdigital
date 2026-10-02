@@ -1,10 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
-import oathdigital.catalog.holding.CrystalVialCard
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object CrystalVialCard extends Relic(RelicId("R21"), "Crystal Vial", value = 71, defense = 1):
+  val power = PrintedPower(PowerId("relic.crystal-vial"),
+    persistent = false, cost = Cost(secret = 1, secretBurnt = 1),
+    text = "**ACTION:** Bury an adviser of yours or a denizen at your " +
+      "site. _(Bury ignores the locked restriction.)_")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Crystal Vial (relic R21), ACTION: place 1 secret on this relic and burn
   * 1, then bury an adviser of yours (a denizen or a Vision, in either

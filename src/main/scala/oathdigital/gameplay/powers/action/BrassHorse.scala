@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.ExecutableCatalog
-import oathdigital.catalog.holding.BrassHorseCard
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.model._
+
+object BrassHorseCard extends Relic(RelicId("R03"), "Brass Horse", value = 76, defense = 2):
+  val power = PrintedPower(PowerId("relic.brass-horse"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Reveal the top card of your region's discard " +
+      "pile. Place your pawn at a different site with a matching " +
+      "card. If you **cannot**, place it at any site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Brass Horse (relic R03), ACTION: place 1 secret on this relic, reveal the
   * top card of the discard pile of the region your pawn is in, and place your

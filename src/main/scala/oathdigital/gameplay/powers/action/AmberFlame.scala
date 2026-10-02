@@ -1,9 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.AmberFlameCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object AmberFlameCard extends Relic(RelicId("R32"), "Amber Flame", value = 26, defense = 2):
+  val power = PrintedPower(PowerId("relic.amber-flame"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Burn [favor-burnt] or [secret-burnt] from a " +
+      "banner held by a player whose pawn is at your site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Amber Flame (relic R32), ACTION: place 1 secret on this relic, then burn 1
   * favor or 1 secret from a banner held by a player whose pawn is at your

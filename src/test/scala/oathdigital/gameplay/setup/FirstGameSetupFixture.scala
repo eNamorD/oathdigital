@@ -1,8 +1,8 @@
 package oathdigital.gameplay.setup
 
 import oathdigital.catalog._
-import oathdigital.catalog.holding.TheGrandScepterCard
 import oathdigital.gameplay.cards.NewFoundations
+import oathdigital.gameplay.operations.TheGrandScepterCard
 import oathdigital.model._
 import oathdigital.model.OathState._
 import oathdigital.gameplay.walker.WalkerCompleted

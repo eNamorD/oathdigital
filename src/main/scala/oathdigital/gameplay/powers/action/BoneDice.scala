@@ -1,8 +1,16 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.BoneDiceCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
+
+object BoneDiceCard extends Relic(RelicId("R24"), "Bone Dice", value = 1, defense = 1):
+  val power = PrintedPower(PowerId("relic.bone-dice"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Roll [attack-die] [attack-die]. Gain 1 Supply " +
+      "for each [sword] rolled, then bury this relic if you rolled " +
+      "any [skull].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Bone Dice (relic R24), ACTION: place 1 secret on this relic, roll 2 attack
   * dice, gain Supply equal to the sword score, then bury this relic if any

@@ -1,6 +1,25 @@
 package oathdigital.gameplay.operations
 
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.model._
+
+object TheGrandScepterCard extends Relic(RelicId("grand-scepter"), "The Grand Scepter", value = 0, defense = 3):
+  val restriction = PrintedPower(PowerId("relic.the-grand-scepter.restriction"),
+    persistent = false, cost = Cost.free,
+    text = "This relic **cannot** be removed from play or added to a " +
+      "lineage.")
+  val campaign = PrintedPower(PowerId("relic.the-grand-scepter.campaign"),
+    persistent = false, cost = Cost.free,
+    text = "[favor-burnt][favor-burnt][favor-burnt] If you are Imperial " +
+      "and victorious against a Citizen, you exile them.")
+  val action = PrintedPower(PowerId("relic.the-grand-scepter.action"),
+    persistent = false, cost = Cost.free,
+    text = "**ACTION:** You may become a Citizen if an Exile. **IN " +
+      "NEGOTIATION:** May offer Citizenship.")
+  val negotiation = PrintedPower(PowerId("relic.the-grand-scepter.negotiation"),
+    persistent = false, cost = Cost.free,
+    text = "**IN NEGOTIATION:** May offer Citizenship.")
+  val powers: Vector[PrintedPower] = Vector(restriction, campaign, action, negotiation)
 
 /** The Grand Scepter cannot be removed from play (global operation
   * restrictions design, "Rules"). A move that takes it from a site or a play

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.catalog.{ExecutableCatalog, Locked}
-import oathdigital.catalog.holding.TheGrandScepterCard
 import oathdigital.model._
 
 /** The operation restrictions that hold for a command, wherever its

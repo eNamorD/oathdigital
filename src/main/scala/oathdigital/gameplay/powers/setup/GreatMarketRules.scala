@@ -1,9 +1,26 @@
 package oathdigital.gameplay.powers.setup
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object GreatMarketCard extends Edifice(EdificeId("E02"), Suit.Discord):
+  object intact extends EdificeFace("Great Market") with Locked:
+    val power = PrintedPower(PowerId("edifice.e02.intact"),
+      persistent = false, cost = Cost.free,
+      text = "**SETUP (END) / WHEN EXPLORED:** Place [favor] on this site " +
+        "for each denizen _(including this)_ in this region. " +
+        "_Players may take it in Wake._")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Bandit Market"):
+    val power = PrintedPower(PowerId("edifice.e02.ruined"),
+      persistent = false, cost = Cost.free,
+      text = "**SETUP (END) / WHEN EXPLORED:** Place [favor] on each site " +
+        "ruled by the bandits. _(Players may take it in Wake.)_ Burn " +
+        "[favor-burnt] from each favor bank.")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** E02, both faces (2026-09-21 Chronicle design, "Setup powers"). Each names
   * `PowerWindow.WhenExplored` alongside `SetupEnd` so the same contribution

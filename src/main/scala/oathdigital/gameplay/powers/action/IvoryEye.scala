@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.IvoryEyeCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object IvoryEyeCard extends Relic(RelicId("R16"), "Ivory Eye", value = 79, defense = 2):
+  val power = PrintedPower(PowerId("relic.ivory-eye"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Peek at any facedown adviser. _(This includes " +
+      "Visions.)_")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Ivory Eye (relic R16), ACTION: place 1 secret on this relic, then peek at
   * any facedown adviser, a Vision included, of any player, the acting

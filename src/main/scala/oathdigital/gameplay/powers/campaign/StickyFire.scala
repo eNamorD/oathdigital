@@ -1,9 +1,17 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
+
+object StickyFireCard extends Relic(RelicId("R01"), "Sticky Fire", value = 3, defense = 3):
+  val power = PrintedPower(PowerId("relic.sticky-fire"),
+    persistent = false, cost = Cost.free,
+    text = "If you're victorious, you may kill all the warbands in your " +
+      "enemy's force. If you do, you **must** give them [favor] if " +
+      "able.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Sticky Fire (relic R01), a battle plan for either side: "If you're victorious,
   * you may kill all the warbands in your enemy's force. If you do, you must give

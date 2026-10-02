@@ -1,12 +1,28 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.gameplay.powers.setup.EdificeSetupSupport
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
+
+object SacredGroundCard extends Edifice(EdificeId("E08"), Suit.Nomad):
+  object intact extends EdificeFace("Sacred Ground") with Locked:
+    val power = PrintedPower(PowerId("edifice.e08.intact"),
+      persistent = true, cost = Cost.free,
+      text = "Players **cannot** play Visions, except the Conspiracy, " +
+        "faceup unless their pawn is at this site.")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Desecrated Ground"):
+    val power = PrintedPower(PowerId("edifice.e08.ruined"),
+      persistent = true, cost = Cost.free,
+      text = "If an Exile reveals a Vision while their pawn is at this " +
+        "site, they do not discard their current revealed Vision. " +
+        "_They can have any number!_")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** Sacred Ground (E08's intact face), a persistent rule: "Players cannot play
   * Visions, except the Conspiracy, faceup unless their pawn is at this site."

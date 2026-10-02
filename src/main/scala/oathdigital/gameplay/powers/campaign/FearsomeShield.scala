@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object FearsomeShieldCard extends Relic(RelicId("R27"), "Fearsome Shield", value = 52, defense = 1):
+  val power = PrintedPower(PowerId("relic.fearsome-shield"),
+    persistent = false, cost = Cost(secretBurnt = 2),
+    text = "+2 [defense-die]")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Fearsome Shield (relic R27), a defender's battle plan: "[secret-burnt]
   * [secret-burnt] +2 defense dice."

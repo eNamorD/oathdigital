@@ -1,7 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.OracularPigCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.model._
+
+object OracularPigCard extends Relic(RelicId("R14"), "Oracular Pig", value = 93, defense = 2):
+  val power = PrintedPower(PowerId("relic.oracular-pig"),
+    persistent = false, cost = Cost.free,
+    text = "**ACTION:** Peek at the top 3 cards of the world deck.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Oracular Pig (relic R14), ACTION, no cost: peek at the top 3 cards of the
   * world deck.

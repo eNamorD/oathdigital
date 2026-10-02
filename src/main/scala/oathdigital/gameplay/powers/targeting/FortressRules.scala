@@ -1,11 +1,28 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx, Restriction}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
 import oathdigital.model._
+
+object OakenFortressCard extends Edifice(EdificeId("E28"), Suit.Beast):
+  object intact extends EdificeFace("Oaken Fortress") with Locked:
+    val power = PrintedPower(PowerId("edifice.e28.intact"),
+      persistent = true, cost = Cost.free,
+      text = "While this card's ruler is at this site, they **cannot** be " +
+        "targeted by a challenge or a raid campaign. If ruled by " +
+        "Empire, all Imperials have this power.")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Rotting Fortress"):
+    val power = PrintedPower(PowerId("edifice.e28.ruined"),
+      persistent = true, cost = Cost.free,
+      text = "Players at this site **cannot** be targeted by a challenge " +
+        "or a raid campaign, unless the targeting player has a " +
+        "[suit-beast] adviser.")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** A rule of the Fortress edifice (E28) that keeps a player from being the
   * target of a Challenge or a Raid. A Conquest is not affected. Each face is a

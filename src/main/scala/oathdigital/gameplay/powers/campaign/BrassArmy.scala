@@ -1,8 +1,18 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object BrassArmyCard extends Relic(RelicId("R25"), "Brass Army", value = 77, defense = 3):
+  val campaign = PrintedPower(PowerId("relic.brass-army.campaign"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "+4 [attack-die]")
+  val restriction = PrintedPower(PowerId("relic.brass-army.restriction"),
+    persistent = true, cost = Cost.free,
+    text = "Whenever your pawn moves _(travel or place)_, bury this or " +
+      "flip a secret you have facedown.")
+  val powers: Vector[PrintedPower] = Vector(campaign, restriction)
 
 /** Brass Army (relic R25), an attacker's battle plan: "[secret] +4 attack dice."
   *

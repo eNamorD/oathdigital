@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object BagOfSiegeworksCard extends Relic(RelicId("R37"), "Bag of Siegeworks", value = 42, defense = 2):
+  val power = PrintedPower(PowerId("relic.bag-of-siegeworks"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "If you're targeting sites, ignore [defense-die] rolls with " +
+      "a single [shield].")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Bag of Siegeworks (relic R37), an attacker's battle plan: "[secret] If
   * you're targeting sites, ignore [defense-die] rolls with a single

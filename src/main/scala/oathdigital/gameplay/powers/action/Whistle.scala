@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.WhistleCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object WhistleCard extends Relic(RelicId("R08"), "Whistle", value = 6, defense = 1):
+  val power = PrintedPower(PowerId("relic.whistle"),
+    persistent = false, cost = Cost(secret = 1),
+    text = "**ACTION:** Take a pawn from another site, place it at your " +
+      "site, and give them the [secret] here.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Whistle (relic R08), ACTION: place 1 secret on this relic, take the pawn
   * of another player who is at a different site, place it at your site, and

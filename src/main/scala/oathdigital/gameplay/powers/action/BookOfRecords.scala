@@ -1,10 +1,17 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.BookOfRecordsCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
+
+object BookOfRecordsCard extends Relic(RelicId("R19"), "Book of Records", value = 50, defense = 1):
+  val power = PrintedPower(PowerId("relic.book-of-records"),
+    persistent = false, cost = Cost(secret = 1, secretBurnt = 2),
+    text = "**ACTION:** Take [favor] [favor] or [secret] [secret] from " +
+      "a banner held by a player whose pawn is at your site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Book of Records (relic R19), ACTION: place 1 secret on this card and burn
   * 2, then take two favor or two secrets from a banner held by a player whose

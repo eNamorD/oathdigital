@@ -1,10 +1,25 @@
 package oathdigital.gameplay.powers.setup
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
 import oathdigital.model._
+
+object ProvingGroundsCard extends Edifice(EdificeId("E22"), Suit.Hearth):
+  object intact extends EdificeFace("Proving Grounds") with Locked:
+    val power = PrintedPower(PowerId("edifice.e22.intact"),
+      persistent = false, cost = Cost.free,
+      text = "SETUP / **WHEN EXPLORED:** If you place your pawn here, " +
+        "gain three warbands.")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Empty Grounds"):
+    val power = PrintedPower(PowerId("edifice.e22.ruined"),
+      persistent = false, cost = Cost.free,
+      text = "SETUP (END) / **WHEN EXPLORED:** Discard all other denizens " +
+        "in this region.")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** E22, both faces (2026-09-21 Chronicle design, "Setup powers"). See
   * `GreatMarketRules` for the `WhenExplored`/window-sharing rationale.

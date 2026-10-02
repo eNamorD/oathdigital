@@ -1,9 +1,9 @@
 package oathdigital.gameplay.cards
 
 import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked,
-  PrintsPowers, SiteOnly}
+  PrintedPower, PrintsPowers, SiteOnly}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.model.PowerId
+import oathdigital.model.{CardId, EdificeId, PowerId, RelicId}
 
 /** The printed-corpus checks `validate-component-catalog.py` ran on the JSON,
   * now run on the Scala catalog. Suits, edifice faces and the single Grand
@@ -95,14 +95,25 @@ class CardCatalogSuite extends munit.FunSuite:
       .filterNot(gameRules)
     assertEquals(registered.filterNot(printed).distinct, Vector.empty)
 
-  test("a denizen leaves the holding files once one of its powers is " +
-      "registered"):
+  test("a card leaves the holding files once it is implemented"):
     val registered = (WalkerPowerCatalog.default(catalog).powers.map(_.id) ++
       PhasePowerCatalog.default(catalog).powers.map(_.id)).toSet
-    val misplaced = catalog.denizens.filter(card =>
-      (card.getClass.getPackageName == "oathdigital.catalog.holding") ==
-        card.powers.exists(power => registered(power.id)))
-    assertEquals(misplaced.map(_.name), Vector.empty)
+    // The Grand Scepter and the Hall of Ministers are implemented as
+    // operation restrictions, not as registered powers.
+    val restrictions = Set[CardId](RelicId("grand-scepter"), EdificeId("E16"))
+    def held(card: AnyRef): Boolean =
+      card.getClass.getPackageName == "oathdigital.catalog.holding"
+    def implemented(id: CardId, printed: Vector[PrintedPower]): Boolean =
+      restrictions(id) || printed.exists(power => registered(power.id))
+    val misplaced =
+      catalog.denizens.collect { case card
+          if held(card) == implemented(card.id, card.powers) => card.name } ++
+        catalog.relics.collect { case card
+          if held(card) == implemented(card.id, card.powers) => card.name } ++
+        catalog.edifices.collect { case card if held(card) ==
+            implemented(card.id, card.intact.powers ++ card.ruined.powers) =>
+          card.intact.name }
+    assertEquals(misplaced, Vector.empty)
 
   test("denizen powers are registered whichever denizens a catalog lists"):
     def denizenPowers(listed: ExecutableCatalog): Set[PowerId] =

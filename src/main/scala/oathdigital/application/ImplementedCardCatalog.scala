@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower}
-import oathdigital.catalog.holding.TheGrandScepterCard
+import oathdigital.gameplay.operations.TheGrandScepterCard
 import oathdigital.model.{DenizenId, EdificeId, PowerId, RelicId, Suit}
 
 /**

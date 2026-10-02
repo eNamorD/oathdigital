@@ -1,9 +1,24 @@
 package oathdigital.gameplay.powers.setup
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, RelicDraws}
 import oathdigital.model._
+
+object GreatForgeCard extends Edifice(EdificeId("E06"), Suit.Nomad):
+  object intact extends EdificeFace("Great Forge") with Locked:
+    val power = PrintedPower(PowerId("edifice.e06.intact"),
+      persistent = false, cost = Cost.free,
+      text = "SETUP / **WHEN EXPLORED:** If you place your pawn here, " +
+        "draw a relic from the relic deck and take it facedown.")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Broken Forge"):
+    val power = PrintedPower(PowerId("edifice.e06.ruined"),
+      persistent = false, cost = Cost.free,
+      text = "SETUP / **WHEN EXPLORED:** If you place your pawn here, " +
+        "discard all relics at sites in this region.")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** E06, both faces (2026-09-21 Chronicle design, "Setup powers"). See
   * `GreatMarketRules` for the `WhenExplored`/window-sharing rationale.

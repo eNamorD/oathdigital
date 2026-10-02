@@ -1,7 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.ClayRattleCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.model._
+
+object ClayRattleCard extends Relic(RelicId("R47"), "Clay Rattle", value = 45, defense = 2):
+  val power = PrintedPower(PowerId("relic.clay-rattle"),
+    persistent = false, cost = Cost(secret = 2),
+    text = "**ACTION:** Shuffle the world deck or any region's discard " +
+      "pile.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Clay Rattle (relic R47), ACTION: place 2 secrets on this relic, then
   * shuffle the world deck or any region's discard pile.

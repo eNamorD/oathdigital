@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.MagicCarpetCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
+
+object MagicCarpetCard extends Relic(RelicId("R39"), "Magic Carpet", value = 51, defense = 1):
+  val power = PrintedPower(PowerId("relic.magic-carpet"),
+    persistent = false, cost = Cost.free,
+    text = "**ACTION:** Place your pawn at any site. Then, discard " +
+      "Magic Carpet or give it to a player at a different site.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Magic Carpet (relic R39), ACTION, no cost: place your pawn at any site,
   * then discard the Carpet or give it to a player whose pawn is at a site

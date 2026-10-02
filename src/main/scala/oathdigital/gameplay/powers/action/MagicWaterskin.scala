@@ -1,8 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.catalog.holding.MagicWaterskinCard
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
+
+object MagicWaterskinCard extends Relic(RelicId("R45"), "Magic Waterskin", value = 24, defense = 1):
+  val power = PrintedPower(PowerId("relic.magic-waterskin"),
+    persistent = false, cost = Cost.free,
+    text = "**ACTION:** Bury this relic to gain 4 Supply.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Magic Waterskin (relic R45), ACTION: bury this relic, then gain 4 Supply.
   * The bury returns any secrets on the relic to its holder facedown before

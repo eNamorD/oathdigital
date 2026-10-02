@@ -1,7 +1,23 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.model._
+
+object HallOfMinistersCard extends Edifice(EdificeId("E16"), Suit.Order):
+  object intact extends EdificeFace("Hall of Ministers") with Locked:
+    val power = PrintedPower(PowerId("edifice.e16.intact"),
+      persistent = true, cost = Cost.free,
+      text = "Enemies of this card's ruler **cannot** discard cards from " +
+        "sites ruled by this card's ruler. _They can still be " +
+        "buried._")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Hall of Bandits"):
+    val power = PrintedPower(PowerId("edifice.e16.ruined"),
+      persistent = true, cost = Cost.free,
+      text = "**CHRONICLE:** Ruined edifices ruled by bandits are not " +
+        "discarded.")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** The Hall of Ministers (edifice E16, intact): an enemy of the Hall's ruler
   * acts as if the denizens and relics at the ruler's sites were locked, so it

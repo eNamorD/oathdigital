@@ -1,10 +1,16 @@
 package oathdigital.gameplay.powers.targeting
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
 import oathdigital.model._
+
+object CircletOfCommandCard extends Relic(RelicId("R15"), "Circlet of Command", value = 12, defense = 0):
+  val power = PrintedPower(PowerId("relic.circlet-of-command"),
+    persistent = true, cost = Cost.free,
+    text = "Players **cannot** target your banners or your other relics.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** The Circlet of Command (relic R15), a persistent rule of a faceup relic:
   * players other than the holder cannot target the holder's banners, or the

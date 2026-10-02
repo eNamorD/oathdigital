@@ -1,8 +1,22 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
+  PrintedPower}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object ToweringRampartCard extends Edifice(EdificeId("E20"), Suit.Order):
+  object intact extends EdificeFace("Towering Rampart") with Locked:
+    val power = PrintedPower(PowerId("edifice.e20.intact"),
+      persistent = false, cost = Cost.free,
+      text = "+2 [defense-die] if your pawn is at this site or this site " +
+        "is targeted.")
+    val powers: Vector[PrintedPower] = Vector(power)
+  object ruined extends EdificeFace("Cracked Rampart"):
+    val power = PrintedPower(PowerId("edifice.e20.ruined"),
+      persistent = false, cost = Cost.free,
+      text = "+1 [defense-die] if this site is targeted.")
+    val powers: Vector[PrintedPower] = Vector(power)
 
 /** Towering Rampart (edifice E20, intact), a defender's battle plan: "+2 defense
   * dice if your pawn is at this site or this site is targeted."

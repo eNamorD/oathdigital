@@ -1,8 +1,15 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
+
+object BanditStandardCard extends Relic(RelicId("R30"), "Bandit Standard", value = 55, defense = 3):
+  val power = PrintedPower(PowerId("relic.bandit-standard"),
+    persistent = false, cost = Cost.free,
+    text = "+ [attack-die] for each bandit in your region. This " +
+      "**cannot** be used while targeting sites ruled by bandits.")
+  val powers: Vector[PrintedPower] = Vector(power)
 
 /** Bandit Standard (relic R30), an attacker's battle plan: "+ [attack-die] for
   * each bandit in your region. This cannot be used while targeting sites ruled
