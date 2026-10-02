@@ -9,17 +9,16 @@ import oathdigital.gameplay.powers.search.{Augury, CropRotation, Disciples,
   TruthfulHarp}
 
 /** The Search, Trade, Muster and Recover modifiers, registered together with
-  * Initiation Rite, the rule that changes a Muster's cost. A relic power whose
-  * card is absent from `catalog` is omitted; a denizen power names its card
-  * and is always present.
+  * Initiation Rite, the rule that changes a Muster's cost. Each names its
+  * card, so all are always present.
   */
 object ActionModifiers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Vector(Augury.forCatalog(catalog)) ++
-      TruthfulHarp.forCatalog(catalog).toVector ++
+      Vector(TruthfulHarp.forCatalog(catalog)) ++
       Vector(Disciples.forCatalog(catalog)) ++
       Vector(CropRotation.forCatalog(catalog)) ++
-      CupOfPlenty.forCatalog(catalog).toVector ++
+      Vector(CupOfPlenty.forCatalog(catalog)) ++
       Vector(AnimalPlaymates.forCatalog(catalog)) ++
       Vector(Birdsong.forCatalog(catalog)) ++
       Vector(TheOldOak.forCatalog(catalog)) ++

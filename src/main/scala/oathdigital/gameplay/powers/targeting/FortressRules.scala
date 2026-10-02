@@ -5,7 +5,7 @@ import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx, Restriction}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
+import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.model._
 
 object OakenFortressCard extends Edifice(EdificeId("E28"), Suit.Beast):
@@ -171,8 +171,9 @@ object FortressRule:
   * cannot be targeted by a Challenge or a Raid. Empire rulers are not
   * supported.
   */
-final case class OakenFortress private (fortress: EdificeId,
-    catalog: ExecutableCatalog) extends FortressRule:
+final case class OakenFortress private (catalog: ExecutableCatalog)
+    extends FortressRule:
+  val fortress: EdificeId = OakenFortressCard.id
   def id: PowerId = OakenFortress.id
   protected def side: EdificeSide = EdificeSide.Intact
 
@@ -184,17 +185,18 @@ final case class OakenFortress private (fortress: EdificeId,
         .contains(SiteRuler.Player(defender)))
 
 object OakenFortress:
-  val id: PowerId = PowerId("edifice.e28.intact")
+  val id: PowerId = OakenFortressCard.intact.power.id
 
-  def forCatalog(catalog: ExecutableCatalog): Option[OakenFortress] =
-    CatalogCards.edifice(catalog, id).map(new OakenFortress(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): OakenFortress =
+    new OakenFortress(catalog)
 
 /** The Rotting Fortress (E28, ruined): players at this site cannot be targeted
   * by a Challenge or a Raid, unless the targeting player has a faceup beast
   * adviser.
   */
-final case class RottingFortress private (fortress: EdificeId,
-    catalog: ExecutableCatalog) extends FortressRule:
+final case class RottingFortress private (catalog: ExecutableCatalog)
+    extends FortressRule:
+  val fortress: EdificeId = OakenFortressCard.id
   def id: PowerId = RottingFortress.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
@@ -211,7 +213,7 @@ final case class RottingFortress private (fortress: EdificeId,
     })
 
 object RottingFortress:
-  val id: PowerId = PowerId("edifice.e28.ruined")
+  val id: PowerId = OakenFortressCard.ruined.power.id
 
-  def forCatalog(catalog: ExecutableCatalog): Option[RottingFortress] =
-    CatalogCards.edifice(catalog, id).map(new RottingFortress(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): RottingFortress =
+    new RottingFortress(catalog)

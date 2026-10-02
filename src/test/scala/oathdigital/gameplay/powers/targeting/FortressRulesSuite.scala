@@ -110,7 +110,7 @@ class FortressRulesSuite extends munit.FunSuite:
 
   test("a Campaign already under way is never refused by the start rule"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
-    val power = RottingFortress.forCatalog(catalog).get
+    val power = RottingFortress.forCatalog(catalog)
     val restriction = power.contributions(PowerWindow.CampaignActionEligibility)
       .head.asInstanceOf[Restriction]
     def ctx(state: ReadyGame) = PowerCtx(state, b.actor, power.source,
@@ -162,8 +162,8 @@ class FortressRulesSuite extends munit.FunSuite:
   private def hidden(power: FortressRule, from: OathTransition)
       : Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, from.events)
-  private val oaken = OakenFortress.forCatalog(catalog).get
-  private val rotting = RottingFortress.forCatalog(catalog).get
+  private val oaken = OakenFortress.forCatalog(catalog)
+  private val rotting = RottingFortress.forCatalog(catalog)
   private def shielded(player: PlayerId) = NoteText.Said("shielded",
     s"${player.value} cannot be targeted.", covers = false)
 

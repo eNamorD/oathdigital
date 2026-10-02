@@ -27,7 +27,7 @@ object MarbleFountainsCard extends Edifice(EdificeId("E15"), Suit.Arcane):
   * once per turn, which the engine enforces.
   */
 case object MarbleFountains extends PhasePower:
-  val id: PowerId = PowerId("edifice.e15.intact")
+  val id: PowerId = MarbleFountainsCard.intact.power.id
   def timing: PowerTiming = PowerTiming.Wake
   /** Its own line: the Supply it refreshed to. */
   val refreshed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),

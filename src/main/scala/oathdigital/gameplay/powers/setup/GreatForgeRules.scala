@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.setup
 import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, RelicDraws}
+import oathdigital.gameplay.powers.RelicDraws
 import oathdigital.model._
 
 object GreatForgeCard extends Edifice(EdificeId("E06"), Suit.Nomad):
@@ -53,8 +53,9 @@ sealed abstract class ForgeRule extends ContributingPower:
     }))
     Map(PowerWindow.SetupPawnPlaced -> effect, PowerWindow.WhenExplored -> effect)
 
-final case class GreatForge private (edifice: EdificeId, catalog: ExecutableCatalog)
+final case class GreatForge private (catalog: ExecutableCatalog)
     extends ForgeRule:
+  val edifice: EdificeId = GreatForgeCard.id
   def id: PowerId = GreatForge.id
   protected def side: EdificeSide = EdificeSide.Intact
 
@@ -67,12 +68,13 @@ final case class GreatForge private (edifice: EdificeId, catalog: ExecutableCata
       : Either[OathViolation, Vector[CoreOperation]] =
     Right(RelicDraws.takeTop(ready, actor))
 object GreatForge:
-  val id: PowerId = PowerId("edifice.e06.intact")
-  def forCatalog(catalog: ExecutableCatalog): Option[GreatForge] =
-    CatalogCards.edifice(catalog, id).map(new GreatForge(_, catalog))
+  val id: PowerId = GreatForgeCard.intact.power.id
+  def forCatalog(catalog: ExecutableCatalog): GreatForge =
+    new GreatForge(catalog)
 
-final case class BrokenForge private (edifice: EdificeId, catalog: ExecutableCatalog)
+final case class BrokenForge private (catalog: ExecutableCatalog)
     extends ForgeRule:
+  val edifice: EdificeId = GreatForgeCard.id
   def id: PowerId = BrokenForge.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
@@ -97,11 +99,11 @@ final case class BrokenForge private (edifice: EdificeId, catalog: ExecutableCat
           relic.id, PositionedLocation(Location.Site(s)), relic.tokens.secrets, actor)))
     }
 object BrokenForge:
-  val id: PowerId = PowerId("edifice.e06.ruined")
+  val id: PowerId = GreatForgeCard.ruined.power.id
 
   /** Every relic at a site in play, in map order. */
   private def siteRelics(ready: ReadyGame): Vector[CardId] =
     val current = ready.game.current
     current.map.inPlay.flatMap(site => current.map.sites(site).relics.map(_.id))
-  def forCatalog(catalog: ExecutableCatalog): Option[BrokenForge] =
-    CatalogCards.edifice(catalog, id).map(new BrokenForge(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): BrokenForge =
+    new BrokenForge(catalog)

@@ -26,7 +26,7 @@ class CampaignPlansSuite extends munit.FunSuite:
     CampaignPlanSide.Defender)
 
   private val outriders = Outriders
-  private val brass = BrassArmy.forCatalog(catalog).get
+  private val brass = BrassArmy
   private val watchdog = Watchdog
   private val outridersCard = cardWith("denizen.outriders")
   private val brassCard = relicWith("relic.brass-army.campaign")

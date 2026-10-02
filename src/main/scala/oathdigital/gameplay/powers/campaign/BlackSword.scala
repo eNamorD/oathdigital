@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.model._
 
 object BlackSwordCard extends Relic(RelicId("R35"), "Black Sword", value = 73, defense = 2):
@@ -18,8 +17,11 @@ object BlackSwordCard extends Relic(RelicId("R35"), "Black Sword", value = 73, d
   * attacker with fewer than two faceup secrets cannot pay, and the plan is
   * not offered.
   */
-final case class BlackSword private (relicId: RelicId) extends BattlePlan:
-  def id: PowerId = BlackSword.id
+case object BlackSword extends BattlePlan:
+  val relicId: RelicId = BlackSwordCard.id
+  val id: PowerId = BlackSwordCard.power.id
+  val Dice: Int = 5
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
 
@@ -28,10 +30,3 @@ final case class BlackSword private (relicId: RelicId) extends BattlePlan:
       "Black Sword: burn 2 secrets for 5 attack dice",
       Vector(CampaignPlanCost.SecretBurnt(2)),
       Vector(CampaignPlanEffect.AddAttackDice(BlackSword.Dice))))
-
-object BlackSword:
-  val id: PowerId = PowerId("relic.black-sword")
-  val Dice: Int = 5
-
-  def forCatalog(catalog: ExecutableCatalog): Option[BlackSword] =
-    CatalogCards.relic(catalog, id).map(new BlackSword(_))

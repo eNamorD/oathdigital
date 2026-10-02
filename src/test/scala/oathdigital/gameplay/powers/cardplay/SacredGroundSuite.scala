@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.{CardStaging, CatalogCards, NoteText,
-  PowerFixture, SearchFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
+  SearchFixture}
 import oathdigital.model._
 
 /** E08 never appears in a generated game (the Nomad Homeland takes E06), so
@@ -13,7 +12,7 @@ class SacredGroundSuite extends munit.FunSuite:
   import PowerFixture._
   import VisionPlayFixture._
 
-  private val e08: EdificeId = CatalogCards.edifice(catalog, SacredGround.id).get
+  private val e08: EdificeId = SacredGroundCard.id
   private val elsewhere: SiteId =
     base.game.current.map.inPlay.find(_ != home(base)).get
 
@@ -60,7 +59,7 @@ class SacredGroundSuite extends munit.FunSuite:
       .contains("adviser-faceup"))
 
   private def hidden(from: OathTransition): Vector[NoteText.Said] =
-    val power = SacredGround.forCatalog(catalog).get
+    val power = SacredGround
     NoteText.said(power.id, power.noteKeys, from.events)
 
   test("the hidden faceup placement is written as Sacred Ground's line"):

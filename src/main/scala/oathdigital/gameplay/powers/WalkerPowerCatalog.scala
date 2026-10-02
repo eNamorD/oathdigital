@@ -20,10 +20,9 @@ import oathdigital.gameplay.walker.WalkerPowers
   * seam (Task 5's first entry: Catacombs). Catalog-parameterized like
   * `ReviewedPowerCatalog.resolver`/`registry`: a contribution that carries a
   * catalog-specific card id must be resolved against the same catalog the
-  * caller is running. A relic, edifice or site power whose card is absent
-  * from `catalog` (e.g. a synthetic test catalog) is simply omitted, not a
-  * construction failure. A denizen power names its card, so it is always
-  * present.
+  * caller is running. A site power whose site is absent from `catalog`
+  * (e.g. a synthetic test catalog) is simply omitted, not a construction
+  * failure. Every other card power names its card, so it is always present.
   *
   * A power carrying no catalog id is simply always present: Take Wealth's
   * once-per-turn limit states a rulebook clause about whichever site the pawn
@@ -69,8 +68,9 @@ object WalkerPowerCatalog:
       SimplePlans.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
       BannerFacePowers.contributions ++
-      Vector(Dazzle.forCatalog(catalog)) ++ GreatMarket.forCatalog(catalog) ++
-      BanditMarket.forCatalog(catalog) ++ GreatForge.forCatalog(catalog) ++
-      BrokenForge.forCatalog(catalog) ++ ProvingGrounds.forCatalog(catalog) ++
-      EmptyGrounds.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed,
+      Vector(Dazzle.forCatalog(catalog), GreatMarket.forCatalog(catalog),
+        BanditMarket.forCatalog(catalog), GreatForge.forCatalog(catalog),
+        BrokenForge.forCatalog(catalog), ProvingGrounds.forCatalog(catalog),
+        EmptyGrounds.forCatalog(catalog), TakeWealthLimit,
+        ConspiracyWhenPlayed),
       restrictionSet = OperationRestrictions.forCatalog(catalog))

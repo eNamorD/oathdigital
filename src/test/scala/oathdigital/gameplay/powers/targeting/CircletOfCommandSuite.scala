@@ -132,7 +132,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
       DecisionOptionRef.Banner(Banner.PeoplesFavor)))
 
   test("the Circlet's rule ignores an option that is not a banner or a relic"):
-    val power = CircletOfCommand.forCatalog(catalog).get
+    val power = CircletOfCommand.forCatalog(catalog)
     val ready = holds(PowerFixture.base, PowerFixture.actor, circlet)
     val ctx = PowerCtx(ready, PowerFixture.actor, power.source,
       PowerWindow.CampaignTargetSelection, Vector.empty,
@@ -143,7 +143,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = CircletOfCommand.forCatalog(catalog).get
+  private val power = CircletOfCommand.forCatalog(catalog)
   private def hidden(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
   private def shielded(holder: PlayerId) = NoteText.Said("shielded",

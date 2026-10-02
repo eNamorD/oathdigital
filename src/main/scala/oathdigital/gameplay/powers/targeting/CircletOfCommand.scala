@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
+import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.model._
 
 object CircletOfCommandCard extends Relic(RelicId("R15"), "Circlet of Command", value = 12, defense = 0):
@@ -28,8 +28,9 @@ object CircletOfCommandCard extends Relic(RelicId("R15"), "Circlet of Command", 
   * targeted.", naming the holder (power log lines design, "Removed and
   * hidden options").
   */
-final case class CircletOfCommand private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class CircletOfCommand private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: RelicId = CircletOfCommandCard.id
   def id: PowerId = CircletOfCommand.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -78,11 +79,11 @@ final case class CircletOfCommand private (cardId: RelicId,
       case _ => false
 
 object CircletOfCommand:
-  val id: PowerId = PowerId("relic.circlet-of-command")
+  val id: PowerId = CircletOfCommandCard.power.id
 
   /** "{Blue}'s banners and relics cannot be targeted." */
   val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
     NotePart.Text("'s banners and relics cannot be targeted.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[CircletOfCommand] =
-    CatalogCards.relic(catalog, id).map(new CircletOfCommand(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): CircletOfCommand =
+    new CircletOfCommand(catalog)

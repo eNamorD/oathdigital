@@ -4,7 +4,7 @@ import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
   PrintedPower}
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
 object ProvingGroundsCard extends Edifice(EdificeId("E22"), Suit.Hearth):
@@ -24,8 +24,9 @@ object ProvingGroundsCard extends Edifice(EdificeId("E22"), Suit.Hearth):
 /** E22, both faces (2026-09-21 Chronicle design, "Setup powers"). See
   * `GreatMarketRules` for the `WhenExplored`/window-sharing rationale.
   */
-final case class ProvingGrounds private (edifice: EdificeId, catalog: ExecutableCatalog)
+final case class ProvingGrounds private (catalog: ExecutableCatalog)
     extends ContributingPower:
+  val edifice: EdificeId = ProvingGroundsCard.id
   def id: PowerId = ProvingGrounds.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
@@ -55,11 +56,11 @@ final case class ProvingGrounds private (edifice: EdificeId, catalog: Executable
     }))
     Map(PowerWindow.SetupPawnPlaced -> effect, PowerWindow.WhenExplored -> effect)
 object ProvingGrounds:
-  val id: PowerId = PowerId("edifice.e22.intact")
+  val id: PowerId = ProvingGroundsCard.intact.power.id
   /** "{player} gained {3 warbands}." */
   val gained: NoteKey = NoteSupport.gainedKey("gained")
-  def forCatalog(catalog: ExecutableCatalog): Option[ProvingGrounds] =
-    CatalogCards.edifice(catalog, id).map(new ProvingGrounds(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): ProvingGrounds =
+    new ProvingGrounds(catalog)
 
 /** Discards all OTHER denizens in this region -- edifices count as denizens
   * for this clause specifically (design spec table), and a discarded ruined
@@ -68,8 +69,9 @@ object ProvingGrounds:
   * first player, per the spec's "the actor for powers with no 'you' is the
   * first player" (SetupEnd has no single "you").
   */
-final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCatalog)
+final case class EmptyGrounds private (catalog: ExecutableCatalog)
     extends ContributingPower:
+  val edifice: EdificeId = ProvingGroundsCard.id
   def id: PowerId = EmptyGrounds.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
@@ -132,6 +134,6 @@ final case class EmptyGrounds private (edifice: EdificeId, catalog: ExecutableCa
     }))
     Map(PowerWindow.SetupEnd -> effect, PowerWindow.WhenExplored -> effect)
 object EmptyGrounds:
-  val id: PowerId = PowerId("edifice.e22.ruined")
-  def forCatalog(catalog: ExecutableCatalog): Option[EmptyGrounds] =
-    CatalogCards.edifice(catalog, id).map(new EmptyGrounds(_, catalog))
+  val id: PowerId = ProvingGroundsCard.ruined.power.id
+  def forCatalog(catalog: ExecutableCatalog): EmptyGrounds =
+    new EmptyGrounds(catalog)

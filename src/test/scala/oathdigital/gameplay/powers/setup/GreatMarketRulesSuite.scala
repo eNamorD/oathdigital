@@ -58,8 +58,8 @@ class GreatMarketRulesSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
     SetupWalkDriver.driveWithEvents(ready, tree, powers)._2
 
-  private val great = GreatMarket.forCatalog(catalog).get
-  private val bandit = BanditMarket.forCatalog(catalog).get
+  private val great = GreatMarket.forCatalog(catalog)
+  private val bandit = BanditMarket.forCatalog(catalog)
 
   /** Exactly `bandited` is bandit-ruled; every other site is empty. */
   private def banditsOnly(ready: ReadyGame, bandited: Set[SiteId]): ReadyGame =

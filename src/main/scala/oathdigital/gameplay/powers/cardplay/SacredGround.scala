@@ -1,10 +1,8 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{Edifice, EdificeFace, Locked, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.gameplay.powers.setup.EdificeSetupSupport
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
@@ -33,9 +31,10 @@ object SacredGroundCard extends Edifice(EdificeId("E08"), Suit.Nomad):
   * When the look-ahead hides a faceup placement because of it, it writes
   * "{Red} cannot play a Vision faceup."
   */
-final case class SacredGround private (edifice: EdificeId)
-    extends ContributingPower:
-  def id: PowerId = SacredGround.id
+case object SacredGround extends ContributingPower:
+  val edifice: EdificeId = SacredGroundCard.id
+  val id: PowerId = SacredGroundCard.intact.power.id
+
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   override def noteKeys: Vector[NoteKey] = Vector(VisionPlay.noFaceup)
@@ -51,9 +50,3 @@ final case class SacredGround private (edifice: EdificeId)
     if ctx.state.game.current.map.inPlay.contains(site)
     if !PowerAccess.pawnSite(ctx.state, ctx.activePlayer).contains(site)
   yield VisionPlay.forbidden("Sacred Ground")
-
-object SacredGround:
-  val id: PowerId = PowerId("edifice.e08.intact")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[SacredGround] =
-    CatalogCards.edifice(catalog, id).map(new SacredGround(_))

@@ -108,10 +108,3 @@ class SelectedModifierSuite extends munit.FunSuite:
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
         catalog)))
     assertEquals(second(at, Vector.empty), Vector.empty[Operation])
-
-  test("the catalog cards helper finds a power's card, or nothing"):
-    assertEquals(CatalogCards.relic(catalog, PowerId("relic.dragonskin-drum")),
-      Some(RelicId("R20")))
-    assertEquals(CatalogCards.edifice(catalog, PowerId("edifice.e28.ruined")),
-      Some(EdificeId("E28")))
-    assertEquals(CatalogCards.relic(catalog, PowerId("relic.nobody")), None)

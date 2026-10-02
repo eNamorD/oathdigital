@@ -4,7 +4,6 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Sticky Fire: when its user wins, they may kill the whole of the enemy's force,
@@ -150,7 +149,7 @@ class StickyFireSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = StickyFire.forCatalog(catalog).get
+  private val power = StickyFire
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 

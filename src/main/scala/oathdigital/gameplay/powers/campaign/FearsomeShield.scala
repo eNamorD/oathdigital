@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.model._
 
 object FearsomeShieldCard extends Relic(RelicId("R27"), "Fearsome Shield", value = 52, defense = 1):
@@ -17,8 +16,10 @@ object FearsomeShieldCard extends Relic(RelicId("R27"), "Fearsome Shield", value
   * burnt to the shared bank, and nothing is placed on the relic. A defender with
   * fewer than two faceup secrets cannot pay, and the plan is not offered.
   */
-final case class FearsomeShield private (relicId: RelicId) extends BattlePlan:
-  def id: PowerId = FearsomeShield.id
+case object FearsomeShield extends BattlePlan:
+  val relicId: RelicId = FearsomeShieldCard.id
+  val id: PowerId = FearsomeShieldCard.power.id
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
 
@@ -27,9 +28,3 @@ final case class FearsomeShield private (relicId: RelicId) extends BattlePlan:
       "Fearsome Shield: burn 2 secrets for 2 defense dice",
       Vector(CampaignPlanCost.SecretBurnt(2)),
       Vector(CampaignPlanEffect.AddDefenseDice(2))))
-
-object FearsomeShield:
-  val id: PowerId = PowerId("relic.fearsome-shield")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[FearsomeShield] =
-    CatalogCards.relic(catalog, id).map(new FearsomeShield(_))

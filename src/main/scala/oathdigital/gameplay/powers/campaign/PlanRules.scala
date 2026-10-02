@@ -12,12 +12,11 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * and a discard at the end), The Great Levy (the attack scored again),
   * Garrison Armory (the targets' warbands added again), Hospital (killed
   * warbands saved until the end) and Book Burning (secrets burnt at the
-  * end). A relic power whose card is absent from `catalog` is
-  * omitted; a denizen power names its card and is always present.
+  * end). Each names its card, so all are always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
-    StickyFire.forCatalog(catalog).toVector ++
+    Vector(StickyFire) ++
       Vector(WarningSignals.forCatalog(catalog)) ++
       Vector(GleamingArmor.forCatalog(catalog)) ++
       Vector(InsectSwarm.forCatalog(catalog)) ++
@@ -26,7 +25,7 @@ object PlanRules:
       Vector(RivalKhan.forCatalog(catalog)) ++
       Vector(GreatCrusade.forCatalog(catalog)) ++
       Vector(PledgeOfDefense.forCatalog(catalog)) ++
-      BagOfSiegeworks.forCatalog(catalog).toVector ++
+      Vector(BagOfSiegeworks) ++
       Vector(RainBoots.forCatalog(catalog)) ++
       Vector(GreatLevy) ++
       Vector(GarrisonArmory) ++

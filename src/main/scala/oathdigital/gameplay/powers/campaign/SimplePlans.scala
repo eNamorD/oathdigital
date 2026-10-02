@@ -9,20 +9,19 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Talkers, Nature Worship, Cracked Sage, Village Constable, Banner Breakers,
   * Cracking Ground, Walled Garden, Bandit Standard, Extra Provisions,
   * Encirclement, Disgraced Captain, Battle Axes, Field Promotion, Tribute
-  * Spoils and Military Parade, registered together. A relic or edifice plan
-  * whose card is absent from `catalog` is omitted; a denizen plan names its
-  * card and is always present.
+  * Spoils and Military Parade, registered together. Each names its card, so
+  * all are always present.
   */
 object SimplePlans:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Vector(Mercenaries.forCatalog(catalog)) ++
       Vector(Wrestlers) ++
-      FearsomeShield.forCatalog(catalog).toVector ++
-      ToweringRampart.forCatalog(catalog).toVector ++
-      CrackedRampart.forCatalog(catalog).toVector ++
+      Vector(FearsomeShield) ++
+      Vector(ToweringRampart) ++
+      Vector(CrackedRampart) ++
       Vector(BattleHonors) ++
       Vector(Longbows) ++
-      BlackSword.forCatalog(catalog).toVector ++
+      Vector(BlackSword) ++
       Vector(FireTalkers) ++
       Vector(NatureWorship.forCatalog(catalog)) ++
       Vector(CrackedSage.forCatalog(catalog)) ++
@@ -30,7 +29,7 @@ object SimplePlans:
       Vector(BannerBreakers) ++
       Vector(CrackingGround) ++
       Vector(WalledGarden.forCatalog(catalog)) ++
-      BanditStandard.forCatalog(catalog).toVector ++
+      Vector(BanditStandard) ++
       Vector(ExtraProvisions) ++
       Vector(Encirclement) ++
       Vector(DisgracedCaptain.forCatalog(catalog)) ++

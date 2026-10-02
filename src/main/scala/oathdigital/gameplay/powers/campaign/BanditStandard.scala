@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.model._
 
 object BanditStandardCard extends Relic(RelicId("R30"), "Bandit Standard", value = 55, defense = 3):
@@ -21,8 +20,10 @@ object BanditStandardCard extends Relic(RelicId("R30"), "Bandit Standard", value
   * that region holds no bandit. A Raid targets no site, so it may be used in
   * one.
   */
-final case class BanditStandard private (relicId: RelicId) extends BattlePlan:
-  def id: PowerId = BanditStandard.id
+case object BanditStandard extends BattlePlan:
+  val relicId: RelicId = BanditStandardCard.id
+  val id: PowerId = BanditStandardCard.power.id
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
 
@@ -44,9 +45,3 @@ final case class BanditStandard private (relicId: RelicId) extends BattlePlan:
         case SiteForces.Occupied(ForceKind.Bandit, count) => count
         case _ => 0
       }).sum
-
-object BanditStandard:
-  val id: PowerId = PowerId("relic.bandit-standard")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[BanditStandard] =
-    CatalogCards.relic(catalog, id).map(new BanditStandard(_))

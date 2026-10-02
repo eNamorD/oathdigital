@@ -64,8 +64,8 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
     SetupWalkDriver.driveWithEvents(ready, tree, powers)._2
 
-  private val proving = ProvingGrounds.forCatalog(catalog).get
-  private val empty = EmptyGrounds.forCatalog(catalog).get
+  private val proving = ProvingGrounds.forCatalog(catalog)
+  private val empty = EmptyGrounds.forCatalog(catalog)
 
   test("Proving Grounds writes the warbands its player gained"):
     val staged = stagedAt(EdificeSide.Intact)

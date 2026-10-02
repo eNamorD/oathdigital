@@ -10,9 +10,9 @@ import oathdigital.gameplay.powers.rest.{Insomnia, SilverTongue}
 import oathdigital.gameplay.powers.wake.{Hunger, MarbleFountains,
   Quartermaster, RiverSitePower}
 
-/** The production phase powers, beside [[WalkerPowerCatalog]]. A relic, edifice
-  * or site power whose card is absent from `catalog` is omitted; a denizen
-  * power names its card and is always present.
+/** The production phase powers, beside [[WalkerPowerCatalog]]. A site power
+  * whose site is absent from `catalog` is omitted; every other card power
+  * names its card and is always present.
   */
 object PhasePowerCatalog:
   def default(catalog: ExecutableCatalog): PhasePowers =

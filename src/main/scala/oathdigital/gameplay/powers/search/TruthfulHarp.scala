@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object TruthfulHarpCard extends Relic(RelicId("R04"), "Truthful Harp", value = 39, defense = 0):
@@ -26,8 +26,9 @@ object TruthfulHarpCard extends Relic(RelicId("R04"), "Truthful Harp", value = 3
   * Its line names every card revealed, "Revealed {cards}.", and covers the
   * generic peek lines.
   */
-final case class TruthfulHarp private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class TruthfulHarp private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: RelicId = TruthfulHarpCard.id
   def id: PowerId = TruthfulHarp.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -54,11 +55,11 @@ final case class TruthfulHarp private (cardId: RelicId,
     yield Peek(viewer, card, Location.Hand(actor))))
 
 object TruthfulHarp:
-  val id: PowerId = PowerId("relic.truthful-harp")
+  val id: PowerId = TruthfulHarpCard.power.id
   val More: Int = 2
   /** "Revealed {cards}." */
   val revealed: NoteKey = NoteKey("revealed", Vector(
     NotePart.Text("Revealed "), NotePart.Arg(0), NotePart.Text(".")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[TruthfulHarp] =
-    CatalogCards.relic(catalog, id).map(new TruthfulHarp(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): TruthfulHarp =
+    new TruthfulHarp(catalog)

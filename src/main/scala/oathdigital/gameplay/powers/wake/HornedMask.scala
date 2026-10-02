@@ -153,7 +153,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower:
   yield Vector[CoreOperation](operation)
 
 object HornedMask:
-  val id: PowerId = PowerId("relic.horned-mask")
+  val id: PowerId = HornedMaskCard.power.id
   val denizenDecisionId: String = "power.horned-mask.denizen"
   val discardDecisionId: String = "power.horned-mask.discard"
   val took: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),

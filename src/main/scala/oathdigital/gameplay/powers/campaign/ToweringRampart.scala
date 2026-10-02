@@ -1,8 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
-  PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{Edifice, EdificeFace, Locked, PrintedPower}
 import oathdigital.model._
 
 object ToweringRampartCard extends Edifice(EdificeId("E20"), Suit.Order):
@@ -25,9 +23,10 @@ object ToweringRampartCard extends Edifice(EdificeId("E20"), Suit.Order):
   * site, so a Raid gets it only when the ruler's pawn is here. A bandit ruler
   * has no pawn, so it applies when the site is targeted, without choosing.
   */
-final case class ToweringRampart private (edificeId: EdificeId)
-    extends BattlePlan:
-  def id: PowerId = ToweringRampart.id
+case object ToweringRampart extends BattlePlan:
+  val edificeId: EdificeId = ToweringRampartCard.id
+  val id: PowerId = ToweringRampartCard.intact.power.id
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Edifice(edificeId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
 
@@ -37,9 +36,3 @@ final case class ToweringRampart private (edificeId: EdificeId)
       .map(source => CampaignPlanOffer(source,
         "Towering Rampart: add 2 defense dice", Vector.empty,
         Vector(CampaignPlanEffect.AddDefenseDice(2))))
-
-object ToweringRampart:
-  val id: PowerId = PowerId("edifice.e20.intact")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[ToweringRampart] =
-    CatalogCards.edifice(catalog, id).map(new ToweringRampart(_))

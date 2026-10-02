@@ -56,8 +56,8 @@ class GreatForgeRulesSuite extends munit.FunSuite:
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
     SetupWalkDriver.driveWithEvents(ready, tree, powers)._2
 
-  private val great = GreatForge.forCatalog(catalog).get
-  private val broken = BrokenForge.forCatalog(catalog).get
+  private val great = GreatForge.forCatalog(catalog)
+  private val broken = BrokenForge.forCatalog(catalog)
 
   test("Great Forge writes the relic its player drew"):
     val staged = stagedAt(EdificeSide.Intact)

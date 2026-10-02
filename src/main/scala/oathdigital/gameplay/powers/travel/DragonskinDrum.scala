@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts, SelectedModifier}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, SelectedModifier}
 import oathdigital.model._
 
 object DragonskinDrumCard extends Relic(RelicId("R20"), "Dragonskin Drum", value = 59, defense = 2):
@@ -18,8 +18,9 @@ object DragonskinDrumCard extends Relic(RelicId("R20"), "Dragonskin Drum", value
   *
   * Its line, "{Red} gained 1 warband.", reads the gain's step.
   */
-final case class DragonskinDrum private (cardId: RelicId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class DragonskinDrum private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: RelicId = DragonskinDrumCard.id
   def id: PowerId = DragonskinDrum.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
 
@@ -40,9 +41,9 @@ final case class DragonskinDrum private (cardId: RelicId,
       Vector(Gain.Warbands(actor, kind, DragonskinDrum.Warbands))))
 
 object DragonskinDrum:
-  val id: PowerId = PowerId("relic.dragonskin-drum")
+  val id: PowerId = DragonskinDrumCard.power.id
   val Warbands: Int = 1
   val gained: NoteKey = NoteSupport.gainedKey("gained")
 
-  def forCatalog(catalog: ExecutableCatalog): Option[DragonskinDrum] =
-    CatalogCards.relic(catalog, id).map(new DragonskinDrum(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): DragonskinDrum =
+    new DragonskinDrum(catalog)

@@ -98,7 +98,7 @@ final class BrassHorse(catalog: ExecutableCatalog)
         .flatMap(PawnMoves.relocate(ready, player, _))
 
 object BrassHorse:
-  val id: PowerId = PowerId("relic.brass-horse")
+  val id: PowerId = BrassHorseCard.power.id
   val decisionId: String = "power.brass-horse.site"
   /** Its own line: the reveal is its first effect, so the line sits there,
     * in the command that starts it. The placement may follow a question in

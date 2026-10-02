@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.model._
 
 object BrassArmyCard extends Relic(RelicId("R25"), "Brass Army", value = 77, defense = 3):
@@ -22,8 +21,11 @@ object BrassArmyCard extends Relic(RelicId("R25"), "Brass Army", value = 77, def
   * sacrifice or placement limit changes. The relic's other power, the pawn-move
   * restriction, is not part of this plan.
   */
-final case class BrassArmy private (relicId: RelicId) extends BattlePlan:
-  def id: PowerId = BrassArmy.id
+case object BrassArmy extends BattlePlan:
+  val relicId: RelicId = BrassArmyCard.id
+  val id: PowerId = BrassArmyCard.campaign.id
+  val Dice: Int = 4
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
 
@@ -31,10 +33,3 @@ final case class BrassArmy private (relicId: RelicId) extends BattlePlan:
     context.relic(relicId).map(source => CampaignPlanOffer(source,
       "Brass Army: add 4 attack dice", Vector(CampaignPlanCost.Secret(1)),
       Vector(CampaignPlanEffect.AddAttackDice(BrassArmy.Dice))))
-
-object BrassArmy:
-  val id: PowerId = PowerId("relic.brass-army.campaign")
-  val Dice: Int = 4
-
-  def forCatalog(catalog: ExecutableCatalog): Option[BrassArmy] =
-    CatalogCards.relic(catalog, id).map(new BrassArmy(_))

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
+import oathdigital.catalog.{PrintedPower, Relic}
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 object StickyFireCard extends Relic(RelicId("R01"), "Sticky Fire", value = 3, defense = 3):
@@ -36,8 +36,24 @@ object StickyFireCard extends Relic(RelicId("R01"), "Sticky Fire", value = 3, de
   * either half alone. Against bandits it writes nothing: no player lost a
   * warband or gained the favor.
   */
-final case class StickyFire private (relicId: RelicId) extends BattlePlan:
-  def id: PowerId = StickyFire.id
+case object StickyFire extends BattlePlan:
+  val relicId: RelicId = StickyFireCard.id
+  val id: PowerId = StickyFireCard.power.id
+  /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
+  val decisionId: String = CampaignProcedure.decisionPrefix + "sticky-fire"
+  val yes: DecisionOptionRef.Button = DecisionOptionRef.Button("kill")
+  val no: DecisionOptionRef.Button = DecisionOptionRef.Button("spare")
+
+  /** "Killed {n} {Blue} warband, and {Blue} gained {1 favor}." */
+  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Killed "),
+    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
+    NotePart.Plural(0, " warband, and ", " warbands, and "), NotePart.Arg(1),
+    NotePart.Text(" gained "), NotePart.Arg(2), NotePart.Text(".")))
+  /** The kill alone, when the winner had no favor to give. */
+  val killed: NoteKey = NoteSupport.killedKey("killed")
+  /** The favor alone, when the loser's board held no warband. */
+  val gave: NoteKey = NoteSupport.gainedKey("gained")
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Relic(relicId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -148,23 +164,3 @@ final case class StickyFire private (relicId: RelicId) extends BattlePlan:
       case (_, CampaignDefender.Player(defender)) => Location.PlayArea(defender)
       case (_, CampaignDefender.Bandits) => Location.SharedBank
     Vector(Give(Piece.Favor(1), user, Location.PlayArea(user), to))
-
-object StickyFire:
-  val id: PowerId = PowerId("relic.sticky-fire")
-  /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
-  val decisionId: String = CampaignProcedure.decisionPrefix + "sticky-fire"
-  val yes: DecisionOptionRef.Button = DecisionOptionRef.Button("kill")
-  val no: DecisionOptionRef.Button = DecisionOptionRef.Button("spare")
-
-  /** "Killed {n} {Blue} warband, and {Blue} gained {1 favor}." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Killed "),
-    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
-    NotePart.Plural(0, " warband, and ", " warbands, and "), NotePart.Arg(1),
-    NotePart.Text(" gained "), NotePart.Arg(2), NotePart.Text(".")))
-  /** The kill alone, when the winner had no favor to give. */
-  val killed: NoteKey = NoteSupport.killedKey("killed")
-  /** The favor alone, when the loser's board held no warband. */
-  val gave: NoteKey = NoteSupport.gainedKey("gained")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[StickyFire] =
-    CatalogCards.relic(catalog, id).map(new StickyFire(_))

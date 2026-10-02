@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.setup
 import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object GreatMarketCard extends Edifice(EdificeId("E02"), Suit.Discord):
@@ -59,8 +58,9 @@ object MarketRule:
 
   def favor(amount: Int): NoteArg = NoteArg.Amount(amount, NoteUnit.Favor)
 
-final case class GreatMarket private (edifice: EdificeId, catalog: ExecutableCatalog)
+final case class GreatMarket private (catalog: ExecutableCatalog)
     extends MarketRule:
+  val edifice: EdificeId = GreatMarketCard.id
   def id: PowerId = GreatMarket.id
   protected def side: EdificeSide = EdificeSide.Intact
 
@@ -86,15 +86,16 @@ final case class GreatMarket private (edifice: EdificeId, catalog: ExecutableCat
     else Vector(Move(Piece.Favor(count),
       PositionedLocation(Location.FavorBank(suit)), PositionedLocation(Location.Site(at))))
 object GreatMarket:
-  val id: PowerId = PowerId("edifice.e02.intact")
+  val id: PowerId = GreatMarketCard.intact.power.id
   /** "Placed {3 favor} on {site}." */
   val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
     NotePart.Arg(0), NotePart.Text(" on "), NotePart.Arg(1), NotePart.Text(".")))
-  def forCatalog(catalog: ExecutableCatalog): Option[GreatMarket] =
-    CatalogCards.edifice(catalog, id).map(new GreatMarket(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): GreatMarket =
+    new GreatMarket(catalog)
 
-final case class BanditMarket private (edifice: EdificeId, catalog: ExecutableCatalog)
+final case class BanditMarket private (catalog: ExecutableCatalog)
     extends MarketRule:
+  val edifice: EdificeId = GreatMarketCard.id
   def id: PowerId = BanditMarket.id
   protected def side: EdificeSide = EdificeSide.Ruined
 
@@ -131,7 +132,7 @@ final case class BanditMarket private (edifice: EdificeId, catalog: ExecutableCa
       placed ++ burned
     }
 object BanditMarket:
-  val id: PowerId = PowerId("edifice.e02.ruined")
+  val id: PowerId = GreatMarketCard.ruined.power.id
   /** "Placed {2 favor} on the bandit sites and burned {6 favor} from the
     * banks." */
   val placedAndBurned: NoteKey = NoteKey("placed-and-burned", Vector(
@@ -146,5 +147,5 @@ object BanditMarket:
   /** "Burned {6 favor} from the banks." */
   val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(" from the banks.")))
-  def forCatalog(catalog: ExecutableCatalog): Option[BanditMarket] =
-    CatalogCards.edifice(catalog, id).map(new BanditMarket(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): BanditMarket =
+    new BanditMarket(catalog)
