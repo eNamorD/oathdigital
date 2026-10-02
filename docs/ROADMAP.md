@@ -148,8 +148,6 @@ Found by the survey of 2026-09-29:
 - [ ] **Migrate `CatalogNames` to card objects.** About 76 test files look
   cards up by name through `CatalogNames`. Move them to direct object
   references such as `AlchemistCard`.
-- [ ] **Split `ProcedureWalker.scala`.** It is exactly 800 lines, the cap for a
-  production file, so the next change to it forces a split.
 
 ### Phase - Consent system
 
