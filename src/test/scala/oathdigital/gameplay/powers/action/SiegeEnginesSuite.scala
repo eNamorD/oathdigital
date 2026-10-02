@@ -100,8 +100,7 @@ class SiegeEnginesSuite extends munit.FunSuite:
 
   test("a site outside the actor's region is refused"):
     val t = accepted(use(staged(), SiegeEngines, source))
-    assert(answer(t, actor, SiegeEngines.decisionId, choose(faraway))
-      .isLeft)
+    assert(answer(t, actor, SiegeEngines.decisionId, choose(faraway)).isLeft)
 
   test("it is unusable without a favor to place"):
     val ready = staged(favor = 0)

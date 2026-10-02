@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PhasePowerCatalog,
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog,
   PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
@@ -109,8 +109,7 @@ class OracleSuite extends munit.FunSuite:
     }, located.toString)
 
   test("a faceup Vow of Obedience holder may not play it faceup"):
-    val holding = Table.from(CardStaging.without(staged(), vow)).adviser(actor,
-      vow).unchecked
+    val holding = Table.from(staged()).adviser(actor, vow).unchecked
     val t = accepted(start(holding))
     assert(!buttons(t).contains("adviser-faceup"), buttons(t).toString)
     assert(buttons(t).contains("adviser-facedown"))

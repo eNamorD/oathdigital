@@ -17,7 +17,8 @@ class MurkyFountainSuite extends munit.FunSuite:
 
   private val fountain = CatalogNames.edifice("Marble Fountains")
   private val source = DecisionOptionRef.Edifice(fountain)
-  /** p1's Act at Ancient City with `supply` Supply. The edifice stands on
+  /** p1's Act at Ancient City with `supply` Supply and the one faceup secret
+    * the power places. The edifice stands on
     * `side` at Ancient City or, when `pawnAtEdifice` is false, at Broken
     * Peaks, which p1 rules with one warband, so that only the pawn
     * condition fails.
@@ -25,7 +26,7 @@ class MurkyFountainSuite extends munit.FunSuite:
   private def staged(side: EdificeSide = EdificeSide.Ruined,
       pawnAtEdifice: Boolean = true, supply: Int): ReadyGame =
     val table = Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
-      .supply(actor, supply)
+      .supply(actor, supply).secrets(actor, 1)
     (if pawnAtEdifice then table.edifice(fountain, side, at = "Ancient City")
     else table.edifice(fountain, side, at = "Broken Peaks")
       .warbandsAt("Broken Peaks", actor, 1)).ready
@@ -93,8 +94,8 @@ class MurkyFountainSuite extends munit.FunSuite:
 
   test("it writes its roll and the Supply it gained"):
     val done = accepted(use(rules(defenseDice(DefenseDieFace.OneShield,
-      DefenseDieFace.TwoShields)), staged(
-        supply = 1), MurkyFountain.id, source))
+      DefenseDieFace.TwoShields)), staged(supply = 1), MurkyFountain.id,
+      source))
     assertEquals(NoteText.said(MurkyFountain, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} rolled 2 dice, Total: 3",
         covers = true),

@@ -53,8 +53,8 @@ class MessengerSuite extends munit.FunSuite:
     // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
     val ready = staged(board = 3, atHome = 2)
     val t = accepted(use(ready, Messenger, source))
-    val done = accepted(answer(t, p1, Messenger.decisionId, arrangement(0, 4,
-      2)))
+    val answered = arrangement(0, 4, 2)
+    val done = accepted(answer(t, p1, Messenger.decisionId, answered))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).boardWarbands(p1), 0)

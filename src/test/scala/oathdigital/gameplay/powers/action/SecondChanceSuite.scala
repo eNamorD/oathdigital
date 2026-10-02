@@ -14,7 +14,7 @@ class SecondChanceSuite extends munit.FunSuite:
   private val chance = CatalogNames.denizen("Second Chance")
   private val source = DecisionOptionRef.Denizen(chance)
   private val power = SecondChance.forCatalog(catalog)
-  // Denizens with no power of their own.
+  // Denizens whose powers these tests do not use: only their suits matter.
   private val codeOfHonor = CatalogNames.denizen("Code of Honor")
   private val defame = CatalogNames.denizen("Defame")
   private val homesteaders = CatalogNames.denizen("Homesteaders")
