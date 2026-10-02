@@ -119,9 +119,9 @@ object CampaignFixture:
     on(b)(_.denizen(DenizenId(card), at = site))
 
   def cardWith(handler: String): String =
-    catalog.denizens.find(_.handlers.contains(handler)).get.id.value
+    catalog.denizenWithPower(PowerId(handler)).get.id.value
   def relicWith(handler: String): String =
-    catalog.relics.find(_.handlers.contains(handler)).get.id.value
+    catalog.relicWithPower(PowerId(handler)).get.id.value
 
   /** A Raid board: the other player stands at the origin holding a faceup relic,
     * a facedown relic, three facedown advisers (one a Conspiracy), both banners
@@ -132,7 +132,7 @@ object CampaignFixture:
     // A relic that prints no battle plan, so the defender is offered none.
     val plans = Set("relic.sticky-fire", "relic.fearsome-shield",
       "relic.brass-army.campaign", "relic.bag-of-siegeworks")
-    val relic = RelicId(catalog.relics.find(_.handlers.forall(!plans(_))).get
+    val relic = RelicId(catalog.relics.find(_.powers.forall(p => !plans(p.id.value))).get
       .id.value)
     // Ids no card carries stand for cards whose identity the Raid never
     // learns: they join the table as they are.

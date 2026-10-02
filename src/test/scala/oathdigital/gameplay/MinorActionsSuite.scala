@@ -207,8 +207,7 @@ class MinorActionsSuite extends munit.FunSuite:
   test("source-scoped fallback and replay use the recorded off-turn actor"):
     val (base, active, _, _, _) = ready()
     val other0 = base.game.current.players.find(_.player != active.player).get
-    val powered = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.revelation")).get.id.value)
+    val powered = DenizenId(catalog.denizenWithPower(PowerId("denizen.revelation")).get.id.value)
     val other = other0.copy(advisers = Vector(
       DenizenState(powered, Orientation.FaceUp, Tokens.empty)))
     val changed = base.updateCurrent(_.copy(

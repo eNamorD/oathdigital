@@ -503,8 +503,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     // Stays on the replayed setup: the full game from Setup to round eight is
     // the end-to-end smoke test.
     val repository = new InMemoryEventStreamRepository
-    val whenPlayedPower = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.revelation")).get.id.value)
+    val whenPlayedPower = DenizenId(catalog.denizenWithPower(PowerId("denizen.revelation")).get.id.value)
     def place(order: Vector[DenizenId], index: Int, id: DenizenId) =
       val current = order.indexWhere(_.value == id.value)
       if current < 0 then order.updated(index, id)

@@ -4,8 +4,9 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 
 class CatalogHandlerInventorySuite extends munit.FunSuite:
   test("the handler inventory lists every printed power and site handler once"):
-    val expected = (catalog.denizens.flatMap(_.handlers) ++
-      catalog.relics.flatMap(_.handlers) ++ catalog.legacies.flatMap(_.handlers) ++
+    val expected = (catalog.denizens.flatMap(_.powers.map(_.id.value)) ++
+      catalog.relics.flatMap(_.powers.map(_.id.value)) ++
+      catalog.legacies.flatMap(_.powers.map(_.id.value)) ++
       catalog.sites.flatMap(_.handlers.map(_.value)) ++ catalog.edifices.flatMap(e =>
-        e.intact.handlers ++ e.ruined.handlers)).distinct.sorted
+        (e.intact.powers ++ e.ruined.powers).map(_.id.value))).distinct.sorted
     assertEquals(CatalogHandlerInventory.handlerIds(catalog), expected)

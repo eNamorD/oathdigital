@@ -161,7 +161,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
 
   test("a held battle-plan relic does not block the start: its plan is chosen at the plan step"):
     val b = board()
-    val bag = catalog.relics.find(_.handlers.contains("relic.bag-of-siegeworks")).get
+    val bag = catalog.relicWithPower(PowerId("relic.bag-of-siegeworks")).get
     val held = RelicId(bag.id.value)
     // The relic leaves the deck and any site, so the card index stays valid.
     val holding = b.ready.updateCurrent(current => current.copy(
@@ -179,7 +179,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
 
   test("a faceup Vow of Peace stops the start, through the walker power catalog"):
     val b = board()
-    val vow = catalog.denizens.find(_.handlers.contains("denizen.vow-of-peace")).get
+    val vow = catalog.denizenWithPower(PowerId("denizen.vow-of-peace")).get
     val holding = b.ready.updateCurrent(current => current.copy(players =
       current.players.map(p => if p.player == b.actor then p.copy(advisers = Vector(
         DenizenState(DenizenId(vow.id.value), Orientation.FaceUp, Tokens.empty)))

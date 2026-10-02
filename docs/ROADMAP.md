@@ -148,13 +148,6 @@ Found by the survey of 2026-09-29:
 - [ ] **Migrate `CatalogNames` to card objects.** About 76 test files look
   cards up by name through `CatalogNames`. Move them to direct object
   references such as `AlchemistCard`.
-- [ ] **Type `PrintsPowers.handlers` as `PowerId`s.** `Site.handlers` is a
-  `Vector[PowerId]`, while the denizen, relic, edifice and legacy `handlers`
-  stay `Vector[String]`. On a `Vector[PowerId]`, `contains("site.x")`
-  compiles and silently matches nothing, so the two types invite the same
-  mistake in each direction. A handful of production files and the test
-  lookups (`handlers.contains("denizen.…")`) read them. Give all five card
-  kinds one type.
 - [ ] **Split `ProcedureWalker.scala`.** It is exactly 800 lines, the cap for a
   production file, so the next change to it forces a split.
 

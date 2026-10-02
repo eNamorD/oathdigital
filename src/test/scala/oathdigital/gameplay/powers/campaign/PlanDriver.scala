@@ -33,7 +33,7 @@ object PlanDriver:
   def inert(suit: Suit, count: Int): Vector[String] =
     val implemented = PowerImplementationStatus.implemented(catalog)
     catalog.denizens.filter(card => card.suit == suit &&
-      card.handlers.forall(handler => !implemented(PowerId(handler))))
+      card.powers.forall(power => !implemented(power.id)))
       .map(_.id.value).take(count)
 
   def ready(state: OathState): ReadyGame = state match

@@ -231,7 +231,7 @@ class RestSuite extends munit.FunSuite:
       "denizen.vow-of-obedience")
     val unrelated = base.game.current.commonCards.worldDeck.collectFirst {
       case id: DenizenId if catalog.denizens.find(_.id.value == id.value)
-          .exists(d => !unrelatedHandlers.exists(d.handlers.contains)) => id
+          .exists(d => !d.powers.exists(p => unrelatedHandlers(p.id.value))) => id
     }.get
     val supported = base.copy(game = base.game.copy(campaign =
       base.game.campaign.copy(lineages = base.game.campaign.lineages.updated(
@@ -254,7 +254,7 @@ class RestSuite extends munit.FunSuite:
     // Insomnia's REST runs as a phase power, so it records no diagnostic.
     val relevant = Set("denizen.vow-of-poverty", "denizen.naysayers")
     relevant.foreach { handler =>
-      val definition = catalog.denizens.find(_.handlers.contains(handler)).get
+      val definition = catalog.denizenWithPower(PowerId(handler)).get
       val adviser = DenizenState(DenizenId(definition.id.value),
         Orientation.FaceUp, Tokens.empty)
       val state = base.updateCurrent(_.copy(
@@ -271,7 +271,7 @@ class RestSuite extends munit.FunSuite:
       assert(rules.evolve(Ready(state), tampered).isLeft)
     }
     val handler = "denizen.naysayers"
-    val definition = catalog.denizens.find(_.handlers.contains(handler)).get
+    val definition = catalog.denizenWithPower(PowerId(handler)).get
     val siteId = actor.pawnSite.get
     val siteState = base.updateCurrent(_.copy(
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(

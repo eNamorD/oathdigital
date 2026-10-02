@@ -38,7 +38,7 @@ class RuleSourceIndexSuite extends munit.FunSuite:
     assertEquals(indexed.source.stableKey,
       s"site-relic:${siteId.value}:${relic.id.value}")
     assertEquals(indexed.handlerIds,
-      catalog.relics.find(_.id.value == relic.id.value).get.handlers)
+      catalog.relics.find(_.id.value == relic.id.value).get.powers.map(_.id.value))
     assertEquals(indexed.powerIds,
       catalog.relics.find(_.id.value == relic.id.value).get.powers.map(power =>
         power.id))
@@ -98,5 +98,5 @@ class RuleSourceIndexSuite extends munit.FunSuite:
       _.source == RuleSourceRef.Legacy(lineageId, legacy.id)).get
     assertEquals(indexed.source.stableKey,
       s"legacy:${lineageId.value}:${legacy.id.value}")
-    assertEquals(indexed.handlerIds, legacyDefinition.handlers)
+    assertEquals(indexed.handlerIds, legacyDefinition.powers.map(_.id.value))
     assertEquals(indexed.face, RuleSourceFace.Inactive)

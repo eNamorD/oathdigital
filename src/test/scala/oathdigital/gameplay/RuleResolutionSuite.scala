@@ -26,8 +26,7 @@ class RuleResolutionSuite extends munit.FunSuite:
     */
   test("a power covered by the walker or phase catalog no longer reports the " +
       "legacy ignored-rule diagnostic"):
-    val silverTongue = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.silver-tongue")).get.id.value)
+    val silverTongue = DenizenId(catalog.denizenWithPower(PowerId("denizen.silver-tongue")).get.id.value)
     val ready = PowerFixture.asAdviser(PowerFixture.base, silverTongue)
     val source = RuleSourceRef.Adviser(PowerFixture.actor, silverTongue)
     assertEquals(PowerRuntime.ignoredAtSource(catalog, ready, PowerFixture.actor,

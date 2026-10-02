@@ -15,8 +15,7 @@ class CampaignPowersSuite extends munit.FunSuite:
     initial.game.current.players.map(_.player).find(_ != actor).get
 
   // ---- Vow of Peace ------------------------------------------------------
-  private val vowCard = catalog.denizens.find(_.handlers.contains(
-    "denizen.vow-of-peace")).get
+  private val vowCard = catalog.denizenWithPower(PowerId("denizen.vow-of-peace")).get
   private val eligibility =
     Sequence(Vector.empty, Some(PowerWindow.CampaignActionEligibility))
   private val vowPowers =

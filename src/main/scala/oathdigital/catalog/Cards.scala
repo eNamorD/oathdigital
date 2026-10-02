@@ -28,7 +28,6 @@ trait AdviserOnly
 /** A card, or an edifice face, that prints powers. */
 trait PrintsPowers:
   def powers: Vector[PrintedPower]
-  final def handlers: Vector[String] = powers.map(_.id.value)
   final def rulesText: String = powers.map(_.rulesText).mkString("\n\n")
 
 abstract class Denizen(val id: DenizenId, val name: String, val suit: Suit)
