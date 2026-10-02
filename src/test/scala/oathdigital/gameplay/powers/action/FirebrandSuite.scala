@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class FirebrandSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -25,8 +26,8 @@ class FirebrandSuite extends munit.FunSuite:
     ready.banks.favor.getOrElse(suit, 0)
 
   test("it places a secret and offers each stocked bank, then the burn"):
-    val t = use(staged(1, Suit.Order -> 2, Suit.Hearth -> 1).ready,
-      Firebrand, source).toOption.get
+    val t = accepted(use(staged(1, Suit.Order -> 2, Suit.Hearth -> 1).ready,
+      Firebrand, source))
     assert(awaits(t, Firebrand.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(brand), Tokens(0, 1))
@@ -35,9 +36,9 @@ class FirebrandSuite extends munit.FunSuite:
 
   test("a bank adds 1 favor to the People's Favor"):
     val ready = staged(1, Suit.Order -> 2, Suit.Hearth -> 1).ready
-    val t = use(ready, Firebrand, source).toOption.get
-    val done = answer(t, p1, Firebrand.decisionId,
-      pick(DecisionOptionRef.FavorBank(Suit.Order))).toOption.get
+    val t = accepted(use(ready, Firebrand, source))
+    val done = accepted(answer(t, p1, Firebrand.decisionId,
+      pick(DecisionOptionRef.FavorBank(Suit.Order))))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals((bank(end, Suit.Order), onBanner(end)), (1, 2))
@@ -50,9 +51,9 @@ class FirebrandSuite extends munit.FunSuite:
 
   test("the burn takes 1 favor from the People's Favor"):
     val ready = staged(1, Suit.Order -> 2).ready
-    val t = use(ready, Firebrand, source).toOption.get
-    val done = answer(t, p1, Firebrand.decisionId, pick(Firebrand.burn))
-      .toOption.get
+    val t = accepted(use(ready, Firebrand, source))
+    val done = accepted(answer(t, p1, Firebrand.decisionId,
+      pick(Firebrand.burn)))
     val end = after(done)
     assertEquals((bank(end, Suit.Order), onBanner(end)), (2, 0))
     assertEquals(NoteText.said(Firebrand, done.events), Vector(NoteText.Said(
@@ -61,13 +62,13 @@ class FirebrandSuite extends munit.FunSuite:
 
   test("a single option runs without asking, whoever holds the banner"):
     val ready = staged(2).peoplesFavor(Some(p2), 2).ready
-    val t = use(ready, Firebrand, source).toOption.get
+    val t = accepted(use(ready, Firebrand, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     assertEquals(onBanner(after(t)), 1)
 
   test("with nothing to move or burn the cost stays paid, and the line " +
       "says so"):
-    val t = use(staged(0).ready, Firebrand, source).toOption.get
+    val t = accepted(use(staged(0).ready, Firebrand, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     assertEquals(Look(after(t)).tokensOn(brand), Tokens(0, 1))
     assertEquals(NoteText.said(Firebrand, t.events), Vector(NoteText.Said(
@@ -76,8 +77,7 @@ class FirebrandSuite extends munit.FunSuite:
 
   test("one stocked bank and an empty People's Favor run as a move, " +
       "unasked"):
-    val t = use(staged(0, Suit.Order -> 2).ready, Firebrand, source)
-      .toOption.get
+    val t = accepted(use(staged(0, Suit.Order -> 2).ready, Firebrand, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     val end = after(t)
     assertEquals((bank(end, Suit.Order), onBanner(end)), (1, 1))

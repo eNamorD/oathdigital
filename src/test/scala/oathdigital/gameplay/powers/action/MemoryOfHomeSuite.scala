@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class MemoryOfHomeSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -24,7 +25,7 @@ class MemoryOfHomeSuite extends munit.FunSuite:
 
   test("one stocked bank is emptied into the Hearth bank, unasked"):
     val ready = staged(Suit.Order -> 3, Suit.Hearth -> 1).ready
-    val t = use(ready, MemoryOfHome, source).toOption.get
+    val t = accepted(use(ready, MemoryOfHome, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     val end = after(t)
     assertEquals(Look(end).tokensOn(memory), Tokens(0, 1))
@@ -37,13 +38,13 @@ class MemoryOfHomeSuite extends munit.FunSuite:
   test("several stocked banks are asked, the Hearth bank not among them"):
     val ready = staged(Suit.Arcane -> 2, Suit.Nomad -> 1, Suit.Hearth -> 5)
       .ready
-    val t = use(ready, MemoryOfHome, source).toOption.get
+    val t = accepted(use(ready, MemoryOfHome, source))
     assert(awaits(t, MemoryOfHome.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, p1), Some(Vector("favor-bank" -> "arcane",
       "favor-bank" -> "nomad")))
-    val done = answer(t, p1, MemoryOfHome.decisionId,
-      pick(DecisionOptionRef.FavorBank(Suit.Nomad))).toOption.get
+    val done = accepted(answer(t, p1, MemoryOfHome.decisionId,
+      pick(DecisionOptionRef.FavorBank(Suit.Nomad))))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Vector(Suit.Arcane, Suit.Nomad, Suit.Hearth).map(bank(end, _)),
@@ -53,8 +54,7 @@ class MemoryOfHomeSuite extends munit.FunSuite:
 
   test("with only the Hearth bank stocked nothing moves, and the line " +
       "says so"):
-    val t = use(staged(Suit.Hearth -> 4).ready, MemoryOfHome, source)
-      .toOption.get
+    val t = accepted(use(staged(Suit.Hearth -> 4).ready, MemoryOfHome, source))
     assertEquals(bank(after(t), Suit.Hearth), 4)
     assertEquals(NoteText.said(MemoryOfHome, t.events), Vector(NoteText.Said(
       "used.empty", "Every other favor bank was empty.", covers = false)))

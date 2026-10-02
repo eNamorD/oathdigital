@@ -4,8 +4,9 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
+import oathdigital.testkit.Unwrap.accepted
 
 class DowsingSticksSuite extends munit.FunSuite:
   import ActPowerHarness._
@@ -14,16 +15,22 @@ class DowsingSticksSuite extends munit.FunSuite:
   private val parked = new ParkedDecisionAssertions(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
-  private val sticks = RelicId("R09")
+  private val sticks = CatalogNames.relic("Dowsing Sticks")
   private val source = DecisionOptionRef.Relic(sticks)
-  private def staged(secrets: Int = 3) = act(Table.from(withRelic(quietTable,
-    sticks)).secrets(actor, secrets).unchecked)
+  private val whistle = CatalogNames.relic("Whistle")
+
+  /** p1's Act holding Dowsing Sticks with `secrets` faceup secrets, and
+    * Whistle on top of the relic deck. */
+  private def stagedTable(secrets: Int = 3): Table =
+    Table.start.turn(actor, Phase.Act).relic(actor, sticks)
+      .secrets(actor, secrets).relicDeckTop(whistle)
+  private def staged(secrets: Int = 3): ReadyGame = stagedTable(secrets).ready
 
   test("it places 1 secret, burns 2 and takes the top relic facedown"):
     val ready0 = staged()
-    val top = ready0.game.current.commonCards.relicDeck.head
+    val top = whistle
     val rules0 = rules()
-    val done = use(rules0, ready0, DowsingSticks.id, source).toOption.get
+    val done = accepted(use(rules0, ready0, DowsingSticks.id, source))
     val end = ready(done.state)
     assertEquals(Look(end).player(actor).relics.find(_.id == top)
       .map(_.orientation),
@@ -36,13 +43,8 @@ class DowsingSticksSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("an empty relic deck pays the cost and draws nothing"):
-    val ready0 = staged()
-    val current = ready0.game.current
-    val emptied = ready0.updateCurrent(_.copy(commonCards =
-      current.commonCards.copy(relicDeck = Vector.empty)))
-      .updateCampaign(c => c.copy(reliquary = c.reliquary ++
-        current.commonCards.relicDeck))
-    val done = use(rules(), emptied, DowsingSticks.id, source).toOption.get
+    val emptied = stagedTable().relicDeckEmptied.ready
+    val done = accepted(use(rules(), emptied, DowsingSticks.id, source))
     val end = ready(done.state)
     assertEquals(Look(end).player(actor).relics.map(_.id), Vector(sticks))
     assertEquals(Look(end).tokensOn(sticks), Tokens(0, 1))
@@ -53,20 +55,14 @@ class DowsingSticksSuite extends munit.FunSuite:
     assert(use(rules(), staged(secrets = 2), DowsingSticks.id, source).isLeft)
 
   test("it writes the relic it drew"):
-    val ready0 = staged()
-    val top = ready0.game.current.commonCards.relicDeck.head
-    val done = use(rules(), ready0, DowsingSticks.id, source).toOption.get
+    val top = whistle
+    val done = accepted(use(rules(), staged(), DowsingSticks.id, source))
     assertEquals(NoteText.said(DowsingSticks, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} drew ${top.value} facedown.",
         covers = false)))
 
   test("an empty relic deck is written as such"):
-    val ready0 = staged()
-    val current = ready0.game.current
-    val emptied = ready0.updateCurrent(_.copy(commonCards =
-      current.commonCards.copy(relicDeck = Vector.empty)))
-      .updateCampaign(c => c.copy(reliquary = c.reliquary ++
-        current.commonCards.relicDeck))
-    val done = use(rules(), emptied, DowsingSticks.id, source).toOption.get
+    val emptied = stagedTable().relicDeckEmptied.ready
+    val done = accepted(use(rules(), emptied, DowsingSticks.id, source))
     assertEquals(NoteText.said(DowsingSticks, done.events), Vector(
       NoteText.Said("used.empty", "The relic deck was empty.", covers = false)))

@@ -4,8 +4,9 @@ import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, PowerNoted}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
+import oathdigital.testkit.Unwrap.accepted
 
 class GamblingHallSuite extends munit.FunSuite:
   import ActPowerHarness._
@@ -14,12 +15,16 @@ class GamblingHallSuite extends munit.FunSuite:
   private val walkerParked = new ParkedDecisionAssertions(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
-  private val hall = DenizenId("93")
+  private val hall = CatalogNames.denizen("Gambling Hall")
   private val source = DecisionOptionRef.Denizen(hall)
   private def bank(suit: Suit) = DecisionOptionRef.FavorBank(suit)
-  private def staged(favor: Int = 3) =
-    act(Table.from(atActorsSite(quietTable, hall)).favor(actor, favor)
-      .unchecked)
+  /** p1's Act at Ancient City beside a site Gambling Hall, with `favor`
+    * favor. The Beast bank holds 4 favor and the Nomad bank 3. */
+  private def stagedTable(favor: Int = 3): Table =
+    Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
+      .denizen(hall, at = "Ancient City").favor(actor, favor)
+      .bankFavor(Suit.Beast, 4).bankFavor(Suit.Nomad, 3)
+  private def staged(favor: Int = 3): ReadyGame = stagedTable(favor).ready
 
   private val total4 = defenseDice(DefenseDieFace.OneShield,
     DefenseDieFace.OneShield, DefenseDieFace.TwoShields, DefenseDieFace.Blank)
@@ -33,8 +38,9 @@ class GamblingHallSuite extends munit.FunSuite:
 
   test("it places 2 favor, rolls 4 dice and takes the total from the chosen bank"):
     val rules0 = rules(total4)
-    val ready0 = staged()
-    val parked = use(rules0, ready0, GamblingHall.id, source).toOption.get
+    // 3 favor less the 2 placed leave 1; the roll's 4 make 5.
+    val ready0 = staged(favor = 3)
+    val parked = accepted(use(rules0, ready0, GamblingHall.id, source))
     walkerParked.assertParked(parked.state, ActionRef.UsePower(GamblingHall.id),
       GamblingHall.decisionId, actor)
     val paid = ready(parked.state)
@@ -42,8 +48,8 @@ class GamblingHallSuite extends munit.FunSuite:
     assertEquals(Look(paid).tokensOn(hall), Tokens(2, 0))
     assertEquals(paid.game.current.rollOutcomes(GamblingHall.pool).score, 4)
 
-    val done = answer(rules0, parked.state, GamblingHall.decisionId,
-      bank(Suit.Beast)).toOption.get
+    val done = accepted(answer(rules0, parked.state, GamblingHall.decisionId,
+      bank(Suit.Beast)))
     val end = ready(done.state)
     assertEquals(Look(end).player(actor).board.favor, 5)
     assertEquals(end.banks.favor(Suit.Beast),
@@ -57,37 +63,37 @@ class GamblingHallSuite extends munit.FunSuite:
     val doubled = defenseDice(DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler, DefenseDieFace.Blank)
     val rules0 = rules(doubled)
+    // The roll scores 6, more than the Nomad bank's 3.
     val ready0 = staged()
-    val parked = use(rules0, ready0, GamblingHall.id, source).toOption.get
+    val parked = accepted(use(rules0, ready0, GamblingHall.id, source))
     assertEquals(ready(parked.state).game.current.rollOutcomes(
       GamblingHall.pool).score, 6)
-    val done = answer(rules0, parked.state, GamblingHall.decisionId,
-      bank(Suit.Nomad)).toOption.get
+    val done = accepted(answer(rules0, parked.state, GamblingHall.decisionId,
+      bank(Suit.Nomad)))
     assertEquals(ready(done.state).banks.favor(Suit.Nomad), 0)
     assertEquals(Look(ready(done.state)).player(actor).board.favor,
       1 + ready0.banks.favor(Suit.Nomad))
 
   test("an empty bank may be chosen and gives nothing"):
-    val drained = staged().copy(banks = staged().banks.copy(
-      favor = staged().banks.favor.updated(Suit.Discord, 0)))
+    val drained = stagedTable().bankFavor(Suit.Discord, 0).ready
     val rules0 = rules(total4)
-    val parked = use(rules0, drained, GamblingHall.id, source).toOption.get
-    val done = answer(rules0, parked.state, GamblingHall.decisionId,
-      bank(Suit.Discord)).toOption.get
+    val parked = accepted(use(rules0, drained, GamblingHall.id, source))
+    val done = accepted(answer(rules0, parked.state, GamblingHall.decisionId,
+      bank(Suit.Discord)))
     assertEquals(Look(ready(done.state)).player(actor).board.favor, 1)
     assertEquals(ready(done.state).banks.favor(Suit.Discord), 0)
 
   test("a total of zero asks nothing and takes nothing"):
     val rules0 = rules(defenseDice(DefenseDieFace.Blank, DefenseDieFace.Blank,
       DefenseDieFace.Blank, DefenseDieFace.Blank))
-    val done = use(rules0, staged(), GamblingHall.id, source).toOption.get
+    val done = accepted(use(rules0, staged(), GamblingHall.id, source))
     walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(Look(ready(done.state)).player(actor).board.favor, 1)
     assertEquals(Look(ready(done.state)).tokensOn(hall), Tokens(2, 0))
 
   test("a bank the decision does not offer is rejected"):
     val rules0 = rules(total4)
-    val parked = use(rules0, staged(), GamblingHall.id, source).toOption.get
+    val parked = accepted(use(rules0, staged(), GamblingHall.id, source))
     assert(answer(rules0, parked.state, GamblingHall.decisionId,
       DecisionOptionRef.Button("elsewhere")).isLeft)
 
@@ -101,9 +107,9 @@ class GamblingHallSuite extends munit.FunSuite:
 
   test("it notes its roll, then what it gained, each covering the generic line"):
     val rules0 = rules(total4)
-    val parked = use(rules0, staged(), GamblingHall.id, source).toOption.get
-    val done = answer(rules0, parked.state, GamblingHall.decisionId,
-      bank(Suit.Beast)).toOption.get
+    val parked = accepted(use(rules0, staged(), GamblingHall.id, source))
+    val done = accepted(answer(rules0, parked.state, GamblingHall.decisionId,
+      bank(Suit.Beast)))
     assertEquals(notes(parked.events ++ done.events), Vector(
       PowerNoted(GamblingHall.id, GamblingHall.rolled(card, NoteArg.Player(actor),
         NoteArg.Dice(Vector(DefenseDieFace.OneShield, DefenseDieFace.OneShield,
@@ -117,9 +123,10 @@ class GamblingHallSuite extends munit.FunSuite:
     val doubled = defenseDice(DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler, DefenseDieFace.Blank)
     val ready0 = staged()
-    val parked = use(rules(doubled), ready0, GamblingHall.id, source).toOption.get
-    val done = answer(rules(doubled), parked.state, GamblingHall.decisionId,
-      bank(Suit.Nomad)).toOption.get
+    val parked = accepted(use(rules(doubled), ready0, GamblingHall.id, source))
+    val done = accepted(answer(rules(doubled), parked.state,
+      GamblingHall.decisionId,
+      bank(Suit.Nomad)))
     assertEquals(notes(done.events).map(_.note.args), Vector(Vector(
       NoteArg.Player(actor),
       NoteArg.Amount(ready0.banks.favor(Suit.Nomad), NoteUnit.Favor),
@@ -128,13 +135,13 @@ class GamblingHallSuite extends munit.FunSuite:
   test("a total of zero notes only the roll"):
     val rules0 = rules(defenseDice(DefenseDieFace.Blank, DefenseDieFace.Blank,
       DefenseDieFace.Blank, DefenseDieFace.Blank))
-    val done = use(rules0, staged(), GamblingHall.id, source).toOption.get
+    val done = accepted(use(rules0, staged(), GamblingHall.id, source))
     assertEquals(notes(done.events).map(_.note.key), Vector(NoteKey.Used))
 
   test("an empty bank gives nothing, so no gain is noted"):
-    val drained = staged().copy(banks = staged().banks.copy(
-      favor = staged().banks.favor.updated(Suit.Discord, 0)))
-    val parked = use(rules(total4), drained, GamblingHall.id, source).toOption.get
-    val done = answer(rules(total4), parked.state, GamblingHall.decisionId,
-      bank(Suit.Discord)).toOption.get
+    val drained = stagedTable().bankFavor(Suit.Discord, 0).ready
+    val parked = accepted(use(rules(total4), drained, GamblingHall.id, source))
+    val done = accepted(answer(rules(total4), parked.state,
+      GamblingHall.decisionId,
+      bank(Suit.Discord)))
     assertEquals(notes(done.events), Vector.empty)

@@ -6,32 +6,42 @@ import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.ActPowerHarness.usableIds
 import oathdigital.testkit.Outcomes.ready
 import oathdigital.testkit.Table.{p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 
 class MagicCarpetSuite extends munit.FunSuite:
   import PowerFixture._
   import MovementFixture._
   import PhasePowerHarness.{awaits, backToActing, ops, replayed}
 
-  private val carpet = RelicId("R39")
-  private def staged = inPhase(withRelic(homelands(quietTable), carpet),
-    Phase.Act)
+  private val carpet = CatalogNames.relic("Magic Carpet")
+  /** p1's Act at Ancient City holding Magic Carpet; p2 stands at Broken
+    * Peaks and p3 at Buried Giant. `homelands` adds the ruined edifices at
+    * Deep Woods and Golden Valley. */
+  private def staged = Table.from(homelands(quietTable)).turn(actor, Phase.Act)
+    .pawn(actor, "Ancient City").pawn(p2, "Broken Peaks")
+    .pawn(p3, "Buried Giant").relic(actor, carpet).unchecked
   private def site(name: String) =
     DecisionOptionRef.Site(CatalogNames.site(name))
 
+  /** The walk the Carpet started, parked at its site question, and the walk
+    * after the site was answered. */
+  private case class Placed(started: OathTransition, answered: OathTransition)
+
   /** Starts the Carpet and answers the site question. */
-  private def placedAt(start: ReadyGame, at: String) =
-    val parked = use(start, MagicCarpet.id, carpet).toOption.get
-    assert(awaits(parked, MagicCarpet.siteDecisionId))
-    (parked, choose(parked.state, MagicCarpet.siteDecisionId, site(at)).toOption.get)
+  private def placedAt(start: ReadyGame, at: String): Placed =
+    val started = accepted(use(start, MagicCarpet.id, carpet))
+    assert(awaits(started, MagicCarpet.siteDecisionId))
+    Placed(started, accepted(choose(started.state, MagicCarpet.siteDecisionId,
+      site(at))))
 
   test("it moves the pawn to the chosen site, then can be discarded"):
-    val (first, placed) = placedAt(staged, "Deep Woods")
+    val Placed(first, placed) = placedAt(staged, "Deep Woods")
     assert(awaits(placed, MagicCarpet.fateDecisionId))
     assertEquals(Look(ready(placed.state)).pawn(actor),
       CatalogNames.site("Deep Woods"))
 
-    val done = choose(placed.state, MagicCarpet.fateDecisionId,
-      MagicCarpet.discard).toOption.get
+    val done = accepted(choose(placed.state, MagicCarpet.fateDecisionId,
+      MagicCarpet.discard))
     val after = ready(done.state)
     assert(backToActing(done))
     assertEquals(relicOf(after, carpet), None)
@@ -40,9 +50,9 @@ class MagicCarpetSuite extends munit.FunSuite:
       Right(done.state))
 
   test("it can be given faceup to a player at a different site"):
-    val (_, placed) = placedAt(staged, "Deep Woods")
-    val done = choose(placed.state, MagicCarpet.fateDecisionId,
-      DecisionOptionRef.Player(p2)).toOption.get
+    val Placed(_, placed) = placedAt(staged, "Deep Woods")
+    val done = accepted(choose(placed.state, MagicCarpet.fateDecisionId,
+      DecisionOptionRef.Player(p2)))
     val after = ready(done.state)
     assert(backToActing(done))
     assertEquals(relicOf(after, carpet), None)
@@ -51,14 +61,14 @@ class MagicCarpetSuite extends munit.FunSuite:
     assertEquals(after.game.current.setAsideRelics, Vector.empty)
 
   test("a player at the new site is not eligible to receive it"):
-    val (_, placed) = placedAt(staged, "Broken Peaks")
+    val Placed(_, placed) = placedAt(staged, "Broken Peaks")
     assert(choose(placed.state, MagicCarpet.fateDecisionId,
       DecisionOptionRef.Player(p2)).isLeft)
     assert(choose(placed.state, MagicCarpet.fateDecisionId,
       DecisionOptionRef.Player(p3)).isRight)
 
   test("choosing the current site skips the move"):
-    val (_, placed) = placedAt(staged, "Ancient City")
+    val Placed(_, placed) = placedAt(staged, "Ancient City")
     assert(awaits(placed, MagicCarpet.fateDecisionId))
     assert(!ops(placed.events).exists {
       case Move(Piece.Pawn(_), _, _, _) => true
@@ -70,7 +80,7 @@ class MagicCarpetSuite extends munit.FunSuite:
   test("with nobody eligible the Carpet is discarded without a second question"):
     val crowded = Table.from(staged).pawn(p3, "Deep Woods").pawn(p2,
       "Deep Woods").unchecked
-    val (_, placed) = placedAt(crowded, "Deep Woods")
+    val Placed(_, placed) = placedAt(crowded, "Deep Woods")
     val after = ready(placed.state)
     assert(backToActing(placed))
     assertEquals(after.game.current.setAsideRelics, Vector(carpet))
@@ -78,9 +88,9 @@ class MagicCarpetSuite extends munit.FunSuite:
 
   test("a secret on the Carpet returns to its holder facedown when it is discarded"):
     val start = Table.from(staged).tokens(carpet, secrets = 1).unchecked
-    val (_, placed) = placedAt(start, "Deep Woods")
-    val done = choose(placed.state, MagicCarpet.fateDecisionId,
-      MagicCarpet.discard).toOption.get
+    val Placed(_, placed) = placedAt(start, "Deep Woods")
+    val done = accepted(choose(placed.state, MagicCarpet.fateDecisionId,
+      MagicCarpet.discard))
     assertEquals(Look(ready(done.state)).player(actor).board.faceDownSecrets,
       Look(start).player(actor).board.faceDownSecrets + 1)
 
@@ -89,9 +99,9 @@ class MagicCarpetSuite extends munit.FunSuite:
       .contains(MagicCarpet.id))
 
   test("it writes where the pawn went, then that it was discarded"):
-    val (first, placed) = placedAt(staged, "Deep Woods")
-    val done = choose(placed.state, MagicCarpet.fateDecisionId,
-      MagicCarpet.discard).toOption.get
+    val Placed(first, placed) = placedAt(staged, "Deep Woods")
+    val done = accepted(choose(placed.state, MagicCarpet.fateDecisionId,
+      MagicCarpet.discard))
     assertEquals(NoteText.said(MagicCarpet,
       first.events ++ placed.events ++ done.events), Vector(
       NoteText.Said(NoteKey.Used,
@@ -100,8 +110,8 @@ class MagicCarpetSuite extends munit.FunSuite:
       NoteText.Said("discarded", "Discarded.", covers = false)))
 
   test("a Carpet given away is written as given"):
-    val (_, placed) = placedAt(staged, "Deep Woods")
-    val done = choose(placed.state, MagicCarpet.fateDecisionId,
-      DecisionOptionRef.Player(p2)).toOption.get
+    val Placed(_, placed) = placedAt(staged, "Deep Woods")
+    val done = accepted(choose(placed.state, MagicCarpet.fateDecisionId,
+      DecisionOptionRef.Player(p2)))
     assertEquals(NoteText.said(MagicCarpet, done.events), Vector(
       NoteText.Said("given", s"Given to ${p2.value}.", covers = false)))
