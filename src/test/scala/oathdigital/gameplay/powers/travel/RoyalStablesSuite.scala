@@ -14,32 +14,33 @@ class RoyalStablesSuite extends munit.FunSuite:
   private val stables = CatalogNames.denizen("Royal Stables")
   private val modifiers = Vector(RoyalStables.id)
   /** Royal Stables at the actor's site, Buried Giant, the Cradle's plains. */
-  private def atHome: ReadyGame = Table.from(board())
+  private def stablesAtHome: ReadyGame = Table.from(board(supply = 7))
     .denizen(stables, at = cradlePlains).unchecked
 
+  // The printed Travel cost is 1 within the Cradle and 2 from the Cradle to
+  // the Provinces; the Stables take 1 off, never below 1.
+
   test("a Travel costs one less Supply"):
-    val ready = Table.from(atHome).warbandsAt(pass, actor, 1).unchecked
-    val province = provincePlains
-    assertEquals(candidates(ready).get(province), Some(2))
-    assertEquals(candidates(ready, modifiers).get(province), Some(1))
-    val done = accepted(travel(ready, province, modifiers))
+    val ready = Table.from(stablesAtHome).warbandsAt(pass, actor, 1).unchecked
+    assertEquals(candidates(ready).get(provincePlains), Some(2))
+    assertEquals(candidates(ready, modifiers).get(provincePlains), Some(1))
+    val done = accepted(travel(ready, provincePlains, modifiers))
     val result = Outcomes.ready(done.state)
-    assertEquals(Look(result).player(actor).pawnSite, Some(province))
+    assertEquals(Look(result).player(actor).pawnSite, Some(provincePlains))
     assertEquals(Look(result).supply(actor), 7 - 1)
     // The Stables themselves are free.
-    assertEquals(Look(result).player(actor).board.favor, Look(ready)
-      .player(actor).board.favor)
-    assertEquals(Look(result).player(actor).board.faceUpSecrets,
-      Look(ready).player(actor).board.faceUpSecrets)
+    assertEquals(Look(result).favor(actor), Look(ready).favor(actor))
+    assertEquals(Look(result).faceUpSecrets(actor),
+      Look(ready).faceUpSecrets(actor))
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
     assertWireRoundTrips(done.events)
 
   test("a Travel never costs less than 1 Supply"):
-    assertEquals(candidates(atHome).get(coast), Some(1))
-    assertEquals(candidates(atHome, modifiers).get(coast), Some(1))
-    assertEquals(
-      Look(Outcomes.ready(accepted(travel(atHome, coast, modifiers)).state))
-      .supply(actor), 7 - 1)
+    assertEquals(candidates(stablesAtHome).get(coast), Some(1))
+    assertEquals(candidates(stablesAtHome, modifiers).get(coast), Some(1))
+    val result = Outcomes.ready(accepted(travel(stablesAtHome, coast,
+      modifiers)).state)
+    assertEquals(Look(result).supply(actor), 7 - 1)
 
   test("terrain applies first: a mountain in the region costs 1 + 1 - 1"):
     // The cradle holds the mountain and the coast here, so the printed base
@@ -53,13 +54,12 @@ class RoyalStablesSuite extends munit.FunSuite:
 
   test("with Tents the Travel is free: Tents removes the payment"):
     val tents = CatalogNames.denizen("Tents")
-    val ready = Table.from(atHome).adviser(actor, tents).favor(actor, 1)
+    val ready = Table.from(stablesAtHome).adviser(actor, tents).favor(actor, 1)
       .unchecked
     val both = Vector(Tents.id, RoyalStables.id)
     assertEquals(candidates(ready, both).get(coast), Some(0))
-    assertEquals(
-      Look(Outcomes.ready(accepted(travel(ready, coast, both)).state))
-      .supply(actor), 7)
+    val result = Outcomes.ready(accepted(travel(ready, coast, both)).state)
+    assertEquals(Look(result).supply(actor), 7)
 
   test("it may be used at a site the actor rules"):
     val ruled = Table.from(board()).denizen(stables, at = hinterlandPlains)
@@ -76,6 +76,6 @@ class RoyalStablesSuite extends munit.FunSuite:
 
   test("it is a Travel modifier only"):
     val offered = (action: ActionRef) => accepted(
-      rules.offerableWalkerPowers(atHome, actor, action)).map(_.id)
+      rules.offerableWalkerPowers(stablesAtHome, actor, action)).map(_.id)
     assert(offered(ActionRef.Travel).contains(RoyalStables.id))
     assert(!offered(ActionRef.Muster).contains(RoyalStables.id))

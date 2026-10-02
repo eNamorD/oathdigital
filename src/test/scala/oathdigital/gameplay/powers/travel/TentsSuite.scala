@@ -15,11 +15,12 @@ class TentsSuite extends munit.FunSuite:
   private val modifiers = Vector(Tents.id)
   /** The actor holds Tents as a faceup adviser and 1 favor, at Buried Giant,
     * the Cradle's plains. */
-  private def held = Table.from(board()).adviser(actor, tents).favor(actor, 1)
-    .unchecked
+  private def held = Table.from(board(supply = 7)).adviser(actor, tents)
+    .favor(actor, 1).unchecked
 
   test("a destination in the region of the pawn's site costs no Supply, and is " +
       "still offered"):
+    // The printed cost within the Cradle is 1.
     assertEquals(candidates(held).get(coast), Some(1))
     assertEquals(candidates(held, modifiers).get(coast), Some(0))
 
@@ -29,7 +30,7 @@ class TentsSuite extends munit.FunSuite:
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(Look(result).supply(actor), 7)
-    assertEquals(Look(result).player(actor).board.favor, 0)
+    assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
     assertWireRoundTrips(done.events)
@@ -44,13 +45,13 @@ class TentsSuite extends munit.FunSuite:
   test("a route into another region is not changed, but the favor is still " +
       "paid: the player owns the choice to select it"):
     val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
-    val province = provincePlains
-    assertEquals(candidates(ready, modifiers).get(province),
-      candidates(ready).get(province))
-    val result = Outcomes.ready(accepted(travel(ready, province, modifiers))
-      .state)
+    assertEquals(candidates(ready, modifiers).get(provincePlains),
+      candidates(ready).get(provincePlains))
+    val result = Outcomes.ready(accepted(travel(ready, provincePlains,
+      modifiers)).state)
+    // The printed 2 from the Cradle to the Provinces, still charged.
     assertEquals(Look(result).supply(actor), 7 - 2)
-    assertEquals(Look(result).player(actor).board.favor, 0)
+    assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
 
   test("it cannot be selected without a favor to place, or onto an occupied card"):
@@ -87,6 +88,6 @@ class TentsSuite extends munit.FunSuite:
     assert(refused.left.toOption.exists(_.toString.contains(
       "cannot all be paid together")), refused.toString)
     val done = Outcomes.ready(accepted(travel(ready(2), coast, both)).state)
-    assertEquals(Look(done).player(actor).board.favor, 0)
+    assertEquals(Look(done).favor(actor), 0)
     assertEquals(Look(done).tokensOn(tents), Tokens(1, 0))
     assertEquals(Look(done).tokensOn(paths), Tokens(1, 0))

@@ -13,33 +13,33 @@ class DragonskinDrumSuite extends munit.FunSuite:
 
   private val drum = CatalogNames.relic("Dragonskin Drum")
   private val modifiers = Vector(DragonskinDrum.id)
-  private def held = withRelic(board(), drum)
+  private def held = withRelic(board(supply = 7), drum)
 
   test("after Travel the player gains one warband, and pays the printed Supply"):
     val ready = held
     val done = accepted(travel(ready, coast, modifiers))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
-    assertEquals(Look(result).player(actor).board.warbands, Look(ready)
-      .player(actor).board.warbands + 1)
+    assertEquals(Look(result).boardWarbands(actor),
+      Look(ready).boardWarbands(actor) + 1)
+    // 7 Supply, less the printed 1 for a Travel within the Cradle.
     assertEquals(Look(result).supply(actor), 7 - 1)
     // The Drum itself is free.
-    assertEquals(Look(result).player(actor).board.favor, Look(ready)
-      .player(actor).board.favor)
-    assertEquals(Look(result).player(actor).board.faceUpSecrets,
-      Look(ready).player(actor).board.faceUpSecrets)
+    assertEquals(Look(result).favor(actor), Look(ready).favor(actor))
+    assertEquals(Look(result).faceUpSecrets(actor),
+      Look(ready).faceUpSecrets(actor))
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
     assertWireRoundTrips(done.events)
 
-  test("without the selection, or with an empty bank, it gains what it can"):
+  test("without the selection, or with an empty bank, it gains no warband"):
     val plain = Outcomes.ready(accepted(travel(held, coast)).state)
-    assertEquals(Look(plain).player(actor).board.warbands, Look(held)
-      .player(actor).board.warbands)
+    assertEquals(Look(plain).boardWarbands(actor),
+      Look(held).boardWarbands(actor))
     val kind = accepted(PlayerFacts.forceKind(held, actor))
     val empty = leaveInBank(held, kind, 0)
     val result = Outcomes.ready(accepted(travel(empty, coast, modifiers)).state)
-    assertEquals(Look(result).player(actor).board.warbands, Look(empty)
-      .player(actor).board.warbands)
+    assertEquals(Look(result).boardWarbands(actor),
+      Look(empty).boardWarbands(actor))
 
   test("a facedown Drum is not usable"):
     assertEquals(travel(withRelic(board(), drum, Orientation.FaceDown), coast,

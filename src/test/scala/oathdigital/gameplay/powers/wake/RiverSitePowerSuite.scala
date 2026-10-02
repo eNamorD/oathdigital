@@ -2,15 +2,15 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
-import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Unwrap.accepted
 
 class RiverSitePowerSuite extends munit.FunSuite:
   import PowerFixture._
   import RiverFixture._
-  import PhasePowerHarness.{after, answer, awaits, offered, pick, replayed,
-    usableNow}
+  import PhasePowerHarness.{after, answer, awaits, offered, ops, pick,
+    replayed, usableNow}
 
   private val source = DecisionOptionRef.Site(ancientCity)
   private def use(ready: ReadyGame) = PhasePowerHarness.use(ready, river,
@@ -19,12 +19,17 @@ class RiverSitePowerSuite extends munit.FunSuite:
     case usable if usable.power.isInstanceOf[RiverSitePower] =>
       usable.power.id -> usable.ref }
 
+  /** The use that asked for a site, and the answer that placed the pawn. */
+  private final case class RiverPlacement(asked: OathTransition,
+      answered: OathTransition):
+    def events: Vector[OathEvent] = asked.events ++ answered.events
+
   /** Starts Ancient City's River and answers the site question. */
-  private def placedAt(ready: ReadyGame, at: SiteId) =
-    val parked = use(ready).toOption.get
-    assert(awaits(parked, RiverSitePower.siteDecisionId))
-    (parked, answer(parked, actor, RiverSitePower.siteDecisionId,
-      pick(DecisionOptionRef.Site(at))).toOption.get)
+  private def placedAt(ready: ReadyGame, at: SiteId): RiverPlacement =
+    val asked = accepted(use(ready))
+    assert(awaits(asked, RiverSitePower.siteDecisionId))
+    RiverPlacement(asked, accepted(answer(asked, actor,
+      RiverSitePower.siteDecisionId, pick(DecisionOptionRef.Site(at)))))
 
   test("every River is a registered phase power"):
     assertEquals(PhasePowerCatalog.default(catalog).powers.collect {
@@ -43,8 +48,10 @@ class RiverSitePowerSuite extends munit.FunSuite:
 
   test("it is not usable from a site that is not a River"):
     val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)
-    val dry = ready.game.current.map.inPlay.find(site =>
-      !RiverSitePower.isRiver(site)).get
+    // Broken Peaks is in play and is not a River.
+    val dry = CatalogNames.site("Broken Peaks")
+    assert(ready.game.current.map.inPlay.contains(dry))
+    assert(!RiverSitePower.isRiver(dry))
     val away = Table.from(ready).pawn(actor, dry).unchecked
     assertEquals(rivers(away), Vector.empty)
     assert(use(away).isLeft)
@@ -54,30 +61,27 @@ class RiverSitePowerSuite extends munit.FunSuite:
     val expected = ready.game.current.map.inPlay
       .filter(Set(riverbank, tidalMarshes).contains)
     assertEquals(expected.size, 2)
-    val parked = use(ready).toOption.get
+    val parked = accepted(use(ready))
     assertEquals(offered(parked, actor), Some(expected.map(site =>
       "site" -> site.value)))
 
   test("it places the pawn at the chosen River without Travel or Supply"):
     val ready = staged(Vector(riverbank, tidalMarshes), Phase.Wake)
-    val (parked, done) = placedAt(ready, riverbank)
-    val placed = after(done)
+    val placement = placedAt(ready, riverbank)
+    val placed = after(placement.answered)
     assertEquals(Look(placed).player(actor).pawnSite, Some(riverbank))
-    assertEquals(Look(placed).player(actor).board.supply, Look(ready)
-      .player(actor).board.supply)
-    val moves = (parked.events ++ done.events).collect {
-      case step: WalkerStepRecorded => step.ops }.flatten.collect {
+    assertEquals(Look(placed).supply(actor), Look(ready).supply(actor))
+    val moves = ops(placement.events).collect {
       case move @ Move(Piece.Pawn(_), _, _, _) => move }
     assertEquals(moves, Vector(Move(Piece.Pawn(actor),
       PositionedLocation(Location.Site(ancientCity)),
       PositionedLocation(Location.Site(riverbank)))))
-    assertEquals(replayed(ready, parked.events ++ done.events),
-      Right(done.state))
+    assertEquals(replayed(ready, placement.events),
+      Right(placement.answered.state))
 
   test("it is once per turn from each River"):
-    val (_,
-      done) = placedAt(
-      staged(Vector(riverbank, tidalMarshes), Phase.Wake), riverbank)
+    val done = placedAt(staged(Vector(riverbank, tidalMarshes), Phase.Wake),
+      riverbank).answered
     val used = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(ancientCity),
       river.id)
     assert(after(done).game.current.turn.usedPowers.contains(used))
@@ -89,10 +93,11 @@ class RiverSitePowerSuite extends munit.FunSuite:
       Vector(DecisionOptionRef.Site(riverbank)))
 
   test("it writes where it placed the pawn"):
-    val (parked,
-      done) = placedAt(
-      staged(Vector(riverbank, tidalMarshes), Phase.Wake), riverbank)
-    assertEquals(NoteText.said(river, parked.events ++ done.events), Vector(
-      NoteText.Said(NoteKey.Used, s"${actor.value} placed at ${riverbank.value}.",
-        covers = false)))
+    val placement = placedAt(staged(Vector(riverbank, tidalMarshes),
+      Phase.Wake), riverbank)
+    assertEquals(NoteText.said(river, placement.events), Vector(
+      NoteText.Said(NoteKey.Used,
+        s"${actor.value} placed at ${riverbank.value}.", covers = false)))
+
+  test("its note names the River as its source"):
     assertEquals(river.noteSource, Some("River"))

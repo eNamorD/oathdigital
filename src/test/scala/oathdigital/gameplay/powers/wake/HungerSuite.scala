@@ -10,8 +10,10 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
   WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Answers, Look, PhasePowerHarness, Situation, Table}
+import oathdigital.testkit.{ActPowerHarness, Answers, Look, Outcomes,
+  PhasePowerHarness, Situation, Table}
 import oathdigital.testkit.Table.{p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 
 class HungerSuite extends munit.FunSuite:
   import PowerFixture.actor
@@ -32,7 +34,7 @@ class HungerSuite extends munit.FunSuite:
       .adviser(p2, card, facedown = orientation == Orientation.FaceDown)
       .adviser(p2, "Wrestlers")
       .adviser(p3, "Rain Boots")
-      .pawn(p3, at = Table.quietPawnSite(p2))
+      .pawn(p3, at = "Broken Peaks")
       .ready
 
   /** p3's Rain Boots with 1 favor and 2 secrets on it. Set on the
@@ -40,10 +42,8 @@ class HungerSuite extends munit.FunSuite:
   private def stocked(ready: ReadyGame): ReadyGame =
     Table.from(ready).tokens("Rain Boots", favor = 1, secrets = 2).unchecked
 
-  private def rested(ready: ReadyGame) = rules.startWalker(Ready(ready),
-    PhaseTransitionRef.BeginRest, actor).toOption.get
-
-  private def ready(state: OathState) = state.asInstanceOf[Ready].value
+  private def rested(ready: ReadyGame) = accepted(
+    rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest, actor))
 
   private def optionRefs(query: DecisionQuery): Vector[DecisionOptionRef] =
     query match
@@ -59,7 +59,7 @@ class HungerSuite extends munit.FunSuite:
     val t = rested(staged())
     parked.assertParked(t.state, TriggeredProcedureRef.ForcedWake,
       Hunger.decisionId, next)
-    val now = ready(t.state)
+    val now = Outcomes.ready(t.state)
     assertEquals(now.game.current.turn, TurnState(next, Phase.Wake, Set.empty))
     val here = Look(now).player(next).pawnSite
     val expected = now.game.current.players.filter(_.pawnSite == here)
@@ -81,14 +81,14 @@ class HungerSuite extends munit.FunSuite:
   test("burying another player's adviser returns its favor and gives its " +
       "secrets to the holder"):
     val parkedAt = rested(staged())
-    val before = stocked(ready(parkedAt.state))
+    val before = stocked(Outcomes.ready(parkedAt.state))
     val t = parkedAt.copy(state = Ready(before))
-    val victim = Look(ready(t.state)).player(third).advisers.head
+    val victim = Look(before).player(third).advisers.head
     val suit = catalog.suitOf(victim.id).get
-    val bank = ready(t.state).banks.favor(suit)
-    val secrets = Look(ready(t.state)).player(next).board
-    val done = bury(t, DecisionOptionRef.AdviserSlot(third, 0)).toOption.get
-    val after = ready(done.state)
+    val bank = before.banks.favor(suit)
+    val secrets = Look(before).player(next).board
+    val done = accepted(bury(t, DecisionOptionRef.AdviserSlot(third, 0)))
+    val after = Outcomes.ready(done.state)
     assert(!Look(after).player(third).advisers.exists(_.id == victim.id))
     assertEquals(after.game.current.commonCards.worldDeck.last, victim.id)
     assertEquals(after.banks.favor(suit), bank + 1)
@@ -100,9 +100,7 @@ class HungerSuite extends munit.FunSuite:
       "buried", s"${next.value} buried ${victim.id.value} from " +
         s"${third.value}'s advisers.",
       covers = true)))
-    assertEquals(done.events.foldLeft[Either[OathViolation, OathState]](
-      Right(Ready(before)))((s, e) => s.flatMap(rules.evolve(_, e))),
-      Right(done.state))
+    assertEquals(ActPowerHarness.replayed(rules, before, done.events), after)
 
   test("a slot that is not offered is rejected"):
     val t = rested(staged())
@@ -113,7 +111,7 @@ class HungerSuite extends munit.FunSuite:
     // secrets give p2 a Wake option, so the Wake goes on once Hunger is done.
     val alone = Table.start
       .adviser(p2, card)
-      .siteTokens(Table.quietPawnSite(p2), secrets = 2)
+      .siteTokens("Broken Peaks", secrets = 2)
       .ready
     val t = rested(alone)
     parked.assertResumed(t.state, Phase.Wake, next)

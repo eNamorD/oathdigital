@@ -5,7 +5,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathViolation.TravelPassBlocked
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table, TestCards}
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -15,9 +15,9 @@ class ForestPathsSuite extends munit.FunSuite:
 
   private val paths = CatalogNames.denizen("Forest Paths")
   private val modifiers = Vector(ForestPaths.id)
-  private val beast: DenizenId = catalog.denizens.filter(d =>
-    d.suit == Suit.Beast && TestCards.unrestricted(d) &&
-      d.id.value != paths.value).map(d => DenizenId(d.id.value)).head
+  // A Beast denizen and a Beast edifice whose powers these tests do not use.
+  private val beast = CatalogNames.denizen("Errand Boy")
+  private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
   private def held = Table.from(board()).adviser(actor, paths).favor(actor, 1)
     .unchecked
 
@@ -31,8 +31,9 @@ class ForestPathsSuite extends munit.FunSuite:
     val done = accepted(travel(ready, mountain, modifiers))
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(mountain))
+    // The board's 7 Supply, untouched: a beast card costs no Supply.
     assertEquals(Look(result).supply(actor), 7)
-    assertEquals(Look(result).player(actor).board.favor, 0)
+    assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).tokensOn(paths), Tokens(1, 0))
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
     assertWireRoundTrips(done.events)
@@ -42,6 +43,7 @@ class ForestPathsSuite extends munit.FunSuite:
     val blocked = travel(ready, provincePlains)
     assertEquals(rejected(blocked), TravelPassBlocked(pass, provincePlains))
     assertEquals(candidates(ready).get(provincePlains), None)
+    // A beast card costs no Supply.
     assertEquals(candidates(ready, modifiers).get(provincePlains), Some(0))
     val result = Outcomes.ready(
       accepted(travel(ready, provincePlains, modifiers)).state)
@@ -49,10 +51,8 @@ class ForestPathsSuite extends munit.FunSuite:
     assertEquals(Look(result).supply(actor), 7)
 
   test("a ruined beast edifice counts as a beast card"):
-    val edifice = catalog.edifices.find(_.suit == Suit.Beast).get
     val ready = Table.from(held).warbandsAt(pass, actor, 1)
-      .edifice(EdificeId(edifice.id.value), EdificeSide.Ruined, at = mountain)
-      .unchecked
+      .edifice(beastEdifice, EdificeSide.Ruined, at = mountain).unchecked
     assertEquals(candidates(ready, modifiers).get(mountain), Some(0))
 
   test("without a beast card at the destination the favor is still paid, but " +
@@ -63,7 +63,7 @@ class ForestPathsSuite extends munit.FunSuite:
       .state)
     // The printed 2 and the Mountain's 1, both still charged.
     assertEquals(Look(result).supply(actor), 7 - 3)
-    assertEquals(Look(result).player(actor).board.favor, 0)
+    assertEquals(Look(result).favor(actor), 0)
     assertEquals(Look(result).tokensOn(paths), Tokens(1, 0))
 
   test("Narrow Pass still blocks a route with no beast card at the destination"):
@@ -92,8 +92,6 @@ class ForestPathsSuite extends munit.FunSuite:
         covers = false)))
 
   test("without a beast card nothing is ignored, and nothing is written"):
-    assertEquals(
-      said(
-      accepted(
-      travel(Table.from(held).warbandsAt(pass, actor, 1).unchecked, mountain,
-      modifiers)).events), Vector.empty)
+    val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
+    assertEquals(said(accepted(travel(ready, mountain, modifiers)).events),
+      Vector.empty)
