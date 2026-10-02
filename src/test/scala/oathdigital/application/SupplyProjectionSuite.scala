@@ -4,7 +4,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.protocol.projection.GameProjection
+import oathdigital.protocol.projection.{GameProjection, SupplyBandProjection}
 import oathdigital.testkit.{Look, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
@@ -58,3 +58,19 @@ class SupplyProjectionSuite extends munit.FunSuite:
   test("a player who cannot Rest is shown no preview"):
     // It is p1's Act, so p2 cannot Rest.
     assertEquals(project(Table.start.ready, p2).restSupplyGain, None)
+
+  test("a board carries its bag and the band the bag falls in"):
+    val board = Table.start.warbands(p1, 3).ready
+    val projected = project(board, p1)
+    val mine = projected.playerBoards.find(_.playerId == p1.value)
+      .getOrElse(fail("no board for p1"))
+    assertEquals(mine.printedWarbands, MaterialBankState.ExileWarbandsPerLineage)
+    assertEquals(mine.bankedWarbands,
+      mine.printedWarbands - mine.warbands - mine.siteWarbands)
+    // The same number the Act button promises, read from the same bag.
+    assertEquals(Some(mine.restSupplyBase), projected.restSupplyGain)
+
+  test("the band table is the engine's, in the engine's order"):
+    assertEquals(project(Table.start.ready, p1).supplyBands, Vector(
+      SupplyBandProjection(9, None, 6), SupplyBandProjection(4, Some(8), 5),
+      SupplyBandProjection(0, Some(3), 4)))

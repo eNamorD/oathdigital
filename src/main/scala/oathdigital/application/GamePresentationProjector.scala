@@ -2,7 +2,8 @@ package oathdigital.application
 
 import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked, PrintsPowers, SiteOnly}
 import oathdigital.gameplay.PlayerSecretSummary
-import oathdigital.gameplay.powers.PowerImplementationStatus
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
+import oathdigital.gameplay.powers.{PlayerFacts, PowerImplementationStatus}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -173,6 +174,11 @@ private[application] final class GamePresentationProjector(
       def identifies(id: CardId, orientation: Orientation,
           area: PlayerCardArea): Boolean = identifiesCard(ready, viewer, id,
         Some(orientation), CardContainer.Player(player.player, area))
+      val kind = PlayerForceKind.of(ready, player)
+      val printed = kind.fold(0)(ready.banks.warbandSupply.getOrElse(_, 0))
+      val atSites = kind.fold(0)(PlayerFacts.atSites(ready, _))
+      val banked = kind.fold(0)(PlayerFacts.banked(ready, _))
+      val restBase = FinishRestProcedure.ExileSupply.baseSupplyFor(banked).getOrElse(0)
       PlayerBoardProjection(player.player.value, player.board.warbands,
         player.board.favor, player.board.faceUpSecrets, player.board.faceDownSecrets,
         secrets.committed, secrets.totalSecrets,
@@ -193,7 +199,8 @@ private[application] final class GamePresentationProjector(
           else hiddenCard("relic")),
         player.revealedVision.map(card => cardDetails(card.id,
           Some(card.orientation), hidden = false)),
-        banners(ready).filter(_.holderPlayerId.contains(player.player.value)))
+        banners(ready).filter(_.holderPlayerId.contains(player.player.value)),
+        banked, printed, atSites, restBase)
     }
 
   private def withTokens(details: CardDetailsProjection,

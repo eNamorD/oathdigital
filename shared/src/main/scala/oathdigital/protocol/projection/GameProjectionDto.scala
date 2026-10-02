@@ -32,4 +32,5 @@ final case class GameProjection(
     ,viewerPlayerId: Option[String] = None
     ,supplyMaximum: Int = 0
     ,restSupplyGain: Option[Int] = None
+    ,supplyBands: Vector[SupplyBandProjection] = Vector.empty
 )

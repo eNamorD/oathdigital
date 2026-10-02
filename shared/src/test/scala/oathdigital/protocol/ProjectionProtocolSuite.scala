@@ -99,6 +99,26 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withPile)),
       Right(withPile))
 
+  test("a board's bag figures and the Supply bands round-trip"):
+    val withBag = projection.copy(
+      playerBoards = projection.playerBoards.map(_.copy(bankedWarbands = 5,
+        printedWarbands = 14, siteWarbands = 3, restSupplyBase = 5)),
+      supplyBands = Vector(SupplyBandProjection(9, None, 6),
+        SupplyBandProjection(4, Some(8), 5), SupplyBandProjection(0, Some(3), 4)))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withBag)),
+      Right(withBag))
+
+  test("a payload without bag figures or bands decodes to zero and none"):
+    val raw = ujson.read(GameProjectionCodec.encode(projection))
+    raw.obj.remove("supplyBands")
+    raw("playerBoards").arr.foreach { board =>
+      Vector("bankedWarbands", "printedWarbands", "siteWarbands", "restSupplyBase")
+        .foreach(board.obj.remove) }
+    val decoded = GameProjectionCodec.decode(ujson.write(raw))
+    assertEquals(decoded.map(_.supplyBands), Right(Vector.empty))
+    assertEquals(decoded.map(_.playerBoards.map(_.bankedWarbands)),
+      Right(projection.playerBoards.map(_ => 0)))
+
   test("a payload without discard cards decodes to an empty pile"):
     val raw = ujson.read(GameProjectionCodec.encode(projection))
     raw("world").arr.foreach(region => region.obj.remove("discardCards"))

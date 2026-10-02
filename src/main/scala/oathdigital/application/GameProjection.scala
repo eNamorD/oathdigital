@@ -110,7 +110,11 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers):
         // promise is dropped rather than guessed at when Rest cannot price it.
         restSupplyGain = Option.when(controls.contains("beginRest"))(
           FinishRestProcedure.supplyGainAtRest(context.ready, active.player)
-            .toOption).flatten)
+            .toOption).flatten,
+        supplyBands = FinishRestProcedure.ExileSupply.refreshBands.map(band =>
+          SupplyBandProjection(band.warbandsInBank.minimum,
+            Option.when(band.warbandsInBank.maximum != Int.MaxValue)(
+              band.warbandsInBank.maximum), band.baseSupply)))
 
   /** The cards the viewer is handling and nothing else on the panel draws:
     * their own temporary hand, face up because the cards are held in their

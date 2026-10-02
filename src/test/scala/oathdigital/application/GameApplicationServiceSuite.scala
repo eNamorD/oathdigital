@@ -1601,8 +1601,10 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assert(!publicShape.contains("privateAdviserChoices"))
     assert(!publicShape.contains("pendingSearch"))
     assert(publicShape.contains("walkerWaiting"))
-    privateIds.foreach(id => assert(!otherJson.contains(id)))
     val exposedValues = jsonStrings(ujson.read(otherJson))
+    // A card id is a bare number, so it is matched against the JSON's
+    // string values, not its text: a board's warband count may spell it.
+    privateIds.foreach(id => assert(!exposedValues.contains(id), id))
     assertEquals(
       exposedValues.intersect(chronicle.relicDeck.map(_.value).toSet),
       Set.empty[String]

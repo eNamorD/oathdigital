@@ -264,6 +264,9 @@ final case class WalkerWaitingProjection(playerId: String,
 final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int):
   def banner: String = key
+/** One row of the Rest table: warbands in the bag from `from` to `to`
+  * (`None` is "or more") return `supply`. */
+final case class SupplyBandProjection(from: Int, to: Option[Int], supply: Int)
 final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
     usurperLimited: Boolean, winnerPlayerId: Option[String],
@@ -281,7 +284,15 @@ final case class PlayerBoardProjection(
     advisers: Vector[CardDetailsProjection],
     relics: Vector[CardDetailsProjection],
     revealedVision: Option[CardDetailsProjection],
-    banners: Vector[BannerProjection] = Vector.empty
+    banners: Vector[BannerProjection] = Vector.empty,
+    /** The warbands of this player's kind still in their bag: printed, less
+      * those on the board and at sites. Public, as the bag is on the table. */
+    bankedWarbands: Int = 0,
+    printedWarbands: Int = 0,
+    siteWarbands: Int = 0,
+    /** The Supply the band for `bankedWarbands` returns at Rest, before
+      * unspent Supply is added and the track's ceiling applied. */
+    restSupplyBase: Int = 0
 )
 final case class MinorAdviserProjection(card: CardDetailsProjection,
     placements: Vector[CardResolutionProjection])

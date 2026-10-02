@@ -167,12 +167,17 @@ private[protocol] object WorldProjectionCodec:
     "banners" -> encoded(value.banners)(b => ujson.Obj(
       "banner" -> b.key, "face" -> b.face,
       "holderPlayerId" -> stringOption(b.holderPlayerId),
-      "resources" -> b.resources)))
+      "resources" -> b.resources)),
+    "bankedWarbands" -> value.bankedWarbands,
+    "printedWarbands" -> value.printedWarbands,
+    "siteWarbands" -> value.siteWarbands,
+    "restSupplyBase" -> value.restSupplyBase)
   def decodeBoard(raw: ujson.Value, path: String): Result[PlayerBoardProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("playerId", "warbands", "favor", "faceUpSecrets",
       "faceDownSecrets", "committedSecrets", "totalSecrets", "supply", "pawnSiteId", "advisers", "relics",
-      "revealedVision", "banners"), path)
+      "revealedVision", "banners", "bankedWarbands", "printedWarbands",
+      "siteWarbands", "restSupplyBase"), path)
     player <- string(value, "playerId", path); warbands <- int(value, "warbands", path)
     favor <- int(value, "favor", path); up <- int(value, "faceUpSecrets", path)
     down <- int(value, "faceDownSecrets", path)
@@ -191,5 +196,9 @@ private[protocol] object WorldProjectionCodec:
       holder <- optionalString(row, "holderPlayerId", child)
       resources <- int(row, "resources", child)
     yield BannerProjection(key, face, holder, resources) }
+    banked <- intOr(value, "bankedWarbands", path, 0)
+    printed <- intOr(value, "printedWarbands", path, 0)
+    atSites <- intOr(value, "siteWarbands", path, 0)
+    restBase <- intOr(value, "restSupplyBase", path, 0)
   yield PlayerBoardProjection(player, warbands, favor, up, down, committed, total, supply, pawn,
-    advisers, relics, vision, banners)
+    advisers, relics, vision, banners, banked, printed, atSites, restBase)

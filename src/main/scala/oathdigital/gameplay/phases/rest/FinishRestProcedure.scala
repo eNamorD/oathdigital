@@ -3,6 +3,7 @@ package oathdigital.gameplay.phases.rest
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.phases.RestCleanupPlan
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 /** Finish Rest (rest-walker spec, `FinishRest`).
@@ -72,21 +73,16 @@ object FinishRestProcedure:
 
   /** The warbands the resting player's own bank holds right now -- the one
     * count both the Supply band and its preview are read from, so neither
-    * can be derived a different way and disagree with the other.
+    * can be derived a different way and disagree with the other. The count
+    * itself is `PlayerFacts.banked`, which the table's Supply overlay also
+    * reads; only the guard on an unbounded supply is Rest's.
     */
   private def bankedWarbands(ready: ReadyGame, player: PlayerState)
       : Either[OathViolation, Int] =
     val kind = ForceKind.Exile(player.lineage)
-    ready.banks.warbandSupply.get(kind)
-      .toRight(UnsupportedRestState(s"no bounded warband supply for $kind"))
-      .map { supply =>
-        val siteWarbands = ready.game.current.map.sites.valuesIterator
-          .map(_.forces).collect {
-            case SiteForces.Occupied(ForceKind.Exile(owner), count)
-                if owner == player.lineage => count
-          }.sum
-        math.max(0, supply - player.board.warbands - siteWarbands)
-      }
+    Either.cond(ready.banks.warbandSupply.contains(kind),
+      PlayerFacts.banked(ready, kind),
+      UnsupportedRestState(s"no bounded warband supply for $kind"))
 
   private def restingPlayer(ready: ReadyGame, resting: PlayerId)
       : Either[OathViolation, PlayerState] =
