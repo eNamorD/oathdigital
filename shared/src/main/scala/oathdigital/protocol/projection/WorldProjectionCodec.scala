@@ -143,14 +143,18 @@ private[protocol] object WorldProjectionCodec:
   def encodeRegion(value: SetupRegionProjection): ujson.Value = ujson.Obj(
     "regionId" -> value.regionId, "discardCount" -> value.discardCount,
     "discardTopCardKind" -> stringOption(value.discardTopCardKind),
+    "discardCards" -> encoded(value.discardCards)(encodeCard),
     "sites" -> encoded(value.sites)(encodeSite))
   def decodeRegion(raw: ujson.Value, path: String): Result[SetupRegionProjection] = for
     value <- obj(raw, path)
-    _ <- exact(value, Set("regionId", "discardCount", "discardTopCardKind", "sites"), path)
+    _ <- exact(value, Set("regionId", "discardCount", "discardTopCardKind",
+      "discardCards", "sites"), path)
     region <- string(value, "regionId", path); count <- intOr(value, "discardCount", path, 0)
     top <- optionalAbsent(value, "discardTopCardKind", path)(string)
+    cardRaws <- default(value, "discardCards", path, Vector.empty[ujson.Value])(array)
+    cards <- traverse(cardRaws, s"$path.discardCards")(decodeCard)
     raws <- array(value, "sites", path); sites <- traverse(raws, s"$path.sites")(decodeSite)
-  yield SetupRegionProjection(region, sites, count, top)
+  yield SetupRegionProjection(region, sites, count, top, cards)
 
   def encodeBoard(value: PlayerBoardProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "warbands" -> value.warbands, "favor" -> value.favor,

@@ -63,7 +63,11 @@ final case class SetupRegionProjection(
     regionId: String,
     sites: Vector[SetupSiteProjection],
     discardCount: Int = 0,
-    discardTopCardKind: Option[String] = None
+    discardTopCardKind: Option[String] = None,
+    /** The pile top first. A card the viewer may not identify is the
+      * projector's `hiddenCard`, so the pile's size is always public and
+      * its faces are not. */
+    discardCards: Vector[CardDetailsProjection] = Vector.empty
 )
 final case class SitePowerProjection(kind: String, label: String, description: Option[String])
 final case class PawnLocationProjection(playerId: String, siteId: String)

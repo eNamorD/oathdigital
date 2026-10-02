@@ -63,36 +63,45 @@ private[application] final class GamePresentationProjector(
   }
 
   def setupWorld(sites: Vector[SiteId]): Vector[SetupRegionProjection] = Vector(
-    region("cradle", sites.take(2)),
-    region("provinces", sites.slice(2, 5)),
-    region("hinterland", sites.slice(5, 8)))
+    region("cradle", Region.Cradle, sites.take(2)),
+    region("provinces", Region.Provinces, sites.slice(2, 5)),
+    region("hinterland", Region.Hinterland, sites.slice(5, 8)))
 
   def setupWorld(material: FirstGameSetupMaterial): Vector[SetupRegionProjection] = Vector(
-    region("cradle", material.map.cradle, material.map.sites,
+    region("cradle", Region.Cradle, material.map.cradle, material.map.sites,
       material.commonCards.discard(Region.Cradle)),
-    region("provinces", material.map.provinces, material.map.sites,
+    region("provinces", Region.Provinces, material.map.provinces, material.map.sites,
       material.commonCards.discard(Region.Provinces)),
-    region("hinterland", material.map.hinterland, material.map.sites,
+    region("hinterland", Region.Hinterland, material.map.hinterland, material.map.sites,
       material.commonCards.discard(Region.Hinterland)))
 
   def readyWorld(ready: ReadyGame, viewer: Option[PlayerId]) =
     val current = ready.game.current
     Vector(
-      region("cradle", current.map.cradle, current.map.sites,
+      region("cradle", Region.Cradle, current.map.cradle, current.map.sites,
         current.commonCards.discard(Region.Cradle), Some(ready), viewer),
-      region("provinces", current.map.provinces, current.map.sites,
+      region("provinces", Region.Provinces, current.map.provinces, current.map.sites,
         current.commonCards.discard(Region.Provinces), Some(ready), viewer),
-      region("hinterland", current.map.hinterland, current.map.sites,
+      region("hinterland", Region.Hinterland, current.map.hinterland, current.map.sites,
         current.commonCards.discard(Region.Hinterland), Some(ready), viewer))
 
-  private def region(id: String, sites: Vector[SiteId],
+  private def region(id: String, where: Region, sites: Vector[SiteId],
       states: Map[SiteId, SiteState] = Map.empty,
       discard: Vector[CardId] = Vector.empty,
       ready: Option[ReadyGame] = None,
       viewer: Option[PlayerId] = None): SetupRegionProjection =
+    // The pile is stored top last; the client reads it top first. A card is
+    // a face only where the viewer identifies it in THIS pile (a peek), so
+    // nothing a player once saw elsewhere leaks through a discard.
+    val cards = discard.reverse.map { card =>
+      if ready.exists(game => identifiesCard(game, viewer, card, None,
+          CardContainer.RegionalDiscard(where)))
+      then cardDetails(card, None, hidden = false)
+      else hiddenCard(cardKind(card))
+    }
     SetupRegionProjection(id, sites.map(site =>
-      siteProjection(site, states.get(site), ready, viewer)), discard.size,
-      discard.lastOption.map(cardKind))
+      siteProjection(site, states.get(site), ready, viewer)),
+      cards.size, cards.headOption.map(_.cardKind), cards)
 
   private def siteProjection(siteId: SiteId, state: Option[SiteState],
       ready: Option[ReadyGame], viewer: Option[PlayerId]): SetupSiteProjection =

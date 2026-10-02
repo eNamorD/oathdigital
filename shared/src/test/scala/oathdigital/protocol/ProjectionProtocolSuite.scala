@@ -92,6 +92,20 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
       Right(without))
 
+  test("a region's discard cards round-trip, hidden and known alike"):
+    val withPile = projection.copy(world = projection.world.map(region =>
+      region.copy(discardCards = Vector(known, hidden), discardCount = 2,
+        discardTopCardKind = Some("denizen"))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(withPile)),
+      Right(withPile))
+
+  test("a payload without discard cards decodes to an empty pile"):
+    val raw = ujson.read(GameProjectionCodec.encode(projection))
+    raw("world").arr.foreach(region => region.obj.remove("discardCards"))
+    val decoded = GameProjectionCodec.decode(ujson.write(raw))
+    assertEquals(decoded.map(_.world.map(_.discardCards)),
+      Right(projection.world.map(_ => Vector.empty)))
+
   test("a decision query declaring no panel copy round-trips as absent"):
     val bare = DecisionQueryProjection.ChooseOne(
       Vector(DecisionOptionProjection("button", "stop", "Stop")))
