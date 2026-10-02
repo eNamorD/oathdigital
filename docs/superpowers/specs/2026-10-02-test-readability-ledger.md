@@ -70,6 +70,33 @@ not count it twice.
 Rows after correction: 41. Per rule: R7 14, R4 8, R1 6, R8 4, Keep 4, R2 1,
 R3 1, R6 1, R10 1, R11 1, R5 0.
 
+**Rerun.** Area 08 was rerun with the tightened prompt (`rows/08-rerun.md`)
+and each rerun row checked against the code. 42 rows: 40 right, 0 wrong rule,
+2 wrong. Wrong-row rate 2 of 42 (4.8%), against 13 of 48 (27%) for the first
+run. The two wrong rows: 08-001 (R8 on ExecutableCatalogSuite's `suitOf`: the
+printed suits are the oracle of a catalog suite, not an unexplained
+expectation) and 08-028 (R1 on `indexWhere(...)` returning -1: a diagnostics
+concern, the body already names what it picks). Three right rows are
+marginal (08-030 R5 on arbitrary ids in a wire suite, 08-031 a Boolean
+assertion helper, 08-037 R2 on a positional fixture that the corrected set
+files as R8); counting them wrong gives 5 of 42 (12%). Corrected rows the
+rerun missed: 3 outright (08-033, 08-034, 08-048) and part of 3 more (08-013
+folded into the rerun's OpaqueIdSuite rename, 08-026's wrong-format-version
+assertion, 08-028's wildcard import and `completedValue`). The rerun found
+five real findings the corrected set lacked; they were added as 08-049 to
+08-053 (ExecutableCatalogSuite `.get` casts, the Visions Drawn replay title,
+the synthetic Travel park in the answers test, three numeric ids in the power
+note tests, the Boolean `refused` helper), and two existing rows were
+extended (08-006 gains PlayerSetupStateSuite:48, 08-025 gains the seventh
+version-labelled title at line 703). The corrected set is now 46 rows (R7 16,
+R4 10, R1 6, R8 4, Keep 4, R5 1, R2 1, R3 1, R6 1, R10 1, R11 1). Of the
+rerun's 16 R7 rows, 10 are clear (a title that is false or misleading, or an
+unrelated second subject) and 6 are small title extensions (08-008, 08-015,
+08-016, 08-019, 08-024, 08-025), so R7 is not mostly marginal and no R7
+example was added. In the rerun, Keep rows are labelled Keep and repeated
+mechanics are filed as R4; none of the first run's R8-on-a-title or
+R1-on-a-premise misjudgments came back.
+
 **Missing findings.** The seven files with no rows (CatalogHandlerInventorySuite,
 ExecutableCatalogSuite, ActionKindSuite, ChronicleSuite, EnumWireKeySuite,
 WorldModelSuite, VisionCardPresentationSuite) were all opened; each deserves
