@@ -35,7 +35,10 @@ class BrassHorseSuite extends munit.FunSuite:
       beastTop)
     assertEquals(reveals(done.events), Vector(
       Reveal(beastTop, Location.RegionalDiscard(Region.Cradle))))
-    assertEquals(after.knowledge, start.knowledge)
+    // The reveal is public: every player now knows the card.
+    after.game.current.players.map(_.player).foreach(player =>
+      assert(after.knowledge.advisers.getOrElse(player, Vector.empty)
+        .contains(beastTop), player))
     assert(PaidActionHarness.wireRoundTrips(done.events))
     assertEquals(replayed(start, done.events), Right(done.state))
 
@@ -64,14 +67,10 @@ class BrassHorseSuite extends munit.FunSuite:
       site(desolateShore)).toOption.get
     assertEquals(pawnOf(readyOf(done.state)), desolateShore)
 
-  test("an empty pile reveals nothing and any other site may be chosen"):
+  test("an empty pile reveals nothing, so the power cannot be used"):
     val start = withDiscard(staged, Region.Cradle, Vector.empty)
-    val parked = use(start, BrassHorse.id, horse).toOption.get
-    assert(parkedAt(parked, BrassHorse.decisionId))
-    assertEquals(reveals(parked.events), Vector.empty)
-    val done = choose(parked.state, BrassHorse.decisionId, site(dunes))
-      .toOption.get
-    assertEquals(pawnOf(readyOf(done.state)), dunes)
+    assert(!usable(start, BrassHorse.id))
+    assert(use(start, BrassHorse.id, horse).isLeft)
 
   test("a Vision on top has no suit, so any other site may be chosen"):
     val vision = aVision(staged)
@@ -95,9 +94,10 @@ class BrassHorseSuite extends munit.FunSuite:
 
   test("it is unusable without a secret"):
     val id = BrassHorse.id
-    assert(usable(staged, id))
-    assert(!usable(withSecrets(staged, 0), id))
-    assert(use(withSecrets(staged, 0), id, horse).isLeft)
+    val start = cradleTopped(beastTop)
+    assert(usable(start, id))
+    assert(!usable(withSecrets(start, 0), id))
+    assert(use(withSecrets(start, 0), id, horse).isLeft)
 
   test("it writes the card it revealed in place of the generic line, then where the pawn went"):
     val done = use(cradleTopped(beastTop), BrassHorse.id, horse).toOption.get
@@ -105,12 +105,4 @@ class BrassHorseSuite extends munit.FunSuite:
       NoteText.Said(NoteKey.Used, s"${actor.value} revealed ${beastTop.value}.",
         covers = true),
       NoteText.Said("placed", s"${actor.value} placed at ${deepWoods.value}.",
-        covers = false)))
-
-  test("an empty pile writes only where the pawn went"):
-    val start = withDiscard(staged, Region.Cradle, Vector.empty)
-    val parked = use(start, BrassHorse.id, horse).toOption.get
-    val done = choose(parked.state, BrassHorse.decisionId, site(dunes)).toOption.get
-    assertEquals(NoteText.said(new BrassHorse(catalog), parked.events ++ done.events),
-      Vector(NoteText.Said("placed", s"${actor.value} placed at ${dunes.value}.",
         covers = false)))

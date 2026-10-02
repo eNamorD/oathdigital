@@ -25,7 +25,7 @@ class GameLogSetupSuite extends munit.FunSuite:
       case other => fail(s"expected a ready game, got $other")
     val seats = ready.game.current.players.map(_.player)
     val first = seats.indexOf(ready.setup.firstPlayer)
-    val order = (seats.drop(first) ++ seats.take(first)).map(_.value.capitalize)
+    val order = (seats.drop(first) ++ seats.take(first)).map(_.value)
     assertEquals(lines.filter(_.contains(" placed pawn at "))
       .map(_.takeWhile(_ != ' ')), order)
     assertEquals(lines.filter(_.contains(" kept ")).map(_.takeWhile(_ != ' ')),

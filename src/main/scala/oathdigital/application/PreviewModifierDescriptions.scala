@@ -43,8 +43,22 @@ private[application] final class PreviewModifierDescriptions(
         presentation.cardDetails(id, Some(Orientation.FaceUp), hidden = false))
       PreviewModifier(option.source.stableKey, option.handlerId,
         card.map(_.name).getOrElse(option.handlerId), card,
-        modifies(action, power).map(_.key))
+        modifies(action, power).map(_.key), costOf(option.handlerId))
     }
+
+  /** The power's printed cost in words, such as "1 favor, 2 secrets", or
+    * `None` for a free power. */
+  private def costOf(handlerId: String): Option[String] =
+    catalog.printedPower(PowerId(handlerId)).map(_.cost)
+      .filter(_ != Cost.free).map(cost => Vector(
+        counted(cost.favor, "favor", "favor"),
+        counted(cost.secret, "secret", "secrets"),
+        counted(cost.favorBurnt, "burned favor", "burned favor"),
+        counted(cost.secretBurnt, "burned secret", "burned secrets"))
+        .flatten.mkString(", "))
+
+  private def counted(count: Int, one: String, many: String): Option[String] =
+    Option.when(count > 0)(s"$count ${if count == 1 then one else many}")
 
   /** The major action a power modifies, read from the windows it hooks.
     * `Power.validate` (the legacy trait) requires every handler's window to

@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-2.0 decision 1 | Chose [player:p2|P2]
-4.0 action 1 | [card:39|Wolves]: Killed 1 [player:p2|P2] warband.
+2.0 decision 1 | Chose [player:p2|p2]
+4.0 action 1 | [card:39|Wolves]: Killed 1 [player:p2|p2] warband.

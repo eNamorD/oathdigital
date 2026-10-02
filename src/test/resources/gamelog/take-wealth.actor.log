@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p2|P2]'s turn
+0.1 turn 0 | [player:p2|p2]'s turn
 0.2 phase 0 | Wake
 0.3 action 1 | Took 1 favor from [site:site:broken-peaks|Broken Peaks]
 3.0 phase 0 | Act

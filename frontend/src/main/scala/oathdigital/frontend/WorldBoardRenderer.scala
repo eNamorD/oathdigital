@@ -94,7 +94,7 @@ private[frontend] object WorldBoardRenderer:
      board.banners.foreach { banner =>
        section.appendChild(text("p", s"player-banner banner-${banner.key}",
          s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-           s"resources ${banner.resources}"))
+           holds(banner)))
      }
      }
      panel.appendChild(section)
@@ -295,6 +295,13 @@ private[frontend] object WorldBoardRenderer:
    }
    banks
 
+ /** What a banner holds: The People's Favor holds favor, and Darkest Secret
+   * holds secrets. */
+ private def holds(banner: BannerState): String = banner.key match
+   case "darkest-secret" =>
+     if banner.resources == 1 then "1 secret" else s"${banner.resources} secrets"
+   case _ => s"${banner.resources} favor"
+
  private def sharedBank(value: GameProjection): dom.Element =
    val section = element("section", "shared-bank")
    section.appendChild(text("h3", "", "Shared Bank"))
@@ -306,6 +313,6 @@ private[frontend] object WorldBoardRenderer:
    value.banners.foreach { banner =>
      section.appendChild(text("p", s"shared-banner banner-${banner.key}",
        s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-         s"resources ${banner.resources}"))
+         holds(banner)))
    }
    section

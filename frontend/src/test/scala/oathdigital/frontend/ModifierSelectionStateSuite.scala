@@ -204,3 +204,18 @@ class ModifierSelectionStateSuite extends munit.FunSuite:
     assertEquals(panel.querySelector(".modifier-modifies").textContent,
       "Travel Modifier")
     assertEquals(panel.textContent.contains("denizen.vow-of-peace"), false)
+
+  test("a modifier option shows its printed cost, with or without a card"):
+    val card = CardDetails("denizen:201", "denizen", "Catacombs",
+      orientation = Some("face-up"))
+    val withCard = PreviewModifier("site-card:s1:201", "denizen.catacombs",
+      "Catacombs", Some(card), Some("recover"), cost = Some("1 secret"))
+    val bare = PreviewModifier("game:denizen.relic-worship",
+      "denizen.relic-worship", "Relic Worship", cost = Some("1 secret"))
+    val free = PreviewModifier("game:denizen.rowdy-pub", "denizen.rowdy-pub",
+      "Rowdy Pub")
+    val costs = renderOrderingPanel(Vector(withCard, bare, free))
+      .querySelectorAll(".modifier-option").toVector.map(row =>
+        Option(row.querySelector(".modifier-cost")).map(_.textContent))
+    assertEquals(costs, Vector(Some("Cost: 1 secret"), Some("Cost: 1 secret"),
+      None))

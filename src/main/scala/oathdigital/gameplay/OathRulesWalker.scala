@@ -171,7 +171,8 @@ private[gameplay] trait OathRulesWalker:
         power.resolution == PowerResolution.PlayerSelected &&
         power.applicable(PowerCtx(ready, actor, power.source, window,
           Vector.empty, Sequence(Vector.empty, Some(window)),
-          Some(procedure))))
+          Some(procedure))) &&
+        paying(ready, actor, Vector(power)).isRight)
 
   /** Rejects an unknown or inapplicable `modifiers` id with
     * `InvalidEventOrder` before any node walks and before any event is
@@ -213,16 +214,20 @@ private[gameplay] trait OathRulesWalker:
     */
   private def requirePayable(ready: ReadyGame, actor: PlayerId,
       modifiers: Vector[PowerId]): Either[OathViolation, Unit] =
-    val payments = walkerPowerCatalog.powers
-      .filter(power => modifiers.contains(power.id))
-      .flatMap(_.selectionPayments(ready, actor))
+    paying(ready, actor, walkerPowerCatalog.powers
+      .filter(power => modifiers.contains(power.id))).left.map(violation =>
+      InvalidEventOrder("the selected modifiers cannot all be paid together: " +
+        violation))
+
+  /** Dry-runs the selection payments of `powers` together. A modifier whose
+    * own payment fails here is not offered at all. */
+  private def paying(ready: ReadyGame, actor: PlayerId,
+      powers: Vector[ContributingPower]): Either[OathViolation, Unit] =
+    val payments = powers.flatMap(_.selectionPayments(ready, actor))
     if payments.isEmpty then Right(())
     else OperationPipeline.run(ready, payments, OperationPolicy.Permissive,
-      WalkerPowers.selected(walkerPowerCatalog, modifiers)
-        .operationRestrictions)(
-      Right(_)).left.map(violation => InvalidEventOrder(
-      "the selected modifiers cannot all be paid together: " +
-        violation)).map(_ => ())
+      WalkerPowers.selected(walkerPowerCatalog, powers.map(_.id))
+        .operationRestrictions)(Right(_)).map(_ => ())
 
   /** Task 3 wiring rule: restrictions run once per command, at command entry,
     * before the walk -- collected across the whole derived `tree` via

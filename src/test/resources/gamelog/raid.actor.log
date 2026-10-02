@@ -1,13 +1,13 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-2.0 action 1 | Started Campaign: Raid against [player:p2|P2][cost:2 Supply]
-4.0 decision 1 | Targets: [player:p2|P2]'s pawn
+2.0 action 1 | Started Campaign: Raid against [player:p2|p2][cost:2 Supply]
+4.0 decision 1 | Targets: [player:p2|p2]'s pawn
 4.1 delta 1 | Attack Pool: 3, Defense Pool: 2
 6.0 roll 1 | Rolled [dice:attack one-sword one-sword one-sword|sword, sword, sword] for the attack
 7.0 roll 1 | Attack: 3
 9.0 decision 1 | Sacrificed 3 warbands for an attack of 6
 10.0 roll 1 | Rolled [dice:defense blank blank|blank, blank] for the defense
 11.0 roll 1 | Defense: 3
-12.0 action 1 | [player:p1|P1] wins!
-18.0 delta 1 | [player:p2|P2] lost 1 warband, discarded a Denizen and was sent to [site:site:broken-peaks|Broken Peaks]
+12.0 action 1 | [player:p1|p1] wins!
+18.0 delta 1 | [player:p2|p2] lost 1 warband, discarded a Denizen and was sent to [site:site:broken-peaks|Broken Peaks]

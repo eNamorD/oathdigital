@@ -19,7 +19,7 @@ private[operations] object CardFaceOperations:
       case Some(_: DenizenState) | Some(_: VisionState) |
           Some(_: RelicState) => Vector.empty
       // Looking at a discarded card: it has no orientation state (a discard is
-      // always facedown), so revealing it changes nothing.
+      // always facedown), so revealing it only tells every player the card.
       case None if isDiscardLook(at, orientation) =>
         Vector.empty
       case _ => Vector(UnsupportedOrientation(id, at))
@@ -51,9 +51,15 @@ private[operations] object CardFaceOperations:
           case value: VisionState => value.copy(orientation = orientation)
           case value: RelicState => value.copy(orientation = orientation)
           case value => value
-      case None if isDiscardLook(at, orientation) => Right(ready)
+      case None if isDiscardLook(at, orientation) => Right(seenByAll(ready, id, at))
       case _ => Left(UnsupportedOrientation(id, at))
   yield updated
+
+  /** A card revealed in a discard is shown to the table: every player knows
+    * it, as if each had peeked at it. */
+  private def seenByAll(ready: ReadyGame, id: CardId, at: Location): ReadyGame =
+    ready.game.current.players.map(_.player).foldLeft(ready)((known, player) =>
+      peek(known, player, id, at).getOrElse(known))
 
   def peek(ready: ReadyGame, viewer: PlayerId, id: CardId,
       at: Location): Either[OperationError, ReadyGame] = for

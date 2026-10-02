@@ -272,6 +272,8 @@ object CardPlayProcedure:
       DecisionOption.Denizen(DecisionOptionRef.Denizen(value))
     case value: VisionId =>
       DecisionOption.Vision(DecisionOptionRef.Vision(value))
+    case value: EdificeId =>
+      DecisionOption.Edifice(DecisionOptionRef.Edifice(value))
     case value => DecisionOption.Button(
       DecisionOptionRef.Button(s"replace:${value.kind}:${value.value}"),
       value.value)

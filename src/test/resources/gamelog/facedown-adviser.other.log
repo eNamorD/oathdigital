@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 0.3 action 1 | Playing Facedown Adviser
 2.0 action 1 | Discarded a Denizen to the Provinces discard

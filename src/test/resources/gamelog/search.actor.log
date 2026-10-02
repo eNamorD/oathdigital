@@ -1,5 +1,5 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 0.3 action 1 | Started Search[cost:2 Supply]
 3.0 action 1 | Drew [card:179|Threatening Roar], [card:180|Fae Merchant] and [card:181|Second Chance] from the World Deck and kept [card:179|Threatening Roar]

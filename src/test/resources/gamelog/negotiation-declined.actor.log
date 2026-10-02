@@ -1,4 +1,4 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-1.0 action 1 | Negotiation ended by [player:p2|P2]
+1.0 action 1 | Negotiation ended by [player:p2|p2]

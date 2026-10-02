@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
-3.0 action 1 | [card:93|Gambling Hall]: [player:p1|P1] rolled [dice:defense two-shields two-shields two-shields two-shields|two shields, two shields, two shields, two shields], Total: 8
+3.0 action 1 | [card:93|Gambling Hall]: [player:p1|p1] rolled [dice:defense two-shields two-shields two-shields two-shields|two shields, two shields, two shields, two shields], Total: 8
 5.0 decision 1 | Chose the Hearth bank
-7.0 trigger 1 | [card:93|Gambling Hall]: [player:p1|P1] gained [amount:4 favor] from the Hearth bank.
+7.0 trigger 1 | [card:93|Gambling Hall]: [player:p1|p1] gained [amount:4 favor] from the Hearth bank.

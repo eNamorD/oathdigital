@@ -1,6 +1,6 @@
 0.0 round 0 | Round 1
-0.1 turn 0 | [player:p1|P1]'s turn
+0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 0.3 action 1 | Playing Facedown Adviser
 2.0 action 1 | Played [card:133|Family Heirloom] as an adviser
-7.0 trigger 1 | [card:133|Family Heirloom]: [player:p1|P1] drew [card:R09|Dowsing Sticks] and put it on the bottom of the relic deck.
+7.0 trigger 1 | [card:133|Family Heirloom]: [player:p1|p1] drew [card:R09|Dowsing Sticks] and put it on the bottom of the relic deck.
