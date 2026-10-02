@@ -15,7 +15,7 @@ class BallotBoxSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(box)
   private val power = BallotBox.forCatalog(catalog)
   private val home = CatalogNames.site("Ancient City")
-  // Denizens with no power of their own: one Hearth, two Order.
+  // Denizens whose powers these tests do not use: one Hearth, two Order.
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val codeOfHonor = CatalogNames.denizen("Code of Honor")
   private val messenger = CatalogNames.denizen("Messenger")

@@ -18,7 +18,7 @@ class GamblingHallSuite extends munit.FunSuite:
   private val hall = CatalogNames.denizen("Gambling Hall")
   private val source = DecisionOptionRef.Denizen(hall)
   private def bank(suit: Suit) = DecisionOptionRef.FavorBank(suit)
-  /** p1's Act at Ancient City beside a site Gambling Hall, with `favor`
+  /** p1's Act at Ancient City with Gambling Hall at the site and `favor`
     * favor. The Beast bank holds 4 favor and the Nomad bank 3. */
   private def stagedTable(favor: Int = 3): Table =
     Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
@@ -125,8 +125,7 @@ class GamblingHallSuite extends munit.FunSuite:
     val ready0 = staged()
     val parked = accepted(use(rules(doubled), ready0, GamblingHall.id, source))
     val done = accepted(answer(rules(doubled), parked.state,
-      GamblingHall.decisionId,
-      bank(Suit.Nomad)))
+      GamblingHall.decisionId, bank(Suit.Nomad)))
     assertEquals(notes(done.events).map(_.note.args), Vector(Vector(
       NoteArg.Player(actor),
       NoteArg.Amount(ready0.banks.favor(Suit.Nomad), NoteUnit.Favor),
@@ -142,6 +141,5 @@ class GamblingHallSuite extends munit.FunSuite:
     val drained = stagedTable().bankFavor(Suit.Discord, 0).ready
     val parked = accepted(use(rules(total4), drained, GamblingHall.id, source))
     val done = accepted(answer(rules(total4), parked.state,
-      GamblingHall.decisionId,
-      bank(Suit.Discord)))
+      GamblingHall.decisionId, bank(Suit.Discord)))
     assertEquals(notes(done.events), Vector.empty)

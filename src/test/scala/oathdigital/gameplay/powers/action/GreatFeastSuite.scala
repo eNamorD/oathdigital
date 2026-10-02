@@ -15,7 +15,7 @@ class GreatFeastSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(feast)
   private val power = GreatFeast.forCatalog(catalog)
   private val home = CatalogNames.site("Ancient City")
-  // Denizens with no power of their own, a Beast and a Nomad.
+  // Denizens whose powers these tests do not use, a Beast and a Nomad.
   private val errandBoy = CatalogNames.denizen("Errand Boy")
   private val wildMounts = CatalogNames.denizen("Wild Mounts")
 

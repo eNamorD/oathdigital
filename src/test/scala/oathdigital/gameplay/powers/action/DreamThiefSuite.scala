@@ -13,7 +13,7 @@ class DreamThiefSuite extends munit.FunSuite:
 
   private val thief = CatalogNames.denizen("Dream Thief")
   private val source = DecisionOptionRef.Denizen(thief)
-  // Two Hearth denizens with no power of their own.
+  // Two Hearth denizens whose powers these tests do not use.
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val landWarden = CatalogNames.denizen("Land Warden")
   private val vision = VisionRules.Faith

@@ -25,13 +25,14 @@ class FaeMerchantSuite extends munit.FunSuite:
   private val top = CatalogNames.relic("Dowsing Sticks")
   private def relicRef(id: RelicId) = DecisionOptionRef.Relic(id)
 
-  /** p1's Act at Ancient City beside a site Fae Merchant, holding `held`
+  /** p1's Act at Ancient City with Fae Merchant at the site, holding `held`
     * faceup with `secrets` faceup secrets; Dowsing Sticks tops the relic
     * deck. */
   private def stagedTable(held: Vector[RelicId], secrets: Int = 2): Table =
-    held.foldLeft(Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
+    val acting = Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
       .denizen(fae, at = "Ancient City").secrets(actor, secrets)
-      .relicDeckTop(top))(_.relic(actor, _))
+      .relicDeckTop(top)
+    held.foldLeft(acting)(_.relic(actor, _))
   private def staged(held: Vector[RelicId] = Vector(whistle),
       secrets: Int = 2): ReadyGame = stagedTable(held, secrets).ready
   private def relicIds(state: ReadyGame) = Look(state).player(actor)
@@ -63,8 +64,7 @@ class FaeMerchantSuite extends munit.FunSuite:
     val rules0 = rulesWithPrintedRestrictions()
     val parked = accepted(use(rules0, ready0, FaeMerchant.id, source))
     val end = ready(accepted(answer(rules0, parked.state,
-      FaeMerchant.decisionId,
-      relicRef(top))).state)
+      FaeMerchant.decisionId, relicRef(top))).state)
     assertEquals(relicIds(end), Vector(whistle))
     assertEquals(end.game.current.commonCards.relicDeck.last, top)
 
@@ -75,8 +75,7 @@ class FaeMerchantSuite extends munit.FunSuite:
     assert(answer(rules0, parked.state, FaeMerchant.decisionId,
       relicRef(scepter)).isLeft)
     val end = ready(accepted(answer(rules0, parked.state,
-      FaeMerchant.decisionId,
-      relicRef(whistle))).state)
+      FaeMerchant.decisionId, relicRef(whistle))).state)
     assert(relicIds(end).contains(scepter))
 
   test("with only the Grand Scepter held, the drawn relic is offered alone " +
@@ -115,8 +114,7 @@ class FaeMerchantSuite extends munit.FunSuite:
     val rules0 = rulesWithPrintedRestrictions()
     val parked = accepted(use(rules0, ready0, FaeMerchant.id, source))
     val end = ready(accepted(answer(rules0, parked.state,
-      FaeMerchant.decisionId,
-      relicRef(whistle))).state)
+      FaeMerchant.decisionId, relicRef(whistle))).state)
     assertEquals(Look(end).player(actor).board.faceDownSecrets,
       Look(ready0).player(actor).board.faceDownSecrets + 1)
 
@@ -154,14 +152,12 @@ class FaeMerchantSuite extends munit.FunSuite:
     val ready0 = staged()
     val merchant = FaeMerchant
     val parked = accepted(use(rulesWithPrintedRestrictions(), ready0,
-      FaeMerchant.id,
-      source))
+      FaeMerchant.id, source))
     assertEquals(NoteText.said(merchant, parked.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} drew ${top.value} facedown.",
         covers = false)))
     val done = accepted(answer(rulesWithPrintedRestrictions(), parked.state,
-      FaeMerchant.decisionId,
-      relicRef(whistle)))
+      FaeMerchant.decisionId, relicRef(whistle)))
     assertEquals(NoteText.said(merchant, done.events), Vector(
       NoteText.Said("returned",
         s"${actor.value} put ${whistle.value} on the bottom of the relic deck.",

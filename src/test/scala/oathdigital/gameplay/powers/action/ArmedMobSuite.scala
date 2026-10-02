@@ -14,7 +14,7 @@ class ArmedMobSuite extends munit.FunSuite:
   private val mob = CatalogNames.denizen("Armed Mob")
   private val source = DecisionOptionRef.Denizen(mob)
   private val power = ArmedMob.forCatalog(catalog)
-  // Two Hearth denizens with no power of their own.
+  // Two Hearth denizens whose powers these tests do not use.
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val landWarden = CatalogNames.denizen("Land Warden")
   private val insomnia = CatalogNames.denizen("Insomnia")

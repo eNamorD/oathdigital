@@ -17,6 +17,7 @@ class IvoryEyeSuite extends munit.FunSuite:
   private val target = p2
   private val third = p3
   private val faith = VisionRules.Faith
+  private val elders = CatalogNames.denizen("Elders")
 
   /** p1's Act: p1 holds the Eye faceup and the quiet table's 1 faceup
     * secret. Each player holds one facedown adviser: p1 Wrestlers, p2 Battle
@@ -43,8 +44,8 @@ class IvoryEyeSuite extends munit.FunSuite:
 
   test("it places a secret on the relic and offers every facedown adviser " +
       "of every player, and no faceup one"):
-    val ready = Table.from(staged).adviser(target,
-      CatalogNames.denizen("Elders"))
+    val ready = Table.from(staged)
+      .adviser(target, elders)
       .adviser(actor, faith, facedown = true).unchecked
     val t = accepted(use(ready, IvoryEye, source))
     assert(awaits(t, IvoryEye.decisionId),
@@ -68,8 +69,8 @@ class IvoryEyeSuite extends munit.FunSuite:
   test("a peek records knowledge for the actor only and changes nothing else"):
     val t = accepted(use(staged, IvoryEye, source))
     val card = as[WorldCardId](firstAdviser(staged, target))
-    val done = accepted(answer(t, actor, IvoryEye.decisionId, peekAt(target,
-      0)))
+    val done = accepted(answer(t, actor, IvoryEye.decisionId,
+      peekAt(target, 0)))
     assert(known(after(done), actor).contains(card))
     assert(!known(after(done), target).contains(card))
     assert(!known(after(done), third).contains(card))
@@ -84,8 +85,8 @@ class IvoryEyeSuite extends munit.FunSuite:
     def named(board: oathdigital.protocol.projection.PlayerBoardProjection) =
       board.advisers.exists(c => c.cardId == card && !c.hidden)
     assert(!named(boardOf(t, actor, target)))
-    val done = accepted(answer(t, actor, IvoryEye.decisionId, peekAt(target,
-      0)))
+    val done = accepted(answer(t, actor, IvoryEye.decisionId,
+      peekAt(target, 0)))
     assert(named(boardOf(done, actor, target)))
     assert(!named(boardOf(done, third, target)))
     assert(named(boardOf(t, target, target)), "the owner always knows it")
@@ -101,8 +102,8 @@ class IvoryEyeSuite extends munit.FunSuite:
     assert(known(after(done), actor).contains(faith))
 
   test("only the acting player answers, with an offered adviser"):
-    val ready = Table.from(staged).adviser(target,
-      CatalogNames.denizen("Elders")).unchecked
+    val ready = Table.from(staged)
+      .adviser(target, elders).unchecked
     val t = accepted(use(ready, IvoryEye, source))
     assert(answer(t, target, IvoryEye.decisionId, peekAt(target, 0)).isLeft)
     assert(answer(t, actor, IvoryEye.decisionId, peekAt(target, 1)).isLeft)
@@ -122,8 +123,8 @@ class IvoryEyeSuite extends munit.FunSuite:
   test("it writes the adviser it peeked at in place of the generic line"):
     val t = accepted(use(staged, IvoryEye, source))
     val card = firstAdviser(staged, target)
-    val done = accepted(answer(t, actor, IvoryEye.decisionId, peekAt(target,
-      0)))
+    val done = accepted(answer(t, actor, IvoryEye.decisionId,
+      peekAt(target, 0)))
     assertEquals(NoteText.said(IvoryEye, done.events), Vector(NoteText.Said(
       NoteKey.Used,
       s"${actor.value} peeked at ${card.value} in ${target.value}'s advisers.",

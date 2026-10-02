@@ -15,7 +15,7 @@ class DarkEnforcerSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(enforcer)
   private val power = DarkEnforcer.forCatalog(catalog)
   private val home = CatalogNames.site("Ancient City")
-  // Denizens with no power of their own, one of each suit the tests need.
+  // One denizen of each suit the tests need; their powers go unused.
   private val codeOfHonor = CatalogNames.denizen("Code of Honor")
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val errandBoy = CatalogNames.denizen("Errand Boy")
@@ -34,10 +34,9 @@ class DarkEnforcerSuite extends munit.FunSuite:
 
   test("it burns a favor and discards every Order and Hearth card at the " +
       "site, with their returns"):
-    val ruined = hallOfBandits
     val ready = staged().denizen(codeOfHonor, at = home)
       .denizen(homesteaders, at = home).denizen(errandBoy, at = home)
-      .edifice(ruined, EdificeSide.Ruined, at = home)
+      .edifice(hallOfBandits, EdificeSide.Ruined, at = home)
       .tokens(codeOfHonor, favor = 1).ready
     val orderBank = ready.banks.favor.getOrElse(Suit.Order, 0)
     val t = accepted(use(ready, power, source))
@@ -48,11 +47,11 @@ class DarkEnforcerSuite extends munit.FunSuite:
     assertEquals(pile(end).takeRight(2),
       Vector[WorldCardId](codeOfHonor, homesteaders))
     assertEquals(end.game.current.commonCards.edificeDeck.lastOption,
-      Some(ruined))
+      Some(hallOfBandits))
     assertEquals(end.banks.favor.getOrElse(Suit.Order, 0), orderBank + 1)
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
-      NoteKey.Used,
-      s"Discarded ${codeOfHonor.value}, ${homesteaders.value}, ${ruined.value}.",
+      NoteKey.Used, s"Discarded ${codeOfHonor.value}, ${homesteaders.value}, " +
+        s"${hallOfBandits.value}.",
       covers = true)))
     assertEquals(replayed(ready, t.events), Right(t.state))
     assertWireRoundTrips(t.events)

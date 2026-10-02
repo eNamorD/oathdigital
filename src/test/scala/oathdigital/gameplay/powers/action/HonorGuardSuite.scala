@@ -14,7 +14,7 @@ class HonorGuardSuite extends munit.FunSuite:
   private val guard = CatalogNames.denizen("Honor Guard")
   private val source = DecisionOptionRef.Denizen(guard)
   private val power = HonorGuard.forCatalog(catalog)
-  // Denizens with no power of their own.
+  // Denizens whose powers these tests do not use.
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val landWarden = CatalogNames.denizen("Land Warden")
   private val newsFromAfar = CatalogNames.denizen("News from Afar")

@@ -14,7 +14,7 @@ class BedOfRootsSuite extends munit.FunSuite:
   private val bed = CatalogNames.denizen("Bed of Roots")
   private val source = DecisionOptionRef.Denizen(bed)
   private val power = BedOfRoots.forCatalog(catalog)
-  // Two Hearth denizens with no power of their own.
+  // Two Hearth denizens whose powers these tests do not use.
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val landWarden = CatalogNames.denizen("Land Warden")
   private val insomnia = CatalogNames.denizen("Insomnia")

@@ -12,7 +12,7 @@ class EnchantressSuite extends munit.FunSuite:
 
   private val enchantress = CatalogNames.denizen("Enchantress")
   private val source = DecisionOptionRef.Denizen(enchantress)
-  // Hearth denizens with no power of their own.
+  // Hearth denizens whose powers these tests do not use.
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val landWarden = CatalogNames.denizen("Land Warden")
   private val newsFromAfar = CatalogNames.denizen("News from Afar")

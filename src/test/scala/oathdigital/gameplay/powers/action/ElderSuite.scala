@@ -17,7 +17,7 @@ class ElderSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(elders)
   private val rules = new OathRules(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  /** p1's Act at Ancient City beside a site Elders, with `favor` favor. */
+  /** p1's Act at Ancient City with Elders at the site and `favor` favor. */
   private def staged(favor: Int) = Table.start.turn(actor, Phase.Act)
     .pawn(actor, "Ancient City").denizen(elders, at = "Ancient City")
     .favor(actor, favor).ready

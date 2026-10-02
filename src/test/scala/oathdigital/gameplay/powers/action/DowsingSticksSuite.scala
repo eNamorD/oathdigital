@@ -28,14 +28,13 @@ class DowsingSticksSuite extends munit.FunSuite:
 
   test("it places 1 secret, burns 2 and takes the top relic facedown"):
     val ready0 = staged()
-    val top = whistle
     val rules0 = rules()
     val done = accepted(use(rules0, ready0, DowsingSticks.id, source))
     val end = ready(done.state)
-    assertEquals(Look(end).player(actor).relics.find(_.id == top)
+    assertEquals(Look(end).player(actor).relics.find(_.id == whistle)
       .map(_.orientation),
       Some(Orientation.FaceDown))
-    assert(!end.game.current.commonCards.relicDeck.contains(top))
+    assert(!end.game.current.commonCards.relicDeck.contains(whistle))
     assertEquals(Look(end).tokensOn(sticks), Tokens(0, 1))
     assertEquals(Look(end).player(actor).board.faceUpSecrets, 0)
     parked.assertResumed(done.state, Phase.Act, actor)
@@ -55,10 +54,10 @@ class DowsingSticksSuite extends munit.FunSuite:
     assert(use(rules(), staged(secrets = 2), DowsingSticks.id, source).isLeft)
 
   test("it writes the relic it drew"):
-    val top = whistle
     val done = accepted(use(rules(), staged(), DowsingSticks.id, source))
     assertEquals(NoteText.said(DowsingSticks, done.events), Vector(
-      NoteText.Said(NoteKey.Used, s"${actor.value} drew ${top.value} facedown.",
+      NoteText.Said(NoteKey.Used,
+        s"${actor.value} drew ${whistle.value} facedown.",
         covers = false)))
 
   test("an empty relic deck is written as such"):
