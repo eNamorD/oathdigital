@@ -16,9 +16,10 @@ object BrassHorseCard extends Relic(RelicId("R03"), "Brass Horse", value = 76, d
   * pawn at a different site holding a card of the same suit (a denizen or an
   * edifice). If it cannot, place it at any other site.
   *
-  * The reveal is a public `Reveal` of the pile's top card. A discarded card
-  * has no orientation state, so the reveal changes nothing and "turn it
-  * facedown again" needs no operation. The destination decision is a live
+  * The reveal is a public `Reveal` of the pile's top card: every player
+  * learns it. A discarded card has no orientation state, so "turn it facedown
+  * again" needs no operation. Its effect needs a revealed card, so the power
+  * cannot be used while the pile is empty. The destination decision is a live
   * `Branch`, asked only when more than one site qualifies. The reveal sits
   * before it and changes neither the pile nor the pawn.
   *
@@ -31,6 +32,10 @@ final class BrassHorse(catalog: ExecutableCatalog)
 
   override def noteKeys: Vector[NoteKey] = Vector(revealed, placed)
 
+  override def usable(ready: ReadyGame, player: PlayerId,
+      source: DecisionOptionRef): Boolean =
+    region(ready, player).exists(top(ready, _).nonEmpty)
+
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     BuildOps((state, _) => reveal(state, player)),
@@ -39,8 +44,8 @@ final class BrassHorse(catalog: ExecutableCatalog)
     BuildOps((state, pending) => place(state, player, pending)),
     Note(this.id, PawnMoves.placedNote(placed, source, player)))))
 
-  /** The reveal changes nothing, so the pile's top card is still the one it
-    * revealed. */
+  /** The reveal leaves the pile as it was, so its top card is still the one
+    * it revealed. */
   private def revealNote(states: NoteStates, player: PlayerId,
       source: DecisionOptionRef): Option[PowerNote] = for
     card <- PowerSourceRef.of(source)
@@ -63,8 +68,8 @@ final class BrassHorse(catalog: ExecutableCatalog)
       catalog.suitOf(card.id).contains(suit)))
 
   /** The sites the pawn may be placed at: other sites holding a card of the
-    * revealed suit, or every other site when there is none or no card was
-    * revealed. A Vision has no suit.
+    * revealed suit, or every other site when there is none. A Vision has no
+    * suit.
     */
   private def destinations(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, Vector[SiteId]] = for

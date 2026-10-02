@@ -4,9 +4,9 @@ import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 
-/** Revealing the top card of a regional discard is a public no-op: a discarded
-  * card has no orientation state, so nothing changes, and a facedown flip of
-  * it is still not accepted.
+/** Revealing the top card of a regional discard shows it to the table: a
+  * discarded card has no orientation state, so only what the players know
+  * changes, and a facedown flip of it is still not accepted.
   */
 class RevealDiscardSuite extends munit.FunSuite:
   private val region = Region.Cradle
@@ -20,9 +20,12 @@ class RevealDiscardSuite extends munit.FunSuite:
   private def run(ops: CoreOperation*) = OperationPipeline.run(base,
     ops.toVector, OperationPolicy.Permissive, Vector.empty)(Right(_))
 
-  test("revealing a discarded card is accepted and changes no state"):
+  test("revealing a discarded card is accepted and tells every player the card"):
     val result = run(Reveal(top, at)).toOption.get
-    assertEquals(result.state, base)
+    val players = base.game.current.players.map(_.player)
+    assertEquals(result.state.game, base.game)
+    assertEquals(result.state.knowledge.advisers,
+      players.map(_ -> Vector[WorldCardId](top)).toMap)
     assertEquals(result.executed, Vector(Reveal(top, at)))
 
   test("a card that is not in that discard cannot be revealed there"):
