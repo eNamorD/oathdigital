@@ -30,8 +30,7 @@ class TollRoadsSuite extends munit.FunSuite:
     val result = Outcomes.ready(done.state)
     assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(Look(result).favor(actor), 0)
-    assertEquals(Look(result).favor(rival),
-      Look(ready).favor(rival) + 1)
+    assertEquals(Look(result).favor(rival), Look(ready).favor(rival) + 1)
     // 7 Supply, less the printed 1 for a Travel within the Cradle.
     assertEquals(Look(result).supply(actor), 7 - 1)
     assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
@@ -39,11 +38,10 @@ class TollRoadsSuite extends munit.FunSuite:
 
   test("the rule covers every site the ruler holds, Toll Roads' own included"):
     val passRuled = Table.from(rivalRules).warbandsAt(pass, actor, 1).unchecked
-    val result = Outcomes.ready(accepted(travel(passRuled, provincePlains))
-      .state)
+    val done = accepted(travel(passRuled, provincePlains))
+    val result = Outcomes.ready(done.state)
     assertEquals(Look(result).favor(actor), 0)
-    assertEquals(Look(result).favor(rival),
-      Look(rivalRules).favor(rival) + 1)
+    assertEquals(Look(result).favor(rival), Look(rivalRules).favor(rival) + 1)
 
   test("a traveller who cannot pay does not get the destination"):
     val broke = Table.from(rivalRules).favor(actor, 0).unchecked
@@ -53,8 +51,8 @@ class TollRoadsSuite extends munit.FunSuite:
     assert(candidates(broke).contains(hinterlandPlains))
 
   test("a destination the ruler does not rule costs nothing extra"):
-    val result = Outcomes.ready(accepted(travel(rivalRules, hinterlandPlains))
-      .state)
+    val done = accepted(travel(rivalRules, hinterlandPlains))
+    val result = Outcomes.ready(done.state)
     assertEquals(Look(result).favor(actor), 1)
 
   test("the ruler itself travels for free"):
@@ -69,8 +67,7 @@ class TollRoadsSuite extends munit.FunSuite:
       .bandits(provincePlains, 1).bandits(coast, 1).favor(actor, 1).unchecked
     val result = Outcomes.ready(accepted(travel(ready, coast)).state)
     assertEquals(Look(result).favor(actor), 0)
-    assertEquals(Look(result).favor(rival),
-      Look(ready).favor(rival))
+    assertEquals(Look(result).favor(rival), Look(ready).favor(rival))
     assertEquals(candidates(Table.from(ready).favor(actor, 0).unchecked)
       .get(coast), None)
 
