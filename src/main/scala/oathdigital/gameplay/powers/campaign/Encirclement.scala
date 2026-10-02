@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.actions.campaign.CampaignBattle
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object EncirclementCard extends Denizen(DenizenId("124"), "Encirclement", Suit.Order):
@@ -24,8 +23,11 @@ object EncirclementCard extends Denizen(DenizenId("124"), "Encirclement", Suit.O
   * the same window, such as a Wrestlers sacrifice, counts. Bandits pay nothing,
   * so a bandit defender never applies it.
   */
-final case class Encirclement private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = Encirclement.id
+case object Encirclement extends BattlePlan:
+  val cardId: DenizenId = EncirclementCard.id
+  val id: PowerId = EncirclementCard.power.id
+  val Dice: Int = 2
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -44,10 +46,3 @@ final case class Encirclement private (cardId: DenizenId) extends BattlePlan:
     context.side match
       case CampaignPlanSide.Attacker => attacker > defender
       case CampaignPlanSide.Defender => defender > attacker
-
-object Encirclement:
-  val id: PowerId = PowerId("denizen.encirclement")
-  val Dice: Int = 2
-
-  def forCatalog(catalog: ExecutableCatalog): Option[Encirclement] =
-    CatalogCards.denizen(catalog, id).map(new Encirclement(_))

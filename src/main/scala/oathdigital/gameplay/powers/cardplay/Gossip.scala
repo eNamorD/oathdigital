@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
 import oathdigital.model._
 
 object GossipCard extends Denizen(DenizenId("99"), "Gossip", Suit.Discord) with AdviserOnly:
@@ -25,8 +25,9 @@ object GossipCard extends Denizen(DenizenId("99"), "Gossip", Suit.Discord) with 
   * generic gain line, and reads the gain's step, so an empty bank writes
   * nothing.
   */
-final case class Gossip private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class Gossip private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = GossipCard.id
   def id: PowerId = Gossip.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -53,9 +54,9 @@ final case class Gossip private (cardId: DenizenId,
     case _ => None
 
 object Gossip:
-  val id: PowerId = PowerId("denizen.gossip")
+  val id: PowerId = GossipCard.power.id
   val Favor: Int = 1
   val gained: NoteKey = NoteSupport.gainedFromKey("gained")
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Gossip] =
-    CatalogCards.denizen(catalog, id).map(new Gossip(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Gossip =
+    new Gossip(catalog)

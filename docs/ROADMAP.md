@@ -161,7 +161,9 @@ Design: [Card classes design](superpowers/specs/2026-10-01-card-classes-design.m
 - [x] **Slice 1 - data to Scala.** Every component is a Scala object; the
   runtime JSON, its loader, validator, schema, path option, packaging entry,
   `CatalogRef` and the audit fingerprints are gone.
-- [ ] **Slice 2 - denizens beside their powers.**
+- [x] **Slice 2 - denizens beside their powers.** The 126 implemented
+  denizens sit in their power files; powers read their card, power id and
+  printed cost from the card object, and `CatalogCards.denizen` is gone.
 - [ ] **Slice 3 - relics and edifices.**
 - [ ] **Slice 4 - sites and legacies.**
 

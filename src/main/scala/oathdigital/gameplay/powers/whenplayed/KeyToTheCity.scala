@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
@@ -27,10 +27,57 @@ object KeyToTheCityCard extends Denizen(DenizenId("18"), "Key to the City", Suit
   * board, nothing is placed, and the refill after the command puts bandits
   * on the emptied site.
   */
-final case class KeyToTheCity private (cardId: DenizenId)
-    extends WhenPlayedPower:
-  import KeyToTheCity._
-  def id: PowerId = KeyToTheCity.id
+case object KeyToTheCity extends WhenPlayedPower:
+  val cardId: DenizenId = KeyToTheCityCard.id
+  val id: PowerId = KeyToTheCityCard.power.id
+  /** The warbands gained and placed. */
+  val Placed: Int = 1
+  /** "Killed {n} {Blue} warband at {site}." */
+  val killed: NoteKey = NoteKey("killed", Vector(NotePart.Text("Killed "),
+    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
+    NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
+    NotePart.Text(".")))
+  /** "Killed {n} bandit warband at {site}." */
+  val bandits: NoteKey = NoteKey("bandits", Vector(NotePart.Text("Killed "),
+    NotePart.Arg(0), NotePart.Plural(0, " bandit warband at ",
+      " bandit warbands at "), NotePart.Arg(1), NotePart.Text(".")))
+  /** "{Red} placed {1 warband} at {site}." */
+  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Arg(0),
+    NotePart.Text(" placed "), NotePart.Arg(1), NotePart.Text(" at "),
+    NotePart.Arg(2), NotePart.Text(".")))
+  /** "{Red} had no warband to place." */
+  val unplaced: NoteKey = NoteKey("unplaced", Vector(NotePart.Arg(0),
+    NotePart.Text(" had no warband to place.")))
+  /** "{Blue} was at {site}." */
+  val guarded: NoteKey = NoteKey("guarded", Vector(NotePart.Arg(0),
+    NotePart.Text(" was at "), NotePart.Arg(1), NotePart.Text(".")))
+
+  /** The player ruling `site` whose pawn stands there, if any. */
+  private def guard(ready: ReadyGame, site: SiteId): Option[PlayerId] =
+    SiteRulers.rulerOf(ready, site).collect {
+      case SiteRuler.Player(ruler) if ready.game.current.players.exists(
+        state => state.player == ruler && state.pawnSite.contains(site)) =>
+        ruler
+    }
+
+  private def kill(ready: ReadyGame, site: SiteId): Vector[CoreOperation] =
+    forcesAt(ready, site).toVector.collect {
+      case SiteForces.Occupied(kind, count) if count > 0 => Kill(
+        Piece.Warbands(kind, count), PositionedLocation(Location.Site(site)))
+    }
+
+  private def forcesAt(ready: ReadyGame, site: SiteId): Option[SiteForces] =
+    ready.game.current.map.sites.get(site).map(_.forces)
+
+  private def held(ready: ReadyGame, site: SiteId, kind: ForceKind): Int =
+    forcesAt(ready, site) match
+      case Some(SiteForces.Occupied(`kind`, count)) => count
+      case _ => 0
+
+  /** The player whose warbands are of `kind`; none for bandits. */
+  private def owner(ready: ReadyGame, kind: ForceKind): Option[PlayerId] =
+    ready.game.current.players.find(state =>
+      PlayerForceKind.of(ready, state).contains(kind)).map(_.player)
 
   override def noteKeys: Vector[NoteKey] =
     Vector(killed, bandits, placed, unplaced, guarded)
@@ -82,57 +129,3 @@ final case class KeyToTheCity private (cardId: DenizenId)
         NoteArg.Amount(moved, NoteUnit.Warband), NoteArg.Site(site))
       else unplaced(cardSource, NoteArg.Player(actor))
     }
-
-object KeyToTheCity:
-  val id: PowerId = PowerId("denizen.key-to-the-city")
-  /** The warbands gained and placed. */
-  val Placed: Int = 1
-  /** "Killed {n} {Blue} warband at {site}." */
-  val killed: NoteKey = NoteKey("killed", Vector(NotePart.Text("Killed "),
-    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
-    NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
-    NotePart.Text(".")))
-  /** "Killed {n} bandit warband at {site}." */
-  val bandits: NoteKey = NoteKey("bandits", Vector(NotePart.Text("Killed "),
-    NotePart.Arg(0), NotePart.Plural(0, " bandit warband at ",
-      " bandit warbands at "), NotePart.Arg(1), NotePart.Text(".")))
-  /** "{Red} placed {1 warband} at {site}." */
-  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Arg(0),
-    NotePart.Text(" placed "), NotePart.Arg(1), NotePart.Text(" at "),
-    NotePart.Arg(2), NotePart.Text(".")))
-  /** "{Red} had no warband to place." */
-  val unplaced: NoteKey = NoteKey("unplaced", Vector(NotePart.Arg(0),
-    NotePart.Text(" had no warband to place.")))
-  /** "{Blue} was at {site}." */
-  val guarded: NoteKey = NoteKey("guarded", Vector(NotePart.Arg(0),
-    NotePart.Text(" was at "), NotePart.Arg(1), NotePart.Text(".")))
-
-  def forCatalog(catalog: ExecutableCatalog): Option[KeyToTheCity] =
-    WhenPlayedPower.cardOf(catalog, id).map(new KeyToTheCity(_))
-
-  /** The player ruling `site` whose pawn stands there, if any. */
-  private def guard(ready: ReadyGame, site: SiteId): Option[PlayerId] =
-    SiteRulers.rulerOf(ready, site).collect {
-      case SiteRuler.Player(ruler) if ready.game.current.players.exists(
-        state => state.player == ruler && state.pawnSite.contains(site)) =>
-        ruler
-    }
-
-  private def kill(ready: ReadyGame, site: SiteId): Vector[CoreOperation] =
-    forcesAt(ready, site).toVector.collect {
-      case SiteForces.Occupied(kind, count) if count > 0 => Kill(
-        Piece.Warbands(kind, count), PositionedLocation(Location.Site(site)))
-    }
-
-  private def forcesAt(ready: ReadyGame, site: SiteId): Option[SiteForces] =
-    ready.game.current.map.sites.get(site).map(_.forces)
-
-  private def held(ready: ReadyGame, site: SiteId, kind: ForceKind): Int =
-    forcesAt(ready, site) match
-      case Some(SiteForces.Occupied(`kind`, count)) => count
-      case _ => 0
-
-  /** The player whose warbands are of `kind`; none for bandits. */
-  private def owner(ready: ReadyGame, kind: ForceKind): Option[PlayerId] =
-    ready.game.current.players.find(state =>
-      PlayerForceKind.of(ready, state).contains(kind)).map(_.player)

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object StormCallerCard extends Denizen(DenizenId("167"), "Storm Caller", Suit.Nomad):
@@ -17,8 +16,9 @@ object StormCallerCard extends Denizen(DenizenId("167"), "Storm Caller", Suit.No
   * standard discard once the Campaign has resolved, whoever won. A bandit
   * defender applies it at a site it rules, and it is discarded then too.
   */
-final case class StormCaller private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class StormCaller private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = StormCallerCard.id
   def id: PowerId = StormCaller.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -34,8 +34,8 @@ final case class StormCaller private (cardId: DenizenId,
       PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object StormCaller:
-  val id: PowerId = PowerId("denizen.storm-caller")
+  val id: PowerId = StormCallerCard.power.id
   val Dice: Int = 2
 
-  def forCatalog(catalog: ExecutableCatalog): Option[StormCaller] =
-    CatalogCards.denizen(catalog, id).map(new StormCaller(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): StormCaller =
+    new StormCaller(catalog)

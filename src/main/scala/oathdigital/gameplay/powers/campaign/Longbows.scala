@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.model._
 
 object LongbowsCard extends Denizen(DenizenId("4"), "Longbows", Suit.Order):
@@ -16,8 +15,11 @@ object LongbowsCard extends Denizen(DenizenId("4"), "Longbows", Suit.Order):
   * bandit defender applies it when it stands faceup at a site the bandits
   * rule, as it applies every free plan.
   */
-final case class Longbows private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = Longbows.id
+case object Longbows extends BattlePlan:
+  val cardId: DenizenId = LongbowsCard.id
+  val id: PowerId = LongbowsCard.power.id
+  val Dice: Int = 1
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -26,10 +28,3 @@ final case class Longbows private (cardId: DenizenId) extends BattlePlan:
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       PlanDice.label("Longbows", context.side, Longbows.Dice), Vector.empty,
       Vector(PlanDice.effect(context.side, Longbows.Dice))))
-
-object Longbows:
-  val id: PowerId = PowerId("denizen.longbows")
-  val Dice: Int = 1
-
-  def forCatalog(catalog: ExecutableCatalog): Option[Longbows] =
-    CatalogCards.denizen(catalog, id).map(new Longbows(_))

@@ -146,7 +146,7 @@ class InsectSwarmSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = InsectSwarm.forCatalog(catalog).get
+  private val power = InsectSwarm.forCatalog(catalog)
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 

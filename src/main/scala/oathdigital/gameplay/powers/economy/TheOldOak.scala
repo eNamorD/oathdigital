@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, PowerAnswers, SelectedModifier}
+import oathdigital.gameplay.powers.{PowerAnswers, SelectedModifier}
 import oathdigital.model._
 
 object TheOldOakCard extends Denizen(DenizenId("42"), "The Old Oak", Suit.Beast) with SiteOnly:
@@ -26,8 +26,9 @@ object TheOldOakCard extends Denizen(DenizenId("42"), "The Old Oak", Suit.Beast)
   * Old Oak. The node is added whatever the Trade, so the window's node count
   * never depends on the answer. The generic gain line tells the secret.
   */
-final case class TheOldOak private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class TheOldOak private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = TheOldOakCard.id
   def id: PowerId = TheOldOak.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Trade)
 
@@ -46,8 +47,8 @@ final case class TheOldOak private (cardId: DenizenId,
       else Vector.empty))
 
 object TheOldOak:
-  val id: PowerId = PowerId("denizen.the-old-oak")
+  val id: PowerId = TheOldOakCard.power.id
   val Secrets: Int = 1
 
-  def forCatalog(catalog: ExecutableCatalog): Option[TheOldOak] =
-    CatalogCards.denizen(catalog, id).map(new TheOldOak(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): TheOldOak =
+    new TheOldOak(catalog)

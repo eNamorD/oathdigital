@@ -25,8 +25,9 @@ object GreatHerdCard extends Denizen(DenizenId("30"), "Great Herd", Suit.Nomad) 
   * WHEN PLAYED. The effect is one `Branch`, so the node count this power
   * adds to the card-played window never depends on live state.
   */
-final case class GreatHerd private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class GreatHerd private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = GreatHerdCard.id
   import GreatHerd._
   def id: PowerId = GreatHerd.id
 
@@ -93,7 +94,7 @@ final case class GreatHerd private (cardId: DenizenId,
     NoteArg.Card(chosen.card), NoteArg.Site(chosen.site))
 
 object GreatHerd:
-  val id: PowerId = PowerId("denizen.great-herd")
+  val id: PowerId = GreatHerdCard.power.id
   val decisionId: String = "cardplay.great-herd.swap"
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
   /** "{Red} swapped it with {card} at {site}." */
@@ -107,5 +108,5 @@ object GreatHerd:
   private final case class Candidate(site: SiteId, card: CardId,
       option: DecisionOption)
 
-  def forCatalog(catalog: ExecutableCatalog): Option[GreatHerd] =
-    WhenPlayedPower.cardOf(catalog, id).map(new GreatHerd(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): GreatHerd =
+    new GreatHerd(catalog)

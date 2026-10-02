@@ -6,15 +6,15 @@ import oathdigital.gameplay.powerresolver.PhasePower
 /** The phase powers of catalog batch 3's slice 3c, actions on sites, banks
   * and banners, registered by
   * [[oathdigital.gameplay.powers.PhasePowerCatalog]] through this one object,
-  * like [[OtherActionPowers]]. A power that needs the catalog is omitted when
-  * its card is absent.
+  * like [[OtherActionPowers]]. Each names its denizen card, so all are
+  * always present.
   */
 object WorldActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Storyteller, Firebrand, Levelers, MemoryOfHome,
       PlagueEngines, BanditPaymaster) ++
-      MemoryOfNature.forCatalog(catalog).toVector ++
-      BallotBox.forCatalog(catalog).toVector ++
-      DarkEnforcer.forCatalog(catalog).toVector ++
-      TamingCharm.forCatalog(catalog).toVector ++
-      GreatFeast.forCatalog(catalog).toVector
+      Vector(MemoryOfNature.forCatalog(catalog)) ++
+      Vector(BallotBox.forCatalog(catalog)) ++
+      Vector(DarkEnforcer.forCatalog(catalog)) ++
+      Vector(TamingCharm.forCatalog(catalog)) ++
+      Vector(GreatFeast.forCatalog(catalog))

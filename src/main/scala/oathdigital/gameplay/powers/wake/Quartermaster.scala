@@ -23,7 +23,7 @@ object QuartermasterCard extends Denizen(DenizenId("258"), "Quartermaster", Suit
   * nothing and writes nothing.
   */
 case object Quartermaster extends PhasePower:
-  val id: PowerId = PowerId("denizen.quartermaster")
+  val id: PowerId = QuartermasterCard.power.id
   def timing: PowerTiming = PowerTiming.Wake
   val Supply: Int = 1
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)

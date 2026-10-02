@@ -4,7 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
 object HungerCard extends Denizen(DenizenId("216"), "Hunger", Suit.Beast) with Locked with AdviserOnly:
@@ -31,8 +31,9 @@ object HungerCard extends Denizen(DenizenId("216"), "Hunger", Suit.Beast) with L
   *
   * Its line covers the generic "Buried" line.
   */
-final case class Hunger private (cardId: DenizenId, catalog: ExecutableCatalog)
+final case class Hunger private (catalog: ExecutableCatalog)
     extends PhasePower:
+  val cardId: DenizenId = HungerCard.id
   import Hunger._
   def id: PowerId = Hunger.id
   def timing: PowerTiming = PowerTiming.Wake
@@ -100,7 +101,7 @@ final case class Hunger private (cardId: DenizenId, catalog: ExecutableCatalog)
             NoteArg.Player(chosen.owner)))
 
 object Hunger:
-  val id: PowerId = PowerId("denizen.hunger")
+  val id: PowerId = HungerCard.power.id
   val decisionId: String = "power.hunger.adviser"
   /** "{Red} buried {card} from {Blue}'s advisers." The card reads as its
     * back to anyone who may not identify it, so the owner is named apart
@@ -117,5 +118,5 @@ object Hunger:
     def ref: DecisionOptionRef.AdviserSlot =
       DecisionOptionRef.AdviserSlot(owner, slot)
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Hunger] =
-    CatalogCards.denizen(catalog, id).map(new Hunger(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Hunger =
+    new Hunger(catalog)

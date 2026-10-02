@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
 
@@ -14,16 +13,10 @@ object FaithfulFriendCard extends Denizen(DenizenId("28"), "Faithful Friend", Su
 /** Faithful Friend (card 28), WHEN PLAYED: gain 4 Supply. `GainSupply`
   * clamps at the track maximum.
   */
-final case class FaithfulFriend private (cardId: DenizenId)
-    extends WhenPlayedPower:
-  def id: PowerId = FaithfulFriend.id
+case object FaithfulFriend extends WhenPlayedPower:
+  val cardId: DenizenId = FaithfulFriendCard.id
+  val id: PowerId = FaithfulFriendCard.power.id
+  val Supply: Int = 4
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     Vector(GainSupply(ctx.activePlayer, FaithfulFriend.Supply))
-
-object FaithfulFriend:
-  val id: PowerId = PowerId("denizen.faithful-friend")
-  val Supply: Int = 4
-
-  def forCatalog(catalog: ExecutableCatalog): Option[FaithfulFriend] =
-    WhenPlayedPower.cardOf(catalog, id).map(new FaithfulFriend(_))

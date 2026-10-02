@@ -81,7 +81,7 @@ class TollRoadsSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = TollRoads.forCatalog(catalog).get
+  private val power = TollRoads.forCatalog(catalog)
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 

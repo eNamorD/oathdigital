@@ -12,7 +12,7 @@ class GreatFeastSuite extends munit.FunSuite:
 
   private val feast = CatalogNames.denizen("Great Feast")
   private val source = DecisionOptionRef.Denizen(feast)
-  private val power = GreatFeast.forCatalog(catalog).get
+  private val power = GreatFeast.forCatalog(catalog)
   private val home = Table.homeOf(p1)
   private val beast = SearchFixture.denizensOf(Suit.Beast)
   private val nomad = SearchFixture.denizensOf(Suit.Nomad)

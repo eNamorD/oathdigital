@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
+import oathdigital.catalog.{Denizen, PrintedPower}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
 object FieldPromotionCard extends Denizen(DenizenId("106"), "Field Promotion", Suit.Order):
@@ -19,8 +19,15 @@ object FieldPromotionCard extends Denizen(DenizenId("106"), "Field Promotion", S
   *
   * When a warband was gained it writes "{Red} gained {n warbands}."
   */
-final case class FieldPromotion private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = FieldPromotion.id
+case object FieldPromotion extends BattlePlan:
+  val cardId: DenizenId = FieldPromotionCard.id
+  val id: PowerId = FieldPromotionCard.power.id
+  /** The favor placed to choose it. */
+  val Favor: Int = 1
+  val Warbands: Int = 3
+  /** "{Red} gained {n warbands}." */
+  val gained: NoteKey = NoteSupport.gainedKey("gained")
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -41,14 +48,3 @@ final case class FieldPromotion private (cardId: DenizenId) extends BattlePlan:
         Note(id, NoteSupport.gainedNote(FieldPromotion.gained,
           PowerSourceRef.Card(cardId), user, NoteUnit.Warband,
           NoteSupport.warbands))))))
-
-object FieldPromotion:
-  val id: PowerId = PowerId("denizen.field-promotion")
-  /** The favor placed to choose it. */
-  val Favor: Int = 1
-  val Warbands: Int = 3
-  /** "{Red} gained {n warbands}." */
-  val gained: NoteKey = NoteSupport.gainedKey("gained")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[FieldPromotion] =
-    CatalogCards.denizen(catalog, id).map(new FieldPromotion(_))

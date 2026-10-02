@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
@@ -27,9 +26,15 @@ object VowOfPeaceCard extends Denizen(DenizenId("145"), "Vow of Peace", Suit.Hea
   * removed decision leaves a note naming the defender, so the Game Log says
   * why nothing was asked.
   */
-final case class VowOfPeaceContribution private (cardId: DenizenId)
-    extends ContributingPower:
-  def id: PowerId = VowOfPeaceContribution.id
+case object VowOfPeaceContribution extends ContributingPower:
+  val cardId: DenizenId = VowOfPeaceCard.id
+  val id: PowerId = VowOfPeaceCard.power.id
+
+  /** Where its second sentence removed the attacker's sacrifice decision. */
+  val noSacrifice: NoteKey = NoteKey("no-sacrifice", Vector(
+    NotePart.Text("The attacker cannot sacrifice against "), NotePart.Arg(0),
+    NotePart.Text(".")))
+
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override def noteKeys: Vector[NoteKey] =
     Vector(VowOfPeaceContribution.noSacrifice)
@@ -70,16 +75,3 @@ final case class VowOfPeaceContribution private (cardId: DenizenId)
         case CampaignDefender.Player(player) if holds(ctx.state, player) =>
           Some(player)
         case _ => None)
-
-object VowOfPeaceContribution:
-  val id: PowerId = PowerId("denizen.vow-of-peace")
-
-  /** Where its second sentence removed the attacker's sacrifice decision. */
-  val noSacrifice: NoteKey = NoteKey("no-sacrifice", Vector(
-    NotePart.Text("The attacker cannot sacrifice against "), NotePart.Arg(0),
-    NotePart.Text(".")))
-
-  /** `None` when the catalog has no such card, for example a test stub. */
-  def forCatalog(catalog: ExecutableCatalog): Option[VowOfPeaceContribution] =
-    catalog.denizenWithPower(id)
-      .map(card => new VowOfPeaceContribution(DenizenId(card.id.value)))

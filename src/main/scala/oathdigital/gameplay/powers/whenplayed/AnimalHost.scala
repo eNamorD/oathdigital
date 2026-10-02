@@ -24,8 +24,9 @@ object AnimalHostCard extends Denizen(DenizenId("190"), "Animal Host", Suit.Beas
   * effort, so it takes what the bank holds. A gain of 0 writes the `none`
   * line.
   */
-final case class AnimalHost private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class AnimalHost private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = AnimalHostCard.id
   import AnimalHost._
   def id: PowerId = AnimalHost.id
 
@@ -65,12 +66,12 @@ final case class AnimalHost private (cardId: DenizenId,
     else none(source, NoteArg.Player(actor)))
 
 object AnimalHost:
-  val id: PowerId = PowerId("denizen.animal-host")
+  val id: PowerId = AnimalHostCard.power.id
   /** "{Red} gained {n warbands}." */
   val gained: NoteKey = NoteSupport.gainedKey("gained")
   /** "{Red} gained no warbands." */
   val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
     NotePart.Text(" gained no warbands.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[AnimalHost] =
-    WhenPlayedPower.cardOf(catalog, id).map(new AnimalHost(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): AnimalHost =
+    new AnimalHost(catalog)

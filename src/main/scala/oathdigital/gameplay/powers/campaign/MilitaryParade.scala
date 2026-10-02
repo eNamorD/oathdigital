@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object MilitaryParadeCard extends Denizen(DenizenId("109"), "Military Parade", Suit.Order):
@@ -25,8 +24,9 @@ object MilitaryParadeCard extends Denizen(DenizenId("109"), "Military Parade", S
   * bandits win the favor moves from the banks to the shared bank. The gains
   * write the generic gain lines, so it writes no line of its own.
   */
-final case class MilitaryParade private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class MilitaryParade private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = MilitaryParadeCard.id
   def id: PowerId = MilitaryParade.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -47,7 +47,7 @@ final case class MilitaryParade private (cardId: DenizenId,
           MilitaryParade.advisers(use.ready, enemy))))))
 
 object MilitaryParade:
-  val id: PowerId = PowerId("denizen.military-parade")
+  val id: PowerId = MilitaryParadeCard.power.id
 
   /** The enemy of the plan's user: the attacker for a defender, and the
     * defending player for an attacker. */
@@ -62,5 +62,5 @@ object MilitaryParade:
       .flatMap(_.advisers.collect {
         case DenizenState(held, Orientation.FaceUp, _) => held })
 
-  def forCatalog(catalog: ExecutableCatalog): Option[MilitaryParade] =
-    CatalogCards.denizen(catalog, id).map(new MilitaryParade(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): MilitaryParade =
+    new MilitaryParade(catalog)

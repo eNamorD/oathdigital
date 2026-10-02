@@ -8,7 +8,7 @@ import oathdigital.testkit.Table.p1
 class SaladDaysSuite extends munit.FunSuite:
   import WhenPlayedHarness._
 
-  private val power = registered[SaladDays]
+  private val power = registered[SaladDays.type]
   private val salad = power.cardId
   private val played = hook(salad)
 

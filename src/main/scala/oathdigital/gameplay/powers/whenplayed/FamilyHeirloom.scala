@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
@@ -27,10 +26,45 @@ object FamilyHeirloomCard extends Denizen(DenizenId("133"), "Family Heirloom", S
   * it." or "... and put it on the bottom of the relic deck.", in place of the
   * choice's "Chose" line and the burial's line.
   */
-final case class FamilyHeirloom private (cardId: DenizenId)
-    extends WhenPlayedPower:
-  import FamilyHeirloom._
-  def id: PowerId = FamilyHeirloom.id
+case object FamilyHeirloom extends WhenPlayedPower:
+  val cardId: DenizenId = FamilyHeirloomCard.id
+  val id: PowerId = FamilyHeirloomCard.power.id
+  val decisionId: String = "cardplay.family-heirloom.keep"
+  val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
+  val bottom: DecisionOptionRef.Button = DecisionOptionRef.Button("bottom")
+  /** A note key is named for the choice it tells. */
+  val kept: NoteKey = NoteKey(keep.key, Vector(NotePart.Arg(0),
+    NotePart.Text(" drew "), NotePart.Arg(1), NotePart.Text(" and kept it.")))
+  val returned: NoteKey = NoteKey(bottom.key, Vector(NotePart.Arg(0),
+    NotePart.Text(" drew "), NotePart.Arg(1),
+    NotePart.Text(" and put it on the bottom of the relic deck.")))
+
+  private def asked(pending: PendingTree): Boolean =
+    pending.answered.exists(_.decisionId == decisionId)
+
+  private def draw(ready: ReadyGame, actor: PlayerId)
+      : Either[OathViolation, Vector[CoreOperation]] =
+    ready.game.current.commonCards.relicDeck.headOption.toRight(
+      OathViolation.RecoverUnavailable("relic deck is empty")).map(relic =>
+      Vector(Play(relic, PositionedLocation(Location.Deck(CardDeck.Relic),
+        StackPosition.Top), Location.PlayArea(actor), Orientation.FaceDown)))
+
+  private def settle(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
+      : Either[OathViolation, Vector[CoreOperation]] =
+    pending.answered.collectFirst:
+      case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
+    match
+      case Some(`bottom`) =>
+        for
+          held <- PlayerFacts.player(ready, actor)
+          drawn <- held.relics.lastOption.toRight(OathViolation.InvalidEventOrder(
+            "no drawn relic to put back"))
+        yield Vector(Bury(BuryableCard.Relic(drawn.id),
+          PositionedLocation(Location.PlayArea(actor))))
+      case Some(`keep`) => Right(Vector.empty)
+      case _ => Left(OathViolation.InvalidEventOrder(
+        "no Family Heirloom choice is recorded"))
+
   override def noteKeys: Vector[NoteKey] = Vector(kept, returned)
   override def narratedDecisions: Set[String] = Set(decisionId)
 
@@ -64,44 +98,3 @@ final case class FamilyHeirloom private (cardId: DenizenId)
       key <- Vector(kept, returned).find(_.name == choice)
     yield key(PowerSourceRef.Card(cardId), NoteArg.Player(actor),
       NoteArg.Card(relic.id))
-
-object FamilyHeirloom:
-  val id: PowerId = PowerId("denizen.family-heirloom")
-  val decisionId: String = "cardplay.family-heirloom.keep"
-  val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
-  val bottom: DecisionOptionRef.Button = DecisionOptionRef.Button("bottom")
-  /** A note key is named for the choice it tells. */
-  val kept: NoteKey = NoteKey(keep.key, Vector(NotePart.Arg(0),
-    NotePart.Text(" drew "), NotePart.Arg(1), NotePart.Text(" and kept it.")))
-  val returned: NoteKey = NoteKey(bottom.key, Vector(NotePart.Arg(0),
-    NotePart.Text(" drew "), NotePart.Arg(1),
-    NotePart.Text(" and put it on the bottom of the relic deck.")))
-
-  def forCatalog(catalog: ExecutableCatalog): Option[FamilyHeirloom] =
-    WhenPlayedPower.cardOf(catalog, id).map(new FamilyHeirloom(_))
-
-  private def asked(pending: PendingTree): Boolean =
-    pending.answered.exists(_.decisionId == decisionId)
-
-  private def draw(ready: ReadyGame, actor: PlayerId)
-      : Either[OathViolation, Vector[CoreOperation]] =
-    ready.game.current.commonCards.relicDeck.headOption.toRight(
-      OathViolation.RecoverUnavailable("relic deck is empty")).map(relic =>
-      Vector(Play(relic, PositionedLocation(Location.Deck(CardDeck.Relic),
-        StackPosition.Top), Location.PlayArea(actor), Orientation.FaceDown)))
-
-  private def settle(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
-      : Either[OathViolation, Vector[CoreOperation]] =
-    pending.answered.collectFirst:
-      case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
-    match
-      case Some(`bottom`) =>
-        for
-          held <- PlayerFacts.player(ready, actor)
-          drawn <- held.relics.lastOption.toRight(OathViolation.InvalidEventOrder(
-            "no drawn relic to put back"))
-        yield Vector(Bury(BuryableCard.Relic(drawn.id),
-          PositionedLocation(Location.PlayArea(actor))))
-      case Some(`keep`) => Right(Vector.empty)
-      case _ => Left(OathViolation.InvalidEventOrder(
-        "no Family Heirloom choice is recorded"))

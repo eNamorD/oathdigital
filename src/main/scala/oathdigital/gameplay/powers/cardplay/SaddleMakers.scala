@@ -4,7 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
 import oathdigital.model._
 
 object SaddleMakersCard extends Denizen(DenizenId("142"), "Saddle Makers", Suit.Hearth) with AdviserOnly:
@@ -30,8 +30,9 @@ object SaddleMakersCard extends Denizen(DenizenId("142"), "Saddle Makers", Suit.
   * gained 2 favor from the Nomad bank.", covers the generic gain line and
   * reads the gain's step, so an empty bank writes nothing.
   */
-final case class SaddleMakers private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class SaddleMakers private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = SaddleMakersCard.id
   def id: PowerId = SaddleMakers.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -64,10 +65,10 @@ final case class SaddleMakers private (cardId: DenizenId,
     }).map(_.player)
 
 object SaddleMakers:
-  val id: PowerId = PowerId("denizen.saddle-makers")
+  val id: PowerId = SaddleMakersCard.power.id
   val Favor: Int = 2
   val Suits: Set[Suit] = Set(Suit.Nomad, Suit.Order)
   val gained: NoteKey = NoteSupport.gainedFromKey("gained")
 
-  def forCatalog(catalog: ExecutableCatalog): Option[SaddleMakers] =
-    CatalogCards.denizen(catalog, id).map(new SaddleMakers(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): SaddleMakers =
+    new SaddleMakers(catalog)

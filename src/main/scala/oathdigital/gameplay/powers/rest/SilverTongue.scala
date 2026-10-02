@@ -20,8 +20,9 @@ object SilverTongueCard extends Denizen(DenizenId("92"), "Silver Tongue", Suit.D
   * adviser limit is a [[HolderAdviserLimit]], a registered transform at
   * `SearchPlayAdviser`, which Insomnia shares.
   */
-final case class SilverTongue private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends PhasePower with ContributingPower:
+final case class SilverTongue private (catalog: ExecutableCatalog)
+    extends PhasePower with ContributingPower:
+  val cardId: DenizenId = SilverTongueCard.id
   import SilverTongue._
 
   private val limit = HolderAdviserLimit(cardId, HolderLimit, "Silver Tongue")
@@ -80,12 +81,11 @@ final case class SilverTongue private (cardId: DenizenId,
       PositionedLocation(Location.PlayArea(player))))))
 
 object SilverTongue:
-  val id: PowerId = PowerId("denizen.silver-tongue")
+  val id: PowerId = SilverTongueCard.power.id
   /** How many advisers the holder may have, in either orientation. */
   val HolderLimit: Int = 2
-  def forCatalog(catalog: ExecutableCatalog): Option[SilverTongue] =
-    catalog.denizenWithPower(id)
-      .map(d => new SilverTongue(DenizenId(d.id.value), catalog))
+  def forCatalog(catalog: ExecutableCatalog): SilverTongue =
+    new SilverTongue(catalog)
 
   def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =
     s"silver-tongue-${ready.game.current.tracks.round}-${player.value}"

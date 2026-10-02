@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts,
-  PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 object SecondChanceCard extends Denizen(DenizenId("181"), "Second Chance", Suit.Beast):
@@ -88,7 +87,7 @@ final case class SecondChance private (catalog: ExecutableCatalog)
     }
 
 object SecondChance:
-  val id: PowerId = PowerId("denizen.second-chance")
+  val id: PowerId = SecondChanceCard.power.id
   val decisionId: String = "power.second-chance.target"
   val Killed: Int = 1
   val Gained: Int = 1
@@ -107,5 +106,5 @@ object SecondChance:
   val nobody: NoteKey = NoteKey("used.none", Vector(NotePart.Text(
     "No player had a faceup Order or Discord adviser.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[SecondChance] =
-    CatalogCards.denizen(catalog, id).map(_ => new SecondChance(catalog))
+  def forCatalog(catalog: ExecutableCatalog): SecondChance =
+    new SecondChance(catalog)

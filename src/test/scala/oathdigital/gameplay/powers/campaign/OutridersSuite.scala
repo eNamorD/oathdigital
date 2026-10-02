@@ -13,7 +13,7 @@ import oathdigital.model._
 class OutridersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.outriders")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(DenizenId(card))
-  private val power = Outriders.forCatalog(catalog).get
+  private val power = Outriders
 
   /** The attacker holds Outriders, Campaigns with two warbands, chooses it,
     * and rolls `attack`. */

@@ -11,7 +11,7 @@ class MemoryOfNatureSuite extends munit.FunSuite:
 
   private val nature = CatalogNames.denizen("Memory of Nature")
   private val source = DecisionOptionRef.Denizen(nature)
-  private val power = MemoryOfNature.forCatalog(catalog).get
+  private val power = MemoryOfNature.forCatalog(catalog)
   private val beasts = SearchFixture.denizensOf(Suit.Beast)
     .filterNot(_ == nature)
   private val beastEdifice =

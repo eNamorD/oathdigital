@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.search
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object DisciplesCard extends Denizen(DenizenId("205"), "Disciples", Suit.Arcane):
@@ -25,8 +25,9 @@ object DisciplesCard extends Denizen(DenizenId("205"), "Disciples", Suit.Arcane)
   * be selected whatever the source, as the Cup of Plenty may. The start
   * line's cost span shows what was paid, so it writes no line.
   */
-final case class Disciples private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class Disciples private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = DisciplesCard.id
   def id: PowerId = Disciples.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -47,10 +48,10 @@ final case class Disciples private (cardId: DenizenId,
     case other => other
 
 object Disciples:
-  val id: PowerId = PowerId("denizen.disciples")
+  val id: PowerId = DisciplesCard.power.id
   /** What a world-deck Search costs its user while holding the Darkest
     * Secret. */
   val Supply: Int = 2
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Disciples] =
-    CatalogCards.denizen(catalog, id).map(new Disciples(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Disciples =
+    new Disciples(catalog)

@@ -23,8 +23,9 @@ object RiotsCard extends Denizen(DenizenId("91"), "Riots", Suit.Discord):
   * as far as it holds favor. With nothing discarded nothing is burned, and
   * only the `none` line is written.
   */
-final case class Riots private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class Riots private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = RiotsCard.id
   import Riots._
   def id: PowerId = Riots.id
 
@@ -57,7 +58,7 @@ final case class Riots private (cardId: DenizenId,
       else unburned(source, banner))
 
 object Riots:
-  val id: PowerId = PowerId("denizen.riots")
+  val id: PowerId = RiotsCard.power.id
   /** "Burned {n favor} from the {People's Favor}." */
   val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
     NotePart.Arg(0), NotePart.Text(" from the "), NotePart.Arg(1),
@@ -66,8 +67,8 @@ object Riots:
   val unburned: NoteKey = NoteKey("unburned", Vector(NotePart.Text("The "),
     NotePart.Arg(0), NotePart.Text(" had no favor to burn.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Riots] =
-    WhenPlayedPower.cardOf(catalog, id).map(new Riots(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Riots =
+    new Riots(catalog)
 
   private def favorOn(ready: ReadyGame): Int =
     ready.game.current.banners.peoplesFavor.favor

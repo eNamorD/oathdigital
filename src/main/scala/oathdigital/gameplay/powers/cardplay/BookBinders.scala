@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
 import oathdigital.model._
 
 object BookBindersCard extends Denizen(DenizenId("140"), "Book Binders", Suit.Hearth) with AdviserOnly:
@@ -28,8 +28,9 @@ object BookBindersCard extends Denizen(DenizenId("140"), "Book Binders", Suit.He
   * inside the `Branch`, so the window's node count still does not depend on
   * live state.
   */
-final case class BookBinders private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class BookBinders private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = BookBindersCard.id
   def id: PowerId = BookBinders.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -78,12 +79,12 @@ final case class BookBinders private (cardId: DenizenId,
     }).map(_.player)
 
 object BookBinders:
-  val id: PowerId = PowerId("denizen.book-binders")
+  val id: PowerId = BookBindersCard.power.id
   val Favor: Int = 2
   val gained: NoteKey = NoteSupport.gainedFromKey("gained")
 
-  def forCatalog(catalog: ExecutableCatalog): Option[BookBinders] =
-    CatalogCards.denizen(catalog, id).map(new BookBinders(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): BookBinders =
+    new BookBinders(catalog)
 
   /** A Vision is played faceup at most once a round. */
   def decisionId(ready: ReadyGame, holder: PlayerId, vision: VisionId): String =

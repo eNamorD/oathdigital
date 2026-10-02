@@ -21,7 +21,7 @@ class HungerSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog, phasePowerCatalog = phasePowers)
   private val parked = new ParkedDecisionAssertions(catalog,
     phasePowerCatalog = phasePowers)
-  private val hunger = Hunger.forCatalog(catalog).get
+  private val hunger = Hunger.forCatalog(catalog)
   private val card = hunger.cardId
   /** p2 wakes after p1's Rest; p3 is the third player. */
   private val (next, third) = (p2, p3)

@@ -20,8 +20,10 @@ import oathdigital.gameplay.walker.WalkerPowers
   * seam (Task 5's first entry: Catacombs). Catalog-parameterized like
   * `ReviewedPowerCatalog.resolver`/`registry`: a contribution that carries a
   * catalog-specific card id must be resolved against the same catalog the
-  * caller is running. A power whose card is absent from `catalog` (e.g. a
-  * synthetic test catalog) is simply omitted, not a construction failure.
+  * caller is running. A relic, edifice or site power whose card is absent
+  * from `catalog` (e.g. a synthetic test catalog) is simply omitted, not a
+  * construction failure. A denizen power names its card, so it is always
+  * present.
   *
   * A power carrying no catalog id is simply always present: Take Wealth's
   * once-per-turn limit states a rulebook clause about whichever site the pawn
@@ -44,30 +46,30 @@ import oathdigital.gameplay.walker.WalkerPowers
   */
 object WalkerPowerCatalog:
   def default(catalog: ExecutableCatalog): WalkerPowers =
-    WalkerPowers(CatacombsContribution.forCatalog(catalog).toVector ++
-      VowOfPeaceContribution.forCatalog(catalog).toVector ++
+    WalkerPowers(Vector(CatacombsContribution.forCatalog(catalog)) ++
+      Vector(VowOfPeaceContribution) ++
       TravelSitePowers.forCatalog(catalog) ++
       TravelModifiers.forCatalog(catalog) ++
-      LeagueTreatyContribution.forCatalog(catalog) ++
-      SilverTongue.forCatalog(catalog) ++
-      Insomnia.forCatalog(catalog) ++
-      ASmallFavor.forCatalog(catalog).toVector ++
-      FaithfulFriend.forCatalog(catalog).toVector ++
-      Garrison.forCatalog(catalog).toVector ++
-      FamilyHeirloom.forCatalog(catalog).toVector ++
-      ShiftingFog.forCatalog(catalog).toVector ++
-      TwinBrother.forCatalog(catalog).toVector ++
+      Vector(LeagueTreatyContribution.forCatalog(catalog)) ++
+      Vector(SilverTongue.forCatalog(catalog)) ++
+      Vector(Insomnia) ++
+      Vector(ASmallFavor) ++
+      Vector(FaithfulFriend) ++
+      Vector(Garrison) ++
+      Vector(FamilyHeirloom) ++
+      Vector(ShiftingFog) ++
+      Vector(TwinBrother.forCatalog(catalog)) ++
       WhenPlayedPowers.forCatalog(catalog) ++
-      ChaosCult.forCatalog(catalog).toVector ++
+      Vector(ChaosCult) ++
       ActionModifiers.forCatalog(catalog) ++
       TargetProtections.forCatalog(catalog) ++
-      KnightsErrant.forCatalog(catalog).toVector ++
+      Vector(KnightsErrant.forCatalog(catalog)) ++
       BattlePlans.forCatalog(catalog) ++
       PlanRules.forCatalog(catalog) ++
       SimplePlans.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
       BannerFacePowers.contributions ++
-      Dazzle.forCatalog(catalog) ++ GreatMarket.forCatalog(catalog) ++
+      Vector(Dazzle.forCatalog(catalog)) ++ GreatMarket.forCatalog(catalog) ++
       BanditMarket.forCatalog(catalog) ++ GreatForge.forCatalog(catalog) ++
       BrokenForge.forCatalog(catalog) ++ ProvingGrounds.forCatalog(catalog) ++
       EmptyGrounds.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed,

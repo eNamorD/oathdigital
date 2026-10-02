@@ -26,8 +26,9 @@ object LeagueTreatyCard extends Denizen(DenizenId("237"), "League Treaty", Suit.
   * moves. The line follows the moves, so it never comes before either
   * decision.
   */
-final case class LeagueTreatyContribution private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class LeagueTreatyContribution private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = LeagueTreatyCard.id
   import LeagueTreatyContribution._
 
   def id: PowerId = LeagueTreatyContribution.id
@@ -135,7 +136,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
     }
 
 object LeagueTreatyContribution:
-  val id: PowerId = PowerId("denizen.league-treaty")
+  val id: PowerId = LeagueTreatyCard.power.id
   private val Decline = "decline"
 
   /** "{Blue} sent {3 favor} to {the Nomad bank}." */
@@ -143,9 +144,8 @@ object LeagueTreatyContribution:
     NotePart.Text(" sent "), NotePart.Arg(1), NotePart.Text(" to "),
     NotePart.Arg(2), NotePart.Text(".")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[LeagueTreatyContribution] =
-    catalog.denizenWithPower(id)
-      .map(d => new LeagueTreatyContribution(DenizenId(d.id.value), catalog))
+  def forCatalog(catalog: ExecutableCatalog): LeagueTreatyContribution =
+    new LeagueTreatyContribution(catalog)
 
   private def stem(ready: ReadyGame, rester: PlayerId, site: SiteId,
       card: DenizenId) = s"rest-${ready.game.current.tracks.round}-" +

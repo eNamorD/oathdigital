@@ -11,7 +11,7 @@ class BedOfRootsSuite extends munit.FunSuite:
 
   private val bed = CatalogNames.denizen("Bed of Roots")
   private val source = DecisionOptionRef.Denizen(bed)
-  private val power = BedOfRoots.forCatalog(catalog).get
+  private val power = BedOfRoots.forCatalog(catalog)
   private val plain = SearchFixture.denizensOf(Suit.Hearth)
   private val insomnia = CatalogNames.denizen("Insomnia")
   private val vision = VisionId("vision:vision-of-faith")

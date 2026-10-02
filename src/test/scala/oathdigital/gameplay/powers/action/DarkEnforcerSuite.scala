@@ -12,7 +12,7 @@ class DarkEnforcerSuite extends munit.FunSuite:
 
   private val enforcer = CatalogNames.denizen("Dark Enforcer")
   private val source = DecisionOptionRef.Denizen(enforcer)
-  private val power = DarkEnforcer.forCatalog(catalog).get
+  private val power = DarkEnforcer.forCatalog(catalog)
   private val home = Table.homeOf(p1)
   private val order = SearchFixture.denizensOf(Suit.Order)
   private val hearth = SearchFixture.denizensOf(Suit.Hearth)

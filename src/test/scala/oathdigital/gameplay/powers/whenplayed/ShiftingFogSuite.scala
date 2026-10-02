@@ -8,7 +8,7 @@ class ShiftingFogSuite extends munit.FunSuite:
   import PowerFixture._
   import WhenPlayedHarness._
 
-  private val power = ShiftingFog.forCatalog(catalog).get
+  private val power = ShiftingFog
   private val card = power.cardId
   private def banked(ready: ReadyGame, favor: Map[Suit, Int]) =
     ready.copy(banks = ready.banks.copy(favor = favor))

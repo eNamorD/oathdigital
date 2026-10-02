@@ -140,7 +140,7 @@ class LeagueTreatySuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = LeagueTreatyContribution.forCatalog(catalog).get
+  private val power = LeagueTreatyContribution.forCatalog(catalog)
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 

@@ -4,7 +4,7 @@ import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.PlacementRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object CropRotationCard extends Denizen(DenizenId("128"), "Crop Rotation", Suit.Hearth):
@@ -27,8 +27,9 @@ object CropRotationCard extends Denizen(DenizenId("128"), "Crop Rotation", Suit.
   * rules, and card play writes it after the discard answer. With the Mob as
   * well, the rules keep one line, so only one is written.
   */
-final case class CropRotation private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class CropRotation private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = CropRotationCard.id
   def id: PowerId = CropRotation.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
   override def noteKeys: Vector[NoteKey] = Vector(PlacementRules.discardFirst)
@@ -46,7 +47,7 @@ final case class CropRotation private (cardId: DenizenId,
       NoteArg.Player(actor))))
 
 object CropRotation:
-  val id: PowerId = PowerId("denizen.crop-rotation")
+  val id: PowerId = CropRotationCard.power.id
 
-  def forCatalog(catalog: ExecutableCatalog): Option[CropRotation] =
-    CatalogCards.denizen(catalog, id).map(new CropRotation(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): CropRotation =
+    new CropRotation(catalog)

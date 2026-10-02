@@ -12,7 +12,7 @@ class TamingCharmSuite extends munit.FunSuite:
 
   private val charm = CatalogNames.denizen("Taming Charm")
   private val source = DecisionOptionRef.Denizen(charm)
-  private val power = TamingCharm.forCatalog(catalog).get
+  private val power = TamingCharm.forCatalog(catalog)
   private val home = Table.homeOf(p1)
   private val beast = SearchFixture.denizensOf(Suit.Beast)
   private val nomad = SearchFixture.denizensOf(Suit.Nomad)

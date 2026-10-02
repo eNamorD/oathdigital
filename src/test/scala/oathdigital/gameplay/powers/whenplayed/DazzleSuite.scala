@@ -39,7 +39,7 @@ class DazzleSuite extends munit.FunSuite:
             if index == 0 then Tokens(1, 0) else Tokens.empty)
         }))))))
     val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
-    val power = Dazzle.forCatalog(catalog).get
+    val power = Dazzle.forCatalog(catalog)
     val finished = ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(power))).toOption.get
       .asInstanceOf[WalkerOutcome.Finished]
@@ -104,7 +104,7 @@ class DazzleSuite extends munit.FunSuite:
         .updated(actorSite, friendly).updated(enemySite, hostile))))
     val finished = ProcedureWalker.advance(prepared,
       CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle)), None,
-      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get),
+      WalkerPowers(Vector(Dazzle.forCatalog(catalog)),
         restrictionSet = OperationRestrictions.forCatalog(catalog)))
       .toOption.get.asInstanceOf[WalkerOutcome.Finished]
     val after = finished.treeless.game.current
@@ -126,7 +126,7 @@ class DazzleSuite extends munit.FunSuite:
       map = current.map.copy(sites = current.map.sites.updated(siteId,
         site.copy(denizens = site.denizens :+
           DenizenState(unknown, Orientation.FaceUp, Tokens.empty))))))
-    val dazzle = Dazzle.forCatalog(catalog).get
+    val dazzle = Dazzle.forCatalog(catalog)
     val dazzleId = catalog.denizens.find(_.powers.exists(_.id == Dazzle.id))
       .map(d => DenizenId(d.id.value)).get
     val hook = CardPlayedFaceup(dazzleId, RuleSourceRef.Adviser(actor, dazzleId))
@@ -161,7 +161,7 @@ class DazzleSuite extends munit.FunSuite:
           EdificeState(ruinedBeast, EdificeSide.Ruined, Tokens.empty)))))))
     val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
     val finished = ProcedureWalker.advance(prepared, hook, None,
-      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
+      WalkerPowers(Vector(Dazzle.forCatalog(catalog)))).toOption.get
       .asInstanceOf[WalkerOutcome.Finished]
     val after = finished.treeless.game.current
     val remaining = after.map.sites(home).denizens.collect {
@@ -204,7 +204,7 @@ class DazzleSuite extends munit.FunSuite:
     }
     val hook = CardPlayedFaceup(dazzle, RuleSourceRef.Adviser(actor, dazzle))
     val finished = ProcedureWalker.advance(prepared, hook, None,
-      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
+      WalkerPowers(Vector(Dazzle.forCatalog(catalog)))).toOption.get
       .asInstanceOf[WalkerOutcome.Finished]
     val after = finished.treeless.game.current.map.sites
     def at(site: SiteId, id: DenizenId) = after(site).denizens.exists(_.id == id)

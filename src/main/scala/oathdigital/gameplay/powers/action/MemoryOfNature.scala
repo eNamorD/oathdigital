@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object MemoryOfNatureCard extends Denizen(DenizenId("191"), "Memory of Nature", Suit.Beast):
@@ -64,7 +63,7 @@ final case class MemoryOfNature private (catalog: ExecutableCatalog)
   }
 
 object MemoryOfNature:
-  val id: PowerId = PowerId("denizen.memory-of-nature")
+  val id: PowerId = MemoryOfNatureCard.power.id
   val decisionId: String = "power.memory-of-nature.banks"
   /** "Moved {n favor} to {the Beast bank}." */
   val moved: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Moved "),
@@ -76,5 +75,5 @@ object MemoryOfNature:
   private val banks = new FavorSplit(decisionId,
     Suit.all.filterNot(_ == Suit.Beast), "Move favor")
 
-  def forCatalog(catalog: ExecutableCatalog): Option[MemoryOfNature] =
-    CatalogCards.denizen(catalog, id).map(_ => new MemoryOfNature(catalog))
+  def forCatalog(catalog: ExecutableCatalog): MemoryOfNature =
+    new MemoryOfNature(catalog)

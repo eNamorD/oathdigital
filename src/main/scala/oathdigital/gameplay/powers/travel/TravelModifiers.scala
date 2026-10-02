@@ -4,14 +4,15 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 
 /** The Travel modifiers and rules that are not terrain, registered together. A
-  * power whose card is absent from `catalog` is omitted. Terrain is
+  * relic power whose card is absent from `catalog` is omitted; a denizen
+  * power names its card and is always present. Terrain is
   * [[TravelSitePowers]].
   */
 object TravelModifiers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
-    Tents.forCatalog(catalog).toVector ++
-      RoyalStables.forCatalog(catalog).toVector ++
-      ForestPaths.forCatalog(catalog).toVector ++
+    Vector(Tents.forCatalog(catalog)) ++
+      Vector(RoyalStables.forCatalog(catalog)) ++
+      Vector(ForestPaths.forCatalog(catalog)) ++
       DragonskinDrum.forCatalog(catalog).toVector ++
-      TollRoads.forCatalog(catalog).toVector ++
-      GraspingVines.forCatalog(catalog).toVector
+      Vector(TollRoads.forCatalog(catalog)) ++
+      Vector(GraspingVines.forCatalog(catalog))

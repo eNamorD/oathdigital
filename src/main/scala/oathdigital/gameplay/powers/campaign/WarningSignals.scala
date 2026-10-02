@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.campaign.{CampaignProcedure, CampaignSetup}
-import oathdigital.gameplay.powers.{CatalogCards, PowerAnswers,
-  WarbandArrangement}
+import oathdigital.gameplay.powers.{PowerAnswers, WarbandArrangement}
 import oathdigital.model._
 
 object WarningSignalsCard extends Denizen(DenizenId("25"), "Warning Signals", Suit.Nomad):
@@ -31,8 +30,9 @@ object WarningSignalsCard extends Denizen(DenizenId("25"), "Warning Signals", Su
   * warbands."; the line follows the decision, so a game parked on it resumes
   * where it was.
   */
-final case class WarningSignals private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class WarningSignals private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = WarningSignalsCard.id
   def id: PowerId = WarningSignals.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -69,12 +69,12 @@ final case class WarningSignals private (cardId: DenizenId,
   })
 
 object WarningSignals:
-  val id: PowerId = PowerId("denizen.warning-signals")
+  val id: PowerId = WarningSignalsCard.power.id
   /** Under the Campaign's prefix, so a parked question is a Campaign decision. */
   val decisionId: String = CampaignProcedure.decisionPrefix + "warning-signals"
   /** "{Blue} redistributed their warbands." */
   val redistributed: NoteKey = NoteKey("redistributed", Vector(NotePart.Arg(0),
     NotePart.Text(" redistributed their warbands.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[WarningSignals] =
-    CatalogCards.denizen(catalog, id).map(new WarningSignals(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): WarningSignals =
+    new WarningSignals(catalog)

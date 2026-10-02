@@ -3,8 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.{BannerRules, CardPlay}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts,
-  PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 object ArmedMobCard extends Denizen(DenizenId("53"), "Armed Mob", Suit.Hearth) with SiteOnly:
@@ -96,7 +95,7 @@ final case class ArmedMob private (catalog: ExecutableCatalog)
     NoteArg.Player(owner))
 
 object ArmedMob:
-  val id: PowerId = PowerId("denizen.armed-mob")
+  val id: PowerId = ArmedMobCard.power.id
   val decisionId: String = "power.armed-mob.adviser"
   /** "{Red} discarded {card} from {Blue}'s advisers." */
   val discarded: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
@@ -121,5 +120,5 @@ object ArmedMob:
       .toOption.toVector.flatMap(_.advisers.collect {
         case card @ DenizenState(_, Orientation.FaceUp, _) => card }))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[ArmedMob] =
-    CatalogCards.denizen(catalog, id).map(_ => new ArmedMob(catalog))
+  def forCatalog(catalog: ExecutableCatalog): ArmedMob =
+    new ArmedMob(catalog)

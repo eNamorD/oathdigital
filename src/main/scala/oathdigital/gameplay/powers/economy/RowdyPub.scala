@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts, PowerAnswers, SelectedModifier}
+import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers, SelectedModifier}
 import oathdigital.model._
 
 object RowdyPubCard extends Denizen(DenizenId("144"), "Rowdy Pub", Suit.Hearth) with SiteOnly:
@@ -19,8 +19,9 @@ object RowdyPubCard extends Denizen(DenizenId("144"), "Rowdy Pub", Suit.Hearth) 
   * when the gain node runs, so the extra warband is added only when Rowdy Pub is
   * the source. The gain is best-effort like the base gain.
   */
-final case class RowdyPub private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class RowdyPub private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = RowdyPubCard.id
   def id: PowerId = RowdyPub.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
 
@@ -36,8 +37,8 @@ final case class RowdyPub private (cardId: DenizenId,
     else Right(Vector.empty))
 
 object RowdyPub:
-  val id: PowerId = PowerId("denizen.rowdy-pub")
+  val id: PowerId = RowdyPubCard.power.id
   val Warbands: Int = 1
 
-  def forCatalog(catalog: ExecutableCatalog): Option[RowdyPub] =
-    CatalogCards.denizen(catalog, id).map(new RowdyPub(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): RowdyPub =
+    new RowdyPub(catalog)

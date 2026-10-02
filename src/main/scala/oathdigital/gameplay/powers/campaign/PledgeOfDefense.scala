@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object PledgeOfDefenseCard extends Denizen(DenizenId("243"), "Pledge of Defense", Suit.Nomad):
@@ -20,8 +19,9 @@ object PledgeOfDefenseCard extends Denizen(DenizenId("243"), "Pledge of Defense"
   * discarded through the standard discard once the Campaign has resolved,
   * whoever won, as Horse Archers is.
   */
-final case class PledgeOfDefense private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class PledgeOfDefense private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = PledgeOfDefenseCard.id
   def id: PowerId = PledgeOfDefense.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -40,7 +40,7 @@ final case class PledgeOfDefense private (cardId: DenizenId,
       PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object PledgeOfDefense:
-  val id: PowerId = PowerId("denizen.pledge-of-defense")
+  val id: PowerId = PledgeOfDefenseCard.power.id
 
-  def forCatalog(catalog: ExecutableCatalog): Option[PledgeOfDefense] =
-    CatalogCards.denizen(catalog, id).map(new PledgeOfDefense(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): PledgeOfDefense =
+    new PledgeOfDefense(catalog)

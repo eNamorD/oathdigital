@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object DisgracedCaptainCard extends Denizen(DenizenId("20"), "Disgraced Captain", Suit.Discord):
@@ -23,8 +22,9 @@ object DisgracedCaptainCard extends Denizen(DenizenId("20"), "Disgraced Captain"
   * site bandits rule. Bandits pay nothing, so a bandit defender never applies
   * it.
   */
-final case class DisgracedCaptain private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class DisgracedCaptain private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = DisgracedCaptainCard.id
   def id: PowerId = DisgracedCaptain.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -41,8 +41,8 @@ final case class DisgracedCaptain private (cardId: DenizenId,
         Vector(PlanDice.effect(context.side, DisgracedCaptain.Dice))))
 
 object DisgracedCaptain:
-  val id: PowerId = PowerId("denizen.disgraced-captain")
+  val id: PowerId = DisgracedCaptainCard.power.id
   val Dice: Int = 4
 
-  def forCatalog(catalog: ExecutableCatalog): Option[DisgracedCaptain] =
-    CatalogCards.denizen(catalog, id).map(new DisgracedCaptain(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): DisgracedCaptain =
+    new DisgracedCaptain(catalog)

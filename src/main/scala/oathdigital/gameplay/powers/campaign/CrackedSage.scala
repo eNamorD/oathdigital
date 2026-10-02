@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object CrackedSageCard extends Denizen(DenizenId("83"), "Cracked Sage", Suit.Discord):
@@ -18,8 +17,9 @@ object CrackedSageCard extends Denizen(DenizenId("83"), "Cracked Sage", Suit.Dis
   * enemy, the other side's player, has a faceup arcane adviser. Bandits hold
   * no advisers, so an attacker is never offered it against them.
   */
-final case class CrackedSage private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class CrackedSage private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = CrackedSageCard.id
   def id: PowerId = CrackedSage.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -34,8 +34,8 @@ final case class CrackedSage private (cardId: DenizenId,
         Vector(PlanDice.effect(context.side, CrackedSage.Dice))))
 
 object CrackedSage:
-  val id: PowerId = PowerId("denizen.cracked-sage")
+  val id: PowerId = CrackedSageCard.power.id
   val Dice: Int = 4
 
-  def forCatalog(catalog: ExecutableCatalog): Option[CrackedSage] =
-    CatalogCards.denizen(catalog, id).map(new CrackedSage(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): CrackedSage =
+    new CrackedSage(catalog)

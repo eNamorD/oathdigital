@@ -11,7 +11,7 @@ class HonorGuardSuite extends munit.FunSuite:
 
   private val guard = CatalogNames.denizen("Honor Guard")
   private val source = DecisionOptionRef.Denizen(guard)
-  private val power = HonorGuard.forCatalog(catalog).get
+  private val power = HonorGuard.forCatalog(catalog)
   private val plain = SearchFixture.denizensOf(Suit.Hearth)
   private val order = SearchFixture.denizensOf(Suit.Order)
   private val insomnia = CatalogNames.denizen("Insomnia")

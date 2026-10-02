@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -26,9 +25,13 @@ object VowOfObedienceCard extends Denizen(DenizenId("121"), "Vow of Obedience", 
   * When the look-ahead hides a faceup placement because of it, it writes
   * "{Red} cannot play a Vision faceup."
   */
-final case class VowOfObedience private (cardId: DenizenId)
-    extends PhasePower with ContributingPower:
-  def id: PowerId = VowOfObedience.id
+case object VowOfObedience extends PhasePower with ContributingPower:
+  val cardId: DenizenId = VowOfObedienceCard.id
+  val id: PowerId = VowOfObedienceCard.power.id
+
+  def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =
+    s"vow-of-obedience-${ready.game.current.tracks.round}-${player.value}"
+
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override def noteKeys: Vector[NoteKey] =
@@ -58,12 +61,3 @@ final case class VowOfObedience private (cardId: DenizenId)
       case DenizenState(card, Orientation.FaceUp, _) => card == cardId
       case _ => false
     })
-
-object VowOfObedience:
-  val id: PowerId = PowerId("denizen.vow-of-obedience")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[VowOfObedience] =
-    CatalogCards.denizen(catalog, id).map(new VowOfObedience(_))
-
-  def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =
-    s"vow-of-obedience-${ready.game.current.tracks.round}-${player.value}"

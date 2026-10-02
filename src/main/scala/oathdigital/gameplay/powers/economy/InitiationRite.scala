@@ -1,10 +1,8 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object InitiationRiteCard extends Denizen(DenizenId("73"), "Initiation Rite", Suit.Arcane) with Locked with AdviserOnly:
@@ -28,9 +26,10 @@ object InitiationRiteCard extends Denizen(DenizenId("73"), "Initiation Rite", Su
   * It writes no line: the start line's cost span shows Supply only, for every
   * Muster, and the secret's move still anchors the start line.
   */
-final case class InitiationRite private (cardId: DenizenId)
-    extends ContributingPower:
-  def id: PowerId = InitiationRite.id
+case object InitiationRite extends ContributingPower:
+  val cardId: DenizenId = InitiationRiteCard.id
+  val id: PowerId = InitiationRiteCard.power.id
+
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
@@ -50,9 +49,3 @@ final case class InitiationRite private (cardId: DenizenId)
         case DenizenState(card, Orientation.FaceUp, _) => card == cardId
         case _ => false
       })
-
-object InitiationRite:
-  val id: PowerId = PowerId("denizen.initiation-rite")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[InitiationRite] =
-    CatalogCards.denizen(catalog, id).map(new InitiationRite(_))

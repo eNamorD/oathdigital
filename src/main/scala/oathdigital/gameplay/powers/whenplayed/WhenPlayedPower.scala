@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -27,9 +26,3 @@ trait WhenPlayedPower extends ContributingPower:
   final def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
       children ++ effect(ctx))))
-
-object WhenPlayedPower:
-  /** The denizen that prints power `id`, or `None` for a catalog without it. */
-  def cardOf(catalog: ExecutableCatalog, id: PowerId): Option[DenizenId] =
-    catalog.denizenWithPower(id)
-      .map(definition => DenizenId(definition.id.value))

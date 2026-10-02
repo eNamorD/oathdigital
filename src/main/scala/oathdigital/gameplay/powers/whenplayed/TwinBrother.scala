@@ -31,8 +31,9 @@ object TwinBrotherCard extends Denizen(DenizenId("170"), "Twin Brother", Suit.No
   * same children on resume.
   *
   */
-final case class TwinBrother private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class TwinBrother private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = TwinBrotherCard.id
   import TwinBrother._
   def id: PowerId = TwinBrother.id
 
@@ -93,7 +94,7 @@ final case class TwinBrother private (cardId: DenizenId,
     NoteArg.Player(owner), NoteArg.Card(target))
 
 object TwinBrother:
-  val id: PowerId = PowerId("denizen.twin-brother")
+  val id: PowerId = TwinBrotherCard.power.id
   val decisionId: String = "cardplay.twin-brother.swap"
   val keep: DecisionOptionRef.Button = DecisionOptionRef.Button("keep")
   /** "{Red} swapped it for {Blue}'s {card}." */
@@ -103,5 +104,5 @@ object TwinBrother:
 
   private final case class Candidate(owner: PlayerId, card: DenizenId)
 
-  def forCatalog(catalog: ExecutableCatalog): Option[TwinBrother] =
-    WhenPlayedPower.cardOf(catalog, id).map(new TwinBrother(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): TwinBrother =
+    new TwinBrother(catalog)

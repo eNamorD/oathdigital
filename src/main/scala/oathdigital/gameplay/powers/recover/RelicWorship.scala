@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.recover
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object RelicWorshipCard extends Denizen(DenizenId("173"), "Relic Worship", Suit.Nomad):
@@ -22,8 +22,9 @@ object RelicWorshipCard extends Denizen(DenizenId("173"), "Relic Worship", Suit.
   * is checked together at selection, so Catacombs and Relic Worship with one
   * faceup secret are refused at the start instead of stranding the Recover.
   */
-final case class RelicWorship private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class RelicWorship private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = RelicWorshipCard.id
   def id: PowerId = RelicWorship.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Recover)
   override def cost: Cost = Cost(secret = RelicWorship.Secrets)
@@ -33,9 +34,9 @@ final case class RelicWorship private (cardId: DenizenId,
       operations :+ GainSupply(ctx.activePlayer, RelicWorship.Supply))))
 
 object RelicWorship:
-  val id: PowerId = PowerId("denizen.relic-worship")
+  val id: PowerId = RelicWorshipCard.power.id
   val Secrets: Int = 1
   val Supply: Int = 2
 
-  def forCatalog(catalog: ExecutableCatalog): Option[RelicWorship] =
-    CatalogCards.denizen(catalog, id).map(new RelicWorship(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): RelicWorship =
+    new RelicWorship(catalog)

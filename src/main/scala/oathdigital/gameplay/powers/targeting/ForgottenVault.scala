@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
+import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.model._
 
 object ForgottenVaultCard extends Denizen(DenizenId("75"), "Forgotten Vault", Suit.Arcane) with SiteOnly:
@@ -28,8 +28,9 @@ object ForgottenVaultCard extends Denizen(DenizenId("75"), "Forgotten Vault", Su
   *
   * The Game Log posts identical notes once per action.
   */
-final case class ForgottenVault private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class ForgottenVault private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = ForgottenVaultCard.id
   def id: PowerId = ForgottenVault.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -65,11 +66,11 @@ final case class ForgottenVault private (cardId: DenizenId,
       case _ => false)
 
 object ForgottenVault:
-  val id: PowerId = PowerId("denizen.forgotten-vault")
+  val id: PowerId = ForgottenVaultCard.power.id
 
   /** "{ruler}'s relics cannot be targeted." */
   val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
     NotePart.Text("'s relics cannot be targeted.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[ForgottenVault] =
-    CatalogCards.denizen(catalog, id).map(new ForgottenVault(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): ForgottenVault =
+    new ForgottenVault(catalog)

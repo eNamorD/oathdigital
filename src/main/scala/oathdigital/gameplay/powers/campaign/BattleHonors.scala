@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.model._
 
 object BattleHonorsCard extends Denizen(DenizenId("2"), "Battle Honors", Suit.Order):
@@ -21,8 +20,11 @@ object BattleHonorsCard extends Denizen(DenizenId("2"), "Battle Honors", Suit.Or
   * gains it too, settled into the shared bank, because bandits hold no board of
   * their own. It applies the plan by itself, since the plan is free.
   */
-final case class BattleHonors private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = BattleHonors.id
+case object BattleHonors extends BattlePlan:
+  val cardId: DenizenId = BattleHonorsCard.id
+  val id: PowerId = BattleHonorsCard.power.id
+  val Favor: Int = 2
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -41,10 +43,3 @@ final case class BattleHonors private (cardId: DenizenId) extends BattlePlan:
   private def toBandits: Operation = Move(Piece.Favor(BattleHonors.Favor),
     PositionedLocation(Location.FavorBank(Suit.Order)),
     PositionedLocation(Location.SharedBank))
-
-object BattleHonors:
-  val id: PowerId = PowerId("denizen.battle-honors")
-  val Favor: Int = 2
-
-  def forCatalog(catalog: ExecutableCatalog): Option[BattleHonors] =
-    CatalogCards.denizen(catalog, id).map(new BattleHonors(_))

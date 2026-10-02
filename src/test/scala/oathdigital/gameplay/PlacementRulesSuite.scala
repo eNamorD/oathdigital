@@ -72,7 +72,7 @@ class PlacementRulesSuite extends munit.FunSuite:
         DecisionOptionRef.Denizen(second)))
 
   test("Silver Tongue and the adviser-limit read agree on the limit"):
-    val tongue = SilverTongue.forCatalog(catalog).get
+    val tongue = SilverTongue.forCatalog(catalog)
     val held = Table.start.adviser(p1, tongue.cardId).ready
     val bare = Table.start.ready
     assertEquals(tongue.limitFor(held, p1), Some(SilverTongue.HolderLimit))

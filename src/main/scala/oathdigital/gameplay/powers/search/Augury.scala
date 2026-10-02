@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object AuguryCard extends Denizen(DenizenId("56"), "Augury", Suit.Arcane):
@@ -15,8 +15,9 @@ object AuguryCard extends Denizen(DenizenId("56"), "Augury", Suit.Arcane):
   * or a regional discard draws one more card. The draw still stops after a
   * Vision.
   */
-final case class Augury private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class Augury private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = AuguryCard.id
   def id: PowerId = Augury.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -25,8 +26,8 @@ final case class Augury private (cardId: DenizenId,
       DrawExtension.extend(operations, Augury.More))))
 
 object Augury:
-  val id: PowerId = PowerId("denizen.augury")
+  val id: PowerId = AuguryCard.power.id
   val More: Int = 1
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Augury] =
-    CatalogCards.denizen(catalog, id).map(new Augury(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Augury =
+    new Augury(catalog)

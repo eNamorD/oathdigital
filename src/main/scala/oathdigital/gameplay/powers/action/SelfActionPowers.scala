@@ -5,14 +5,14 @@ import oathdigital.gameplay.powerresolver.PhasePower
 
 /** The phase powers of catalog batch 2's slice 3 and catalog batch 3's slice
   * 3a, registered by [[oathdigital.gameplay.powers.PhasePowerCatalog]]
-  * through this one object, like [[DiceAndRelicDrawPowers]]. A power that
-  * needs the catalog is omitted when its card is absent.
+  * through this one object, like [[DiceAndRelicDrawPowers]]. Each names its denizen
+  * card, so all are always present.
   */
 object SelfActionPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Tutor, ShiftingMap, DemonTail, WizardSchool,
       SpiritSnare, ClayRattle, Scryer, OracularPig) ++
-      Oracle.forCatalog(catalog).toVector ++
+      Vector(Oracle.forCatalog(catalog)) ++
       Vector[PhasePower](BloodPact, ArcaneBrokers, Bog, RelicBreaker,
         TavernSongs, TinkersFair, SkeletonKey, Messenger) ++
-      BedOfRoots.forCatalog(catalog).toVector
+      Vector(BedOfRoots.forCatalog(catalog))

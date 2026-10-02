@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object GreatCrusadeCard extends Denizen(DenizenId("164"), "Great Crusade", Suit.Nomad):
@@ -20,8 +19,9 @@ object GreatCrusadeCard extends Denizen(DenizenId("164"), "Great Crusade", Suit.
   * bandits rule. The card is discarded through the standard discard once the
   * Campaign has resolved, whoever won, as Horse Archers is.
   */
-final case class GreatCrusade private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class GreatCrusade private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = GreatCrusadeCard.id
   def id: PowerId = GreatCrusade.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -40,7 +40,7 @@ final case class GreatCrusade private (cardId: DenizenId,
       PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object GreatCrusade:
-  val id: PowerId = PowerId("denizen.great-crusade")
+  val id: PowerId = GreatCrusadeCard.power.id
 
   /** The nomad cards the plan's user rules, counting `card` once whatever its
     * orientation: choosing a plan reveals a facedown adviser, so it is faceup
@@ -51,5 +51,5 @@ object GreatCrusade:
       card: DenizenId): Int =
     context.cardsRuled(catalog, context.ruler, Suit.Nomad).count(_ != card) + 1
 
-  def forCatalog(catalog: ExecutableCatalog): Option[GreatCrusade] =
-    CatalogCards.denizen(catalog, id).map(new GreatCrusade(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): GreatCrusade =
+    new GreatCrusade(catalog)

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.model._
 
 object WrestlersCard extends Denizen(DenizenId("1"), "Wrestlers", Suit.Order):
@@ -19,8 +18,10 @@ object WrestlersCard extends Denizen(DenizenId("1"), "Wrestlers", Suit.Order):
   * so it lowers the recorded force by one. A defender with no warband in their
   * force cannot pay, and the plan is not offered.
   */
-final case class Wrestlers private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = Wrestlers.id
+case object Wrestlers extends BattlePlan:
+  val cardId: DenizenId = WrestlersCard.id
+  val id: PowerId = WrestlersCard.power.id
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
 
@@ -29,9 +30,3 @@ final case class Wrestlers private (cardId: DenizenId) extends BattlePlan:
       "Wrestlers: sacrifice a warband for 1 defense die",
       Vector(CampaignPlanCost.SacrificeWarband),
       Vector(CampaignPlanEffect.AddDefenseDice(1))))
-
-object Wrestlers:
-  val id: PowerId = PowerId("denizen.wrestlers")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[Wrestlers] =
-    CatalogCards.denizen(catalog, id).map(new Wrestlers(_))

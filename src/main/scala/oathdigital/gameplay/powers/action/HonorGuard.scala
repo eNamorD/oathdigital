@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.action
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
 object HonorGuardCard extends Denizen(DenizenId("251"), "Honor Guard", Suit.Order) with AdviserOnly:
@@ -104,7 +104,7 @@ final case class HonorGuard private (catalog: ExecutableCatalog)
     NoteArg.Player(chosen.owner))
 
 object HonorGuard:
-  val id: PowerId = PowerId("denizen.honor-guard")
+  val id: PowerId = HonorGuardCard.power.id
   val decisionId: String = "power.honor-guard.adviser"
   /** "{Red} buried {card} from {Blue}'s advisers." */
   val buried: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
@@ -114,5 +114,5 @@ object HonorGuard:
   val spared: NoteKey = NoteKey("used.none", Vector(
     NotePart.Text("No adviser could be buried.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[HonorGuard] =
-    CatalogCards.denizen(catalog, id).map(_ => new HonorGuard(catalog))
+  def forCatalog(catalog: ExecutableCatalog): HonorGuard =
+    new HonorGuard(catalog)

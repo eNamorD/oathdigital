@@ -85,7 +85,7 @@ class SilverTongueSuite extends munit.FunSuite:
       temporaryHands = current.temporaryHands.updated(actor, Vector(played))))
     val tree = CardPlayProcedure.build(catalog, ready, actor, played,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
-    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog).get))
+    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog)))
     val parked = ProcedureWalker.advance(ready, tree, None, powers).toOption.get
       .asInstanceOf[WalkerOutcome.Parked].tree
     val choice = ProcedureWalker.parkedDecide(ready, tree, parked, powers).get
@@ -115,7 +115,7 @@ class SilverTongueSuite extends munit.FunSuite:
       temporaryHands = current.temporaryHands.updated(actor, Vector(tongue))))
     val tree = CardPlayProcedure.build(catalog, ready, actor, tongue,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
-    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog).get))
+    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog)))
     val parked = ProcedureWalker.advance(ready, tree, None, powers).toOption.get
       .asInstanceOf[WalkerOutcome.Parked].tree
     val choice = ProcedureWalker.parkedDecide(ready, tree, parked, powers).get
@@ -134,6 +134,6 @@ class SilverTongueSuite extends munit.FunSuite:
     val (ready, actor) = arranged(Vector(Suit.Arcane, Suit.Nomad), Set(Suit.Arcane))
     val used = rules.startWalker(Ready(ready), use, actor, Vector.empty,
       Vector(source)).toOption.get
-    assertEquals(NoteText.said(SilverTongue.forCatalog(catalog).get, used.events),
+    assertEquals(NoteText.said(SilverTongue.forCatalog(catalog), used.events),
       Vector(NoteText.Said(NoteKey.Used,
         s"${actor.value} took 1 favor from the Arcane bank.", covers = true)))

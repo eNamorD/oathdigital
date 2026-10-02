@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object OutridersCard extends Denizen(DenizenId("104"), "Outriders", Suit.Order):
@@ -21,23 +20,9 @@ object OutridersCard extends Denizen(DenizenId("104"), "Outriders", Suit.Order):
   *
   * When the attack rolled a skull it writes "Skulls ignored."
   */
-final case class Outriders private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = Outriders.id
-  def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
-  def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
-
-  def plan(context: PlanContext): Option[CampaignPlanOffer] =
-    context.denizen(cardId).map(source => CampaignPlanOffer(source,
-      "Outriders: ignore all attack skulls", Vector.empty, Vector.empty))
-
-  override def noteKeys: Vector[NoteKey] = Vector(Outriders.ignored)
-
-  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
-    PowerWindow.CampaignAttackResult -> (_ =>
-      Outriders.ignoreSkulls(id, PowerSourceRef.Card(cardId))))
-
-object Outriders:
-  val id: PowerId = PowerId("denizen.outriders")
+case object Outriders extends BattlePlan:
+  val cardId: DenizenId = OutridersCard.id
+  val id: PowerId = OutridersCard.power.id
   /** "Skulls ignored." */
   val ignored: NoteKey = NoteKey("ignored",
     Vector(NotePart.Text("Skulls ignored.")))
@@ -57,5 +42,15 @@ object Outriders:
       AttackDieFace.skulls(CampaignBattle.attackFacesOf(states.now)) > 0)(
       ignored(source))))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Outriders] =
-    CatalogCards.denizen(catalog, id).map(new Outriders(_))
+  def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
+  def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
+
+  def plan(context: PlanContext): Option[CampaignPlanOffer] =
+    context.denizen(cardId).map(source => CampaignPlanOffer(source,
+      "Outriders: ignore all attack skulls", Vector.empty, Vector.empty))
+
+  override def noteKeys: Vector[NoteKey] = Vector(Outriders.ignored)
+
+  override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
+    PowerWindow.CampaignAttackResult -> (_ =>
+      Outriders.ignoreSkulls(id, PowerSourceRef.Card(cardId))))

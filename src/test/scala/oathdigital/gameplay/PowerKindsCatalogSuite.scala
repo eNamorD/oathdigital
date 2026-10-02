@@ -38,15 +38,15 @@ class PowerKindsCatalogSuite extends munit.FunSuite:
       "play, so it does not derive its resolution from the flag"):
     assertEquals(flag("denizen.dazzle"), Some(false))
     assertEquals(oathdigital.gameplay.powers.whenplayed.Dazzle
-      .forCatalog(catalog).get.resolution, PowerResolution.Automatic)
+      .forCatalog(catalog).resolution, PowerResolution.Automatic)
 
   test("Vow of Obedience's rule is automatic whatever its flag: the flag is " +
       "false because of its REST"):
     assertEquals(flag("denizen.vow-of-obedience"), Some(false))
     assertEquals(oathdigital.gameplay.powers.cardplay.VowOfObedience
-      .forCatalog(catalog).get.resolution, PowerResolution.Automatic)
+      .resolution, PowerResolution.Automatic)
 
   test("Chaos Cult is a persistent rule and fires on every title change"):
     assertEquals(flag("denizen.chaos-cult"), Some(true))
     assertEquals(oathdigital.gameplay.powers.title.ChaosCult
-      .forCatalog(catalog).get.resolution, PowerResolution.Automatic)
+      .resolution, PowerResolution.Automatic)

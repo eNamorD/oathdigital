@@ -18,8 +18,9 @@ object ThreateningRoarCard extends Denizen(DenizenId("179"), "Threatening Roar",
   * kept. Played to a site, it is a Beast card at a site in the region, so it
   * discards itself.
   */
-final case class ThreateningRoar private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class ThreateningRoar private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = ThreateningRoarCard.id
   def id: PowerId = ThreateningRoar.id
 
   override def noteKeys: Vector[NoteKey] =
@@ -31,8 +32,8 @@ final case class ThreateningRoar private (cardId: DenizenId,
     region.effect(id, cardId, ctx.activePlayer)
 
 object ThreateningRoar:
-  val id: PowerId = PowerId("denizen.threatening-roar")
+  val id: PowerId = ThreateningRoarCard.power.id
   private val suits: Set[Suit] = Set(Suit.Nomad, Suit.Beast)
 
-  def forCatalog(catalog: ExecutableCatalog): Option[ThreateningRoar] =
-    WhenPlayedPower.cardOf(catalog, id).map(new ThreateningRoar(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): ThreateningRoar =
+    new ThreateningRoar(catalog)

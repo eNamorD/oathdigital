@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object WalledGardenCard extends Denizen(DenizenId("195"), "Walled Garden", Suit.Beast) with SiteOnly:
@@ -21,8 +20,9 @@ object WalledGardenCard extends Denizen(DenizenId("195"), "Walled Garden", Suit.
   * counts itself, so it adds at least one. A bandit defender applies it at a
   * site it rules.
   */
-final case class WalledGarden private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class WalledGarden private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = WalledGardenCard.id
   def id: PowerId = WalledGarden.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
@@ -47,7 +47,7 @@ final case class WalledGarden private (cardId: DenizenId,
     }
 
 object WalledGarden:
-  val id: PowerId = PowerId("denizen.walled-garden")
+  val id: PowerId = WalledGardenCard.power.id
 
-  def forCatalog(catalog: ExecutableCatalog): Option[WalledGarden] =
-    CatalogCards.denizen(catalog, id).map(new WalledGarden(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): WalledGarden =
+    new WalledGarden(catalog)

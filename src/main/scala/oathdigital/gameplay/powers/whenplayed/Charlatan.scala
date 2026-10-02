@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
 
@@ -18,10 +18,27 @@ object CharlatanCard extends Denizen(DenizenId("79"), "Charlatan", Suit.Discord)
   * burn, whoever holds it, or nobody. Otherwise nothing burns and the line
   * says so.
   */
-final case class Charlatan private (cardId: DenizenId)
-    extends WhenPlayedPower:
-  import Charlatan._
-  def id: PowerId = Charlatan.id
+case object Charlatan extends WhenPlayedPower:
+  val cardId: DenizenId = CharlatanCard.id
+  val id: PowerId = CharlatanCard.power.id
+  /** The secrets the Darkest Secret keeps. */
+  val Kept: Int = 1
+  /** "Burned {n secrets} from the {Darkest Secret}." */
+  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+    NotePart.Arg(0), NotePart.Text(" from the "), NotePart.Arg(1),
+    NotePart.Text(".")))
+  /** "The {Darkest Secret} had no secret to burn." */
+  val none: NoteKey = NoteKey("none", Vector(NotePart.Text("The "),
+    NotePart.Arg(0), NotePart.Text(" had no secret to burn.")))
+
+  private def secretsOn(ready: ReadyGame): Int =
+    ready.game.current.banners.darkestSecret.secrets
+
+  private def burn(ready: ReadyGame): Vector[CoreOperation] =
+    val extra = secretsOn(ready) - Kept
+    if extra <= 0 then Vector.empty
+    else Vector(Burn.secrets(extra,
+      PositionedLocation(Location.OnBanner(Banner.DarkestSecret))))
 
   override def noteKeys: Vector[NoteKey] = Vector(burned, none)
 
@@ -38,27 +55,3 @@ final case class Charlatan private (cardId: DenizenId)
     Some(if burnt > 0 then burned(source,
       NoteArg.Amount(burnt, NoteUnit.Secret), banner)
     else none(source, banner))
-
-object Charlatan:
-  val id: PowerId = PowerId("denizen.charlatan")
-  /** The secrets the Darkest Secret keeps. */
-  val Kept: Int = 1
-  /** "Burned {n secrets} from the {Darkest Secret}." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
-    NotePart.Arg(0), NotePart.Text(" from the "), NotePart.Arg(1),
-    NotePart.Text(".")))
-  /** "The {Darkest Secret} had no secret to burn." */
-  val none: NoteKey = NoteKey("none", Vector(NotePart.Text("The "),
-    NotePart.Arg(0), NotePart.Text(" had no secret to burn.")))
-
-  def forCatalog(catalog: ExecutableCatalog): Option[Charlatan] =
-    WhenPlayedPower.cardOf(catalog, id).map(new Charlatan(_))
-
-  private def secretsOn(ready: ReadyGame): Int =
-    ready.game.current.banners.darkestSecret.secrets
-
-  private def burn(ready: ReadyGame): Vector[CoreOperation] =
-    val extra = secretsOn(ready) - Kept
-    if extra <= 0 then Vector.empty
-    else Vector(Burn.secrets(extra,
-      PositionedLocation(Location.OnBanner(Banner.DarkestSecret))))

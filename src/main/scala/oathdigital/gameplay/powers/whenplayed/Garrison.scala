@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PlayerFacts
@@ -22,23 +22,10 @@ object GarrisonCard extends Denizen(DenizenId("7"), "Garrison", Suit.Order) with
   * walker re-selects it against the same stored state on resume). The
   * placement puts a warband on every ruled site, or on the chosen ones.
   */
-final case class Garrison private (cardId: DenizenId) extends WhenPlayedPower:
-  import Garrison._
-  def id: PowerId = Garrison.id
-
-  def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
-    Vector(
-      BuildOps((ready, _) => gain(ready, actor)),
-      Branch((ready, _) => ask(ready, actor)),
-      BuildOps((ready, pending) => place(ready, actor, pending)))
-
-object Garrison:
-  val id: PowerId = PowerId("denizen.garrison")
+case object Garrison extends WhenPlayedPower:
+  val cardId: DenizenId = GarrisonCard.id
+  val id: PowerId = GarrisonCard.power.id
   val decisionId: String = "cardplay.garrison.sites"
-
-  def forCatalog(catalog: ExecutableCatalog): Option[Garrison] =
-    WhenPlayedPower.cardOf(catalog, id).map(new Garrison(_))
 
   private def ruled(ready: ReadyGame, actor: PlayerId): Vector[SiteId] =
     PowerAccess.ruledSites(ready, actor).toVector.sortBy(_.value)
@@ -80,3 +67,10 @@ object Garrison:
         chosen.collect { case DecisionOptionRef.Site(site) => site }
     }.toRight(OathViolation.InvalidEventOrder(
       "no Garrison site choice is recorded"))
+
+  def effect(ctx: PowerCtx): Vector[Operation] =
+    val actor = ctx.activePlayer
+    Vector(
+      BuildOps((ready, _) => gain(ready, actor)),
+      Branch((ready, _) => ask(ready, actor)),
+      BuildOps((ready, pending) => place(ready, actor, pending)))

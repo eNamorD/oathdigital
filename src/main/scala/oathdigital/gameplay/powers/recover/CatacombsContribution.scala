@@ -19,8 +19,9 @@ object CatacombsCard extends Denizen(DenizenId("201"), "Catacombs", Suit.Arcane)
   * effect in one contribution. The card may sit at the pawn's site, at a site
   * the actor rules, or be an adviser. The relic goes to the card's own site,
   * or to the pawn's site for an adviser. */
-final case class CatacombsContribution private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class CatacombsContribution private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = CatacombsCard.id
   def id: PowerId = CatacombsContribution.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -51,8 +52,6 @@ final case class CatacombsContribution private (cardId: DenizenId,
     Costs.onCard(actor, cardId, Cost(secret = 1), catalog)))
 
 object CatacombsContribution:
-  val id: PowerId = PowerId("denizen.catacombs")
-  // None if the catalog has no such card (e.g. a test stub).
-  def forCatalog(catalog: ExecutableCatalog): Option[CatacombsContribution] =
-    catalog.denizenWithPower(id)
-      .map(d => new CatacombsContribution(DenizenId(d.id.value), catalog))
+  val id: PowerId = CatacombsCard.power.id
+  def forCatalog(catalog: ExecutableCatalog): CatacombsContribution =
+    new CatacombsContribution(catalog)

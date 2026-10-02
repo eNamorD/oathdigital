@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object MercenariesCard extends Denizen(DenizenId("12"), "Mercenaries", Suit.Discord):
@@ -24,8 +23,9 @@ object MercenariesCard extends Denizen(DenizenId("12"), "Mercenaries", Suit.Disc
   * The discard writes "Discarded after {Red} lost.", read from the discard's
   * step.
   */
-final case class Mercenaries private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class Mercenaries private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = MercenariesCard.id
   def id: PowerId = Mercenaries.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -64,11 +64,11 @@ final case class Mercenaries private (cardId: DenizenId,
       current.map.sites.values.exists(_.denizens.exists(_.id == cardId))
 
 object Mercenaries:
-  val id: PowerId = PowerId("denizen.mercenaries")
+  val id: PowerId = MercenariesCard.power.id
   val Dice: Int = 3
   /** "Discarded after {Red} lost." */
   val discarded: NoteKey = NoteKey("discarded", Vector(
     NotePart.Text("Discarded after "), NotePart.Arg(0), NotePart.Text(" lost.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Mercenaries] =
-    CatalogCards.denizen(catalog, id).map(new Mercenaries(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Mercenaries =
+    new Mercenaries(catalog)

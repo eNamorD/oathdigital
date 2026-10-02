@@ -8,7 +8,7 @@ import oathdigital.testkit.Table.p1
 class BanditPrinceSuite extends munit.FunSuite:
   import WhenPlayedHarness._
 
-  private val power = registered[BanditPrince]
+  private val power = registered[BanditPrince.type]
   private val prince = power.cardId
   private val played = hook(prince)
   /** Bandit Prince is adviser-only: p1 holds it. */

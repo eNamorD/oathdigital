@@ -4,7 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.Contribution
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object AnimalPlaymatesCard extends Denizen(DenizenId("40"), "Animal Playmates", Suit.Beast) with AdviserOnly:
@@ -18,8 +18,9 @@ object AnimalPlaymatesCard extends Denizen(DenizenId("40"), "Animal Playmates", 
   * other card the Muster pays as usual. It may be selected whatever the card,
   * as the Cup of Plenty may. The waiver is [[SupplyWaiver]].
   */
-final case class AnimalPlaymates private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class AnimalPlaymates private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = AnimalPlaymatesCard.id
   def id: PowerId = AnimalPlaymates.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
 
@@ -28,7 +29,7 @@ final case class AnimalPlaymates private (cardId: DenizenId,
     (_, _, suit) => suit == Suit.Beast)
 
 object AnimalPlaymates:
-  val id: PowerId = PowerId("denizen.animal-playmates")
+  val id: PowerId = AnimalPlaymatesCard.power.id
 
-  def forCatalog(catalog: ExecutableCatalog): Option[AnimalPlaymates] =
-    CatalogCards.denizen(catalog, id).map(new AnimalPlaymates(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): AnimalPlaymates =
+    new AnimalPlaymates(catalog)

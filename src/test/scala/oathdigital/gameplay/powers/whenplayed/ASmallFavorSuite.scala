@@ -8,7 +8,7 @@ class ASmallFavorSuite extends munit.FunSuite:
   import PowerFixture._
   import WhenPlayedHarness._
 
-  private val power = ASmallFavor.forCatalog(catalog).get
+  private val power = ASmallFavor
   private val card = power.cardId
   private val kind = PlayerFacts.forceKind(base, actor).toOption.get
   private def staged = leaveInBank(asAdviser(base, card), kind, 6)

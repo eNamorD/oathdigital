@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
+import oathdigital.catalog.{Denizen, PrintedPower}
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object BookBurningCard extends Denizen(DenizenId("22"), "Book Burning", Suit.Discord):
@@ -25,8 +25,33 @@ object BookBurningCard extends Denizen(DenizenId("22"), "Book Burning", Suit.Dis
   * When the attacker won it writes "Burned {n secrets} from {Blue}'s board.",
   * or "{Blue} had no secret to burn." when nothing was burnt.
   */
-final case class BookBurning private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = BookBurning.id
+case object BookBurning extends BattlePlan:
+  val cardId: DenizenId = BookBurningCard.id
+  val id: PowerId = BookBurningCard.power.id
+
+  /** "Burned {n secrets} from {Blue}'s board." */
+  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
+    NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
+    NotePart.Text("'s board.")))
+
+  /** "{Blue} had no secret to burn." */
+  val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
+    NotePart.Text(" had no secret to burn.")))
+
+  /** Every secret on `defender`'s board but one, the facedown ones turned
+    * faceup first. A batch runs its operations in order, so the burn sees the
+    * secrets just turned. */
+  private def burn(ready: ReadyGame, defender: PlayerId): Vector[CoreOperation] =
+    ready.game.current.players.find(_.player == defender).toVector.flatMap {
+      held =>
+        val burnt = held.board.faceUpSecrets + held.board.faceDownSecrets - 1
+        val turned = math.min(held.board.faceDownSecrets, burnt)
+        if burnt <= 0 then Vector.empty
+        else Option.when[CoreOperation](turned > 0)(FlipSecrets(defender,
+          turned, SecretSide.FaceDown, SecretSide.FaceUp)).toVector :+
+          Burn.secrets(burnt, PositionedLocation(Location.PlayArea(defender)))
+    }
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Attacker)
   override def noteKeys: Vector[NoteKey] =
@@ -53,32 +78,3 @@ final case class BookBurning private (cardId: DenizenId) extends BattlePlan:
           else BookBurning.none(PowerSourceRef.Card(cardId),
             NoteArg.Player(defender))
         })))))
-
-object BookBurning:
-  val id: PowerId = PowerId("denizen.book-burning")
-
-  /** "Burned {n secrets} from {Blue}'s board." */
-  val burned: NoteKey = NoteKey("burned", Vector(NotePart.Text("Burned "),
-    NotePart.Arg(0), NotePart.Text(" from "), NotePart.Arg(1),
-    NotePart.Text("'s board.")))
-
-  /** "{Blue} had no secret to burn." */
-  val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
-    NotePart.Text(" had no secret to burn.")))
-
-  /** Every secret on `defender`'s board but one, the facedown ones turned
-    * faceup first. A batch runs its operations in order, so the burn sees the
-    * secrets just turned. */
-  private def burn(ready: ReadyGame, defender: PlayerId): Vector[CoreOperation] =
-    ready.game.current.players.find(_.player == defender).toVector.flatMap {
-      held =>
-        val burnt = held.board.faceUpSecrets + held.board.faceDownSecrets - 1
-        val turned = math.min(held.board.faceDownSecrets, burnt)
-        if burnt <= 0 then Vector.empty
-        else Option.when[CoreOperation](turned > 0)(FlipSecrets(defender,
-          turned, SecretSide.FaceDown, SecretSide.FaceUp)).toVector :+
-          Burn.secrets(burnt, PositionedLocation(Location.PlayArea(defender)))
-    }
-
-  def forCatalog(catalog: ExecutableCatalog): Option[BookBurning] =
-    CatalogCards.denizen(catalog, id).map(new BookBurning(_))

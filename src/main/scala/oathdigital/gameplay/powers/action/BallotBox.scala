@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
-import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts}
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 object BallotBoxCard extends Denizen(DenizenId("141"), "Ballot Box", Suit.Hearth) with SiteOnly:
@@ -128,7 +128,7 @@ final case class BallotBox private (catalog: ExecutableCatalog)
           NoteArg.Site(site)))
 
 object BallotBox:
-  val id: PowerId = PowerId("denizen.ballot-box")
+  val id: PowerId = BallotBoxCard.power.id
   /** "Replaced {n} {Blue} warband at {site}." */
   val replaced: NoteKey = NoteKey(NoteKey.Used, Vector(
     NotePart.Text("Replaced "), NotePart.Arg(0), NotePart.Text(" "),
@@ -170,5 +170,5 @@ object BallotBox:
     ready.game.current.players.find(state =>
       PlayerForceKind.of(ready, state).contains(kind)).map(_.player)
 
-  def forCatalog(catalog: ExecutableCatalog): Option[BallotBox] =
-    CatalogCards.denizen(catalog, id).map(_ => new BallotBox(catalog))
+  def forCatalog(catalog: ExecutableCatalog): BallotBox =
+    new BallotBox(catalog)

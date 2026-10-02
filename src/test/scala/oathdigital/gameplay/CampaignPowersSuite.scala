@@ -20,7 +20,7 @@ class CampaignPowersSuite extends munit.FunSuite:
   private val eligibility =
     Sequence(Vector.empty, Some(PowerWindow.CampaignActionEligibility))
   private val vowPowers =
-    WalkerPowers(VowOfPeaceContribution.forCatalog(catalog).toVector)
+    WalkerPowers(Vector(VowOfPeaceContribution))
 
   private def holding(orientation: Orientation, holder: PlayerId): ReadyGame =
     initial.updateCurrent(current => current.copy(players = current.players.map(

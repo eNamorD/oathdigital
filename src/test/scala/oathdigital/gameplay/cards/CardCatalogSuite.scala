@@ -1,6 +1,7 @@
 package oathdigital.gameplay.cards
 
-import oathdigital.catalog.{AdviserOnly, Locked, PrintsPowers, SiteOnly}
+import oathdigital.catalog.{AdviserOnly, ExecutableCatalog, Locked,
+  PrintsPowers, SiteOnly}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.model.PowerId
 
@@ -102,3 +103,11 @@ class CardCatalogSuite extends munit.FunSuite:
       (card.getClass.getPackageName == "oathdigital.catalog.holding") ==
         card.powers.exists(power => registered(power.id)))
     assertEquals(misplaced.map(_.name), Vector.empty)
+
+  test("denizen powers are registered whichever denizens a catalog lists"):
+    def denizenPowers(listed: ExecutableCatalog): Set[PowerId] =
+      (WalkerPowerCatalog.default(listed).powers.map(_.id) ++
+        PhasePowerCatalog.default(listed).powers.map(_.id))
+        .filter(_.value.startsWith("denizen.")).toSet
+    assertEquals(denizenPowers(catalog.copy(denizens = Vector.empty)),
+      denizenPowers(catalog))

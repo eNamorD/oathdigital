@@ -11,7 +11,7 @@ class SecondChanceSuite extends munit.FunSuite:
 
   private val chance = CatalogNames.denizen("Second Chance")
   private val source = DecisionOptionRef.Denizen(chance)
-  private val power = SecondChance.forCatalog(catalog).get
+  private val power = SecondChance.forCatalog(catalog)
   private val order = SearchFixture.denizensOf(Suit.Order)
   private val discord = SearchFixture.denizensOf(Suit.Discord)
   private val hearth = SearchFixture.denizensOf(Suit.Hearth)

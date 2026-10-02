@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object OracleCard extends Denizen(DenizenId("160"), "Oracle", Suit.Nomad) with SiteOnly:
@@ -48,7 +47,7 @@ final case class Oracle private (catalog: ExecutableCatalog)
           CardPlayProcedure.Origin.TemporaryHand))))))
 
 object Oracle:
-  val id: PowerId = PowerId("denizen.oracle")
+  val id: PowerId = OracleCard.power.id
   /** "{Red} drew {Vision} from the world deck." */
   val drew: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" drew "), NotePart.Arg(1),
@@ -57,8 +56,8 @@ object Oracle:
   val noVision: NoteKey = NoteKey("used.none",
     Vector(NotePart.Text("The world deck held no Vision.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Oracle] =
-    CatalogCards.denizen(catalog, id).map(_ => new Oracle(catalog))
+  def forCatalog(catalog: ExecutableCatalog): Oracle =
+    new Oracle(catalog)
 
   /** The Vision closest to the top of the world deck, stored top first. */
   private def first(ready: ReadyGame): Option[VisionId] =

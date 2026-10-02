@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.NoteSupport
@@ -22,10 +22,34 @@ object RoyalTaxCard extends Denizen(DenizenId("117"), "Royal Tax", Suit.Order):
   * what they hold, with a line of its own. A target holding no favor is
   * named instead. A take a restriction refuses writes no line.
   */
-final case class RoyalTax private (cardId: DenizenId)
-    extends WhenPlayedPower:
-  import RoyalTax._
-  def id: PowerId = RoyalTax.id
+case object RoyalTax extends WhenPlayedPower:
+  val cardId: DenizenId = RoyalTaxCard.id
+  val id: PowerId = RoyalTaxCard.power.id
+  /** The favor each target gives. */
+  val Taken: Int = 2
+  /** "{Red} took {n favor} from {Blue}." */
+  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
+    NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
+    NotePart.Arg(2), NotePart.Text(".")))
+  /** "{Blue} had no favor to take." */
+  val broke: NoteKey = NoteKey("broke", Vector(NotePart.Arg(0),
+    NotePart.Text(" had no favor to take.")))
+  /** "No player could be taxed." */
+  val none: NoteKey = NoteKey("none", Vector(
+    NotePart.Text("No player could be taxed.")))
+
+  /** Every other player, in seat order from the actor, whose pawn stands at
+    * a site the actor rules in the region of the actor's pawn. */
+  private def targets(ready: ReadyGame, actor: PlayerId)
+      : Vector[PlayerState] =
+    val current = ready.game.current
+    val region = current.players.find(_.player == actor).flatMap(_.pawnSite)
+      .flatMap(current.map.regionOf)
+    val taxed = PowerAccess.ruledSites(ready, actor)
+      .filter(site => region.exists(current.map.regionOf(site).contains))
+    val seat = current.players.indexWhere(_.player == actor)
+    (current.players.drop(seat + 1) ++ current.players.take(seat))
+      .filter(_.pawnSite.exists(taxed.contains))
 
   override def noteKeys: Vector[NoteKey] = Vector(took, broke, none)
 
@@ -52,34 +76,3 @@ final case class RoyalTax private (cardId: DenizenId)
     val lost = -states.previous.fold(0)(NoteSupport.favor(_, target))
     Option.when(lost > 0)(took(cardSource, NoteArg.Player(actor),
       NoteArg.Amount(lost, NoteUnit.Favor), NoteArg.Player(target)))
-
-object RoyalTax:
-  val id: PowerId = PowerId("denizen.royal-tax")
-  /** The favor each target gives. */
-  val Taken: Int = 2
-  /** "{Red} took {n favor} from {Blue}." */
-  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
-    NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
-    NotePart.Arg(2), NotePart.Text(".")))
-  /** "{Blue} had no favor to take." */
-  val broke: NoteKey = NoteKey("broke", Vector(NotePart.Arg(0),
-    NotePart.Text(" had no favor to take.")))
-  /** "No player could be taxed." */
-  val none: NoteKey = NoteKey("none", Vector(
-    NotePart.Text("No player could be taxed.")))
-
-  def forCatalog(catalog: ExecutableCatalog): Option[RoyalTax] =
-    WhenPlayedPower.cardOf(catalog, id).map(new RoyalTax(_))
-
-  /** Every other player, in seat order from the actor, whose pawn stands at
-    * a site the actor rules in the region of the actor's pawn. */
-  private def targets(ready: ReadyGame, actor: PlayerId)
-      : Vector[PlayerState] =
-    val current = ready.game.current
-    val region = current.players.find(_.player == actor).flatMap(_.pawnSite)
-      .flatMap(current.map.regionOf)
-    val taxed = PowerAccess.ruledSites(ready, actor)
-      .filter(site => region.exists(current.map.regionOf(site).contains))
-    val seat = current.players.indexWhere(_.player == actor)
-    (current.players.drop(seat + 1) ++ current.players.take(seat))
-      .filter(_.pawnSite.exists(taxed.contains))

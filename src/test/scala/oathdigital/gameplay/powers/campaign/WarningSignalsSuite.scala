@@ -175,7 +175,7 @@ class WarningSignalsSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = WarningSignals.forCatalog(catalog).get
+  private val power = WarningSignals.forCatalog(catalog)
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 

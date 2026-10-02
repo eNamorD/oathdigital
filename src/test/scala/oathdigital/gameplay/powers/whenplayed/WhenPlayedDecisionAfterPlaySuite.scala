@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.SearchFixture._
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** A When Played power that asks the player something asks it after the card
@@ -12,7 +11,7 @@ import oathdigital.model._
   * such a question; these run it through the whole rules path.
   */
 class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
-  private val heirloom = FamilyHeirloom.forCatalog(catalog).get.cardId
+  private val heirloom = FamilyHeirloom.cardId
   private val take = DecisionAnswer.ChooseOneAnswer(FamilyHeirloom.keep)
   private val bottom = DecisionAnswer.ChooseOneAnswer(FamilyHeirloom.bottom)
 

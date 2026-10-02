@@ -25,8 +25,9 @@ object TownMeetingCard extends Denizen(DenizenId("236"), "Town Meeting", Suit.He
   * used until that is settled. Its line tells the whole gain; each bank's
   * Gain line stays.
   */
-final case class TownMeeting private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class TownMeeting private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = TownMeetingCard.id
   import TownMeeting._
   def id: PowerId = TownMeeting.id
 
@@ -52,7 +53,7 @@ final case class TownMeeting private (cardId: DenizenId,
           NoteUnit.Favor, NoteSupport.favor)))))
 
 object TownMeeting:
-  val id: PowerId = PowerId("denizen.town-meeting")
+  val id: PowerId = TownMeetingCard.power.id
   val decisionId: String = "cardplay.town-meeting.banks"
   /** "{Red} gained {n favor}." */
   val gained: NoteKey = NoteSupport.gainedKey("gained")
@@ -63,5 +64,5 @@ object TownMeeting:
   val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
     NotePart.Text(" ruled no Hearth card.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[TownMeeting] =
-    WhenPlayedPower.cardOf(catalog, id).map(new TownMeeting(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): TownMeeting =
+    new TownMeeting(catalog)

@@ -1,10 +1,9 @@
 package oathdigital.gameplay.powers.title
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
-  PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object ChaosCultCard extends Denizen(DenizenId("101"), "Chaos Cult", Suit.Discord) with AdviserOnly:
@@ -29,10 +28,15 @@ object ChaosCultCard extends Denizen(DenizenId("101"), "Chaos Cult", Suit.Discor
   * resolution is the trait default, `Automatic`: it fires on every title
   * change.
   */
-final case class ChaosCult private (cardId: DenizenId)
-    extends ContributingPower:
-  import ChaosCult._
-  def id: PowerId = ChaosCult.id
+case object ChaosCult extends ContributingPower:
+  val cardId: DenizenId = ChaosCultCard.id
+  val id: PowerId = ChaosCultCard.power.id
+  val Favor: Int = 1
+  /** "{Red} took {1 favor} from {Blue}." */
+  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
+    NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
+    NotePart.Arg(2), NotePart.Text(".")))
+
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   override def noteKeys: Vector[NoteKey] = Vector(took)
@@ -66,14 +70,3 @@ final case class ChaosCult private (cardId: DenizenId)
     from <- step._2.game.current.title.holder
   yield took(PowerSourceRef.Card(cardId), NoteArg.Player(holder),
     NoteArg.Amount(amount, NoteUnit.Favor), NoteArg.Player(from))
-
-object ChaosCult:
-  val id: PowerId = PowerId("denizen.chaos-cult")
-  val Favor: Int = 1
-  /** "{Red} took {1 favor} from {Blue}." */
-  val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
-    NotePart.Text(" took "), NotePart.Arg(1), NotePart.Text(" from "),
-    NotePart.Arg(2), NotePart.Text(".")))
-
-  def forCatalog(catalog: ExecutableCatalog): Option[ChaosCult] =
-    CatalogCards.denizen(catalog, id).map(new ChaosCult(_))

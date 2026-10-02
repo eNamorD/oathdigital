@@ -8,7 +8,7 @@ import oathdigital.testkit.Table.{p1, p2, p3}
 class RoyalTaxSuite extends munit.FunSuite:
   import WhenPlayedHarness._
 
-  private val power = registered[RoyalTax]
+  private val power = registered[RoyalTax.type]
   private val tax = power.cardId
 
   /** Royal Tax as p1's adviser. p1 rules its own site and another site in

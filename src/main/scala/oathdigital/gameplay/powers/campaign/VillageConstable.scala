@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.model._
 
 object VillageConstableCard extends Denizen(DenizenId("132"), "Village Constable", Suit.Hearth) with SiteOnly:
@@ -18,8 +17,11 @@ object VillageConstableCard extends Denizen(DenizenId("132"), "Village Constable
   * holds the People's Favor. Bandits hold no banner, so it is always offered
   * against them, and a bandit defender applies it at a site it rules.
   */
-final case class VillageConstable private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = VillageConstable.id
+case object VillageConstable extends BattlePlan:
+  val cardId: DenizenId = VillageConstableCard.id
+  val id: PowerId = VillageConstableCard.power.id
+  val Dice: Int = 2
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -31,10 +33,3 @@ final case class VillageConstable private (cardId: DenizenId) extends BattlePlan
         PlanDice.label("Village Constable", context.side, VillageConstable.Dice),
         Vector.empty,
         Vector(PlanDice.effect(context.side, VillageConstable.Dice))))
-
-object VillageConstable:
-  val id: PowerId = PowerId("denizen.village-constable")
-  val Dice: Int = 2
-
-  def forCatalog(catalog: ExecutableCatalog): Option[VillageConstable] =
-    CatalogCards.denizen(catalog, id).map(new VillageConstable(_))

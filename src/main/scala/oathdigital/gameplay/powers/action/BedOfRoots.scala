@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts,
-  PowerAnswers}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 object BedOfRootsCard extends Denizen(DenizenId("212"), "Bed of Roots", Suit.Beast) with SiteOnly:
@@ -82,7 +81,7 @@ final case class BedOfRoots private (catalog: ExecutableCatalog)
       .getOrElse(bare(card, NoteArg.Player(player))))
 
 object BedOfRoots:
-  val id: PowerId = PowerId("denizen.bed-of-roots")
+  val id: PowerId = BedOfRootsCard.power.id
   val decisionId: String = "power.bed-of-roots.adviser"
   val Gained: Int = 2
   /** "{Red} buried {card} and gained {n secrets}." */
@@ -99,5 +98,5 @@ object BedOfRoots:
     PlayerFacts.player(ready, player).toOption.toVector.flatMap(_.advisers
       .collect { case card @ DenizenState(_, Orientation.FaceUp, _) => card })
 
-  def forCatalog(catalog: ExecutableCatalog): Option[BedOfRoots] =
-    CatalogCards.denizen(catalog, id).map(_ => new BedOfRoots(catalog))
+  def forCatalog(catalog: ExecutableCatalog): BedOfRoots =
+    new BedOfRoots(catalog)

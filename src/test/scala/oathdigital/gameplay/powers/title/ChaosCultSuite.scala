@@ -10,7 +10,7 @@ import oathdigital.testkit.{Look, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class ChaosCultSuite extends munit.FunSuite:
-  private val power = ChaosCult.forCatalog(catalog).get
+  private val power = ChaosCult
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowers(Vector(power)))
   private val (active, cultist, leader) = (p1, p2, p3)

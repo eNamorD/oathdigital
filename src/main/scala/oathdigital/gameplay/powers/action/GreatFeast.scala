@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PlayerFacts}
+import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
 object GreatFeastCard extends Denizen(DenizenId("257"), "Great Feast", Suit.Order):
@@ -66,7 +66,7 @@ final case class GreatFeast private (catalog: ExecutableCatalog)
           bare(card, NoteArg.Site(site))))
 
 object GreatFeast:
-  val id: PowerId = PowerId("denizen.great-feast")
+  val id: PowerId = GreatFeastCard.power.id
   val decisionId: String = "power.great-feast.card"
   val Gained: Int = 3
   /** "{Red} discarded {card} and gained {n} Supply." */
@@ -77,5 +77,5 @@ object GreatFeast:
   val bare: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no Beast card.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[GreatFeast] =
-    CatalogCards.denizen(catalog, id).map(_ => new GreatFeast(catalog))
+  def forCatalog(catalog: ExecutableCatalog): GreatFeast =
+    new GreatFeast(catalog)

@@ -9,31 +9,32 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * Talkers, Nature Worship, Cracked Sage, Village Constable, Banner Breakers,
   * Cracking Ground, Walled Garden, Bandit Standard, Extra Provisions,
   * Encirclement, Disgraced Captain, Battle Axes, Field Promotion, Tribute
-  * Spoils and Military Parade, registered together. A plan whose card is
-  * absent from `catalog` is omitted.
+  * Spoils and Military Parade, registered together. A relic or edifice plan
+  * whose card is absent from `catalog` is omitted; a denizen plan names its
+  * card and is always present.
   */
 object SimplePlans:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
-    Mercenaries.forCatalog(catalog).toVector ++
-      Wrestlers.forCatalog(catalog).toVector ++
+    Vector(Mercenaries.forCatalog(catalog)) ++
+      Vector(Wrestlers) ++
       FearsomeShield.forCatalog(catalog).toVector ++
       ToweringRampart.forCatalog(catalog).toVector ++
       CrackedRampart.forCatalog(catalog).toVector ++
-      BattleHonors.forCatalog(catalog).toVector ++
-      Longbows.forCatalog(catalog).toVector ++
+      Vector(BattleHonors) ++
+      Vector(Longbows) ++
       BlackSword.forCatalog(catalog).toVector ++
-      FireTalkers.forCatalog(catalog).toVector ++
-      NatureWorship.forCatalog(catalog).toVector ++
-      CrackedSage.forCatalog(catalog).toVector ++
-      VillageConstable.forCatalog(catalog).toVector ++
-      BannerBreakers.forCatalog(catalog).toVector ++
-      CrackingGround.forCatalog(catalog).toVector ++
-      WalledGarden.forCatalog(catalog).toVector ++
+      Vector(FireTalkers) ++
+      Vector(NatureWorship.forCatalog(catalog)) ++
+      Vector(CrackedSage.forCatalog(catalog)) ++
+      Vector(VillageConstable) ++
+      Vector(BannerBreakers) ++
+      Vector(CrackingGround) ++
+      Vector(WalledGarden.forCatalog(catalog)) ++
       BanditStandard.forCatalog(catalog).toVector ++
-      ExtraProvisions.forCatalog(catalog).toVector ++
-      Encirclement.forCatalog(catalog).toVector ++
-      DisgracedCaptain.forCatalog(catalog).toVector ++
-      BattleAxes.forCatalog(catalog).toVector ++
-      FieldPromotion.forCatalog(catalog).toVector ++
-      TributeSpoils.forCatalog(catalog).toVector ++
-      MilitaryParade.forCatalog(catalog).toVector
+      Vector(ExtraProvisions) ++
+      Vector(Encirclement) ++
+      Vector(DisgracedCaptain.forCatalog(catalog)) ++
+      Vector(BattleAxes.forCatalog(catalog)) ++
+      Vector(FieldPromotion) ++
+      Vector(TributeSpoils.forCatalog(catalog)) ++
+      Vector(MilitaryParade.forCatalog(catalog))

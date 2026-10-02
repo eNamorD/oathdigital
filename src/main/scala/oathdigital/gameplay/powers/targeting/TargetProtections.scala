@@ -5,12 +5,14 @@ import oathdigital.gameplay.powerresolver.ContributingPower
 
 /** The persistent rules that keep a player, or what they hold, from being
   * targeted by a Raid, a Challenge or a Conspiracy, or taken, registered
-  * together. A power whose card is absent from `catalog` is omitted.
+  * together. A relic or edifice power whose card is absent from
+  * `catalog` is omitted; a denizen power names its card and is always
+  * present.
   */
 object TargetProtections:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     CircletOfCommand.forCatalog(catalog).toVector ++
-      ForgottenVault.forCatalog(catalog).toVector ++
-      LostTongue.forCatalog(catalog).toVector ++
+      Vector(ForgottenVault.forCatalog(catalog)) ++
+      Vector(LostTongue.forCatalog(catalog)) ++
       OakenFortress.forCatalog(catalog).toVector ++
       RottingFortress.forCatalog(catalog).toVector

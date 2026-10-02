@@ -12,22 +12,23 @@ import oathdigital.gameplay.powerresolver.ContributingPower
   * and a discard at the end), The Great Levy (the attack scored again),
   * Garrison Armory (the targets' warbands added again), Hospital (killed
   * warbands saved until the end) and Book Burning (secrets burnt at the
-  * end). A power whose card is absent from `catalog` is omitted.
+  * end). A relic power whose card is absent from `catalog` is
+  * omitted; a denizen power names its card and is always present.
   */
 object PlanRules:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     StickyFire.forCatalog(catalog).toVector ++
-      WarningSignals.forCatalog(catalog).toVector ++
-      GleamingArmor.forCatalog(catalog).toVector ++
-      InsectSwarm.forCatalog(catalog).toVector ++
-      HorseArchers.forCatalog(catalog).toVector ++
-      StormCaller.forCatalog(catalog).toVector ++
-      RivalKhan.forCatalog(catalog).toVector ++
-      GreatCrusade.forCatalog(catalog).toVector ++
-      PledgeOfDefense.forCatalog(catalog).toVector ++
+      Vector(WarningSignals.forCatalog(catalog)) ++
+      Vector(GleamingArmor.forCatalog(catalog)) ++
+      Vector(InsectSwarm.forCatalog(catalog)) ++
+      Vector(HorseArchers.forCatalog(catalog)) ++
+      Vector(StormCaller.forCatalog(catalog)) ++
+      Vector(RivalKhan.forCatalog(catalog)) ++
+      Vector(GreatCrusade.forCatalog(catalog)) ++
+      Vector(PledgeOfDefense.forCatalog(catalog)) ++
       BagOfSiegeworks.forCatalog(catalog).toVector ++
-      RainBoots.forCatalog(catalog).toVector ++
-      GreatLevy.forCatalog(catalog).toVector ++
-      GarrisonArmory.forCatalog(catalog).toVector ++
-      Hospital.forCatalog(catalog).toVector ++
-      BookBurning.forCatalog(catalog).toVector
+      Vector(RainBoots.forCatalog(catalog)) ++
+      Vector(GreatLevy) ++
+      Vector(GarrisonArmory) ++
+      Vector(Hospital) ++
+      Vector(BookBurning)

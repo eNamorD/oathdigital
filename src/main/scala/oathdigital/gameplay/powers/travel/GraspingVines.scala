@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
 import oathdigital.model._
 
 object GraspingVinesCard extends Denizen(DenizenId("178"), "Grasping Vines", Suit.Beast) with SiteOnly:
@@ -25,8 +25,9 @@ object GraspingVinesCard extends Denizen(DenizenId("178"), "Grasping Vines", Sui
   * The kill writes "Killed 1 {Red} warband.", read from its step, so a
   * traveller with no warband reads nothing.
   */
-final case class GraspingVines private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class GraspingVines private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = GraspingVinesCard.id
   def id: PowerId = GraspingVines.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -53,9 +54,9 @@ final case class GraspingVines private (cardId: DenizenId,
       PowerSourceRef.Card(cardId), route.player)))
 
 object GraspingVines:
-  val id: PowerId = PowerId("denizen.grasping-vines")
+  val id: PowerId = GraspingVinesCard.power.id
   val Warbands: Int = 1
   val killed: NoteKey = NoteSupport.killedKey("killed")
 
-  def forCatalog(catalog: ExecutableCatalog): Option[GraspingVines] =
-    CatalogCards.denizen(catalog, id).map(new GraspingVines(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): GraspingVines =
+    new GraspingVines(catalog)

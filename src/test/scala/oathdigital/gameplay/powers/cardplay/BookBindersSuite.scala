@@ -192,7 +192,7 @@ class BookBindersSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = BookBinders.forCatalog(catalog).get
+  private val power = BookBinders.forCatalog(catalog)
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
   private def gained(amount: Int, suit: Suit) = NoteText.Said("gained",

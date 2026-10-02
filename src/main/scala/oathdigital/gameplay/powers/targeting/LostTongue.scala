@@ -5,7 +5,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, RuledCards}
+import oathdigital.gameplay.powers.{CatalogResolution, RuledCards}
 import oathdigital.model._
 
 object LostTongueCard extends Denizen(DenizenId("157"), "Lost Tongue", Suit.Nomad) with AdviserOnly:
@@ -39,8 +39,9 @@ object LostTongueCard extends Denizen(DenizenId("157"), "Lost Tongue", Suit.Noma
   *
   * Bandits hold nothing and take nothing, so they are never refused.
   */
-final case class LostTongue private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class LostTongue private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = LostTongueCard.id
   def id: PowerId = LostTongue.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -108,11 +109,11 @@ final case class LostTongue private (cardId: DenizenId,
       RuledCards.of(catalog, ready, SiteRuler.Player(actor), Suit.Nomad).isEmpty)
 
 object LostTongue:
-  val id: PowerId = PowerId("denizen.lost-tongue")
+  val id: PowerId = LostTongueCard.power.id
 
   /** "{Blue}'s banners and relics cannot be targeted." */
   val shielded: NoteKey = NoteKey("shielded", Vector(NotePart.Arg(0),
     NotePart.Text("'s banners and relics cannot be targeted.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[LostTongue] =
-    CatalogCards.denizen(catalog, id).map(new LostTongue(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): LostTongue =
+    new LostTongue(catalog)

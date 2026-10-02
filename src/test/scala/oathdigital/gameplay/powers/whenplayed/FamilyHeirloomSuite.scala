@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ProcedureWalker
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
@@ -11,7 +10,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
   import PowerFixture._
   import WhenPlayedHarness._
 
-  private val power = FamilyHeirloom.forCatalog(catalog).get
+  private val power = FamilyHeirloom
   private val card = power.cardId
   private val staged = asAdviser(base, card)
   private val top = staged.game.current.commonCards.relicDeck.head

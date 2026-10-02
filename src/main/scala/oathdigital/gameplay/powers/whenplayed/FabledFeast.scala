@@ -23,8 +23,9 @@ object FabledFeastCard extends Denizen(DenizenId("136"), "Fabled Feast", Suit.He
   * it holds. Its line names the bank, so the choice is narrated, and it
   * covers the Gain line.
   */
-final case class FabledFeast private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class FabledFeast private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = FabledFeastCard.id
   import FabledFeast._
   def id: PowerId = FabledFeast.id
 
@@ -47,7 +48,7 @@ final case class FabledFeast private (cardId: DenizenId,
           covers = true))))
 
 object FabledFeast:
-  val id: PowerId = PowerId("denizen.fabled-feast")
+  val id: PowerId = FabledFeastCard.power.id
   val decisionId: String = "cardplay.fabled-feast.bank"
   /** "{Red} took {n favor} from {the Hearth bank}." */
   val took: NoteKey = NoteKey("took", Vector(NotePart.Arg(0),
@@ -60,8 +61,8 @@ object FabledFeast:
   val none: NoteKey = NoteKey("none", Vector(NotePart.Arg(0),
     NotePart.Text(" ruled no Hearth card.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[FabledFeast] =
-    WhenPlayedPower.cardOf(catalog, id).map(new FabledFeast(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): FabledFeast =
+    new FabledFeast(catalog)
 
   /** The banks that hold favor, in suit order. */
   private def stocked(ready: ReadyGame): Vector[Suit] =

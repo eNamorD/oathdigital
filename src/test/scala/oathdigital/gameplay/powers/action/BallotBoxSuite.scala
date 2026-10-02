@@ -11,7 +11,7 @@ class BallotBoxSuite extends munit.FunSuite:
 
   private val box = CatalogNames.denizen("Ballot Box")
   private val source = DecisionOptionRef.Denizen(box)
-  private val power = BallotBox.forCatalog(catalog).get
+  private val power = BallotBox.forCatalog(catalog)
   private val home = Table.homeOf(p1)
   private val hearth = SearchFixture.denizensOf(Suit.Hearth)
     .filterNot(_ == box)

@@ -19,7 +19,5 @@ object AdviserLimit:
   val Default: Int = PlacementRules.DefaultAdviserLimit
 
   def of(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId): Int =
-    (SilverTongue.forCatalog(catalog).flatMap(_.limitFor(ready, player))
-      .toVector ++ Insomnia.forCatalog(catalog)
-      .flatMap(_.limitFor(ready, player)).toVector)
-      .minOption.getOrElse(Default)
+    Vector(SilverTongue.forCatalog(catalog).limitFor(ready, player),
+      Insomnia.limitFor(ready, player)).flatten.minOption.getOrElse(Default)

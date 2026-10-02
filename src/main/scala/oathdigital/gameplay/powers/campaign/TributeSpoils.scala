@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object TributeSpoilsCard extends Denizen(DenizenId("239"), "Tribute Spoils", Suit.Nomad):
@@ -23,8 +22,9 @@ object TributeSpoilsCard extends Denizen(DenizenId("239"), "Tribute Spoils", Sui
   * pay nothing, so a bandit defender never applies it. The gains write the
   * generic gain lines, so it writes no line of its own.
   */
-final case class TributeSpoils private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class TributeSpoils private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = TributeSpoilsCard.id
   def id: PowerId = TributeSpoils.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -45,7 +45,7 @@ final case class TributeSpoils private (cardId: DenizenId,
           TributeSpoils.cardsAt(use.ready, result.targetSites))))))
 
 object TributeSpoils:
-  val id: PowerId = PowerId("denizen.tribute-spoils")
+  val id: PowerId = TributeSpoilsCard.power.id
   /** The favor placed to choose it. */
   val Favor: Int = 1
 
@@ -56,5 +56,5 @@ object TributeSpoils:
       case edifice: EdificeState => edifice.id
     }
 
-  def forCatalog(catalog: ExecutableCatalog): Option[TributeSpoils] =
-    CatalogCards.denizen(catalog, id).map(new TributeSpoils(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): TributeSpoils =
+    new TributeSpoils(catalog)

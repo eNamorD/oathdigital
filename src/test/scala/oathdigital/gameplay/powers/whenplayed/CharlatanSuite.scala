@@ -8,7 +8,7 @@ import oathdigital.testkit.Table.{p1, p2}
 class CharlatanSuite extends munit.FunSuite:
   import WhenPlayedHarness._
 
-  private val power = registered[Charlatan]
+  private val power = registered[Charlatan.type]
   private val charlatan = power.cardId
 
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =

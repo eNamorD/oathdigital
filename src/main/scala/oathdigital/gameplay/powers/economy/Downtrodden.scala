@@ -3,8 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts, PowerAnswers,
-  SelectedModifier}
+import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers, SelectedModifier}
 import oathdigital.model._
 
 object DowntroddenCard extends Denizen(DenizenId("81"), "Downtrodden", Suit.Discord):
@@ -25,8 +24,9 @@ object DowntroddenCard extends Denizen(DenizenId("81"), "Downtrodden", Suit.Disc
   * board, so it never changes a bank before the read. The gain is best-effort
   * like the base gain, and the generic gain lines tell it.
   */
-final case class Downtrodden private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class Downtrodden private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = DowntroddenCard.id
   def id: PowerId = Downtrodden.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
 
@@ -47,7 +47,7 @@ final case class Downtrodden private (cardId: DenizenId,
       case _ => None
 
 object Downtrodden:
-  val id: PowerId = PowerId("denizen.downtrodden")
+  val id: PowerId = DowntroddenCard.power.id
   val Warbands: Int = 2
 
   /** Whether `suit`'s bank holds strictly less favor than every other bank. */
@@ -55,5 +55,5 @@ object Downtrodden:
     val favor = (bank: Suit) => ready.banks.favor.getOrElse(bank, 0)
     Suit.all.filter(_ != suit).forall(other => favor(suit) < favor(other))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Downtrodden] =
-    CatalogCards.denizen(catalog, id).map(new Downtrodden(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Downtrodden =
+    new Downtrodden(catalog)

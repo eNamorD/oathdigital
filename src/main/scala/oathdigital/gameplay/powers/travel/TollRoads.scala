@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.travel
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
 import oathdigital.model._
 
 object TollRoadsCard extends Denizen(DenizenId("118"), "Toll Roads", Suit.Order) with SiteOnly:
@@ -27,8 +27,9 @@ object TollRoadsCard extends Denizen(DenizenId("118"), "Toll Roads", Suit.Order)
   * The payment writes "{Red} paid 1 favor to {Blue}.", or "{Red} burned 1
   * favor." when bandits rule, read from the payment's step.
   */
-final case class TollRoads private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends ContributingPower:
+final case class TollRoads private (catalog: ExecutableCatalog)
+    extends ContributingPower:
+  val cardId: DenizenId = TollRoadsCard.id
   def id: PowerId = TollRoads.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override lazy val resolution: PowerResolution =
@@ -74,7 +75,7 @@ final case class TollRoads private (cardId: DenizenId,
       case _ => TollRoads.burned(card, NoteArg.Player(traveller), amount)
 
 object TollRoads:
-  val id: PowerId = PowerId("denizen.toll-roads")
+  val id: PowerId = TollRoadsCard.power.id
   val Favor: Int = 1
   /** "{Red} paid {1 favor} to {Blue}." */
   val paid: NoteKey = NoteKey("paid", Vector(NotePart.Arg(0),
@@ -84,5 +85,5 @@ object TollRoads:
   val burned: NoteKey = NoteKey("burned", Vector(NotePart.Arg(0),
     NotePart.Text(" burned "), NotePart.Arg(1), NotePart.Text(".")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[TollRoads] =
-    CatalogCards.denizen(catalog, id).map(new TollRoads(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): TollRoads =
+    new TollRoads(catalog)

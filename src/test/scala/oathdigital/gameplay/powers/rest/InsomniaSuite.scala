@@ -57,7 +57,7 @@ class InsomniaSuite extends munit.FunSuite:
   test("its line restates the gain, covering the generic one"):
     val used = rules.startWalker(Ready(resting()), use, p1, Vector.empty,
       Vector(source)).toOption.get
-    assertEquals(NoteText.said(Insomnia.forCatalog(catalog).get, used.events),
+    assertEquals(NoteText.said(Insomnia, used.events),
       Vector(NoteText.Said(NoteKey.Used, s"${p1.value} gained 1 secret.",
         covers = true)))
 

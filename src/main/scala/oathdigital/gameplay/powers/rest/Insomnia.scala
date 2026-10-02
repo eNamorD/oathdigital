@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport}
+import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object InsomniaCard extends Denizen(DenizenId("97"), "Insomnia", Suit.Discord) with Locked with AdviserOnly:
@@ -24,12 +23,17 @@ object InsomniaCard extends Denizen(DenizenId("97"), "Insomnia", Suit.Discord) w
   * engine enforces. Its line, "{Red} gained 1 secret.", restates the gain in
   * place of the generic gain line, as Tutor's does.
   */
-final case class Insomnia private (cardId: DenizenId)
-    extends PhasePower with ContributingPower:
+case object Insomnia extends PhasePower with ContributingPower:
+  val cardId: DenizenId = InsomniaCard.id
+  val id: PowerId = InsomniaCard.power.id
+  /** How many advisers the holder may have, in either orientation. */
+  val HolderLimit: Int = 2
+  val Secrets: Int = 1
+  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
+
   private val limit = HolderAdviserLimit(cardId, Insomnia.HolderLimit,
     "Insomnia")
 
-  def id: PowerId = Insomnia.id
   def timing: PowerTiming = PowerTiming.Rest
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   override def noteKeys: Vector[NoteKey] = Vector(Insomnia.gained)
@@ -51,13 +55,3 @@ final case class Insomnia private (cardId: DenizenId)
     */
   def limitFor(ready: ReadyGame, player: PlayerId): Option[Int] =
     limit.limitFor(ready, player)
-
-object Insomnia:
-  val id: PowerId = PowerId("denizen.insomnia")
-  /** How many advisers the holder may have, in either orientation. */
-  val HolderLimit: Int = 2
-  val Secrets: Int = 1
-  val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
-
-  def forCatalog(catalog: ExecutableCatalog): Option[Insomnia] =
-    CatalogCards.denizen(catalog, id).map(new Insomnia(_))

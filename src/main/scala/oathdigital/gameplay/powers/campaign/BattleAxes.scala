@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object BattleAxesCard extends Denizen(DenizenId("256"), "Battle Axes", Suit.Order):
@@ -19,8 +18,9 @@ object BattleAxesCard extends Denizen(DenizenId("256"), "Battle Axes", Suit.Orde
   * bandit defender applies it at a site it rules when the attacker rules a
   * beast card.
   */
-final case class BattleAxes private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class BattleAxes private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = BattleAxesCard.id
   def id: PowerId = BattleAxes.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -35,8 +35,8 @@ final case class BattleAxes private (cardId: DenizenId,
         Vector.empty, Vector(PlanDice.effect(context.side, BattleAxes.Dice))))
 
 object BattleAxes:
-  val id: PowerId = PowerId("denizen.battle-axes")
+  val id: PowerId = BattleAxesCard.power.id
   val Dice: Int = 2
 
-  def forCatalog(catalog: ExecutableCatalog): Option[BattleAxes] =
-    CatalogCards.denizen(catalog, id).map(new BattleAxes(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): BattleAxes =
+    new BattleAxes(catalog)

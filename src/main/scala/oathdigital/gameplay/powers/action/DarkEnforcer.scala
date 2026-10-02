@@ -2,7 +2,6 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object DarkEnforcerCard extends Denizen(DenizenId("227"), "Dark Enforcer", Suit.Discord):
@@ -59,7 +58,7 @@ final case class DarkEnforcer private (catalog: ExecutableCatalog)
     else kept(card, NoteArg.Site(site))
 
 object DarkEnforcer:
-  val id: PowerId = PowerId("denizen.dark-enforcer")
+  val id: PowerId = DarkEnforcerCard.power.id
   /** "Discarded {cards}." */
   val discarded: NoteKey = NoteKey(NoteKey.Used, Vector(
     NotePart.Text("Discarded "), NotePart.Arg(0), NotePart.Text(".")))
@@ -67,5 +66,5 @@ object DarkEnforcer:
   val kept: NoteKey = NoteKey("used.none", Vector(NotePart.Arg(0),
     NotePart.Text(" held no Order or Hearth card to discard.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[DarkEnforcer] =
-    CatalogCards.denizen(catalog, id).map(_ => new DarkEnforcer(catalog))
+  def forCatalog(catalog: ExecutableCatalog): DarkEnforcer =
+    new DarkEnforcer(catalog)

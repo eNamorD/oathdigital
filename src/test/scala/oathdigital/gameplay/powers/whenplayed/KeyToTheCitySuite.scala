@@ -8,7 +8,7 @@ import oathdigital.testkit.Table.{p1, p2}
 class KeyToTheCitySuite extends munit.FunSuite:
   import WhenPlayedHarness._
 
-  private val power = registered[KeyToTheCity]
+  private val power = registered[KeyToTheCity.type]
   private val key = power.cardId
   private val played = hookAt(key, homeSite)
   /** Key to the City is site-only: it stands at p1's site. */

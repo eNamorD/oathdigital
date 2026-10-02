@@ -67,7 +67,7 @@ class WelcomingPartySuite extends munit.FunSuite:
     assertEquals(hearthBank(unselected), hearthBank(ready))
 
   test("a Vision is not a denizen, and a card does not trigger on its own play"):
-    val power = WelcomingParty.forCatalog(catalog).get
+    val power = WelcomingParty.forCatalog(catalog)
     val vision = CardPlayedFaceup(VisionRules.Faith,
       RuleSourceRef.Adviser(actor, VisionRules.Faith))
     val ctx = PowerCtx(atHome(base, party), actor, power.source,

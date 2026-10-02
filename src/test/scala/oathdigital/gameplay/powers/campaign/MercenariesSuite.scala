@@ -136,7 +136,7 @@ class MercenariesSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = Mercenaries.forCatalog(catalog).get
+  private val power = Mercenaries.forCatalog(catalog)
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
 import oathdigital.model._
@@ -25,43 +24,9 @@ object BanditPrinceCard extends Denizen(DenizenId("226"), "Bandit Prince", Suit.
   * not asked. One line per site tells the replacement, in answer order, and
   * covers that site's Moved line.
   */
-final case class BanditPrince private (cardId: DenizenId)
-    extends WhenPlayedPower:
-  import BanditPrince._
-  def id: PowerId = BanditPrince.id
-
-  override def noteKeys: Vector[NoteKey] = Vector(replaced, none)
-  override def narratedDecisions: Set[String] = Set(decisionId)
-
-  def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
-    Vector(Branch((live, _) =>
-      val sites = banditSites(live)
-      if sites.isEmpty then Vector(Note(id, _ =>
-        Some(none(PowerSourceRef.Card(cardId)))))
-      else if affordable(live, actor, sites).isEmpty then Vector.empty
-      else Vector(
-        Decide(decisionId, actor, DecisionQuery.ChooseMany(0, sites.size,
-          affordable(live, actor, sites).map(site =>
-            DecisionOption.Site(DecisionOptionRef.Site(site))),
-          heading = Some("Bandit Prince: choose the sites whose bandits your " +
-            "warbands replace"))),
-        BuildOps((ready, pending) => replace(ready, actor, pending)),
-        Branch((_, pending) => chosen(pending).map(site =>
-          Note(id, replacedNote(_, actor, site), covers = true))))))
-
-  /** The actor's warbands the replacement put at `site`. */
-  private def replacedNote(states: NoteStates, actor: PlayerId,
-      site: SiteId): Option[PowerNote] = for
-    (before, after) <- states.previous
-    kind <- PlayerFacts.forceKind(after, actor).toOption
-    count = held(after, site, kind)
-    if count > 0 && bandits(before, site) > 0
-  yield replaced(PowerSourceRef.Card(cardId), NoteArg.Number(count),
-    NoteArg.Site(site), NoteArg.Player(actor))
-
-object BanditPrince:
-  val id: PowerId = PowerId("denizen.bandit-prince")
+case object BanditPrince extends WhenPlayedPower:
+  val cardId: DenizenId = BanditPrinceCard.id
+  val id: PowerId = BanditPrinceCard.power.id
   val decisionId: String = "cardplay.bandit-prince.sites"
   /** "Replaced {n} bandit at {site} with {Red}'s warbands." */
   val replaced: NoteKey = NoteKey("replaced", Vector(
@@ -71,9 +36,6 @@ object BanditPrince:
   /** "No site was ruled by bandits." */
   val none: NoteKey = NoteKey("none", Vector(
     NotePart.Text("No site was ruled by bandits.")))
-
-  def forCatalog(catalog: ExecutableCatalog): Option[BanditPrince] =
-    WhenPlayedPower.cardOf(catalog, id).map(new BanditPrince(_))
 
   /** The sites in play that bandits hold, in map order. */
   private def banditSites(ready: ReadyGame): Vector[SiteId] =
@@ -122,3 +84,33 @@ object BanditPrince:
     yield counts.map { case (site, count) => Replace(
       Piece.Warbands(ForceKind.Bandit, count), Piece.Warbands(kind, count),
       PositionedLocation(Location.Site(site))) }
+
+  override def noteKeys: Vector[NoteKey] = Vector(replaced, none)
+  override def narratedDecisions: Set[String] = Set(decisionId)
+
+  def effect(ctx: PowerCtx): Vector[Operation] =
+    val actor = ctx.activePlayer
+    Vector(Branch((live, _) =>
+      val sites = banditSites(live)
+      if sites.isEmpty then Vector(Note(id, _ =>
+        Some(none(PowerSourceRef.Card(cardId)))))
+      else if affordable(live, actor, sites).isEmpty then Vector.empty
+      else Vector(
+        Decide(decisionId, actor, DecisionQuery.ChooseMany(0, sites.size,
+          affordable(live, actor, sites).map(site =>
+            DecisionOption.Site(DecisionOptionRef.Site(site))),
+          heading = Some("Bandit Prince: choose the sites whose bandits your " +
+            "warbands replace"))),
+        BuildOps((ready, pending) => replace(ready, actor, pending)),
+        Branch((_, pending) => chosen(pending).map(site =>
+          Note(id, replacedNote(_, actor, site), covers = true))))))
+
+  /** The actor's warbands the replacement put at `site`. */
+  private def replacedNote(states: NoteStates, actor: PlayerId,
+      site: SiteId): Option[PowerNote] = for
+    (before, after) <- states.previous
+    kind <- PlayerFacts.forceKind(after, actor).toOption
+    count = held(after, site, kind)
+    if count > 0 && bandits(before, site) > 0
+  yield replaced(PowerSourceRef.Card(cardId), NoteArg.Number(count),
+    NoteArg.Site(site), NoteArg.Player(actor))

@@ -46,7 +46,7 @@ class VowOfObedienceSuite extends munit.FunSuite:
     assert(!offered(parkedAt).contains("adviser-faceup"))
 
   private def hidden(from: OathTransition): Vector[NoteText.Said] =
-    val power = VowOfObedience.forCatalog(catalog).get
+    val power = VowOfObedience
     NoteText.said(power.id, power.noteKeys, from.events)
 
   private val noFaceup = NoteText.Said("no-faceup",
@@ -115,6 +115,6 @@ class VowOfObedienceSuite extends munit.FunSuite:
 
   test("REST: the take is written as its own line, covering the generic one"):
     val done = rest(resting(Map(Suit.Hearth -> 2)))
-    assertEquals(NoteText.said(VowOfObedience.forCatalog(catalog).get, done.events),
+    assertEquals(NoteText.said(VowOfObedience, done.events),
       Vector(NoteText.Said(NoteKey.Used,
         s"${actor.value} took 1 favor from the Hearth bank.", covers = true)))

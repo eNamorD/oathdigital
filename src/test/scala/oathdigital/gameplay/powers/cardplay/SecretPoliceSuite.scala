@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
   SearchFixture, TargetsFixture}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class SecretPoliceSuite extends munit.FunSuite:
@@ -72,7 +71,7 @@ class SecretPoliceSuite extends munit.FunSuite:
       .contains("adviser-faceup"))
 
   private def hidden(from: OathTransition): Vector[NoteText.Said] =
-    val power = SecretPolice.forCatalog(catalog).get
+    val power = SecretPolice
     NoteText.said(power.id, power.noteKeys, from.events)
 
   test("the hidden faceup placement is written as the Police's line"):

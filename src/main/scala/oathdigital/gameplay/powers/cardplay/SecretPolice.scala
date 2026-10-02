@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.{PowerAccess, SiteRulers}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -27,9 +26,10 @@ object SecretPoliceCard extends Denizen(DenizenId("113"), "Secret Police", Suit.
   * When the look-ahead hides a faceup placement because of it, it writes
   * "{Red} cannot play a Vision faceup."
   */
-final case class SecretPolice private (cardId: DenizenId)
-    extends ContributingPower:
-  def id: PowerId = SecretPolice.id
+case object SecretPolice extends ContributingPower:
+  val cardId: DenizenId = SecretPoliceCard.id
+  val id: PowerId = SecretPoliceCard.power.id
+
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   override def noteKeys: Vector[NoteKey] = Vector(VisionPlay.noFaceup)
@@ -45,9 +45,3 @@ final case class SecretPolice private (cardId: DenizenId)
     pawn <- PowerAccess.pawnSite(ctx.state, ctx.activePlayer)
     if SiteRulers.rulerOf(ctx.state, pawn).contains(ruler)
   yield VisionPlay.forbidden("Secret Police")
-
-object SecretPolice:
-  val id: PowerId = PowerId("denizen.secret-police")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[SecretPolice] =
-    CatalogCards.denizen(catalog, id).map(new SecretPolice(_))

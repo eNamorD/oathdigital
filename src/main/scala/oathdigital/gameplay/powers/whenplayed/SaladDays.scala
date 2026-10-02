@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
@@ -21,33 +21,9 @@ object SaladDaysCard extends Denizen(DenizenId("147"), "Salad Days", Suit.Hearth
   * narrated and the power writes no line of its own, except when every bank
   * is empty.
   */
-final case class SaladDays private (cardId: DenizenId)
-    extends WhenPlayedPower:
-  import SaladDays._
-  def id: PowerId = SaladDays.id
-
-  override def noteKeys: Vector[NoteKey] = Vector(empty)
-  override def narratedDecisions: Set[String] = Set(decisionId)
-
-  def effect(ctx: PowerCtx): Vector[Operation] =
-    val actor = ctx.activePlayer
-    Vector(Branch((live, _) =>
-      val banks = stocked(live)
-      if banks.isEmpty then Vector(Note(id, _ =>
-        Some(empty(PowerSourceRef.Card(cardId)))))
-      else if banks.size <= Banks then Vector(BuildOps((ready, _) =>
-        Right(gains(actor, stocked(ready)))))
-      else Vector(
-        Decide(decisionId, actor, DecisionQuery.ChooseMany(Banks, Banks,
-          banks.map(suit => DecisionOption.FavorBank(
-            DecisionOptionRef.FavorBank(suit))),
-          heading = Some("Salad Days: choose three banks to gain 1 favor " +
-            "from each"))),
-        BuildOps((ready, pending) => chosen(ready, pending)
-          .map(gains(actor, _))))))
-
-object SaladDays:
-  val id: PowerId = PowerId("denizen.salad-days")
+case object SaladDays extends WhenPlayedPower:
+  val cardId: DenizenId = SaladDaysCard.id
+  val id: PowerId = SaladDaysCard.power.id
   val decisionId: String = "cardplay.salad-days.banks"
   /** The banks it takes from. */
   val Banks: Int = 3
@@ -56,9 +32,6 @@ object SaladDays:
   /** "Every favor bank was empty." */
   val empty: NoteKey = NoteKey("none", Vector(
     NotePart.Text("Every favor bank was empty.")))
-
-  def forCatalog(catalog: ExecutableCatalog): Option[SaladDays] =
-    WhenPlayedPower.cardOf(catalog, id).map(new SaladDays(_))
 
   /** The banks that hold favor, in suit order. */
   private def stocked(ready: ReadyGame): Vector[Suit] =
@@ -79,3 +52,23 @@ object SaladDays:
           suits.forall(banks.contains), suits, OathViolation.InvalidEventOrder(
             "Salad Days takes from three different banks that hold favor"))
       }
+
+  override def noteKeys: Vector[NoteKey] = Vector(empty)
+  override def narratedDecisions: Set[String] = Set(decisionId)
+
+  def effect(ctx: PowerCtx): Vector[Operation] =
+    val actor = ctx.activePlayer
+    Vector(Branch((live, _) =>
+      val banks = stocked(live)
+      if banks.isEmpty then Vector(Note(id, _ =>
+        Some(empty(PowerSourceRef.Card(cardId)))))
+      else if banks.size <= Banks then Vector(BuildOps((ready, _) =>
+        Right(gains(actor, stocked(ready)))))
+      else Vector(
+        Decide(decisionId, actor, DecisionQuery.ChooseMany(Banks, Banks,
+          banks.map(suit => DecisionOption.FavorBank(
+            DecisionOptionRef.FavorBank(suit))),
+          heading = Some("Salad Days: choose three banks to gain 1 favor " +
+            "from each"))),
+        BuildOps((ready, pending) => chosen(ready, pending)
+          .map(gains(actor, _))))))

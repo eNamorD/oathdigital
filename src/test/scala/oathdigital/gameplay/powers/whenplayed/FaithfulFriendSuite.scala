@@ -8,7 +8,7 @@ class FaithfulFriendSuite extends munit.FunSuite:
   import PowerFixture._
   import WhenPlayedHarness._
 
-  private val power = FaithfulFriend.forCatalog(catalog).get
+  private val power = FaithfulFriend
   private val card = power.cardId
   private def withSupply(amount: Int) = withBoard(asAdviser(base, card))(
     _.copy(supply = SupplyTrack(amount)))

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
+import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
 import oathdigital.gameplay.SiteRulers
-import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts}
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 object HospitalCard extends Denizen(DenizenId("149"), "Hospital", Suit.Hearth) with SiteOnly:
@@ -34,8 +34,33 @@ object HospitalCard extends Denizen(DenizenId("149"), "Hospital", Suit.Hearth) w
   * its site was a Conquest target the attacker won, the user rules it no
   * longer and nothing comes back.
   */
-final case class Hospital private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = Hospital.id
+case object Hospital extends BattlePlan:
+  val cardId: DenizenId = HospitalCard.id
+  val id: PowerId = HospitalCard.power.id
+
+  /** Folds after every plan at the default priority 0, so its count sees the
+    * kills Sticky Fire adds to the losses. */
+  val Priority: Int = 1
+
+  /** The count of saved warbands. It is never rolled or shown, and the
+    * walker clears it with every pool when the Campaign ends. */
+  val Saved: PoolKey = PoolKey("campaign.hospital.saved")
+
+  /** "Placed {n} {Red} warband at {site} instead." */
+  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
+    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
+    NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
+    NotePart.Text(" instead.")))
+
+  private def saved(ready: ReadyGame): Int =
+    ready.game.current.rollPools.get(Saved).fold(0)(_.count)
+
+  /** The warbands of force `kind` at `site`. */
+  private def at(ready: ReadyGame, site: SiteId, kind: ForceKind): Int =
+    ready.game.current.map.sites.get(site).map(_.forces).collect {
+      case SiteForces.Occupied(`kind`, count) => count
+    }.getOrElse(0)
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -126,32 +151,3 @@ final case class Hospital private (cardId: DenizenId) extends BattlePlan:
             PositionedLocation(Location.PlayArea(`user`), _), None) if returns =>
           Vector(operation, ModifyDicePool(Hospital.Saved, -count))
         case other => Vector(other)
-
-object Hospital:
-  val id: PowerId = PowerId("denizen.hospital")
-
-  /** Folds after every plan at the default priority 0, so its count sees the
-    * kills Sticky Fire adds to the losses. */
-  val Priority: Int = 1
-
-  /** The count of saved warbands. It is never rolled or shown, and the
-    * walker clears it with every pool when the Campaign ends. */
-  val Saved: PoolKey = PoolKey("campaign.hospital.saved")
-
-  /** "Placed {n} {Red} warband at {site} instead." */
-  val placed: NoteKey = NoteKey("placed", Vector(NotePart.Text("Placed "),
-    NotePart.Arg(0), NotePart.Text(" "), NotePart.Arg(1),
-    NotePart.Plural(0, " warband at ", " warbands at "), NotePart.Arg(2),
-    NotePart.Text(" instead.")))
-
-  private def saved(ready: ReadyGame): Int =
-    ready.game.current.rollPools.get(Saved).fold(0)(_.count)
-
-  /** The warbands of force `kind` at `site`. */
-  private def at(ready: ReadyGame, site: SiteId, kind: ForceKind): Int =
-    ready.game.current.map.sites.get(site).map(_.forces).collect {
-      case SiteForces.Occupied(`kind`, count) => count
-    }.getOrElse(0)
-
-  def forCatalog(catalog: ExecutableCatalog): Option[Hospital] =
-    CatalogCards.denizen(catalog, id).map(new Hospital(_))

@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds, CampaignSetup}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object GarrisonArmoryCard extends Denizen(DenizenId("255"), "Garrison Armory", Suit.Order):
@@ -27,8 +26,27 @@ object GarrisonArmoryCard extends Denizen(DenizenId("255"), "Garrison Armory", S
   * When the targets held a warband it writes "Warbands on the targets added
   * {n} more defense."
   */
-final case class GarrisonArmory private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = GarrisonArmory.id
+case object GarrisonArmory extends BattlePlan:
+  val cardId: DenizenId = GarrisonArmoryCard.id
+  val id: PowerId = GarrisonArmoryCard.power.id
+
+  /** "Warbands on the targets added {n} more defense." */
+  val added: NoteKey = NoteKey("added", Vector(
+    NotePart.Text("Warbands on the targets added "), NotePart.Arg(0),
+    NotePart.Text(" more defense.")))
+
+  /** The recorded defense score. */
+  private def defense(ready: ReadyGame): Int =
+    ready.game.current.rollOutcomes.get(CampaignIds.defensePool).fold(0)(_.score)
+
+  /** The recorded defense with the targets' warbands added once more. Nothing
+    * is written when the targets hold none. */
+  private def again(ready: ReadyGame, setup: CampaignSetup)
+      : Vector[CoreOperation] =
+    val force = CampaignBattle.defenderForce(ready, setup)
+    Option.when(force > 0)(ModifyRollOutcome(CampaignIds.defensePool, None,
+      Some(defense(ready) + force))).toVector
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
   override def noteKeys: Vector[NoteKey] = Vector(GarrisonArmory.added)
@@ -51,26 +69,3 @@ final case class GarrisonArmory private (cardId: DenizenId) extends BattlePlan:
         Option.when(added > 0)(GarrisonArmory.added(PowerSourceRef.Card(cardId),
           NoteArg.Number(added)))
       }))))
-
-object GarrisonArmory:
-  val id: PowerId = PowerId("denizen.garrison-armory")
-
-  /** "Warbands on the targets added {n} more defense." */
-  val added: NoteKey = NoteKey("added", Vector(
-    NotePart.Text("Warbands on the targets added "), NotePart.Arg(0),
-    NotePart.Text(" more defense.")))
-
-  /** The recorded defense score. */
-  private def defense(ready: ReadyGame): Int =
-    ready.game.current.rollOutcomes.get(CampaignIds.defensePool).fold(0)(_.score)
-
-  /** The recorded defense with the targets' warbands added once more. Nothing
-    * is written when the targets hold none. */
-  private def again(ready: ReadyGame, setup: CampaignSetup)
-      : Vector[CoreOperation] =
-    val force = CampaignBattle.defenderForce(ready, setup)
-    Option.when(force > 0)(ModifyRollOutcome(CampaignIds.defensePool, None,
-      Some(defense(ready) + force))).toVector
-
-  def forCatalog(catalog: ExecutableCatalog): Option[GarrisonArmory] =
-    CatalogCards.denizen(catalog, id).map(new GarrisonArmory(_))

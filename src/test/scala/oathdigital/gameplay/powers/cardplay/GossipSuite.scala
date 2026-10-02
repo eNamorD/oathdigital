@@ -71,7 +71,7 @@ class GossipSuite extends munit.FunSuite:
 
   // ---- Lines ----
 
-  private val power = Gossip.forCatalog(catalog).get
+  private val power = Gossip.forCatalog(catalog)
   private def said(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 

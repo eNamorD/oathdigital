@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object WelcomingPartyCard extends Denizen(DenizenId("50"), "Welcoming Party", Suit.Hearth) with SiteOnly:
@@ -27,8 +27,9 @@ object WelcomingPartyCard extends Denizen(DenizenId("50"), "Welcoming Party", Su
   * by a Search came straight from its draw. The favor is best-effort, so an
   * empty Hearth bank gives nothing.
   */
-final case class WelcomingParty private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class WelcomingParty private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = WelcomingPartyCard.id
   def id: PowerId = WelcomingParty.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -43,8 +44,8 @@ final case class WelcomingParty private (cardId: DenizenId,
     case _ => false
 
 object WelcomingParty:
-  val id: PowerId = PowerId("denizen.welcoming-party")
+  val id: PowerId = WelcomingPartyCard.power.id
   val Favor: Int = 1
 
-  def forCatalog(catalog: ExecutableCatalog): Option[WelcomingParty] =
-    CatalogCards.denizen(catalog, id).map(new WelcomingParty(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): WelcomingParty =
+    new WelcomingParty(catalog)

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.model._
 
 object ExtraProvisionsCard extends Denizen(DenizenId("48"), "Extra Provisions", Suit.Hearth):
@@ -16,8 +15,10 @@ object ExtraProvisionsCard extends Denizen(DenizenId("48"), "Extra Provisions", 
   * A favor is placed onto the card for one defense die. Bandits pay nothing,
   * so a bandit defender never applies it.
   */
-final case class ExtraProvisions private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = ExtraProvisions.id
+case object ExtraProvisions extends BattlePlan:
+  val cardId: DenizenId = ExtraProvisionsCard.id
+  val id: PowerId = ExtraProvisionsCard.power.id
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] = Set(CampaignPlanSide.Defender)
 
@@ -25,9 +26,3 @@ final case class ExtraProvisions private (cardId: DenizenId) extends BattlePlan:
     context.denizen(cardId).map(source => CampaignPlanOffer(source,
       "Extra Provisions: add 1 defense die", Vector(CampaignPlanCost.Favor(1)),
       Vector(CampaignPlanEffect.AddDefenseDice(1))))
-
-object ExtraProvisions:
-  val id: PowerId = PowerId("denizen.extra-provisions")
-
-  def forCatalog(catalog: ExecutableCatalog): Option[ExtraProvisions] =
-    CatalogCards.denizen(catalog, id).map(new ExtraProvisions(_))

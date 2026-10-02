@@ -3,8 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.actions.campaign.{CampaignProcedure, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, NoteSupport, PowerAnswers,
-  SelectedModifier}
+import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers, SelectedModifier}
 import oathdigital.model._
 
 object KnightsErrantCard extends Denizen(DenizenId("120"), "Knights Errant", Suit.Order):
@@ -39,8 +38,9 @@ object KnightsErrantCard extends Denizen(DenizenId("120"), "Knights Errant", Sui
   * Choosing to campaign writes "{Red} campaigns for no Supply." right after
   * the choice.
   */
-final case class KnightsErrant private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class KnightsErrant private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = KnightsErrantCard.id
   def id: PowerId = KnightsErrant.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Muster)
   override def noteKeys: Vector[NoteKey] = Vector(KnightsErrant.campaigns)
@@ -82,7 +82,7 @@ final case class KnightsErrant private (cardId: DenizenId,
         tree => Vector(tree)))
 
 object KnightsErrant:
-  val id: PowerId = PowerId("denizen.knights-errant")
+  val id: PowerId = KnightsErrantCard.power.id
   /** Under the `muster.` prefix. */
   val decisionId: String = "muster.knights-errant.campaign"
   val campaignOption: DecisionOptionRef.Button =
@@ -93,5 +93,5 @@ object KnightsErrant:
   val campaigns: NoteKey = NoteKey("campaigns", Vector(NotePart.Arg(0),
     NotePart.Text(" campaigns for no Supply.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[KnightsErrant] =
-    CatalogCards.denizen(catalog, id).map(new KnightsErrant(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): KnightsErrant =
+    new KnightsErrant(catalog)

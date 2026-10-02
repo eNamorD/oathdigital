@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object ForestPathsCard extends Denizen(DenizenId("43"), "Forest Paths", Suit.Beast):
@@ -31,8 +31,9 @@ object ForestPathsCard extends Denizen(DenizenId("43"), "Forest Paths", Suit.Bea
   * While it ignores the site powers it writes "Ignoring site powers."; its
   * Supply waiver writes nothing (power log lines design, "No line").
   */
-final case class ForestPaths private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class ForestPaths private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = ForestPathsCard.id
   def id: PowerId = ForestPaths.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Travel)
   override def cost: Cost = Cost(favor = ForestPaths.Favor)
@@ -62,11 +63,11 @@ final case class ForestPaths private (cardId: DenizenId,
     })
 
 object ForestPaths:
-  val id: PowerId = PowerId("denizen.forest-paths")
+  val id: PowerId = ForestPathsCard.power.id
   val Favor: Int = 1
   /** "Ignoring site powers." */
   val ignoring: NoteKey = NoteKey("ignoring",
     Vector(NotePart.Text("Ignoring site powers.")))
 
-  def forCatalog(catalog: ExecutableCatalog): Option[ForestPaths] =
-    CatalogCards.denizen(catalog, id).map(new ForestPaths(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): ForestPaths =
+    new ForestPaths(catalog)

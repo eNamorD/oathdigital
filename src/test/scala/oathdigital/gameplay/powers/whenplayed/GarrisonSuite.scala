@@ -10,7 +10,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   import PowerFixture._
   import WhenPlayedHarness._
 
-  private val power = Garrison.forCatalog(catalog).get
+  private val power = Garrison
   private val card = power.cardId
   private val kind = PlayerFacts.forceKind(base, actor).toOption.get
 

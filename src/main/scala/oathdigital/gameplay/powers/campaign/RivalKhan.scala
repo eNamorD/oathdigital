@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object RivalKhanCard extends Denizen(DenizenId("156"), "Rival Khan", Suit.Nomad):
@@ -19,8 +18,9 @@ object RivalKhanCard extends Denizen(DenizenId("156"), "Rival Khan", Suit.Nomad)
   * bandits. The card is discarded through the standard discard once the
   * Campaign has resolved, whoever won, as Horse Archers is.
   */
-final case class RivalKhan private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class RivalKhan private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = RivalKhanCard.id
   def id: PowerId = RivalKhan.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -39,8 +39,8 @@ final case class RivalKhan private (cardId: DenizenId,
       PlanDiscard.afterCampaign(catalog, id, use, cardId)))
 
 object RivalKhan:
-  val id: PowerId = PowerId("denizen.rival-khan")
+  val id: PowerId = RivalKhanCard.power.id
   val Dice: Int = 4
 
-  def forCatalog(catalog: ExecutableCatalog): Option[RivalKhan] =
-    CatalogCards.denizen(catalog, id).map(new RivalKhan(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): RivalKhan =
+    new RivalKhan(catalog)

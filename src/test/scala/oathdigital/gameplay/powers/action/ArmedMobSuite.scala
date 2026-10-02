@@ -12,7 +12,7 @@ class ArmedMobSuite extends munit.FunSuite:
 
   private val mob = CatalogNames.denizen("Armed Mob")
   private val source = DecisionOptionRef.Denizen(mob)
-  private val power = ArmedMob.forCatalog(catalog).get
+  private val power = ArmedMob.forCatalog(catalog)
   private val plain = SearchFixture.denizensOf(Suit.Hearth)
   private val insomnia = CatalogNames.denizen("Insomnia")
 

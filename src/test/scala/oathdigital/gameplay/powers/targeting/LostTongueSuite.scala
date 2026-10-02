@@ -20,7 +20,7 @@ class LostTongueSuite extends munit.FunSuite:
   private val tongue = CatalogNames.denizen("Lost Tongue")
   /** A plain Nomad card: holding it faceup, a player rules a nomad card. */
   private val nomadCard = SearchFixture.denizensOf(Suit.Nomad).head
-  private val power = LostTongue.forCatalog(catalog).get
+  private val power = LostTongue.forCatalog(catalog)
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
   private val parked = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog))

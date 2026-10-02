@@ -14,7 +14,7 @@ class ForgottenVaultSuite extends munit.FunSuite:
 
   private val vault = DenizenId("75")
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
-  private val power = ForgottenVault.forCatalog(catalog).get
+  private val power = ForgottenVault.forCatalog(catalog)
 
   private def notes(events: Vector[OathEvent]): Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)

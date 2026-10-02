@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
 import oathdigital.model._
 
 object NatureWorshipCard extends Denizen(DenizenId("175"), "Nature Worship", Suit.Beast):
@@ -20,8 +19,9 @@ object NatureWorshipCard extends Denizen(DenizenId("175"), "Nature Worship", Sui
   * the plan reveals it. At a site it is not an adviser and counts only the
   * others. A plan that would add no die is not offered.
   */
-final case class NatureWorship private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends BattlePlan:
+final case class NatureWorship private (catalog: ExecutableCatalog)
+    extends BattlePlan:
+  val cardId: DenizenId = NatureWorshipCard.id
   def id: PowerId = NatureWorship.id
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
@@ -49,7 +49,7 @@ final case class NatureWorship private (cardId: DenizenId,
       }
 
 object NatureWorship:
-  val id: PowerId = PowerId("denizen.nature-worship")
+  val id: PowerId = NatureWorshipCard.power.id
 
-  def forCatalog(catalog: ExecutableCatalog): Option[NatureWorship] =
-    CatalogCards.denizen(catalog, id).map(new NatureWorship(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): NatureWorship =
+    new NatureWorship(catalog)

@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogCards, PlayerFacts, SelectedModifier}
+import oathdigital.gameplay.powers.{PlayerFacts, SelectedModifier}
 import oathdigital.model._
 
 object WildCryCard extends Denizen(DenizenId("189"), "Wild Cry", Suit.Beast):
@@ -21,8 +21,9 @@ object WildCryCard extends Denizen(DenizenId("189"), "Wild Cry", Suit.Beast):
   * resume. Gaining warbands is best-effort: an empty warband bank gives what
   * it holds.
   */
-final case class WildCry private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends SelectedModifier:
+final case class WildCry private (catalog: ExecutableCatalog)
+    extends SelectedModifier:
+  val cardId: DenizenId = WildCryCard.id
   def id: PowerId = WildCry.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
@@ -41,9 +42,9 @@ final case class WildCry private (cardId: DenizenId,
       Vector(Gain.Warbands(actor, kind, WildCry.Warbands)))))
 
 object WildCry:
-  val id: PowerId = PowerId("denizen.wild-cry")
+  val id: PowerId = WildCryCard.power.id
   val Supply: Int = 1
   val Warbands: Int = 2
 
-  def forCatalog(catalog: ExecutableCatalog): Option[WildCry] =
-    CatalogCards.denizen(catalog, id).map(new WildCry(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): WildCry =
+    new WildCry(catalog)

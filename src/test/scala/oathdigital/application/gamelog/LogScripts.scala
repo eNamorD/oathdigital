@@ -511,7 +511,7 @@ object LogScripts:
     * `choice`. Dowsing Sticks tops the relic deck. */
   def familyHeirloom(name: String, choice: DecisionOptionRef.Button)
       (using munit.Location): Script =
-    val card = FamilyHeirloom.forCatalog(catalog).get.cardId
+    val card = FamilyHeirloom.cardId
     val (service, act) = atTable(name, Table.start
       .adviser(p1, "Family Heirloom", facedown = true)
       .relicDeckTop("Dowsing Sticks").banditsRefilled)

@@ -20,8 +20,9 @@ object DazzleCard extends Denizen(DenizenId("35"), "Dazzle", Suit.Arcane):
   * discarded, "Discarded {cards}.", and covers the generic discard lines.
   * With nothing discarded it says "Nothing was discarded."
   */
-final case class Dazzle private (cardId: DenizenId,
-    catalog: ExecutableCatalog) extends WhenPlayedPower:
+final case class Dazzle private (catalog: ExecutableCatalog)
+    extends WhenPlayedPower:
+  val cardId: DenizenId = DazzleCard.id
   def id: PowerId = Dazzle.id
 
   override def noteKeys: Vector[NoteKey] =
@@ -33,8 +34,8 @@ final case class Dazzle private (cardId: DenizenId,
     region.effect(id, cardId, ctx.activePlayer)
 
 object Dazzle:
-  val id: PowerId = PowerId("denizen.dazzle")
+  val id: PowerId = DazzleCard.power.id
   private val suits: Set[Suit] = Set(Suit.Hearth, Suit.Order)
 
-  def forCatalog(catalog: ExecutableCatalog): Option[Dazzle] =
-    WhenPlayedPower.cardOf(catalog, id).map(new Dazzle(_, catalog))
+  def forCatalog(catalog: ExecutableCatalog): Dazzle =
+    new Dazzle(catalog)

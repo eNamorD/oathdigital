@@ -11,7 +11,7 @@ class TwinBrotherSuite extends munit.FunSuite:
   import TargetsFixture.{giveAdviser, others, updatePlayer}
   import WhenPlayedHarness._
 
-  private val power = TwinBrother.forCatalog(catalog).get
+  private val power = TwinBrother.forCatalog(catalog)
   private val card = power.cardId
   private val enemy = others(base)(0)
   private val archers = DenizenId("24")   // nomad, unrestricted

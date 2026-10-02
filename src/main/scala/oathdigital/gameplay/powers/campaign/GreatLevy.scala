@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.campaign
 
-import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.powers.CatalogCards
+import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.model._
 
 object TheGreatLevyCard extends Denizen(DenizenId("137"), "The Great Levy", Suit.Hearth):
@@ -23,8 +22,19 @@ object TheGreatLevyCard extends Denizen(DenizenId("137"), "The Great Levy", Suit
   * attack dice, so for a defender it only removes three. Bandits pay nothing,
   * so a bandit defender never applies it.
   */
-final case class GreatLevy private (cardId: DenizenId) extends BattlePlan:
-  def id: PowerId = GreatLevy.id
+case object GreatLevy extends BattlePlan:
+  val cardId: DenizenId = TheGreatLevyCard.id
+  val id: PowerId = TheGreatLevyCard.power.id
+  val Dice: Int = 3
+
+  /** "The Great Levy: add 3 attack dice and ignore all attack skulls" for an
+    * attacker, "The Great Levy: remove 3 attack dice" for a defender. */
+  private def label(side: CampaignPlanSide): String =
+    val dice = PlanDice.label("The Great Levy", side, Dice)
+    side match
+      case CampaignPlanSide.Attacker => s"$dice and ignore all attack skulls"
+      case CampaignPlanSide.Defender => dice
+
   def cardRef: DecisionOptionRef = DecisionOptionRef.Denizen(cardId)
   def sides: Set[CampaignPlanSide] =
     Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)
@@ -42,18 +52,3 @@ final case class GreatLevy private (cardId: DenizenId) extends BattlePlan:
       if use.side == CampaignPlanSide.Attacker then
         Outriders.ignoreSkulls(id, PowerSourceRef.Card(cardId))
       else Vector.empty))
-
-object GreatLevy:
-  val id: PowerId = PowerId("denizen.the-great-levy")
-  val Dice: Int = 3
-
-  /** "The Great Levy: add 3 attack dice and ignore all attack skulls" for an
-    * attacker, "The Great Levy: remove 3 attack dice" for a defender. */
-  private def label(side: CampaignPlanSide): String =
-    val dice = PlanDice.label("The Great Levy", side, Dice)
-    side match
-      case CampaignPlanSide.Attacker => s"$dice and ignore all attack skulls"
-      case CampaignPlanSide.Defender => dice
-
-  def forCatalog(catalog: ExecutableCatalog): Option[GreatLevy] =
-    CatalogCards.denizen(catalog, id).map(new GreatLevy(_))

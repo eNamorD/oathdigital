@@ -4,18 +4,18 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.ContributingPower
 
 /** The When Played powers of catalog batch 3, which `WalkerPowerCatalog`
-  * wires in. A power whose card is absent from `catalog` is left out. */
+  * wires in. Each names its denizen card, so all are always present. */
 object WhenPlayedPowers:
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
     Vector[ContributingPower]() ++
-      ThreateningRoar.forCatalog(catalog).toVector ++
-      Riots.forCatalog(catalog).toVector ++
-      AnimalHost.forCatalog(catalog).toVector ++
-      Charlatan.forCatalog(catalog).toVector ++
-      KeyToTheCity.forCatalog(catalog).toVector ++
-      BanditPrince.forCatalog(catalog).toVector ++
-      SaladDays.forCatalog(catalog).toVector ++
-      FabledFeast.forCatalog(catalog).toVector ++
-      TownMeeting.forCatalog(catalog).toVector ++
-      GreatHerd.forCatalog(catalog).toVector ++
-      RoyalTax.forCatalog(catalog).toVector
+      Vector(ThreateningRoar.forCatalog(catalog)) ++
+      Vector(Riots.forCatalog(catalog)) ++
+      Vector(AnimalHost.forCatalog(catalog)) ++
+      Vector(Charlatan) ++
+      Vector(KeyToTheCity) ++
+      Vector(BanditPrince) ++
+      Vector(SaladDays) ++
+      Vector(FabledFeast.forCatalog(catalog)) ++
+      Vector(TownMeeting.forCatalog(catalog)) ++
+      Vector(GreatHerd.forCatalog(catalog)) ++
+      Vector(RoyalTax)
