@@ -6,9 +6,10 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Tran
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Outcomes
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
-/** Staging and driving shared by the card-play placement suites. The powers
+/** Driving the card-play walk, shared by the placement suites. The powers
   * built here are test doubles: they change `PlacementRules` and nothing else.
   */
 object PlacementFixture:
@@ -43,8 +44,7 @@ object PlacementFixture:
 
   def park(ready: ReadyGame, tree: Operation, powers: WalkerPowers)(
       using munit.Location): PendingTree =
-    as[WalkerOutcome.Parked](accepted(
-      ProcedureWalker.advance(ready, tree, None, powers))).tree
+    Outcomes.parked(ProcedureWalker.advance(ready, tree, None, powers)).tree
 
   def answer(ready: ReadyGame, tree: Operation, pending: PendingTree,
       powers: WalkerPowers, id: String, ref: DecisionOptionRef,

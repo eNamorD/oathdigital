@@ -10,7 +10,7 @@ import oathdigital.testkit.{Outcomes, Situation}
 
 /** Shared fixture for the whole gameplay test suite: a real catalog, three
   * Exile participants, and a Chronicle-shaped input for `GameStartRules`
-  * (2026-09-21 Chronicle design, slice 2). `execute()` drives a full game
+  * (2026-09-21 Chronicle design, slice 2). `setupThroughWake()` drives a game
   * from `OathRules.beginGame` through every player's pawn placement and
   * adviser choice, landing on the same `Phase.Wake` starting position the
   * deleted `FirstGameSetupRules` used to produce -- this is what every
