@@ -101,7 +101,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     assertEquals(site.replacements, Vector[CardId](kept))
 
   test("a ruined edifice may be discarded, and it goes back to the edifice deck"):
-    val ruined = DecisionOptionRef.Button("replace:edifice:E16")
+    // Offered as the edifice itself, so the panel names it.
+    val ruined = DecisionOptionRef.Edifice(hall)
     val ready = playing(kept).edifice(hall, EdificeSide.Ruined, at = home)
       .warbandsAt(home, p1, 1).ready
     val (tree, asked) = toDiscardDecision(ready)

@@ -93,6 +93,7 @@ class CardPlayProcedureSuite extends munit.FunSuite:
       .options.map(_.ref), faceup.replacements.map {
         case id: DenizenId => DecisionOptionRef.Denizen(id)
         case id: VisionId => DecisionOptionRef.Vision(id)
+        case id: EdificeId => DecisionOptionRef.Edifice(id)
         case id => DecisionOptionRef.Button(s"replace:${id.kind}:${id.value}")
       })
     val chosen = DecisionOptionRef.Denizen(added.head)

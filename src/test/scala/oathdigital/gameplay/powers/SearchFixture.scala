@@ -102,6 +102,7 @@ object SearchFixture:
       DecisionAnswer.ChooseOneAnswer(chosen match {
         case id: DenizenId => DecisionOptionRef.Denizen(id)
         case id: VisionId => DecisionOptionRef.Vision(id)
+        case id: EdificeId => DecisionOptionRef.Edifice(id)
         case other => DecisionOptionRef.Button(
           s"replace:${other.kind}:${other.value}")
       }))
