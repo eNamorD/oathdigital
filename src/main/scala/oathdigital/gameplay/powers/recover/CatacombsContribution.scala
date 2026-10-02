@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.recover
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
 import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.CatalogResolution
+import oathdigital.gameplay.powers.{CatalogResolution, SelectedModifier}
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
@@ -27,8 +27,11 @@ final case class CatacombsContribution private (catalog: ExecutableCatalog)
   override lazy val resolution: PowerResolution =
     CatalogResolution.of(catalog, id)
   // Stable across the action: card presence, never the relic/secrets spent.
+  // At a modifier-selection window it is offered for a Recover only.
   override def applicable(ctx: PowerCtx): Boolean =
-    PowerAccess.locate(ctx.state, ctx.activePlayer, cardId).isDefined
+    SelectedModifier.selectionAction(ctx.window).forall(
+      _ == MajorActionType.Recover) &&
+      PowerAccess.locate(ctx.state, ctx.activePlayer, cardId).isDefined
   override def selectionPayments(ready: ReadyGame, actor: PlayerId)
       : Vector[CoreOperation] =
     Vector(Costs.onCard(actor, cardId, Cost(secret = 1), catalog))

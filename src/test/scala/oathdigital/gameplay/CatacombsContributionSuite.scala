@@ -79,6 +79,21 @@ class CatacombsContributionSuite extends munit.FunSuite:
       Some(Vector("2", "0", "2", "0")))
     assertEquals(after.game.current.walkerModifiers, Vector(catacombsId))
 
+  private def offered(ready: ReadyGame, action: ActionRef): Vector[PowerId] =
+    rules.offerableWalkerPowers(ready, Table.p1, action).toOption.get.map(_.id)
+
+  test("Catacombs is offered for a Recover and for no other action"):
+    val ready = reliclessSite().ready
+    assert(offered(ready, ActionRef.Recover).contains(catacombsId))
+    Vector(ActionRef.Search, ActionRef.Travel, ActionRef.Muster,
+      ActionRef.Trade, ActionRef.Forge, ActionRef.Challenge,
+      ActionRef.Campaign).foreach(action =>
+        assert(!offered(ready, action).contains(catacombsId), action))
+
+  test("Catacombs is not offered when its secret cannot be paid"):
+    assert(!offered(reliclessSite(secrets = 0).ready, ActionRef.Recover)
+      .contains(catacombsId))
+
   test("without the Catacombs modifier the same relic-less start remains legal"):
     val fixture = reliclessSite()
     val transition = started(fixture, Vector.empty)

@@ -79,5 +79,6 @@ class SelectionPaymentsSuite extends munit.FunSuite:
       Vector(power)))
     val refused = rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
       fixture.actor, Vector(power.id))
+    // It is not offered at all, so the start refuses it as inapplicable.
     assert(refused.left.toOption.exists(_.toString.contains(
-      "cannot all be paid together")), refused.toString)
+      "is not applicable")), refused.toString)
