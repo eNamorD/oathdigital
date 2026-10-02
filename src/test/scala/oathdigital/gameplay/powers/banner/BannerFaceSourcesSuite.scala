@@ -21,9 +21,9 @@ class BannerFaceSourcesSuite extends munit.FunSuite:
     assertEquals(flame.face, RuleSourceFace.WanderingFlame)
     assertEquals(flame.powerIds, Vector(WanderingFlameMove.id,
       WanderingFlamePlace.id))
-    val festival = darkest(
-      Table.start.darkestSecret(Some(p1), 1, DarkestSecretFace.Festival).ready)
-      .head
+    val onFestival = Table.start.darkestSecret(Some(p1), 1,
+      DarkestSecretFace.Festival).ready
+    val festival = darkest(onFestival).head
     assertEquals(festival.handlerIds, Vector("banner.darkest-secret.festival"))
 
   test("Travel offers no option, whether the Banner of the Darkest Secret " +
@@ -33,4 +33,4 @@ class BannerFaceSourcesSuite extends munit.FunSuite:
     assertEquals(
       PowerRuntime.options(catalog,
       Table.start.darkestSecret(Some(p1), 1)
-      .ready, PowerFixture.actor, ActionKind.Travel), Right(Vector.empty))
+        .ready, PowerFixture.actor, ActionKind.Travel), Right(Vector.empty))

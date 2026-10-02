@@ -106,9 +106,8 @@ class LeagueTreatySuite extends munit.FunSuite:
       parked.events ++ chosen.events)
     assertEquals(Ready(replayed), chosen.state)
 
-    val answer = DecisionAnswer.DistributeAnswer(
-      workedDistribution.map { case (suit, n) => DistributeAmount(bank(suit),
-      n) })
+    val answer = DecisionAnswer.DistributeAnswer(workedDistribution.map {
+      case (suit, n) => DistributeAmount(bank(suit), n) })
     val done = accepted(
       rules.resolveWalker(Ready(replayed), owner, distribution, answer))
     assertWake(done.state, p1)
@@ -125,8 +124,8 @@ class LeagueTreatySuite extends munit.FunSuite:
       val ready = leagueTreatyAct(Some(owner), ("Disciples", "Ancient City", 1))
         .edifice(edifice, side, at = treatySite).tokens(edifice, favor = 2)
         .ready
-      val destinationBank = Suit.all.find(s =>
-        s != Suit.Arcane && s != edificeSuit).get
+      // The first suit neither the Arcane card's nor the edifice's.
+      val destinationBank = Suit.Order
       val destination = LeagueTreatyContribution.destinationDecisionId(ready,
         p1, treatySite, treatyCard)
       val distribution = LeagueTreatyContribution.distributionDecisionId(ready,

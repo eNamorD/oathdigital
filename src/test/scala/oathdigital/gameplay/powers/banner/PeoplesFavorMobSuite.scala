@@ -28,9 +28,9 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   /** The Beast card each Search keeps and plays, above two Arcane cards. */
   private val played = CatalogNames.denizen("Errand Boy")
   private val drawn = Vector[WorldCardId](played,
-    CatalogNames.denizen("Ward of Silence"), CatalogNames.denizen(
-    "Arcane Brokers"))
-  // Hearth and Order denizens whose powers these tests do not use.
+    CatalogNames.denizen("Ward of Silence"),
+    CatalogNames.denizen("Arcane Brokers"))
+  // Hearth denizens whose powers these tests do not use.
   private val homesteaders = CatalogNames.denizen("Homesteaders")
   private val landWarden = CatalogNames.denizen("Land Warden")
   private val newsFromAfar = CatalogNames.denizen("News from Afar")
@@ -46,8 +46,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
         .peoplesFavor(Some(actor), 1).unchecked)): ReadyGame =
     favor(siteCards.foldLeft(SearchFixture.staged(drawn))(atActorsSite))
 
-  private def decisionId(kind: String) = PlacementFixture.decisionId(played,
-    kind)
+  private def decisionId(kind: String) =
+    PlacementFixture.decisionId(played, kind)
 
   /** Searches, keeps the played card and chooses to play it to the site. */
   private def toSite(ready: ReadyGame): OathTransition = (for
@@ -72,7 +72,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "own power on the other"):
     def favor(ready: ReadyGame) = oathdigital.gameplay.RuleSourceIndex
       .enumerate(catalog, ready).find(_.source ==
-        RuleSourceRef.Banner(Banner.PeoplesFavor.key)).get
+        RuleSourceRef.Banner(Banner.PeoplesFavor.key))
+          .getOrElse(fail("no People's Favor source"))
     assertEquals(favor(quietTable).powerIds, Vector(PeoplesFavorMob.id))
     assertEquals(favor(Table.from(quietTable).peoplesFavor(Some(actor), 1,
       PeoplesFavorFace.GrandCouncil).unchecked)
@@ -142,12 +143,12 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "not the other banner, not an unheld banner"):
     val kept = homesteaders
     val unheld: Vector[(String, ReadyGame => ReadyGame)] = Vector(
-      "held by p3" -> (r => Table.from(r).peoplesFavor(Some(p3), 1)
-      .unchecked), "Grand Council face" -> (r => Table.from(r)
-      .peoplesFavor(Some(actor), 1, PeoplesFavorFace.GrandCouncil)
-      .unchecked), "unheld" -> (r => Table.from(r).peoplesFavor(None, 1)
-      .unchecked), "Wandering Flame" -> (r => Table.from(r)
-      .darkestSecret(Some(actor), 1).unchecked))
+      "held by p3" -> (r => Table.from(r).peoplesFavor(Some(p3), 1).unchecked),
+      "Grand Council face" -> (r => Table.from(r)
+      .peoplesFavor(Some(actor), 1, PeoplesFavorFace.GrandCouncil).unchecked),
+      "unheld" -> (r => Table.from(r).peoplesFavor(None, 1).unchecked),
+      "Wandering Flame" -> (r => Table.from(r).darkestSecret(Some(actor), 1)
+      .unchecked))
     unheld.foreach { case (label, favor) =>
       val ready = searchAtAncientCityHolding(Vector(kept), favor)
       val done = toSite(ready)
@@ -168,7 +169,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val choice = CardPlay.legalChoices(catalog, ready, p1, played,
       CardPlay.Origin.TemporaryHand,
       oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
-      .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
+      .find(_.placement.isInstanceOf[SearchPlacement.Site])
+      .getOrElse(fail("no site placement offered"))
     assertEquals(choice.replacements, Vector[CardId](kept))
 
   test("a ruined edifice is offered: only an intact one is locked"):
@@ -183,7 +185,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val choice = CardPlay.legalChoices(catalog, ready, p1, played,
       CardPlay.Origin.TemporaryHand,
       oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
-      .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
+      .find(_.placement.isInstanceOf[SearchPlacement.Site])
+      .getOrElse(fail("no site placement offered"))
     assertEquals(choice.replacements, Vector[CardId](kept, hall))
 
   test("it applies to a facedown adviser played to a site as well"):
@@ -212,17 +215,16 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val parkedTree = PlacementFixture.park(ready, tree, powers)
     // Two advisers held under Silver Tongue: a faceup adviser needs a discard,
     // and the faceup Silver Tongue is a locked card, so only the other goes.
+    val place = PlacementFixture.decisionId(played, "place")
     val faceup = as[WalkerOutcome.Parked](
-      PlacementFixture.answer(ready, tree, parkedTree, powers,
-      PlacementFixture.decisionId(played,
-      "place"), DecisionOptionRef.Button("adviser-faceup"), who))
+      PlacementFixture.answer(ready, tree, parkedTree, powers, place,
+      DecisionOptionRef.Button("adviser-faceup"), who))
     assertEquals(PlacementFixture.options(ready, tree, faceup.tree, powers).toSet,
       Set[DecisionOptionRef](DecisionOptionRef.Denizen(adviser)))
     // The site still offers the optional discard, under the same walk.
     val site = as[WalkerOutcome.Parked](
-      PlacementFixture.answer(ready, tree, parkedTree, powers,
-      PlacementFixture.decisionId(played,
-      "place"), DecisionOptionRef.Button("site"), who))
+      PlacementFixture.answer(ready, tree, parkedTree, powers, place,
+      DecisionOptionRef.Button("site"), who))
     assertEquals(PlacementFixture.options(ready, tree, site.tree, powers).head,
       noDiscard)
     assert(powers.powers.exists(_.id == SilverTongue.id))
@@ -264,5 +266,5 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
 
   test("a play asked no discard writes no Mob line"):
     assertEquals(
-      mobSaid(toSite(searchAtAncientCityHolding(Vector.empty))
-      .events), Vector.empty)
+      mobSaid(toSite(searchAtAncientCityHolding(Vector.empty)).events),
+      Vector.empty)

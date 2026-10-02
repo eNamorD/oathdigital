@@ -20,13 +20,15 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
 
   /** p1's Act at Ancient City holding the Darkest Secret, with its one
     * secret, on Wandering Flame, and `faceUp` and `faceDown` secrets. */
-  private def staged(faceUp: Int, faceDown: Int = 0): ReadyGame =
-    Table.start.pawn(p1, ancientCity).darkestSecret(Some(p1), 1)
+  private def holdingFlameWithSecrets(faceUp: Int, faceDown: Int = 0)
+      : ReadyGame =
+    Table.start.turn(p1, Phase.Act).pawn(p1, ancientCity)
+      .darkestSecret(Some(p1), 1)
       .secrets(p1, faceUp, faceDown).ready
 
   test("it moves one secret from the actor's board onto the pawn's site, " +
       "and nothing else changes"):
-    val start = staged(faceUp = 2, faceDown = 1)
+    val start = holdingFlameWithSecrets(faceUp = 2, faceDown = 1)
     val done = accepted(use(start, power, darkestSecretOption))
     val end = after(done)
     assert(backToActing(done))
@@ -41,8 +43,8 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("it places on the site the pawn is at, whichever site that is"):
-    val start = Table.from(staged(faceUp = 1)).pawn(actor, brokenPeaks)
-      .unchecked
+    val start = Table.from(holdingFlameWithSecrets(faceUp = 1))
+      .pawn(actor, brokenPeaks).unchecked
     val end = after(accepted(use(start, power, darkestSecretOption)))
     assertEquals(Look(end).siteTokens(brokenPeaks).secrets,
       Look(start).siteTokens(brokenPeaks).secrets + 1)
@@ -50,24 +52,28 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
       Look(start).siteTokens(ancientCity).secrets)
 
   test("it is unlimited: each use places another secret"):
-    val first = accepted(use(staged(faceUp = 3), power, darkestSecretOption))
+    val first = accepted(
+      use(holdingFlameWithSecrets(faceUp = 3), power, darkestSecretOption))
     val second = accepted(use(after(first), power, darkestSecretOption))
     val end = after(second)
     assertEquals(Look(end).player(actor).board.faceUpSecrets, 1)
     assertEquals(Look(end).siteTokens(ancientCity).secrets,
-      Look(staged(faceUp = 3)).siteTokens(ancientCity).secrets + 2)
+      Look(holdingFlameWithSecrets(faceUp = 3)).siteTokens(ancientCity)
+      .secrets + 2)
     assertEquals(end.game.current.turn.usedPowers, Set.empty[PowerUseRef])
 
   test("with no faceup secret it is not usable, and a facedown secret is " +
       "never flipped or moved"):
-    Vector(staged(faceUp = 0), staged(faceUp = 0, faceDown = 2)).foreach { start =>
+    Vector(holdingFlameWithSecrets(faceUp = 0),
+      holdingFlameWithSecrets(faceUp = 0, faceDown = 2)).foreach { start =>
       assert(!usableIds(start).contains(power.id))
       assert(use(start, power, darkestSecretOption).isLeft)
     }
-    assert(usableIds(staged(faceUp = 1)).contains(power.id))
+    assert(usableIds(holdingFlameWithSecrets(faceUp = 1)).contains(power.id))
     val end = after(
       accepted(
-      use(staged(faceUp = 1, faceDown = 2), power, darkestSecretOption)))
+      use(holdingFlameWithSecrets(faceUp = 1, faceDown = 2), power,
+      darkestSecretOption)))
     assertEquals(Look(end).player(actor).board.faceUpSecrets, 0)
     assertEquals(Look(end).player(actor).board.faceDownSecrets, 2)
     assert(!usableIds(end).contains(power.id), "only facedown secrets are left")
@@ -86,16 +92,18 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
       .ready
     assert(!usableIds(festival).contains(power.id))
     assert(use(festival, power, darkestSecretOption).isLeft)
-    assert(!usableIds(inPhase(staged(2), Phase.Wake)).contains(power.id))
+    assert(!usableIds(inPhase(holdingFlameWithSecrets(2), Phase.Wake))
+      .contains(power.id))
 
   test("the Move power and the place power are separate uses of one banner"):
-    val start = Table.from(staged(faceUp = 1))
+    val start = Table.from(holdingFlameWithSecrets(faceUp = 1))
       .siteTokens(brokenPeaks, secrets = 1).unchecked
     assertEquals(ActPowerHarness.usableIds(start).toSet,
       Set(WanderingFlameMove.id, WanderingFlamePlace.id))
 
   test("it writes the site it placed a secret at"):
-    val done = accepted(use(staged(faceUp = 2), power, darkestSecretOption))
+    val done = accepted(
+      use(holdingFlameWithSecrets(faceUp = 2), power, darkestSecretOption))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"${actor.value} placed a secret at ${ancientCity.value}.",
       covers = false)))

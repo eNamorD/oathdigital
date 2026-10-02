@@ -7,7 +7,8 @@ import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
+  Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Unwrap.accepted
@@ -29,15 +30,16 @@ class RelicWorshipSuite extends munit.FunSuite:
     * slot, beside a faceup Catacombs, holding Relic Worship as a faceup
     * adviser with `secrets` faceup secrets and 4 Supply. Dowsing Sticks lies
     * facedown at Fair Isle unless `relicAtSite` is false. */
-  private def stagedTable(secrets: Int = 2, relicAtSite: Boolean = true)
-      : Table =
+  private def relicWorshipAtFairIsleTable(secrets: Int = 2,
+      relicAtSite: Boolean = true): Table =
     val atFairIsle = Table.start.pawn(p1, "Fair Isle").secrets(p1, secrets)
       .denizen("Catacombs", at = "Fair Isle")
     val withRelic =
       if relicAtSite then atFairIsle.relicAt("Dowsing Sticks", "Fair Isle")
       else atFairIsle
     withRelic.adviser(p1, worship).supply(p1, 4)
-  private def staged(secrets: Int = 2): ReadyGame = stagedTable(secrets).ready
+  private def relicWorshipAtFairIsle(secrets: Int = 2): ReadyGame =
+    relicWorshipAtFairIsleTable(secrets).ready
 
   /** Every event of a whole Recover, and the game after it. */
   private case class Recovered(events: Vector[OathEvent], result: ReadyGame)
@@ -58,7 +60,7 @@ class RelicWorshipSuite extends munit.FunSuite:
 
   test("after recovering a relic the player pays a secret onto the card and " +
       "gains 2 Supply"):
-    val ready = staged()
+    val ready = relicWorshipAtFairIsle()
     val Recovered(events, result) = recover(ready, modifiers)
     assertEquals(me(result).relics.size, me(ready).relics.size + 1)
     assertEquals(me(result).board.faceUpSecrets, 1)
@@ -75,25 +77,24 @@ class RelicWorshipSuite extends munit.FunSuite:
     })
 
   test("without the selection nothing is paid and nothing is gained"):
-    val ready = staged()
+    val ready = relicWorshipAtFairIsle()
     val result = recover(ready, Vector.empty).result
     assertEquals(me(result).board.faceUpSecrets, 2)
     assertEquals(me(result).board.supply.supply, 4 - 1)
 
   test("a Recover that ends without a relic has still paid the secret, and " +
       "gains nothing"):
-    val ready = staged()
-    val actor = p1
+    val ready = relicWorshipAtFairIsle()
     val started = accepted(
-      failing.startWalker(Ready(ready), ActionRef.Recover, actor, modifiers))
+      failing.startWalker(Ready(ready), ActionRef.Recover, p1, modifiers))
     // The secret is paid at the start, before the roll that fails.
     val paid = Outcomes.ready(started.state)
     assertEquals(me(paid).board.faceUpSecrets, 1)
     assertEquals(Look(paid).tokensOn(worship), Tokens(0, 1))
     val stopped = accepted(
-      failing.resolveWalker(started.state, actor,
-      RecoverProcedure.choiceDecisionId, DecisionAnswer.ChooseOneAnswer(
-      DecisionOptionRef.Button("stop"))))
+      failing.resolveWalker(started.state, p1,
+      RecoverProcedure.choiceDecisionId,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("stop"))))
     val result = Outcomes.ready(stopped.state)
     assertEquals(me(result).board.faceUpSecrets, 1)
     assertEquals(me(result).board.supply.supply, 4 - 1)
@@ -102,7 +103,8 @@ class RelicWorshipSuite extends munit.FunSuite:
       "selection, and accepted with two"):
     val catacombs = PowerId("denizen.catacombs")
     def attempt(secrets: Int) =
-      val ready = stagedTable(secrets, relicAtSite = false).ready
+      val ready = relicWorshipAtFairIsleTable(secrets, relicAtSite = false)
+        .ready
       rules.startWalker(Ready(ready), ActionRef.Recover, p1,
         Vector(catacombs, RelicWorship.id))
     val refused = attempt(1)
@@ -111,17 +113,18 @@ class RelicWorshipSuite extends munit.FunSuite:
     assert(attempt(2).isRight)
 
   test("it cannot be selected without a faceup secret, or onto an occupied card"):
-    val broke = staged(secrets = 0)
+    val broke = relicWorshipAtFairIsle(secrets = 0)
     assertEquals(rules.startWalker(Ready(broke), ActionRef.Recover,
       p1, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.relic-worship is not applicable to this recover")))
-    val occupied = stagedTable().tokens(worship, secrets = 1).ready
+    val occupied = relicWorshipAtFairIsleTable().tokens(worship, secrets = 1)
+      .ready
     assertEquals(rules.startWalker(Ready(occupied), ActionRef.Recover,
       p1, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.relic-worship is not applicable to this recover")))
 
   test("a Recover that selects no power records no ignored-rule diagnostic"):
-    val events = recover(staged(), Vector.empty).events
+    val events = recover(relicWorshipAtFairIsle(), Vector.empty).events
     assert(!events.exists(_.isInstanceOf[OathEvent.IgnoredRulesRecorded]))

@@ -31,8 +31,8 @@ class RuledCardsSuite extends munit.FunSuite:
     // A facedown denizen has no suit, and an order card is not a nomad card.
     val b = on(actorRules(base, site))(_
       .denizen(convoys, at = site)
-        .denizen(vowOfKinship, at = site, facedown = true)
-        .denizen(order, at = site)
+      .denizen(vowOfKinship, at = site, facedown = true)
+      .denizen(order, at = site)
       .edifice(nomadEdifice, EdificeSide.Ruined, at = site))
     assertEquals(nomadsOf(b, SiteRuler.Player(b.actor)),
       Set[CardId](convoys, nomadEdifice))

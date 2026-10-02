@@ -24,18 +24,18 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
   /** p1's Act at Ancient City holding the Darkest Secret, with its one
     * secret, on Wandering Flame, and exactly one secret on each site in
     * `marked`. */
-  private def stagedTable(marked: String*): Table =
-    marked.foldLeft(Table.start.pawn(p1, "Ancient City")
+  private def holdingFlameWithSiteSecretsTable(marked: String*): Table =
+    marked.foldLeft(Table.start.turn(p1, Phase.Act).pawn(p1, "Ancient City")
       .darkestSecret(Some(p1), 1))(_.siteTokens(_, secrets = 1))
-  private def staged(marked: String*): ReadyGame = stagedTable(marked*).ready
+  private def holdingFlameWithSiteSecrets(marked: String*): ReadyGame =
+    holdingFlameWithSiteSecretsTable(marked*).ready
 
   test("one secret-bearing site: the pawn goes there with no question, by a " +
       "plain Move that leaves the secret where it is"):
-    val start = staged("Broken Peaks")
+    val start = holdingFlameWithSiteSecrets("Broken Peaks")
     val done = accepted(use(start, power, darkestSecretOption))
     assert(backToActing(done))
-    assertEquals(Look(after(done)).pawn(actor),
-      brokenPeaks)
+    assertEquals(Look(after(done)).pawn(actor), brokenPeaks)
     assertEquals(Look(after(done)).siteTokens(brokenPeaks).secrets, 1)
     assertEquals(ops(done.events), Vector[CoreOperation](
       Move(Piece.Pawn(actor),
@@ -46,35 +46,33 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
 
   test("several candidates: the player chooses among exactly the other " +
       "sites that hold a secret"):
-    val start = staged("Broken Peaks", "Buried Giant", "Ancient City")
+    val start = holdingFlameWithSiteSecrets("Broken Peaks", "Buried Giant",
+      "Ancient City")
     val parked = accepted(use(start, power, darkestSecretOption))
     assert(awaits(parked, power.decisionId))
     assert(answer(parked, actor, power.decisionId,
       pick(DecisionOptionRef.Site(ancientCity))).isLeft, "the pawn's own site")
     assert(answer(parked, actor, power.decisionId,
       pick(DecisionOptionRef.Site(deepWoods))).isLeft, "a site with no secret")
-    val done = accepted(
-      answer(parked, actor, power.decisionId,
+    val done = accepted(answer(parked, actor, power.decisionId,
       pick(DecisionOptionRef.Site(buriedGiant))))
     assert(backToActing(done))
-    assertEquals(Look(after(done)).pawn(actor),
-      buriedGiant)
+    assertEquals(Look(after(done)).pawn(actor), buriedGiant)
     assertEquals(replayed(start, parked.events ++ done.events),
       Right(done.state))
 
   test("a secret on a card at a site does not count, only one on the site"):
     val card = CatalogNames.denizen("Garrison")
-    val onCard = stagedTable().denizen(card, at = "Broken Peaks")
-      .tokens(card, secrets = 1)
+    val onCard = holdingFlameWithSiteSecretsTable()
+      .denizen(card, at = "Broken Peaks").tokens(card, secrets = 1)
     assert(!usableIds(onCard.ready).contains(power.id))
     assert(usableIds(onCard.siteTokens("Broken Peaks", secrets = 1).ready)
       .contains(power.id))
 
   test("it is unlimited: it can be used again in the same turn"):
-    val start = staged("Broken Peaks", "Buried Giant")
+    val start = holdingFlameWithSiteSecrets("Broken Peaks", "Buried Giant")
     val first = accepted(use(start, power, darkestSecretOption))
-    val parked = accepted(
-      answer(first, actor, power.decisionId,
+    val parked = accepted(answer(first, actor, power.decisionId,
       pick(DecisionOptionRef.Site(brokenPeaks))))
     val second = use(after(parked), power, darkestSecretOption)
     assert(second.isRight, second.toString)
@@ -83,11 +81,13 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
   test("it is unusable with no other site holding a secret, without the " +
       "banner, with the banner held by another player, or on the Festival " +
       "face, and usable with one other secret-bearing site"):
-    assert(!usableIds(staged()).contains(power.id))
-    assert(use(staged(), power, darkestSecretOption).isLeft)
-    assert(!usableIds(staged("Ancient City")).contains(power.id),
-      "only the pawn's own site")
-    assert(usableIds(staged("Broken Peaks")).contains(power.id))
+    assert(!usableIds(holdingFlameWithSiteSecrets()).contains(power.id))
+    assert(use(holdingFlameWithSiteSecrets(), power, darkestSecretOption)
+      .isLeft)
+    assert(!usableIds(holdingFlameWithSiteSecrets("Ancient City"))
+      .contains(power.id), "only the pawn's own site")
+    assert(usableIds(holdingFlameWithSiteSecrets("Broken Peaks"))
+      .contains(power.id))
     val notHeld = Table.start.turn(p1, Phase.Act).darkestSecret(None, 1)
       .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(notHeld).contains(power.id))
@@ -107,7 +107,9 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
     assert(!usableIds(wake).contains(power.id))
 
   test("it writes where the pawn went"):
-    val done = accepted(use(staged("Broken Peaks"), power, darkestSecretOption))
+    val done = accepted(
+      use(holdingFlameWithSiteSecrets("Broken Peaks"), power,
+      darkestSecretOption))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"${actor.value} placed at ${brokenPeaks.value}.",
       covers = false)))
