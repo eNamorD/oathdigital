@@ -174,6 +174,8 @@ private[application] final class GamePresentationProjector(
       def identifies(id: CardId, orientation: Orientation,
           area: PlayerCardArea): Boolean = identifiesCard(ready, viewer, id,
         Some(orientation), CardContainer.Player(player.player, area))
+      // The bag is keyed the way Rest keys it for an Exile; a citizen's
+      // kind is Imperial, whose bag is not the Rest table's (out of scope).
       val kind = PlayerForceKind.of(ready, player)
       val printed = kind.fold(0)(ready.banks.warbandSupply.getOrElse(_, 0))
       val atSites = kind.fold(0)(PlayerFacts.atSites(ready, _))

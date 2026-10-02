@@ -81,8 +81,8 @@ private[frontend] object ServerUiSupport:
       details.appendChild(row)
     }
     val footer = element("div", "site-footer")
-    // One line of labels: the box has no room for a second line, so each
-    // power's rules text rides on its hover title instead.
+    // Two lines of labels at most (`.site-powers`); each power's rules
+    // text rides on its hover title.
     val powers = element("p", "site-powers")
     site.powers.zipWithIndex.foreach { case (power, index) =>
       if index > 0 then powers.appendChild(dom.document.createTextNode(" · "))
@@ -155,7 +155,8 @@ private[frontend] object ServerUiSupport:
   ): dom.Element =
     val pile = opens.fold(element("div", "pile-display")) { case (title, cards) =>
       val node = button("", "pile-display pile-open")
-      node.setAttribute("aria-label", s"$title, $count cards")
+      node.setAttribute("aria-label",
+        s"$title, $count ${if count == 1 then "card" else "cards"}")
       node.disabled = count == 0
       node.onclick = _ => CardInspection.openCards(s"$title ($count)", cards, node)
       node

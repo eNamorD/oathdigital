@@ -217,7 +217,9 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
      The ceiling is what fits the map pane's column, and the percentage takes
      over wherever a site is drawn narrower than that. */
   --card-w: min(8.6rem, calc((100% - 2 * var(--card-gap)) / 3));
-  --site-h: 19.5rem;
+  /* Heading, pawns, three cards and two lines of powers; the box is the
+     same height on the zoomed-out map, where the powers scale with it. */
+  --site-h: 21.5rem;
 }
 /* Sized from the width rather than a length of their own, so a card keeps its
    proportions as the row divides up whatever width the site has. */
@@ -286,10 +288,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site-defense-none { color: #a99f8c; }
 .site-footer { display: flex; align-items: flex-end; justify-content: space-between;
   gap: 9px; margin-top: auto; }
-/* One line, cut with an ellipsis rather than wrapped: the box has room for a
-   single line of powers, and each power's text is on its hover title. */
+/* Two lines of labels, clipped, never ellipsized mid-word: the box has
+   room for two, each power's rules text rides on its hover title, and the
+   player zooms in to read what shrank with the map. */
 .site-powers { min-width: 0; margin: 0; overflow: hidden;
-  white-space: nowrap; text-overflow: ellipsis; }
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  line-height: 1.25; }
 .site-power { cursor: help; }
 .site-requirement { display: flex; align-items: center; flex: 0 0 auto;
   gap: 0.15em; align-self: flex-end; color: #fff2d6; font-weight: 700; }
@@ -591,6 +595,9 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
    so the colour and font are given back. */
 .pile-open, .supply-open { border: 0; padding: 0; background: none;
   color: inherit; font: inherit; cursor: pointer; }
+/* The figure keeps its place in the row; the hover fill takes the pill's
+   shape around it. */
+.supply-open { margin: 0 -0.35em; padding: 0 0.35em; border-radius: 999px; }
 .pile-open:disabled { cursor: default; }
 .player-boards { margin-top: 18px; }
 .shared-bank { margin-top: 10px; padding-top: 16px; border-top: 1px solid #675a43; }
@@ -774,7 +781,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    instead: each clamp holds its text near one screen size while the board
    keeps shrinking under it, the way a map's place names hold still while
    the map zooms. The study layer (site powers and requirement, a card's
-   defense, restriction and badge) goes; a zoom or the overlay holds it.
+   defense, restriction and badge) stays on the board and scales with the
+   map: it may fall under 11px, and the player zooms in to read it.
    Nothing here changes the height of the map: the site box is fixed and
    clips, and the region title has a fixed line, so a Fit that lands near
    the threshold cannot flip the class and re-fit forever. */
@@ -802,23 +810,28 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   margin: 0; line-height: 1.15; }
 .map-compact .site > .board-target-control { grid-column: 1 / -1; margin: 0; }
 .map-compact .site-forces { margin-top: 4px; }
-.map-compact .site-footer { display: none; }
+/* The footer is inside the details, so it is counter-scaled with them and
+   reads at the glance size; on the zoomed-out map it is one line (the
+   second shows from the compact threshold up, where the box has the room),
+   cut at a word with the hover title carrying the rest. */
+.map-compact .site-powers { -webkit-line-clamp: 1; }
 /* The card row takes what the fixed box leaves under the counter-scaled
-   text, so the glance layer never pushes a line out of the box as the map
-   shrinks: the box less its padding and grid gaps, less one 1.1 line of
-   name and one 1.25 line of pawns, is the row's height, and a denizen is
-   1.4 of its width. Above a scale of about 0.35 the row's own ceiling wins
-   and nothing changes. A site holding forces gives the line up first: the
-   forces line (1.15 plus its 4px margin) comes off the row as well, and
-   its ceiling is lower to begin with. */
+   text and the footer, so neither pushes a line out of the box as the map
+   shrinks: the box less its padding and grid gaps (30px) and the footer's
+   9px gap, less one 1.1 line of name, one 1.25 line of pawns and one 1.25
+   line of powers, is the row's height, and a denizen is 1.4 of its width.
+   Above a scale of about 0.35 the row's own ceiling wins and nothing
+   changes. A site holding forces gives the line up first: the forces line
+   (1.15 plus its 4px margin) comes off the row as well, and its ceiling is
+   lower to begin with. */
 .map-compact .site { --card-w: min(8.6rem,
   calc((100% - 2 * var(--card-gap)) / 3),
-  calc((var(--site-h) - 30px - var(--glance-name) * 1.1
-    - var(--glance-text) * 1.25) / 1.4)); }
+  calc((var(--site-h) - 39px - var(--glance-name) * 1.1
+    - var(--glance-text) * 2.5) / 1.4)); }
 .map-compact .site:has(.site-forces) { --card-w: min(7.3rem,
   calc((100% - 2 * var(--card-gap)) / 3),
-  calc((var(--site-h) - 34px - var(--glance-name) * 1.1
-    - var(--glance-text) * 2.4) / 1.4)); }
+  calc((var(--site-h) - 43px - var(--glance-name) * 1.1
+    - var(--glance-text) * 3.65) / 1.4)); }
 /* The compact card face: the name in the middle, the suit in the corner.
    The card inherits the counter-scaled size from the site, so its own em
    rules hold the name at the floor without a clamp of their own. The
