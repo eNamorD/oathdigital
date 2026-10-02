@@ -4,6 +4,7 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
   SearchFixture}
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** E08 never appears in a generated game (the Nomad Homeland takes E06), so
   * each test places it by hand.
@@ -14,7 +15,7 @@ class SacredGroundSuite extends munit.FunSuite:
 
   private val e08: EdificeId = SacredGroundCard.id
   private val elsewhere: SiteId =
-    base.game.current.map.inPlay.find(_ != home(base)).get
+    quietTable.game.current.map.inPlay.find(_ != actorsSite(quietTable)).get
 
   private def withE08(ready: ReadyGame, site: SiteId,
       side: EdificeSide = EdificeSide.Intact): ReadyGame =
@@ -35,13 +36,14 @@ class SacredGroundSuite extends munit.FunSuite:
       "adviser-faceup").isLeft)
 
   test("a player whose pawn is at Sacred Ground plays freely"):
-    assert(offered(search(home(base))).contains("adviser-faceup"))
+    assert(offered(search(actorsSite(quietTable))).contains("adviser-faceup"))
 
   test("the site's ruler is bound like everyone else"):
     val ruled = withE08(SearchFixture.staged(Vector(VisionRules.Faith)),
       elsewhere).updateCurrent(c => c.copy(map = c.map.copy(sites =
       c.map.sites.updated(elsewhere, c.map.sites(elsewhere).copy(forces =
-        SiteForces.Occupied(ForceKind.Exile(player(base).lineage), 2))))))
+        SiteForces.Occupied(ForceKind.Exile(Look(quietTable).player(actor)
+          .lineage), 2))))))
     assert(!offered(searched(ruled, VisionRules.Faith))
       .contains("adviser-faceup"))
 
@@ -54,7 +56,7 @@ class SacredGroundSuite extends munit.FunSuite:
       .contains("adviser-faceup"))
 
   test("a facedown Vision played from the advisers is bound too"):
-    val ready = withE08(inPhase(base, Phase.Act), elsewhere)
+    val ready = withE08(inPhase(quietTable, Phase.Act), elsewhere)
     assert(!offered(fromAdvisers(ready, VisionRules.Faith))
       .contains("adviser-faceup"))
 

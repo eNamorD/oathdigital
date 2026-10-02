@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class RelicBreakerSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val breaker = CatalogNames.denizen("Relic Breaker")
   private val source = DecisionOptionRef.Denizen(breaker)
@@ -44,7 +45,7 @@ class RelicBreakerSuite extends munit.FunSuite:
     assertEquals(end.game.current.commonCards.relicDeck.last, whistle)
     assertEquals(secretsOf(end), secretsOf(ready) + 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("the relic's secrets return facedown, and the line counts only the " +
       "secret gained, covering the Buried and gain lines"):

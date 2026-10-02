@@ -1,11 +1,9 @@
 package oathdigital.gameplay.powers.cardplay
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
-  TargetsFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
 
 class SaddleMakersSuite extends munit.FunSuite:
   import PowerFixture._
@@ -15,17 +13,17 @@ class SaddleMakersSuite extends munit.FunSuite:
   private val nomad = denizensOf(Suit.Nomad).take(3)
   private val order = denizensOf(Suit.Order).take(3)
   private val hearth = denizensOf(Suit.Hearth).take(3)
-  private val holder = TargetsFixture.others(base).head
+  private val holder = PhasePowerHarness.others(quietTable).head
 
   /** `holder` holds Saddle Makers on `orientation`, and the actor Searches a
     * world deck topped by `top`. */
   private def held(top: Vector[WorldCardId],
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    TargetsFixture.giveAdviser(SearchFixture.staged(top), holder, saddle,
-      orientation)
+    Table.from(SearchFixture.staged(top)).adviser(holder, saddle,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
-    player(ready, id).board.favor
+    Look(ready).player(id).board.favor
   private def bank(ready: ReadyGame, suit: Suit): Int =
     ready.banks.favor.getOrElse(suit, 0)
   private def withBank(ready: ReadyGame, suit: Suit, n: Int): ReadyGame =
@@ -38,7 +36,7 @@ class SaddleMakersSuite extends munit.FunSuite:
     val after = SearchFixture.after(done)
     assertEquals(favor(after, holder), favor(ready, holder) + 2)
     assertEquals(bank(after, Suit.Nomad), bank(ready, Suit.Nomad) - 2)
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), after)
 
   test("an order card played to a site counts too"):
     val ready = held(order)

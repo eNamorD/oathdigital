@@ -1,14 +1,15 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class DarkEnforcerSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val enforcer = CatalogNames.denizen("Dark Enforcer")
   private val source = DecisionOptionRef.Denizen(enforcer)
@@ -52,7 +53,7 @@ class DarkEnforcerSuite extends munit.FunSuite:
       s"Discarded ${order(0).value}, ${hearth(0).value}, ${ruined.value}.",
       covers = true)))
     assertEquals(replayed(ready, t.events), Right(t.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events))
+    assertWireRoundTrips(t.events)
 
   test("an intact edifice and a facedown card stay, and the line names " +
       "the site"):

@@ -3,11 +3,14 @@ package oathdigital.gameplay.powers.targeting
 import oathdigital.gameplay.CampaignFixture.raidBoard
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.testkit.Look
 
 class ForgottenVaultSuite extends munit.FunSuite:
   import TargetingFixture._
@@ -83,10 +86,10 @@ class ForgottenVaultSuite extends munit.FunSuite:
   private def conspiracyTargets(banner: Boolean,
       side: Orientation = Orientation.FaceUp)
       : (PlayerId, Vector[DecisionOptionRef], Vector[OathEvent]) =
-    val base = PowerFixture.base
+    val base = PowerFixture.quietTable
     val actor = PowerFixture.actor
     val enemy = base.game.current.players.map(_.player).find(_ != actor).get
-    val site = PowerFixture.player(base).pawnSite
+    val site = Look(base).player(PowerFixture.actor).pawnSite
     val staged = CardStaging.without(CardStaging.without(base, conspiracy), other)
       .updateCurrent(c => c.copy(
         players = c.players.map(p => if p.player == enemy then

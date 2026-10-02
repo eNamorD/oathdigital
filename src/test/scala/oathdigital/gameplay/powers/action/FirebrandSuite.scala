@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class FirebrandSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val brand = CatalogNames.denizen("Firebrand")
   private val source = DecisionOptionRef.Denizen(brand)
@@ -45,7 +46,7 @@ class FirebrandSuite extends munit.FunSuite:
       s"${p1.value} moved 1 favor from the Order bank to the People's Favor.",
       covers = false)))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("the burn takes 1 favor from the People's Favor"):
     val ready = staged(1, Suit.Order -> 2).ready

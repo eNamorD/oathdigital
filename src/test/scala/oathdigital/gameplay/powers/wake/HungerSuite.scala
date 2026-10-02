@@ -3,19 +3,19 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.application.{GameCommand, ParkedServiceFixture}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted, WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Answers, Situation, Table}
+import oathdigital.testkit.{Answers, Look, PhasePowerHarness, Situation, Table}
 import oathdigital.testkit.Table.{p2, p3}
 
 class HungerSuite extends munit.FunSuite:
-  import PowerFixture.{actor, player}
-  import TargetsFixture.updatePlayer
+  import PowerFixture.actor
+
 
   private val phasePowers = PhasePowerCatalog.default(catalog)
   private val rules = new OathRules(catalog, phasePowerCatalog = phasePowers)
@@ -39,9 +39,7 @@ class HungerSuite extends munit.FunSuite:
   /** p3's Rain Boots with 1 favor and 2 secrets on it. Set on the
     * parked state, since the actor's Rest returns every card's tokens. */
   private def stocked(ready: ReadyGame): ReadyGame =
-    updatePlayer(ready, third)(p => p.copy(advisers = p.advisers.zipWithIndex.map {
-      case (d: DenizenState, 0) => d.copy(tokens = Tokens(1, 2))
-      case (other, _) => other }))
+    Table.from(ready).tokens("Rain Boots", favor = 1, secrets = 2).unchecked
 
   private def rested(ready: ReadyGame) = rules.startWalker(Ready(ready),
     PhaseTransitionRef.BeginRest, actor).toOption.get
@@ -64,18 +62,19 @@ class HungerSuite extends munit.FunSuite:
       Hunger.decisionId, next)
     val now = ready(t.state)
     assertEquals(now.game.current.turn, TurnState(next, Phase.Wake, Set.empty))
-    val here = player(now, next).pawnSite
+    val here = Look(now).player(next).pawnSite
     val expected = now.game.current.players.filter(_.pawnSite == here)
       .map(_.player).flatMap(owner =>
-      player(now, owner).advisers.zipWithIndex.collect {
+      Look(now).player(owner).advisers.zipWithIndex.collect {
         case (held, slot) if held.id != card =>
           DecisionOptionRef.AdviserSlot(owner, slot)
       })
     assertEquals(parked.parkedDecision(t.state).map(_.decision),
       Some(Hunger.decisionId))
-    assertEquals(TargetsFixture.offered(t, next).map(_.map(_._1).distinct),
+    assertEquals(PhasePowerHarness.offered(t, next).map(_.map(_._1).distinct),
       Some(Vector("adviser-slot")))
-    assertEquals(TargetsFixture.offered(t, next).map(_.size), Some(expected.size))
+    assertEquals(PhasePowerHarness.offered(t, next).map(_.size),
+      Some(expected.size))
     assert(rules.startWalker(t.state, PhaseTransitionRef.EndWake, next).isLeft)
     assert(PhasePowerProcedure.usable(catalog, now, next, phasePowers, WalkerPowers.empty)
       .forall(_.power.id != Hunger.id))
@@ -85,16 +84,16 @@ class HungerSuite extends munit.FunSuite:
     val parkedAt = rested(staged())
     val before = stocked(ready(parkedAt.state))
     val t = parkedAt.copy(state = Ready(before))
-    val victim = player(ready(t.state), third).advisers.head
+    val victim = Look(ready(t.state)).player(third).advisers.head
     val suit = catalog.suitOf(victim.id).get
     val bank = ready(t.state).banks.favor(suit)
-    val secrets = player(ready(t.state), next).board
+    val secrets = Look(ready(t.state)).player(next).board
     val done = bury(t, DecisionOptionRef.AdviserSlot(third, 0)).toOption.get
     val after = ready(done.state)
-    assert(!player(after, third).advisers.exists(_.id == victim.id))
+    assert(!Look(after).player(third).advisers.exists(_.id == victim.id))
     assertEquals(after.game.current.commonCards.worldDeck.last, victim.id)
     assertEquals(after.banks.favor(suit), bank + 1)
-    val gained = player(after, next).board
+    val gained = Look(after).player(next).board
     assertEquals(gained.faceUpSecrets + gained.faceDownSecrets,
       secrets.faceUpSecrets + secrets.faceDownSecrets + 2)
     assert(done.events.contains(WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
@@ -144,9 +143,10 @@ class HungerSuite extends munit.FunSuite:
             SetupProcedure.adviserKeepKey else SetupProcedure.adviserDiscardKey)))
       case park if park.decisionId ==
           SetupProcedure.revealDecisionId(park.awaiting) &&
-          player(park.ready, park.awaiting).advisers.exists(_.id == card) =>
+          Look(park.ready).player(park.awaiting)
+            .advisers.exists(_.id == card) =>
         DecisionAnswer.ChooseManyAnswer(Vector(DecisionOptionRef.AdviserSlot(
-          park.awaiting, player(park.ready, park.awaiting).advisers
+          park.awaiting, Look(park.ready).player(park.awaiting).advisers
             .indexWhere(_.id == card))))
     val begun = Situation.start(Situation.rules(catalog,
       phasePowers = phasePowers).withAnswers(keepAndReveal))
@@ -163,11 +163,11 @@ class HungerSuite extends munit.FunSuite:
         commonCards = current.commonCards.copy(worldDeck =
           deck.updated(deck.indexOf(card), hand.head))))
     val woken = begun.copy(state = Ready(dealt)).after()
-    assert(player(woken.ready, first).advisers.exists {
+    assert(Look(woken.ready).player(first).advisers.exists {
       case DenizenState(id, orientation, _) =>
         id == card && orientation == Orientation.FaceUp
       case _ => false
-    }, player(woken.ready, first).advisers)
+    }, Look(woken.ready).player(first).advisers)
     assert(woken.events.contains(
       WalkerCompleted(TriggeredProcedureRef.ForcedWake)))
     assertEquals(woken.ready.game.current.turn.activePlayer, first)

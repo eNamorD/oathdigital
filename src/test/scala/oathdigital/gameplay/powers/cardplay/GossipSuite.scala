@@ -1,11 +1,10 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
-  TargetsFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
 
 class GossipSuite extends munit.FunSuite:
   import PowerFixture._
@@ -13,16 +12,16 @@ class GossipSuite extends munit.FunSuite:
 
   private val gossip = DenizenId("99")
   private val plain = denizensOf(Suit.Arcane).take(3)
-  private val holder = TargetsFixture.others(base).head
+  private val holder = PhasePowerHarness.others(quietTable).head
 
   /** `holder` holds a faceup Gossip, and the actor Searches. */
   private def held(top: Vector[WorldCardId],
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    TargetsFixture.giveAdviser(SearchFixture.staged(top), holder, gossip,
-      orientation)
+    Table.from(SearchFixture.staged(top)).adviser(holder, gossip,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
-    player(ready, id).board.favor
+    Look(ready).player(id).board.favor
   private def discordBank(ready: ReadyGame): Int =
     ready.banks.favor.getOrElse(Suit.Discord, 0)
 
@@ -33,7 +32,7 @@ class GossipSuite extends munit.FunSuite:
     val after = SearchFixture.after(done)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
     assertEquals(discordBank(after), discordBank(ready) - 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), after)
 
   test("a facedown Vision counts too"):
     val ready = held(Vector(VisionRules.Faith))
@@ -63,8 +62,8 @@ class GossipSuite extends munit.FunSuite:
     assertEquals(favor(after, holder), favor(ready, holder))
 
   test("an empty Discord bank gives nothing"):
-    val ready = held(plain).copy(banks = base.banks.copy(favor =
-      base.banks.favor.updated(Suit.Discord, 0)))
+    val ready = held(plain).copy(banks = quietTable.banks.copy(favor =
+      quietTable.banks.favor.updated(Suit.Discord, 0)))
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-facedown"))
     assertEquals(favor(after, holder), favor(ready, holder))

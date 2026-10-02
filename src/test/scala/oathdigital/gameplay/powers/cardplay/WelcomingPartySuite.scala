@@ -3,9 +3,9 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look}
 
 class WelcomingPartySuite extends munit.FunSuite:
   import PowerFixture._
@@ -16,9 +16,10 @@ class WelcomingPartySuite extends munit.FunSuite:
   private val plain = denizensOf(Suit.Arcane).take(3)
 
   private def withParty(top: Vector[WorldCardId]): ReadyGame =
-    atHome(SearchFixture.staged(top), party)
+    atActorsSite(SearchFixture.staged(top), party)
 
-  private def favor(ready: ReadyGame): Int = player(ready).board.favor
+  private def favor(ready: ReadyGame): Int = Look(ready).player(actor)
+    .board.favor
   private def hearthBank(ready: ReadyGame): Int =
     ready.banks.favor.getOrElse(Suit.Hearth, 0)
 
@@ -31,7 +32,7 @@ class WelcomingPartySuite extends munit.FunSuite:
     // so Hearth is the only bank the power touches.
     assertEquals(hearthBank(after), hearthBank(ready) - 1)
     assertEquals(favor(after), favor(ready) + 2)
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), after)
 
   test("a card played as a faceup adviser gains it too, of any suit"):
     val ready = withParty(plain)
@@ -70,14 +71,14 @@ class WelcomingPartySuite extends munit.FunSuite:
     val power = WelcomingParty.forCatalog(catalog)
     val vision = CardPlayedFaceup(VisionRules.Faith,
       RuleSourceRef.Adviser(actor, VisionRules.Faith))
-    val ctx = PowerCtx(atHome(base, party), actor, power.source,
+    val ctx = PowerCtx(atActorsSite(quietTable, party), actor, power.source,
       PowerWindow.ActionCardPlayedFaceup, Vector.empty, vision,
       Some(ActionRef.Search))
     assert(!power.applicable(ctx))
     assert(!power.applicable(ctx.copy(operation = CardPlayedFaceup(party,
-      RuleSourceRef.SiteCard(home(base), party)))))
+      RuleSourceRef.SiteCard(actorsSite(quietTable), party)))))
     val played = CardPlayedFaceup(plain.head,
-      RuleSourceRef.SiteCard(home(base), plain.head))
+      RuleSourceRef.SiteCard(actorsSite(quietTable), plain.head))
     assert(power.applicable(ctx.copy(operation = played)))
     assert(!power.applicable(ctx.copy(operation = played,
       procedure = Some(ActionRef.PlayFacedownAdviser))))
@@ -87,8 +88,8 @@ class WelcomingPartySuite extends munit.FunSuite:
       window = PowerWindow.ActionCardPlayedFacedown)))
 
   test("an empty Hearth bank gives nothing"):
-    val ready = withParty(plain).copy(banks = base.banks.copy(favor =
-      base.banks.favor.updated(Suit.Hearth, 0)))
+    val ready = withParty(plain).copy(banks = quietTable.banks.copy(favor =
+      quietTable.banks.favor.updated(Suit.Hearth, 0)))
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
       "adviser-faceup"))
     assertEquals(favor(after), favor(ready))

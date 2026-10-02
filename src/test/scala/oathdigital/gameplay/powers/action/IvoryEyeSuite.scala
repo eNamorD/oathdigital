@@ -1,13 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class IvoryEyeSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val eye = RelicId("R16")
   private val source = DecisionOptionRef.Relic(eye)
@@ -23,10 +24,10 @@ class IvoryEyeSuite extends munit.FunSuite:
     .adviser(p2, "Battle Honors", facedown = true)
     .adviser(p3, "Rain Boots", facedown = true)
     .ready
-  private def relicOf(ready: ReadyGame) = player(ready).relics
+  private def relicOf(ready: ReadyGame) = Look(ready).player(actor).relics
     .find(_.id == eye).get
   private def firstAdviser(ready: ReadyGame, owner: PlayerId): CardId =
-    player(ready, owner).advisers.head.id
+    Look(ready).player(owner).advisers.head.id
   private def known(ready: ReadyGame, viewer: PlayerId): Vector[WorldCardId] =
     ready.knowledge.advisers.getOrElse(viewer, Vector.empty)
   private def facedown(ready: ReadyGame) = for
@@ -41,13 +42,13 @@ class IvoryEyeSuite extends munit.FunSuite:
 
   test("it places a secret on the relic and offers every facedown adviser " +
       "of every player, and no faceup one"):
-    val ready = giveVision(giveAdviser(staged, target, DenizenId("26"),
-      Orientation.FaceUp), actor, faith, Orientation.FaceDown)
+    val ready = Table.from(staged).adviser(target, DenizenId("26"))
+      .adviser(actor, faith, facedown = true).unchecked
     val t = use(ready, IvoryEye, source).toOption.get
     assert(awaits(t, IvoryEye.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
-    assertEquals(player(after(t)).board.faceUpSecrets, 0)
+    assertEquals(Look(after(t)).player(actor).board.faceUpSecrets, 0)
     assertEquals(offered(t, actor),
       Some(facedown(ready).map(o => o.kind -> o.wireId)))
     assert(!offered(t, actor).get.contains(
@@ -70,9 +71,10 @@ class IvoryEyeSuite extends munit.FunSuite:
     assert(known(after(done), actor).contains(card))
     assert(!known(after(done), target).contains(card))
     assert(!known(after(done), third).contains(card))
-    assertEquals(player(after(done), target), player(after(t), target))
+    assertEquals(Look(after(done)).player(target), Look(after(t))
+      .player(target))
     assertEquals(replayed(staged, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("the peeked adviser is named to the actor and to nobody else"):
     val t = use(staged, IvoryEye, source).toOption.get
@@ -88,28 +90,29 @@ class IvoryEyeSuite extends munit.FunSuite:
     assert(!named(publicBoardOf(done, target)))
 
   test("a facedown Vision can be peeked"):
-    val ready = giveVision(staged, target, faith, Orientation.FaceDown)
+    val ready = Table.from(staged).adviser(target, faith, facedown = true)
+      .unchecked
     val t = use(ready, IvoryEye, source).toOption.get
-    val slot = player(ready, target).advisers.indexWhere(_.id == faith)
+    val slot = Look(ready).player(target).advisers.indexWhere(_.id == faith)
     val done = answer(t, actor, IvoryEye.decisionId, peekAt(target, slot))
       .toOption.get
     assert(known(after(done), actor).contains(faith))
 
   test("only the acting player answers, with an offered adviser"):
-    val ready = giveAdviser(staged, target, DenizenId("26"), Orientation.FaceUp)
+    val ready = Table.from(staged).adviser(target, DenizenId("26")).unchecked
     val t = use(ready, IvoryEye, source).toOption.get
     assert(answer(t, target, IvoryEye.decisionId, peekAt(target, 0)).isLeft)
     assert(answer(t, actor, IvoryEye.decisionId, peekAt(target, 1)).isLeft)
     assert(answer(t, actor, IvoryEye.decisionId, peekAt(target, 7)).isLeft)
 
   test("with no facedown adviser the cost is paid and nothing else happens"):
-    val ready = (others(base) :+ actor).foldLeft(staged)(withoutAdvisers)
+    val ready = (others(quietTable) :+ actor).foldLeft(staged)(withoutAdvisers)
     val t = use(ready, IvoryEye, source).toOption.get
     parked.assertNotParked(t.state)
     assertEquals(relicOf(after(t)).tokens, Tokens(0, 1))
 
   test("it is unusable without a faceup secret"):
-    val broke = withSecrets(staged, actor, 0, 3)
+    val broke = Table.from(staged).secrets(actor, 0, 3).unchecked
     assertEquals(usableNow(broke), Vector.empty)
     assert(use(broke, IvoryEye, source).isLeft)
 

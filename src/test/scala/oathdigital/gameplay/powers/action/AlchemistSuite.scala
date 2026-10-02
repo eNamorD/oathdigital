@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
 
 class AlchemistSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val alchemist = DenizenId("9")
   private val source = DecisionOptionRef.Denizen(alchemist)
@@ -15,13 +16,14 @@ class AlchemistSuite extends munit.FunSuite:
     * beside a site Alchemist.
     */
   private def staged(favor: (Suit, Int)*) =
-    val ready = inPhase(withSecrets(atHome(base, alchemist), actor, 2, 0),
+    val ready = inPhase(Table.from(atActorsSite(quietTable, alchemist))
+      .secrets(actor, 2, 0).unchecked,
       Phase.Act)
     ready.copy(banks = ready.banks.copy(favor =
       Suit.all.map(_ -> 0).toMap ++ favor))
   private def bank(ready: ReadyGame, suit: Suit) = ready.banks.favor(suit)
   private def cardOf(ready: ReadyGame) = ready.game.current.map
-    .sites(home(ready)).denizens.collectFirst {
+    .sites(actorsSite(ready)).denizens.collectFirst {
       case d: DenizenState if d.id == alchemist => d }.get
   private def rows(amounts: (Suit, Int)*) = DecisionAnswer.DistributeAnswer(
     amounts.toVector.map { case (suit, n) =>
@@ -31,27 +33,30 @@ class AlchemistSuite extends munit.FunSuite:
     val ready = staged(Suit.Nomad -> 9)
     val t = use(ready, Alchemist, source).toOption.get
     assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
-    assertEquals(player(after(t)).board.faceUpSecrets, 0)
+    assertEquals(Look(after(t)).player(actor).board.faceUpSecrets, 0)
 
   test("one bank holding all the favor gives four from it without a decision"):
     val ready = staged(Suit.Nomad -> 9)
     val t = use(ready, Alchemist, source).toOption.get
     parked.assertNotParked(t.state)
-    assertEquals(player(after(t)).board.favor, player(ready).board.favor + 4)
+    assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor + 4)
     assertEquals(bank(after(t), Suit.Nomad), 5)
 
   test("four or fewer in all takes everything from every bank, unasked"):
     val ready = staged(Suit.Arcane -> 2, Suit.Discord -> 1)
     val t = use(ready, Alchemist, source).toOption.get
     parked.assertNotParked(t.state)
-    assertEquals(player(after(t)).board.favor, player(ready).board.favor + 3)
+    assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor + 3)
     assertEquals(bank(after(t), Suit.Arcane), 0)
     assertEquals(bank(after(t), Suit.Discord), 0)
 
   test("empty banks give nothing, and the cost stays paid"):
     val ready = staged()
     val t = use(ready, Alchemist, source).toOption.get
-    assertEquals(player(after(t)).board.favor, player(ready).board.favor)
+    assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor)
     assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
 
   test("several banks holding more than four ask for a distribution of four"):
@@ -68,7 +73,8 @@ class AlchemistSuite extends munit.FunSuite:
     assertEquals((query.minTotal, query.maxTotal), (4, 4))
     val done = answer(t, actor, Alchemist.decisionId,
       rows(Suit.Arcane -> 3, Suit.Discord -> 1, Suit.Nomad -> 0)).toOption.get
-    assertEquals(player(after(done)).board.favor, player(ready).board.favor + 4)
+    assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor + 4)
     assertEquals(Vector(Suit.Arcane, Suit.Discord, Suit.Nomad)
       .map(bank(after(done), _)), Vector(0, 2, 2))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
@@ -91,7 +97,8 @@ class AlchemistSuite extends munit.FunSuite:
 
   test("the cost needs two faceup secrets, and facedown ones do not count"):
     Vector((1, 0), (1, 5), (0, 5)).foreach { case (up, down) =>
-      val ready = withSecrets(staged(Suit.Nomad -> 9), actor, up, down)
+      val ready = Table.from(staged(Suit.Nomad -> 9)).secrets(actor, up, down)
+        .unchecked
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
       assert(use(ready, Alchemist, source).isLeft)
     }

@@ -1,10 +1,13 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
+  Transform}
 import oathdigital.gameplay.powers.PowerFixture
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers}
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** The window on Conspiracy's target decision: a power can remove targets, and
   * when it removes every one the decision is not asked and nothing is taken.
@@ -13,7 +16,7 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
   import PowerFixture._
 
   private val conspiracy = VisionRules.Conspiracy
-  private val enemy: PlayerId = base.game.current.players.map(_.player)
+  private val enemy: PlayerId = quietTable.game.current.players.map(_.player)
     .find(_ != actor).get
   private val relics = Vector(RelicId("R10"), RelicId("R11"))
 
@@ -21,9 +24,9 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
     * actor's site holding `relics`, faceup.
     */
   private def staged: ReadyGame =
-    val current = base.game.current
-    val site = player(base).pawnSite
-    base.updateCurrent(_.copy(
+    val current = quietTable.game.current
+    val site = Look(quietTable).player(actor).pawnSite
+    quietTable.updateCurrent(_.copy(
       players = current.players.map(p =>
         if p.player == enemy then p.copy(pawnSite = site,
           relics = relics.map(RelicState(_, Orientation.FaceUp, Tokens.empty)))
@@ -86,7 +89,8 @@ class ConspiracyTargetWindowSuite extends munit.FunSuite:
       "and the card still leaves the game"):
     val (_, outcome) = walk(Some(removing(_ => false)))
     val done = outcome.asInstanceOf[WalkerOutcome.Finished].treeless
-    assertEquals(player(done, enemy).relics.map(_.id), relics)
-    assertEquals(player(done).relics, player(staged).relics)
+    assertEquals(Look(done).player(enemy).relics.map(_.id), relics)
+    assertEquals(Look(done).player(actor).relics, Look(staged).player(actor)
+      .relics)
     assertEquals(done.game.current.temporaryHands(actor), Vector.empty)
     assert(!CardIndex.from(done.game).toOption.get.ids.contains(conspiracy))

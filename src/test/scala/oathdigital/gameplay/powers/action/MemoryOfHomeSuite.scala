@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class MemoryOfHomeSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val memory = CatalogNames.denizen("Memory of Home")
   private val source = DecisionOptionRef.Denizen(memory)
@@ -48,7 +49,7 @@ class MemoryOfHomeSuite extends munit.FunSuite:
     assertEquals(Vector(Suit.Arcane, Suit.Nomad, Suit.Hearth).map(bank(end, _)),
       Vector(2, 0, 6))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("with only the Hearth bank stocked nothing moves, and the line " +
       "says so"):

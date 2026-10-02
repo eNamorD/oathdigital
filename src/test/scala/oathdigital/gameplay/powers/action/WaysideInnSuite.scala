@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{Look, Table}
 
 class WaysideInnSuite extends munit.FunSuite:
   import PowerFixture._
@@ -15,26 +16,27 @@ class WaysideInnSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(inn)
   private val rules = new OathRules(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  private def staged(favor: Int, supply: Int) = inPhase(withBoard(
-    atHome(base, inn))(_.copy(favor = favor, supply = SupplyTrack(supply))),
+  private def staged(favor: Int,
+    supply: Int) = inPhase(Table.from(atActorsSite(quietTable, inn))
+      .favor(actor, favor).supply(actor, supply).unchecked,
     Phase.Act)
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
     ActionRef.UsePower(WaysideInn.id), actor, Vector.empty, Vector(source))
   private def after(state: OathState) = state.asInstanceOf[Ready].value
   private def innCard(ready: ReadyGame) = ready.game.current.map
-    .sites(home(ready)).denizens.collectFirst {
+    .sites(actorsSite(ready)).denizens.collectFirst {
       case d: DenizenState if d.id == inn => d }.get
 
   test("it places 1 favor on its card and gains 2 Supply"):
     val used = after(use(staged(favor = 3, supply = 2)).toOption.get.state)
-    assertEquals(player(used).board.favor, 2)
-    assertEquals(player(used).board.supply, SupplyTrack(4))
+    assertEquals(Look(used).player(actor).board.favor, 2)
+    assertEquals(Look(used).player(actor).board.supply, SupplyTrack(4))
     assertEquals(innCard(used).tokens, Tokens(1, 0))
     assertEquals(used.game.current.turn.usedPowers, Set.empty[PowerUseRef])
 
   test("the gain is clamped at the track maximum"):
     val used = after(use(staged(favor = 1, supply = 6)).toOption.get.state)
-    assertEquals(player(used).board.supply, SupplyTrack(7))
+    assertEquals(Look(used).player(actor).board.supply, SupplyTrack(7))
 
   test("it is unusable without favor to place"):
     val broke = staged(favor = 0, supply = 2)

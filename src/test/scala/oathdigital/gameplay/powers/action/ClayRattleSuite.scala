@@ -1,14 +1,15 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerDice}
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class ClayRattleSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val parked = new ParkedDecisionAssertions(catalog,
@@ -32,7 +33,8 @@ class ClayRattleSuite extends munit.FunSuite:
     * Hinterland's is empty.
     */
   private def staged(faceUp: Int = 2): ReadyGame =
-    act(withBoard(withRelic(base, rattle))(_.copy(faceUpSecrets = faceUp)))
+    act(Table.from(withRelic(quietTable, rattle)).secrets(actor, faceUp)
+      .unchecked)
       .updateCurrent(c => c.copy(commonCards = c.commonCards.copy(
         worldDeck = c.commonCards.worldDeck.drop(3),
         regionalDiscards = c.commonCards.regionalDiscards
@@ -51,8 +53,8 @@ class ClayRattleSuite extends munit.FunSuite:
     val started = use(shuffling, staged(), ClayRattle.id, source).toOption.get
     assertEquals(parked.parkedDecision(started.state).map(_.decision),
       Some(ClayRattle.decisionId))
-    assertEquals(tokensOn(ready(started.state), rattle), Tokens(0, 2))
-    assertEquals(TargetsFixture.offered(started, actor),
+    assertEquals(Look(ready(started.state)).tokensOn(rattle), Tokens(0, 2))
+    assertEquals(PhasePowerHarness.offered(started, actor),
       Some(ClayRattle.piles.map(ClayRattle.ref).map(r => r.kind -> r.wireId)))
     assertEquals(ClayRattle.piles.size, 4)
 
@@ -66,7 +68,7 @@ class ClayRattleSuite extends munit.FunSuite:
     parked.assertResumed(done.state, Phase.Act, actor)
     // Replay has no shuffle source: it applies the recorded order.
     assertEquals(replayed(rules(), ready0, started.events ++ done.events), end)
-    assert(wireRoundTrips(started.events ++ done.events))
+    assertWireRoundTrips(started.events ++ done.events)
     assertEquals(NoteText.said(ClayRattle, started.events ++ done.events),
       Vector(NoteText.Said(NoteKey.Used,
         s"${actor.value} shuffled the world deck.", covers = false)))

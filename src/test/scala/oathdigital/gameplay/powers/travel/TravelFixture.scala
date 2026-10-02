@@ -2,11 +2,13 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.powers.{CardStaging, PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{CardStaging, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.Look
 
 /** A Travel board for the modifiers and rules of Travel: the map of
   * `TravelProcedureSuite`, with named sites, every site ruled by bandits, and
@@ -48,12 +50,12 @@ object TravelFixture:
         else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
         Vector.empty, Vector.empty, definition.startingResources)
     }.toMap
-    val players = base.game.current.players.zipWithIndex.map:
+    val players = quietTable.game.current.players.zipWithIndex.map:
       case (player, index) => player.copy(
         pawnSite = Some(if player.player == actor then source else ids(index + 1)),
         board = if player.player == actor then
           player.board.copy(supply = SupplyTrack(supply)) else player.board)
-    inPhase(base.updateCurrent(_.copy(players = players,
+    inPhase(quietTable.updateCurrent(_.copy(players = players,
       map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states))),
       Phase.Act)
 
@@ -64,7 +66,8 @@ object TravelFixture:
   def ruledBy(ready: ReadyGame, site: SiteId, ruler: PlayerId): ReadyGame =
     ready.updateCurrent(c => c.copy(map = c.map.copy(sites =
       c.map.sites.updated(site, c.map.sites(site).copy(forces =
-        SiteForces.Occupied(ForceKind.Exile(player(ready, ruler).lineage), 1))))))
+        SiteForces.Occupied(ForceKind.Exile(Look(ready).player(ruler).lineage),
+          1))))))
 
   /** A denizen or an edifice face put at `site`; it leaves the world or
     * edifice deck if it was there, so the inventory stays whole.
@@ -102,10 +105,10 @@ object TravelFixture:
     transition.state.asInstanceOf[Ready].value
 
   def supplyOf(ready: ReadyGame, id: PlayerId = actor): Int =
-    player(ready, id).board.supply.supply
+    Look(ready).player(id).board.supply.supply
 
   /** The favor on an adviser card of the actor. */
   def adviserTokens(ready: ReadyGame, id: CardId): Tokens =
-    player(ready).advisers.collectFirst {
+    Look(ready).player(actor).advisers.collectFirst {
       case card: DenizenState if card.id == id => card.tokens
     }.get

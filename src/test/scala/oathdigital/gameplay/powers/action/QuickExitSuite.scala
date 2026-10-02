@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class QuickExitSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val exit = CatalogNames.denizen("Quick Exit")
   private val source = DecisionOptionRef.Denizen(exit)
@@ -49,7 +50,7 @@ class QuickExitSuite extends munit.FunSuite:
     assertEquals(Look(after(done)).pawn(p1), home)
     val events = t.events ++ chosen.events ++ done.events
     assertEquals(replayed(ready, events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(events))
+    assertWireRoundTrips(events)
     assertEquals(NoteText.said(QuickExit, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"Placed ${p2.value} at ${away.value}.", covers = false)))
 

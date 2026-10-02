@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class BirdsongSuite extends munit.FunSuite:
@@ -50,9 +50,9 @@ class BirdsongSuite extends munit.FunSuite:
     val (_, plain) = trade(ready, Vector.empty, beast)
     assertEquals(Look(result).favor(p1), Look(plain).favor(p1))
     assertEquals(Look(result).faceUpSecrets(p1), Look(plain).faceUpSecrets(p1))
-    assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
       result)
-    assert(PaidActionHarness.wireRoundTrips(transition.events))
+    assertWireRoundTrips(transition.events)
 
   test("trading with a nomad card spends no Supply"):
     assertEquals(Look(trade(at(nomad), modifiers, nomad)._2).supply(p1), 7)

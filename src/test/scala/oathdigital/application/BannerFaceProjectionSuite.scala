@@ -1,18 +1,20 @@
 package oathdigital.application
 
-import oathdigital.gameplay.powers.{PowerFixture, TargetsFixture}
-import oathdigital.gameplay.powers.banner.{BannerFixture, WanderingFlameMove, WanderingFlamePlace}
+import oathdigital.gameplay.powers.PowerFixture
+import oathdigital.gameplay.powers.banner.{BannerFixture, WanderingFlameMove,
+  WanderingFlamePlace}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
 import oathdigital.protocol.{GameIntent, WalkerStartArgWire}
+import oathdigital.testkit.Table
 
 /** The banner faces' phase powers reach the client: they are projected with a
   * name and a text, their `usePower` control is legal for the holder only,
   * and the client's source (a banner) binds back to the engine's source.
   */
 class BannerFaceProjectionSuite extends munit.FunSuite:
-  import PowerFixture.{actor, base, inPhase}
+  import PowerFixture.{actor, quietTable, inPhase}
   import BannerFixture._
 
   private val projector = new GameProjector(catalog)
@@ -20,8 +22,9 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
   private val place = WanderingFlamePlace.id.value
 
   /** The holder has a faceup secret, and another site holds one. */
-  private def holding: ReadyGame = inPhase(TargetsFixture.withSecrets(
-    withSiteSecrets(holdingFlame(base), brokenPeaks, 1), actor, 1, 0), Phase.Act)
+  private def holding: ReadyGame = inPhase(Table.from(withSiteSecrets(
+    holdingFlame(quietTable), brokenPeaks, 1)).secrets(actor, 1, 0)
+      .unchecked, Phase.Act)
 
   test("the holder is shown both Wandering Flame powers, named, with a text"):
     val projected = projector.project("flame", LoadedGame(Ready(holding), 30L),
@@ -38,24 +41,26 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
       "bearing site, and the place power needs a faceup secret"):
     def shown(ready: ReadyGame) = projector.project("flame",
       LoadedGame(Ready(ready), 30L), actor)
-    val noSite = inPhase(TargetsFixture.withSecrets(
-      withoutSiteSecrets(holdingFlame(base)), actor, 1, 0), Phase.Act)
+    val noSite = inPhase(Table.from(withoutSiteSecrets(holdingFlame(
+      quietTable))).secrets(actor, 1, 0).unchecked, Phase.Act)
     assertEquals(shown(noSite).phasePowers.map(_.powerId), Vector(place))
-    val noSecret = TargetsFixture.withSecrets(holding, actor, 0, 2)
+    val noSecret = Table.from(holding).secrets(actor, 0, 2).unchecked
     assertEquals(shown(noSecret).phasePowers.map(_.powerId), Vector(move))
-    val neither = inPhase(TargetsFixture.withSecrets(
-      withoutSiteSecrets(holdingFlame(base)), actor, 0, 2), Phase.Act)
+    val neither = inPhase(Table.from(withoutSiteSecrets(holdingFlame(
+      quietTable))).secrets(actor, 0, 2).unchecked, Phase.Act)
     assertEquals(shown(neither).phasePowers, Vector.empty)
     assert(!shown(neither).legalControls.exists(_.startsWith("usePower:")))
 
   test("another player, and the Festival face, are shown neither"):
-    val other = base.game.current.players.map(_.player).find(_ != actor).get
+    val other = quietTable.game.current.players.map(_.player).find(_ != actor)
+      .get
     val theirs = projector.project("flame", LoadedGame(Ready(holding), 30L),
       other)
     assertEquals(theirs.phasePowers, Vector.empty)
     assert(!theirs.legalControls.exists(_.startsWith("usePower:")))
     val festival = inPhase(withSiteSecrets(
-      holdingFlame(base, DarkestSecretFace.Festival), brokenPeaks, 1), Phase.Act)
+      holdingFlame(quietTable,
+        DarkestSecretFace.Festival), brokenPeaks, 1), Phase.Act)
     assertEquals(projector.project("flame", LoadedGame(Ready(festival), 30L),
       actor).phasePowers, Vector.empty)
 

@@ -12,7 +12,7 @@ class ShiftingFogSuite extends munit.FunSuite:
   private val card = power.cardId
   private def banked(ready: ReadyGame, favor: Map[Suit, Int]) =
     ready.copy(banks = ready.banks.copy(favor = favor))
-  private val staged = asAdviser(base, card)
+  private val staged = asAdviser(quietTable, card)
 
   test("Shifting Fog is in the default walker catalog"):
     assert(WalkerPowerCatalog.default(catalog).powers.contains(power))

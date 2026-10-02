@@ -5,9 +5,11 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class FaeMerchantSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val walkerParked = new ParkedDecisionAssertions(catalog,
@@ -20,21 +22,24 @@ class FaeMerchantSuite extends munit.FunSuite:
   private val held1 = RelicId("R08")
   private def relicRef(id: RelicId) = DecisionOptionRef.Relic(id)
   private def staged(held: Vector[RelicId] = Vector(held1), secrets: Int = 2) =
-    val ready0 = held.foldLeft(atHome(base, fae))((r, id) => withRelic(r, id))
-    act(withBoard(ready0)(_.copy(faceUpSecrets = secrets)))
-  private def relicIds(state: ReadyGame) = player(state).relics.map(_.id)
+    val ready0 = held.foldLeft(atActorsSite(quietTable, fae))((r,
+      id) => withRelic(r, id))
+    act(Table.from(ready0).secrets(actor, secrets).unchecked)
+  private def relicIds(state: ReadyGame) = Look(state).player(actor)
+    .relics.map(_.id)
 
   test("it draws a relic, then asks which relic to put on the bottom"):
     val ready0 = staged()
     val top = ready0.game.current.commonCards.relicDeck.head
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
       FaeMerchant.decisionId, actor)
     val mid = ready(parked.state)
     assertEquals(relicIds(mid), Vector(held1, top))
-    assertEquals(player(mid).relics.last.orientation, Orientation.FaceDown)
-    assertEquals(tokensOn(mid, fae), Tokens(0, 1))
+    assertEquals(Look(mid).player(actor).relics.last.orientation,
+      Orientation.FaceDown)
+    assertEquals(Look(mid).tokensOn(fae), Tokens(0, 1))
 
     val done = answer(rules0, parked.state, FaeMerchant.decisionId,
       relicRef(held1)).toOption.get
@@ -43,12 +48,12 @@ class FaeMerchantSuite extends munit.FunSuite:
     assertEquals(end.game.current.commonCards.relicDeck.last, held1)
     walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(replayed(rules0, ready0, parked.events ++ done.events), end)
-    assert(wireRoundTrips(parked.events ++ done.events))
+    assertWireRoundTrips(parked.events ++ done.events)
 
   test("the relic just taken may be the one put back"):
     val ready0 = staged()
     val top = ready0.game.current.commonCards.relicDeck.head
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     val end = ready(answer(rules0, parked.state, FaeMerchant.decisionId,
       relicRef(top)).toOption.get.state)
@@ -57,7 +62,7 @@ class FaeMerchantSuite extends munit.FunSuite:
 
   test("the Grand Scepter is never offered, and cannot be chosen"):
     val ready0 = staged(Vector(scepter, held1))
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     assert(answer(rules0, parked.state, FaeMerchant.decisionId,
       relicRef(scepter)).isLeft)
@@ -69,7 +74,7 @@ class FaeMerchantSuite extends munit.FunSuite:
       "for the player to confirm"):
     val ready0 = staged(Vector(scepter))
     val top = ready0.game.current.commonCards.relicDeck.head
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
       FaeMerchant.decisionId, actor)
@@ -87,7 +92,7 @@ class FaeMerchantSuite extends munit.FunSuite:
       "puts it back"):
     val ready0 = staged(Vector.empty)
     val top = ready0.game.current.commonCards.relicDeck.head
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
       FaeMerchant.decisionId, actor)
@@ -102,12 +107,12 @@ class FaeMerchantSuite extends munit.FunSuite:
     val ready0 = staged(Vector(held1)).updateCurrent(c => c.copy(players =
       c.players.map(p => if p.player != actor then p else p.copy(relics =
         p.relics.map(r => r.copy(tokens = Tokens(0, 1)))))))
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     val end = ready(answer(rules0, parked.state, FaeMerchant.decisionId,
       relicRef(held1)).toOption.get.state)
-    assertEquals(player(end).board.faceDownSecrets,
-      player(ready0).board.faceDownSecrets + 1)
+    assertEquals(Look(end).player(actor).board.faceDownSecrets,
+      Look(ready0).player(actor).board.faceDownSecrets + 1)
 
   /** `ready0` with the relic deck moved to the reliquary. */
   private def emptied(ready0: ReadyGame): ReadyGame =
@@ -120,7 +125,7 @@ class FaeMerchantSuite extends munit.FunSuite:
   test("an empty relic deck still offers the one held relic, and confirming " +
       "puts it on the bottom"):
     val ready0 = emptied(staged(Vector(held1)))
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val parked = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     walkerParked.assertParked(parked.state, ActionRef.UsePower(FaeMerchant.id),
       FaeMerchant.decisionId, actor)
@@ -135,13 +140,13 @@ class FaeMerchantSuite extends munit.FunSuite:
       "nothing and puts nothing back"):
     val ready0 = emptied(staged(Vector(scepter)))
     assert(usableIds(ready0).contains(FaeMerchant.id))
-    val rules0 = restrictedRules()
+    val rules0 = rulesWithPrintedRestrictions()
     val done = use(rules0, ready0, FaeMerchant.id, source).toOption.get
     walkerParked.assertResumed(done.state, Phase.Act, actor)
     val end = ready(done.state)
     assertEquals(relicIds(end), Vector(scepter))
     assertEquals(end.game.current.commonCards.relicDeck, Vector.empty[RelicId])
-    assertEquals(tokensOn(end, fae), Tokens(0, 1))
+    assertEquals(Look(end).tokensOn(fae), Tokens(0, 1))
     assertEquals(replayed(rules0, ready0, done.events), end)
 
   test("it is unusable without a faceup secret"):
@@ -151,11 +156,13 @@ class FaeMerchantSuite extends munit.FunSuite:
     val ready0 = staged()
     val top = ready0.game.current.commonCards.relicDeck.head
     val merchant = FaeMerchant
-    val parked = use(restrictedRules(), ready0, FaeMerchant.id, source).toOption.get
+    val parked = use(rulesWithPrintedRestrictions(), ready0, FaeMerchant.id,
+      source).toOption.get
     assertEquals(NoteText.said(merchant, parked.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} drew ${top.value} facedown.",
         covers = false)))
-    val done = answer(restrictedRules(), parked.state, FaeMerchant.decisionId,
+    val done = answer(rulesWithPrintedRestrictions(), parked.state,
+      FaeMerchant.decisionId,
       relicRef(held1)).toOption.get
     assertEquals(NoteText.said(merchant, done.events), Vector(
       NoteText.Said("returned",

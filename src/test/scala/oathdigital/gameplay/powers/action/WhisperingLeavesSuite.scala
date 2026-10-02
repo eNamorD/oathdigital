@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class WhisperingLeavesSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val leaves = CatalogNames.denizen("Whispering Leaves")
   private val source = DecisionOptionRef.Denizen(leaves)
@@ -38,7 +39,7 @@ class WhisperingLeavesSuite extends munit.FunSuite:
     assertEquals(Look(after(done)).favor(p2), 1)
     assertEquals(Look(after(done)).tokensOn(leaves), Tokens(2, 1))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the giver and the favor placed"):
     val (_, done) = choose(staged().ready, p2)

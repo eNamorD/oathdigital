@@ -1,13 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class MemoryOfNatureSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val nature = CatalogNames.denizen("Memory of Nature")
   private val source = DecisionOptionRef.Denizen(nature)
@@ -64,7 +65,7 @@ class MemoryOfNatureSuite extends munit.FunSuite:
     assertEquals(Vector(Suit.Arcane, Suit.Order, Suit.Beast)
       .map(bank(after(done), _)), Vector(1, 1, 2))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("the other banks holding X or less give all they hold, unasked, " +
       "and the Beast bank's own favor stays"):

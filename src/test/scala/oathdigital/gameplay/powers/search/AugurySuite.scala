@@ -2,8 +2,9 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class AugurySuite extends munit.FunSuite:
   import PowerFixture._
@@ -14,7 +15,7 @@ class AugurySuite extends munit.FunSuite:
   private val plain: Vector[DenizenId] = Suit.all.flatMap(denizensOf)
 
   private def withAugury(top: Vector[WorldCardId]): ReadyGame =
-    atHome(CardStaging.without(SearchFixture.staged(top), augury), augury)
+    atActorsSite(CardStaging.without(SearchFixture.staged(top), augury), augury)
 
   private def hand(transition: OathTransition): Vector[WorldCardId] =
     SearchFixture.after(transition).game.current.temporaryHands(actor)
@@ -27,10 +28,11 @@ class AugurySuite extends munit.FunSuite:
     val started = start(ready, modifiers).toOption.get
     assertEquals(hand(started), top.take(4))
     // The cost is the printed one: Augury adds a card, not a price.
-    assertEquals(player(SearchFixture.after(started)).board.supply.supply, 5 - 2)
-    assertEquals(PaidActionHarness.replayed(rules, ready, started.events),
+    assertEquals(Look(SearchFixture.after(started)).player(actor)
+      .board.supply.supply, 5 - 2)
+    assertEquals(ActPowerHarness.replayed(rules, ready, started.events),
       SearchFixture.after(started))
-    assert(PaidActionHarness.wireRoundTrips(started.events))
+    assertWireRoundTrips(started.events)
 
   test("the player keeps any one of the drawn cards"):
     val top = plain.take(6)
@@ -38,7 +40,7 @@ class AugurySuite extends munit.FunSuite:
     val done = play(withAugury(top), modifiers, kept, "adviser-facedown")
     val after = SearchFixture.after(done)
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
-    assert(player(after).advisers.exists(_.id == kept),
+    assert(Look(after).player(actor).advisers.exists(_.id == kept),
       "the fourth drawn card is the one kept")
 
   test("the draw still stops after a Vision, wherever the Vision falls"):
@@ -53,11 +55,12 @@ class AugurySuite extends munit.FunSuite:
     assertEquals(hand(reached), late.take(4))
     assertEquals(SearchFixture.after(reached).game.current.tracks.visionsDrawn,
       ready.game.current.tracks.visionsDrawn + 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready, reached.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, reached.events),
       SearchFixture.after(reached))
 
   test("a Search from a regional discard draws one card more from its top"):
-    val region = player(base).pawnSite.flatMap(base.game.current.map.regionOf).get
+    val region = Look(quietTable).player(actor)
+      .pawnSite.flatMap(quietTable.game.current.map.regionOf).get
     val pile = plain.take(5)
     val staged = pile.foldLeft(withAugury(Vector.empty))(CardStaging.without(_, _))
     val ready = staged.updateCurrent(c => c.copy(commonCards =

@@ -9,23 +9,24 @@ import oathdigital.model._
   * catalog still audits every source the index lists.
   */
 class BannerFaceSourcesSuite extends munit.FunSuite:
-  import PowerFixture.base
+  import PowerFixture.quietTable
   import BannerFixture._
 
   private def darkest(ready: ReadyGame) = RuleSourceIndex.enumerate(catalog,
     ready).filter(_.source == RuleSourceRef.Banner(Banner.DarkestSecret.key))
 
   test("the Wandering Flame face lists its two powers, and Festival its own"):
-    val flame = darkest(base).head
+    val flame = darkest(quietTable).head
     assertEquals(flame.face, RuleSourceFace.WanderingFlame)
     assertEquals(flame.powerIds, Vector(WanderingFlameMove.id,
       WanderingFlamePlace.id))
-    val festival = darkest(holdingFlame(base, DarkestSecretFace.Festival)).head
+    val festival = darkest(holdingFlame(quietTable, DarkestSecretFace.Festival))
+      .head
     assertEquals(festival.handlerIds, Vector("banner.darkest-secret.festival"))
 
   test("the reviewed catalog audits the banner powers, so options resolve " +
       "for a game whose banner is on that face"):
-    assertEquals(PowerRuntime.options(catalog, base, PowerFixture.actor,
+    assertEquals(PowerRuntime.options(catalog, quietTable, PowerFixture.actor,
       ActionKind.Travel), Right(Vector.empty))
-    assertEquals(PowerRuntime.options(catalog, holdingFlame(base),
+    assertEquals(PowerRuntime.options(catalog, holdingFlame(quietTable),
       PowerFixture.actor, ActionKind.Travel), Right(Vector.empty))

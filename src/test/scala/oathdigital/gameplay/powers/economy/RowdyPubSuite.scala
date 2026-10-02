@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class RowdyPubSuite extends munit.FunSuite:
@@ -37,9 +37,9 @@ class RowdyPubSuite extends munit.FunSuite:
     val ready = pubAtSite.ready
     val (transition, result) = muster(ready, modifiers, pub)
     assertEquals(Look(result).boardWarbands(p1), 3 + 2)
-    assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
       result)
-    assert(PaidActionHarness.wireRoundTrips(transition.events))
+    assertWireRoundTrips(transition.events)
 
   test("the extra warband is on top of the matching-adviser bonus"):
     // Extra Provisions is Hearth, like Rowdy Pub.

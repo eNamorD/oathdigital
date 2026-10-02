@@ -4,23 +4,24 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PhasePowerCatalog,
-  PowerFixture, SearchFixture, TargetsFixture, WalkerPowerCatalog}
+  PowerFixture, SearchFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
 
 class VowOfObedienceSuite extends munit.FunSuite:
   import PowerFixture._
   import VisionPlayFixture._
 
   private val vow = DenizenId("121")
-  private val other = TargetsFixture.others(base).head
+  private val other = PhasePowerHarness.others(quietTable).head
 
   private def holding(ready: ReadyGame, owner: PlayerId = actor,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    TargetsFixture.giveAdviser(CardStaging.without(ready, vow), owner, vow,
-      orientation)
+    Table.from(CardStaging.without(ready, vow)).adviser(owner, vow,
+      facedown = orientation == Orientation.FaceDown).unchecked
 
   private def search(vision: VisionId, arrange: ReadyGame => ReadyGame)
       : OathTransition =
@@ -36,7 +37,7 @@ class VowOfObedienceSuite extends munit.FunSuite:
       "adviser-faceup").isLeft)
 
   test("the holder cannot play a facedown Vision faceup either"):
-    val parkedAt = fromAdvisers(holding(inPhase(base, Phase.Act)),
+    val parkedAt = fromAdvisers(holding(inPhase(quietTable, Phase.Act)),
       VisionRules.Faith)
     assert(!offered(parkedAt).contains("adviser-faceup"))
     assert(offered(parkedAt).contains("discard"))
@@ -55,7 +56,7 @@ class VowOfObedienceSuite extends munit.FunSuite:
   test("the hidden faceup placement is written as the Vow's line"):
     assertEquals(hidden(search(VisionRules.Faith, holding(_))).distinct,
       Vector(noFaceup))
-    assertEquals(hidden(fromAdvisers(holding(inPhase(base, Phase.Act)),
+    assertEquals(hidden(fromAdvisers(holding(inPhase(quietTable, Phase.Act)),
       VisionRules.Faith)).distinct, Vector(noFaceup))
 
   test("a Vow that forbids nothing writes nothing"):
@@ -82,7 +83,7 @@ class VowOfObedienceSuite extends munit.FunSuite:
     * holding favor.
     */
   private def resting(stocked: Map[Suit, Int]): ReadyGame =
-    val ready = inPhase(holding(base), Phase.Rest)
+    val ready = inPhase(holding(quietTable), Phase.Rest)
     ready.copy(banks = ready.banks.copy(favor =
       Suit.all.map(suit => suit -> stocked.getOrElse(suit, 0)).toMap))
 
@@ -101,13 +102,15 @@ class VowOfObedienceSuite extends munit.FunSuite:
     val after = SearchFixture.after(taken)
     assertEquals(after.banks.favor(Suit.Order), 2)
     assertEquals(after.banks.favor(Suit.Arcane), 3)
-    assertEquals(player(after).board.favor, player(ready).board.favor + 1)
+    assertEquals(Look(after).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor + 1)
 
   test("REST: one stocked bank is taken without asking"):
     val ready = resting(Map(Suit.Hearth -> 2))
     val after = SearchFixture.after(rest(ready))
     assertEquals(after.banks.favor(Suit.Hearth), 1)
-    assertEquals(player(after).board.favor, player(ready).board.favor + 1)
+    assertEquals(Look(after).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor + 1)
 
   test("REST: with every bank empty the power is not offered"):
     assert(!PhasePowerProcedure.usable(catalog, resting(Map.empty), actor,

@@ -1,21 +1,22 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
 
 class WolvesSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val wolves = DenizenId("39")
   private val source = DecisionOptionRef.Denizen(wolves)
-  private val victim = others(base).head
+  private val victim = others(quietTable).head
 
   private def staged(secrets: Int = 1) = inPhase(
-    withSecrets(atHome(base, wolves), actor, secrets, 0), Phase.Act)
+    Table.from(atActorsSite(quietTable, wolves)).secrets(actor, secrets, 0)
+      .unchecked, Phase.Act)
   private def cardOf(ready: ReadyGame) = ready.game.current.map
-    .sites(home(ready)).denizens.collectFirst {
+    .sites(actorsSite(ready)).denizens.collectFirst {
       case d: DenizenState if d.id == wolves => d }.get
   private def bankOf(ready: ReadyGame, id: PlayerId) =
     warbandBank(ready, PlayerFacts.forceKind(ready, id).toOption.get)
@@ -25,33 +26,32 @@ class WolvesSuite extends munit.FunSuite:
   test("using it places a secret on its card and asks for a player board"):
     val t = parked
     assert(awaits(t, Wolves.decisionId),
-      TargetsFixture.parked.parkedDecision(t.state).toString)
+      PhasePowerHarness.parked.parkedDecision(t.state).toString)
     assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
-    assertEquals(player(after(t)).board.faceUpSecrets, 0)
+    assertEquals(Look(after(t)).player(actor).board.faceUpSecrets, 0)
     assertEquals(offered(t, actor), Some(after(t).game.current.players
       .map(p => "player" -> p.player.value)))
 
   test("the chosen board loses one warband, which returns to its bank"):
     val t = parked
     val done = answer(t, actor, Wolves.decisionId, choose(victim)).toOption.get
-    assertEquals(player(after(done), victim).board.warbands,
-      player(after(t), victim).board.warbands - 1)
+    assertEquals(Look(after(done)).player(victim).board.warbands,
+      Look(after(t)).player(victim).board.warbands - 1)
     assertEquals(bankOf(after(done), victim), bankOf(after(t), victim) + 1)
     assertEquals(replayed(staged(), t.events ++ done.events), Right(done.state))
 
   test("the acting player's own board is a legal target"):
     val t = parked
     val done = answer(t, actor, Wolves.decisionId, choose(actor)).toOption.get
-    assertEquals(player(after(done)).board.warbands,
-      player(after(t)).board.warbands - 1)
+    assertEquals(Look(after(done)).player(actor).board.warbands,
+      Look(after(t)).player(actor).board.warbands - 1)
 
   test("the kill is best-effort: a board with no warbands loses nothing and " +
       "the cost stays paid"):
-    val empty = updatePlayer(staged(), victim)(p =>
-      p.copy(board = p.board.copy(warbands = 0)))
+    val empty = Table.from(staged()).boardWarbands(victim, 0).unchecked
     val t = use(empty, Wolves, source).toOption.get
     val done = answer(t, actor, Wolves.decisionId, choose(victim)).toOption.get
-    assertEquals(player(after(done), victim).board.warbands, 0)
+    assertEquals(Look(after(done)).player(victim).board.warbands, 0)
     assertEquals(bankOf(after(done), victim), bankOf(after(t), victim))
     assertEquals(cardOf(after(done)).tokens, Tokens(0, 1))
 
@@ -71,8 +71,7 @@ class WolvesSuite extends munit.FunSuite:
       NoteKey.Used, s"Killed 1 ${victim.value} warband.", covers = false)))
 
   test("a board with no warband is written as such"):
-    val empty = updatePlayer(staged(), victim)(p =>
-      p.copy(board = p.board.copy(warbands = 0)))
+    val empty = Table.from(staged()).boardWarbands(victim, 0).unchecked
     val t = use(empty, Wolves, source).toOption.get
     val done = answer(t, actor, Wolves.decisionId, choose(victim)).toOption.get
     assertEquals(NoteText.said(Wolves, done.events), Vector(NoteText.Said(

@@ -2,13 +2,13 @@ package oathdigital.gameplay.powers.search
 
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{NoteText, SearchFixture, WalkerPowerCatalog}
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.powers.banner.{BannerFixture, PeoplesFavorMob}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class CropRotationSuite extends munit.FunSuite:
@@ -67,9 +67,9 @@ class CropRotationSuite extends munit.FunSuite:
     val done = discard(asked, noDiscard).toOption.get
     val end = SearchFixture.after(done)
     assertEquals(siteCards(end), Vector[CardId](fillers(0), played))
-    assertEquals(PaidActionHarness.replayed(rules, ready,
+    assertEquals(ActPowerHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
-    assert(PaidActionHarness.wireRoundTrips(asked.events ++ done.events))
+    assertWireRoundTrips(asked.events ++ done.events)
 
   test("choosing a card discards it before the play"):
     val asked = toSite(staged(Vector(fillers(0)))).toOption.get

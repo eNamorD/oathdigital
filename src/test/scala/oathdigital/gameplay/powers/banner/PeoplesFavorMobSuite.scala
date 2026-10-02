@@ -5,12 +5,11 @@ import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture,
   WalkerPowerCatalog}
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerOutcome}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
 import oathdigital.testkit.Table.p3
 
 class PeoplesFavorMobSuite extends munit.FunSuite:
@@ -28,7 +27,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   private val played = denizensOf(Suit.Beast).head
   private val drawn = Vector[WorldCardId](played) ++
     denizensOf(Suit.Arcane).take(2)
-  private val capacity = catalog.sites.find(_.id == home(base)).get.capacity
+  private val capacity = catalog.sites.find(_.id == actorsSite(quietTable))
+    .get.capacity
 
   /** A Search of `drawn` at a pawn site holding `site`, the Banner of the
     * People's Favor held as `favor` arranges it (by the actor, on the Mob
@@ -36,7 +36,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     */
   private def staged(site: Vector[DenizenId],
       favor: ReadyGame => ReadyGame = holdingFavor(_)): ReadyGame =
-    favor(site.foldLeft(SearchFixture.staged(drawn))(atHome))
+    favor(site.foldLeft(SearchFixture.staged(drawn))(atActorsSite))
 
   private def decisionId(kind: String) = s"cardplay.$kind.denizen.${played.value}"
 
@@ -57,15 +57,15 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     actor, decisionId("replace"), DecisionAnswer.ChooseOneAnswer(chosen))
 
   private def siteCards(ready: ReadyGame): Vector[CardId] =
-    ready.game.current.map.sites(home(ready)).denizens.map(_.id)
+    ready.game.current.map.sites(actorsSite(ready)).denizens.map(_.id)
 
   test("the source index lists Mob on the Mob face and the Grand Council's " +
       "own power on the other"):
     def favor(ready: ReadyGame) = oathdigital.gameplay.RuleSourceIndex
       .enumerate(catalog, ready).find(_.source ==
         RuleSourceRef.Banner(Banner.PeoplesFavor.key)).get
-    assertEquals(favor(base).powerIds, Vector(PeoplesFavorMob.id))
-    assertEquals(favor(holdingFavor(base, PeoplesFavorFace.GrandCouncil))
+    assertEquals(favor(quietTable).powerIds, Vector(PeoplesFavorMob.id))
+    assertEquals(favor(holdingFavor(quietTable, PeoplesFavorFace.GrandCouncil))
       .handlerIds, Vector("banner.peoples-favor.grand-council"))
 
   test("its holder is asked whether to discard a site card before a play " +
@@ -79,7 +79,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val done = discardAnswer(asked, noDiscard).toOption.get
     val end = SearchFixture.after(done)
     assertEquals(siteCards(end), Vector[CardId](kept, other, played))
-    assertEquals(PaidActionHarness.replayed(rules, ready,
+    assertEquals(ActPowerHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
 
   test("an empty site has nothing to discard, so the holder is asked nothing"):
@@ -91,20 +91,21 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
   test("choosing a card discards it by the standard discard: facedown to the " +
       "next region's pile, its favor to the bank, its secret to the holder"):
     val kept = denizensOf(Suit.Hearth).head
-    val ready = withCardTokens(staged(Vector(kept)), home(base), kept,
+    val ready = withCardTokens(staged(Vector(kept)), actorsSite(quietTable),
+      kept,
       Tokens(1, 1))
     val asked = toSite(ready)
     val done = discardAnswer(asked, DecisionOptionRef.Denizen(kept)).toOption.get
     val end = SearchFixture.after(done)
     val region = CardPlay.nextRegion(
-      ready.game.current.map.regionOf(home(base)).get)
+      ready.game.current.map.regionOf(actorsSite(quietTable)).get)
     assertEquals(siteCards(end), Vector[CardId](played))
     assertEquals(end.game.current.commonCards.discard(region).last, kept)
     assertEquals(end.banks.favor.getOrElse(Suit.Hearth, 0),
       ready.banks.favor.getOrElse(Suit.Hearth, 0) + 1)
-    assertEquals(player(end).board.faceDownSecrets,
-      player(ready).board.faceDownSecrets + 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready,
+    assertEquals(Look(end).player(actor).board.faceDownSecrets,
+      Look(ready).player(actor).board.faceDownSecrets + 1)
+    assertEquals(ActPowerHarness.replayed(rules, ready,
       asked.events ++ done.events), end)
 
   test("a full site with no matching homeland takes the play only with a " +
@@ -191,7 +192,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     // facedown `adviser`.
     val who = actor
     val ready = holdingFavor(Table.start
-      .hand(who, played).denizen(kept, at = home(base))
+      .hand(who, played).denizen(kept, at = actorsSite(quietTable))
       .adviser(who, tongue).adviser(who, adviser, facedown = true)
       .ready)
     val powers = WalkerPowerCatalog.default(catalog)
@@ -217,7 +218,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "once, and the selected card itself cannot be the discard"):
     val party = DenizenId("50")
     val kept = denizensOf(Suit.Hearth).head
-    val ready = atHome(staged(Vector(kept)), party)
+    val ready = atActorsSite(staged(Vector(kept)), party)
     val selected = Vector(oathdigital.gameplay.powers.cardplay.WelcomingParty.id)
     val started = start(ready, selected).toOption.get
     val chosen = keep(started, played).toOption.get
@@ -230,7 +231,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     val hearth = (s: ReadyGame) => s.banks.favor.getOrElse(Suit.Hearth, 0)
     // The play gains 1 favor from the played card's own bank, Welcoming Party
     // gains 1 from the Hearth bank.
-    assertEquals(player(end).board.favor, player(ready).board.favor + 2)
+    assertEquals(Look(end).player(actor).board.favor, Look(ready).player(actor)
+      .board.favor + 2)
     assertEquals(hearth(end), hearth(ready) - 1)
     assertEquals(siteCards(end), Vector[CardId](party, played))
 

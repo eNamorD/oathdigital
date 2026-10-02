@@ -35,8 +35,8 @@ final class Look private (ready: ReadyGame):
   def phase: Phase = current.turn.phase
   def active: PlayerId = current.turn.activePlayer
 
-  /** The tokens on `card`, wherever it sits; empty for a card that carries
-    * none. */
+  /** The tokens on `card`, at a site or in a player's play area. Fails when
+    * the card lies in neither, where it could carry no tokens. */
   def tokensOn(card: String | CardId)(using munit.Location): Tokens =
     val id = CatalogNames.card(card)
     val onSites = current.map.sites.values.flatMap(s =>
@@ -45,7 +45,8 @@ final class Look private (ready: ReadyGame):
     val held = current.players.flatMap(p =>
       p.advisers.collect { case d: DenizenState if d.id == id => d.tokens } ++
         p.relics.filter(_.id == id).map(_.tokens))
-    (onSites ++ held).headOption.getOrElse(Tokens.empty)
+    Unwrap.present((onSites ++ held).headOption,
+      s"${CatalogNames.nameOf(id)} at a site or in a play area")
 
   /** The discard pile of the region after `site`'s region: where a card a
     * power discards from that site goes. Fails when the site is in no

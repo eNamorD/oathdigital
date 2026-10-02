@@ -1,25 +1,28 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class CharmingFriendSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val friend = DenizenId("131")
   private val source = DecisionOptionRef.Denizen(friend)
-  private val victim = others(base)(0)
-  private val bystander = others(base)(1)
+  private val victim = others(quietTable)(0)
+  private val bystander = others(quietTable)(1)
 
   private def elsewhere(ready: ReadyGame): SiteId =
-    ready.game.current.map.inPlay.find(_ != home(ready)).get
+    ready.game.current.map.inPlay.find(_ != actorsSite(ready)).get
   private def withFavor(ready: ReadyGame, id: PlayerId, amount: Int) =
-    updatePlayer(ready, id)(p => p.copy(board = p.board.copy(favor = amount)))
+    Table.from(ready).favor(id, amount).unchecked
   private def favorOf(ready: ReadyGame, id: PlayerId = actor) =
-    player(ready, id).board.favor
+    Look(ready).player(id).board.favor
   private def choose(id: PlayerId) = pick(DecisionOptionRef.Player(id))
-  private def cardOf(ready: ReadyGame) = player(ready).advisers.collectFirst {
+  private def cardOf(ready: ReadyGame) = Look(ready).player(actor)
+    .advisers.collectFirst {
     case d: DenizenState if d.id == friend => d }.get
 
   /** The actor holds Charming Friend as an adviser with `secrets` faceup.
@@ -27,10 +30,10 @@ class CharmingFriendSuite extends munit.FunSuite:
     * elsewhere with 5 favor, so it is never a target.
     */
   private def staged(favor: Int = 2, secrets: Int = 1) =
-    val actorReady = inPhase(withSecrets(asAdviser(base, friend), actor,
-      secrets, 0), Phase.Act)
-    val placed = withPawn(withPawn(actorReady, victim, home(actorReady)),
-      bystander, elsewhere(actorReady))
+    val actorReady = inPhase(Table.from(asAdviser(quietTable, friend))
+      .secrets(actor, secrets, 0).unchecked, Phase.Act)
+    val placed = Table.from(actorReady).pawn(victim, actorsSite(actorReady))
+      .pawn(bystander, elsewhere(actorReady)).unchecked
     withFavor(withFavor(placed, victim, favor), bystander, 5)
 
   test("it places a secret on its card and offers the players at the " +
@@ -40,7 +43,7 @@ class CharmingFriendSuite extends munit.FunSuite:
       parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor), Some(Vector("player" -> victim.value)))
     assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
-    assertEquals(player(after(t)).board.faceUpSecrets, 0)
+    assertEquals(Look(after(t)).player(actor).board.faceUpSecrets, 0)
 
   test("the chosen player gives one favor"):
     val ready = staged()
@@ -50,7 +53,7 @@ class CharmingFriendSuite extends munit.FunSuite:
     assertEquals(favorOf(after(done), victim), 1)
     assertEquals(favorOf(after(done)), favorOf(ready) + 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("it writes the favor it took"):
     val t = use(staged(), CharmingFriend, source).toOption.get
@@ -73,7 +76,7 @@ class CharmingFriendSuite extends munit.FunSuite:
         covers = false)))
 
   test("with nobody at the site the cost is paid and nothing else happens"):
-    val ready = withPawn(staged(), victim, elsewhere(staged()))
+    val ready = Table.from(staged()).pawn(victim, elsewhere(staged())).unchecked
     val t = use(ready, CharmingFriend, source).toOption.get
     parked.assertNotParked(t.state)
     assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
@@ -83,7 +86,8 @@ class CharmingFriendSuite extends munit.FunSuite:
         covers = false)))
 
   test("every other player at the site is offered"):
-    val ready = withPawn(staged(), bystander, home(staged()))
+    val ready = Table.from(staged()).pawn(bystander, actorsSite(staged()))
+      .unchecked
     val t = use(ready, CharmingFriend, source).toOption.get
     assertEquals(offered(t, actor).map(_.toSet),
       Some(Set("player" -> victim.value, "player" -> bystander.value)))

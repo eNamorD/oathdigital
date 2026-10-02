@@ -1,12 +1,11 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.testkit.TestCards
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Table, TestCards}
 
 /** Drives a real Search through the rules, with the production walker powers,
   * for the suites of the modifiers and triggers that act on it. It builds on
@@ -34,7 +33,7 @@ object SearchFixture:
     * deck.
     */
   def denizensOf(suit: Suit): Vector[DenizenId] =
-    val index = CardIndex.from(base.game).toOption.get
+    val index = CardIndex.from(quietTable.game).toOption.get
     val powered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
     catalog.denizens.filter(d => d.suit == suit &&
       !d.powers.exists(power => powered(power.id)) &&

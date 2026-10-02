@@ -1,19 +1,20 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
 
 class RiverSitePowerSuite extends munit.FunSuite:
   import PowerFixture._
   import RiverFixture._
-  import TargetsFixture.{after, answer, awaits, offered, pick, replayed,
-    usableNow, withPawn}
+  import PhasePowerHarness.{after, answer, awaits, offered, pick, replayed,
+    usableNow}
 
   private val source = DecisionOptionRef.Site(ancientCity)
-  private def use(ready: ReadyGame) = TargetsFixture.use(ready, river, source)
+  private def use(ready: ReadyGame) = PhasePowerHarness.use(ready, river,
+    source)
   private def rivers(ready: ReadyGame) = usableNow(ready).collect {
     case usable if usable.power.isInstanceOf[RiverSitePower] =>
       usable.power.id -> usable.ref }
@@ -43,7 +44,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
     val ready = staged()
     val dry = ready.game.current.map.inPlay.find(site =>
       !RiverSitePower.isRiver(site)).get
-    val away = withPawn(ready, actor, dry)
+    val away = Table.from(ready).pawn(actor, dry).unchecked
     assertEquals(rivers(away), Vector.empty)
     assert(use(away).isLeft)
 
@@ -60,8 +61,9 @@ class RiverSitePowerSuite extends munit.FunSuite:
     val ready = staged()
     val (parked, done) = placedAt(ready, riverbank)
     val placed = after(done)
-    assertEquals(player(placed).pawnSite, Some(riverbank))
-    assertEquals(player(placed).board.supply, player(ready).board.supply)
+    assertEquals(Look(placed).player(actor).pawnSite, Some(riverbank))
+    assertEquals(Look(placed).player(actor).board.supply, Look(ready)
+      .player(actor).board.supply)
     val moves = (parked.events ++ done.events).collect {
       case step: WalkerStepRecorded => step.ops }.flatten.collect {
       case move @ Move(Piece.Pawn(_), _, _, _) => move }
@@ -76,7 +78,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
     val used = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(ancientCity),
       river.id)
     assert(after(done).game.current.turn.usedPowers.contains(used))
-    val back = withPawn(after(done), actor, ancientCity)
+    val back = Table.from(after(done)).pawn(actor, ancientCity).unchecked
     assertEquals(use(back).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
     // Riverbank's River is another source, so it is still usable.

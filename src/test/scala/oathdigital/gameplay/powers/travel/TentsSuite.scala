@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.powers.PowerFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class TentsSuite extends munit.FunSuite:
   import PowerFixture._
@@ -11,7 +12,8 @@ class TentsSuite extends munit.FunSuite:
   private val tents = DenizenId("29")
   private val modifiers = Vector(Tents.id)
   /** The actor holds Tents as a faceup adviser and 1 favor, at the first plains. */
-  private def held = withBoard(adviser(board(), tents))(_.copy(favor = 1))
+  private def held = Table.from(adviser(board(), tents)).favor(actor, 1)
+    .unchecked
 
   test("a destination in the region of the pawn's site costs no Supply, and is " +
       "still offered"):
@@ -22,18 +24,19 @@ class TentsSuite extends munit.FunSuite:
     val ready = held
     val done = travel(ready, coast, modifiers).toOption.get
     val result = after(done)
-    assertEquals(player(result).pawnSite, Some(coast))
+    assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(supplyOf(result), 7)
-    assertEquals(player(result).board.favor, 0)
+    assertEquals(Look(result).player(actor).board.favor, 0)
     assertEquals(adviserTokens(result, tents), Tokens(1, 0))
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), result)
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
+    assertWireRoundTrips(done.events)
 
   test("the same power at the pawn's site takes its favor onto the site card"):
-    val ready = withBoard(denizenAt(board(), tents, plains.head))(_.copy(favor = 1))
+    val ready = Table.from(denizenAt(board(), tents, plains.head)).favor(actor,
+      1).unchecked
     val result = after(travel(ready, coast, modifiers).toOption.get)
     assertEquals(supplyOf(result), 7)
-    assertEquals(PaidActionHarness.tokensOn(result, tents), Tokens(1, 0))
+    assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
 
   test("a route into another region is not changed, but the favor is still " +
       "paid: the player owns the choice to select it"):
@@ -43,18 +46,15 @@ class TentsSuite extends munit.FunSuite:
       candidates(ready).get(province))
     val result = after(travel(ready, province, modifiers).toOption.get)
     assertEquals(supplyOf(result), 7 - 2)
-    assertEquals(player(result).board.favor, 0)
+    assertEquals(Look(result).player(actor).board.favor, 0)
     assertEquals(adviserTokens(result, tents), Tokens(1, 0))
 
   test("it cannot be selected without a favor to place, or onto an occupied card"):
-    val broke = withBoard(held)(_.copy(favor = 0))
+    val broke = Table.from(held).favor(actor, 0).unchecked
     assertEquals(travel(broke, coast, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.tents is not applicable to this travel")))
-    val occupied = updateActor(held)(p => p.copy(advisers = p.advisers.map {
-      case card: DenizenState if card.id == tents => card.copy(tokens = Tokens(1, 0))
-      case other => other
-    }))
+    val occupied = Table.from(held).tokens(tents, favor = 1).unchecked
     assertEquals(travel(occupied, coast, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.tents is not applicable to this travel")))
@@ -67,8 +67,8 @@ class TentsSuite extends munit.FunSuite:
     assert(!offered(ActionRef.Muster).contains(Tents.id))
 
   test("it is not offered when the card is facedown"):
-    val facedown = withBoard(adviser(board(), tents, Orientation.FaceDown))(
-      _.copy(favor = 1))
+    val facedown = Table.from(adviser(board(), tents, Orientation.FaceDown))
+      .favor(actor, 1).unchecked
     assertEquals(travel(facedown, coast, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.tents is not applicable to this travel")))
@@ -77,11 +77,12 @@ class TentsSuite extends munit.FunSuite:
       "selection, before anything is paid"):
     val paths = DenizenId("43")
     val both = Vector(Tents.id, ForestPaths.id)
-    def ready(favor: Int) = withBoard(adviser(held, paths))(_.copy(favor = favor))
+    def ready(favor: Int) = Table.from(adviser(held, paths)).favor(actor, favor)
+      .unchecked
     val refused = travel(ready(1), coast, both)
     assert(refused.left.toOption.exists(_.toString.contains(
       "cannot all be paid together")), refused.toString)
     val done = after(travel(ready(2), coast, both).toOption.get)
-    assertEquals(player(done).board.favor, 0)
+    assertEquals(Look(done).player(actor).board.favor, 0)
     assertEquals(adviserTokens(done, tents), Tokens(1, 0))
     assertEquals(adviserTokens(done, paths), Tokens(1, 0))

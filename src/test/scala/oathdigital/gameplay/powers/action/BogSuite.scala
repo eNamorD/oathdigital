@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class BogSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val bog = CatalogNames.denizen("Bog")
   private val source = DecisionOptionRef.Denizen(bog)
@@ -45,7 +46,7 @@ class BogSuite extends munit.FunSuite:
     assertEquals(Look(end).favor(p1), Look(ready).favor(p1) + 3)
     assertEquals(beastBank(end), 2)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the relic and the favor, covering the gain line"):
     assertEquals(NoteText.said(Bog, used(staged()).events), Vector(

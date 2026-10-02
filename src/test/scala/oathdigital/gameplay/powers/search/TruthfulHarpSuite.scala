@@ -1,10 +1,11 @@
 package oathdigital.gameplay.powers.search
 
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture, SearchFixture,
-  TargetsFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
+  SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class TruthfulHarpSuite extends munit.FunSuite:
   import PowerFixture._
@@ -30,18 +31,18 @@ class TruthfulHarpSuite extends munit.FunSuite:
     val ready = withHarp(top)
     val started = start(ready, onlyHarp).toOption.get
     assertEquals(hand(started), top.take(5))
-    TargetsFixture.others(ready).foreach(viewer =>
+    PhasePowerHarness.others(ready).foreach(viewer =>
       assertEquals(known(started, viewer).toSet, top.take(5).toSet[WorldCardId]))
-    assertEquals(PaidActionHarness.replayed(rules, ready, started.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, started.events),
       SearchFixture.after(started))
-    assert(PaidActionHarness.wireRoundTrips(started.events))
+    assertWireRoundTrips(started.events)
 
   test("the reveal does not change the play: the kept card can still be played " +
       "facedown as an adviser, as usual"):
     val top = plain.take(7)
     val ready = withHarp(top)
     val done = play(ready, onlyHarp, top(4), "adviser-facedown")
-    val advisers = player(SearchFixture.after(done)).advisers
+    val advisers = Look(SearchFixture.after(done)).player(actor).advisers
     assert(advisers.exists {
       case card: DenizenState => card.id == top(4) &&
         card.orientation == Orientation.FaceDown
@@ -49,23 +50,23 @@ class TruthfulHarpSuite extends munit.FunSuite:
     })
     // The other players saw the card while it was revealed, and remember it.
     // That is what a reveal at a table leaves behind, and it needs no rule.
-    val other = TargetsFixture.others(ready).head
+    val other = PhasePowerHarness.others(ready).head
     assert(known(done, other).contains(top(4)))
 
   test("the Harp and Augury stack, and the reveal covers all six cards"):
     val top = plain.take(8)
     val augury = DenizenId("56")
-    val ready = atHome(CardStaging.without(withHarp(top), augury), augury)
+    val ready = atActorsSite(CardStaging.without(withHarp(top), augury), augury)
     val started = start(ready, both).toOption.get
     assertEquals(hand(started), top.take(6))
-    TargetsFixture.others(ready).foreach(viewer =>
+    PhasePowerHarness.others(ready).foreach(viewer =>
       assertEquals(known(started, viewer).toSet, top.take(6).toSet[WorldCardId]))
 
   test("nothing is revealed without the Harp"):
     val top = plain.take(7)
     val started = start(withHarp(top)).toOption.get
     assertEquals(hand(started), top.take(3))
-    TargetsFixture.others(withHarp(top)).foreach(viewer =>
+    PhasePowerHarness.others(withHarp(top)).foreach(viewer =>
       assertEquals(known(started, viewer), Vector.empty[WorldCardId]))
 
   test("a facedown Harp cannot be selected"):

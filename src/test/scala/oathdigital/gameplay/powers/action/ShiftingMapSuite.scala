@@ -2,32 +2,35 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class ShiftingMapSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val map = RelicId("R17")
   private val source = DecisionOptionRef.Relic(map)
 
   private def staged(supply: Int = 2, faceUp: Int = 1): ReadyGame =
-    act(withBoard(withRelic(base, map))(
-      _.copy(supply = SupplyTrack(supply), faceUpSecrets = faceUp)))
+    act(Table.from(withRelic(quietTable, map)).supply(actor, supply)
+      .secrets(actor, faceUp).unchecked)
 
   test("it places a secret on the relic and gains 1 Supply"):
     val ready0 = staged()
     val done = use(rules(), ready0, ShiftingMap.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(tokensOn(end, map), Tokens(0, 1))
-    assertEquals(player(end).board.supply, SupplyTrack(3))
+    assertEquals(Look(end).tokensOn(map), Tokens(0, 1))
+    assertEquals(Look(end).player(actor).board.supply, SupplyTrack(3))
     assertEquals(replayed(rules(), ready0, done.events), end)
-    assert(wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("at the track maximum the cost is paid and nothing is gained"):
     val done = use(rules(), staged(supply = SupplyTrack.Maximum),
       ShiftingMap.id, source).toOption.get
-    assertEquals(player(ready(done.state)).board.supply, SupplyTrack.full)
-    assertEquals(tokensOn(ready(done.state), map), Tokens(0, 1))
+    assertEquals(Look(ready(done.state)).player(actor).board.supply,
+      SupplyTrack.full)
+    assertEquals(Look(ready(done.state)).tokensOn(map), Tokens(0, 1))
     assertEquals(NoteText.said(ShiftingMap, done.events), Vector.empty)
 
   test("it is unusable without a faceup secret"):

@@ -4,15 +4,15 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PhasePowerCatalog,
-  PowerFixture, TargetsFixture, WalkerPowerCatalog}
+  PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.ParkedNode
+import oathdigital.testkit.{Look, ParkedNode, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class OracleSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture.{after, awaits, giveAdviser, parked, pick, usableNow,
-    withSecrets}
+  import PhasePowerHarness.{after, awaits, parked, pick, usableNow}
 
   private val oracle = DenizenId("160")
   private val source = DecisionOptionRef.Denizen(oracle)
@@ -30,8 +30,9 @@ class OracleSuite extends munit.FunSuite:
     * Vision in the world deck waits in the Provinces discard pile, and Faith
     * is the deck's third card, or, `withVision = false`, nowhere in it. */
   private def staged(withVision: Boolean = true): ReadyGame =
-    val ready = inPhase(withSecrets(atHome(CardStaging.without(base, faith),
-      oracle), actor, 2, 0), Phase.Act)
+    val ready = inPhase(Table.from(atActorsSite(CardStaging.without(quietTable,
+      faith),
+      oracle)).secrets(actor, 2, 0).unchecked, Phase.Act)
     ready.updateCurrent { c =>
       val deck = c.commonCards.worldDeck
       val visions = deck.collect { case vision: VisionId => vision }
@@ -74,7 +75,7 @@ class OracleSuite extends munit.FunSuite:
     val t = start(ready).toOption.get
     assert(awaits(t, placement), parked.parkedDecision(t.state).toString)
     val drew = after(t)
-    assertEquals(PaidActionHarness.tokensOn(drew, oracle), Tokens(0, 2))
+    assertEquals(Look(drew).tokensOn(oracle), Tokens(0, 2))
     assertEquals(drew.game.current.temporaryHands.get(actor),
       Some(Vector(faith)))
     assertEquals(deckOf(drew), deckOf(ready).filterNot(_ == faith))
@@ -91,13 +92,14 @@ class OracleSuite extends munit.FunSuite:
     val done = place(t, "adviser-facedown").toOption.get
     parked.assertResumed(done.state, Phase.Act, actor)
     val held = after(done)
-    assert(player(held).advisers.contains(
-      VisionState(faith, Orientation.FaceDown)), player(held).advisers.toString)
+    assert(Look(held).player(actor).advisers.contains(
+      VisionState(faith, Orientation.FaceDown)), Look(held).player(actor)
+        .advisers.toString)
     assertEquals(held.game.current.temporaryHands.getOrElse(actor,
       Vector.empty), Vector.empty)
     val events = t.events ++ done.events
     assertEquals(replayed(ready, events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(events))
+    assertWireRoundTrips(events)
 
   test("discarded, the Vision goes to a discard pile"):
     val t = start(staged()).toOption.get
@@ -111,8 +113,8 @@ class OracleSuite extends munit.FunSuite:
     }, located.toString)
 
   test("a faceup Vow of Obedience holder may not play it faceup"):
-    val holding = giveAdviser(CardStaging.without(staged(), vow), actor, vow,
-      Orientation.FaceUp)
+    val holding = Table.from(CardStaging.without(staged(), vow)).adviser(actor,
+      vow).unchecked
     val t = start(holding).toOption.get
     assert(!buttons(t).contains("adviser-faceup"), buttons(t).toString)
     assert(buttons(t).contains("adviser-facedown"))
@@ -131,13 +133,13 @@ class OracleSuite extends munit.FunSuite:
     val t = start(ready).toOption.get
     parked.assertResumed(t.state, Phase.Act, actor)
     val paid = after(t)
-    assertEquals(PaidActionHarness.tokensOn(paid, oracle), Tokens(0, 2))
+    assertEquals(Look(paid).tokensOn(oracle), Tokens(0, 2))
     assertEquals(deckOf(paid), deckOf(ready))
     assertEquals(drawn(paid), drawn(ready))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.none", "The world deck held no Vision.", covers = false)))
 
   test("it is unusable without two faceup secrets"):
-    val broke = withSecrets(staged(), actor, 1, 1)
+    val broke = Table.from(staged()).secrets(actor, 1, 1).unchecked
     assert(!usableNow(broke).exists(_.power.id == Oracle.id))
     assert(start(broke).isLeft)

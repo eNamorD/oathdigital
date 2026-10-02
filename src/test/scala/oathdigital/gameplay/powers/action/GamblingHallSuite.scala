@@ -4,9 +4,11 @@ import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, PowerNoted}
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class GamblingHallSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val walkerParked = new ParkedDecisionAssertions(catalog,
@@ -16,7 +18,8 @@ class GamblingHallSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(hall)
   private def bank(suit: Suit) = DecisionOptionRef.FavorBank(suit)
   private def staged(favor: Int = 3) =
-    act(withBoard(atHome(base, hall))(_.copy(favor = favor)))
+    act(Table.from(atActorsSite(quietTable, hall)).favor(actor, favor)
+      .unchecked)
 
   private val total4 = defenseDice(DefenseDieFace.OneShield,
     DefenseDieFace.OneShield, DefenseDieFace.TwoShields, DefenseDieFace.Blank)
@@ -35,20 +38,20 @@ class GamblingHallSuite extends munit.FunSuite:
     walkerParked.assertParked(parked.state, ActionRef.UsePower(GamblingHall.id),
       GamblingHall.decisionId, actor)
     val paid = ready(parked.state)
-    assertEquals(player(paid).board.favor, 1)
-    assertEquals(tokensOn(paid, hall), Tokens(2, 0))
+    assertEquals(Look(paid).player(actor).board.favor, 1)
+    assertEquals(Look(paid).tokensOn(hall), Tokens(2, 0))
     assertEquals(paid.game.current.rollOutcomes(GamblingHall.pool).score, 4)
 
     val done = answer(rules0, parked.state, GamblingHall.decisionId,
       bank(Suit.Beast)).toOption.get
     val end = ready(done.state)
-    assertEquals(player(end).board.favor, 5)
+    assertEquals(Look(end).player(actor).board.favor, 5)
     assertEquals(end.banks.favor(Suit.Beast),
       ready0.banks.favor(Suit.Beast) - 4)
     walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(end.game.current.rollPools, Map.empty[PoolKey, DicePoolState])
     assertEquals(replayed(rules0, ready0, parked.events ++ done.events), end)
-    assert(wireRoundTrips(parked.events ++ done.events))
+    assertWireRoundTrips(parked.events ++ done.events)
 
   test("a Doubler multiplies the total, and a bank with less than X gives what it has"):
     val doubled = defenseDice(DefenseDieFace.OneShield,
@@ -61,7 +64,7 @@ class GamblingHallSuite extends munit.FunSuite:
     val done = answer(rules0, parked.state, GamblingHall.decisionId,
       bank(Suit.Nomad)).toOption.get
     assertEquals(ready(done.state).banks.favor(Suit.Nomad), 0)
-    assertEquals(player(ready(done.state)).board.favor,
+    assertEquals(Look(ready(done.state)).player(actor).board.favor,
       1 + ready0.banks.favor(Suit.Nomad))
 
   test("an empty bank may be chosen and gives nothing"):
@@ -71,7 +74,7 @@ class GamblingHallSuite extends munit.FunSuite:
     val parked = use(rules0, drained, GamblingHall.id, source).toOption.get
     val done = answer(rules0, parked.state, GamblingHall.decisionId,
       bank(Suit.Discord)).toOption.get
-    assertEquals(player(ready(done.state)).board.favor, 1)
+    assertEquals(Look(ready(done.state)).player(actor).board.favor, 1)
     assertEquals(ready(done.state).banks.favor(Suit.Discord), 0)
 
   test("a total of zero asks nothing and takes nothing"):
@@ -79,8 +82,8 @@ class GamblingHallSuite extends munit.FunSuite:
       DefenseDieFace.Blank, DefenseDieFace.Blank))
     val done = use(rules0, staged(), GamblingHall.id, source).toOption.get
     walkerParked.assertResumed(done.state, Phase.Act, actor)
-    assertEquals(player(ready(done.state)).board.favor, 1)
-    assertEquals(tokensOn(ready(done.state), hall), Tokens(2, 0))
+    assertEquals(Look(ready(done.state)).player(actor).board.favor, 1)
+    assertEquals(Look(ready(done.state)).tokensOn(hall), Tokens(2, 0))
 
   test("a bank the decision does not offer is rejected"):
     val rules0 = rules(total4)

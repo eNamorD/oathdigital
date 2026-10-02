@@ -1,14 +1,15 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class TamingCharmSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val charm = CatalogNames.denizen("Taming Charm")
   private val source = DecisionOptionRef.Denizen(charm)
@@ -65,7 +66,7 @@ class TamingCharmSuite extends munit.FunSuite:
       NoteKey.Used, s"${p1.value} discarded ${beast(0).value} and gained " +
         "2 favor from the Beast bank.", covers = true)))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("the gain runs after the discard returned its favor to the same " +
       "bank"):

@@ -2,18 +2,19 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
-import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture, SearchFixture,
-  TargetsFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
+  SearchFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
 
 class BookBindersSuite extends munit.FunSuite:
   import PowerFixture._
   import VisionPlayFixture._
 
   private val binders = DenizenId("140")
-  private val holder = TargetsFixture.others(base).head
+  private val holder = PhasePowerHarness.others(quietTable).head
   private val parked = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog))
 
@@ -23,9 +24,10 @@ class BookBindersSuite extends munit.FunSuite:
   private def arranged(banks: Map[Suit, Int], owner: PlayerId = holder,
       orientation: Orientation = Orientation.FaceUp,
       vision: VisionId = VisionRules.Faith): ReadyGame =
-    val ready = TargetsFixture.giveAdviser(CardStaging.without(
-      SearchFixture.staged(Vector(vision)), binders), owner, binders,
-      orientation)
+    val ready = Table.from(CardStaging.without(
+      SearchFixture.staged(Vector(vision)), binders))
+        .adviser(owner, binders, facedown = orientation == Orientation.FaceDown)
+          .unchecked
     ready.copy(banks = ready.banks.copy(favor =
       Suit.all.map(suit => suit -> banks.getOrElse(suit, 0)).toMap))
 
@@ -33,7 +35,7 @@ class BookBindersSuite extends munit.FunSuite:
     SearchFixture.play(ready, Vector.empty, VisionRules.Faith, "adviser-faceup")
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
-    player(ready, id).board.favor
+    Look(ready).player(id).board.favor
 
   test("another player's faceup Vision gives the holder a choice of bank, " +
       "then two favor"):
@@ -88,10 +90,11 @@ class BookBindersSuite extends munit.FunSuite:
     * arranges one.
     */
   private def withConspiracyTarget(relic: RelicId): ReadyGame =
-    val staged = TargetsFixture.giveAdviser(CardStaging.without(
-      SearchFixture.staged(Vector(VisionRules.Conspiracy)), binders), holder,
-      binders, Orientation.FaceUp)
-    val atSite = TargetsFixture.withPawn(staged, holder, home(base))
+    val staged = Table.from(CardStaging.without(
+      SearchFixture.staged(Vector(VisionRules.Conspiracy)), binders))
+        .adviser(holder, binders).unchecked
+    val atSite = Table.from(staged).pawn(holder, actorsSite(quietTable))
+      .unchecked
     atSite.updateCurrent(c => c.copy(players = c.players.map(p =>
       if p.player == holder then p.copy(relics = p.relics :+
         RelicState(relic, Orientation.FaceDown, Tokens.empty)) else p)))
@@ -133,8 +136,8 @@ class BookBindersSuite extends munit.FunSuite:
     assertEquals(after.banks.favor(Suit.Arcane), 0)
     assertEquals(after.banks.favor(Suit.Order), 5)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
-    assert(player(after, actor).relics.exists(_.id == relic))
-    assert(!player(after, holder).relics.exists(_.id == relic))
+    assert(Look(after).player(actor).relics.exists(_.id == relic))
+    assert(!Look(after).player(holder).relics.exists(_.id == relic))
 
   test("the Conspiracy still resolves, and the holder still gains favor, " +
       "when Book Binders' own take drains the only stocked bank"):
@@ -164,14 +167,15 @@ class BookBindersSuite extends munit.FunSuite:
     assertEquals(after.game.current.walkerPending, None)
     assertEquals(after.banks.favor(Suit.Hearth), 0)
     assertEquals(favor(after, holder), favor(ready, holder) + 1)
-    assert(player(after, actor).relics.exists(_.id == relic))
-    assert(!player(after, holder).relics.exists(_.id == relic))
+    assert(Look(after).player(actor).relics.exists(_.id == relic))
+    assert(!Look(after).player(holder).relics.exists(_.id == relic))
 
   test("a facedown Vision played from the advisers gives the holder favor " +
       "too, off turn, pinning the rebuildFacedown settle path"):
-    val ready = TargetsFixture.giveAdviser(CardStaging.without(
-      inPhase(base, Phase.Act), binders), holder, binders, Orientation.FaceUp)
-      .copy(banks = base.banks.copy(favor =
+    val ready = Table.from(CardStaging.without(
+      inPhase(quietTable, Phase.Act), binders)).adviser(holder, binders)
+        .unchecked
+      .copy(banks = quietTable.banks.copy(favor =
         Suit.all.map(suit => suit -> Map(Suit.Arcane -> 3, Suit.Order -> 3)
           .getOrElse(suit, 0)).toMap))
     val atPlacement = fromAdvisers(ready, VisionRules.Faith)

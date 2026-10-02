@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class TinkersFairSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val fair = CatalogNames.denizen("Tinker's Fair")
   private val source = DecisionOptionRef.Denizen(fair)
@@ -37,7 +38,7 @@ class TinkersFairSuite extends munit.FunSuite:
       Orientation.FaceDown)
     assertEquals(Look(end).tokensOn(fair), Tokens(3, 0))
     assertEquals(replayed(ready, done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("its line names the relic drawn"):
     val done = use(staged(), TinkersFair, source).toOption.get

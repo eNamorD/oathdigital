@@ -1,20 +1,22 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class BookOfRecordsSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
-  import PaidActionHarness.{secrets, tokensOn, wireRoundTrips}
+  import PhasePowerHarness._
+  import ActPowerHarness.allSecrets
 
   private val book = RelicId("R19")
   private val source = DecisionOptionRef.Relic(book)
-  private val holder = others(base)(0)
-  private val bystander = others(base)(1)
+  private val holder = others(quietTable)(0)
+  private val bystander = others(quietTable)(1)
 
   private def elsewhere(ready: ReadyGame): SiteId =
-    ready.game.current.map.inPlay.find(_ != home(ready)).get
+    ready.game.current.map.inPlay.find(_ != actorsSite(ready)).get
   private def withBanner(ready: ReadyGame, banner: Banner,
       owner: Option[PlayerId], amount: Int): ReadyGame =
     ready.updateCurrent(c => c.copy(banners = banner match
@@ -33,10 +35,10 @@ class BookOfRecordsSuite extends munit.FunSuite:
     * so it is never offered.
     */
   private def staged(favor: Int = 3, faceUp: Int = 3): ReadyGame =
-    val actorReady = inPhase(withSecrets(withRelic(base, book), actor, faceUp,
-      0), Phase.Act)
-    val placed = withPawn(withPawn(actorReady, holder, home(actorReady)),
-      bystander, elsewhere(actorReady))
+    val actorReady = inPhase(Table.from(withRelic(quietTable, book))
+      .secrets(actor, faceUp, 0).unchecked, Phase.Act)
+    val placed = Table.from(actorReady).pawn(holder, actorsSite(actorReady))
+      .pawn(bystander, elsewhere(actorReady)).unchecked
     withBanner(withBanner(placed, Banner.PeoplesFavor, Some(holder), favor),
       Banner.DarkestSecret, Some(bystander), 3)
 
@@ -52,16 +54,17 @@ class BookOfRecordsSuite extends munit.FunSuite:
       parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor),
       Some(Vector("banner" -> Banner.PeoplesFavor.key)))
-    assertEquals(tokensOn(after(t), book), Tokens(0, 1))
-    assertEquals(secrets(after(t)), 0)
+    assertEquals(Look(after(t)).tokensOn(book), Tokens(0, 1))
+    assertEquals(allSecrets(after(t)), 0)
 
   test("the People's Favor gives two favor"):
     val ready = staged()
     val (t, done) = takeFrom(ready, Banner.PeoplesFavor)
-    assertEquals(player(after(done)).board.favor, player(ready).board.favor + 2)
+    assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor + 2)
     assertEquals(held(after(done), Banner.PeoplesFavor), 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} took 2 favor from " +
         s"${holder.value}'s People's Favor.", covers = false)))
@@ -69,7 +72,7 @@ class BookOfRecordsSuite extends munit.FunSuite:
   test("the Darkest Secret gives two secrets, faceup"):
     val ready = withBanner(staged(), Banner.DarkestSecret, Some(holder), 3)
     val (_, done) = takeFrom(ready, Banner.DarkestSecret)
-    assertEquals(player(after(done)).board.faceUpSecrets, 2)
+    assertEquals(Look(after(done)).player(actor).board.faceUpSecrets, 2)
     assertEquals(held(after(done), Banner.DarkestSecret), 1)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} took 2 secrets from " +
@@ -90,7 +93,8 @@ class BookOfRecordsSuite extends munit.FunSuite:
       Some(Vector("banner" -> Banner.PeoplesFavor.key)))
     val done = answer(t, actor, BookOfRecords.decisionId,
       choose(Banner.PeoplesFavor)).toOption.get
-    assertEquals(player(after(done)).board.favor, player(ready).board.favor + 2)
+    assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor + 2)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} took 2 favor from " +
         s"${actor.value}'s People's Favor.", covers = false)))
@@ -98,7 +102,8 @@ class BookOfRecordsSuite extends munit.FunSuite:
   test("an empty banner gives nothing, and the line says so"):
     val ready = staged(favor = 0)
     val (_, done) = takeFrom(ready, Banner.PeoplesFavor)
-    assertEquals(player(after(done)).board.favor, player(ready).board.favor)
+    assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
       NoteText.Said("used.empty",
         s"${holder.value}'s People's Favor held nothing to take.",
@@ -109,7 +114,7 @@ class BookOfRecordsSuite extends munit.FunSuite:
     val ready = withBanner(staged(), Banner.PeoplesFavor, None, 3)
     val t = use(ready, BookOfRecords, source).toOption.get
     parked.assertNotParked(t.state)
-    assertEquals(tokensOn(after(t), book), Tokens(0, 1))
+    assertEquals(Look(after(t)).tokensOn(book), Tokens(0, 1))
     assertEquals(held(after(t), Banner.PeoplesFavor), 3)
     assertEquals(NoteText.said(BookOfRecords, t.events), Vector(
       NoteText.Said("used.none", "No player at the site held a banner.",

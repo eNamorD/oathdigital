@@ -5,11 +5,12 @@ import oathdigital.gameplay.{CatacombsContributionSuite, OathRules,
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture,
   WalkerPowerCatalog}
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class RelicWorshipSuite extends munit.FunSuite:
   private def rulesRolling(dice: WalkerDice): OathRules = new OathRules(
@@ -30,9 +31,10 @@ class RelicWorshipSuite extends munit.FunSuite:
   private def staged(secrets: Int = 2)
       : (ReadyGame, CatacombsContributionSuite.Fixture) =
     val withRelic = CatacombsContributionSuite.relicSite()
-    val ready = PowerFixture.withBoard(PowerFixture.asAdviser(CardStaging
-      .without(withRelic.ready, worship), worship))(board => board.copy(
-      faceUpSecrets = secrets, supply = SupplyTrack(4)))
+    val ready = Table.from(PowerFixture.asAdviser(CardStaging
+      .without(withRelic.ready, worship), worship))
+        .supply(PowerFixture.actor, 4).secrets(PowerFixture.actor, secrets)
+          .unchecked
     (ready, withRelic.copy(ready = ready))
 
   /** A whole Recover that succeeds and takes the site's relic. */
@@ -48,7 +50,8 @@ class RelicWorshipSuite extends munit.FunSuite:
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Relic(relic))).toOption.get
     (started.events ++ done.events, done.state.asInstanceOf[Ready].value)
 
-  private def me(ready: ReadyGame): PlayerState = PowerFixture.player(ready)
+  private def me(ready: ReadyGame): PlayerState = Look(ready)
+    .player(PowerFixture.actor)
 
   test("after recovering a relic the player pays a secret onto the card and " +
       "gains 2 Supply"):
@@ -61,14 +64,14 @@ class RelicWorshipSuite extends munit.FunSuite:
     }, Some(Tokens(0, 1)))
     // 4 Supply, less 1 for the roll, plus 2.
     assertEquals(me(result).board.supply.supply, 4 - 1 + 2)
-    assertEquals(PaidActionHarness.replayed(rules, ready, events), result)
+    assertEquals(ActPowerHarness.replayed(rules, ready, events), result)
     // The dice-pool change every Recover starts with does not round-trip the
     // wire (its window is not kept), so it is left out of the check.
-    assert(PaidActionHarness.wireRoundTrips(events.filterNot {
+    assertWireRoundTrips(events.filterNot {
       case step: oathdigital.gameplay.walker.WalkerStepRecorded =>
         step.ops.exists(_.isInstanceOf[ModifyDicePool])
       case _ => false
-    }))
+    })
 
   test("without the selection nothing is paid and nothing is gained"):
     val (ready, site) = staged()
@@ -116,12 +119,7 @@ class RelicWorshipSuite extends munit.FunSuite:
       Some(OathViolation.InvalidEventOrder(
         "power denizen.relic-worship is not applicable to this recover")))
     val (ready, _) = staged()
-    val occupied = PowerFixture.updateActor(ready)(p => p.copy(advisers =
-      p.advisers.map {
-        case card: DenizenState if card.id == worship =>
-          card.copy(tokens = Tokens(0, 1))
-        case other => other
-      }))
+    val occupied = Table.from(ready).tokens(worship, secrets = 1).unchecked
     assertEquals(rules.startWalker(Ready(occupied), ActionRef.Recover,
       PowerFixture.actor, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(

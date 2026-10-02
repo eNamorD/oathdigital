@@ -1,26 +1,27 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture,
-  TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class SiegeEnginesSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val engines = DenizenId("116")
   private val source = DecisionOptionRef.Denizen(engines)
-  private val victim = others(base).head
+  private val victim = others(quietTable).head
 
   private def region(ready: ReadyGame): Region =
-    ready.game.current.map.regionOf(home(ready)).get
+    ready.game.current.map.regionOf(actorsSite(ready)).get
   private def inRegion(ready: ReadyGame): Vector[SiteId] =
     ready.game.current.map.inPlay.filter(
       ready.game.current.map.regionOf(_).contains(region(ready)))
   /** Another site in the actor's region. */
   private def neighbour(ready: ReadyGame): SiteId =
-    inRegion(ready).find(_ != home(ready)).get
+    inRegion(ready).find(_ != actorsSite(ready)).get
   private def faraway(ready: ReadyGame): SiteId =
     ready.game.current.map.inPlay.find(!inRegion(ready).contains(_)).get
   private def withForces(ready: ReadyGame, site: SiteId, forces: SiteForces) =
@@ -32,12 +33,13 @@ class SiegeEnginesSuite extends munit.FunSuite:
     PlayerFacts.forceKind(ready, id).toOption.get
   private def choose(site: SiteId) = pick(DecisionOptionRef.Site(site))
   private def cardOf(ready: ReadyGame) = ready.game.current.map
-    .sites(home(ready)).denizens.collectFirst {
+    .sites(actorsSite(ready)).denizens.collectFirst {
       case d: DenizenState if d.id == engines => d }.get
 
   /** Siege Engines at the actor's site with `favor` on the actor's board. */
-  private def staged(favor: Int = 1) = inPhase(withBoard(atHome(base,
-    engines))(_.copy(favor = favor)), Phase.Act)
+  private def staged(favor: Int = 1) = inPhase(Table.from(atActorsSite(
+    quietTable,
+    engines)).favor(actor, favor).unchecked, Phase.Act)
 
   /** Uses it and answers `site`, with `forces` staged there first. */
   private def killAt(site: ReadyGame => SiteId, forces: ReadyGame => SiteForces) =
@@ -55,7 +57,7 @@ class SiegeEnginesSuite extends munit.FunSuite:
     assertEquals(offered(t, actor).map(_.toSet),
       Some(inRegion(staged()).map(site => "site" -> site.value).toSet))
     assertEquals(cardOf(after(t)).tokens, Tokens(1, 0))
-    assertEquals(player(after(t)).board.favor, 0)
+    assertEquals(Look(after(t)).player(actor).board.favor, 0)
 
   test("it kills two of the chosen site's warbands, which return to their " +
       "bank"):
@@ -66,7 +68,7 @@ class SiegeEnginesSuite extends munit.FunSuite:
       SiteForces.Occupied(kind, 1))
     assertEquals(warbandBank(after(done), kind), warbandBank(after(t), kind) + 2)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
     assertEquals(NoteText.said(SiegeEngines, done.events), Vector(
       NoteText.Said(NoteKey.Used,
         s"Killed 2 ${victim.value} warbands at ${neighbour(ready).value}.",
@@ -74,14 +76,14 @@ class SiegeEnginesSuite extends munit.FunSuite:
 
   test("the actor's own warbands die too, and the emptied site fills with " +
       "bandits"):
-    val (ready, _, done) = killAt(home,
+    val (ready, _, done) = killAt(actorsSite,
       r => SiteForces.Occupied(kindOf(r, actor), 2))
-    val capacity = catalog.site(home(ready)).get.capacity
-    assertEquals(forcesAt(after(done), home(ready)),
+    val capacity = catalog.site(actorsSite(ready)).get.capacity
+    assertEquals(forcesAt(after(done), actorsSite(ready)),
       SiteForces.Occupied(ForceKind.Bandit, capacity))
     assertEquals(NoteText.said(SiegeEngines, done.events), Vector(
       NoteText.Said(NoteKey.Used,
-        s"Killed 2 ${actor.value} warbands at ${home(ready).value}.",
+        s"Killed 2 ${actor.value} warbands at ${actorsSite(ready).value}.",
         covers = false)))
 
   test("a site with one warband loses it"):

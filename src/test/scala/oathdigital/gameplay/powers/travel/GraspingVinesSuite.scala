@@ -1,17 +1,19 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class GraspingVinesSuite extends munit.FunSuite:
   import PowerFixture._
   import TravelFixture._
 
   private val vines = DenizenId("178")
-  private val rival = TargetsFixture.others(base).head
-  private def warbands(ready: ReadyGame): Int = player(ready).board.warbands
+  private val rival = PhasePowerHarness.others(quietTable).head
+  private def warbands(ready: ReadyGame): Int = Look(ready).player(actor)
+    .board.warbands
 
   /** `id` standing facedown at `at`, a site card turned down. */
   private def facedownAt(ready: ReadyGame, id: DenizenId, at: SiteId): ReadyGame =
@@ -33,10 +35,10 @@ class GraspingVinesSuite extends munit.FunSuite:
     val ready = vinesAtHome(Some(rival))
     val done = travel(ready, coast).toOption.get
     val result = after(done)
-    assertEquals(player(result).pawnSite, Some(coast))
+    assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(warbands(result), warbands(ready) - 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), result)
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
+    assertWireRoundTrips(done.events)
 
   test("bandits rule the site: the traveller is still an enemy"):
     val ready = vinesAtHome(None)
@@ -59,9 +61,10 @@ class GraspingVinesSuite extends munit.FunSuite:
     assertEquals(warbands(out), warbands(leaving) - 1)
 
   test("the kill is not required: a traveller with no warband is not stopped"):
-    val ready = withBoard(vinesAtHome(Some(rival)))(_.copy(warbands = 0))
+    val ready = Table.from(vinesAtHome(Some(rival))).boardWarbands(actor, 0)
+      .unchecked
     val result = after(travel(ready, coast).toOption.get)
-    assertEquals(player(result).pawnSite, Some(coast))
+    assertEquals(Look(result).player(actor).pawnSite, Some(coast))
     assertEquals(warbands(result), 0)
 
   test("a facedown Grasping Vines is not active"):
@@ -83,5 +86,6 @@ class GraspingVinesSuite extends munit.FunSuite:
         s"Killed 1 ${actor.value} warband.", covers = false)))
 
   test("a traveller with no warband to lose reads no line"):
-    val ready = withBoard(vinesAtHome(Some(rival)))(_.copy(warbands = 0))
+    val ready = Table.from(vinesAtHome(Some(rival))).boardWarbands(actor, 0)
+      .unchecked
     assertEquals(said(travel(ready, coast).toOption.get.events), Vector.empty)

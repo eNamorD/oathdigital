@@ -4,9 +4,11 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class WizardSchoolSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val walkerParked = new ParkedDecisionAssertions(catalog,
@@ -17,18 +19,19 @@ class WizardSchoolSuite extends munit.FunSuite:
 
   /** Wizard School is site-only; it stands at the actor's pawn site. */
   private def staged(favor: Int = 2): ReadyGame =
-    act(withBoard(atHome(base, school))(_.copy(favor = favor)))
+    act(Table.from(atActorsSite(quietTable, school)).favor(actor, favor)
+      .unchecked)
 
   test("it places a favor, gains a secret and ends the Act phase"):
     val ready0 = staged()
     val done = use(rules(), ready0, WizardSchool.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(tokensOn(end, school), Tokens(1, 0))
-    assertEquals(player(end).board.favor, 1)
-    assertEquals(secrets(end), secrets(ready0) + 1)
+    assertEquals(Look(end).tokensOn(school), Tokens(1, 0))
+    assertEquals(Look(end).player(actor).board.favor, 1)
+    assertEquals(allSecrets(end), allSecrets(ready0) + 1)
     walkerParked.assertResumed(done.state, Phase.Rest, actor)
     assertEquals(replayed(rules(), ready0, done.events), end)
-    assert(wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("it is unusable without a favor"):
     val broke = staged(favor = 0)

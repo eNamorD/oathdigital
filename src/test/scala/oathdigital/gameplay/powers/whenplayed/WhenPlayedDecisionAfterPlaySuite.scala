@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.SearchFixture._
 import oathdigital.model._
+import oathdigital.testkit.Look
 
 /** A When Played power that asks the player something asks it after the card
   * has left the temporary hand (or the facedown slot). The walker rebuilds the
@@ -19,7 +20,8 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
     rules.resolveWalker(from.state, PowerFixture.actor,
       FamilyHeirloom.decisionId, choice)
 
-  private def relics(ready: ReadyGame) = PowerFixture.player(ready).relics
+  private def relics(ready: ReadyGame) = Look(ready).player(PowerFixture.actor)
+    .relics
 
   test("a searched Family Heirloom played faceup asks its question and keeps " +
       "the relic"):
@@ -64,9 +66,9 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       "question after the play still resolves"):
     val fillers = denizensOf(Suit.Arcane).take(6)
     val full = fillers.foldLeft(staged(Vector(heirloom)))((ready, id) =>
-      if PowerFixture.player(ready).advisers.size >= 3 then ready
+      if Look(ready).player(PowerFixture.actor).advisers.size >= 3 then ready
       else PowerFixture.asAdviser(ready, id))
-    val current = PowerFixture.player(full).advisers.map(_.id)
+    val current = Look(full).player(PowerFixture.actor).advisers.map(_.id)
     val started = start(full).toOption.get
     val chosen = keep(started, heirloom).toOption.get
     val placed = place(chosen, heirloom, "adviser-faceup").toOption.get
@@ -79,5 +81,5 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
     val done = answer(replaced, take).fold(error => fail(error.toString),
       value => value)
     assert(relics(after(done)).nonEmpty)
-    assert(!PowerFixture.player(after(done)).advisers.exists(
+    assert(!Look(after(done)).player(PowerFixture.actor).advisers.exists(
       _.id == current.head))

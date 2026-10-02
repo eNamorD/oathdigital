@@ -2,10 +2,11 @@ package oathdigital.gameplay.powers.whenplayed
 
 import scala.reflect.ClassTag
 
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy, OperationRestrictions}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy,
+  OperationRestrictions}
 import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.gameplay.powers.{PowerFixture, WalkerPowerCatalog}
-import oathdigital.gameplay.powers.PowerFixture.{actor, base}
+import oathdigital.gameplay.powers.PowerFixture.{actor, quietTable}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
@@ -70,23 +71,24 @@ object WhenPlayedHarness:
       case tag(power) => power }.get
 
   /** p1's site on the quiet table. */
-  val homeSite: SiteId = PowerFixture.home(base)
+  val homeSite: SiteId = PowerFixture.actorsSite(quietTable)
   /** Another site in p1's region. */
   val nearSite: SiteId = inRegion.find(_ != homeSite).get
   /** A site in another region. */
   val awaySite: SiteId =
-    base.game.current.map.inPlay.find(!inRegion.contains(_)).get
+    quietTable.game.current.map.inPlay.find(!inRegion.contains(_)).get
 
   private def inRegion: Vector[SiteId] =
-    val map = base.game.current.map
+    val map = quietTable.game.current.map
     map.inPlay.filter(map.regionOf(_) == map.regionOf(homeSite))
 
   /** `cards` by site, flattened in map order. */
   def inMapOrder(cards: (SiteId, Vector[CardId])*): Vector[CardId] =
     val bySite = cards.toMap
-    base.game.current.map.inPlay.flatMap(bySite.getOrElse(_, Vector.empty))
+    quietTable.game.current.map.inPlay.flatMap(bySite.getOrElse(_,
+      Vector.empty))
 
   /** The edifices of `suit` in the quiet table's edifice deck. */
   def edificesOf(suit: Suit): Vector[EdificeId] =
-    base.game.current.commonCards.edificeDeck
+    quietTable.game.current.commonCards.edificeDeck
       .filter(catalog.suitOf(_).contains(suit))

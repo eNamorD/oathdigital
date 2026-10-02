@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class CupOfPlentySuite extends munit.FunSuite:
@@ -44,9 +44,9 @@ class CupOfPlentySuite extends munit.FunSuite:
     val ready = held.ready
     val (transition, result) = trade(ready, modifiers)
     assertEquals(Look(result).supply(p1), 7)
-    assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
       result)
-    assert(PaidActionHarness.wireRoundTrips(transition.events))
+    assertWireRoundTrips(transition.events)
 
   test("a faceup adviser of another suit does not stop the free trade"):
     // Wrestlers is Order; the traded Alchemist is Arcane.

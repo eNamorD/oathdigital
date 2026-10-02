@@ -1,13 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class BallotBoxSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val box = CatalogNames.denizen("Ballot Box")
   private val source = DecisionOptionRef.Denizen(box)
@@ -46,7 +47,7 @@ class BallotBoxSuite extends munit.FunSuite:
       NoteKey.Used, s"Replaced 2 ${p2.value} warbands at ${home.value}.",
       covers = true)))
     assertEquals(replayed(ready, t.events), Right(t.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events))
+    assertWireRoundTrips(t.events)
 
   test("bandits are replaced too"):
     val t = use(matching.bandits(home, 3).ready, power, source).toOption.get

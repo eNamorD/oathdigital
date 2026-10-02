@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class TheOldOakSuite extends munit.FunSuite:
@@ -48,9 +48,9 @@ class TheOldOakSuite extends munit.FunSuite:
     val (transition, result) = trade(ready, modifiers, oak)
     assertEquals(secrets(result), 1 + 1 + 1)
     assertEquals(secrets(trade(ready, Vector.empty, oak)._2), 1 + 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
       result)
-    assert(PaidActionHarness.wireRoundTrips(transition.events))
+    assertWireRoundTrips(transition.events)
 
   test("without a faceup beast adviser it gains nothing"):
     assertEquals(secrets(trade(board(facedown = true), modifiers, oak)._2), 1)

@@ -5,9 +5,11 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PlayerFacts,
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class MurkyFountainSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val walkerParked = new ParkedDecisionAssertions(catalog,
@@ -15,22 +17,22 @@ class MurkyFountainSuite extends munit.FunSuite:
 
   private val fountain = EdificeId("E15")
   private val source = DecisionOptionRef.Edifice(fountain)
-  private val kind = PlayerFacts.forceKind(base, actor).toOption.get
+  private val kind = PlayerFacts.forceKind(quietTable, actor).toOption.get
 
   /** The edifice is at the pawn's site, or at a far site the actor rules, so
     * that in the second case only the pawn condition fails.
     */
   private def staged(side: EdificeSide = EdificeSide.Ruined,
       pawnAtEdifice: Boolean = true, supply: Int = 1): ReadyGame =
-    val site = home(base)
-    val far = base.game.current.map.inPlay.toVector.sortBy(_.value)
+    val site = actorsSite(quietTable)
+    val far = quietTable.game.current.map.inPlay.toVector.sortBy(_.value)
       .find(_ != site).get
-    val placed = withEdifice(base, fountain, side,
+    val placed = withEdifice(quietTable, fountain, side,
       if pawnAtEdifice then site else far)
     val ruled = if pawnAtEdifice then placed else placed.updateCurrent(c =>
       c.copy(map = c.map.copy(sites = c.map.sites.updated(far,
         c.map.sites(far).copy(forces = SiteForces.Occupied(kind, 1))))))
-    act(withBoard(ruled)(_.copy(supply = SupplyTrack(supply))))
+    act(Table.from(ruled).supply(actor, supply).unchecked)
 
   test("at its site it places a secret and gains Supply equal to the total"):
     val rules0 = rules(defenseDice(DefenseDieFace.OneShield,
@@ -38,25 +40,25 @@ class MurkyFountainSuite extends munit.FunSuite:
     val ready0 = staged()
     val done = use(rules0, ready0, MurkyFountain.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(player(end).board.supply, SupplyTrack(4))
-    assertEquals(tokensOn(end, fountain), Tokens(0, 1))
+    assertEquals(Look(end).player(actor).board.supply, SupplyTrack(4))
+    assertEquals(Look(end).tokensOn(fountain), Tokens(0, 1))
     walkerParked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(replayed(rules0, ready0, done.events), end)
-    assert(wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("a Doubler doubles the shields"):
     val rules0 = rules(defenseDice(DefenseDieFace.TwoShields,
       DefenseDieFace.Doubler))
     val end = ready(use(rules0, staged(), MurkyFountain.id, source)
       .toOption.get.state)
-    assertEquals(player(end).board.supply, SupplyTrack(5))
+    assertEquals(Look(end).player(actor).board.supply, SupplyTrack(5))
 
   test("the gain is clamped at the track maximum"):
     val rules0 = rules(defenseDice(DefenseDieFace.TwoShields,
       DefenseDieFace.TwoShields))
     val end = ready(use(rules0, staged(supply = 5), MurkyFountain.id, source)
       .toOption.get.state)
-    assertEquals(player(end).board.supply, SupplyTrack(7))
+    assertEquals(Look(end).player(actor).board.supply, SupplyTrack(7))
 
   test("a total of zero ends the Act phase without gaining Supply"):
     val rules0 = rules(defenseDice(DefenseDieFace.Blank, DefenseDieFace.Blank))
@@ -64,23 +66,23 @@ class MurkyFountainSuite extends munit.FunSuite:
     val done = use(rules0, ready0, MurkyFountain.id, source).toOption.get
     val end = ready(done.state)
     walkerParked.assertResumed(done.state, Phase.Rest, actor)
-    assertEquals(player(end).board.supply, SupplyTrack(1))
-    assertEquals(tokensOn(end, fountain), Tokens(0, 1))
+    assertEquals(Look(end).player(actor).board.supply, SupplyTrack(1))
+    assertEquals(Look(end).tokensOn(fountain), Tokens(0, 1))
     assertEquals(replayed(rules0, ready0, done.events), end)
-    assert(wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("with the pawn elsewhere the cost is paid, nothing rolls and the phase stays"):
     val away = staged(pawnAtEdifice = false)
     assert(usableIds(away).contains(MurkyFountain.id))
     val done = use(rules(), away, MurkyFountain.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(tokensOn(end, fountain), Tokens(0, 1))
-    assertEquals(secrets(end), secrets(away) - 1)
-    assertEquals(player(end).board.supply, SupplyTrack(1))
+    assertEquals(Look(end).tokensOn(fountain), Tokens(0, 1))
+    assertEquals(allSecrets(end), allSecrets(away) - 1)
+    assertEquals(Look(end).player(actor).board.supply, SupplyTrack(1))
     walkerParked.assertResumed(done.state, Phase.Act, actor)
 
   test("it is unusable without a faceup secret"):
-    val noSecret = withBoard(staged())(_.copy(faceUpSecrets = 0))
+    val noSecret = Table.from(staged()).secrets(actor, 0).unchecked
     assert(!usableIds(noSecret).contains(MurkyFountain.id))
     assert(use(rules(), noSecret, MurkyFountain.id, source).isLeft)
 

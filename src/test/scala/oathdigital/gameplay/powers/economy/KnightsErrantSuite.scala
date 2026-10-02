@@ -5,13 +5,14 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.targeting.TargetingFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker, WalkerPowers, WalkerProcedureRegistry}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
+  WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseAmountAnswer, ChooseOneAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseAmountAnswer,
+  ChooseOneAnswer}
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class KnightsErrantSuite extends munit.FunSuite:
@@ -134,7 +135,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     val result = ready(done)
     assertEquals(result.game.current.walkerProcedure, None)
     assert(result.game.current.lastCampaignResult.nonEmpty)
-    assertEquals(PaidActionHarness.replayed(rules, staged().ready, done.events),
+    assertEquals(ActPowerHarness.replayed(rules, staged().ready, done.events),
       result)
 
   test("it cannot be selected for a Campaign, or for any other action"):

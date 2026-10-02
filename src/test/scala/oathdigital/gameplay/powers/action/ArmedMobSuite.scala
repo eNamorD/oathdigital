@@ -1,14 +1,15 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.actions.CardPlay
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class ArmedMobSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val mob = CatalogNames.denizen("Armed Mob")
   private val source = DecisionOptionRef.Denizen(mob)
@@ -55,7 +56,7 @@ class ArmedMobSuite extends munit.FunSuite:
     assertEquals(Look(end).faceDownSecrets(p1),
       Look(ready).faceDownSecrets(p1) + 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the card and its owner, covering the Discarded line"):
     val (_, done) = choose(staged().adviser(p2, plain(0)).ready, plain(0))

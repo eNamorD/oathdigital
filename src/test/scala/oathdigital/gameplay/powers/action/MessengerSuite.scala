@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class MessengerSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val messenger = CatalogNames.denizen("Messenger")
   private val source = DecisionOptionRef.Denizen(messenger)
@@ -56,7 +57,7 @@ class MessengerSuite extends munit.FunSuite:
     assertEquals(count(end, home), 4)
     assertEquals(count(end, far), 2)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("warbands may go back to the board"):
     val end = after(arranged(staged(), arrangement(4, 1, 1)).toOption.get)

@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class StorytellerSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val teller = CatalogNames.denizen("Storyteller")
   private val source = DecisionOptionRef.Denizen(teller)
@@ -30,7 +31,7 @@ class StorytellerSuite extends munit.FunSuite:
       NoteKey.Used, s"${p1.value} placed 1 secret on the Darkest Secret.",
       covers = false)))
     assertEquals(replayed(ready, t.events), Right(t.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events))
+    assertWireRoundTrips(t.events)
 
   test("a Darkest Secret nobody holds takes the secret too"):
     val t = use(staged().darkestSecret(None, 0).ready, Storyteller, source)

@@ -1,13 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class BedOfRootsSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val bed = CatalogNames.denizen("Bed of Roots")
   private val source = DecisionOptionRef.Denizen(bed)
@@ -52,7 +53,7 @@ class BedOfRootsSuite extends munit.FunSuite:
     assertEquals(Look(end).faceDownSecrets(p1),
       Look(ready).faceDownSecrets(p1) + 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the adviser and the secrets gained, covering the " +
       "Buried and gain lines"):

@@ -1,11 +1,11 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.testkit.TestCards
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathViolation.TravelPassBlocked
+import oathdigital.testkit.{ActPowerHarness, Look, Table, TestCards}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class ForestPathsSuite extends munit.FunSuite:
   import PowerFixture._
@@ -16,7 +16,8 @@ class ForestPathsSuite extends munit.FunSuite:
   private val beast: DenizenId = catalog.denizens.filter(d =>
     d.suit == Suit.Beast && TestCards.unrestricted(d) &&
       d.id.value != paths.value).map(d => DenizenId(d.id.value)).head
-  private def held = withBoard(adviser(board(), paths))(_.copy(favor = 1))
+  private def held = Table.from(adviser(board(), paths)).favor(actor, 1)
+    .unchecked
 
   test("a destination with a beast card costs no Supply and ignores the " +
       "terrain of sites"):
@@ -26,12 +27,12 @@ class ForestPathsSuite extends munit.FunSuite:
     assertEquals(candidates(ready, modifiers).get(mountain), Some(0))
     val done = travel(ready, mountain, modifiers).toOption.get
     val result = after(done)
-    assertEquals(player(result).pawnSite, Some(mountain))
+    assertEquals(Look(result).player(actor).pawnSite, Some(mountain))
     assertEquals(supplyOf(result), 7)
-    assertEquals(player(result).board.favor, 0)
+    assertEquals(Look(result).player(actor).board.favor, 0)
     assertEquals(adviserTokens(result, paths), Tokens(1, 0))
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), result)
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
+    assertWireRoundTrips(done.events)
 
   test("it ignores Narrow Pass too: a pass the actor does not rule blocks nothing"):
     val ready = denizenAt(held, beast, plains(1))
@@ -40,7 +41,7 @@ class ForestPathsSuite extends munit.FunSuite:
     assertEquals(candidates(ready).get(plains(1)), None)
     assertEquals(candidates(ready, modifiers).get(plains(1)), Some(0))
     val result = after(travel(ready, plains(1), modifiers).toOption.get)
-    assertEquals(player(result).pawnSite, Some(plains(1)))
+    assertEquals(Look(result).player(actor).pawnSite, Some(plains(1)))
     assertEquals(supplyOf(result), 7)
 
   test("a ruined beast edifice counts as a beast card"):
@@ -56,7 +57,7 @@ class ForestPathsSuite extends munit.FunSuite:
     val result = after(travel(ready, mountain, modifiers).toOption.get)
     // The printed 2 and the Mountain's 1, both still charged.
     assertEquals(supplyOf(result), 7 - 3)
-    assertEquals(player(result).board.favor, 0)
+    assertEquals(Look(result).player(actor).board.favor, 0)
     assertEquals(adviserTokens(result, paths), Tokens(1, 0))
 
   test("Narrow Pass still blocks a route with no beast card at the destination"):
@@ -65,8 +66,8 @@ class ForestPathsSuite extends munit.FunSuite:
       TravelPassBlocked(pass, plains(1)))
 
   test("it cannot be selected without a favor to place"):
-    val broke = withBoard(denizenAt(passRuled(held), beast, mountain))(
-      _.copy(favor = 0))
+    val broke = Table.from(denizenAt(passRuled(held), beast, mountain))
+      .favor(actor, 0).unchecked
     assertEquals(travel(broke, mountain, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.forest-paths is not applicable to this travel")))

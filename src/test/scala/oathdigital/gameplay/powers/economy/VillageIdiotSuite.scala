@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class VillageIdiotSuite extends munit.FunSuite:
@@ -45,9 +45,9 @@ class VillageIdiotSuite extends munit.FunSuite:
     assertEquals(Look(result).favor(p1), 1)
     assertEquals(hearth(result), 2)
     assertEquals(Look(result).boardWarbands(p1), 3 + 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
       result)
-    assert(PaidActionHarness.wireRoundTrips(transition.events))
+    assertWireRoundTrips(transition.events)
 
   test("mustering on another card, or without the selection, gains no favor"):
     val ready = idiotAtSite().ready

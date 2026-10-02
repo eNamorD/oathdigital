@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class AmberFlameSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val flame = CatalogNames.relic("Amber Flame")
   private val source = DecisionOptionRef.Relic(flame)
@@ -44,7 +45,7 @@ class AmberFlameSuite extends munit.FunSuite:
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(banner(after(done), Banner.PeoplesFavor), 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
     assertEquals(NoteText.said(AmberFlame, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${p1.value} burned 1 favor from " +
         s"${p2.value}'s People's Favor.", covers = false)))

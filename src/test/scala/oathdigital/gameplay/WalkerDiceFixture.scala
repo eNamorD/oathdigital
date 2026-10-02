@@ -27,6 +27,17 @@ object WalkerDiceFixture:
       case DiceKind.Defense => DefenseDieFace.TwoShields: DieFace
     }))
 
+  /** Dice that return exactly these faces, and fail loudly on a wrong count. */
+  def dice(attack: Vector[AttackDieFace] = Vector.empty,
+      defense: Vector[DefenseDieFace] = Vector.empty): WalkerDice =
+    (kind, count) => kind match
+      case DiceKind.Attack => Either.cond(attack.size == count, attack,
+        OathViolation.InvalidEventOrder(
+          s"test dice: ${attack.size} attack faces for a pool of $count"))
+      case DiceKind.Defense => Either.cond(defense.size == count, defense,
+        OathViolation.InvalidEventOrder(
+          s"test dice: ${defense.size} defense faces for a pool of $count"))
+
   /** Faces handed out one roll at a time, so a test can script a failed roll
     * and then a successful one. Running out is a violation rather than a
     * repeat of the last roll, so a walk that rolls more often than the test

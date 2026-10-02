@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts, PowerFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class DragonskinDrumSuite extends munit.FunSuite:
   import PowerFixture._
@@ -17,23 +18,27 @@ class DragonskinDrumSuite extends munit.FunSuite:
     val ready = held
     val done = travel(ready, coast, modifiers).toOption.get
     val result = after(done)
-    assertEquals(player(result).pawnSite, Some(coast))
-    assertEquals(player(result).board.warbands, player(ready).board.warbands + 1)
+    assertEquals(Look(result).player(actor).pawnSite, Some(coast))
+    assertEquals(Look(result).player(actor).board.warbands, Look(ready)
+      .player(actor).board.warbands + 1)
     assertEquals(supplyOf(result), 7 - 1)
     // The Drum itself is free.
-    assertEquals(player(result).board.favor, player(ready).board.favor)
-    assertEquals(player(result).board.faceUpSecrets,
-      player(ready).board.faceUpSecrets)
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), result)
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertEquals(Look(result).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor)
+    assertEquals(Look(result).player(actor).board.faceUpSecrets,
+      Look(ready).player(actor).board.faceUpSecrets)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
+    assertWireRoundTrips(done.events)
 
   test("without the selection, or with an empty bank, it gains what it can"):
     val plain = after(travel(held, coast).toOption.get)
-    assertEquals(player(plain).board.warbands, player(held).board.warbands)
+    assertEquals(Look(plain).player(actor).board.warbands, Look(held)
+      .player(actor).board.warbands)
     val kind = PlayerFacts.forceKind(held, actor).toOption.get
     val empty = leaveInBank(held, kind, 0)
     val result = after(travel(empty, coast, modifiers).toOption.get)
-    assertEquals(player(result).board.warbands, player(empty).board.warbands)
+    assertEquals(Look(result).player(actor).board.warbands, Look(empty)
+      .player(actor).board.warbands)
 
   test("a facedown Drum is not usable"):
     assertEquals(travel(withRelic(board(), drum, Orientation.FaceDown), coast,

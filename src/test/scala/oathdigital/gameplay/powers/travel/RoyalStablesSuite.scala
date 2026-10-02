@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.gameplay.powers.PowerFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class RoyalStablesSuite extends munit.FunSuite:
   import PowerFixture._
@@ -20,14 +21,15 @@ class RoyalStablesSuite extends munit.FunSuite:
     assertEquals(candidates(ready, modifiers).get(province), Some(1))
     val done = travel(ready, province, modifiers).toOption.get
     val result = after(done)
-    assertEquals(player(result).pawnSite, Some(province))
+    assertEquals(Look(result).player(actor).pawnSite, Some(province))
     assertEquals(supplyOf(result), 7 - 1)
     // The Stables themselves are free.
-    assertEquals(player(result).board.favor, player(ready).board.favor)
-    assertEquals(player(result).board.faceUpSecrets,
-      player(ready).board.faceUpSecrets)
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), result)
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertEquals(Look(result).player(actor).board.favor, Look(ready)
+      .player(actor).board.favor)
+    assertEquals(Look(result).player(actor).board.faceUpSecrets,
+      Look(ready).player(actor).board.faceUpSecrets)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), result)
+    assertWireRoundTrips(done.events)
 
   test("a Travel never costs less than 1 Supply"):
     assertEquals(candidates(atHome).get(coast), Some(1))
@@ -39,15 +41,15 @@ class RoyalStablesSuite extends munit.FunSuite:
     // The cradle holds the mountain and the coast here, so the printed base
     // from the coast to the mountain is 1 and the mountain adds 1. Reducing
     // first would clamp 1 to 1 and then add 1, costing 2.
-    val cradle = updateActor(board(source = mountain))(
-      _.copy(pawnSite = Some(coast)))
+    val cradle = Table.from(board(source = mountain)).pawn(actor, coast)
+      .unchecked
     val ready = denizenAt(cradle, stables, coast)
     assertEquals(candidates(ready).get(mountain), Some(2))
     assertEquals(candidates(ready, modifiers).get(mountain), Some(1))
 
   test("with Tents the Travel is free: Tents removes the payment"):
     val tents = DenizenId("29")
-    val ready = withBoard(adviser(atHome, tents))(_.copy(favor = 1))
+    val ready = Table.from(adviser(atHome, tents)).favor(actor, 1).unchecked
     val both = Vector(Tents.id, RoyalStables.id)
     assertEquals(candidates(ready, both).get(coast), Some(0))
     assertEquals(supplyOf(after(travel(ready, coast, both).toOption.get)), 7)

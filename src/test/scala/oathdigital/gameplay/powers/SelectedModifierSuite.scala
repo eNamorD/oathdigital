@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.Table
 
 /** The kit every selected modifier stands on: it is offered only for its own
   * action, only when the player may use its card and can pay for it, and it
@@ -33,8 +34,8 @@ class SelectedModifierSuite extends munit.FunSuite:
 
   private val travel: Set[MajorActionType] = Set(MajorActionType.Travel)
   private def free = Probe(card, Cost.free, travel)
-  private def atHomeWith(cost: Int = 1) = withBoard(atHome(base, card))(
-    _.copy(favor = cost))
+  private def atHomeWith(cost: Int = 1) = Table.from(atActorsSite(quietTable,
+    card)).favor(actor, cost).unchecked
 
   test("it is offered for its own action and no other"):
     val ready = atHomeWith()
@@ -43,19 +44,21 @@ class SelectedModifierSuite extends munit.FunSuite:
     assert(!selectable(ready, free, PowerWindow.MusterModifierSelection))
 
   test("it is not offered when the player may not use its card"):
-    assert(!selectable(base, free))
-    val faceDown = withBoard(asAdviser(base, card, Orientation.FaceDown))(
-      _.copy(favor = 1))
+    assert(!selectable(quietTable, free))
+    val faceDown = Table.from(asAdviser(quietTable, card, Orientation.FaceDown))
+      .favor(actor, 1).unchecked
     assert(!selectable(faceDown, free))
-    assert(selectable(withBoard(asAdviser(base, card))(_.copy(favor = 1)), free))
+    assert(selectable(Table.from(asAdviser(quietTable, card)).favor(actor, 1)
+      .unchecked, free))
 
   test("a cost must be payable: enough favor, and an empty card"):
     val priced = Probe(card, Cost(favor = 1), travel)
     assert(selectable(atHomeWith(1), priced))
     assert(!selectable(atHomeWith(0), priced))
     val occupied = atHomeWith(1).updateCurrent(c => c.copy(map = c.map.copy(
-      sites = c.map.sites.updated(home(base), c.map.sites(home(base)).copy(
-        denizens = c.map.sites(home(base)).denizens.map {
+      sites = c.map.sites.updated(actorsSite(quietTable),
+        c.map.sites(actorsSite(quietTable)).copy(
+        denizens = c.map.sites(actorsSite(quietTable)).denizens.map {
           case d: DenizenState if d.id == card => d.copy(tokens = Tokens(1, 0))
           case other => other
         })))))
@@ -65,7 +68,7 @@ class SelectedModifierSuite extends munit.FunSuite:
     val priced = Probe(card, Cost(favor = 1), travel)
     // No card and no favor, yet the fold at a walk window still applies it,
     // because a walk window must not depend on what the action spends.
-    assert(priced.applicable(ctx(base, priced, PowerWindow.TravelCost)))
+    assert(priced.applicable(ctx(quietTable, priced, PowerWindow.TravelCost)))
 
   test("a cost is paid at the root of the action's tree, and only for a costed " +
       "modifier"):
@@ -78,9 +81,9 @@ class SelectedModifierSuite extends munit.FunSuite:
     // A probe that applies at no node still applies at the eligibility
     // window, where its payment is made, and nowhere else.
     val priced = Probe(card, Cost(favor = 1), travel, applies = false)
-    assert(priced.applicable(ctx(base, priced,
+    assert(priced.applicable(ctx(quietTable, priced,
       PowerWindow.TravelActionEligibility)))
-    assert(!priced.applicable(ctx(base, priced, PowerWindow.TravelCost)))
+    assert(!priced.applicable(ctx(quietTable, priced, PowerWindow.TravelCost)))
 
   test("the payment is what selecting it pays, for the combined check"):
     val priced = Probe(card, Cost(favor = 1), travel)
@@ -103,7 +106,7 @@ class SelectedModifierSuite extends munit.FunSuite:
     val Vector(first, second) = both.contributions(
       PowerWindow.TravelActionEligibility).collect {
         case oathdigital.gameplay.powerresolver.Transform(fn) => fn }: @unchecked
-    val at = ctx(base, both, PowerWindow.TravelActionEligibility)
+    val at = ctx(quietTable, both, PowerWindow.TravelActionEligibility)
     assertEquals(first(at, Vector.empty), Vector[Operation](
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
         catalog)))

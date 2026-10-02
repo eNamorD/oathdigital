@@ -1,14 +1,15 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class CrystalVialSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val vial = RelicId("R21")
   private val source = DecisionOptionRef.Relic(vial)
@@ -26,23 +27,22 @@ class CrystalVialSuite extends munit.FunSuite:
     .relic(p1, vial).adviser(p1, held).secrets(p1, faceUp = 2)
     .adviser(p2, theirs)
     .ready
-  private def relicOf(ready: ReadyGame) = player(ready).relics
+  private def relicOf(ready: ReadyGame) = Look(ready).player(actor).relics
     .find(_.id == vial).get
   private def secretsOf(ready: ReadyGame) =
-    (player(ready).board.faceUpSecrets, player(ready).board.faceDownSecrets)
+    (Look(ready).player(actor).board.faceUpSecrets, Look(ready).player(actor)
+      .board.faceDownSecrets)
   private def siteCards(ready: ReadyGame) = ready.game.current.map
-    .sites(home(ready)).denizens.map {
+    .sites(actorsSite(ready)).denizens.map {
       case d: DenizenState => "denizen" -> d.id.value
       case e: EdificeState => "edifice" -> e.id.value }
   private def worldDeck(ready: ReadyGame) = ready.game.current.commonCards.worldDeck
   private def withAdviserTokens(ready: ReadyGame, tokens: Tokens) =
-    updateActor(ready)(p => p.copy(advisers = p.advisers.map {
-      case d: DenizenState if d.id == held => d.copy(tokens = tokens)
-      case unchanged => unchanged }))
+    Table.from(ready).tokens(held, tokens.favor, tokens.secrets).unchecked
   private def withSiteTokens(ready: ReadyGame, card: DenizenId, tokens: Tokens) =
     ready.updateCurrent { c =>
-      val site = c.map.sites(home(ready))
-      c.copy(map = c.map.copy(sites = c.map.sites.updated(home(ready),
+      val site = c.map.sites(actorsSite(ready))
+      c.copy(map = c.map.copy(sites = c.map.sites.updated(actorsSite(ready),
         site.copy(denizens = site.denizens.map {
           case d: DenizenState if d.id == card => d.copy(tokens = tokens)
           case unchanged => unchanged }))))
@@ -61,8 +61,8 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("it offers the actor's advisers in either orientation and the cards " +
       "at the actor's site, and nobody else's"):
-    val ready = atHome(giveVision(giveAdviser(staged, actor, DenizenId("26"),
-      Orientation.FaceUp), actor, faith, Orientation.FaceDown), inn)
+    val ready = atActorsSite(Table.from(staged).adviser(actor, DenizenId("26"))
+      .adviser(actor, faith, facedown = true).unchecked, inn)
     val t = use(ready, power, source).toOption.get
     assertEquals(offered(t, actor).map(_.toSet), Some(Set(
       "denizen" -> held.value, "denizen" -> "26", "vision" -> faith.value) ++
@@ -75,23 +75,24 @@ class CrystalVialSuite extends munit.FunSuite:
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, CrystalVial.decisionId,
       pick(DecisionOptionRef.Denizen(held))).toOption.get
-    assert(!player(after(done)).advisers.exists(_.id == held))
+    assert(!Look(after(done)).player(actor).advisers.exists(_.id == held))
     assertEquals(worldDeck(after(done)).last, held)
     assertEquals(after(done).banks.favor(suit), ready.banks.favor(suit) + 2)
     assertEquals(secretsOf(after(done)), (0, 1))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("a Vision adviser can be buried"):
-    val ready = giveVision(staged, actor, faith, Orientation.FaceDown)
+    val ready = Table.from(staged).adviser(actor, faith, facedown = true)
+      .unchecked
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, CrystalVial.decisionId,
       pick(DecisionOptionRef.Vision(faith))).toOption.get
-    assert(!player(after(done)).advisers.exists(_.id == faith))
+    assert(!Look(after(done)).player(actor).advisers.exists(_.id == faith))
     assertEquals(worldDeck(after(done)).last, faith)
 
   test("a denizen at the site is buried with its favor and secrets returned"):
-    val ready = withSiteTokens(atHome(staged, inn), inn, Tokens(1, 1))
+    val ready = withSiteTokens(atActorsSite(staged, inn), inn, Tokens(1, 1))
     val suit = catalog.suitOf(inn).get
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, CrystalVial.decisionId,
@@ -104,7 +105,7 @@ class CrystalVialSuite extends munit.FunSuite:
   test("the edifice at the site is buried whichever face it shows"):
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
       val edifice = EdificeId("E15")
-      val ready = withEdifice(staged, edifice, side, home(staged))
+      val ready = withEdifice(staged, edifice, side, actorsSite(staged))
       val t = use(ready, power, source).toOption.get
       val done = answer(t, actor, CrystalVial.decisionId,
         pick(DecisionOptionRef.Edifice(edifice))).toOption.get
@@ -131,7 +132,7 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("it needs two faceup secrets"):
     Vector((1, 0), (1, 5)).foreach { case (up, down) =>
-      val ready = withSecrets(staged, actor, up, down)
+      val ready = Table.from(staged).secrets(actor, up, down).unchecked
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
       assert(use(ready, power, source).isLeft)
     }

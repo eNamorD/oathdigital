@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class DowntroddenSuite extends munit.FunSuite:
@@ -42,9 +42,9 @@ class DowntroddenSuite extends munit.FunSuite:
     val ready = board(Suit.Beast -> 1)
     val (transition, result) = muster(ready, modifiers)
     assertEquals(Look(result).boardWarbands(p1), 3 + 1 + 2)
-    assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
       result)
-    assert(PaidActionHarness.wireRoundTrips(transition.events))
+    assertWireRoundTrips(transition.events)
 
   test("a tie for least gives nothing, empty banks included"):
     assertEquals(Look(muster(board(Suit.Beast -> 1, Suit.Order -> 1),

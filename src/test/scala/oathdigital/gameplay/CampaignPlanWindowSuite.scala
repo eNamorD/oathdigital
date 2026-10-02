@@ -1,10 +1,11 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.CampaignFixture._
-import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlanApplication, CampaignProcedure}
+import oathdigital.gameplay.actions.campaign.{CampaignIds,
+  CampaignPlanApplication, CampaignProcedure}
 import oathdigital.gameplay.operations.Costs
-import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, Transform}
-import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
+  Transform}
 import oathdigital.gameplay.powers.campaign.{BattlePlan, PlanContext, PlanUse}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
@@ -12,6 +13,8 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.ActPowerHarness
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 /** The plan window itself, with plans of the suite's own: what a plan may cost,
   * who pays and when, which plans are offered after each pick, and how a plan
@@ -131,9 +134,9 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       matchingBank = catalog.suitOf(DenizenId(orderCard)))))
     // The recorded steps replay to the same state, and survive the journal wire.
     val events = started.events ++ forced.events ++ picked.events
-    assertEquals(PaidActionHarness.replayed(g, b.ready, events),
+    assertEquals(ActPowerHarness.replayed(g, b.ready, events),
       ready(picked.state))
-    assert(PaidActionHarness.wireRoundTrips(events))
+    assertWireRoundTrips(events)
 
   test("burnt costs leave play to the shared bank, and the option states them apart"):
     val base = board()
@@ -208,7 +211,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       (1, 0, 1))
     assert(ops(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
     // The recorded payment is the requested one, and replay settles it again.
-    assertEquals(PaidActionHarness.replayed(g, b.ready,
+    assertEquals(ActPowerHarness.replayed(g, b.ready,
       started.events ++ forced.events ++ picked.events), ready(picked.state))
 
   test("a defender plan with a cost the defender cannot pay is not offered"):

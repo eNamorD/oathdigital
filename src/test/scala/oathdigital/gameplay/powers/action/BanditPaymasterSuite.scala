@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class BanditPaymasterSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val paymaster = CatalogNames.denizen("Bandit Paymaster")
   private val source = DecisionOptionRef.Denizen(paymaster)
@@ -32,7 +33,7 @@ class BanditPaymasterSuite extends munit.FunSuite:
       NoteText.Said(NoteKey.Used, s"Removed 1 bandit warband from " +
         s"${home.value}, and ${p1.value} gained 3 warbands.", covers = false)))
     assertEquals(replayed(ready, t.events), Right(t.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events))
+    assertWireRoundTrips(t.events)
 
   test("the last bandit is spared, and the line says so"):
     val ready = staged(1).ready

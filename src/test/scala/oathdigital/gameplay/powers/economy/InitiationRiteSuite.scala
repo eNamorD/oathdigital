@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class InitiationRiteSuite extends munit.FunSuite:
@@ -40,9 +40,9 @@ class InitiationRiteSuite extends munit.FunSuite:
     assertEquals(Look(result).faceUpSecrets(p1), 0)
     assertEquals(Look(result).supply(p1), 6)
     assertEquals(Look(result).boardWarbands(p1), 3 + 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, transition.events),
       result)
-    assert(PaidActionHarness.wireRoundTrips(transition.events))
+    assertWireRoundTrips(transition.events)
 
   test("it is a rule, never offered as a modifier"):
     assert(!rules.offerableWalkerPowers(initiated().ready, p1,

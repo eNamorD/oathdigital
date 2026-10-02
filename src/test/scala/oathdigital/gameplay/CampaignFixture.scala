@@ -67,16 +67,8 @@ object CampaignFixture:
     case DiceKind.Defense => Vector.fill(count)(DefenseDieFace.Blank: DieFace)
   })
 
-  /** Dice that return exactly these faces, and fail loudly on a wrong count. */
-  def dice(attack: Vector[AttackDieFace] = Vector.empty,
-      defense: Vector[DefenseDieFace] = Vector.empty): WalkerDice =
-    (kind, count) => kind match
-      case DiceKind.Attack => Either.cond(attack.size == count, attack,
-        OathViolation.InvalidEventOrder(
-          s"test dice: ${attack.size} attack faces for a pool of $count"))
-      case DiceKind.Defense => Either.cond(defense.size == count, defense,
-        OathViolation.InvalidEventOrder(
-          s"test dice: ${defense.size} defense faces for a pool of $count"))
+  /** Dice that return exactly these faces: the shared stub. */
+  export WalkerDiceFixture.dice
 
   def replacePlayer(b: Board, id: PlayerId)(f: PlayerState => PlayerState)
       : Board = b.copy(ready = b.ready.updateCurrent(current => current.copy(

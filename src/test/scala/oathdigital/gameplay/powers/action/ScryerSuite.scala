@@ -1,12 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class ScryerSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val scryer = DenizenId("19")
   private val source = DecisionOptionRef.Denizen(scryer)
@@ -19,7 +21,8 @@ class ScryerSuite extends munit.FunSuite:
     * discard pile holds the world deck's top six cards, stored top last, and
     * the Hinterland's is empty. */
   private val staged: ReadyGame =
-    inPhase(withSecrets(atHome(base, scryer), actor, 1, 0), Phase.Act)
+    inPhase(Table.from(atActorsSite(quietTable, scryer)).secrets(actor, 1, 0)
+      .unchecked, Phase.Act)
       .updateCurrent(c => c.copy(commonCards = c.commonCards.copy(
         worldDeck = c.commonCards.worldDeck.drop(6),
         regionalDiscards = c.commonCards.regionalDiscards
@@ -37,7 +40,7 @@ class ScryerSuite extends munit.FunSuite:
     val t = started
     assert(awaits(t, Scryer.pileDecisionId),
       parked.parkedDecision(t.state).toString)
-    assertEquals(PaidActionHarness.tokensOn(after(t), scryer), Tokens(0, 1))
+    assertEquals(Look(after(t)).tokensOn(scryer), Tokens(0, 1))
     assertEquals(offered(t, actor),
       Some(Scryer.piles.map(Scryer.ref).map(r => r.kind -> r.wireId)))
 
@@ -64,7 +67,7 @@ class ScryerSuite extends munit.FunSuite:
     parked.assertResumed(done.state, Phase.Act, actor)
     val events = t.events ++ peeking.events ++ done.events
     assertEquals(replayed(staged, events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(events))
+    assertWireRoundTrips(events)
 
   test("its line lists the pile top first and covers the peeks"):
     val t = started
@@ -84,6 +87,6 @@ class ScryerSuite extends munit.FunSuite:
           "which was empty.", covers = true)))
 
   test("it is unusable without a faceup secret"):
-    val broke = withSecrets(staged, actor, 0, 1)
+    val broke = Table.from(staged).secrets(actor, 0, 1).unchecked
     assert(!usableNow(broke).exists(_.power.id == Scryer.id))
     assert(use(broke, Scryer, source).isLeft)

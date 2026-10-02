@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class ArcaneBrokersSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val brokers = CatalogNames.denizen("Arcane Brokers")
   private val source = DecisionOptionRef.Denizen(brokers)
@@ -51,7 +52,7 @@ class ArcaneBrokersSuite extends munit.FunSuite:
     assert(end.game.current.setAsideRelics.contains(whistle))
     assertEquals(secretsOf(end), secretsOf(ready) + 2)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("a facedown relic may be discarded"):
     val ready = Table.start.turn(p1, Phase.Act).adviser(p1, brokers)

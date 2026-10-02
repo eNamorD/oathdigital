@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class EnchantressSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val enchantress = CatalogNames.denizen("Enchantress")
   private val source = DecisionOptionRef.Denizen(enchantress)
@@ -45,7 +46,7 @@ class EnchantressSuite extends munit.FunSuite:
     assertEquals(Look(end).player(p2).advisers, Vector[AdviserState](
       DenizenState(enchantress, Orientation.FaceUp, Tokens(0, 1))))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the card taken and its former owner"):
     val (_, done) = choose(staged().ready, plain(0))

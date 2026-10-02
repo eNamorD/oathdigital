@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{Look, Table}
 
 class ElderSuite extends munit.FunSuite:
   import PowerFixture._
@@ -15,19 +16,21 @@ class ElderSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Denizen(elders)
   private val rules = new OathRules(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  private def staged(favor: Int) = inPhase(withBoard(atHome(base, elders))(
-    _.copy(favor = favor)), Phase.Act)
+  private def staged(favor: Int) = inPhase(Table.from(atActorsSite(quietTable,
+    elders)).favor(actor, favor).unchecked, Phase.Act)
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
     ActionRef.UsePower(Elders.id), actor, Vector.empty, Vector(source))
   private def secrets(ready: ReadyGame) =
-    player(ready).board.faceUpSecrets + player(ready).board.faceDownSecrets
+    Look(ready).player(actor).board.faceUpSecrets + Look(ready).player(actor)
+      .board.faceDownSecrets
 
   test("it places 2 favor on its card and gains a secret"):
     val ready = staged(favor = 3)
     val used = use(ready).toOption.get.state.asInstanceOf[Ready].value
-    assertEquals(player(used).board.favor, 1)
+    assertEquals(Look(used).player(actor).board.favor, 1)
     assertEquals(secrets(used), secrets(ready) + 1)
-    assertEquals(used.game.current.map.sites(home(used)).denizens.collectFirst {
+    assertEquals(used.game.current.map.sites(actorsSite(used))
+      .denizens.collectFirst {
       case d: DenizenState if d.id == elders => d.tokens }.get, Tokens(2, 0))
 
   test("one favor is not enough"):

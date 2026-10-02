@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.search
 
 import oathdigital.gameplay.powers.SearchFixture
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 
 class DisciplesSuite extends munit.FunSuite:
@@ -46,9 +46,9 @@ class DisciplesSuite extends munit.FunSuite:
     assertEquals(spent(ready, Vector.empty), 3)
     val started = rules.startWalker(Ready(ready), ActionRef.Search, p1,
       modifiers, Vector(DecisionOptionRef.Button(world))).toOption.get
-    assertEquals(PaidActionHarness.replayed(rules, ready, started.events),
+    assertEquals(ActPowerHarness.replayed(rules, ready, started.events),
       SearchFixture.after(started))
-    assert(PaidActionHarness.wireRoundTrips(started.events))
+    assertWireRoundTrips(started.events)
 
   test("holding the Darkest Secret, a world Search costing 4 costs 2"):
     assertEquals(spent(board(visions = 3), modifiers), 2)

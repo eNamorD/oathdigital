@@ -1,10 +1,11 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness}
 
 /** Staging shared by the banner-face suites, on the quiet table: the actor
   * p1 at Ancient City, p2 at Broken Peaks and p3 at Buried Giant. Both
@@ -14,11 +15,11 @@ object BannerFixture:
   import PowerFixture._
 
   /** The parked decision: the same `ParkedDecisionAssertions`, built on the
-    * same catalog and phase power catalog, that `TargetsFixture` already
+    * same catalog and phase power catalog, that `PhasePowerHarness` already
     * has, since the transitions `backToActing` reads come from that
     * fixture.
     */
-  val parked = TargetsFixture.parked
+  val parked = PhasePowerHarness.parked
 
   val ancientCity: SiteId = SiteId("site:ancient-city")
   val brokenPeaks: SiteId = SiteId("site:broken-peaks")
@@ -69,7 +70,7 @@ object BannerFixture:
     ready.game.current.map.sites(site).tokens.secrets
 
   def pawnOf(ready: ReadyGame, id: PlayerId = actor): SiteId =
-    player(ready, id).pawnSite.get
+    Look(ready).player(id).pawnSite.get
 
   def usable(ready: ReadyGame, power: PowerId): Boolean =
     PhasePowerProcedure.usable(catalog, ready, actor,

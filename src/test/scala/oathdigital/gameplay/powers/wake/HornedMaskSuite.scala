@@ -3,15 +3,16 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.gameplay.walker.WalkerPowers
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class HornedMaskSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val mask = RelicId("R06")
   private val source = DecisionOptionRef.Relic(mask)
@@ -25,32 +26,33 @@ class HornedMaskSuite extends munit.FunSuite:
   private val used = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(mask),
     HornedMask.id)
 
-  private def staged = inPhase(withRelic(base, mask), Phase.Wake)
+  private def staged = inPhase(withRelic(quietTable, mask), Phase.Wake)
   private def denizensHere(ready: ReadyGame): Vector[DenizenId] =
-    ready.game.current.map.sites(home(ready)).denizens.collect {
+    ready.game.current.map.sites(actorsSite(ready)).denizens.collect {
       case d: DenizenState => d.id }
-  private def adviser(ready: ReadyGame, id: DenizenId) = player(ready).advisers
+  private def adviser(ready: ReadyGame, id: DenizenId) = Look(ready)
+    .player(actor).advisers
     .collectFirst { case d: DenizenState if d.id == id => d }
   private def choose(id: DenizenId) = pick(DecisionOptionRef.Denizen(id))
   private def nextRegion(ready: ReadyGame): Region =
-    val region = ready.game.current.map.regionOf(home(ready)).get
+    val region = ready.game.current.map.regionOf(actorsSite(ready)).get
     Region.all((Region.all.indexOf(region) + 1) % Region.all.size)
   private def withSiteTokens(ready: ReadyGame, card: DenizenId, tokens: Tokens) =
     ready.updateCurrent { c =>
-      val site = c.map.sites(home(ready))
-      c.copy(map = c.map.copy(sites = c.map.sites.updated(home(ready),
+      val site = c.map.sites(actorsSite(ready))
+      c.copy(map = c.map.copy(sites = c.map.sites.updated(actorsSite(ready),
         site.copy(denizens = site.denizens.map {
           case d: DenizenState if d.id == card => d.copy(tokens = tokens)
           case unchanged => unchanged }))))
     }
   /** The actor holds exactly `cards`, faceup, beside a site inn. */
   private def holding(cards: DenizenId*) = cards.foldLeft(
-    withoutAdvisers(atHome(staged, inn), actor))((ready, id) =>
-    giveAdviser(ready, actor, id, Orientation.FaceUp))
+    withoutAdvisers(atActorsSite(staged, inn), actor))((ready, id) =>
+    Table.from(ready).adviser(actor, id).unchecked)
 
   test("it offers the denizens at the site and never the edifice"):
-    val ready = withEdifice(atHome(atHome(staged, inn), elders),
-      EdificeId("E15"), EdificeSide.Intact, home(staged))
+    val ready = withEdifice(atActorsSite(atActorsSite(staged, inn), elders),
+      EdificeId("E15"), EdificeSide.Intact, actorsSite(staged))
     val t = use(ready, power, source).toOption.get
     assert(awaits(t, HornedMask.denizenDecisionId),
       parked.parkedDecision(t.state).toString)
@@ -60,14 +62,15 @@ class HornedMaskSuite extends munit.FunSuite:
 
   test("a site-only denizen becomes a facedown adviser, and the use is " +
       "recorded once per turn"):
-    val ready = atHome(staged, inn)
+    val ready = atActorsSite(staged, inn)
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
     assert(!denizensHere(after(done)).contains(inn))
     assertEquals(adviser(after(done), inn).map(_.orientation),
       Some(Orientation.FaceDown))
-    assertEquals(player(after(done)).advisers.map(_.id), Vector(inn))
+    assertEquals(Look(after(done)).player(actor).advisers.map(_.id),
+      Vector(inn))
     assert(after(done).game.current.turn.usedPowers.contains(used))
     // It was Wake's only option, so Wake ended with it: put the turn back in
     // Wake, its uses kept, to try again.
@@ -79,15 +82,15 @@ class HornedMaskSuite extends munit.FunSuite:
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
 
   test("resources on the taken card return by the standard returns"):
-    val ready = withSiteTokens(atHome(staged, inn), inn, Tokens(2, 1))
+    val ready = withSiteTokens(atActorsSite(staged, inn), inn, Tokens(2, 1))
     val suit = catalog.suitOf(inn).get
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
     assertEquals(adviser(after(done), inn).map(_.tokens), Some(Tokens.empty))
     assertEquals(after(done).banks.favor(suit), ready.banks.favor(suit) + 2)
-    assertEquals(player(after(done)).board.faceDownSecrets,
-      player(ready).board.faceDownSecrets + 1)
+    assertEquals(Look(after(done)).player(actor).board.faceDownSecrets,
+      Look(ready).player(actor).board.faceDownSecrets + 1)
 
   test("a full adviser area asks which adviser to discard, and it goes to " +
       "the next region's discard pile"):
@@ -104,14 +107,14 @@ class HornedMaskSuite extends munit.FunSuite:
       choose(elders)).toOption.get
     assertEquals(after(done).game.current.commonCards
       .discard(nextRegion(ready)).last, elders)
-    assertEquals(player(after(done)).advisers.map(_.id).toSet,
+    assertEquals(Look(after(done)).player(actor).advisers.map(_.id).toSet,
       Set[CardId](fresh, wolves, inn))
     assertEquals(adviser(after(done), inn).map(_.orientation),
       Some(Orientation.FaceDown))
     assertEquals(replayed(ready, t.events ++ asked.events ++ done.events),
       Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(
-      t.events ++ asked.events ++ done.events))
+    assertWireRoundTrips(
+      t.events ++ asked.events ++ done.events)
 
   test("a locked adviser cannot be offered for discard"):
     val ready = holding(elders, fresh, locked.head)
@@ -124,8 +127,8 @@ class HornedMaskSuite extends munit.FunSuite:
       choose(locked.head)).isLeft)
 
   test("a facedown locked adviser can be offered for discard"):
-    val ready = giveAdviser(holding(elders, fresh), actor, locked.head,
-      Orientation.FaceDown)
+    val ready = Table.from(holding(elders, fresh)).adviser(actor, locked.head,
+      facedown = true).unchecked
     val t = use(ready, power, source).toOption.get
     val asked = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
@@ -144,7 +147,7 @@ class HornedMaskSuite extends munit.FunSuite:
     assertEquals(offered(asked, actor), Some(Vector("denizen" -> elders.value)))
     val done = answer(asked, actor, HornedMask.discardDecisionId,
       choose(elders)).toOption.get
-    assertEquals(player(after(done)).advisers.map(_.id).toSet,
+    assertEquals(Look(after(done)).player(actor).advisers.map(_.id).toSet,
       Set[CardId](tongue, inn))
     assertEquals(replayed(ready, t.events ++ asked.events ++ done.events),
       Right(done.state))
@@ -156,14 +159,14 @@ class HornedMaskSuite extends munit.FunSuite:
     assert(denizensHere(ready).contains(inn))
 
   test("a facedown Silver Tongue does not lower the limit"):
-    val ready = giveAdviser(giveAdviser(withoutAdvisers(atHome(staged, inn),
-      actor), actor, tongue, Orientation.FaceDown), actor, elders,
-      Orientation.FaceUp)
+    val ready = Table.from(withoutAdvisers(atActorsSite(staged, inn),
+      actor)).adviser(actor, tongue, facedown = true).adviser(actor, elders)
+        .unchecked
     val t = use(ready, power, source).toOption.get
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
     parked.assertNotParked(done.state)
-    assertEquals(player(after(done)).advisers.size, 3)
+    assertEquals(Look(after(done)).player(actor).advisers.size, 3)
 
   test("a player who is not the Silver Tongue holder keeps the limit of three"):
     val ready = holding(elders, fresh)
@@ -171,7 +174,7 @@ class HornedMaskSuite extends munit.FunSuite:
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
     parked.assertNotParked(done.state)
-    assertEquals(player(after(done)).advisers.size, 3)
+    assertEquals(Look(after(done)).player(actor).advisers.size, 3)
 
   test("a full area of locked advisers cannot use it, and it is not offered"):
     val ready = holding(locked*)
@@ -186,16 +189,17 @@ class HornedMaskSuite extends munit.FunSuite:
     assertEquals(denizensHere(ready), Vector.empty)
     val t = use(ready, power, source).toOption.get
     parked.assertNotParked(t.state)
-    assertEquals(player(after(t)).advisers, player(ready).advisers)
+    assertEquals(Look(after(t)).player(actor).advisers, Look(ready)
+      .player(actor).advisers)
 
   test("only the acting player answers, with an offered denizen"):
-    val t = use(atHome(staged, inn), power, source).toOption.get
-    assert(answer(t, others(base).head, HornedMask.denizenDecisionId,
+    val t = use(atActorsSite(staged, inn), power, source).toOption.get
+    assert(answer(t, others(quietTable).head, HornedMask.denizenDecisionId,
       choose(inn)).isLeft)
     assert(answer(t, actor, HornedMask.denizenDecisionId, choose(elders)).isLeft)
 
   test("it writes the denizen it took"):
-    val t = use(atHome(staged, inn), power, source).toOption.get
+    val t = use(atActorsSite(staged, inn), power, source).toOption.get
     val done = answer(t, actor, HornedMask.denizenDecisionId, choose(inn))
       .toOption.get
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(

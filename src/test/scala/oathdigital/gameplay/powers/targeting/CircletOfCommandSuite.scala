@@ -8,10 +8,11 @@ import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Look, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class CircletOfCommandSuite extends munit.FunSuite:
@@ -93,10 +94,10 @@ class CircletOfCommandSuite extends munit.FunSuite:
     */
   private def conspiracyTargets(circletSide: Orientation)
       : (ReadyGame, PlayerId, Vector[DecisionOptionRef], Vector[OathEvent]) =
-    val base = PowerFixture.base
+    val base = PowerFixture.quietTable
     val actor = PowerFixture.actor
     val enemy = base.game.current.players.map(_.player).find(_ != actor).get
-    val site = PowerFixture.player(base).pawnSite
+    val site = Look(base).player(PowerFixture.actor).pawnSite
     val staged = CardStaging.without(CardStaging.without(base, conspiracy), other)
       .updateCurrent(c => c.copy(
         players = c.players.map(p => if p.player == enemy then
@@ -119,7 +120,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   test("Conspiracy may take any of the holder's relics and banners"):
     val (ready, enemy, options, _) = conspiracyTargets(Orientation.FaceUp)
-    assertEquals(PowerFixture.player(ready, enemy).relics.map(_.id),
+    assertEquals(Look(ready).player(enemy).relics.map(_.id),
       Vector(other, circlet))
     assertEquals(options.toSet, Set[DecisionOptionRef](
       DecisionOptionRef.RelicSlot(enemy, 0), DecisionOptionRef.RelicSlot(enemy, 1),
@@ -133,7 +134,7 @@ class CircletOfCommandSuite extends munit.FunSuite:
 
   test("the Circlet's rule ignores an option that is not a banner or a relic"):
     val power = CircletOfCommand.forCatalog(catalog)
-    val ready = holds(PowerFixture.base, PowerFixture.actor, circlet)
+    val ready = holds(PowerFixture.quietTable, PowerFixture.actor, circlet)
     val ctx = PowerCtx(ready, PowerFixture.actor, power.source,
       PowerWindow.CampaignTargetSelection, Vector.empty,
       Decide("x", PowerFixture.actor, DecisionQuery.ChooseOne(Vector.empty)))

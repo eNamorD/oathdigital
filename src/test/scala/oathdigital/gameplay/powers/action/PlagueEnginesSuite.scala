@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class PlagueEnginesSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val engines = CatalogNames.denizen("Plague Engines")
   private val source = DecisionOptionRef.Denizen(engines)
@@ -36,7 +37,7 @@ class PlagueEnginesSuite extends munit.FunSuite:
       NoteText.Said(NoteKey.Used,
         s"${p2.value} put 1 favor into the Arcane bank.", covers = false)))
     assertEquals(replayed(ready, t.events), Right(t.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events))
+    assertWireRoundTrips(t.events)
 
   test("a player short of favor gives all they have"):
     val ready = staged.favor(p2, 1)

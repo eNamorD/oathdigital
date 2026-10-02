@@ -2,9 +2,11 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class TutorSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val tutor = DenizenId("69")
@@ -12,10 +14,10 @@ class TutorSuite extends munit.FunSuite:
 
   /** Tutor is adviser-only, so the actor holds it faceup. */
   private def staged(favor: Int = 2, faceUp: Int = 1): ReadyGame =
-    act(withBoard(asAdviser(base, tutor))(
-      _.copy(favor = favor, faceUpSecrets = faceUp)))
+    act(Table.from(asAdviser(quietTable, tutor)).favor(actor, favor)
+      .secrets(actor, faceUp).unchecked)
   private def tokens(ready: ReadyGame): Tokens =
-    player(ready).advisers.collectFirst {
+    Look(ready).player(actor).advisers.collectFirst {
       case card: DenizenState if card.id == tutor => card.tokens }.get
 
   test("it places a favor and a secret on its card and gains a secret"):
@@ -23,11 +25,11 @@ class TutorSuite extends munit.FunSuite:
     val done = use(rules(), ready0, Tutor.id, source).toOption.get
     val end = ready(done.state)
     assertEquals(tokens(end), Tokens(1, 1))
-    assertEquals(player(end).board.favor, 1)
+    assertEquals(Look(end).player(actor).board.favor, 1)
     // One secret placed on the card, one gained from the shared bank.
-    assertEquals(secrets(end), secrets(ready0))
+    assertEquals(allSecrets(end), allSecrets(ready0))
     assertEquals(replayed(rules(), ready0, done.events), end)
-    assert(wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("it is unusable without a favor or without a faceup secret"):
     Vector(staged(favor = 0), staged(faceUp = 0)).foreach { broke =>

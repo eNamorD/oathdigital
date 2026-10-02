@@ -9,6 +9,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{Look, Table}
 
 class MarbleFountainsSuite extends munit.FunSuite:
   import PowerFixture._
@@ -17,28 +18,28 @@ class MarbleFountainsSuite extends munit.FunSuite:
   private val source = DecisionOptionRef.Edifice(fountains)
   private val rules = new OathRules(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  private val kind = PlayerFacts.forceKind(base, actor).toOption.get
+  private val kind = PlayerFacts.forceKind(quietTable, actor).toOption.get
 
   /** The edifice is at the pawn's site, or at a far site the actor rules, so
     * that in the second case only the pawn condition fails.
     */
   private def staged(side: EdificeSide = EdificeSide.Intact,
       pawnAtEdifice: Boolean = true) =
-    val site = home(base)
-    val far = base.game.current.map.inPlay.toVector.sortBy(_.value)
+    val site = actorsSite(quietTable)
+    val far = quietTable.game.current.map.inPlay.toVector.sortBy(_.value)
       .find(_ != site).get
-    val placed = withEdifice(base, fountains, side,
+    val placed = withEdifice(quietTable, fountains, side,
       if pawnAtEdifice then site else far)
     val ruled = if pawnAtEdifice then placed else placed.updateCurrent(c =>
       c.copy(map = c.map.copy(sites = c.map.sites.updated(far,
         c.map.sites(far).copy(forces = SiteForces.Occupied(kind, 1))))))
-    inPhase(withBoard(ruled)(_.copy(supply = SupplyTrack(1))), Phase.Wake)
+    inPhase(Table.from(ruled).supply(actor, 1).unchecked, Phase.Wake)
   private def use(ready: ReadyGame) = rules.startWalker(Ready(ready),
     ActionRef.UsePower(MarbleFountains.id), actor, Vector.empty, Vector(source))
 
   test("it refreshes Supply to the maximum when the pawn is at the site"):
     val used = use(staged()).toOption.get.state.asInstanceOf[Ready].value
-    assertEquals(player(used).board.supply, SupplyTrack(7))
+    assertEquals(Look(used).player(actor).board.supply, SupplyTrack(7))
 
   test("it is once per turn"):
     val first = use(staged()).toOption.get.state

@@ -1,11 +1,11 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture, SearchFixture,
-  TargetsFixture, WalkerPowerCatalog}
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.ParkedNode
+import oathdigital.testkit.{ParkedNode, Table}
 
 /** The two ways to play a Vision, each stopped at its placement decision, for
   * the suites of the cards that forbid or reward a faceup Vision.
@@ -32,8 +32,8 @@ object VisionPlayFixture:
     * phase.
     */
   def fromAdvisers(ready: ReadyGame, vision: VisionId): OathTransition =
-    val holding = TargetsFixture.giveVision(CardStaging.without(ready, vision),
-      actor, vision, Orientation.FaceDown)
+    val holding = Table.from(CardStaging.without(ready, vision)).adviser(actor,
+      vision, facedown = true).unchecked
     orFail(SearchFixture.rules.startWalker(Ready(holding),
       ActionRef.PlayFacedownAdviser, actor, Vector.empty,
       Vector(DecisionOptionRef.Vision(vision))))

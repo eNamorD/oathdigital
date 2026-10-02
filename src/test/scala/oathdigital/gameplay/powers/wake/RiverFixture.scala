@@ -39,4 +39,4 @@ object RiverFixture:
 
   def staged(rivers: Vector[SiteId] = Vector(riverbank, tidalMarshes),
       phase: Phase = Phase.Wake): ReadyGame =
-    inPhase(withRivers(base, rivers), phase)
+    inPhase(withRivers(quietTable, rivers), phase)

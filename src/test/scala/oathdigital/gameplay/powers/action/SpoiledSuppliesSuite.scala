@@ -1,26 +1,27 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
+import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class SpoiledSuppliesSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val spoiled = DenizenId("228")
   private val source = DecisionOptionRef.Denizen(spoiled)
-  private val first = others(base)(0)
-  private val second = others(base)(1)
+  private val first = others(quietTable)(0)
+  private val second = others(quietTable)(1)
 
   private def elsewhere(ready: ReadyGame): SiteId =
-    ready.game.current.map.inPlay.find(_ != home(ready)).get
+    ready.game.current.map.inPlay.find(_ != actorsSite(ready)).get
   private def withSupply(ready: ReadyGame, id: PlayerId, amount: Int) =
-    updatePlayer(ready, id)(p => p.copy(board =
-      p.board.copy(supply = SupplyTrack(amount))))
+    Table.from(ready).supply(id, amount).unchecked
   private def supplyOf(ready: ReadyGame, id: PlayerId = actor) =
-    player(ready, id).board.supply.supply
+    Look(ready).player(id).board.supply.supply
   private def cardOf(ready: ReadyGame) = ready.game.current.map
-    .sites(home(ready)).denizens.collectFirst {
+    .sites(actorsSite(ready)).denizens.collectFirst {
       case d: DenizenState if d.id == spoiled => d }.get
 
   /** Spoiled Supplies at the actor's site, with `favor` on the actor's
@@ -28,10 +29,10 @@ class SpoiledSuppliesSuite extends munit.FunSuite:
     * stands elsewhere with 3 Supply, so it is never hit.
     */
   private def staged(supply: Int = 3, favor: Int = 1) =
-    val actorReady = inPhase(withBoard(atHome(base, spoiled))(
-      _.copy(favor = favor)), Phase.Act)
-    val placed = withPawn(withPawn(actorReady, first, home(actorReady)),
-      second, elsewhere(actorReady))
+    val actorReady = inPhase(Table.from(atActorsSite(quietTable, spoiled))
+      .favor(actor, favor).unchecked, Phase.Act)
+    val placed = Table.from(actorReady).pawn(first, actorsSite(actorReady))
+      .pawn(second, elsewhere(actorReady)).unchecked
     withSupply(withSupply(placed, first, supply), second, 3)
 
   test("each other player at the actor's site loses 1 Supply, and nobody " +
@@ -43,9 +44,9 @@ class SpoiledSuppliesSuite extends munit.FunSuite:
     assertEquals(supplyOf(after(done), second), 3)
     assertEquals(supplyOf(after(done)), supplyOf(ready))
     assertEquals(cardOf(after(done)).tokens, Tokens(1, 0))
-    assertEquals(player(after(done)).board.favor, 0)
+    assertEquals(Look(after(done)).player(actor).board.favor, 0)
     assertEquals(replayed(ready, done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("it writes the Supply each player lost"):
     val done = use(staged(), SpoiledSupplies, source).toOption.get
@@ -54,7 +55,8 @@ class SpoiledSuppliesSuite extends munit.FunSuite:
         covers = false)))
 
   test("two players at the site each lose 1 Supply, each with a line"):
-    val ready = withPawn(staged(), second, home(staged()))
+    val ready = Table.from(staged()).pawn(second, actorsSite(staged()))
+      .unchecked
     val done = use(ready, SpoiledSupplies, source).toOption.get
     assertEquals(supplyOf(after(done), first), 2)
     assertEquals(supplyOf(after(done), second), 2)

@@ -1,21 +1,25 @@
-package oathdigital.gameplay.powers
+package oathdigital.testkit
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.PhasePower
+import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions,
+  WalkerStepRecorded, WalkerPowers}
 import oathdigital.model._
 import oathdigital.protocol.projection.{DecisionQueryProjection, PlayerBoardProjection}
-import oathdigital.testkit.Table
 
-/** Staging and driving shared by the slice 1c suites. `PowerFixture` (slice
-  * 1a) stays untouched so that parallel slices do not collide on it.
+/** Drives a phase power through the rules for a rule test: the power suites
+  * of every phase, and the projection suites that read what a parked power
+  * offers. `rules` carries every production phase power and the printed
+  * operation restrictions, with no walker powers. The acting player is the
+  * quiet table's p1.
   */
-object TargetsFixture:
-  import PowerFixture._
+object PhasePowerHarness:
+  private val actor: PlayerId = Table.p1
 
   val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowers(Vector.empty,
@@ -23,44 +27,24 @@ object TargetsFixture:
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
   private val projector = new GameProjector(catalog)
 
-  /** The parked decision, as this file's suites rebuild it: the same catalog
-    * and phase power catalog `rules` was built with.
+  /** The parked decision, rebuilt from state with the same catalog and
+    * phase power catalog `rules` was built with.
     */
   val parked = new ParkedDecisionAssertions(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
+  /** Every player but the actor, in turn order. */
   def others(ready: ReadyGame): Vector[PlayerId] =
     ready.game.current.players.map(_.player).filter(_ != actor)
 
-  def updatePlayer(ready: ReadyGame, id: PlayerId)(
-      f: PlayerState => PlayerState): ReadyGame =
-    ready.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if p.player == id then f(p) else p)))
-
-  def withSecrets(ready: ReadyGame, id: PlayerId, faceUp: Int,
-      faceDown: Int): ReadyGame = updatePlayer(ready, id)(p => p.copy(
-    board = p.board.copy(faceUpSecrets = faceUp, faceDownSecrets = faceDown)))
-
-  def withPawn(ready: ReadyGame, id: PlayerId, site: SiteId): ReadyGame =
-    updatePlayer(ready, id)(_.copy(pawnSite = Some(site)))
-
-  /** `card` becomes an adviser of `owner`, taken from wherever it lay. */
-  def giveAdviser(ready: ReadyGame, owner: PlayerId, card: DenizenId,
-      orientation: Orientation): ReadyGame =
-    Table.from(ready).adviser(owner, card,
-      facedown = orientation == Orientation.FaceDown).unchecked
-
-  def giveVision(ready: ReadyGame, owner: PlayerId, card: VisionId,
-      orientation: Orientation): ReadyGame =
-    Table.from(ready).adviser(owner, card,
-      facedown = orientation == Orientation.FaceDown).unchecked
-
   /** Puts `owner`'s advisers at the bottom of the world deck. */
   def withoutAdvisers(ready: ReadyGame, owner: PlayerId): ReadyGame =
-    val held = player(ready, owner).advisers.map(_.id).collect {
+    val held = Look(ready).player(owner).advisers.map(_.id).collect {
       case id: WorldCardId => id }
-    updatePlayer(ready, owner)(_.copy(advisers = Vector.empty))
-      .updateCurrent(c => c.copy(commonCards = c.commonCards.copy(
+    ready.updateCurrent(c => c.copy(
+      players = c.players.map(p =>
+        if p.player == owner then p.copy(advisers = Vector.empty) else p),
+      commonCards = c.commonCards.copy(
         worldDeck = c.commonCards.worldDeck ++ held)))
 
   def use(ready: ReadyGame, power: PhasePower, source: DecisionOptionRef)
@@ -72,23 +56,39 @@ object TargetsFixture:
       answered: DecisionAnswer): Either[OathViolation, OathTransition] =
     rules.resolveWalker(from.state, by, decision, answered)
 
-  def after(transition: OathTransition): ReadyGame =
-    transition.state.asInstanceOf[OathState.Ready].value
+  /** The game after `transition`; fails naming the state when it is not
+    * Ready. */
+  def after(transition: OathTransition)(using munit.Location): ReadyGame =
+    Outcomes.ready(transition.state)
 
+  /** The walk is parked at `decision`, waiting on the actor. */
   def awaits(transition: OathTransition, decision: String): Boolean =
     parked.parkedDecision(transition.state).exists(facts =>
       facts.decision == decision && facts.awaiting == actor)
 
+  /** The walk parked at no decision and the actor is acting again. */
+  def backToActing(transition: OathTransition)(using munit.Location): Boolean =
+    val turn = after(transition).game.current.turn
+    parked.parkedDecision(transition.state).isEmpty &&
+      turn.phase == Phase.Act && turn.activePlayer == actor
+
   def pick(ref: DecisionOptionRef): DecisionAnswer =
     DecisionAnswer.ChooseOneAnswer(ref)
 
-  /** The state a journal replay of `events` reaches from `from`. */
+  /** The state a journal replay of `events` reaches from `from`, or the
+    * violation that stopped it. */
   def replayed(from: ReadyGame, events: Vector[OathEvent])
       : Either[OathViolation, OathState] =
     events.foldLeft[Either[OathViolation, OathState]](
       Right(OathState.Ready(from)))((state, event) =>
       state.flatMap(rules.evolve(_, event)))
 
+  /** The operations the walk recorded, in order. */
+  def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
+    events.collect { case step: WalkerStepRecorded => step.ops }.flatten
+
+  /** The phase powers the actor can use now, under the printed operation
+    * restrictions. */
   def usableNow(ready: ReadyGame) = PhasePowerProcedure.usable(catalog, ready,
     actor, PhasePowerCatalog.default(catalog), WalkerPowers(Vector.empty,
       restrictionSet = OperationRestrictions.forCatalog(catalog)))
@@ -103,12 +103,14 @@ object TargetsFixture:
       : Option[Vector[(String, String)]] =
     queryOf(transition, viewer).map(_.offeredOptions.map(o => o.kind -> o.id))
 
-  def boardOf(transition: OathTransition, viewer: PlayerId, owner: PlayerId)
-      : PlayerBoardProjection = projector.project("targets",
-    LoadedGame(transition.state, 30L), viewer).playerBoards
-    .find(_.playerId == owner.value).get
+  def boardOf(transition: OathTransition, viewer: PlayerId, owner: PlayerId)(
+      using munit.Location): PlayerBoardProjection =
+    Unwrap.present(projector.project("targets",
+      LoadedGame(transition.state, 30L), viewer).playerBoards
+      .find(_.playerId == owner.value), s"a board for $owner")
 
-  def publicBoardOf(transition: OathTransition, owner: PlayerId)
-      : PlayerBoardProjection = projector.projectPublic("targets",
-    LoadedGame(transition.state, 30L)).playerBoards
-    .find(_.playerId == owner.value).get
+  def publicBoardOf(transition: OathTransition, owner: PlayerId)(
+      using munit.Location): PlayerBoardProjection =
+    Unwrap.present(projector.projectPublic("targets",
+      LoadedGame(transition.state, 30L)).playerBoards
+      .find(_.playerId == owner.value), s"a public board for $owner")

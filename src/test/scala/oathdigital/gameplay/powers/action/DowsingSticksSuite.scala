@@ -4,9 +4,11 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
+import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 
 class DowsingSticksSuite extends munit.FunSuite:
-  import PaidActionHarness._
+  import ActPowerHarness._
   import PowerFixture._
 
   private val parked = new ParkedDecisionAssertions(catalog,
@@ -14,8 +16,8 @@ class DowsingSticksSuite extends munit.FunSuite:
 
   private val sticks = RelicId("R09")
   private val source = DecisionOptionRef.Relic(sticks)
-  private def staged(secrets: Int = 3) = act(withBoard(withRelic(base, sticks))(
-    _.copy(faceUpSecrets = secrets)))
+  private def staged(secrets: Int = 3) = act(Table.from(withRelic(quietTable,
+    sticks)).secrets(actor, secrets).unchecked)
 
   test("it places 1 secret, burns 2 and takes the top relic facedown"):
     val ready0 = staged()
@@ -23,14 +25,15 @@ class DowsingSticksSuite extends munit.FunSuite:
     val rules0 = rules()
     val done = use(rules0, ready0, DowsingSticks.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(player(end).relics.find(_.id == top).map(_.orientation),
+    assertEquals(Look(end).player(actor).relics.find(_.id == top)
+      .map(_.orientation),
       Some(Orientation.FaceDown))
     assert(!end.game.current.commonCards.relicDeck.contains(top))
-    assertEquals(tokensOn(end, sticks), Tokens(0, 1))
-    assertEquals(player(end).board.faceUpSecrets, 0)
+    assertEquals(Look(end).tokensOn(sticks), Tokens(0, 1))
+    assertEquals(Look(end).player(actor).board.faceUpSecrets, 0)
     parked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(replayed(rules0, ready0, done.events), end)
-    assert(wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("an empty relic deck pays the cost and draws nothing"):
     val ready0 = staged()
@@ -41,9 +44,9 @@ class DowsingSticksSuite extends munit.FunSuite:
         current.commonCards.relicDeck))
     val done = use(rules(), emptied, DowsingSticks.id, source).toOption.get
     val end = ready(done.state)
-    assertEquals(player(end).relics.map(_.id), Vector(sticks))
-    assertEquals(tokensOn(end, sticks), Tokens(0, 1))
-    assertEquals(player(end).board.faceUpSecrets, 0)
+    assertEquals(Look(end).player(actor).relics.map(_.id), Vector(sticks))
+    assertEquals(Look(end).tokensOn(sticks), Tokens(0, 1))
+    assertEquals(Look(end).player(actor).board.faceUpSecrets, 0)
 
   test("it is unusable with fewer than 3 faceup secrets"):
     assert(!usableIds(staged(secrets = 2)).contains(DowsingSticks.id))

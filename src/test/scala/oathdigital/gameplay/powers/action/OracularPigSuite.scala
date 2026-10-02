@@ -1,12 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
+import oathdigital.testkit.PhasePowerHarness
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 class OracularPigSuite extends munit.FunSuite:
   import PowerFixture._
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val pig = RelicId("R14")
   private val source = DecisionOptionRef.Relic(pig)
@@ -18,7 +20,7 @@ class OracularPigSuite extends munit.FunSuite:
   /** The actor holds Oracular Pig. With `deck`, the world deck holds its
     * first `deck` cards and the rest wait in the Provinces discard pile. */
   private def staged(deck: Option[Int] = None): ReadyGame =
-    val holding = inPhase(withRelic(base, pig), Phase.Act)
+    val holding = inPhase(withRelic(quietTable, pig), Phase.Act)
     deck.fold(holding)(size => holding.updateCurrent(c => c.copy(
       commonCards = c.commonCards.copy(
         worldDeck = c.commonCards.worldDeck.take(size),
@@ -50,7 +52,7 @@ class OracularPigSuite extends munit.FunSuite:
       pick(DecisionQuery.Inspect.Done)).toOption.get
     parked.assertResumed(done.state, Phase.Act, actor)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line lists the top of the deck and covers the peeks"):
     val ready = staged()

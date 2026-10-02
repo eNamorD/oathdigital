@@ -1,14 +1,15 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powers.{NoteText, PowerFixture, TargetsFixture}
-import oathdigital.gameplay.powers.action.PaidActionHarness
+import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
+import oathdigital.testkit.PhasePowerHarness
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p3
 
 class WanderingFlameMoveSuite extends munit.FunSuite:
   import PowerFixture._
   import BannerFixture._
-  import TargetsFixture.{after, answer, awaits, pick, replayed, use}
+  import PhasePowerHarness.{after, answer, awaits, pick, replayed, use}
 
   private val power = WanderingFlameMove
 
@@ -16,7 +17,7 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
     * on each site in `marked`.
     */
   private def staged(marked: SiteId*): ReadyGame = inPhase(
-    marked.foldLeft(withoutSiteSecrets(holdingFlame(base)))(
+    marked.foldLeft(withoutSiteSecrets(holdingFlame(quietTable)))(
       withSiteSecrets(_, _, 1)), Phase.Act)
 
   test("one secret-bearing site: the pawn goes there with no question, by a " +
@@ -30,7 +31,7 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
       Move(Piece.Pawn(actor), PositionedLocation(Location.Site(ancientCity)),
         PositionedLocation(Location.Site(brokenPeaks)))))
     assertEquals(replayed(start, done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(done.events))
+    assertWireRoundTrips(done.events)
 
   test("several candidates: the player chooses among exactly the other " +
       "sites that hold a secret"):
@@ -70,20 +71,24 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
     assert(use(staged(), power, darkestSecret).isLeft)
     assert(!usable(staged(ancientCity), power.id), "only the pawn's own site")
     assert(usable(staged(brokenPeaks), power.id))
-    val notHeld = inPhase(withSiteSecrets(holdingFlame(base, holder = None),
+    val notHeld = inPhase(withSiteSecrets(holdingFlame(quietTable,
+      holder = None),
       brokenPeaks, 1), Phase.Act)
     assert(!usable(notHeld, power.id))
     assert(use(notHeld, power, darkestSecret).isLeft)
-    val theirs = inPhase(withSiteSecrets(holdingFlame(base, holder = Some(p3)),
+    val theirs = inPhase(withSiteSecrets(holdingFlame(quietTable,
+      holder = Some(p3)),
       brokenPeaks, 1), Phase.Act)
     assert(!usable(theirs, power.id))
     val festival = inPhase(withSiteSecrets(
-      holdingFlame(base, DarkestSecretFace.Festival), brokenPeaks, 1), Phase.Act)
+      holdingFlame(quietTable,
+        DarkestSecretFace.Festival), brokenPeaks, 1), Phase.Act)
     assert(!usable(festival, power.id))
     assert(use(festival, power, darkestSecret).isLeft)
 
   test("it is usable in the Act phase only"):
-    val wake = inPhase(withSiteSecrets(holdingFlame(base), brokenPeaks, 1),
+    val wake = inPhase(withSiteSecrets(holdingFlame(quietTable), brokenPeaks,
+      1),
       Phase.Wake)
     assert(!usable(wake, power.id))
 

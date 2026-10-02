@@ -4,14 +4,14 @@ import oathdigital.gameplay.CampaignFixture.raidBoard
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.{CardStaging, NoteText, PowerFixture,
-  SearchFixture, TargetsFixture, WalkerPowerCatalog}
+  SearchFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.whenplayed.ConspiracyWhenPlayed
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
   WalkerOutcome, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class LostTongueSuite extends munit.FunSuite:
@@ -32,7 +32,8 @@ class LostTongueSuite extends munit.FunSuite:
 
   private def adviser(state: ReadyGame, player: PlayerId, card: DenizenId,
       side: Orientation = Orientation.FaceUp): ReadyGame =
-    TargetsFixture.giveAdviser(state, player, card, side)
+    Table.from(state).adviser(player, card,
+      facedown = side == Orientation.FaceDown).unchecked
 
   // ---- Raid ----
 
@@ -116,10 +117,10 @@ class LostTongueSuite extends munit.FunSuite:
     */
   private def conspiracyAt(withRelic: Boolean = true, nomad: Boolean = false)
       : (ReadyGame, PlayerId, PlayerId) =
-    val base = PowerFixture.base
+    val base = PowerFixture.quietTable
     val actor = PowerFixture.actor
-    val enemy = TargetsFixture.others(base).head
-    val site = PowerFixture.player(base).pawnSite
+    val enemy = PhasePowerHarness.others(base).head
+    val site = Look(base).player(PowerFixture.actor).pawnSite
     val staged = CardStaging.without(CardStaging.without(base, conspiracy), relic)
       .updateCurrent(c => c.copy(
         players = c.players.map(p => if p.player == enemy then
@@ -160,7 +161,7 @@ class LostTongueSuite extends munit.FunSuite:
   test("a Conspiracy may still take the holder's relic, which it gives"):
     val (ready, actor, enemy) = conspiracyAt()
     val after = take(ready, actor, DecisionOptionRef.RelicSlot(enemy, 0))
-    assert(PowerFixture.player(after, actor).relics.exists(_.id == relic))
+    assert(Look(after).player(actor).relics.exists(_.id == relic))
 
   test("an actor who rules a nomad card takes the banner, its favor " +
       "returning to the banks"):

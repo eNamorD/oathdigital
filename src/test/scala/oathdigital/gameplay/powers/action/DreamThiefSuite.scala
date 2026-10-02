@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class DreamThiefSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val thief = CatalogNames.denizen("Dream Thief")
   private val source = DecisionOptionRef.Denizen(thief)
@@ -67,7 +68,7 @@ class DreamThiefSuite extends munit.FunSuite:
     assert(end.knowledge.advisers.getOrElse(p3, Vector.empty)
       .contains(plain(1)), end.knowledge.toString)
     assertEquals(replayed(ready, events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(events))
+    assertWireRoundTrips(events)
 
   test("the player's own facedown adviser may be swapped"):
     val (_, done) = swap(staged().ready, slot(p1, 1), slot(p2, 0))

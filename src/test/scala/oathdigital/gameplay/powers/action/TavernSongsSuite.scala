@@ -1,13 +1,14 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture, TargetsFixture}
+import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class TavernSongsSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val songs = CatalogNames.denizen("Tavern Songs")
   private val source = DecisionOptionRef.Denizen(songs)
@@ -49,7 +50,7 @@ class TavernSongsSuite extends munit.FunSuite:
     assertEquals(after(done).game.current.commonCards.discard(region),
       ready.game.current.commonCards.discard(region))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the cards top first and covers the peeks"):
     val t = use(staged(pile), TavernSongs, source).toOption.get

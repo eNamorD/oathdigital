@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class SkeletonKeySuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val key = CatalogNames.relic("Skeleton Key")
   private val source = DecisionOptionRef.Relic(key)
@@ -50,7 +51,7 @@ class SkeletonKeySuite extends munit.FunSuite:
       relic.id == first && relic.orientation == Orientation.FaceDown))
     assertEquals(Look(end).relicsAt(wild), Vector(second))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("it writes its peek, covering the peek lines, then its take"):
     val t = use(staged(), SkeletonKey, source).toOption.get

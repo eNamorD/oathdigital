@@ -1,10 +1,12 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture,
+  WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ProcedureWalker
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
+import oathdigital.testkit.{Look, Table}
 
 class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   import PowerFixture._
@@ -12,7 +14,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
 
   private val power = Garrison
   private val card = power.cardId
-  private val kind = PlayerFacts.forceKind(base, actor).toOption.get
+  private val kind = PlayerFacts.forceKind(quietTable, actor).toOption.get
 
   /** The actor rules exactly `counts.size` sites, holding `counts` warbands
     * each. Every other site is emptied. Returns the state and the sites in
@@ -20,15 +22,15 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     */
   private def ruling(counts: Vector[Int], onBoard: Int)
       : (ReadyGame, Vector[SiteId]) =
-    val current = base.game.current
+    val current = quietTable.game.current
     val sites = current.map.inPlay.toVector.sortBy(_.value).take(counts.size)
     val cleared = current.map.sites.map { case (id, site) =>
       id -> site.copy(forces = SiteForces.Empty) }
     val ruled = sites.zip(counts).foldLeft(cleared) { case (all, (id, n)) =>
       all.updated(id, all(id).copy(forces = SiteForces.Occupied(kind, n))) }
-    val staged = asAdviser(base, card)
+    val staged = asAdviser(quietTable, card)
       .updateCurrent(_.copy(map = current.map.copy(sites = ruled)))
-    (withBoard(staged)(_.copy(warbands = onBoard)), sites)
+    (Table.from(staged).boardWarbands(actor, onBoard).unchecked, sites)
 
   private def forcesAt(ready: ReadyGame, site: SiteId): SiteForces =
     ready.game.current.map.sites(site).forces
@@ -41,14 +43,14 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     val done = finished(play(ready, power, card))
     sites.foreach(site => assertEquals(forcesAt(done.treeless, site),
       SiteForces.Occupied(kind, 2)))
-    assertEquals(player(done.treeless).board.warbands, 5)
+    assertEquals(Look(done.treeless).player(actor).board.warbands, 5)
     assertEquals(replayed(ready, done.events), done.treeless)
 
   test("a player who rules no site gains and places nothing"):
     val (ready, _) = ruling(Vector.empty, onBoard = 5)
     val done = finished(play(ready, power, card))
     assertEquals(recorded(done.events), Vector.empty)
-    assertEquals(player(done.treeless).board.warbands, 5)
+    assertEquals(Look(done.treeless).player(actor).board.warbands, 5)
 
   test("a short bank leaves a short board, and the player chooses the sites"):
     // 13 warbands sit at the three ruled sites and none on the board, so the
@@ -57,7 +59,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     assertEquals(warbandBank(ready, kind), 1)
     val first = parked(play(ready, power, card))
     val atChoice = foldRecordedOps(ready, first.events, "gain did not replay")
-    assertEquals(player(atChoice).board.warbands, 1)
+    assertEquals(Look(atChoice).player(actor).board.warbands, 1)
     val decide = ProcedureWalker.parkedDecide(atChoice, hook(card), first.tree,
       powers(power)).get
     assertEquals(decide.decisionId, Garrison.decisionId)
@@ -73,7 +75,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     assertEquals(forcesAt(done.treeless, chosen), SiteForces.Occupied(kind, 5))
     assertEquals(forcesAt(done.treeless, sites.head), SiteForces.Occupied(kind, 4))
     assertEquals(forcesAt(done.treeless, sites(2)), SiteForces.Occupied(kind, 5))
-    assertEquals(player(done.treeless).board.warbands, 0)
+    assertEquals(Look(done.treeless).player(actor).board.warbands, 0)
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
 
   test("an empty board and an empty bank ask nothing"):
@@ -86,7 +88,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     val (ready, sites) = ruling(Vector(4, 4, 5), onBoard = 0)
     val first = parked(play(ready, power, card))
     val atChoice = foldRecordedOps(ready, first.events, "gain did not replay")
-    val unruled = base.game.current.map.inPlay.toVector
+    val unruled = quietTable.game.current.map.inPlay.toVector
       .find(!sites.contains(_)).get
     assert(ProcedureWalker.resolve(atChoice, hook(card), first.tree,
       Answered(Garrison.decisionId, DecisionAnswer.ChooseManyAnswer(

@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class BloodPactSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val pact = CatalogNames.denizen("Blood Pact")
   private val source = DecisionOptionRef.Denizen(pact)
@@ -38,7 +39,7 @@ class BloodPactSuite extends munit.FunSuite:
     assertEquals(Look(end).boardWarbands(p1), 1)
     assertEquals(secretsOf(end), secretsOf(ready) - 1 + 2)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
+    assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the warbands sacrificed and the secrets gained, " +
       "covering the gain line"):

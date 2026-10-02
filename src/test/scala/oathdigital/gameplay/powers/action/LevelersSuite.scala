@@ -1,12 +1,13 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, TargetsFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
 
 class LevelersSuite extends munit.FunSuite:
-  import TargetsFixture._
+  import PhasePowerHarness._
 
   private val levelers = CatalogNames.denizen("Levelers")
   private val source = DecisionOptionRef.Denizen(levelers)
@@ -55,7 +56,7 @@ class LevelersSuite extends munit.FunSuite:
     assertEquals(banks(after(done)), Vector(1, 4, 2, 3, 2, 2))
     val events = t.events ++ second.events ++ done.events
     assertEquals(replayed(ready, events), Right(done.state))
-    assert(PaidActionHarness.wireRoundTrips(events))
+    assertWireRoundTrips(events)
 
   test("a source holding 1 favor moves what it holds"):
     val t = use(staged(Suit.Arcane -> 1), Levelers, source).toOption.get

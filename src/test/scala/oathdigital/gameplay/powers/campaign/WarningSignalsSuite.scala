@@ -2,12 +2,13 @@ package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
-import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
+import oathdigital.testkit.ActPowerHarness
+import oathdigital.testkit.Outcomes.assertWireRoundTrips
 
 /** Warning Signals: a defender rearranges their warbands over their board and the
   * sites they rule, before their force is scored, and the card is discarded when
@@ -169,9 +170,9 @@ class WarningSignalsSuite extends munit.FunSuite:
     val g = rules(losing)
     val run = commit(g, b, 4).pick(b.other, CampaignIds.defenderPlan, ref)
       .answer(b.other, decision, arrangement(b, board = 0, origin = 4, extra = 3))
-    assertEquals(PaidActionHarness.replayed(g, b.ready, run.events),
+    assertEquals(ActPowerHarness.replayed(g, b.ready, run.events),
       ready(run.state))
-    assert(PaidActionHarness.wireRoundTrips(run.events))
+    assertWireRoundTrips(run.events)
 
   // ---- Lines ----
 
