@@ -18,7 +18,7 @@ final case class MajorActionPreviewRequest(
   */
 final case class PreviewModifier(sourceKey: String, handlerId: String,
     description: String, card: Option[CardDetailsProjection] = None,
-    modifies: Option[String] = None)
+    modifies: Option[String] = None, cost: Option[String] = None)
 final case class PreviewIgnoredRule(sourceKey: String, handlerId: String,
     timing: String, reason: String)
 final case class PreviewTarget(key: String, supplyCost: Int, description: String)
@@ -87,7 +87,8 @@ object MajorActionPreviewCodec:
       "description" -> v.description,
       "card" -> v.card.fold[ujson.Value](ujson.Null)(
         oathdigital.protocol.projection.WorldProjectionCodec.encodeCard),
-      "modifies" -> v.modifies.fold[ujson.Value](ujson.Null)(ujson.Str(_))))),
+      "modifies" -> v.modifies.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+      "cost" -> v.cost.fold[ujson.Value](ujson.Null)(ujson.Str(_))))),
     "ignoredRules" -> ujson.Arr.from(value.ignoredRules.map(v => ujson.Obj(
       "sourceKey" -> v.sourceKey, "handlerId" -> v.handlerId,
       "timing" -> v.timing, "reason" -> v.reason))),
@@ -116,7 +117,11 @@ object MajorActionPreviewCodec:
               case None | Some(ujson.Null) => Right(None)
               case Some(ujson.Str(text)) => Right(Some(text))
               case Some(_) => Left(InvalidValue(s"$path.modifies", "expected string"))
-          yield PreviewModifier(source, handler, description, card, modifies) }
+            cost <- value.value.get("cost") match
+              case None | Some(ujson.Null) => Right(None)
+              case Some(ujson.Str(text)) if text.nonEmpty => Right(Some(text))
+              case Some(_) => Left(InvalidValue(s"$path.cost", "expected non-empty string"))
+          yield PreviewModifier(source, handler, description, card, modifies, cost) }
           ignored <- array(root, "ignoredRules", "$.ignoredRules") { (value, path) => for
             source <- nonEmpty(value, "sourceKey", s"$path.sourceKey")
             handler <- nonEmpty(value, "handlerId", s"$path.handlerId")

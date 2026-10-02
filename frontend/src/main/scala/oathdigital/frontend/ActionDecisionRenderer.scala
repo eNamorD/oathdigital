@@ -130,6 +130,11 @@ private[frontend] object ActionDecisionRenderer:
            choose.appendChild(text("span", "modifier-modifies",
              s"${actionLabel(modifier.modifies.getOrElse(draft.preview.action))} Modifier"))
          }
+         modifier.cost.foreach { cost =>
+           choose.appendChild(text("span", "modifier-cost", s"Cost: $cost"))
+           Option(choose.getAttribute("aria-label")).foreach(name =>
+             choose.setAttribute("aria-label", s"$name, cost: $cost"))
+         }
          choose.onclick = _ => toggleModifier(modifier)
          choose.onkeydown = event => event.key match
            case "Enter" | " " => event.preventDefault(); toggleModifier(modifier)

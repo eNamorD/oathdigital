@@ -472,6 +472,8 @@ class GameApplicationServiceSuite extends munit.FunSuite:
     assertEquals(modifier.card.map(_.name), Some(modifier.description))
     assertNotEquals(modifier.description, "denizen.catacombs")
     assertEquals(modifier.modifies, Some("recover"))
+    // Its printed cost travels with it, so the panel can show it.
+    assertEquals(modifier.cost, Some("1 secret"))
 
     // The property that matters: the id the preview just offered is exactly
     // the id `OathRules.startWalker` will accept -- not merely "some id
