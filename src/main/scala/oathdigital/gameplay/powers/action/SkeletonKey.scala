@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.SkeletonKeyCard
 import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
@@ -12,8 +13,7 @@ import oathdigital.model._
   * Hinterland, or with no relic at the site, the cost stays paid and nothing
   * else happens. Away from the Hinterland its own line says so.
   */
-case object SkeletonKey extends PaidAction("relic.skeleton-key",
-    Cost(secret = 1, secretBurnt = 1)):
+case object SkeletonKey extends PaidAction(SkeletonKeyCard.power):
   val decisionId: String = "power.skeleton-key.relic"
   /** "{Red} was not at a Hinterland site." */
   val away: NoteKey = NoteKey("used.away", Vector(NotePart.Arg(0),

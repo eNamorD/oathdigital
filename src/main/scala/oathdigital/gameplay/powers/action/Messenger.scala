@@ -27,8 +27,7 @@ object MessengerCard extends Denizen(DenizenId("105"), "Messenger", Suit.Order):
   * nothing: the generic Moved lines stay, since they tell where warbands
   * went.
   */
-case object Messenger extends PaidAction("denizen.messenger",
-    Cost(favor = 1)):
+case object Messenger extends PaidAction(MessengerCard.power):
   val decisionId: String = "power.messenger.arrange"
   /** "{Red} redistributed their warbands." */
   val redistributed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),

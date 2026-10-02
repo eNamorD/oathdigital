@@ -23,7 +23,7 @@ object MemoryOfNatureCard extends Denizen(DenizenId("191"), "Memory of Nature", 
   * reads what the Beast bank gained.
   */
 final case class MemoryOfNature private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.memory-of-nature", Cost(secret = 1)):
+    extends PaidAction(MemoryOfNatureCard.power):
   import MemoryOfNature._
 
   override def noteKeys: Vector[NoteKey] = Vector(moved, unmoved)

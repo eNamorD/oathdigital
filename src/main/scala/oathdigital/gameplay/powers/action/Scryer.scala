@@ -22,7 +22,7 @@ object ScryerCard extends Denizen(DenizenId("19"), "Scryer", Suit.Discord):
   * player looks. Its empty variant is built by the same covering `Note`; it
   * has no peek line to cover.
   */
-case object Scryer extends PaidAction("denizen.scryer", Cost(secret = 1)):
+case object Scryer extends PaidAction(ScryerCard.power):
   val pileDecisionId: String = "power.scryer.pile"
   val inspectDecisionId: String = "power.scryer.inspect"
   /** "{Red} peeked at the {Cradle discard pile}: {cards}." */

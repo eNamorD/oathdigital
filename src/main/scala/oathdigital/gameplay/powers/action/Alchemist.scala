@@ -17,8 +17,7 @@ object AlchemistCard extends Denizen(DenizenId("9"), "Alchemist", Suit.Arcane) w
   * The split is [[FavorSplit]]'s: the player chooses it only when two or
   * more banks hold favor and more than 4 is available in all.
   */
-case object Alchemist extends PaidAction("denizen.alchemist",
-    Cost(secret = 1, secretBurnt = 1)):
+case object Alchemist extends PaidAction(AlchemistCard.power):
   val Favor: Int = 4
   val decisionId: String = "power.alchemist.banks"
   /** Its own line: the whole favor it gained. Each bank's Gain line stays. */

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.IvoryEyeCard
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
@@ -15,7 +16,7 @@ import oathdigital.model._
   * adviser of another player is offered without disclosing it. The slot is
   * read from live state, so an answer cannot name a card that has since moved.
   */
-case object IvoryEye extends PaidAction("relic.ivory-eye", Cost(secret = 1)):
+case object IvoryEye extends PaidAction(IvoryEyeCard.power):
   val decisionId: String = "power.ivory-eye.adviser"
   /** Its own line, in place of the generic Peeked line. The card reads as
     * its back to anyone but the peeker, so the owner is named apart from

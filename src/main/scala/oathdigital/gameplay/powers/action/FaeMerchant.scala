@@ -27,8 +27,7 @@ object FaeMerchantCard extends Denizen(DenizenId("180"), "Fae Merchant", Suit.Be
   * on the relic to their holder. Its `returned` line names the relic chosen,
   * so the choice posts no "Chose" line.
   */
-case object FaeMerchant extends PaidAction("denizen.fae-merchant",
-    Cost(secret = 1)):
+case object FaeMerchant extends PaidAction(FaeMerchantCard.power):
   val decisionId: String = "fae-merchant.relic"
   val returned: NoteKey = NoteKey("returned", Vector(NotePart.Arg(0),
     NotePart.Text(" put "), NotePart.Arg(1),

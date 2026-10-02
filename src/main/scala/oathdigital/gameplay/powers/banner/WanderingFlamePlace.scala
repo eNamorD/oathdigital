@@ -14,7 +14,7 @@ import oathdigital.model._
   * and on the Wandering Flame face only.
   */
 case object WanderingFlamePlace extends PaidAction(
-    "banner.darkest-secret.wandering-flame.place", Cost.free):
+    PowerId("banner.darkest-secret.wandering-flame.place"), Cost.free):
   /** It moves one secret or none, so the line names no amount. */
   val placed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" placed a secret at "), NotePart.Arg(1),

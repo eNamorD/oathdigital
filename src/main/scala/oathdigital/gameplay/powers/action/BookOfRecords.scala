@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.BookOfRecordsCard
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
@@ -16,8 +17,7 @@ import oathdigital.model._
   * legal choice and gives nothing. The take is a `Take`, so a restriction on
   * taking applies to it.
   */
-case object BookOfRecords extends PaidAction("relic.book-of-records",
-    Cost(secret = 1, secretBurnt = 2)):
+case object BookOfRecords extends PaidAction(BookOfRecordsCard.power):
   val decisionId: String = "power.book-of-records.banner"
   val Most: Int = 2
   /** "{Red} took {2 favor} from {Blue}'s {People's Favor}." */

@@ -14,8 +14,7 @@ object TutorCard extends Denizen(DenizenId("69"), "Tutor", Suit.Arcane) with Adv
   * card, then gain 1 secret from the shared bank, as Elders does. Its own
   * line restates the gain in place of the generic Gain line.
   */
-case object Tutor extends PaidAction("denizen.tutor",
-    Cost(favor = 1, secret = 1)):
+case object Tutor extends PaidAction(TutorCard.power):
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(gained)
 

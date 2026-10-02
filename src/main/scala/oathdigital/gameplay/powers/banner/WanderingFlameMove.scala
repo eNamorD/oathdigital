@@ -16,7 +16,7 @@ import oathdigital.model._
   * The power is usable only when a site qualifies.
   */
 case object WanderingFlameMove extends PaidAction(
-    "banner.darkest-secret.wandering-flame.move", Cost.free):
+    PowerId("banner.darkest-secret.wandering-flame.move"), Cost.free):
   val decisionId: String = "power.wandering-flame.site"
   val placed: NoteKey = PawnMoves.placedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(placed)

@@ -20,8 +20,7 @@ object SpoiledSuppliesCard extends Denizen(DenizenId("228"), "Spoiled Supplies",
   * own `SpendSupply` followed by its own note, so each line reads the step
   * it restates. With nobody losing any, one line says so.
   */
-case object SpoiledSupplies extends PaidAction("denizen.spoiled-supplies",
-    Cost(favor = 1)):
+case object SpoiledSupplies extends PaidAction(SpoiledSuppliesCard.power):
   val Loss: Int = 1
   /** "{Blue} lost {1 Supply}." */
   val lost: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),

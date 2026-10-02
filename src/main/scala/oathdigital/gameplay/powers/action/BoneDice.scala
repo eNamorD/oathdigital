@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.BoneDiceCard
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
@@ -12,7 +13,7 @@ import oathdigital.model._
   * `BuildOps`, after the engine has paid the cost, and not in `build`, which
   * runs before it.
   */
-case object BoneDice extends PaidAction("relic.bone-dice", Cost(secret = 1)):
+case object BoneDice extends PaidAction(BoneDiceCard.power):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("bone-dice")
   val gained: NoteKey = NoteSupport.gainedKey("gained")

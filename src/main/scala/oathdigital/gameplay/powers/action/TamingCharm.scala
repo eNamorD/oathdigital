@@ -28,7 +28,7 @@ object TamingCharmCard extends Denizen(DenizenId("37"), "Taming Charm", Suit.Arc
   * cost stays paid and the line names the site.
   */
 final case class TamingCharm private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.taming-charm", Cost(secret = 1)):
+    extends PaidAction(TamingCharmCard.power):
   import TamingCharm._
 
   private val cards = new SiteCards(catalog, Set(Suit.Beast, Suit.Nomad))

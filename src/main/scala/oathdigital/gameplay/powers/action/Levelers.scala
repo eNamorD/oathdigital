@@ -25,7 +25,7 @@ object LevelersCard extends Denizen(DenizenId("135"), "Levelers", Suit.Hearth):
   * and one line says so. Both choices are narrated: the line names the
   * banks.
   */
-case object Levelers extends PaidAction("denizen.levelers", Cost(secret = 1)):
+case object Levelers extends PaidAction(LevelersCard.power):
   val sourceDecisionId: String = "power.levelers.source"
   val destinationDecisionId: String = "power.levelers.destination"
   val Moved: Int = 2

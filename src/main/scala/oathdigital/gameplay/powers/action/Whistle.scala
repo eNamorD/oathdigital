@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.WhistleCard
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
 
@@ -11,7 +12,7 @@ import oathdigital.model._
   * cost is paid whatever happens, so with nobody to pull the secret stays on
   * the Whistle, and the empty-card rule keeps it unusable until it is gone.
   */
-case object Whistle extends PaidAction("relic.whistle", Cost(secret = 1)):
+case object Whistle extends PaidAction(WhistleCard.power):
   val decisionId: String = "power.whistle.target"
   val pulled: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Text("Placed "),
     NotePart.Arg(0), NotePart.Text(" at "), NotePart.Arg(1),

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.AmberFlameCard
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
@@ -14,8 +15,7 @@ import oathdigital.model._
   * secret. An empty banner is still a legal choice and burns nothing. With
   * no banner held there, the cost stays paid and one line says so.
   */
-case object AmberFlame extends PaidAction("relic.amber-flame",
-    Cost(secret = 1)):
+case object AmberFlame extends PaidAction(AmberFlameCard.power):
   val decisionId: String = "power.amber-flame.banner"
   val Burned: Int = 1
   /** "{Red} burned {1 favor} from {Blue}'s {People's Favor}." */

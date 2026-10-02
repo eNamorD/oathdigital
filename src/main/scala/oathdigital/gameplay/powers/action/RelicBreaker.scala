@@ -20,8 +20,7 @@ object RelicBreakerCard extends Denizen(DenizenId("139"), "Relic Breaker", Suit.
   * lines. With no relic held the line says so. Holding only the Grand
   * Scepter, it writes nothing.
   */
-case object RelicBreaker extends PaidAction("denizen.relic-breaker",
-    Cost.free):
+case object RelicBreaker extends PaidAction(RelicBreakerCard.power):
   val decisionId: String = "power.relic-breaker.relic"
   val Gained: Int = 1
   /** "{Red} buried {relic} and gained {n secrets}." */

@@ -24,8 +24,7 @@ object SiegeEnginesCard extends Denizen(DenizenId("116"), "Siege Engines", Suit.
   * The decision is a plain `Decide`, as Wolves' is: its options are the
   * region's sites, which the cost does not change.
   */
-case object SiegeEngines extends PaidAction("denizen.siege-engines",
-    Cost(favor = 1)):
+case object SiegeEngines extends PaidAction(SiegeEnginesCard.power):
   val decisionId: String = "power.siege-engines.site"
   val Kills: Int = 2
   /** "Killed {n} {Blue} warbands at {site}." */

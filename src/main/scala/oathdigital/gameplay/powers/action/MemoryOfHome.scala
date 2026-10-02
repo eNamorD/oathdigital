@@ -19,8 +19,7 @@ object MemoryOfHomeCard extends Denizen(DenizenId("49"), "Memory of Home", Suit.
   * nothing moves and one line says so. The choice is narrated: the line
   * names the bank.
   */
-case object MemoryOfHome extends PaidAction("denizen.memory-of-home",
-    Cost(secret = 1, secretBurnt = 1)):
+case object MemoryOfHome extends PaidAction(MemoryOfHomeCard.power):
   val decisionId: String = "power.memory-of-home.bank"
   val moved: NoteKey = BankMoves.moved
   /** "Every other favor bank was empty." */

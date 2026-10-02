@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.DowsingSticksCard
 import oathdigital.gameplay.powers.RelicDraws
 import oathdigital.model._
 
@@ -8,8 +9,7 @@ import oathdigital.model._
   * pays the cost and does nothing else. The draw and its line are
   * `RelicDraws.drawSteps`, shared with Tinker's Fair.
   */
-case object DowsingSticks extends PaidAction("relic.dowsing-sticks",
-    Cost(secret = 1, secretBurnt = 2)):
+case object DowsingSticks extends PaidAction(DowsingSticksCard.power):
   /** Its line when the deck had no relic to draw. */
   val emptyDeck: NoteKey = RelicDraws.emptyDeck
   override def noteKeys: Vector[NoteKey] = Vector(RelicDraws.drew, emptyDeck)

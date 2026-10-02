@@ -20,8 +20,7 @@ object PlagueEnginesCard extends Denizen(DenizenId("65"), "Plague Engines", Suit
   * favor per site they rule, or all they have, with a `Give`. Nothing is
   * asked. One line per player who paid; with none, one line says so.
   */
-case object PlagueEngines extends PaidAction("denizen.plague-engines",
-    Cost(secret = 1, secretBurnt = 1)):
+case object PlagueEngines extends PaidAction(PlagueEnginesCard.power):
   /** "{Blue} put {n favor} into {the Arcane bank}." */
   val paid: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" put "), NotePart.Arg(1), NotePart.Text(" into "),

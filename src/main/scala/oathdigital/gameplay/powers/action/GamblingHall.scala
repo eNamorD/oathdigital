@@ -24,8 +24,7 @@ object GamblingHallCard extends Denizen(DenizenId("93"), "Gambling Hall", Suit.D
   * roll and the gain for the Game Log, each covering the generic line of the
   * step before it.
   */
-case object GamblingHall extends PaidAction("denizen.gambling-hall",
-    Cost(favor = 2)):
+case object GamblingHall extends PaidAction(GamblingHallCard.power):
   val Dice: Int = 4
   val pool: PoolKey = PoolKey("gambling-hall")
   val decisionId: String = "gambling-hall.bank"

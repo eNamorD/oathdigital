@@ -31,7 +31,7 @@ object ArmedMobCard extends Denizen(DenizenId("53"), "Armed Mob", Suit.Hearth) w
   * Its line covers the generic Discarded line.
   */
 final case class ArmedMob private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.armed-mob", Cost(favor = 1)):
+    extends PaidAction(ArmedMobCard.power):
   import ArmedMob._
 
   override def noteKeys: Vector[NoteKey] = Vector(discarded, nobody, bare)

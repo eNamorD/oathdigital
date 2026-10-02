@@ -20,7 +20,7 @@ object WolvesCard extends Denizen(DenizenId("39"), "Wolves", Suit.Beast):
   * The decision is a plain `Decide`: its options are the players, which the
   * cost does not change, so `build` and `rebuild` derive the same query.
   */
-case object Wolves extends PaidAction("denizen.wolves", Cost(secret = 1)):
+case object Wolves extends PaidAction(WolvesCard.power):
   val decisionId: String = "power.wolves.board"
   val killed: NoteKey = NoteSupport.killedKey(NoteKey.Used)
   /** Its line when the chosen board had no warband: the kill is best-effort. */

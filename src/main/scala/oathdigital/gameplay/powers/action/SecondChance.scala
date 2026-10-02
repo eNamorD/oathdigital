@@ -26,7 +26,7 @@ object SecondChanceCard extends Denizen(DenizenId("181"), "Second Chance", Suit.
   * supply gives nothing.
   */
 final case class SecondChance private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.second-chance", Cost(secret = 1)):
+    extends PaidAction(SecondChanceCard.power):
   import SecondChance._
 
   override def noteKeys: Vector[NoteKey] =

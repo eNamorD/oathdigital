@@ -25,8 +25,7 @@ object SleightOfHandCard extends Denizen(DenizenId("17"), "Sleight of Hand", Sui
   * flips the target's facedown secrets up first, takes, and flips the same
   * number back down. The net effect is exactly "one faceup secret moves".
   */
-case object SleightOfHand extends PaidAction("denizen.sleight-of-hand",
-    Cost(favor = 1)):
+case object SleightOfHand extends PaidAction(SleightOfHandCard.power):
   val decisionId: String = "power.sleight-of-hand.target"
   val MinimumSecrets: Int = 2
   /** Its line when no player at the site holds two secrets. */

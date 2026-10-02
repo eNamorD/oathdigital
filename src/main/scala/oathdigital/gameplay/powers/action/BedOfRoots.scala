@@ -27,7 +27,7 @@ object BedOfRootsCard extends Denizen(DenizenId("212"), "Bed of Roots", Suit.Bea
   * covers the generic Buried and gain lines.
   */
 final case class BedOfRoots private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.bed-of-roots", Cost(favorBurnt = 3)):
+    extends PaidAction(BedOfRootsCard.power):
   import BedOfRoots._
 
   override def noteKeys: Vector[NoteKey] = Vector(buried, bare)

@@ -28,7 +28,7 @@ object HonorGuardCard extends Denizen(DenizenId("251"), "Honor Guard", Suit.Orde
   * Its line covers the generic Buried line.
   */
 final case class HonorGuard private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.honor-guard", Cost(favor = 2, favorBurnt = 1)):
+    extends PaidAction(HonorGuardCard.power):
   import HonorGuard._
 
   override def noteKeys: Vector[NoteKey] = Vector(buried, spared)

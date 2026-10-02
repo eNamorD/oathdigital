@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.MarbleFountainsCard
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
@@ -16,8 +17,7 @@ import oathdigital.model._
   * a pawn cannot move between the command that starts the power and the end of
   * a tree that never parks.
   */
-case object MurkyFountain extends PaidAction("edifice.e15.ruined",
-    Cost(secret = 1)):
+case object MurkyFountain extends PaidAction(MarbleFountainsCard.ruined.power):
   val Dice: Int = 2
   val pool: PoolKey = PoolKey("murky-fountain")
   val gained: NoteKey = NoteSupport.gainedKey("gained")

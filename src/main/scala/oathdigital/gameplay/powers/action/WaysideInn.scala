@@ -13,8 +13,7 @@ object WaysideInnCard extends Denizen(DenizenId("47"), "Wayside Inn", Suit.Heart
 /** Wayside Inn (card 47), ACTION: place 1 favor on this card, then gain
   * 2 Supply. Its own line reads the Supply the track allowed.
   */
-case object WaysideInn extends PaidAction("denizen.wayside-inn",
-    Cost(favor = 1)):
+case object WaysideInn extends PaidAction(WaysideInnCard.power):
   val Supply: Int = 2
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(gained)

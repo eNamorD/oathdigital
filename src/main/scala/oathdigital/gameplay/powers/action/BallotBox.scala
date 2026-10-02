@@ -29,7 +29,7 @@ object BallotBoxCard extends Denizen(DenizenId("141"), "Ballot Box", Suit.Hearth
   * adds a `removed` line for the warbands killed.
   */
 final case class BallotBox private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.ballot-box", Cost(favor = 2)):
+    extends PaidAction(BallotBoxCard.power):
   import BallotBox._
 
   override def noteKeys: Vector[NoteKey] = Vector(replaced, replacedBandits,

@@ -20,8 +20,7 @@ object BanditPaymasterCard extends Denizen(DenizenId("219"), "Bandit Paymaster",
   * supply holds. Both run in one step: the banks differ. Otherwise nothing
   * happens and one line says so. Nothing is asked.
   */
-case object BanditPaymaster extends PaidAction("denizen.bandit-paymaster",
-    Cost(favor = 1)):
+case object BanditPaymaster extends PaidAction(BanditPaymasterCard.power):
   val Removed: Int = 1
   val Gained: Int = 3
   /** "Removed {1} bandit warband from {site}, and {Red} gained

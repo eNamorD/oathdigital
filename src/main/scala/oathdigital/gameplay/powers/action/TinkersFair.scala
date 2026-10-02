@@ -14,8 +14,7 @@ object TinkersFairCard extends Denizen(DenizenId("13"), "Tinker's Fair", Suit.He
   * then draw a relic and take it facedown, as Dowsing Sticks does. An empty
   * relic deck pays the cost and does nothing else.
   */
-case object TinkersFair extends PaidAction("denizen.tinker-s-fair",
-    Cost(favor = 3)):
+case object TinkersFair extends PaidAction(TinkersFairCard.power):
   override def noteKeys: Vector[NoteKey] =
     Vector(RelicDraws.drew, RelicDraws.emptyDeck)
 

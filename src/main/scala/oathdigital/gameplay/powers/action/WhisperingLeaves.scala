@@ -24,8 +24,7 @@ object WhisperingLeavesCard extends Denizen(DenizenId("211"), "Whispering Leaves
   * on the card until Rest returns it to the Beast bank, as any favor on a
   * card does.
   */
-case object WhisperingLeaves extends PaidAction("denizen.whispering-leaves",
-    Cost(secret = 1)):
+case object WhisperingLeaves extends PaidAction(WhisperingLeavesCard.power):
   val decisionId: String = "power.whispering-leaves.target"
   val Placed: Int = 2
   /** "{Blue} placed {n favor} on it." */

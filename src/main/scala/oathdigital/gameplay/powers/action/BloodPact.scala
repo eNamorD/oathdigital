@@ -20,8 +20,7 @@ object BloodPactCard extends Denizen(DenizenId("62"), "Blood Pact", Suit.Arcane)
   * gain line. With fewer than 2 warbands nothing is asked and nothing
   * happens, and choosing 0 sacrifices nothing.
   */
-case object BloodPact extends PaidAction("denizen.blood-pact",
-    Cost(secret = 1)):
+case object BloodPact extends PaidAction(BloodPactCard.power):
   val decisionId: String = "power.blood-pact.pairs"
   /** "{Red} sacrificed {n warbands} and gained {m secrets}." */
   val sacrificed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),

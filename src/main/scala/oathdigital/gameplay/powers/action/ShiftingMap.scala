@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.ShiftingMapCard
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
@@ -7,8 +8,7 @@ import oathdigital.model._
   * 1 Supply, up to the track's maximum. Its own line reads the Supply the
   * track allowed, as Wayside Inn's does.
   */
-case object ShiftingMap extends PaidAction("relic.shifting-map",
-    Cost(secret = 1)):
+case object ShiftingMap extends PaidAction(ShiftingMapCard.power):
   val Supply: Int = 1
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(gained)

@@ -15,8 +15,7 @@ object WizardSchoolCard extends Denizen(DenizenId("34"), "Wizard School", Suit.A
   * Fountain ends it. The phase always ends, so its line needs no read of
   * the state.
   */
-case object WizardSchool extends PaidAction("denizen.wizard-school",
-    Cost(favor = 1)):
+case object WizardSchool extends PaidAction(WizardSchoolCard.power):
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
   val ended: NoteKey = NoteKey("ended", Vector(NotePart.Arg(0),
     NotePart.Text("'s Act phase ended.")))

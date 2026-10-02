@@ -28,7 +28,7 @@ object OracleCard extends Denizen(DenizenId("160"), "Oracle", Suit.Nomad) with S
   * a Search does.
   */
 final case class Oracle private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.oracle", Cost(secret = 2)):
+    extends PaidAction(OracleCard.power):
   import Oracle._
 
   override def noteKeys: Vector[NoteKey] = Vector(drew, noVision)

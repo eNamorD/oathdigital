@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.DemonTailCard
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
@@ -7,8 +8,7 @@ import oathdigital.model._
   * the track's maximum. Its own line reads the Supply the track allowed, as
   * Wayside Inn's does.
   */
-case object DemonTail extends PaidAction("relic.demon-tail",
-    Cost(secretBurnt = 3)):
+case object DemonTail extends PaidAction(DemonTailCard.power):
   val Supply: Int = 2
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(gained)

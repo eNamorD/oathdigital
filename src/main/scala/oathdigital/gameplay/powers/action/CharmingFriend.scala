@@ -21,8 +21,7 @@ object CharmingFriendCard extends Denizen(DenizenId("131"), "Charming Friend", S
   * is still a legal choice and gives nothing. The take is a `Take`, so a
   * restriction on taking applies to it.
   */
-case object CharmingFriend extends PaidAction("denizen.charming-friend",
-    Cost(secret = 1)):
+case object CharmingFriend extends PaidAction(CharmingFriendCard.power):
   val decisionId: String = "power.charming-friend.target"
   val Taken: Int = 1
   val nobody: NoteKey = NoteKey("used.none", Vector(

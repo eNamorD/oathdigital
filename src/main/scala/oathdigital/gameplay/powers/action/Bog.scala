@@ -22,7 +22,7 @@ object BogCard extends Denizen(DenizenId("210"), "Bog", Suit.Beast) with SiteOnl
   * With no relic held the line says so. Holding only the Grand Scepter, it
   * writes nothing.
   */
-case object Bog extends PaidAction("denizen.bog", Cost.free):
+case object Bog extends PaidAction(BogCard.power):
   val decisionId: String = "power.bog.relic"
   val Gained: Int = 3
   /** "{Red} discarded {relic} and gained {n favor} from {the Beast bank}." */

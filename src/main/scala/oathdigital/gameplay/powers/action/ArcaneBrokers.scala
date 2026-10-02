@@ -21,8 +21,7 @@ object ArcaneBrokersCard extends Denizen(DenizenId("204"), "Arcane Brokers", Sui
   * generic line. With no relic held the line says so. Holding only the Grand
   * Scepter, it writes nothing.
   */
-case object ArcaneBrokers extends PaidAction("denizen.arcane-brokers",
-    Cost(favor = 1)):
+case object ArcaneBrokers extends PaidAction(ArcaneBrokersCard.power):
   val decisionId: String = "power.arcane-brokers.relic"
   val Gained: Int = 2
   /** "{Red} discarded {relic} and gained {n secrets}." */

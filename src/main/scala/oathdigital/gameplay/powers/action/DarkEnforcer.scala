@@ -24,7 +24,7 @@ object DarkEnforcerCard extends Denizen(DenizenId("227"), "Dark Enforcer", Suit.
   * covers the generic discard lines. With none, the line names the site.
   */
 final case class DarkEnforcer private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.dark-enforcer", Cost(favorBurnt = 1)):
+    extends PaidAction(DarkEnforcerCard.power):
   import DarkEnforcer._
 
   private val cards = new SiteCards(catalog, Set(Suit.Order, Suit.Hearth))

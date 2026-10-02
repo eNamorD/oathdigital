@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.holding.CrystalVialCard
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
 import oathdigital.model._
@@ -17,7 +18,7 @@ import oathdigital.model._
   * needs the card's suit to return favor.
   */
 final case class CrystalVial(catalog: ExecutableCatalog)
-    extends PaidAction(CrystalVial.id.value, CrystalVial.price):
+    extends PaidAction(CrystalVialCard.power):
   import CrystalVial._
 
   override def noteKeys: Vector[NoteKey] = Vector(buried)

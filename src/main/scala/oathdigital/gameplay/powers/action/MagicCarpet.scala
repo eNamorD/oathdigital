@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.MagicCarpetCard
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
@@ -12,7 +13,7 @@ import oathdigital.model._
   * new pawn site. It is not asked when nobody is eligible: the Carpet is then
   * discarded.
   */
-case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free):
+case object MagicCarpet extends PaidAction(MagicCarpetCard.power):
   val siteDecisionId: String = "power.magic-carpet.site"
   val fateDecisionId: String = "power.magic-carpet.fate"
   val discard: DecisionOptionRef.Button = DecisionOptionRef.Button("discard")

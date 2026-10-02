@@ -23,7 +23,7 @@ object GreatFeastCard extends Denizen(DenizenId("257"), "Great Feast", Suit.Orde
   * nothing to discard, the cost stays paid and the line names the site.
   */
 final case class GreatFeast private (catalog: ExecutableCatalog)
-    extends PaidAction("denizen.great-feast", Cost(favor = 1)):
+    extends PaidAction(GreatFeastCard.power):
   import GreatFeast._
 
   private val cards = new SiteCards(catalog, Set(Suit.Beast))

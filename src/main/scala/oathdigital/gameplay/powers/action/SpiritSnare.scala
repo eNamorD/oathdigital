@@ -20,8 +20,7 @@ object SpiritSnareCard extends Denizen(DenizenId("33"), "Spirit Snare", Suit.Arc
   * The `Branch` picks the line with the take, as Book Binders' does, so the
   * empty-banks line never reads a step the take did not run.
   */
-case object SpiritSnare extends PaidAction("denizen.spirit-snare",
-    Cost(secret = 1)):
+case object SpiritSnare extends PaidAction(SpiritSnareCard.power):
   val empty: NoteKey = NoteKey("used.empty", Vector(
     NotePart.Text("Every favor bank was empty.")))
   override def noteKeys: Vector[NoteKey] = Vector(NoteSupport.took, empty)

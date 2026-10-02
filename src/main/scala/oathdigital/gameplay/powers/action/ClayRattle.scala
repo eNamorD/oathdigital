@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.ClayRattleCard
 import oathdigital.model._
 
 /** Clay Rattle (relic R47), ACTION: place 2 secrets on this relic, then
@@ -11,8 +12,7 @@ import oathdigital.model._
   * (the `Shuffle` operation). A `Branch` reads the answer, since the tree is
   * built before it is given.
   */
-case object ClayRattle extends PaidAction("relic.clay-rattle",
-    Cost(secret = 2)):
+case object ClayRattle extends PaidAction(ClayRattleCard.power):
   val decisionId: String = "power.clay-rattle.pile"
   val shuffled: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
     NotePart.Text(" shuffled the "), NotePart.Arg(1), NotePart.Text(".")))

@@ -21,7 +21,7 @@ object FirebrandCard extends Denizen(DenizenId("233"), "Firebrand", Suit.Hearth)
   * without asking. With none, the cost stays paid and one line says so.
   * The choice is narrated: the line names the bank or the burn.
   */
-case object Firebrand extends PaidAction("denizen.firebrand", Cost(secret = 1)):
+case object Firebrand extends PaidAction(FirebrandCard.power):
   val decisionId: String = "power.firebrand.choice"
   val Moved: Int = 1
   val burn: DecisionOptionRef.Button = DecisionOptionRef.Button("burn")

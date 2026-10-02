@@ -21,8 +21,7 @@ object QuickExitCard extends Denizen(DenizenId("58"), "Quick Exit", Suit.Arcane)
   * a plain `Move`, as Whistle's does: it does not travel, so no Travel window
   * runs. With no candidate the cost stays paid and one line says so.
   */
-case object QuickExit extends PaidAction("denizen.quick-exit",
-    Cost(secret = 1)):
+case object QuickExit extends PaidAction(QuickExitCard.power):
   val targetDecisionId: String = "power.quick-exit.target"
   val siteDecisionId: String = "power.quick-exit.site"
   /** "Placed {Blue} at {site}." */

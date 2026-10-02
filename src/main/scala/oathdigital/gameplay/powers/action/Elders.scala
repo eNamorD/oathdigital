@@ -14,7 +14,7 @@ object EldersCard extends Denizen(DenizenId("26"), "Elders", Suit.Nomad):
   * from the shared bank, which holds an unlimited supply. Its own line
   * restates the gain in place of the generic Gain line.
   */
-case object Elders extends PaidAction("denizen.elders", Cost(favor = 2)):
+case object Elders extends PaidAction(EldersCard.power):
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(gained)
 

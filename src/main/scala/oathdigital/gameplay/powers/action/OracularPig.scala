@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.OracularPigCard
 import oathdigital.model._
 
 /** Oracular Pig (relic R14), ACTION, no cost: peek at the top 3 cards of the
@@ -10,7 +11,7 @@ import oathdigital.model._
   * is stored top first. An empty deck peeks at nothing, asks nothing and
   * writes no line: the spec gives it none.
   */
-case object OracularPig extends PaidAction("relic.oracular-pig", Cost.free):
+case object OracularPig extends PaidAction(OracularPigCard.power):
   val inspectDecisionId: String = "power.oracular-pig.inspect"
   val Count: Int = 3
   /** "{Red} peeked at the top of the world deck: {cards}." */

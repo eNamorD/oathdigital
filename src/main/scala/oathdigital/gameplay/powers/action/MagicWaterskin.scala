@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.MagicWaterskinCard
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.model._
 
@@ -10,8 +11,7 @@ import oathdigital.model._
   * Its own line reads the Supply the track allowed. The Buried line posts
   * before it, since the bury comes first.
   */
-case object MagicWaterskin extends PaidAction("relic.magic-waterskin",
-    Cost.free):
+case object MagicWaterskin extends PaidAction(MagicWaterskinCard.power):
   val Supply: Int = 4
   val gained: NoteKey = NoteSupport.gainedKey(NoteKey.Used)
   override def noteKeys: Vector[NoteKey] = Vector(gained)

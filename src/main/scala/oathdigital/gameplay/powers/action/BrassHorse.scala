@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.holding.BrassHorseCard
 import oathdigital.model._
 
 /** Brass Horse (relic R03), ACTION: place 1 secret on this relic, reveal the
@@ -18,7 +19,7 @@ import oathdigital.model._
   * `PhasePower.build` receives no catalog.
   */
 final class BrassHorse(catalog: ExecutableCatalog)
-    extends PaidAction(BrassHorse.id.value, Cost(secret = 1)):
+    extends PaidAction(BrassHorseCard.power):
   import BrassHorse._
 
   override def noteKeys: Vector[NoteKey] = Vector(revealed, placed)

@@ -25,8 +25,7 @@ object DreamThiefCard extends Denizen(DenizenId("70"), "Dream Thief", Suit.Arcan
   * receive as their own, and still knows the one they gave up. A facedown
   * card has no printed restriction, so the batch is a plain `BuildOps`.
   */
-case object DreamThief extends PaidAction("denizen.dream-thief",
-    Cost(favor = 2)):
+case object DreamThief extends PaidAction(DreamThiefCard.power):
   val firstDecisionId: String = "power.dream-thief.first"
   val secondDecisionId: String = "power.dream-thief.second"
   /** "{Red} swapped {Blue}'s {card} with {Green}'s {card}." */

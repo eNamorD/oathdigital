@@ -24,8 +24,7 @@ object TavernSongsCard extends Denizen(DenizenId("54"), "Tavern Songs", Suit.Hea
   * player looks, and covers the peek lines. Its empty variant is built by
   * the same covering `Note`; it has no peek line to cover.
   */
-case object TavernSongs extends PaidAction("denizen.tavern-songs",
-    Cost.free):
+case object TavernSongs extends PaidAction(TavernSongsCard.power):
   val inspectDecisionId: String = "power.tavern-songs.inspect"
   /** How many cards it peeks at. */
   val Depth: Int = 3

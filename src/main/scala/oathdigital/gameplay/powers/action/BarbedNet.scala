@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers.action
 
+import oathdigital.catalog.holding.BarbedNetCard
 import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
@@ -11,8 +12,7 @@ import oathdigital.model._
   * at the player's pawn site. With no relic there the cost stays paid and
   * nothing else happens.
   */
-case object BarbedNet extends PaidAction("relic.barbed-net",
-    Cost(secretBurnt = 3)):
+case object BarbedNet extends PaidAction(BarbedNetCard.power):
   val decisionId: String = "power.barbed-net.relic"
   private val take = new SiteRelicTake(id, decisionId,
     "Barbed Net: take a relic from your site", PowerAccess.pawnSite)

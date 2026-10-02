@@ -21,8 +21,7 @@ object EnchantressCard extends Denizen(DenizenId("96"), "Enchantress", Suit.Disc
   * hides a locked adviser from the choice. The question passes when nothing
   * is left. With no candidate the cost stays paid and one line says so.
   */
-case object Enchantress extends PaidAction("denizen.enchantress",
-    Cost(secret = 1)):
+case object Enchantress extends PaidAction(EnchantressCard.power):
   val decisionId: String = "power.enchantress.adviser"
   /** "{Red} swapped it for {Blue}'s {card}." */
   val swapped: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),

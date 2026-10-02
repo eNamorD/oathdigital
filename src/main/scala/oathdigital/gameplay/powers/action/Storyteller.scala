@@ -18,8 +18,7 @@ object StorytellerCard extends Denizen(DenizenId("52"), "Storyteller", Suit.Hear
   * nobody. The shared bank's secrets are unbounded, so the move always
   * happens. Its line reads what the banner gained.
   */
-case object Storyteller extends PaidAction("denizen.storyteller",
-    Cost(favor = 1)):
+case object Storyteller extends PaidAction(StorytellerCard.power):
   val Placed: Int = 1
   /** "{Red} placed {1 secret} on the {Darkest Secret}." */
   val placed: NoteKey = NoteKey(NoteKey.Used, Vector(NotePart.Arg(0),
