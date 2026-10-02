@@ -87,3 +87,15 @@ class SuitGlyphSuite extends munit.FunSuite:
     assertEquals(toggles.map(_.textContent), Vector("Discord", "Beast"))
     assertEquals(toggles.flatMap(glyphs),
       Vector("token-glyph token-suit-discord", "token-glyph token-suit-beast"))
+
+  test("a secret is a solid book and a defense die a shield, both even-odd"):
+    val root = dom.document.createElement("div")
+    TokenSprite.mount(root)
+    def path(id: String): dom.Element =
+      Option(root.querySelector(s"symbol#token-$id path"))
+        .getOrElse(fail(s"no path for $id"))
+    assert(path("secret").getAttribute("d").startsWith("M4 3h13a2 2 0 0 1 2 2v16H7a3 3 0 0 1-3-3zM8 6v12"))
+    assert(path("defense-die").getAttribute("d").startsWith("M12 1.5 20.5 4.8"))
+    assertEquals(path("secret").getAttribute("fill-rule"), "evenodd")
+    assertEquals(path("secret-burnt").getAttribute("fill-rule"), "evenodd")
+    assertEquals(path("defense-die").getAttribute("fill-rule"), "evenodd")
