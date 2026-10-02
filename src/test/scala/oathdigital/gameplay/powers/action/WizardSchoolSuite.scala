@@ -4,8 +4,9 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
+import oathdigital.testkit.Unwrap.accepted
 
 class WizardSchoolSuite extends munit.FunSuite:
   import ActPowerHarness._
@@ -14,17 +15,19 @@ class WizardSchoolSuite extends munit.FunSuite:
   private val walkerParked = new ParkedDecisionAssertions(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
-  private val school = DenizenId("34")
+  private val school = CatalogNames.denizen("Wizard School")
   private val source = DecisionOptionRef.Denizen(school)
 
-  /** Wizard School is site-only; it stands at the actor's pawn site. */
+  /** p1's Act at Ancient City with Wizard School (site-only) at the site
+    * and `favor` favor. */
   private def staged(favor: Int = 2): ReadyGame =
-    act(Table.from(atActorsSite(quietTable, school)).favor(actor, favor)
-      .unchecked)
+    Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
+      .denizen(school, at = "Ancient City").favor(actor, favor).ready
 
   test("it places a favor, gains a secret and ends the Act phase"):
-    val ready0 = staged()
-    val done = use(rules(), ready0, WizardSchool.id, source).toOption.get
+    // 2 favor less the 1 placed leave 1.
+    val ready0 = staged(favor = 2)
+    val done = accepted(use(rules(), ready0, WizardSchool.id, source))
     val end = ready(done.state)
     assertEquals(Look(end).tokensOn(school), Tokens(1, 0))
     assertEquals(Look(end).player(actor).board.favor, 1)
@@ -39,7 +42,7 @@ class WizardSchoolSuite extends munit.FunSuite:
     assert(use(rules(), broke, WizardSchool.id, source).isLeft)
 
   test("it writes the gain, covering the generic line, then the phase's end"):
-    val done = use(rules(), staged(), WizardSchool.id, source).toOption.get
+    val done = accepted(use(rules(), staged(), WizardSchool.id, source))
     assertEquals(NoteText.said(WizardSchool, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} gained 1 secret.",
         covers = true),

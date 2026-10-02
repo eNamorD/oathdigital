@@ -2,29 +2,29 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
+import oathdigital.testkit.Unwrap.accepted
 
 class TutorSuite extends munit.FunSuite:
   import ActPowerHarness._
   import PowerFixture._
 
-  private val tutor = DenizenId("69")
+  private val tutor = CatalogNames.denizen("Tutor")
   private val source = DecisionOptionRef.Denizen(tutor)
 
-  /** Tutor is adviser-only, so the actor holds it faceup. */
+  /** p1's Act holding Tutor faceup (it is adviser-only), with `favor` favor
+    * and `faceUp` faceup secrets. */
   private def staged(favor: Int = 2, faceUp: Int = 1): ReadyGame =
-    act(Table.from(asAdviser(quietTable, tutor)).favor(actor, favor)
-      .secrets(actor, faceUp).unchecked)
-  private def tokens(ready: ReadyGame): Tokens =
-    Look(ready).player(actor).advisers.collectFirst {
-      case card: DenizenState if card.id == tutor => card.tokens }.get
+    Table.start.turn(actor, Phase.Act).adviser(actor, tutor)
+      .favor(actor, favor).secrets(actor, faceUp).ready
 
   test("it places a favor and a secret on its card and gains a secret"):
-    val ready0 = staged()
-    val done = use(rules(), ready0, Tutor.id, source).toOption.get
+    // 2 favor less the 1 placed leave 1.
+    val ready0 = staged(favor = 2, faceUp = 1)
+    val done = accepted(use(rules(), ready0, Tutor.id, source))
     val end = ready(done.state)
-    assertEquals(tokens(end), Tokens(1, 1))
+    assertEquals(Look(end).tokensOn(tutor), Tokens(1, 1))
     assertEquals(Look(end).player(actor).board.favor, 1)
     // One secret placed on the card, one gained from the shared bank.
     assertEquals(allSecrets(end), allSecrets(ready0))
@@ -38,6 +38,6 @@ class TutorSuite extends munit.FunSuite:
     }
 
   test("it writes its gain as its own line, covering the generic one"):
-    val done = use(rules(), staged(), Tutor.id, source).toOption.get
+    val done = accepted(use(rules(), staged(), Tutor.id, source))
     assertEquals(NoteText.said(Tutor, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"${actor.value} gained 1 secret.", covers = true)))

@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class WhisperingLeavesSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -12,20 +13,25 @@ class WhisperingLeavesSuite extends munit.FunSuite:
   private val leaves = CatalogNames.denizen("Whispering Leaves")
   private val source = DecisionOptionRef.Denizen(leaves)
 
-  /** p1's Act holding Whispering Leaves with `secrets` faceup secrets. p2
-    * stands at p1's site with `favor` favor. */
+  /** p1's Act at Ancient City holding Whispering Leaves with `secrets`
+    * faceup secrets. p2 stands at Ancient City too, with `favor` favor. */
   private def staged(favor: Int = 3, secrets: Int = 1): Table =
-    Table.start.turn(p1, Phase.Act).adviser(p1, leaves).secrets(p1, secrets)
-      .pawn(p2, at = Table.quietPawnSite(p1)).favor(p2, favor)
+    Table.start.turn(p1, Phase.Act).pawn(p1, "Ancient City")
+      .adviser(p1, leaves).secrets(p1, secrets)
+      .pawn(p2, at = "Ancient City").favor(p2, favor)
 
-  private def choose(ready: ReadyGame, target: PlayerId) =
-    val t = use(ready, WhisperingLeaves, source).toOption.get
-    (t, answer(t, p1, WhisperingLeaves.decisionId,
-      pick(DecisionOptionRef.Player(target))).toOption.get)
+  /** The walk Whispering Leaves started and the walk after `target` was
+    * chosen. */
+  private case class Chosen(started: OathTransition, answered: OathTransition)
+
+  private def choose(ready: ReadyGame, target: PlayerId): Chosen =
+    val started = accepted(use(ready, WhisperingLeaves, source))
+    Chosen(started, accepted(answer(started, p1, WhisperingLeaves.decisionId,
+      pick(DecisionOptionRef.Player(target)))))
 
   test("it places a secret and offers every player at the site, the player " +
       "included"):
-    val t = use(staged().ready, WhisperingLeaves, source).toOption.get
+    val t = accepted(use(staged().ready, WhisperingLeaves, source))
     assert(awaits(t, WhisperingLeaves.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(leaves), Tokens(0, 1))
@@ -34,7 +40,7 @@ class WhisperingLeavesSuite extends munit.FunSuite:
 
   test("the chosen player gives 2 favor onto Whispering Leaves"):
     val ready = staged().ready
-    val (t, done) = choose(ready, p2)
+    val Chosen(t, done) = choose(ready, p2)
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).favor(p2), 1)
     assertEquals(Look(after(done)).tokensOn(leaves), Tokens(2, 1))
@@ -42,13 +48,13 @@ class WhisperingLeavesSuite extends munit.FunSuite:
     assertWireRoundTrips(t.events ++ done.events)
 
   test("its line names the giver and the favor placed"):
-    val (_, done) = choose(staged().ready, p2)
+    val done = choose(staged().ready, p2).answered
     assertEquals(NoteText.said(WhisperingLeaves, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${p2.value} placed 2 favor on it.",
         covers = false)))
 
   test("a player with 1 favor gives it"):
-    val (_, done) = choose(staged(favor = 1).ready, p2)
+    val done = choose(staged(favor = 1).ready, p2).answered
     assertEquals(Look(after(done)).favor(p2), 0)
     assertEquals(Look(after(done)).tokensOn(leaves), Tokens(1, 1))
     assertEquals(NoteText.said(WhisperingLeaves, done.events), Vector(
@@ -56,13 +62,13 @@ class WhisperingLeavesSuite extends munit.FunSuite:
         covers = false)))
 
   test("the player may choose themself"):
-    val (_, done) = choose(staged().favor(p1, 2).ready, p1)
+    val done = choose(staged().favor(p1, 2).ready, p1).answered
     assertEquals(Look(after(done)).favor(p1), 0)
     assertEquals(Look(after(done)).favor(p2), 3)
     assertEquals(Look(after(done)).tokensOn(leaves), Tokens(2, 1))
 
   test("a player with no favor gives nothing, and the line says so"):
-    val (_, done) = choose(staged(favor = 0).ready, p2)
+    val done = choose(staged(favor = 0).ready, p2).answered
     assertEquals(Look(after(done)).tokensOn(leaves), Tokens(0, 1))
     assertEquals(NoteText.said(WhisperingLeaves, done.events), Vector(
       NoteText.Said("used.empty", s"${p2.value} had no favor to place.",

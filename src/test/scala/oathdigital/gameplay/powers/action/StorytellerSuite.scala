@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class StorytellerSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -21,7 +22,7 @@ class StorytellerSuite extends munit.FunSuite:
   test("it places a favor, then a secret from the shared bank on a held " +
       "Darkest Secret"):
     val ready = staged().darkestSecret(Some(p2), 1).ready
-    val t = use(ready, Storyteller, source).toOption.get
+    val t = accepted(use(ready, Storyteller, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     val end = after(t)
     assertEquals(Look(end).tokensOn(teller), Tokens(1, 0))
@@ -34,8 +35,8 @@ class StorytellerSuite extends munit.FunSuite:
     assertWireRoundTrips(t.events)
 
   test("a Darkest Secret nobody holds takes the secret too"):
-    val t = use(staged().darkestSecret(None, 0).ready, Storyteller, source)
-      .toOption.get
+    val t = accepted(use(staged().darkestSecret(None, 0).ready, Storyteller,
+      source))
     assertEquals(onBanner(after(t)), 1)
 
   test("it is unusable without a favor"):
