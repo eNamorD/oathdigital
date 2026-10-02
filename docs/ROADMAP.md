@@ -32,7 +32,6 @@ From the playtest of 2026-10-01:
 - [ ] **Make secrets and defense dice look different.** They are too similar.
 - [ ] **Show the backs of all cards in a discard pile.**
 - [ ] **Show which warbands map to which Supply in the UI.**
-- [ ] **Allow typing a number** for decisions that ask for one.
 - [ ] **Review the action buttons.** They feel unresponsive, and some appear
   for things the player does not expect.
 
@@ -285,10 +284,6 @@ requested UI changes are in the
   [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
   leave it unresolved. A product-owner answer settles it; one bank would
   reuse Fabled Feast's question.
-- [ ] **a favor bank in a choose-many shows no suit symbol.**
-  `WalkerSelectionPanels` renders a choose-many option as a toggle with
-  its label only, while a choose-one bank option prints the suit symbol
-  (`SuitGlyphSuite`). Salad Days is the first choose-many of banks.
 - [ ] **walker-native card play through card slots.** Card play still
   runs through the legacy `CardPlay.legalChoices` and `plannedOperations` helpers
   rather than through Operations, so a power cannot change the placement

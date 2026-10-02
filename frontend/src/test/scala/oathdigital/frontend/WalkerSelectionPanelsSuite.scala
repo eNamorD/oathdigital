@@ -4,6 +4,7 @@ import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
 import ParkedDecision.Surface
 import org.scalajs.dom
+import scala.scalajs.js
 
 class WalkerSelectionPanelsSuite extends munit.FunSuite:
   private def site(id: String) = DecisionOptionState("site", id, s"Site $id")
@@ -73,29 +74,111 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(instruction(2, 2), "Choose 2.")
     assertEquals(instruction(1, 3), "Choose 1 to 3.")
 
-  test("choose-amount renders a dropdown over its range and submits the choice"):
-    val ui = new RecordingControls()
+  private def field(panel: dom.Element): dom.html.Input =
+    one(panel, "input.walker-amount").asInstanceOf[dom.html.Input]
+  private def confirmOf(panel: dom.Element): dom.html.Button =
+    one(panel, ".walker-amount-confirm").asInstanceOf[dom.html.Button]
+  private def listOf(panel: dom.Element): dom.Element =
+    one(panel, ".walker-amount-options")
+  private def type_(input: dom.html.Input, value: String): Unit =
+    input.value = value
+    input.dispatchEvent(new dom.Event("input"))
+  private def press(node: dom.Element, key: String): Unit =
+    node.dispatchEvent(new dom.KeyboardEvent("keydown",
+      js.Dynamic.literal(key = key, bubbles = true)
+        .asInstanceOf[dom.KeyboardEventInit]))
+  private def mouseDown(node: dom.Element): Unit =
+    node.dispatchEvent(new dom.MouseEvent("mousedown",
+      new dom.MouseEventInit { bubbles = true; cancelable = true }))
+  override def afterEach(context: AfterEach): Unit =
+    dom.document.body.innerHTML = ""
+
+  private def amountPanel(ui: RecordingControls,
+      canControl: Boolean = true): dom.Element =
     val panel = render(ui, opened("challenge.amount", amount),
-      "challenge.amount", amount)
-    val select = one(panel, "select.walker-amount").asInstanceOf[dom.html.Select]
-    assertEquals((0 until select.options.length).map(i =>
-      select.options(i).value), Vector("3", "4", "5"))
-    assertEquals(select.value, "3")
-    select.value = "5"
-    select.dispatchEvent(new dom.Event("change"))
+      "challenge.amount", amount, canControl)
+    // Focus and blur reach only a node in the document.
+    dom.document.body.appendChild(panel)
+    panel
+
+  test("choose-amount offers a typed field over its range and submits it"):
+    val ui = new RecordingControls()
+    val panel = amountPanel(ui)
+    val input = field(panel)
+    assertEquals(input.value, "3")
+    assertEquals(input.getAttribute("inputmode"), "numeric")
+    assertEquals(one(panel, ".walker-amount-instruction").textContent,
+      "Enter 3 to 5.")
+    assert(listOf(panel).hasAttribute("hidden"))
+    assertEquals(listOf(panel).querySelectorAll("[role=option]").toVector
+      .map(_.textContent), Vector("3", "4", "5"))
+    type_(input, "5")
     assertEquals(ui.staged, Vector.empty)
-    val confirm = one(panel, ".walker-amount-confirm").asInstanceOf[dom.html.Button]
-    assertEquals(confirm.textContent, "Take banner")
-    confirm.click()
+    assertEquals(confirmOf(panel).textContent, "Take banner")
+    confirmOf(panel).click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("challenge.amount",
       DecisionAnswerWire.ChooseAmountWire(5))))
 
+  test("choose-amount refuses a typed value outside its range"):
+    val ui = new RecordingControls()
+    val panel = amountPanel(ui)
+    val input = field(panel)
+    Vector("9", "2", "x", "", "4.5").foreach { value =>
+      type_(input, value)
+      assert(confirmOf(panel).disabled, s"confirm enabled for '$value'")
+      assertEquals(input.getAttribute("aria-invalid"), "true", value)
+    }
+    press(input, "Enter")
+    assertEquals(ui.submitted, Vector.empty)
+    type_(input, " 4 ")
+    assert(!confirmOf(panel).disabled)
+    assertEquals(input.getAttribute("aria-invalid"), "false")
+
+  test("choose-amount opens its list from the keyboard and picks from it"):
+    val ui = new RecordingControls()
+    val panel = amountPanel(ui)
+    val input = field(panel)
+    press(input, "ArrowDown")
+    assert(!listOf(panel).hasAttribute("hidden"))
+    assertEquals(input.getAttribute("aria-expanded"), "true")
+    press(input, "ArrowDown")
+    press(input, "ArrowDown")
+    press(input, "ArrowDown")
+    assertEquals(input.getAttribute("aria-activedescendant"),
+      one(panel, "[role=option][data-amount='5']").id)
+    press(input, "Enter")
+    assertEquals(input.value, "5")
+    assert(listOf(panel).hasAttribute("hidden"))
+    assertEquals(ui.submitted, Vector.empty)
+    press(input, "Enter")
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker("challenge.amount",
+      DecisionAnswerWire.ChooseAmountWire(5))))
+
+  test("choose-amount opens its list from the toggle and closes it on " +
+      "Escape or a pick"):
+    val ui = new RecordingControls()
+    val panel = amountPanel(ui)
+    val input = field(panel)
+    val toggle = one(panel, ".walker-amount-toggle")
+    mouseDown(toggle)
+    assert(!listOf(panel).hasAttribute("hidden"))
+    assertEquals(one(panel, "[aria-selected=true]").textContent, "3")
+    press(input, "Escape")
+    assert(listOf(panel).hasAttribute("hidden"))
+    mouseDown(toggle)
+    mouseDown(one(panel, "[role=option][data-amount='4']"))
+    assertEquals(input.value, "4")
+    assert(listOf(panel).hasAttribute("hidden"))
+    assert(!confirmOf(panel).disabled)
+
   test("a viewer who cannot control sees disabled controls"):
-    val panel = render(new RecordingControls(),
-      opened("challenge.amount", amount), "challenge.amount", amount,
-      canControl = false)
-    assert(one(panel, "select.walker-amount").asInstanceOf[dom.html.Select].disabled)
-    assert(one(panel, ".walker-amount-confirm").asInstanceOf[dom.html.Button].disabled)
+    val panel = amountPanel(new RecordingControls(), canControl = false)
+    assert(field(panel).disabled)
+    assert(one(panel, ".walker-amount-toggle").asInstanceOf[dom.html.Button]
+      .disabled)
+    assert(confirmOf(panel).disabled)
+    mouseDown(one(panel, ".walker-amount-toggle"))
+    assert(listOf(panel).hasAttribute("hidden"))
 
   test("the sacrifice panel draws dice, then totals, then the prompt"):
     val outcome = WalkerRollOutcomeState("campaign.attack",

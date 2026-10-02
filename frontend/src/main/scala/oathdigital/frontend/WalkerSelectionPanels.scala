@@ -39,6 +39,10 @@ private[frontend] object WalkerSelectionPanels:
     query.options.foreach { option =>
       val item = WalkerPartitionDraft.itemId(option)
       val toggle = button(option.label, "walker-many-option")
+      // A bank shows its suit symbol here too, as it does in a choose-one.
+      if option.kind == "favor-bank" then
+        toggle.insertBefore(RulesTextRenderer.glyph(s"suit-${option.id}"),
+          toggle.firstChild)
       toggle.setAttribute("data-option-id", item)
       toggle.setAttribute("aria-pressed", draft.selected.contains(item).toString)
       toggle.disabled = !canControl
@@ -53,9 +57,9 @@ private[frontend] object WalkerSelectionPanels:
     confirm.onclick = _ => draft.command.foreach(controls.submitCommand)
     panel.appendChild(confirm)
 
-  /** A dropdown over the range. Nothing is staged on change: the select
-    * itself holds the chosen amount, and `choose` clamps into the range the
-    * select was built from, so confirm reads the control and submits.
+  /** A field the player types the amount into, with a list of the range
+    * beside it (`AmountCombobox`). Nothing is staged on change: the field
+    * holds the amount, and Confirm reads it and submits.
     */
   private def renderAmount(decision: WalkerDecisionState,
       query: DecisionQueryState.ChooseAmount, draft: WalkerAmountDraft,
@@ -63,24 +67,21 @@ private[frontend] object WalkerSelectionPanels:
     // The roll first, then what it came to, then the question about it: the
     // sacrifice question is only answerable by reading the attack.
     WalkerPanelSupport.rollFeedback(decision, panel)
-    panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
-    val select = dom.document.createElement("select")
-      .asInstanceOf[dom.html.Select]
-    select.className = "walker-amount"
-    select.setAttribute("aria-label", WalkerPanelSupport.decisionHeading(query))
-    (query.minAmount to query.maxAmount).foreach { n =>
-      val choice = dom.document.createElement("option")
-        .asInstanceOf[dom.html.Option]
-      choice.value = n.toString
-      choice.textContent = n.toString
-      select.appendChild(choice)
-    }
-    select.value = draft.amount.toString
-    select.disabled = !canControl
-    panel.appendChild(select)
+    val heading = WalkerPanelSupport.decisionHeading(query)
+    panel.appendChild(text("h2", "", heading))
+    panel.appendChild(text("p", "walker-amount-instruction",
+      if query.minAmount == query.maxAmount then s"Enter ${query.minAmount}."
+      else s"Enter ${query.minAmount} to ${query.maxAmount}."))
     val confirm = button(query.confirmLabel, "walker-amount-confirm")
-    confirm.disabled = !canControl || !draft.canConfirm
-    confirm.onclick = _ => select.value.toIntOption
-      .flatMap(value => draft.choose(value).command)
+    val amount = AmountCombobox(
+      "walker-amount-" + decision.decisionId.replaceAll("[^A-Za-z0-9_-]", "-"),
+      heading, query.minAmount, query.maxAmount, draft.amount, canControl,
+      changed = value => confirm.disabled = !canControl || value.isEmpty,
+      submit = () => if !confirm.disabled then confirm.click())
+    confirm.disabled = !canControl || !draft.canConfirm || amount.value.isEmpty
+    confirm.onclick = _ => amount.value.flatMap(value => draft.choose(value).command)
       .foreach(controls.submitCommand)
-    panel.appendChild(confirm)
+    val row = element("div", "walker-amount-row")
+    row.appendChild(amount.root)
+    row.appendChild(confirm)
+    panel.appendChild(row)

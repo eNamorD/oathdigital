@@ -67,3 +67,23 @@ class SuitGlyphSuite extends munit.FunSuite:
     assertEquals(choices.map(_.textContent),
       Vector("Order", "Burn 1 favor from the People's Favor"))
     assertEquals(choices.map(glyphs(_).size), Vector(1, 0))
+
+  test("a bank offered among several carries its symbol too"):
+    val query = DecisionQueryState.ChooseMany(
+      Vector(DecisionOptionState("favor-bank", "discord", "Discord"),
+        DecisionOptionState("favor-bank", "beast", "Beast")),
+      minOptions = 2, maxOptions = 2,
+      heading = Some("Salad Days: choose banks to gain 1 favor from each"))
+    val parked = WalkerDecisionState("use-power", "cardplay.salad-days.banks",
+      "decide", query = Some(query))
+    val draft = WalkerSelectionDraft.reconcile(None,
+      BoardSelectionContext("game", "red", 9), Some(parked))
+    val panel = dom.document.createElement("div")
+    WalkerSelectionPanels.render(
+      ParkedDecision.Surface.Selection(parked, query), draft,
+      canControl = true, panel, new RecordingControls())
+    val toggles = panel.querySelectorAll(".walker-many-option").toVector
+      .map(_.asInstanceOf[dom.Element])
+    assertEquals(toggles.map(_.textContent), Vector("Discord", "Beast"))
+    assertEquals(toggles.flatMap(glyphs),
+      Vector("token-glyph token-suit-discord", "token-glyph token-suit-beast"))
