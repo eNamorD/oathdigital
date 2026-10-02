@@ -124,7 +124,7 @@ class LeagueTreatySuite extends munit.FunSuite:
       val ready = leagueTreatyAct(Some(owner), ("Disciples", "Ancient City", 1))
         .edifice(edifice, side, at = treatySite).tokens(edifice, favor = 2)
         .ready
-      // The first suit neither the Arcane card's nor the edifice's.
+      // A suit that is neither Arcane nor Discord.
       val destinationBank = Suit.Order
       val destination = LeagueTreatyContribution.destinationDecisionId(ready,
         p1, treatySite, treatyCard)
