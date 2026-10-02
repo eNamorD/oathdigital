@@ -61,7 +61,7 @@ final case class ExecutableCatalog(
   private lazy val edificeByPower = firstBy(edifices.flatMap(e =>
     (e.intact.powers ++ e.ruined.powers).map(_.id -> e)))
   private lazy val siteByHandler =
-    firstBy(sites.flatMap(s => s.handlers.map(PowerId(_) -> s)))
+    firstBy(sites.flatMap(s => s.handlers.map(_ -> s)))
   private lazy val powerById = firstBy(
     (denizens.flatMap(_.powers) ++ relics.flatMap(_.powers) ++
       edifices.flatMap(e => e.intact.powers ++ e.ruined.powers) ++

@@ -17,14 +17,14 @@ class TravelSitePowersSuite extends munit.FunSuite:
   private val powers = TravelSitePowers.forCatalog(catalog)
 
   private def site(suffix: String): SiteId = catalog.sites.find(
-    _.handlers.exists(_.endsWith(suffix))).fold(fail(s"missing $suffix"))(_.id)
+    _.handlers.exists(_.value.endsWith(suffix))).fold(fail(s"missing $suffix"))(_.id)
   private def powerId(siteId: SiteId, suffix: String): PowerId =
-    PowerId(catalog.sites.find(_.id == siteId).fold(
-      fail(s"missing $siteId"))(_.handlers.find(_.endsWith(suffix)).get))
+    catalog.sites.find(_.id == siteId).fold(
+      fail(s"missing $siteId"))(_.handlers.find(_.value.endsWith(suffix)).get)
 
   private val plain = site(".plains")
   private val otherPlain = catalog.sites.filter(
-    _.handlers.exists(_.endsWith(".plains"))).map(_.id).find(_ != plain)
+    _.handlers.exists(_.value.endsWith(".plains"))).map(_.id).find(_ != plain)
     .getOrElse(fail("missing a second plains site"))
   private val mountain = site(".mountain")
   private val coast = site(".coast")
@@ -162,7 +162,7 @@ class TravelSitePowersSuite extends munit.FunSuite:
   test("unknown terrain-suffixed handlers never fabricate Travel powers"):
     val fixturePower = PowerId("site.fixture-site.coast")
     val fixtureSite = TestCards.siteLike(catalog.sites.find(_.id == plain).get)(
-      id = SiteId("site:fixture-site"), handlers = Vector(fixturePower.value))
+      id = SiteId("site:fixture-site"), handlers = Vector(fixturePower))
     val augmented = catalog.copy(sites = catalog.sites :+ fixtureSite)
 
     assert(!TravelSitePowers.forCatalog(augmented).map(_.id).contains(fixturePower))

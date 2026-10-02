@@ -45,7 +45,8 @@ class CardCatalogSuite extends munit.FunSuite:
     assertEquals(ids.diff(ids.distinct), Vector.empty)
 
   test("power ids and site handlers are unique"):
-    val ids = powers.map(_.id.value) ++ catalog.sites.flatMap(_.handlers)
+    val ids = powers.map(_.id.value) ++
+      catalog.sites.flatMap(_.handlers).map(_.value)
     assertEquals(ids.diff(ids.distinct), Vector.empty)
 
   test("printed text is non-blank and uses only the symbol vocabulary"):
@@ -78,6 +79,15 @@ class CardCatalogSuite extends munit.FunSuite:
     catalog.sites.foreach(s =>
       assertEquals(s.forgeRequirements.nonEmpty, s.capacity == 3, s.id))
 
+  test("a site prints a Homeland suit exactly when a handler names it"):
+    catalog.sites.foreach { site =>
+      val named = site.handlers.map(_.value).collect {
+        case id if id.contains(".homeland-") =>
+          id.substring(id.indexOf(".homeland-") + ".homeland-".length)
+      }
+      assertEquals(named, site.homeland.toVector.map(_.key), site.id)
+    }
+
   test("printed numbers are non-negative"):
     assert(catalog.relics.forall(r => r.value >= 0 && r.defense >= 0))
     assert(catalog.sites.forall(s => s.defense >= 0 && s.capacity >= 0 &&
@@ -85,7 +95,7 @@ class CardCatalogSuite extends munit.FunSuite:
 
   test("every registered card power is printed in the catalog"):
     val printed = (powers.map(_.id) ++
-      catalog.sites.flatMap(_.handlers).map(PowerId(_))).toSet
+      catalog.sites.flatMap(_.handlers)).toSet
     val cardPrefixes = Vector("denizen.", "relic.", "edifice.", "legacy.", "site.")
     // Take Wealth is a standing Wake rule of the game, not a printed power.
     val gameRules = Set(PowerId("site.take-wealth"))

@@ -25,9 +25,9 @@ object TravelFixture:
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
 
   private def site(power: String): SiteId = catalog.sites.find(
-    _.handlers.exists(_.endsWith(s".$power"))).get.id
+    _.handlers.exists(_.value.endsWith(s".$power"))).get.id
   val plains: Vector[SiteId] = catalog.sites.filter(
-    _.handlers.exists(_.endsWith(".plains"))).map(_.id)
+    _.handlers.exists(_.value.endsWith(".plains"))).map(_.id)
   val coast: SiteId = site("coast")
   val island: SiteId = site("island")
   val mountain: SiteId = site("mountain")

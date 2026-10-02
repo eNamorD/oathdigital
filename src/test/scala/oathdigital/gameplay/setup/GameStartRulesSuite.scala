@@ -21,10 +21,8 @@ class GameStartRulesSuite extends munit.FunSuite:
     val homelandsInPlay = chronicle.atlasBox.flatMap(_.items).toSet
     val offMapHomeland = catalog.sites.map(_.id)
       .filterNot(chronicle.atlasBox.map(_.site).contains)
-      .flatMap(site => catalog.sites.find(_.id == site).get.handlers.collectFirst {
-        case handler if handler.contains(".homeland-") =>
-          val suit = Suit.fromKey(
-            handler.substring(handler.indexOf(".homeland-") + 10)).get
+      .flatMap(site => catalog.sites.find(_.id == site).get.homeland.map {
+        suit =>
           site -> catalog.edifices.map(e => EdificeId(e.id.value))
             .find(id => catalog.edifices.find(_.id.value == id.value).get.suit == suit &&
               !homelandsInPlay.contains(id)).get

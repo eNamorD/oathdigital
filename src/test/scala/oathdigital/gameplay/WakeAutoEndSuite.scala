@@ -19,7 +19,7 @@ class WakeAutoEndSuite extends munit.FunSuite:
     val initial = Table.start.ready
     val current = initial.game.current
     val plain = current.map.inPlay.filter(site => !catalog.sites
-      .find(_.id.value == site.value).exists(_.handlers.exists(_.contains("river"))))
+      .find(_.id.value == site.value).exists(_.handlers.exists(_.value.contains("river"))))
     assert(plain.size >= current.players.size, plain.toString)
     initial.updateCurrent(_.copy(
       map = current.map.copy(sites = current.map.sites.view

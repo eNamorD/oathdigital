@@ -73,13 +73,9 @@ object CardPlay:
         replacements, replacementOptional = optional && replacements.nonEmpty))
     }
 
-  /** The suit whose Homeland `site` is, from its `site.<id>.homeland-<suit>`
-    * handler (CR p. 31). */
+  /** The suit whose Homeland `site` is, as the site prints it (CR p. 31). */
   def homelandSuit(catalog: ExecutableCatalog, site: SiteId): Option[Suit] =
-    catalog.site(site).toVector.flatMap(_.handlers).flatMap(handler =>
-      handler.split('.').lastOption.filter(_.startsWith("homeland-"))
-        .flatMap(kind => Suit.fromKey(kind.stripPrefix("homeland-"))))
-      .headOption
+    catalog.site(site).flatMap(_.homeland)
 
   /** A play of a `suit` card to `site` may discard a card there first: under
     * a power's permission, or at the Homeland of `suit`. */

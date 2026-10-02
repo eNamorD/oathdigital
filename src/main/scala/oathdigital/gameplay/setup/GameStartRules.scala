@@ -139,7 +139,7 @@ object GameStartRules:
     inPlay.foldLeft[Either[OathViolation, Vector[(SiteId, EdificeId)]]](
         Right(Vector.empty)) { (acc, stored) =>
       acc.flatMap { built =>
-        homelandSuit(catalog.site(stored.site).get.handlers) match
+        catalog.site(stored.site).get.homeland match
           case None => Right(built)
           case Some(suit) =>
             stored.items.collectFirst { case id: EdificeId => id } match
@@ -152,12 +152,6 @@ object GameStartRules:
                 s"Homeland ${stored.site.value} has no stored edifice"))
       }
     }
-
-  private def homelandSuit(handlers: Vector[String]): Option[Suit] =
-    handlers.collectFirst {
-      case handler if handler.contains(".homeland-") =>
-        handler.substring(handler.indexOf(".homeland-") + 10)
-    }.flatMap(Suit.fromKey)
 
   private def relicSlots(catalog: ExecutableCatalog, site: SiteId): Int =
     catalog.site(site).get.relicSlots

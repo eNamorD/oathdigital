@@ -45,7 +45,7 @@ class CampaignPowersSuite extends munit.FunSuite:
 
   // ---- Narrow Pass -------------------------------------------------------
   private val pass = catalog.sites.find(_.handlers.contains(
-    "site.narrow-pass.pass")).get.id
+    PowerId("site.narrow-pass.pass"))).get.id
   private val others = catalog.sites.map(_.id).filterNot(_ == pass)
   /** Cradle: o0, o1. Provinces: the Pass, o2, o3. Hinterland: o4, o5, o6. */
   private val ordered = Vector(others.head, others(1), pass, others(2),

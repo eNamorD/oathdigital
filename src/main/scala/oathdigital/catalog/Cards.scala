@@ -47,7 +47,8 @@ abstract class Edifice(val id: EdificeId, val suit: Suit):
 
 abstract class Legacy(val id: LegacyId, val name: String) extends PrintsPowers
 
-/** A site. It prints no rules text; `handlers` are its power ids. */
+/** A site. It prints no rules text. A site object names each of its
+  * power ids as a member and lists them in `handlers`. */
 abstract class Site(
     val id: SiteId,
     val name: String,
@@ -57,6 +58,6 @@ abstract class Site(
     val recoverDifficulty: Option[Int],
     val startingResources: Tokens,
     val forgeRequirements: Option[Tokens],
-    val homeland: Option[Suit],
-    val handlers: Vector[String]
-)
+    val homeland: Option[Suit]
+):
+  def handlers: Vector[PowerId]

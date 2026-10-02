@@ -21,7 +21,7 @@ object ForgeWalkerFixture:
     * three. */
   lazy val forgeSite: SiteId =
     catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
-      !site.handlers.exists(_.contains(".homeland-"))).get.id
+      site.homeland.isEmpty).get.id
 
   /** p1 stands at the Forge site and rules it with one warband (the other
     * two stay on the board). The site holds three faceup denizens with no

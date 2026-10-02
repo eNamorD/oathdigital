@@ -49,12 +49,9 @@ object FirstGameSetupFixture:
     .filter(_.id != TheGrandScepterCard.id)
     .map(r => RelicId(r.id.value))
   val homelandEdifices: Vector[(SiteId, EdificeId)] = sites.flatMap { siteId =>
-    catalog.sites.find(_.id == siteId).get.handlers.collectFirst:
-      case handler if handler.contains(".homeland-") =>
-        val suit = Suit.fromKey(
-          handler.substring(handler.indexOf(".homeland-") + 10)).get
-        val edifice = catalog.edifices.find(_.suit == suit).get
-        siteId -> EdificeId(edifice.id.value)
+    catalog.sites.find(_.id == siteId).get.homeland.map: suit =>
+      val edifice = catalog.edifices.find(_.suit == suit).get
+      siteId -> EdificeId(edifice.id.value)
   }
   private val edificesBySite = homelandEdifices.toMap
 

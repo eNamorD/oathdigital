@@ -68,7 +68,7 @@ object RuleSourceIndex:
     val current = ready.game.current
     val sites = current.map.inPlay.flatMap { siteId =>
       val printed = catalog.site(siteId).toVector.map(definition =>
-        IndexedRuleSource(RuleSourceRef.Site(siteId), rawIds(definition.handlers),
+        IndexedRuleSource(RuleSourceRef.Site(siteId), definition.handlers,
           RuleSourceFace.Printed))
       val cards = current.map.sites(siteId).denizens.flatMap:
         case denizen: DenizenState =>

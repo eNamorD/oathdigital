@@ -22,9 +22,9 @@ class TravelProcedureSuite extends munit.FunSuite:
     WalkerPowerCatalog.default(catalog), Vector.empty)
 
   private def site(power: String): SiteId = catalog.sites.find(
-    _.handlers.exists(_.endsWith(s".$power"))).get.id
+    _.handlers.exists(_.value.endsWith(s".$power"))).get.id
   private val plains = catalog.sites.filter(
-    _.handlers.exists(_.endsWith(".plains"))).map(_.id)
+    _.handlers.exists(_.value.endsWith(".plains"))).map(_.id)
   private val coast = site("coast")
   private val island = site("island")
   private val mountain = site("mountain")

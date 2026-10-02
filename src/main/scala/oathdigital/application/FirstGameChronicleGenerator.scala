@@ -53,7 +53,7 @@ object FirstGameChronicleGenerator:
     val sites = catalog.sites.map(_.id)
     if sites.size != 24 then Left(WrongSiteCount(sites.size))
     else Right(random.shuffle(sites).map { siteId =>
-      homelandSuit(catalog, siteId) match {
+      catalog.site(siteId).get.homeland match {
         case None => StoredSite(siteId)
         case Some(suit) =>
           StoredSite(siteId, Vector(edificeForHomeland(catalog, implemented, suit)))
@@ -95,12 +95,6 @@ object FirstGameChronicleGenerator:
             dispossessedPool ++
               shuffledUnimpl.slice(filler, filler + DispossessedPerSuit)))
       }
-
-  private def homelandSuit(catalog: ExecutableCatalog, siteId: SiteId): Option[Suit] =
-    catalog.site(siteId).get.handlers.collectFirst {
-      case handler if handler.contains(".homeland-") =>
-        handler.substring(handler.indexOf(".homeland-") + 10)
-    }.flatMap(Suit.fromKey)
 
   private def validate(catalog: ExecutableCatalog, chronicle: Chronicle)
       : Either[ChronicleGeneratorFailure, Unit] =

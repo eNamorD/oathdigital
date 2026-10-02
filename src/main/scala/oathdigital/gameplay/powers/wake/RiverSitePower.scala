@@ -50,7 +50,7 @@ object RiverSitePower:
     "site.tidal-marshes.river").map(PowerId(_))
 
   def isRiver(catalog: ExecutableCatalog, site: SiteId): Boolean =
-    catalog.site(site).exists(_.handlers.exists(_.endsWith(".river")))
+    catalog.site(site).exists(_.handlers.exists(_.value.endsWith(".river")))
 
   /** A River power for each reviewed handler `catalog` has. */
   def forCatalog(catalog: ExecutableCatalog): Vector[RiverSitePower] =

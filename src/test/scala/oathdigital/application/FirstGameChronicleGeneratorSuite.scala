@@ -20,10 +20,7 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
     assertEquals(chronicle.atlasBox.map(_.site).distinct.size, 24)
     catalog.sites.foreach { site =>
       val stored = chronicle.atlasBox.find(_.site == site.id).get
-      val handlerSuit = site.handlers.collectFirst:
-        case handler if handler.contains(".homeland-") =>
-          Suit.fromKey(handler.substring(handler.indexOf(".homeland-") + 10)).get
-      handlerSuit match
+      site.homeland match
         case Some(suit) =>
           assertEquals(stored.items.size, 1)
           val edificeId = stored.items.head.asInstanceOf[oathdigital.model.EdificeId]

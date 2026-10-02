@@ -60,10 +60,12 @@ object TestCards:
     edifice(base.id, base.suit, base.intact.name, intact, base.ruined.name,
       ruined)
 
-  /** `base` with another id, printed Forge cost or handlers. */
+  /** `base` with another id, printed Forge cost, Homeland or handlers. */
   def siteLike(base: Site)(id: SiteId = base.id,
       forgeRequirements: Option[Tokens] = base.forgeRequirements,
-      handlers: Vector[String] = base.handlers): Site =
+      homeland: Option[Suit] = base.homeland,
+      handlers: Vector[PowerId] = base.handlers): Site =
+    val printed = handlers
     new Site(id, base.name, base.defense, base.capacity, base.relicSlots,
       base.recoverDifficulty, base.startingResources, forgeRequirements,
-      base.homeland, handlers) {}
+      homeland) { val handlers: Vector[PowerId] = printed }

@@ -3,12 +3,12 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, Table, TestCards}
 import oathdigital.testkit.Table.p1
 
 /** The Homeland site power (CR p. 31): "When playing a card of its Homeland
   * suit to this site, you may discard a card from the site first (even one of
-  * matching suit)." The site's handler names the suit, and the discard is
+  * matching suit)." The site prints its Homeland suit, and the discard is
   * offered whether or not the site is full.
   */
 class HomelandRuleSuite extends munit.FunSuite:
@@ -32,10 +32,17 @@ class HomelandRuleSuite extends munit.FunSuite:
       .hand(p1, card))((table, held) => table.denizen(held, at = deepWoods))
       .ready
 
-  test("the Homeland suit is read from the site's handler"):
+  test("the Homeland suit is the one the site prints"):
     assertEquals(CardPlay.homelandSuit(catalog, SiteId("site:deep-woods")),
       Some(Suit.Beast))
     assertEquals(CardPlay.homelandSuit(catalog, SiteId("site:ancient-city")), None)
+    // A variant Ancient City printing an Order Homeland keeps its handlers.
+    val city = catalog.site(SiteId("site:ancient-city")).get
+    val variant = catalog.copy(sites = catalog.sites.map(site =>
+      if site.id == city.id then
+        TestCards.siteLike(city)(homeland = Some(Suit.Order))
+      else site))
+    assertEquals(CardPlay.homelandSuit(variant, city.id), Some(Suit.Order))
 
   test("a matching Homeland with room offers an optional discard"):
     val choice = siteChoice(atDeepWoods(errandBoy, rainBoots), errandBoy).get

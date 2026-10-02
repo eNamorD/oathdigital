@@ -377,8 +377,8 @@ private[application] final class GamePresentationProjector(
   private def worldCardLabel(id: WorldCardId): String = id match
     case value: DenizenId => denizenLabel(value)
     case value: VisionId => safeLabel(value.value)
-  private def sitePower(handler: String): SitePowerProjection =
-    val kind = SitePowerText.kindOf(handler)
+  private def sitePower(handler: PowerId): SitePowerProjection =
+    val kind = SitePowerText.kindOf(handler.value)
     SitePowerText.of(kind).fold(SitePowerProjection(kind, safeLabel(kind), None))(
       printed => SitePowerProjection(kind, printed.label, Some(printed.text)))
 

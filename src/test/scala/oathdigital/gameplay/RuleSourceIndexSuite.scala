@@ -21,7 +21,7 @@ class RuleSourceIndexSuite extends munit.FunSuite:
       case value @ IndexedRuleSource(RuleSourceRef.Site(id), _, _, _)
           if id == ready.game.current.map.inPlay.head => value
     }.get
-    assertEquals(printed.handlerIds,
+    assertEquals(printed.powerIds,
       catalog.sites.find(_.id == ready.game.current.map.inPlay.head).get.handlers)
     assert(facts.exists(_.face == RuleSourceFace.FaceDown))
     assert(facts.exists(_.source.isInstanceOf[RuleSourceRef.Edifice]))
