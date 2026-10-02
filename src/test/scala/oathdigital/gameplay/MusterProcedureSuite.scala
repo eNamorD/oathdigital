@@ -18,7 +18,7 @@ class MusterProcedureSuite extends munit.FunSuite:
   /** p1 stands at Ancient City, which holds the token-free Alchemist
     * (Arcane) and nothing else; p1 has 4 favor. */
   private def atAlchemist: Table = Table.start
-    .denizen(alchemist, at = Table.homeOf(p1))
+    .denizen(alchemist, at = Table.quietPawnSite(p1))
     .favor(p1, 4)
 
   private def parked(ready: ReadyGame): (Operation, PendingTree) =
@@ -53,21 +53,21 @@ class MusterProcedureSuite extends munit.FunSuite:
     val after = Look(muster(ready, DecisionOptionRef.Denizen(alchemist)))
     assertEquals(after.favor(p1), 3)
     assertEquals(after.supply(p1), 6)
-    assertEquals(after.warbands(p1), 5)                  // 3 + 1 matching + 1
+    assertEquals(after.boardWarbands(p1), 5)                  // 3 + 1 matching + 1
     assertEquals(after.tokensOn(alchemist), Tokens(1, 0))
 
   test("the gain shrinks to the warbands the supply still holds"):
     // An Exile lineage has 14 warbands; all of them are on p1's board.
-    val after = Look(muster(atAlchemist.warbands(p1, 14).ready,
+    val after = Look(muster(atAlchemist.boardWarbands(p1, 14).ready,
       DecisionOptionRef.Denizen(alchemist)))
-    assertEquals(after.warbands(p1), 14)
+    assertEquals(after.boardWarbands(p1), 14)
     assertEquals(after.supply(p1), 6)
     assertEquals(after.favor(p1), 3)
 
   test("an edifice of either side is a legal source and takes the favor"):
     Vector(EdificeSide.Ruined, EdificeSide.Intact).foreach { side =>
       val ready = Table.start.favor(p1, 4)
-        .edifice(hallowedSpring, side, at = Table.homeOf(p1)).ready
+        .edifice(hallowedSpring, side, at = Table.quietPawnSite(p1)).ready
       val options = MusterProcedure.startOptions(catalog, ready, p1,
         WalkerPowers.empty).map(_.option.ref)
       assertEquals(options, Vector(DecisionOptionRef.Edifice(hallowedSpring)),
@@ -109,7 +109,7 @@ class MusterProcedureSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(alchemist)), Left(EconomyCardNotEmpty(alchemist)))
     assertEquals(MusterSource.resolve(catalog, atAlchemist.ready, p1,
       DecisionOptionRef.Denizen(magiciansCode)),
-      Left(EconomyCardUnavailable(Table.homeOf(p1), magiciansCode)))
+      Left(EconomyCardUnavailable(Table.quietPawnSite(p1), magiciansCode)))
     assert(MusterSource.resolve(catalog, atAlchemist.ready, p1,
       DecisionOptionRef.Button("site")).isLeft)
 

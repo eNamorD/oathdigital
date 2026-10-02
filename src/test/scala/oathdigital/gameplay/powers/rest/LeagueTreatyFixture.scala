@@ -13,7 +13,7 @@ object LeagueTreatyFixture:
   /** p1's Act. Broken Peaks holds two secrets, so p2, waking after p1's
     * Rest, has wealth to take and the Wake waits. */
   def act: ReadyGame = Table.start
-    .siteTokens(Table.homeOf(Table.p2), secrets = 2)
+    .siteTokens(Table.quietPawnSite(Table.p2), secrets = 2)
     .ready
 
   def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get

@@ -25,8 +25,8 @@ class BirdsongSuite extends munit.FunSuite:
   private def at(source: DenizenId, facedown: Boolean = false): ReadyGame =
     Table.start
       .adviser(p1, birdsong, facedown = facedown)
-      .denizen("Alchemist", at = Table.homeOf(p1))
-      .denizen(source, at = Table.homeOf(p1))
+      .denizen("Alchemist", at = Table.quietPawnSite(p1))
+      .denizen(source, at = Table.quietPawnSite(p1))
       .favor(p1, 4).secrets(p1, faceUp = 2)
       .ready
 

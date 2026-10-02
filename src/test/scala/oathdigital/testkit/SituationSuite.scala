@@ -71,7 +71,7 @@ class SituationSuite extends munit.FunSuite:
       Step.Arrange(Vector(SetOathkeeper(Some(other)))),
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
-    val byRules = Situation.wake(Situation.serviceRules(catalog, blankDice))
+    val byRules = Situation.wake(Situation.productionRules(catalog, blankDice))
       .after(steps*)
     val byJournal = Situation.wake(driver).after(steps*)
     assertEquals(byJournal.state, byRules.state)
@@ -86,7 +86,7 @@ class SituationSuite extends munit.FunSuite:
     val steps = Vector[GameCommand | Step](GameCommand.StartWalker(
       ActionRef.Search, StartPayload(p1, Vector.empty,
         Vector(DecisionOptionRef.Button("search:world")))))
-    val byRules = table.situation(Situation.serviceRules(catalog, blankDice))
+    val byRules = table.situation(Situation.productionRules(catalog, blankDice))
       .after(steps*)
     val byJournal = table.situation(Situation.journaled(service, catalog,
       repository, "table")).after(steps*)
@@ -156,7 +156,7 @@ class SituationSuite extends munit.FunSuite:
     // ParkedServiceFixture.recoverChoicePark's table, under the rules the
     // service builds and dice that fail every Recover roll.
     val parked = ParkedServiceFixture.recoverTable
-      .situation(Situation.serviceRules(catalog, blankDice))
+      .situation(Situation.productionRules(catalog, blankDice))
       .parkedAfter(GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
     new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog),
       PhasePowerCatalog.default(catalog)).assertParked(parked.state,

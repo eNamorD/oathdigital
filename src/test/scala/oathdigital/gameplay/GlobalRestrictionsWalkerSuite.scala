@@ -27,7 +27,7 @@ class GlobalRestrictionsWalkerSuite extends munit.FunSuite:
 
   test("a relic discard at a Hall-protected site is skipped, as Broken " +
       "Forge's is"):
-    val home = Table.homeOf(p1)
+    val home = Table.quietPawnSite(p1)
     val ready = Table.start.edifice(hall, EdificeSide.Intact, at = home)
       .warbandsAt(home, p1, 1).relicAt(drum, at = home).ready
     unchanged(ready, Sequence(Vector(BuildOps((_, _) => Right(Vector(

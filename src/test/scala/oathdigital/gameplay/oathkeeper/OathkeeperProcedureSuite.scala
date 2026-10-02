@@ -20,7 +20,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     */
   private def travel(ready: ReadyGame) =
     rules.startWalker(Ready(ready), ActionRef.Travel, p1, Vector.empty,
-      Vector(DecisionOptionRef.Site(Table.homeOf(p2))))
+      Vector(DecisionOptionRef.Site(Table.quietPawnSite(p2))))
 
   private def replays(start: ReadyGame, events: Vector[OathEvent],
       expected: OathState): Unit =
@@ -108,7 +108,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     val (active, holder, leaders) = (p1, p2, Vector(p1, p3))
     // p1 wakes at Ancient City, which holds a favor and a secret to take.
     val ready = tied.turn(p1, Phase.Wake)
-      .siteTokens(Table.homeOf(p1), favor = 1, secrets = 1).ready
+      .siteTokens(Table.quietPawnSite(p1), favor = 1, secrets = 1).ready
     val parked = TakeWealthFixture.take(rules, ready).toOption.get
     walkerParked.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
       OathkeeperProcedure.recipientDecisionId, holder)
@@ -132,4 +132,4 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
       Left(OathViolation.InvalidEventOrder("no Oathkeeper change to perform")))
     assert(OathkeeperProcedure.build(catalog,
       Table.start.warbandsAt("Dunes", p3, 1).ready, p1,
-      Vector(DecisionOptionRef.Site(Table.homeOf(p1)))).isLeft)
+      Vector(DecisionOptionRef.Site(Table.quietPawnSite(p1)))).isLeft)

@@ -23,7 +23,7 @@ class EconomyProjectionSuite extends munit.FunSuite:
     * (Arcane) and nothing else. p1 has 4 favor and 2 faceup secrets, and
     * the Arcane bank holds 5. */
   private def atAlchemist: Table = Table.start
-    .denizen(alchemist, at = Table.homeOf(p1))
+    .denizen(alchemist, at = Table.quietPawnSite(p1))
     .favor(p1, 4).secrets(p1, faceUp = 2)
     .bankFavor(Suit.Arcane, 5)
 
@@ -76,7 +76,7 @@ class EconomyProjectionSuite extends munit.FunSuite:
 
   test("a gain that shrinks to nothing shows no gain line"):
     // All 14 of p1's warbands are on the board, so Muster can gain none.
-    assertEquals(parkedOptions(atAlchemist.warbands(p1, 14).ready, ActionRef.Muster,
+    assertEquals(parkedOptions(atAlchemist.boardWarbands(p1, 14).ready, ActionRef.Muster,
       Vector.empty).map(_.details), Vector(Vector("1 Supply")))
 
   test("an option the preview drops is not shown"):

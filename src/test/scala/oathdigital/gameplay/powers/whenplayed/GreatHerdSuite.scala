@@ -45,8 +45,8 @@ class GreatHerdSuite extends munit.FunSuite:
     val done = finished(resume(ready, power, played, first.tree,
       GreatHerd.decisionId, pick(DecisionOptionRef.Denizen(nomad(0)))))
     val after = Look(done.treeless)
-    assertEquals(after.denizens(homeSite), Vector[CardId](nomad(0)))
-    assertEquals(after.denizens(nearSite), Vector[CardId](herd))
+    assertEquals(after.cardsAt(homeSite), Vector[CardId](nomad(0)))
+    assertEquals(after.cardsAt(nearSite), Vector[CardId](herd))
     assertEquals(after.tokensOn(nomad(0)), Tokens(1, 2))
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
     assertEquals(said(done.events), Vector(NoteText.Said("swapped",
@@ -61,9 +61,9 @@ class GreatHerdSuite extends munit.FunSuite:
       Vector(DecisionOptionRef.Edifice(ruined), GreatHerd.keep))
     val done = finished(resume(ready, power, played, first.tree,
       GreatHerd.decisionId, pick(DecisionOptionRef.Edifice(ruined))))
-    assertEquals(Look(done.treeless).denizens(homeSite),
+    assertEquals(Look(done.treeless).cardsAt(homeSite),
       Vector[CardId](ruined))
-    assertEquals(Look(done.treeless).denizens(awaySite), Vector[CardId](herd))
+    assertEquals(Look(done.treeless).cardsAt(awaySite), Vector[CardId](herd))
 
   test("keeping Great Herd changes nothing and writes nothing"):
     val ready = start.denizen(nomad(0), at = nearSite).ready

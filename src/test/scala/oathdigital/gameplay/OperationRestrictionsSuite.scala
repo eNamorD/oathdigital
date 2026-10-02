@@ -82,7 +82,7 @@ class OperationRestrictionsSuite extends munit.FunSuite:
 
   /** The Hall on `side` at p1's site, which p1 rules. */
   private def edificeAt(side: EdificeSide): (ReadyGame, SiteId) =
-    val home = Table.homeOf(p1)
+    val home = Table.quietPawnSite(p1)
     (Table.start.edifice(hall, side, at = home).warbandsAt(home, p1, 1).ready,
       home)
 
@@ -117,7 +117,7 @@ class OperationRestrictionsSuite extends munit.FunSuite:
 
   test("the Hall of Ministers refuses an enemy's discard at its ruler's sites, " +
       "relics included, and names the discard's own acting player"):
-    val home = Table.homeOf(p1)
+    val home = Table.quietPawnSite(p1)
     val ready = Table.start.edifice(hall, EdificeSide.Intact, at = home)
       .warbandsAt(home, p1, 1).denizen(plainCard, at = home)
       .relicAt(drum, at = home).ready

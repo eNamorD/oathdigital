@@ -22,8 +22,8 @@ class PlagueEnginesSuite extends munit.FunSuite:
   test("each player puts 1 favor per site they rule into the Arcane bank, " +
       "the user first"):
     val ready = staged.favor(p1, 5).favor(p2, 3)
-      .warbandsAt(Table.homeOf(p1), p1, 1).warbandsAt(Table.homeOf(p3), p1, 1)
-      .warbandsAt(Table.homeOf(p2), p2, 1).ready
+      .warbandsAt(Table.quietPawnSite(p1), p1, 1).warbandsAt(Table.quietPawnSite(p3), p1, 1)
+      .warbandsAt(Table.quietPawnSite(p2), p2, 1).ready
     val t = use(ready, PlagueEngines, source).toOption.get
     parked.assertResumed(t.state, Phase.Act, p1)
     val end = after(t)
@@ -40,7 +40,7 @@ class PlagueEnginesSuite extends munit.FunSuite:
 
   test("a player short of favor gives all they have"):
     val ready = staged.favor(p2, 1)
-      .warbandsAt(Table.homeOf(p2), p2, 1).warbandsAt(Table.homeOf(p3), p2, 1)
+      .warbandsAt(Table.quietPawnSite(p2), p2, 1).warbandsAt(Table.quietPawnSite(p3), p2, 1)
       .ready
     val t = use(ready, PlagueEngines, source).toOption.get
     assertEquals((Look(after(t)).favor(p2), arcane(after(t))), (0, 1))

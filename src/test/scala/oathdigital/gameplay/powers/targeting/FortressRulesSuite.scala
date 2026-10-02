@@ -136,7 +136,7 @@ class FortressRulesSuite extends munit.FunSuite:
   private def challengeBanners(side: EdificeSide, ruled: Boolean)
       : Vector[DecisionOptionRef] =
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
-    val site = Table.homeOf(p1)
+    val site = Table.quietPawnSite(p1)
     val held = Table.start
       .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
       .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = site)
@@ -191,9 +191,9 @@ class FortressRulesSuite extends munit.FunSuite:
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
     val held = Table.start
       .favor(p1, 6).secrets(p1, faceUp = 6, faceDown = 4)
-      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.homeOf(p1))
+      .peoplesFavor(Some(p2), favor = 2).pawn(p2, at = Table.quietPawnSite(p1))
       .ready
-    val staged = fortressAt(held, EdificeSide.Ruined, Table.homeOf(p1))
+    val staged = fortressAt(held, EdificeSide.Ruined, Table.quietPawnSite(p1))
     assertEquals(hidden(rotting, start(staged, ActionRef.Challenge, p1)
       .toOption.get), Vector(shielded(p2)))
 

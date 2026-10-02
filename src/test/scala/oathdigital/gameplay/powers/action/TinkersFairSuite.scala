@@ -16,7 +16,7 @@ class TinkersFairSuite extends munit.FunSuite:
     * the relic deck. Tinker's Fair is site-only; it stands at p1's pawn
     * site. */
   private def staged(favor: Int = 3): ReadyGame =
-    Table.start.turn(p1, Phase.Act).denizen(fair, at = Table.homeOf(p1))
+    Table.start.turn(p1, Phase.Act).denizen(fair, at = Table.quietPawnSite(p1))
       .favor(p1, favor).relicDeckTop(top).ready
 
   /** `ready` with the relic deck moved to the reliquary. */

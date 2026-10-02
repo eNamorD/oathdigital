@@ -10,7 +10,7 @@ class BanditPaymasterSuite extends munit.FunSuite:
 
   private val paymaster = CatalogNames.denizen("Bandit Paymaster")
   private val source = DecisionOptionRef.Denizen(paymaster)
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
 
   /** p1's Act holding Bandit Paymaster, with `bandits` bandit warbands at
     * p1's site. */
@@ -27,7 +27,7 @@ class BanditPaymasterSuite extends munit.FunSuite:
     assertEquals(Look(end).tokensOn(paymaster), Tokens(1, 0))
     assertEquals(Look(end).forces(home),
       SiteForces.Occupied(ForceKind.Bandit, 1))
-    assertEquals(Look(end).warbands(p1), Look(ready).warbands(p1) + 3)
+    assertEquals(Look(end).boardWarbands(p1), Look(ready).boardWarbands(p1) + 3)
     assertEquals(NoteText.said(BanditPaymaster, t.events), Vector(
       NoteText.Said(NoteKey.Used, s"Removed 1 bandit warband from " +
         s"${home.value}, and ${p1.value} gained 3 warbands.", covers = false)))
@@ -40,7 +40,7 @@ class BanditPaymasterSuite extends munit.FunSuite:
     val end = after(t)
     assertEquals(Look(end).forces(home),
       SiteForces.Occupied(ForceKind.Bandit, 1))
-    assertEquals(Look(end).warbands(p1), Look(ready).warbands(p1))
+    assertEquals(Look(end).boardWarbands(p1), Look(ready).boardWarbands(p1))
     assertEquals(NoteText.said(BanditPaymaster, t.events), Vector(
       NoteText.Said("used.none", s"${home.value} had no bandit to spare.",
         covers = false)))
@@ -48,10 +48,10 @@ class BanditPaymasterSuite extends munit.FunSuite:
   test("a short supply gains what it holds"):
     val base = staged(3).ready
     val kind = PlayerForceKind.of(base, Look(base).player(p1)).get
-    val ready = staged(3).warbands(p1, base.banks.warbandSupply(kind) - 1)
+    val ready = staged(3).boardWarbands(p1, base.banks.warbandSupply(kind) - 1)
       .ready
     val t = use(ready, BanditPaymaster, source).toOption.get
-    assertEquals(Look(after(t)).warbands(p1), Look(ready).warbands(p1) + 1)
+    assertEquals(Look(after(t)).boardWarbands(p1), Look(ready).boardWarbands(p1) + 1)
     assertEquals(NoteText.said(BanditPaymaster, t.events), Vector(
       NoteText.Said(NoteKey.Used, s"Removed 1 bandit warband from " +
         s"${home.value}, and ${p1.value} gained 1 warband.", covers = false)))

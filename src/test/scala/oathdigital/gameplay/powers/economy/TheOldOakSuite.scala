@@ -23,8 +23,8 @@ class TheOldOakSuite extends munit.FunSuite:
     * which a Trade for secrets costs, and the start's 1 faceup secret. */
   private def board(facedown: Boolean = false): ReadyGame = Table.start
     .favor(p1, 2).adviser(p1, adviser, facedown = facedown)
-    .denizen(oak, at = Table.homeOf(p1))
-    .denizen(otherBeast, at = Table.homeOf(p1)).ready
+    .denizen(oak, at = Table.quietPawnSite(p1))
+    .denizen(otherBeast, at = Table.quietPawnSite(p1)).ready
 
   private def secrets(ready: ReadyGame): Int =
     Look(ready).faceUpSecrets(p1) + Look(ready).faceDownSecrets(p1)
@@ -73,6 +73,6 @@ class TheOldOakSuite extends munit.FunSuite:
     val third = SearchFixture.denizensOf(Suit.Beast)
       .filterNot(card => card == adviser || card == otherBeast).head
     val ready = Table.start.favor(p1, 2).adviser(p1, adviser)
-      .adviser(p1, third).denizen(oak, at = Table.homeOf(p1)).ready
+      .adviser(p1, third).denizen(oak, at = Table.quietPawnSite(p1)).ready
     assertEquals(secrets(trade(ready, Vector.empty, oak)._2), 1 + 2)
     assertEquals(secrets(trade(ready, modifiers, oak)._2), 1 + 2 + 1)

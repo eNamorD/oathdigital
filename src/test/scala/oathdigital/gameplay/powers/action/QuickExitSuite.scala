@@ -10,8 +10,8 @@ class QuickExitSuite extends munit.FunSuite:
 
   private val exit = CatalogNames.denizen("Quick Exit")
   private val source = DecisionOptionRef.Denizen(exit)
-  private val home = Table.homeOf(p1)
-  private val away = Table.homeOf(p3)
+  private val home = Table.quietPawnSite(p1)
+  private val away = Table.quietPawnSite(p3)
 
   /** p1's Act holding Quick Exit with `secrets` faceup secrets. p2 stands at
     * p1's site and p3 at its own. */

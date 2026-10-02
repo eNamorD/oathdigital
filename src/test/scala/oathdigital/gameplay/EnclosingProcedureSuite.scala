@@ -33,7 +33,7 @@ class EnclosingProcedureSuite extends munit.FunSuite:
   /** p1 stands at Ancient City with the Alchemist; the start's 1 favor and
     * 7 Supply pay for a Muster from it. */
   private def staged: ReadyGame =
-    Table.start.denizen("Alchemist", at = Table.homeOf(p1)).ready
+    Table.start.denizen("Alchemist", at = Table.quietPawnSite(p1)).ready
 
   test("a modifier is selected for the procedure that will run it"):
     seen.clear()

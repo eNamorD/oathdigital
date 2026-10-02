@@ -95,6 +95,8 @@ object CatalogNames:
   * or wealth, nobody holds an adviser, and every board keeps its printed
   * start: 1 favor, 1 faceup secret, 3 warbands and 7 Supply. Nobody holds
   * the Oathkeeper title or a banner, and the regional discards are empty.
+  * The People's Favor shows the Mob and the Darkest Secret the Wandering
+  * Flame.
   * Ancient City's River moves a pawn only to another River, and none is in
   * play, so a Wake at Ancient City has no option unless the test adds one.
   *
@@ -221,7 +223,7 @@ final case class Table private (private val game: ReadyGame,
     onBoard(player)(_.copy(faceUpSecrets = faceUp, faceDownSecrets = faceDown))
   def supply(player: PlayerId, n: Int): Table =
     onBoard(player)(_.copy(supply = SupplyTrack(n)))
-  def warbands(player: PlayerId, n: Int): Table =
+  def boardWarbands(player: PlayerId, n: Int): Table =
     onBoard(player)(_.copy(warbands = n))
 
   def bandits(at: String | SiteId, n: Int)(using munit.Location): Table =
@@ -251,13 +253,21 @@ final case class Table private (private val game: ReadyGame,
       using munit.Location): Table =
     onSite(CatalogNames.site(at))(_.copy(tokens = Tokens(favor, secrets)))
 
-  def peoplesFavor(holder: Option[PlayerId], favor: Int): Table =
+  /** The People's Favor held by `holder` with `favor` on it, showing
+    * `face`; the quiet table shows the Mob. */
+  def peoplesFavor(holder: Option[PlayerId], favor: Int,
+      face: PeoplesFavorFace = PeoplesFavorFace.Mob): Table =
     update(_.updateCurrent(c => c.copy(banners = c.banners.copy(peoplesFavor =
-      c.banners.peoplesFavor.copy(holder = holder, favor = favor)))))
+      c.banners.peoplesFavor.copy(active = face, holder = holder,
+        favor = favor)))))
 
-  def darkestSecret(holder: Option[PlayerId], secrets: Int): Table =
+  /** The Darkest Secret held by `holder` with `secrets` on it, showing
+    * `face`; the quiet table shows the Wandering Flame. */
+  def darkestSecret(holder: Option[PlayerId], secrets: Int,
+      face: DarkestSecretFace = DarkestSecretFace.WanderingFlame): Table =
     update(_.updateCurrent(c => c.copy(banners = c.banners.copy(darkestSecret =
-      c.banners.darkestSecret.copy(holder = holder, secrets = secrets)))))
+      c.banners.darkestSecret.copy(active = face, holder = holder,
+        secrets = secrets)))))
 
   /** `viewer` knows `card`, a relic lying at `at`, as a peek records it. */
   def knowsRelicAt(viewer: PlayerId, card: String | RelicId,
@@ -277,6 +287,37 @@ final case class Table private (private val game: ReadyGame,
 
   def bankFavor(suit: Suit, n: Int): Table =
     update(r => r.copy(banks = r.banks.copy(favor = r.banks.favor.updated(suit, n))))
+
+  /** The relic deck moved, in order, to the end of the campaign's
+    * reliquary: a game whose relic deck has run out. No relic is lost. */
+  def relicDeckEmptied: Table = update { r =>
+    val deck = r.game.current.commonCards.relicDeck
+    r.updateCurrent(c => c.copy(commonCards =
+      c.commonCards.copy(relicDeck = Vector.empty)))
+      .updateCampaign(c => c.copy(reliquary = c.reliquary ++ deck)) }
+
+  /** A walker procedure for `action`, parked at step `path` of its tree
+    * ("0" is the tree's first step), with `answered` already recorded. */
+  def parkedWalker(action: ActionRef, path: String = "0",
+      answered: Vector[Answered] = Vector.empty): Table =
+    update(_.updateCurrent(_.copy(walkerProcedure = Some(action),
+      walkerPending = Some(PendingTree(Vector(path), answered)))))
+
+  /** The Visions Drawn track at `n`. */
+  def visionsDrawn(n: Int): Table =
+    update(_.updateCurrent(c => c.copy(tracks =
+      c.tracks.copy(visionsDrawn = n))))
+
+  /** `vision` as `player`'s revealed Vision, faceup, taken from wherever
+    * it lay. */
+  def revealedVision(player: PlayerId, vision: VisionId): Table =
+    moving(vision).onPlayer(player)(_.copy(revealedVision =
+      Some(VisionState(vision, Orientation.FaceUp))))
+
+  /** The turn moved back to `phase`, keeping its active player and the
+    * powers already used this turn (`turn` starts a fresh turn instead). */
+  def backInPhase(phase: Phase): Table =
+    update(_.updateCurrent(c => c.copy(turn = c.turn.copy(phase = phase))))
 
   /** Last resort, for a fact no step states. Say why at the call site; a
     * fact three suites need becomes a step. */
@@ -369,8 +410,8 @@ object Table:
   private val homes: Map[PlayerId, String] = Map(
     p1 -> "Ancient City", p2 -> "Broken Peaks", p3 -> "Buried Giant")
 
-  /** Where `player`'s pawn stands on the quiet table. */
-  def homeOf(player: PlayerId)(using munit.Location): SiteId =
+  /** Where the quiet table stands `player`'s pawn. */
+  def quietPawnSite(player: PlayerId)(using munit.Location): SiteId =
     CatalogNames.site(homes.getOrElse(player, munit.Assertions.fail(
       s"no player $player at the table")))
 

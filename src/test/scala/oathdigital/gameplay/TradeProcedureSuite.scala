@@ -16,7 +16,7 @@ class TradeProcedureSuite extends munit.FunSuite:
     * (Arcane) and nothing else. p1 has 4 favor and 2 faceup secrets, and
     * the Arcane bank holds 5. */
   private def atAlchemist: Table = Table.start
-    .denizen(alchemist, at = Table.homeOf(p1))
+    .denizen(alchemist, at = Table.quietPawnSite(p1))
     .favor(p1, 4).secrets(p1, faceUp = 2)
     .bankFavor(Suit.Arcane, 5)
 
@@ -81,6 +81,6 @@ class TradeProcedureSuite extends munit.FunSuite:
 
   test("an intact edifice is a legal Trade source"):
     val ready = Table.start.favor(p1, 4).secrets(p1, faceUp = 2)
-      .edifice("Hallowed Spring", EdificeSide.Intact, at = Table.homeOf(p1)).ready
+      .edifice("Hallowed Spring", EdificeSide.Intact, at = Table.quietPawnSite(p1)).ready
     assert(TradeProcedure.startOptions(catalog, ready, p1,
       TradeResource.Secret, WalkerPowers.empty).exists(_.outcome.isRight))

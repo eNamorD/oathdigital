@@ -19,12 +19,12 @@ class ArmedMobSuite extends munit.FunSuite:
   /** p1's Act beside a site Armed Mob, with `favor` favor. Armed Mob is
     * site-only; it stands at p1's pawn site. p2 holds the Darkest Secret. */
   private def staged(favor: Int = 1): Table =
-    Table.start.turn(p1, Phase.Act).denizen(mob, at = Table.homeOf(p1))
+    Table.start.turn(p1, Phase.Act).denizen(mob, at = Table.quietPawnSite(p1))
       .favor(p1, favor).darkestSecret(Some(p2), 1)
 
   private def discarded(ready: ReadyGame): Vector[WorldCardId] =
     val current = ready.game.current
-    val region = current.map.regionOf(Table.homeOf(p1)).map(CardPlay.nextRegion)
+    val region = current.map.regionOf(Table.quietPawnSite(p1)).map(CardPlay.nextRegion)
     current.commonCards.discard(region.get)
 
   private def choose(ready: ReadyGame, card: DenizenId) =

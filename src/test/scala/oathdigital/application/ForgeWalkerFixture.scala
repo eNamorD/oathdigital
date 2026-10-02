@@ -33,7 +33,7 @@ object ForgeWalkerFixture:
     * so neither the title nor the refill moves in the Forge's command. */
   lazy val forgeTable: Table = Table.start
     .pawn(p1, forgeSite)
-    .warbandsAt(forgeSite, p1, 1).warbands(p1, 2)
+    .warbandsAt(forgeSite, p1, 1).boardWarbands(p1, 2)
     .denizen("Threatening Roar", forgeSite)
     .denizen("Mushrooms", forgeSite)
     .denizen("Mercenaries", forgeSite)

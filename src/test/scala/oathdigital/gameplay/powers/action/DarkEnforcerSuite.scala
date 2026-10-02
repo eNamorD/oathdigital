@@ -13,7 +13,7 @@ class DarkEnforcerSuite extends munit.FunSuite:
   private val enforcer = CatalogNames.denizen("Dark Enforcer")
   private val source = DecisionOptionRef.Denizen(enforcer)
   private val power = DarkEnforcer.forCatalog(catalog)
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
   private val order = SearchFixture.denizensOf(Suit.Order)
   private val hearth = SearchFixture.denizensOf(Suit.Hearth)
   private val beast = SearchFixture.denizensOf(Suit.Beast)
@@ -41,7 +41,7 @@ class DarkEnforcerSuite extends munit.FunSuite:
     parked.assertResumed(t.state, Phase.Act, p1)
     val end = after(t)
     assertEquals(Look(end).favor(p1), 0)
-    assertEquals(Look(end).denizens(home), Vector[CardId](beast(0)))
+    assertEquals(Look(end).cardsAt(home), Vector[CardId](beast(0)))
     assertEquals(pile(end).takeRight(2),
       Vector[WorldCardId](order(0), hearth(0)))
     assertEquals(end.game.current.commonCards.edificeDeck.lastOption,
@@ -60,7 +60,7 @@ class DarkEnforcerSuite extends munit.FunSuite:
       .edifice(edificeOf(Suit.Hearth), EdificeSide.Intact, at = home)
       .denizen(order(0), at = home, facedown = true).ready
     val t = use(ready, power, source).toOption.get
-    assertEquals(Look(after(t)).denizens(home), Look(ready).denizens(home))
+    assertEquals(Look(after(t)).cardsAt(home), Look(ready).cardsAt(home))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.none", s"${home.value} held no Order or Hearth card to discard.",
       covers = true)))

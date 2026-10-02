@@ -3,6 +3,7 @@ package oathdigital.testkit
 import oathdigital.application.{GameApplicationService, GameCommand,
   InMemoryEventStreamRepository, StartPayload}
 import oathdigital.gameplay.StateBasedEvaluation
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, GameStartRules}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -23,7 +24,7 @@ class TableSuite extends munit.FunSuite:
       Vector("Ancient City", "Broken Peaks", "Buried Giant").map(
         CatalogNames.site(_)))
     Table.start.ready.game.current.map.inPlay.foreach { site =>
-      assertEquals(look.denizens(site), Vector.empty, site.value)
+      assertEquals(look.cardsAt(site), Vector.empty, site.value)
       assertEquals(look.relicsAt(site), Vector.empty, site.value)
       assertEquals(look.forces(site), SiteForces.Empty, site.value)
       assertEquals(look.siteTokens(site), Tokens.empty, site.value)
@@ -41,7 +42,7 @@ class TableSuite extends munit.FunSuite:
 
   test("banditsRefilled leaves the refill nothing to add and keeps the forces " +
       "already at a site"):
-    val held = Table.start.warbandsAt("Ancient City", p1, 1).warbands(p1, 2)
+    val held = Table.start.warbandsAt("Ancient City", p1, 1).boardWarbands(p1, 2)
     val table = held.banditsRefilled
     assertEquals(StateBasedEvaluation.banditRefill(catalog, table.state),
       Right(None))
@@ -64,7 +65,7 @@ class TableSuite extends munit.FunSuite:
 
   test("boards keep their printed start: 1 favor, 1 faceup secret, 3 warbands, 7 Supply"):
     val look = Look(Table.start.ready)
-    assertEquals((look.favor(p1), look.faceUpSecrets(p1), look.warbands(p1),
+    assertEquals((look.favor(p1), look.faceUpSecrets(p1), look.boardWarbands(p1),
       look.supply(p1)), (1, 1, 3, 7))
 
   test("the quiet table holds exactly the cards the game started with"):
@@ -80,7 +81,7 @@ class TableSuite extends munit.FunSuite:
     assert(!advised.ready.game.current.commonCards.worldDeck.contains(dealt))
     val moved = advised.denizen(dealt, at = "Dunes")
     assertEquals(Look(moved.ready).advisers(p1), Vector.empty)
-    assertEquals(Look(moved.ready).denizens("Dunes"), Vector(dealt))
+    assertEquals(Look(moved.ready).cardsAt("Dunes"), Vector(dealt))
 
   test("placing a card takes it from a discard, a player's relics and every viewer's memory"):
     val discarded = Table.start.update(_.updateCurrent(c => c.copy(
@@ -133,7 +134,7 @@ class TableSuite extends munit.FunSuite:
     assert(bandits.getMessage.contains("Bandit"), bandits.getMessage)
     // A lineage prints 14: 12 on the board and 3 at a site are one too many.
     val exiles = intercept[munit.FailException](
-      Table.start.warbands(p1, 12).warbandsAt("Dunes", p1, 3).ready)
+      Table.start.boardWarbands(p1, 12).warbandsAt("Dunes", p1, 3).ready)
     assert(exiles.getMessage.contains("15 warbands"), exiles.getMessage)
 
   test("an edifice named by one face must be placed on that side"):
@@ -157,7 +158,7 @@ class TableSuite extends munit.FunSuite:
       .bandits("Fair Isle", 2)
       .warbandsAt("Dunes", p1, 3)
       .favor(p1, 4).secrets(p1, faceUp = 2, faceDown = 1).supply(p1, 5)
-      .warbands(p1, 6)
+      .boardWarbands(p1, 6)
       .tokens("Magician's Code", favor = 1)
       .siteTokens("Dunes", secrets = 2)
       .peoplesFavor(Some(p3), favor = 2)
@@ -170,16 +171,16 @@ class TableSuite extends munit.FunSuite:
     assertEquals(look.player(p1).advisers, Vector(DenizenState(
       CatalogNames.denizen("Alchemist"), Orientation.FaceDown, Tokens.empty)))
     assertEquals(look.relics(p2), Vector(CatalogNames.relic("Circlet of Command")))
-    assertEquals(look.denizens("Dunes"),
+    assertEquals(look.cardsAt("Dunes"),
       Vector(CatalogNames.denizen("Magician's Code")))
     assertEquals(look.relicsAt("Dunes"), Vector(CatalogNames.relic("Brass Horse")))
-    assertEquals(look.denizens("Fair Isle"),
+    assertEquals(look.cardsAt("Fair Isle"),
       Vector(CatalogNames.edifice("Hallowed Spring")))
     assertEquals(look.forces("Fair Isle"), SiteForces.Occupied(ForceKind.Bandit, 2))
     assertEquals(look.forces("Dunes"), SiteForces.Occupied(
       ForceKind.Exile(look.player(p1).lineage), 3))
     assertEquals((look.favor(p1), look.faceUpSecrets(p1),
-      look.faceDownSecrets(p1), look.supply(p1), look.warbands(p1)),
+      look.faceDownSecrets(p1), look.supply(p1), look.boardWarbands(p1)),
       (4, 2, 1, 5, 6))
     assertEquals(look.tokensOn("Magician's Code"), Tokens(1, 0))
     assertEquals(look.siteTokens("Dunes"), Tokens(0, 2))
@@ -213,11 +214,11 @@ class TableSuite extends munit.FunSuite:
     assertEquals(Look(rested.state).active, p2)
 
   test("real commands run from a table: Muster from a denizen at the pawn's site"):
-    val mustered = Table.start.denizen("Alchemist", at = Table.homeOf(p1))
+    val mustered = Table.start.denizen("Alchemist", at = Table.quietPawnSite(p1))
       .situation(Situation.rules(catalog))
       .after(GameCommand.StartWalker(ActionRef.Muster, StartPayload(p1)))
     val look = Look(mustered.state)
-    assertEquals((look.favor(p1), look.warbands(p1), look.supply(p1)), (0, 4, 6))
+    assertEquals((look.favor(p1), look.boardWarbands(p1), look.supply(p1)), (0, 4, 6))
     assertEquals(look.tokensOn("Alchemist"), Tokens(1, 0))
 
   test("real commands run from a table: Travel moves the pawn"):
@@ -241,3 +242,51 @@ class TableSuite extends munit.FunSuite:
     val look = Look(Table.start.ready)
     assertNotEquals(look.forceKind(p1), look.forceKind(p2))
     assertNotEquals(look.forceKind(p1), ForceKind.Bandit)
+
+  test("relicDeckEmptied moves the relic deck to the reliquary, losing no relic"):
+    val before = Table.start.ready
+    val after = Table.start.relicDeckEmptied.ready
+    assertEquals(after.game.current.commonCards.relicDeck, Vector.empty)
+    assertEquals(after.game.campaign.reliquary,
+      before.game.campaign.reliquary ++ before.game.current.commonCards.relicDeck)
+
+  test("parkedWalker parks the action's walker at the given step"):
+    val current = Table.start.parkedWalker(ActionRef.Recover).ready.game.current
+    assertEquals(current.walkerProcedure, Some(ActionRef.Recover))
+    assertEquals(current.walkerPending,
+      Some(PendingTree(Vector("0"), Vector.empty)))
+
+  test("visionsDrawn sets the Visions Drawn track"):
+    assertEquals(Table.start.visionsDrawn(3).ready.game.current.tracks
+      .visionsDrawn, 3)
+
+  test("revealedVision reveals the Vision faceup and takes it from the deck"):
+    val current = Table.start.revealedVision(p1, VisionRules.Faith).ready
+      .game.current
+    assertEquals(current.players.find(_.player == p1).flatMap(_.revealedVision),
+      Some(VisionState(VisionRules.Faith, Orientation.FaceUp)))
+    assert(!current.commonCards.worldDeck.contains(VisionRules.Faith))
+
+  test("backInPhase changes the phase and keeps the powers used this turn"):
+    val wolves = CatalogNames.denizen("Wolves")
+    val use = PowerUseRef(PowerTiming.Act, PowerSourceRef.Card(wolves),
+      PowerId("denizen.wolves"))
+    // The used power is the subject: no step records a use.
+    val used = Table.start.update(_.updateCurrent(c => c.copy(turn =
+      c.turn.copy(usedPowers = Set(use)))))
+    val turn = used.backInPhase(Phase.Wake).ready.game.current.turn
+    assertEquals(turn.phase, Phase.Wake)
+    assertEquals(turn.usedPowers, Set(use))
+
+  test("the quiet table's banners lie on the faces the banner steps default to"):
+    val banners = Table.start.ready.game.current.banners
+    assertEquals(banners.peoplesFavor.active, PeoplesFavorFace.Mob)
+    assertEquals(banners.darkestSecret.active, DarkestSecretFace.WanderingFlame)
+
+  test("the banner steps set the face they are given"):
+    val banners = Table.start
+      .peoplesFavor(Some(p1), 2, face = PeoplesFavorFace.GrandCouncil)
+      .darkestSecret(Some(p2), 1, face = DarkestSecretFace.Festival)
+      .ready.game.current.banners
+    assertEquals(banners.peoplesFavor.active, PeoplesFavorFace.GrandCouncil)
+    assertEquals(banners.darkestSecret.active, DarkestSecretFace.Festival)

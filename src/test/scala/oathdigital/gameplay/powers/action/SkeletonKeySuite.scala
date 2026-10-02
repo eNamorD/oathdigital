@@ -11,7 +11,7 @@ class SkeletonKeySuite extends munit.FunSuite:
   private val key = CatalogNames.relic("Skeleton Key")
   private val source = DecisionOptionRef.Relic(key)
   private val wild = Table.start.ready.game.current.map.hinterland.head
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
   private val (first, second) = (RelicId("R08"), RelicId("R09"))
 
   /** p1's Act holding Skeleton Key faceup with `secrets` faceup secrets,

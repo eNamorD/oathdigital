@@ -39,8 +39,8 @@ class SecondChanceSuite extends munit.FunSuite:
     val ready = staged().adviser(p2, order(0)).ready
     val (t, done) = choose(ready, p2)
     parked.assertResumed(done.state, Phase.Act, p1)
-    assertEquals(Look(after(done)).warbands(p2), 2)
-    assertEquals(Look(after(done)).warbands(p1), 4)
+    assertEquals(Look(after(done)).boardWarbands(p2), 2)
+    assertEquals(Look(after(done)).boardWarbands(p1), 4)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
     assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
 
@@ -52,28 +52,28 @@ class SecondChanceSuite extends munit.FunSuite:
 
   test("a Discord adviser qualifies, and the player may target themself " +
       "even with an empty supply"):
-    val ready = staged().adviser(p1, discord(0)).warbands(p1, 14).ready
+    val ready = staged().adviser(p1, discord(0)).boardWarbands(p1, 14).ready
     val t = use(ready, power, source).toOption.get
     assertEquals(offered(t, p1), Some(Vector("player" -> p1.value)))
     val done = answer(t, p1, SecondChance.decisionId,
       pick(DecisionOptionRef.Player(p1))).toOption.get
-    assertEquals(Look(after(done)).warbands(p1), 14)
+    assertEquals(Look(after(done)).boardWarbands(p1), 14)
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"Killed 1 ${p1.value} warband, and ${p1.value} gained " +
         "1 warband.", covers = false)))
 
   test("with an empty supply the kill still happens, and the line says so"):
-    val ready = staged().adviser(p2, order(0)).warbands(p1, 14).ready
+    val ready = staged().adviser(p2, order(0)).boardWarbands(p1, 14).ready
     val (_, done) = choose(ready, p2)
-    assertEquals(Look(after(done)).warbands(p2), 2)
-    assertEquals(Look(after(done)).warbands(p1), 14)
+    assertEquals(Look(after(done)).boardWarbands(p2), 2)
+    assertEquals(Look(after(done)).boardWarbands(p1), 14)
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       "used.killed", s"Killed 1 ${p2.value} warband.", covers = false)))
 
   test("a target with no warband loses nothing, and nothing is gained"):
-    val ready = staged().adviser(p2, order(0)).warbands(p2, 0).ready
+    val ready = staged().adviser(p2, order(0)).boardWarbands(p2, 0).ready
     val (_, done) = choose(ready, p2)
-    assertEquals(Look(after(done)).warbands(p1), 3)
+    assertEquals(Look(after(done)).boardWarbands(p1), 3)
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       "used.spared", s"${p2.value} had no warband to kill.", covers = false)))
 

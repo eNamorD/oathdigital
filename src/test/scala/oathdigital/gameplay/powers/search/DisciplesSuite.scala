@@ -14,7 +14,7 @@ class DisciplesSuite extends munit.FunSuite:
   private val modifiers = Vector(Disciples.id)
   private val deckTop = SearchFixture.denizensOf(Suit.Hearth).take(3)
   private val region = Table.start.ready.game.current.map
-    .regionOf(Table.homeOf(p1)).get
+    .regionOf(Table.quietPawnSite(p1)).get
 
   /** p1 in Act at Ancient City, with Disciples as a faceup adviser and 5
     * Supply. The world deck is topped by plain cards, the regional discard

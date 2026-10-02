@@ -19,7 +19,7 @@ class BedOfRootsSuite extends munit.FunSuite:
   /** p1's Act beside a site Bed of Roots, with `favor` favor. Bed of Roots
     * is site-only; it stands at p1's pawn site. */
   private def staged(favor: Int = 3): Table =
-    Table.start.turn(p1, Phase.Act).denizen(bed, at = Table.homeOf(p1))
+    Table.start.turn(p1, Phase.Act).denizen(bed, at = Table.quietPawnSite(p1))
       .favor(p1, favor)
 
   private def secretsOf(ready: ReadyGame): Int =

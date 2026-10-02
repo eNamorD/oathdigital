@@ -32,8 +32,8 @@ class MemoryOfNatureSuite extends munit.FunSuite:
   test("it places a secret and moves one favor per Beast card, an " +
       "edifice on either face included"):
     val ready = withBanks(acting.adviser(p1, nature)
-      .denizen(beasts(0), at = Table.homeOf(p1))
-      .edifice(beastEdifice, EdificeSide.Intact, at = Table.homeOf(p2)),
+      .denizen(beasts(0), at = Table.quietPawnSite(p1))
+      .edifice(beastEdifice, EdificeSide.Intact, at = Table.quietPawnSite(p2)),
       Suit.Arcane -> 5).ready
     val t = use(ready, power, source).toOption.get
     parked.assertResumed(t.state, Phase.Act, p1)
@@ -44,16 +44,16 @@ class MemoryOfNatureSuite extends munit.FunSuite:
       NoteKey.Used, "Moved 2 favor to the Beast bank.", covers = false)))
 
   test("it counts itself at a site, and a facedown card not at all"):
-    val ready = withBanks(acting.denizen(nature, at = Table.homeOf(p1))
-      .denizen(beasts(0), at = Table.homeOf(p2), facedown = true),
+    val ready = withBanks(acting.denizen(nature, at = Table.quietPawnSite(p1))
+      .denizen(beasts(0), at = Table.quietPawnSite(p2), facedown = true),
       Suit.Arcane -> 5).ready
     val t = use(ready, power, source).toOption.get
     assertEquals(bank(after(t), Suit.Beast), 1)
 
   test("several banks holding more than X ask for the split"):
     val ready = withBanks(acting.adviser(p1, nature)
-      .denizen(beasts(0), at = Table.homeOf(p1))
-      .denizen(beasts(1), at = Table.homeOf(p2)),
+      .denizen(beasts(0), at = Table.quietPawnSite(p1))
+      .denizen(beasts(1), at = Table.quietPawnSite(p2)),
       Suit.Arcane -> 2, Suit.Order -> 2).ready
     val t = use(ready, power, source).toOption.get
     assert(awaits(t, MemoryOfNature.decisionId),
@@ -69,9 +69,9 @@ class MemoryOfNatureSuite extends munit.FunSuite:
   test("the other banks holding X or less give all they hold, unasked, " +
       "and the Beast bank's own favor stays"):
     val ready = withBanks(acting.adviser(p1, nature)
-      .denizen(beasts(0), at = Table.homeOf(p1))
-      .denizen(beasts(1), at = Table.homeOf(p1))
-      .denizen(beasts(2), at = Table.homeOf(p2)),
+      .denizen(beasts(0), at = Table.quietPawnSite(p1))
+      .denizen(beasts(1), at = Table.quietPawnSite(p1))
+      .denizen(beasts(2), at = Table.quietPawnSite(p2)),
       Suit.Arcane -> 1, Suit.Order -> 1, Suit.Beast -> 4).ready
     val t = use(ready, power, source).toOption.get
     parked.assertResumed(t.state, Phase.Act, p1)
@@ -87,7 +87,7 @@ class MemoryOfNatureSuite extends munit.FunSuite:
 
   test("a ruined Beast edifice counts as well as an intact one"):
     val ready = withBanks(acting.adviser(p1, nature)
-      .edifice(beastEdifice, EdificeSide.Ruined, at = Table.homeOf(p2)),
+      .edifice(beastEdifice, EdificeSide.Ruined, at = Table.quietPawnSite(p2)),
       Suit.Arcane -> 5).ready
     val t = use(ready, power, source).toOption.get
     assertEquals(bank(after(t), Suit.Beast), 1)

@@ -11,7 +11,7 @@ class TavernSongsSuite extends munit.FunSuite:
 
   private val songs = CatalogNames.denizen("Tavern Songs")
   private val source = DecisionOptionRef.Denizen(songs)
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
   private val region = Table.start.ready.game.current.map.regionOf(home).get
   private val pileName = SearchSource.name(SearchSource.RegionalDiscard(region))
   /** Five cards for the pile, the last on top. */

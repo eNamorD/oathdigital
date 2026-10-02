@@ -24,7 +24,7 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
     * which holds Alchemist. p1 has 4 favor and the start's 7 Supply. */
   private def advised(facedown: Boolean = false): Table = Table.start
     .adviser(p1, playmates, facedown = facedown)
-    .denizen("Alchemist", at = Table.homeOf(p1))
+    .denizen("Alchemist", at = Table.quietPawnSite(p1))
     .favor(p1, 4)
 
   /** Musters from `card` and returns the result and the whole journal. */
@@ -38,7 +38,7 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
       done.state.asInstanceOf[Ready].value)
 
   test("mustering on a beast denizen spends no Supply"):
-    val ready = advised().denizen(beast, at = Table.homeOf(p1)).ready
+    val ready = advised().denizen(beast, at = Table.quietPawnSite(p1)).ready
     val (transition, result) = muster(ready, modifiers,
       DecisionOptionRef.Denizen(beast))
     assertEquals(Look(result).supply(p1), 7)
@@ -54,29 +54,29 @@ class AnimalPlaymatesSuite extends munit.FunSuite:
 
   test("mustering on a beast edifice spends no Supply"):
     val ready = advised().edifice(beastEdifice, EdificeSide.Intact,
-      at = Table.homeOf(p1)).ready
+      at = Table.quietPawnSite(p1)).ready
     val (_, result) = muster(ready, modifiers,
       DecisionOptionRef.Edifice(beastEdifice))
     assertEquals(Look(result).supply(p1), 7)
 
   test("mustering on a card of another suit pays the Supply"):
-    val (_, result) = muster(advised().denizen(order, at = Table.homeOf(p1)).ready,
+    val (_, result) = muster(advised().denizen(order, at = Table.quietPawnSite(p1)).ready,
       modifiers, DecisionOptionRef.Denizen(order))
     assertEquals(Look(result).supply(p1), 6)
 
   test("without the selection a beast card pays the Supply"):
-    val (_, result) = muster(advised().denizen(beast, at = Table.homeOf(p1)).ready,
+    val (_, result) = muster(advised().denizen(beast, at = Table.quietPawnSite(p1)).ready,
       Vector.empty, DecisionOptionRef.Denizen(beast))
     assertEquals(Look(result).supply(p1), 6)
 
   test("it may be selected whatever the site holds, and only for a Muster"):
-    val ready = advised().denizen(order, at = Table.homeOf(p1)).ready
+    val ready = advised().denizen(order, at = Table.quietPawnSite(p1)).ready
     val offered = (action: ActionRef) => rules.offerableWalkerPowers(ready,
       p1, action).toOption.get.map(_.id)
     assert(offered(ActionRef.Muster).contains(AnimalPlaymates.id))
     assert(!offered(ActionRef.Trade).contains(AnimalPlaymates.id))
 
   test("a facedown Animal Playmates is not offered"):
-    val ready = advised(facedown = true).denizen(beast, at = Table.homeOf(p1)).ready
+    val ready = advised(facedown = true).denizen(beast, at = Table.quietPawnSite(p1)).ready
     assert(!rules.offerableWalkerPowers(ready, p1,
       ActionRef.Muster).toOption.get.map(_.id).contains(AnimalPlaymates.id))

@@ -19,8 +19,8 @@ class VillageIdiotSuite extends munit.FunSuite:
     * (Hearth), both token-free, and the Hearth bank holds `hearth` favor.
     * p1 has the start's 1 favor, 3 warbands and 7 Supply. */
   private def idiotAtSite(hearth: Int = 3): Table = Table.start
-    .denizen(other, at = Table.homeOf(p1))
-    .denizen(idiot, at = Table.homeOf(p1))
+    .denizen(other, at = Table.quietPawnSite(p1))
+    .denizen(idiot, at = Table.quietPawnSite(p1))
     .bankFavor(Suit.Hearth, hearth)
 
   /** Musters from `card` and returns the result and the whole journal. */
@@ -44,7 +44,7 @@ class VillageIdiotSuite extends munit.FunSuite:
     // gives one back from the Hearth bank.
     assertEquals(Look(result).favor(p1), 1)
     assertEquals(hearth(result), 2)
-    assertEquals(Look(result).warbands(p1), 3 + 1)
+    assertEquals(Look(result).boardWarbands(p1), 3 + 1)
     assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
       result)
     assert(PaidActionHarness.wireRoundTrips(transition.events))
@@ -57,7 +57,7 @@ class VillageIdiotSuite extends munit.FunSuite:
   test("an empty Hearth bank gives nothing, and the Muster still runs"):
     val (_, result) = muster(idiotAtSite(hearth = 0).ready, modifiers, idiot)
     assertEquals(Look(result).favor(p1), 0)
-    assertEquals(Look(result).warbands(p1), 3 + 1)
+    assertEquals(Look(result).boardWarbands(p1), 3 + 1)
 
   test("it is a Muster modifier, offered when the card is in reach"):
     val offered = (ready: ReadyGame, action: ActionRef) =>
@@ -66,5 +66,5 @@ class VillageIdiotSuite extends munit.FunSuite:
       .contains(VillageIdiot.id))
     assert(!offered(idiotAtSite().ready, ActionRef.Trade)
       .contains(VillageIdiot.id))
-    val without = Table.start.denizen(other, at = Table.homeOf(p1)).ready
+    val without = Table.start.denizen(other, at = Table.quietPawnSite(p1)).ready
     assert(!offered(without, ActionRef.Muster).contains(VillageIdiot.id))

@@ -20,7 +20,7 @@ class CupOfPlentySuite extends munit.FunSuite:
     * Supply. */
   private def held: Table = Table.start
     .relic(p1, cup)
-    .denizen(alchemist, at = Table.homeOf(p1))
+    .denizen(alchemist, at = Table.quietPawnSite(p1))
     .favor(p1, 4).secrets(p1, faceUp = 2)
 
   /** Trades for favor with Alchemist, returning the result. */

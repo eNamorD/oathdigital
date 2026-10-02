@@ -118,13 +118,13 @@ object ParkedServiceFixture:
       .tokens("League Treaty", favor = 2)
       .bankFavor(suit, base.ready.banks.favor(suit) - 2)
       .warbandsAt("Ancient City", p2, 1)
-      .warbands(p2, 2)
+      .boardWarbands(p2, 2)
       .siteTokens("Broken Peaks", secrets = 2)
     val (service, repository, act) = journaled(table, gameId)
     val parked = act.parkedAfter(GameCommand.BeginRest(p1))
     parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       LeagueTreatyContribution.destinationDecisionId(table.ready, p1,
-        Table.homeOf(p1), treatyCard), p2)
+        Table.quietPawnSite(p1), treatyCard), p2)
     (ParkedGame(service, repository, accepted(parked, act)), p1, p2)
 
   /** Defense dice that always come up blank. A Recover started with these
@@ -173,13 +173,13 @@ object ParkedServiceFixture:
       .oathkeeper(Some(p3))
       .warbandsAt("Ancient City", p1, 1)
       .warbandsAt("Broken Peaks", p2, 1)
-      .warbands(p1, 2)
-      .warbands(p2, 2)
+      .boardWarbands(p1, 2)
+      .boardWarbands(p2, 2)
       .banditsRefilled
     val (service, repository, act) = journaled(table, gameId)
     val parked = act.parkedAfter(
       GameCommand.StartWalker(ActionRef.Travel, StartPayload(p1,
-        Vector.empty, Vector(DecisionOptionRef.Site(Table.homeOf(p3))))))
+        Vector.empty, Vector(DecisionOptionRef.Site(Table.quietPawnSite(p3))))))
     assert(parked.events.last match {
       case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
       case _ => false

@@ -18,7 +18,7 @@ class BogSuite extends munit.FunSuite:
   private def staged(relics: Vector[RelicId] = Vector(whistle),
       beast: Int = 5): ReadyGame =
     relics.foldLeft(Table.start.turn(p1, Phase.Act)
-      .denizen(bog, at = Table.homeOf(p1)).bankFavor(Suit.Beast, beast))(
+      .denizen(bog, at = Table.quietPawnSite(p1)).bankFavor(Suit.Beast, beast))(
       _.relic(p1, _)).ready
 
   private def beastBank(ready: ReadyGame): Int =

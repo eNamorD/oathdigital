@@ -21,7 +21,7 @@ object SilverTongueFixture:
     */
   def arranged(siteSuits: Vector[Suit], stocked: Set[Suit])
       : (ReadyGame, PlayerId) =
-    val ready = Table.start.siteTokens(Table.homeOf(Table.p2), secrets = 2).ready
+    val ready = Table.start.siteTokens(Table.quietPawnSite(Table.p2), secrets = 2).ready
     val current = ready.game.current
     val actor = current.turn.activePlayer
     val pawn = current.players.find(_.player == actor).get.pawnSite.get

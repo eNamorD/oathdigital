@@ -20,7 +20,7 @@ class InitiationRiteSuite extends munit.FunSuite:
     * 1 faceup secret, 3 warbands and 7 Supply. */
   private def initiated(facedown: Boolean = false): Table = Table.start
     .adviser(p1, rite, facedown = facedown)
-    .denizen(beast, at = Table.homeOf(p1))
+    .denizen(beast, at = Table.quietPawnSite(p1))
 
   /** Musters from Errand Boy, selecting nothing. */
   private def muster(ready: ReadyGame)
@@ -39,7 +39,7 @@ class InitiationRiteSuite extends munit.FunSuite:
     assertEquals(Look(result).favor(p1), 1)
     assertEquals(Look(result).faceUpSecrets(p1), 0)
     assertEquals(Look(result).supply(p1), 6)
-    assertEquals(Look(result).warbands(p1), 3 + 1)
+    assertEquals(Look(result).boardWarbands(p1), 3 + 1)
     assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
       result)
     assert(PaidActionHarness.wireRoundTrips(transition.events))
@@ -52,7 +52,7 @@ class InitiationRiteSuite extends munit.FunSuite:
     val hidden = initiated().secrets(p1, faceUp = 0, faceDown = 1)
     assert(muster(hidden.ready).isLeft)
     // The same board without the rule musters with its favor.
-    val plain = Table.start.denizen(beast, at = Table.homeOf(p1))
+    val plain = Table.start.denizen(beast, at = Table.quietPawnSite(p1))
       .secrets(p1, faceUp = 0, faceDown = 1).ready
     assert(muster(plain).isRight)
 

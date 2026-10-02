@@ -446,7 +446,7 @@ object LogScripts:
     val card = CatalogNames.denizen("Wolves")
     // p3 has fewer warbands on its board, so p2 is the one with the most.
     val table = Table.start.denizen("Wolves", "Ancient City")
-      .secrets(p1, faceUp = 2).warbands(p3, 2).banditsRefilled
+      .secrets(p1, faceUp = 2).boardWarbands(p3, 2).banditsRefilled
     val victim = table.ready.game.current.players.filter(_.player != p1)
       .maxBy(_.board.warbands).player
     val (service, act) = atTable("wolves", table)

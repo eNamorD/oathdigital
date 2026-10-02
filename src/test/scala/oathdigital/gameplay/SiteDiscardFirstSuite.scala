@@ -17,7 +17,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
 
   private val powers = WalkerPowers(Vector(discardFirst))
   private val noReplacement = CardPlayProcedure.noReplacement.ref
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
   /** The Beast card p1 plays. The other cards are plain and of other suits. */
   private val card = CatalogNames.denizen("Errand Boy")
   private val kept = CatalogNames.denizen("Rain Boots")
@@ -60,7 +60,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
       Vector(noReplacement, DecisionOptionRef.Denizen(kept)))
     val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
       noReplacement, p1).asInstanceOf[WalkerOutcome.Finished].treeless
-    assertEquals(Look(done).denizens(home), Vector[CardId](kept, card))
+    assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))
     assertEquals(done.game.current.temporaryHands(p1), Vector.empty)
 
   test("choosing a site card discards it with the standard returns"):
@@ -70,7 +70,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(kept), p1)
       .asInstanceOf[WalkerOutcome.Finished].treeless
     val region = CardPlay.nextRegion(done.game.current.map.regionOf(home).get)
-    assertEquals(Look(done).denizens(home), Vector[CardId](card))
+    assertEquals(Look(done).cardsAt(home), Vector[CardId](card))
     assertEquals(done.game.current.commonCards.discard(region).last, kept)
     // The favor on the discarded card returns to its suit bank (Rain Boots is
     // Nomad), its secret to the player facedown.
@@ -91,8 +91,8 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
       DecisionOptionRef.Denizen(fillers.head), p1)
       .asInstanceOf[WalkerOutcome.Finished].treeless
-    assertEquals(Look(done).denizens(home).size, 3)
-    assert(Look(done).denizens(home).contains(card))
+    assertEquals(Look(done).cardsAt(home).size, 3)
+    assert(Look(done).cardsAt(home).contains(card))
 
   test("an intact edifice is never offered for the discard: it is locked"):
     val ready = playing(kept).edifice(hall, EdificeSide.Intact, at = home)
@@ -111,7 +111,7 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
         ruined))
     val done = answer(ready, tree, asked, powers, decisionId(card, "replace"),
       ruined, p1).asInstanceOf[WalkerOutcome.Finished].treeless
-    assertEquals(Look(done).denizens(home), Vector[CardId](kept, card))
+    assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))
     assertEquals(done.game.current.commonCards.edificeDeck.last, hall)
 
   test("the permission composes with an adviser limit through the walker"):
@@ -141,4 +141,4 @@ class SiteDiscardFirstSuite extends munit.FunSuite:
     val done = answer(ready, tree, park(ready, tree, none), none,
       decisionId(card, "place"), DecisionOptionRef.Button("site"), p1)
       .asInstanceOf[WalkerOutcome.Finished].treeless
-    assertEquals(Look(done).denizens(home), Vector[CardId](kept, card))
+    assertEquals(Look(done).cardsAt(home), Vector[CardId](kept, card))

@@ -92,7 +92,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
       .peoplesFavor(Some(p2), favor = 2)
     // p2 stands at Broken Peaks, away from p1.
     assertEquals(start(base.ready), Left(NoPlayableOption("challenge")))
-    assert(start(base.pawn(p2, at = Table.homeOf(p1)).ready).isRight)
+    assert(start(base.pawn(p2, at = Table.quietPawnSite(p1)).ready).isRight)
 
   test("the amount must exceed the banner and fit the actor's resources"):
     val parked = atAmount(challenger.peoplesFavor(None, favor = 2).ready, pf)
@@ -118,7 +118,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
 
   test("People's Favor: an enemy-held banner moves to the challenger"):
     val board = challenger.peoplesFavor(Some(p2), favor = 2)
-      .pawn(p2, at = Table.homeOf(p1)).ready
+      .pawn(p2, at = Table.quietPawnSite(p1)).ready
     val done = chooseAmount(atAmount(board, pf), 3)
       .getOrElse(fail("the amount must be accepted"))
     val after = ready(done.state).game.current
@@ -164,7 +164,7 @@ class ChallengeProcedureSuite extends munit.FunSuite:
 
   test("Wandering Flame: an enemy holder gets the retained half back"):
     val board = siteSecrets(challenger.darkestSecret(Some(p2), secrets = 5)
-      .pawn(p2, at = Table.homeOf(p1)).secrets(p2, faceUp = 1)).ready
+      .pawn(p2, at = Table.quietPawnSite(p1)).secrets(p2, faceUp = 1)).ready
     val parked = chooseAmount(atAmount(board, ds), 6)
       .getOrElse(fail("the amount must be accepted"))
     // 5 secrets: 2 are placed (5 / 2), 3 return to the holder. All sites tie

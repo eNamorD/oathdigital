@@ -46,9 +46,9 @@ class RiotsSuite extends munit.FunSuite:
     val ready = staged.peoplesFavor(Some(p2), 5).ready
     val done = finished(play(ready, power, riots))
     val after = Look(done.treeless)
-    assertEquals(after.denizens(homeSite), Vector.empty)
-    assertEquals(after.denizens(nearSite), Vector[CardId](orderEdifices(1)))
-    assertEquals(after.denizens(awaySite), Vector[CardId](hearth(1)))
+    assertEquals(after.cardsAt(homeSite), Vector.empty)
+    assertEquals(after.cardsAt(nearSite), Vector[CardId](orderEdifices(1)))
+    assertEquals(after.cardsAt(awaySite), Vector[CardId](hearth(1)))
     assertEquals(onBanner(done.treeless), 1)
     assertEquals(done.treeless.game.current.banners.peoplesFavor.holder,
       Some(p2))
@@ -59,7 +59,7 @@ class RiotsSuite extends munit.FunSuite:
     val ready = Table.start.denizen(riots, at = homeSite)
       .denizen(hearth(0), at = homeSite).peoplesFavor(None, 5).ready
     val done = finished(fire(ready, power, hookAt(riots, homeSite)))
-    assertEquals(Look(done.treeless).denizens(homeSite), Vector.empty)
+    assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
     assertEquals(onBanner(done.treeless), 3)
     assertEquals(said(done.events),
       Vector(discarded(Vector(riots, hearth(0))), burned(2)))

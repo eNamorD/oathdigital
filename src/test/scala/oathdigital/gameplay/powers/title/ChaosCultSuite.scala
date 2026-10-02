@@ -32,7 +32,7 @@ class ChaosCultSuite extends munit.FunSuite:
   /** p1 travels to Broken Peaks; its action boundary settles the title. */
   private def travel(ready: ReadyGame) =
     rules.startWalker(Ready(ready), ActionRef.Travel, active, Vector.empty,
-      Vector(DecisionOptionRef.Site(Table.homeOf(p2))))
+      Vector(DecisionOptionRef.Site(Table.quietPawnSite(p2))))
 
   private def replays(start: ReadyGame, events: Vector[OathEvent],
       expected: OathState): Unit =

@@ -22,7 +22,7 @@ class CropRotationSuite extends munit.FunSuite:
   private val played = SearchFixture.denizensOf(Suit.Beast).head
   private val fillers = SearchFixture.denizensOf(Suit.Order) ++
     SearchFixture.denizensOf(Suit.Arcane)
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
   private val capacity = catalog.sites.find(_.id == home).get.capacity
   private val noDiscard = CardPlayProcedure.noReplacement.ref
   private val replaceId = s"cardplay.replace.denizen.${played.value}"

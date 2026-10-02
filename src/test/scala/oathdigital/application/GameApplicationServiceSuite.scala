@@ -935,7 +935,7 @@ class GameApplicationServiceSuite extends munit.FunSuite:
       // Bandits at every empty site keep the refill out of the five events.
       .banditsRefilled.service()
     val active = p2
-    val siteId = Table.homeOf(p2)
+    val siteId = Table.quietPawnSite(p2)
 
     val wealth = service.handle("game-wake", 0L,
       GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active,

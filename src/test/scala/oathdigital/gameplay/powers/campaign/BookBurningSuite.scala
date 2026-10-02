@@ -23,7 +23,7 @@ class BookBurningSuite extends munit.FunSuite:
     */
   private def raid(faceUp: Int, faceDown: Int): Board =
     val base = withEnemyAtOrigin(board(warbands = 4))
-    withAdviser(on(base)(_.warbands(base.other, 3)
+    withAdviser(on(base)(_.boardWarbands(base.other, 3)
       .secrets(base.other, faceUp = faceUp, faceDown = faceDown)),
       card, Orientation.FaceUp)
 

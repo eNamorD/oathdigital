@@ -16,13 +16,14 @@ final class Look private (ready: ReadyGame):
   def favor(p: PlayerId): Int = player(p).board.favor
   def faceUpSecrets(p: PlayerId): Int = player(p).board.faceUpSecrets
   def faceDownSecrets(p: PlayerId): Int = player(p).board.faceDownSecrets
-  def warbands(p: PlayerId): Int = player(p).board.warbands
+  def boardWarbands(p: PlayerId): Int = player(p).board.warbands
   def advisers(p: PlayerId): Vector[CardId] = player(p).advisers.map(_.id)
   def relics(p: PlayerId): Vector[RelicId] = player(p).relics.map(_.id)
   def pawn(p: PlayerId): SiteId = player(p).pawnSite
     .getOrElse(throw AssertionError(s"$p has no pawn on the map"))
 
-  def denizens(site: String | SiteId)(using munit.Location): Vector[CardId] =
+  /** The cards a site lists: its denizens and edifices. */
+  def cardsAt(site: String | SiteId)(using munit.Location): Vector[CardId] =
     current.map.sites(CatalogNames.site(site)).denizens.map(_.id)
   def relicsAt(site: String | SiteId)(using munit.Location): Vector[RelicId] =
     current.map.sites(CatalogNames.site(site)).relics.map(_.id)

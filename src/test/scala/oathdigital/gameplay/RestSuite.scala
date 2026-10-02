@@ -17,7 +17,7 @@ class RestSuite extends munit.FunSuite:
     * secrets, so p2, waking next, has wealth to take and the Wake waits. */
   private def act: ReadyGame = Table.start
     .adviser(Table.p1, "Wrestlers")
-    .siteTokens(Table.homeOf(Table.p2), secrets = 2)
+    .siteTokens(Table.quietPawnSite(Table.p2), secrets = 2)
     .ready
 
   private def rest(state: OathState, player: PlayerId,

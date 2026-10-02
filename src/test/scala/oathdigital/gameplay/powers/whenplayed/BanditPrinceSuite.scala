@@ -29,7 +29,7 @@ class BanditPrinceSuite extends munit.FunSuite:
   /** `table` with p1's warband bank holding only `left`. */
   private def banking(table: Table, left: Int): Table =
     val ready = table.ready
-    table.warbands(p1, ready.banks.warbandSupply(mine) - left)
+    table.boardWarbands(p1, ready.banks.warbandSupply(mine) - left)
 
   private def replacedAt(site: SiteId): NoteText.Said =
     val n = if site == homeSite then 2 else 1
@@ -50,7 +50,7 @@ class BanditPrinceSuite extends munit.FunSuite:
     val after = Look(done.treeless)
     assertEquals(after.forces(homeSite), SiteForces.Occupied(mine, 2))
     assertEquals(after.forces(awaySite), SiteForces.Occupied(mine, 1))
-    assertEquals(after.warbands(p1), 3)
+    assertEquals(after.boardWarbands(p1), 3)
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)
     assertEquals(said(done.events), sites.map(replacedAt))
 

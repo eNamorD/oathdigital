@@ -34,9 +34,9 @@ class ThreateningRoarSuite extends munit.FunSuite:
       .denizen(beast(1), at = awaySite).ready
     val done = finished(play(ready, power, roar))
     val after = Look(done.treeless)
-    assertEquals(after.denizens(homeSite), Vector[CardId](hearth(0)))
-    assertEquals(after.denizens(nearSite), Vector[CardId](intact))
-    assertEquals(after.denizens(awaySite), Vector[CardId](beast(1)))
+    assertEquals(after.cardsAt(homeSite), Vector[CardId](hearth(0)))
+    assertEquals(after.cardsAt(nearSite), Vector[CardId](intact))
+    assertEquals(after.cardsAt(awaySite), Vector[CardId](beast(1)))
     assertEquals(replayed(ready, done.events), done.treeless)
     assertEquals(said(done.events), Vector(discarded(inMapOrder(
       homeSite -> Vector(beast(0)), nearSite -> Vector(nomad(0), ruined)))))
@@ -45,7 +45,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
     val ready = Table.start.denizen(roar, at = homeSite)
       .denizen(nomad(0), at = homeSite).ready
     val done = finished(fire(ready, power, hookAt(roar, homeSite)))
-    assertEquals(Look(done.treeless).denizens(homeSite), Vector.empty)
+    assertEquals(Look(done.treeless).cardsAt(homeSite), Vector.empty)
     assertEquals(said(done.events), Vector(discarded(Vector(roar, nomad(0)))))
 
   test("with nothing to discard it says so"):

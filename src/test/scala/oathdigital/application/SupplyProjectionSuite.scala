@@ -60,7 +60,7 @@ class SupplyProjectionSuite extends munit.FunSuite:
     assertEquals(project(Table.start.ready, p2).restSupplyGain, None)
 
   test("a board carries its bag and the band the bag falls in"):
-    val board = Table.start.warbands(p1, 3).ready
+    val board = Table.start.boardWarbands(p1, 3).ready
     val projected = project(board, p1)
     val mine = projected.playerBoards.find(_.playerId == p1.value)
       .getOrElse(fail("no board for p1"))

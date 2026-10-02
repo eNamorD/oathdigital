@@ -15,7 +15,7 @@ class WhisperingLeavesSuite extends munit.FunSuite:
     * stands at p1's site with `favor` favor. */
   private def staged(favor: Int = 3, secrets: Int = 1): Table =
     Table.start.turn(p1, Phase.Act).adviser(p1, leaves).secrets(p1, secrets)
-      .pawn(p2, at = Table.homeOf(p1)).favor(p2, favor)
+      .pawn(p2, at = Table.quietPawnSite(p1)).favor(p2, favor)
 
   private def choose(ready: ReadyGame, target: PlayerId) =
     val t = use(ready, WhisperingLeaves, source).toOption.get

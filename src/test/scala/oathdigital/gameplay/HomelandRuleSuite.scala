@@ -69,7 +69,7 @@ class HomelandRuleSuite extends munit.FunSuite:
   test("an edifice of the card's suit does not make a site a Homeland"):
     // Ancient City is no Homeland; the Order Hall of Ministers and two cards
     // fill it, so an Order card has nowhere to go without a discard.
-    val home = Table.homeOf(p1)
+    val home = Table.quietPawnSite(p1)
     assertEquals(CardPlay.homelandSuit(catalog, home), None)
     val ready = Table.start
       .warbandsAt(home, p1, 1)

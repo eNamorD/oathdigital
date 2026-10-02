@@ -25,13 +25,13 @@ object CampaignFixture:
         SiteForces.Occupied(ForceKind.Bandit, 2))
 
   def board(extras: Int = 0, warbands: Int = 5, supply: Int = 7): Board =
-    val origin = Table.homeOf(Table.p1)
+    val origin = Table.quietPawnSite(Table.p1)
     val inPlay = Table.start.ready.game.current.map.inPlay
     val ruled = origin +: inPlay.filter(_ != origin).take(extras)
     val elsewhere = inPlay.find(!ruled.contains(_)).get
     val table = ruled.foldLeft(Table.start)(_.bandits(_, 2))
       .pawn(Table.p2, at = elsewhere).pawn(Table.p3, at = elsewhere)
-      .warbands(Table.p1, warbands).supply(Table.p1, supply)
+      .boardWarbands(Table.p1, warbands).supply(Table.p1, supply)
     Board(table.ready, Table.p1, Table.p2, origin)
 
   /** The other player joins the actor at `origin`, so a Raid is legal. */
@@ -137,7 +137,7 @@ object CampaignFixture:
     // Ids no card carries stand for cards whose identity the Raid never
     // learns: they join the table as they are.
     val raided = on(b)(_
-      .warbands(b.other, defenderWarbands).favor(b.other, 5)
+      .boardWarbands(b.other, defenderWarbands).favor(b.other, 5)
       .adviser(b.other, DenizenId("raid-facedown-denizen"), facedown = true)
       .adviser(b.other, VisionId("raid-facedown-vision"), facedown = true)
       .adviser(b.other, VisionRules.Conspiracy, facedown = true)

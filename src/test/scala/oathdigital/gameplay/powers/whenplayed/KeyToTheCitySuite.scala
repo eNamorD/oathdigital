@@ -29,7 +29,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
     val done = finished(fire(ready, power, played))
     val after = Look(done.treeless)
     assertEquals(after.forces(homeSite), SiteForces.Occupied(mine, 1))
-    assertEquals(after.warbands(p1), 3)
+    assertEquals(after.boardWarbands(p1), 3)
     assertEquals(replayed(ready, done.events), done.treeless)
     assertEquals(said(done.events), Vector(killedTwo, placed))
 
@@ -66,7 +66,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
   test("with no warband on the board or in the bank nothing is placed"):
     // Every one of p1's warbands stands at a site in another region.
     val supply = start.ready.banks.warbandSupply(mine)
-    val ready = start.warbandsAt(homeSite, p2, 2).warbands(p1, 0)
+    val ready = start.warbandsAt(homeSite, p2, 2).boardWarbands(p1, 0)
       .warbandsAt(awaySite, p1, supply).ready
     val done = finished(fire(ready, power, played))
     assertEquals(Look(done.treeless).forces(homeSite), SiteForces.Empty)

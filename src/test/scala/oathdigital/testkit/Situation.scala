@@ -138,10 +138,10 @@ object Situation:
     SituationDriver.Rules(catalog, walkerPowers, phasePowers, walkerDice,
       defenseDice, warExhaustion, defaultAnswer)
 
-  /** The rules adapter over the rules `GameApplicationService` builds
-    * (`GameApplicationService.scala:85-90`), so it agrees with the journaled
-    * adapter given the same input and ports. */
-  def serviceRules(catalog: ExecutableCatalog,
+  /** The rules adapter over the rules the production service builds
+    * (`GameApplicationService.scala:85-90`), with its power catalogs, so it
+    * agrees with the journaled adapter given the same input and ports. */
+  def productionRules(catalog: ExecutableCatalog,
       campaignDice: CampaignDicePort = CampaignDicePort.random,
       defenseDice: DefenseDicePort = DefenseDicePort.random,
       warExhaustion: WarExhaustionRandomPort = WarExhaustionRandomPort.random)

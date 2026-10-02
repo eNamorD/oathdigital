@@ -15,7 +15,7 @@ class BloodPactSuite extends munit.FunSuite:
     * board and `secrets` faceup secrets. */
   private def staged(warbands: Int = 5, secrets: Int = 1): ReadyGame =
     Table.start.turn(p1, Phase.Act).adviser(p1, pact)
-      .warbands(p1, warbands).secrets(p1, secrets).ready
+      .boardWarbands(p1, warbands).secrets(p1, secrets).ready
 
   private def secretsOf(ready: ReadyGame): Int =
     Look(ready).faceUpSecrets(p1) + Look(ready).faceDownSecrets(p1)
@@ -35,7 +35,7 @@ class BloodPactSuite extends munit.FunSuite:
     val done = answer(t, p1, BloodPact.decisionId, pairs(2)).toOption.get
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
-    assertEquals(Look(end).warbands(p1), 1)
+    assertEquals(Look(end).boardWarbands(p1), 1)
     assertEquals(secretsOf(end), secretsOf(ready) - 1 + 2)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
     assert(PaidActionHarness.wireRoundTrips(t.events ++ done.events))
@@ -51,7 +51,7 @@ class BloodPactSuite extends munit.FunSuite:
   test("choosing no pair sacrifices nothing and says so"):
     val t = use(staged(), BloodPact, source).toOption.get
     val done = answer(t, p1, BloodPact.decisionId, pairs(0)).toOption.get
-    assertEquals(Look(after(done)).warbands(p1), 5)
+    assertEquals(Look(after(done)).boardWarbands(p1), 5)
     assertEquals(NoteText.said(BloodPact, done.events), Vector(NoteText.Said(
       "used.none", s"${p1.value} sacrificed no warbands.", covers = true)))
 
@@ -59,7 +59,7 @@ class BloodPactSuite extends munit.FunSuite:
       "paid"):
     val done = use(staged(warbands = 1), BloodPact, source).toOption.get
     parked.assertResumed(done.state, Phase.Act, p1)
-    assertEquals(Look(after(done)).warbands(p1), 1)
+    assertEquals(Look(after(done)).boardWarbands(p1), 1)
     assertEquals(Look(after(done)).tokensOn(pact), Tokens(0, 1))
     assertEquals(NoteText.said(BloodPact, done.events), Vector(NoteText.Said(
       "used.none", s"${p1.value} sacrificed no warbands.", covers = true)))

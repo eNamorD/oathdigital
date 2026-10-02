@@ -10,7 +10,7 @@ class MessengerSuite extends munit.FunSuite:
 
   private val messenger = CatalogNames.denizen("Messenger")
   private val source = DecisionOptionRef.Denizen(messenger)
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
   private val far = CatalogNames.site("Deep Woods")
 
   /** p1's Act holding Messenger with `favor` favor and `board` warbands on
@@ -19,7 +19,7 @@ class MessengerSuite extends munit.FunSuite:
   private def staged(board: Int = 3, atHome: Int = 2, ruling: Boolean = true,
       favor: Int = 1): ReadyGame =
     val table = Table.start.turn(p1, Phase.Act).adviser(p1, messenger)
-      .favor(p1, favor).warbands(p1, board)
+      .favor(p1, favor).boardWarbands(p1, board)
     (if ruling then table.warbandsAt(home, p1, atHome).warbandsAt(far, p1, 1)
     else table).ready
 
@@ -52,7 +52,7 @@ class MessengerSuite extends munit.FunSuite:
       .toOption.get
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
-    assertEquals(Look(end).warbands(p1), 0)
+    assertEquals(Look(end).boardWarbands(p1), 0)
     assertEquals(count(end, home), 4)
     assertEquals(count(end, far), 2)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
@@ -60,7 +60,7 @@ class MessengerSuite extends munit.FunSuite:
 
   test("warbands may go back to the board"):
     val end = after(arranged(staged(), arrangement(4, 1, 1)).toOption.get)
-    assertEquals(Look(end).warbands(p1), 4)
+    assertEquals(Look(end).boardWarbands(p1), 4)
     assertEquals(count(end, home), 1)
     assertEquals(count(end, far), 1)
 
@@ -71,7 +71,7 @@ class MessengerSuite extends munit.FunSuite:
   test("an answer that changes nothing is allowed"):
     val done = arranged(staged(), arrangement(3, 2, 1)).toOption.get
     parked.assertResumed(done.state, Phase.Act, p1)
-    assertEquals(Look(after(done)).warbands(p1), 3)
+    assertEquals(Look(after(done)).boardWarbands(p1), 3)
     assertEquals(count(after(done), home), 2)
 
   test("its line follows the answer and covers nothing"):

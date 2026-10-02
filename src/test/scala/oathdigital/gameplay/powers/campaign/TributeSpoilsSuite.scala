@@ -79,7 +79,7 @@ class TributeSpoilsSuite extends munit.FunSuite:
   test("it is not offered in a Raid"):
     val base = withEnemyAtOrigin(board(warbands = 4))
     val b = on(withAdviser(withAdviser(base, card, Orientation.FaceUp), honors,
-      Orientation.FaceUp))(_.warbands(base.other, 3).favor(base.actor, 1))
+      Orientation.FaceUp))(_.boardWarbands(base.other, 3).favor(base.actor, 1))
     val run = commit(rules(winning), b, 4, raid = true)
     assert(run.offers(b.actor, b.actor, CampaignIds.attackerPlan, honorsRef))
     assert(!run.offered(b.actor).contains(ref))

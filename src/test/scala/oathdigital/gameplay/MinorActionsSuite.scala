@@ -24,7 +24,7 @@ class MinorActionsSuite extends munit.FunSuite:
     val adviser = CatalogNames.denizen("Magician's Code")
     val siteRelic = CatalogNames.relic("Sticky Fire")
     val staged = Table.start
-      .pawn(p1, at = site).warbands(p1, 4).warbandsAt(site, p1, 3)
+      .pawn(p1, at = site).boardWarbands(p1, 4).warbandsAt(site, p1, 3)
       .adviser(p1, adviser, facedown = true)
       .relic(p1, "Cursed Cauldron", facedown = true)
       .relicAt(siteRelic, at = site)

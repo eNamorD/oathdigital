@@ -12,7 +12,7 @@ class BallotBoxSuite extends munit.FunSuite:
   private val box = CatalogNames.denizen("Ballot Box")
   private val source = DecisionOptionRef.Denizen(box)
   private val power = BallotBox.forCatalog(catalog)
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
   private val hearth = SearchFixture.denizensOf(Suit.Hearth)
     .filterNot(_ == box)
   private val order = SearchFixture.denizensOf(Suit.Order)
@@ -32,7 +32,7 @@ class BallotBoxSuite extends munit.FunSuite:
   /** `table` with p1's bank holding only `left` warbands. */
   private def banking(table: Table, left: Int): Table =
     val ready = table.ready
-    table.warbands(p1, ready.banks.warbandSupply(mine(ready)) - left)
+    table.boardWarbands(p1, ready.banks.warbandSupply(mine(ready)) - left)
 
   test("a matching adviser replaces an enemy's warbands with the player's"):
     val ready = matching.warbandsAt(home, p2, 2).ready
@@ -41,7 +41,7 @@ class BallotBoxSuite extends munit.FunSuite:
     val end = after(t)
     assertEquals(Look(end).tokensOn(box), Tokens(2, 0))
     assertEquals(Look(end).forces(home), SiteForces.Occupied(mine(end), 2))
-    assertEquals(Look(end).warbands(p1), Look(ready).warbands(p1))
+    assertEquals(Look(end).boardWarbands(p1), Look(ready).boardWarbands(p1))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       NoteKey.Used, s"Replaced 2 ${p2.value} warbands at ${home.value}.",
       covers = true)))

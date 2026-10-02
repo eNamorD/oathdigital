@@ -33,7 +33,7 @@ class HungerSuite extends munit.FunSuite:
       .adviser(p2, card, facedown = orientation == Orientation.FaceDown)
       .adviser(p2, "Wrestlers")
       .adviser(p3, "Rain Boots")
-      .pawn(p3, at = Table.homeOf(p2))
+      .pawn(p3, at = Table.quietPawnSite(p2))
       .ready
 
   /** p3's Rain Boots with 1 favor and 2 secrets on it. Set on the
@@ -115,7 +115,7 @@ class HungerSuite extends munit.FunSuite:
     // secrets give p2 a Wake option, so the Wake goes on once Hunger is done.
     val alone = Table.start
       .adviser(p2, card)
-      .siteTokens(Table.homeOf(p2), secrets = 2)
+      .siteTokens(Table.quietPawnSite(p2), secrets = 2)
       .ready
     val t = rested(alone)
     parked.assertResumed(t.state, Phase.Wake, next)

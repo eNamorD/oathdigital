@@ -21,7 +21,7 @@ class DowntroddenSuite extends munit.FunSuite:
     * `banks` sets. p1 has the start's 1 favor, 3 warbands and 7 Supply. */
   private def board(banks: (Suit, Int)*): ReadyGame =
     val even = Suit.all.foldLeft(Table.start.adviser(p1, downtrodden)
-      .denizen(beast, at = Table.homeOf(p1)))((table, suit) =>
+      .denizen(beast, at = Table.quietPawnSite(p1)))((table, suit) =>
       table.bankFavor(suit, 3))
     banks.foldLeft(even) { case (table, (suit, n)) => table.bankFavor(suit, n) }
       .ready
@@ -41,24 +41,24 @@ class DowntroddenSuite extends munit.FunSuite:
       "two more warbands"):
     val ready = board(Suit.Beast -> 1)
     val (transition, result) = muster(ready, modifiers)
-    assertEquals(Look(result).warbands(p1), 3 + 1 + 2)
+    assertEquals(Look(result).boardWarbands(p1), 3 + 1 + 2)
     assertEquals(PaidActionHarness.replayed(rules, ready, transition.events),
       result)
     assert(PaidActionHarness.wireRoundTrips(transition.events))
 
   test("a tie for least gives nothing, empty banks included"):
     assertEquals(Look(muster(board(Suit.Beast -> 1, Suit.Order -> 1),
-      modifiers)._2).warbands(p1), 3 + 1)
+      modifiers)._2).boardWarbands(p1), 3 + 1)
     assertEquals(Look(muster(board(Suit.Beast -> 0, Suit.Order -> 0),
-      modifiers)._2).warbands(p1), 3 + 1)
+      modifiers)._2).boardWarbands(p1), 3 + 1)
 
   test("a card whose bank is not the least gives nothing"):
     assertEquals(Look(muster(board(Suit.Order -> 1), modifiers)._2)
-      .warbands(p1), 3 + 1)
+      .boardWarbands(p1), 3 + 1)
 
   test("without the selection the least bank gives nothing"):
     assertEquals(Look(muster(board(Suit.Beast -> 1), Vector.empty)._2)
-      .warbands(p1), 3 + 1)
+      .boardWarbands(p1), 3 + 1)
 
   test("it is a Muster modifier only"):
     val offered = (action: ActionRef) => rules.offerableWalkerPowers(board(),
@@ -73,7 +73,7 @@ class DowntroddenSuite extends munit.FunSuite:
     // Village Idiot then takes 1 from the Hearth bank, which must not make
     // the bank the strict least before Downtrodden reads it.
     val ready = Suit.all.foldLeft(Table.start.adviser(p1, downtrodden)
-      .denizen(idiot, at = Table.homeOf(p1)))((table, suit) =>
+      .denizen(idiot, at = Table.quietPawnSite(p1)))((table, suit) =>
       table.bankFavor(suit, 2)).ready
     // The order the player selects them in must not matter.
     Vector(Downtrodden.id, VillageIdiot.id).permutations.foreach: selected =>
@@ -84,4 +84,4 @@ class DowntroddenSuite extends munit.FunSuite:
         DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(idiot)))
         .toOption.get.state.asInstanceOf[Ready].value
       assertEquals(result.banks.favor.getOrElse(Suit.Hearth, 0), 1)
-      assertEquals(Look(result).warbands(p1), 3 + 1)
+      assertEquals(Look(result).boardWarbands(p1), 3 + 1)

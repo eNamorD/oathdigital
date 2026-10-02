@@ -25,7 +25,7 @@ class AnimalHostSuite extends munit.FunSuite:
   private def banking(table: Table, left: Int): Table =
     val ready = table.ready
     val kind = PlayerFacts.forceKind(ready, p1).toOption.get
-    table.warbands(p1, ready.banks.warbandSupply(kind) - left)
+    table.boardWarbands(p1, ready.banks.warbandSupply(kind) - left)
 
   test("as an adviser it counts the Beast cards at every site, whoever " +
       "rules them"):
@@ -40,7 +40,7 @@ class AnimalHostSuite extends munit.FunSuite:
       .denizen(beast(1), at = awaySite).warbandsAt(awaySite, p2, 1)
       .adviser(p2, beast(2)).ready
     val done = finished(play(ready, power, host))
-    assertEquals(Look(done.treeless).warbands(p1), 3 + 4)
+    assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 4)
     assertEquals(replayed(ready, done.events), done.treeless)
     assertEquals(said(done.events), Vector(gained(4)))
 
@@ -48,7 +48,7 @@ class AnimalHostSuite extends munit.FunSuite:
     val ready = Table.start.denizen(host, at = homeSite)
       .denizen(beast(0), at = nearSite).ready
     val done = finished(fire(ready, power, hookAt(host, homeSite)))
-    assertEquals(Look(done.treeless).warbands(p1), 3 + 2)
+    assertEquals(Look(done.treeless).boardWarbands(p1), 3 + 2)
     assertEquals(said(done.events), Vector(gained(2)))
 
   test("the gain takes what the bank holds"):

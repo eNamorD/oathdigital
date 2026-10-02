@@ -199,7 +199,7 @@ class PhasePowerSuite extends munit.FunSuite:
         ruined = e.ruined.powers :+ printed) else e))
     val power = TestPower(powerId, PowerTiming.Act)
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
-      val state = Table.start.edifice(id, side, at = Table.homeOf(p1)).ready
+      val state = Table.start.edifice(id, side, at = Table.quietPawnSite(p1)).ready
       assertEquals(PhasePowerProcedure.usable(powered, state, p1,
         PhasePowers(Vector(power)), WalkerPowers.empty).map(p => p.source -> p.ref),
         Vector(PowerSourceRef.Card(id) -> DecisionOptionRef.Edifice(id)),

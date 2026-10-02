@@ -36,8 +36,8 @@ class KnightsErrantSuite extends munit.FunSuite:
   private def staged(supply: Int = 1, campaignLegal: Boolean = true): Table =
     Table.start
       .adviser(p1, knights)
-      .denizen(alchemist, at = Table.homeOf(p1))
-      .bandits(Table.homeOf(p1), if campaignLegal then 2 else 0)
+      .denizen(alchemist, at = Table.quietPawnSite(p1))
+      .bandits(Table.quietPawnSite(p1), if campaignLegal then 2 else 0)
       .supply(p1, supply).favor(p1, 4)
 
   private def ready(transition: OathTransition): ReadyGame =
@@ -82,7 +82,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     * power.
     */
   private def afterMuster: Int =
-    Look(ready(musterFrom(staged().ready, Vector.empty))).warbands(p1)
+    Look(ready(musterFrom(staged().ready, Vector.empty))).boardWarbands(p1)
 
   private val campaign = ChooseOneAnswer(KnightsErrant.campaignOption)
   private val decline = ChooseOneAnswer(KnightsErrant.declineOption)
@@ -95,7 +95,7 @@ class KnightsErrantSuite extends munit.FunSuite:
       .map(_.ref), Vector[DecisionOptionRef](KnightsErrant.campaignOption,
       KnightsErrant.declineOption))
     // The Muster's own gain has already happened.
-    assertEquals(Look(ready(asked)).warbands(p1), afterMuster)
+    assertEquals(Look(ready(asked)).boardWarbands(p1), afterMuster)
 
   test("declining ends the Muster with no Campaign"):
     val done = answer(musterFrom(staged().ready, modifiers),
@@ -107,7 +107,7 @@ class KnightsErrantSuite extends munit.FunSuite:
   test("nothing is asked when no Campaign is legal"):
     val done = musterFrom(staged(campaignLegal = false).ready, modifiers)
     assertEquals(ready(done).game.current.walkerPending, None)
-    assertEquals(Look(ready(done)).warbands(p1), afterMuster)
+    assertEquals(Look(ready(done)).boardWarbands(p1), afterMuster)
 
   test("without the selection the Muster ends as before"):
     val done = musterFrom(staged().ready, Vector.empty)
@@ -167,7 +167,7 @@ class KnightsErrantSuite extends munit.FunSuite:
       "the nested Campaign, so the look-ahead hides the option"):
     // Nobody rules the site, so a Conquest is not legal. An enemy pawn stands
     // there, so a Raid is, and the Rotting Fortress protects that enemy.
-    val site = Table.homeOf(p1)
+    val site = Table.quietPawnSite(p1)
     val base = staged(campaignLegal = false).pawn(p2, at = site).ready
     val fortified = TargetingFixture.fortressAt(base, EdificeSide.Ruined, site)
     val asked = musterFrom(fortified, modifiers)

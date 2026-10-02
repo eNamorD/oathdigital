@@ -15,7 +15,7 @@ class HonorGuardSuite extends munit.FunSuite:
   private val plain = SearchFixture.denizensOf(Suit.Hearth)
   private val order = SearchFixture.denizensOf(Suit.Order)
   private val insomnia = CatalogNames.denizen("Insomnia")
-  private val home = Table.homeOf(p1)
+  private val home = Table.quietPawnSite(p1)
 
   /** p1's Act holding Honor Guard with `favor` favor. p2 stands at p1's site
     * holding plain(0) faceup with 1 favor and 1 secret on it. */

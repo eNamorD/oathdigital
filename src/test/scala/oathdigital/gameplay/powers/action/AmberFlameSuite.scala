@@ -17,7 +17,7 @@ class AmberFlameSuite extends munit.FunSuite:
     * offered. */
   private def staged(favor: Int = 2, secrets: Int = 1): Table =
     Table.start.turn(p1, Phase.Act).relic(p1, flame).secrets(p1, secrets)
-      .pawn(p2, at = Table.homeOf(p1)).peoplesFavor(Some(p2), favor)
+      .pawn(p2, at = Table.quietPawnSite(p1)).peoplesFavor(Some(p2), favor)
       .darkestSecret(Some(p3), 2)
 
   private def banner(ready: ReadyGame, which: Banner): Int = which match

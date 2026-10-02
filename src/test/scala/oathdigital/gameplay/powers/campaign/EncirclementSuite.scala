@@ -42,7 +42,7 @@ class EncirclementSuite extends munit.FunSuite:
 
   test("in a Raid the defender's force is their board"):
     val base = withEnemyAtOrigin(board())
-    val b = attacker(on(base)(_.warbands(base.other, 1)))
+    val b = attacker(on(base)(_.boardWarbands(base.other, 1)))
     assert(commit(rules(winning), b, 2, raid = true).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
     assert(!commit(rules(winning), b, 1, raid = true).offers(b.actor, b.actor,
