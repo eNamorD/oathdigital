@@ -5,15 +5,18 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class SkeletonKeySuite extends munit.FunSuite:
   import PhasePowerHarness._
 
   private val key = CatalogNames.relic("Skeleton Key")
   private val source = DecisionOptionRef.Relic(key)
-  private val wild = Table.start.ready.game.current.map.hinterland.head
-  private val home = Table.quietPawnSite(p1)
-  private val (first, second) = (RelicId("R08"), RelicId("R09"))
+  /** A Hinterland site, and the quiet table's site for p1 in the Cradle. */
+  private val wild = CatalogNames.site("Dunes")
+  private val home = CatalogNames.site("Ancient City")
+  private val first = CatalogNames.relic("Whistle")
+  private val second = CatalogNames.relic("Dowsing Sticks")
 
   /** p1's Act holding Skeleton Key faceup with `secrets` faceup secrets,
     * the pawn at `at`, and `relics` facedown there. */
@@ -31,7 +34,7 @@ class SkeletonKeySuite extends munit.FunSuite:
 
   test("at a Hinterland site it peeks at every relic there and asks which " +
       "to take"):
-    val t = use(staged(), SkeletonKey, source).toOption.get
+    val t = accepted(use(staged(), SkeletonKey, source))
     assert(awaits(t, SkeletonKey.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).faceUpSecrets(p1), 0)
@@ -42,9 +45,8 @@ class SkeletonKeySuite extends munit.FunSuite:
 
   test("the chosen relic moves facedown to the player, and the other stays"):
     val ready = staged()
-    val t = use(ready, SkeletonKey, source).toOption.get
-    val done = answer(t, p1, SkeletonKey.decisionId, relicRef(first))
-      .toOption.get
+    val t = accepted(use(ready, SkeletonKey, source))
+    val done = accepted(answer(t, p1, SkeletonKey.decisionId, relicRef(first)))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assert(Look(end).player(p1).relics.exists(relic =>
@@ -54,9 +56,8 @@ class SkeletonKeySuite extends munit.FunSuite:
     assertWireRoundTrips(t.events ++ done.events)
 
   test("it writes its peek, covering the peek lines, then its take"):
-    val t = use(staged(), SkeletonKey, source).toOption.get
-    val done = answer(t, p1, SkeletonKey.decisionId, relicRef(first))
-      .toOption.get
+    val t = accepted(use(staged(), SkeletonKey, source))
+    val done = accepted(answer(t, p1, SkeletonKey.decisionId, relicRef(first)))
     assertEquals(NoteText.said(SkeletonKey, t.events ++ done.events), Vector(
       NoteText.Said("used.peeked", s"${p1.value} peeked at the relics at " +
         s"${wild.value}: ${first.value}, ${second.value}.", covers = true),
@@ -67,7 +68,7 @@ class SkeletonKeySuite extends munit.FunSuite:
   test("away from the Hinterland the cost is paid and nothing else happens"):
     assert(!Table.start.ready.game.current.map.hinterland.contains(home))
     val ready = staged(at = home)
-    val done = use(ready, SkeletonKey, source).toOption.get
+    val done = accepted(use(ready, SkeletonKey, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).tokensOn(key), Tokens(0, 1))
     assertEquals(Look(after(done)).relicsAt(home), Vector(first, second))
@@ -76,8 +77,7 @@ class SkeletonKeySuite extends munit.FunSuite:
         covers = false)))
 
   test("a Hinterland site with no relic: the line says so"):
-    val done = use(staged(relics = Vector.empty), SkeletonKey, source)
-      .toOption.get
+    val done = accepted(use(staged(relics = Vector.empty), SkeletonKey, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(NoteText.said(SkeletonKey, done.events), Vector(
       NoteText.Said("used.none", s"${wild.value} held no relic.",

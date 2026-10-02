@@ -5,22 +5,23 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class MessengerSuite extends munit.FunSuite:
   import PhasePowerHarness._
 
   private val messenger = CatalogNames.denizen("Messenger")
   private val source = DecisionOptionRef.Denizen(messenger)
-  private val home = Table.quietPawnSite(p1)
+  private val home = CatalogNames.site("Ancient City")
   private val far = CatalogNames.site("Deep Woods")
 
-  /** p1's Act holding Messenger with `favor` favor and `board` warbands on
-    * the board. Unless `ruling` is false, p1 rules its home site with
-    * `atHome` warbands and Deep Woods with one. */
-  private def staged(board: Int = 3, atHome: Int = 2, ruling: Boolean = true,
+  /** p1's Act at Ancient City holding Messenger with `favor` favor and
+    * `board` warbands on the board. Unless `ruling` is false, p1 rules
+    * Ancient City with `atHome` warbands and Deep Woods with one. */
+  private def staged(board: Int, atHome: Int, ruling: Boolean = true,
       favor: Int = 1): ReadyGame =
-    val table = Table.start.turn(p1, Phase.Act).adviser(p1, messenger)
-      .favor(p1, favor).boardWarbands(p1, board)
+    val table = Table.start.turn(p1, Phase.Act).pawn(p1, home)
+      .adviser(p1, messenger).favor(p1, favor).boardWarbands(p1, board)
     (if ruling then table.warbandsAt(home, p1, atHome).warbandsAt(far, p1, 1)
     else table).ready
 
@@ -35,22 +36,25 @@ class MessengerSuite extends munit.FunSuite:
     DistributeAmount(DecisionOptionRef.Site(far), atFar)))
   private def arranged(ready: ReadyGame, answered: DecisionAnswer)
       : Either[OathViolation, OathTransition] =
-    answer(use(ready, Messenger, source).toOption.get, p1,
+    answer(accepted(use(ready, Messenger, source)), p1,
       Messenger.decisionId, answered)
 
   test("it places a favor and asks for one arrangement over the board and " +
       "every ruled site"):
-    val t = use(staged(), Messenger, source).toOption.get
+    // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
+    val ready = staged(board = 3, atHome = 2)
+    val t = accepted(use(ready, Messenger, source))
     assert(awaits(t, Messenger.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(messenger), Tokens(1, 0))
 
   test("the answer moves warbands from the board to the sites, keeping the " +
       "total"):
-    val ready = staged()
-    val t = use(ready, Messenger, source).toOption.get
-    val done = answer(t, p1, Messenger.decisionId, arrangement(0, 4, 2))
-      .toOption.get
+    // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
+    val ready = staged(board = 3, atHome = 2)
+    val t = accepted(use(ready, Messenger, source))
+    val done = accepted(answer(t, p1, Messenger.decisionId, arrangement(0, 4,
+      2)))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).boardWarbands(p1), 0)
@@ -60,30 +64,39 @@ class MessengerSuite extends munit.FunSuite:
     assertWireRoundTrips(t.events ++ done.events)
 
   test("warbands may go back to the board"):
-    val end = after(arranged(staged(), arrangement(4, 1, 1)).toOption.get)
+    // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
+    val ready = staged(board = 3, atHome = 2)
+    val end = after(accepted(arranged(ready, arrangement(4, 1, 1))))
     assertEquals(Look(end).boardWarbands(p1), 4)
     assertEquals(count(end, home), 1)
     assertEquals(count(end, far), 1)
 
   test("a site must keep a warband, and the total must be kept"):
-    assert(arranged(staged(), arrangement(4, 2, 0)).isLeft)
-    assert(arranged(staged(), arrangement(3, 2, 2)).isLeft)
+    // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
+    val ready = staged(board = 3, atHome = 2)
+    assert(arranged(ready, arrangement(4, 2, 0)).isLeft)
+    assert(arranged(ready, arrangement(3, 2, 2)).isLeft)
 
   test("an answer that changes nothing is allowed"):
-    val done = arranged(staged(), arrangement(3, 2, 1)).toOption.get
+    // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
+    val ready = staged(board = 3, atHome = 2)
+    val done = accepted(arranged(ready, arrangement(3, 2, 1)))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).boardWarbands(p1), 3)
     assertEquals(count(after(done), home), 2)
 
   test("its line follows the answer and covers nothing"):
-    val done = arranged(staged(), arrangement(0, 4, 2)).toOption.get
+    // 3 warbands on the board, 2 at Ancient City and 1 at Deep Woods: 6.
+    val ready = staged(board = 3, atHome = 2)
+    val done = accepted(arranged(ready, arrangement(0, 4, 2)))
     assertEquals(NoteText.said(Messenger, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"${p1.value} redistributed their warbands.",
       covers = false)))
 
   test("with no ruled site nothing is asked, the favor stays paid, and the " +
       "line says so"):
-    val done = use(staged(ruling = false), Messenger, source).toOption.get
+    val done = accepted(use(staged(board = 3, atHome = 2, ruling = false),
+      Messenger, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).tokensOn(messenger), Tokens(1, 0))
     assertEquals(NoteText.said(Messenger, done.events), Vector(NoteText.Said(
@@ -91,13 +104,12 @@ class MessengerSuite extends munit.FunSuite:
 
   test("with one warband on each ruled site and none on the board, nothing " +
       "can move"):
-    val done = use(staged(board = 0, atHome = 1), Messenger, source)
-      .toOption.get
+    val done = accepted(use(staged(board = 0, atHome = 1), Messenger, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(NoteText.said(Messenger, done.events), Vector(NoteText.Said(
       "used.none", "No warband could be moved.", covers = false)))
 
   test("it is unusable without a favor"):
-    val broke = staged(favor = 0)
+    val broke = staged(board = 3, atHome = 2, favor = 0)
     assert(!usableNow(broke).exists(_.power.id == Messenger.id))
     assert(use(broke, Messenger, source).isLeft)

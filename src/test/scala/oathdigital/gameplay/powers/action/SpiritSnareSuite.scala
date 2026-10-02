@@ -2,36 +2,35 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Unwrap.accepted
 
 class SpiritSnareSuite extends munit.FunSuite:
   import PowerFixture._
   import PhasePowerHarness._
 
-  private val snare = DenizenId("33")
+  private val snare = CatalogNames.denizen("Spirit Snare")
   private val source = DecisionOptionRef.Denizen(snare)
 
-  /** The banks hold exactly `favor`, and the actor holds one faceup secret
-    * beside a site Spirit Snare.
+  /** p1's Act at Ancient City with Spirit Snare at the site and one faceup
+    * secret. The favor banks hold exactly `favor`, and every other bank
+    * none.
     */
   private def staged(favor: (Suit, Int)*): ReadyGame =
-    val ready = inPhase(Table.from(atActorsSite(quietTable, snare))
-      .secrets(actor, 1, 0).unchecked,
-      Phase.Act)
-    ready.copy(banks = ready.banks.copy(favor =
-      Suit.all.map(_ -> 0).toMap ++ favor))
+    val banks = favor.toMap
+    val table = Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
+      .denizen(snare, at = "Ancient City").secrets(actor, 1)
+    Suit.all.foldLeft(table)((t, suit) =>
+      t.bankFavor(suit, banks.getOrElse(suit, 0))).ready
   private def bank(ready: ReadyGame, suit: Suit) = ready.banks.favor(suit)
-  private def cardOf(ready: ReadyGame) = ready.game.current.map
-    .sites(actorsSite(ready)).denizens.collectFirst {
-      case d: DenizenState if d.id == snare => d }.get
   private def decision(ready: ReadyGame) =
     SpiritSnare.choiceDecisionId(ready, actor)
 
   test("one stocked bank gives a favor without asking"):
     val ready = staged(Suit.Order -> 3)
-    val t = use(ready, SpiritSnare, source).toOption.get
+    val t = accepted(use(ready, SpiritSnare, source))
     parked.assertNotParked(t.state)
-    assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
+    assertEquals(Look(after(t)).tokensOn(snare), Tokens(0, 1))
     assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor + 1)
     assertEquals(bank(after(t), Suit.Order), 2)
@@ -41,7 +40,7 @@ class SpiritSnareSuite extends munit.FunSuite:
 
   test("a bank holding one favor gives it and is left empty"):
     val ready = staged(Suit.Hearth -> 1)
-    val t = use(ready, SpiritSnare, source).toOption.get
+    val t = accepted(use(ready, SpiritSnare, source))
     assertEquals(bank(after(t), Suit.Hearth), 0)
     assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor + 1)
@@ -51,13 +50,13 @@ class SpiritSnareSuite extends munit.FunSuite:
 
   test("several stocked banks ask which, and the answer is taken from"):
     val ready = staged(Suit.Arcane -> 2, Suit.Beast -> 1)
-    val t = use(ready, SpiritSnare, source).toOption.get
+    val t = accepted(use(ready, SpiritSnare, source))
     assert(awaits(t, decision(ready)), parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor), Some(Suit.all.filter(
       Set(Suit.Arcane, Suit.Beast)).map(DecisionOptionRef.FavorBank(_))
       .map(r => r.kind -> r.wireId)))
-    val done = answer(t, actor, decision(ready),
-      pick(DecisionOptionRef.FavorBank(Suit.Beast))).toOption.get
+    val done = accepted(answer(t, actor, decision(ready),
+      pick(DecisionOptionRef.FavorBank(Suit.Beast))))
     assertEquals(bank(after(done), Suit.Beast), 0)
     assertEquals(bank(after(done), Suit.Arcane), 2)
     assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
@@ -70,9 +69,9 @@ class SpiritSnareSuite extends munit.FunSuite:
   test("with every bank empty the cost is paid and nothing is taken"):
     val ready = staged()
     assert(usableNow(ready).exists(_.power.id == SpiritSnare.id))
-    val t = use(ready, SpiritSnare, source).toOption.get
+    val t = accepted(use(ready, SpiritSnare, source))
     parked.assertNotParked(t.state)
-    assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
+    assertEquals(Look(after(t)).tokensOn(snare), Tokens(0, 1))
     assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor)
     assertEquals(NoteText.said(SpiritSnare, t.events), Vector(NoteText.Said(

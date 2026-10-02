@@ -7,17 +7,19 @@ import oathdigital.gameplay.powers.{CardStaging, NoteText, PhasePowerCatalog,
   PowerFixture, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{Look, ParkedNode, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, ParkedNode, PhasePowerHarness,
+  Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.Unwrap.accepted
 
 class OracleSuite extends munit.FunSuite:
   import PowerFixture._
   import PhasePowerHarness.{after, awaits, parked, pick, usableNow}
 
-  private val oracle = DenizenId("160")
+  private val oracle = CatalogNames.denizen("Oracle")
   private val source = DecisionOptionRef.Denizen(oracle)
   private val faith = VisionRules.Faith
-  private val vow = DenizenId("121")
+  private val vow = CatalogNames.denizen("Vow of Obedience")
   private val power = Oracle.forCatalog(catalog)
   private val placement = CardPlayProcedure.placementDecisionId(faith)
   /** The production walker rules and phase powers, so a Restriction such as
@@ -26,24 +28,18 @@ class OracleSuite extends munit.FunSuite:
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
-  /** The actor stands beside a site Oracle with two faceup secrets. Every
-    * Vision in the world deck waits in the Provinces discard pile, and Faith
-    * is the deck's third card, or, `withVision = false`, nowhere in it. */
+  /** p1's Act at Ancient City beside a site Oracle, with two faceup
+    * secrets. Every other Vision lies in the Provinces discard pile. Faith is
+    * the world deck's third card, under Threatening Roar and Fae Merchant,
+    * or, `withVision = false`, in that pile too. */
   private def staged(withVision: Boolean = true): ReadyGame =
-    val ready = inPhase(Table.from(atActorsSite(CardStaging.without(quietTable,
-      faith),
-      oracle)).secrets(actor, 2, 0).unchecked, Phase.Act)
-    ready.updateCurrent { c =>
-      val deck = c.commonCards.worldDeck
-      val visions = deck.collect { case vision: VisionId => vision }
-      val plain = deck.filterNot(visions.contains)
-      c.copy(commonCards = c.commonCards.copy(
-        worldDeck = if withVision then plain.take(2) ++ Vector(faith) ++
-          plain.drop(2) else plain,
-        regionalDiscards = c.commonCards.regionalDiscards.updated(
-          Region.Provinces, c.commonCards.discard(Region.Provinces) ++
-            visions)))
-    }
+    val table = Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
+      .denizen(oracle, at = "Ancient City").secrets(actor, 2)
+      .discarded(Region.Provinces, VisionRules.Sanctuary,
+        VisionRules.Rebellion, VisionRules.Conspiracy, VisionRules.Conquest)
+    (if withVision then
+      table.worldDeckTop("Threatening Roar", "Fae Merchant", faith)
+    else table.discarded(Region.Provinces, faith)).ready
   private def deckOf(ready: ReadyGame) = ready.game.current.commonCards.worldDeck
   private def drawn(ready: ReadyGame) = ready.game.current.tracks.visionsDrawn
 
@@ -72,7 +68,7 @@ class OracleSuite extends munit.FunSuite:
   test("it places two secrets and draws the first Vision, the cards above " +
       "it staying in place"):
     val ready = staged()
-    val t = start(ready).toOption.get
+    val t = accepted(start(ready))
     assert(awaits(t, placement), parked.parkedDecision(t.state).toString)
     val drew = after(t)
     assertEquals(Look(drew).tokensOn(oracle), Tokens(0, 2))
@@ -88,8 +84,8 @@ class OracleSuite extends munit.FunSuite:
   test("played facedown, the Vision becomes an adviser; replay and the wire " +
       "agree"):
     val ready = staged()
-    val t = start(ready).toOption.get
-    val done = place(t, "adviser-facedown").toOption.get
+    val t = accepted(start(ready))
+    val done = accepted(place(t, "adviser-facedown"))
     parked.assertResumed(done.state, Phase.Act, actor)
     val held = after(done)
     assert(Look(held).player(actor).advisers.contains(
@@ -102,8 +98,8 @@ class OracleSuite extends munit.FunSuite:
     assertWireRoundTrips(events)
 
   test("discarded, the Vision goes to a discard pile"):
-    val t = start(staged()).toOption.get
-    val done = place(t, "discard").toOption.get
+    val t = accepted(start(staged()))
+    val done = accepted(place(t, "discard"))
     parked.assertResumed(done.state, Phase.Act, actor)
     val located = CardIndex.from(after(done).game).toOption
       .flatMap(_.get(faith)).map(_.location.container)
@@ -115,14 +111,14 @@ class OracleSuite extends munit.FunSuite:
   test("a faceup Vow of Obedience holder may not play it faceup"):
     val holding = Table.from(CardStaging.without(staged(), vow)).adviser(actor,
       vow).unchecked
-    val t = start(holding).toOption.get
+    val t = accepted(start(holding))
     assert(!buttons(t).contains("adviser-faceup"), buttons(t).toString)
     assert(buttons(t).contains("adviser-facedown"))
     assert(buttons(t).contains("discard"))
     assert(place(t, "adviser-faceup").isLeft)
 
   test("its line names the Vision it drew"):
-    val t = start(staged()).toOption.get
+    val t = accepted(start(staged()))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       NoteKey.Used,
       s"${actor.value} drew ${faith.value} from the world deck.",
@@ -130,7 +126,7 @@ class OracleSuite extends munit.FunSuite:
 
   test("a world deck with no Vision takes the cost and says so"):
     val ready = staged(withVision = false)
-    val t = start(ready).toOption.get
+    val t = accepted(start(ready))
     parked.assertResumed(t.state, Phase.Act, actor)
     val paid = after(t)
     assertEquals(Look(paid).tokensOn(oracle), Tokens(0, 2))

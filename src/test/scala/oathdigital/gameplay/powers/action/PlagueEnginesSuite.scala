@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 
 class PlagueEnginesSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -22,10 +23,10 @@ class PlagueEnginesSuite extends munit.FunSuite:
 
   test("each player puts 1 favor per site they rule into the Arcane bank, " +
       "the user first"):
-    val ready = staged.favor(p1, 5).favor(p2, 3)
-      .warbandsAt(Table.quietPawnSite(p1), p1, 1).warbandsAt(Table.quietPawnSite(p3), p1, 1)
-      .warbandsAt(Table.quietPawnSite(p2), p2, 1).ready
-    val t = use(ready, PlagueEngines, source).toOption.get
+    val ready = staged.favor(p1, 5).favor(p2, 3).favor(p3, 1)
+      .warbandsAt("Ancient City", p1, 1).warbandsAt("Buried Giant", p1, 1)
+      .warbandsAt("Broken Peaks", p2, 1).ready
+    val t = accepted(use(ready, PlagueEngines, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     val end = after(t)
     assertEquals(Look(end).tokensOn(engines), Tokens(0, 1))
@@ -41,16 +42,16 @@ class PlagueEnginesSuite extends munit.FunSuite:
 
   test("a player short of favor gives all they have"):
     val ready = staged.favor(p2, 1)
-      .warbandsAt(Table.quietPawnSite(p2), p2, 1).warbandsAt(Table.quietPawnSite(p3), p2, 1)
+      .warbandsAt("Broken Peaks", p2, 1).warbandsAt("Buried Giant", p2, 1)
       .ready
-    val t = use(ready, PlagueEngines, source).toOption.get
+    val t = accepted(use(ready, PlagueEngines, source))
     assertEquals((Look(after(t)).favor(p2), arcane(after(t))), (0, 1))
     assertEquals(NoteText.said(PlagueEngines, t.events), Vector(
       NoteText.Said(NoteKey.Used,
         s"${p2.value} put 1 favor into the Arcane bank.", covers = false)))
 
   test("with no site ruled nothing moves, and the line says so"):
-    val t = use(staged.ready, PlagueEngines, source).toOption.get
+    val t = accepted(use(staged.ready, PlagueEngines, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     assertEquals(arcane(after(t)), 0)
     assertEquals(NoteText.said(PlagueEngines, t.events), Vector(

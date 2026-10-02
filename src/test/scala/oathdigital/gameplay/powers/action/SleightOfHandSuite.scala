@@ -2,64 +2,58 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.Unwrap.accepted
 
 class SleightOfHandSuite extends munit.FunSuite:
   import PowerFixture._
   import PhasePowerHarness._
 
-  private val sleight = DenizenId("17")
+  private val sleight = CatalogNames.denizen("Sleight of Hand")
   private val source = DecisionOptionRef.Denizen(sleight)
-  private val victim = others(quietTable)(0)
-  private val bystander = others(quietTable)(1)
+  private val victim = Table.p2
+  private val bystander = Table.p3
 
-  private def elsewhere(ready: ReadyGame): SiteId =
-    ready.game.current.map.inPlay.find(_ != actorsSite(ready)).get
-
-  /** The actor holds Sleight of Hand as an adviser with `favor`. `victim` is
-    * at the actor's site holding the given secrets. `bystander` is at
-    * another site with plenty of secrets, so it is never a target.
+  /** p1's Act at Ancient City holding Sleight of Hand as an adviser with
+    * `favor`. `victim` (p2) stands at Ancient City holding the given
+    * secrets; `bystander` (p3) stands at Buried Giant with 5 faceup and 5
+    * facedown secrets, so it is never a target.
     */
   private def staged(up: Int, down: Int, favor: Int = 1) =
-    val actorReady = inPhase(Table.from(asAdviser(quietTable, sleight))
-      .favor(actor, favor).unchecked, Phase.Act)
-    val placed = Table.from(actorReady).pawn(victim, actorsSite(actorReady))
-      .pawn(bystander, elsewhere(actorReady)).unchecked
-    Table.from(placed).secrets(victim, up, down).secrets(bystander, 5, 5)
-      .unchecked
+    Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
+      .adviser(actor, sleight).favor(actor, favor)
+      .pawn(victim, "Ancient City").secrets(victim, up, down)
+      .pawn(bystander, "Buried Giant").secrets(bystander, 5, 5).ready
   private def secretsOf(ready: ReadyGame, id: PlayerId = actor) =
     (Look(ready).player(id).board.faceUpSecrets, Look(ready).player(id)
       .board.faceDownSecrets)
   private def choose(id: PlayerId) = pick(DecisionOptionRef.Player(id))
-  private def cardOf(ready: ReadyGame) = Look(ready).player(actor)
-    .advisers.collectFirst {
-    case d: DenizenState if d.id == sleight => d }.get
 
   test("it places a favor on its card and offers players at the actor's site " +
       "holding two or more secrets"):
     val ready = staged(2, 0)
-    val t = use(ready, SleightOfHand, source).toOption.get
+    val t = accepted(use(ready, SleightOfHand, source))
     assert(awaits(t, SleightOfHand.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor), Some(Vector("player" -> victim.value)))
-    assertEquals(cardOf(after(t)).tokens, Tokens(1, 0))
+    assertEquals(Look(after(t)).tokensOn(sleight), Tokens(1, 0))
     assertEquals(Look(after(t)).player(actor).board.favor, 0)
 
   test("a target with faceup secrets only gives one faceup secret"):
     val ready = staged(2, 0)
-    val t = use(ready, SleightOfHand, source).toOption.get
-    val done = answer(t, actor, SleightOfHand.decisionId, choose(victim))
-      .toOption.get
+    val t = accepted(use(ready, SleightOfHand, source))
+    val done = accepted(answer(t, actor, SleightOfHand.decisionId,
+      choose(victim)))
     assertEquals(secretsOf(after(done), victim), (1, 0))
     assertEquals(secretsOf(after(done)), (secretsOf(ready)._1 + 1, 0))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
 
   test("a target with facedown secrets only gives one, arriving facedown"):
     val ready = staged(0, 2)
-    val t = use(ready, SleightOfHand, source).toOption.get
-    val done = answer(t, actor, SleightOfHand.decisionId, choose(victim))
-      .toOption.get
+    val t = accepted(use(ready, SleightOfHand, source))
+    val done = accepted(answer(t, actor, SleightOfHand.decisionId,
+      choose(victim)))
     assertEquals(secretsOf(after(done), victim), (0, 1))
     assertEquals(secretsOf(after(done)),
       (secretsOf(ready)._1, secretsOf(ready)._2 + 1))
@@ -67,9 +61,9 @@ class SleightOfHandSuite extends munit.FunSuite:
   test("a mixed target gives a faceup secret, arriving faceup, and keeps " +
       "its facedown secrets"):
     val ready = staged(1, 2)
-    val t = use(ready, SleightOfHand, source).toOption.get
-    val done = answer(t, actor, SleightOfHand.decisionId, choose(victim))
-      .toOption.get
+    val t = accepted(use(ready, SleightOfHand, source))
+    val done = accepted(answer(t, actor, SleightOfHand.decisionId,
+      choose(victim)))
     assertEquals(secretsOf(after(done), victim), (0, 2))
     assertEquals(secretsOf(after(done)),
       (secretsOf(ready)._1 + 1, secretsOf(ready)._2))
@@ -77,35 +71,34 @@ class SleightOfHandSuite extends munit.FunSuite:
 
   test("the mixed-target batch survives the journal wire"):
     val ready = staged(1, 2)
-    val t = use(ready, SleightOfHand, source).toOption.get
-    val done = answer(t, actor, SleightOfHand.decisionId, choose(victim))
-      .toOption.get
+    val t = accepted(use(ready, SleightOfHand, source))
+    val done = accepted(answer(t, actor, SleightOfHand.decisionId,
+      choose(victim)))
     assertWireRoundTrips(t.events ++ done.events)
 
   test("a player holding one secret is not a target, so nothing is asked"):
     val ready = staged(1, 0)
-    val t = use(ready, SleightOfHand, source).toOption.get
+    val t = accepted(use(ready, SleightOfHand, source))
     parked.assertNotParked(t.state)
     assertEquals(secretsOf(after(t), victim), (1, 0))
-    assertEquals(cardOf(after(t)).tokens, Tokens(1, 0))
+    assertEquals(Look(after(t)).tokensOn(sleight), Tokens(1, 0))
     assertEquals(Look(after(t)).player(actor).board.favor, 0)
 
   test("a player at another site is not a target"):
-    val ready = Table.from(staged(3, 0)).pawn(victim, elsewhere(staged(3, 0)))
-      .unchecked
-    val t = use(ready, SleightOfHand, source).toOption.get
+    val ready = Table.from(staged(3, 0)).pawn(victim, "Buried Giant").unchecked
+    val t = accepted(use(ready, SleightOfHand, source))
     parked.assertNotParked(t.state)
     assertEquals(secretsOf(after(t), victim), (3, 0))
 
   test("every eligible player is offered"):
-    val ready = Table.from(staged(2, 0)).pawn(bystander, actorsSite(staged(2,
-      0))).secrets(bystander, 2, 0).unchecked
-    val t = use(ready, SleightOfHand, source).toOption.get
+    val ready = Table.from(staged(2, 0)).pawn(bystander, "Ancient City")
+      .secrets(bystander, 2, 0).unchecked
+    val t = accepted(use(ready, SleightOfHand, source))
     assertEquals(offered(t, actor).map(_.toSet),
       Some(Set("player" -> victim.value, "player" -> bystander.value)))
 
   test("only the acting player answers, with an offered player"):
-    val t = use(staged(2, 0), SleightOfHand, source).toOption.get
+    val t = accepted(use(staged(2, 0), SleightOfHand, source))
     assert(answer(t, victim, SleightOfHand.decisionId, choose(victim)).isLeft)
     assert(answer(t, actor, SleightOfHand.decisionId, choose(bystander)).isLeft)
     assert(answer(t, actor, SleightOfHand.decisionId, choose(actor)).isLeft)
@@ -116,14 +109,14 @@ class SleightOfHandSuite extends munit.FunSuite:
     assert(use(ready, SleightOfHand, source).isLeft)
 
   test("it writes the secret it took"):
-    val t = use(staged(2, 0), SleightOfHand, source).toOption.get
-    val done = answer(t, actor, SleightOfHand.decisionId, choose(victim))
-      .toOption.get
+    val t = accepted(use(staged(2, 0), SleightOfHand, source))
+    val done = accepted(answer(t, actor, SleightOfHand.decisionId,
+      choose(victim)))
     assertEquals(NoteText.said(SleightOfHand, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"${actor.value} took 1 secret from ${victim.value}.",
       covers = false)))
 
   test("with nobody to rob it writes that"):
-    val t = use(staged(1, 0), SleightOfHand, source).toOption.get
+    val t = accepted(use(staged(1, 0), SleightOfHand, source))
     assertEquals(NoteText.said(SleightOfHand, t.events), Vector(NoteText.Said(
       "used.none", "No player could be robbed.", covers = false)))
