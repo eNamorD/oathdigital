@@ -27,8 +27,13 @@ object TheGrandScepterCard extends Relic(RelicId("grand-scepter"), "The Grand Sc
   * return to the relic deck. A `Bury` of it is refused too. Passing it between
   * players, by a `Take` or a `Give`, keeps it in play and is allowed. The
   * scepter is never facedown, so a refusal reveals nothing.
+  *
+  * There is one Grand Scepter, so the restriction names its card and holds
+  * whichever relics a catalog lists.
   */
-final case class GrandScepter(relic: RelicId) extends OperationRestriction:
+case object GrandScepter extends OperationRestriction:
+  val relic: RelicId = TheGrandScepterCard.id
+
   override def reason(ready: ReadyGame,
       operation: CoreOperation): Option[OperationReason] =
     Option.when(Operation.flatten(operation).exists(removes))(OperationReason(

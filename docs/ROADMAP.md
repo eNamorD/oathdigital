@@ -164,7 +164,10 @@ Design: [Card classes design](superpowers/specs/2026-10-01-card-classes-design.m
 - [x] **Slice 2 - denizens beside their powers.** The 126 implemented
   denizens sit in their power files; powers read their card, power id and
   printed cost from the card object, and `CatalogCards.denizen` is gone.
-- [ ] **Slice 3 - relics and edifices.**
+- [x] **Slice 3 - relics and edifices.** The 36 implemented relics and
+  edifices sit in their power files; their powers read their card from the
+  card object, `CatalogCards` is gone, and the Grand Scepter and the Hall of
+  Ministers declare their own restrictions.
 - [ ] **Slice 4 - sites and legacies.**
 
 ### Phase - Cleanup tasks

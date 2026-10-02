@@ -8,14 +8,12 @@ import oathdigital.model._
   * set").
   *
   * `printed` are the restrictions a catalog's cards print: [[LockedCards]],
-  * holding every lock-icon card, the [[HallOfMinisters]], and one
-  * [[GrandScepter]] per scepter relic. `active` adds the
-  * [[ActiveModifier]] rule for the modifiers selected for the running action,
-  * and the restrictions the offered powers register. Every one refuses as
-  * `Impossible`: an optional operation is skipped, a required one rejects.
-  *
-  * `printed` reads the cards' `Locked` trait and the Grand Scepter's card.
-  * Card classes slice 3 has the Grand Scepter declare its own restriction.
+  * holding every card whose `Locked` trait shows the lock icon, and the
+  * [[HallOfMinisters]] and the [[GrandScepter]], which their cards declare.
+  * `active` adds the [[ActiveModifier]] rule for the modifiers selected for
+  * the running action, and the restrictions the offered powers register.
+  * Every one refuses as `Impossible`: an optional operation is skipped, a
+  * required one rejects.
   */
 final class OperationRestrictions private (catalog: Option[ExecutableCatalog]):
   val printed: Vector[OperationRestriction] =
@@ -45,9 +43,7 @@ object OperationRestrictions:
       (catalog.denizens.collect { case d: Locked => d.id: CardId } ++
         catalog.edifices.collect {
           case e if e.intact.isInstanceOf[Locked] => e.id: CardId }).toSet
-    val scepter = catalog.relic(TheGrandScepterCard.id)
-      .map(relic => GrandScepter(relic.id))
-    Vector(LockedCards(locked), HallOfMinisters(catalog)) ++ scepter
+    Vector(LockedCards(locked), HallOfMinisters, GrandScepter)
 
 /** A card that prints a power selected for the running action cannot be
   * discarded while the action runs: a modifier a player selected at the start

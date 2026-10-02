@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{GrandScepter, LockedCards,
-  OperationPipeline, OperationPolicy, OperationRestrictions}
+import oathdigital.gameplay.operations.{GrandScepter, HallOfMinisters,
+  LockedCards, OperationPipeline, OperationPolicy, OperationRestrictions}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
@@ -146,9 +146,13 @@ class OperationRestrictionsSuite extends munit.FunSuite:
         Location.PlayArea(p2)))
     assertEquals(passes.map(refusal(ready, _)), Vector.fill(2)(None))
 
-  test("the catalog prints one Grand Scepter restriction, for its scepter"):
-    assertEquals(set.printed.collect { case value: GrandScepter => value.relic },
-      Vector(scepter))
+  test("the Grand Scepter and the Hall of Ministers hold whichever cards a " +
+      "catalog lists"):
+    val bare = OperationRestrictions.forCatalog(
+      catalog.copy(relics = Vector.empty, edifices = Vector.empty))
+    assertEquals(bare.printed.filterNot(_.isInstanceOf[LockedCards]),
+      Vector[OperationRestriction](HallOfMinisters, GrandScepter))
+    assertEquals(GrandScepter.relic, scepter)
 
   test("the catalog prints a lock for every lock-icon card and only those"):
     val locked = set.printed.collect { case value: LockedCards => value.cards }

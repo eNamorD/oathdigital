@@ -1,7 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
-  PrintedPower}
+import oathdigital.catalog.{Edifice, EdificeFace, Locked, PrintedPower}
 import oathdigital.model._
 
 object HallOfMinistersCard extends Edifice(EdificeId("E16"), Suit.Order):
@@ -23,11 +22,11 @@ object HallOfMinistersCard extends Edifice(EdificeId("E16"), Suit.Order):
   * acts as if the denizens and relics at the ruler's sites were locked, so it
   * cannot discard them. The actor is the discard's own acting player; a
   * Vision's discard names none, so it is the active player's.
+  *
+  * There is one Hall of Ministers, so the restriction names its card and
+  * holds whichever edifices a catalog lists.
   */
-final case class HallOfMinisters(catalog: ExecutableCatalog)
-    extends OperationRestriction:
-  private val hallPower = PowerId("edifice.e16.intact")
-
+case object HallOfMinisters extends OperationRestriction:
   override def reason(ready: ReadyGame,
       operation: CoreOperation): Option[OperationReason] =
     discardAt(ready, operation).flatMap { case (site, actor) =>
@@ -48,8 +47,7 @@ final case class HallOfMinisters(catalog: ExecutableCatalog)
           SiteRule.ruler(state.forces, current.players).toOption.contains(ruler) &&
             state.denizens.exists:
               case edifice: EdificeState if edifice.side == EdificeSide.Intact =>
-                catalog.edifice(edifice.id)
-                  .exists(_.intact.powers.exists(_.id == hallPower))
+                edifice.id == HallOfMinistersCard.id
               case _ => false
         }
       yield OperationReason("discard-immune",

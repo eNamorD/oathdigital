@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -140,7 +139,7 @@ class OperationResolutionSuite extends munit.FunSuite:
       current = current.copy(players = current.players :+ bluePlayer,
         map = current.map.copy(sites = current.map.sites
           .updated(sites.head, first).updated(sites(1), second)))))
-    val restriction = HallOfMinisters(FirstGameSetupFixture.catalog)
+    val restriction = HallOfMinisters
     val discard = Discard.Denizen(siteDenizen.id,
       PositionedLocation(Location.Site(sites.head)), Region.Cradle,
       Suit.Order, 1, 0, blue)
