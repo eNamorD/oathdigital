@@ -56,7 +56,7 @@ object PlaceBannerResourceProcedure:
     Branch((ready, _) => Vector(Decide(bannerDecisionId, actor,
       DecisionQuery.ChooseOne(heldBanners(ready, actor).map(banner =>
         DecisionOption.Banner(DecisionOptionRef.Banner(banner))),
-        heading = Some("Choose a banner to place resources on")),
+        heading = Some("Choose a banner to place favor or secrets on")),
       window = Some(PowerWindow.PlaceBannerResourceBannerSelection)))),
     Branch((ready, pending) => bannerOf(pending).toVector.map(banner =>
       amountDecision(ready, actor, banner))),
@@ -81,7 +81,8 @@ object PlaceBannerResourceProcedure:
     val own = ready.game.current.players.find(_.player == actor)
       .fold(0)(BannerRules.playerResources(_, banner))
     Decide(amountDecisionId, actor, DecisionQuery.ChooseAmount(1,
-      math.max(1, own), Some(amountHeading(banner)), "Place resources"),
+      math.max(1, own), Some(amountHeading(banner)),
+      s"Place ${BannerRules.resourceName(banner)}"),
       window = Some(PowerWindow.PlaceBannerResourceAmountSelection))
 
   private def bannerOf(pending: PendingTree): Option[Banner] =

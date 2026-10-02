@@ -194,3 +194,20 @@ class PlayerBoardSuite extends munit.FunSuite:
       .asInstanceOf[dom.html.Button].click()
     CardInspection.clear()
     assertEquals(opened, Vector("Oathkeeper of Devotion", "Vision of Faith"))
+
+  test("a held banner names what it holds: favor or secrets, not resources"):
+    val banners = Vector(
+      oathdigital.protocol.projection.BannerProjection("peoples-favor",
+        "peoples-favor", Some("red"), 3),
+      oathdigital.protocol.projection.BannerProjection("darkest-secret",
+        "darkest-secret", Some("red"), 1))
+    val rendered = WorldBoardRenderer.playerBoards(
+      GameProjection("game", 1L, "act", Some("red"),
+        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
+        Vector.empty, Vector(GamePawn("red", "site:woods")), Vector.empty,
+        ready = true, completed = false,
+        playerBoards = Vector(board.copy(banners = banners)), supplyMaximum = 7),
+      "red")
+    val lines = all(rendered, ".player-banner").map(_.textContent)
+    assertEquals(lines.map(_.split(" · ").last), Vector("3 favor", "1 secret"))
+    assert(lines.forall(!_.contains("resources")), lines)

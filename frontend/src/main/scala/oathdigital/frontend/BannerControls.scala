@@ -16,7 +16,7 @@ private[frontend] object BannerControls:
     Control("beginChallenge", "challenge", "Challenge (1 Supply)",
       GameCommand.StartWalker("challenge", Vector.empty)),
     Control("placeBannerResource", "place-banner-resource",
-      "Place banner resources",
+      "Place favor or secrets on a banner",
       GameCommand.StartWalker("place-banner-resource", Vector.empty)))
 
   def render(value: GameProjection, canControl: Boolean, groups: ActionSections,
