@@ -5,8 +5,10 @@ import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog, PowerFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerDice}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
+import oathdigital.testkit.Unwrap.accepted
 
 class ClayRattleSuite extends munit.FunSuite:
   import ActPowerHarness._
@@ -15,7 +17,7 @@ class ClayRattleSuite extends munit.FunSuite:
   private val parked = new ParkedDecisionAssertions(catalog,
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
 
-  private val rattle = RelicId("R47")
+  private val rattle = CatalogNames.relic("Clay Rattle")
   private val source = DecisionOptionRef.Relic(rattle)
   private val cradle = SearchSource.RegionalDiscard(Region.Cradle)
 
@@ -28,29 +30,32 @@ class ClayRattleSuite extends munit.FunSuite:
       Right((0 until count).reverse.toVector)
   private val shuffling = rules(reversing)
 
-  /** The actor holds Clay Rattle and `faceUp` faceup secrets. The Cradle
-    * discard pile holds the world deck's top three cards, and the
-    * Hinterland's is empty.
+  /** p1's Act holding Clay Rattle and `faceUp` faceup secrets. The Cradle
+    * discard pile holds three named cards, Second Chance on top; the
+    * Hinterland's is empty, as on the quiet table.
     */
   private def staged(faceUp: Int = 2): ReadyGame =
-    act(Table.from(withRelic(quietTable, rattle)).secrets(actor, faceUp)
-      .unchecked)
-      .updateCurrent(c => c.copy(commonCards = c.commonCards.copy(
-        worldDeck = c.commonCards.worldDeck.drop(3),
-        regionalDiscards = c.commonCards.regionalDiscards
-          .updated(Region.Cradle, c.commonCards.worldDeck.take(3))
-          .updated(Region.Hinterland, Vector.empty))))
+    Table.start.turn(actor, Phase.Act).relic(actor, rattle)
+      .secrets(actor, faceUp)
+      .discarded(Region.Cradle, "Threatening Roar", "Fae Merchant",
+        "Second Chance").ready
   private def zones(ready: ReadyGame): CardZones = ready.game.current.commonCards
 
+  /** The state Clay Rattle was used from, the walk it started, and the
+    * rules' answer once `pile` was chosen. */
+  private case class Shuffled(before: ReadyGame, started: OathTransition,
+      answered: Either[OathViolation, OathTransition])
+
   /** Clay Rattle is used under `under` and `pile` is chosen. */
-  private def shuffled(pile: SearchSource, under: OathRules = shuffling) =
-    val ready0 = staged()
-    val started = use(under, ready0, ClayRattle.id, source).toOption.get
-    (ready0, started, answer(under, started.state, ClayRattle.decisionId,
-      ClayRattle.ref(pile)))
+  private def shuffled(pile: SearchSource, under: OathRules = shuffling)
+      : Shuffled =
+    val before = staged()
+    val started = accepted(use(under, before, ClayRattle.id, source))
+    Shuffled(before, started, answer(under, started.state,
+      ClayRattle.decisionId, ClayRattle.ref(pile)))
 
   test("it places two secrets and asks which pile to shuffle"):
-    val started = use(shuffling, staged(), ClayRattle.id, source).toOption.get
+    val started = accepted(use(shuffling, staged(), ClayRattle.id, source))
     assertEquals(parked.parkedDecision(started.state).map(_.decision),
       Some(ClayRattle.decisionId))
     assertEquals(Look(ready(started.state)).tokensOn(rattle), Tokens(0, 2))
@@ -59,8 +64,8 @@ class ClayRattleSuite extends munit.FunSuite:
     assertEquals(ClayRattle.piles.size, 4)
 
   test("the world deck takes the source's order, and replay applies it"):
-    val (ready0, started, answered) = shuffled(SearchSource.WorldDeck)
-    val done = answered.toOption.get
+    val Shuffled(ready0, started, answered) = shuffled(SearchSource.WorldDeck)
+    val done = accepted(answered)
     val end = ready(done.state)
     assertEquals(zones(end).worldDeck, zones(ready0).worldDeck.reverse)
     assertEquals(zones(end).discard(Region.Cradle),
@@ -74,8 +79,8 @@ class ClayRattleSuite extends munit.FunSuite:
         s"${actor.value} shuffled the world deck.", covers = false)))
 
   test("a region's discard pile is shuffled, and its line names it"):
-    val (ready0, started, answered) = shuffled(cradle)
-    val done = answered.toOption.get
+    val Shuffled(ready0, started, answered) = shuffled(cradle)
+    val done = accepted(answered)
     assertEquals(zones(ready(done.state)).discard(Region.Cradle),
       zones(ready0).discard(Region.Cradle).reverse)
     assertEquals(zones(ready(done.state)).worldDeck, zones(ready0).worldDeck)
@@ -85,8 +90,8 @@ class ClayRattleSuite extends munit.FunSuite:
 
   test("an empty pile is shuffled without asking the source"):
     val hinterland = SearchSource.RegionalDiscard(Region.Hinterland)
-    val (_, started, answered) = shuffled(hinterland, under = rules())
-    val done = answered.toOption.get
+    val Shuffled(_, started, answered) = shuffled(hinterland, under = rules())
+    val done = accepted(answered)
     assertEquals(zones(ready(done.state)).discard(Region.Hinterland),
       Vector.empty)
     assertEquals(NoteText.said(ClayRattle, started.events ++ done.events),
@@ -95,7 +100,7 @@ class ClayRattleSuite extends munit.FunSuite:
         covers = false)))
 
   test("a walker with no shuffle source refuses a pile of two or more"):
-    val (_, _, answered) = shuffled(SearchSource.WorldDeck, under = rules())
+    val answered = shuffled(SearchSource.WorldDeck, under = rules()).answered
     assert(answered.isLeft)
 
   test("a source whose order is not a permutation of the pile is refused"):
@@ -105,7 +110,7 @@ class ClayRattleSuite extends munit.FunSuite:
         Left(OathViolation.InvalidEventOrder("Clay Rattle never rolls"))
       override def shuffle(count: Int): Either[OathViolation, Vector[Int]] =
         Right(Vector.fill(count)(0))
-    val (_, _, answered) = shuffled(cradle, under = rules(repeating))
+    val answered = shuffled(cradle, under = rules(repeating)).answered
     assert(answered.isLeft)
 
   test("one faceup secret is not enough"):

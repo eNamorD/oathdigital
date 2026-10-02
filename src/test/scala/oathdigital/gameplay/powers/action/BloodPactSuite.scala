@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class BloodPactSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -24,16 +25,18 @@ class BloodPactSuite extends munit.FunSuite:
     DecisionAnswer.ChooseAmountAnswer(count)
 
   test("it places a secret and asks how many pairs, up to half the board"):
-    val t = use(staged(), BloodPact, source).toOption.get
+    // 5 warbands make 2 pairs at most, so 3 is refused.
+    val t = accepted(use(staged(warbands = 5), BloodPact, source))
     assert(awaits(t, BloodPact.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(pact), Tokens(0, 1))
     assert(answer(t, p1, BloodPact.decisionId, pairs(3)).isLeft)
 
   test("each pair sacrificed from the board gains a secret"):
-    val ready = staged()
-    val t = use(ready, BloodPact, source).toOption.get
-    val done = answer(t, p1, BloodPact.decisionId, pairs(2)).toOption.get
+    // 5 warbands less 2 pairs leave 1.
+    val ready = staged(warbands = 5)
+    val t = accepted(use(ready, BloodPact, source))
+    val done = accepted(answer(t, p1, BloodPact.decisionId, pairs(2)))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).boardWarbands(p1), 1)
@@ -43,22 +46,22 @@ class BloodPactSuite extends munit.FunSuite:
 
   test("its line names the warbands sacrificed and the secrets gained, " +
       "covering the gain line"):
-    val t = use(staged(), BloodPact, source).toOption.get
-    val done = answer(t, p1, BloodPact.decisionId, pairs(2)).toOption.get
+    val t = accepted(use(staged(), BloodPact, source))
+    val done = accepted(answer(t, p1, BloodPact.decisionId, pairs(2)))
     assertEquals(NoteText.said(BloodPact, done.events), Vector(NoteText.Said(
       NoteKey.Used, s"${p1.value} sacrificed 4 warbands and gained 2 secrets.",
       covers = true)))
 
   test("choosing no pair sacrifices nothing and says so"):
-    val t = use(staged(), BloodPact, source).toOption.get
-    val done = answer(t, p1, BloodPact.decisionId, pairs(0)).toOption.get
+    val t = accepted(use(staged(warbands = 5), BloodPact, source))
+    val done = accepted(answer(t, p1, BloodPact.decisionId, pairs(0)))
     assertEquals(Look(after(done)).boardWarbands(p1), 5)
     assertEquals(NoteText.said(BloodPact, done.events), Vector(NoteText.Said(
       "used.none", s"${p1.value} sacrificed no warbands.", covers = true)))
 
   test("with fewer than two warbands it asks nothing, and the cost stays " +
       "paid"):
-    val done = use(staged(warbands = 1), BloodPact, source).toOption.get
+    val done = accepted(use(staged(warbands = 1), BloodPact, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).boardWarbands(p1), 1)
     assertEquals(Look(after(done)).tokensOn(pact), Tokens(0, 1))

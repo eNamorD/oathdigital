@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class ArcaneBrokersSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -12,8 +13,8 @@ class ArcaneBrokersSuite extends munit.FunSuite:
   private val brokers = CatalogNames.denizen("Arcane Brokers")
   private val source = DecisionOptionRef.Denizen(brokers)
   private val scepter = RelicId("grand-scepter")
-  private val whistle = RelicId("R08")
-  private val sticks = RelicId("R09")
+  private val whistle = CatalogNames.relic("Whistle")
+  private val sticks = CatalogNames.relic("Dowsing Sticks")
 
   /** p1's Act, holding Arcane Brokers as an adviser, `favor` favor and
     * `relics` faceup. */
@@ -28,7 +29,7 @@ class ArcaneBrokersSuite extends munit.FunSuite:
     pick(DecisionOptionRef.Relic(id))
 
   test("it places a favor and asks which held relic to discard"):
-    val t = use(staged().ready, ArcaneBrokers, source).toOption.get
+    val t = accepted(use(staged().ready, ArcaneBrokers, source))
     assert(awaits(t, ArcaneBrokers.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(brokers), Tokens(1, 0))
@@ -36,16 +37,15 @@ class ArcaneBrokersSuite extends munit.FunSuite:
       Some(Vector("relic" -> whistle.value, "relic" -> sticks.value)))
 
   test("a lone relic is still asked about"):
-    val t = use(staged(Vector(whistle)).ready, ArcaneBrokers, source)
-      .toOption.get
+    val t = accepted(use(staged(Vector(whistle)).ready, ArcaneBrokers, source))
     assert(awaits(t, ArcaneBrokers.decisionId),
       parked.parkedDecision(t.state).toString)
 
   test("the chosen relic is set aside and 2 secrets are gained"):
     val ready = staged().ready
-    val t = use(ready, ArcaneBrokers, source).toOption.get
-    val done = answer(t, p1, ArcaneBrokers.decisionId, relicRef(whistle))
-      .toOption.get
+    val t = accepted(use(ready, ArcaneBrokers, source))
+    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId, relicRef(
+      whistle)))
     parked.assertResumed(done.state, Phase.Act, p1)
     val end = after(done)
     assertEquals(Look(end).relics(p1), Vector(sticks))
@@ -57,17 +57,17 @@ class ArcaneBrokersSuite extends munit.FunSuite:
   test("a facedown relic may be discarded"):
     val ready = Table.start.turn(p1, Phase.Act).adviser(p1, brokers)
       .favor(p1, 1).relic(p1, whistle, facedown = true).ready
-    val t = use(ready, ArcaneBrokers, source).toOption.get
-    val done = answer(t, p1, ArcaneBrokers.decisionId, relicRef(whistle))
-      .toOption.get
+    val t = accepted(use(ready, ArcaneBrokers, source))
+    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId, relicRef(
+      whistle)))
     assertEquals(Look(after(done)).relics(p1), Vector.empty[RelicId])
 
   test("the relic's secrets return facedown, and the line counts only the " +
       "2 gained, covering the gain line"):
     val ready = staged(Vector(whistle)).tokens(whistle, secrets = 1).ready
-    val t = use(ready, ArcaneBrokers, source).toOption.get
-    val done = answer(t, p1, ArcaneBrokers.decisionId, relicRef(whistle))
-      .toOption.get
+    val t = accepted(use(ready, ArcaneBrokers, source))
+    val done = accepted(answer(t, p1, ArcaneBrokers.decisionId, relicRef(
+      whistle)))
     assertEquals(Look(after(done)).faceDownSecrets(p1),
       Look(ready).faceDownSecrets(p1) + 1)
     assertEquals(NoteText.said(ArcaneBrokers, done.events), Vector(
@@ -76,22 +76,21 @@ class ArcaneBrokersSuite extends munit.FunSuite:
         covers = true)))
 
   test("the Grand Scepter cannot be chosen"):
-    val t = use(staged(Vector(scepter, whistle)).ready, ArcaneBrokers, source)
-      .toOption.get
+    val t = accepted(use(staged(Vector(scepter, whistle)).ready, ArcaneBrokers,
+      source))
     assert(answer(t, p1, ArcaneBrokers.decisionId, relicRef(scepter)).isLeft)
 
   test("holding only the Grand Scepter, it asks nothing, discards nothing " +
       "and writes nothing"):
     val ready = staged(Vector(scepter)).ready
-    val done = use(ready, ArcaneBrokers, source).toOption.get
+    val done = accepted(use(ready, ArcaneBrokers, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).relics(p1), Vector(scepter))
     assertEquals(secretsOf(after(done)), secretsOf(ready))
     assertEquals(NoteText.said(ArcaneBrokers, done.events), Vector.empty)
 
   test("holding no relic, the favor stays paid and the line says so"):
-    val done = use(staged(Vector.empty).ready, ArcaneBrokers, source)
-      .toOption.get
+    val done = accepted(use(staged(Vector.empty).ready, ArcaneBrokers, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).tokensOn(brokers), Tokens(1, 0))
     assertEquals(NoteText.said(ArcaneBrokers, done.events), Vector(

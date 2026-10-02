@@ -7,15 +7,19 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.ActPowerHarness.usableIds
 import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
+import oathdigital.testkit.Unwrap.accepted
 
 class BrassHorseSuite extends munit.FunSuite:
   import PowerFixture._
   import MovementFixture._
   import PhasePowerHarness.{awaits, backToActing, ops, replayed}
 
-  private val horse = RelicId("R03")
-  private def staged = inPhase(Table.from(withRelic(homelands(quietTable),
-    horse)).secrets(actor, 2).unchecked, Phase.Act)
+  private val horse = CatalogNames.relic("Brass Horse")
+  /** p1's Act at Ancient City, in the Cradle, holding Brass Horse with 2
+    * secrets; Buried Giant lies in the Provinces. */
+  private def staged = Table.from(homelands(quietTable)).turn(actor, Phase.Act)
+    .pawn(actor, "Ancient City").relic(actor, horse).secrets(actor, 2)
+    .unchecked
   // Three denizens no site, hand or discard of the quiet table holds.
   private val beastTop = CatalogNames.denizen("Insect Swarm")
   private val beastElsewhere = CatalogNames.denizen("Vow of Union")
@@ -32,11 +36,11 @@ class BrassHorseSuite extends munit.FunSuite:
 
   test("one matching site takes the pawn there without a question"):
     val start = cradleTopped(beastTop)
-    val done = use(start, BrassHorse.id, horse).toOption.get
+    val done = accepted(use(start, BrassHorse.id, horse))
     val after = ready(done.state)
     assert(backToActing(done))
     assertEquals(Look(after).pawn(actor), CatalogNames.site("Deep Woods"))
-    assertEquals(relicOf(after, horse).get.tokens, Tokens(0, 1))
+    assertEquals(Look(after).tokensOn(horse), Tokens(0, 1))
     assertEquals(after.game.current.commonCards.discard(Region.Cradle).last,
       beastTop)
     assertEquals(reveals(done.events), Vector(
@@ -51,12 +55,12 @@ class BrassHorseSuite extends munit.FunSuite:
   test("several matching sites ask, and only they are offered"):
     val start = atSite(cradleTopped(beastTop), beastElsewhere,
       CatalogNames.site("Dunes"))
-    val parked = use(start, BrassHorse.id, horse).toOption.get
+    val parked = accepted(use(start, BrassHorse.id, horse))
     assert(awaits(parked, BrassHorse.decisionId))
     assert(choose(parked.state, BrassHorse.decisionId, site("Buried Giant"))
       .isLeft)
-    val done = choose(parked.state, BrassHorse.decisionId, site("Dunes"))
-      .toOption.get
+    val done = accepted(choose(parked.state, BrassHorse.decisionId, site(
+      "Dunes")))
     assert(backToActing(done))
     assertEquals(Look(ready(done.state)).pawn(actor),
       CatalogNames.site("Dunes"))
@@ -65,19 +69,19 @@ class BrassHorseSuite extends munit.FunSuite:
   test("the current site never counts as a match"):
     val start = atSite(cradleTopped(beastTop), beastElsewhere,
       CatalogNames.site("Ancient City"))
-    val done = use(start, BrassHorse.id, horse).toOption.get
+    val done = accepted(use(start, BrassHorse.id, horse))
     assert(backToActing(done))
     assertEquals(Look(ready(done.state)).pawn(actor),
       CatalogNames.site("Deep Woods"))
 
   test("with no matching site any other site may be chosen"):
     val start = cradleTopped(nomadTop)
-    val parked = use(start, BrassHorse.id, horse).toOption.get
+    val parked = accepted(use(start, BrassHorse.id, horse))
     assert(awaits(parked, BrassHorse.decisionId))
     assert(choose(parked.state, BrassHorse.decisionId, site("Ancient City"))
       .isLeft)
-    val done = choose(parked.state, BrassHorse.decisionId,
-      site("Desolate Shore")).toOption.get
+    val done = accepted(choose(parked.state, BrassHorse.decisionId,
+      site("Desolate Shore")))
     assertEquals(Look(ready(done.state)).pawn(actor),
       CatalogNames.site("Desolate Shore"))
 
@@ -90,12 +94,12 @@ class BrassHorseSuite extends munit.FunSuite:
   test("a Vision on top has no suit, so any other site may be chosen"):
     val vision = VisionRules.Sanctuary
     val start = cradleTopped(vision)
-    val parked = use(start, BrassHorse.id, horse).toOption.get
+    val parked = accepted(use(start, BrassHorse.id, horse))
     assert(awaits(parked, BrassHorse.decisionId))
     assertEquals(reveals(parked.events),
       Vector(Reveal(vision, Location.RegionalDiscard(Region.Cradle))))
-    val done = choose(parked.state, BrassHorse.decisionId, site("Deep Woods"))
-      .toOption.get
+    val done = accepted(choose(parked.state, BrassHorse.decisionId, site(
+      "Deep Woods")))
     assertEquals(Look(ready(done.state)).pawn(actor),
       CatalogNames.site("Deep Woods"))
 
@@ -103,7 +107,7 @@ class BrassHorseSuite extends munit.FunSuite:
     val provincesTop = beastTop
     val start = Table.from(staged).pawn(actor, "Buried Giant")
       .discarded(Region.Provinces, provincesTop).unchecked
-    val done = use(start, BrassHorse.id, horse).toOption.get
+    val done = accepted(use(start, BrassHorse.id, horse))
     assertEquals(reveals(done.events), Vector(
       Reveal(provincesTop, Location.RegionalDiscard(Region.Provinces))))
     assertEquals(Look(ready(done.state)).pawn(actor),
@@ -112,13 +116,13 @@ class BrassHorseSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val id = BrassHorse.id
     val start = cradleTopped(beastTop)
+    val broke = Table.from(start).secrets(actor, 0).unchecked
     assert(usableIds(start).contains(id))
-    assert(!usableIds(Table.from(start).secrets(actor, 0).unchecked)
-      .contains(id))
-    assert(use(Table.from(start).secrets(actor, 0).unchecked, id, horse).isLeft)
+    assert(!usableIds(broke).contains(id))
+    assert(use(broke, id, horse).isLeft)
 
   test("it writes the card it revealed in place of the generic line, then where the pawn went"):
-    val done = use(cradleTopped(beastTop), BrassHorse.id, horse).toOption.get
+    val done = accepted(use(cradleTopped(beastTop), BrassHorse.id, horse))
     assertEquals(NoteText.said(new BrassHorse(catalog), done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} revealed ${beastTop.value}.",
         covers = true),

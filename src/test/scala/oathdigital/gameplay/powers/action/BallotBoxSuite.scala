@@ -1,11 +1,12 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteText, SearchFixture}
+import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class BallotBoxSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -13,22 +14,22 @@ class BallotBoxSuite extends munit.FunSuite:
   private val box = CatalogNames.denizen("Ballot Box")
   private val source = DecisionOptionRef.Denizen(box)
   private val power = BallotBox.forCatalog(catalog)
-  private val home = Table.quietPawnSite(p1)
-  private val hearth = SearchFixture.denizensOf(Suit.Hearth)
-    .filterNot(_ == box)
-  private val order = SearchFixture.denizensOf(Suit.Order)
+  private val home = CatalogNames.site("Ancient City")
+  // Denizens with no power of their own: one Hearth, two Order.
+  private val homesteaders = CatalogNames.denizen("Homesteaders")
+  private val codeOfHonor = CatalogNames.denizen("Code of Honor")
+  private val messenger = CatalogNames.denizen("Messenger")
 
-  /** p1's Act beside Ballot Box, site-only, at p1's site, with 2 favor and
+  /** p1's Act at Ancient City beside Ballot Box, site-only, with 2 favor and
     * an `adviser`. */
   private def staged(adviser: DenizenId): Table =
-    Table.start.turn(p1, Phase.Act).denizen(box, at = home).favor(p1, 2)
-      .adviser(p1, adviser)
+    Table.start.turn(p1, Phase.Act).pawn(p1, home).denizen(box, at = home)
+      .favor(p1, 2).adviser(p1, adviser)
 
   /** A faceup Hearth adviser, which matches Ballot Box itself. */
-  private def matching: Table = staged(hearth(0))
+  private def matching: Table = staged(homesteaders)
 
-  private def mine(ready: ReadyGame): ForceKind =
-    PlayerForceKind.of(ready, Look(ready).player(p1)).get
+  private def mine(ready: ReadyGame): ForceKind = Look(ready).forceKind(p1)
 
   /** `table` with p1's bank holding only `left` warbands. */
   private def banking(table: Table, left: Int): Table =
@@ -37,7 +38,7 @@ class BallotBoxSuite extends munit.FunSuite:
 
   test("a matching adviser replaces an enemy's warbands with the player's"):
     val ready = matching.warbandsAt(home, p2, 2).ready
-    val t = use(ready, power, source).toOption.get
+    val t = accepted(use(ready, power, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     val end = after(t)
     assertEquals(Look(end).tokensOn(box), Tokens(2, 0))
@@ -50,7 +51,7 @@ class BallotBoxSuite extends munit.FunSuite:
     assertWireRoundTrips(t.events)
 
   test("bandits are replaced too"):
-    val t = use(matching.bandits(home, 3).ready, power, source).toOption.get
+    val t = accepted(use(matching.bandits(home, 3).ready, power, source))
     val end = after(t)
     assertEquals(Look(end).forces(home), SiteForces.Occupied(mine(end), 3))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
@@ -59,7 +60,7 @@ class BallotBoxSuite extends munit.FunSuite:
 
   test("a short supply removes the warbands it cannot replace"):
     val ready = banking(matching.warbandsAt(home, p2, 3), 1).ready
-    val t = use(ready, power, source).toOption.get
+    val t = accepted(use(ready, power, source))
     val end = after(t)
     assertEquals(Look(end).forces(home), SiteForces.Occupied(mine(end), 1))
     assertEquals(NoteText.said(power, t.events), Vector(
@@ -71,7 +72,8 @@ class BallotBoxSuite extends munit.FunSuite:
 
   test("an empty supply removes them all, and bandits refill the site"):
     val ready = banking(matching.warbandsAt(home, p2, 2), 0).ready
-    val t = use(ready, power, source).toOption.get
+    val t = accepted(use(ready, power, source))
+    // Ancient City's printed bandit capacity is 3.
     assertEquals(Look(after(t)).forces(home),
       SiteForces.Occupied(ForceKind.Bandit, 3))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
@@ -79,15 +81,15 @@ class BallotBoxSuite extends munit.FunSuite:
       covers = false)))
 
   test("any card at the site can match, not only Ballot Box"):
-    val ready = staged(order(0)).denizen(order(1), at = home)
+    val ready = staged(codeOfHonor).denizen(messenger, at = home)
       .warbandsAt(home, p2, 1).ready
-    val t = use(ready, power, source).toOption.get
+    val t = accepted(use(ready, power, source))
     val end = after(t)
     assertEquals(Look(end).forces(home), SiteForces.Occupied(mine(end), 1))
 
   test("with no matching adviser nothing changes, and the line says so"):
-    val ready = staged(order(0)).warbandsAt(home, p2, 2).ready
-    val t = use(ready, power, source).toOption.get
+    val ready = staged(codeOfHonor).warbandsAt(home, p2, 2).ready
+    val t = accepted(use(ready, power, source))
     parked.assertResumed(t.state, Phase.Act, p1)
     assertEquals(Look(after(t)).forces(home), Look(ready).forces(home))
     assertEquals(Look(after(t)).tokensOn(box), Tokens(2, 0))
@@ -98,7 +100,7 @@ class BallotBoxSuite extends munit.FunSuite:
 
   test("the player's own warbands are not replaced"):
     val ready = matching.warbandsAt(home, p1, 2).ready
-    val t = use(ready, power, source).toOption.get
+    val t = accepted(use(ready, power, source))
     assertEquals(Look(after(t)).forces(home), Look(ready).forces(home))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.none", s"${home.value} held no warband to replace.",

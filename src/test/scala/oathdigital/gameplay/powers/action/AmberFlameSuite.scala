@@ -5,6 +5,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.accepted
 
 class AmberFlameSuite extends munit.FunSuite:
   import PhasePowerHarness._
@@ -12,13 +13,14 @@ class AmberFlameSuite extends munit.FunSuite:
   private val flame = CatalogNames.relic("Amber Flame")
   private val source = DecisionOptionRef.Relic(flame)
 
-  /** p1's Act holding Amber Flame faceup with `secrets` faceup secrets. p2
-    * stands at p1's site holding the People's Favor with `favor`; p3 stands
-    * at its own site holding the Darkest Secret with 2, so it is never
-    * offered. */
+  /** p1's Act at Ancient City holding Amber Flame faceup with `secrets`
+    * faceup secrets. p2 stands at Ancient City too, holding the People's
+    * Favor with `favor`; p3 stands at Buried Giant holding the Darkest Secret
+    * with 2, so it is never offered. */
   private def staged(favor: Int = 2, secrets: Int = 1): Table =
-    Table.start.turn(p1, Phase.Act).relic(p1, flame).secrets(p1, secrets)
-      .pawn(p2, at = Table.quietPawnSite(p1)).peoplesFavor(Some(p2), favor)
+    Table.start.turn(p1, Phase.Act).pawn(p1, "Ancient City").relic(p1, flame)
+      .secrets(p1, secrets).pawn(p2, at = "Ancient City")
+      .peoplesFavor(Some(p2), favor).pawn(p3, "Buried Giant")
       .darkestSecret(Some(p3), 2)
 
   private def banner(ready: ReadyGame, which: Banner): Int = which match
@@ -27,13 +29,16 @@ class AmberFlameSuite extends munit.FunSuite:
       ready.game.current.banners.darkestSecret.secrets
   private def offer(which: Banner): (String, String) = "banner" -> which.key
 
-  private def burn(ready: ReadyGame, which: Banner) =
-    val t = use(ready, AmberFlame, source).toOption.get
-    (t, answer(t, p1, AmberFlame.decisionId,
-      pick(DecisionOptionRef.Banner(which))).toOption.get)
+  /** The walk Amber Flame started and the walk after `which` was picked. */
+  private case class Burned(started: OathTransition, answered: OathTransition)
+
+  private def burn(ready: ReadyGame, which: Banner): Burned =
+    val started = accepted(use(ready, AmberFlame, source))
+    Burned(started, accepted(answer(started, p1, AmberFlame.decisionId,
+      pick(DecisionOptionRef.Banner(which)))))
 
   test("it places a secret and offers the banners held at the site"):
-    val t = use(staged().ready, AmberFlame, source).toOption.get
+    val t = accepted(use(staged().ready, AmberFlame, source))
     assert(awaits(t, AmberFlame.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(Look(after(t)).tokensOn(flame), Tokens(0, 1))
@@ -41,7 +46,7 @@ class AmberFlameSuite extends munit.FunSuite:
 
   test("the People's Favor loses one favor, and the line says whose"):
     val ready = staged().ready
-    val (t, done) = burn(ready, Banner.PeoplesFavor)
+    val Burned(t, done) = burn(ready, Banner.PeoplesFavor)
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(banner(after(done), Banner.PeoplesFavor), 1)
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
@@ -52,18 +57,18 @@ class AmberFlameSuite extends munit.FunSuite:
 
   test("the player's own Darkest Secret may be chosen, and loses a secret"):
     val ready = staged().darkestSecret(Some(p1), 2).ready
-    val t = use(ready, AmberFlame, source).toOption.get
+    val t = accepted(use(ready, AmberFlame, source))
     assertEquals(offered(t, p1), Some(Vector(offer(Banner.PeoplesFavor),
       offer(Banner.DarkestSecret))))
-    val done = answer(t, p1, AmberFlame.decisionId,
-      pick(DecisionOptionRef.Banner(Banner.DarkestSecret))).toOption.get
+    val done = accepted(answer(t, p1, AmberFlame.decisionId,
+      pick(DecisionOptionRef.Banner(Banner.DarkestSecret))))
     assertEquals(banner(after(done), Banner.DarkestSecret), 1)
     assertEquals(NoteText.said(AmberFlame, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${p1.value} burned 1 secret from " +
         s"${p1.value}'s Darkest Secret.", covers = false)))
 
   test("an empty banner burns nothing, and the line says so"):
-    val (_, done) = burn(staged(favor = 0).ready, Banner.PeoplesFavor)
+    val done = burn(staged(favor = 0).ready, Banner.PeoplesFavor).answered
     assertEquals(banner(after(done), Banner.PeoplesFavor), 0)
     assertEquals(NoteText.said(AmberFlame, done.events), Vector(
       NoteText.Said("used.empty",
@@ -72,7 +77,7 @@ class AmberFlameSuite extends munit.FunSuite:
 
   test("with no banner held at the site, the cost stays paid"):
     val ready = staged().peoplesFavor(None, 2).ready
-    val done = use(ready, AmberFlame, source).toOption.get
+    val done = accepted(use(ready, AmberFlame, source))
     parked.assertResumed(done.state, Phase.Act, p1)
     assertEquals(Look(after(done)).tokensOn(flame), Tokens(0, 1))
     assertEquals(banner(after(done), Banner.PeoplesFavor), 2)

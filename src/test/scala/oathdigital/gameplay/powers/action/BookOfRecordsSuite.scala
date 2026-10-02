@@ -2,54 +2,52 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
+  PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.Unwrap.accepted
 
 class BookOfRecordsSuite extends munit.FunSuite:
   import PowerFixture._
   import PhasePowerHarness._
   import ActPowerHarness.allSecrets
 
-  private val book = RelicId("R19")
+  private val book = CatalogNames.relic("Book of Records")
   private val source = DecisionOptionRef.Relic(book)
-  private val holder = others(quietTable)(0)
-  private val bystander = others(quietTable)(1)
+  private val holder = Table.p2
+  private val bystander = Table.p3
 
-  private def elsewhere(ready: ReadyGame): SiteId =
-    ready.game.current.map.inPlay.find(_ != actorsSite(ready)).get
-  private def withBanner(ready: ReadyGame, banner: Banner,
-      owner: Option[PlayerId], amount: Int): ReadyGame =
-    ready.updateCurrent(c => c.copy(banners = banner match
-      case Banner.PeoplesFavor => c.banners.copy(peoplesFavor =
-        c.banners.peoplesFavor.copy(holder = owner, favor = amount))
-      case Banner.DarkestSecret => c.banners.copy(darkestSecret =
-        c.banners.darkestSecret.copy(holder = owner, secrets = amount))))
   private def held(ready: ReadyGame, banner: Banner): Int = banner match
     case Banner.PeoplesFavor => ready.game.current.banners.peoplesFavor.favor
     case Banner.DarkestSecret => ready.game.current.banners.darkestSecret.secrets
   private def choose(banner: Banner) = pick(DecisionOptionRef.Banner(banner))
 
-  /** The actor holds Book of Records faceup with `faceUp` secrets. `holder`
-    * stands at the actor's site holding the People's Favor with `favor`;
-    * `bystander` stands elsewhere holding the Darkest Secret with 3 secrets,
-    * so it is never offered.
+  /** p1's Act at Ancient City holding Book of Records faceup with `faceUp`
+    * secrets. `holder` (p2) stands at Ancient City holding the People's Favor
+    * with `favor`; `bystander` (p3) stands at Buried Giant holding the
+    * Darkest Secret with 3 secrets, so it is never offered.
     */
+  private def table(favor: Int = 3, faceUp: Int = 3): Table =
+    Table.start.turn(actor, Phase.Act).pawn(actor, "Ancient City")
+      .relic(actor, book).secrets(actor, faceUp)
+      .pawn(holder, "Ancient City").pawn(bystander, "Buried Giant")
+      .peoplesFavor(Some(holder), favor).darkestSecret(Some(bystander), 3)
   private def staged(favor: Int = 3, faceUp: Int = 3): ReadyGame =
-    val actorReady = inPhase(Table.from(withRelic(quietTable, book))
-      .secrets(actor, faceUp, 0).unchecked, Phase.Act)
-    val placed = Table.from(actorReady).pawn(holder, actorsSite(actorReady))
-      .pawn(bystander, elsewhere(actorReady)).unchecked
-    withBanner(withBanner(placed, Banner.PeoplesFavor, Some(holder), favor),
-      Banner.DarkestSecret, Some(bystander), 3)
+    table(favor, faceUp).ready
+
+  /** The walk Book of Records started and the walk after `banner` was
+    * picked. */
+  private case class Taken(started: OathTransition, answered: OathTransition)
 
   /** Uses it on `ready` and answers `banner`. */
-  private def takeFrom(ready: ReadyGame, banner: Banner) =
-    val t = use(ready, BookOfRecords, source).toOption.get
-    (t, answer(t, actor, BookOfRecords.decisionId, choose(banner)).toOption.get)
+  private def takeFrom(ready: ReadyGame, banner: Banner): Taken =
+    val started = accepted(use(ready, BookOfRecords, source))
+    Taken(started, accepted(answer(started, actor, BookOfRecords.decisionId,
+      choose(banner))))
 
   test("it places a secret, burns two, and offers the banners held at the " +
       "actor's site"):
-    val t = use(staged(), BookOfRecords, source).toOption.get
+    val t = accepted(use(staged(), BookOfRecords, source))
     assert(awaits(t, BookOfRecords.decisionId),
       parked.parkedDecision(t.state).toString)
     assertEquals(offered(t, actor),
@@ -58,8 +56,9 @@ class BookOfRecordsSuite extends munit.FunSuite:
     assertEquals(allSecrets(after(t)), 0)
 
   test("the People's Favor gives two favor"):
-    val ready = staged()
-    val (t, done) = takeFrom(ready, Banner.PeoplesFavor)
+    // The banner's 3 favor less the 2 taken leave 1.
+    val ready = staged(favor = 3)
+    val Taken(t, done) = takeFrom(ready, Banner.PeoplesFavor)
     assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor + 2)
     assertEquals(held(after(done), Banner.PeoplesFavor), 1)
@@ -70,8 +69,9 @@ class BookOfRecordsSuite extends munit.FunSuite:
         s"${holder.value}'s People's Favor.", covers = false)))
 
   test("the Darkest Secret gives two secrets, faceup"):
-    val ready = withBanner(staged(), Banner.DarkestSecret, Some(holder), 3)
-    val (_, done) = takeFrom(ready, Banner.DarkestSecret)
+    // 3 faceup less 1 placed and 2 burnt leave 0, then 2 are gained.
+    val ready = table(faceUp = 3).darkestSecret(Some(holder), 3).ready
+    val done = takeFrom(ready, Banner.DarkestSecret).answered
     assertEquals(Look(after(done)).player(actor).board.faceUpSecrets, 2)
     assertEquals(held(after(done), Banner.DarkestSecret), 1)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
@@ -80,19 +80,19 @@ class BookOfRecordsSuite extends munit.FunSuite:
 
   test("a banner holding one gives one"):
     val ready = staged(favor = 1)
-    val (_, done) = takeFrom(ready, Banner.PeoplesFavor)
+    val done = takeFrom(ready, Banner.PeoplesFavor).answered
     assertEquals(held(after(done), Banner.PeoplesFavor), 0)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} took 1 favor from " +
         s"${holder.value}'s People's Favor.", covers = false)))
 
   test("the actor's own banner may be chosen"):
-    val ready = withBanner(staged(), Banner.PeoplesFavor, Some(actor), 2)
-    val t = use(ready, BookOfRecords, source).toOption.get
+    val ready = table().peoplesFavor(Some(actor), 2).ready
+    val t = accepted(use(ready, BookOfRecords, source))
     assertEquals(offered(t, actor),
       Some(Vector("banner" -> Banner.PeoplesFavor.key)))
-    val done = answer(t, actor, BookOfRecords.decisionId,
-      choose(Banner.PeoplesFavor)).toOption.get
+    val done = accepted(answer(t, actor, BookOfRecords.decisionId,
+      choose(Banner.PeoplesFavor)))
     assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor + 2)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
@@ -101,7 +101,7 @@ class BookOfRecordsSuite extends munit.FunSuite:
 
   test("an empty banner gives nothing, and the line says so"):
     val ready = staged(favor = 0)
-    val (_, done) = takeFrom(ready, Banner.PeoplesFavor)
+    val done = takeFrom(ready, Banner.PeoplesFavor).answered
     assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor)
     assertEquals(NoteText.said(BookOfRecords, done.events), Vector(
@@ -111,8 +111,8 @@ class BookOfRecordsSuite extends munit.FunSuite:
 
   test("with no banner held at the site the cost is paid and nothing else " +
       "happens"):
-    val ready = withBanner(staged(), Banner.PeoplesFavor, None, 3)
-    val t = use(ready, BookOfRecords, source).toOption.get
+    val ready = table().peoplesFavor(None, 3).ready
+    val t = accepted(use(ready, BookOfRecords, source))
     parked.assertNotParked(t.state)
     assertEquals(Look(after(t)).tokensOn(book), Tokens(0, 1))
     assertEquals(held(after(t), Banner.PeoplesFavor), 3)
@@ -121,7 +121,7 @@ class BookOfRecordsSuite extends munit.FunSuite:
         covers = false)))
 
   test("a banner held away from the site is refused"):
-    val t = use(staged(), BookOfRecords, source).toOption.get
+    val t = accepted(use(staged(), BookOfRecords, source))
     assert(answer(t, actor, BookOfRecords.decisionId,
       choose(Banner.DarkestSecret)).isLeft)
 

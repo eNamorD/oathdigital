@@ -3,41 +3,40 @@ package oathdigital.gameplay.powers.action
 import oathdigital.gameplay.powers.{NoteText, PowerFixture}
 import oathdigital.model._
 import oathdigital.protocol.projection.DecisionQueryProjection
-import oathdigital.testkit.{Look, PhasePowerHarness, Table}
+import oathdigital.testkit.{CatalogNames, Look, PhasePowerHarness, Table}
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class AlchemistSuite extends munit.FunSuite:
   import PowerFixture._
   import PhasePowerHarness._
 
-  private val alchemist = DenizenId("9")
+  private val alchemist = CatalogNames.denizen("Alchemist")
   private val source = DecisionOptionRef.Denizen(alchemist)
 
-  /** The banks hold exactly `favor`, and the actor holds two faceup secrets
-    * beside a site Alchemist.
+  /** p1's Act at Ancient City with two faceup secrets and Alchemist at the
+    * site. The favor banks hold exactly `favor`, and every other bank none.
     */
   private def staged(favor: (Suit, Int)*) =
-    val ready = inPhase(Table.from(atActorsSite(quietTable, alchemist))
-      .secrets(actor, 2, 0).unchecked,
-      Phase.Act)
-    ready.copy(banks = ready.banks.copy(favor =
-      Suit.all.map(_ -> 0).toMap ++ favor))
+    val banks = favor.toMap
+    val table = Table.start.pawn(p1, "Ancient City")
+      .denizen("Alchemist", at = "Ancient City").secrets(p1, 2)
+    Suit.all.foldLeft(table)((t, suit) =>
+      t.bankFavor(suit, banks.getOrElse(suit, 0))).ready
   private def bank(ready: ReadyGame, suit: Suit) = ready.banks.favor(suit)
-  private def cardOf(ready: ReadyGame) = ready.game.current.map
-    .sites(actorsSite(ready)).denizens.collectFirst {
-      case d: DenizenState if d.id == alchemist => d }.get
   private def rows(amounts: (Suit, Int)*) = DecisionAnswer.DistributeAnswer(
     amounts.toVector.map { case (suit, n) =>
       DistributeAmount(DecisionOptionRef.FavorBank(suit), n) })
 
   test("the cost is one secret placed and one burnt"):
     val ready = staged(Suit.Nomad -> 9)
-    val t = use(ready, Alchemist, source).toOption.get
-    assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
+    val t = accepted(use(ready, Alchemist, source))
+    assertEquals(Look(after(t)).tokensOn(alchemist), Tokens(0, 1))
     assertEquals(Look(after(t)).player(actor).board.faceUpSecrets, 0)
 
   test("one bank holding all the favor gives four from it without a decision"):
     val ready = staged(Suit.Nomad -> 9)
-    val t = use(ready, Alchemist, source).toOption.get
+    val t = accepted(use(ready, Alchemist, source))
     parked.assertNotParked(t.state)
     assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor + 4)
@@ -45,7 +44,7 @@ class AlchemistSuite extends munit.FunSuite:
 
   test("four or fewer in all takes everything from every bank, unasked"):
     val ready = staged(Suit.Arcane -> 2, Suit.Discord -> 1)
-    val t = use(ready, Alchemist, source).toOption.get
+    val t = accepted(use(ready, Alchemist, source))
     parked.assertNotParked(t.state)
     assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor + 3)
@@ -54,14 +53,14 @@ class AlchemistSuite extends munit.FunSuite:
 
   test("empty banks give nothing, and the cost stays paid"):
     val ready = staged()
-    val t = use(ready, Alchemist, source).toOption.get
+    val t = accepted(use(ready, Alchemist, source))
     assertEquals(Look(after(t)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor)
-    assertEquals(cardOf(after(t)).tokens, Tokens(0, 1))
+    assertEquals(Look(after(t)).tokensOn(alchemist), Tokens(0, 1))
 
   test("several banks holding more than four ask for a distribution of four"):
     val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3, Suit.Nomad -> 2)
-    val t = use(ready, Alchemist, source).toOption.get
+    val t = accepted(use(ready, Alchemist, source))
     assert(awaits(t, Alchemist.decisionId),
       parked.parkedDecision(t.state).toString)
     val query = queryOf(t, actor) match
@@ -71,8 +70,8 @@ class AlchemistSuite extends munit.FunSuite:
       Suit.all.filter(Set(Suit.Arcane, Suit.Discord, Suit.Nomad))
         .map(suit => (suit.key, 0, math.min(ready.banks.favor(suit), 4))))
     assertEquals((query.minTotal, query.maxTotal), (4, 4))
-    val done = answer(t, actor, Alchemist.decisionId,
-      rows(Suit.Arcane -> 3, Suit.Discord -> 1, Suit.Nomad -> 0)).toOption.get
+    val done = accepted(answer(t, actor, Alchemist.decisionId,
+      rows(Suit.Arcane -> 3, Suit.Discord -> 1, Suit.Nomad -> 0)))
     assertEquals(Look(after(done)).player(actor).board.favor, Look(ready)
       .player(actor).board.favor + 4)
     assertEquals(Vector(Suit.Arcane, Suit.Discord, Suit.Nomad)
@@ -81,7 +80,7 @@ class AlchemistSuite extends munit.FunSuite:
 
   test("a distribution must total four and respect each bank"):
     val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3, Suit.Nomad -> 2)
-    val t = use(ready, Alchemist, source).toOption.get
+    val t = accepted(use(ready, Alchemist, source))
     assert(answer(t, actor, Alchemist.decisionId,
       rows(Suit.Arcane -> 3, Suit.Discord -> 0, Suit.Nomad -> 0)).isLeft)
     assert(answer(t, actor, Alchemist.decisionId,
@@ -91,7 +90,7 @@ class AlchemistSuite extends munit.FunSuite:
 
   test("only the acting player answers"):
     val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3)
-    val t = use(ready, Alchemist, source).toOption.get
+    val t = accepted(use(ready, Alchemist, source))
     assert(answer(t, others(ready).head, Alchemist.decisionId,
       rows(Suit.Arcane -> 2, Suit.Discord -> 2)).isLeft)
 
@@ -104,19 +103,19 @@ class AlchemistSuite extends munit.FunSuite:
     }
 
   test("it writes the favor it gained, beside each bank's own line"):
-    val t = use(staged(Suit.Nomad -> 9), Alchemist, source).toOption.get
+    val t = accepted(use(staged(Suit.Nomad -> 9), Alchemist, source))
     assertEquals(NoteText.said(Alchemist, t.events), Vector(NoteText.Said(
       NoteKey.Used, s"${actor.value} gained 4 favor.", covers = false)))
 
   test("a distribution writes its total once the player answers"):
     val ready = staged(Suit.Arcane -> 3, Suit.Discord -> 3, Suit.Nomad -> 2)
-    val t = use(ready, Alchemist, source).toOption.get
+    val t = accepted(use(ready, Alchemist, source))
     assertEquals(NoteText.said(Alchemist, t.events), Vector.empty)
-    val done = answer(t, actor, Alchemist.decisionId,
-      rows(Suit.Arcane -> 3, Suit.Discord -> 1, Suit.Nomad -> 0)).toOption.get
+    val done = accepted(answer(t, actor, Alchemist.decisionId,
+      rows(Suit.Arcane -> 3, Suit.Discord -> 1, Suit.Nomad -> 0)))
     assertEquals(NoteText.said(Alchemist, done.events).map(_.text),
       Vector(s"${actor.value} gained 4 favor."))
 
   test("empty banks give nothing, so nothing is written"):
     assertEquals(NoteText.said(Alchemist,
-      use(staged(), Alchemist, source).toOption.get.events), Vector.empty)
+      accepted(use(staged(), Alchemist, source)).events), Vector.empty)
