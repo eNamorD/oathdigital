@@ -657,7 +657,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 #app { width: 100%; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; }
 .game-table { width: 100%; height: 100%; display: grid; gap: 4px; padding: 4px;
   background: #0f0e0c; grid-template-columns: minmax(0, 2.4fr) minmax(300px, 1fr);
-  grid-template-rows: minmax(150px, 26%) minmax(120px, 24%) minmax(0, 1fr);
+  grid-template-rows: minmax(188px, 21%) minmax(120px, 24%) minmax(0, 1fr);
   grid-template-areas: "players players" "world log" "world actions"; }
 .game-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column;
   background: #211f1b; border: 1px solid #40382b; overflow: hidden; }
@@ -684,15 +684,18 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   min-height: 100%; }
 .pane-players > .pane-content { padding: 6px; }
 /* Two columns: who they are and what they hold on the left, the cards on
-   the right. The card row sets the board's height, so the strip is never
-   taller than a card at the reading floor, and a fourth adviser or relic
-   runs sideways inside the board instead of wrapping into a second row the
-   strip has no room for. The strip itself scrolls sideways past four
-   boards at 1024px rather than growing downward. */
+   the right. The left column takes the width the board can spare, up to
+   17rem, so a banner line stays one line and the resources wrap once at
+   most; the card column keeps room for two cards and the rest runs
+   sideways inside the board instead of wrapping into a second row. The
+   tallest board is a banner holder's left column (four lines, about
+   134px), which is what the strip row's 188px floor holds; a card at
+   0.86em is shorter. The strip itself scrolls sideways past four boards
+   at 1024px rather than growing downward. */
 .game-table .player-board { display: grid; flex: 1 0 300px; min-width: 300px;
   margin: 0; padding: 6px 12px; border: 0; border-right: 1px solid #4a4032;
   border-radius: 0; font-size: .82rem; column-gap: 12px; align-items: start;
-  grid-template-columns: minmax(8.5rem, 10rem) minmax(0, 1fr);
+  grid-template-columns: minmax(8.5rem, 17rem) minmax(7.5rem, 1fr);
   grid-template-rows: auto auto auto; }
 .game-table .player-board > * { grid-column: 1; }
 .game-table .player-board > .board-cards { grid-column: 2; grid-row: 1 / span 3;
@@ -982,7 +985,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
     /* A point under the wide layout's 24%: at 1024x768 that point is what
        keeps the starting-site decision, three cards and Confirm, out of
        scroll in the Actions pane above. */
-    grid-template-rows: minmax(150px, 26%) minmax(0, 1fr) minmax(120px, 23%);
+    grid-template-rows: minmax(188px, 21%) minmax(0, 1fr) minmax(120px, 23%);
     grid-template-areas: "players players" "world actions" "world log"; }
 }
 @media (max-aspect-ratio: 4/5), (max-width: 620px) {
