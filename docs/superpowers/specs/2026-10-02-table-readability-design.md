@@ -1,6 +1,6 @@
 # Table Readability
 
-**Status:** designed 2026-10-02. Implements six cleanup tasks from the
+**Status:** designed 2026-10-02, built 2026-10-02. Implements six cleanup tasks from the
 playtest of 2026-10-01: keep site powers visible, shrink the player strip,
 enlarge glyphs, make secrets and defense dice look different, show the cards
 in a discard pile, and show how warbands map to Supply.
@@ -179,3 +179,31 @@ button), and the token glyph list.
   knowledge rule).
 - Moving the Shared Bank and favor banks off the map (Fit 0.49 to 0.57).
 - Citizen Supply.
+
+## Decisions made while building
+
+1. `discardCount` and `discardTopCardKind` stay constructor fields; the
+   projector computes both from `discardCards`, so the wire carries three
+   consistent fields and old callers are untouched.
+2. The current band is marked with the suffix "(now)".
+3. CSS has no jsdom test; the footer and glyph sizes were measured in the
+   browser over a scratch database at 1440×900 and 1024×768.
+4. `MapViewStateSuite` needed no re-check: the larger corner glyph sits
+   above the compact name, not beside it.
+5. The strip row is `minmax(188px, 21%)`, not `minmax(140px, 16%)`, and
+   cards on a board stay at 0.86em. A board's height is set by its left
+   column, not its card row: a banner holder's column is four lines (name,
+   resources wrapped once, the Vision pill, the banner), about 134px, and
+   no card size changes that. The identity column may take up to 17rem
+   (`minmax(8.5rem, 17rem)`) so the banner stays one line, and the card
+   column keeps 7.5rem, two cards. The spec's 16% row would have made the
+   strip scroll vertically on any banner holder.
+6. Site powers clamp to one line on the compact map and two zoomed in. The
+   footer sits inside `.site-details`, so it takes the glance size (11.6px
+   on screen) rather than shrinking with the map; a second glance line at
+   Fit would cost the card row a third of its height. The compact card-row
+   formula subtracts one glance line and the footer's 9px gap, in glance
+   units, not a fixed 2.6rem.
+7. Fit is unchanged at 1440×900 (0.44) and 1024×768 (0.35): the strip's
+   46px went to the map, and the taller site box took it back. The map is
+   not larger; it carries the powers and reads better in the strip.

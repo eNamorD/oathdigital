@@ -25,13 +25,6 @@ From the playtest of 2026-10-01:
 - [ ] **Hide a decision's own log line when its effect has one.** "Chose
   Blue" followed by "Wolves: Killed 1 Blue warband." repeats the decision.
 - [ ] **List relic details in a Negotiation.**
-- [ ] **Keep site powers visible.** There is enough screen space, and players
-  need to see them.
-- [ ] **Shrink the player strip.** It takes up too much space.
-- [ ] **Enlarge glyphs.** They are small even when zoomed in.
-- [ ] **Make secrets and defense dice look different.** They are too similar.
-- [ ] **Show the backs of all cards in a discard pile.**
-- [ ] **Show which warbands map to which Supply in the UI.**
 - [ ] **Review the action buttons.** They feel unresponsive, and some appear
   for things the player does not expect.
 

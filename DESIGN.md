@@ -167,7 +167,7 @@ components:
     textColor: "{colors.cream}"
     rounded: "{rounded.md}"
     padding: "12px"
-    height: "19.5rem"
+    height: "21.5rem"
   input-field:
     backgroundColor: "{colors.base}"
     textColor: "{colors.player-white}"
@@ -254,8 +254,9 @@ reused for UI meaning.
   gold coin and its cracked, dulled twin. Favor also colors the player title
   pill.
 - **Secret** (`token-secret`) and **Burnt Secret** (`token-secret-burnt`):
-  the blue book and its torn twin. Secret also marks the knowable pip on a
-  face-down card.
+  the blue book, solid with a spine notch, and its torn twin. Secret also
+  marks the knowable pip on a face-down card. The defense die is a shield
+  with two pips, so the two blue glyphs never read as one another.
 - **Suits**: Arcane (`suit-arcane`) violet, Beast (`suit-beast`) brick,
   Discord (`suit-discord`) pure red, Hearth (`suit-hearth`) orange, Nomad
   (`suit-nomad`) green, Order (`suit-order`) navy. Discord and Order also fill
@@ -310,7 +311,9 @@ UI accents are brass and selection blue. The three map regions are the one
 exception, and they carry the board's colors, not new ones.
 
 **The Shape First Rule.** Every suit, token and die has its own glyph. Color
-only keeps them from blurring; it never carries meaning alone.
+only keeps them from blurring; it never carries meaning alone. A token glyph
+is 1.25em of its line (`.token-glyph`); the strip's resource figures carry
+it at 1.3em and a card header at 1.5em.
 
 **The One Cool Rule.** Selection blue is the only cool UI color, and it means
 "selected". Do not use it for links, information or decoration.
@@ -381,15 +384,19 @@ scale instead: `font-size: clamp(rest, calc(<screen px> / var(--map-scale)),
 cap)` holds region and site names, pawns, tokens, defense, forces and card
 names near one screen size while the board keeps shrinking under them, the
 way a map's place names hold still while the map zooms. The study layer
-(site powers and requirement, a card's defense, restriction and badge) is
-hidden; a zoom or the overlay carries it. Nothing in the compact mode may
-change the map's height, because the Fit scale is computed from it: the site
-box is fixed and clips, and the region title has a fixed 2.4rem line. The
+(site powers and requirement, a card's defense, restriction and badge) scales
+with the map: it is on the board at every zoom and read by zooming in. Text
+on the map may fall under 11px; the Eleven-Pixel Floor is a pane rule. Site
+powers sit inside the details and so take the glance size, clamped to one
+line on the compact map. Nothing in the compact mode may change the map's
+height, because the Fit scale is computed from it: the site box is fixed at
+21.5rem and clips, and the region title has a fixed 2.4rem line. The
 two glance sizes are named once on `.map-compact` (`--glance-name`,
 `--glance-text`), and the compact site's card row is sized from what they
 leave: `--card-w` is the least of the row's own ceiling, a third of the
-width, and the box's height less the name line, the pawn row and, on a site
-holding forces, the forces line, divided by the card ratio. Above a scale of
+width, and the box's height less the name line, the pawn row, the footer's
+one line of powers and, on a site holding forces, the forces line, divided
+by the card ratio. Above a scale of
 about 0.35 the ceiling wins and nothing changes; below it the cards, which
 show initials there anyway, give up height so the forces line is never the
 thing the box clips.
@@ -401,7 +408,7 @@ The play surface is one fixed viewport, no page scroll: `html, body` are
 CSS grid with 4px gaps on a Table background, four panes:
 
 - Wide (default): columns `minmax(0, 2.4fr) minmax(300px, 1fr)`; rows
-  `minmax(150px, 26%) minmax(120px, 24%) minmax(0, 1fr)`; areas Players
+  `minmax(188px, 21%) minmax(120px, 24%) minmax(0, 1fr)`; areas Players
   across the top, World left spanning two rows, Log then Actions stacked
   right. The Log row is a reading pane, not a footer: at 1440×900 it shows
   nine lines of the log, and Actions keeps the larger share under it.
@@ -423,7 +430,7 @@ World pane is the exception: zero padding, a Base field, a hidden
 scrollbar, and a `.map-content` surface fixed at 1500px wide with 20px padding
 that is transform-scaled by the viewport. The map's font size is pinned to
 1rem so zoom and font scaling never compound. Fit is the default and is
-height-bound at the supported sizes (0.36 at 1024×768, 0.43 at 1440×900);
+height-bound at the supported sizes (0.35 at 1024×768, 0.44 at 1440×900);
 below 0.72 the map goes compact and the glance layer is counter-scaled (The
 Glance Layer Rule). In compact mode the site re-grids: the name takes the
 full width on the first row, the token corner, the pawns and the defense
@@ -432,17 +439,20 @@ narrows its cards to 7.3rem so the forces line fits the fixed box.
 
 On the map, three regions sit in a 3-column grid with 12px gaps; each region
 lists its sites in one column with 9px gaps. Every site is the same height
-(`--site-h: 19.5rem`) whatever it holds, so a pawn arriving or a preview
+(`--site-h: 21.5rem`) whatever it holds, so a pawn arriving or a preview
 opening never shifts the board. The card row inside a site is three cards
 wide: `--card-w: min(8.6rem, (100% - 2 gaps) / 3)`.
 
 The Players pane is a horizontal strip of player boards, each `flex: 1 0
 300px`, divided by 1px Line-mid right borders. A board is a two-column grid:
-identity, resources and the title or Vision row on the left (8.5–10rem), the
-card row on the right, spanning the rows. The card row sets the board's
-height and scrolls sideways inside the board when it holds more than fits;
-the strip scrolls sideways past four boards at 1024px. Nothing in the strip
-scrolls vertically. The Actions pane stacks
+identity, resources, the title or Vision row and any banner on the left
+(8.5–17rem, taking what the board can spare so a banner stays one line), the
+card row on the right (7.5rem at least), spanning the rows. The tallest
+board is a banner holder's four-line left column, about 134px, which the
+strip row's 188px floor holds; a card at 0.86em is shorter. The card row
+scrolls sideways inside the board when it holds more than fits; the strip
+scrolls sideways past four boards at 1024px. Nothing in the strip scrolls
+vertically. The Actions pane stacks
 decision zones in one column with 10px gaps. Spacing runs 4, 6, 8, 12, 18px;
 `min-height: 44px` is the touch floor for every action button.
 
@@ -564,15 +574,16 @@ ratio, sized in `ex` from `--card-w: 13ex`.
 - **Border:** 1px, transparent at rest so states never reflow; Line for a
   denizen, `#7a6a4c` for a relic, dashed Unimplemented for a card the engine
   does not run, dashed Line-mid with transparent fill for an empty slot.
-- **Face:** header row of suit glyph (1.2em) and name (700, 0.95em) with
+- **Face:** header row of suit glyph (1.5em) and name (700, 0.95em) with
   defense dice pushed right; a name that does not fit beside the glyph drops
   under it whole rather than breaking mid-word, and a single word too long
-  for the box is hyphenated at a syllable; token row at 0.8em;
+  for the box is hyphenated at a syllable; token row and defense row at 1em;
   restriction in Ink Dim capitalized at the bottom; footer sinks to the
   bottom.
 - **Compact (zoomed-out map only):** the box and ratio are unchanged; the
-  suit glyph moves to the top-left corner and the name sits centered in the
-  box. The face inherits the counter-scaled size from the site, so the name
+  suit glyph moves to the top-left corner at 1.5em, with the face padded
+  1.7em at the top so the name starts under it, and the name sits centered
+  in the box. The face inherits the counter-scaled size from the site, so the name
   holds 11px on screen. A name whose longest word does not fit one line at
   the current scale shows its initials instead, at 1.5em 700: the first
   character of each word as written ("Rotting Fortress" is RF, "Master of
@@ -601,7 +612,7 @@ ratio, sized in `ex` from `--card-w: 13ex`.
 ### Dice
 A rolled die is a face-shaped chip: 1.9em minimum width, 1.5em tall, 1px
 Brass Line border, 0.25em radius, Base fill, symbols in Token Symbol at 0.9em
-700. A blank face is a dashed `#5d5144` chip with nothing on it. Faces sit in
+700 with the glyph at 1.1em. A blank face is a dashed `#5d5144` chip with nothing on it. Faces sit in
 an inline wrap with 0.25em gaps; a walk's roll shows the faces, then one line
 of totals. A roll in the game log draws the same chips inline in its line,
 hung from the line's top so the 13px line never grows; the totals follow as
@@ -609,11 +620,12 @@ their own log lines.
 
 ### Sites
 A site is the board's unit: Site fill, Line border, 9px radius, 12px padding,
-fixed 19.5rem height, `overflow: hidden`. The heading is a three-column grid
+fixed 21.5rem height, `overflow: hidden`. The heading is a three-column grid
 so the name is centered on the box regardless of token counts; tokens sit
 left, defense right. Below the compact threshold the name owns the first row
-and the two corners flank the pawns on the second (Layout). Powers are one
-ellipsized line with hover titles, hidden in compact mode. A legal
+and the two corners flank the pawns on the second (Layout). Powers are two
+clipped lines of labels with hover titles, on the board at every zoom and
+one line on the compact map. A legal
 target gets a brass border and inset ring; hover brightens the border to
 Bright Cream with the target halo; selected turns Selection blue on Selection
 Fill.
@@ -692,11 +704,13 @@ label, +, Fit). The developer panel is a fixed aside, top-right, 540px wide,
 in the off-palette purple with the overlay lift.
 
 ### Player Boards
-One board per player in the strip: 225px minimum, `6px 12px` padding,
+One board per player in the strip: 300px minimum, `6px 12px` padding,
 0.82rem, a Line-mid right border. The active board gets a dashed `#c8b48b`
 outline and a `#29251d` fill. The identity line joins name, role and title
 with drawn "·" separators in Ink Separator. Cards on a board render at 0.86em
-in a sideways-scrolling row beside the identity column (Layout).
+in a sideways-scrolling row beside the identity column (Layout). The Supply
+figure and a region's discard pile are buttons on the pill hover that open
+the text and card-list overlays: Supply at Rest and the pile's cards.
 
 ## Do's and Don'ts
 
