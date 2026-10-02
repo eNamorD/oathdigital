@@ -68,7 +68,8 @@ class ArmedMobSuite extends munit.FunSuite:
       .answered
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
       NoteKey.Used,
-      s"${p1.value} discarded ${homesteaders.value} from ${p2.value}'s advisers.",
+      s"${p1.value} discarded ${homesteaders.value} from " +
+        s"${p2.value}'s advisers.",
       covers = true)))
 
   test("the player may be the target"):

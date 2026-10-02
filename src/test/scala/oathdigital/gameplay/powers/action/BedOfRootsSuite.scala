@@ -33,8 +33,8 @@ class BedOfRootsSuite extends munit.FunSuite:
 
   test("it burns 3 favor and offers only the faceup denizen advisers"):
     val ready = staged().adviser(p1, homesteaders)
-      .adviser(p1, landWarden, facedown = true).adviser(p1, vision,
-        facedown = true).ready
+      .adviser(p1, landWarden, facedown = true)
+      .adviser(p1, vision, facedown = true).ready
     val t = accepted(use(ready, power, source))
     assert(awaits(t, BedOfRoots.decisionId),
       parked.parkedDecision(t.state).toString)

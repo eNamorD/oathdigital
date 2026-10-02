@@ -59,8 +59,8 @@ class CrystalVialSuite extends munit.FunSuite:
       .unchecked
     val t = accepted(use(ready, power, source))
     assertEquals(offered(t, actor).map(_.toSet), Some(Set(
-      "denizen" -> held.value, "denizen" -> elders.value, "vision" -> faith.value) ++
-      siteCards(ready)))
+      "denizen" -> held.value, "denizen" -> elders.value,
+      "vision" -> faith.value) ++ siteCards(ready)))
 
   test("an adviser is buried at the bottom of the world deck, and its favor " +
       "and secrets return"):
