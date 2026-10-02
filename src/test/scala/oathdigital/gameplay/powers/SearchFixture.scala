@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{Table, TestCards}
+import oathdigital.testkit.{CatalogNames, Table, TestCards}
 
 /** Drives a real Search through the rules, with the production walker powers,
   * for the suites of the modifiers and triggers that act on it. It builds on
@@ -26,6 +26,12 @@ object SearchFixture:
     */
   def staged(top: Vector[WorldCardId], supply: Int = 5): ReadyGame =
     Table.start.worldDeckTop(top*).supply(actor, supply).ready
+
+  /** Eight Discord denizens for the world deck. None is played faceup or
+    * sits on the board, so no power of theirs applies. */
+  val discordCards: Vector[DenizenId] = Vector("Defame", "Second Wind",
+    "Scryer", "Bandit Paymaster", "Unstable Summon", "Dark Enforcer",
+    "Spoiled Supplies", "Blackmail").map(CatalogNames.denizen(_))
 
   /** The plain denizens of `suit` (unrestricted, with no production walker
     * power of their own) that no player and no site holds: in the world deck,

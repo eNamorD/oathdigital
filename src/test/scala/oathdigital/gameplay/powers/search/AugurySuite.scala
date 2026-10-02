@@ -14,10 +14,6 @@ class AugurySuite extends munit.FunSuite:
 
   private val augury = CatalogNames.denizen("Augury")
   private val modifiers = Vector(Augury.id)
-  /** Six Discord denizens whose powers these tests do not use. */
-  private val discordCards: Vector[DenizenId] = Vector("Defame", "Second Wind",
-    "Scryer", "Bandit Paymaster", "Unstable Summon", "Dark Enforcer")
-    .map(CatalogNames.denizen(_))
 
   /** p1's Act at Ancient City with Augury at the site and 5 Supply, the
     * world deck topped by `top`. */
@@ -89,6 +85,7 @@ class AugurySuite extends munit.FunSuite:
     assert(!offered(ActionRef.Travel).contains(Augury.id))
 
   test("it is not offered when the card is out of reach"):
+    // `staged` leaves Augury off the table: no player or site holds it.
     assertEquals(start(SearchFixture.staged(discordCards.take(6)), modifiers)
       .left.toOption, Some(OathViolation.InvalidEventOrder(
         "power denizen.augury is not applicable to this search")))

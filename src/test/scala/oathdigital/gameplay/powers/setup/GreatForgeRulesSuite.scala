@@ -23,7 +23,7 @@ class GreatForgeRulesSuite extends munit.FunSuite:
   // Fire and Cursed Cauldron at Broken Peaks, in the Cradle with Ancient City.
   private val topRelic = CatalogNames.relic("Dowsing Sticks")
   private val relicSite = CatalogNames.site("Broken Peaks")
-  private val cradleRelics = Set(CatalogNames.relic("Sticky Fire"),
+  private val cradleRelics = Vector(CatalogNames.relic("Sticky Fire"),
     CatalogNames.relic("Cursed Cauldron"))
 
   private def stagedAt(side: EdificeSide): ReadyGame =
@@ -46,9 +46,8 @@ class GreatForgeRulesSuite extends munit.FunSuite:
   test("Broken Forge discards every relic in its region to setAsideRelics"):
     val staged = stagedAt(EdificeSide.Ruined)
     val relicsBefore = Look(staged).relicsAt(relicSite).toSet
-    assertEquals(relicsBefore, cradleRelics)
+    assertEquals(relicsBefore, cradleRelics.toSet)
     val finished = finish(staged)
-    assert(relicsBefore.nonEmpty)
     assert(finished.game.current.map.sites(relicSite).relics.isEmpty)
     assert(relicsBefore.subsetOf(finished.game.current.setAsideRelics.toSet),
       "the discarded relics are set aside")
@@ -80,12 +79,7 @@ class GreatForgeRulesSuite extends munit.FunSuite:
 
   test("Broken Forge writes the relics it discarded"):
     val staged = stagedAt(EdificeSide.Ruined)
-    val current = staged.game.current
-    val region = Region.Cradle // Ancient City's region
-    val relics = current.map.inPlay
-      .filter(s => current.map.regionOf(s).contains(region))
-      .flatMap(s => current.map.sites(s).relics.map(_.id.value))
-    assert(relics.nonEmpty)
     assertEquals(NoteText.said(broken.id, broken.noteKeys, events(staged)),
       Vector(NoteText.Said("discarded",
-        s"Discarded ${relics.mkString(", ")}.", covers = false)))
+        s"Discarded ${cradleRelics.map(_.value).mkString(", ")}.",
+        covers = false)))

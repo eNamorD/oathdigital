@@ -13,10 +13,8 @@ class TruthfulHarpSuite extends munit.FunSuite:
   import SearchFixture._
 
   private val harp = CatalogNames.relic("Truthful Harp")
-  /** Eight Discord denizens whose powers these tests do not use. */
-  private val discordCards: Vector[DenizenId] = Vector("Defame", "Second Wind",
-    "Scryer", "Bandit Paymaster", "Unstable Summon", "Dark Enforcer",
-    "Spoiled Supplies", "Blackmail").map(CatalogNames.denizen(_))
+  // The players besides p1, who see what p1 reveals.
+  private val viewers = Vector(p2, p3)
   private val onlyHarp = Vector(TruthfulHarp.id)
   private val both = Vector(TruthfulHarp.id, Augury.id)
 
@@ -37,7 +35,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
     val ready = withHarp(top)
     val started = accepted(start(ready, onlyHarp))
     assertEquals(hand(started), top.take(5))
-    Vector(p2, p3).foreach(viewer =>
+    viewers.foreach(viewer =>
       assertEquals(known(started, viewer).toSet, top.take(5).toSet[WorldCardId]))
     assertEquals(ActPowerHarness.replayed(rules, ready, started.events),
       SearchFixture.after(started))
@@ -56,8 +54,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
     })
     // The other players saw the card while it was revealed, and remember it.
     // That is what a reveal at a table leaves behind, and it needs no rule.
-    val other = p2
-    assert(known(done, other).contains(top(4)))
+    assert(known(done, p2).contains(top(4)))
 
   test("the Harp and Augury stack, and the reveal covers all six cards"):
     val top = discordCards.take(8)
@@ -66,14 +63,14 @@ class TruthfulHarpSuite extends munit.FunSuite:
       .unchecked
     val started = accepted(start(ready, both))
     assertEquals(hand(started), top.take(6))
-    Vector(p2, p3).foreach(viewer =>
+    viewers.foreach(viewer =>
       assertEquals(known(started, viewer).toSet, top.take(6).toSet[WorldCardId]))
 
   test("nothing is revealed without the Harp"):
     val top = discordCards.take(7)
     val started = accepted(start(withHarp(top)))
     assertEquals(hand(started), top.take(3))
-    Vector(p2, p3).foreach(viewer =>
+    viewers.foreach(viewer =>
       assertEquals(known(started, viewer), Vector.empty[WorldCardId]))
 
   test("a facedown Harp cannot be selected"):

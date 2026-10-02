@@ -15,7 +15,7 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   private val site = CatalogNames.site("Ancient City")
   // p2 is the first player of the fixture's first game.
   private val firstPlayer = Table.p2
-  // The fresh deal's first two world-deck denizens.
+  // Any two denizens will do: Empty Grounds must discard them.
   private val otherDenizens = Vector("Threatening Roar", "Fae Merchant")
     .map(CatalogNames.denizen(_))
 

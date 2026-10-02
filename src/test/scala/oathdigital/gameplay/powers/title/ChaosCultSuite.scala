@@ -48,8 +48,7 @@ class ChaosCultSuite extends munit.FunSuite:
     assertEquals(NoteText.said(power.id, power.noteKeys, done.events),
       Vector(NoteText.Said("took", s"${cultist.value} took 1 favor from " +
         s"${leader.value}.", covers = false)))
-    assertEquals(Ready(ActPowerHarness.replayed(rules, ready, done.events)),
-      done.state)
+    assertEquals(ActPowerHarness.replayed(rules, ready, done.events), after)
 
   test("the holder taking the title takes nothing"):
     val done = accepted(travel(staged(Vector(cultist)).ready))
@@ -85,5 +84,5 @@ class ChaosCultSuite extends munit.FunSuite:
     assertEquals(after.game.current.title.holder, Some(leader))
     // The cultist's 2, plus 1 taken from the chosen Oathkeeper.
     assertEquals(Look(after).favor(cultist), 3)
-    assertEquals(Ready(ActPowerHarness.replayed(rules, ready,
-      parked.events ++ done.events)), done.state)
+    assertEquals(ActPowerHarness.replayed(rules, ready,
+      parked.events ++ done.events), after)
