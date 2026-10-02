@@ -4,47 +4,48 @@ import oathdigital.gameplay.powers.{NoteText, PlayerFacts, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure, SetupWalkDriver}
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Unwrap.accepted
 
 class ProvingGroundsRulesSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
-  private val edifice = EdificeId("E22")
+  private val edifice = CatalogNames.edifice("Proving Grounds")
   private val powers = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
     Vector.empty)
-  private val site = FirstGameSetupFixture.sites.head
-  private val firstPlayer = PlayerId("p2")
+  private val site = CatalogNames.site("Ancient City")
+  // p2 is the first player of the fixture's first game.
+  private val firstPlayer = Table.p2
+  // The fresh deal's first two world-deck denizens.
+  private val otherDenizens = Vector("Threatening Roar", "Fae Merchant")
+    .map(CatalogNames.denizen(_))
 
   private def stagedAt(side: EdificeSide, at: SiteId = site): ReadyGame =
     Table.from(FirstGameSetupFixture.freshReady).edifice(edifice, side, at = at)
       .unchecked
 
   private def finish(ready: ReadyGame): ReadyGame =
-    val tree = SetupProcedure.build(catalog, ready,
-      ready.game.current.turn.activePlayer, Vector.empty).toOption.get
+    val tree = accepted(SetupProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty))
     SetupWalkDriver.driveToCompletion(ready, tree, TriggeredProcedureRef.Setup,
       powers)
 
   test("Proving Grounds gives the placing player three warbands"):
     val staged = stagedAt(EdificeSide.Intact)
-    PlayerFacts.forceKind(staged, firstPlayer).toOption.get
-    val before = staged.game.current.players.find(_.player == firstPlayer).get
-      .board.warbands
+    assert(PlayerFacts.forceKind(staged, firstPlayer).isRight,
+      "the first player has a warband kind to take")
+    val before = Look(staged).boardWarbands(firstPlayer)
     val finished = finish(staged)
-    val after = finished.game.current.players.find(_.player == firstPlayer).get
-      .board.warbands
-    assertEquals(after, before + 3)
+    assertEquals(Look(finished).boardWarbands(firstPlayer), before + 3)
 
   /** Empty Grounds' site with two denizens beside it. The fixture's region
     * holds no other card, so without them there is nothing to discard. */
   private def withOtherDenizens: ReadyGame =
-    val extra = FirstGameSetupFixture.freshReady.game.current.commonCards
-      .worldDeck.collect { case id: DenizenId => id }.take(2)
-    extra.foldLeft(Table.from(stagedAt(EdificeSide.Ruined)))(
+    otherDenizens.foldLeft(Table.from(stagedAt(EdificeSide.Ruined)))(
       _.denizen(_, at = site)).unchecked
 
   test("Empty Grounds discards every other denizen in its region"):
     val staged = withOtherDenizens
-    val region = staged.game.current.map.regionOf(site).get
+    val region = Region.Cradle // Ancient City's region
     val finished = finish(staged)
     val remaining = finished.game.current.map.inPlay.filter(s =>
       finished.game.current.map.regionOf(s).contains(region))
@@ -57,10 +58,10 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   // ---- Lines ----
 
   private def events(ready: ReadyGame): Vector[OathEvent] =
-    val tree = SetupProcedure.build(catalog, ready,
-      ready.game.current.turn.activePlayer, Vector.empty).toOption.get
+    val tree = accepted(SetupProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty))
     SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
-      powers)._2
+      powers).events
 
   private val proving = ProvingGrounds.forCatalog(catalog)
   private val empty = EmptyGrounds.forCatalog(catalog)
@@ -76,7 +77,7 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   test("Empty Grounds writes the cards it discarded, in place of the Discard line"):
     val staged = withOtherDenizens
     val current = staged.game.current
-    val region = current.map.regionOf(site).get
+    val region = Region.Cradle // Ancient City's region
     val others = current.map.inPlay
       .filter(s => current.map.regionOf(s).contains(region))
       .flatMap(s => current.map.sites(s).denizens.map(_.id.value))

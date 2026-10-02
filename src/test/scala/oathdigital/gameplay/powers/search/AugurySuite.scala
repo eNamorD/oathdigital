@@ -3,31 +3,40 @@ package oathdigital.gameplay.powers.search
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.powers.{PowerFixture, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, Table}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class AugurySuite extends munit.FunSuite:
   import PowerFixture._
   import SearchFixture._
 
-  private val augury = DenizenId("56")
+  private val augury = CatalogNames.denizen("Augury")
   private val modifiers = Vector(Augury.id)
-  private val plain: Vector[DenizenId] = Suit.all.flatMap(denizensOf)
+  /** Six Discord denizens whose powers these tests do not use. */
+  private val discordCards: Vector[DenizenId] = Vector("Defame", "Second Wind",
+    "Scryer", "Bandit Paymaster", "Unstable Summon", "Dark Enforcer")
+    .map(CatalogNames.denizen(_))
 
+  /** p1's Act at Ancient City with Augury at the site and 5 Supply, the
+    * world deck topped by `top`. */
   private def withAugury(top: Vector[WorldCardId]): ReadyGame =
-    atActorsSite(SearchFixture.staged(top), augury)
+    Table.start.pawn(p1, "Ancient City").denizen(augury, at = "Ancient City")
+      .worldDeckTop(top*).supply(p1, 5).ready
 
   private def hand(transition: OathTransition): Vector[WorldCardId] =
     SearchFixture.after(transition).game.current.temporaryHands(actor)
 
   test("a world Search draws one card more than the printed three"):
-    val top = plain.take(6)
-    val plainSearch = start(withAugury(top)).toOption.get
+    val top = discordCards.take(6)
+    val plainSearch = accepted(start(withAugury(top)))
     assertEquals(hand(plainSearch), top.take(3))
     val ready = withAugury(top)
-    val started = start(ready, modifiers).toOption.get
+    val started = accepted(start(ready, modifiers))
     assertEquals(hand(started), top.take(4))
-    // The cost is the printed one: Augury adds a card, not a price.
+    // A world Search costs 2 until a Vision is drawn: Augury adds a card,
+    // not a price. 5 Supply less 2 leave 3.
     assertEquals(Look(SearchFixture.after(started)).player(actor)
       .board.supply.supply, 5 - 2)
     assertEquals(ActPowerHarness.replayed(rules, ready, started.events),
@@ -35,7 +44,7 @@ class AugurySuite extends munit.FunSuite:
     assertWireRoundTrips(started.events)
 
   test("the player keeps any one of the drawn cards"):
-    val top = plain.take(6)
+    val top = discordCards.take(6)
     val kept = top(3)
     val done = play(withAugury(top), modifiers, kept, "adviser-facedown")
     val after = SearchFixture.after(done)
@@ -44,14 +53,16 @@ class AugurySuite extends munit.FunSuite:
       "the fourth drawn card is the one kept")
 
   test("the draw still stops after a Vision, wherever the Vision falls"):
-    val early = plain.take(2) ++ Vector(VisionRules.Faith) ++ plain.drop(2).take(3)
-    val stopped = start(withAugury(early), modifiers).toOption.get
+    val early = discordCards.take(2) ++ Vector(VisionRules.Faith) ++
+      discordCards.drop(2).take(3)
+    val stopped = accepted(start(withAugury(early), modifiers))
     assertEquals(hand(stopped), early.take(3))
     // A Vision is the fourth card, past the printed three: it is drawn, and the
     // draw counts it.
-    val late = plain.take(3) ++ Vector(VisionRules.Faith) ++ plain.drop(3).take(2)
+    val late = discordCards.take(3) ++ Vector(VisionRules.Faith) ++
+      discordCards.drop(3).take(2)
     val ready = withAugury(late)
-    val reached = start(ready, modifiers).toOption.get
+    val reached = accepted(start(ready, modifiers))
     assertEquals(hand(reached), late.take(4))
     assertEquals(SearchFixture.after(reached).game.current.tracks.visionsDrawn,
       ready.game.current.tracks.visionsDrawn + 1)
@@ -59,25 +70,25 @@ class AugurySuite extends munit.FunSuite:
       SearchFixture.after(reached))
 
   test("a Search from a regional discard draws one card more from its top"):
-    val region = Look(quietTable).player(actor)
-      .pawnSite.flatMap(quietTable.game.current.map.regionOf).get
-    val pile = plain.take(5)
+    val region = Region.Cradle // Ancient City's region
+    val pile = discordCards.take(5)
     val ready = Table.from(withAugury(Vector.empty)).discarded(region, pile*)
       .unchecked
-    val started = rules.startWalker(OathState.Ready(ready), ActionRef.Search,
-      actor, modifiers, Vector(DecisionOptionRef.Button(
-        s"search:regional-discard:${region.key}"))).toOption.get
+    val regional = DecisionOptionRef.Button(
+      s"search:regional-discard:${region.key}")
+    val started = accepted(rules.startWalker(OathState.Ready(ready),
+      ActionRef.Search, actor, modifiers, Vector(regional)))
     // The pile is drawn from its end, and Augury takes a fourth card.
     assertEquals(hand(started), pile.reverse.take(4))
 
   test("it is offered for Search, and not for another action"):
-    val ready = withAugury(plain.take(6))
+    val ready = withAugury(discordCards.take(6))
     val offered = (action: ActionRef) =>
-      rules.offerableWalkerPowers(ready, actor, action).toOption.get.map(_.id)
+      accepted(rules.offerableWalkerPowers(ready, actor, action)).map(_.id)
     assert(offered(ActionRef.Search).contains(Augury.id))
     assert(!offered(ActionRef.Travel).contains(Augury.id))
 
   test("it is not offered when the card is out of reach"):
-    assertEquals(start(SearchFixture.staged(plain.take(6)), modifiers).left.toOption,
-      Some(OathViolation.InvalidEventOrder(
+    assertEquals(start(SearchFixture.staged(discordCards.take(6)), modifiers)
+      .left.toOption, Some(OathViolation.InvalidEventOrder(
         "power denizen.augury is not applicable to this search")))

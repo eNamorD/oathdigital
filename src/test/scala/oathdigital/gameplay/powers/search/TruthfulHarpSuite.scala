@@ -3,18 +3,25 @@ package oathdigital.gameplay.powers.search
 import oathdigital.gameplay.powers.{NoteText, PowerFixture, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{ActPowerHarness, Look, PhasePowerHarness}
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Table}
+import oathdigital.testkit.Table.{p2, p3}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.Unwrap.accepted
 
 class TruthfulHarpSuite extends munit.FunSuite:
   import PowerFixture._
   import SearchFixture._
 
-  private val harp = RelicId("R04")
-  private val plain: Vector[DenizenId] = Suit.all.flatMap(denizensOf)
+  private val harp = CatalogNames.relic("Truthful Harp")
+  /** Eight Discord denizens whose powers these tests do not use. */
+  private val discordCards: Vector[DenizenId] = Vector("Defame", "Second Wind",
+    "Scryer", "Bandit Paymaster", "Unstable Summon", "Dark Enforcer",
+    "Spoiled Supplies", "Blackmail").map(CatalogNames.denizen(_))
   private val onlyHarp = Vector(TruthfulHarp.id)
   private val both = Vector(TruthfulHarp.id, Augury.id)
 
+  /** p1's Act at Ancient City holding Truthful Harp faceup, with 5 Supply
+    * and the world deck topped by `top`. */
   private def withHarp(top: Vector[WorldCardId]): ReadyGame =
     withRelic(SearchFixture.staged(top), harp)
 
@@ -26,11 +33,11 @@ class TruthfulHarpSuite extends munit.FunSuite:
     .advisers.getOrElse(viewer, Vector.empty)
 
   test("a Search draws two more cards, and every card drawn is revealed"):
-    val top = plain.take(7)
+    val top = discordCards.take(7)
     val ready = withHarp(top)
-    val started = start(ready, onlyHarp).toOption.get
+    val started = accepted(start(ready, onlyHarp))
     assertEquals(hand(started), top.take(5))
-    PhasePowerHarness.others(ready).foreach(viewer =>
+    Vector(p2, p3).foreach(viewer =>
       assertEquals(known(started, viewer).toSet, top.take(5).toSet[WorldCardId]))
     assertEquals(ActPowerHarness.replayed(rules, ready, started.events),
       SearchFixture.after(started))
@@ -38,7 +45,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
 
   test("the reveal does not change the play: the kept card can still be played " +
       "facedown as an adviser, as usual"):
-    val top = plain.take(7)
+    val top = discordCards.take(7)
     val ready = withHarp(top)
     val done = play(ready, onlyHarp, top(4), "adviser-facedown")
     val advisers = Look(SearchFixture.after(done)).player(actor).advisers
@@ -49,27 +56,28 @@ class TruthfulHarpSuite extends munit.FunSuite:
     })
     // The other players saw the card while it was revealed, and remember it.
     // That is what a reveal at a table leaves behind, and it needs no rule.
-    val other = PhasePowerHarness.others(ready).head
+    val other = p2
     assert(known(done, other).contains(top(4)))
 
   test("the Harp and Augury stack, and the reveal covers all six cards"):
-    val top = plain.take(8)
-    val augury = DenizenId("56")
-    val ready = atActorsSite(withHarp(top), augury)
-    val started = start(ready, both).toOption.get
+    val top = discordCards.take(8)
+    val augury = CatalogNames.denizen("Augury")
+    val ready = Table.from(withHarp(top)).denizen(augury, at = "Ancient City")
+      .unchecked
+    val started = accepted(start(ready, both))
     assertEquals(hand(started), top.take(6))
-    PhasePowerHarness.others(ready).foreach(viewer =>
+    Vector(p2, p3).foreach(viewer =>
       assertEquals(known(started, viewer).toSet, top.take(6).toSet[WorldCardId]))
 
   test("nothing is revealed without the Harp"):
-    val top = plain.take(7)
-    val started = start(withHarp(top)).toOption.get
+    val top = discordCards.take(7)
+    val started = accepted(start(withHarp(top)))
     assertEquals(hand(started), top.take(3))
-    PhasePowerHarness.others(withHarp(top)).foreach(viewer =>
+    Vector(p2, p3).foreach(viewer =>
       assertEquals(known(started, viewer), Vector.empty[WorldCardId]))
 
   test("a facedown Harp cannot be selected"):
-    val facedown = withRelic(SearchFixture.staged(plain.take(7)), harp,
+    val facedown = withRelic(SearchFixture.staged(discordCards.take(7)), harp,
       Orientation.FaceDown)
     assertEquals(start(facedown, onlyHarp).left.toOption,
       Some(OathViolation.InvalidEventOrder(
@@ -82,11 +90,11 @@ class TruthfulHarpSuite extends munit.FunSuite:
     NoteText.said(power.id, power.noteKeys, events)
 
   test("the revealed hand is the Harp's line, in place of the peeks"):
-    val top = plain.take(7)
-    val started = start(withHarp(top), onlyHarp).toOption.get
+    val top = discordCards.take(7)
+    val started = accepted(start(withHarp(top), onlyHarp))
     assertEquals(said(started.events), Vector(NoteText.Said("revealed",
       s"Revealed ${top.take(5).map(_.value).mkString(", ")}.", covers = true)))
 
   test("a Search without the Harp writes no Harp line"):
-    assertEquals(said(start(withHarp(plain.take(7))).toOption.get.events),
+    assertEquals(said(accepted(start(withHarp(discordCards.take(7)))).events),
       Vector.empty)

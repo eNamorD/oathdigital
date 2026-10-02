@@ -2,11 +2,11 @@ package oathdigital.gameplay.powers.setup
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
 
 class EdificeSetupSupportSuite extends munit.FunSuite:
-  private val edifice = EdificeId("E02")
-  private val site = FirstGameSetupFixture.sites.head
+  private val edifice = CatalogNames.edifice("Great Market")
+  private val site = CatalogNames.site("Ancient City")
 
   test("siteOf finds an edifice staged on a side, and misses the other side"):
     val staged = Table.from(FirstGameSetupFixture.freshReady)
