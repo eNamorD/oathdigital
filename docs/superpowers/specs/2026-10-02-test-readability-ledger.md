@@ -30,11 +30,13 @@ Calibration run: area 08 (model, catalog, serialization; 19 root suites and 6
 shared-module suites) surveyed once with the first prompt, then every row
 checked against the code on 2026-10-02.
 
-**Area 08 rows.** 48 rows checked. 36 right, 6 right in substance but filed
-under the wrong rule, 6 wrong. The wrong-row rate is 12 of 48, exactly a
-quarter, so the "more than a quarter" rerun threshold is not crossed and area
-08 is not rerun. Three marginal rows were kept as right (08-013, 08-033,
-08-038); counting them wrong would cross the threshold.
+**Area 08 rows.** 48 rows checked. 35 right, 6 right in substance but filed
+under the wrong rule, 7 wrong. The wrong-row rate is 13 of 48 (27%), over the
+"more than a quarter" threshold. Area 08 is therefore rerun with the tightened
+prompt (by the controller, into `rows/08-rerun.md`) to measure the prompt; the
+corrected rows below stay as the ledger's area 08. The rerun result will be
+added here. (An earlier pass counted 12 of 48 and kept three marginal rows,
+08-013, 08-033 and 08-038, as right; review moved 08-039 to wrong.)
 
 Wrong rows, removed from the rows file (their IDs are left as gaps):
 
@@ -46,6 +48,7 @@ Wrong rows, removed from the rows file (their IDs are left as gaps):
 | 08-016 | R1 | "The rest of the sample game is valid" is the premise of every validate test, not a board fact. | R1 outside its definition |
 | 08-021 | R8 | The titles state 6 and 7; the argument order of refresh is not a rubric finding. | R8 on an expectation the title explains |
 | 08-022 | R7 | The empty-dice result is still a Conquest, so "both kinds" is accurate. | R7 on an accurate title |
+| 08-039 | R8 | "6 cards" is an input label in a round-trip test; no asserted expectation depends on it. | R8 on an input, not an expectation |
 
 Right in substance, wrong rule, corrected in the rows file:
 
@@ -64,7 +67,7 @@ Two cross-references fixed: 08-029 cited 08-035 for PayCostWireSuite (it is
 (TestGameFixtures); it is now R1 and says "count once", so the summary must
 not count it twice.
 
-Rows after correction: 42. Per rule: R7 14, R4 8, R1 6, R8 5, Keep 4, R2 1,
+Rows after correction: 41. Per rule: R7 14, R4 8, R1 6, R8 4, Keep 4, R2 1,
 R3 1, R6 1, R10 1, R11 1, R5 0.
 
 **Missing findings.** The seven files with no rows (CatalogHandlerInventorySuite,
@@ -80,13 +83,14 @@ misses.
 Agent prompt and `.superpowers/readability/survey-prompt.md` agree):
 
 - Keep, not R3 (the four mislabeled Keep rows).
-- R4, not R2 (repeated mechanics).
+- R4 (repeated mechanics, DRY applies), not R2.
 - R6: `val (state, events) = execute()` (a tuple fixture the agent found but
   had no example for).
 - R7 pass, and when R7 applies: an accurate title over named faces; the
   `usePower` title with an extra field in the body (08-001, 08-009, 08-022).
 - R8 pass: `ExileSupply.refresh(9, 1)` under titles that give 6 and 7
-  (08-021).
+  (08-021). No example yet for 08-039 (R8 on an input label); the rerun
+  will show whether the prompt needs one.
 - R1 pass: "the rest of the game is valid" is not a board fact (08-007,
   08-016).
 - One reporting line: every count comes from grep or a line count (four rows

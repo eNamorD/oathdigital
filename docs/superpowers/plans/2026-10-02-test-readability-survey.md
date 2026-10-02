@@ -152,11 +152,12 @@ Examples:
   game.copy chain because the test makes an illegal state on purpose. Rule
   Keep, problem "the illegal state is the subject". Never write R3 on a row
   whose planned outcome is Keep.
-- R4, not R2: a suite repeats events.zipWithIndex.map { ... RecordedEvent(...) }
-  and encodeStream(...).toOption.get in 17 places. That is repeated
-  mechanics, so one R4 row with Test "suite" and the planned outcome
-  "roundTripStream(label, events) helper that fails with the WireError".
-  R2 is only for a helper whose name or body a reader cannot follow.
+- R4 (repeated mechanics, DRY applies), not R2: a suite repeats
+  events.zipWithIndex.map { ... RecordedEvent(...) } and
+  encodeStream(...).toOption.get in 17 places. One R4 row with Test "suite"
+  and the planned outcome "roundTripStream(label, events) helper that fails
+  with the WireError". R2 is only for a helper whose name or body a reader
+  cannot follow.
 - R6: val (state, events) = execute() reads a tuple by position. Planned
   outcome: "execute() returns SetupResult(state, events)".
 - R7 pass: the title "faces accumulate shields then apply every doubler"
