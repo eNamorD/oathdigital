@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.actions.negotiation.{NegotiationDeal, NegotiationProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
@@ -8,7 +7,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, DeclineDeal, ProposeTerms}
 import oathdigital.model.OathEvent.IgnoredRulesRecorded
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Journal, Look, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** Negotiation through the rules, as a client drives it: start, choose the
@@ -229,7 +228,5 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val events = setupEvents ++ act.events ++ traveled.events ++ started.events ++
       chosen.events.filterNot(started.events.contains) ++ proposed.events ++
       a.events ++ done.events
-    val replayed = new EventReplayEngine(rules).replay(events.zipWithIndex.map {
-      case (event, index) => RecordedEvent(index.toLong, event)
-    }).toOption.get
+    val replayed = Journal.replayed(rules, events)
     assertEquals(replayed, done.state)

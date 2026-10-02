@@ -9,6 +9,9 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
+import oathdigital.testkit.{Look, Outcomes, Table}
+import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 /** Ending the Wake phase, on the generic walker (batch-1 Task 7).
   *
@@ -23,41 +26,36 @@ class EndWakeProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
   private val parked = new ParkedDecisionAssertions(catalog)
 
-  private def ready(sharedEnemy: Boolean = false): OathState =
-    val value = initialReady
-    val active = value.game.current.turn.activePlayer
-    val activeSite = value.game.current.players.find(_.player == active)
-      .flatMap(_.pawnSite).get
-    val players = value.game.current.players.map { player =>
-      if sharedEnemy && player.player != active then
-        player.copy(pawnSite = Some(activeSite))
-      else player
-    }
-    Ready(value.updateCurrent(_.copy(players = players)))
+  /** The first game just after Setup, in its first player's Wake. With
+    * `sharedEnemy`, the other two players stand at the active player's site,
+    * so an Oathkeeper or a combat check at that site would have someone to
+    * reach. */
+  private def firstGameWake(sharedEnemy: Boolean = false): OathState =
+    val active = Look(initialReady).active
+    val activeSite = Look(initialReady).pawn(active)
+    val others = Vector(p1, p2, p3).filterNot(_ == active)
+    Ready(if sharedEnemy then others.foldLeft(Table.from(initialReady))(
+      _.pawn(_, activeSite)).unchecked else initialReady)
 
   private def endWake(state: OathState, actor: PlayerId) =
     rules.startWalker(state, PhaseTransitionRef.EndWake, actor)
 
-  private def activePlayer(state: OathState): PlayerId =
-    val Ready(value) = state: @unchecked
-    value.game.current.turn.activePlayer
+  private def activePlayer(state: OathState): PlayerId = Look(state).active
 
   test("ending Wake journals a phase change and enters Act action selection"):
-    val state = ready(sharedEnemy = true)
+    val state = firstGameWake(sharedEnemy = true)
     val active = activePlayer(state)
-    val accepted = endWake(state, active).toOption.get
-    val Ready(value) = accepted.state: @unchecked
-
-    assertEquals(accepted.events.map(_.productPrefix),
+    val ended = accepted(endWake(state, active))
+    assertEquals(ended.events.map(_.productPrefix),
       Vector("WalkerStepRecorded", "WalkerCompleted"))
-    assertEquals(accepted.events.collect {
+    assertEquals(ended.events.collect {
       case step: WalkerStepRecorded => step.ops
     }.flatten, Vector[oathdigital.model.CoreOperation](
       EnterPhase(Phase.Act)))
-    assertEquals(accepted.events.last,
+    assertEquals(ended.events.last,
       WalkerCompleted(PhaseTransitionRef.EndWake): OathEvent)
-    parked.assertResumed(accepted.state, Phase.Act, active)
-    assertEquals(value.game.current.walkerProcedure, None)
+    parked.assertResumed(ended.state, Phase.Act, active)
+    assertEquals(Outcomes.ready(ended.state).game.current.walkerProcedure, None)
 
   test("ending Wake does not run the Act action boundary"):
     // The boundary runs only after a completed ACTION, decided by the
@@ -65,40 +63,38 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     // not an action, so it never runs one -- whatever phase it starts or
     // finishes in. Bandit refill is the boundary's most visible half, so the
     // board is set up to make it fire and the first assertion proves it
-    // would; without that, the second passes for the wrong reason.
-    val Ready(base) = ready(): @unchecked
-    val empty = base.game.current.map.inPlay.find(id =>
-      catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
-    val state = Ready(base.updateCurrent(_.copy(map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(empty,
-          base.game.current.map.sites(empty).copy(
-            forces = SiteForces.Empty))))))
+    // would; without that, the second passes for the wrong reason. Ancient
+    // City, capacity 3, is emptied of its bandits.
+    val state = Ready(Table.from(Outcomes.ready(firstGameWake()))
+      .bandits("Ancient City", 0).unchecked)
 
     assert(StateBasedEvaluation.banditRefill(catalog, state)
       .toOption.flatten.nonEmpty,
       "precondition: the Act boundary would refill bandits in this state")
-    val accepted = endWake(state, activePlayer(state)).toOption.get
-    assertEquals(accepted.events.collect { case event: BanditsRefilled =>
+    val ended = accepted(endWake(state, activePlayer(state)))
+    assertEquals(ended.events.collect { case event: BanditsRefilled =>
       event }, Vector.empty)
-    assertEquals(accepted.events.collect {
+    assertEquals(ended.events.collect {
       case WalkerCompleted(TriggeredProcedureRef.Oathkeeper) => ()
       case parked: WalkerParked
           if parked.procedure == TriggeredProcedureRef.Oathkeeper => ()
     }, Vector.empty)
 
   test("ending Wake rejects a player who is not the active one"):
-    assert(endWake(ready(sharedEnemy = true), PlayerId("p1"))
-      .left.toOption.get.isInstanceOf[WrongPlayer])
+    // p2 is the first game's first player, so the Wake is p2's, not p1's.
+    val state = firstGameWake(sharedEnemy = true)
+    assertEquals(activePlayer(state), p2)
+    assert(rejected(endWake(state, p1)).isInstanceOf[WrongPlayer])
 
   test("ending Wake outside the Wake is refused"):
-    val state = ready()
+    val state = firstGameWake()
     val active = activePlayer(state)
-    val ended = endWake(state, active).toOption.get.state
-    assertEquals(endWake(ended, active).left.toOption.get,
+    val ended = accepted(endWake(state, active)).state
+    assertEquals(rejected(endWake(ended, active)),
       WrongPhase(Phase.Wake, Phase.Act): OathViolation)
 
   test("ending Wake selects nothing"):
-    val state = ready()
+    val state = firstGameWake()
     val active = activePlayer(state)
     assertEquals(rules.startWalker(state, PhaseTransitionRef.EndWake, active,
       Vector.empty, Vector(DecisionOptionRef.Button("favor"))).left.toOption,
@@ -110,11 +106,10 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     // and the procedure gates on nothing the projector has not already
     // scoped. That is only true while both stay that way, which is what this
     // pins: a gate added to one side and not the other shows up here.
-    val inWake = ready()
-    val Ready(value) = inWake: @unchecked
-    val inAct = Ready(value.updateCurrent(_.copy(turn = value.game.current.turn.copy(
-        phase = Phase.Act))))
-    Vector(inWake, ready(sharedEnemy = true), inAct).foreach { state =>
+    val inWake = firstGameWake()
+    val inAct = Ready(Table.from(Outcomes.ready(inWake))
+      .backInPhase(Phase.Act).unchecked)
+    Vector(inWake, firstGameWake(sharedEnemy = true), inAct).foreach { state =>
       val projection = new oathdigital.application.GameProjector(catalog)
         .project("end-wake", oathdigital.application.LoadedGame(state, 9),
           activePlayer(state))
@@ -122,23 +117,26 @@ class EndWakeProcedureSuite extends munit.FunSuite:
         endWake(state, activePlayer(state)).isRight, "endWake")
     }
 
-  test("command evolution and replay are equal and corrupt index is exact"):
-    val initial = ready()
-    val active = activePlayer(initial)
-    val ended = endWake(initial, active).toOption.get
+  test("replaying End Wake's events reproduces its state"):
+    val initial = firstGameWake()
+    val ended = accepted(endWake(initial, activePlayer(initial)))
     val replay = ended.events.foldLeft[Either[OathViolation, OathState]](
       Right(initial)) { case (next, event) => next.flatMap(rules.evolve(_, event)) }
     assertEquals(replay, Right(ended.state))
 
+  test("a doubled End Wake is rejected at its second copy's first event"):
     // A doubled End Wake is still a detectable corruption, and it is
     // `EnterPhase` that detects it rather than a phase gate in an evolve:
     // entering the phase the turn is already in is rejected, so the repeat
     // fails at the first event of its second copy.
+    val initial = firstGameWake()
+    val ended = accepted(endWake(initial, activePlayer(initial)))
     val setupEvents = setupThroughWake().events
+    // End Wake journals two events: its step and its completion.
     assertEquals(ended.events.size, 2)
     val corrupt = new EventReplayEngine(rules).replay(
       (setupEvents ++ ended.events ++ ended.events).zipWithIndex.map {
         case (event, index) => RecordedEvent(index.toLong, event)
       })
-    assertEquals(corrupt.left.toOption.get.index,
+    assertEquals(rejected(corrupt).index,
       (setupEvents.size + ended.events.size).toLong)

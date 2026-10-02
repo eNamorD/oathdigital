@@ -2,10 +2,9 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{MinorActionCommand,
   MinorActionOperationPolicy, MinorActions}
-import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.walker.ParkedDecisionAssertions
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Journal, Look, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -259,7 +258,5 @@ class MinorActionsSuite extends munit.FunSuite:
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))
       .toOption.get
     val events = setupEvents ++ act.events ++ started.events ++ discarded.events
-    val replayed = new EventReplayEngine(rules).replay(events.zipWithIndex.map {
-      case (event, index) => RecordedEvent(index.toLong, event)
-    }).toOption.get
+    val replayed = Journal.replayed(rules, events)
     assertEquals(replayed, discarded.state)

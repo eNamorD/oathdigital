@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 /** Card play offers only the discards the global restrictions permit: never an
   * intact edifice or a faceup locked adviser, while a facedown locked adviser
@@ -20,10 +21,17 @@ class CardPlayRestrictionsSuite extends munit.FunSuite:
   private val plainCard = CatalogNames.denizen("Errand Boy")
   private val extras = Vector("Rain Boots", "Wrestlers").map(CatalogNames.denizen(_))
 
-  private def siteChoice(ready: ReadyGame, card: DenizenId): CardPlay.Choice =
-    CardPlay.legalChoices(catalog, ready, actor, card,
+  /** The choice `card` offers whose placement `matches`; fails listing the
+    * placements it does offer. */
+  private def choiceFor(ready: ReadyGame, card: DenizenId,
+      matches: SearchPlacement => Boolean): CardPlay.Choice =
+    val choices = CardPlay.legalChoices(catalog, ready, actor, card,
       CardPlay.Origin.TemporaryHand)
-      .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
+    choices.find(choice => matches(choice.placement)).getOrElse(fail(
+      s"no such placement; offered ${choices.map(_.placement)}"))
+
+  private def siteChoice(ready: ReadyGame, card: DenizenId): CardPlay.Choice =
+    choiceFor(ready, card, _.isInstanceOf[SearchPlacement.Site])
 
   /** p1 stands at Deep Woods, the Beast Homeland, which p1 rules. It is full
     * (three cards): two plain cards and the Hall on `side`. p1 has the Beast
@@ -46,9 +54,9 @@ class CardPlayRestrictionsSuite extends munit.FunSuite:
     val ready = fullHomeland(EdificeSide.Ruined)
     assertEquals(siteChoice(ready, plainCard).replacements.toSet,
       extras.toSet[CardId] + hall)
-    val planned = CardPlay.plannedOperations(catalog, ready, actor, plainCard,
-      SearchPlacement.Site(Some(hall)), CardPlay.Origin.TemporaryHand)
-      .toOption.get
+    val planned = accepted(CardPlay.plannedOperations(catalog, ready, actor,
+      plainCard, SearchPlacement.Site(Some(hall)),
+      CardPlay.Origin.TemporaryHand))
     assert(planned.exists(_.isInstanceOf[Discard.RuinedEdifice]))
     assert(!planned.exists(_.isInstanceOf[Bury]))
 
@@ -62,9 +70,8 @@ class CardPlayRestrictionsSuite extends munit.FunSuite:
       .ready
 
   private def faceupReplacements(ready: ReadyGame): Set[CardId] =
-    CardPlay.legalChoices(catalog, ready, actor, plainCard,
-      CardPlay.Origin.TemporaryHand).find(_.placement ==
-      SearchPlacement.Adviser(Orientation.FaceUp, None)).get
+    choiceFor(ready, plainCard,
+      _ == SearchPlacement.Adviser(Orientation.FaceUp, None))
       .replacements.toSet
 
   test("a faceup locked adviser is not offered as the replacement"):
@@ -78,9 +85,9 @@ class CardPlayRestrictionsSuite extends munit.FunSuite:
   test("a faceup locked adviser named as the replacement is refused when the " +
       "play runs"):
     val ready = fullAdvisers(lockedFacedown = false)
-    val planned = CardPlay.plannedOperations(catalog, ready, actor, plainCard,
-      SearchPlacement.Adviser(Orientation.FaceUp, Some(lockedCard)),
-      CardPlay.Origin.TemporaryHand).toOption.get
+    val planned = accepted(CardPlay.plannedOperations(catalog, ready, actor,
+      plainCard, SearchPlacement.Adviser(Orientation.FaceUp, Some(lockedCard)),
+      CardPlay.Origin.TemporaryHand))
     assert(OperationPipeline.run(ready, planned, OperationPolicy.Permissive,
       OperationRestrictions.forCatalog(catalog).active(Vector.empty,
         Vector.empty))(Right(_)).isLeft)

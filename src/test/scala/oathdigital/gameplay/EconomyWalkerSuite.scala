@@ -7,6 +7,7 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Table}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Muster and Trade through the rules, as a client drives them: start, park on
   * the source decision, answer.
@@ -20,10 +21,11 @@ class EconomyWalkerSuite extends munit.FunSuite:
   private val card = DecisionOptionRef.Denizen(alchemist)
 
   /** p1 stands at Ancient City, which holds the token-free Alchemist
-    * (Arcane) and nothing else. p1 has 4 favor and 2 faceup secrets. */
+    * (Arcane) and nothing else. p1 has 4 favor, 2 faceup secrets, 7 Supply
+    * and 3 warbands on the board. */
   private def atAlchemist: Table = Table.start
-    .denizen(alchemist, at = Table.quietPawnSite(p1))
-    .favor(p1, 4).secrets(p1, faceUp = 2)
+    .denizen(alchemist, at = "Ancient City")
+    .favor(p1, 4).secrets(p1, faceUp = 2).supply(p1, 7).boardWarbands(p1, 3)
 
   /** Magician's Code is Arcane, like Alchemist. */
   private def withMatchingAdviser: Table = atAlchemist.adviser(p1, "Magician's Code")
@@ -49,20 +51,23 @@ class EconomyWalkerSuite extends munit.FunSuite:
       MusterProcedure.decisionId, p1)
     assertEquals(current(started.state).walkerProcedure, Some(ActionRef.Muster))
     assert(current(started.state).walkerPending.nonEmpty)
+    // Still the 4 favor and 7 Supply p1 started with.
     assertEquals(Look(started.state).favor(p1), 4)
     assertEquals(Look(started.state).supply(p1), 7)
 
   test("answering the source decision pays, gains and completes the action"):
-    val started = start(withMatchingAdviser.ready).toOption.get
-    val accepted = answer(started.state, p1, MusterProcedure.decisionId, card)
-      .getOrElse(fail("the offered card must be accepted"))
-    val after = Look(accepted.state)
-    assertEquals(after.favor(p1), 3)
-    assertEquals(after.supply(p1), 6)
-    assertEquals(after.boardWarbands(p1), 5)
-    assertEquals(current(accepted.state).walkerPending, None)
-    parked.assertResumed(accepted.state, Phase.Act, p1)
-    assert(accepted.events.exists {
+    val started = accepted(start(withMatchingAdviser.ready))
+    val answered = accepted(
+      answer(started.state, p1, MusterProcedure.decisionId, card))
+    val after = Look(answered.state)
+    // 1 favor goes onto Alchemist, Muster costs 1 Supply, and it gains 2
+    // warbands.
+    assertEquals(after.favor(p1), 4 - 1)
+    assertEquals(after.supply(p1), 7 - 1)
+    assertEquals(after.boardWarbands(p1), 3 + 2)
+    assertEquals(current(answered.state).walkerPending, None)
+    parked.assertResumed(answered.state, Phase.Act, p1)
+    assert(answered.events.exists {
       case WalkerCompleted(ActionRef.Muster) => true
       case _ => false
     })
@@ -70,12 +75,12 @@ class EconomyWalkerSuite extends munit.FunSuite:
   test("the action boundary starts the Oathkeeper procedure within the " +
       "answering command"):
     // p2 rules a site and p1 none, so p2 leads the Oath.
-    val started = start(atAlchemist.warbandsAt("Dunes", p2, 1).ready).toOption.get
-    val accepted = answer(started.state, p1, MusterProcedure.decisionId, card)
-      .toOption.get
-    assertEquals(accepted.events.last,
+    val started = accepted(start(atAlchemist.warbandsAt("Dunes", p2, 1).ready))
+    val answered = accepted(
+      answer(started.state, p1, MusterProcedure.decisionId, card))
+    assertEquals(answered.events.last,
       WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
-    assertEquals(current(accepted.state).title,
+    assertEquals(current(answered.state).title,
       OathkeeperState(Some(p2), TitleSide.Oathkeeper))
 
   test("Trade carries its resource as the start selection through the park"):
@@ -85,9 +90,9 @@ class EconomyWalkerSuite extends munit.FunSuite:
       assertEquals(current(started.state).walkerStartArgs, args)
       parked.assertParked(started.state, ActionRef.Trade,
         TradeProcedure.decisionId, p1)
-      val accepted = answer(started.state, p1, TradeProcedure.decisionId, card)
+      val answered = answer(started.state, p1, TradeProcedure.decisionId, card)
         .getOrElse(fail(s"Trade for $name must complete"))
-      assertEquals(current(accepted.state).walkerPending, None)
+      assertEquals(current(answered.state).walkerPending, None)
     }
 
   test("a start with nothing playable is rejected before anything is persisted"):
@@ -114,7 +119,7 @@ class EconomyWalkerSuite extends munit.FunSuite:
           "start selection, got button/gold")))
 
   test("only the actor can answer, and only with an offered card"):
-    val started = start(withMatchingAdviser.ready).toOption.get
+    val started = accepted(start(withMatchingAdviser.ready))
     assertEquals(answer(started.state, p2, MusterProcedure.decisionId, card)
       .left.toOption, Some(OathViolation.WrongPlayer(p1, p2)))
     assertEquals(answer(started.state, p1, MusterProcedure.decisionId,
@@ -125,11 +130,10 @@ class EconomyWalkerSuite extends munit.FunSuite:
 
   test("an unimplemented optional Economy power does not block a base Trade"):
     val board = Table.start.favor(p1, 4).secrets(p1, faceUp = 2)
-      .edifice("Hallowed Spring", EdificeSide.Intact, at = Table.quietPawnSite(p1)).ready
+      .edifice("Hallowed Spring", EdificeSide.Intact, at = "Ancient City").ready
     val started = start(board, ActionRef.Trade, secret)
       .getOrElse(fail("the Trade must start"))
     val finished = answer(started.state, p1, TradeProcedure.decisionId,
       DecisionOptionRef.Edifice(CatalogNames.edifice("Hallowed Spring")))
     // The base Trade runs to its end: nothing is left pending.
-    val done = finished.toOption.get.state.asInstanceOf[OathState.Ready].value
-    assertEquals(done.game.current.walkerPending, None)
+    assertEquals(current(accepted(finished).state).walkerPending, None)

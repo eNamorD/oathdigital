@@ -1,13 +1,13 @@
 package oathdigital.gameplay
 
-import oathdigital.testkit.TestCards
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.Unwrap.accepted
 
 /** The played-card windows: a faceup play and a facedown play each visit their
   * own window, and a discard visits neither.
@@ -27,95 +27,62 @@ class CardPlayHooksSuite extends munit.FunSuite:
         ops :+ GainSupply(ctx.activePlayer, 2))))
   private val powers = WalkerPowers(Vector(probe))
   private val startSupply = 3
+  private val actor = Table.p1
+  // An unrestricted denizen whose power these tests do not use.
+  private val card = CatalogNames.denizen("Errand Boy")
 
-  private def plainDenizen(ready: ReadyGame): DenizenId =
-    ready.game.current.commonCards.worldDeck.collectFirst {
-      case id: DenizenId if catalog.denizens.exists(d => d.id.value == id.value &&
-        TestCards.unrestricted(d)) => id
-    }.get
+  /** p1 holds `held` in a temporary hand, with Supply 3. */
+  private def inHand(held: WorldCardId): ReadyGame =
+    Table.start.hand(actor, held).supply(actor, startSupply).ready
 
-  /** The active player holds `card` in a temporary hand, with Supply 3. */
-  private def inHand(card: WorldCardId): (ReadyGame, PlayerId) =
-    val base = Table.start.ready
-    val actor = base.game.current.turn.activePlayer
-    val current = base.game.current
-    (base.updateCurrent(_.copy(
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == card)),
-      temporaryHands = current.temporaryHands.updated(actor, Vector(card)),
-      players = current.players.map(p => if p.player == actor then
-        p.copy(board = p.board.copy(supply = SupplyTrack(startSupply))) else p))),
-      actor)
+  /** Plays `played` from `origin` with `button`, returning the finished
+    * walk. */
+  private def play(ready: ReadyGame, played: WorldCardId, button: String,
+      origin: CardPlayProcedure.Origin = CardPlayProcedure.Origin.TemporaryHand)
+      : WalkerOutcome.Finished =
+    val tree = accepted(CardPlayProcedure.build(catalog, ready, actor, played,
+      origin))
+    val parked = Outcomes.parked(
+      ProcedureWalker.advance(ready, tree, None, powers)).tree
+    val answer = Answered(PlacementFixture.cardPlayDecisionId(played, "place"),
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button(button)), actor)
+    Outcomes.finished(
+      ProcedureWalker.resolve(ready, tree, parked, answer, powers))
 
-  private def supplyOf(ready: ReadyGame, actor: PlayerId): Int =
-    ready.game.current.players.find(_.player == actor).get.board.supply.supply
-
-  /** Plays `card` from the hand with `button`, returning the finished walk. */
-  private def play(ready: ReadyGame, actor: PlayerId, card: WorldCardId,
-      button: String): WalkerOutcome.Finished =
-    val tree = CardPlayProcedure.build(catalog, ready, actor, card,
-      CardPlayProcedure.Origin.TemporaryHand).toOption.get
-    val parked = ProcedureWalker.advance(ready, tree, None, powers).toOption.get
-      .asInstanceOf[WalkerOutcome.Parked].tree
-    ProcedureWalker.resolve(ready, tree, parked, Answered(
-      s"cardplay.place.${card.kind}.${card.value}",
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button(button)), actor),
-      powers).toOption.get.asInstanceOf[WalkerOutcome.Finished]
+  private def supplyAfter(done: WalkerOutcome.Finished): Int =
+    Look(done.treeless).supply(actor)
 
   private def attributed(finished: WalkerOutcome.Finished): Boolean =
     finished.events.collect { case step: WalkerStepRecorded => step }
       .exists(_.contributions.contains(probeId))
 
   test("a card played to a site visits the faceup window only"):
-    val card = plainDenizen(Table.start.ready)
-    val (ready, actor) = inHand(card)
-    val done = play(ready, actor, card, "site")
-    assertEquals(supplyOf(done.treeless, actor), startSupply + 1)
+    val done = play(inHand(card), card, "site")
+    assertEquals(supplyAfter(done), startSupply + 1)
     assert(attributed(done))
 
   test("a card played as a faceup adviser visits the faceup window only"):
-    val card = plainDenizen(Table.start.ready)
-    val (ready, actor) = inHand(card)
-    val done = play(ready, actor, card, "adviser-faceup")
-    assertEquals(supplyOf(done.treeless, actor), startSupply + 1)
+    val done = play(inHand(card), card, "adviser-faceup")
+    assertEquals(supplyAfter(done), startSupply + 1)
 
   test("a denizen played as a facedown adviser visits the facedown window only"):
-    val card = plainDenizen(Table.start.ready)
-    val (ready, actor) = inHand(card)
-    val done = play(ready, actor, card, "adviser-facedown")
-    assertEquals(supplyOf(done.treeless, actor), startSupply + 2)
+    val done = play(inHand(card), card, "adviser-facedown")
+    assertEquals(supplyAfter(done), startSupply + 2)
     assert(attributed(done))
 
   test("a Vision played as a facedown adviser visits the facedown window"):
-    val (ready, actor) = inHand(VisionRules.Faith)
-    val done = play(ready, actor, VisionRules.Faith, "adviser-facedown")
-    assertEquals(supplyOf(done.treeless, actor), startSupply + 2)
+    val done = play(inHand(VisionRules.Faith), VisionRules.Faith,
+      "adviser-facedown")
+    assertEquals(supplyAfter(done), startSupply + 2)
 
   test("a discard visits neither window"):
-    val card = plainDenizen(Table.start.ready)
-    val (ready, actor) = inHand(card)
-    val done = play(ready, actor, card, "discard")
-    assertEquals(supplyOf(done.treeless, actor), startSupply)
+    val done = play(inHand(card), card, "discard")
+    assertEquals(supplyAfter(done), startSupply)
     assert(!attributed(done))
 
   test("a facedown adviser played faceup visits the faceup window"):
-    val card = plainDenizen(Table.start.ready)
-    val base = Table.start.ready
-    val actor = base.game.current.turn.activePlayer
-    val current = base.game.current
-    val ready = base.updateCurrent(_.copy(
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == card)),
-      players = current.players.map(p => if p.player == actor then
-        p.copy(board = p.board.copy(supply = SupplyTrack(startSupply)),
-          advisers = p.advisers :+ DenizenState(card, Orientation.FaceDown,
-            Tokens.empty)) else p)))
-    val tree = CardPlayProcedure.build(catalog, ready, actor, card,
-      CardPlayProcedure.Origin.FacedownAdviser).toOption.get
-    val parked = ProcedureWalker.advance(ready, tree, None, powers).toOption.get
-      .asInstanceOf[WalkerOutcome.Parked].tree
-    val done = ProcedureWalker.resolve(ready, tree, parked, Answered(
-      s"cardplay.place.${card.kind}.${card.value}",
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup")),
-      actor), powers).toOption.get.asInstanceOf[WalkerOutcome.Finished]
-    assertEquals(supplyOf(done.treeless, actor), startSupply + 1)
+    val ready = Table.start.adviser(actor, card, facedown = true)
+      .supply(actor, startSupply).ready
+    val done = play(ready, card, "adviser-faceup",
+      CardPlayProcedure.Origin.FacedownAdviser)
+    assertEquals(supplyAfter(done), startSupply + 1)
