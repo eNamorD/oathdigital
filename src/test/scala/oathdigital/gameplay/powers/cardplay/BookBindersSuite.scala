@@ -25,7 +25,7 @@ class BookBindersSuite extends munit.FunSuite:
       orientation: Orientation = Orientation.FaceUp,
       vision: VisionId = VisionRules.Faith): ReadyGame =
     val ready = Table.from(SearchFixture.staged(Vector(vision)))
-        .adviser(owner, binders, facedown = orientation == Orientation.FaceDown)
+      .adviser(owner, binders, facedown = orientation == Orientation.FaceDown)
           .unchecked
     ready.copy(banks = ready.banks.copy(favor =
       Suit.all.map(suit => suit -> banks.getOrElse(suit, 0)).toMap))
@@ -91,7 +91,7 @@ class BookBindersSuite extends munit.FunSuite:
   private def withConspiracyTarget(relic: RelicId): ReadyGame =
     val staged = Table.from(
       SearchFixture.staged(Vector(VisionRules.Conspiracy)))
-        .adviser(holder, binders).unchecked
+      .adviser(holder, binders).unchecked
     val atSite = Table.from(staged).pawn(holder, actorsSite(quietTable))
       .unchecked
     atSite.updateCurrent(c => c.copy(players = c.players.map(p =>
@@ -171,9 +171,8 @@ class BookBindersSuite extends munit.FunSuite:
 
   test("a facedown Vision played from the advisers gives the holder favor " +
       "too, off turn, pinning the rebuildFacedown settle path"):
-    val ready = Table.from(
-      inPhase(quietTable, Phase.Act)).adviser(holder, binders)
-        .unchecked
+    val ready = Table.from(inPhase(quietTable, Phase.Act))
+      .adviser(holder, binders).unchecked
       .copy(banks = quietTable.banks.copy(favor =
         Suit.all.map(suit => suit -> Map(Suit.Arcane -> 3, Suit.Order -> 3)
           .getOrElse(suit, 0)).toMap))

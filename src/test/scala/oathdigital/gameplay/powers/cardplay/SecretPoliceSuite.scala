@@ -28,8 +28,8 @@ class SecretPoliceSuite extends munit.FunSuite:
     */
   private def policed(ready: ReadyGame, at: SiteId, policeRuler: SiteForces,
       homeRuler: SiteForces): ReadyGame =
-    withForces(withForces(atSite(ready, police, at),
-      at, policeRuler), actorsSite(quietTable), homeRuler)
+    withForces(withForces(atSite(ready, police, at), at, policeRuler),
+      actorsSite(quietTable), homeRuler)
 
   private def search(at: SiteId, policeRuler: SiteForces, homeRuler: SiteForces,
       vision: VisionId = VisionRules.Faith): OathTransition =

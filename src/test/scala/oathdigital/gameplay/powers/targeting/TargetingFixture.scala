@@ -45,8 +45,9 @@ object TargetingFixture:
   /** `player` holds the relic, faceup or facedown. */
   def holds(state: ReadyGame, player: PlayerId, relic: RelicId,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    Table.from(state).relic(player, relic,
-      facedown = orientation == Orientation.FaceDown).unchecked
+    Table.from(state)
+      .relic(player, relic, facedown = orientation == Orientation.FaceDown)
+      .unchecked
 
   /** `player` holds a faceup adviser of `suit`. */
   def adviserOf(state: ReadyGame, player: PlayerId, suit: Suit): ReadyGame =

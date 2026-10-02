@@ -96,7 +96,7 @@ object CatalogNames:
   * start: 1 favor, 1 faceup secret, 3 warbands and 7 Supply. Nobody holds
   * the Oathkeeper title or a banner, and the regional discards are empty.
   * The People's Favor shows the Mob and the Darkest Secret the Wandering
-  * Flame.
+  * Flame, each unheld with one token on it.
   * Ancient City's River moves a pawn only to another River, and none is in
   * play, so a Wake at Ancient City has no option unless the test adds one.
   *

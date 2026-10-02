@@ -20,15 +20,15 @@ class BannerFaceSourcesSuite extends munit.FunSuite:
     assertEquals(flame.face, RuleSourceFace.WanderingFlame)
     assertEquals(flame.powerIds, Vector(WanderingFlameMove.id,
       WanderingFlamePlace.id))
-    val festival = darkest(Table.from(quietTable).darkestSecret(Some(actor), 1,
-      DarkestSecretFace.Festival).unchecked)
-      .head
+    val festival = darkest(Table.from(quietTable)
+      .darkestSecret(Some(actor), 1, DarkestSecretFace.Festival).unchecked).head
     assertEquals(festival.handlerIds, Vector("banner.darkest-secret.festival"))
 
   test("the reviewed catalog audits the banner powers, so options resolve " +
       "for a game whose banner is on that face"):
     assertEquals(PowerRuntime.options(catalog, quietTable, PowerFixture.actor,
       ActionKind.Travel), Right(Vector.empty))
-    assertEquals(PowerRuntime.options(catalog,
-      Table.from(quietTable).darkestSecret(Some(actor), 1).unchecked,
-      PowerFixture.actor, ActionKind.Travel), Right(Vector.empty))
+    assertEquals(
+      PowerRuntime.options(catalog,
+      Table.from(quietTable).darkestSecret(Some(actor), 1)
+      .unchecked, PowerFixture.actor, ActionKind.Travel), Right(Vector.empty))

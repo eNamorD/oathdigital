@@ -89,9 +89,8 @@ class InsomniaSuite extends munit.FunSuite:
   test("with Silver Tongue as well the limit stays 2, and both limits keep " +
       "the Mob's discard"):
     val ready = Table.start.hand(p1, plain(0))
-      .denizen(plain(2), at = Table.quietPawnSite(p1))
-      .adviser(p1, tongue).adviser(p1, insomnia)
-      .peoplesFavor(Some(p1), 1).ready
+      .denizen(plain(2), at = Table.quietPawnSite(p1)).adviser(p1, tongue)
+      .adviser(p1, insomnia).peoplesFavor(Some(p1), 1).ready
     assertEquals(AdviserLimit.of(catalog, ready, p1), 2)
     val (tree, site) = placed(ready, plain(0), "site")
     assertEquals(PlacementFixture.options(ready, tree, site.tree, powers).head,

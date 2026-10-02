@@ -32,8 +32,8 @@ object VisionPlayFixture:
     * phase.
     */
   def fromAdvisers(ready: ReadyGame, vision: VisionId): OathTransition =
-    val holding = Table.from(ready).adviser(actor,
-      vision, facedown = true).unchecked
+    val holding = Table.from(ready).adviser(actor, vision, facedown = true)
+      .unchecked
     orFail(SearchFixture.rules.startWalker(Ready(holding),
       ActionRef.PlayFacedownAdviser, actor, Vector.empty,
       Vector(DecisionOptionRef.Vision(vision))))

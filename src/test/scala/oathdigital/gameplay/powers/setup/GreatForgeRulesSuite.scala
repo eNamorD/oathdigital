@@ -19,15 +19,14 @@ class GreatForgeRulesSuite extends munit.FunSuite:
   private val firstPlayer = PlayerId("p2")
 
   private def stagedAt(side: EdificeSide): ReadyGame =
-    Table.from(FirstGameSetupFixture.freshReady).edifice(edifice, side,
-      at = site)
-      .unchecked
+    Table.from(FirstGameSetupFixture.freshReady)
+      .edifice(edifice, side, at = site).unchecked
 
   private def finish(ready: ReadyGame): ReadyGame =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveToCompletion(ready, tree,
-      TriggeredProcedureRef.Setup, powers)
+    SetupWalkDriver.driveToCompletion(ready, tree, TriggeredProcedureRef.Setup,
+      powers)
 
   test("Great Forge gives the placing player the top relic facedown"):
     val staged = stagedAt(EdificeSide.Intact)
@@ -55,8 +54,8 @@ class GreatForgeRulesSuite extends munit.FunSuite:
   private def events(ready: ReadyGame): Vector[OathEvent] =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveWithEvents(ready, tree,
-      TriggeredProcedureRef.Setup, powers)._2
+    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
+      powers)._2
 
   private val great = GreatForge.forCatalog(catalog)
   private val broken = BrokenForge.forCatalog(catalog)

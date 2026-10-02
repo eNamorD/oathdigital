@@ -60,5 +60,6 @@ class DragonskinDrumSuite extends munit.FunSuite:
 
   test("an empty warband bank gains nothing, and writes nothing"):
     val kind = accepted(PlayerFacts.forceKind(held, actor))
-    assertEquals(said(accepted(travel(leaveInBank(held, kind, 0), coast,
-      modifiers)).events), Vector.empty)
+    assertEquals(
+      said(accepted(travel(leaveInBank(held, kind, 0), coast, modifiers))
+      .events), Vector.empty)

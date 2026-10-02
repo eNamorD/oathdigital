@@ -121,8 +121,8 @@ class LostTongueSuite extends munit.FunSuite:
     val actor = PowerFixture.actor
     val enemy = PhasePowerHarness.others(base).head
     val site = Look(base).player(PowerFixture.actor).pawnSite
-    val staged = Table.from(base).hand(actor, conspiracy).unchecked
-      .updateCurrent(c => c.copy(
+    val staged = Table.from(base).hand(actor, conspiracy)
+      .unchecked.updateCurrent(c => c.copy(
         players = c.players.map(p => if p.player == enemy then
           p.copy(pawnSite = site) else p),
         banners = c.banners.copy(

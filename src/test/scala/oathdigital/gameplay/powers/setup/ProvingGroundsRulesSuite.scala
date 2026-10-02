@@ -21,8 +21,8 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   private def finish(ready: ReadyGame): ReadyGame =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveToCompletion(ready, tree,
-      TriggeredProcedureRef.Setup, powers)
+    SetupWalkDriver.driveToCompletion(ready, tree, TriggeredProcedureRef.Setup,
+      powers)
 
   test("Proving Grounds gives the placing player three warbands"):
     val staged = stagedAt(EdificeSide.Intact)
@@ -59,8 +59,8 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
   private def events(ready: ReadyGame): Vector[OathEvent] =
     val tree = SetupProcedure.build(catalog, ready,
       ready.game.current.turn.activePlayer, Vector.empty).toOption.get
-    SetupWalkDriver.driveWithEvents(ready, tree,
-      TriggeredProcedureRef.Setup, powers)._2
+    SetupWalkDriver.driveWithEvents(ready, tree, TriggeredProcedureRef.Setup,
+      powers)._2
 
   private val proving = ProvingGrounds.forCatalog(catalog)
   private val empty = EmptyGrounds.forCatalog(catalog)

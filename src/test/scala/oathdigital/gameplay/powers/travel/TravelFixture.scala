@@ -17,10 +17,10 @@ import oathdigital.testkit.CatalogNames
   * (Desolate Shore); the Provinces hold `provincePlains` (Dunes),
   * `mountain` (Broken Peaks) and `pass` (Narrow Pass); the Hinterland holds
   * `hinterlandPlains` (Salt Flats), `island` (Fair Isle) and
-  * `otherHinterlandPlains` (Shrouded Woods). The printed base is 1 within
+  * `secondHinterlandPlains` (Shrouded Woods). The printed base is 1 within
   * the Cradle, 2 from the Cradle to the Provinces and within them, 4 from the
-  * Cradle to the Hinterland. Every site holds a bandit stack of its printed
-  * capacity and its printed starting wealth: Fair Isle 3 favor, Broken Peaks
+  * Cradle to the Hinterland. Every site with a printed capacity holds a
+  * bandit stack of it, and every site its printed starting wealth: Fair Isle 3 favor, Broken Peaks
   * 2 secrets, Shrouded Woods 1 favor and 1 secret.
   */
 object TravelFixture:
@@ -34,7 +34,7 @@ object TravelFixture:
   val cradlePlains: SiteId = CatalogNames.site("Buried Giant")
   val provincePlains: SiteId = CatalogNames.site("Dunes")
   val hinterlandPlains: SiteId = CatalogNames.site("Salt Flats")
-  val otherHinterlandPlains: SiteId = CatalogNames.site("Shrouded Woods")
+  val secondHinterlandPlains: SiteId = CatalogNames.site("Shrouded Woods")
   val coast: SiteId = site("coast")
   val island: SiteId = site("island")
   val mountain: SiteId = site("mountain")
@@ -45,7 +45,7 @@ object TravelFixture:
     */
   def board(source: SiteId = cradlePlains, supply: Int = 7): ReadyGame =
     val chosen = Vector(source, coast, provincePlains, mountain, pass,
-      hinterlandPlains, island, otherHinterlandPlains)
+      hinterlandPlains, island, secondHinterlandPlains)
     val ids = (chosen.distinct ++ catalog.sites.map(_.id)
       .filterNot(chosen.contains)).take(8)
     val states = ids.map { id =>

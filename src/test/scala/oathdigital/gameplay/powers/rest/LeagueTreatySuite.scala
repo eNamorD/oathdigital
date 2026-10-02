@@ -70,8 +70,8 @@ class LeagueTreatySuite extends munit.FunSuite:
       "no distribution"):
     val owner = p2 // off p1's turn
     // Two Nomad cards: Rain Boots with 2 favor, Convoys with 1.
-    val ready = leagueTreatyAct(Some(owner),
-      ("Rain Boots", "Ancient City", 2), ("Convoys", "Broken Peaks", 1)).ready
+    val ready = leagueTreatyAct(Some(owner), ("Rain Boots", "Ancient City", 2),
+      ("Convoys", "Broken Peaks", 1)).ready
     val destination = LeagueTreatyContribution.destinationDecisionId(ready,
       rester(ready), treatySite, treatyCard)
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
@@ -119,8 +119,8 @@ class LeagueTreatySuite extends munit.FunSuite:
       val edifice = CatalogNames.edifice("Hall of Debate")
       val edificeSuit = Suit.Discord // Hall of Debate's printed suit
       val ready = leagueTreatyAct(Some(owner), ("Disciples", "Ancient City", 1))
-        .edifice(edifice, side, at = treatySite).tokens(edifice,
-          favor = 2).ready
+        .edifice(edifice, side, at = treatySite).tokens(edifice, favor = 2)
+        .ready
       val destinationBank = Suit.all.find(s =>
         s != Suit.Arcane && s != edificeSuit).get
       val destination = LeagueTreatyContribution.destinationDecisionId(ready,

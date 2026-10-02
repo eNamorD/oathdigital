@@ -75,8 +75,9 @@ class RiverSitePowerSuite extends munit.FunSuite:
       Right(done.state))
 
   test("it is once per turn from each River"):
-    val (_, done) = placedAt(staged(Vector(riverbank, tidalMarshes),
-      Phase.Wake), riverbank)
+    val (_,
+      done) = placedAt(
+      staged(Vector(riverbank, tidalMarshes), Phase.Wake), riverbank)
     val used = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(ancientCity),
       river.id)
     assert(after(done).game.current.turn.usedPowers.contains(used))
@@ -88,8 +89,9 @@ class RiverSitePowerSuite extends munit.FunSuite:
       Vector(DecisionOptionRef.Site(riverbank)))
 
   test("it writes where it placed the pawn"):
-    val (parked, done) = placedAt(staged(Vector(riverbank, tidalMarshes),
-      Phase.Wake), riverbank)
+    val (parked,
+      done) = placedAt(
+      staged(Vector(riverbank, tidalMarshes), Phase.Wake), riverbank)
     assertEquals(NoteText.said(river, parked.events ++ done.events), Vector(
       NoteText.Said(NoteKey.Used, s"${actor.value} placed at ${riverbank.value}.",
         covers = false)))

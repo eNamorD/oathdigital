@@ -20,8 +20,9 @@ class VowOfObedienceSuite extends munit.FunSuite:
 
   private def holding(ready: ReadyGame, owner: PlayerId = actor,
       orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    Table.from(ready).adviser(owner, vow,
-      facedown = orientation == Orientation.FaceDown).unchecked
+    Table.from(ready)
+      .adviser(owner, vow, facedown = orientation == Orientation.FaceDown)
+      .unchecked
 
   private def search(vision: VisionId, arrange: ReadyGame => ReadyGame)
       : OathTransition =

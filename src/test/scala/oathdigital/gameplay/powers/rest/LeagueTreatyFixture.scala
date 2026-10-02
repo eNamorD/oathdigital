@@ -19,7 +19,7 @@ object LeagueTreatyFixture:
     * Rest, has wealth to take and the Wake waits.
     */
   def leagueTreatyAct(ruler: Option[PlayerId],
-      favored: (String, String, Int)*): Table =
+    favored: (String, String, Int)*): Table =
     val ruled = ruler.fold(Table.start.bandits(treatySite, 1))(
       Table.start.warbandsAt(treatySite, _, 1))
     favored.foldLeft(ruled.denizen(treatyCard, at = treatySite)

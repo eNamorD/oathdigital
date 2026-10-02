@@ -13,7 +13,8 @@ class TentsSuite extends munit.FunSuite:
 
   private val tents = CatalogNames.denizen("Tents")
   private val modifiers = Vector(Tents.id)
-  /** The actor holds Tents as a faceup adviser and 1 favor, at Buried Giant, the Cradle's plains. */
+  /** The actor holds Tents as a faceup adviser and 1 favor, at Buried Giant,
+    * the Cradle's plains. */
   private def held = Table.from(board()).adviser(actor, tents).favor(actor, 1)
     .unchecked
 
@@ -34,9 +35,8 @@ class TentsSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("the same power at the pawn's site takes its favor onto the site card"):
-    val ready = Table.from(board()).denizen(tents,
-      at = cradlePlains).favor(actor,
-      1).unchecked
+    val ready = Table.from(board()).denizen(tents, at = cradlePlains)
+      .favor(actor, 1).unchecked
     val result = Outcomes.ready(accepted(travel(ready, coast, modifiers)).state)
     assertEquals(Look(result).supply(actor), 7)
     assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
@@ -47,8 +47,8 @@ class TentsSuite extends munit.FunSuite:
     val province = provincePlains
     assertEquals(candidates(ready, modifiers).get(province),
       candidates(ready).get(province))
-    val result = Outcomes.ready(accepted(travel(ready, province,
-      modifiers)).state)
+    val result = Outcomes.ready(accepted(travel(ready, province, modifiers))
+      .state)
     assertEquals(Look(result).supply(actor), 7 - 2)
     assertEquals(Look(result).player(actor).board.favor, 0)
     assertEquals(Look(result).tokensOn(tents), Tokens(1, 0))
@@ -64,9 +64,8 @@ class TentsSuite extends munit.FunSuite:
         "power denizen.tents is not applicable to this travel")))
 
   test("it is a Travel modifier only"):
-    val offered = (action: ActionRef) => accepted(rules.offerableWalkerPowers(
-      held,
-      actor, action)).map(_.id)
+    val offered = (action: ActionRef) => accepted(
+      rules.offerableWalkerPowers(held, actor, action)).map(_.id)
     assert(offered(ActionRef.Travel).contains(Tents.id))
     assert(!offered(ActionRef.Search).contains(Tents.id))
     assert(!offered(ActionRef.Muster).contains(Tents.id))
@@ -82,9 +81,8 @@ class TentsSuite extends munit.FunSuite:
       "selection, before anything is paid"):
     val paths = CatalogNames.denizen("Forest Paths")
     val both = Vector(Tents.id, ForestPaths.id)
-    def ready(favor: Int) = Table.from(held).adviser(actor, paths).favor(actor,
-      favor)
-      .unchecked
+    def ready(favor: Int) = Table.from(held).adviser(actor, paths)
+      .favor(actor, favor).unchecked
     val refused = travel(ready(1), coast, both)
     assert(refused.left.toOption.exists(_.toString.contains(
       "cannot all be paid together")), refused.toString)

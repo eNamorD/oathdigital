@@ -13,7 +13,9 @@ object SilverTongueFixture:
   /** p1's Rest at Ancient City, holding Silver Tongue as the only adviser.
     * Ancient City shows `siteCards` faceup. Every bank in `stocked` holds 3
     * favor and every other bank none. Broken Peaks holds two secrets, so
-    * p2, waking next, has wealth to take and the Wake waits.
+    * p2, waking next, has wealth to take and the Wake waits. No site holds a
+    * bandit, as on the quiet table, so the action boundary visibly refills
+    * the sites with capacity.
     */
   def silverTongueRest(siteCards: Vector[String], stocked: Set[Suit])
       : ReadyGame =

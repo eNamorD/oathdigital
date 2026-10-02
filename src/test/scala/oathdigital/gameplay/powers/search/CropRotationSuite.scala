@@ -115,8 +115,8 @@ class CropRotationSuite extends munit.FunSuite:
       s"${p1.value} may discard a card at their site first.", covers = false)))
 
   test("with the Mob as well, only one line is written"):
-    val ready = Table.from(staged(Vector(fillers(0)))).peoplesFavor(Some(p1),
-      1).unchecked
+    val ready = Table.from(staged(Vector(fillers(0)))).peoplesFavor(Some(p1), 1)
+      .unchecked
     val asked = toSite(ready).toOption.get
     val done = discard(asked, noDiscard).toOption.get
     val mobSaid = NoteText.said(PeoplesFavorMob.id, PeoplesFavorMob.noteKeys,

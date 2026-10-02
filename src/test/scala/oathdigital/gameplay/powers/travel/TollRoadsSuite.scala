@@ -17,24 +17,26 @@ class TollRoadsSuite extends munit.FunSuite:
 
   /** `id` standing facedown at `at`, a site card turned down. */
   private def facedownAt(ready: ReadyGame, id: DenizenId, at: SiteId): ReadyGame =
-    Table.from(ready).denizen(id,
-      at = at).unchecked.updateCurrent(c => c.copy(map = c.map.copy(sites =
-      c.map.sites.updated(at, c.map.sites(at).copy(denizens =
+    Table.from(ready).denizen(id, at = at)
+      .unchecked.updateCurrent(
+      c => c.copy(
+      map = c.map.copy(
+      sites = c.map.sites.updated(at, c.map.sites(at).copy(denizens =
         c.map.sites(at).denizens.map {
           case card: DenizenState if card.id == id =>
             card.copy(orientation = Orientation.FaceDown)
           case other => other
         })))))
 
-  /** Toll Roads stands at `provincePlains`, and `rival` rules it and the coast. The
-    * actor, at Buried Giant, the Cradle's plains, holds 1 favor and travels to the coast.
+  /** Toll Roads stands at `provincePlains`, and `rival` rules it and the
+    * coast. The actor, at Buried Giant, the Cradle's plains, holds 1 favor and
+    * travels to the coast.
     */
   private def rivalRules: ReadyGame =
-    val ready = Table.from(board()).denizen(toll,
-      at = provincePlains).favor(actor, 1)
-      .unchecked
-    Table.from(ready).warbandsAt(provincePlains, rival, 1).warbandsAt(coast,
-      rival, 1).unchecked
+    val ready = Table.from(board()).denizen(toll, at = provincePlains)
+      .favor(actor, 1).unchecked
+    Table.from(ready).warbandsAt(provincePlains, rival, 1)
+      .warbandsAt(coast, rival, 1).unchecked
 
   test("an enemy pays the ruler 1 favor to travel to a site the ruler rules"):
     val ready = rivalRules
@@ -49,9 +51,10 @@ class TollRoadsSuite extends munit.FunSuite:
     assertWireRoundTrips(done.events)
 
   test("the rule covers every site the ruler holds, Toll Roads' own included"):
-    val result = Outcomes.ready(accepted(travel(Table.from(rivalRules)
-      .warbandsAt(pass, actor,
-      1).unchecked, provincePlains)).state)
+    val result = Outcomes.ready(
+      accepted(
+      travel(Table.from(rivalRules).warbandsAt(pass, actor, 1).unchecked,
+      provincePlains)).state)
     assertEquals(Look(result).player(actor).board.favor, 0)
     assertEquals(Look(result).player(rival).board.favor,
       Look(rivalRules).player(rival).board.favor + 1)
@@ -64,23 +67,21 @@ class TollRoadsSuite extends munit.FunSuite:
     assert(candidates(broke).contains(hinterlandPlains))
 
   test("a destination the ruler does not rule costs nothing extra"):
-    val result = Outcomes.ready(accepted(travel(rivalRules,
-      hinterlandPlains)).state)
+    val result = Outcomes.ready(accepted(travel(rivalRules, hinterlandPlains))
+      .state)
     assertEquals(Look(result).player(actor).board.favor, 1)
 
   test("the ruler itself travels for free"):
-    val ready = Table.from(board()).denizen(toll,
-      at = provincePlains).favor(actor, 1)
-      .unchecked
-    val mine = Table.from(ready).warbandsAt(provincePlains, actor,
-      1).warbandsAt(coast, actor, 1).unchecked
+    val ready = Table.from(board()).denizen(toll, at = provincePlains)
+      .favor(actor, 1).unchecked
+    val mine = Table.from(ready).warbandsAt(provincePlains, actor, 1)
+      .warbandsAt(coast, actor, 1).unchecked
     val result = Outcomes.ready(accepted(travel(mine, coast)).state)
     assertEquals(Look(result).player(actor).board.favor, 1)
 
   test("when bandits rule, the favor is burnt"):
-    val ready = Table.from(board()).denizen(toll,
-      at = provincePlains).favor(actor, 1)
-      .unchecked
+    val ready = Table.from(board()).denizen(toll, at = provincePlains)
+      .favor(actor, 1).unchecked
     val result = Outcomes.ready(accepted(travel(ready, coast)).state)
     assertEquals(Look(result).player(actor).board.favor, 0)
     assertEquals(Look(result).player(rival).board.favor,
@@ -90,11 +91,10 @@ class TollRoadsSuite extends munit.FunSuite:
 
   test("a facedown Toll Roads is not active"):
     // Toll Roads charges from the site it stands on, and only faceup there.
-    val ready = Table.from(facedownAt(board(), toll,
-      provincePlains)).favor(actor, 1)
-      .unchecked
-    val ruled = Table.from(ready).warbandsAt(provincePlains, rival,
-      1).warbandsAt(coast, rival, 1).unchecked
+    val ready = Table.from(facedownAt(board(), toll, provincePlains))
+      .favor(actor, 1).unchecked
+    val ruled = Table.from(ready).warbandsAt(provincePlains, rival, 1)
+      .warbandsAt(coast, rival, 1).unchecked
     val result = Outcomes.ready(accepted(travel(ruled, coast)).state)
     assertEquals(Look(result).player(actor).board.favor, 1)
 
@@ -110,9 +110,8 @@ class TollRoadsSuite extends munit.FunSuite:
         s"${actor.value} paid 1 favor to ${rival.value}.", covers = false)))
 
   test("a toll burnt for bandits is written; a free Travel writes nothing"):
-    val ready = Table.from(board()).denizen(toll,
-      at = provincePlains).favor(actor, 1)
-      .unchecked
+    val ready = Table.from(board()).denizen(toll, at = provincePlains)
+      .favor(actor, 1).unchecked
     assertEquals(said(accepted(travel(ready, coast)).events),
       Vector(NoteText.Said("burned", s"${actor.value} burned 1 favor.",
         covers = false)))

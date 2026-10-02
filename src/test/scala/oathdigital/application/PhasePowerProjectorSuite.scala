@@ -136,8 +136,8 @@ class PhasePowerProjectorSuite extends munit.FunSuite:
 
   test("a site's phase power is projected under its power's name and printed text"):
     import oathdigital.gameplay.powers.wake.RiverFixture
-    val ready = RiverFixture.staged(Vector(RiverFixture.riverbank,
-      RiverFixture.tidalMarshes), Phase.Wake)
+    val ready = RiverFixture.staged(
+      Vector(RiverFixture.riverbank, RiverFixture.tidalMarshes), Phase.Wake)
     val actor = ready.game.current.turn.activePlayer
     val projected = projector.project("river", LoadedGame(Ready(ready), 30L), actor)
     assertEquals(projected.phasePowers.filter(_.powerId ==

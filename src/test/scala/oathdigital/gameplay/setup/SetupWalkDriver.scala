@@ -16,31 +16,35 @@ import oathdigital.testkit.Unwrap.{accepted, present}
   */
 object SetupWalkDriver extends WalkerRecordedOpsReducer with munit.Assertions:
   def driveToCompletion(ready: ReadyGame, tree: Operation,
-      procedure: ProcedureRef, powers: WalkerPowers)(
-      using munit.Location): ReadyGame =
+    procedure: ProcedureRef, powers: WalkerPowers)(
+    using munit.Location): ReadyGame =
     driveWithEvents(ready, tree, procedure, powers)._1
 
   /** `driveToCompletion`, also returning every event the walk journaled, in
     * walk order, for the suites that read a rule's notes. */
   def driveWithEvents(ready: ReadyGame, tree: Operation,
-      procedure: ProcedureRef, powers: WalkerPowers)(using munit.Location)
+    procedure: ProcedureRef, powers: WalkerPowers)(using munit.Location)
       : (ReadyGame, Vector[OathEvent]) =
     @annotation.tailrec
     def walk(state: ReadyGame, outcome: WalkerOutcome,
-        journaled: Vector[OathEvent]): (ReadyGame, Vector[OathEvent]) =
+      journaled: Vector[OathEvent]): (ReadyGame, Vector[OathEvent]) =
       outcome match
         case WalkerOutcome.Finished(finished, events) =>
           (finished, journaled ++ events)
         case WalkerOutcome.Parked(pending, events) =>
           val next = foldRecordedOps(state, events, "setup walk failed")
-          val decide = present(ProcedureWalker.parkedDecide(next, tree,
-            pending, powers), "the decision the walk parked on")
+          val decide = present(
+            ProcedureWalker.parkedDecide(next, tree, pending,
+            powers), "the decision the walk parked on")
           val park = Park(decide, next, decide.owner, procedure)
-          val answer = Answered(decide.decisionId, Situation.defaultAnswer
-            .applyOrElse(park, _ => fail(
-              s"SetupWalkDriver cannot auto-answer ${decide.query}")),
+          val answer = Answered(decide.decisionId,
+            Situation.defaultAnswer.applyOrElse(park,
+            _ => fail(
+            s"SetupWalkDriver cannot auto-answer ${decide.query}")),
             decide.owner)
-          walk(next, accepted(ProcedureWalker.resolve(next, tree, pending,
-            answer, powers)), journaled ++ events)
+          walk(next,
+            accepted(
+            ProcedureWalker.resolve(next, tree, pending, answer,
+            powers)), journaled ++ events)
     walk(ready, accepted(ProcedureWalker.advance(ready, tree, None, powers)),
       Vector.empty)

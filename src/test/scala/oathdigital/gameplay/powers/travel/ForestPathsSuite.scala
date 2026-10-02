@@ -23,8 +23,8 @@ class ForestPathsSuite extends munit.FunSuite:
 
   test("a destination with a beast card costs no Supply and ignores the " +
       "terrain of sites"):
-    val ready = Table.from(held).warbandsAt(pass, actor, 1).denizen(beast,
-      at = mountain).unchecked
+    val ready = Table.from(held).warbandsAt(pass, actor, 1)
+      .denizen(beast, at = mountain).unchecked
     // The printed 2 and the Mountain's 1.
     assertEquals(candidates(ready).get(mountain), Some(3))
     assertEquals(candidates(ready, modifiers).get(mountain), Some(0))
@@ -40,19 +40,18 @@ class ForestPathsSuite extends munit.FunSuite:
   test("it ignores Narrow Pass too: a pass the actor does not rule blocks nothing"):
     val ready = Table.from(held).denizen(beast, at = provincePlains).unchecked
     val blocked = travel(ready, provincePlains)
-    assertEquals(rejected(blocked), TravelPassBlocked(pass,
-      provincePlains))
+    assertEquals(rejected(blocked), TravelPassBlocked(pass, provincePlains))
     assertEquals(candidates(ready).get(provincePlains), None)
     assertEquals(candidates(ready, modifiers).get(provincePlains), Some(0))
-    val result = Outcomes.ready(accepted(travel(ready, provincePlains,
-      modifiers)).state)
+    val result = Outcomes.ready(
+      accepted(travel(ready, provincePlains, modifiers)).state)
     assertEquals(Look(result).player(actor).pawnSite, Some(provincePlains))
     assertEquals(Look(result).supply(actor), 7)
 
   test("a ruined beast edifice counts as a beast card"):
     val edifice = catalog.edifices.find(_.suit == Suit.Beast).get
-    val ready = Table.from(held).warbandsAt(pass, actor,
-      1).edifice(EdificeId(edifice.id.value), EdificeSide.Ruined, at = mountain)
+    val ready = Table.from(held).warbandsAt(pass, actor, 1)
+      .edifice(EdificeId(edifice.id.value), EdificeSide.Ruined, at = mountain)
       .unchecked
     assertEquals(candidates(ready, modifiers).get(mountain), Some(0))
 
@@ -60,8 +59,8 @@ class ForestPathsSuite extends munit.FunSuite:
       "no Supply is saved and no site power is ignored"):
     val ready = Table.from(held).warbandsAt(pass, actor, 1).unchecked
     assertEquals(candidates(ready, modifiers), candidates(ready))
-    val result = Outcomes.ready(accepted(travel(ready, mountain,
-      modifiers)).state)
+    val result = Outcomes.ready(accepted(travel(ready, mountain, modifiers))
+      .state)
     // The printed 2 and the Mountain's 1, both still charged.
     assertEquals(Look(result).supply(actor), 7 - 3)
     assertEquals(Look(result).player(actor).board.favor, 0)
@@ -73,9 +72,8 @@ class ForestPathsSuite extends munit.FunSuite:
       TravelPassBlocked(pass, provincePlains))
 
   test("it cannot be selected without a favor to place"):
-    val broke = Table.from(held).warbandsAt(pass, actor, 1).denizen(beast,
-      at = mountain)
-      .favor(actor, 0).unchecked
+    val broke = Table.from(held).warbandsAt(pass, actor, 1)
+      .denizen(beast, at = mountain).favor(actor, 0).unchecked
     assertEquals(travel(broke, mountain, modifiers).left.toOption,
       Some(OathViolation.InvalidEventOrder(
         "power denizen.forest-paths is not applicable to this travel")))
@@ -87,13 +85,15 @@ class ForestPathsSuite extends munit.FunSuite:
     NoteText.said(power.id, power.noteKeys, events)
 
   test("a Travel to a beast card writes that site powers are ignored"):
-    val ready = Table.from(held).warbandsAt(pass, actor, 1).denizen(beast,
-      at = mountain).unchecked
+    val ready = Table.from(held).warbandsAt(pass, actor, 1)
+      .denizen(beast, at = mountain).unchecked
     assertEquals(said(accepted(travel(ready, mountain, modifiers)).events),
       Vector(NoteText.Said("ignoring", "Ignoring site powers.",
         covers = false)))
 
   test("without a beast card nothing is ignored, and nothing is written"):
-    assertEquals(said(accepted(travel(Table.from(held).warbandsAt(pass, actor,
-      1).unchecked, mountain, modifiers))
-      .events), Vector.empty)
+    assertEquals(
+      said(
+      accepted(
+      travel(Table.from(held).warbandsAt(pass, actor, 1).unchecked, mountain,
+      modifiers)).events), Vector.empty)

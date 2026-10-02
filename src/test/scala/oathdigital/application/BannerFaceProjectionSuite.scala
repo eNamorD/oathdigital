@@ -22,10 +22,9 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
 
   /** The holder has a faceup secret, and another site holds one. */
   private def holding: ReadyGame = inPhase(Table.from(quietTable)
-    .darkestSecret(Some(actor),
-    1).siteTokens(CatalogNames.site("Broken Peaks"), secrets = 1)
-    .secrets(actor, 1, 0)
-      .unchecked, Phase.Act)
+    .darkestSecret(Some(actor), 1)
+    .siteTokens(CatalogNames.site("Broken Peaks"), secrets = 1)
+    .secrets(actor, 1, 0).unchecked, Phase.Act)
 
   test("the holder is shown both Wandering Flame powers, named, with a text"):
     val projected = projector.project("flame", LoadedGame(Ready(holding), 30L),
@@ -42,13 +41,13 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
       "bearing site, and the place power needs a faceup secret"):
     def shown(ready: ReadyGame) = projector.project("flame",
       LoadedGame(Ready(ready), 30L), actor)
-    val noSite = inPhase(Table.from(quietTable).darkestSecret(Some(actor),
-      1).secrets(actor, 1, 0).unchecked, Phase.Act)
+    val noSite = inPhase(Table.from(quietTable).darkestSecret(Some(actor), 1)
+      .secrets(actor, 1, 0).unchecked, Phase.Act)
     assertEquals(shown(noSite).phasePowers.map(_.powerId), Vector(place))
     val noSecret = Table.from(holding).secrets(actor, 0, 2).unchecked
     assertEquals(shown(noSecret).phasePowers.map(_.powerId), Vector(move))
-    val neither = inPhase(Table.from(quietTable).darkestSecret(Some(actor),
-      1).secrets(actor, 0, 2).unchecked, Phase.Act)
+    val neither = inPhase(Table.from(quietTable).darkestSecret(Some(actor), 1)
+      .secrets(actor, 0, 2).unchecked, Phase.Act)
     assertEquals(shown(neither).phasePowers, Vector.empty)
     assert(!shown(neither).legalControls.exists(_.startsWith("usePower:")))
 
@@ -59,10 +58,10 @@ class BannerFaceProjectionSuite extends munit.FunSuite:
       other)
     assertEquals(theirs.phasePowers, Vector.empty)
     assert(!theirs.legalControls.exists(_.startsWith("usePower:")))
-    val festival = inPhase(Table.from(quietTable).darkestSecret(Some(actor), 1,
-      DarkestSecretFace.Festival)
-      .siteTokens(CatalogNames.site("Broken Peaks"),
-      secrets = 1).unchecked, Phase.Act)
+    val festival = inPhase(Table.from(quietTable)
+      .darkestSecret(Some(actor), 1, DarkestSecretFace.Festival)
+      .siteTokens(CatalogNames.site("Broken Peaks"), secrets = 1)
+      .unchecked, Phase.Act)
     assertEquals(projector.project("flame", LoadedGame(Ready(festival), 30L),
       actor).phasePowers, Vector.empty)
 
