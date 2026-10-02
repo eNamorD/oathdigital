@@ -8,44 +8,14 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 ## Now
 
-**Phase - Cleanup tasks** is done except for one item blocked on the
-Chronicle Phase. **Phase - Catalog batch 3** is complete. **Phase - Card
-classes** is next.
+**Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
+Card classes phases left behind, and one item blocked on the Chronicle
+Phase. No other phase is in progress.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
-
-### Phase - Catalog batch 3
-
-69 denizens and relics that copy an implemented power's shape and need no
-engine change, in eight slices, plus a fix to Circlet of Command and Forgotten
-Vault. Designed in the
-[Catalog batch 3 design](superpowers/specs/2026-09-29-catalog-batch-3-design.md)
-with its [rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md).
-
-Slice 1a is done: the battle plans Cracking Ground, Walled Garden, Banner
-Breakers, Extra Provisions, Village Constable, Encirclement, Bandit Standard
-and Rival Khan. Slice 1b is done: the battle plans Disgraced Captain, Battle
-Axes, Great Crusade, Pledge of Defense, The Great Levy, Rain Boots and
-Garrison Armory. Slice 1c is done: the battle plans Book Burning, Tribute
-Spoils, Field Promotion and Military Parade, and the plan surcharge Insect
-Swarm. Slice 2a is done: the Muster, Trade and Search modifiers Village
-Idiot, Downtrodden, The Old Oak, Disciples and Crop Rotation, and the Muster
-rule Initiation Rite. Slice 2b is done: Insomnia, Quartermaster, Saddle
-Makers and Lost Tongue, and the Circlet of Command and the Forgotten Vault now
-protect Campaign targets only. Slice 3a is done: the ACTION powers Blood
-Pact, Arcane Brokers, Bog, Relic Breaker, Bed of Roots, Tavern Songs, Tinker's
-Fair, Skeleton Key and Messenger. Slice 3b is done: the ACTION powers Quick
-Exit, Dream Thief, Second Chance, Whispering Leaves, Enchantress, Armed Mob,
-Honor Guard and Amber Flame. Slice 3c is done: the ACTION powers Taming
-Charm, Dark Enforcer, Great Feast, Plague Engines, Memory of Nature, Bandit
-Paymaster, Storyteller, Levelers, Memory of Home, Firebrand and Ballot Box.
-Slice 4 is done: the When Played powers Threatening Roar, Riots, Animal
-Host, Key to the City, Charlatan, Bandit Prince, Salad Days, Fabled Feast,
-Town Meeting, Great Herd and Royal Tax, with Dazzle's region discard
-shared and its `none` line. Catalog batch 3 is complete.
 
 ### Catalog - to verify
 
@@ -154,25 +124,6 @@ Found by the survey of 2026-09-29:
   Obsidian Cage (a new warband store), Secret Signal (no generic gain window),
   and False Prophet, True Oath and The Red Seer (the Oathkeeper goal is not modelled).
 
-### Phase - Card classes
-
-Design: [Card classes design](superpowers/specs/2026-10-01-card-classes-design.md).
-
-- [x] **Slice 1 - data to Scala.** Every component is a Scala object; the
-  runtime JSON, its loader, validator, schema, path option, packaging entry,
-  `CatalogRef` and the audit fingerprints are gone.
-- [x] **Slice 2 - denizens beside their powers.** The 126 implemented
-  denizens sit in their power files; powers read their card, power id and
-  printed cost from the card object, and `CatalogCards.denizen` is gone.
-- [x] **Slice 3 - relics and edifices.** The 36 implemented relics and
-  edifices sit in their power files; their powers read their card from the
-  card object, `CatalogCards` is gone, and the Grand Scepter and the Hall of
-  Ministers declare their own restrictions.
-- [x] **Slice 4 - sites and legacies.** Site handlers are power ids each
-  site object names, Homeland rules read the printed suit, and the 13 sites
-  with River or Travel powers sit beside those powers, which name their
-  sites. Legacies keep their catalog lookup: none is implemented yet.
-
 ### Phase - Cleanup tasks
 
 - [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
@@ -188,12 +139,24 @@ Design: [Card classes design](superpowers/specs/2026-10-01-card-classes-design.m
   out of the Hsqldb suite. Backend-only behavior (schema versions, file
   ownership) stays in the Hsqldb suite. This is the first use of the
   scala-testing skill's rule that every fake has a contract suite.
-- [ ] **Shrink cached catalog fields.** About 242 powers hold a
-  `catalog: ExecutableCatalog` field. Static card references (card classes
-  slices 2-4) make many unnecessary; remove them as powers are touched.
+- [ ] **Shrink cached catalog fields.** Card classes made powers read
+  their cards from card objects, so 26 classes still hold a
+  `catalog: ExecutableCatalog` field (mostly in `application/`, the Game Log
+  and the Campaign plan files), and 88 `forCatalog(catalog)` constructors
+  thread it, many only to pass it on. Remove each field and constructor as
+  its power is touched.
 - [ ] **Migrate `CatalogNames` to card objects.** About 76 test files look
   cards up by name through `CatalogNames`. Move them to direct object
   references such as `AlchemistCard`.
+- [ ] **Type `PrintsPowers.handlers` as `PowerId`s.** `Site.handlers` is a
+  `Vector[PowerId]`, while the denizen, relic, edifice and legacy `handlers`
+  stay `Vector[String]`. On a `Vector[PowerId]`, `contains("site.x")`
+  compiles and silently matches nothing, so the two types invite the same
+  mistake in each direction. A handful of production files and the test
+  lookups (`handlers.contains("denizen.…")`) read them. Give all five card
+  kinds one type.
+- [ ] **Split `ProcedureWalker.scala`.** It is exactly 800 lines, the cap for a
+  production file, so the next change to it forces a split.
 
 ### Phase - Consent system
 
@@ -377,7 +340,9 @@ requested UI changes are in the
   follows the card" structural instead of maintained per move. Recorded in
   the Game Log design of 2026-09-26.
 - [ ] **retire the reviewed-catalog machinery.**
-  `ReviewedPowerInspector` and `PowerRuntime` are still used by 12 main files,
+  `ReviewedPowerInspector` and `PowerRuntime` are still used by 8 main files,
+  the six stub objects (`ActionPowers`, `MusterPowers`, `RestPowers`,
+  `NegotiationPowers`, `CampaignPowers`, `RecoverPowers`) remain,
   and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
   used only by tests. Move the remaining users onto the executable catalog and
   delete the reviewed catalog.
@@ -453,8 +418,8 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   Recorded in that project's design.
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
-  in the phased sequence above; the next denizens and relics are
-  **Phase - Card classes**)
+  in the phased sequence above; the next denizens and relics come
+  from **Catalog - to verify** and **Phase - Catalog batch - engine-blocked**)
 - [ ] **L7 — Incremental synchronization transport**
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
