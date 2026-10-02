@@ -9,13 +9,99 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 ## Now
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
-Card classes phases left behind, and one item blocked on the Chronicle
-Phase. No other phase is in progress.
+Card classes phases left behind, bugs and small UI fixes from the
+2026-10-01 playtest, and one item blocked on the Chronicle Phase. No other
+phase is in progress.
 
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
 campaign-continuity rules.
+
+### Phase - Cleanup tasks
+
+From the playtest of 2026-10-01:
+
+- [ ] **Catacombs is offered during every major action.** It should be
+  offered only during Recover.
+- [ ] **Offer a modifier only when its cost can be paid.** Selecting one
+  whose cost cannot be paid fails with a 422 ("Selected modifier cannot be
+  paid"), seen when Catacombs was selected during a Trade.
+- [ ] **Show modifier costs during modifier selection.**
+- [ ] **Brass Horse does not make its reveal public.**
+- [ ] **Brass Horse works without revealing a card.** Its effect needs a
+  revealed card, so an empty discard pile should not satisfy it.
+- [ ] **Player ids are capitalized automatically.** Keep them as typed.
+- [ ] **Investigate why an incognito browser window does not work.**
+- [ ] **Discard asks to "choose 0 to 1".** Ask the player to reveal any
+  number instead.
+- [ ] **Travel shows both "Cancel" and "Back to Actions",** which seem to do
+  the same thing. Keep one.
+- [ ] **Remove the Wake and Action Phase prompts.** The Wake prompt says
+  "take available wealth or end Wake", and the Action Phase prompt asks for
+  "your first action" even after an action has been taken. The Game Log now
+  shows the phases, so the prompts can go.
+- [ ] **Hide a decision's own log line when its effect has one.** "Chose
+  Blue" followed by "Wolves: Killed 1 Blue warband." repeats the decision.
+- [ ] **Name edifices in decisions.** Decisions show edifice card numbers
+  instead of names.
+- [ ] **List relic details in a Negotiation.**
+- [ ] **Banners say "resources".** They should say "favor" or "secrets".
+- [ ] **Keep site powers visible.** There is enough screen space, and players
+  need to see them.
+- [ ] **Shrink the player strip.** It takes up too much space.
+- [ ] **Enlarge glyphs.** They are small even when zoomed in.
+- [ ] **Make secrets and defense dice look different.** They are too similar.
+- [ ] **Show the backs of all cards in a discard pile.**
+- [ ] **Show which warbands map to which Supply in the UI.**
+- [ ] **Allow typing a number** for decisions that ask for one.
+- [ ] **Review the action buttons.** They feel unresponsive, and some appear
+  for things the player does not expect.
+
+Left behind by earlier phases:
+
+- [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
+  not discarded in the Chronicle Phase's Shape Empire step, which the engine
+  does not have yet. The Pass's consent waits for the Consent system phase.
+- [ ] **Contract suite for `EventStreamRepository`.** `InMemoryEventStreamRepository`
+  is the fake every service test uses, and `HsqldbEventStreamRepositorySuite`
+  tests the real store, but no suite runs both. The fake can drift from the
+  real repository (append results, `StreamAlreadyExists` / `StreamNotFound` /
+  `SequenceConflict`, load of a missing stream, concurrent appends) with no
+  test noticing. Extract an abstract `EventStreamRepositoryContract` with a
+  `make()` factory, run it against both, and move the shared behavior tests
+  out of the Hsqldb suite. Backend-only behavior (schema versions, file
+  ownership) stays in the Hsqldb suite. This is the first use of the
+  scala-testing skill's rule that every fake has a contract suite.
+- [ ] **Shrink cached catalog fields.** Card classes made powers read
+  their cards from card objects, so 26 classes still hold a
+  `catalog: ExecutableCatalog` field (mostly in `application/`, the Game Log
+  and the Campaign plan files), and 88 `forCatalog(catalog)` constructors
+  thread it, many only to pass it on. Remove each field and constructor as
+  its power is touched.
+- [ ] **Migrate `CatalogNames` to card objects.** About 76 test files look
+  cards up by name through `CatalogNames`. Move them to direct object
+  references such as `AlchemistCard`.
+- [ ] **Split `ProcedureWalker.scala`.** It is exactly 800 lines, the cap for a
+  production file, so the next change to it forces a split.
+
+### Phase - Card play UI
+
+Playing a card takes too many clicks, found in the playtest of 2026-10-01.
+With several choices, each card has its own "Choose" button and then a
+"Choose Placement" confirmation, and that flow shows known cards facedown.
+Replace it with one interaction: drop the partition buttons and the Choose
+Placement step, place cards by drag and drop, and explain how. The engine
+side is **walker-native card play through card slots** under
+**Powers-related deferred items**; decide whether to do both together.
+
+### Phase - Campaign UI
+
+Found in the playtest of 2026-10-01:
+
+- Target selection: the confirm button looks like every other button. List
+  each target's defense and warbands, and tally them.
+- Results: make it clear what a Campaign's battle did.
 
 ### Catalog - to verify
 
@@ -123,33 +209,6 @@ Found by the survey of 2026-09-29:
   changes), Tracker (memory across turns), Keep (replacing a Raid's defeat),
   Obsidian Cage (a new warband store), Secret Signal (no generic gain window),
   and False Prophet, True Oath and The Red Seer (the Oathkeeper goal is not modelled).
-
-### Phase - Cleanup tasks
-
-- [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
-  not discarded in the Chronicle Phase's Shape Empire step, which the engine
-  does not have yet. The Pass's consent waits for the Consent system phase.
-- [ ] **Contract suite for `EventStreamRepository`.** `InMemoryEventStreamRepository`
-  is the fake every service test uses, and `HsqldbEventStreamRepositorySuite`
-  tests the real store, but no suite runs both. The fake can drift from the
-  real repository (append results, `StreamAlreadyExists` / `StreamNotFound` /
-  `SequenceConflict`, load of a missing stream, concurrent appends) with no
-  test noticing. Extract an abstract `EventStreamRepositoryContract` with a
-  `make()` factory, run it against both, and move the shared behavior tests
-  out of the Hsqldb suite. Backend-only behavior (schema versions, file
-  ownership) stays in the Hsqldb suite. This is the first use of the
-  scala-testing skill's rule that every fake has a contract suite.
-- [ ] **Shrink cached catalog fields.** Card classes made powers read
-  their cards from card objects, so 26 classes still hold a
-  `catalog: ExecutableCatalog` field (mostly in `application/`, the Game Log
-  and the Campaign plan files), and 88 `forCatalog(catalog)` constructors
-  thread it, many only to pass it on. Remove each field and constructor as
-  its power is touched.
-- [ ] **Migrate `CatalogNames` to card objects.** About 76 test files look
-  cards up by name through `CatalogNames`. Move them to direct object
-  references such as `AlchemistCard`.
-- [ ] **Split `ProcedureWalker.scala`.** It is exactly 800 lines, the cap for a
-  production file, so the next change to it forces a split.
 
 ### Phase - Consent system
 
@@ -423,7 +482,8 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     [Phase 5 follow-ups](operations/phase-5-follow-ups.md#snapshot-polling-sends-a-full-projection-on-every-tick).
 - [ ] **Table UI rework.** Rework the layout of player areas and sites, and
   port the map to haunt-roll-fail's canvas approach. Recorded in the card
-  shape and inspection design.
+  shape and inspection design. The playtest of 2026-10-01 asks whether the
+  whole table, not only the map, should move to an HTML5 canvas.
 - [ ] **Clicking a banner shows its details.** Dark Revolution and The
   People's Favor are clickable like other cards, opening their details.
 - [ ] **Match the map's aspect ratio to the physical board.** The rendered
