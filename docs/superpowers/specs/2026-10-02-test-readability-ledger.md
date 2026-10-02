@@ -2,6 +2,7 @@
 
 Date: 2026-10-02. Spec: [test readability sweep](2026-10-02-test-readability-design.md).
 Status: surveyed, awaiting review.
+The survey used twelve areas, not the spec's ten; the plan (Areas) explains the split.
 
 ## Baseline
 
@@ -18,6 +19,12 @@ Measured on 2026-10-02 at commit f9abb76d with `.superpowers/readability/metrics
 - Table.update escapes: 14
 - test files over 800 lines: 4
 - largest test file: 1829 src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala
+
+`metrics.sh` counts `frontend/src/test` as well as `src/test`, which is why
+@unchecked (158), tuple destructures (69) and test files over 800 lines (4)
+exceed the spec's root-only figures (150, 64, 3); numeric card ids (84) count
+both trees too. `shared/src/test` is surveyed (area 08) but not counted in the
+metrics.
 
 ## Summary
 
@@ -38,6 +45,8 @@ Measured on 2026-10-02 at commit f9abb76d with `.superpowers/readability/metrics
 | 12-frontend-b | 9 | 4 | 1 | 8 | 0 | 4 | 11 | 9 | 0 | 3 | 1 | 0 | 50 |
 | Total | 200 | 167 | 208 | 305 | 121 | 110 | 131 | 159 | 74 | 73 | 4 | 82 | 1634 |
 
+The survey found 1,552 rows to fix and 82 kept (Total minus Keep).
+
 Row 08-020 duplicates 00-150 (TestGameFixtures). The ledger keeps it as a row
 so Plan 2 can find every caller, but the Summary counts it once, under 00-150:
 area 08's R1 and Total exclude it (46 rows in the table, 45 counted). The
@@ -53,8 +62,7 @@ checked against the code on 2026-10-02.
 under the wrong rule, 7 wrong. The wrong-row rate is 13 of 48 (27%), over the
 "more than a quarter" threshold. Area 08 is therefore rerun with the tightened
 prompt (by the controller, into `rows/08-rerun.md`) to measure the prompt; the
-corrected rows below stay as the ledger's area 08. The rerun result will be
-added here. (An earlier pass counted 12 of 48 and kept three marginal rows,
+corrected rows below stay as the ledger's area 08. (An earlier pass counted 12 of 48 and kept three marginal rows,
 08-013, 08-033 and 08-038, as right; review moved 08-039 to wrong.)
 
 Wrong rows, removed from the rows file (their IDs are left as gaps):
@@ -154,8 +162,9 @@ Agent prompt and `.superpowers/readability/survey-prompt.md` agree):
    EndWakeProcedureSuite); row 00-138 puts the fixture's `catalog` in 193 files (agent's count, not
    rechecked), so the wildcard import is wider than the helper.
 
-**Shared fixtures (area 00).** 168 rows (Keep 51, R2 40, R3 16, R4 13, R1 11,
-R5 9, R6 9, R9 9, R10 7, R8 3). Five rows spot-checked against the code with
+**Shared fixtures (area 00).** 168 rows (Keep 53, R2 40, R3 14, R4 13, R1 11,
+R5 9, R6 9, R9 9, R10 7, R8 3; the spot check re-filed 00-127 and 00-132 from
+R3 to Keep). Five rows spot-checked against the code with
 `grep -rlw`; caller counts for generic names (`base`, `board`, `staged`,
 `execute`) run high under a plain `git grep -w`, so each was recounted among
 the files that name the owning fixture:
@@ -237,8 +246,9 @@ following 00-054) where R4 also fits. The labels were not normalized; each
 row's planned outcome is concrete, and Plan 2 fixes by area.
 
 Some R10 rows classify `WalkerDice` lambdas, which are not hand classes; they
-follow shared verdicts 00-014, 00-058 and 00-101 (7 of the 8 R10 rows in area
-07).
+follow shared verdicts 00-014, 00-058 and 00-101 (5 of the 8 R10 rows in area
+07: 07-005, 07-057, 07-086, 07-092 and 07-109; 07-004 is a BattlePlan stub,
+07-017 and 07-052 are ContributingPower stubs).
 
 R2 rename rows exist on helpers that already have a doc comment (06-084,
 07-058, 07-072, 07-118); the user's review can strike them.
@@ -246,6 +256,130 @@ R2 rename rows exist on helpers that already have a doc comment (06-084,
 Row 00-040 (`againstPlayer`, R2) contradicts the spec's example of a helper
 that stays; the code hides two warbands and the Oathkeeper title. Raised for
 the user's review.
+
+## Test doubles and contracts
+
+Plan 2 task 3 gives each fake a contract suite that the fake and the real
+implementation both pass (spec, "Test doubles"). One line per double. A stub
+(fixed answers) or a spy (records calls) holds no behavior that can drift from
+the real class, so it needs no contract.
+
+- `InMemoryEventStreamRepository` (src/main/scala/oathdigital/application/EventStreamRepository.scala:48)
+  is a fake of `EventStreamRepository`; the real implementation is
+  `HsqldbEventStreamRepository` (src/main/scala/oathdigital/persistence/HsqldbEventStreamRepository.scala:40).
+  Needs an abstract `EventStreamRepositoryContract` with a `make()` factory run
+  against both, the shared behavior tests moved out of
+  `HsqldbEventStreamRepositorySuite`; this closes the ROADMAP item "Contract
+  suite for `EventStreamRepository`". No row classifies the class (it is
+  production code). The doubles around it need no contract: 01-057 (spy with a
+  canned load), 09-028 (`CountingEventStreamRepository`, a spy over this fake),
+  09-055 and 09-080 (stubs that fail every call).
+- `InMemoryEventJournal` (src/main/scala/oathdigital/engine/Engine.scala:28)
+  implements `EventJournal`; `git grep` finds no other `EventJournal`
+  implementation (the Hsqldb store implements `EventStreamRepository`, and
+  `EventJournalSchema` is only the table) and no caller in `src`, `frontend` or
+  `shared`. No real implementation, so no contract; no row classifies it.
+- `Totals` in EventReplayEngineSuite (01-127) is a fake of `EventEvolution`;
+  the real implementation is `OathRules` (src/main/scala/oathdigital/gameplay/OathRules.scala:40).
+  Needs an `EventEvolutionContract` (the initial state is stable; `evolve` is
+  pure and returns a Left, not a state, for a corrupt event) run against both.
+- `FakeStore` in GameLogOverlaySuite and LogMarkerSuite (11-031, 11-041) is a
+  fake of `LogStore`; the real implementation is `LogStore.browser`
+  (frontend/src/main/scala/oathdigital/frontend/LogMarker.scala:19, over
+  `localStorage`). Needs a `LogStoreContract` (a written key reads back; an
+  unknown key reads None) in the frontend tests, run against the one shared
+  `FakeLogStore`; the trait's doc says the jsdom harness makes the real store
+  throw, so the contract needs a harness with a working `localStorage`.
+- `FakePollClock` and `ManualClock` (12-042, 12-044) are fakes of `PollClock`;
+  the real implementation is `BrowserPollClock`
+  (frontend/src/main/scala/oathdigital/frontend/SnapshotPollingCoordinator.scala:11).
+  Needs a `PollClockContract` (a scheduled callback fires once, a cancelled one
+  never fires) in the frontend tests, run against the one shared fake and
+  against `BrowserPollClock`.
+- `FakeClient` in TableSessionSuite (12-044) is a spy that records calls and a
+  controllable stub (the test completes each promise); the real
+  implementations are `HttpGameClient` and `TrustedHttpGameClient`
+  (frontend/src/main/scala/oathdigital/frontend/GameClient.scala:123 and 192).
+  It computes no answer of its own, so no contract; Plan 2 documents it as a
+  spy, not a fake. `RecordingNavigation` in the same row is a spy.
+- `IdentityRepositoryStub`, `failing` and the anonymous resolveSession subclass
+  (01-078, 09-072) are stubs (every call fails, or returns a canned
+  `StorageFailure`) and a spy (records the thread); the real implementation is
+  `HsqldbIdentityRepository`. No fake, so no contract.
+- The `CampaignDicePort` doubles (00-014, 01-029, 01-104, 01-126) are stubs
+  (fixed faces) and spies (counts rolls); the real implementation is
+  `CampaignDicePort.random` (GameRandomPorts.scala:32). No fake, so no
+  contract; they share one testkit `Dice` object (00-014).
+
+## Foundation inputs
+
+Plan 2's Foundation task reads this section. It collects the names that
+Planned outcome cells propose; it adds nothing the rows do not say. Row IDs
+are the rows that ask for each name (R4 rows for accessors).
+
+**Accessors proposed by R4 rows.** Every name below also exists today as
+a suite-local `private def` in several suites or in a harness (`ready` and
+`parked` in many suites, `finished`, `parked` and `recorded` in
+WhenPlayedHarness, `answer` and `replayed` in TargetsFixture, `tokensOn` in
+Look); the rows ask for one testkit version that fails with the actual
+value.
+
+- `accepted` on `Either[OathViolation, OathTransition]` (119 rows): 01-031, 01-066, 01-074, 01-107, 03-011, 03-018, 03-029, 03-034, 03-039, 03-047, 03-057, 03-061, 03-067, 03-071, 03-074, 03-085, 03-087, 03-105, 03-116, 03-123, 03-129, 03-130, 03-132, 03-142, 04-004, 04-006, 04-008, 04-011, 04-012, 04-014, 04-019, 04-020, 04-022, 04-025, 04-029, 04-035, 04-041, 04-047, 04-052, 04-056, 04-059, 04-062, 04-067, 04-069, 04-072, 04-074, 04-078, 04-079, 04-082, 04-086, 04-089, 04-093, 04-094, 04-098, 04-102, 04-104, 04-106, 04-109, 04-111, 04-118, 04-121, 04-123, 04-125, 04-127, 04-130, 04-132, 04-137, 04-143, 04-147, 04-153, 04-157, 04-163, 04-164, 04-168, 04-170, 04-173, 04-177, 04-180, 04-182, 04-186, 04-189, 04-194, 05-007, 05-033, 05-047, 05-080, 05-160, 06-028, 06-034, 06-039, 06-046, 06-061, 06-074, 06-081, 06-088, 06-093, 06-119, 06-127, 06-133, 06-140, 06-147, 06-153, 06-161, 06-169, 06-182, 06-185, 06-191, 07-148, 09-051, 10-032, 10-035, 10-044, 10-059, 10-073, 10-075, 10-104, 10-117, 10-131, 10-175
+- `ready` on an `OathState` (42 rows): 00-068, 00-075, 00-083, 00-088, 00-120, 00-130, 00-143, 01-015, 01-020, 01-031, 01-107, 01-123, 02-006, 03-002, 03-018, 03-074, 03-116, 03-142, 04-197, 04-198, 05-080, 06-046, 06-061, 06-140, 06-169, 06-173, 06-182, 07-050, 09-031, 10-024, 10-032, 10-035, 10-059, 10-073, 10-075, 10-079, 10-104, 10-117, 10-131, 10-147, 10-172, 10-175
+- `parked` on a walker outcome (returns the pending tree) (27 rows): 00-055, 00-136, 00-146, 03-013, 03-023, 03-064, 03-079, 03-080, 03-101, 03-140, 05-111, 06-028, 06-051, 06-068, 07-025, 07-133, 07-140, 07-156, 09-006, 10-006, 10-011, 10-024, 10-053, 10-083, 10-097, 10-125, 10-152
+- `finished` on a walker outcome (16 rows): 00-136, 00-146, 03-002, 03-023, 03-079, 03-080, 03-095, 03-098, 05-111, 07-156, 10-006, 10-011, 10-053, 10-097, 10-125, 10-152
+- `rejected` on a Left (3 rows): 03-008, 03-034, 03-058
+- `loaded` on the service's Option or Left (12 rows): 01-031, 01-066, 01-074, 01-084, 01-107, 02-034, 02-055, 09-014, 09-018, 09-031, 09-075, 09-084
+- `chooseOne` on a decision query (4 rows): 05-080, 05-137, 05-142, 05-159
+- `chooseMany` on a decision query (4 rows): 02-047, 05-104, 09-006, 12-049
+- `chooseAmount` on a decision query (1 row): 12-049
+- `built` (2 rows): 01-075, 09-006
+- `started` (3 rows): 01-075, 07-148, 09-002
+- `opened` (2 rows): 01-074, 01-080
+- `executed` (2 rows): 01-006, 02-013
+- `replayed` (2 rows): 07-035, 10-030
+- `rightOf`, `leftOf`, `assertLeft` (generic Either unwraps) (6 rows): 09-023, 09-044, 09-046, 09-071, 09-075, 09-084
+- `failureOf` (1 row): 09-048
+- `refusal`, `refused` (3 rows): 08-037, 08-045, 09-002
+- `encoded`, `decoded` (wire results) (4 rows): 02-044, 08-023, 08-030, 08-034
+- `assertWireRoundTrips`, `assertRoundTrips`, `roundTripStream` (17 rows): 00-090, 04-196, 06-034, 06-039, 06-074, 06-081, 06-088, 06-093, 06-127, 06-133, 06-140, 06-147, 06-153, 06-161, 06-169, 08-029, 08-044
+- `authorized`, `created`, `begun`, `parsed`, `updated`, `right` (one row each): 01-080, 09-005, 09-060, 09-069, 11-014, 11-037
+- Look reads `discardAfter`, `forceKind`, `boardWarbands` (8 rows): 00-162, 04-009, 04-058, 04-084, 04-166, 05-099, 05-104, 05-143
+
+**Overlaps.**
+
+- `accepted` and `rightOf` both unwrap an Either and fail with the actual
+  value. So do `built`, `started`, `opened`, `executed`, `replayed`,
+  `authorized`, `created`, `begun`, `parsed`, `updated` and `right` on the Right
+  side, and `rejected`, `leftOf`, `assertLeft`, `refusal`, `refused` and
+  `failureOf` on the Left side. Rows in different areas name the same
+  accessor differently; the Foundation task should settle one generic
+  unwrap and keep the domain names only where the type differs.
+- `ready(state)` overlaps `Table.ready` (testkit/Table.scala:287) and
+  `Situation.ready` (testkit/Situation.scala:55), which turn a Table or
+  Situation into its `ReadyGame`, not an `OathState`. `parked` and `finished` overlap
+  WhenPlayedHarness (00-136, 00-146). `chooseOne`, `chooseMany` and
+  `chooseAmount` all unwrap a parked query.
+- The wire accessors (`encoded`, `decoded`, `refusal`, the round-trip
+  helpers; rows in area 08) must live in `shared/src/test` where
+  the shared protocol suites compile for Scala.js (Calibration, note 1).
+  The frontend accessors (11-014, 11-037, 12-049, 12-029) live in
+  `frontend/src/test`; no frontend outcome names the root `Table`.
+
+**New Table steps proposed by rows.** Each is a fact that three or more
+suites patch by hand (R3), or one the row says a step must reach.
+
+- `relicDeckEmptied`: 04-065, 04-076, 04-172 (3 suites).
+- `parkedWalker(action, path = "0")`: 01-099, 01-113 (3 suites).
+- `visionsDrawn(n)`: 10-121, 10-129 (4 suites patch the track).
+- `revealedVision(player, vision)`: 10-129, 10-167, 10-169 (optional there).
+- `backInPhase(phase)`, keeping the turn's used powers: 06-167, 06-181, 06-184 (3 suites).
+- A `face` argument on the existing `peoplesFavor` and `darkestSecret`:
+  00-097 (the origin), 01-001, 03-109, 06-014, 06-023, 06-030, 06-052, 10-077.
+
+Rows that ask only for an existing step (`.secrets`, `.tokens`, `.pawn`,
+`.siteTokens`, `.turn`) are not listed. Rows that keep a patch with a
+"no Table step ..." comment are not requests for a step.
 
 ## Shared fixtures
 
@@ -964,7 +1098,7 @@ the user's review.
 | 04-193 | oathdigital/gameplay/powers/action/WolvesSuite.scala:17 | cardOf | R4 | `cardOf` finds the card with `collectFirst {...}.get`, which fails with a bare NoSuchElementException (2 uses). | `Look(ready).tokensOn(wolves)` (00-152). | | |
 | 04-194 | oathdigital/gameplay/powers/action/WolvesSuite.scala:21 | suite | R4 | 9 `.toOption.get` calls on use/answer results (one on PlayerFacts.forceKind at L21) fail with a bare None.get and drop the OathViolation. | `accepted(use(...))` and `accepted(answer(...))`: one testkit accessor on Either[OathViolation, OathTransition] that fails with the OathViolation. | | |
 | 04-195 | oathdigital/gameplay/powers/action/WolvesSuite.scala:23 | parked | R2 | `parked` (L23) is the transition after using Wolves, while TargetsFixture.parked, used on L28 as `TargetsFixture.parked.parkedDecision`, is the parked-decision assertion helper: one word for two things in one file. | Rename the local helper `started`. | | |
-| 04-196 | oathdigital/gameplay/powers/action/*Suite.scala | area: 49 suites | R4 | 52 call sites in 50 suites write `assert(wireRoundTrips(events))` (PaidActionHarness.wireRoundTrips); a failure reads "false" and names no event (00-090). | `assertWireRoundTrips(events)` that fails naming the first event that does not decode equal (00-090). | | |
+| 04-196 | oathdigital/gameplay/powers/action/*Suite.scala | area: 50 suites | R4 | 52 call sites in 50 suites write `assert(wireRoundTrips(events))` (PaidActionHarness.wireRoundTrips); a failure reads "false" and names no event (00-090). | `assertWireRoundTrips(events)` that fails naming the first event that does not decode equal (00-090). | | |
 | 04-197 | oathdigital/gameplay/powers/action/*Suite.scala | area: 10 suites | R4 | 10 suites (BoneDice, ClayRattle, DemonTail, DowsingSticks, FaeMerchant, GamblingHall, MurkyFountain, ShiftingMap, Tutor, WizardSchool) call PaidActionHarness.ready on 41 lines and PaidActionHarness.replayed on 14 lines; `ready` casts and `replayed` ends in `.toOption.get` (00-088, 00-089). | The testkit `ready(state)` accessor and the shared `replayed` that fails with the violation (00-068, 00-076). | | |
 | 04-198 | oathdigital/gameplay/powers/action/*Suite.scala | area: 43 suites | R4 | 261 lines in 43 suites call `after(...)` (TargetsFixture.after), a cast that fails with a ClassCastException on any other state (00-075). | The testkit `ready(state)` accessor (00-068); each call site changes only its name. | | |
 | 04-199 | oathdigital/gameplay/powers/action/*Suite.scala | area: 13 suites | R2 | 13 suites call PaidActionHarness.tokensOn on 21 lines and 6 suites call PaidActionHarness.secrets on 7 lines (00-091, 00-092); `tokensOn` ends in `.head` and ignores tokens on advisers. | `Look(r).tokensOn(card)` and `Look(r).faceUpSecrets(p1) + Look(r).faceDownSecrets(p1)`. | | |
@@ -1257,7 +1391,7 @@ the user's review.
 | 06-111 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:10 | suite | R5 | Hand-typed `EdificeId("E22")` (Proving Grounds, Empty Grounds on its ruined face). | `CatalogNames.edifice("Proving Grounds")`. | | |
 | 06-112 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:13 | suite | R1 | `site` is `sites.head` and `firstPlayer = PlayerId("p2")` (00-139), both unnamed in the tests. | Name the site; one line: "p2 is the first player of the fixture's first game". | | |
 | 06-113 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:16 | suite | R3 | `stagedAt` (4 lines mention it) repeats the patch of GreatForgeRulesSuite.scala:20, with an `at` parameter. | `Table.from(freshReady).edifice("Proving Grounds", side, at = site).unchecked`. | | |
-| 06-114 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:29 | Proving Grounds gives the placing player three warbands | R2 | `PlayerFacts.forceKind(staged, firstPlayer).toOption.get` is a bare statement whose result is dropped; a reader cannot say what it checks (that the player has a warband kind, or only that it does not throw). | Delete it, or `assert(PlayerFacts.forceKind(staged, p2).isRight, "p2 has warbands of their own")`. | | |
+| 06-114 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:29 | Proving Grounds gives the placing player three warbands | R2 | `PlayerFacts.forceKind(staged, firstPlayer).toOption.get` is a bare statement whose result is dropped; a reader cannot say what it checks (that the player has a warband kind, or only that it does not throw). | `assert(PlayerFacts.forceKind(staged, p2).isRight, "p2 has warbands of their own")`. | | |
 | 06-115 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:30 | Proving Grounds gives the placing player three warbands | R2 | `players.find(_.player == firstPlayer).get.board.warbands` is typed twice (lines 30 and 33); `Look.warbands` (00-153) reads it. | `Look(staged).warbands(p2)` and `Look(finished).warbands(p2)`. | | |
 | 06-116 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:39 | Empty Grounds discards every other denizen in its region; Empty Grounds writes the cards it discarded | R3 | `withOtherDenizens` uses `CardStaging.without` (00-060, 3 mentions in the file) plus an `updateCurrent` to add two denizens to the site; `Table.denizen` states each. | `.denizen("<card>", site)` twice on the `stagedAt` table. | | |
 | 06-117 | oathdigital/gameplay/powers/setup/ProvingGroundsRulesSuite.scala:41 | Empty Grounds discards every other denizen in its region; Empty Grounds writes the cards it discarded | R1 | The two extra denizens are the first two denizens of the world deck (`worldDeck.collect {...}.take(2)`), unnamed. | Name two denizens with `CatalogNames.denizen`. | | |
@@ -1384,7 +1518,7 @@ the user's review.
 | 07-042 | oathdigital/gameplay/CampaignRaidSuite.scala:50 | the Raid's defense is the pawn, the targeted relic and banner, plus the board force; a Raid victory transfers in the printed order; a Raid defeat transfers nothing | R1 | Expected values read the raidBoard fixture's hidden facts (00-042): `defenseScore, 3` is the defender's 3 board warbands, `favor, 3` and `warbands, 2` on lines 69-70 and `RelicId("raid-facedown-relic")` on line 68 appear only in the fixture. | Name the facts in the body: `raidBoard(defenderWarbands = 3)`, comment 5 favor and the facedown relic, and return the facedown relic from raidBoard instead of retyping its id. | | |
 | 07-043 | oathdigital/gameplay/CampaignRaidSuite.scala:63 | a Raid victory transfers in the printed order and then asks where the pawn goes | R8 | Lines 63-71 expect favor 0, banks +3, defender favor 3 and warbands 2 without a derivation (the banner's 3 favor, the defender's 5 favor, 3 warbands halved). | A one-line why per assert, or derive from stated numbers (5 favor, banner 3, 3 warbands). | | |
 | 07-044 | oathdigital/gameplay/CampaignRaidSuite.scala:99 | a Raid defeat transfers nothing, moves no pawn and kills half the survivors | R8 | `warbands, 2` for the actor (line 102) is 4 warbands minus half of the 4 survivors, stated nowhere. | Comment "4 committed, half of the survivors die" (the board is raidBoard's 4 warbands). | | |
-| 07-045 | oathdigital/gameplay/CampaignRaidSuite.scala:106 | several enemy pawns at the site ask which to Raid | R3 | third is found by a filter over the players and its pawn is set by a 3-line updateCurrent copy; both are Table facts (p3, `.pawn`). | `on(b)(_.pawn(Table.p3, at = b.origin))` and drop the assert that a third player exists. | | |
+| 07-045 | oathdigital/gameplay/CampaignRaidSuite.scala:106 | several enemy pawns at the site ask which to Raid | R3 | third is found by a filter over the players and its pawn is set by a 3-line updateCurrent copy; both are Table facts (p3, `.pawn`). | `on(b)(_.pawn(Table.p3, at = b.origin))`; keep the assert that a third player exists. | | |
 | 07-046 | oathdigital/gameplay/CampaignRaidSuite.scala:31 | suite | R4 | 11 `.toOption.get` (grep -c) in the start, kind, targets, force, sacrifice chain written in walk and again in the several-enemies test. | Shared start and answer helpers that fail with the violation. | | |
 | 07-047 | oathdigital/gameplay/CampaignRaidSuite.scala:133 | the Raid's recorded events replay to the same state as the live walk | R4 | Same hand-written replay fold as CampaignProcedureSuite:355. | The shared testkit `replayed` (00-076). | | |
 | 07-048 | oathdigital/gameplay/CampaignSetupSuite.scala:15 | legal kinds follow the pawn site's ruler and the enemy pawns | R1 | The outcome depends on board(): two Bandits rule the origin, and p2 and p3 stand at another site (00-033); the body states neither. | State `.bandits(b.origin, 2)` and where the enemy stands, or name them in a comment. | | |
@@ -1538,7 +1672,7 @@ the user's review.
 | 08-037 | oathdigital/protocol/CommandProtocolSuite.scala:67 | suite | R4 | 11 uses of decode(...).left.toOption.get (lines 67, 77, 89, 95, 101, 104, 117, 123, 134, 153, 158) fail with NoSuchElementException instead of showing the decoded value when decoding unexpectedly succeeds. | A shared-module test helper (shared/src/test, since this suite also compiles for Scala.js) such as refusal(result) that fails with the actual Right. | | |
 | 08-038 | oathdigital/protocol/LogPageCodecSuite.scala:25 | a text span carries no id, value or unit on the wire | R1 | json("entries")(0)("spans")(1) is the text span "'s turn" only by position in the page defined 20 lines up. The next test expects path "$.entries[0].extra" because replace of "ordinal":0 hits only entry 0, since entry 1 has ordinal 1; unstated. | Build a one-span page in the first test; add a comment to the second naming why the path is entries[0]. | | |
 | 08-040 | oathdigital/protocol/OathkeeperPresentationSuite.scala:31 | the map covers every goal the model declares | R7 | The body compares the map keys to four literals; it never reads the model (the doc comment says so). | Rename: "the map has exactly the four printed goal keys". | | |
-| 08-041 | oathdigital/protocol/ProjectionProtocolSuite.scala:73 | populated player-scoped projections round-trip exactly on both runtimes | R7 | The four trailing asserts check fixture contents (hidden adviser, name Unknown, round 4, hand preview), not the codec. Nothing in the body distinguishes two runtimes. | Move the fixture checks into a comment or a "the fixture is populated" test; rename to "a fully populated projection round-trips exactly". | | |
+| 08-041 | oathdigital/protocol/ProjectionProtocolSuite.scala:73 | populated player-scoped projections round-trip exactly on both runtimes | R7 | The four trailing asserts check fixture contents (hidden adviser, name Unknown, round 4, hand preview), not the codec. Nothing in the body distinguishes two runtimes. | Move the fixture checks into a "the fixture is populated" test; rename to "a fully populated projection round-trips exactly". | | |
 | 08-042 | oathdigital/protocol/ProjectionProtocolSuite.scala:81 | a projection with no Rest preview round-trips as absent; a partition declaring no confirm label round-trips as absent; an inspect query round-trips its cards, its done button and its heading | R7 | Doc comments sit above the wrong tests: lines 81-86 (panel copy absent) belong to the test at line 129, and lines 241-243 (partition confirm label optional) sit above the inspect test instead of line 253. | Move each comment to the test it describes. | | |
 | 08-043 | oathdigital/protocol/ProjectionProtocolSuite.scala:52 | populated player-scoped projections round-trip exactly on both runtimes; a board's bag figures and the Supply bands round-trip | R8 | The fixture builds with long positional values (GameTracksProjection(4, 3, false, 4, "red"), PlayerBoardProjection("red", 3, 2, 1, 1, 2, 4, 4, ...), ActivePlayerResourcesProjection(2, 1, 1, 2, 4, 4)) and the test asserts round == 4 from the first slot. | Name the arguments the tests read (round = 4) and leave the rest. | | |
 | 08-044 | oathdigital/protocol/ProjectionProtocolSuite.scala:74 | suite | R4 | 17 tests repeat assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(x)), Right(x)).  Repeated mechanics, not an opaque helper: filed under R4.| Private helper assertRoundTrips(projection). | | |
@@ -1607,7 +1741,7 @@ the user's review.
 | 09-049 | oathdigital/server/GameHttpWireSuite.scala:33 | walker intents map onto Task 4's StartWalker/RollWalker/ResolveWalker commands, and RollWalker never carries client-supplied faces | R7 | The titles at lines 33 and 105 cite "Task 4" and "finding I7", which a new reader cannot resolve. The "never carries faces" half is only a comment (lines 43-47), not an assert. | Retitle "walker intents bind to StartWalker, RollWalker and ResolveWalker commands for the requester" and "a blank relic id is refused with a typed failure"; keep the faces note as a comment. | | |
 | 09-050 | oathdigital/server/GameRoutesSuite.scala:30 | health load malformed request and stale command status mappings | R7 | The title lists "health load malformed request and stale command", but the body also asserts the development page and stylesheet cache headers, the events history limit and its pages, a pawn placement, an adviser keep, and p3's waiting view. `/health` is asserted only as a 404. | Split by subject: development shell cache headers, events history paging, malformed and stale commands, Setup walk through the dev API. | | |
 | 09-051 | oathdigital/server/GameRoutesSuite.scala:42 | health load malformed request and stale command status mappings | R4 | `service.handle(...).toOption.get` (line 42) fails with NoSuchElementException instead of the GameApplicationError. | Testkit `accepted(result)` that fails with the actual error. | | |
-| 09-052 | oathdigital/server/GameRoutesSuite.scala:92 | health load malformed request and stale command status mappings | R8 | `events?limit=101` expects 400 with no stated origin (production refuses a limit above 100, GameRoutes.scala:147). | A one-line why, or build the URL from a named `maxEventsLimit + 1`. | | |
+| 09-052 | oathdigital/server/GameRoutesSuite.scala:92 | health load malformed request and stale command status mappings | R8 | `events?limit=101` expects 400 with no stated origin (production refuses a limit above 100, GameRoutes.scala:147). | A one-line why. | | |
 | 09-053 | oathdigital/server/GameRoutesSuite.scala:94 | health load malformed request and stale command status mappings | R1 | The test acts as p2 (lines 76, 94, 130) and expects p2 to hold the pawn decision, which holds only because the fixture's first player is p2 (00-139). | State the first player in the body (see 09-037). | | |
 | 09-054 | oathdigital/server/GameRoutesSuite.scala:100 | health load malformed request and stale command status mappings | R5 | The pawn site is the hand-typed id "site:ancient-city" (lines 100, 114); the id is not the subject. | `CatalogNames.site("Ancient City").value`. | | |
 | 09-055 | oathdigital/server/GameTrustBoundaryRoutesSuite.scala:32 | route validates identity actor and internal-error boundaries | R10 | The anonymous EventStreamRepository (line 32) answers every load and append with StorageFailure(secret), recording nothing. Unlabelled. | Doc "Stub of EventStreamRepository: every call fails with a StorageFailure carrying the secret". | | |
@@ -1889,7 +2023,7 @@ the user's review.
 | 11-053 | ModifierSelectionStateSuite.scala:56 | targeted actions preview before commands while direct actions retain their stage | R7 | Two functions are asserted under one title: `ModifierFlowDraft.targeted` (which kinds preview first, lines 57 to 59) and `ModifierFlowDraft.action` (which walker starts name a preview action, lines 77 to 85, including BeginRest and "teleport"). The batch-1 history comments at lines 66 to 69 and 80 to 83 stand in for a title. | Split into "targeted actions open their own preview" and "a walker start names a preview action only when the engine registers it", and replace the history comments with the rule. | | |
 | 11-054 | ModifierSelectionStateSuite.scala:87 | modifier confirmation exposes preview-authorized targets without submitting | R7 | The body never asserts "without submitting"; it checks `ordering`, `showTargets`, the authorized candidates and `explicitConfirm`. | Retitle "after the preview, only the authorized targets are offered and a pick needs confirmation", or assert nothing was sent through a RecordingControls. | | |
 | 11-055 | ModifierSelectionStateSuite.scala:88 | modifier confirmation exposes preview-authorized targets without submitting | R8 | The candidates are `Site("a")` and `Site("b")` but the preview authorizes `PreviewTarget("site:b", 2, "B")`; why "site:b" authorizes `Site("b")` (the stableKey prefix) and what the 2 is are not shown. | Name the preview target (`PreviewTarget(siteId = "site:b", ...)`) and a comment "a Site ref's key is site:<id>". | | |
-| 11-056 | ModifierSelectionStateSuite.scala:141 | Recover uses the generic ordered modifier flow but submits as a walker command carrying Catacombs in its own modifiers field | R7 | The body also asserts `backFromTargets` and a stale-context `reconcile` (lines 156 to 159), which the previous test at line 122 already asserts and the title does not name. | Delete lines 156 to 159 or move them to their own test; keep Recover's ordering, invocation and submission in this one. | | |
+| 11-056 | ModifierSelectionStateSuite.scala:141 | Recover uses the generic ordered modifier flow but submits as a walker command carrying Catacombs in its own modifiers field | R7 | The body also asserts `backFromTargets` and a stale-context `reconcile` (lines 156 to 159), which the previous test at line 122 already asserts and the title does not name. | Move lines 156 to 159 to their own test; keep Recover's ordering, invocation and submission in this one. | | |
 | 11-057 | ModifierSelectionStateSuite.scala:143 | Recover uses the generic ordered modifier flow ... | R5 | Catacombs is typed by a numeric id in 4 places ("site-card:site:a:denizen:201" at line 143, "201" at line 160, "denizen:201" and "site-card:s1:201" at lines 209 and 211) while the same file names Vow of Peace by a readable id; the number is not what the tests check. | Use "denizen:catacombs" and "site-card:site:a:denizen:catacombs" with the invocation id "catacombs". | | |
 
 ## 12-frontend-b
