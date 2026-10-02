@@ -383,21 +383,21 @@ card name (0.95em of 16px) falls under the floor, `.map-content` carries
 scale instead: `font-size: clamp(rest, calc(<screen px> / var(--map-scale)),
 cap)` holds region and site names, pawns, tokens, defense, forces and card
 names near one screen size while the board keeps shrinking under them, the
-way a map's place names hold still while the map zooms. The study layer
-(site powers and requirement, a card's defense, restriction and badge) scales
-with the map: it is on the board at every zoom and read by zooming in. Text
-on the map may fall under 11px; the Eleven-Pixel Floor is a pane rule. Site
-powers sit inside the details and so take the glance size, clamped to one
-line on the compact map. Nothing in the compact mode may change the map's
-height, because the Fit scale is computed from it: the site box is fixed at
-21.5rem and clips, and the region title has a fixed 2.4rem line. The
-two glance sizes are named once on `.map-compact` (`--glance-name`,
+way a map's place names hold still while the map zooms. The site footer
+(powers and requirement) sits inside the details and so holds the glance
+size too, clamped to one line on the compact map; a card's own study layer
+(defense, restriction and badge) is hidden there and read on a zoom or in
+the overlay. Text on the map may fall under 11px; the Eleven-Pixel Floor is
+a pane rule. Nothing in the compact mode may change the map's height,
+because the Fit scale is computed from it: the site box is fixed at 21.5rem
+and clips, and the region title has a fixed 2.4rem line. The two glance
+sizes are named once on `.map-compact` (`--glance-name`,
 `--glance-text`), and the compact site's card row is sized from what they
 leave: `--card-w` is the least of the row's own ceiling, a third of the
 width, and the box's height less the name line, the pawn row, the footer's
 one line of powers and, on a site holding forces, the forces line, divided
-by the card ratio. Above a scale of
-about 0.35 the ceiling wins and nothing changes; below it the cards, which
+by the card ratio. Above a scale of about 0.35 the ceiling wins and
+nothing changes; below it the cards, which
 show initials there anyway, give up height so the forces line is never the
 thing the box clips.
 
@@ -612,8 +612,9 @@ ratio, sized in `ex` from `--card-w: 13ex`.
 ### Dice
 A rolled die is a face-shaped chip: 1.9em minimum width, 1.5em tall, 1px
 Brass Line border, 0.25em radius, Base fill, symbols in Token Symbol at 0.9em
-700 with the glyph at 1.1em. A blank face is a dashed `#5d5144` chip with nothing on it. Faces sit in
-an inline wrap with 0.25em gaps; a walk's roll shows the faces, then one line
+700 with the glyph at 1.1em. A blank face is a dashed `#5d5144` chip with
+nothing on it. Faces sit in an inline wrap with 0.25em gaps; a walk's roll
+shows the faces, then one line
 of totals. A roll in the game log draws the same chips inline in its line,
 hung from the line's top so the 13px line never grows; the totals follow as
 their own log lines.
@@ -625,8 +626,8 @@ so the name is centered on the box regardless of token counts; tokens sit
 left, defense right. Below the compact threshold the name owns the first row
 and the two corners flank the pawns on the second (Layout). Powers are two
 clipped lines of labels with hover titles, on the board at every zoom and
-one line on the compact map. A legal
-target gets a brass border and inset ring; hover brightens the border to
+one line on the compact map. A legal target gets a brass border and inset
+ring; hover brightens the border to
 Bright Cream with the target halo; selected turns Selection blue on Selection
 Fill.
 

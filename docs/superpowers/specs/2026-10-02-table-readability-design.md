@@ -202,8 +202,11 @@ button), and the token glyph list.
    footer sits inside `.site-details`, so it takes the glance size (11.6px
    on screen) rather than shrinking with the map; a second glance line at
    Fit would cost the card row a third of its height. The compact card-row
-   formula subtracts one glance line and the footer's 9px gap, in glance
-   units, not a fixed 2.6rem.
+   formula subtracts one glance line, in glance units, not a fixed 2.6rem.
 7. Fit is unchanged at 1440×900 (0.44) and 1024×768 (0.35): the strip's
    46px went to the map, and the taller site box took it back. The map is
    not larger; it carries the powers and reads better in the strip.
+8. The site box is 21.5rem, not 21rem: two lines of 0.86rem powers at 1.25
+   plus the footer's margin. A card's own study layer (defense,
+   restriction, badge) stays hidden on the compact map; the ruling on map
+   text un-hid the site footer, which was the playtest's complaint.
