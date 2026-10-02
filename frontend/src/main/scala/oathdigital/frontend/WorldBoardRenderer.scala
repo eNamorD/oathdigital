@@ -58,8 +58,14 @@ private[frontend] object WorldBoardRenderer:
      secrets.setAttribute("title", secretSummaryLabel(board.faceUpSecrets,
        board.totalSecrets, board.faceDownSecrets, board.committedSecrets))
      resources.appendChild(secrets)
-     resources.appendChild(text("span", "resource",
-       s"Supply ${board.supply}/${value.supplyMaximum}"))
+     // Supply is the one figure with a rule behind it: the bag sets the
+     // band, the band sets the Rest. The figure opens that rule.
+     val supply = button(s"Supply ${board.supply}/${value.supplyMaximum}",
+       "resource supply-open")
+     supply.onclick = _ => CardInspection.openText("Supply at Rest",
+       SupplyAtRest.lines(player.role, board, value.supplyBands,
+         value.supplyMaximum), supply)
+     resources.appendChild(supply)
      identity.appendChild(resources)
 
      // A title and a Vision are states of the player, not cards in a hand:

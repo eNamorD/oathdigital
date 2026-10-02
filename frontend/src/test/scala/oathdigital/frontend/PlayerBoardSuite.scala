@@ -195,6 +195,19 @@ class PlayerBoardSuite extends munit.FunSuite:
     CardInspection.clear()
     assertEquals(opened, Vector("Oathkeeper of Devotion", "Vision of Faith"))
 
+  test("Supply is a button that opens Supply at Rest for that board"):
+    var opened = Vector.empty[(String, Vector[String])]
+    CardInspection.onOpen:
+      case CardInspection.Request.Text(title, lines, _) => opened :+= (title -> lines)
+      case _ => ()
+    val supply = one(render(), ".resources .supply-open")
+      .getOrElse(fail("no Supply button")).asInstanceOf[dom.html.Button]
+    assertEquals(supply.textContent, "Supply 7/7")
+    supply.click()
+    CardInspection.clear()
+    assertEquals(opened.map(_._1), Vector("Supply at Rest"))
+    assert(opened.head._2.head.startsWith("Warbands in bag: "), opened.head._2.head)
+
   test("a held banner names what it holds: favor or secrets, not resources"):
     val banners = Vector(
       oathdigital.protocol.projection.BannerProjection("peoples-favor",
