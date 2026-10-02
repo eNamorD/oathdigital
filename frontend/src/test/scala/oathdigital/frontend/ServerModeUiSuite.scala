@@ -113,6 +113,16 @@ class ServerModeUiSuite extends FunSuite:
       assertEquals(browser.copied, Vector("https://oath.test/s/red-code"))
     }.andThen { case _ => browser.close() }(using scala.scalajs.concurrent.JSExecutionContext.queue)
 
+  test("host player ID fields keep what is typed: no auto-capitalize or auto-correct"):
+    val browser = new TestBrowser
+    Main.start(browser.mount, "/", trustedAlpha = true,
+      quietLog(hostTransport(scala.collection.mutable.ArrayBuffer.empty)))
+    val input = browser.input("Red player ID")
+    assertEquals(input.getAttribute("autocapitalize"), "none")
+    assertEquals(input.getAttribute("autocorrect"), "off")
+    assertEquals(input.getAttribute("spellcheck"), "false")
+    browser.close()
+
   test("host add-player menu offers untaken colors in order and stops at six players"):
     val browser = new TestBrowser
     val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]

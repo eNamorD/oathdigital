@@ -105,6 +105,10 @@ private[frontend] object TrustedHostUi:
       input.setAttribute("aria-label", s"${name(color)} player ID")
       input.value = defaultPlayerId(color)
       input.required = true
+      // An ID is kept as typed, so a phone must not capitalize or correct it.
+      input.setAttribute("autocapitalize", "none")
+      input.setAttribute("autocorrect", "off")
+      input.setAttribute("spellcheck", "false")
       node.appendChild(input)
       val remove = button("Remove", s"remove-player remove-player-${color.key}")
       remove.setAttribute("type", "button")
