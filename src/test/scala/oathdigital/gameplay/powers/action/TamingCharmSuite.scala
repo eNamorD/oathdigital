@@ -31,7 +31,8 @@ class TamingCharmSuite extends munit.FunSuite:
   private def bank(ready: ReadyGame, suit: Suit): Int =
     ready.banks.favor.getOrElse(suit, 0)
 
-  /** The pile a card discarded at Ancient City goes to. */
+  /** The discard pile of the region after Ancient City's (the Cradle):
+    * where a card discarded there goes. */
   private def pile(ready: ReadyGame): Vector[WorldCardId] =
     Look(ready).discardAfter(home)
 
@@ -86,8 +87,8 @@ class TamingCharmSuite extends munit.FunSuite:
 
   test("a Nomad card pays from the Nomad bank"):
     // The Nomad bank's 3 less 2 leave 1; the Beast bank keeps its 5.
-    val ready = staged(beasts = 5, nomads = 3).denizen(wildMounts,
-      at = home).ready
+    val ready = staged(beasts = 5, nomads = 3)
+      .denizen(wildMounts, at = home).ready
     val done = tame(ready, DecisionOptionRef.Denizen(wildMounts)).answered
     val end = after(done)
     assertEquals(Look(end).favor(p1), Look(ready).favor(p1) + 2)

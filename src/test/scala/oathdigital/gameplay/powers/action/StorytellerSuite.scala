@@ -35,8 +35,8 @@ class StorytellerSuite extends munit.FunSuite:
     assertWireRoundTrips(t.events)
 
   test("a Darkest Secret nobody holds takes the secret too"):
-    val t = accepted(use(staged().darkestSecret(None, 0).ready, Storyteller,
-      source))
+    val unheld = staged().darkestSecret(None, 0).ready
+    val t = accepted(use(unheld, Storyteller, source))
     assertEquals(onBanner(after(t)), 1)
 
   test("it is unusable without a favor"):

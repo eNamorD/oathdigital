@@ -25,7 +25,8 @@ class GreatFeastSuite extends munit.FunSuite:
     Table.start.turn(p1, Phase.Act).pawn(p1, home).adviser(p1, feast)
       .supply(p1, supply).favor(p1, favor)
 
-  /** The pile a card discarded at Ancient City goes to. */
+  /** The discard pile of the region after Ancient City's (the Cradle):
+    * where a card discarded there goes. */
   private def pile(ready: ReadyGame): Vector[WorldCardId] =
     Look(ready).discardAfter(home)
 

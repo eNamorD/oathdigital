@@ -26,7 +26,8 @@ class ArmedMobSuite extends munit.FunSuite:
       .denizen(mob, at = "Ancient City").favor(p1, favor)
       .darkestSecret(Some(p2), 1)
 
-  /** The pile a card discarded at Ancient City goes to. */
+  /** The discard pile of the region after Ancient City's (the Cradle):
+    * where a card discarded there goes. */
   private def discarded(ready: ReadyGame): Vector[WorldCardId] =
     Look(ready).discardAfter("Ancient City")
 
