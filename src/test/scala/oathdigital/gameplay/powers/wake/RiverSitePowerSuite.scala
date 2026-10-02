@@ -42,7 +42,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
   test("it is not usable from a site that is not a River"):
     val ready = staged()
     val dry = ready.game.current.map.inPlay.find(site =>
-      !RiverSitePower.isRiver(catalog, site)).get
+      !RiverSitePower.isRiver(site)).get
     val away = withPawn(ready, actor, dry)
     assertEquals(rivers(away), Vector.empty)
     assert(use(away).isLeft)

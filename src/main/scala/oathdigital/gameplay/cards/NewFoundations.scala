@@ -46,10 +46,13 @@ import oathdigital.gameplay.powers.setup.{GreatForgeCard, GreatMarketCard,
 import oathdigital.gameplay.powers.targeting.{CircletOfCommandCard,
   ForgottenVaultCard, LostTongueCard, OakenFortressCard}
 import oathdigital.gameplay.powers.title.ChaosCultCard
-import oathdigital.gameplay.powers.travel.{DragonskinDrumCard, ForestPathsCard,
-  GraspingVinesCard, RoyalStablesCard, TentsCard, TollRoadsCard}
-import oathdigital.gameplay.powers.wake.{HornedMaskCard, HungerCard,
-  MarbleFountainsCard, QuartermasterCard}
+import oathdigital.gameplay.powers.travel.{BrokenPeaksSite, DesolateShoreSite,
+  DragonskinDrumCard, FairIsleSite, ForestPathsCard, GraspingVinesCard,
+  GreenShoreSite, HiddenPlaceSite, MinesSite, NarrowPassSite, RockyCoastSite,
+  RoyalStablesCard, SunkenIslesSite, TentsCard, TollRoadsCard}
+import oathdigital.gameplay.powers.wake.{AncientCitySite, HeadwatersSite,
+  HornedMaskCard, HungerCard, MarbleFountainsCard, QuartermasterCard,
+  RiverbankSite, TidalMarshesSite}
 import oathdigital.gameplay.powers.whenplayed.{ASmallFavorCard, AnimalHostCard,
   BanditPrinceCard, CharlatanCard, DazzleCard, FabledFeastCard,
   FaithfulFriendCard, FamilyHeirloomCard, GarrisonCard, GreatHerdCard,

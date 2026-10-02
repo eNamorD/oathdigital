@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
@@ -14,7 +15,7 @@ class TravelSitePowersSuite extends munit.FunSuite:
   private val catalog = FirstGameSetupFixture.catalog
   private val baseReady = Table.start.ready
   private val actor = baseReady.game.current.turn.activePlayer
-  private val powers = TravelSitePowers.forCatalog(catalog)
+  private val powers = TravelSitePowers.all
 
   private def site(suffix: String): SiteId = catalog.sites.find(
     _.handlers.exists(_.value.endsWith(suffix))).fold(fail(s"missing $suffix"))(_.id)
@@ -165,4 +166,5 @@ class TravelSitePowersSuite extends munit.FunSuite:
       id = SiteId("site:fixture-site"), handlers = Vector(fixturePower))
     val augmented = catalog.copy(sites = catalog.sites :+ fixtureSite)
 
-    assert(!TravelSitePowers.forCatalog(augmented).map(_.id).contains(fixturePower))
+    assert(!WalkerPowerCatalog.default(augmented).powers.map(_.id)
+      .contains(fixturePower))

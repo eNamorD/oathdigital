@@ -29,8 +29,6 @@ final case class ExecutableCatalog(
   /** Either face's powers count. */
   def edificeWithPower(power: PowerId): Option[Edifice] =
     edificeByPower.get(power)
-  def siteWithHandler(handler: PowerId): Option[Site] =
-    siteByHandler.get(handler)
 
   /** A power printed on a denizen, relic, edifice face or legacy. Sites carry
     * handler IDs only, so a site handler has no printed power.
@@ -60,8 +58,6 @@ final case class ExecutableCatalog(
     firstBy(relics.flatMap(r => r.powers.map(_.id -> r)))
   private lazy val edificeByPower = firstBy(edifices.flatMap(e =>
     (e.intact.powers ++ e.ruined.powers).map(_.id -> e)))
-  private lazy val siteByHandler =
-    firstBy(sites.flatMap(s => s.handlers.map(_ -> s)))
   private lazy val powerById = firstBy(
     (denizens.flatMap(_.powers) ++ relics.flatMap(_.powers) ++
       edifices.flatMap(e => e.intact.powers ++ e.ruined.powers) ++

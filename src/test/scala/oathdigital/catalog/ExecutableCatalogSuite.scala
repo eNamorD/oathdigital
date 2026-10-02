@@ -31,10 +31,6 @@ class ExecutableCatalogSuite extends munit.FunSuite:
     assertEquals(
       catalog.relicWithPower(PowerId("relic.sticky-fire")).map(_.id.value),
       Some("R01"))
-    assertEquals(
-      catalog.site(SiteId("site:deep-woods")).map(_.id),
-      catalog.siteWithHandler(PowerId("site.deep-woods.homeland-beast"))
-        .map(_.id))
     assertEquals(catalog.denizenWithPower(PowerId("relic.sticky-fire")), None)
 
   test("an edifice is found from a power on either face"):

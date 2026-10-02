@@ -168,7 +168,10 @@ Design: [Card classes design](superpowers/specs/2026-10-01-card-classes-design.m
   edifices sit in their power files; their powers read their card from the
   card object, `CatalogCards` is gone, and the Grand Scepter and the Hall of
   Ministers declare their own restrictions.
-- [ ] **Slice 4 - sites and legacies.**
+- [x] **Slice 4 - sites and legacies.** Site handlers are power ids each
+  site object names, Homeland rules read the printed suit, and the 13 sites
+  with River or Travel powers sit beside those powers, which name their
+  sites. Legacies keep their catalog lookup: none is implemented yet.
 
 ### Phase - Cleanup tasks
 

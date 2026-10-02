@@ -1,8 +1,95 @@
 package oathdigital.gameplay.powers.travel
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.Site
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{DecisionOptionRef, Location, Move, NoteArg, NoteKey, NotePart, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerId, PowerNote, PowerSourceRef, PowerWindow, RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply}
+import oathdigital.gameplay.powers.wake.{HeadwatersSite, TidalMarshesSite}
+import oathdigital.model.{DecisionOptionRef, Location, Move, NoteArg, NoteKey,
+  NotePart, OathViolation, Operation, Piece, PlayerId, PositionedLocation,
+  PowerId, PowerNote, PowerSourceRef, PowerWindow, RuleSourceRef, SiteId,
+  SiteRule, SiteRuler, SpendSupply, Tokens}
+
+object BrokenPeaksSite extends Site(SiteId("site:broken-peaks"), "Broken Peaks",
+    defense = 2, capacity = 1, relicSlots = 2,
+    recoverDifficulty = Some(4),
+    startingResources = Tokens(0, 2),
+    forgeRequirements = None,
+    homeland = None):
+  val mountain = PowerId("site.broken-peaks.mountain")
+  val handlers: Vector[PowerId] = Vector(mountain)
+
+object DesolateShoreSite extends Site(SiteId("site:desolate-shore"), "Desolate Shore",
+    defense = 1, capacity = 1, relicSlots = 2,
+    recoverDifficulty = Some(5),
+    startingResources = Tokens(0, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val coast = PowerId("site.desolate-shore.coast")
+  val handlers: Vector[PowerId] = Vector(coast)
+
+object FairIsleSite extends Site(SiteId("site:fair-isle"), "Fair Isle",
+    defense = 2, capacity = 2, relicSlots = 1,
+    recoverDifficulty = Some(3),
+    startingResources = Tokens(3, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val coast = PowerId("site.fair-isle.coast")
+  val island = PowerId("site.fair-isle.island")
+  val handlers: Vector[PowerId] = Vector(coast, island)
+
+object GreenShoreSite extends Site(SiteId("site:green-shore"), "Green Shore",
+    defense = 1, capacity = 2, relicSlots = 0,
+    recoverDifficulty = None,
+    startingResources = Tokens(0, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val coast = PowerId("site.green-shore.coast")
+  val handlers: Vector[PowerId] = Vector(coast)
+
+object HiddenPlaceSite extends Site(SiteId("site:hidden-place"), "Hidden Place",
+    defense = 2, capacity = 2, relicSlots = 1,
+    recoverDifficulty = Some(4),
+    startingResources = Tokens(0, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val mountain = PowerId("site.hidden-place.mountain")
+  val handlers: Vector[PowerId] = Vector(mountain)
+
+object MinesSite extends Site(SiteId("site:mines"), "Mines",
+    defense = 1, capacity = 1, relicSlots = 2,
+    recoverDifficulty = Some(5),
+    startingResources = Tokens(3, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val mountain = PowerId("site.mines.mountain")
+  val handlers: Vector[PowerId] = Vector(mountain)
+
+object NarrowPassSite extends Site(SiteId("site:narrow-pass"), "Narrow Pass",
+    defense = 2, capacity = 1, relicSlots = 1,
+    recoverDifficulty = Some(5),
+    startingResources = Tokens(0, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val pass = PowerId("site.narrow-pass.pass")
+  val handlers: Vector[PowerId] = Vector(pass)
+
+object RockyCoastSite extends Site(SiteId("site:rocky-coast"), "Rocky Coast",
+    defense = 2, capacity = 1, relicSlots = 0,
+    recoverDifficulty = None,
+    startingResources = Tokens(0, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val coast = PowerId("site.rocky-coast.coast")
+  val handlers: Vector[PowerId] = Vector(coast)
+
+object SunkenIslesSite extends Site(SiteId("site:sunken-isles"), "Sunken Isles",
+    defense = 2, capacity = 0, relicSlots = 3,
+    recoverDifficulty = Some(6),
+    startingResources = Tokens(0, 0),
+    forgeRequirements = None,
+    homeland = None):
+  val coast = PowerId("site.sunken-isles.coast")
+  val island = PowerId("site.sunken-isles.island")
+  val handlers: Vector[PowerId] = Vector(coast, island)
 
 private[travel] object TravelRoute:
   final case class PawnMove(player: PlayerId, source: SiteId, destination: SiteId)
@@ -131,50 +218,44 @@ object NarrowPassSitePower:
   val noTarget: NoteKey = NoteKey("no-target", Vector(NotePart.Arg(0),
     NotePart.Text(" cannot target other sites in the region.")))
 
-/** Catalog-bound site contributions for Travel's terrain rules. Static site
-  * topology lives on the power objects; command state supplies only the
-  * current route through PowerCtx.operation.
+/** The sites' Travel terrain contributions. Static site topology lives on
+  * the power objects; command state supplies only the current route through
+  * PowerCtx.operation.
   */
 object TravelSitePowers:
   private enum Terrain { case Mountain, Island, Coast, NarrowPass }
   import Terrain._
-  private final case class Supported(id: PowerId, terrain: Terrain)
+  private final case class Supported(id: PowerId, site: SiteId,
+      terrain: Terrain)
 
-  /** Explicit reviewed Travel handlers. A catalog may contain unrelated or
-    * future `*.coast`-looking ids; only a reviewed descriptor becomes a power.
+  /** Explicit reviewed Travel handlers, in power id order. A power comes
+    * only from this list, never from a `*.coast`-looking handler id.
     */
   private val supported = Vector(
-    Supported(PowerId("site.broken-peaks.mountain"), Mountain),
-    Supported(PowerId("site.desolate-shore.coast"), Coast),
-    Supported(PowerId("site.fair-isle.coast"), Coast),
-    Supported(PowerId("site.fair-isle.island"), Island),
-    Supported(PowerId("site.green-shore.coast"), Coast),
-    Supported(PowerId("site.headwaters.mountain"), Mountain),
-    Supported(PowerId("site.hidden-place.mountain"), Mountain),
-    Supported(PowerId("site.mines.mountain"), Mountain),
-    Supported(PowerId("site.narrow-pass.pass"), NarrowPass),
-    Supported(PowerId("site.rocky-coast.coast"), Coast),
-    Supported(PowerId("site.sunken-isles.coast"), Coast),
-    Supported(PowerId("site.sunken-isles.island"), Island),
-    Supported(PowerId("site.tidal-marshes.coast"), Coast)
-  )
+    Supported(BrokenPeaksSite.mountain, BrokenPeaksSite.id, Mountain),
+    Supported(DesolateShoreSite.coast, DesolateShoreSite.id, Coast),
+    Supported(FairIsleSite.coast, FairIsleSite.id, Coast),
+    Supported(FairIsleSite.island, FairIsleSite.id, Island),
+    Supported(GreenShoreSite.coast, GreenShoreSite.id, Coast),
+    Supported(HeadwatersSite.mountain, HeadwatersSite.id, Mountain),
+    Supported(HiddenPlaceSite.mountain, HiddenPlaceSite.id, Mountain),
+    Supported(MinesSite.mountain, MinesSite.id, Mountain),
+    Supported(NarrowPassSite.pass, NarrowPassSite.id, NarrowPass),
+    Supported(RockyCoastSite.coast, RockyCoastSite.id, Coast),
+    Supported(SunkenIslesSite.coast, SunkenIslesSite.id, Coast),
+    Supported(SunkenIslesSite.island, SunkenIslesSite.id, Island),
+    Supported(TidalMarshesSite.coast, TidalMarshesSite.id, Coast))
+  private val coastSites = supported.collect {
+    case Supported(_, site, Coast) => site
+  }.toSet
+  private val coastOrIslandSites = supported.collect {
+    case Supported(_, site, Coast | Island) => site
+  }.toSet
 
-  def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] =
-    val present = supported.foldLeft(Vector.empty[(Supported, SiteId)]):
-      (found, descriptor) =>
-        catalog.siteWithHandler(descriptor.id) match
-          case Some(site) => found :+ (descriptor -> site.id)
-          case None => found
-    val coastSites = present.collect {
-      case (Supported(_, Coast), site) => site
-    }.toSet
-    val coastOrIslandSites = present.collect {
-      case (Supported(_, Coast | Island), site) => site
-    }.toSet
-    present.map:
-      case (Supported(id, Mountain), site) => MountainSitePower(id, site)
-      case (Supported(id, Island), site) => IslandSitePower(id, site)
-      case (Supported(id, Coast), site) =>
-        CoastSitePower(id, site, coastOrIslandSites)
-      case (Supported(id, NarrowPass), site) =>
-        NarrowPassSitePower(id, site, coastSites, coastOrIslandSites)
+  val all: Vector[ContributingPower] = supported.map:
+    case Supported(id, site, Mountain) => MountainSitePower(id, site)
+    case Supported(id, site, Island) => IslandSitePower(id, site)
+    case Supported(id, site, Coast) =>
+      CoastSitePower(id, site, coastOrIslandSites)
+    case Supported(id, site, NarrowPass) =>
+      NarrowPassSitePower(id, site, coastSites, coastOrIslandSites)

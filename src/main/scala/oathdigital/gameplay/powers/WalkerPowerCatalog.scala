@@ -47,7 +47,7 @@ object WalkerPowerCatalog:
   def default(catalog: ExecutableCatalog): WalkerPowers =
     WalkerPowers(Vector(CatacombsContribution.forCatalog(catalog)) ++
       Vector(VowOfPeaceContribution) ++
-      TravelSitePowers.forCatalog(catalog) ++
+      TravelSitePowers.all ++
       TravelModifiers.forCatalog(catalog) ++
       Vector(LeagueTreatyContribution.forCatalog(catalog)) ++
       Vector(SilverTongue.forCatalog(catalog)) ++

@@ -122,14 +122,17 @@ class CardCatalogSuite extends munit.FunSuite:
           if held(card) == implemented(card.id, card.powers) => card.name } ++
         catalog.edifices.collect { case card if held(card) ==
             implemented(card.id, card.intact.powers ++ card.ruined.powers) =>
-          card.intact.name }
+          card.intact.name } ++
+        catalog.sites.collect { case site
+          if held(site) == site.handlers.exists(registered) => site.name }
     assertEquals(misplaced, Vector.empty)
 
   test("card powers are registered whichever cards a catalog lists"):
     def cardPowers(listed: ExecutableCatalog): Set[PowerId] =
       (WalkerPowerCatalog.default(listed).powers.map(_.id) ++
         PhasePowerCatalog.default(listed).powers.map(_.id))
-        .filter(id => Vector("denizen.", "relic.", "edifice.")
+        .filter(id => Vector("denizen.", "relic.", "edifice.", "site.")
           .exists(id.value.startsWith)).toSet
     assertEquals(cardPowers(catalog.copy(denizens = Vector.empty,
-      relics = Vector.empty, edifices = Vector.empty)), cardPowers(catalog))
+      relics = Vector.empty, edifices = Vector.empty, sites = Vector.empty)),
+      cardPowers(catalog))

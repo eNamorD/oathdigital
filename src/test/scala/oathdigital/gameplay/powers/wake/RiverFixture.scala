@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.gameplay.powers.PowerFixture
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 /** Staging for the River. The first game has one River in play, Ancient
@@ -15,7 +14,7 @@ object RiverFixture:
   val tidalMarshes: SiteId = SiteId("site:tidal-marshes")
 
   /** Ancient City's River. */
-  lazy val river: RiverSitePower = RiverSitePower.forCatalog(catalog)
+  lazy val river: RiverSitePower = RiverSitePower.all
     .find(_.site == ancientCity).get
 
   /** `rivers` take the places of the first in-play sites, in map order, that
@@ -28,7 +27,7 @@ object RiverFixture:
       s"already in play: $rivers")
     val pawns = current.players.flatMap(_.pawnSite).toSet
     val replaced = current.map.inPlay.filter(site =>
-      !RiverSitePower.isRiver(catalog, site) && !pawns.contains(site))
+      !RiverSitePower.isRiver(site) && !pawns.contains(site))
       .take(rivers.size)
     val swaps = replaced.zip(rivers).toMap
     def swap(ids: Vector[SiteId]) = ids.map(id => swaps.getOrElse(id, id))

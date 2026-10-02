@@ -65,7 +65,7 @@ class CampaignPowersSuite extends munit.FunSuite:
         if player.player == actor then player.copy(pawnSite = Some(site))
         else player)))
 
-  private val passPower = TravelSitePowers.forCatalog(catalog).collectFirst {
+  private val passPower = TravelSitePowers.all.collectFirst {
     case power: NarrowPassSitePower => power }.get
   private def siteOption(id: SiteId) =
     DecisionOption.Site(DecisionOptionRef.Site(id))
