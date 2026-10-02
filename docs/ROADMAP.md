@@ -10,8 +10,7 @@ in priority. (Some items may still be labeled as such, for consistency with spec
 
 **Phase - Cleanup tasks** holds what the finished Catalog batch 3 and
 Card classes phases left behind, bugs and small UI fixes from the
-2026-10-01 playtest, and one item blocked on the Chronicle Phase. No other
-phase is in progress.
+2026-10-01 playtest. No other phase is in progress.
 
 ## Next
 
@@ -60,9 +59,6 @@ From the playtest of 2026-10-01:
 
 Left behind by earlier phases:
 
-- [ ] **Enduring (Ancient City) waits for a Chronicle Phase.** Its cards are
-  not discarded in the Chronicle Phase's Shape Empire step, which the engine
-  does not have yet. The Pass's consent waits for the Consent system phase.
 - [ ] **Contract suite for `EventStreamRepository`.** `InMemoryEventStreamRepository`
   is the fake every service test uses, and `HsqldbEventStreamRepositorySuite`
   tests the real store, but no suite runs both. The fake can drift from the
@@ -432,6 +428,9 @@ changes, Foundation mutation, Legacy activation/scoring, Oathkeeper goal
 changes, era scoring, saved-campaign continuation, and campaign browsing.
 
 - [ ] **End-of-game Chronicle steps.**
+- [ ] **Enduring (Ancient City).** Its cards are not discarded in the
+  Chronicle Phase's Shape Empire step, which the engine does not have yet.
+  The Pass's consent waits for the Consent system phase.
 - [ ] **Chronicle import and export.** The Chronicle string codec for the TTS
   format, including the sections that format has not defined yet.
 - [ ] **Foundations.**
