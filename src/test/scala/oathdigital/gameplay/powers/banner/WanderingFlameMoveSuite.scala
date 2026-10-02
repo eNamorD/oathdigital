@@ -5,7 +5,8 @@ import oathdigital.model._
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look,
   PhasePowerHarness, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
-import oathdigital.testkit.Table.p3
+import oathdigital.testkit.Table.{p1, p3}
+import oathdigital.testkit.Unwrap.accepted
 
 class WanderingFlameMoveSuite extends munit.FunSuite:
   import PowerFixture._
@@ -14,108 +15,99 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
     replayed, use}
   import ActPowerHarness.usableIds
 
+  private val ancientCity = CatalogNames.site("Ancient City")
+  private val brokenPeaks = CatalogNames.site("Broken Peaks")
+  private val buriedGiant = CatalogNames.site("Buried Giant")
+  private val deepWoods = CatalogNames.site("Deep Woods")
   private val power = WanderingFlameMove
 
-  /** The actor holds the banner in the Act phase, and exactly one secret lies
-    * on each site in `marked`.
-    */
-  private def staged(marked: SiteId*): ReadyGame = inPhase(
-    marked.foldLeft(Table.from(quietTable).darkestSecret(Some(actor),
-      1).unchecked)(
-      ((r, site) => Table.from(r).siteTokens(site,
-        secrets = 1).unchecked)), Phase.Act)
+  /** p1's Act at Ancient City holding the Darkest Secret, with its one
+    * secret, on Wandering Flame, and exactly one secret on each site in
+    * `marked`. */
+  private def stagedTable(marked: String*): Table =
+    marked.foldLeft(Table.start.pawn(p1, "Ancient City")
+      .darkestSecret(Some(p1), 1))(_.siteTokens(_, secrets = 1))
+  private def staged(marked: String*): ReadyGame = stagedTable(marked*).ready
 
   test("one secret-bearing site: the pawn goes there with no question, by a " +
       "plain Move that leaves the secret where it is"):
-    val start = staged(CatalogNames.site("Broken Peaks"))
-    val done = use(start, power, darkestSecretOption).toOption.get
+    val start = staged("Broken Peaks")
+    val done = accepted(use(start, power, darkestSecretOption))
     assert(backToActing(done))
     assertEquals(Look(after(done)).pawn(actor),
-      CatalogNames.site("Broken Peaks"))
-    assertEquals(Look(after(done)).siteTokens(CatalogNames.site("Broken Peaks"))
-      .secrets, 1)
+      brokenPeaks)
+    assertEquals(Look(after(done)).siteTokens(brokenPeaks).secrets, 1)
     assertEquals(ops(done.events), Vector[CoreOperation](
       Move(Piece.Pawn(actor),
-        PositionedLocation(Location.Site(CatalogNames.site("Ancient City"))),
-        PositionedLocation(Location.Site(CatalogNames.site("Broken Peaks"))))))
+        PositionedLocation(Location.Site(ancientCity)),
+        PositionedLocation(Location.Site(brokenPeaks)))))
     assertEquals(replayed(start, done.events), Right(done.state))
     assertWireRoundTrips(done.events)
 
   test("several candidates: the player chooses among exactly the other " +
       "sites that hold a secret"):
-    val start = staged(CatalogNames.site("Broken Peaks"),
-      CatalogNames.site("Buried Giant"), CatalogNames.site("Ancient City"))
-    val parked = use(start, power, darkestSecretOption).toOption.get
+    val start = staged("Broken Peaks", "Buried Giant", "Ancient City")
+    val parked = accepted(use(start, power, darkestSecretOption))
     assert(awaits(parked, power.decisionId))
     assert(answer(parked, actor, power.decisionId,
-      pick(DecisionOptionRef.Site(CatalogNames.site("Ancient City"))))
-        .isLeft, "the pawn's own site")
+      pick(DecisionOptionRef.Site(ancientCity))).isLeft, "the pawn's own site")
     assert(answer(parked, actor, power.decisionId,
-      pick(DecisionOptionRef.Site(CatalogNames.site("Deep Woods"))))
-        .isLeft, "a site with no secret")
-    val done = answer(parked, actor, power.decisionId,
-      pick(DecisionOptionRef.Site(CatalogNames.site("Buried Giant"))))
-        .toOption.get
+      pick(DecisionOptionRef.Site(deepWoods))).isLeft, "a site with no secret")
+    val done = accepted(
+      answer(parked, actor, power.decisionId,
+      pick(DecisionOptionRef.Site(buriedGiant))))
     assert(backToActing(done))
     assertEquals(Look(after(done)).pawn(actor),
-      CatalogNames.site("Buried Giant"))
+      buriedGiant)
     assertEquals(replayed(start, parked.events ++ done.events),
       Right(done.state))
 
   test("a secret on a card at a site does not count, only one on the site"):
-    val card = DenizenId("7")
-    val onCard = Table.from(atSite(staged(), card,
-      CatalogNames.site("Broken Peaks"))).tokens(card, Tokens(0, 1)
-      .favor, Tokens(0, 1).secrets).unchecked
-    assert(!usableIds(onCard).contains(power.id))
-    assert(usableIds(Table.from(onCard)
-      .siteTokens(CatalogNames.site("Broken Peaks"),
-      secrets = 1).unchecked).contains(power.id))
+    val card = CatalogNames.denizen("Garrison")
+    val onCard = stagedTable().denizen(card, at = "Broken Peaks")
+      .tokens(card, secrets = 1)
+    assert(!usableIds(onCard.ready).contains(power.id))
+    assert(usableIds(onCard.siteTokens("Broken Peaks", secrets = 1).ready)
+      .contains(power.id))
 
   test("it is unlimited: it can be used again in the same turn"):
-    val start = staged(CatalogNames.site("Broken Peaks"),
-      CatalogNames.site("Buried Giant"))
-    val first = use(start, power, darkestSecretOption).toOption.get
-    val parked = answer(first, actor, power.decisionId,
-      pick(DecisionOptionRef.Site(CatalogNames.site("Broken Peaks"))))
-        .toOption.get
+    val start = staged("Broken Peaks", "Buried Giant")
+    val first = accepted(use(start, power, darkestSecretOption))
+    val parked = accepted(
+      answer(first, actor, power.decisionId,
+      pick(DecisionOptionRef.Site(brokenPeaks))))
     val second = use(after(parked), power, darkestSecretOption)
     assert(second.isRight, second.toString)
     assertEquals(after(parked).game.current.turn.usedPowers, Set.empty[PowerUseRef])
 
   test("it is unusable with no other site holding a secret, without the " +
-      "banner, or on the Festival face"):
+      "banner, with the banner held by another player, or on the Festival " +
+      "face, and usable with one other secret-bearing site"):
     assert(!usableIds(staged()).contains(power.id))
     assert(use(staged(), power, darkestSecretOption).isLeft)
-    assert(!usableIds(staged(CatalogNames.site("Ancient City")))
-      .contains(power.id), "only the pawn's own site")
-    assert(usableIds(staged(CatalogNames.site("Broken Peaks")))
-      .contains(power.id))
-    val notHeld = inPhase(Table.from(quietTable).darkestSecret(None,
-      1).siteTokens(CatalogNames.site("Broken Peaks"), secrets = 1)
-      .unchecked, Phase.Act)
+    assert(!usableIds(staged("Ancient City")).contains(power.id),
+      "only the pawn's own site")
+    assert(usableIds(staged("Broken Peaks")).contains(power.id))
+    val notHeld = Table.start.turn(p1, Phase.Act).darkestSecret(None, 1)
+      .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(notHeld).contains(power.id))
     assert(use(notHeld, power, darkestSecretOption).isLeft)
-    val theirs = inPhase(Table.from(quietTable).darkestSecret(Some(p3),
-      1).siteTokens(CatalogNames.site("Broken Peaks"), secrets = 1)
-      .unchecked, Phase.Act)
+    val theirs = Table.start.turn(p1, Phase.Act).darkestSecret(Some(p3), 1)
+      .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(theirs).contains(power.id))
-    val festival = inPhase(Table.from(quietTable).darkestSecret(Some(actor), 1,
-      DarkestSecretFace.Festival)
-      .siteTokens(CatalogNames.site("Broken Peaks"),
-      secrets = 1).unchecked, Phase.Act)
+    val festival = Table.start.turn(p1, Phase.Act)
+      .darkestSecret(Some(p1), 1, DarkestSecretFace.Festival)
+      .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(festival).contains(power.id))
     assert(use(festival, power, darkestSecretOption).isLeft)
 
   test("it is usable in the Act phase only"):
-    val wake = inPhase(Table.from(quietTable).darkestSecret(Some(actor),
-      1).siteTokens(CatalogNames.site("Broken Peaks"), secrets = 1).unchecked,
-      Phase.Wake)
+    val wake = Table.start.turn(p1, Phase.Wake).darkestSecret(Some(p1), 1)
+      .siteTokens("Broken Peaks", secrets = 1).ready
     assert(!usableIds(wake).contains(power.id))
 
   test("it writes where the pawn went"):
-    val done = use(staged(CatalogNames.site("Broken Peaks")), power,
-      darkestSecretOption).toOption.get
+    val done = accepted(use(staged("Broken Peaks"), power, darkestSecretOption))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
-      NoteKey.Used, s"${actor.value} placed at ${CatalogNames.site("Broken Peaks").value}.",
+      NoteKey.Used, s"${actor.value} placed at ${brokenPeaks.value}.",
       covers = false)))

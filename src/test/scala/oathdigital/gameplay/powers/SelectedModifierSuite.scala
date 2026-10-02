@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
 
 /** The kit every selected modifier stands on: it is offered only for its own
   * action, only when the player may use its card and can pay for it, and it
@@ -12,7 +13,7 @@ import oathdigital.testkit.Table
 class SelectedModifierSuite extends munit.FunSuite:
   import PowerFixture._
 
-  private val card = DenizenId("29")
+  private val card = CatalogNames.denizen("Tents")
 
   /** A test double on a catalog modifier id, so its resolution is the catalog's. */
   private final case class Probe(cardId: CardId, override val cost: Cost,
@@ -34,11 +35,13 @@ class SelectedModifierSuite extends munit.FunSuite:
 
   private val travel: Set[MajorActionType] = Set(MajorActionType.Travel)
   private def free = Probe(card, Cost.free, travel)
-  private def atHomeWith(cost: Int = 1) = Table.from(atActorsSite(quietTable,
-    card)).favor(actor, cost).unchecked
+  /** p1's Act at Ancient City with Tents at the site and `favor` favor. */
+  private def tentsAtAncientCity(favor: Int = 1): Table =
+    Table.start.pawn(p1, "Ancient City").denizen(card, at = "Ancient City")
+      .favor(p1, favor)
 
   test("it is offered for its own action and no other"):
-    val ready = atHomeWith()
+    val ready = tentsAtAncientCity().ready
     assert(selectable(ready, free))
     assert(!selectable(ready, free, PowerWindow.SearchModifierSelection))
     assert(!selectable(ready, free, PowerWindow.MusterModifierSelection))
@@ -53,22 +56,17 @@ class SelectedModifierSuite extends munit.FunSuite:
 
   test("a cost must be payable: enough favor, and an empty card"):
     val priced = Probe(card, Cost(favor = 1), travel)
-    assert(selectable(atHomeWith(1), priced))
-    assert(!selectable(atHomeWith(0), priced))
-    val occupied = atHomeWith(1).updateCurrent(c => c.copy(map = c.map.copy(
-      sites = c.map.sites.updated(actorsSite(quietTable),
-        c.map.sites(actorsSite(quietTable)).copy(
-        denizens = c.map.sites(actorsSite(quietTable)).denizens.map {
-          case d: DenizenState if d.id == card => d.copy(tokens = Tokens(1, 0))
-          case other => other
-        })))))
+    assert(selectable(tentsAtAncientCity(1).ready, priced))
+    assert(!selectable(tentsAtAncientCity(0).ready, priced))
+    val occupied = tentsAtAncientCity(1).tokens(card, favor = 1).ready
     assert(!selectable(occupied, priced))
 
   test("inside the walk it asks only about its own node"):
     val priced = Probe(card, Cost(favor = 1), travel)
     // No card and no favor, yet the fold at a walk window still applies it,
     // because a walk window must not depend on what the action spends.
-    assert(priced.applicable(ctx(quietTable, priced, PowerWindow.TravelCost)))
+    val broke = Table.start.favor(p1, 0).ready
+    assert(priced.applicable(ctx(broke, priced, PowerWindow.TravelCost)))
 
   test("a cost is paid at the root of the action's tree, and only for a costed " +
       "modifier"):
@@ -87,7 +85,7 @@ class SelectedModifierSuite extends munit.FunSuite:
 
   test("the payment is what selecting it pays, for the combined check"):
     val priced = Probe(card, Cost(favor = 1), travel)
-    val ready = atHomeWith(1)
+    val ready = tentsAtAncientCity(1).ready
     assertEquals(priced.selectionPayments(ready, actor), Vector(
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
         catalog)))
@@ -103,9 +101,11 @@ class SelectedModifierSuite extends munit.FunSuite:
       def effects: Map[PowerWindow, Vector[Contribution]] = Map(
         PowerWindow.TravelActionEligibility ->
           Vector(oathdigital.gameplay.powerresolver.Transform((_, ops) => ops)))
-    val Vector(first, second) = both.contributions(
+    val transforms = both.contributions(
       PowerWindow.TravelActionEligibility).collect {
-        case oathdigital.gameplay.powerresolver.Transform(fn) => fn }: @unchecked
+        case oathdigital.gameplay.powerresolver.Transform(fn) => fn }
+    assertEquals(transforms.size, 2)
+    val (first, second) = (transforms(0), transforms(1))
     val at = ctx(quietTable, both, PowerWindow.TravelActionEligibility)
     assertEquals(first(at, Vector.empty), Vector[Operation](
       oathdigital.gameplay.operations.Costs.onCard(actor, card, Cost(favor = 1),
