@@ -8,6 +8,7 @@ import oathdigital.gameplay.powers.campaign.BattlePlan
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.present
 
 /** What the ported plans offer, asked directly: where a plan's card must stand,
   * what it costs and what it does. Whether the user can pay, and how a plan is
@@ -74,8 +75,8 @@ class CampaignPlansSuite extends munit.FunSuite:
   test("Brass Army costs a secret placed onto a faceup relic, occupied or " +
       "not, and adds four attack dice"):
     val occupied = withRelic(board(warbands = 5, supply = 7), brassCard)
-    val offer = brass.plan(context(withSecrets(occupied, 1),
-      CampaignPlanSide.Attacker)).get
+    val attacking = context(withSecrets(occupied, 1), CampaignPlanSide.Attacker)
+    val offer = brass.plan(attacking).get
     assertEquals(offer.costs,
       Vector[CampaignPlanCost](CampaignPlanCost.Secret(1)))
     assertEquals(offer.effects, Vector[CampaignPlanEffect](
@@ -131,24 +132,25 @@ class CampaignPlansSuite extends munit.FunSuite:
   test("the title adds one defense die to an Oathkeeper and two to a " +
       "Usurper, and only for a defender who holds it"):
     val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
-    def titled(side: TitleSide): Option[CampaignPlanOffer] =
+    def titled(side: TitleSide): CampaignPlanOffer =
       val state = on(b)(_.oathkeeper(Some(b.rival), side))
-      TitleDefensePlan.plan.plan(defending(state))
-    assertEquals(titled(TitleSide.Oathkeeper).get.effects,
+      present(TitleDefensePlan.plan.plan(defending(state)),
+        s"the title's plan on its $side side")
+    assertEquals(titled(TitleSide.Oathkeeper).effects,
       Vector[CampaignPlanEffect](CampaignPlanEffect.AddDefenseDice(1)))
-    assertEquals(titled(TitleSide.Usurper).get.effects,
+    assertEquals(titled(TitleSide.Usurper).effects,
       Vector[CampaignPlanEffect](CampaignPlanEffect.AddDefenseDice(2)))
-    assertEquals(titled(TitleSide.Oathkeeper).get.source,
+    assertEquals(titled(TitleSide.Oathkeeper).source,
       CampaignPlanSource.Title(b.rival))
-    assertEquals(CampaignPlans.refOf(titled(TitleSide.Oathkeeper).get.source),
+    assertEquals(CampaignPlans.refOf(titled(TitleSide.Oathkeeper).source),
       DecisionOptionRef.Button("title"))
-    assertEquals(titled(TitleSide.Oathkeeper).get.label,
+    assertEquals(titled(TitleSide.Oathkeeper).label,
       "Oathkeeper title: add 1 defense die")
     assertEquals(
       TitleDefensePlan.plan.plan(context(b, CampaignPlanSide.Attacker)), None)
     val untitled = board(warbands = 5, supply = 7)
-    assertEquals(TitleDefensePlan.plan.plan(context(untitled,
-      CampaignPlanSide.Defender)), None)
+    val defendingUntitled = context(untitled, CampaignPlanSide.Defender)
+    assertEquals(TitleDefensePlan.plan.plan(defendingUntitled), None)
 
   test("plans are listed with the title first, then advisers, relics, and " +
       "cards at sites, then by key"):
@@ -165,8 +167,8 @@ class CampaignPlansSuite extends munit.FunSuite:
     val edifice = offered("test.d",
       CampaignPlanSource.SiteEdifice(SiteId("s"), EdificeId("e")))
     val title = offered("test.e", CampaignPlanSource.Title(PlayerId("p")), "t")
-    val sorted = CampaignPlans.sorted(Vector(site, edifice, relic, adviser,
-      title))
+    val sorted = CampaignPlans.sorted(
+      Vector(site, edifice, relic, adviser, title))
     assertEquals(sorted.map(_.power.value),
       Vector("test.e", "test.a", "test.b", "test.c", "test.d"))
 

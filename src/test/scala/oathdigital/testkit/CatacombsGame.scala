@@ -43,10 +43,13 @@ object CatacombsGame:
       else home.bandits(brokenPeaks, 1), brokenPeaks)
 
   private def atFairIsle(secrets: Int)(using munit.Location): Table =
+    val difficulty = RecoverRules.difficulty(catalog, fairIsle)
     munit.Assertions.assert(
-      RecoverRules.difficulty(catalog, fairIsle).exists(_ > 0) &&
-        catalog.sites.find(_.id == fairIsle).exists(_.relicSlots > 0),
-      "Fair Isle must be a Recover site with a relic slot")
+      Table.start.ready.game.current.map.inPlay.contains(fairIsle) &&
+        difficulty.exists(d => d > 0 && d <= 4) &&
+        catalog.sites.find(_.id == fairIsle).exists(_.relicSlots == 1),
+      "Fair Isle must be in play, a Recover site of difficulty 4 or less, " +
+        "with one relic slot")
     Table.start.pawn(Table.p1, at = fairIsle)
       .secrets(Table.p1, faceUp = secrets)
       .denizen(catacombsCard, at = fairIsle)

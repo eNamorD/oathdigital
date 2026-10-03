@@ -96,7 +96,9 @@ class CampaignRaidSuite extends munit.FunSuite:
     assertEquals(rival.board.favor, 5 - 5 / 2)
     assertEquals(rival.board.warbands, 3 - 3 / 2)
     assertEquals(rival.pawnSite, Some(b.origin))
-    val destination = after.game.current.map.inPlay.find(_ != b.origin).get
+    val inPlay = after.game.current.map.inPlay
+    val destination = present(inPlay.find(_ != b.origin),
+      "another site in play")
     val options = after.game.current.map.inPlay.filterNot(_ == b.origin)
       .map(site => DecisionOption.Site(DecisionOptionRef.Site(site)))
     val pending = present(after.game.current.walkerPending,
@@ -117,10 +119,11 @@ class CampaignRaidSuite extends munit.FunSuite:
   test("the pawn cannot be relocated to its own site"):
     val RaidBoard(b, relic) = raidBoard()
     val walked = walk(b, relic, attack = 4)
-    assertEquals(walked.game.resolveWalker(walked.sacrificed.state, b.actor,
-      CampaignIds.relocation, ChooseOneAnswer(DecisionOptionRef.Site(b.origin)))
-      .left.toOption, Some(OathViolation.InvalidEventOrder(
-        "decision campaign.relocation does not offer the selected option")))
+    val toOrigin = ChooseOneAnswer(DecisionOptionRef.Site(b.origin))
+    val refused = walked.game.resolveWalker(walked.sacrificed.state, b.actor,
+      CampaignIds.relocation, toOrigin)
+    assertEquals(refused.left.toOption, Some(OathViolation.InvalidEventOrder(
+      "decision campaign.relocation does not offer the selected option")))
 
   test("a Raid defeat transfers nothing, moves no pawn and kills half the " +
       "survivors"):
@@ -153,8 +156,9 @@ class CampaignRaidSuite extends munit.FunSuite:
   test("the Raid's recorded events replay to the same state as the live walk"):
     val RaidBoard(b, relic) = raidBoard()
     val walked = walk(b, relic, attack = 4)
-    val destination = ready(walked.sacrificed.state).game.current.map.inPlay
-      .find(_ != b.origin).get
+    val inPlay = ready(walked.sacrificed.state).game.current.map.inPlay
+    val destination = present(inPlay.find(_ != b.origin),
+      "another site in play")
     val done = accepted(walked.game.resolveWalker(walked.sacrificed.state,
       b.actor, CampaignIds.relocation,
       ChooseOneAnswer(DecisionOptionRef.Site(destination))))

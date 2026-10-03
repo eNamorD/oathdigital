@@ -40,8 +40,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
   private def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
     PhasePowerHarness.ops(events)
 
-  /** p1's `answer` to `id`, resolved by `game` from `from`; fails with the
-    * violation. */
+  /** The attacker's `answer` to `id`, resolved by `game` from `from`; fails
+    * with the violation. The attacker is every board's actor, p1. */
   private def resolved(game: OathRules, from: OathTransition, id: String,
       answer: DecisionAnswer): OathTransition =
     accepted(game.resolveWalker(from.state, Table.p1, id, answer))
@@ -55,7 +55,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val current = ready(transition.state)
     val facts = present(parked.parkedDecision(transition.state),
       s"a park in $transition")
-    val pending = current.game.current.walkerPending.get
+    val pending = present(current.game.current.walkerPending,
+      "a parked walker decision")
     val tree = accepted(WalkerProcedureRegistry.rebuild(facts.procedure,
       catalog, current, b.actor, Vector.empty))
     ProcedureWalker.openDecisions(current, tree, pending,
@@ -137,7 +138,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val b = board(supply = 1, warbands = 5)
     assertEquals(start(b).left.toOption,
       Some(OathViolation.CoreOperationRejected("insufficient-supply",
-      "a supply spend of 2 exceeds the 1 available")))
+        "a supply spend of 2 exceeds the 1 available")))
     assert(!CampaignProcedure.startable(catalog, b.ready, b.actor,
       WalkerPowers.empty))
 
@@ -316,11 +317,10 @@ class CampaignProcedureSuite extends munit.FunSuite:
   private def committed(game: OathRules, b: Board, force: Int): OathTransition =
     val started = accepted(
       game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor))
-    resolved(game, started, CampaignIds.force,
-      ChooseAmountAnswer(force))
+    resolved(game, started, CampaignIds.force, ChooseAmountAnswer(force))
 
   private def result(state: OathState): CampaignResult =
-    ready(state).game.current.lastCampaignResult.get
+    present(ready(state).game.current.lastCampaignResult, "a Campaign result")
   private def isAutomaticRoll(pool: PoolKey)(event: OathEvent): Boolean =
     event match
       case step: WalkerStepRecorded => step.payload match
@@ -434,7 +434,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(result(sacrificed.state).defender,
       CampaignDefender.Player(b.rival))
     // The rival's 2 warbands at the origin are killed; half return.
-    assertEquals(Look(sacrificed.state).boardWarbands(b.rival), before + 2 / 2)
+    assertEquals(Look(sacrificed.state).boardWarbands(b.rival),
+      before + (2 - 2 / 2))
 
   test("several targets are placed with one distribution, and the rest stay " +
       "on the board"):
