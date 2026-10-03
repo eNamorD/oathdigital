@@ -107,8 +107,8 @@ class PowerResolverSuite extends munit.FunSuite:
       Vector(RestStart), resolution = Automatic)
     val powers = Vector(selected, applicableAutomatic, inapplicableAutomatic,
       implementedAutomatic)
-    val result = accepted(
-      new PowerResolver(PowerRegistry(powers*)).resolve(RestStart,
+    val resolver = new PowerResolver(PowerRegistry(powers*))
+    val result = accepted(resolver.resolve(RestStart,
       Vector(sourceA -> powers.map(_.id)), NoFacts))
     assertEquals(result.offered, Vector.empty)
     assertEquals(result.automatic.map(_.powerId),
@@ -120,10 +120,10 @@ class PowerResolverSuite extends munit.FunSuite:
     val alpha = power("test.alpha", Vector(RecoverEligibility), recover)
     val beta = power("test.beta", Vector(RecoverEligibility), recover)
     val facts = RecoverFacts(PlayerId("p1"), emptySlot = true)
-    val result = accepted(new PowerResolver(PowerRegistry(beta, alpha)).resolve(
-      RecoverEligibility, Vector(sourceZ -> Vector(beta.id,
-        alpha.id), sourceA -> Vector(beta.id)), facts)
-      )
+    val resolver = new PowerResolver(PowerRegistry(beta, alpha))
+    val result = accepted(resolver.resolve(RecoverEligibility,
+      Vector(sourceZ -> Vector(beta.id, alpha.id), sourceA -> Vector(beta.id)),
+      facts))
     assertEquals(result.offered.map(i => i.source.stableKey -> i.powerId),
       Vector("site:a" -> PowerId("test.beta"),
       "site:z" -> PowerId("test.alpha"), "site:z" -> PowerId("test.beta")))

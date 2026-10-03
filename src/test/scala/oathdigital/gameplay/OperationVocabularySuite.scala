@@ -53,7 +53,7 @@ class OperationVocabularySuite extends munit.FunSuite:
       "to the acting player facedown"):
     val siteId = CatalogNames.site("Ancient City")
     val denizen = CatalogNames.denizen("Errand Boy")
-    val suit = Suit.Beast
+    val suit = Suit.Beast  // Errand Boy is a Beast.
     val loaded = Table.start.denizen(denizen, at = siteId)
       .tokens(denizen, favor = 2, secrets = 1).ready
     val before = Look(loaded).player(actor).board

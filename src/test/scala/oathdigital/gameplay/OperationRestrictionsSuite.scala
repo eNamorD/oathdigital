@@ -90,15 +90,16 @@ class OperationRestrictionsSuite extends munit.FunSuite:
       .warbandsAt(hallSite, p1, 1).ready
 
   test("an intact edifice is locked, and a ruined one is not"):
-    def edificeOps(site: SiteId): Vector[CoreOperation] = Vector(
-      Discard.RuinedEdifice(hall, PositionedLocation(Location.Site(site)),
+    val edificeOps: Vector[CoreOperation] = Vector(
+      Discard.RuinedEdifice(hall, PositionedLocation(Location.Site(hallSite)),
         catalog.suitOf(hall).get, 0, 0, p1),
-      Take(Piece.Card(hall), p1, Location.Site(site), Location.PlayArea(p1)))
+      Take(Piece.Card(hall), p1, Location.Site(hallSite),
+        Location.PlayArea(p1)))
     val intact = edificeAt(EdificeSide.Intact)
-    assertEquals(edificeOps(hallSite).map(refusal(intact, _)),
+    assertEquals(edificeOps.map(refusal(intact, _)),
       Vector.fill(2)(Some("locked")))
     val ruined = edificeAt(EdificeSide.Ruined)
-    assertEquals(edificeOps(hallSite).map(refusal(ruined, _)),
+    assertEquals(edificeOps.map(refusal(ruined, _)),
       Vector.fill(2)(None))
 
   test("a modifier selected for the running action cannot be discarded"):

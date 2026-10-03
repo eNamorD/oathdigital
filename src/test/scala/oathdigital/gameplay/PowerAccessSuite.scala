@@ -13,7 +13,7 @@ class PowerAccessSuite extends munit.FunSuite:
   private val far = CatalogNames.site("Broken Peaks")
   private val card = CatalogNames.denizen("Errand Boy")
   /** p1 standing at Ancient City. */
-  private val base = Table.start.pawn(actor, at = home).ready
+  private val actorAtHome = Table.start.pawn(actor, at = home).ready
   private val farRuledByActor = Table.start.pawn(actor, at = home)
     .warbandsAt(far, actor, 1)
   private val farRuledByBandit = Table.start.pawn(actor, at = home)
@@ -23,19 +23,19 @@ class PowerAccessSuite extends munit.FunSuite:
     RuleSourceRef.SiteCard(site, card), RuleSourceFace.FaceUp, state, actor)
 
   test("a site card is usable at the pawn's site and at a ruled site only"):
-    assert(siteCard(home, base))
+    assert(siteCard(home, actorAtHome))
     assert(!siteCard(far, farRuledByBandit.ready))
     assert(siteCard(far, farRuledByActor.ready))
 
   test("a facedown site card is never usable"):
     assert(!PowerAccess.accessible(RuleSourceRef.SiteCard(home, card),
-      RuleSourceFace.FaceDown, base, actor))
+      RuleSourceFace.FaceDown, actorAtHome, actor))
 
   test("an edifice is usable on either face, at the pawn's site or a ruled site"):
     Vector(RuleSourceFace.Intact, RuleSourceFace.Ruined).foreach { face =>
       def edifice(site: SiteId, state: ReadyGame) = PowerAccess.accessible(
         RuleSourceRef.Edifice(site, EdificeId("e")), face, state, actor)
-      assert(edifice(home, base), face.toString)
+      assert(edifice(home, actorAtHome), face.toString)
       assert(edifice(far, farRuledByActor.ready), face.toString)
       assert(!edifice(far, farRuledByBandit.ready), face.toString)
     }
@@ -43,12 +43,12 @@ class PowerAccessSuite extends munit.FunSuite:
   test("a relic at a site never grants access"):
     Vector(RuleSourceFace.FaceUp, RuleSourceFace.FaceDown).foreach { face =>
       assert(!PowerAccess.accessible(RuleSourceRef.SiteRelic(home,
-        RelicId("r")), face, base, actor))
+        RelicId("r")), face, actorAtHome, actor))
     }
 
   test("advisers: your own faceup ones, and facedown ones only when asked"):
     def adviser(owner: PlayerId, face: RuleSourceFace, facedown: Boolean) =
-      PowerAccess.accessible(RuleSourceRef.Adviser(owner, card), face, base,
+      PowerAccess.accessible(RuleSourceRef.Adviser(owner, card), face, actorAtHome,
         actor, facedown)
     assert(adviser(actor, RuleSourceFace.FaceUp, facedown = false))
     assert(!adviser(actor, RuleSourceFace.FaceDown, facedown = false))
@@ -57,7 +57,7 @@ class PowerAccessSuite extends munit.FunSuite:
 
   test("a relic in your play area must be faceup"):
     def relic(owner: PlayerId, face: RuleSourceFace) = PowerAccess.accessible(
-      RuleSourceRef.Relic(owner, RelicId("r")), face, base, actor)
+      RuleSourceRef.Relic(owner, RelicId("r")), face, actorAtHome, actor)
     assert(relic(actor, RuleSourceFace.FaceUp))
     assert(!relic(actor, RuleSourceFace.FaceDown))
     assert(!relic(other, RuleSourceFace.FaceUp))
@@ -89,7 +89,8 @@ class PowerAccessSuite extends munit.FunSuite:
     assertEquals(PowerAccess.locate(adviser, actor, card),
       Some(PowerAccess.Held.InPlayArea))
     assertEquals(PowerAccess.siteOf(adviser, actor, card), Some(home))
-    val facedown = Table.start.adviser(actor, card, facedown = true).ready
+    val facedown = Table.start.pawn(actor, at = home)
+      .adviser(actor, card, facedown = true).ready
     assertEquals(PowerAccess.locate(facedown, actor, card), None)
 
   test("locate finds an edifice at a ruled site, intact or ruined"):

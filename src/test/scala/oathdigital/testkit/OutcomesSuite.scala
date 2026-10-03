@@ -1,7 +1,8 @@
 package oathdigital.testkit
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture
-import oathdigital.gameplay.walker.WalkerOutcome
+import oathdigital.gameplay.walker.{DeltaMeaning, WalkerCompleted,
+  WalkerOutcome, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import Outcomes.*
@@ -27,6 +28,13 @@ class OutcomesSuite extends munit.FunSuite:
     assert(failure(parked(Right(finishedWalk))).contains("Finished"))
     assert(failure(finished(Left(OathViolation.NoPlayableOption("Search"))))
       .contains("NoPlayableOption"))
+
+  test("recorded returns a recorded step and fails naming another event"):
+    val step = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
+      DeltaMeaning.OperationApplied("test")), Vector.empty, Vector.empty)
+    assertEquals(recorded(step), step)
+    assert(failure(recorded(WalkerCompleted(ActionRef.Recover)))
+      .contains("WalkerCompleted"))
 
   test("assertWireRoundTrips passes for the events of a real setup"):
     assertWireRoundTrips(FirstGameSetupFixture.setupThroughWake()

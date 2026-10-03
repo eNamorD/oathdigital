@@ -51,10 +51,10 @@ class OperationStateAdapterSuite extends munit.FunSuite:
   test("piece quantities cover boards sites cards banners and bounded banks"):
     import AvailableQuantity._
 
-    // TestGameFixtures: red holds 1 favor and 3 warbands at S1; D2 and the
-    // People's Favor carry 1 favor each; the Order bank holds 5. The Exile
-    // bank is the printed 14 less red's 3, the Bandit bank the printed 24
-    // less the 8 sites' Bandits.
+    // TestGameFixtures: red's board holds 1 favor and 3 warbands, and red's
+    // pawn stands at S1; D2 and the People's Favor carry 1 favor each; the
+    // Order bank holds 5. The Exile bank is the printed 14 less red's 3, the
+    // Bandit bank the printed 24 less the 8 sites' Bandits.
     assertEquals(OperationStateAdapter.quantity(ready, Piece.Favor(1),
       Location.PlayArea(playerId)), Right(Finite(1)))
     assertEquals(OperationStateAdapter.quantity(ready, Piece.Favor(1),

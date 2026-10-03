@@ -5,6 +5,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+// ProcedureWalkerFixture's ready, with S3 cleared, replaces the fixture's.
 import oathdigital.model.TestGameFixtures.{ready as _, _}
 import oathdigital.testkit.PowerStubs
 import oathdigital.testkit.Outcomes.{finished, recorded}

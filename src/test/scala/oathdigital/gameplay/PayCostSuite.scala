@@ -12,7 +12,7 @@ class PayCostSuite extends munit.FunSuite:
 
   /** p1 holds 3 favor and 3 faceup secrets; Errand Boy stands at Ancient
     * City carrying `tokens`. */
-  private def withCard(tokens: Tokens): ReadyGame =
+  private def errandBoyCarrying(tokens: Tokens): ReadyGame =
     Table.start.favor(actor, 3).secrets(actor, faceUp = 3)
       .denizen(denizen, at = "Ancient City")
       .tokens(denizen, tokens.favor, tokens.secrets).ready
@@ -21,34 +21,33 @@ class PayCostSuite extends munit.FunSuite:
     OperationPipeline.run(state, Vector(operation),
       OperationPolicy.Permissive, Vector.empty)(Right(_))
 
-
   test("a placed cost is accepted onto an empty card"):
-    val state = accepted(pay(withCard(Tokens.empty), PayCost(actor,
+    val state = accepted(pay(errandBoyCarrying(Tokens.empty), PayCost(actor,
       Location.OnCard(denizen), Cost(favor = 1, secret = 1)))).state
     assertEquals(Look(state).tokensOn(denizen), Tokens(1, 1))
 
   test("a placed cost onto an occupied card is rejected"):
-    assertEquals(pay(withCard(Tokens(1, 0)), PayCost(actor,
+    assertEquals(pay(errandBoyCarrying(Tokens(1, 0)), PayCost(actor,
       Location.OnCard(denizen), Cost(secret = 1))).left.toOption, Some(OathViolation.CoreOperationRejected("card-occupied",
         s"${denizen.value} already holds favor or secrets, so a cost cannot be placed on it")))
-    assertEquals(pay(withCard(Tokens(0, 1)), PayCost(actor,
+    assertEquals(pay(errandBoyCarrying(Tokens(0, 1)), PayCost(actor,
       Location.OnCard(denizen), Cost(favor = 1))).left.toOption, Some(OathViolation.CoreOperationRejected("card-occupied",
         s"${denizen.value} already holds favor or secrets, so a cost cannot be placed on it")))
 
   test("intoOccupied places onto an occupied card"):
-    val state = accepted(pay(withCard(Tokens(1, 0)), PayCost(actor,
-      Location.OnCard(denizen), Cost(secret = 1), intoOccupied = true))
-      ).state
+    val paid = accepted(pay(errandBoyCarrying(Tokens(1, 0)), PayCost(actor,
+      Location.OnCard(denizen), Cost(secret = 1), intoOccupied = true)))
+    val state = paid.state
     assertEquals(Look(state).tokensOn(denizen), Tokens(1, 1))
 
   test("a burnt-only cost ignores what the card holds"):
-    val state = accepted(pay(withCard(Tokens(1, 1)), PayCost(actor,
+    val state = accepted(pay(errandBoyCarrying(Tokens(1, 1)), PayCost(actor,
       Location.OnCard(denizen), Cost(secretBurnt = 1)))).state
     assertEquals(Look(state).tokensOn(denizen), Tokens(1, 1))
 
   test("Costs.affordable applies the same rule"):
     val at = Location.OnCard(denizen)
-    assert(Costs.affordable(withCard(Tokens.empty), actor, at, Cost(secret = 1)))
-    assert(!Costs.affordable(withCard(Tokens(0, 1)), actor, at, Cost(secret = 1)))
-    assert(Costs.affordable(withCard(Tokens(0, 1)), actor, at, Cost(secret = 1),
+    assert(Costs.affordable(errandBoyCarrying(Tokens.empty), actor, at, Cost(secret = 1)))
+    assert(!Costs.affordable(errandBoyCarrying(Tokens(0, 1)), actor, at, Cost(secret = 1)))
+    assert(Costs.affordable(errandBoyCarrying(Tokens(0, 1)), actor, at, Cost(secret = 1),
       intoOccupied = true))

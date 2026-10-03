@@ -11,7 +11,8 @@ class PowerOperationsSuite extends munit.FunSuite:
   private val cardSite = CatalogNames.site("Ancient City")
 
   /** p1 stands at Ancient City with 3 favor and 3 faceup secrets, where
-    * Errand Boy shows `facedown` or faceup with nothing on it. */
+    * Errand Boy, with nothing on it, shows facedown when `facedown` is true,
+    * else faceup. */
   private def payerAtCard(facedown: Boolean = false): ReadyGame =
     Table.start.pawn(p1, at = cardSite).favor(p1, 3).secrets(p1, faceUp = 3)
       .denizen(card, at = cardSite, facedown = facedown).ready
@@ -36,10 +37,10 @@ class PowerOperationsSuite extends munit.FunSuite:
     val placedAt = Location.OnCard(card)
     val cost = Cost(favor = 1, secret = 1, favorBurnt = 1, secretBurnt = 1)
     val payCost = accepted(Costs.plan(ready, p1, placedAt, cost))
-    val after = accepted(OperationPipeline.run(ready, Vector(payCost),
+    val run = accepted(OperationPipeline.run(ready, Vector(payCost),
       OperationPolicy.exact(Vector(payCost),
         "test payment operation is not permitted"), Vector.empty)(Right(_)))
-      .state
+    val after = run.state
     val before = Look(ready).player(p1).board
     val player = Look(after).player(p1)
     assertEquals(player.board.favor, before.favor - 2)
@@ -51,9 +52,9 @@ class PowerOperationsSuite extends munit.FunSuite:
     val payCost = accepted(Costs.plan(ready, p1, Location.OnCard(
       DenizenId("irrelevant")), Cost.free))
     assertEquals(Operation.flatten(payCost), Vector.empty)
-    val after = accepted(OperationPipeline.run(ready, Vector(payCost),
+    val run = accepted(OperationPipeline.run(ready, Vector(payCost),
       OperationPolicy.exact(Vector(payCost),
         "test payment operation is not permitted"), Vector.empty)(Right(_)))
-      .state
+    val after = run.state
     assertEquals(after.game, ready.game)
     assertEquals(after.banks, ready.banks)

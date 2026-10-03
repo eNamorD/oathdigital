@@ -13,7 +13,7 @@ import oathdigital.testkit.Table.p1
 class RepeatPassSuite extends munit.FunSuite:
   private val actor = p1
   /** p1's Supply down to 1, so a gain shows. */
-  private val supplyOfOne: ReadyGame = Table.start.supply(p1, 1).ready
+  private val supplyOfOne: ReadyGame = Table.start.supply(actor, 1).ready
 
   private def supply(state: ReadyGame): Int = Look(state).supply(actor)
 

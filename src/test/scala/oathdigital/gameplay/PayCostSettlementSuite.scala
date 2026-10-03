@@ -10,6 +10,7 @@ class PayCostSettlementSuite extends munit.FunSuite:
   private val active = p1
   private val payer = p2
   private val denizen = CatalogNames.denizen("Errand Boy")
+  /** Errand Boy is a Beast. */
   private val suit = Suit.Beast
 
   /** p2, off turn, holds 3 favor and 3 faceup secrets; Errand Boy stands at
@@ -58,7 +59,7 @@ class PayCostSettlementSuite extends munit.FunSuite:
     assertEquals(run(offTurnPayer().ready, offTurnPay(Cost(favor = 1),
       bank = None)).left.toOption,
       Some(OathViolation.CoreOperationRejected("no-matching-bank",
-      "favor paid outside the payer's turn needs the card's suit bank")))
+        "favor paid outside the payer's turn needs the card's suit bank")))
     assert(run(offTurnPayer().ready,
       offTurnPay(Cost(secret = 1), bank = None)).isRight)
 

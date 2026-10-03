@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
+// ProcedureWalkerFixture's ready, with S3 cleared, replaces the fixture's.
 import oathdigital.model.TestGameFixtures.{ready as _, _}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Outcomes.recorded
@@ -49,14 +50,12 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     assertEquals(pawnSiteOf(finalState), Some(sites(2)))
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
     assertEquals(events.size, 2)
-    val recorded = events.map:
-      case step: WalkerStepRecorded => step
-      case other => fail(s"expected a WalkerStepRecorded, got $other")
-    assertEquals(recorded.map(_.nodeId), Vector("0", "1"))
-    assertEquals(recorded.map(_.ops),
+    val steps = events.map(recorded)
+    assertEquals(steps.map(_.nodeId), Vector("0", "1"))
+    assertEquals(steps.map(_.ops),
       Vector(Vector[CoreOperation](movePawnToS3),
       Vector[CoreOperation](spendOneSupply)))
-    recorded.foreach(step => assert(step.ops.nonEmpty))
+    steps.foreach(step => assert(step.ops.nonEmpty))
     // Re-applying each recorded ops batch reproduces the walked state.
     assertEquals(applyEvents(ready, events), finalState)
 

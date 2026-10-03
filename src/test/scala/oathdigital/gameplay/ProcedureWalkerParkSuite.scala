@@ -16,7 +16,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
   test("a Decide at the head parks with no events, then the answered resume finishes"):
     val tree: Operation = Sequence(decide, spendOneSupply)
 
-    val parked = ProcedureWalker.advance(ready, tree, None, noPowers) match
+    val parkedAt = ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) =>
         assertEquals(pending.at, Vector("0"))
         assertEquals(pending.answered, Vector.empty[Answered])
@@ -26,7 +26,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
 
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
-    ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match
+    ProcedureWalker.resolve(ready, tree, parkedAt, answer, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
         assertEquals(recorded(events.last).ops,
@@ -141,12 +141,12 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
       "events"):
     val tree: Operation = Sequence(spendOneSupply, decide)
 
-    val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
+    val (parkedAt, parkEvents) = ProcedureWalker.advance(ready, tree, None,
         noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
       case other => fail(s"expected a park after the auto-delta, got $other")
-    assertEquals(parked.at, Vector("1"))
-    assertEquals(parked.answered, Vector.empty[Answered])
+    assertEquals(parkedAt.at, Vector("1"))
+    assertEquals(parkedAt.answered, Vector.empty[Answered])
     assertEquals(parkEvents.size, 1)
     assertEquals(recorded(parkEvents.head).ops,
       Vector[CoreOperation](spendOneSupply))
@@ -155,7 +155,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
-    ProcedureWalker.resolve(parkedState, tree, parked, answer,
+    ProcedureWalker.resolve(parkedState, tree, parkedAt, answer,
         noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 1)
@@ -203,7 +203,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
     val tree: Operation = Sequence(
       Repeat(guard, Sequence(decide, spendOneSupply)))
 
-    val parked = ProcedureWalker.advance(ready, tree, None, noPowers) match
+    val parkedAt = ProcedureWalker.advance(ready, tree, None, noPowers) match
       case Right(WalkerOutcome.Parked(pending, events)) =>
         // Repeat (child 0) > body (child 0) > Decide (child 0).
         assertEquals(pending.at, Vector("0", "0", "0"))
@@ -213,7 +213,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
 
     val answer = Answered(decide.decisionId,
       ChooseOneAnswer(continueOption), actor)
-    ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match
+    ProcedureWalker.resolve(ready, tree, parkedAt, answer, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
         assertEquals(recorded(events.last).ops,
