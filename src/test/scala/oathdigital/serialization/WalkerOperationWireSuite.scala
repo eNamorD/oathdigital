@@ -5,8 +5,8 @@ import oathdigital.model._
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{DeltaMeaning, RollPayload,
   WalkerStepPayload, WalkerStepRecorded}
-import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
-  encodedStream, recordedOperation}
+import oathdigital.serialization.WalkerWireEvents.{encodedStream,
+  encodedStreamThatRoundTrips, recordedOperation}
 import oathdigital.testkit.Table
 import oathdigital.testkit.Unwrap.{accepted, as}
 
@@ -30,8 +30,8 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       base.game.current.tracks.visionsDrawn + 1)
 
   test("reduced optional spend is canonical in memory and on the wire"):
-    val one = Table.start.supply(Table.p1, 1).ready
-    val run = accepted(OperationPipeline.run(one,
+    val withOneSupply = Table.start.supply(Table.p1, 1).ready
+    val run = accepted(OperationPipeline.run(withOneSupply,
       Vector(SpendSupply(Table.p1, 3, required = false)),
       OperationPolicy.Permissive, Vector.empty)(Right(_)))
     val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
@@ -75,7 +75,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move),
         Vector.empty))
 
-    val encoded = assertStreamRoundTrips("walker", events)
+    val encoded = encodedStreamThatRoundTrips("walker", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("step")("meaning")("kind").str).toVector,
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
@@ -112,7 +112,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         PayCost(player, Location.OnCard(denizen), Cost(secret = 1))),
       Vector(PowerId("denizen.catacombs")))
 
-    val encoded = assertStreamRoundTrips("walker", Vector(event))
+    val encoded = encodedStreamThatRoundTrips("walker", Vector(event))
     val ops = ujson.read(encoded).arr.head("payload")("ops").arr
     assertEquals(ops.map(_("kind").str).toVector, Vector("move", "pay-cost"))
     assertEquals(ops(0)("from")("location")("deck").str, "relic")
@@ -153,7 +153,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val events = locations.map(location => recordedOperation("pay",
       PayCost(player, location, Cost(favor = 1))))
 
-    val encoded = assertStreamRoundTrips("walker", events)
+    val encoded = encodedStreamThatRoundTrips("walker", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
       locations.map(_.getClass.getSimpleName).distinct.size)
@@ -185,7 +185,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Vector(ModifyDicePool(pool, 2)),
       Vector(PowerId("power.one"), PowerId("power.two")))
 
-    val encoded = assertStreamRoundTrips("walker", Vector(event))
+    val encoded = encodedStreamThatRoundTrips("walker", Vector(event))
     assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
       .map(_.str).toVector, Vector("power.one", "power.two"))
 
@@ -294,7 +294,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val events = operations.map(operation =>
       recordedOperation("op", operation))
 
-    val encoded = assertStreamRoundTrips("walker-ops", events)
+    val encoded = encodedStreamThatRoundTrips("walker-ops", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct.size,
       operations.map(_.getClass.getSimpleName).distinct.size)
@@ -307,7 +307,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       WalkerStepRecorded("2", RollPayload(PoolKey("campaign.defense"),
         Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank),
         automatic = true), Vector.empty, Vector.empty))
-    val encoded = assertStreamRoundTrips("walker-rolls", events)
+    val encoded = encodedStreamThatRoundTrips("walker-rolls", events)
     // `automatic` is written only when set, so a parked roll's wire form is
     // unchanged.
     assertEquals(ujson.read(encoded).arr.map(
@@ -332,7 +332,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val events = pieces.map(piece => recordedOperation("take",
       Take(piece, player, Location.SharedBank, Location.PlayArea(player))))
 
-    val encoded = assertStreamRoundTrips("walker-pieces", events)
+    val encoded = encodedStreamThatRoundTrips("walker-pieces", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("piece")("kind").str).toVector.distinct.size,
       pieces.map(_.getClass.getSimpleName).distinct.size)
@@ -352,7 +352,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Take(Piece.Banner(Banner.DarkestSecret), player, Location.PlayArea(holder),
         Location.PlayArea(player)))
     val events = takes.map(take => recordedOperation("take", take))
-    val encoded = assertStreamRoundTrips("take-leaving", events)
+    val encoded = encodedStreamThatRoundTrips("take-leaving", events)
     val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
     assertEquals(ops(0)("leaving").arr.size, 2)
     assert(!ops(1).obj.contains("leaving"))

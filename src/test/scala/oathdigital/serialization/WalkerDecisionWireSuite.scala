@@ -6,7 +6,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
 import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
-  encodedStream}
+  encodedStream, encodedStreamThatRoundTrips}
 
 /** Walker decision answers on the wire: every answer and option reference kind
   * round trips on a recorded step and on a park, and deleted legacy tags are
@@ -98,7 +98,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
         Vector.empty, Vector.empty, Vector.empty),
       WalkerCompleted(TriggeredProcedureRef.Oathkeeper),
       WalkerCompleted(ActionRef.UsePower(PowerId("denizen.silver-tongue"))))
-    val encoded = assertStreamRoundTrips("families", events)
+    val encoded = encodedStreamThatRoundTrips("families", events)
     assert(ujson.read(encoded).arr.head.toString.contains(
       "\"family\":\"phase-transition\""))
     assert(ujson.read(encoded).arr(2).toString.contains(

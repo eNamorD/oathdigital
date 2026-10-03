@@ -40,9 +40,10 @@ class TrustedGameProtocolSuite extends munit.FunSuite:
     }
 
   test("duplicate and empty participants are refused"):
-    val twice = Vector(request.participants.head, request.participants.head)
+    val duplicatedParticipants =
+      Vector(request.participants.head, request.participants.head)
     Vector(request.copy(participants = Vector.empty),
-      request.copy(participants = twice)).foreach { invalid =>
+      request.copy(participants = duplicatedParticipants)).foreach { invalid =>
       assert(TrustedGameCreateRequestCodec.decode(
         TrustedGameCreateRequestCodec.encode(invalid)).isLeft)
     }

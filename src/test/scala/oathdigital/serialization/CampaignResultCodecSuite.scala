@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
+import oathdigital.serialization.WalkerWireEvents.{encodedStreamThatRoundTrips,
   recordedOperation}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -27,7 +27,7 @@ class CampaignResultCodecSuite extends munit.FunSuite:
   test("a recorded Campaign result round trips through the wire for both kinds"):
     val events = Vector(conquest, raid, empty).map(result =>
       recordedOperation("campaign", RecordCampaignResult(result)))
-    val encoded = assertStreamRoundTrips("campaign-result", events)
+    val encoded = encodedStreamThatRoundTrips("campaign-result", events)
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct,
       Vector("record-campaign-result"))

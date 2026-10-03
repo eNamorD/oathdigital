@@ -26,8 +26,8 @@ class ProcedureRefSuite extends munit.FunSuite:
         TriggeredProcedureRef.ForcedWake))
 
   test("a key resolves only under its own family"):
-    // end-wake and finish-rest are phase transitions and recover is an
-    // action, so each resolves under its own family only.
+    // end-wake is a phase transition and recover an action: end-wake
+    // resolves under its own family only, and finish-rest resolves there.
     assertEquals(StartableRef.fromKey("end-wake"),
       Some(PhaseTransitionRef.EndWake))
     assertEquals(ActionRef.fromKey("end-wake"), None)

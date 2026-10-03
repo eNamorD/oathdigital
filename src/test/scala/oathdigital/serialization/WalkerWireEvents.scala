@@ -23,10 +23,16 @@ object WalkerWireEvents:
       events.zipWithIndex.map { case (event, index) =>
         RecordedEvent(index.toLong, event) }))
 
+  /** Asserts that writing `events` as a stream of game `label` and decoding
+    * the stream gives `events` back. */
+  def assertStreamRoundTrips(label: String, events: Vector[OathEvent])(
+      using munit.Location): Unit =
+    encodedStreamThatRoundTrips(label, events)
+
   /** [[encodedStream]] of `events`, which also asserts that decoding the
     * stream gives `events` back. Returns the written JSON for further
     * checks. */
-  def assertStreamRoundTrips(label: String, events: Vector[OathEvent])(
+  def encodedStreamThatRoundTrips(label: String, events: Vector[OathEvent])(
       using munit.Location): String =
     val encoded = encodedStream(label, events)
     munit.Assertions.assertEquals(

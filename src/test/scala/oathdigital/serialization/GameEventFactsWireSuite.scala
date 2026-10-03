@@ -3,7 +3,8 @@ package oathdigital.serialization
 import oathdigital.gameplay.setup.FirstGameSetupFixture.{chronicle, orders}
 import oathdigital.model._
 import oathdigital.model.OathEvent.{RoundEnded, WarExhaustionResolved}
-import oathdigital.serialization.WalkerWireEvents.assertStreamRoundTrips
+import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
+  encodedStreamThatRoundTrips}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
 /** Single game facts on the wire: ignored rules, round end, victory, minor
@@ -44,7 +45,7 @@ class GameEventFactsWireSuite extends munit.FunSuite:
       OathEvent.OwnedRelicRevealed(PlayerId("red"), RelicId("R3")),
       OathEvent.WarbandsMoved(PlayerId("red"), SiteId("site:a"),
         toSite = false, 2, 3, 4))
-    val encoded = assertStreamRoundTrips("minor", events)
+    val encoded = encodedStreamThatRoundTrips("minor", events)
     // Every event is written at format version 1, the one version the codec
     // supports.
     assertEquals(
