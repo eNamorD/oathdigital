@@ -145,8 +145,9 @@ Open follow-ups for the user (post-plan chips): the spectator seat, the
 
 Making `OathRules.wakeOptionOpen` always true fails 21 of 2670 root tests, no
 more than the 21 it failed after the start-state project. This was measured at
-c3849030; the final fixes changed test files only and the check was not re-run. The mutant file was
-restored and `git status --short src/main` printed nothing.
+c3849030 and again at e81581dd, after the final fixes, with the same count.
+Each time the mutant file was restored and `git status --short src/main`
+printed nothing.
 
 ### Test totals
 
