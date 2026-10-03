@@ -39,7 +39,7 @@ abstract class EventStreamRepositoryContract[R <: EventStreamRepository]
     assertEquals(loaded.nextSequence, 2L)
 
   fresh.test(
-    "creating a stream that exists, or appending to one that does not, is refused"):
+    "a duplicate creation or an append to a missing stream is refused"):
     repository =>
       repository.append("game", ExpectedStream.MustNotExist, Vector("zero"))
       assertEquals(

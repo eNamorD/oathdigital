@@ -114,37 +114,6 @@ class HsqldbEventStreamRepositorySuite
       ))
     )
 
-  test("refuses to create a stream that exists"):
-    val repository = open(databasePath("duplicate"))
-    try
-      repository.append(
-        "game-create",
-        ExpectedStream.MustNotExist,
-        Vector("""{"event":"first"}""")
-      )
-      assertEquals(
-        repository.append(
-          "game-create",
-          ExpectedStream.MustNotExist,
-          Vector("duplicate")
-        ),
-        Right(RepositoryAppendResult.StreamAlreadyExists)
-      )
-    finally repository.close()
-
-  test("refuses to append to a stream that does not exist"):
-    val repository = open(databasePath("missing"))
-    try
-      assertEquals(
-        repository.append(
-          "missing",
-          ExpectedStream.AtNextSequence(0L),
-          Vector("missing")
-        ),
-        Right(RepositoryAppendResult.StreamNotFound)
-      )
-    finally repository.close()
-
   test("database failure rolls back stream creation and the entire batch"):
     val repository = open(databasePath("rollback"))
     try
