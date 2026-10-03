@@ -1,36 +1,26 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.GameIntent
-import org.scalajs.dom
 
 /** The Negotiation start control at the DOM. */
 class NegotiationControlsSuite extends munit.FunSuite:
-  private def projection(controls: Vector[String]): GameProjection =
-    GameProjection("game", 9L, "act-action-selection", Some("red"),
-      Vector.empty, Vector.empty, Vector.empty, controls, ready = true,
-      completed = false, actionSelectionOpen = true)
-
-  private def render(controls: Vector[String], canControl: Boolean = true)
-      : (Vector[dom.html.Button], Vector[GameIntent]) =
-    var submitted = Vector.empty[GameIntent]
-    val groups = new ServerUiSupport.ActionSections
-    NegotiationControls.render(projection(controls), canControl, groups,
-      command => submitted :+= command)
-    val panel = dom.document.createElement("div")
-    groups.appendTo(panel)
-    val buttons = panel.querySelectorAll(".act-action").toVector
-      .map(_.asInstanceOf[dom.html.Button])
-    buttons.foreach(_.click())
-    (buttons, submitted)
+  private def renderAndClickEach(offered: Vector[String],
+      canControl: Boolean = true): RenderedControls =
+    RenderedControls.renderAndClickEach(offered, canControl)(
+      NegotiationControls.render)
 
   test("the control renders only when offered and starts Negotiation"):
-    val (buttons, submitted) = render(Vector("beginNegotiation"))
-    assertEquals(buttons.map(_.textContent), Vector("Negotiate"))
-    assertEquals(submitted, Vector[GameIntent](
+    val rendered = renderAndClickEach(Vector("beginNegotiation"))
+    assertEquals(rendered.buttons.map(_.textContent), Vector("Negotiate"))
+    assertEquals(rendered.submitted, Vector[GameIntent](
       GameIntent.StartWalker("negotiation", Vector.empty)))
-    assertEquals(render(Vector.empty)._1, Vector.empty)
-    assert(render(Vector("beginNegotiation"), canControl = false)._1
-      .forall(_.disabled))
+    assertEquals(renderAndClickEach(Vector.empty).buttons, Vector.empty)
+
+  test("the control is disabled for a viewer who cannot control the game"):
+    val buttons = renderAndClickEach(Vector("beginNegotiation"),
+      canControl = false).buttons
+    assertEquals(buttons.size, 1)
+    assert(buttons.forall(_.disabled))
 
   test("Negotiation does not start through the modifier flow"):
     assertEquals(ModifierFlowDraft.action(

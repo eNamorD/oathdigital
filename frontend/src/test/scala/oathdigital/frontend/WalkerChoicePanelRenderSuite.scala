@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.Dom.all
+import oathdigital.testkit.Unwrap.as
 import ParkedDecision.Surface
 import org.scalajs.dom
 
@@ -17,9 +19,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     query = Some(query))
 
   /** The table the panel reads player names off; nothing here names one. */
-  private val table = GameProjection("game", 9L, "act", Some("red"),
-    Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
-    completed = false)
+  private val table = TestProjections.actingProjection(nextSequence = 9L)
 
   /** Draws the panel for a choose-one decision the route has already
     * matched: the surface carries the decision and its query.
@@ -34,9 +34,6 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       Surface.ChooseOne(decision, query), table, canControl = true, panel, ui)
     panel
 
-  private def all(root: dom.Element, selector: String): Vector[dom.Element] =
-    root.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
   test("each projected option is one control and its details show beside it"):
     val panel = draw(parked)
     assertEquals(all(panel, ".walker-choice").map(_.textContent),
@@ -47,7 +44,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
   test("choosing an option submits the generic answer for its kind and id"):
     val ui = new RecordingControls()
     val panel = draw(parked, ui)
-    all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
+    as[dom.html.Button](all(panel, ".walker-choice").head).click()
     assertEquals(ui.submitted, Vector(oathdigital.protocol.GameIntent.ResolveWalker(
       "muster.source",
       oathdigital.protocol.DecisionAnswerWire.ChooseOneWire("denizen", "d1"))))
@@ -80,6 +77,12 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       "decide", query = Some(query), answeredOptions = Vector(played)))
     assertEquals(all(panel, ".plans-played li").map(_.textContent),
       Vector("Sticky Fire"))
+    val plansPlayed = Dom.one(panel, ".plans-played")
+    val offerButton = Dom.one(panel, ".walker-choice")
+    assertEquals(offerButton.textContent, "Longbows")
+    assert((plansPlayed.compareDocumentPosition(offerButton) &
+      dom.Node.DOCUMENT_POSITION_FOLLOWING) != 0,
+      "the plans played should come before the offered choice")
 
   test("a card-shaped option with no badge stays a labelled text button, " +
       "not a card face -- Muster, Search, Forge and the like offer a card " +
@@ -122,11 +125,11 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       "decide", query = Some(query)), ui)
     var inspected = Vector.empty[CardInspection.Request]
     CardInspection.onOpen(request => inspected :+= request)
-    try all(panel, ".card-face").head.asInstanceOf[dom.html.Button].click()
+    try as[dom.html.Button](all(panel, ".card-face").head).click()
     finally CardInspection.clear()
     assertEquals(inspected.size, 1)
     assertEquals(ui.submitted.size, 0)
-    all(panel, ".walker-choice").head.asInstanceOf[dom.html.Button].click()
+    as[dom.html.Button](all(panel, ".walker-choice").head).click()
     assertEquals(ui.submitted.size, 1)
 
   test("a badged option with no card names its side in words"):

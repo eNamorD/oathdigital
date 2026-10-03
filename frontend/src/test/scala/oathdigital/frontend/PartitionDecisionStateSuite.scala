@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
+import oathdigital.testkit.Unwrap.present
 
 /** Task 5: the two-zone move/drag interaction, with no idea what it is
   * partitioning. Nothing below names a card, a denizen or a resource -- the
@@ -104,18 +105,19 @@ class PartitionDecisionStateSuite extends munit.FunSuite:
   /** The walker half: a parked partition decision adapted into the same
     * interaction, answered generically.
     */
-  private val query = DecisionQueryState.Partition(
-    Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
-      DecisionSectionState("pay-secret", "Pay Secret", 1)),
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")))
-  private val parked =
-    WalkerDecisionState("forge", "forge-9", "decide", query = Some(query))
-  private val context = BoardSelectionContext("game", "red", 9)
+  private val query = ForgeFixture.query
+  private val context = ForgeFixture.context
+
+  /** The draft the walker opens on Forge's parked decision: each section
+    * filled to its minimum in declared order.
+    */
+  private def openedForgeDraft: WalkerPartitionDraft =
+    present(WalkerPartitionDraft.reconcile(None, context,
+      Some(ForgeFixture.parked)), "a partition draft")
 
   test("a confirmed draft names each projected option exactly once in its " +
       "own section"):
-    val draft = WalkerPartitionDraft.reconcile(None, context, Some(parked)).get
+    val draft = openedForgeDraft
     assertEquals(draft.optionsIn("pay-favor").map(_.id),
       Vector("denizen:1", "denizen:2"))
     assertEquals(draft.optionsIn("pay-secret").map(_.id), Vector("denizen:3"))
@@ -125,7 +127,7 @@ class PartitionDecisionStateSuite extends munit.FunSuite:
         DecisionPlacementWire("denizen", "denizen:3", "pay-secret"))))))
 
   test("a draft below a projected minimum refuses to answer at all"):
-    val draft = WalkerPartitionDraft.reconcile(None, context, Some(parked)).get
+    val draft = openedForgeDraft
     val short = draft.move(WalkerPartitionDraft.itemId(query.options(2)),
       "pay-favor")
     assert(!short.canConfirm)

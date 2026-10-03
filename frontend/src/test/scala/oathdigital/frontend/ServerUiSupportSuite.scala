@@ -1,7 +1,8 @@
 package oathdigital.frontend
 
-import oathdigital.model.PlayerColor
 import oathdigital.frontend.ServerModeFixtures.projection
+import oathdigital.model.PlayerColor
+import oathdigital.testkit.Unwrap.present
 
 import munit.FunSuite
 
@@ -31,7 +32,8 @@ class ServerUiSupportSuite extends FunSuite:
     assertEquals(ServerUiSupport.actionLabel("challenge"), "Challenge")
     assertEquals(ServerUiSupport.actionLabel("peoples-favor"), "People's Favor")
 
-  test("selection copy exposes details and non-color cardinality instructions"):
+  test("the cardinality instruction says how many targets and whether to " +
+      "confirm"):
     val single = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty)))
     val confirmed = single.copy(explicitConfirm = true)
@@ -65,6 +67,8 @@ class ServerUiSupportSuite extends FunSuite:
       "site board-target board-target-selected")
 
   test("round tracker geometry is eight circular ring wedges"):
+    // The tracker is drawn on a 200 by 200 viewBox, so its center is
+    // (100, 100); a round label sits 68 from it, inside the 30 to 170 band.
     val segments = (1 to 8).map(WorldBoardRenderer.roundSegment)
     assertEquals(segments.map(_.path).distinct.size, 8)
     segments.foreach { segment =>
@@ -75,9 +79,13 @@ class ServerUiSupportSuite extends FunSuite:
       assert(segment.labelX >= 30.0 && segment.labelX <= 170.0)
       assert(segment.labelY >= 30.0 && segment.labelY <= 170.0)
     }
-    val limiter = segments(3)
-    val markerRadius = Math.hypot(limiter.markerX - 100.0, limiter.markerY - 100.0)
-    val labelRadius = Math.hypot(limiter.labelX - 100.0, limiter.labelY - 100.0)
+    // The segments start at round 1, so index 3 is round 4. The marker the
+    // tracker draws on a limiter round sits farther out than its label.
+    val roundFour = segments(3)
+    val markerRadius = Math.hypot(roundFour.markerX - 100.0,
+      roundFour.markerY - 100.0)
+    val labelRadius = Math.hypot(roundFour.labelX - 100.0,
+      roundFour.labelY - 100.0)
     assert(markerRadius > labelRadius)
 
   test("winner banner class resolves the winner's stable color token"):
@@ -91,7 +99,7 @@ class ServerUiSupportSuite extends FunSuite:
       "Ancient City", Vector("2 Supply", "+1 warband"))
     val badge = ServerUiSupport.candidateDetailText(candidate)
     assertEquals(badge, Some("2 Supply · +1 warband"))
-    assert(!badge.get.contains(candidate.label))
+    assert(!present(badge, "a detail badge").contains(candidate.label))
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
 
   test("peeked site relics replace opaque slots only for the scoped viewer"):

@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
-import oathdigital.frontend.ServerModeFixtures.{forgeParked, forgeQuery}
 import oathdigital.protocol.DecisionAnswerWire
+import oathdigital.testkit.Unwrap.present
 
 import munit.FunSuite
 
@@ -26,34 +26,35 @@ class WalkerDecisionDraftSuite extends FunSuite:
       "Rolled two-swords-skull, one-sword -- Attack 3, 1 skull loss.")
 
   private def forgeItem(index: Int): String =
-    WalkerPartitionDraft.itemId(forgeQuery.options(index))
+    WalkerPartitionDraft.itemId(ForgeFixture.query.options(index))
 
   test("a Forge draft is dropped whenever the question changes"):
-    val context = BoardSelectionContext("game", "red", 9)
-    val initial = WalkerPartitionDraft.reconcile(None, context,
-      Some(forgeParked)).get
+    val context = ForgeFixture.context
+    val parked = ForgeFixture.parked
+    val initial = present(WalkerPartitionDraft.reconcile(None, context,
+      Some(parked)), "a partition draft")
     val moved = initial.move(forgeItem(2), "pay-favor")
       .move(forgeItem(0), "pay-secret")
     assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
-      Some(forgeParked)), Some(moved))
-    assertEquals(WalkerPartitionDraft.reconcile(Some(moved),
-      context.copy(sequence = 10), Some(forgeParked)).get.partition,
-      initial.partition)
-    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
-      Some(forgeParked.copy(decisionId = "forge-new"))).get.partition,
-      initial.partition)
+      Some(parked)), Some(moved))
+    assertEquals(present(WalkerPartitionDraft.reconcile(Some(moved),
+      context.copy(sequence = 10), Some(parked)), "a partition draft")
+      .partition, initial.partition)
+    assertEquals(present(WalkerPartitionDraft.reconcile(Some(moved), context,
+      Some(parked.copy(decisionId = "forge-new"))), "a partition draft")
+      .partition, initial.partition)
     // A power that changes the option set asks a different question, so the
     // draft assembled against the old one is dropped.
-    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
-      Some(forgeParked.copy(query = Some(forgeQuery.copy(
-        options = forgeQuery.options.drop(1)))))).get
-        .optionsIn("pay-favor").map(_.label),
+    assertEquals(present(WalkerPartitionDraft.reconcile(Some(moved), context,
+      Some(parked.copy(query = Some(ForgeFixture.query.copy(
+        options = ForgeFixture.query.options.drop(1)))))),
+      "a partition draft").optionsIn("pay-favor").map(_.label),
       Vector("Denizen 2", "Denizen 3"))
     assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context, None),
       None)
 
   test("a parked walker decision that is not a partition drives no draft"):
-    val context = BoardSelectionContext("game", "red", 9)
+    val context = ForgeFixture.context
     // A choose-one park, and a park whose query was suppressed because an
     // option could not be presented: neither is an answerable partition.
     assertEquals(WalkerPartitionDraft.reconcile(None, context, Some(
@@ -61,45 +62,60 @@ class WalkerDecisionDraftSuite extends FunSuite:
         query = Some(DecisionQueryState.ChooseOne(Vector(
           DecisionOptionState("button", "stop", "Stop"))))))), None)
     assertEquals(WalkerPartitionDraft.reconcile(None, context,
-      Some(forgeParked.copy(query = None))), None)
+      Some(ForgeFixture.parked.copy(query = None))), None)
 
-  test("facedown adviser draft supports zero one and multiple choices and only faceup outcomes"):
-    val context = BoardSelectionContext("game", "red", 7)
-    val card = CardDetails("D1", "denizen", "The Adviser")
-    val other = CardDetails("D2", "denizen", "The Other Adviser")
-    val replacement = CardDetails("D3", "denizen", "Old Denizen")
-    val placements = Vector(MinorAdviserPlacement("discard"),
-      MinorAdviserPlacement("play-adviser"),
-      MinorAdviserPlacement("play-site", Some(replacement)))
-    def minor(advisers: Vector[MinorAdviser]) = MinorActionsState(advisers,
-      canPeekSiteRelics = false, Vector.empty, Some("site:a"), 0, 0)
-    assertEquals(FacedownAdviserDraft.initial(context, minor(Vector.empty)), None)
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(minor(Vector.empty)), 0)
-    val one = FacedownAdviserDraft.initial(context,
-      minor(Vector(MinorAdviser(card, placements)))).get
+  private val facedownContext = BoardSelectionContext("game", "red", 7)
+  private val adviser = CardDetails("D1", "denizen", "The Adviser")
+  private val otherAdviser = CardDetails("D2", "denizen", "The Other Adviser")
+  private val placements = Vector(MinorAdviserPlacement("discard"),
+    MinorAdviserPlacement("play-adviser"),
+    MinorAdviserPlacement("play-site",
+      Some(CardDetails("D3", "denizen", "Old Denizen"))))
+
+  private def minor(advisers: Vector[MinorAdviser]) = MinorActionsState(
+    advisers, canPeekSiteRelics = false, Vector.empty, Some("site:a"), 0, 0)
+
+  /** The minor actions of a player holding both advisers facedown, each
+    * with every placement on offer.
+    */
+  private def twoAdvisersFacedown = minor(Vector(
+    MinorAdviser(adviser, placements), MinorAdviser(otherAdviser, placements)))
+
+  test("the facedown adviser draft opens from zero, one or many advisers"):
+    val noAdvisers = minor(Vector.empty)
+    val oneAdviser = minor(Vector(MinorAdviser(adviser, placements)))
+    val oneAdviserWithNoPlacement =
+      minor(Vector(MinorAdviser(adviser, Vector.empty)))
+    assertEquals(FacedownAdviserDraft.initial(facedownContext, noAdvisers),
+      None)
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(noAdvisers), 0)
+    val one = present(FacedownAdviserDraft.initial(facedownContext,
+      oneAdviser), "a facedown draft")
     assertEquals(one.selectedCardId, Some("D1"))
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(oneAdviser), 1)
     assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
-      minor(Vector(MinorAdviser(card, placements)))), 1)
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
-      minor(Vector(MinorAdviser(card, Vector.empty)))), 1)
-    assert(FacedownAdviserDraft.initial(context,
-      minor(Vector(MinorAdviser(card, Vector.empty)))).nonEmpty)
+      oneAdviserWithNoPlacement), 1)
+    assert(FacedownAdviserDraft.initial(facedownContext,
+      oneAdviserWithNoPlacement).nonEmpty)
     assertEquals(one.command, Some(oathdigital.protocol.GameIntent.StartWalker(
       "play-facedown-adviser", Vector.empty,
       Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1")))))
-    val many = FacedownAdviserDraft.initial(context, minor(Vector(
-      MinorAdviser(card, placements), MinorAdviser(other, placements)))).get
-    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(minor(Vector(
-      MinorAdviser(card, placements), MinorAdviser(other, placements)))), 1)
+    val many = present(FacedownAdviserDraft.initial(facedownContext,
+      twoAdvisersFacedown), "a facedown draft")
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
+      twoAdvisersFacedown), 1)
     assertEquals(many.selected, None)
     assertEquals(many.choose("D2").selected.map(_.card.cardId), Some("D2"))
+
+  test("the facedown pick survives a reload at the same position and drops " +
+      "at a new one"):
+    val many = present(FacedownAdviserDraft.initial(facedownContext,
+      twoAdvisersFacedown), "a facedown draft")
     assertEquals(FacedownAdviserDraft.reconcile(Some(many.choose("D2")),
-      context, Some(minor(Vector(MinorAdviser(card, placements),
-        MinorAdviser(other, placements))))).flatMap(_.selected).map(_.card.cardId),
-      Some("D2"))
+      facedownContext, Some(twoAdvisersFacedown)).flatMap(_.selected)
+      .map(_.card.cardId), Some("D2"))
     assertEquals(FacedownAdviserDraft.reconcile(Some(many.choose("D2")),
-      context.copy(sequence = 8), Some(minor(Vector(
-        MinorAdviser(card, placements), MinorAdviser(other, placements))))), None)
+      facedownContext.copy(sequence = 8), Some(twoAdvisersFacedown)), None)
 
   test("a choose-one decision outside Recover is answered from its projected options"):
     val query = DecisionQueryState.ChooseOne(Vector(

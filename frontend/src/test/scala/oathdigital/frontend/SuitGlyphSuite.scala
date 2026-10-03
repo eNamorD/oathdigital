@@ -9,21 +9,17 @@ import org.scalajs.dom
   */
 class SuitGlyphSuite extends munit.FunSuite:
   private def glyphs(node: dom.Element): Vector[String] =
-    node.querySelectorAll(".token-glyph").toVector
-      .map(_.asInstanceOf[dom.Element].getAttribute("class"))
+    Dom.all(node, ".token-glyph").map(_.getAttribute("class"))
 
   test("the shared banks print each suit's symbol before its count"):
-    val value = GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-      Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false,
-      favorBanks = Vector(FavorBankState("arcane", 3),
+    val value = TestProjections.actingProjection(players = Vector(
+      GamePlayer("red", "Red", "Exile", PlayerColor.Red)))
+      .copy(favorBanks = Vector(FavorBankState("arcane", 3),
         FavorBankState("nomad", 0)))
     val panel = WorldBoardRenderer.world(value, None,
       canControl = true,
       SessionDrafts.empty, new RecordingControls())
-    val banks = panel.querySelectorAll(".favor-bank").toVector
-      .map(_.asInstanceOf[dom.Element])
+    val banks = Dom.all(panel, ".favor-bank")
     assertEquals(banks.map(_.textContent), Vector("Arcane: 3", "Nomad: 0"))
     assertEquals(banks.flatMap(glyphs),
       Vector("token-glyph token-suit-arcane", "token-glyph token-suit-nomad"))
@@ -37,11 +33,9 @@ class SuitGlyphSuite extends munit.FunSuite:
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
       ParkedDecision.Surface.ChooseOne(parked, query),
-      GameProjection("game", 9L, "act", Some("red"), Vector.empty,
-        Vector.empty, Vector.empty, Vector.empty, ready = true,
-        completed = false),
+      TestProjections.actingProjection(nextSequence = 9L),
       canControl = true, panel, new RecordingControls())
-    val choice = panel.querySelector(".walker-choice").asInstanceOf[dom.Element]
+    val choice = Dom.one(panel, ".walker-choice")
     assertEquals(choice.textContent, "Hearth")
     assertEquals(glyphs(choice), Vector("token-glyph token-suit-hearth"))
 
@@ -58,12 +52,9 @@ class SuitGlyphSuite extends munit.FunSuite:
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
       ParkedDecision.Surface.ChooseOne(parked, query),
-      GameProjection("game", 9L, "act", Some("red"), Vector.empty,
-        Vector.empty, Vector.empty, Vector.empty, ready = true,
-        completed = false),
+      TestProjections.actingProjection(nextSequence = 9L),
       canControl = true, panel, new RecordingControls())
-    val choices = panel.querySelectorAll(".walker-choice").toVector
-      .map(_.asInstanceOf[dom.Element])
+    val choices = Dom.all(panel, ".walker-choice")
     assertEquals(choices.map(_.textContent),
       Vector("Order", "Burn 1 favor from the People's Favor"))
     assertEquals(choices.map(glyphs(_).size), Vector(1, 0))
@@ -82,19 +73,22 @@ class SuitGlyphSuite extends munit.FunSuite:
     WalkerSelectionPanels.render(
       ParkedDecision.Surface.Selection(parked, query), draft,
       canControl = true, panel, new RecordingControls())
-    val toggles = panel.querySelectorAll(".walker-many-option").toVector
-      .map(_.asInstanceOf[dom.Element])
+    val toggles = Dom.all(panel, ".walker-many-option")
     assertEquals(toggles.map(_.textContent), Vector("Discord", "Beast"))
     assertEquals(toggles.flatMap(glyphs),
       Vector("token-glyph token-suit-discord", "token-glyph token-suit-beast"))
 
-  test("a secret is a solid book and a defense die a shield, both even-odd"):
+  test("a secret is a solid book and a defense die a shield; both, and the " +
+      "burnt secret, are filled even-odd"):
     val root = dom.document.createElement("div")
     TokenSprite.mount(root)
     def path(id: String): dom.Element =
       Option(root.querySelector(s"symbol#token-$id path"))
         .getOrElse(fail(s"no path for $id"))
+    // The book: its cover outline (a rounded corner at the top right, one at
+    // the bottom left), then the spine notch that even-odd cuts out of it.
     assert(path("secret").getAttribute("d").startsWith("M4 3h13a2 2 0 0 1 2 2v16H7a3 3 0 0 1-3-3zM8 6v12"))
+    // The shield: its outline from the top point to the right shoulder.
     assert(path("defense-die").getAttribute("d").startsWith("M12 1.5 20.5 4.8"))
     assertEquals(path("secret").getAttribute("fill-rule"), "evenodd")
     assertEquals(path("secret-burnt").getAttribute("fill-rule"), "evenodd")

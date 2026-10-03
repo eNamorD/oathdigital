@@ -1,5 +1,6 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.Dom.all
 import org.scalajs.dom
 
 /** Catalog `rulesText` carries `[token]` markup and Markdown emphasis
@@ -8,10 +9,9 @@ import org.scalajs.dom
   * pins the rendered form. Runs under jsdom (`Test / jsEnv` in `build.sbt`).
   */
 class RulesTextRendererSuite extends munit.FunSuite:
-  private def all(node: dom.Element, selector: String): Vector[dom.Element] =
-    node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
   test("every catalog token has a glyph, an accessible name and a colour class"):
+    // 17 is the catalog's icon-token count, the "seventeen" of the
+    // TokenSprite documentation.
     assertEquals(TokenSprite.ids.size, 17)
     TokenSprite.ids.foreach { token =>
       val glyph = RulesTextRenderer.glyph(token)
@@ -52,14 +52,14 @@ class RulesTextRendererSuite extends munit.FunSuite:
     TokenSprite.mount(root)
     TokenSprite.mount(root)
     assertEquals(all(root, "svg.token-sprite").size, 1)
-    assertEquals(all(root, "symbol").size, 17)
+    assertEquals(all(root, "symbol").size, TokenSprite.ids.size)
 
   test("Conspiracy renders as two paragraphs with both banner glyphs"):
     val text = oathdigital.protocol.projection.VisionCardPresentation
       .byId("vision:conspiracy").rulesText
     val blocks = RulesTextRenderer.powers(text)
     assertEquals(blocks.size, 2)
-    val glyphs = blocks(1).querySelectorAll(".token-glyph").toVector
+    val glyphs = all(blocks(1), ".token-glyph")
     assertEquals(glyphs.size, 2)
-    assertEquals(glyphs.map(_.asInstanceOf[dom.Element]
-      .getAttribute("aria-label")), Vector("favor", "secret"))
+    assertEquals(glyphs.map(_.getAttribute("aria-label")),
+      Vector("favor", "secret"))

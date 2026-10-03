@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent,
   NegotiationTerms, NegotiationTransfer}
+import oathdigital.testkit.Unwrap.as
 import ParkedDecision.Surface
 import org.scalajs.dom
 
@@ -11,12 +12,26 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
   private val relic = CardDetails("r1", "relic", "Relic One",
     orientation = Some("face-up"))
 
-  private def deal(canAccept: Boolean = true, editing: Boolean = true) =
-    NegotiationDealState(Vector("red", "blue"), Vector("blue"),
-      Vector(NegotiationTransferState("blue", "red", 2, 0, Vector.empty)),
-      Vector(NegotiationDisclosureState("blue", "red", "held-relic", None)),
-      Option.when(editing)(NegotiationEditingState(5, Vector(relic),
-        Vector.empty, Vector.empty, canAccept)))
+  /** The deal red edits, in which red and blue take part and blue has
+    * already accepted. Blue offers red 2 favor and no relic, and promises
+    * red a held-relic disclosure. Red, while `editing`, may offer up to 5
+    * favor and the relic `relic`; `canAccept` is whether the engine lets
+    * red accept.
+    */
+  private def dealWhereBlueHasAccepted(canAccept: Boolean = true,
+      editing: Boolean = true) =
+    NegotiationDealState(
+      participantPlayerIds = Vector("red", "blue"),
+      acceptedPlayerIds = Vector("blue"),
+      transfers = Vector(NegotiationTransferState(authorPlayerId = "blue",
+        recipientPlayerId = "red", favor = 2, relicCount = 0,
+        relics = Vector.empty)),
+      disclosures = Vector(NegotiationDisclosureState(authorPlayerId = "blue",
+        recipientPlayerId = "red", kind = "held-relic", card = None)),
+      editing = Option.when(editing)(NegotiationEditingState(
+        editableFavor = 5, editableRelics = Vector(relic),
+        editableAdvisers = Vector.empty, editableSiteRelics = Vector.empty,
+        canAccept = canAccept)))
 
   /** The surface the route hands a participant: the deal with its editor. */
   private def owner(value: NegotiationDealState): Surface.Negotiate =
@@ -32,15 +47,16 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     NegotiationDealPanel.render(surface, playerId, canControl, panel, ui)
     panel
 
-  private def one(root: dom.Element, selector: String): dom.Element =
-    val found = root.querySelectorAll(selector)
-    assertEquals(found.length, 1, s"expected exactly one $selector")
-    found(0).asInstanceOf[dom.Element]
+  private def button(root: dom.Element, selector: String): dom.html.Button =
+    as[dom.html.Button](Dom.one(root, selector))
+
+  private def input(root: dom.Element, selector: String): dom.html.Input =
+    as[dom.html.Input](Dom.one(root, selector))
 
   test("every term the owner edits is labelled and on its own row"):
-    val panel = render(owner(deal()), new RecordingControls())
-    val rows = panel.querySelectorAll(".negotiation-item").toVector
-      .map(_.asInstanceOf[dom.Element])
+    val panel = render(owner(dealWhereBlueHasAccepted()),
+      new RecordingControls())
+    val rows = Dom.all(panel, ".negotiation-item")
     // One row for the favor box, one for the relic on offer.
     assertEquals(rows.length, 2)
     assert(rows.head.textContent.startsWith("Favor"),
@@ -51,20 +67,21 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
 
   test("an owner sees the deal and can save, accept and decline"):
     val ui = new RecordingControls()
-    val panel = render(owner(deal()), ui)
-    assertEquals(one(panel, "h2").textContent, "Negotiation")
-    assertEquals(one(panel, ".negotiation-status").textContent,
+    val panel = render(owner(dealWhereBlueHasAccepted()), ui)
+    assertEquals(Dom.one(panel, "h2").textContent, "Negotiation")
+    assertEquals(Dom.one(panel, ".negotiation-status").textContent,
       "red: reviewing · blue: accepted")
-    assertEquals(one(panel, ".negotiation-transfer").textContent,
+    assertEquals(Dom.one(panel, ".negotiation-transfer").textContent,
       "blue gives red: 2 favor, 0 relic(s)")
-    assertEquals(one(panel, ".negotiation-disclosure").textContent,
+    assertEquals(Dom.one(panel, ".negotiation-disclosure").textContent,
       "blue promises red a held-relic disclosure")
-    val favor = one(panel, "input[type=number]").asInstanceOf[dom.html.Input]
-    favor.value = "3"
-    one(panel, "input[type=checkbox]").asInstanceOf[dom.html.Input].checked = true
-    one(panel, ".negotiation-save").asInstanceOf[dom.html.Button].click()
-    one(panel, ".negotiation-accept").asInstanceOf[dom.html.Button].click()
-    one(panel, ".negotiation-decline").asInstanceOf[dom.html.Button].click()
+    input(panel, "input[type=number]").value = "3"
+    input(panel, "input[type=checkbox]").checked = true
+    button(panel, ".negotiation-save").click()
+    button(panel, ".negotiation-accept").click()
+    button(panel, ".negotiation-decline").click()
+    // The owner is red, so the one transfer Save sends goes to blue, the
+    // only other player.
     assertEquals(ui.submitted, Vector[Intent](
       Intent.ResolveWalker("negotiation.deal", DecisionAnswerWire.ProposeTermsWire(
         NegotiationTerms(Vector(NegotiationTransfer("blue", 3, Vector("r1"))),
@@ -74,16 +91,20 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
 
   test("accept is disabled until the engine says this player may accept"):
     val ui = new RecordingControls()
-    val panel = render(owner(deal(canAccept = false)), ui)
-    assert(one(panel, ".negotiation-accept").asInstanceOf[dom.html.Button].disabled)
-    assert(!one(panel, ".negotiation-decline").asInstanceOf[dom.html.Button].disabled)
-    val blocked = render(owner(deal()), ui, canControl = false)
-    assert(one(blocked, ".negotiation-save").asInstanceOf[dom.html.Button].disabled)
+    val panel = render(owner(dealWhereBlueHasAccepted(canAccept = false)), ui)
+    assert(button(panel, ".negotiation-accept").disabled)
+    assert(!button(panel, ".negotiation-decline").disabled)
+
+  test("a viewer who cannot control the game gets a disabled Save"):
+    val blocked = render(owner(dealWhereBlueHasAccepted()),
+      new RecordingControls(), canControl = false)
+    assert(button(blocked, ".negotiation-save").disabled)
 
   test("a spectator sees the deal read-only, with no inputs or buttons"):
     val ui = new RecordingControls()
-    val panel = render(spectator(deal(editing = false)), ui, playerId = "green")
-    assertEquals(one(panel, ".negotiation-status").textContent,
+    val panel = render(spectator(dealWhereBlueHasAccepted(editing = false)),
+      ui, playerId = "green")
+    assertEquals(Dom.one(panel, ".negotiation-status").textContent,
       "red: reviewing · blue: accepted")
     assertEquals(panel.querySelectorAll("input").length, 0)
     assertEquals(panel.querySelectorAll("button").length, 0)
@@ -95,7 +116,7 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
       transfers, disclosures, Some(editing))
 
   private def box(panel: dom.Element, label: String): dom.html.Input =
-    one(panel, s"""input[aria-label="$label"]""").asInstanceOf[dom.html.Input]
+    input(panel, s"""input[aria-label="$label"]""")
 
   test("the editor restores only the viewer's own relic and disclosure selections"):
     val adviser = CardDetails("D1", "denizen", "Hidden Adviser")
@@ -123,7 +144,12 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     assert(!blue.checked)
     assert(yellow.checked)
 
-  test("disclosures are offered only for information the author can inspect"):
+  /** Red's editor over a two-player deal with nothing agreed yet, offering
+    * every kind of disclosure: a faceup relic (offered as a transfer only),
+    * a facedown relic, an adviser, and a relic lying at the site
+    * "site:broken-peaks".
+    */
+  private def dealWithEveryDisclosureKindOffered() =
     val faceUp = CardDetails("R1", "relic", "Public Relic",
       orientation = Some("face-up"))
     val faceDown = CardDetails("R2", "relic", "Secret Relic",
@@ -133,19 +159,27 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     val editing = NegotiationEditingState(3, Vector(faceUp, faceDown),
       Vector(adviser), Vector(NegotiationSiteRelicState("site:broken-peaks",
         siteRelic)), canAccept = false)
-    val deal = NegotiationDealState(Vector("red", "blue"), Vector.empty,
+    NegotiationDealState(Vector("red", "blue"), Vector.empty,
       Vector.empty, Vector.empty, Some(editing))
-    val ui = new RecordingControls()
-    val panel = render(owner(deal), ui)
+
+  test("disclosures are offered only for information the author can inspect"):
+    val panel = render(owner(dealWithEveryDisclosureKindOffered()),
+      new RecordingControls())
     val labels = panel.querySelectorAll("input[type=checkbox]").toVector
       .map(_.getAttribute("aria-label")).filter(_.startsWith("Promise"))
     assertEquals(labels, Vector(
       "Promise adviser disclosure of Hidden Adviser to blue",
       "Promise held-relic disclosure of Secret Relic to blue",
       "Promise site-relic disclosure of Bone Dice to blue"))
+
+  test("a site-relic disclosure is submitted with its site and card id"):
+    val ui = new RecordingControls()
+    val panel = render(owner(dealWithEveryDisclosureKindOffered()), ui)
     box(panel, "Promise site-relic disclosure of Bone Dice to blue")
       .checked = true
-    one(panel, ".negotiation-save").asInstanceOf[dom.html.Button].click()
+    button(panel, ".negotiation-save").click()
+    // Save always sends the favor box, here left at 0, as a transfer to each
+    // other player: blue is the only one.
     assertEquals(ui.submitted, Vector[Intent](Intent.ResolveWalker(
       "negotiation.deal", DecisionAnswerWire.ProposeTermsWire(NegotiationTerms(
         Vector(NegotiationTransfer("blue", 0, Vector.empty)),

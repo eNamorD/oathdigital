@@ -4,8 +4,12 @@ import oathdigital.model.PlayerColor
 
 import scala.concurrent.Future
 
-/** Fixtures the ServerModeUi suites share. */
+/** Fixtures the server-mode UI suites share. */
 private[frontend] object ServerModeFixtures:
+  /** One request a test transport received. */
+  final case class RecordedRequest(method: String, url: String,
+      body: Option[String])
+
   /** Answers every log request with an empty page and passes every other
     * request to `inner`, so a test that counts, lists or queues requests sees
     * only the requests it is about. */
@@ -16,6 +20,13 @@ private[frontend] object ServerModeFixtures:
         """{"gameId":"quiet","after":0,"nextSequence":0,"entries":[]}""")))
       else inner.request(method, url, body)
 
+  /** The two-seat game the presentation suites read, at `phase` with exactly
+    * `legalControls` legal. Its seats are "red-exile" (shown as "Red Exile",
+    * Red) and "blue-exile" (shown as "Blue Exile", Blue);
+    * `activeParticipantId` says whose turn it is, red-exile unless a test
+    * names another. A test that depends on the phase passes it, because the
+    * default, "wake", is only a default.
+    */
   def projection(
       legalControls: Set[String],
       phase: String = "wake",
@@ -23,44 +34,14 @@ private[frontend] object ServerModeFixtures:
       ready: Boolean = true,
       phasePowers: Vector[PhasePowerState] = Vector.empty
   ): GameProjection =
-    GameProjection(
+    TestProjections.actingProjection(
       gameId = "game-1",
       nextSequence = 8L,
       phase = phase,
-      activeParticipantId = Some(activeParticipantId),
+      activePlayer = Some(activeParticipantId),
       players = Vector(
-        GamePlayer(
-          "red-exile",
-          "Red Exile",
-          "exile",
-          PlayerColor.Red
-        ),
-        GamePlayer(
-          "blue-exile",
-          "Blue Exile",
-          "exile",
-          PlayerColor.Blue
-        )
-      ),
-      world = Vector.empty,
-      pawnLocations = Vector.empty,
+        GamePlayer("red-exile", "Red Exile", "exile", PlayerColor.Red),
+        GamePlayer("blue-exile", "Blue Exile", "exile", PlayerColor.Blue)),
       legalControls = legalControls.toVector.sorted,
-      ready = ready,
-      completed = false,
-      phasePowers = phasePowers
-    )
-
-  /** Task 5: Forge is driven end to end through the shared two-zone
-    * interaction. The sections carrying their own labels and minima, the
-    * denizen options carrying their own references, and the answer is
-    * assembled by generic code -- nothing below states Forge's printed
-    * cost, and nothing names a resource.
-    */
-  val forgeQuery = DecisionQueryState.Partition(
-    Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
-      DecisionSectionState("pay-secret", "Pay Secret", 1)),
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")))
-
-  val forgeParked = WalkerDecisionState("forge", "forge-9", "decide",
-    query = Some(forgeQuery))
+      ready = ready
+    ).copy(phasePowers = phasePowers)

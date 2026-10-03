@@ -70,3 +70,27 @@ private[frontend] final class TestBrowser(search: String = ""):
     */
   def settle: Future[Unit] = (1 to 12).foldLeft(Future.successful(())):
     (previous, _) => previous.flatMap(_ => Future.successful(()))
+
+private[frontend] object TestBrowser:
+  /** Runs `body` against a fresh browser opened at `search`, and closes the
+    * browser once the future `body` returns completes, whether it succeeds
+    * or fails. A body that throws before it returns a future closes the
+    * browser too.
+    */
+  def use[A](search: String = "")(body: TestBrowser => Future[A])
+      : Future[A] =
+    val browser = new TestBrowser(search)
+    val finished =
+      try body(browser)
+      catch case failure: Throwable =>
+        browser.close()
+        throw failure
+    finished.andThen { case _ => browser.close() }
+
+  /** Runs `body` against a fresh browser opened at `search`, and closes the
+    * browser when `body` returns or throws.
+    */
+  def useSynchronously[A](search: String = "")(body: TestBrowser => A): A =
+    val browser = new TestBrowser(search)
+    try body(browser)
+    finally browser.close()

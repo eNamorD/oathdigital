@@ -29,7 +29,8 @@ class SnapshotPollingCoordinatorSuite extends FunSuite:
   test("a changed snapshot must be resumed before another poll is scheduled"):
     val clock = new FakePollClock
     val requests = mutable.ArrayBuffer.empty[ServerRequestIdentity]
-    val poller = new SnapshotPollingCoordinator(clock, requests += _)
+    val poller = new SnapshotPollingCoordinator(clock, requests += _,
+      5000, 30000)
     val request = ServerRequestIdentity(1, "game-1", "red-exile")
 
     poller.resume(request)
@@ -41,16 +42,6 @@ class SnapshotPollingCoordinatorSuite extends FunSuite:
     poller.resume(request)
     assert(poller.isRunning)
     assertEquals(clock.activeDelays, Vector(5000))
-
-  test("snapshotAdvances distinguishes unchanged, older, and changed snapshots"):
-    val session = new ServerSessionCoordinator("game-1", "red-exile")
-    val request = session.switchSession("game-1", "red-exile")
-
-    assert(!session.snapshotAdvances(request, 7, 7))
-    assert(!session.snapshotAdvances(request, 7, 6))
-    assert(session.snapshotAdvances(request, 7, 8))
-    assert(session.recordSnapshotSuccess(request))
-    assertEquals(session.connectionState, ServerConnectionState.Connected)
 
   test("hidden polling slows and becoming visible catches up immediately"):
     val clock = new FakePollClock

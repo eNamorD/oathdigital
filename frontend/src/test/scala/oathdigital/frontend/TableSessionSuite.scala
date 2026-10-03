@@ -17,28 +17,46 @@ import scala.scalajs.js.timers.setTimeout
 class TableSessionSuite extends munit.FunSuite:
   private type Answer[A] = Either[GameClientFailure, A]
 
+  /** A `load` the client received. */
+  private final case class Load(gameId: String, selectedPlayerId: String)
+
+  /** A `submit` the client received, with the position it expected. */
+  private final case class Submit(expectedNextSequence: Long,
+      command: GameCommand)
+
+  /** A `preview` the client received. */
+  private final case class Preview(gameId: String, selectedPlayerId: String,
+      request: MajorActionPreviewRequest)
+
+  /** A `loadLog` the client received. */
+  private final case class LogLoad(gameId: String, selectedPlayerId: String,
+      after: Long)
+
+  /** A session the navigation was told to show. */
+  private final case class Shown(gameId: String, playerId: String)
+
   /** Records every call and answers each through a promise, oldest first. */
   private final class FakeClient extends GameClient:
-    var loads = Vector.empty[(String, String)]
-    var submits = Vector.empty[(Long, GameCommand)]
-    var previews = Vector.empty[(String, String, MajorActionPreviewRequest)]
+    var loads = Vector.empty[Load]
+    var submits = Vector.empty[Submit]
+    var previews = Vector.empty[Preview]
     private var pendingLoads = Vector.empty[Promise[Answer[GameProjection]]]
     private var pendingSubmits = Vector.empty[Promise[Answer[GameProjection]]]
     private var pendingPreviews = Vector.empty[Promise[Answer[MajorActionPreviewResponse]]]
     def load(gameId: String, selectedPlayerId: String) =
-      loads :+= (gameId -> selectedPlayerId)
+      loads :+= Load(gameId, selectedPlayerId)
       val promise = Promise[Answer[GameProjection]]()
       pendingLoads :+= promise
       promise.future
     def submit(gameId: String, selectedPlayerId: String, expectedNextSequence: Long,
         command: GameCommand, orderedModifiers: Vector[ModifierInvocation]) =
-      submits :+= (expectedNextSequence -> command)
+      submits :+= Submit(expectedNextSequence, command)
       val promise = Promise[Answer[GameProjection]]()
       pendingSubmits :+= promise
       promise.future
     def preview(gameId: String, selectedPlayerId: String,
         request: MajorActionPreviewRequest) =
-      previews :+= ((gameId, selectedPlayerId, request))
+      previews :+= Preview(gameId, selectedPlayerId, request)
       val promise = Promise[Answer[MajorActionPreviewResponse]]()
       pendingPreviews :+= promise
       promise.future
@@ -54,10 +72,10 @@ class TableSessionSuite extends munit.FunSuite:
       val promise = pendingPreviews.head
       pendingPreviews = pendingPreviews.tail
       promise.success(result)
-    var logs = Vector.empty[(String, String, Long)]
+    var logs = Vector.empty[LogLoad]
     private var pendingLogs = Vector.empty[Promise[Answer[LogPageWire]]]
     def loadLog(gameId: String, selectedPlayerId: String, after: Long) =
-      logs :+= ((gameId, selectedPlayerId, after))
+      logs :+= LogLoad(gameId, selectedPlayerId, after)
       val promise = Promise[Answer[LogPageWire]]()
       pendingLogs :+= promise
       promise.future
@@ -82,10 +100,11 @@ class TableSessionSuite extends munit.FunSuite:
       task()
 
   private final class RecordingNavigation extends Navigation:
-    var shown = Vector.empty[(String, String)]
+    var shown = Vector.empty[Shown]
     var startedOver = 0
     var reloads = 0
-    def showSession(gameId: String, playerId: String): Unit = shown :+= (gameId -> playerId)
+    def showSession(gameId: String, playerId: String): Unit =
+      shown :+= Shown(gameId, playerId)
     def startOver(): Unit = startedOver += 1
     def reload(): Unit = reloads += 1
 
@@ -111,9 +130,9 @@ class TableSessionSuite extends munit.FunSuite:
 
   private def snapshot(sequence: Long, active: String = "red", ready: Boolean = true,
       viewer: Option[String] = None): GameProjection =
-    GameProjection("g", sequence, "act", Some(active), players, Vector.empty,
-      Vector.empty, Vector.empty, ready = ready, completed = false,
-      viewerPlayerId = viewer)
+    TestProjections.actingProjection(gameId = "g", nextSequence = sequence,
+      activePlayer = Some(active), players = players, ready = ready)
+      .copy(viewerPlayerId = viewer)
 
   /** A development session showing `snapshot(sequence)` as red, polling. */
   private def displayed(sequence: Long): Future[Fixture] =
@@ -132,8 +151,8 @@ class TableSessionSuite extends munit.FunSuite:
   test("a development session opens the queried game, displays it and polls"):
     val fixture = new Fixture(trusted = false)
     fixture.session.open(Some("g"))
-    assertEquals(fixture.client.loads, Vector("g" -> "red"))
-    assertEquals(fixture.navigation.shown, Vector("g" -> "red"))
+    assertEquals(fixture.client.loads, Vector(Load("g", "red")))
+    assertEquals(fixture.navigation.shown, Vector(Shown("g", "red")))
     assertEquals(fixture.session.viewedConnection, ServerConnectionState.Connecting)
     fixture.client.answerLoad(Right(snapshot(3)))
     settle().map { _ =>
@@ -142,6 +161,7 @@ class TableSessionSuite extends munit.FunSuite:
       assertEquals(session.viewedDrafts.context, Some(BoardSelectionContext("g", "red", 3)))
       assertEquals(session.viewedConnection, ServerConnectionState.Connected)
       assert(session.controlsAvailable)
+      // The session polls at the poller's visible interval, 5000 ms.
       assertEquals(fixture.clock.delays, Vector(5000))
       assert(fixture.clock.pending)
       // open, loadExisting, and the displayed snapshot.
@@ -160,8 +180,10 @@ class TableSessionSuite extends munit.FunSuite:
     fixture.client.answerLoad(Right(snapshot(1, active = "blue", ready = false)))
     settle().flatMap { _ =>
       assertEquals(fixture.session.currentPlayerId, "blue")
-      assertEquals(fixture.navigation.shown, Vector("g" -> "red", "g" -> "blue"))
-      assertEquals(fixture.client.loads, Vector("g" -> "red", "g" -> "blue"))
+      assertEquals(fixture.navigation.shown,
+        Vector(Shown("g", "red"), Shown("g", "blue")))
+      assertEquals(fixture.client.loads,
+        Vector(Load("g", "red"), Load("g", "blue")))
       assertEquals(fixture.session.viewedDrafts, SessionDrafts.empty)
       assert(!fixture.clock.pending)
       fixture.client.answerLoad(Right(snapshot(1, active = "blue", ready = false)))
@@ -309,7 +331,7 @@ class TableSessionSuite extends munit.FunSuite:
   test("a trusted seat takes the viewer from its first snapshot and ends connected"):
     val fixture = new Fixture(trusted = true, player = "")
     fixture.session.open(None)
-    assertEquals(fixture.client.loads, Vector("g" -> ""))
+    assertEquals(fixture.client.loads, Vector(Load("g", "")))
     fixture.client.answerLoad(Right(snapshot(1, viewer = Some("red"))))
     settle().map { _ =>
       assertEquals(fixture.session.currentPlayerId, "red")
@@ -346,7 +368,8 @@ class TableSessionSuite extends munit.FunSuite:
   test("a stale-position submit empties the drafts, reloads, and keeps the notice"):
     displayed(2).flatMap { fixture =>
       fixture.session.send(GameCommand.BeginRest, Vector.empty)
-      assertEquals(fixture.client.submits, Vector(2L -> GameCommand.BeginRest))
+      assertEquals(fixture.client.submits,
+        Vector(Submit(2L, GameCommand.BeginRest)))
       val before = fixture.redraws
       val stale = GameClientFailure.StalePosition("moved")
       fixture.client.answerSubmit(Left(stale))
@@ -410,7 +433,7 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a displayed position fetches the log from the start and appends it"):
     displayed(3).flatMap { fixture =>
-      assertEquals(fixture.client.logs, Vector(("g", "red", 0L)))
+      assertEquals(fixture.client.logs, Vector(LogLoad("g", "red", 0L)))
       fixture.client.answerLog(Right(page(0, 3)))
       settle().map { _ =>
         assertEquals(fixture.session.viewedLog.map(_.sequence),
@@ -431,7 +454,7 @@ class TableSessionSuite extends munit.FunSuite:
         fixture.client.answerLoad(Right(snapshot(5)))
         settle()
       }.map { _ =>
-        assertEquals(fixture.client.logs.last, ("g", "red", 3L))
+        assertEquals(fixture.client.logs.last, LogLoad("g", "red", 3L))
       }
     }
 
@@ -445,8 +468,8 @@ class TableSessionSuite extends munit.FunSuite:
         fixture.client.answerLoad(Right(snapshot(4)))
         settle()
       }.map { _ =>
-        assertEquals(fixture.client.logs, Vector(("g", "red", 0L),
-          ("g", "red", 0L)))
+        assertEquals(fixture.client.logs,
+          Vector(LogLoad("g", "red", 0L), LogLoad("g", "red", 0L)))
       }
     }
 

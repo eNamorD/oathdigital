@@ -1,10 +1,11 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.Dom.{one, press}
 import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
+import oathdigital.testkit.Unwrap.as
 import ParkedDecision.Surface
 import org.scalajs.dom
-import scala.scalajs.js
 
 class WalkerSelectionPanelsSuite extends munit.FunSuite:
   private def site(id: String) = DecisionOptionState("site", id, s"Site $id")
@@ -33,27 +34,25 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
       decision(id, query, rollOutcome), query), draft, canControl, panel, ui)
     panel
 
-  private def one(root: dom.Element, selector: String): dom.Element =
-    val found = root.querySelectorAll(selector)
-    assertEquals(found.length, 1, s"expected exactly one $selector")
-    found(0).asInstanceOf[dom.Element]
+  private def button(root: dom.Element, selector: String): dom.html.Button =
+    as[dom.html.Button](one(root, selector))
 
   test("choose-many renders a toggle per option and confirms only at the count"):
     val ui = new RecordingControls()
     val draft = opened("challenge.ribbon-site", many)
     assertEquals(one(render(ui, draft, "challenge.ribbon-site", many), "h2")
       .textContent, "Choose sites")
-    val confirm0 = one(render(ui, draft, "challenge.ribbon-site", many),
-      ".walker-many-confirm").asInstanceOf[dom.html.Button]
+    val confirm0 = button(render(ui, draft, "challenge.ribbon-site", many),
+      ".walker-many-confirm")
     assert(confirm0.disabled)
-    one(render(ui, draft, "challenge.ribbon-site", many),
-      """[data-option-id="site:a"]""").asInstanceOf[dom.html.Button].click()
-    one(render(ui, ui.drafts.selection, "challenge.ribbon-site", many),
-      """[data-option-id="site:c"]""").asInstanceOf[dom.html.Button].click()
+    button(render(ui, draft, "challenge.ribbon-site", many),
+      """[data-option-id="site:a"]""").click()
+    button(render(ui, ui.drafts.selection, "challenge.ribbon-site", many),
+      """[data-option-id="site:c"]""").click()
     val panel = render(ui, ui.drafts.selection, "challenge.ribbon-site", many)
     assertEquals(one(panel, """[data-option-id="site:a"]""")
       .getAttribute("aria-pressed"), "true")
-    val confirm = one(panel, ".walker-many-confirm").asInstanceOf[dom.html.Button]
+    val confirm = button(panel, ".walker-many-confirm")
     // A choose-many declares no confirm label, so the panel names the control
     // itself. Asserted rather than reasoned about: the string became a literal
     // when the query stopped carrying an optional label.
@@ -75,18 +74,14 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(instruction(1, 3), "Choose 1 to 3.")
 
   private def field(panel: dom.Element): dom.html.Input =
-    one(panel, "input.walker-amount").asInstanceOf[dom.html.Input]
+    as[dom.html.Input](one(panel, "input.walker-amount"))
   private def confirmOf(panel: dom.Element): dom.html.Button =
-    one(panel, ".walker-amount-confirm").asInstanceOf[dom.html.Button]
+    button(panel, ".walker-amount-confirm")
   private def listOf(panel: dom.Element): dom.Element =
     one(panel, ".walker-amount-options")
   private def type_(input: dom.html.Input, value: String): Unit =
     input.value = value
     input.dispatchEvent(new dom.Event("input"))
-  private def press(node: dom.Element, key: String): Unit =
-    node.dispatchEvent(new dom.KeyboardEvent("keydown",
-      js.Dynamic.literal(key = key, bubbles = true)
-        .asInstanceOf[dom.KeyboardEventInit]))
   private def mouseDown(node: dom.Element): Unit =
     node.dispatchEvent(new dom.MouseEvent("mousedown",
       new dom.MouseEventInit { bubbles = true; cancelable = true }))
@@ -141,6 +136,8 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     press(input, "ArrowDown")
     assert(!listOf(panel).hasAttribute("hidden"))
     assertEquals(input.getAttribute("aria-expanded"), "true")
+    // The first press opened the list at the typed 3; the next two move to
+    // 4 and 5, and a fourth, past the last option, stays on 5.
     press(input, "ArrowDown")
     press(input, "ArrowDown")
     press(input, "ArrowDown")
@@ -174,8 +171,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
   test("a viewer who cannot control sees disabled controls"):
     val panel = amountPanel(new RecordingControls(), canControl = false)
     assert(field(panel).disabled)
-    assert(one(panel, ".walker-amount-toggle").asInstanceOf[dom.html.Button]
-      .disabled)
+    assert(button(panel, ".walker-amount-toggle").disabled)
     assert(confirmOf(panel).disabled)
     mouseDown(one(panel, ".walker-amount-toggle"))
     assert(listOf(panel).hasAttribute("hidden"))
@@ -217,14 +213,13 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     val chosen = Vector("discord", "hearth", "beast")
     val ui = new RecordingControls()
     val draft = chosen.foldLeft(opened(id, banks)) { (current, suit) =>
-      one(render(ui, current, id, banks),
-        s"""[data-option-id="favor-bank:$suit"]""")
-        .asInstanceOf[dom.html.Button].click()
+      button(render(ui, current, id, banks),
+        s"""[data-option-id="favor-bank:$suit"]""").click()
       ui.drafts.selection
     }
     val panel = render(ui, draft, id, banks)
     assertEquals(panel.querySelectorAll(".walker-many-option").length, 4)
-    val confirm = one(panel, ".walker-many-confirm").asInstanceOf[dom.html.Button]
+    val confirm = button(panel, ".walker-many-confirm")
     assert(!confirm.disabled)
     confirm.click()
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker(id,

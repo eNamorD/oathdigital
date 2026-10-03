@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.frontend.ServerModeFixtures.{forgeParked, projection}
+import oathdigital.frontend.ServerModeFixtures.projection
 
 import munit.FunSuite
 
@@ -11,7 +11,7 @@ class ViewerPresentationSuite extends FunSuite:
 
   test("Take Wealth actions use the active-player labels and commands"):
     val actions = ServerUiSupport.takeWealthActions(
-      projection(Set("takeFavor", "takeSecret", "endWake")),
+      projection(Set("takeFavor", "takeSecret", "endWake"), phase = "wake"),
       "red-exile"
     )
 
@@ -32,7 +32,7 @@ class ViewerPresentationSuite extends FunSuite:
   test("unavailable Take Wealth actions are absent"):
     assertEquals(
       ServerUiSupport.takeWealthActions(
-        projection(Set("endWake")),
+        projection(Set("endWake"), phase = "wake"),
         "red-exile"
       ),
       Vector.empty
@@ -40,7 +40,7 @@ class ViewerPresentationSuite extends FunSuite:
 
   test("blocked Take Wealth resource is absent while the legal one remains"):
     val actions = ServerUiSupport.takeWealthActions(
-      projection(Set("takeSecret", "endWake")),
+      projection(Set("takeSecret", "endWake"), phase = "wake"),
       "red-exile"
     )
 
@@ -58,6 +58,7 @@ class ViewerPresentationSuite extends FunSuite:
   test("inactive Wake viewer waits and receives no gameplay controls"):
     val value = projection(
       Set("takeFavor", "takeSecret", "endWake"),
+      phase = "wake",
       activeParticipantId = "red-exile"
     )
     val presentation = ServerUiSupport.viewerPresentation(value, "blue-exile")
@@ -79,7 +80,7 @@ class ViewerPresentationSuite extends FunSuite:
     */
   test("an off-turn owner of a parked walker decision keeps gameplay controls"):
     val value = projection(Set.empty, activeParticipantId = "red-exile")
-      .copy(walkerDecision = Some(forgeParked))
+      .copy(walkerDecision = Some(ForgeFixture.parked))
     val owner = ServerUiSupport.viewerPresentation(value, "blue-exile")
     assert(owner.showGameplayControls)
     assertEquals(owner.waitingForPlayerId, None)

@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.Dom.all
+import oathdigital.testkit.Unwrap.as
 import ParkedDecision.{RecoverStep, Surface}
 import org.scalajs.dom
 
@@ -10,18 +12,15 @@ import org.scalajs.dom
   * because both happen on the click.
   */
 class RecoverPanelSuite extends munit.FunSuite:
-  private def all(node: dom.Element, selector: String): Vector[dom.Element] =
-    node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
   /** The panel takes the routed surface; the projection rides along only
     * for the acting player's supply, which gates buying more dice.
     */
   private def render(surface: Surface.Recover, supply: Int = 5): dom.Element =
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderRecoverPanel(surface,
-      GameProjection("game", 1L, "act", Some("red"), Vector.empty, Vector.empty,
-        Vector.empty, Vector.empty, ready = true, completed = false,
-        activePlayerResources = Some(ActivePlayerResources(0, 0, 0, 0, 0, supply))),
+      TestProjections.actingProjection().copy(activePlayerResources = Some(
+        ActivePlayerResources(favor = 0, faceUpSecrets = 0, faceDownSecrets = 0,
+          committedSecrets = 0, totalSecrets = 0, supply = supply))),
       canControl = true, panel, new RecordingControls())
     panel
 
@@ -58,10 +57,11 @@ class RecoverPanelSuite extends munit.FunSuite:
       Vector("Stop Recover"))
 
   test("without the supply to buy them, the control is refused"):
-    assert(all(render(choice(), supply = 0), ".recover-add").head
-      .asInstanceOf[dom.html.Button].disabled)
-    assert(!all(render(choice()), ".recover-add").head
-      .asInstanceOf[dom.html.Button].disabled)
+    assert(as[dom.html.Button](
+      all(render(choice(), supply = 0), ".recover-add").head).disabled)
+    // The label costs 1 Supply, so 1 is enough.
+    assert(!as[dom.html.Button](
+      all(render(choice(), supply = 1), ".recover-add").head).disabled)
 
   test("Recover shows its dice and how close the score is to the target"):
     val outcome = WalkerRollOutcomeState("recover",

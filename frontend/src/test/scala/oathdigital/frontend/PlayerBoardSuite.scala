@@ -1,6 +1,8 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.Dom.{all, firstMatch}
 import oathdigital.model.PlayerColor
+import oathdigital.testkit.Unwrap.{as, present}
 
 import org.scalajs.dom
 
@@ -8,12 +10,6 @@ import org.scalajs.dom
   * spends its lines on is pinned here.
   */
 class PlayerBoardSuite extends munit.FunSuite:
-  private def all(node: dom.Element, selector: String): Vector[dom.Element] =
-    node.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
-
-  private def one(node: dom.Element, selector: String): Option[dom.Element] =
-    all(node, selector).headOption
-
   private val board = PlayerBoard("red", warbands = 3, favor = 2,
     faceUpSecrets = 1, faceDownSecrets = 0, committedSecrets = 0,
     totalSecrets = 2, supply = 7, pawnSiteId = Some("site:woods"),
@@ -21,19 +17,30 @@ class PlayerBoardSuite extends munit.FunSuite:
       suit = Some("order"), orientation = Some("face-up"))),
     relics = Vector.empty, revealedVision = None)
 
-  private def render(): dom.Element = WorldBoardRenderer.playerBoards(
-    GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-      Vector.empty,
-      Vector(GamePawn("red", "site:woods")), Vector.empty, ready = true,
-      completed = false, playerBoards = Vector(board), supplyMaximum = 7),
-    "red")
+  private val redExile = GamePlayer("red", "Red", "Exile", PlayerColor.Red)
+
+  /** The players pane of a game with red alone, whose pawn stands at
+    * "site:woods", holding `playerBoard`. `supplyMaximum` is the Supply
+    * track's ceiling.
+    */
+  private def render(playerBoard: PlayerBoard, supplyMaximum: Int)
+      : dom.Element =
+    WorldBoardRenderer.playerBoards(
+      TestProjections.actingProjection(players = Vector(redExile))
+        .copy(pawnLocations = Vector(GamePawn("red", "site:woods")),
+          playerBoards = Vector(playerBoard), supplyMaximum = supplyMaximum),
+      "red")
+
+  /** A Supply-at-Rest inspection the pane asked the overlay to open. */
+  private final case class Opened(title: String, lines: Vector[String])
 
   test("name, role and resources share one line, and the location is gone"):
-    val node = render()
-    val identity = one(node, ".player-identity").getOrElse(fail("no identity"))
+    val node = render(board, supplyMaximum = 7)
+    val identity = firstMatch(node, ".player-identity")
+      .getOrElse(fail("no identity"))
     assert(identity.textContent.contains("Red"), identity.textContent)
-    assertEquals(one(identity, ".player-role").map(_.textContent), Some("Exile"))
+    assertEquals(firstMatch(identity, ".player-role").map(_.textContent),
+      Some("Exile"))
     assertEquals(all(identity, ".resources").size, 1)
     assertEquals(all(node, ".player-location"), Vector.empty)
 
@@ -41,7 +48,12 @@ class PlayerBoardSuite extends munit.FunSuite:
     * Act cannot buy any more of it, where "7" alone says nothing.
     */
   test("favor and secrets are glyphs, warbands and supply stay words"):
-    val resources = one(render(), ".resources").getOrElse(fail("no resources"))
+    // Red has 3 warbands, 2 favor and 1 of 2 secrets faceup, and 7 Supply
+    // against a track that holds 7.
+    val tracked = board.copy(warbands = 3, favor = 2, faceUpSecrets = 1,
+      totalSecrets = 2, supply = 7)
+    val resources = firstMatch(render(tracked, supplyMaximum = 7),
+      ".resources").getOrElse(fail("no resources"))
     assertEquals(all(resources, ".token-glyph").map(_.getAttribute("aria-label")),
       Vector("favor", "secret"))
     assertEquals(all(resources, ".resource").map(_.textContent),
@@ -54,10 +66,8 @@ class PlayerBoardSuite extends munit.FunSuite:
     */
   test("advisers and relics share one unlabelled row; a revealed vision does not"):
     val node = WorldBoardRenderer.playerBoards(
-      GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-        Vector.empty, Vector.empty, Vector.empty, ready = true,
-        completed = false, playerBoards = Vector(board.copy(
+      TestProjections.actingProjection(players = Vector(redExile))
+        .copy(playerBoards = Vector(board.copy(
           relics = Vector(CardDetails("r1", "relic", "Crown",
             orientation = Some("face-up"))),
           revealedVision = Some(CardDetails("v1", "vision", "Vision",
@@ -67,22 +77,20 @@ class PlayerBoardSuite extends munit.FunSuite:
     assertEquals(all(node, ".board-cards .card-face").map(_.getAttribute("class")),
       Vector("card-face card-face-denizen", "card-face card-face-relic"))
     assertEquals(all(node, ".board-cards strong"), Vector.empty)
-    assertEquals(one(node, ".board-cards").map(_.getAttribute("aria-label")),
-      Some("Cards in play"))
+    assertEquals(firstMatch(node, ".board-cards")
+      .map(_.getAttribute("aria-label")), Some("Cards in play"))
 
   /** The strip is where a player looks for who holds what, so the title sits
     * on its holder's line and nowhere else.
     */
-  private def titled(side: String): dom.Element = WorldBoardRenderer.playerBoards(
-    GameProjection("game", 1L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red),
-        GamePlayer("blue", "Blue", "Exile", PlayerColor.Blue)),
-      Vector.empty, Vector.empty, Vector.empty, ready = true,
-      completed = false, playerBoards = Vector(board,
-        board.copy(playerId = "blue")),
-      oathkeeper = Some(OathkeeperStatus("supremacy", Some("blue"), side,
-        usurperLimited = true, winnerPlayerId = None))),
-    "red")
+  private def titled(side: String): dom.Element =
+    WorldBoardRenderer.playerBoards(
+      TestProjections.actingProjection(players = Vector(redExile,
+        GamePlayer("blue", "Blue", "Exile", PlayerColor.Blue)))
+        .copy(playerBoards = Vector(board, board.copy(playerId = "blue")),
+          oathkeeper = Some(OathkeeperStatus("supremacy", Some("blue"), side,
+            usurperLimited = true, winnerPlayerId = None))),
+      "red")
 
   test("the Oathkeeper badge sits on its holder's line only"):
     val node = titled("oathkeeper")
@@ -128,9 +136,8 @@ class PlayerBoardSuite extends munit.FunSuite:
       .map(id => GamePlayer(id, id.capitalize, "Exile", PlayerColor.Red))
     def strip(viewer: Option[String], seat: String): Vector[String] =
       all(WorldBoardRenderer.playerBoards(
-        GameProjection("game", 1L, "act", Some("red"), seats, Vector.empty,
-          Vector.empty, Vector.empty, ready = true, completed = false,
-          viewerPlayerId = viewer),
+        TestProjections.actingProjection(players = seats)
+          .copy(viewerPlayerId = viewer),
         seat), ".player-board")
         .map(_.getAttribute("data-player-id"))
     assertEquals(strip(Some("white"), "white"), Vector("white", "red", "blue"))
@@ -141,9 +148,15 @@ class PlayerBoardSuite extends munit.FunSuite:
     * the old line carried stays as the accessible name.
     */
   test("the secrets breakdown survives as the accessible name"):
-    val secrets = all(render(), ".resource").apply(2)
+    // Red owns 2 secrets: 1 faceup and 1 facedown, none committed.
+    val owned = board.copy(faceUpSecrets = 1, faceDownSecrets = 1,
+      committedSecrets = 0, totalSecrets = 2)
+    val secrets = present(all(render(owned, supplyMaximum = 7),
+      ".resource").find(resource => all(resource, ".token-glyph")
+        .exists(_.getAttribute("aria-label") == "secret")),
+      "the secrets resource")
     assertEquals(secrets.getAttribute("aria-label"),
-      "Secrets 1/2. 1 available of 2 owned; 0 facedown and 0 committed")
+      "Secrets 1/2. 1 available of 2 owned; 1 facedown and 0 committed")
 
   /** A title and a Vision are states of the player, not cards in a hand, so
     * they get a row of their own between the identity line and the cards.
@@ -151,11 +164,8 @@ class PlayerBoardSuite extends munit.FunSuite:
   private def renderWith(playerBoard: PlayerBoard,
       oathkeeper: Option[OathkeeperStatus]): dom.Element =
     WorldBoardRenderer.playerBoards(
-      GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-        Vector.empty, Vector.empty, Vector.empty, ready = true,
-        completed = false, playerBoards = Vector(playerBoard),
-        oathkeeper = oathkeeper),
+      TestProjections.actingProjection(players = Vector(redExile))
+        .copy(playerBoards = Vector(playerBoard), oathkeeper = oathkeeper),
       "red")
 
   test("the title and the Vision sit in their own row, not among the cards"):
@@ -166,16 +176,18 @@ class PlayerBoardSuite extends munit.FunSuite:
       Some(OathkeeperStatus("devotion", Some("red"), "oathkeeper",
         usurperLimited = false, None)))
     assertEquals(all(node, ".player-identity .player-title"), Vector.empty)
-    val slots = one(node, ".player-slots").getOrElse(fail("no slots row"))
+    val slots = firstMatch(node, ".player-slots")
+      .getOrElse(fail("no slots row"))
     assertEquals(all(slots, ".player-title").size, 1)
-    assertEquals(one(slots, ".player-slot-vision").map(_.textContent),
-      Some("Vision of Faith"))
+    assertEquals(firstMatch(slots, ".player-slot-vision")
+      .map(_.textContent), Some("Vision of Faith"))
     assertEquals(all(node, ".board-cards .card-face")
       .map(_.getAttribute("data-card-id"))
       .contains("vision:vision-of-faith"), false)
 
   test("a player with neither a title nor a Vision has no slots row"):
-    assertEquals(all(render(), ".player-slots"), Vector.empty)
+    assertEquals(all(render(board, supplyMaximum = 7), ".player-slots"),
+      Vector.empty)
 
   test("the title pill opens the Oath text and the Vision pill its card"):
     var opened = Vector.empty[String]
@@ -188,25 +200,30 @@ class PlayerBoardSuite extends munit.FunSuite:
     val node = renderWith(board.copy(revealedVision = Some(vision)),
       Some(OathkeeperStatus("devotion", Some("red"), "oathkeeper",
         usurperLimited = false, None)))
-    one(node, ".player-slots .player-title").getOrElse(fail("no title pill"))
-      .asInstanceOf[dom.html.Button].click()
-    one(node, ".player-slot-vision").getOrElse(fail("no vision pill"))
-      .asInstanceOf[dom.html.Button].click()
+    as[dom.html.Button](firstMatch(node, ".player-slots .player-title")
+      .getOrElse(fail("no title pill"))).click()
+    as[dom.html.Button](firstMatch(node, ".player-slot-vision")
+      .getOrElse(fail("no vision pill"))).click()
     CardInspection.clear()
     assertEquals(opened, Vector("Oathkeeper of Devotion", "Vision of Faith"))
 
   test("Supply is a button that opens Supply at Rest for that board"):
-    var opened = Vector.empty[(String, Vector[String])]
+    var opened = Vector.empty[Opened]
     CardInspection.onOpen:
-      case CardInspection.Request.Text(title, lines, _) => opened :+= (title -> lines)
+      case CardInspection.Request.Text(title, lines, _) =>
+        opened :+= Opened(title, lines)
       case _ => ()
-    val supply = one(render(), ".resources .supply-open")
-      .getOrElse(fail("no Supply button")).asInstanceOf[dom.html.Button]
+    // Red has 7 Supply against a track that holds 7.
+    val sevenOfSeven = board.copy(supply = 7)
+    val supply = as[dom.html.Button](firstMatch(
+      render(sevenOfSeven, supplyMaximum = 7), ".resources .supply-open")
+      .getOrElse(fail("no Supply button")))
     assertEquals(supply.textContent, "Supply 7/7")
     supply.click()
     CardInspection.clear()
-    assertEquals(opened.map(_._1), Vector("Supply at Rest"))
-    assert(opened.head._2.head.startsWith("Warbands in bag: "), opened.head._2.head)
+    assertEquals(opened.map(_.title), Vector("Supply at Rest"))
+    assert(opened.head.lines.head.startsWith("Warbands in bag: "),
+      opened.head.lines.head)
 
   test("a held banner names what it holds: favor or secrets, not resources"):
     val banners = Vector(
@@ -214,13 +231,7 @@ class PlayerBoardSuite extends munit.FunSuite:
         "peoples-favor", Some("red"), 3),
       oathdigital.protocol.projection.BannerProjection("darkest-secret",
         "darkest-secret", Some("red"), 1))
-    val rendered = WorldBoardRenderer.playerBoards(
-      GameProjection("game", 1L, "act", Some("red"),
-        Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-        Vector.empty, Vector(GamePawn("red", "site:woods")), Vector.empty,
-        ready = true, completed = false,
-        playerBoards = Vector(board.copy(banners = banners)), supplyMaximum = 7),
-      "red")
+    val rendered = render(board.copy(banners = banners), supplyMaximum = 7)
     val lines = all(rendered, ".player-banner").map(_.textContent)
     assertEquals(lines.map(_.split(" · ").last), Vector("3 favor", "1 secret"))
     assert(lines.forall(!_.contains("resources")), lines)

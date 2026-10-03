@@ -1,21 +1,15 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
-import oathdigital.protocol.{MajorActionPreviewResponse, PreviewModifier}
+import oathdigital.protocol.PreviewModifier
+import oathdigital.testkit.Unwrap.present
 
 /** The draft set as a value: what `reconcile` keeps and drops, what `staged`
   * touches, and the exact slots each `FlowExit` clears (spec, "leave").
   */
 class SessionDraftsSuite extends munit.FunSuite:
-  private val context = BoardSelectionContext("game", "red", 9)
+  private val context = ForgeFixture.context
   private val site = (id: String) => DecisionOptionState("site", id, id)
-  private val forgeQuery = DecisionQueryState.Partition(
-    Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
-      DecisionSectionState("pay-secret", "Pay Secret", 1)),
-    Vector("1", "2", "3").map(id =>
-      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")))
-  private val forgeParked = WalkerDecisionState("forge", "forge-9", "decide",
-    query = Some(forgeQuery))
   private val travel = BoardTargetAction("travel", "Choose a destination", 1, 1,
     autoActivate = true, Vector(BoardTargetCandidate(
       BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))
@@ -24,19 +18,14 @@ class SessionDraftsSuite extends munit.FunSuite:
     Vector.empty))
   private val minor = MinorActionsState(advisers, canPeekSiteRelics = false,
     Vector.empty, None, 0, 0)
-  private def projection(parked: Option[WalkerDecisionState] = Some(forgeParked))
+  private def projection(
+      parked: Option[WalkerDecisionState] = Some(ForgeFixture.parked))
       : GameProjection =
-    GameProjection("game", 9L, "act", Some("red"),
-      Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-      Vector.empty, Vector.empty, Vector.empty, ready = true, completed = false,
-      boardTargetActions = Vector(travel), walkerDecision = parked,
-      minorActions = Some(minor))
-  private val draft = ModifierFlowDraft(None, Some("travel"), Map.empty,
-    MajorActionPreviewResponse(9L, "travel", Vector.empty, Vector.empty,
-      Vector.empty),
-    ModifierSelectionState.reconcile(None,
-      ModifierSelectionContext("game", "red", 9, "travel"), Vector.empty, "p"),
-    ModifierFlowStage.Targets)
+    TestProjections.actingProjection(nextSequence = 9L, players = Vector(
+      GamePlayer("red", "Red", "Exile", PlayerColor.Red)))
+      .copy(boardTargetActions = Vector(travel), walkerDecision = parked,
+        minorActions = Some(minor))
+  private val travelTargetsDraft = ModifierFlowDrafts.travelTargetsDraft(9L)
   private val targets = BoardTargetSelectionState(context, Vector(travel),
     Some("travel"), Set.empty)
 
@@ -46,7 +35,7 @@ class SessionDraftsSuite extends munit.FunSuite:
     */
   private def full: SessionDrafts =
     SessionDrafts.empty.reconcile(context, projection()).copy(
-      boardTargets = Some(targets), modifiers = Some(draft),
+      boardTargets = Some(targets), modifiers = Some(travelTargetsDraft),
       facedownAdviser = FacedownAdviserDraft.initial(context, minor)
         .map(_.choose("a1")))
 
@@ -64,7 +53,7 @@ class SessionDraftsSuite extends munit.FunSuite:
 
   test("reconcile keeps every slot under the same context and drops them under another"):
     val kept = full.reconcile(context, projection())
-    assertEquals(kept.modifiers, Some(draft))
+    assertEquals(kept.modifiers, Some(travelTargetsDraft))
     assertEquals(kept.facedownAdviser.flatMap(_.selectedCardId), Some("a1"))
     assertEquals(kept.boardTargets, Some(targets))
     val moved = full.reconcile(context.copy(sequence = 10), projection())
@@ -75,14 +64,17 @@ class SessionDraftsSuite extends munit.FunSuite:
 
   test("staged replaces exactly its own slot"):
     val base = full
-    val partition = base.partition.get.move("denizen:denizen:3", "pay-favor")
+    val partition = present(base.partition, "a partition draft")
+      .move("denizen:denizen:3", "pay-favor")
     assertEquals(base.staged(Draft.Partition(partition)),
       base.copy(partition = Some(partition)))
-    val board = WalkerBoardDraft(context, "forge-9", forgeQuery, site("site:a"))
+    val board = WalkerBoardDraft(context, "forge-9", ForgeFixture.query,
+      site("site:a"))
     assertEquals(base.staged(Draft.Board(Some(board))), base.copy(board = Some(board)))
     assertEquals(base.staged(Draft.Board(Some(board))).staged(Draft.Board(None)),
       base.copy(board = None))
-    val activated = targets.copy(selectedKeys = Set("site:site:woods"))
+    val activated = targets.copy(selectedKeys =
+      Set(BoardTargetRef.Site("site:woods").stableKey))
     assertEquals(base.staged(Draft.BoardTargets(activated)),
       base.copy(boardTargets = Some(activated)))
 
@@ -114,8 +106,9 @@ class SessionDraftsSuite extends munit.FunSuite:
     assertEquals(full.leave(FlowExit.Cancelled(None)).boardTargets, None)
 
   test("TargetsLeft steps the flow draft back and clears the pick and the targets"):
-    val ordering = draft.copy(preview = draft.preview.copy(modifiers =
-      Vector(PreviewModifier("adviser:p:denizen:a", "h.a", "A"))))
+    val ordering = travelTargetsDraft.copy(
+      preview = travelTargetsDraft.preview.copy(modifiers =
+        Vector(PreviewModifier("adviser:p:denizen:a", "h.a", "A"))))
     val left = full.copy(modifiers = Some(ordering)).leave(FlowExit.TargetsLeft)
     assertEquals(left.modifiers.map(_.stage), Some(ModifierFlowStage.Ordering))
     assertEquals(left.facedownAdviser, None)
@@ -131,9 +124,10 @@ class SessionDraftsSuite extends munit.FunSuite:
     assert(left.partition.nonEmpty)
 
   private val modifier = PreviewModifier("adviser:p:denizen:a", "h.a", "A")
-  private val ordering = draft.copy(
-    preview = draft.preview.copy(modifiers = Vector(modifier)),
-    selection = draft.selection.copy(candidates = Vector(modifier)),
+  private val ordering = travelTargetsDraft.copy(
+    preview = travelTargetsDraft.preview.copy(modifiers = Vector(modifier)),
+    selection = travelTargetsDraft.selection
+      .copy(candidates = Vector(modifier)),
     stage = ModifierFlowStage.Ordering)
 
   test("Ordering sets only the flow draft"):
@@ -142,24 +136,27 @@ class SessionDraftsSuite extends munit.FunSuite:
 
   test("Targets with a facedown entry sets the pick and clears the board targets"):
     val pick = FacedownAdviserDraft.initial(context, minor)
-    val stepped = full.step(FlowStep.Targets(draft, TargetsEntry.Facedown(pick)))
-    assertEquals(stepped.modifiers, Some(draft))
+    val stepped = full.step(
+      FlowStep.Targets(travelTargetsDraft, TargetsEntry.Facedown(pick)))
+    assertEquals(stepped.modifiers, Some(travelTargetsDraft))
     assertEquals(stepped.facedownAdviser, pick)
     assertEquals(stepped.boardTargets, None)
     assertEquals(stepped.partition, full.partition)
 
   test("Targets with a board entry sets the targets and keeps the pick"):
-    val activated = targets.copy(selectedKeys = Set("site:site:woods"))
-    val stepped = full.step(FlowStep.Targets(draft, TargetsEntry.Board(activated)))
-    assertEquals(stepped.modifiers, Some(draft))
+    val activated = targets.copy(selectedKeys =
+      Set(BoardTargetRef.Site("site:woods").stableKey))
+    val stepped = full.step(
+      FlowStep.Targets(travelTargetsDraft, TargetsEntry.Board(activated)))
+    assertEquals(stepped.modifiers, Some(travelTargetsDraft))
     assertEquals(stepped.boardTargets, Some(activated))
     assertEquals(stepped.facedownAdviser, full.facedownAdviser)
     assertEquals(stepped.partition, full.partition)
 
   test("Targets with no entry sets only the flow draft"):
     val stepped = full.copy(modifiers = None)
-      .step(FlowStep.Targets(draft, TargetsEntry.NoTargets))
-    assertEquals(stepped, full.copy(modifiers = Some(draft)))
+      .step(FlowStep.Targets(travelTargetsDraft, TargetsEntry.NoTargets))
+    assertEquals(stepped, full.copy(modifiers = Some(travelTargetsDraft)))
 
   test("Toggle and Move map the selection and nothing else"):
     val base = full.copy(modifiers = Some(ordering))

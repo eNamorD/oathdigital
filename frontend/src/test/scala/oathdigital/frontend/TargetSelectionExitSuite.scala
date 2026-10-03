@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
-import oathdigital.protocol.{MajorActionPreviewResponse, PreviewModifier}
+import oathdigital.protocol.PreviewModifier
 import org.scalajs.dom
 
 /** A target selection offers one way out per destination: Cancel returns
@@ -13,39 +13,33 @@ class TargetSelectionExitSuite extends munit.FunSuite:
   private val travel = BoardTargetAction("travel", "Choose a destination", 1, 1,
     autoActivate = false, Vector(BoardTargetCandidate(
       BoardTargetRef.Site("site:woods"), "Deep Woods", Vector.empty)))
-  private val projection = GameProjection("game", 1L, "act", Some("red"),
-    Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)),
-    Vector.empty, Vector.empty, Vector.empty, ready = true, completed = false,
-    actionSelectionOpen = true, boardTargetActions = Vector(travel))
-  private val presentation = ServerUiSupport.ViewerPresentation(
-    showGameplayControls = true, None, None, playerId = "red")
+  private val projection = TestProjections.actingProjection(
+    players = Vector(GamePlayer("red", "Red", "Exile", PlayerColor.Red)))
+    .copy(actionSelectionOpen = true, boardTargetActions = Vector(travel))
 
-  private def panel(modifiers: Vector[PreviewModifier]): dom.Element =
-    val draft = ModifierFlowDraft(None, Some("travel"), Map.empty,
-      MajorActionPreviewResponse(1L, "travel", modifiers, Vector.empty,
-        Vector.empty),
-      ModifierSelectionState.reconcile(None,
-        ModifierSelectionContext("game", "red", 1L, "travel"), modifiers, "p"),
-      ModifierFlowStage.Targets)
-    val drafts = SessionDrafts.empty.copy(modifiers = Some(draft),
+  /** The action panel while red chooses a destination for a travel action
+    * (the Targets stage of the modifier flow) whose preview offered
+    * `modifiers`.
+    */
+  private def targetSelectionPanelAfterPreview(
+      modifiers: Vector[PreviewModifier]): dom.Element =
+    val drafts = SessionDrafts.empty.copy(
+      modifiers = Some(ModifierFlowDrafts.travelTargetsDraft(1L, modifiers)),
       boardTargets = Some(BoardTargetSelectionState(context, Vector(travel),
         Some("travel"), Set.empty)))
-    ActionDecisionRenderer.actionsPanel(projection, presentation,
-      ParkedDecision.Routed(None, None), canControl = true, drafts,
-      new RecordingControls()).element
+    ActionPanels.actionsPanelFor(projection, drafts)
 
   private def labels(root: dom.Element, selector: String): Vector[String] =
-    val found = root.querySelectorAll(selector)
-    (0 until found.length).map(found(_).textContent).toVector
+    Dom.all(root, selector).map(_.textContent)
 
   test("a target selection with no modifier stage offers Cancel alone"):
-    val root = panel(Vector.empty)
+    val root = targetSelectionPanelAfterPreview(Vector.empty)
     assertEquals(labels(root, ".cancel-board-selection"), Vector("Cancel"))
     assertEquals(labels(root, ".back-board-selection"), Vector.empty)
 
   test("a target selection after a modifier stage also goes back to it"):
-    val root = panel(Vector(PreviewModifier("card:horse", "brass-horse",
-      "Brass Horse")))
+    val root = targetSelectionPanelAfterPreview(
+      Vector(PreviewModifier("card:horse", "brass-horse", "Brass Horse")))
     assertEquals(labels(root, ".cancel-board-selection"), Vector("Cancel"))
     assertEquals(labels(root, ".back-board-selection"),
       Vector("Back to modifiers"))
