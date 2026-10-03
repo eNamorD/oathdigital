@@ -7,8 +7,14 @@ import oathdigital.gameplay.setup.SetupProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.Table
+import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Table.p2
-import ParkedServiceFixture.{replayingSecond, setupViaService}
+import ParkedServiceFixture.{firstPlayer, replayingSecond, setupViaService}
+import oathdigital.testkit.{Look, Outcomes}
+import oathdigital.testkit.Unwrap.{accepted, rejected}
+import ParkedServiceFixture.loaded
+import oathdigital.testkit.Unwrap.as
+import ParkedServiceFixture.playFacedownAdviser
 
 /** The application service's stream: what it appends, at which position,
   * and what it refuses to append or replay.
@@ -18,12 +24,15 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // Stays on the replayed setup: the full game from Setup to round eight is
     // the end-to-end smoke test.
     val repository = new InMemoryEventStreamRepository
-    val whenPlayedPower = DenizenId(catalog.denizenWithPower(PowerId("denizen.revelation")).get.id.value)
+    val whenPlayedPower = DenizenId(
+      catalog.denizenWithPower(PowerId("denizen.revelation")).get.id.value)
     def place(order: Vector[DenizenId], index: Int, id: DenizenId) =
       val current = order.indexWhere(_.value == id.value)
       if current < 0 then order.updated(index, id)
       else order.updated(index, id).updated(current, order(index))
-    val p2Index = 6 + orders.participants.indexWhere(_.playerId == PlayerId("p2")) * 3
+    // Setup deals 6 site cards, then 3 advisers to each seat in seat order:
+    // p2's hand starts here.
+    val p2Index = 6 + orders.participants.indexWhere(_.playerId == p2) * 3
     val poweredWorldDeck = place(chronicle.worldDeck, p2Index, whenPlayedPower)
     val poweredChronicle = chronicle.copy(worldDeck = poweredWorldDeck)
     val poweredOrders = ChronicleFirstGamePlan.dealOrder(poweredChronicle,
@@ -32,50 +41,47 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
         def choose(candidates: Vector[PlayerId]) = candidates.head
       })
-    var accepted = setupViaService(service, "powered-playability", sites,
+    var position = setupViaService(service, "powered-playability", sites,
       poweredChronicle, poweredOrders)
     var played = Set.empty[PlayerId]
     var safety = 0
     while {
-      val Ready(ready) = accepted.state: @unchecked
+      val ready = Outcomes.ready(position.state)
       ready.game.current.result.isEmpty
     } do
       safety += 1
+      // 8 rounds of 3 players: at most 24 turns.
       assert(safety <= 24, "all-Exile game should finish after eight rounds")
-      val Ready(wake) = accepted.state: @unchecked
+      val wake = Outcomes.ready(position.state)
       val actor = wake.game.current.turn.activePlayer
-      accepted = ParkedServiceFixture.endingWake(service, "powered-playability", accepted, actor)
+      position = ParkedServiceFixture.endingWake(service, "powered-playability",
+        position, actor)
       if !played(actor) then
-        val Ready(act) = accepted.state: @unchecked
-        val adviser = act.game.current.players.find(_.player == actor).get.advisers.head.id
-          .asInstanceOf[WorldCardId]
-        accepted = service.handle("powered-playability", accepted.nextSequence,
-          GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
-            StartPayload(actor, Vector.empty, Vector(adviser match {
-              case id: DenizenId => DecisionOptionRef.Denizen(id)
-              case id: VisionId => DecisionOptionRef.Vision(id)
-            })))).toOption.get
-        accepted = service.handle("powered-playability", accepted.nextSequence,
-          GameCommand.ResolveWalker(actor, TreeDecision(
+        val act = Outcomes.ready(position.state)
+        val adviser =
+          as[WorldCardId](Look(act).player(actor).advisers.head.id)
+        position = accepted(service.handle("powered-playability",
+          position.nextSequence, playFacedownAdviser(actor, adviser)))
+        position = accepted(service.handle("powered-playability",
+          position.nextSequence, GameCommand.ResolveWalker(actor, TreeDecision(
             s"cardplay.place.${adviser.kind}.${adviser.value}",
-            ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup")))))
-          .toOption.get
+            ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup"))))))
         played += actor
-      accepted = service.handle("powered-playability", accepted.nextSequence,
-        GameCommand.BeginRest(actor)).toOption.get
+      position = accepted(service.handle("powered-playability",
+        position.nextSequence, GameCommand.BeginRest(actor)))
       service = new GameApplicationService(catalog, repository,
         warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
           def choose(candidates: Vector[PlayerId]) = candidates.head
         })
-      val reopened = service.load("powered-playability").toOption.flatten.get
-      assertEquals(reopened.state, accepted.state)
-      assertEquals(reopened.nextSequence, accepted.nextSequence)
-    val Ready(finished) = accepted.state: @unchecked
+      val reopened = loaded(service.load("powered-playability"))
+      assertEquals(reopened.state, position.state)
+      assertEquals(reopened.nextSequence, position.nextSequence)
+    val finished = Outcomes.ready(position.state)
     assert(finished.game.current.result.nonEmpty)
     val projector = new GameProjector(catalog)
     finished.game.current.players.foreach { player =>
       val view = projector.project("powered-playability",
-        LoadedGame(accepted.state, accepted.nextSequence),
+        LoadedGame(position.state, position.nextSequence),
         player.player)
       assertEquals(view.phase, "game-over")
       assertEquals(view.legalControls, Vector.empty)
@@ -84,7 +90,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         finished.game.current.result.map(_.winner.value))
       assert(view.world.flatMap(_.sites).nonEmpty)
     }
-    val raw = repository.load("powered-playability").toOption.flatten.get.records
+    val raw = loaded(repository.load("powered-playability")).records
     assert(raw.exists(_.contains("diagnostic.ignored-rules-recorded")))
     assert(raw.exists(_.contains("reviewed-unimplemented-pre-alpha-fallback")))
 
@@ -92,20 +98,25 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     // Stays on the replayed setup: it checks the length of Setup's journal.
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    val accepted = setupViaService(service, "game-v2")
-    val reloaded = new GameApplicationService(catalog, repository)
-      .load("game-v2").toOption.flatten.get
+    val setUp = setupViaService(service, "game-v2")
+    val reloaded = loaded(new GameApplicationService(catalog, repository)
+      .load("game-v2"))
 
-    assertEquals(reloaded.state, accepted.state)
+    assertEquals(reloaded.state, setUp.state)
     // Setup now runs as an ordinary triggered walker procedure (2026-09-21
     // Chronicle design, slice 2): `GameStarted` plus a `WalkerParked`/
     // `WalkerStepRecorded`/`WalkerCompleted` fact per player decision and
     // delta, not one event per legacy setup command. The first Wake has
-    // nothing to decide, so its End Wake step and completion follow.
+    // nothing to decide, so its End Wake step and completion follow: 1
+    // GameStarted, 9 parks (3 decisions per seat), 17 steps and 2
+    // completions (Setup's and the first Wake's) make 29.
     assertEquals(reloaded.nextSequence, 29L)
     assert(reloaded.state.isInstanceOf[Ready])
-    val records = repository.load("game-v2").toOption.flatten.get.records
+    val records = loaded(repository.load("game-v2")).records
     assertEquals(records.size, 29)
+    assertEquals(records.groupMapReduce(ujson.read(_)("eventType").str)(_ =>
+      1)(_ + _), Map("setup.game-started" -> 1, "walker.parked" -> 9,
+      "walker.step-recorded" -> 17, "walker.completed" -> 2))
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
@@ -117,11 +128,11 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       // Bandits at every empty site keep the refill out of the five events.
       .banditsRefilled.service()
     val active = p2
-    val siteId = Table.quietPawnSite(p2)
+    val siteId = CatalogNames.site("Broken Peaks")
 
-    val wealth = service.handle("game-wake", 0L,
+    val wealth = accepted(service.handle("game-wake", 0L,
       GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active,
-        Vector.empty, Vector(DecisionOptionRef.Button("secret"))))).toOption.get
+        Vector.empty, Vector(DecisionOptionRef.Button("secret"))))))
     // Take Wealth is one atomic walker command (batch-1 Task 7): the resource
     // move, the use record and the completion. It was Wake's only option, so
     // Wake ends in the same command: its phase-change step and completion
@@ -131,16 +142,16 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       service.handle("game-wake", 0L, GameCommand.EndWake(active)),
       Left(GameApplicationError.StaleClientPosition(0L, 5L))
     )
-    val reloaded = replayingSecond(service, repository)
-      .load("game-wake").toOption.flatten.get
-    val Ready(after) = reloaded.state: @unchecked
+    val reloaded = loaded(replayingSecond(service, repository)
+      .load("game-wake"))
+    val after = Outcomes.ready(reloaded.state)
 
     assertEquals(reloaded.state, wealth.state)
     assertEquals(after.game.current.turn.phase, Phase.Act)
     assert(after.game.current.turn.usedPowers.contains(
       oathdigital.gameplay.powers.wake.TakeWealthLimit.useRef(siteId)),
       "the replayed journal must restore the use limit it recorded")
-    val records = repository.load("game-wake").toOption.flatten.get.records
+    val records = loaded(repository.load("game-wake")).records
     assertEquals(records.map(record =>
       ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1, 1))
     // Ending Wake is a walker procedure too (batch-1 Task 7), so the Wake
@@ -158,23 +169,26 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     service.handle(
       "game-stale-v2",
       1L,
-      GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
-        SetupProcedure.pawnDecisionId(PlayerId("p2")),
-        ChooseOneAnswer(DecisionOptionRef.Site(sites.head))))
+      GameCommand.ResolveWalker(firstPlayer, TreeDecision(
+        SetupProcedure.pawnDecisionId(firstPlayer),
+        ChooseOneAnswer(DecisionOptionRef.Site(
+          CatalogNames.site("Ancient City")))))
     )
 
     assertEquals(
       service.handle(
         "game-stale-v2",
         1L,
-        GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
-          SetupProcedure.adviserDecisionId(PlayerId("p2")),
-          ChooseOneAnswer(DecisionOptionRef.Denizen(DenizenId("92")))))
+        GameCommand.ResolveWalker(firstPlayer, TreeDecision(
+          SetupProcedure.adviserDecisionId(firstPlayer),
+          // Wizard's Conclave is in p2's dealt hand.
+          ChooseOneAnswer(DecisionOptionRef.Denizen(
+            CatalogNames.denizen("Wizard's Conclave")))))
       ),
       Left(GameApplicationError.StaleClientPosition(1L, 2L))
     )
     assertEquals(
-      repository.load("game-stale-v2").toOption.flatten.get.nextSequence,
+      loaded(repository.load("game-stale-v2")).nextSequence,
       2L
     )
 
@@ -187,7 +201,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
     val result = new GameApplicationService(catalog, repository)
       .load("game-v1")
 
-    assert(result.left.toOption.get match {
+    assert(rejected(result) match {
       case GameApplicationError.CodecFailure(_) => true
       case _ => false
     })
@@ -195,21 +209,21 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
   test("replay violations report the exact index and append nothing"):
     val repository = new InMemoryEventStreamRepository
     val badDiagnostics = Vector(IgnoredRuleDiagnostic(
-      RuleSourceRef.Adviser(PlayerId("p2"), DenizenId("insomnia")),
+      RuleSourceRef.Adviser(firstPlayer, DenizenId("insomnia")),
       "denizen.insomnia", ActionKind.Rest, RuleTiming.Trigger,
       "corrupted for the test"))
     val records = Vector(
-      GameEventWire.encodeEvent(
+      accepted(GameEventWire.encodeEvent(
         "game-replay-corrupt",
         0L,
         OathEvent.GameStarted(chronicle, orders)
-      ).toOption.get,
-      GameEventWire.encodeEvent(
+      )),
+      accepted(GameEventWire.encodeEvent(
         "game-replay-corrupt",
         1L,
-        OathEvent.IgnoredRulesRecorded(PlayerId("p2"), ActionKind.Rest,
+        OathEvent.IgnoredRulesRecorded(firstPlayer, ActionKind.Rest,
           badDiagnostics)
-      ).toOption.get
+      ))
     ).map(ujson.write(_))
     repository.seed("game-replay-corrupt", records)
 
@@ -217,7 +231,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       new GameApplicationService(catalog, repository).handle(
         "game-replay-corrupt",
         2L,
-        GameCommand.EndWake(PlayerId("p2"))
+        GameCommand.EndWake(firstPlayer)
       ),
       Left(GameApplicationError.ReplayFailure(
         1L,
@@ -226,7 +240,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       ))
     )
     assertEquals(
-      repository.load("game-replay-corrupt").toOption.flatten.get.records,
+      loaded(repository.load("game-replay-corrupt")).records,
       records
     )
 
@@ -236,11 +250,11 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         envelopeGameId: String
     ): (EventStreamRepository, () => Int) =
       var appendCalls = 0
-      val record = GameEventWire.encodeEvent(
+      val record = accepted(GameEventWire.encodeEvent(
         envelopeGameId,
         0L,
         OathEvent.GameStarted(chronicle, orders)
-      ).toOption.get
+      ))
       val repository = new EventStreamRepository:
         override def load(gameId: String): Either[RepositoryFailure, Option[StoredEventStream]] = Right(Some(StoredEventStream(
           storedGameId,
@@ -263,7 +277,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
         new GameApplicationService(catalog, repository).handle(
           "game-a",
           1L,
-          GameCommand.EndWake(PlayerId("p2"))
+          GameCommand.EndWake(firstPlayer)
         ),
         Left(GameApplicationError.StreamIdentityMismatch(
           "game-a",
@@ -275,11 +289,11 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
 
   test("authoritative history cannot omit sequence zero"):
     val repository = new InMemoryEventStreamRepository
-    val record = GameEventWire.encodeEvent(
+    val record = accepted(GameEventWire.encodeEvent(
       "game-missing-zero",
       1L,
       OathEvent.GameStarted(chronicle, orders)
-    ).toOption.get
+    ))
     repository.seed("game-missing-zero", Vector(ujson.write(record)))
 
     assertEquals(

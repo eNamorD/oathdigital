@@ -8,7 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerParked}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Situation, SituationDriver,
-  Table}
+  Table, Unwrap}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 /** Real games parked on a walker through the application service.
@@ -25,6 +25,24 @@ object ParkedServiceFixture:
     */
   val parkedAssertions = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+
+  /** The option that names `card`, a denizen or a Vision. */
+  def optionRef(card: WorldCardId): DecisionOptionRef = card match
+    case id: DenizenId => DecisionOptionRef.Denizen(id)
+    case id: VisionId => DecisionOptionRef.Vision(id)
+
+  /** `actor` starts playing their facedown adviser `card`. */
+  def playFacedownAdviser(actor: PlayerId, card: WorldCardId): GameCommand =
+    GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+      StartPayload(actor, Vector.empty, Vector(optionRef(card))))
+
+  /** The first player of the fixture's first game: Setup seats p2 first. */
+  val firstPlayer: PlayerId = p2
+
+  /** The game a stream holds; fails with the load error, or saying no game
+    * is stored. */
+  def loaded[A](result: Either[Any, Option[A]])(using munit.Location): A =
+    Unwrap.present(Unwrap.accepted(result), "a stored game")
 
   /** A second service over the same journal, replaying it from the same
     * start as `service`. */

@@ -14,6 +14,13 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.{Look, Outcomes}
+import oathdigital.testkit.Unwrap.accepted
+import ParkedServiceFixture.optionRef
+import oathdigital.gameplay.actions.VisionRules
+import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.present
+import ParkedServiceFixture.firstPlayer
 
 /** The application service's projections: who sees which decision, site,
   * hand and preview.
@@ -32,21 +39,21 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val (service, _) = table.service()
     val active = p2
     val projector = new GameProjector(catalog)
-    val loaded = LoadedGame(table.state, 0L)
+    val stored = LoadedGame(table.state, 0L)
 
-    val own = projector.project("game-projection-wake", loaded, active)
-    val public = projector.projectPublic("game-projection-wake", loaded)
+    val own = projector.project("game-projection-wake", stored, active)
+    val public = projector.projectPublic("game-projection-wake", stored)
     assertEquals(own.phase, "wake")
     assert(own.legalControls.contains("endWake"))
     assertEquals(public.legalControls, Vector.empty)
     assert(own.activePlayerResources.nonEmpty)
     assert(own.currentSiteResources.nonEmpty)
 
-    val ended = service.handle(
+    val ended = accepted(service.handle(
       "game-projection-wake",
       0L,
       GameCommand.EndWake(active)
-    ).toOption.get
+    ))
     val act = projector.project(
       "game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence),
@@ -65,7 +72,7 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       BoardTargetRefProjection.Site]))
     assert(travel.candidates.forall(_.details.exists(_.endsWith("Supply"))))
     // Each destination is priced by dry-running the Travel tree.
-    val Ready(atAct) = ended.state: @unchecked
+    val atAct = Outcomes.ready(ended.state)
     assertEquals(
       travel.candidates.map(candidate => candidate.target -> candidate.details),
       TravelProcedure.candidates(catalog, atAct, active,
@@ -76,146 +83,134 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       LoadedGame(ended.state, ended.nextSequence)).boardTargetActions,
       Vector.empty)
 
-  test("site projection exposes ordered public properties without relic identity"):
-    // A projection needs only a ready game, so the base is the quiet table
-    // and every fact the test asserts is patched in below. `Table` has no
-    // step for Imperial warbands or for a site's loose favor and secrets.
-    val ready = Table.start.ready
-    val siteId = ready.game.current.map.cradle.head
-    val emptySiteId = ready.game.current.map.cradle(1)
-    val imperialSiteId = ready.game.current.map.provinces.head
-    val banditSiteId = ready.game.current.map.provinces(1)
-    val otherPlayerSiteId = ready.game.current.map.provinces(2)
-    val definition = catalog.sites.find(_.id == siteId).get
-    val denizenDefinitions = catalog.denizens.take(2)
-    val relicDefinitions = catalog.relics.take(2)
-    val activePlayer = ready.game.current.players.find(
-      _.player == ready.game.current.turn.activePlayer).get
-    val otherPlayer = ready.game.current.players.find(_ != activePlayer).get
-    val populated = ready.game.current.map.sites(siteId).copy(
-      forces = SiteForces.Occupied(ForceKind.Exile(activePlayer.lineage), 2),
-      denizens = denizenDefinitions.reverse.map(definition =>
-        DenizenState(
-          DenizenId(definition.id.value),
-          Orientation.FaceUp,
-          Tokens.empty
-        )),
-      relics = relicDefinitions.map(definition =>
-        RelicState(
-          RelicId(definition.id.value),
-          Orientation.FaceDown,
-          Tokens.empty
-        )),
-      tokens = Tokens(2, 1)
-    )
-    val current = ready.game.current.copy(
-      commonCards = ready.game.current.commonCards.copy(
-        regionalDiscards = Map(
-          Region.Cradle -> Vector(DenizenId(denizenDefinitions.head.id.value)),
-          Region.Provinces -> Vector(VisionId("vision:conquest")),
-          Region.Hinterland -> Vector.empty)),
-      map = ready.game.current.map.copy(
-        sites = ready.game.current.map.sites
-          .updated(siteId, populated)
-          .updated(
-            emptySiteId,
-            ready.game.current.map.sites(emptySiteId).copy(
-              forces = SiteForces.Empty,
-              denizens = Vector.empty,
-              relics = Vector.empty,
-              tokens = Tokens.empty
-            )
-          )
-          .updated(imperialSiteId, ready.game.current.map.sites(imperialSiteId)
-            .copy(forces = SiteForces.Occupied(ForceKind.Imperial, 1)))
-          .updated(banditSiteId, ready.game.current.map.sites(banditSiteId)
-            .copy(forces = SiteForces.Occupied(ForceKind.Bandit, 3)))
-          .updated(otherPlayerSiteId, ready.game.current.map.sites(otherPlayerSiteId)
-            .copy(forces = SiteForces.Occupied(
-              ForceKind.Exile(otherPlayer.lineage), 4)))
-      )
-    )
-    val loaded = LoadedGame(
-      Ready(ready.copy(game = ready.game.copy(current = current))),
-      0L
-    )
-    val projector = new GameProjector(catalog)
-    val own = projector.project("game-site-details", loaded,
-      current.turn.activePlayer)
-    val public = projector.projectPublic("game-site-details", loaded)
-    val site = own.world.flatMap(_.sites).find(_.siteId == siteId.value).get
-    val empty = own.world.flatMap(_.sites)
-      .find(_.siteId == emptySiteId.value).get
+  private val ancientCity = CatalogNames.site("Ancient City")
+  private val brokenPeaks = CatalogNames.site("Broken Peaks")
+  private val buriedGiant = CatalogNames.site("Buried Giant")
+  private val deepWoods = CatalogNames.site("Deep Woods")
+  private val desolateShore = CatalogNames.site("Desolate Shore")
+  private val errandBoy = CatalogNames.denizen("Errand Boy")
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
+  private val siteRelics = Vector(CatalogNames.relic("Sticky Fire"),
+    CatalogNames.relic("Cursed Cauldron"))
 
+  /** The quiet table with every site detail a projection shows. p1 rules
+    * Ancient City with 2 warbands; it holds Errand Boy then Wrestlers
+    * faceup, Sticky Fire and Cursed Cauldron facedown, 2 favor and 1 secret.
+    * Broken Peaks holds nothing, as on the quiet table. Buried Giant holds 1
+    * Imperial warband, Deep Woods 3 Bandits, and Desolate Shore 4 of p2's
+    * warbands. The Cradle discard pile shows Fae Merchant and the Provinces
+    * pile Conspiracy; the Hinterland's is empty. No Table step places
+    * Imperial warbands, so they are patched in. */
+  private val siteDetails: ReadyGame =
+    val table = Table.start
+      .warbandsAt(ancientCity, p1, 2)
+      .denizen(errandBoy, at = ancientCity).denizen(wrestlers, at = ancientCity)
+      .relicAt(siteRelics(0), at = ancientCity)
+      .relicAt(siteRelics(1), at = ancientCity)
+      .siteTokens(ancientCity, favor = 2, secrets = 1)
+      .bandits(deepWoods, 3)
+      .warbandsAt(desolateShore, p2, 4)
+      .discarded(Region.Cradle, "Fae Merchant")
+      .discarded(Region.Provinces, VisionRules.Conspiracy)
+      .ready
+    table.updateCurrent(current => current.copy(map = current.map.copy(sites =
+      current.map.sites.updated(buriedGiant, current.map.sites(buriedGiant)
+        .copy(forces = SiteForces.Occupied(ForceKind.Imperial, 1))))))
+
+  private val projector = new GameProjector(catalog)
+  private val siteDetailsLoaded = LoadedGame(Ready(siteDetails), 0L)
+  private val ownDetails =
+    projector.project("game-site-details", siteDetailsLoaded, p1)
+  private val publicDetails =
+    projector.projectPublic("game-site-details", siteDetailsLoaded)
+
+  private def projectedSite(id: SiteId)(using munit.Location) = present(
+    ownDetails.world.flatMap(_.sites).find(_.siteId == id.value),
+    s"${id.value} in the projection")
+
+  test("a site projects its loose tokens, capacity, cards in order and " +
+      "hides relic identity"):
+    val site = projectedSite(ancientCity)
+    val empty = projectedSite(brokenPeaks)
+    val printed = present(catalog.site(ancientCity), "Ancient City")
     assertEquals(site.looseFavor, 2)
     assertEquals(site.looseSecrets, 1)
-    assertEquals(site.denizenCapacity, definition.capacity)
-    assertEquals(site.relicCapacity, definition.relicSlots)
-    assertEquals(
-      site.denizens.map(card => card.cardId -> card.label),
-      denizenDefinitions.reverse.map(definition =>
-        definition.id.value -> definition.name)
-    )
+    assertEquals(site.denizenCapacity, printed.capacity)
+    assertEquals(site.relicCapacity, printed.relicSlots)
+    assertEquals(site.denizens.map(card => card.cardId -> card.label),
+      Vector(errandBoy.value -> "Errand Boy", wrestlers.value -> "Wrestlers"))
     assertEquals(site.relics.facedownCount, 2)
     assertEquals(empty.denizens, Vector.empty)
     assertEquals(empty.relics.facedownCount, 0)
-    assertEquals(site.forces, Some(SiteForcesProjection.Exile(2,
-      activePlayer.player.value, ready.playerColors(activePlayer.player),
-      s"${ready.playerColors(activePlayer.player).key.capitalize} Warbands")))
-    assertEquals(empty.forces, None)
-    assertEquals(own.world.flatMap(_.sites).find(_.siteId == imperialSiteId.value)
-      .flatMap(_.forces), Some(SiteForcesProjection.Imperial(1,
-      "Imperial Warbands")))
-    assertEquals(own.world.flatMap(_.sites).find(_.siteId == banditSiteId.value)
-      .flatMap(_.forces), Some(SiteForcesProjection.Bandit(3,
-      "Bandit Warbands")))
-    val otherColor = ready.playerColors(otherPlayer.player)
-    assertEquals(own.world.flatMap(_.sites).find(_.siteId == otherPlayerSiteId.value)
-      .flatMap(_.forces), Some(SiteForcesProjection.Exile(4,
-      otherPlayer.player.value, otherColor,
-      s"${otherColor.key.capitalize} Warbands")))
-    val wire = ujson.read(GameHttpWire.encodeProjection(own))
+    assertEquals(publicDetails.world, ownDetails.world)
+    val json = GameHttpWire.encodeProjection(publicDetails)
+    assert(json.contains("\"looseFavor\":2"))
+    assert(json.contains("\"facedownCount\":2"))
+    siteRelics.foreach(relic => assert(!json.contains(relic.value)))
+
+  test("a site projects Exile, Imperial and Bandit forces"):
+    val p1Color = siteDetails.playerColors(p1)
+    val p2Color = siteDetails.playerColors(p2)
+    assertEquals(projectedSite(ancientCity).forces,
+      Some(SiteForcesProjection.Exile(2, p1.value, p1Color,
+        s"${p1Color.key.capitalize} Warbands")))
+    assertEquals(projectedSite(brokenPeaks).forces, None)
+    assertEquals(projectedSite(buriedGiant).forces,
+      Some(SiteForcesProjection.Imperial(1, "Imperial Warbands")))
+    assertEquals(projectedSite(deepWoods).forces,
+      Some(SiteForcesProjection.Bandit(3, "Bandit Warbands")))
+    assertEquals(projectedSite(desolateShore).forces,
+      Some(SiteForcesProjection.Exile(4, p2.value, p2Color,
+        s"${p2Color.key.capitalize} Warbands")))
+
+  test("forces encode with these wire keys"):
+    val wire = ujson.read(GameHttpWire.encodeProjection(ownDetails))
     val wireSites = wire("world").arr.flatMap(_("sites").arr)
-    val wirePlayerForces = wireSites.find(_("siteId").str == siteId.value)
-      .get("forces")
+    val wirePlayerForces = present(
+      wireSites.find(_("siteId").str == ancientCity.value),
+      "Ancient City on the wire")("forces")
     assertEquals(wirePlayerForces.obj.keySet,
       Set("forceKind", "count", "rulerKind", "rulerPlayerId", "label",
         "colorToken"))
-    assertEquals(wirePlayerForces("rulerPlayerId").str, activePlayer.player.value)
-    assertEquals(wireSites.find(_("siteId").str == emptySiteId.value)
-      .get("forces"), ujson.Null)
-    assertEquals(public.world, own.world)
-    assertEquals(own.world.map(region => region.regionId ->
+    assertEquals(wirePlayerForces("rulerPlayerId").str, p1.value)
+    assertEquals(present(wireSites.find(_("siteId").str == brokenPeaks.value),
+      "Broken Peaks on the wire")("forces"), ujson.Null)
+
+  test("discard and world-deck top card kinds project"):
+    assertEquals(ownDetails.world.map(region => region.regionId ->
       region.discardTopCardKind).toMap,
       Map("cradle" -> Some("denizen"), "provinces" -> Some("vision"),
         "hinterland" -> None))
-    assertEquals(own.worldDeckTopCardKind,
-      current.commonCards.worldDeck.headOption.map(_.kind))
-    def worldTop(deck: Vector[WorldCardId]) = projector.project(
-      "game-world-top", LoadedGame(Ready(ready.copy(game = ready.game.copy(
-        current = current.copy(commonCards = current.commonCards.copy(
-          worldDeck = deck))))), 0L), current.turn.activePlayer)
-      .worldDeckTopCardKind
-    assertEquals(worldTop(Vector(VisionId("vision:conquest"))), Some("vision"))
-    assertEquals(worldTop(Vector.empty), None)
-    own.world.flatMap(_.sites).foreach { projected =>
-      val source = catalog.sites.find(_.id.value == projected.siteId).get
-      if source.capacity == 3 then
-        assertEquals(projected.recoverDifficulty, None)
-        assertEquals(projected.forgeCost.map(cost =>
-          Tokens(cost.favor, cost.secrets)), source.forgeRequirements)
-      else
-        assertEquals(projected.forgeCost, None)
-        assertEquals(projected.recoverDifficulty, source.recoverDifficulty)
-    }
-
-    val json = oathdigital.server.GameHttpWire.encodeProjection(public)
-    assert(json.contains("\"looseFavor\":2"))
-    assert(json.contains("\"facedownCount\":2"))
+    val deck = siteDetails.game.current.commonCards.worldDeck
+    assertEquals(ownDetails.worldDeckTopCardKind, deck.headOption.map(_.kind))
+    def worldTop(ready: ReadyGame) = projector.project("game-world-top",
+      LoadedGame(Ready(ready), 0L), p1).worldDeckTopCardKind
+    assertEquals(worldTop(Table.from(siteDetails)
+      .worldDeckTop(VisionRules.Conspiracy).unchecked), Some("vision"))
+    // No Table step empties the world deck.
+    assertEquals(worldTop(siteDetails.updateCurrent(current => current.copy(
+      commonCards = current.commonCards.copy(worldDeck = Vector.empty)))),
+      None)
+    val json = GameHttpWire.encodeProjection(publicDetails)
     assert(json.contains("\"discardTopCardKind\":\"denizen\""))
-    current.commonCards.worldDeck.headOption.foreach(card =>
+    deck.headOption.foreach(card =>
       assert(json.contains(s"\"worldDeckTopCardKind\":\"${card.kind}\"")))
-    relicDefinitions.foreach(relic => assert(!json.contains(relic.id.value)))
+
+  test("every site projects its printed Recover difficulty or Forge cost"):
+    assertEquals(ownDetails.world.flatMap(_.sites).map(site => site.siteId ->
+      (site.forgeCost.map(cost => Tokens(cost.favor, cost.secrets)),
+        site.recoverDifficulty)).toMap,
+      Vector[(String, (Option[Tokens], Option[Int]))](
+        "Ancient City" -> (Some(Tokens(3, 0)), None),
+        "Broken Peaks" -> (None, Some(4)),
+        "Buried Giant" -> (None, Some(6)),
+        "Deep Woods" -> (Some(Tokens(1, 2)), None),
+        "Desolate Shore" -> (None, Some(5)),
+        "Dunes" -> (None, Some(4)),
+        "Fair Isle" -> (None, Some(3)),
+        "Golden Valley" -> (Some(Tokens(3, 0)), None))
+        .map((name, printed) => CatalogNames.site(name).value -> printed)
+        .toMap)
 
   /** The hand is a preview, not a question: it is drawn while the walker is
     * asking about something else (the starting site), and goes quiet the
@@ -225,19 +220,19 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
   test("a temporary hand previews to its holder until it is asked about"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    val begun = service.handle("game-hand", 0L,
-      GameCommand.Begin(chronicle, orders)).toOption.get
-    val projector = new GameProjector(catalog)
+    val begun = accepted(service.handle("game-hand", 0L,
+      GameCommand.Begin(chronicle, orders)))
     val waiting = LoadedGame(begun.state, begun.nextSequence)
-    val holder = PlayerId("p2")
+    val holder = firstPlayer
     val hand = projector.project("game-hand", waiting, holder)
       .temporaryHandPreview
 
+    // Each seat is dealt 3 advisers.
     assertEquals(hand.size, 3)
     assert(hand.forall(_.orientation.contains("face-up")), hand.toString)
     assert(hand.forall(!_.hidden), hand.toString)
     // Every seat was dealt a hand, and each one is shown only its own.
-    val otherHand = projector.project("game-hand", waiting, PlayerId("p1"))
+    val otherHand = projector.project("game-hand", waiting, p1)
       .temporaryHandPreview
     assertEquals(otherHand.size, 3)
     assertEquals(otherHand.map(_.cardId).intersect(hand.map(_.cardId)),
@@ -245,10 +240,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     assertEquals(projector.projectPublic("game-hand", waiting)
       .temporaryHandPreview, Vector.empty)
 
-    val placed = service.handle("game-hand", begun.nextSequence,
+    val placed = accepted(service.handle("game-hand", begun.nextSequence,
       GameCommand.ResolveWalker(holder, TreeDecision(
         SetupProcedure.pawnDecisionId(holder),
-        ChooseOneAnswer(DecisionOptionRef.Site(sites.head))))).toOption.get
+        ChooseOneAnswer(DecisionOptionRef.Site(ancientCity))))))
     val asked = projector.project("game-hand",
       LoadedGame(placed.state, placed.nextSequence), holder)
 
@@ -267,22 +262,23 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       .service()
     val gameId = "game-search-preview"
     val actor = p1
-    val started = service.handle(gameId, 0L,
+    val started = accepted(service.handle(gameId, 0L,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
-      .toOption.get
-    val Ready(afterDraw) = started.state: @unchecked
+      )
+    val afterDraw = Outcomes.ready(started.state)
     val drawn = afterDraw.game.current.temporaryHands(actor)
-    val kept = drawn.head
-    val chosen = if drawn.size == 1 then started else
-      def ref(card: WorldCardId): DecisionOptionRef = card match
-        case id: DenizenId => DecisionOptionRef.Denizen(id)
-        case id: VisionId => DecisionOptionRef.Vision(id)
-      val assignments = Vector(DecisionPlacement(ref(kept), "keep")) ++
-        drawn.tail.map(card => DecisionPlacement(ref(card), "discard"))
-      service.handle(gameId, started.nextSequence,
-        GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
-          DecisionAnswer.PartitionAnswer(assignments)))).toOption.get
+    val (kept, merchant, secondChance) = (CatalogNames.denizen(
+      "Threatening Roar"), CatalogNames.denizen("Fae Merchant"),
+      CatalogNames.denizen("Second Chance"))
+    assertEquals(drawn, Vector[WorldCardId](kept, merchant, secondChance))
+    // Keep Threatening Roar and discard the other two.
+    val assignments = Vector(DecisionPlacement(optionRef(kept), "keep"),
+      DecisionPlacement(optionRef(merchant), "discard"),
+      DecisionPlacement(optionRef(secondChance), "discard"))
+    val chosen = accepted(service.handle(gameId, started.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
+        DecisionAnswer.PartitionAnswer(assignments)))))
     val placing = new GameProjector(catalog).project(gameId,
       LoadedGame(chosen.state, chosen.nextSequence), actor)
 
@@ -298,15 +294,15 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     val (service, _) = table.service()
     val gameId = "game-facedown-preview"
     val actor = p1
-    val adviser = table.ready.game.current.players.find(_.player == actor).get
+    val adviser = Look(table.ready).player(actor)
       .advisers.collectFirst {
         case DenizenState(id, Orientation.FaceDown, _) => id
       }.get
-    val started = service.handle(gameId, 0L,
+    val started = accepted(service.handle(gameId, 0L,
       GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
         StartPayload(actor, Vector.empty,
-          Vector(DecisionOptionRef.Denizen(adviser))))).toOption.get
-    val Ready(parked) = started.state: @unchecked
+          Vector(DecisionOptionRef.Denizen(adviser))))))
+    val parked = Outcomes.ready(started.state)
     assertEquals(parked.game.current.temporaryHands.getOrElse(actor,
       Vector.empty), Vector.empty)
     val placing = new GameProjector(catalog).project(gameId,
@@ -317,28 +313,37 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     assertEquals(placing.temporaryHandPreview.map(c => (c.cardId, c.hidden)),
       Vector((adviser.value, false)))
 
+  /** p2's dealt hand in the fixture's first game. */
+  private val (wizardsConclave, errandBoyCard, natureWorship) = (
+    CatalogNames.denizen("Wizard's Conclave"), CatalogNames.denizen(
+      "Errand Boy"), CatalogNames.denizen("Nature Worship"))
+
+  /** The fixture's first game begun, and the first player, p2, placed at
+    * Ancient City: p2 is now asked which adviser to keep. */
+  private def askedForAdvisers(service: GameApplicationService,
+      gameId: String)(using munit.Location): GameAccepted =
+    val begun = accepted(service.handle(gameId, 0L,
+      GameCommand.Begin(chronicle, orders)))
+    accepted(service.handle(gameId, begun.nextSequence,
+      GameCommand.ResolveWalker(firstPlayer, TreeDecision(
+        SetupProcedure.pawnDecisionId(firstPlayer),
+        ChooseOneAnswer(DecisionOptionRef.Site(ancientCity))))))
+
   test("player projection redacts other adviser hands and hidden orders"):
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val begun = service.handle("game-private", 0L,
-      GameCommand.Begin(chronicle, orders)).toOption.get
-    val placed = service.handle(
-      "game-private",
-      begun.nextSequence,
-      GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
-        SetupProcedure.pawnDecisionId(PlayerId("p2")),
-        ChooseOneAnswer(DecisionOptionRef.Site(sites.head))))
-    ).toOption.get
-    val projector = new GameProjector(catalog)
-    val loaded = LoadedGame(placed.state, placed.nextSequence)
-    val own = projector.project("game-private", loaded, PlayerId("p2"))
-    val other = projector.project("game-private", loaded, PlayerId("p1"))
+    val service = new GameApplicationService(catalog,
+      new InMemoryEventStreamRepository)
+    val placed = askedForAdvisers(service, "game-private")
+    val stored = LoadedGame(placed.state, placed.nextSequence)
+    val own = projector.project("game-private", stored, firstPlayer)
+    val other = projector.project("game-private", stored, p1)
     val privateIds = own.walkerDecision.toVector.flatMap(_.query.toVector
       .flatMap(_.offeredOptions)).map(_.id)
-    val otherJson = oathdigital.server.GameHttpWire
-      .encodeProjection(other)
+    val otherJson = GameHttpWire.encodeProjection(other)
 
+    // Each seat is dealt 3 advisers.
     assertEquals(privateIds.size, 3)
+    assertEquals(privateIds, Vector(wizardsConclave, errandBoyCard,
+      natureWorship).map(_.value))
     assertEquals(own.temporaryHandPreview, Vector.empty)
     assertEquals(other.walkerDecision, None)
     val publicShape = ujson.read(otherJson).obj
@@ -357,41 +362,47 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       exposedValues.intersect(orders.worldDeckOrder.map(_.value).toSet),
       Set.empty[String]
     )
-    val chosen = service.handle("game-private", placed.nextSequence,
-      GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
-        SetupProcedure.adviserDecisionId(PlayerId("p2")),
-        PartitionAnswer(
-          DecisionPlacement(DecisionOptionRef.Denizen(DenizenId(privateIds.head)),
-            SetupProcedure.adviserKeepKey) +:
-          privateIds.tail.map(id => DecisionPlacement(
-            DecisionOptionRef.Denizen(DenizenId(id)),
-            SetupProcedure.adviserDiscardKey))))))
-      .toOption.get
-    // Reveal Cards follows while p2 holds a facedown adviser it may reveal:
-    // everyone else is told who is deciding, and nothing names the card.
-    val kept = privateIds.head
-    val revealing =
-      if catalog.denizen(DenizenId(kept)).exists(_.isInstanceOf[oathdigital.catalog.SiteOnly]) then chosen
-      else
-        val waiting = projector.projectPublic("game-private",
-          LoadedGame(chosen.state, chosen.nextSequence))
-        assertEquals(waiting.walkerWaiting.map(_.playerId), Some("p2"))
-        assert(!GameHttpWire.encodeProjection(waiting).contains(kept))
-        service.handle("game-private", chosen.nextSequence,
-          GameCommand.ResolveWalker(PlayerId("p2"), TreeDecision(
-            SetupProcedure.revealDecisionId(PlayerId("p2")),
-            ChooseManyAnswer(Vector.empty)))).toOption.get
-    val continuedPublic = projector.projectPublic("game-private",
+
+  test("after the adviser choice the next seat is asked for its pawn"):
+    val service = new GameApplicationService(catalog,
+      new InMemoryEventStreamRepository)
+    val placed = askedForAdvisers(service, "game-next-seat")
+    // p2 keeps Wizard's Conclave and discards the other two.
+    val chosen = accepted(service.handle("game-next-seat", placed.nextSequence,
+      GameCommand.ResolveWalker(firstPlayer, TreeDecision(
+        SetupProcedure.adviserDecisionId(firstPlayer),
+        PartitionAnswer(Vector(
+          DecisionPlacement(DecisionOptionRef.Denizen(wizardsConclave),
+            SetupProcedure.adviserKeepKey),
+          DecisionPlacement(DecisionOptionRef.Denizen(errandBoyCard),
+            SetupProcedure.adviserDiscardKey),
+          DecisionPlacement(DecisionOptionRef.Denizen(natureWorship),
+            SetupProcedure.adviserDiscardKey)))))))
+    // Wizard's Conclave may be revealed, so Reveal Cards follows while p2
+    // holds it facedown: everyone else is told who is deciding, and nothing
+    // names the card.
+    val waiting = projector.projectPublic("game-next-seat",
+      LoadedGame(chosen.state, chosen.nextSequence))
+    assertEquals(waiting.walkerWaiting.map(_.playerId), Some("p2"))
+    assert(!GameHttpWire.encodeProjection(waiting)
+      .contains(wizardsConclave.value))
+    val revealing = accepted(service.handle("game-next-seat",
+      chosen.nextSequence, GameCommand.ResolveWalker(firstPlayer,
+        TreeDecision(SetupProcedure.revealDecisionId(firstPlayer),
+          ChooseManyAnswer(Vector.empty)))))
+    val continuedPublic = projector.projectPublic("game-next-seat",
       LoadedGame(revealing.state, revealing.nextSequence))
-    val continued = projector.project("game-private",
+    val continued = projector.project("game-next-seat",
       LoadedGame(revealing.state, revealing.nextSequence),
-      PlayerId(continuedPublic.walkerWaiting.get.playerId))
+      PlayerId(present(continuedPublic.walkerWaiting, "a waiting seat")
+        .playerId))
     assertEquals(continued.phase, "setup-walker-decision")
+    // 6 seeded discards plus the 2 p2 discarded.
     assertEquals(continued.world.map(_.discardCount).sum, 8)
     // The next park is the following player's own pawn placement (all 8
     // in-play sites), not another adviser choice.
-    assertEquals(continued.walkerDecision.get.query.get.offeredOptions.size,
-      8)
+    assertEquals(present(present(continued.walkerDecision, "a decision")
+      .query, "a query").offeredOptions.size, 8)
 
   private def jsonStrings(value: ujson.Value): Set[String] =
     value match
