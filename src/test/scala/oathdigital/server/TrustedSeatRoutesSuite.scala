@@ -170,8 +170,8 @@ class TrustedSeatRoutesSuite extends munit.FunSuite:
   private final case class SeatPark(code: String, p1Code: String,
       currentSequence: Long, command: String)
 
-  /** The command that answers the decision parked in `loaded`, a seat's
-    * projection, with its first offered site. */
+  /** The command that answers the decision parked in `loaded`, the response
+    * to a seat's API load, with its first offered site. */
   private def answerFirstOfferedSite(loaded: JavaResponse[String]): String =
     val projection = ujson.read(loaded.body())
     val decision = projection("walkerDecision")
