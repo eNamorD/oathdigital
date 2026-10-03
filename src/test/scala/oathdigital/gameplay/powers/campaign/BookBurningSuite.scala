@@ -6,15 +6,15 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.{WalkerDice, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Book Burning: a free attacker's plan, offered only in a Raid. If the
   * attacker wins, every secret on the defender's board is burnt but one, the
   * facedown ones first, turned faceup to be burnt. */
 class BookBurningSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.book-burning")
+  private val card = CatalogNames.denizen("Book Burning")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val honors = cardWith("denizen.battle-honors")
+  private val honors = CatalogNames.denizen("Battle Honors")
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
 
@@ -38,9 +38,6 @@ class BookBurningSuite extends munit.FunSuite:
         .finishPlanWindows
     else run
 
-  private def winner(run: Run): Option[Boolean] =
-    ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
-
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     BookBurning.id, Vector(BookBurning.burned, BookBurning.none), run.events)
 
@@ -48,7 +45,7 @@ class BookBurningSuite extends munit.FunSuite:
       "says so"):
     val b = raid(faceUp = 2, faceDown = 2)
     val done = playedRaidWithBookBurning(b, winning)
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 1)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 0)
     assertEquals(lines(done), Vector(NoteText.Said("burned",
@@ -71,7 +68,7 @@ class BookBurningSuite extends munit.FunSuite:
       "was none to burn"):
     val b = raid(faceUp = 1, faceDown = 0)
     val done = playedRaidWithBookBurning(b, winning)
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 1)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 0)
     assertEquals(lines(done), Vector(NoteText.Said("none",
@@ -80,7 +77,7 @@ class BookBurningSuite extends munit.FunSuite:
   test("a lost Raid burns nothing and writes nothing"):
     val b = raid(faceUp = 2, faceDown = 2)
     val done = playedRaidWithBookBurning(b, losing)
-    assertEquals(winner(done), Some(false))
+    assertEquals(done.winner, Some(false))
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 2)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 2)
     assertEquals(lines(done), Vector.empty)

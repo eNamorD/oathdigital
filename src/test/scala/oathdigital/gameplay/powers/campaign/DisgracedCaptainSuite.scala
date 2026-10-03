@@ -4,23 +4,19 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Disgraced Captain: a favor placed and a favor burnt for four attack dice,
   * added or removed, offered only while the Campaign's defender rules an
   * order card. */
 class DisgracedCaptainSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.disgraced-captain")
+  private val card = CatalogNames.denizen("Disgraced Captain")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val order = planlessCard("Martial Culture")
 
   /** `who` holds Disgraced Captain and 2 favor. */
   private def holder(b: Board, who: PlayerId): Board =
     on(withAdviserFor(b, who, card, Orientation.FaceUp))(_.favor(who, 2))
-
-  private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens }
 
   test("an attacker places a favor and burns one for four attack dice " +
       "against a defender with an order adviser"):
@@ -32,7 +28,7 @@ class DisgracedCaptainSuite extends munit.FunSuite:
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
-    assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(1, 0)))
+    assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(1, 0))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 0)
 
   test("an order card at a site the defender rules counts; a facedown " +

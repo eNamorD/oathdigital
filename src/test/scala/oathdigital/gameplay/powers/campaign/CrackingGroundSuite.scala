@@ -4,11 +4,12 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** Cracking Ground: a free plan for one attack die per targeted site, added
   * or removed. */
 class CrackingGroundSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.cracking-ground")
+  private val card = CatalogNames.denizen("Cracking Ground")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   test("an attacker adds one attack die per targeted site, for nothing"):

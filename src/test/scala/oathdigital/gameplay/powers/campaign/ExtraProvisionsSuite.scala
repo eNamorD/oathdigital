@@ -4,11 +4,11 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Extra Provisions: a defender's plan, a favor placed for one defense die. */
 class ExtraProvisionsSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.extra-provisions")
+  private val card = CatalogNames.denizen("Extra Provisions")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   /** The other player defends the origin, holding Extra Provisions and
@@ -19,17 +19,13 @@ class ExtraProvisionsSuite extends munit.FunSuite:
     on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.favor(base.rival, favor))
 
-  private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens }
-
   test("a defender places a favor, off turn, for one defense die"):
     val b = defender(1)
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
     // Paid off turn, the favor goes to the bank at once, not onto the card.
-    assertEquals(adviserTokens(picked.state, b.rival), Some(Tokens.empty))
+    assertEquals(Look(picked.state).adviserTokens(b.rival, card), Tokens.empty)
     assertEquals(Look(picked.state).player(b.rival).board.favor, 0)
     assertEquals(ready(picked.state).banks.favor.values.sum,
       ready(run.state).banks.favor.values.sum + 1)

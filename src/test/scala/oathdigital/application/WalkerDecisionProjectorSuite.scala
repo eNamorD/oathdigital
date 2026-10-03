@@ -622,15 +622,15 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
   private val attacker: PlayerId = p1
 
   private lazy val campaignWithOnePlanPlayed: ReadyGame =
-    val relic = CampaignFixture.relicWith("relic.sticky-fire")
+    val relic = CatalogNames.relic("Sticky Fire")
     // A second, free attacker plan (Outriders) so at least one option besides
     // Finish is still offered after Sticky Fire is picked -- with only one
     // plan available the window would settle past the decision entirely
     // rather than repeat it (see `CampaignPlanWindowSuite`'s "rebuilt after
     // each pick" test), and there would be nothing to prove a repeat against.
     val b = CampaignFixture.withAdviser(CampaignFixture.withRelic(
-      CampaignFixture.board(warbands = 5, supply = 7), relic), CampaignFixture.cardWith("denizen.outriders"),
-      Orientation.FaceUp)
+      CampaignFixture.board(warbands = 5, supply = 7), relic),
+      CatalogNames.denizen("Outriders"), Orientation.FaceUp)
     val g = CampaignFixture.rules()
     val started = g.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
       .getOrElse(fail("Campaign must start"))

@@ -11,6 +11,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.Unwrap.present
 
 /** Drives a Campaign through the rules with the production battle plans, for the
   * suites that test one plan through a whole Campaign. Every attack die is a sword
@@ -63,6 +64,14 @@ object PlanDriver:
   final case class Run(game: OathRules, transition: OathTransition,
       events: Vector[OathEvent]):
     def state: OathState = transition.state
+
+    /** The Campaign's recorded result; fails before the Campaign ends. */
+    def result(using munit.Location): CampaignResult =
+      present(ready(state).game.current.lastCampaignResult, "a Campaign result")
+
+    /** Whether the attacker won, once the Campaign has ended. */
+    def winner(using munit.Location): Option[Boolean] =
+      ready(state).game.current.lastCampaignResult.map(_.attackerWins)
 
     /** The operations recorded so far, in order. */
     def ops: Vector[CoreOperation] = events.collect {

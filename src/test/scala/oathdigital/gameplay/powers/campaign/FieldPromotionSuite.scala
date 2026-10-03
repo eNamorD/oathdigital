@@ -6,22 +6,19 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.PowerFixture.warbandBank
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Field Promotion: a plan for either side, a favor placed, that gains three
   * warbands if its user wins, or what their supply holds. */
 class FieldPromotionSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.field-promotion")
+  private val card = CatalogNames.denizen("Field Promotion")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val honors = cardWith("denizen.battle-honors")
+  private val honors = CatalogNames.denizen("Battle Honors")
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
 
   private def kind(b: Board, who: PlayerId): ForceKind =
     Look(b.ready).forceKind(who)
-
-  private def winner(run: Run): Option[Boolean] =
-    ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
 
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     FieldPromotion.id, Vector(FieldPromotion.gained), run.events)
@@ -40,11 +37,9 @@ class FieldPromotionSuite extends munit.FunSuite:
     val b = attacking
     val run = commit(rules(winning), b, 4)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
-    assertEquals(Look(picked.state).player(b.actor).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens },
-      Some(Tokens(1, 0)))
+    assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(1, 0))
     val done = picked.finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     assert(done.ops.contains(Gain.Warbands(b.actor, kind(b, b.actor), 3)))
     assertEquals(lines(done), Vector(gained(b.actor, 3)))
 
@@ -52,7 +47,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     val b = attacking
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(false))
+    assertEquals(done.winner, Some(false))
     assert(!done.ops.exists(_.isInstanceOf[Gain.Warbands]))
     assertEquals(lines(done), Vector.empty)
 
@@ -66,7 +61,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     // Paid off turn, the favor goes to the bank at once, not onto the card.
     assertEquals(Look(picked.state).player(b.rival).board.favor, 0)
     val done = picked.finishPlanWindows
-    assertEquals(winner(done), Some(false))
+    assertEquals(done.winner, Some(false))
     assertEquals(lines(done), Vector(gained(b.rival, 3)))
 
   test("a short supply gives what it holds"):
@@ -77,7 +72,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     assertEquals(warbandBank(b.ready, force), 1)
     val done = commit(rules(winning), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     assertEquals(warbandBank(ready(done.state), force), 0)
     assertEquals(lines(done), Vector(gained(b.actor, 1)))
 

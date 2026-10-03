@@ -9,7 +9,7 @@ import oathdigital.testkit.CatalogNames
 /** Walled Garden: a free, site-only defender's plan for one defense die per
   * beast card at any site, offered only when its site is a Conquest target. */
 class WalledGardenSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.walled-garden")
+  private val card = CatalogNames.denizen("Walled Garden")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val beasts = planless("Errand Boy", "Small Friends")
   private val beast = beasts.head

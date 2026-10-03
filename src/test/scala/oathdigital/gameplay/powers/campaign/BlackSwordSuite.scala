@@ -4,11 +4,11 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Black Sword: an attacker burns two secrets for five attack dice. */
 class BlackSwordSuite extends munit.FunSuite:
-  private val relic = relicWith("relic.black-sword")
+  private val relic = CatalogNames.relic("Black Sword")
   private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
 
   test("an attacker burns two secrets for five attack dice"):

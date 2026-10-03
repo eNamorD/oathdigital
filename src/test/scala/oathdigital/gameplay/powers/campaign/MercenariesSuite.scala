@@ -13,7 +13,7 @@ import oathdigital.testkit.Unwrap.present
 /** Mercenaries: a favor placed for three more attack dice, or three fewer for
   * the attacker when it defends, and gone when its user is defeated. */
 class MercenariesSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.mercenaries")
+  private val card = CatalogNames.denizen("Mercenaries")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   /** Mercenaries' suit: the bank its placed favor comes from and returns
     * to. */
@@ -23,16 +23,9 @@ class MercenariesSuite extends munit.FunSuite:
   private def funded(b: Board, who: PlayerId, favor: Int): Board =
     on(b)(_.favor(who, favor))
 
-  private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(card))
-
   private def attackerBoard: Board =
     val base = board(warbands = 5, supply = 7)
     funded(withAdviser(base, card, Orientation.FaceUp), base.actor, 2)
-
-  private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens }
 
   test("an attacker pays a favor onto the card and adds three attack dice"):
     val b = attackerBoard
@@ -40,17 +33,16 @@ class MercenariesSuite extends munit.FunSuite:
     assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, 3)))
-    assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(1, 0)))
+    assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(1, 0))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 1)
 
   test("an attacker that wins keeps Mercenaries and its favor"):
     val b = attackerBoard
     val done = commit(rules(winning), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(ready(done.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(true))
-    assertEquals(adviserTokens(done.state, b.actor), Some(Tokens(1, 0)))
-    assert(!discarded(done.state))
+    assertEquals(done.winner, Some(true))
+    assertEquals(Look(done.state).adviserTokens(b.actor, card), Tokens(1, 0))
+    assert(!Look(done.state).inRegionalDiscard(card))
 
   test("an attacker that is defeated discards Mercenaries, and its favor " +
       "returns to the bank"):
@@ -58,10 +50,9 @@ class MercenariesSuite extends munit.FunSuite:
     val before = b.ready.banks.favor.getOrElse(mercenariesSuit, 0)
     val done = commit(rules(losing), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(ready(done.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(false))
-    assertEquals(adviserTokens(done.state, b.actor), None)
-    assert(discarded(done.state))
+    assertEquals(done.winner, Some(false))
+    assert(!Look(done.state).player(b.actor).advisers.exists(_.id == card))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(ready(done.state).banks.favor.getOrElse(mercenariesSuit, 0),
       before + 1)
     assertEquals(Look(done.state).player(b.actor).board.favor, 1)
@@ -91,7 +82,7 @@ class MercenariesSuite extends munit.FunSuite:
       base.actor, 2)
     val done = commit(rules(losing), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(ready(done.state).game.current.map.sites(ruled).denizens,
       Vector.empty)
     assert(pile(done.state, CardPlay.nextRegion(siteRegion)).contains(card))
@@ -115,7 +106,7 @@ class MercenariesSuite extends munit.FunSuite:
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     // The pool held two dice, so two are taken and not three.
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
-    assertEquals(adviserTokens(picked.state, b.rival), Some(Tokens.empty))
+    assertEquals(Look(picked.state).adviserTokens(b.rival, card), Tokens.empty)
     assertEquals(Look(picked.state).player(b.rival).board.favor, 1)
     assertEquals(ready(picked.state).banks.favor.getOrElse(mercenariesSuit, 0),
       ready(run.state).banks.favor.getOrElse(mercenariesSuit, 0) + 1)
@@ -124,19 +115,17 @@ class MercenariesSuite extends munit.FunSuite:
     val b = defending(warbands = 2)
     val done = commit(rules(winning), b, 2)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(ready(done.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(false))
-    assert(adviserTokens(done.state, b.rival).nonEmpty)
-    assert(!discarded(done.state))
+    assertEquals(done.winner, Some(false))
+    assert(Look(done.state).player(b.rival).advisers.exists(_.id == card))
+    assert(!Look(done.state).inRegionalDiscard(card))
 
   test("a defender that is defeated discards Mercenaries"):
     val b = defending(warbands = 8)
     val done = commit(rules(winning), b, 8)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(ready(done.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(true))
-    assertEquals(adviserTokens(done.state, b.rival), None)
-    assert(discarded(done.state))
+    assertEquals(done.winner, Some(true))
+    assert(!Look(done.state).player(b.rival).advisers.exists(_.id == card))
+    assert(Look(done.state).inRegionalDiscard(card))
 
   test("a bandit defender never uses Mercenaries, which costs a favor"):
     val two = board(extras = 1, warbands = 5, supply = 7)

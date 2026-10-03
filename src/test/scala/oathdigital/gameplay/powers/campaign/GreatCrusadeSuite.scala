@@ -5,21 +5,19 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.Look
 import oathdigital.testkit.CatalogNames
 
 /** Great Crusade: a free plan for one attack die per nomad card its user
   * rules, counting itself, added or removed, and the card is discarded after
   * the Campaign. */
 class GreatCrusadeSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.great-crusade")
+  private val card = CatalogNames.denizen("Great Crusade")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val nomads = planless("Convoys", "Vow of Kinship", "Wild Mounts")
   private val order = planlessCard("Martial Culture")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
-
-  private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(GreatCrusade.id, Vector(PlanDiscard.discarded), run.events)
@@ -54,7 +52,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
       Orientation.FaceUp)
     val done = commit(rules(winning), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
 
   test("a defender removes one attack die per nomad card they rule, and it " +
@@ -66,7 +64,7 @@ class GreatCrusadeSuite extends munit.FunSuite:
     val run = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
-    assert(discarded(run.finishPlanWindows.state))
+    assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))
 
   test("a bandit defender counts the nomad cards at every site bandits " +
       "rule, and it is discarded"):
@@ -75,12 +73,12 @@ class GreatCrusadeSuite extends munit.FunSuite:
       base.extras.head, nomads(0))
     val done = commit(rules(winning), b, 4).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
 
   test("a facedown nomad plan the defender chose first is revealed and " +
       "counts, and one chosen after does not"):
-    val pledge = cardWith("denizen.pledge-of-defense")
+    val pledge = CatalogNames.denizen("Pledge of Defense")
     val pledgeRef: DecisionOptionRef = DecisionOptionRef.Denizen(pledge)
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))

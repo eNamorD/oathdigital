@@ -6,12 +6,13 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** Outriders' line (power log lines design, "Altered procedures"): "Skulls
   * ignored.", written only when the attack rolled a skull to ignore.
   */
 class OutridersSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.outriders")
+  private val card = CatalogNames.denizen("Outriders")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val power = Outriders
 

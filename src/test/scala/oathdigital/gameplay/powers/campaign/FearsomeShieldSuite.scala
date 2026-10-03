@@ -4,13 +4,13 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Fearsome Shield: a defender burns two faceup secrets for two more defense
   * dice, and nothing is placed on the relic.
   */
 class FearsomeShieldSuite extends munit.FunSuite:
-  private val relic = relicWith("relic.fearsome-shield")
+  private val relic = CatalogNames.relic("Fearsome Shield")
   private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
 
   private def defending(secrets: Int): Board =

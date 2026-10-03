@@ -6,17 +6,17 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
 /** Garrison Armory: a defender's plan, a favor placed, in a Conquest, so that
   * the warbands at the targets add their defense twice. */
 class GarrisonArmorySuite extends munit.FunSuite:
-  private val card = cardWith("denizen.garrison-armory")
+  private val card = CatalogNames.denizen("Garrison Armory")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val bag = relicWith("relic.bag-of-siegeworks")
+  private val bag = CatalogNames.relic("Bag of Siegeworks")
   private val bagRef: DecisionOptionRef = DecisionOptionRef.Relic(bag)
-  private val provisions = cardWith("denizen.extra-provisions")
+  private val provisions = CatalogNames.denizen("Extra Provisions")
   private val twoAdded = NoteText.Said("added",
     "Warbands on the targets added 2 more defense.", covers = false)
 
@@ -36,13 +36,6 @@ class GarrisonArmorySuite extends munit.FunSuite:
     on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.favor(base.rival, 1))
 
-  private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens }
-
-  private def result(run: Run): CampaignResult =
-    ready(run.state).game.current.lastCampaignResult.get
-
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     GarrisonArmory.id, Vector(GarrisonArmory.added), run.events)
 
@@ -52,11 +45,11 @@ class GarrisonArmorySuite extends munit.FunSuite:
     val run = commit(rules(defense(DefenseDieFace.TwoShields)), b, 5)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
     // Paid off turn, the favor goes to the bank at once, not onto the card.
-    assertEquals(adviserTokens(picked.state, b.rival), Some(Tokens.empty))
+    assertEquals(Look(picked.state).adviserTokens(b.rival, card), Tokens.empty)
     assertEquals(Look(picked.state).player(b.rival).board.favor, 0)
     val done = picked.finishPlanWindows
     // Two dice of two shields, then the two warbands at the origin, twice.
-    assertEquals(result(done).defenseScore, 4 + 2 + 2)
+    assertEquals(done.result.defenseScore, 4 + 2 + 2)
     assertEquals(lines(done), Vector(twoAdded))
 
   test("the doubler multiplies the dice only"):
@@ -64,7 +57,7 @@ class GarrisonArmorySuite extends munit.FunSuite:
       DefenseDieFace.Doubler)), defender, 5)
       .pick(defender.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
     // Two shields doubled is 4; the warbands add 2, then 2 more, undoubled.
-    assertEquals(result(done).defenseScore, 8)
+    assertEquals(done.result.defenseScore, 8)
 
   test("single shields are ignored before the warbands are added"):
     val b = withSecrets(withRelic(defender, bag), 1)
@@ -80,7 +73,7 @@ class GarrisonArmorySuite extends munit.FunSuite:
       ref).finishPlanWindows
     // The single shield scores nothing, so the dice score 2; the warbands add
     // 2, twice.
-    assertEquals(result(done).defenseScore, 6)
+    assertEquals(done.result.defenseScore, 6)
     assertEquals(lines(done), Vector(twoAdded))
 
   test("it is not offered in a Raid"):

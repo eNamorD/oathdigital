@@ -4,12 +4,13 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** Wrestlers: a defender sacrifices a warband from its force for one more
   * defense die, and the force the defense is scored with is one lower.
   */
 class WrestlersSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.wrestlers")
+  private val card = CatalogNames.denizen("Wrestlers")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   private def conquest: Board =
@@ -38,8 +39,7 @@ class WrestlersSuite extends munit.FunSuite:
     val without = commit(rules(losing), b, 4).finishPlanWindows
     val with_ = commit(rules(losing), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    val score = (run: Run) => ready(run.state).game.current.lastCampaignResult
-      .get.defenseScore
+    val score = (run: Run) => run.result.defenseScore
     // The rival's 2 warbands at the origin, with blank dice; the sacrifice
     // takes one.
     assertEquals(score(without), 2)

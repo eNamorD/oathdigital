@@ -10,7 +10,7 @@ import oathdigital.testkit.CatalogNames
   * die per bandit warband in the region of the attacker's pawn, never against
   * bandits in a Conquest. */
 class BanditStandardSuite extends munit.FunSuite:
-  private val relic = relicWith("relic.bandit-standard")
+  private val relic = CatalogNames.relic("Bandit Standard")
   private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
 
   /** In the Cradle with the origin, Ancient City. */

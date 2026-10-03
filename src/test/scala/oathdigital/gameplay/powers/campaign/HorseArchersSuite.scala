@@ -5,23 +5,19 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.Look
+import oathdigital.testkit.CatalogNames
 
 /** Horse Archers: a free plan for three attack dice, added or removed, and the
   * card is discarded after the Campaign whoever won. */
 class HorseArchersSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.horse-archers")
+  private val card = CatalogNames.denizen("Horse Archers")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
-  private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(card))
-
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(HorseArchers.id, Vector(PlanDiscard.discarded), run.events)
-
-  private def winner(run: Run): Option[Boolean] =
-    ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
 
   test("an attacker adds three attack dice, for nothing"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
@@ -36,8 +32,8 @@ class HorseArchersSuite extends munit.FunSuite:
       Orientation.FaceUp)
     val done = commit(rules(winning), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(true))
-    assert(discarded(done.state))
+    assertEquals(done.winner, Some(true))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
 
   test("it is discarded after a Campaign its user lost"):
@@ -45,8 +41,8 @@ class HorseArchersSuite extends munit.FunSuite:
       Orientation.FaceUp)
     val done = commit(rules(losing), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(false))
-    assert(discarded(done.state))
+    assertEquals(done.winner, Some(false))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
 
   test("a defender removes three attack dice, and it is discarded"):
@@ -56,19 +52,19 @@ class HorseArchersSuite extends munit.FunSuite:
     val run = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
-    assert(discarded(run.finishPlanWindows.state))
+    assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))
 
   test("a bandit defender applies it at its site, and it is discarded"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)
     val done = commit(rules(winning), b, 4).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
 
   test("a Campaign that does not choose it leaves it in play and says nothing"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
     val done = commit(rules(winning), b, 2).finishPlanWindows
-    assert(!discarded(done.state))
+    assert(!Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector.empty)

@@ -9,7 +9,7 @@ import oathdigital.testkit.CatalogNames
 /** Battle Axes: a free plan for two attack dice, added or removed, offered
   * only while the enemy rules a beast card. */
 class BattleAxesSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.battle-axes")
+  private val card = CatalogNames.denizen("Battle Axes")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val beasts = planless("Errand Boy", "Small Friends")
 

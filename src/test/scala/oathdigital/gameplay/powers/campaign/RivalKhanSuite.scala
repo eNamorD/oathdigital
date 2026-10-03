@@ -5,19 +5,18 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.Look
+import oathdigital.testkit.CatalogNames
 
 /** Rival Khan: a free plan for four attack dice, added or removed, offered
   * only when the enemy has a faceup nomad adviser, and discarded after the
   * Campaign. */
 class RivalKhanSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.rival-khan")
+  private val card = CatalogNames.denizen("Rival Khan")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val nomad = planlessCard("Convoys")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
-
-  private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(RivalKhan.id, Vector(PlanDiscard.discarded), run.events)
@@ -39,7 +38,7 @@ class RivalKhanSuite extends munit.FunSuite:
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
     val done = picked.finishPlanWindows
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(line))
 
   test("it is not offered when the enemy's nomad adviser is facedown"):
@@ -62,7 +61,7 @@ class RivalKhanSuite extends munit.FunSuite:
       Orientation.FaceUp)
     val done = commit(rules(winning), b, 5).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
 
   test("it is never offered against bandits"):
     val b = withAdviser(board(warbands = 5, supply = 7), card,
@@ -79,4 +78,4 @@ class RivalKhanSuite extends munit.FunSuite:
     val run = commit(rules(losing), b, 5)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -4)))
-    assert(discarded(run.finishPlanWindows.state))
+    assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))

@@ -109,14 +109,6 @@ object CampaignFixture:
       using munit.Location): Board =
     on(b)(_.denizen(card, at = site))
 
-  /** The denizen that prints the power `handler`, for a test whose subject is
-    * the power rather than the card. */
-  def cardWith(handler: String): DenizenId =
-    DenizenId(catalog.denizenWithPower(PowerId(handler)).get.id.value)
-  /** The relic that prints the power `handler`. */
-  def relicWith(handler: String): RelicId =
-    RelicId(catalog.relicWithPower(PowerId(handler)).get.id.value)
-
   /** A Raid board and the faceup relic the defender holds. */
   final case class RaidBoard(board: Board, relic: RelicId)
 

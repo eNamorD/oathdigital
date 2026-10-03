@@ -6,14 +6,16 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
+import oathdigital.testkit.Look
+import oathdigital.testkit.CatalogNames
 
 /** Rain Boots: a free attacker's plan that scores every single-shield defense
   * die as nothing, as Bag of Siegeworks does, and the card is discarded after
   * the Campaign. */
 class RainBootsSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.rain-boots")
+  private val card = CatalogNames.denizen("Rain Boots")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val bag = relicWith("relic.bag-of-siegeworks")
+  private val bag = CatalogNames.relic("Bag of Siegeworks")
   private val bagRef: DecisionOptionRef = DecisionOptionRef.Relic(bag)
   private val ignored = NoteText.Said("ignored", "Single shields ignored.",
     covers = false)
@@ -27,12 +29,6 @@ class RainBootsSuite extends munit.FunSuite:
     case DiceKind.Defense => Vector.tabulate(count)(index =>
       (if index == 0 then DefenseDieFace.OneShield
        else DefenseDieFace.TwoShields): DieFace))
-
-  private def result(run: Run): CampaignResult =
-    ready(run.state).game.current.lastCampaignResult.get
-
-  private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     RainBoots.id, Vector(SingleShields.ignored, PlanDiscard.discarded),
@@ -48,10 +44,10 @@ class RainBootsSuite extends munit.FunSuite:
     val done = picked.finishPlanWindows
     // A single shield and two shields, plus the two bandits: the single
     // shield scores nothing.
-    assertEquals(result(done).defenseScore,
-      SingleShields.score(result(done).defenseFaces) + 2)
-    assertEquals(result(done).defenseScore, 4)
-    assert(discarded(done.state))
+    assertEquals(done.result.defenseScore,
+      SingleShields.score(done.result.defenseFaces) + 2)
+    assertEquals(done.result.defenseScore, 4)
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector(ignored, discardedLine))
 
   test("without a single shield rolled only the discard is said"):
@@ -74,7 +70,7 @@ class RainBootsSuite extends munit.FunSuite:
     val done = commit(rules(shields), b, 3)
       .pick(b.actor, CampaignIds.attackerPlan, bagRef)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(result(done).defenseScore, 4)
+    assertEquals(done.result.defenseScore, 4)
     assertEquals(lines(done), Vector(ignored, discardedLine))
     assertEquals(NoteText.said(BagOfSiegeworks.id,
       Vector(BagOfSiegeworks.ignored), done.events), Vector(ignored))
@@ -84,6 +80,6 @@ class RainBootsSuite extends munit.FunSuite:
     val b = withAdviser(board(warbands = 5, supply = 7), card,
       Orientation.FaceUp)
     val done = commit(rules(shields), b, 3).finishPlanWindows
-    assertEquals(result(done).defenseScore, 5)
-    assert(!discarded(done.state))
+    assertEquals(done.result.defenseScore, 5)
+    assert(!Look(done.state).inRegionalDiscard(card))
     assertEquals(lines(done), Vector.empty)

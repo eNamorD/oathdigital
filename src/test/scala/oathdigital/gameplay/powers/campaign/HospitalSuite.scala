@@ -11,7 +11,7 @@ import oathdigital.testkit.{CatalogNames, Look}
   * saved, and placed on Hospital's site at the end of the Campaign if the
   * user rules it then. */
 class HospitalSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.hospital")
+  private val card = CatalogNames.denizen("Hospital")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   private def kind(b: Board, who: PlayerId): ForceKind =
@@ -27,9 +27,6 @@ class HospitalSuite extends munit.FunSuite:
 
   private def forces(state: OathState, site: SiteId): SiteForces =
     ready(state).game.current.map.sites(site).forces
-
-  private def winner(run: Run): Option[Boolean] =
-    ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
 
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(Hospital.id, Vector(Hospital.placed), run.events)
@@ -50,7 +47,7 @@ class HospitalSuite extends munit.FunSuite:
     val b = hospitalFor(base, base.actor, hospitalSite)
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(false))
+    assertEquals(done.winner, Some(false))
     // Half of the four survivors die in the losses, then come back to
     // Hospital's site from the supply when the Campaign ends.
     assert(done.ops.contains(Kill(Piece.Warbands(kind(b, b.actor), 2),
@@ -69,7 +66,7 @@ class HospitalSuite extends munit.FunSuite:
     val before = b.player(b.rival).board.warbands
     val done = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     // Two warbands held the origin: one returns to the board as usual, and
     // the one that died is placed on Hospital's site.
     assertEquals(Look(done.state).player(b.rival).board.warbands, before + 1)
@@ -83,7 +80,7 @@ class HospitalSuite extends munit.FunSuite:
     val b = withSiteCard(base, base.origin, card)
     val done = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     assert(!done.ops.contains(returned(b, b.rival, 1, b.origin)))
     // No saved warband comes back to the lost site.
     assert(forces(done.state, b.origin) match
@@ -94,7 +91,7 @@ class HospitalSuite extends munit.FunSuite:
   test("the warbands Sticky Fire kills are saved too"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
-    val fire = relicWith("relic.sticky-fire")
+    val fire = CatalogNames.relic("Sticky Fire")
     val held = hospitalFor(base, base.actor, hospitalSite)
     val b = withRelicFor(held, base.rival, fire)
     val done = commit(rules(losing), b, 4)
@@ -103,7 +100,7 @@ class HospitalSuite extends munit.FunSuite:
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
       .pick(b.rival, StickyFire.decisionId, StickyFire.yes).finishPlanWindows
-    assertEquals(winner(done), Some(false))
+    assertEquals(done.winner, Some(false))
     // The two the defeat kills, then the three Sticky Fire kills from the
     // board, all come back to Hospital's site.
     assertEquals(Look(done.state).player(b.actor).board.warbands, 0)
@@ -111,7 +108,7 @@ class HospitalSuite extends munit.FunSuite:
       SiteForces.Occupied(kind(b, b.actor), 7))
     assertEquals(lines(done), Vector(placed(5, b.actor, hospitalSite)))
 
-  private val wrestlers = cardWith("denizen.wrestlers")
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
   private val wrestlersRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(wrestlers)
 
@@ -139,7 +136,7 @@ class HospitalSuite extends munit.FunSuite:
     assertEquals(forces(picked.state, hospitalSite),
       SiteForces.Occupied(kind(b, b.rival), 2))
     val done = picked.finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     // The last origin warband dies and returns to the board as the returned
     // half; only the sacrificed one is saved.
     assertEquals(Look(done.state).player(b.rival).board.warbands, before + 1)
@@ -152,7 +149,7 @@ class HospitalSuite extends munit.FunSuite:
     val done = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, wrestlersRef)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     assertEquals(forces(done.state, hospitalSite),
       SiteForces.Occupied(kind(b, b.rival), 2))
     assertEquals(lines(done), Vector.empty)
@@ -169,7 +166,7 @@ class HospitalSuite extends munit.FunSuite:
     val done = won.pick(b.actor, CampaignIds.relocation,
       won.offered(b.actor).head)
     assertEquals(parked.parkedDecision(done.state), None)
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     // The Raid kills half of the three on the board, rounded down; the one
     // killed comes back to Hospital's site, not to the board.
     assertEquals(Look(done.state).player(b.rival).board.warbands, 2)

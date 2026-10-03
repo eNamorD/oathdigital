@@ -10,6 +10,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.Table
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, as}
 
 class FortressRulesSuite extends munit.FunSuite:
   import CampaignFixture._
@@ -35,16 +36,17 @@ class FortressRulesSuite extends munit.FunSuite:
 
   // ---- Oaken Fortress ----
 
-  test("the Oaken Fortress removes its ruler from a Raid: only the Conquest is left"):
+  test("the Oaken Fortress removes its ruler from a Raid: only the Conquest " +
+      "is left"):
     val b = fortified(EdificeSide.Intact, ruled = true)
-    val started = startOf(b).toOption.get
+    val started = accepted(startOf(b))
     assertEquals(optionsAt(started, ActionRef.Campaign),
       Vector[DecisionOptionRef](conquest))
 
   test("without the Fortress the same board offers both"):
     val b = withEnemyAtOrigin(board(warbands = 4, supply = 7))
     val ruled = on(b)(_.warbandsAt(b.origin, b.rival, 2))
-    assertEquals(optionsAt(startOf(ruled).toOption.get, ActionRef.Campaign),
+    assertEquals(optionsAt(accepted(startOf(ruled)), ActionRef.Campaign),
       Vector[DecisionOptionRef](conquest, raid))
 
   test("the Oaken Fortress protects its ruler only while the ruler is at the " +
@@ -53,18 +55,18 @@ class FortressRulesSuite extends munit.FunSuite:
     val elsewhere = b.extras.head
     val staged = on(b)(_.edifice(fortress, EdificeSide.Intact, at = elsewhere)
       .warbandsAt(elsewhere, b.rival, 2).warbandsAt(b.origin, b.rival, 2))
-    assertEquals(optionsAt(startOf(staged).toOption.get, ActionRef.Campaign),
+    assertEquals(optionsAt(accepted(startOf(staged)), ActionRef.Campaign),
       Vector[DecisionOptionRef](conquest, raid))
 
   test("a second enemy at the site keeps the Raid, and the ruler is not " +
       "offered as its defender"):
     val b = fortified(EdificeSide.Intact, ruled = true)
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
-    val started = startOf(crowded).toOption.get
+    val started = accepted(startOf(crowded))
     assertEquals(optionsAt(started, ActionRef.Campaign),
       Vector[DecisionOptionRef](conquest, raid))
-    val kind = TargetingFixture.rules.resolveWalker(started.state, b.actor, CampaignIds.kind,
-      ChooseOneAnswer(raid)).toOption.get
+    val kind = accepted(TargetingFixture.rules.resolveWalker(started.state,
+      b.actor, CampaignIds.kind, ChooseOneAnswer(raid)))
     assertEquals(optionsAt(kind, ActionRef.Campaign),
       Vector[DecisionOptionRef](DecisionOptionRef.Player(b.bystander)))
 
@@ -81,14 +83,15 @@ class FortressRulesSuite extends munit.FunSuite:
       "facedown one, or one of another suit, does not"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
     val armed = on(b)(_.adviser(b.actor, "Errand Boy"))  // Beast
-    assert(CampaignProcedure.startable(catalog, armed.ready, armed.actor, powers))
+    assert(
+      CampaignProcedure.startable(catalog, armed.ready, armed.actor, powers))
     assert(startOf(armed).isRight)
+    val protectedRaid = Some(OathViolation.CampaignUnavailable(
+      "a Fortress protects every player a Raid could target"))
     val hearth = on(b)(_.adviser(b.actor, "Homesteaders"))  // Hearth
-    assertEquals(startOf(hearth).left.toOption, Some(OathViolation.CampaignUnavailable(
-      "a Fortress protects every player a Raid could target")))
+    assertEquals(startOf(hearth).left.toOption, protectedRaid)
     val hidden = on(b)(_.adviser(b.actor, "Errand Boy", facedown = true))
-    assertEquals(startOf(hidden).left.toOption, Some(OathViolation.CampaignUnavailable(
-      "a Fortress protects every player a Raid could target")))
+    assertEquals(startOf(hidden).left.toOption, protectedRaid)
 
   test("the Rotting Fortress protects every player at the site, so a second " +
       "enemy does not open the Raid"):
@@ -98,14 +101,14 @@ class FortressRulesSuite extends munit.FunSuite:
 
   test("the Rotting Fortress leaves a Conquest of the same site alone"):
     val b = fortified(EdificeSide.Ruined, ruled = true)
-    assertEquals(optionsAt(startOf(b).toOption.get, ActionRef.Campaign),
+    assertEquals(optionsAt(accepted(startOf(b)), ActionRef.Campaign),
       Vector[DecisionOptionRef](conquest))
 
   test("a Campaign already under way is never refused by the start rule"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
     val power = RottingFortress.forCatalog(catalog)
-    val restriction = power.contributions(PowerWindow.CampaignActionEligibility)
-      .head.asInstanceOf[Restriction]
+    val restriction = as[Restriction](
+      power.contributions(PowerWindow.CampaignActionEligibility).head)
     def ctx(state: ReadyGame) = PowerCtx(state, b.actor, power.source,
       PowerWindow.CampaignActionEligibility, Vector.empty,
       Sequence(Vector.empty))
@@ -121,7 +124,7 @@ class FortressRulesSuite extends munit.FunSuite:
     // The Rotting Fortress stands where no Raid is being made.
     val ready = on(b)(_.edifice(fortress, EdificeSide.Ruined,
       at = b.extras.head))
-    val started = startOf(ready).toOption.get
+    val started = accepted(startOf(ready))
     assertEquals(optionsAt(started, ActionRef.Campaign),
       Vector[DecisionOptionRef](conquest, raid))
 
@@ -135,7 +138,7 @@ class FortressRulesSuite extends munit.FunSuite:
     val staged = Table.from(held).edifice(fortress, side, at = site)
     val ready = (if ruled then staged.warbandsAt(site, p2, 2) else staged)
       .unchecked
-    optionsAt(start(ready, ActionRef.Challenge, p1).toOption.get,
+    optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
       ActionRef.Challenge)
 
   test("a Challenge may not name a banner a protected player holds"):
@@ -161,36 +164,36 @@ class FortressRulesSuite extends munit.FunSuite:
 
   test("a Raid the Oaken Fortress hides names the protected ruler"):
     val b = fortified(EdificeSide.Intact, ruled = true)
-    assertEquals(hidden(oaken, startOf(b).toOption.get),
+    assertEquals(hidden(oaken, accepted(startOf(b))),
       Vector(shielded(b.rival)))
 
   test("a defender the Oaken Fortress hides is named when the Raid stays"):
     val b = fortified(EdificeSide.Intact, ruled = true)
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
-    val started = startOf(crowded).toOption.get
+    val started = accepted(startOf(crowded))
     assertEquals(hidden(oaken, started), Vector.empty)
-    val kind = TargetingFixture.rules.resolveWalker(started.state, b.actor,
-      CampaignIds.kind, ChooseOneAnswer(raid)).toOption.get
+    val kind = accepted(TargetingFixture.rules.resolveWalker(started.state,
+      b.actor, CampaignIds.kind, ChooseOneAnswer(raid)))
     assertEquals(hidden(oaken, kind), Vector(shielded(b.rival)))
 
   test("a Raid the Rotting Fortress hides from several players names the site"):
     val b = fortified(EdificeSide.Ruined, ruled = true)
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
-    assertEquals(hidden(rotting, startOf(crowded)
-      .toOption.get), Vector(NoteText.Said("all-shielded",
-        s"No player at ${b.origin.value} can be targeted.", covers = false)))
+    assertEquals(hidden(rotting, accepted(startOf(crowded))),
+      Vector(NoteText.Said("all-shielded",
+      s"No player at ${b.origin.value} can be targeted.", covers = false)))
 
   test("a banner a protected player holds is named by its holder"):
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
     val held = challengeTable.ready
     val staged = Table.from(held).edifice(fortress, EdificeSide.Ruined,
       at = Table.quietPawnSite(p1)).unchecked
-    assertEquals(hidden(rotting, start(staged, ActionRef.Challenge, p1)
-      .toOption.get), Vector(shielded(p2)))
+    assertEquals(
+      hidden(rotting, accepted(start(staged, ActionRef.Challenge, p1))),
+      Vector(shielded(p2)))
 
   test("a Fortress that protects nobody writes nothing"):
     val b = withEnemyAtOrigin(board(extras = 1, warbands = 4, supply = 7))
     val ready = on(b)(_.edifice(fortress, EdificeSide.Ruined,
       at = b.extras.head))
-    assertEquals(hidden(rotting, startOf(ready)
-      .toOption.get), Vector.empty)
+    assertEquals(hidden(rotting, accepted(startOf(ready))), Vector.empty)

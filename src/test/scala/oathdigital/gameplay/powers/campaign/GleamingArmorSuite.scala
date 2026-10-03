@@ -6,17 +6,17 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Gleaming Armor: while its faceup holder is in a Campaign, every plan the
   * enemy chooses costs one more secret, placed onto its card, or turned
   * facedown for the title's plan. A plan the enemy cannot afford with it is not
   * offered, and the option states the price with it. */
 class GleamingArmorSuite extends munit.FunSuite:
-  private val armor = cardWith("denizen.gleaming-armor")
-  private val watchdog = cardWith("denizen.watchdog")
-  private val honors = cardWith("denizen.battle-honors")
-  private val brass = relicWith("relic.brass-army.campaign")
+  private val armor = CatalogNames.denizen("Gleaming Armor")
+  private val watchdog = CatalogNames.denizen("Watchdog")
+  private val honors = CatalogNames.denizen("Battle Honors")
+  private val brass = CatalogNames.relic("Brass Army")
   private val titleRef: DecisionOptionRef = DecisionOptionRef.Button("title")
 
   private def price(option: DecisionOption): OptionPrice = option match
@@ -47,9 +47,8 @@ class GleamingArmorSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(watchdog))
     assertEquals(Look(picked.state).faceUpSecrets(b.rival), 0)
     assertEquals(Look(picked.state).faceDownSecrets(b.rival), 1)
-    assertEquals(Look(picked.state).player(b.rival).advisers.collectFirst {
-      case card: DenizenState if card.id == watchdog => card.tokens },
-      Some(Tokens.empty))
+    assertEquals(Look(picked.state).adviserTokens(b.rival, watchdog),
+      Tokens.empty)
 
   test("the title's plan costs a faceup secret turned facedown, since it has " +
       "no card"):
@@ -111,8 +110,7 @@ class GleamingArmorSuite extends munit.FunSuite:
     // Battle Honors would have paid the winning bandit, and now does not.
     val won = plain.finishPlanWindows
     val lost = armored.finishPlanWindows
-    assertEquals(ready(won.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(false))
+    assertEquals(won.winner, Some(false))
     assertEquals(orderBank(won.state),
       orderBank(OathState.Ready(free.ready)) - 2)
     assertEquals(orderBank(lost.state), orderBank(OathState.Ready(free.ready)))

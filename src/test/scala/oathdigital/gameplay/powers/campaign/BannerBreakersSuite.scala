@@ -4,12 +4,12 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Banner Breakers: a favor placed and a favor burnt for three attack dice,
   * offered only while the defender holds a banner. */
 class BannerBreakersSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.banner-breakers")
+  private val card = CatalogNames.denizen("Banner Breakers")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   /** The actor holds Banner Breakers and 2 favor. Nobody holds a banner. */
@@ -20,17 +20,13 @@ class BannerBreakersSuite extends munit.FunSuite:
   private val base: Board = funded(
     rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7)))
 
-  private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens }
-
   test("an attacker places a favor and burns one for three attack dice " +
       "against the Darkest Secret"):
     val b = on(base)(_.darkestSecret(Some(base.rival), 1))
     val run = commit(rules(winning), b, 3)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
-    assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(1, 0)))
+    assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(1, 0))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 0)
 
   test("it is offered against the People's Favor"):

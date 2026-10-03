@@ -4,30 +4,21 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Military Parade: a free plan for either side. If its user wins, they gain a
   * favor for each faceup adviser the enemy holds then, from that adviser's
   * suit bank. Bandits hold no advisers, so an attacker is not offered it
   * against them. */
 class MilitaryParadeSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.military-parade")
+  private val card = CatalogNames.denizen("Military Parade")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val honors = cardWith("denizen.battle-honors")
+  private val honors = CatalogNames.denizen("Battle Honors")
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
   private val orders = planless("Martial Culture", "Code of Honor")
   private val beast = planlessCard("Errand Boy")
   private val arcane = planlessCard("Golem Legions")
-
-  private def favor(state: OathState, who: PlayerId): Int =
-    Look(state).player(who).board.favor
-
-  private def bank(state: OathState, suit: Suit): Int =
-    ready(state).banks.favor.getOrElse(suit, 0)
-
-  private def winner(run: Run): Option[Boolean] =
-    ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
 
   /** The attacker holds Military Parade. The other player rules the origin and
     * holds two order advisers and a beast adviser faceup, and an arcane
@@ -47,20 +38,24 @@ class MilitaryParadeSuite extends munit.FunSuite:
     val before = OathState.Ready(b.ready)
     val done = commit(rules(winning), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     // The facedown arcane adviser has no suit and gives nothing.
-    assertEquals(favor(done.state, b.actor), favor(before, b.actor) + 3)
-    assertEquals(bank(done.state, Suit.Order), bank(before, Suit.Order) - 2)
-    assertEquals(bank(done.state, Suit.Beast), bank(before, Suit.Beast) - 1)
-    assertEquals(bank(done.state, Suit.Arcane), bank(before, Suit.Arcane))
+    assertEquals(Look(done.state).favor(b.actor),
+      Look(before).favor(b.actor) + 3)
+    assertEquals(Look(done.state).bankFavor(Suit.Order),
+      Look(before).bankFavor(Suit.Order) - 2)
+    assertEquals(Look(done.state).bankFavor(Suit.Beast),
+      Look(before).bankFavor(Suit.Beast) - 1)
+    assertEquals(Look(done.state).bankFavor(Suit.Arcane),
+      Look(before).bankFavor(Suit.Arcane))
 
   test("an attacker that loses gains nothing"):
     val b = attacking
     val before = OathState.Ready(b.ready)
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(false))
-    assertEquals(favor(done.state, b.actor), favor(before, b.actor))
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).favor(b.actor), Look(before).favor(b.actor))
 
   test("a defender that wins gains for the attacker's faceup advisers"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -70,9 +65,11 @@ class MilitaryParadeSuite extends munit.FunSuite:
     val before = OathState.Ready(b.ready)
     val done = commit(rules(losing), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(false))
-    assertEquals(favor(done.state, b.rival), favor(before, b.rival) + 1)
-    assertEquals(bank(done.state, Suit.Order), bank(before, Suit.Order) - 1)
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).favor(b.rival),
+      Look(before).favor(b.rival) + 1)
+    assertEquals(Look(done.state).bankFavor(Suit.Order),
+      Look(before).bankFavor(Suit.Order) - 1)
 
   test("an attacker is not offered it against bandits"):
     val advised = withAdviser(board(warbands = 5, supply = 7), card,
@@ -92,16 +89,18 @@ class MilitaryParadeSuite extends munit.FunSuite:
     // It applied the free plan by itself, so nothing was asked of the attacker.
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finishPlanWindows
-    assertEquals(winner(done), Some(false))
-    assertEquals(bank(done.state, Suit.Order), bank(before, Suit.Order) - 1)
-    assertEquals(favor(done.state, b.actor), favor(before, b.actor))
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).bankFavor(Suit.Order),
+      Look(before).bankFavor(Suit.Order) - 1)
+    assertEquals(Look(done.state).favor(b.actor), Look(before).favor(b.actor))
 
   test("the gain is best-effort: an Order bank with one favor gives one"):
     val b = on(attacking)(_.bankFavor(Suit.Order, 1))
     val before = OathState.Ready(b.ready)
     val done = commit(rules(winning), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(bank(done.state, Suit.Order), 0)
+    assertEquals(Look(done.state).bankFavor(Suit.Order), 0)
     // The two Order advisers get the Order bank's only favor; the Beast
     // adviser gets 1 from the Beast bank.
-    assertEquals(favor(done.state, b.actor), favor(before, b.actor) + 1 + 1)
+    assertEquals(Look(done.state).favor(b.actor),
+      Look(before).favor(b.actor) + 1 + 1)

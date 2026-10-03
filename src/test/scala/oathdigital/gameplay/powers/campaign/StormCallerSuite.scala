@@ -5,15 +5,14 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
+import oathdigital.testkit.Look
+import oathdigital.testkit.CatalogNames
 
 /** Storm Caller: a defender's free plan for two defense dice, and the card is
   * discarded after the Campaign whoever won. */
 class StormCallerSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.storm-caller")
+  private val card = CatalogNames.denizen("Storm Caller")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-
-  private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def defending: Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(
@@ -32,7 +31,7 @@ class StormCallerSuite extends munit.FunSuite:
     val b = defending
     val done = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))
     assertEquals(NoteText.said(StormCaller.id, Vector(PlanDiscard.discarded),
       done.events), Vector(NoteText.Said("discarded",
       "Discarded after the Campaign.", covers = false)))
@@ -47,4 +46,4 @@ class StormCallerSuite extends munit.FunSuite:
     val b = withSiteCard(base, base.origin, card)
     val done = commit(rules(winning), b, 4).finishPlanWindows
     assert(done.ops.contains(ModifyDicePool(CampaignIds.defensePool, 2)))
-    assert(discarded(done.state))
+    assert(Look(done.state).inRegionalDiscard(card))

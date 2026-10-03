@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 import oathdigital.model.DecisionAnswer._
 import oathdigital.testkit.ActPowerHarness
 import oathdigital.testkit.Unwrap.present
@@ -16,7 +16,7 @@ import oathdigital.testkit.Outcomes.assertWireRoundTrips
   * the sites they rule, before their force is scored, and the card is discarded
   * when the Campaign has resolved. */
 class WarningSignalsSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.warning-signals")
+  private val card = CatalogNames.denizen("Warning Signals")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val decision = WarningSignals.decisionId
 
@@ -87,7 +87,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val b = defending
     val done = chosen(b).answer(b.rival, decision, arrangement(b, board = 0,
       origin = 4, extra = 3)).finishPlanWindows
-    assertEquals(ready(done.state).game.current.lastCampaignResult.get
+    assertEquals(done.result
       .defenseScore, 4)
 
   test("a site must keep a warband, and the total must be kept"):
@@ -121,21 +121,16 @@ class WarningSignalsSuite extends munit.FunSuite:
 
   test("it is discarded when the Campaign has resolved, won or lost"):
     val b = defending
-    def discarded(state: OathState) = ready(state).game.current.commonCards
-      .regionalDiscards.values.exists(_.contains(card))
     val keep = arrangement(b, board = 3, origin = 2, extra = 2)
     val lost = chosen(b).answer(b.rival, decision, keep).finishPlanWindows
-    assertEquals(ready(lost.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(false))
-    assert(discarded(lost.state))
-    assertEquals(Look(lost.state).player(b.rival).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held }, None)
+    assertEquals(lost.winner, Some(false))
+    assert(Look(lost.state).inRegionalDiscard(card))
+    assert(!Look(lost.state).player(b.rival).advisers.exists(_.id == card))
     val won = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
       .answer(b.rival, decision, keep).finishPlanWindows
-    assertEquals(ready(won.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(true))
-    assert(discarded(won.state))
+    assertEquals(won.winner, Some(true))
+    assert(Look(won.state).inRegionalDiscard(card))
 
   test("a defender that rules no site has nowhere to move to, so nothing is " +
       "asked, and the card is still discarded"):

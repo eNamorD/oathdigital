@@ -11,9 +11,9 @@ import oathdigital.testkit.Look
   * Conquest. If its user wins, they gain a favor for each denizen and edifice
   * at the targets, from that card's suit bank. */
 class TributeSpoilsSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.tribute-spoils")
+  private val card = CatalogNames.denizen("Tribute Spoils")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val honors = cardWith("denizen.battle-honors")
+  private val honors = CatalogNames.denizen("Battle Honors")
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
   private val orders = planless("Martial Culture", "Code of Honor", "Palanquin")
@@ -21,15 +21,6 @@ class TributeSpoilsSuite extends munit.FunSuite:
   private val beastEdifice = CatalogNames.edifice("Hallowed Spring")
   // A relic at the site, which Tribute Spoils does not count.
   private val relic = "Sticky Fire"
-
-  private def favor(state: OathState, who: PlayerId): Int =
-    Look(state).player(who).board.favor
-
-  private def bank(state: OathState, suit: Suit): Int =
-    ready(state).banks.favor.getOrElse(suit, 0)
-
-  private def winner(run: Run): Option[Boolean] =
-    ready(run.state).game.current.lastCampaignResult.map(_.attackerWins)
 
   /** The attacker holds Tribute Spoils and a favor. The origin, which two
     * bandits rule, holds two faceup order denizens, a facedown order denizen
@@ -48,22 +39,25 @@ class TributeSpoilsSuite extends munit.FunSuite:
     val before = OathState.Ready(b.ready)
     val done = commit(rules(winning), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(true))
+    assertEquals(done.winner, Some(true))
     // The favor placed on the card, then two from the Order bank and one from
     // the Beast bank: the facedown denizen has no suit and gives nothing, and
     // the ruined edifice keeps its suit.
-    assertEquals(favor(done.state, b.actor), 1 - 1 + 3)
-    assertEquals(bank(done.state, Suit.Order), bank(before, Suit.Order) - 2)
-    assertEquals(bank(done.state, Suit.Beast), bank(before, Suit.Beast) - 1)
+    assertEquals(Look(done.state).favor(b.actor), 1 - 1 + 3)
+    assertEquals(Look(done.state).bankFavor(Suit.Order),
+      Look(before).bankFavor(Suit.Order) - 2)
+    assertEquals(Look(done.state).bankFavor(Suit.Beast),
+      Look(before).bankFavor(Suit.Beast) - 1)
 
   test("an attacker that loses gains nothing"):
     val b = attacking
     val before = OathState.Ready(b.ready)
     val done = commit(rules(losing), b, 4)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(false))
-    assertEquals(favor(done.state, b.actor), 0)
-    assertEquals(bank(done.state, Suit.Order), bank(before, Suit.Order))
+    assertEquals(done.winner, Some(false))
+    assertEquals(Look(done.state).favor(b.actor), 0)
+    assertEquals(Look(done.state).bankFavor(Suit.Order),
+      Look(before).bankFavor(Suit.Order))
 
   test("a defender that wins gains for the cards at its own targeted site, " +
       "and a relic counts nothing"):
@@ -75,11 +69,12 @@ class TributeSpoilsSuite extends munit.FunSuite:
     val before = OathState.Ready(b.ready)
     val done = commit(rules(losing), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref).finishPlanWindows
-    assertEquals(winner(done), Some(false))
+    assertEquals(done.winner, Some(false))
     // Paid off turn, the placed favor went to the Nomad bank; one favor came
     // back from the Order bank.
-    assertEquals(favor(done.state, b.rival), 1)
-    assertEquals(bank(done.state, Suit.Order), bank(before, Suit.Order) - 1)
+    assertEquals(Look(done.state).favor(b.rival), 1)
+    assertEquals(Look(done.state).bankFavor(Suit.Order),
+      Look(before).bankFavor(Suit.Order) - 1)
 
   test("it is not offered in a Raid"):
     val base = withEnemyAtOrigin(board(warbands = 4, supply = 7))

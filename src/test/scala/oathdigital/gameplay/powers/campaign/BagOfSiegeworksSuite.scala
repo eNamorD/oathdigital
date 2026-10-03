@@ -6,13 +6,12 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
-import oathdigital.testkit.Look
-import oathdigital.testkit.Unwrap.present
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Bag of Siegeworks: a secret placed, in a Conquest, so that every
   * single-shield defense die scores nothing. */
 class BagOfSiegeworksSuite extends munit.FunSuite:
-  private val relic = relicWith("relic.bag-of-siegeworks")
+  private val relic = CatalogNames.relic("Bag of Siegeworks")
   private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
   private val line = NoteText.Said("ignored", "Single shields ignored.",
     covers = false)
@@ -61,8 +60,7 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
     val run = conquestOfAllTargets(b, shields)
     val done = run.pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishPlanWindows
-    val result = present(ready(done.state).game.current.lastCampaignResult,
-      "a Campaign result")
+    val result = done.result
     assert(result.defenseFaces.contains(DefenseDieFace.OneShield),
       result.defenseFaces)
     // Two bandits at each of the three targets.
@@ -83,8 +81,7 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
   test("a Campaign that does not choose it scores the single shields"):
     val b = attackerWithBagAndSecret
     val done = conquestOfAllTargets(b, shields).finishPlanWindows
-    val result = present(ready(done.state).game.current.lastCampaignResult,
-      "a Campaign result")
+    val result = done.result
     // Two bandits at each of the three targets.
     val banditDefense = 2 * (1 + b.extras.size)
     assertEquals(result.defenseScore,

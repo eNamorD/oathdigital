@@ -14,6 +14,11 @@ final class Look private (ready: ReadyGame):
     .getOrElse(throw AssertionError(s"no player $p"))
   def supply(p: PlayerId): Int = player(p).board.supply.supply
   def favor(p: PlayerId): Int = player(p).board.favor
+  /** The favor in `suit`'s bank. */
+  def bankFavor(suit: Suit): Int = ready.banks.favor.getOrElse(suit, 0)
+  /** Whether `card` lies in a regional discard pile. */
+  def inRegionalDiscard(card: CardId): Boolean =
+    current.commonCards.regionalDiscards.values.exists(_.contains(card))
   def faceUpSecrets(p: PlayerId): Int = player(p).board.faceUpSecrets
   def faceDownSecrets(p: PlayerId): Int = player(p).board.faceDownSecrets
   def boardWarbands(p: PlayerId): Int = player(p).board.warbands
@@ -47,6 +52,15 @@ final class Look private (ready: ReadyGame):
         p.relics.filter(_.id == id).map(_.tokens))
     Unwrap.present((onSites ++ held).headOption,
       s"${CatalogNames.nameOf(id)} at a site or in a play area")
+
+  /** The tokens on `card` as `p`'s adviser. Fails when `p` holds no such
+    * adviser. */
+  def adviserTokens(p: PlayerId, card: String | CardId)(
+      using munit.Location): Tokens =
+    val id = CatalogNames.card(card)
+    Unwrap.present(player(p).advisers.collectFirst {
+      case d: DenizenState if d.id == id => d.tokens },
+      s"${CatalogNames.nameOf(id)} as ${p.value}'s adviser")
 
   /** The discard pile of the region after `site`'s region: where a card a
     * power discards from that site goes. Fails when the site is in no

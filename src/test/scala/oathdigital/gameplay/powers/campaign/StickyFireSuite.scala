@@ -5,13 +5,13 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Sticky Fire: when its user wins, they may kill the whole of the enemy's
   * force, and if they do they give the loser a favor. The question is asked in
   * the losses, by the winner, before anything dies. */
 class StickyFireSuite extends munit.FunSuite:
-  private val relic = relicWith("relic.sticky-fire")
+  private val relic = CatalogNames.relic("Sticky Fire")
   private val ref: DecisionOptionRef = DecisionOptionRef.Relic(relic)
   private val decision = StickyFire.decisionId
 
@@ -71,8 +71,7 @@ class StickyFireSuite extends munit.FunSuite:
       .pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
-    assertEquals(ready(lost.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(false))
+    assertEquals(lost.winner, Some(false))
     assert(!awaits(lost, b.actor, decision))
     assert(!awaits(lost, b.rival, decision))
     val unchosen = commit(rules(winning), b, 4)
@@ -123,8 +122,7 @@ class StickyFireSuite extends munit.FunSuite:
     val asked = commit(g, b, 4).pick(b.rival, CampaignIds.defenderPlan, ref)
       .finishDefenderPlans(b.rival)
       .declineSacrifice(b.actor)
-    assertEquals(ready(asked.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(false))
+    assertEquals(asked.winner, Some(false))
     assert(awaits(asked, b.rival, decision))
     val done = asked.pick(b.rival, decision, StickyFire.yes).finishPlanWindows
     assertEquals(warbands(done.state, b.actor), 0)
@@ -151,8 +149,7 @@ class StickyFireSuite extends munit.FunSuite:
     val done = commit(rules(winning), favored(base, base.actor, 2), 4)
       .finishDefenderPlans(base.rival)
       .finishPlanWindows
-    assertEquals(ready(done.state).game.current.lastCampaignResult.map(
-      _.attackerWins), Some(true))
+    assertEquals(done.winner, Some(true))
     assertEquals(done.ops.count(_.isInstanceOf[Give]), 0)
 
   // ---- Lines ----

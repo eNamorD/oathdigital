@@ -9,7 +9,7 @@ import oathdigital.testkit.CatalogNames
 /** Village Constable: a free, site-only plan for two attack dice, added or
   * removed, unless the enemy holds the People's Favor. */
 class VillageConstableSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.village-constable")
+  private val card = CatalogNames.denizen("Village Constable")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   /** The actor also rules a site outside the Campaign, where Village

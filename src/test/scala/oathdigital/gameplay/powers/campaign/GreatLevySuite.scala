@@ -6,15 +6,15 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** The Great Levy: two favor placed for three attack dice, added or removed,
   * unless the enemy holds the People's Favor; an attacker also ignores every
   * skull, as with Outriders. */
 class GreatLevySuite extends munit.FunSuite:
-  private val card = cardWith("denizen.the-great-levy")
+  private val card = CatalogNames.denizen("The Great Levy")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val outriders = cardWith("denizen.outriders")
+  private val outriders = CatalogNames.denizen("Outriders")
   private val outridersRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(outriders)
   private val line = NoteText.Said("ignored", "Skulls ignored.", covers = false)
@@ -31,13 +31,6 @@ class GreatLevySuite extends munit.FunSuite:
   private def holder(b: Board, who: PlayerId, favor: Int = 2): Board =
     on(withAdviserFor(b, who, card, Orientation.FaceUp))(_.favor(who, favor))
 
-  private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens }
-
-  private def result(run: Run): CampaignResult =
-    ready(run.state).game.current.lastCampaignResult.get
-
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(GreatLevy.id, Vector(Outriders.ignored), run.events)
 
@@ -49,12 +42,12 @@ class GreatLevySuite extends munit.FunSuite:
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
-    assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(2, 0)))
+    assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(2, 0))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 0)
     val done = picked.finishPlanWindows
-    assertEquals(result(done).skullLosses, 0)
-    assertEquals(result(done).attackScore,
-      AttackDieFace.score(result(done).attackFaces))
+    assertEquals(done.result.skullLosses, 0)
+    assertEquals(done.result.attackScore,
+      AttackDieFace.score(done.result.attackFaces))
     assertEquals(lines(done), Vector(line))
 
   test("it is not offered while the defender holds the People's Favor"):
@@ -83,7 +76,7 @@ class GreatLevySuite extends munit.FunSuite:
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))
     // One die is left, and it rolls the skull.
     val done = run.finishPlanWindows
-    assertEquals(result(done).skullLosses, 1)
+    assertEquals(done.result.skullLosses, 1)
     assertEquals(lines(done), Vector.empty)
 
   test("with Outriders also chosen, the attack is scored the same"):
@@ -92,9 +85,9 @@ class GreatLevySuite extends munit.FunSuite:
     val done = commit(rules(skull), b, 2)
       .pick(b.actor, CampaignIds.attackerPlan, outridersRef)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assertEquals(result(done).skullLosses, 0)
-    assertEquals(result(done).attackScore,
-      AttackDieFace.score(result(done).attackFaces))
+    assertEquals(done.result.skullLosses, 0)
+    assertEquals(done.result.attackScore,
+      AttackDieFace.score(done.result.attackFaces))
     assertEquals(lines(done), Vector(line))
     assertEquals(NoteText.said(Outriders.id, Vector(Outriders.ignored),
       done.events), Vector(line))

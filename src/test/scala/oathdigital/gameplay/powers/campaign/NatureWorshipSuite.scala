@@ -9,7 +9,7 @@ import oathdigital.testkit.{CatalogNames, Look}
 /** Nature Worship: a secret placed for one attack die, added or removed, per
   * faceup beast adviser its user has, itself included. */
 class NatureWorshipSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.nature-worship")
+  private val card = CatalogNames.denizen("Nature Worship")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val beasts = planless("Errand Boy", "Small Friends")
 

@@ -4,14 +4,14 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Encirclement: a favor placed for two attack dice, added or removed, offered
   * only while its user's force is strictly larger than the enemy's. */
 class EncirclementSuite extends munit.FunSuite:
-  private val card = cardWith("denizen.encirclement")
+  private val card = CatalogNames.denizen("Encirclement")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
-  private val wrestlers = cardWith("denizen.wrestlers")
+  private val wrestlers = CatalogNames.denizen("Wrestlers")
 
   /** The actor holds Encirclement and a favor. */
   private def attacker(b: Board): Board =
@@ -25,10 +25,6 @@ class EncirclementSuite extends munit.FunSuite:
     on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.warbandsAt(base.origin, base.rival, 3).favor(base.rival, 1))
 
-  private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
-    Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == card => held.tokens }
-
   test("an attacker whose force is larger places a favor for two attack dice"):
     // 3 warbands beat the two bandits that rule the origin.
     val base = board(warbands = 5, supply = 7)
@@ -37,7 +33,7 @@ class EncirclementSuite extends munit.FunSuite:
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.attackPool, 2)))
-    assertEquals(adviserTokens(picked.state, b.actor), Some(Tokens(1, 0)))
+    assertEquals(Look(picked.state).adviserTokens(b.actor, card), Tokens(1, 0))
 
   test("it is not offered when the forces are equal"):
     // 2 warbands tie the two bandits that rule the origin.

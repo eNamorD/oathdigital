@@ -6,7 +6,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.Look
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Insect Swarm: while its faceup holder is in a Campaign, every plan the enemy
   * chooses costs one more favor, burnt from the plan's user's board, whatever
@@ -14,11 +14,11 @@ import oathdigital.testkit.Look
   * option states the price with it.
   */
 class InsectSwarmSuite extends munit.FunSuite:
-  private val swarm = cardWith("denizen.insect-swarm")
-  private val armor = cardWith("denizen.gleaming-armor")
-  private val watchdog = cardWith("denizen.watchdog")
-  private val honors = cardWith("denizen.battle-honors")
-  private val provisions = cardWith("denizen.extra-provisions")
+  private val swarm = CatalogNames.denizen("Insect Swarm")
+  private val armor = CatalogNames.denizen("Gleaming Armor")
+  private val watchdog = CatalogNames.denizen("Watchdog")
+  private val honors = CatalogNames.denizen("Battle Honors")
+  private val provisions = CatalogNames.denizen("Extra Provisions")
   private val titleRef: DecisionOptionRef = DecisionOptionRef.Button("title")
 
   private def ref(card: DenizenId): DecisionOptionRef =
@@ -27,16 +27,6 @@ class InsectSwarmSuite extends munit.FunSuite:
   private def price(option: DecisionOption): OptionPrice = option match
     case DecisionOption.Priced(_, price) => price
     case _ => OptionPrice()
-
-  private def favor(state: OathState, who: PlayerId): Int =
-    Look(state).player(who).board.favor
-
-  private def bank(state: OathState, suit: Suit): Int =
-    ready(state).banks.favor.getOrElse(suit, 0)
-
-  private def tokensOn(state: OathState, who: PlayerId, card: DenizenId)
-      : Option[Tokens] = Look(state).player(who).advisers.collectFirst {
-    case held: DenizenState if held.id == card => held.tokens }
 
   // ---- the attacker holds it: the defender's plans cost more ---------------
 
@@ -58,12 +48,13 @@ class InsectSwarmSuite extends munit.FunSuite:
     assertEquals(price(option), OptionPrice(favorBurnt = 1))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan,
       ref(watchdog))
-    assertEquals(favor(picked.state, b.rival), 0)
+    assertEquals(Look(picked.state).favor(b.rival), 0)
     // Burnt to the shared bank: not settled into the card's suit bank, and
     // nothing rests on the card.
-    assertEquals(bank(picked.state, suit), bank(run.state, suit))
-    assertEquals(tokensOn(picked.state, b.rival, watchdog),
-      Some(Tokens.empty))
+    assertEquals(Look(picked.state).bankFavor(suit),
+      Look(run.state).bankFavor(suit))
+    assertEquals(Look(picked.state).adviserTokens(b.rival, watchdog),
+      Tokens.empty)
 
   test("the title's plan burns a favor from its user's board, since it has " +
       "no card"):
@@ -72,7 +63,7 @@ class InsectSwarmSuite extends munit.FunSuite:
     val title = run.options(b.actor).find(_.ref == titleRef).get
     assertEquals(price(title), OptionPrice(favorBurnt = 1))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, titleRef)
-    assertEquals(favor(picked.state, b.rival), 0)
+    assertEquals(Look(picked.state).favor(b.rival), 0)
 
   test("a defender with no favor is offered no plan"):
     val b = attackerHolds(0)
@@ -132,9 +123,9 @@ class InsectSwarmSuite extends munit.FunSuite:
     val option = run.options(b.actor).find(_.ref == ref(honors)).get
     assertEquals(price(option), OptionPrice(favorBurnt = 1))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref(honors))
-    assertEquals(favor(picked.state, b.actor), 0)
-    assertEquals(tokensOn(picked.state, b.actor, honors),
-      Some(Tokens.empty))
+    assertEquals(Look(picked.state).favor(b.actor), 0)
+    assertEquals(Look(picked.state).adviserTokens(b.actor, honors),
+      Tokens.empty)
 
   test("with Gleaming Armor on the same side, both added costs apply"):
     val base = defenderHolds(1)
@@ -144,11 +135,11 @@ class InsectSwarmSuite extends munit.FunSuite:
     val option = run.options(b.actor).find(_.ref == ref(honors)).get
     assertEquals(price(option), OptionPrice(secrets = 1, favorBurnt = 1))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref(honors))
-    assertEquals(favor(picked.state, b.actor), 0)
+    assertEquals(Look(picked.state).favor(b.actor), 0)
     assertEquals(Look(picked.state).player(b.actor).board.faceUpSecrets, 0)
     // Gleaming Armor's secret is placed onto the card; the favor is burnt.
-    assertEquals(tokensOn(picked.state, b.actor, honors),
-      Some(Tokens(0, 1)))
+    assertEquals(Look(picked.state).adviserTokens(b.actor, honors),
+      Tokens(0, 1))
 
   test("the holder's own plans are not taxed"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
