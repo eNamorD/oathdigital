@@ -72,9 +72,9 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
     assertEquals(Dom.one(panel, ".negotiation-status").textContent,
       "red: reviewing · blue: accepted")
     assertEquals(Dom.one(panel, ".negotiation-transfer").textContent,
-      "blue gives red: 2 favor, 0 relic(s)")
+      "blue gives red: 2 favor")
     assertEquals(Dom.one(panel, ".negotiation-disclosure").textContent,
-      "blue promises red a held-relic disclosure")
+      "blue promises to show red a held relic")
     input(panel, "input[type=number]").value = "3"
     input(panel, "input[type=checkbox]").checked = true
     button(panel, ".negotiation-save").click()
@@ -186,3 +186,77 @@ class NegotiationDealPanelSuite extends munit.FunSuite:
         Vector(oathdigital.protocol.NegotiationDisclosure("blue",
           oathdigital.protocol.NegotiationInformation.SiteRelic(
             "site:broken-peaks", "R3"))))))))
+
+  private val secretRelic = CardDetails("r2", "relic", "Secret Relic",
+    orientation = Some("face-down"))
+
+  /** Red looks at blue's one transfer to red and one disclosure to red. */
+  private def blueOffersRed(favor: Int, relicCount: Int,
+      relics: Vector[CardDetails],
+      disclosure: Option[CardDetails] = None) =
+    NegotiationDealState(Vector("red", "blue"), Vector.empty,
+      Vector(NegotiationTransferState("blue", "red", favor, relicCount,
+        relics)),
+      disclosure.toVector.map(card => NegotiationDisclosureState("blue", "red",
+        "held-relic", Some(card))), None)
+
+  private def transferLine(panel: dom.Element): String =
+    Dom.one(panel, ".negotiation-transfer").textContent
+
+  /** The names of the cards the overlay is asked to open while `act` runs. */
+  private def cardsOpenedBy(act: => Unit): Vector[String] =
+    var opened = Vector.empty[String]
+    CardInspection.onOpen:
+      case CardInspection.Request.Card(card, _) => opened = opened :+ card.name
+      case _ => ()
+    try act finally CardInspection.clear()
+    opened
+
+  test("a transfer names the relics the viewer can see and counts the rest"):
+    val panel = render(spectator(blueOffersRed(favor = 1, relicCount = 3,
+      relics = Vector(relic))), new RecordingControls(), playerId = "green")
+    assertEquals(transferLine(panel),
+      "blue gives red: 1 favor, Relic One, 2 facedown relics")
+
+  test("a transfer of one hidden relic says so in the singular"):
+    val panel = render(spectator(blueOffersRed(favor = 0, relicCount = 1,
+      relics = Vector.empty)), new RecordingControls(), playerId = "green")
+    assertEquals(transferLine(panel), "blue gives red: 1 facedown relic")
+
+  test("a transfer of nothing says nothing rather than zeroes"):
+    val panel = render(spectator(blueOffersRed(favor = 0, relicCount = 0,
+      relics = Vector.empty)), new RecordingControls(), playerId = "green")
+    assertEquals(transferLine(panel), "blue gives red: nothing")
+
+  test("a disclosure names its card when the viewer is allowed to see it"):
+    val panel = render(spectator(blueOffersRed(favor = 0, relicCount = 0,
+      relics = Vector.empty, disclosure = Some(secretRelic))),
+      new RecordingControls(), playerId = "blue")
+    assertEquals(Dom.one(panel, ".negotiation-disclosure").textContent,
+      "blue promises to show red Secret Relic")
+
+  test("a relic named in the summary opens its card, and so does a disclosure's"):
+    val panel = render(spectator(blueOffersRed(favor = 0, relicCount = 1,
+      relics = Vector(relic), disclosure = Some(secretRelic))),
+      new RecordingControls(), playerId = "blue")
+    val opened = cardsOpenedBy:
+      Dom.all(panel, "button.card-link").foreach(as[dom.html.Button](_).click())
+    assertEquals(opened, Vector("Relic One", "Secret Relic"))
+
+  test("an editor row's card name opens the card and leaves the offer unchanged"):
+    val panel = render(owner(dealWhereBlueHasAccepted()),
+      new RecordingControls())
+    val offer = box(panel, "Offer Relic One to blue")
+    val opened = cardsOpenedBy:
+      button(panel, ".negotiation-item button.card-link").click()
+    assertEquals(opened, Vector("Relic One"))
+    assert(!offer.checked)
+
+  test("a disclosure row in the editor opens the card it offers to show"):
+    val panel = render(owner(dealWithEveryDisclosureKindOffered()),
+      new RecordingControls())
+    val row = Dom.all(panel, ".negotiation-item").find(
+      _.textContent.trim == "Show Bone Dice").get
+    val opened = cardsOpenedBy:
+      button(row, "button.card-link").click()
+    assertEquals(opened, Vector("Bone Dice"))

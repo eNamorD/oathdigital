@@ -438,6 +438,12 @@ private[frontend] object ServerUiSupport:
     node.textContent = label
     node
 
+  /** A card's name, as a run of words that opens the card in the overlay. */
+  private[frontend] def cardLink(card: CardDetails): dom.html.Button =
+    val node = button(card.name, "card-link")
+    node.onclick = _ => CardInspection.open(card, node)
+    node
+
   private[frontend] def text(tag: String, className: String, value: String): dom.Element =
     val node = element(tag, className)
     node.textContent = value

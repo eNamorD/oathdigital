@@ -9,7 +9,7 @@ import org.scalajs.dom
   * (`ResolveWalker`: propose terms, accept, decline).
   */
 private[frontend] object NegotiationDealPanel:
-  import ServerUiSupport.{button, protocolNegotiationTerms, text}
+  import ServerUiSupport.{button, cardLink, protocolNegotiationTerms, text}
 
   private final case class DisclosureOffer(kind: String, card: CardDetails,
       siteId: Option[String])
@@ -27,12 +27,43 @@ private[frontend] object NegotiationDealPanel:
     panel.appendChild(text("p", "negotiation-status",
       deal.participantPlayerIds.map(id => s"$id: ${if deal.acceptedPlayerIds
         .contains(id) then "accepted" else "reviewing"}").mkString(" · ")))
-    deal.transfers.foreach(t => panel.appendChild(text("p", "negotiation-transfer",
-      s"${t.authorPlayerId} gives ${t.recipientPlayerId}: ${t.favor} favor, " +
-        s"${t.relicCount} relic(s)")))
-    deal.disclosures.foreach(d => panel.appendChild(text("p",
-      "negotiation-disclosure",
-      s"${d.authorPlayerId} promises ${d.recipientPlayerId} a ${d.kind} disclosure")))
+    deal.transfers.foreach(t => panel.appendChild(transferLine(t)))
+    deal.disclosures.foreach(d => panel.appendChild(disclosureLine(d)))
+
+  /** What the author gives, named where the viewer can see it: favor, each
+    * relic the projection carries, and a count of the facedown rest.
+    */
+  private def transferLine(t: NegotiationTransferState): dom.Element =
+    val hidden = t.relicCount - t.relics.size
+    val parts: Vector[dom.Node] =
+      Option.when(t.favor > 0)(textNode(s"${t.favor} favor")).toVector ++
+        t.relics.map(cardLink) ++
+        Option.when(hidden > 0)(textNode(
+          s"$hidden facedown ${if hidden == 1 then "relic" else "relics"}"))
+    val line = text("p", "negotiation-transfer",
+      s"${t.authorPlayerId} gives ${t.recipientPlayerId}: ")
+    if parts.isEmpty then line.appendChild(textNode("nothing"))
+    parts.zipWithIndex.foreach { (part, index) =>
+      if index > 0 then line.appendChild(textNode(", "))
+      line.appendChild(part)
+    }
+    line
+
+  /** What the author promises to show: the card when the viewer may see it,
+    * otherwise only what kind of card it is.
+    */
+  private def disclosureLine(d: NegotiationDisclosureState): dom.Element =
+    val line = text("p", "negotiation-disclosure",
+      s"${d.authorPlayerId} promises to show ${d.recipientPlayerId} ")
+    d.card.fold(line.appendChild(textNode(d.kind match
+      case "adviser" => "an adviser"
+      case "held-relic" => "a held relic"
+      case "site-relic" => "a site relic"
+      case other => other)))(card => line.appendChild(cardLink(card)))
+    line
+
+  private def textNode(value: String): dom.Node =
+    dom.document.createTextNode(value)
 
   private def offers(editing: NegotiationEditingState): Vector[DisclosureOffer] =
     editing.editableAdvisers.map(DisclosureOffer("adviser", _, None)) ++
@@ -46,20 +77,29 @@ private[frontend] object NegotiationDealPanel:
     node.`type` = kind
     node
 
-  /** One term per row, each with the control and the words that name it in
-    * the same `label`: a run of bare checkboxes and their trailing text wraps
-    * into a paragraph of offers no one can read.
+  /** The favor row: the words that name the number box and the box, in one
+    * `label`. One term per row: a run of bare controls and their trailing
+    * text wraps into a paragraph of offers no one can read.
     */
-  private def item(control: dom.html.Input, caption: String,
-      before: Boolean): dom.Element =
+  private def favorItem(control: dom.html.Input): dom.Element =
     val row = dom.document.createElement("label").asInstanceOf[dom.html.Label]
     row.className = "negotiation-item"
-    if before then
-      row.appendChild(text("span", "negotiation-item-label", caption))
-      row.appendChild(control)
-    else
-      row.appendChild(control)
-      row.appendChild(text("span", "negotiation-item-label", caption))
+    row.appendChild(text("span", "negotiation-item-label", "Favor"))
+    row.appendChild(control)
+    row
+
+  /** A one-term row, like the favor row, whose caption names a card that
+    * opens in the overlay. Not a `label`: a button inside one would be a
+    * second labelable control, and the checkbox is named by its `aria-label`
+    * already. Clicking the name inspects the card; the offer toggles from
+    * the box alone.
+    */
+  private def cardItem(control: dom.html.Input, prefix: String,
+      card: CardDetails): dom.Element =
+    val row = text("div", "negotiation-item", "")
+    row.appendChild(control)
+    row.appendChild(textNode(prefix))
+    row.appendChild(cardLink(card))
     row
 
   private def editor(decisionId: String, deal: NegotiationDealState,
@@ -77,7 +117,7 @@ private[frontend] object NegotiationDealPanel:
       favor.value = deal.transfers.find(t => t.authorPlayerId == me &&
         t.recipientPlayerId == recipient).map(_.favor).getOrElse(0).toString
       favor.setAttribute("aria-label", s"Favor offered to $recipient")
-      panel.appendChild(item(favor, "Favor", before = true))
+      panel.appendChild(favorItem(favor))
       favors += recipient -> favor
       editing.editableRelics.foreach { relic =>
         val check = input("checkbox")
@@ -90,7 +130,7 @@ private[frontend] object NegotiationDealPanel:
               if other != recipient && otherRelic == relic.cardId =>
             otherCheck.checked = false
           case _ => ()
-        panel.appendChild(item(check, relic.name, before = false))
+        panel.appendChild(cardItem(check, "", relic))
         relics += ((recipient, relic.cardId, check))
       }
       offers(editing).foreach { offer =>
@@ -100,8 +140,7 @@ private[frontend] object NegotiationDealPanel:
         check.checked = deal.disclosures.exists(d => d.authorPlayerId == me &&
           d.recipientPlayerId == recipient && d.kind == offer.kind &&
           d.card.exists(_.cardId == offer.card.cardId))
-        panel.appendChild(item(check, s"Show ${offer.card.name}",
-          before = false))
+        panel.appendChild(cardItem(check, "Show ", offer.card))
         disclosures += ((recipient, offer, check))
       }
     }

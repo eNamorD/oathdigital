@@ -30,7 +30,6 @@ From the playtest of 2026-10-01:
   does not loop back. Have them reload with the cache disabled and open
   `/health/ready` in a private window, then check the port forward and the
   host firewall.
-- [ ] **List relic details in a Negotiation.**
 - [ ] **Review the action buttons.** They feel unresponsive, and some appear
   for things the player does not expect.
 

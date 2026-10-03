@@ -385,6 +385,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
    of offers instead of a paragraph of checkboxes. */
 .negotiation-item { display: flex; align-items: center; gap: 8px;
   margin: 6px 0; }
+.card-link { display: inline; margin: 0; padding: 0; border: 0;
+  background: none; color: inherit; font: inherit; line-height: inherit;
+  text-decoration: underline; text-decoration-color: #7c694b;
+  text-underline-offset: 0.2em; cursor: pointer; }
+.card-link:hover { color: #fff2d6; text-decoration-color: #d2a85e; }
+.card-link:focus-visible { outline: 2px solid #fff0c9; outline-offset: 1px; }
 .negotiation-item input[type=number] { width: 5em; }
 .decision-final-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .decision-zones { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
