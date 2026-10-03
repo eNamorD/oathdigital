@@ -17,6 +17,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
   private val card = power.cardId
   private val played = hook(card)
   private val top = CatalogNames.relic("Dowsing Sticks")
+
   /** p1 holds Family Heirloom faceup, and Dowsing Sticks tops the relic
     * deck. */
   private val staged = Table.start.adviser(p1, card).relicDeckTop(top).ready
@@ -33,8 +34,8 @@ class FamilyHeirloomSuite extends munit.FunSuite
 
   private def atChoice: AtChoice =
     val first = Outcomes.parked(play(staged, power, card))
-    AtChoice(first, foldRecordedOps(staged, first.events,
-      "the draw did not replay"))
+    val drawn = foldRecordedOps(staged, first.events, "the draw did not replay")
+    AtChoice(first, drawn)
 
   test("the relic is drawn facedown to the player and the choice is theirs"):
     val at = atChoice

@@ -16,8 +16,10 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   private val card = power.cardId
   private val played = hook(card)
   private val kind = Look(Table.start.ready).forceKind(p1)
-  private val sites = Vector("Ancient City", "Broken Peaks", "Buried Giant")
-    .map(CatalogNames.site(_))
+  private val ancientCity = CatalogNames.site("Ancient City")
+  private val brokenPeaks = CatalogNames.site("Broken Peaks")
+  private val buriedGiant = CatalogNames.site("Buried Giant")
+  private val sites = Vector(ancientCity, brokenPeaks, buriedGiant)
 
   /** p1 holds Garrison, rules the first `counts.size` of Ancient City, Broken
     * Peaks and Buried Giant with `counts` warbands each, and has `onBoard`
@@ -68,14 +70,13 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
       DecisionOption.Site(DecisionOptionRef.Site(site))),
       decide.query.heading))
 
-    val brokenPeaks = sites(1)
     val done = Outcomes.finished(resume(atChoice, power, played, first.tree,
       Garrison.decisionId, chooseSites(brokenPeaks)))
     assertEquals(forcesAt(done.treeless, brokenPeaks),
       SiteForces.Occupied(kind, 4 + 1))
-    assertEquals(forcesAt(done.treeless, sites.head),
+    assertEquals(forcesAt(done.treeless, ancientCity),
       SiteForces.Occupied(kind, 4))
-    assertEquals(forcesAt(done.treeless, sites(2)),
+    assertEquals(forcesAt(done.treeless, buriedGiant),
       SiteForces.Occupied(kind, 5))
     assertEquals(Look(done.treeless).player(p1).board.warbands, 0)
     assertEquals(replayed(ready, first.events ++ done.events), done.treeless)

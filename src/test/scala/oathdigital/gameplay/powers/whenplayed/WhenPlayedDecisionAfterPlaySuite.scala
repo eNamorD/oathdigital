@@ -80,8 +80,8 @@ class WhenPlayedDecisionAfterPlaySuite extends munit.FunSuite:
       placed <- place(chosen, heirloom, "adviser-faceup")
     yield placed)
     // With every adviser slot taken the play first asks what to replace.
-    val replaced = accepted(SearchFixture.replace(placed, heirloom,
-      wardOfSilence))
+    val replacing = SearchFixture.replace(placed, heirloom, wardOfSilence)
+    val replaced = accepted(replacing)
     val done = accepted(answer(replaced, take))
     assert(relics(after(done)).nonEmpty)
     assert(!Look(after(done)).player(p1).advisers.exists(

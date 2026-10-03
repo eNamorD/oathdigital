@@ -37,8 +37,9 @@ class TwinBrotherSuite extends munit.FunSuite:
 
   private def answer(ready: ReadyGame, ref: DecisionOptionRef): Resolved =
     val first = Outcomes.parked(play(ready, power, card))
-    Resolved(first, Outcomes.finished(resume(ready, power, played, first.tree,
-      TwinBrother.decisionId, DecisionAnswer.ChooseOneAnswer(ref))))
+    val done = Outcomes.finished(resume(ready, power, played, first.tree,
+      TwinBrother.decisionId, DecisionAnswer.ChooseOneAnswer(ref)))
+    Resolved(first, done)
 
   test("Twin Brother is in the default walker catalog"):
     assert(WalkerPowerCatalog.default(catalog).powers.contains(power))

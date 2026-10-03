@@ -58,16 +58,15 @@ class GreatHerdSuite extends munit.FunSuite:
       covers = false)))
 
   test("a ruined Nomad edifice can be swapped too"):
-    val ruined = forge
     val ready = start.edifice("Broken Forge", EdificeSide.Ruined, at = awaySite)
       .ready
     val first = Outcomes.parked(fire(ready, power, played))
     assertEquals(offered(ready, first.tree),
-      Vector(DecisionOptionRef.Edifice(ruined), GreatHerd.keep))
+      Vector(DecisionOptionRef.Edifice(forge), GreatHerd.keep))
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
-      GreatHerd.decisionId, pick(DecisionOptionRef.Edifice(ruined))))
+      GreatHerd.decisionId, pick(DecisionOptionRef.Edifice(forge))))
     assertEquals(Look(done.treeless).cardsAt(homeSite),
-      Vector[CardId](ruined))
+      Vector[CardId](forge))
     assertEquals(Look(done.treeless).cardsAt(awaySite), Vector[CardId](herd))
 
   test("keeping Great Herd changes nothing and writes nothing"):
