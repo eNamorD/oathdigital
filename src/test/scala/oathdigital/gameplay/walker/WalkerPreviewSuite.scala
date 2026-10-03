@@ -3,7 +3,8 @@ package oathdigital.gameplay.walker
 import oathdigital.testkit.WalkerStubs.TestTransformPower
 import oathdigital.gameplay.walker.WalkerSimulation.PreviewOutcome
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{Outcomes, Table}
+import oathdigital.testkit.Table.p1
 
 class WalkerPreviewSuite extends munit.FunSuite:
   private val cheap = DecisionOptionRef.Button("cheap")
@@ -11,14 +12,9 @@ class WalkerPreviewSuite extends munit.FunSuite:
   private val extra = DecisionOptionRef.Button("extra")
   private val hooked = PowerWindow.SearchEligibility
 
-  private def withSupply(amount: Int): (ReadyGame, PlayerId) =
-    val base = Table.start.ready
-    val actor = base.game.current.turn.activePlayer
-    val players = base.game.current.players.map(player =>
-      if player.player == actor then
-        player.copy(board = player.board.copy(supply = SupplyTrack(amount)))
-      else player)
-    (base.updateCurrent(_.copy(players = players)), actor)
+  /** The start with p1's Supply at `amount`. */
+  private def withSupply(amount: Int): ReadyGame =
+    Table.start.supply(p1, amount).ready
 
   /** A decision, then a cost that depends on the answer. */
   private def tree(actor: PlayerId): Operation = Sequence(Vector[Operation](
@@ -34,15 +30,16 @@ class WalkerPreviewSuite extends munit.FunSuite:
     })))
 
   test("each option of a parked choose-one is answered against the tree"):
-    val (ready, actor) = withSupply(2)
+    val ready = withSupply(2)
     // The search hides the unaffordable option before the preview reads it.
-    val previewed = WalkerSimulation.preview(tree(actor), ready, WalkerPowers.empty)
-      .getOrElse(fail("a tree parked on a choose-one must preview"))
+    val previewed =
+      WalkerSimulation.preview(tree(p1), ready, WalkerPowers.empty)
+        .getOrElse(fail("a tree parked on a choose-one must preview"))
     assertEquals(previewed.map(_.option.ref), Vector(cheap))
     assertEquals(previewed.head.outcome, Right(PreviewOutcome(
-      Vector(SpendSupply(actor, 1)), complete = true)))
+      Vector(SpendSupply(p1, 1)), complete = true)))
     // With the search off, the preview reports why each option cannot run.
-    val unsearched = WalkerSimulation.preview(tree(actor), ready,
+    val unsearched = WalkerSimulation.preview(tree(p1), ready,
       WalkerPowers.empty.copy(probing = false))
       .getOrElse(fail("a tree parked on a choose-one must preview"))
     assertEquals(unsearched.map(_.option.ref), Vector(cheap, dear))
@@ -50,11 +47,11 @@ class WalkerPreviewSuite extends munit.FunSuite:
       "three Supply is not affordable with two")
 
   test("an option that finishes the tree is complete and one that parks again is not"):
-    val (ready, actor) = withSupply(5)
+    val ready = withSupply(5)
     val twoStep = Sequence(Vector[Operation](
-      Decide("first", actor, DecisionQuery.ChooseOne(Vector(
+      Decide("first", p1, DecisionQuery.ChooseOne(Vector(
         DecisionOption.Button(cheap, "Cheap")))),
-      Decide("second", actor, DecisionQuery.ChooseOne(Vector(
+      Decide("second", p1, DecisionQuery.ChooseOne(Vector(
         DecisionOption.Button(dear, "Dear"))))))
     val previewed = WalkerSimulation.preview(twoStep, ready, WalkerPowers.empty)
       .getOrElse(fail("a two-decision tree must preview its first decision"))
@@ -62,17 +59,18 @@ class WalkerPreviewSuite extends munit.FunSuite:
 
   test("a tree that never parks, or runs an operation first, or parks on another " +
       "query shape has nothing to preview"):
-    val (ready, actor) = withSupply(5)
+    val ready = withSupply(5)
     assertEquals(WalkerSimulation.preview(Sequence(Vector[Operation](
-      SpendSupply(actor, 1))), ready, WalkerPowers.empty).left.toOption, Some(OathViolation.InvalidEventOrder(
+      SpendSupply(p1, 1))), ready, WalkerPowers.empty).left.toOption,
+      Some(OathViolation.InvalidEventOrder(
         "a previewed tree finished without parking on a decision")))
     assertEquals(WalkerSimulation.preview(Sequence(Vector[Operation](
-      SpendSupply(actor, 1),
-      Decide("late", actor, DecisionQuery.ChooseOne(Vector(
+      SpendSupply(p1, 1),
+      Decide("late", p1, DecisionQuery.ChooseOne(Vector(
         DecisionOption.Button(cheap, "Cheap")))))), ready,
       WalkerPowers.empty).left.toOption, Some(OathViolation.InvalidEventOrder(
         "a previewed tree may not run operations before its first decision")))
-    val distribute = Sequence(Vector[Operation](Decide("split", actor,
+    val distribute = Sequence(Vector[Operation](Decide("split", p1,
       DecisionQuery.Distribute.exactly(Vector(
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
@@ -82,7 +80,7 @@ class WalkerPreviewSuite extends munit.FunSuite:
         "decision split is not a choose-one, so it cannot be previewed")))
 
   test("a transform on the decision's window changes what is previewed"):
-    val (ready, actor) = withSupply(5)
+    val ready = withSupply(5)
     val addExtra = TestTransformPower(PowerId("test.add-extra"), hooked,
       (_, operations) => operations.map {
         case decide: Decide => decide.query match {
@@ -93,7 +91,7 @@ class WalkerPreviewSuite extends munit.FunSuite:
         }
         case other => other
       })
-    val previewed = WalkerSimulation.preview(tree(actor), ready,
+    val previewed = WalkerSimulation.preview(tree(p1), ready,
       WalkerPowers(Vector(addExtra)))
       .getOrElse(fail("the folded decision must preview"))
     assertEquals(previewed.map(_.option.ref), Vector(cheap, dear, extra))
@@ -101,17 +99,17 @@ class WalkerPreviewSuite extends munit.FunSuite:
       complete = true)))
 
   test("previewParked reads the same options from an already-parked position"):
-    val (ready, actor) = withSupply(2)
-    val action = tree(actor)
-    val parked = ProcedureWalker.advance(ready, action, None, WalkerPowers.empty)
-      .toOption.get.asInstanceOf[WalkerOutcome.Parked]
+    val ready = withSupply(2)
+    val action = tree(p1)
+    val parked = Outcomes.parked(
+      ProcedureWalker.advance(ready, action, None, WalkerPowers.empty))
     assertEquals(
       WalkerSimulation.previewParked(ready, action, parked.tree, WalkerPowers.empty),
       WalkerSimulation.preview(action, ready, WalkerPowers.empty))
 
   test("starts is true for a tree a start would walk and false for one it rejects"):
-    val (ready, actor) = withSupply(2)
-    val spend = Sequence(Vector[Operation](SpendSupply(actor, 1)))
+    val ready = withSupply(2)
+    val spend = Sequence(Vector[Operation](SpendSupply(p1, 1)))
     assert(WalkerSimulation.starts(spend, ready, WalkerPowers.empty))
-    val unaffordable = Sequence(Vector[Operation](SpendSupply(actor, 3)))
+    val unaffordable = Sequence(Vector[Operation](SpendSupply(p1, 3)))
     assert(!WalkerSimulation.starts(unaffordable, ready, WalkerPowers.empty))

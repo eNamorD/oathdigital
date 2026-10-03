@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.model._
+import oathdigital.testkit.Unwrap.accepted
 
 class ModifyRollOutcomeSuite extends munit.FunSuite:
   private val pool = PoolKey("campaign.attack")
@@ -11,8 +12,8 @@ class ModifyRollOutcomeSuite extends munit.FunSuite:
       skulls = 1, score = 3))))
 
   private def run(ready: ReadyGame, operation: CoreOperation) =
-    new OperationExecutor().executeAll(ready, Vector(operation))
-      .toOption.get.game.current.rollOutcomes
+    accepted(new OperationExecutor().executeAll(ready, Vector(operation)))
+      .game.current.rollOutcomes
 
   test("modifying an outcome rewrites only the fields it names"):
     assertEquals(run(rolled, ModifyRollOutcome(pool, Some(0), None))(pool),

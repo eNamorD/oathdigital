@@ -1,8 +1,11 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.powers.{PowerFixture, ReviewedPowerCatalog}
+import oathdigital.gameplay.powers.ReviewedPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.accepted
 
 class RuleResolutionSuite extends munit.FunSuite:
   test("rule source identities are stable and distinguish broad source kinds"):
@@ -26,11 +29,11 @@ class RuleResolutionSuite extends munit.FunSuite:
     */
   test("a power covered by the walker or phase catalog no longer reports the " +
       "legacy ignored-rule diagnostic"):
-    val silverTongue = DenizenId(catalog.denizenWithPower(PowerId("denizen.silver-tongue")).get.id.value)
-    val ready = PowerFixture.asAdviser(PowerFixture.quietTable, silverTongue)
-    val source = RuleSourceRef.Adviser(PowerFixture.actor, silverTongue)
-    assertEquals(PowerRuntime.ignoredAtSource(catalog, ready, PowerFixture.actor,
-      ActionKind.Search, source).toOption.get, Vector.empty)
+    val silverTongue = CatalogNames.denizen("Silver Tongue")
+    val ready = Table.start.adviser(p1, silverTongue).ready
+    val source = RuleSourceRef.Adviser(p1, silverTongue)
+    assertEquals(accepted(PowerRuntime.ignoredAtSource(catalog, ready, p1,
+      ActionKind.Search, source)), Vector.empty)
 
   test("rule source stable keys round trip for durable diagnostics"):
     val values = Vector[RuleSourceRef](RuleSourceRef.Site(SiteId("site:a")),
@@ -42,7 +45,7 @@ class RuleResolutionSuite extends munit.FunSuite:
     assertEquals(values.map(v => RuleSourceRef.parse(v.stableKey)), values.map(Some(_)))
 
   test("Recover registry uses exact power-ID data"):
-    val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
+    val registry = accepted(ReviewedPowerCatalog.registry(catalog))
     assertEquals(registry.lookup(PowerId("edifice.e17.intact")).map(_.id),
       Some(PowerId("edifice.e17.intact")))
     assertEquals(registry.lookup(PowerId("denizen.future-recover-text")), None)

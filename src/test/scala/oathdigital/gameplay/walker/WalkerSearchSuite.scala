@@ -4,6 +4,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseManyAnswer,
   ChooseOneAnswer}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.CatalogNames
 
 /** The search's answers and narrowing, apart from the walk (global operation
   * restrictions design, "Lazy pruning"). A verdict here is a plain function,
@@ -11,7 +12,7 @@ import oathdigital.testkit.Table.p1
   */
 class WalkerSearchSuite extends munit.FunSuite:
   private val refused = OathViolation.InvalidEventOrder("refused")
-  private val card = DenizenId("24")
+  private val card = CatalogNames.denizen("Horse Archers")
   private def button(key: String) =
     DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private def ref(key: String): DecisionOptionRef = DecisionOptionRef.Button(key)

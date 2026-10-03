@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.model._
+import oathdigital.testkit.Unwrap.accepted
 
 class RecordCampaignResultSuite extends munit.FunSuite:
   private val conquest = CampaignResult(PlayerId("red"), CampaignKind.Conquest,
@@ -11,8 +12,8 @@ class RecordCampaignResultSuite extends munit.FunSuite:
     attackerWins = false)
 
   private def record(ready: ReadyGame, result: CampaignResult) =
-    new OperationExecutor().executeAll(ready, Vector(RecordCampaignResult(result)))
-      .toOption.get.game.current.lastCampaignResult
+    accepted(new OperationExecutor().executeAll(ready,
+      Vector(RecordCampaignResult(result)))).game.current.lastCampaignResult
 
   test("recording a result writes it into state"):
     assertEquals(TestGameFixtures.ready.game.current.lastCampaignResult, None)

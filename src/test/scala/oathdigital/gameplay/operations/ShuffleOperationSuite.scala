@@ -2,17 +2,15 @@ package oathdigital.gameplay.operations
 
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.Unwrap.accepted
 
 class ShuffleOperationSuite extends munit.FunSuite:
   private val executor = new OperationExecutor()
   private val cradle = SearchSource.RegionalDiscard(Region.Cradle)
 
-  /** The Cradle discard pile holds the world deck's top three cards. */
-  private val discarded = Table.start.ready.updateCurrent(c => c.copy(
-    commonCards = c.commonCards.copy(
-      worldDeck = c.commonCards.worldDeck.drop(3),
-      regionalDiscards = c.commonCards.regionalDiscards.updated(Region.Cradle,
-        c.commonCards.worldDeck.take(3)))))
+  /** The Cradle discard pile holds three cards from the world deck. */
+  private val discarded = Table.start.discarded(Region.Cradle,
+    "Threatening Roar", "Fae Merchant", "Second Chance").ready
   private def zones(ready: ReadyGame): CardZones = ready.game.current.commonCards
   private val pile = zones(discarded).discard(Region.Cradle)
   private val deck = zones(discarded).worldDeck
@@ -23,8 +21,8 @@ class ShuffleOperationSuite extends munit.FunSuite:
     assertEquals(done.map(zones(_).worldDeck), Right(deck.reverse))
 
   test("a shuffle writes a discard pile's new order and leaves the rest"):
-    val done = executor.execute(discarded, Shuffle(cradle, Some(pile.reverse)))
-      .toOption.get
+    val done =
+      accepted(executor.execute(discarded, Shuffle(cradle, Some(pile.reverse))))
     assertEquals(zones(done).discard(Region.Cradle), pile.reverse)
     assertEquals(zones(done).worldDeck, deck)
 
@@ -44,11 +42,11 @@ class ShuffleOperationSuite extends munit.FunSuite:
 
   test("a shuffle forgets its pile's cards, since no one knows which is where"):
     val peeker = discarded.game.current.players.head.player
-    val peeked = pile.foldLeft(discarded)((ready, card) => executor.execute(
-      ready, Peek(peeker, card, Location.RegionalDiscard(Region.Cradle)))
-      .toOption.get)
+    val peeked = pile.foldLeft(discarded)((ready, card) =>
+      accepted(executor.execute(ready,
+        Peek(peeker, card, Location.RegionalDiscard(Region.Cradle)))))
     assert(pile.forall(peeked.knowledge.advisers(peeker).contains))
-    val shuffled = executor.execute(peeked, Shuffle(cradle, Some(pile.reverse)))
-      .toOption.get
+    val shuffled =
+      accepted(executor.execute(peeked, Shuffle(cradle, Some(pile.reverse))))
     assert(shuffled.knowledge.advisers.values.forall(known =>
       pile.forall(!known.contains(_))), shuffled.knowledge.advisers.toString)

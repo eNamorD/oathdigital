@@ -1,9 +1,10 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{DeltaMeaning, ProcedureWalker, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaMeaning, ProcedureWalker,
+  WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.model.OathState.Ready
 
 /** Replay applies a recorded `PayCost` the way the pipeline ran it: a payer who
@@ -13,23 +14,16 @@ import oathdigital.model.OathState.Ready
   * defender's payment on the card it was settled off.
   */
 class WalkerReplaySettlementSuite extends munit.FunSuite:
-  private val base = Table.start.ready
-  private val current = base.game.current
-  private val active = current.turn.activePlayer
-  private val payer = current.players.map(_.player).find(_ != active).get
-  private val siteId = current.map.inPlay.head
-  private val denizen = current.commonCards.worldDeck.collectFirst {
-    case id: DenizenId => id }.get
-  private val suit = catalog.suitOf(denizen).get
+  private val active = p1
+  private val payer = p2
+  private val denizen = CatalogNames.denizen("Errand Boy")
+  private val suit = Suit.Beast
 
-  private val arranged: ReadyGame = base.updateCurrent(c => c.copy(
-    commonCards = c.commonCards.copy(worldDeck =
-      c.commonCards.worldDeck.filterNot(_ == denizen)),
-    players = c.players.map(p => p.copy(board = p.board.copy(favor = 3,
-      faceUpSecrets = 3, faceDownSecrets = 0))),
-    map = c.map.copy(sites = c.map.sites.updated(siteId,
-      c.map.sites(siteId).copy(denizens = Vector(DenizenState(denizen,
-        Orientation.FaceUp, Tokens.empty)))))))
+  /** p1 is active; p1 and p2 each hold 3 favor and 3 faceup secrets, and
+    * Errand Boy stands at Ancient City with nothing on it. */
+  private val arranged: ReadyGame = Table.start
+    .favor(p1, 3).secrets(p1, faceUp = 3).favor(p2, 3).secrets(p2, faceUp = 3)
+    .denizen(denizen, at = "Ancient City").ready
 
   private def replay(pay: PayCost): ReadyGame = ProcedureWalker.applyRecorded(
     Ready(arranged), WalkerStepRecorded("0",
@@ -39,18 +33,13 @@ class WalkerReplaySettlementSuite extends munit.FunSuite:
     case Right(Ready(state)) => state
     case other => fail(s"the recorded payment must replay, got $other")
 
-  private def tokens(state: ReadyGame): Tokens =
-    state.game.current.map.sites(siteId).denizens.collectFirst {
-      case held: DenizenState if held.id == denizen => held.tokens }.get
-
-  private def board(state: ReadyGame, who: PlayerId) =
-    state.game.current.players.find(_.player == who).get.board
-
-  test("an off-turn payment replays settled: favor to the matching bank, a secret facedown"):
+  test("an off-turn payment replays settled: favor to the matching bank, a " +
+      "secret facedown"):
     val done = replay(PayCost(payer, Location.OnCard(denizen),
       Cost(favor = 1, secret = 1), intoOccupied = true, matchingBank = Some(suit)))
-    assertEquals(tokens(done), Tokens.empty)
-    val after = board(done, payer)
+    assertEquals(Look(done).tokensOn(denizen), Tokens.empty)
+    val after = Look(done).player(payer).board
+    // 3 favor less 1 paid; 3 faceup secrets, 1 of them turned facedown.
     assertEquals((after.favor, after.faceUpSecrets, after.faceDownSecrets),
       (2, 2, 1))
     assertEquals(done.banks.favor.getOrElse(suit, 0),
@@ -59,10 +48,11 @@ class WalkerReplaySettlementSuite extends munit.FunSuite:
   test("the active player's payment replays resting on the card"):
     val done = replay(PayCost(active, Location.OnCard(denizen),
       Cost(favor = 1, secret = 1), matchingBank = Some(suit)))
-    assertEquals(tokens(done), Tokens(1, 1))
-    assertEquals(board(done, active).faceDownSecrets, 0)
+    assertEquals(Look(done).tokensOn(denizen), Tokens(1, 1))
+    assertEquals(Look(done).player(active).board.faceDownSecrets, 0)
 
-  test("a recorded batch of other operations replays as before"):
+  test("a recorded PayCost that only burns replays as it first ran"):
     val done = replay(PayCost(active, Location.OnCard(denizen),
       Cost(favorBurnt = 1)))
-    assertEquals(board(done, active).favor, 2)
+    // 3 favor less 1 burnt.
+    assertEquals(Look(done).favor(active), 2)

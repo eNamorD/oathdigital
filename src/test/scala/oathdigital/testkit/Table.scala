@@ -36,6 +36,13 @@ object CatalogNames:
       .map(r => RelicId(r.id.value))
       .getOrElse(unknown("relic", name, catalog.relics.map(_.name)))
 
+  def legacy(card: String | LegacyId)(using munit.Location): LegacyId =
+    card match
+      case id: LegacyId => id
+      case name: String => catalog.legacies.find(_.name == name)
+        .map(l => LegacyId(l.id.value))
+        .getOrElse(unknown("legacy", name, catalog.legacies.map(_.name)))
+
   /** An edifice by either face's name. */
   def edifice(card: String | EdificeId)(using munit.Location): EdificeId =
     card match

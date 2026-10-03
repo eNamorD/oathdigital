@@ -1,11 +1,11 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.{OathRules, WalkerDiceFixture}
-import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.Table
+import oathdigital.testkit.Table.p1
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.WalkerStubs
 
@@ -18,42 +18,23 @@ import oathdigital.testkit.WalkerStubs
 class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   private val assertions = new ParkedDecisionAssertions(catalog)
 
-  /** A ready game in the Act phase whose active player's pawn sits on an
-    * in-play Recover site with difficulty <= 4 (reachable by
-    * `WalkerDiceFixture.shields` in one roll) and no facedown relic, so a
-    * successful roll finishes the whole action in one command -- mirrors
-    * `RecoverProcedureSuite.recoverable`, minus the relic. `RecoverProcedure
-    * .build`/`rebuild` require a site with a declared Recover difficulty, so
-    * every test below -- not only the successful-completion one -- needs
-    * this rather than `OathRulesWalkerPowerSuite`'s plain `actable`, whose
-    * pawn site (p1's Ancient City) has none.
+  /** p1, active in the Act, stands at Fair Isle, the easiest Recover
+    * (difficulty 3, reachable by `WalkerDiceFixture.shields` in one roll),
+    * where no relic lies, so a successful roll finishes the whole action in
+    * one command. `RecoverProcedure.build`/`rebuild` require a site with a
+    * declared Recover difficulty, which p1's Ancient City lacks.
     */
-  private def recoverable: (ReadyGame, PlayerId) =
-    val base = Table.start.ready
-    val active = base.game.current.turn.activePlayer
-    val candidates = base.game.current.map.inPlay.filter(siteId =>
-      RecoverRules.difficulty(catalog, siteId).exists(d => d > 0 && d <= 4))
-    assert(candidates.nonEmpty,
-      "fixture needs an in-play Recover site with difficulty <= 4")
-    val siteId = candidates.minBy(site => RecoverRules.difficulty(catalog,
-      site).get)
-    val site = base.game.current.map.sites(siteId).copy(relics = Vector.empty)
-    val ready = base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p =>
-        if p.player == active then p.copy(pawnSite = Some(siteId)) else p),
-      map = base.game.current.map.copy(
-        sites = base.game.current.map.sites.updated(siteId, site))))
-    (ready, active)
+  private val recoverable: ReadyGame =
+    Table.start.pawn(p1, at = "Fair Isle").ready
 
   test("a Decide park reports its procedure, decision id and owner"):
-    val (ready, actor) = recoverable
     val rules = new OathRules(catalog, walkerDice = WalkerDiceFixture.blanks)
-    val started = rules.startWalker(Ready(ready), ActionRef.Recover,
-        actor) match
+    val started = rules.startWalker(Ready(recoverable), ActionRef.Recover,
+        p1) match
       case Right(transition) => transition
       case other => fail(s"expected the failed-roll start to run, got $other")
     assertions.assertParked(started.state, ActionRef.Recover,
-      RecoverProcedure.choiceDecisionId, actor)
+      RecoverProcedure.choiceDecisionId, p1)
 
   // The Roll branch could silently return `None` and every Recover
   // assertion built on this module would weaken to nothing -- this is the
@@ -64,7 +45,6 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   // REAL, registry-built Recover tree at its `RecoverActionEligibility`
   // window, ahead of the declared body.
   test("a Roll park reports the procedure's declared roll decision id"):
-    val (ready, actor) = recoverable
     val insertRoll = WalkerStubs.TestTransformPower(
       PowerId("test.insert-roll"), PowerWindow.RecoverActionEligibility,
       (_, ops) => Roll(PoolKey("test.recover-roll"),
@@ -72,13 +52,13 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
     val powers = WalkerPowers(Vector(insertRoll))
     val rules = new OathRules(catalog, walkerPowerCatalog = powers,
       walkerDice = WalkerDiceFixture.blanks)
-    val started = rules.startWalker(Ready(ready), ActionRef.Recover,
-        actor) match
+    val started = rules.startWalker(Ready(recoverable), ActionRef.Recover,
+        p1) match
       case Right(transition) => transition
       case other => fail(s"expected the Roll-inserting start to run, got $other")
     new ParkedDecisionAssertions(catalog, walkerPowerCatalog = powers)
       .assertParked(started.state, ActionRef.Recover,
-        RecoverProcedure.rollDecisionId, actor)
+        RecoverProcedure.rollDecisionId, p1)
 
   // Same mechanism as the Roll park above -- a `Transform` folds an
   // off-turn-owned `Decide` into the real Recover tree -- because
@@ -88,12 +68,11 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   // walked; a hand-built tree under the `Recover` identity would rebuild to
   // a shape the stored `PendingTree.at` path does not address. The inserted
   // node reuses Recover's own `choiceDecisionId`, and this park never
-  // reaches the tree's OWN (actor-owned) choice decide -- the inserted node
+  // reaches the tree's OWN (p1-owned) choice decide -- the inserted node
   // is walked first.
   test("an off-turn owner is reported, not the active player"):
-    val (ready, actor) = recoverable
-    val owner = ready.game.current.players.map(_.player)
-      .find(_ != actor).get
+    val owner = recoverable.game.current.players.map(_.player)
+      .find(_ != p1).get
     val insertOwned = WalkerStubs.TestTransformPower(
       PowerId("test.insert-owned-decide"), PowerWindow.RecoverActionEligibility,
       (_, ops) => Decide(
@@ -105,8 +84,8 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
     val powers = WalkerPowers(Vector(insertOwned))
     val rules = new OathRules(catalog, walkerPowerCatalog = powers,
       walkerDice = WalkerDiceFixture.blanks)
-    val started = rules.startWalker(Ready(ready), ActionRef.Recover,
-        actor) match
+    val started = rules.startWalker(Ready(recoverable), ActionRef.Recover,
+        p1) match
       case Right(transition) => transition
       case other => fail(s"expected the owned-decide start to run, got $other")
     new ParkedDecisionAssertions(catalog, walkerPowerCatalog = powers)
@@ -126,9 +105,8 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
   // `ModifyDicePool` leaf, neither a Decide nor a Roll.
   test("a park the module cannot read fails, rather than reporting not " +
       "parked"):
-    val (ready, actor) = recoverable
-    val owner = ready.game.current.players.map(_.player)
-      .find(_ != actor).get
+    val owner = recoverable.game.current.players.map(_.player)
+      .find(_ != p1).get
     val insertOwned = WalkerStubs.TestTransformPower(
       PowerId("test.insert-owned-decide-unread"),
       PowerWindow.RecoverActionEligibility,
@@ -141,8 +119,8 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
     val powers = WalkerPowers(Vector(insertOwned))
     val rules = new OathRules(catalog, walkerPowerCatalog = powers,
       walkerDice = WalkerDiceFixture.blanks)
-    val started = rules.startWalker(Ready(ready), ActionRef.Recover,
-        actor) match
+    val started = rules.startWalker(Ready(recoverable), ActionRef.Recover,
+        p1) match
       case Right(transition) => transition
       case other => fail(s"expected the owned-decide start to run, got $other")
     // No walkerPowerCatalog here: the rebuild succeeds but folds in nothing.
@@ -150,10 +128,9 @@ class ParkedDecisionAssertionsSuite extends munit.FunSuite:
       new ParkedDecisionAssertions(catalog).assertNotParked(started.state)
 
   test("a completed action is not parked"):
-    val (ready, actor) = recoverable
     val rules = new OathRules(catalog, walkerDice = WalkerDiceFixture.shields)
-    val finished = rules.startWalker(Ready(ready), ActionRef.Recover,
-        actor) match
+    val finished = rules.startWalker(Ready(recoverable), ActionRef.Recover,
+        p1) match
       case Right(transition) => transition
       case other => fail(s"expected the successful Recover to run, got $other")
     assertions.assertNotParked(finished.state)

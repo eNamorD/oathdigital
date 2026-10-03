@@ -1,14 +1,17 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.model._
-import oathdigital.testkit.Table
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class OperationMutationSuite extends munit.FunSuite:
-  private val ready = ReadyGames.of(game.copy(current = game.current.copy(players = game.current.players.map {
-      player => player.copy(board = player.board.copy(
-        faceUpSecrets = 1, faceDownSecrets = 1))
-    }))).copy(banks = MaterialBankState(Map.empty, Map.empty))
+  /** TestGameFixtures' red with 1 faceup and 1 facedown secret. No Table step
+    * empties the banks, so they are set empty here. */
+  private val ready = Table.from(ReadyGames.of(game))
+    .secrets(playerId, faceUp = 1, faceDown = 1).unchecked
+    .copy(banks = MaterialBankState(Map.empty, Map.empty))
 
   test("secret planning resolves one aggregate solution independent of order"):
     val other = PlayerId("other")
@@ -33,15 +36,12 @@ class OperationMutationSuite extends munit.FunSuite:
     )
 
   private def titled(holder: Option[PlayerId], side: TitleSide): ReadyGame =
-    val base = Table.start.ready
-    base.updateCurrent(_.copy(
-      title = OathkeeperState(holder, side)))
+    Table.start.oathkeeper(holder, side).ready
   private def set(ready: ReadyGame, holder: Option[PlayerId]) =
     new OperationExecutor().executeAll(ready, Vector(SetOathkeeper(holder)))
       .map(_.game.current.title)
 
   test("SetOathkeeper moves the title and always resets it to the Oathkeeper side"):
-    val p1 = PlayerId("p1"); val p2 = PlayerId("p2")
     assertEquals(set(titled(None, TitleSide.Oathkeeper), Some(p2)),
       Right(OathkeeperState(Some(p2), TitleSide.Oathkeeper)))
     assertEquals(set(titled(Some(p1), TitleSide.Usurper), Some(p2)),
@@ -50,7 +50,6 @@ class OperationMutationSuite extends munit.FunSuite:
       Right(OathkeeperState(None, TitleSide.Oathkeeper)))
 
   test("SetOathkeeper rejects leaving the holder unchanged, whatever the side"):
-    val p1 = PlayerId("p1")
     Vector(TitleSide.Oathkeeper, TitleSide.Usurper).foreach { side =>
       assertEquals(set(titled(Some(p1), side), Some(p1)).left.map(_.code),
         Left("oathkeeper-unchanged"))
@@ -64,7 +63,8 @@ class OperationMutationSuite extends munit.FunSuite:
 
   test("BeginTurn hands the turn to a seated player and clears used powers"):
     val used = PowerUseRef(PowerTiming.Rest,
-      PowerSourceRef.Card(DenizenId("92")), PowerId("denizen.silver-tongue"))
+      PowerSourceRef.Card(CatalogNames.denizen("Silver Tongue")),
+      PowerId("denizen.silver-tongue"))
     val resting = ready.updateCurrent(_.copy(turn = TurnState(playerId, Phase.Rest,
         Set(used))))
     assertEquals(begin(resting, BeginTurn(playerId, Phase.Wake)),
@@ -81,6 +81,7 @@ class OperationMutationSuite extends munit.FunSuite:
     }
 
   test("a pawn may move from the player area to a site once, with no prior site"):
+    // No Table step takes a pawn off the map.
     val unplaced = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
       player => if player.player == playerId then player.copy(pawnSite = None) else player
     }))
@@ -89,9 +90,7 @@ class OperationMutationSuite extends munit.FunSuite:
         PositionedLocation(Location.PlayArea(playerId)),
         PositionedLocation(Location.Site(sites.head)))))
     assert(result.isRight)
-    assertEquals(
-      result.toOption.get.game.current.players.find(_.player == playerId)
-        .flatMap(_.pawnSite),
+    assertEquals(Look(accepted(result)).player(playerId).pawnSite,
       Some(sites.head))
 
   test("a pawn already on a site cannot move from the player area again"):

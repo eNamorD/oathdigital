@@ -1,18 +1,17 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.testkit.{CatacombsGame, Outcomes, Table}
+import oathdigital.testkit.{CatacombsGame, CatalogNames, Look, Outcomes,
+  Table}
+import oathdigital.testkit.Unwrap.{accepted, as}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ProcedureWalker,
   WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
   WalkerStepRecorded}
-import oathdigital.model.OathState.Ready
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model._
 
@@ -134,28 +133,14 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       "fixture catalog must declare the Catacombs card for this drift case")
     selected
 
-  private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) =
-    val base = Outcomes.ready(setupThroughWake().state)
-    val active = base.game.current.players.find(
-      _.player == base.game.current.turn.activePlayer).get
-    val candidates = base.game.current.map.inPlay.filter(siteId =>
-      RecoverRules.difficulty(catalog, siteId).exists(d => d > 0 && d <= 4))
-    assert(candidates.nonEmpty,
-      "fixture needs an in-play Recover site with difficulty <= 4")
-    val siteId = candidates.minBy(site => RecoverRules.difficulty(catalog, site).get)
-    val relic = RelicState(base.game.current.commonCards.relicDeck.head,
-      Orientation.FaceDown, Tokens.empty)
-    val site = base.game.current.map.sites(siteId).copy(relics = Vector(relic))
-    val moved = active.copy(pawnSite = Some(siteId))
-    val ready = base.updateCurrent(_.copy(
-        turn = base.game.current.turn.copy(phase = Phase.Act),
-        commonCards = base.game.current.commonCards.copy(
-          relicDeck = base.game.current.commonCards.relicDeck.tail),
-        players = base.game.current.players.map(p =>
-          if p.player == active.player then moved else p),
-        map = base.game.current.map.copy(sites =
-          base.game.current.map.sites.updated(siteId, site))))
-    (ready, active.player, siteId, relic)
+  /** Fair Isle, the easiest Recover on the table (difficulty 3). */
+  private val recoverSite = CatalogNames.site("Fair Isle")
+  private val dowsingSticks = CatalogNames.relic("Dowsing Sticks")
+
+  /** p1, active in the Act, stands at Fair Isle, where Dowsing Sticks lies
+    * facedown. */
+  private val recoverable: ReadyGame = Table.start.pawn(p1, at = recoverSite)
+    .relicAt(dowsingSticks, at = recoverSite).ready
 
   private val lowRoll: Vector[DieFace] =
     Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)
@@ -211,7 +196,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val stepEvents = (outcome match {
       case WalkerOutcome.Parked(_, evs) => evs
       case WalkerOutcome.Finished(_, evs) => evs
-    }).map(_.asInstanceOf[WalkerEvent])
+    }).map(as[WalkerEvent](_))
     val fact: WalkerEvent = outcome match
       case WalkerOutcome.Parked(pending, _) =>
         WalkerParked(procedure, pending.at, pending.answered,
@@ -236,10 +221,10 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       script: Vector[Resume], powers: WalkerPowers,
       procedure: ProcedureRef = ActionRef.Recover,
       tree: (ReadyGame, Boolean) => Operation = (state, starting) =>
-        if starting then RecoverProcedure.build(catalog, state,
-          state.game.current.turn.activePlayer).toOption.get
-        else RecoverProcedure.rebuild(catalog, state,
-          state.game.current.turn.activePlayer).toOption.get): WalkerOutcome =
+        if starting then accepted(RecoverProcedure.build(catalog, state,
+          state.game.current.turn.activePlayer))
+        else accepted(RecoverProcedure.rebuild(catalog, state,
+          state.game.current.turn.activePlayer))): WalkerOutcome =
     def go(remaining: Vector[Resume], liveState: ReadyGame,
         livePending: Option[PendingTree], replayState: OathState,
         starting: Boolean): WalkerOutcome =
@@ -249,7 +234,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       val liveOutcome = runResume(resume, liveState, liveTree, livePending,
         powers)
 
-      val Ready(replayReady) = replayState: @unchecked
+      val replayReady = Outcomes.ready(replayState)
       val replayTree = tree(replayReady, starting)
       val replayPending = replayReady.game.current.walkerPending
       val replayOutcome = runResume(resume, replayReady, replayTree,
@@ -271,50 +256,46 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     go(script, ready, None, OathState.Ready(ready), starting = true)
 
   test("drift check: single-roll success (advance -> resolve)"):
-    val (ready, actor, siteId, relic) = recoverable
-    val finished = assertNoDrift(ready,
+    val finished = assertNoDrift(recoverable,
       Vector(StartWalk(Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
+          ChooseOneAnswer(DecisionOptionRef.Relic(dowsingSticks)), p1))),
       walkerPowers)
     finished match
       case WalkerOutcome.Finished(treeless, _) =>
-        assertEquals(treeless.game.current.map.sites(siteId).relics,
+        assertEquals(treeless.game.current.map.sites(recoverSite).relics,
           Vector.empty)
-        assertEquals(treeless.game.current.players.find(_.player == actor)
-          .get.relics.map(_.id), Vector(relic.id))
+        assertEquals(Look(treeless).player(p1).relics.map(_.id),
+          Vector(dowsingSticks))
       case other => fail(s"expected a Finished outcome, got $other")
 
   test("drift check: multi-roll success (fail parks Continue/Stop, Continue " +
       "rolls again to a cumulative success)"):
-    val (ready, actor, _, relic) = recoverable
-    val finished = assertNoDrift(ready,
+    val finished = assertNoDrift(recoverable,
       Vector(StartWalk(Vector(lowRoll)),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor),
+          ChooseOneAnswer(DecisionOptionRef.Button("continue")), p1),
           Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
+          ChooseOneAnswer(DecisionOptionRef.Relic(dowsingSticks)), p1))),
       walkerPowers)
     finished match
       case WalkerOutcome.Finished(treeless, _) =>
-        assertEquals(treeless.game.current.players.find(_.player == actor)
-          .get.relics.map(_.id), Vector(relic.id))
+        assertEquals(Look(treeless).player(p1).relics.map(_.id),
+          Vector(dowsingSticks))
       case other => fail(s"expected a Finished outcome, got $other")
 
   test("drift check: stop after a failed roll ends the walk with no relic"):
-    val (ready, actor, siteId, relic) = recoverable
-    val finished = assertNoDrift(ready,
+    val finished = assertNoDrift(recoverable,
       Vector(StartWalk(Vector(lowRoll)),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))),
+          ChooseOneAnswer(DecisionOptionRef.Button("stop")), p1))),
       walkerPowers)
     finished match
       case WalkerOutcome.Finished(treeless, _) =>
-        assertEquals(treeless.game.current.players.find(_.player == actor)
-          .get.relics, Vector.empty)
-        assertEquals(treeless.game.current.map.sites(siteId).relics,
-          Vector(relic))
+        assertEquals(Look(treeless).player(p1).relics, Vector.empty)
+        assertEquals(treeless.game.current.map.sites(recoverSite).relics,
+          Vector(RelicState(dowsingSticks, Orientation.FaceDown, Tokens.empty)))
       case other => fail(s"expected a Finished outcome, got $other")
 
   test("drift check: Catacombs-modified Recover (advance -> resolve) " +
@@ -341,8 +322,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       .warbandsAt("Dunes", p1, 1).warbandsAt("Fair Isle", p3, 1)
       .ready
     val oathkeeperTree: (ReadyGame, Boolean) => Operation = (state, _) =>
-      OathkeeperProcedure.build(catalog, state,
-        state.game.current.turn.activePlayer, Vector.empty).toOption.get
+      accepted(OathkeeperProcedure.build(catalog, state,
+        state.game.current.turn.activePlayer, Vector.empty))
     val finished = assertNoDrift(ready,
       Vector(StartWalk(), AnswerResume(Answered(
         OathkeeperProcedure.recipientDecisionId,

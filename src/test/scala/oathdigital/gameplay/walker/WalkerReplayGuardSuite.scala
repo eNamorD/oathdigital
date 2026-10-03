@@ -3,6 +3,8 @@ package oathdigital.gameplay.walker
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
+import oathdigital.testkit.{Outcomes, Table}
+import oathdigital.testkit.Unwrap.accepted
 
 /** Replay applies recorded operations through the executor. The executor
   * runs the shape guard as the mutation's precondition, so a recorded
@@ -10,10 +12,8 @@ import oathdigital.model.TestGameFixtures._
   * instead of applying with the guard skipped.
   */
 class WalkerReplayGuardSuite extends munit.FunSuite:
-  private val held = ready.updateCurrent(current => current.copy(
-    commonCards = current.commonCards.copy(
-      worldDeck = current.commonCards.worldDeck.filterNot(_ == worldDenizen)),
-    temporaryHands = Map(playerId -> Vector(worldDenizen))))
+  /** TestGameFixtures' red holding D1, the world deck's only card. */
+  private val held = Table.from(ready).hand(playerId, worldDenizen).unchecked
 
   private def discard(position: StackPosition) = Move(
     Piece.Card(worldDenizen),
@@ -27,7 +27,7 @@ class WalkerReplayGuardSuite extends munit.FunSuite:
   test("a recorded discard with a stack position replays"):
     val replayed = ProcedureWalker.applyRecorded(OathState.Ready(held),
       step(discard(StackPosition.Top)))
-    val OathState.Ready(after) = replayed.toOption.get: @unchecked
+    val after = Outcomes.ready(accepted(replayed))
     assertEquals(after.game.current.commonCards.discard(Region.Cradle),
       Vector(worldDenizen))
     assertEquals(after.game.current.temporaryHands(playerId), Vector.empty)
