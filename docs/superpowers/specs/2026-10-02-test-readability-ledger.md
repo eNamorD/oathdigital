@@ -560,7 +560,7 @@ guard, one at a time, and records the result here.
 | 36 | src/main/scala/oathdigital/model/Identity.scala:44: `PowerId.fromValue` accepts any non-empty string | OpaqueIdSuite: blank ids and a malformed power id are rejected; PowerId.fromValue answers None instead of throwing | caught |
 | 36 | src/main/scala/oathdigital/serialization/GameEventWire.scala:117: the expected stream position ignores the start sequence | GameEventWireEnvelopeSuite: single-event and batch writers preserve nonzero absolute sequences | caught |
 | contract-repository | src/main/scala/oathdigital/application/EventStreamRepository.scala:77: the SequenceConflict branch also appends the stale batch | InMemoryEventStreamRepositorySuite: a sequence conflict writes no part of the batch | caught |
-| contract-repository | src/main/scala/oathdigital/application/EventStreamRepository.scala:66: MustNotExist on an existing stream returns Appended | InMemoryEventStreamRepositorySuite: creating a stream that exists, or appending to one that does not, is refused | caught |
+| contract-repository | src/main/scala/oathdigital/application/EventStreamRepository.scala:66: MustNotExist on an existing stream returns Appended | InMemoryEventStreamRepositorySuite: a duplicate creation or an append to a missing stream is refused | caught |
 | contract-repository | src/main/scala/oathdigital/application/EventStreamRepository.scala:54: load returns the records reversed | InMemoryEventStreamRepositorySuite: creates a stream and loads its records in order | caught |
 
 ## Shared fixtures
