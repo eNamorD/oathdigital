@@ -16,19 +16,20 @@ class GameLogCampaignSuite extends munit.FunSuite:
     val script = raid
     val all = lines(script)
     val defender = script.players.find(player => player != script.actor &&
-      all.exists(_.startsWith(s"Started Campaign: Raid against ${name(player)}")))
+      all.exists(_.startsWith(s"Started Campaign: Raid against " +
+        s"${playerLabel(player)}")))
       .get
     val expected = Vector(
-      s"Started Campaign: Raid against ${name(defender)}",
-      s"Targets: ${name(defender)}'s pawn",
+      s"Started Campaign: Raid against ${playerLabel(defender)}",
+      s"Targets: ${playerLabel(defender)}'s pawn",
       "Attack Pool: ",
       "Rolled ",
       "Attack: ",
       "Sacrificed ",
       "Rolled ",
       "Defense: ",
-      s"${name(script.actor)} wins!",
-      s"${name(defender)} ")
+      s"${playerLabel(script.actor)} wins!",
+      s"${playerLabel(defender)} ")
     val found = expected.foldLeft((0, Vector.empty[Int])) {
       case ((from, at), prefix) =>
         val index = all.indexWhere(_.startsWith(prefix), from)
@@ -40,11 +41,11 @@ class GameLogCampaignSuite extends munit.FunSuite:
     assert(all.exists(_.endsWith(" for the defense")), all)
     // Half of a one-warband board is none, so "lost" may be absent; the
     // relocation never is.
-    assert(all.last.startsWith(s"${name(defender)} ") &&
+    assert(all.last.startsWith(s"${playerLabel(defender)} ") &&
       all.last.contains(" was sent to "), all)
 
   test("a battle plan answer names who activated it; a flipped plan card names itself"):
-    val script = board
+    val script = recordedEventsBoard
     val steps = script.history.steps
     val last = steps.last.after
     val ready = last match
@@ -69,12 +70,14 @@ class GameLogCampaignSuite extends munit.FunSuite:
       case (event, index) => ReplayStep(RecordedEvent(steps.size.toLong + index,
         event), last, last) }, None)
     val shown = texts(entries.filter(_.sequence >= steps.size))
-    assert(shown.contains(s"${name(defender)} activated a Denizen"), shown)
-    assert(shown.exists(line => line.startsWith(s"${name(defender)} revealed ")
-      && line != s"${name(defender)} revealed a Denizen"), shown)
+    assert(shown.contains(s"${playerLabel(defender)} activated a Denizen"),
+      shown)
+    val revealed = s"${playerLabel(defender)} revealed "
+    assert(shown.exists(line => line.startsWith(revealed)
+      && line != s"${playerLabel(defender)} revealed a Denizen"), shown)
 
   test("a plan the bandits apply is named like any other activation"):
-    val script = board
+    val script = recordedEventsBoard
     val steps = script.history.steps
     val last = steps.last.after
     val ready = last match
@@ -101,7 +104,7 @@ class GameLogCampaignSuite extends munit.FunSuite:
 
   test("a total a plan rewrites in the same segment is told once, as rewritten"):
     // Outriders ignores the skulls: it writes the attack again after the cap.
-    val script = board
+    val script = recordedEventsBoard
     val steps = script.history.steps
     val last = steps.last.after
     val tail = Vector[OathEvent](

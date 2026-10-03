@@ -51,7 +51,7 @@ class GameLogStartLineSuite extends munit.FunSuite:
       text(entry) == "Rest"), texts(entries))
 
   test("an Oathkeeper change names the new holder"):
-    val script = oathkeeper
+    val script = oathkeeperTie
     val passed = format(script, None).filter(entry =>
       text(entry).startsWith("Oathkeeper passed to "))
     assertEquals(passed.size, 1)

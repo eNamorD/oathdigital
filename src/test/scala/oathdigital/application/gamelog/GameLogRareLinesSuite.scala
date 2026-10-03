@@ -12,7 +12,7 @@ import LogScripts._
   * appended to the board script, the way the victory headlines are, so the
   * rule is read against real state. */
 class GameLogRareLinesSuite extends munit.FunSuite:
-  private lazy val script = board
+  private lazy val script = recordedEventsBoard
   private lazy val steps = script.history.steps
   private lazy val ready = steps.last.after match
     case OathState.Ready(ready) => ready
@@ -46,7 +46,8 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       Bury(BuryableCard.Relic(relic), PositionedLocation(Location.Site(site))),
       Peek(other, relic, Location.Site(site)),
       Reveal(relic, Location.Site(site)))
-    assert(lines.contains(s"${name(other)} gained 2 favor from the Arcane bank"),
+    assert(lines.contains(s"${playerLabel(other)} gained 2 favor from the " +
+      "Arcane bank"),
       lines)
     assert(lines.contains("Gained 1 secret"), lines)
     // Both cards, counted by their backs: an observer sees no names.
@@ -57,7 +58,7 @@ class GameLogRareLinesSuite extends munit.FunSuite:
     }.mkString(" and ")
     assert(lines.contains(s"Drew $backs"), lines)
     assert(lines.contains("Buried a Relic"), lines)
-    assert(lines.contains(s"${name(other)} peeked at a Relic"), lines)
+    assert(lines.contains(s"${playerLabel(other)} peeked at a Relic"), lines)
     assert(lines.exists(_.startsWith("Revealed ")), lines)
 
   test("warbands name their owner unless they are the actor's"):
@@ -77,7 +78,7 @@ class GameLogRareLinesSuite extends munit.FunSuite:
     val at = presentation.siteLabel(site)
     assertEquals(lines.filter(_.startsWith("Moved ")), Vector(
       s"Moved 2 warbands to $at",
-      s"Moved 1 of ${name(other)}'s warbands to $at",
+      s"Moved 1 of ${playerLabel(other)}'s warbands to $at",
       s"Moved 1 bandit to $at",
       s"Moved 3 Imperial warbands to $at"))
 
@@ -105,9 +106,9 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       Move(Piece.Card(relic), PositionedLocation(Location.PlayArea(other)),
         PositionedLocation(Location.SetAsideRelics)))
     assert(lines.exists(line => line.startsWith("Took ") &&
-      line.endsWith(s" and Darkest Secret from ${name(other)}")), lines)
-    assert(lines.contains(s"${name(other)} lost 2 warbands, burned 1 favor " +
-      "and set aside a Relic"), lines)
+      line.endsWith(s" and Darkest Secret from ${playerLabel(other)}")), lines)
+    assert(lines.contains(s"${playerLabel(other)} lost 2 warbands, " +
+      "burned 1 favor and set aside a Relic"), lines)
 
   test("a defeated attacker's losses have no subject"):
     val result = CampaignResult(actor, CampaignKind.Conquest,
@@ -139,16 +140,16 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       choices.option(ref, ready, ready, None).map(_.text).mkString
     val denizen = ready.game.current.commonCards.worldDeck.collectFirst {
       case id: DenizenId => id }.get
-    assertEquals(said(DecisionOptionRef.Player(other)), name(other))
+    assertEquals(said(DecisionOptionRef.Player(other)), playerLabel(other))
     assertEquals(said(DecisionOptionRef.Site(site)), presentation.siteLabel(site))
     assertEquals(said(DecisionOptionRef.Denizen(denizen)), "a Denizen")
     assertEquals(said(DecisionOptionRef.Relic(relic)), "a Relic")
     assertEquals(said(DecisionOptionRef.RelicSlot(other, 0)),
-      s"${name(other)}'s facedown relic (slot 1)")
+      s"${playerLabel(other)}'s facedown relic (slot 1)")
     assertEquals(said(DecisionOptionRef.AdviserSlot(other, 0)),
-      s"${name(other)}'s facedown adviser (slot 1)")
+      s"${playerLabel(other)}'s facedown adviser (slot 1)")
     assertEquals(said(DecisionOptionRef.AdviserSlot(other, 9)),
-      s"${name(other)}'s adviser (slot 10)")
+      s"${playerLabel(other)}'s adviser (slot 10)")
     assertEquals(said(DecisionOptionRef.Banner(Banner.PeoplesFavor)),
       "People's Favor")
     assertEquals(said(DecisionOptionRef.Deck(CardDeck.World)), "World")

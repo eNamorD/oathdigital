@@ -20,15 +20,15 @@ class GameLogExchangeSuite extends munit.FunSuite:
     val all = lines(script)
     val negotiated = all.filter(_.startsWith("Negotiated with "))
     assertEquals(negotiated.size, 1, all)
-    val partner = script.players.filterNot(_ == script.actor).map(name)
+    val partner = script.players.filterNot(_ == script.actor).map(playerLabel)
     assert(partner.exists(negotiated.head.contains), negotiated.head)
 
   test("an agreed deal's favor transfer names giver and recipient"):
     val script = negotiationAgreed
     val partner = script.players.find(player => player != script.actor &&
-      lines(script).contains(s"Negotiated with ${name(player)}")).get
+      lines(script).contains(s"Negotiated with ${playerLabel(player)}")).get
     assert(lines(script).contains(
-      s"${name(script.actor)} gave 1 favor to ${name(partner)}"),
+      s"${playerLabel(script.actor)} gave 1 favor to ${playerLabel(partner)}"),
       lines(script))
 
   test("a disclosed adviser is named to its owner and recipient, by slot to others"):
@@ -36,23 +36,24 @@ class GameLogExchangeSuite extends munit.FunSuite:
     val shown = (viewer: Option[PlayerId]) =>
       texts(format(script, viewer)).find(_.contains(" showed ")).get
     val partner = script.players.find(player => player != script.actor &&
-      shown(None).startsWith(name(player))).get
+      shown(None).startsWith(playerLabel(player))).get
     val third = script.players.find(player => player != script.actor &&
       player != partner).get
     assert(!shown(Some(script.actor)).endsWith("(slot 1)"),
       shown(Some(script.actor)))
     assert(!shown(Some(partner)).endsWith("(slot 1)"), shown(Some(partner)))
     assertEquals(shown(Some(third)),
-      s"${name(partner)} showed ${name(script.actor)} facedown adviser (slot 1)")
+      s"${playerLabel(partner)} showed ${playerLabel(script.actor)} " +
+        "facedown adviser (slot 1)")
 
   test("a used power is named by its source card, once"):
-    val all = texts(formatWithoutNotes(usePower, None).filter(_.depth == 1))
+    val all = texts(formatWithoutNotes(silverTongue, None).filter(_.depth == 1))
     assertEquals(all.count(_.startsWith("Used ")), 1, all)
     // A faceup adviser, so every viewer reads its name.
     assert(all.contains("Used Silver Tongue"), all)
 
   test("a banner's power is named by its banner, not its id"):
-    val script = board
+    val script = recordedEventsBoard
     val ready = script.history.steps.last.after match
       case OathState.Ready(ready) => ready
       case other => fail(s"expected a ready game, got $other")

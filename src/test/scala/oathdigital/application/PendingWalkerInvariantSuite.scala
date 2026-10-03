@@ -63,7 +63,7 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     */
   private def assertOnlyItsResume(game: ParkedServiceFixture.ParkedGame,
       gameId: String, players: Vector[PlayerId], resume: GameCommand): Unit =
-    val ParkedServiceFixture.ParkedGame(service, repository, parked) = game
+    val ParkedServiceFixture.ParkedGame(service, repository, parked, _) = game
     def records = loaded(repository.load(gameId)).records
     val before = records
     for

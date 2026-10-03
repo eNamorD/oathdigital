@@ -34,7 +34,7 @@ class GameLogEventSuite extends munit.FunSuite:
     }
 
   test("a site peek names the relics for the peeker only"):
-    val script = board
+    val script = recordedEventsBoard
     val state = ready(script.history.steps.last.after)
     val (site, relics) = state.game.current.map.sites.collectFirst {
       case (id, site) if site.relics.nonEmpty => id -> site.relics.map(_.id)
@@ -57,7 +57,7 @@ class GameLogEventSuite extends munit.FunSuite:
       s" at ${presentation.siteLabel(site)}")
 
   test("warbands moved, bandits returned and a new Usurper each post one line"):
-    val script = board
+    val script = recordedEventsBoard
     val state = ready(script.history.steps.last.after)
     val site = state.game.current.map.inPlay.head
     val other = script.players.find(_ != script.actor).get
@@ -65,10 +65,12 @@ class GameLogEventSuite extends munit.FunSuite:
       OathEvent.WarbandsMoved(script.actor, site, true, 2, 3, 1) ->
         s"Moved 2 warbands to ${presentation.siteLabel(site)}",
       OathEvent.WarbandsMoved(other, site, false, 1, 3, 2) ->
-        s"${name(other)} moved 1 warband from ${presentation.siteLabel(site)}",
+        (s"${playerLabel(other)} moved 1 warband from " +
+          presentation.siteLabel(site)),
       OathEvent.BanditsRefilled(Vector(site -> 1)) ->
         s"Bandits returned to ${presentation.siteLabel(site)}",
-      OathEvent.UsurperFlipped(other) -> s"${name(other)} became the Usurper")
+      OathEvent.UsurperFlipped(other) ->
+        s"${playerLabel(other)} became the Usurper")
     cases.foreach { case (event, expected) =>
       assertEquals(lines(ending(script, event, viewer = None)).last, expected)
     }

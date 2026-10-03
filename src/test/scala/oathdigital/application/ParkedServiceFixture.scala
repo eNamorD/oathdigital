@@ -115,10 +115,11 @@ object ParkedServiceFixture:
     ChronicleWithDeckTop(newChronicle,
       ChronicleFirstGamePlan.dealOrder(newChronicle, config))
 
-  /** A park: the service and journal it was driven through, and the
-    * position it stopped at. */
+  /** A park: the service and journal it was driven through, the position it
+    * stopped at, and the journaled situation parked there, to play on from. */
   final case class ParkedGame(service: GameApplicationService,
-      repository: InMemoryEventStreamRepository, accepted: GameAccepted)
+      repository: InMemoryEventStreamRepository, accepted: GameAccepted,
+      situation: Situation)
 
   /** League Treaty's park: `resting` began Rest, `ruler` is asked. */
   final case class LeagueTreatyPark(game: ParkedGame, resting: PlayerId,
@@ -169,7 +170,8 @@ object ParkedServiceFixture:
     parkedAssertions.assertParked(parked.state, PhaseTransitionRef.FinishRest,
       LeagueTreatyContribution.destinationDecisionId(table.ready, p1,
         Table.quietPawnSite(p1), treatyCard), p2)
-    LeagueTreatyPark(ParkedGame(service, repository, accepted(parked, act)),
+    LeagueTreatyPark(
+      ParkedGame(service, repository, accepted(parked, act), parked),
       p1, p2)
 
   /** Defense dice that always come up blank. A Recover started with these
@@ -203,7 +205,8 @@ object ParkedServiceFixture:
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(p1)))
     parkedAssertions.assertParked(parked.state, ActionRef.Recover,
       RecoverProcedure.choiceDecisionId, p1)
-    RecoverChoicePark(ParkedGame(service, repository, accepted(parked, act)),
+    RecoverChoicePark(
+      ParkedGame(service, repository, accepted(parked, act), parked),
       p1, orders.participants.map(_.playerId))
 
   /** The off-turn Oathkeeper tie: p3 holds the title, and p1 and p2 each
@@ -230,7 +233,8 @@ object ParkedServiceFixture:
     }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
     parkedAssertions.assertParked(parked.state, TriggeredProcedureRef.Oathkeeper,
       OathkeeperProcedure.recipientDecisionId, p3)
-    OathkeeperTiePark(ParkedGame(service, repository, accepted(parked, act)),
+    OathkeeperTiePark(
+      ParkedGame(service, repository, accepted(parked, act), parked),
       mover = p1, holder = p3, secondLeader = p2)
 
   /** Silver Tongue as p1's faceup adviser, with Wrestlers (Order) and
@@ -259,5 +263,6 @@ object ParkedServiceFixture:
     parkedAssertions.assertParked(parked.state, ActionRef.UsePower(SilverTongue.id),
       SilverTongue.choiceDecisionId(resting.ready, p1), p1)
     // Wrestlers, the first site card, is an Order card.
-    SilverTonguePark(ParkedGame(service, repository, accepted(parked, resting)),
+    SilverTonguePark(
+      ParkedGame(service, repository, accepted(parked, resting), parked),
       p1, Suit.Order)

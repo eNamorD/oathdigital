@@ -16,7 +16,8 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val script = woken
     val entries = format(script, Some(script.actor))
     assertEquals(headlines(entries).take(4),
-      Vector("Setup", "Round 1", s"${name(script.actor)}'s turn", "Wake"))
+      Vector("Setup", "Round 1", s"${playerLabel(script.actor)}'s turn",
+        "Wake"))
     // Setup's own lines sit between the Setup and Round 1 headlines.
     assertEquals(entries.filter(_.depth == 0).map(_.kind).take(4),
       Vector(LogKind.Round, LogKind.Round, LogKind.Turn, LogKind.Phase))
@@ -31,7 +32,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val entries = formatter.format(service.history("t").toOption.flatten.get
       .steps, Some(p1))
     assertEquals(texts(entries).take(5), Vector("Round 1",
-      s"${name(p1)}'s turn", "Wake", "Nothing happened in Wake", "Act"))
+      s"${playerLabel(p1)}'s turn", "Wake", "Nothing happened in Wake", "Act"))
     assertEquals(entries.take(3).map(entry => (entry.sequence, entry.ordinal)),
       Vector((0L, 0), (0L, 1), (0L, 2)))
 
@@ -44,7 +45,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val steps = service.history("t").toOption.flatten.get.steps
     val whole = formatter.format(steps, Some(p1))
     assertEquals(texts(whole).take(3), Vector("Round 1",
-      s"${name(p1)}'s turn", "Act"))
+      s"${playerLabel(p1)}'s turn", "Act"))
     (1 to steps.size).foreach { k =>
       val prefix = formatter.format(steps.take(k), Some(p1))
       assertEquals(prefix, whole.take(prefix.size), s"prefix of $k events")
@@ -54,11 +55,11 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     val script = round
     val all = headlines(format(script, Some(script.actor)))
     assertEquals(all.take(2), Vector("Round 1",
-      s"${name(script.actor)}'s turn"))
+      s"${playerLabel(script.actor)}'s turn"))
     assertEquals(all.count(_.endsWith("'s turn")), script.players.size + 1)
     // Round 2's first Wake has nothing to decide, so it ends at once.
     assertEquals(all.takeRight(4),
-      Vector("Round 2", s"${name(script.actor)}'s turn", "Wake", "Act"))
+      Vector("Round 2", s"${playerLabel(script.actor)}'s turn", "Wake", "Act"))
 
   test("each turn posts its Wake, Act and Rest headlines in order"):
     val script = round
@@ -89,16 +90,17 @@ class GameLogHeadlineSuite extends munit.FunSuite:
   test("a Wake that did something posts no Nothing line"):
     val script = takeWealth
     val all = texts(format(script, Some(script.actor)))
-    val wake = all.indexOf("Wake", all.indexOf(s"${name(script.actor)}'s turn"))
+    val wake = all.indexOf("Wake",
+      all.indexOf(s"${playerLabel(script.actor)}'s turn"))
     assert(wake >= 0, all)
     assertEquals(all.drop(wake + 1).take(2).map(_.takeWhile(_ != ' ')),
       Vector("Took", "Act"), all.toString)
 
   test("the turn headline names the player with a player span"):
-    val script = board
+    val script = recordedEventsBoard
     val turn = format(script, None).find(_.kind == LogKind.Turn).get
     assertEquals(turn.spans, Vector(
-      LogSpan.Player(script.actor.value, name(script.actor)),
+      LogSpan.Player(script.actor.value, playerLabel(script.actor)),
       LogSpan.Text("'s turn")))
 
   test("entries are keyed by journal sequence, in key order, with ordinals from 0"):
@@ -118,7 +120,7 @@ class GameLogHeadlineSuite extends munit.FunSuite:
     }, None)
 
   test("each victory posts one victory headline naming the winner"):
-    val script = board
+    val script = recordedEventsBoard
     val winner = script.actor
     val vision = VisionId("vision:vision-of-faith")
     val headlines = Vector(
@@ -138,10 +140,10 @@ class GameLogHeadlineSuite extends munit.FunSuite:
       val last = ending(script, event).last
       assertEquals(last.kind, LogKind.Victory)
       assertEquals(last.depth, 0)
-      assertEquals(text(last), name(winner) + rest)
+      assertEquals(text(last), playerLabel(winner) + rest)
     }
 
   test("the last round's end posts no round headline"):
-    val script = board
+    val script = recordedEventsBoard
     val before = format(script, None)
     assertEquals(ending(script, OathEvent.RoundEnded(8, None)), before)

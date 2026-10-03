@@ -5,7 +5,7 @@ import oathdigital.application.{GameApplicationService,
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, SetupProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{Answers, Situation}
+import oathdigital.testkit.{Answers, Look, Situation}
 import LogScripts._
 
 class GameLogSetupSuite extends munit.FunSuite:
@@ -36,7 +36,7 @@ class GameLogSetupSuite extends munit.FunSuite:
     val mine = setupLines(script, Some(script.actor))
       .filter(entry => text(entry).contains(" kept "))
     val own = mine.find(_.spans.head == LogSpan.Player(script.actor.value,
-      name(script.actor))).get
+      playerLabel(script.actor))).get
     assert(own.spans.exists(_.isInstanceOf[LogSpan.Card]), own.spans)
     mine.filterNot(_ == own).foreach { entry =>
       assert("^.+ kept a (Denizen|Vision)$".r.matches(text(entry)), text(entry))
@@ -54,7 +54,7 @@ class GameLogSetupSuite extends munit.FunSuite:
     val woken = Situation.wake(Situation.journaled(service, catalog,
       repository, "revealed").withAnswers(
         Situation.pawnsAt(FirstGameSetupFixture.sites) orElse revealAll))
-    val script = Script("revealed", service, active(woken))
+    val script = Script("revealed", service, Look(woken.ready).active)
     val revealed = woken.ready.game.current.players.map(player =>
       player.advisers.count(_ match
         case d: DenizenState => d.orientation == Orientation.FaceUp
