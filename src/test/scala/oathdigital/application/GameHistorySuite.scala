@@ -6,7 +6,8 @@ import oathdigital.testkit.Unwrap.accepted
 import ParkedServiceFixture.loaded
 
 class GameHistorySuite extends munit.FunSuite:
-  test("history is the scanned journal: one step per event, ending on the loaded state"):
+  test("history is the scanned journal: one step per event, ending on the " +
+      "loaded state"):
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val begun = accepted(service.handle("history", 0L,
