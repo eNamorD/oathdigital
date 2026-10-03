@@ -23,14 +23,20 @@ object ParkedServiceFixture:
     * power catalogs `GameApplicationService` builds its rules with
     * (`GameApplicationService.scala:87-90`).
     */
-  private val parkedAssertions = new ParkedDecisionAssertions(catalog,
+  val parkedAssertions = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+
+  /** A second service over the same journal, replaying it from the same
+    * start as `service`. */
+  def replayingSecond(service: GameApplicationService,
+      repository: InMemoryEventStreamRepository): GameApplicationService =
+    new GameApplicationService(catalog, repository, genesis = service.genesis)
 
   /** Setup driven through `service` as `gameId`, the n-th pawn placed at
     * `placementSites(n)`: the accepted position after Setup, holding every
     * event Setup journaled. The first player is in Wake if Wake has an
     * option, else in Act: a Wake with nothing to decide ends by itself. */
-  def setUp(service: GameApplicationService, gameId: String,
+  def setupViaService(service: GameApplicationService, gameId: String,
       placementSites: Vector[SiteId] = sites,
       setupChronicle: Chronicle = chronicle,
       setupOrders: SetupOrders = orders): GameAccepted =
