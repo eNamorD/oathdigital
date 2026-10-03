@@ -62,7 +62,7 @@ preview/command mapping, lifecycle event codec, server routes, and
 implementation evidence. Focused gameplay, wire, application replay,
 authenticated/development route, and Scala.js suites cover classification,
 ordering, stale revalidation, redaction, draft clearing, and replay tampering.
-`GameApplicationServiceSuite` additionally completes an all-Exile powered game
+`GameApplicationServiceStreamSuite` additionally completes an all-Exile powered game
 through round-eight victory and reopens/replays after each Rest.
 
 ## Setup
@@ -145,7 +145,7 @@ rows above. The remaining cross-cutting items are:
 | Hinterward/Cradleward directions and ordered Atlas storage mechanics | **Tested** | [NF pp. 12, 16](new-foundations-delta.md#empire-and-other-changes); normative CR pp. 9, 45 | `MapState.hinterward/cradleward` and ordered Atlas helpers are tested in `model/WorldModelSuite.scala`. This row covers direction/order mechanics only, not setup or Chronicle geography transitions. | None for the bounded ordering behavior. |
 | Cradlemost/Hintermost vocabulary and full Atlas geography use | **Unimplemented** | [NF pp. 12, 16](new-foundations-delta.md#empire-and-other-changes); normative CR pp. 9, 45 | No explicit Cradlemost/Hintermost selector or setup/Chronicle rule consumes the full vocabulary. | Define tie/selection behavior where multiple sites share the relevant region. |
 | Edifices are denizens; ruined edifices do not block Trade/Muster | **Tested (bounded)** | [NF p. 16](new-foundations-delta.md#empire-and-other-changes); normative CR pp. 24, 31 | `EconomyTargetRef` preserves denizen/edifice identity through commands, both HTTP boundaries, scoped projections, labeled Scala.js controls, current persistence and replay. Ruined edifices use base Economy behavior; reviewed optional intact-edifice modifiers are absent from selection until implemented. | Executing intact edifice Economy modifiers remains B5; unaudited vocabulary rejects. |
-| Bury semantics | **Tested (bounded)** | [NF p. 16](new-foundations-delta.md#empire-and-other-changes); normative CR glossary/fine print | The `Bury` operation (`model/CoreOperations.scala`) adds a denizen, relic, edifice or Vision to the bottom of its matching deck and ignores the locked restriction; `Bury.standard` first makes a discard's favor and secret returns. Covered by `OperationExecutorSuite`, `OperationVocabularySuite` and `GameEventWireSuite`. | Powers that bury use it as they are implemented. |
+| Bury semantics | **Tested (bounded)** | [NF p. 16](new-foundations-delta.md#empire-and-other-changes); normative CR glossary/fine print | The `Bury` operation (`model/CoreOperations.scala`) adds a denizen, relic, edifice or Vision to the bottom of its matching deck and ignores the locked restriction; `Bury.standard` first makes a discard's favor and secret returns. Covered by `OperationExecutorSuite`, `OperationVocabularySuite` and `WalkerOperationWireSuite`. | Powers that bury use it as they are implemented. |
 | All-or-nothing migration/component replacement | **Not runtime gameplay** | [NF pp. 1-6](new-foundations-delta.md#expansion-boundary-and-physical-migration) | The build pins the Scala card catalog; games and event envelopes carry no catalog reference. Physical box migration is documentation/operator scope. | External conversion guidance and complete component corpus were not ingested. |
 
 ## Remaining source-cited work

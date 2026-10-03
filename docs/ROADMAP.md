@@ -38,24 +38,15 @@ From the playtest of 2026-10-01:
 
 Left behind by earlier phases:
 
-- [ ] **Contract suite for `EventStreamRepository`.** `InMemoryEventStreamRepository`
-  is the fake every service test uses, and `HsqldbEventStreamRepositorySuite`
-  tests the real store, but no suite runs both. The fake can drift from the
-  real repository (append results, `StreamAlreadyExists` / `StreamNotFound` /
-  `SequenceConflict`, load of a missing stream, concurrent appends) with no
-  test noticing. Extract an abstract `EventStreamRepositoryContract` with a
-  `make()` factory, run it against both, and move the shared behavior tests
-  out of the Hsqldb suite. Backend-only behavior (schema versions, file
-  ownership) stays in the Hsqldb suite. This is the first use of the
-  scala-testing skill's rule that every fake has a contract suite.
 - [ ] **Shrink cached catalog fields.** Card classes made powers read
   their cards from card objects, so 26 classes still hold a
   `catalog: ExecutableCatalog` field (mostly in `application/`, the Game Log
   and the Campaign plan files), and 88 `forCatalog(catalog)` constructors
   thread it, many only to pass it on. Remove each field and constructor as
   its power is touched.
-- [ ] **Migrate `CatalogNames` to card objects.** About 76 test files look
-  cards up by name through `CatalogNames`. Move them to direct object
+- [ ] **Migrate `CatalogNames` to card objects.** About 261 test files look
+  cards up by name through `CatalogNames` (the test readability sweep of
+  2026-10-02 moved numeric ids onto it). Move them to direct object
   references such as `AlchemistCard`.
 
 ### Phase - Card play UI
