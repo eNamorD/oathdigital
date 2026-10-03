@@ -4,8 +4,8 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.testkit.{CatacombsGame, CatalogNames, Look, Outcomes,
   Table}
-import oathdigital.testkit.Unwrap.{accepted, as}
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.{accepted, as}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

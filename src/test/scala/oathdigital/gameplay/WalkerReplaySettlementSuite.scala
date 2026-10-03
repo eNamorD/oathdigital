@@ -17,6 +17,7 @@ class WalkerReplaySettlementSuite extends munit.FunSuite:
   private val active = p1
   private val payer = p2
   private val denizen = CatalogNames.denizen("Errand Boy")
+  /** Errand Boy is a Beast. */
   private val suit = Suit.Beast
 
   /** p1 is active; p1 and p2 each hold 3 favor and 3 faceup secrets, and

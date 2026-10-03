@@ -13,11 +13,11 @@ class RuleSourceIndexSuite extends munit.FunSuite:
   private val board: ReadyGame = Table.start
     .relicAt("Sticky Fire", at = "Broken Peaks")
     .edifice("Hiding Place", EdificeSide.Ruined, at = "Deep Woods")
-    .adviser(Table.p1, "Wrestlers", facedown = true)
+    .adviser(p1, "Wrestlers", facedown = true)
     .ready
 
-  test("the source index lists a printed site, an edifice and an adviser " +
-      "in a stable order"):
+  test("the source index lists a printed site, a facedown source, an " +
+      "edifice and an adviser, each once, in a stable order"):
     val ready = board
     val ancientCity = CatalogNames.site("Ancient City")
     val facts = RuleSourceIndex.enumerate(catalog, ready)
