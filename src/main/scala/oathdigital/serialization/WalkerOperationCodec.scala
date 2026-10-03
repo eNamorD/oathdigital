@@ -6,7 +6,7 @@ import oathdigital.model._
   * `WalkerEventCodec` to give it headroom under the 800-line bound.
   *
   * A pure move: every spelling is byte-identical to the version before the
-  * split, which `GameEventWireSuite` pins without being edited.
+  * split, which `WalkerOperationWireSuite` pins.
   *
   * `encodeOperation`/`encodePiece` (I8) are total over `CoreOperation`/
   * `Piece`, exactly like [[encodeLocation]] below (added for the same
@@ -631,7 +631,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec:
     * not be exhaustive"), since this project builds without
     * `-Xfatal-warnings`; what actually catches a missed case is the
     * enumeration test "every Location variant round-trips through the
-    * walker codec" in `GameEventWireSuite`.
+    * walker codec" in `WalkerOperationWireSuite`.
     */
   private def encodeLocation(value: Location): ujson.Value = value match
     case Location.Site(site) => ujson.Obj("kind" -> "site",
