@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.frontend.ServerModeFixtures.{RecordedRequest,
-  withEmptyLogPage}
+import oathdigital.frontend.ServerModeFixtures.withEmptyLogPage
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{BootstrapParticipantRequest,
   TrustedGameCreateRequestCodec}
@@ -21,18 +20,16 @@ class ServerModeHostFormSuite extends FunSuite:
     """{"playerId":"Red","url":"https://oath.test/s/red-code"},""" +
     """{"playerId":"Blue","url":"https://oath.test/s/blue-code"}]}"""
 
-  /** Spy and stub of `JsonTransport`: records every request into `requests`
-    * and answers each with `status` and `body`.
+  /** A `ScriptedTransport` that records into `requests` and answers every
+    * request with `status` and `body`.
     */
   private def hostTransport(
       requests: ArrayBuffer[RecordedRequest],
       status: Int = 201,
       body: String = seatLinksResponse
-  ): JsonTransport = new JsonTransport:
-    def request(method: String, url: String, body0: Option[String])
-        : Future[Either[GameClientFailure, TransportResponse]] =
-      requests += RecordedRequest(method, url, body0)
-      Future.successful(Right(TransportResponse(status, body)))
+  ): ScriptedTransport = ScriptedTransport(
+    (_, _, _) => Future.successful(Right(TransportResponse(status, body))),
+    requests)
 
   private def decodedHostRequests(requests: collection.Seq[RecordedRequest]) =
     requests.map(request => accepted(TrustedGameCreateRequestCodec.decode(

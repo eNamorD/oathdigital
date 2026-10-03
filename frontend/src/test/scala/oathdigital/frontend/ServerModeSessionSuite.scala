@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.frontend.ServerModeFixtures.{RecordedRequest,
-  withEmptyLogPage}
+import oathdigital.frontend.ServerModeFixtures.withEmptyLogPage
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.projection.GameProjectionCodec
 import oathdigital.testkit.Unwrap.present
@@ -48,15 +47,10 @@ class ServerModeSessionSuite extends FunSuite:
   test("trusted player renders its fixed seat and never bootstraps " +
       "switches or loads raw events"):
     TestBrowser.use("?gameId=wrong&playerId=red"): browser =>
-      val requests = ArrayBuffer.empty[RecordedRequest]
-      // Spy and stub of JsonTransport: records every request; answers each
-      // with the one game.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          requests += RecordedRequest(method, url, body)
-          Future.successful(Right(TransportResponse(200,
-            encodedGame(viewer = Some("blue"), active = "red"))))
+      val transport = ScriptedTransport((_, _, _) =>
+        Future.successful(Right(TransportResponse(200,
+          encodedGame(viewer = Some("blue"), active = "red")))))
+      val requests = transport.requests
       Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
         withEmptyLogPage(transport))
       browser.settle.map { _ =>
@@ -77,13 +71,10 @@ class ServerModeSessionSuite extends FunSuite:
       "bootstrap"):
     TestBrowser.use(): browser =>
       var requests = 0
-      // Spy and stub of JsonTransport: counts requests; answers each with 401.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          requests += 1
-          Future.successful(Right(TransportResponse(401,
-            """{"error":"unauthorized","message":"internal detail"}""")))
+      val transport = ScriptedTransport((_, _, _) =>
+        requests += 1
+        Future.successful(Right(TransportResponse(401,
+          """{"error":"unauthorized","message":"internal detail"}"""))))
       Main.start(browser.mount, "/games/missing", trustedAlpha = true,
         withEmptyLogPage(transport))
       browser.settle.map { _ =>
@@ -96,8 +87,9 @@ class ServerModeSessionSuite extends FunSuite:
   test("development root retains query loading and raw history"):
     TestBrowser.use("?gameId=existing&playerId=red"): browser =>
       val requests = ArrayBuffer.empty[(String, String)]
-      // Spy and stub of JsonTransport: records (method, url); answers events
-      // and game loads.
+      // Spy and stub of JsonTransport: records (method, url) pairs, the record
+      // type the asserts read, not ScriptedTransport's RecordedRequest;
+      // answers events and game loads.
       val transport = new JsonTransport:
         def request(method: String, url: String, body: Option[String])
             : Future[Either[GameClientFailure, TransportResponse]] =
@@ -123,20 +115,16 @@ class ServerModeSessionSuite extends FunSuite:
       "transport error"):
     TestBrowser.use("?gameId=existing&playerId=red"): browser =>
       var loads = 0
-      // Spy and stub of JsonTransport: counts game loads; the first lands, the
-      // rest fail.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          if url.contains("/events") then
-            Future.successful(Right(
-              TransportResponse(200, """{"events":[]}""")))
-          else
-            loads += 1
-            if loads == 1 then Future.successful(Right(TransportResponse(200,
-              encodedGame(viewer = None))))
-            else Future.successful(Left(GameClientFailure.NetworkFailure(
-              "GET /api/dev/first-games/existing?playerId=red failed")))
+      val transport = ScriptedTransport((_, url, _) =>
+        if url.contains("/events") then
+          Future.successful(Right(
+            TransportResponse(200, """{"events":[]}""")))
+        else
+          loads += 1
+          if loads == 1 then Future.successful(Right(TransportResponse(200,
+            encodedGame(viewer = None))))
+          else Future.successful(Left(GameClientFailure.NetworkFailure(
+            "GET /api/dev/first-games/existing?playerId=red failed"))))
       Main.start(browser.mount, "/", trustedAlpha = false,
         withEmptyLogPage(transport))
       // The first load lands; the poll the tick fires is the one that fails.
@@ -167,22 +155,18 @@ class ServerModeSessionSuite extends FunSuite:
             GamePlayer("blue", "Blue", "Exile", PlayerColor.Blue)),
           ready = false).copy(walkerDecision = Some(ForgeFixture.parked)))
       var loads = 0
-      // Spy and stub of JsonTransport: counts game loads; the first two land,
-      // the rest never answer.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          if url.contains("/events") then
-            Future.successful(Right(
-              TransportResponse(200, """{"events":[]}""")))
-          else
-            loads += 1
-            loads match
-              case 1 => Future.successful(Right(
-                TransportResponse(200, snapshot(1L, "red"))))
-              case 2 => Future.successful(Right(
-                TransportResponse(200, snapshot(2L, "blue"))))
-              case _ => Future.never
+      val transport = ScriptedTransport((_, url, _) =>
+        if url.contains("/events") then
+          Future.successful(Right(
+            TransportResponse(200, """{"events":[]}""")))
+        else
+          loads += 1
+          loads match
+            case 1 => Future.successful(Right(
+              TransportResponse(200, snapshot(1L, "red"))))
+            case 2 => Future.successful(Right(
+              TransportResponse(200, snapshot(2L, "blue"))))
+            case _ => Future.never)
       Main.start(browser.mount, "/", trustedAlpha = false,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
@@ -215,17 +199,12 @@ class ServerModeSessionSuite extends FunSuite:
       val preview = """{"nextSequence":1,"action":"recover","modifiers":""" +
         """[{"sourceKey":"adviser:p:denizen:a","handlerId":"h.a",""" +
         """"description":"Old Oak"}],"ignoredRules":[],"targets":[]}"""
-      val requests = ArrayBuffer.empty[RecordedRequest]
-      // Spy and stub of JsonTransport: records every request; answers events,
-      // previews and game loads.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          requests += RecordedRequest(method, url, body)
-          val json = if url.contains("/events") then """{"events":[]}"""
-            else if url.contains("/preview") then preview
-            else projection
-          Future.successful(Right(TransportResponse(200, json)))
+      val transport = ScriptedTransport((_, url, _) =>
+        val json = if url.contains("/events") then """{"events":[]}"""
+          else if url.contains("/preview") then preview
+          else projection
+        Future.successful(Right(TransportResponse(200, json))))
+      val requests = transport.requests
       Main.start(browser.mount, "/", trustedAlpha = false,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ =>
@@ -257,14 +236,10 @@ class ServerModeSessionSuite extends FunSuite:
   test("development new game button returns to the start page"):
     TestBrowser.use("?mode=server&gameId=existing&playerId=red"): browser =>
       val opened = ArrayBuffer.empty[String]
-      // Stub of JsonTransport: answers events and every game load, records
-      // nothing.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          Future.successful(Right(TransportResponse(200,
-            if url.contains("/events") then """{"events":[]}"""
-            else encodedGame(viewer = None))))
+      val transport = ScriptedTransport((_, url, _) =>
+        Future.successful(Right(TransportResponse(200,
+          if url.contains("/events") then """{"events":[]}"""
+          else encodedGame(viewer = None)))))
       Main.start(browser.mount, "/", trustedAlpha = false,
         withEmptyLogPage(transport), navigate = opened += _)
       browser.settle.map { _ =>
@@ -281,8 +256,9 @@ class ServerModeSessionSuite extends FunSuite:
         TransportResponse(409,
           """{"error":"stale-client-position","message":"position changed"}"""),
         TransportResponse(200, encodedGame(nextSequence = 2L)))
-      // Spy and stub of JsonTransport: records (method, url); answers from the
-      // queued responses.
+      // Spy and stub of JsonTransport: records (method, url) pairs, the record
+      // type the asserts read, not ScriptedTransport's RecordedRequest;
+      // answers from the queued responses.
       val transport = new JsonTransport:
         def request(method: String, url: String, body: Option[String])
             : Future[Either[GameClientFailure, TransportResponse]] =
@@ -308,15 +284,11 @@ class ServerModeSessionSuite extends FunSuite:
       "is lost"):
     TestBrowser.use(): browser =>
       var requests = 0
-      // Spy and stub of JsonTransport: counts requests; the first lands, the
-      // rest are refused with 403.
-      val transport = new JsonTransport:
-        def request(method: String, url: String, body: Option[String])
-            : Future[Either[GameClientFailure, TransportResponse]] =
-          requests += 1
-          Future.successful(Right(if requests == 1 then
-            TransportResponse(200, encodedGame()) else TransportResponse(403,
-              """{"error":"forbidden","message":"denied"}""")))
+      val transport = ScriptedTransport((_, _, _) =>
+        requests += 1
+        Future.successful(Right(if requests == 1 then
+          TransportResponse(200, encodedGame()) else TransportResponse(403,
+            """{"error":"forbidden","message":"denied"}"""))))
       Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
         withEmptyLogPage(transport))
       browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
@@ -333,8 +305,9 @@ class ServerModeSessionSuite extends FunSuite:
         "old controls"):
       TestBrowser.use(): browser =>
         val requests = ArrayBuffer.empty[(String, String)]
-        // Spy and stub of JsonTransport: records (method, url); answers the
-        // first load, then loads that name `viewer`.
+        // Spy and stub of JsonTransport: records (method, url) pairs, the
+        // record type the asserts read, not ScriptedTransport's
+        // RecordedRequest; the reply to a load depends on how many it holds.
         val transport = new JsonTransport:
           def request(method: String, url: String, body: Option[String])
               : Future[Either[GameClientFailure, TransportResponse]] =
@@ -370,20 +343,16 @@ class ServerModeSessionSuite extends FunSuite:
         val pending = Promise[Either[GameClientFailure, TransportResponse]]()
         var loads = 0
         var commands = 0
-        // Spy and stub of JsonTransport: counts loads and commands; the command
-        // never answers.
-        val transport = new JsonTransport:
-          def request(method: String, url: String, body: Option[String])
-              : Future[Either[GameClientFailure, TransportResponse]] =
-            if method == "POST" then { commands += 1; pending.future }
-            else
-              loads += 1
-              Future.successful(Right(
-                if loads == 1 then TransportResponse(200, encodedBlueWake())
-                else if status == 200 then TransportResponse(200,
-                  encodedBlueWake(viewer = Some("red")))
-                else TransportResponse(status,
-                  """{"error":"forbidden","message":"denied"}""")))
+        val transport = ScriptedTransport((method, _, _) =>
+          if method == "POST" then { commands += 1; pending.future }
+          else
+            loads += 1
+            Future.successful(Right(
+              if loads == 1 then TransportResponse(200, encodedBlueWake())
+              else if status == 200 then TransportResponse(200,
+                encodedBlueWake(viewer = Some("red")))
+              else TransportResponse(status,
+                """{"error":"forbidden","message":"denied"}"""))))
         Main.start(browser.mount, "/games/my%20game", trustedAlpha = true,
           withEmptyLogPage(transport))
         browser.settle.flatMap { _ =>

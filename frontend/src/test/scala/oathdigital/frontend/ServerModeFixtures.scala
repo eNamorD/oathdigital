@@ -5,14 +5,10 @@ import oathdigital.model.PlayerColor
 import scala.concurrent.Future
 
 /** The fixtures that the ServerMode* suites split out of ServerModeUiSuite
-  * share: the log-filtering transport, the request record and the two-seat
+  * share: the log-filtering transport and the two-seat
   * projection.
   */
 private[frontend] object ServerModeFixtures:
-  /** One request a test transport received. */
-  final case class RecordedRequest(method: String, url: String,
-      body: Option[String])
-
   /** Stub of `JsonTransport` over `inner`: answers every log request with an
     * empty page, a canned answer it does not record, and passes every other
     * request to `inner`, so a test that counts, lists or queues requests sees
