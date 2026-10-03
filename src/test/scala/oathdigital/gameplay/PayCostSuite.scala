@@ -47,7 +47,9 @@ class PayCostSuite extends munit.FunSuite:
 
   test("Costs.affordable applies the same rule"):
     val at = Location.OnCard(denizen)
-    assert(Costs.affordable(errandBoyCarrying(Tokens.empty), actor, at, Cost(secret = 1)))
-    assert(!Costs.affordable(errandBoyCarrying(Tokens(0, 1)), actor, at, Cost(secret = 1)))
-    assert(Costs.affordable(errandBoyCarrying(Tokens(0, 1)), actor, at, Cost(secret = 1),
+    val empty = errandBoyCarrying(Tokens.empty)
+    val occupied = errandBoyCarrying(Tokens(0, 1))
+    assert(Costs.affordable(empty, actor, at, Cost(secret = 1)))
+    assert(!Costs.affordable(occupied, actor, at, Cost(secret = 1)))
+    assert(Costs.affordable(occupied, actor, at, Cost(secret = 1),
       intoOccupied = true))

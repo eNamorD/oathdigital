@@ -48,8 +48,8 @@ class PowerAccessSuite extends munit.FunSuite:
 
   test("advisers: your own faceup ones, and facedown ones only when asked"):
     def adviser(owner: PlayerId, face: RuleSourceFace, facedown: Boolean) =
-      PowerAccess.accessible(RuleSourceRef.Adviser(owner, card), face, actorAtHome,
-        actor, facedown)
+      PowerAccess.accessible(RuleSourceRef.Adviser(owner, card), face,
+        actorAtHome, actor, facedown)
     assert(adviser(actor, RuleSourceFace.FaceUp, facedown = false))
     assert(!adviser(actor, RuleSourceFace.FaceDown, facedown = false))
     assert(adviser(actor, RuleSourceFace.FaceDown, facedown = true))
