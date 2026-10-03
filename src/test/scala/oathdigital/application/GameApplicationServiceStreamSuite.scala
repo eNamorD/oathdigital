@@ -76,7 +76,11 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       assertEquals(reopened.state, position.state)
       assertEquals(reopened.nextSequence, position.nextSequence)
     val finished = Outcomes.ready(position.state)
-    assert(finished.game.current.result.nonEmpty)
+    // No Usurper, vision or title holder decides the game, so the
+    // war-exhaustion draw does: its candidates run in turn order from the
+    // first player, and the stub takes the first.
+    assertEquals(finished.game.current.result,
+      Some(GameResult(orders.firstPlayer, VictoryKind.RandomSelection)))
     val projector = new GameProjector(catalog)
     finished.game.current.players.foreach { player =>
       val view = projector.project("powered-playability",
