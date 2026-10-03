@@ -38,7 +38,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     */
   private def staged(supply: Int, campaignLegal: Boolean = true): Table =
     Table.start
-      .pawn(p1, ancientCity)
+      .pawn(p1, at = ancientCity)
       .adviser(p1, knights)
       .denizen(alchemist, at = ancientCity)
       .bandits(ancientCity, if campaignLegal then 2 else 0)
@@ -76,6 +76,11 @@ class KnightsErrantSuite extends munit.FunSuite:
     present(ProcedureWalker.parkedDecide(state, tree, pending, powers),
       "the parked decision's query").query
 
+  /** The options the parked one-of decision offers. */
+  private def optionRefs(transition: OathTransition)
+      : Vector[DecisionOptionRef] =
+    as[DecisionQuery.ChooseOne](query(transition)).options.map(_.ref)
+
   /** Answers the optional-targets decision with none, if it is asked. */
   private def toForce(transition: OathTransition): OathTransition =
     if parkedOn(transition) == CampaignIds.targets then
@@ -97,7 +102,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     val asked = musterFrom(staged(supply = 1).ready, modifiers)
     parked.assertParked(asked.state, ActionRef.Muster, KnightsErrant.decisionId,
       p1)
-    val options = as[DecisionQuery.ChooseOne](query(asked)).options.map(_.ref)
+    val options = optionRefs(asked)
     assertEquals(options, Vector[DecisionOptionRef](
       KnightsErrant.campaignOption, KnightsErrant.declineOption))
     // The Muster's own gain has already happened.
@@ -164,7 +169,7 @@ class KnightsErrantSuite extends munit.FunSuite:
     val vowed = staged(supply = 1).adviser(p1, "Vow of Peace").ready
     val asked = musterFrom(vowed, modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
-    val options = as[DecisionQuery.ChooseOne](query(asked)).options.map(_.ref)
+    val options = optionRefs(asked)
     assertEquals(options,
       Vector[DecisionOptionRef](KnightsErrant.declineOption))
     assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(
@@ -184,7 +189,7 @@ class KnightsErrantSuite extends munit.FunSuite:
       .edifice("Rotting Fortress", EdificeSide.Ruined, at = ancientCity).ready
     val asked = musterFrom(fortified, modifiers)
     assertEquals(parkedOn(asked), KnightsErrant.decisionId)
-    val options = as[DecisionQuery.ChooseOne](query(asked)).options.map(_.ref)
+    val options = optionRefs(asked)
     assertEquals(options,
       Vector[DecisionOptionRef](KnightsErrant.declineOption))
     assertEquals(campaigning(asked), Left(OathViolation.InvalidEventOrder(

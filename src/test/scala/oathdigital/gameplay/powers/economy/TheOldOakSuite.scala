@@ -12,7 +12,8 @@ class TheOldOakSuite extends munit.FunSuite:
   import SearchFixture.rules
 
   private val oak = CatalogNames.denizen("The Old Oak")
-  // A plain Beast adviser, and another plain Beast card at the site.
+  // Beast cards with no Trade or Muster power: an adviser, and another card
+  // at the site.
   private val adviser = CatalogNames.denizen("Errand Boy")
   private val otherBeast = CatalogNames.denizen("Fae Merchant")
   private val modifiers = Vector(TheOldOak.id)
@@ -36,7 +37,7 @@ class TheOldOakSuite extends munit.FunSuite:
     EconomyActions.trade(rules, ready, p1, selected, resource,
       DecisionOptionRef.Denizen(card))
 
-  // Below, the 1 first is p1's starting faceup secret; a Trade for secrets
+  // Below, the first 1 is p1's starting faceup secret; a Trade for secrets
   // gains 1 per matching adviser, and The Old Oak 1 more.
 
   test("trading with The Old Oak for secrets with a faceup beast adviser " +

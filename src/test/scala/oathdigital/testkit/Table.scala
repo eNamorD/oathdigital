@@ -228,13 +228,15 @@ final case class Table private (private val game: ReadyGame,
 
   /** `player`'s board takes warbands from their bank, or gives them back,
     * until the bank holds exactly `n`: the bank is the printed supply less
-    * every board and site of that force.
-    */
+    * every board and site of that force. */
   def warbandsInBank(player: PlayerId, n: Int)(using munit.Location): Table =
     val kind = PlayerForceKind.of(game, playerOf(player)).getOrElse(
       munit.Assertions.fail(s"$player has no warbands of their own"))
     val bank = game.banks.warbandSupply.getOrElse(kind, 0) - inPlay(kind)
-    boardWarbands(player, playerOf(player).board.warbands + bank - n)
+    val board = playerOf(player).board.warbands + bank - n
+    if board < 0 then munit.Assertions.fail(
+      s"$player's board and bank hold ${board + n}, fewer than $n")
+    boardWarbands(player, board)
 
   def bandits(at: String | SiteId, n: Int)(using munit.Location): Table =
     forces(at, n, ForceKind.Bandit)

@@ -38,7 +38,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       CardPlayProcedure.Origin.FacedownAdviser)
 
   /** p2 stands on p1's site, Ancient City. */
-  private val sharedSite = Table.start.pawn(p2, "Ancient City")
+  private val p2AtAncientCity = Table.start.pawn(p2, "Ancient City")
 
   private def treeFor(f: Staged): Operation = accepted(f.origin match {
     case CardPlayProcedure.Origin.TemporaryHand =>
@@ -54,19 +54,29 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       DecisionAnswer.ChooseOneAnswer(ref), p1), powers)
 
   /** The play's tree, and the position parked on the placement decision. */
-  private def atPlacement(f: Staged): (Operation, PendingTree) =
+  private final case class AtPlacement(tree: Operation, at: PendingTree)
+
+  /** Plays Conspiracy and parks on the placement decision. */
+  private def atPlacement(f: Staged): AtPlacement =
     val tree = treeFor(f)
-    (tree, Outcomes.parked(ProcedureWalker.advance(f.ready, tree, None,
-      powers)).tree)
+    val parked = Outcomes.parked(ProcedureWalker.advance(f.ready, tree, None,
+      powers))
+    AtPlacement(tree, parked.tree)
+
+  /** Answers the placement decision with `button`. */
+  private def placedAs(f: Staged, button: DecisionOptionRef)
+      : Either[OathViolation, WalkerOutcome] =
+    val placement = atPlacement(f)
+    answer(f, placement.tree, placement.at, placeId, button)
 
   /** The play's tree, and the position parked on the target decision. */
   private final case class AtTarget(tree: Operation, at: PendingTree)
 
   /** Plays Conspiracy faceup and parks on the target decision. */
   private def atTarget(f: Staged): AtTarget =
-    val (tree, place) = atPlacement(f)
-    val placed = answer(f, tree, place, placeId, faceup)
-    AtTarget(tree, Outcomes.parked(placed).tree)
+    val placement = atPlacement(f)
+    val placed = answer(f, placement.tree, placement.at, placeId, faceup)
+    AtTarget(placement.tree, Outcomes.parked(placed).tree)
 
   private final case class TargetDecision(decisionId: String, owner: PlayerId,
       options: Vector[DecisionOptionRef])
@@ -84,7 +94,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       ConspiracyWhenPlayed.decisionId, ref))
 
   test("Conspiracy takes an opaque relic slot and leaves the game"):
-    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true))
+    val f = fromHand(p2AtAncientCity.relic(p2, crackedHorn, facedown = true))
     val target = atTarget(f)
     assertEquals(targetDecision(f, target), Some(TargetDecision(
       ConspiracyWhenPlayed.decisionId, p1,
@@ -101,7 +111,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       "least-bank order and takes the banner"):
     // The banner's 2 favor go back one at a time, each to the bank holding
     // the least.
-    val f = fromHand(sharedSite.peoplesFavor(Some(p2), 2)
+    val f = fromHand(p2AtAncientCity.peoplesFavor(Some(p2), 2)
       .bankFavor(Suit.Discord, 0).bankFavor(Suit.Arcane, 2)
       .bankFavor(Suit.Order, 3).bankFavor(Suit.Hearth, 4)
       .bankFavor(Suit.Beast, 5).bankFavor(Suit.Nomad, 6))
@@ -113,6 +123,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     val after = done.treeless
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(p1))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 0)
+    // The six banks, and the banner's 2 favor returned.
     assertEquals(after.banks.favor.values.sum, 0 + 2 + 3 + 4 + 5 + 6 + 2)
     // The favor returns as the banner Take's children.
     val returned = PhasePowerHarness.ops(done.events)
@@ -126,7 +137,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
 
   test("Conspiracy taking the Darkest Secret burns every secret and takes " +
       "the banner"):
-    val f = fromHand(sharedSite.darkestSecret(Some(p2), 3))
+    val f = fromHand(p2AtAncientCity.darkestSecret(Some(p2), 3))
     def siteSecrets(ready: ReadyGame): Int =
       ready.game.current.map.sites.valuesIterator.map { site =>
         site.tokens.secrets + site.denizens.collect {
@@ -152,8 +163,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
   test("with no legal target Conspiracy asks nothing and only leaves the game"):
     // p2 stands at Broken Peaks, away from p1, and no banner has a holder.
     val f = fromHand(Table.start)
-    val (tree, place) = atPlacement(f)
-    val done = Outcomes.finished(answer(f, tree, place, placeId, faceup))
+    val done = Outcomes.finished(placedAs(f, faceup))
     val after = done.treeless
     assertEquals(after.game.current.temporaryHands(p1), Vector.empty)
     assert(!accepted(CardIndex.from(after.game)).ids.contains(conspiracy))
@@ -162,7 +172,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       PositionedLocation(Location.SharedBank))))
 
   test("a target the current state does not offer is rejected at the decision"):
-    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true)
+    val f = fromHand(p2AtAncientCity.relic(p2, crackedHorn, facedown = true)
       .relic(p2, banditCrown, facedown = true))
     val target = atTarget(f)
     assertEquals(targetDecision(f, target).map(_.options),
@@ -176,17 +186,16 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
     }
 
   test("discarding a Conspiracy does not play it"):
-    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true))
-    val (tree, place) = atPlacement(f)
-    val done = Outcomes.finished(answer(f, tree, place, placeId,
-      DecisionOptionRef.Button("discard")))
+    val f = fromHand(p2AtAncientCity.relic(p2, crackedHorn, facedown = true))
+    val discard = DecisionOptionRef.Button("discard")
+    val done = Outcomes.finished(placedAs(f, discard))
     assert(Look(done.treeless).player(p2).relics.exists(_.id == crackedHorn))
     assert(accepted(CardIndex.from(done.treeless.game)).ids
       .contains(conspiracy))
 
   test("a Conspiracy played from a facedown adviser takes its target and " +
       "leaves the revealed Vision alone"):
-    val f = fromFacedownAdviser(sharedSite.relic(p2, crackedHorn,
+    val f = fromFacedownAdviser(p2AtAncientCity.relic(p2, crackedHorn,
       facedown = true))
     val revealedBefore = Look(f.ready).player(p1).revealedVision
     val target = atTarget(f)
@@ -207,13 +216,13 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
       events)
 
   test("Conspiracy's line names the relic it seized and its owner"):
-    val f = fromHand(sharedSite.relic(p2, crackedHorn, facedown = true))
+    val f = fromHand(p2AtAncientCity.relic(p2, crackedHorn, facedown = true))
     val done = take(f, atTarget(f), DecisionOptionRef.RelicSlot(p2, 0))
     assertEquals(seized(done.events), Vector(NoteText.Said("seized",
       s"p1 seized ${crackedHorn.value} from p2.", covers = false)))
 
   test("Conspiracy's line names the banner it seized"):
-    val f = fromHand(sharedSite.darkestSecret(Some(p2), 3))
+    val f = fromHand(p2AtAncientCity.darkestSecret(Some(p2), 3))
     val done = take(f, atTarget(f),
       DecisionOptionRef.Banner(Banner.DarkestSecret))
     assertEquals(seized(done.events), Vector(NoteText.Said("seized",
@@ -221,6 +230,5 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite:
 
   test("a Conspiracy with no target writes no line"):
     val f = fromHand(Table.start)
-    val (tree, place) = atPlacement(f)
-    val done = Outcomes.finished(answer(f, tree, place, placeId, faceup))
+    val done = Outcomes.finished(placedAs(f, faceup))
     assertEquals(seized(done.events), Vector.empty)

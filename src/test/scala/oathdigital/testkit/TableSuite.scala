@@ -143,6 +143,10 @@ class TableSuite extends munit.FunSuite:
     val table = Table.start.warbandsAt("Ancient City", p1, 2)
       .warbandsInBank(p1, 4)
     assertEquals(Look(table.ready).boardWarbands(p1), 8)
+    // It gives warbands back too: 10 on the board leave 4 in the bank, and
+    // a bank of 6 takes 2 of them.
+    val returned = Table.start.boardWarbands(p1, 10).warbandsInBank(p1, 6)
+    assertEquals(Look(returned.ready).boardWarbands(p1), 8)
 
   test("an edifice named by one face must be placed on that side"):
     val failure = intercept[munit.FailException](Table.start.edifice(
