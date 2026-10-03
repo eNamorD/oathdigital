@@ -8,7 +8,7 @@ The survey used twelve areas, not the spec's ten; the plan (Areas) explains the 
 
 Plan 2 (tasks 1-41) is done. Every finding row has an outcome, the guards hold,
 and the brittleness check fails 21 tests, the same as after the start-state
-project. Measured on 2026-10-03 at commit c3849030 with
+project. Measured on 2026-10-03 at commit 061ad95a with
 `.superpowers/readability/metrics.sh`; "before" is the Baseline above.
 
 | Metric | Before | After |
@@ -17,26 +17,53 @@ project. Measured on 2026-10-03 at commit c3849030 with
 | suites (frontend) | 43 | 45 |
 | replayed setup files (execute()/initialReady) | 7 | 3 |
 | Table.start files | 157 | 213 |
-| state patches (updateCurrent/copy(current =) | 313 | 73 |
+| state patches (updateCurrent/copy(current =) | 313 | 65 |
 | @unchecked | 158 | 0 |
 | numeric card ids | 84 | 8 |
 | tuple destructures with _ | 69 | 12 |
 | Table.update escapes | 14 | 12 |
 | test files over 800 lines | 4 | 0 |
-| largest test file | 1829 lines (GameApplicationServiceSuite) | 648 lines (WalkerDecisionProjectorSuite) |
+| largest test file | 1829 lines (GameApplicationServiceSuite) | 649 lines (WalkerDecisionProjectorSuite) |
 
-All 8 numeric card ids are in `ExecutableCatalogSuite`, which tests the catalog
-itself; `BackendArchitectureSuite` now fails any other test file that has one,
-and fails any test file over 800 lines.
+The metric counts digit-only ids (`DenizenId("92")`); all 8 are in
+`ExecutableCatalogSuite`, which tests the catalog itself. `BackendArchitectureSuite`
+fails any other test file that spells a catalog id: digits for a denizen, a
+letter and two digits for a relic or an edifice (so a relic R08 or an edifice
+E16 counts, which the metric does not see). Plain-id fixture cards such as
+`RelicId("R3")` in `TestGameFixtures` are not catalog ids and are not matched.
+It also fails any test file over 800 lines.
 
-Of the 73 state patches, 21 are in `Table` and `TableSuite`, which implement
-and test the steps. Of the other 52, all but three are the test's subject or
-carry a comment saying that no Table step reaches the state. The three that
-are neither are `GameApplicationServiceProjectionSuite` (the Imperial force on
-Buried Giant) and two in `OperationExecutorSuite` (a site relic in "relic
-discard preserves composite secret orientation semantics", and an emptied site
-in "pawn banner and warband moves update their concrete storage"). They are
-left as they are.
+Of the 65 state patches, 21 are in `Table` and `TableSuite`, which implement
+and test the steps. The other 44 are in other files:
+
+- 30 have a comment beside the patch (for the Imperial force on Buried Giant,
+  in the doc of `siteDetails` in `GameApplicationServiceProjectionSuite`). Most
+  say that no Table step reaches the state or that the state is the subject.
+  The Imperial patch runs after `.ready` because `.ready` refuses Imperial
+  warbands (Imperial has no printed supply).
+- 14 have none: `AutomaticRollSuite`, `OperationResolutionSuite`,
+  `WalkerRollsSuite` and `ModifyRollOutcomeSuite` (2) set a roll pool or a roll
+  outcome, `ProcedureWalkerParkSuite` and `RecordCampaignResultSuite` set what
+  the test then clears or replaces, `OperationMutationSuite` (the turn),
+  `OperationPipelineSuite` (1) and `OperationExecutorSuite` (3) corrupt state
+  on purpose, `WalkerRecordedOpsReducer` is the reducer's own write, and
+  `ReadyGameSuite` seats a second player. In each the patched field is what the
+  code under test reads, writes or clears. That is a judgment from the final
+  review, not something a guard checks.
+
+The Result first listed three patches that were neither the subject nor
+commented (the Imperial force, a site relic and an emptied site). The final
+review showed that list was wrong: the Imperial patch was commented, and the two
+`OperationExecutorSuite` patches were reachable. The fix commit 061ad95a
+replaced those two, and six more it found in the same files, with Table steps:
+`Table.worldDeckTop` (3 patches: 2 in `OperationExecutorSuite`, 1 in
+`OperationApplicationSuite`), `Table.tokens` (the site relic's secret),
+`Table.bandits(site, 0)` (the emptied site), `Table.hand` (2: one in
+`OperationExecutorSuite`, one in `OperationStateAdapterSuite`) and
+`Table.visionsDrawn`. A probe compared each new state with the old patch's
+state and found them equal. The fix pass read all 44 remaining patches and
+found no other that an existing step reaches; that is a reading, not a
+mechanical check.
 
 ### Rows
 
@@ -44,8 +71,10 @@ The ledger holds 1635 finding rows (1634 counted once: 08-020 duplicates
 00-150). Outcomes:
 
 - fixed: 1527 rows, each naming its commit.
-- kept, with a reason: 107 rows. The survey kept 82; the other 25 were kept at
-  fix time, each with its reason in the Outcome cell.
+- kept, with a reason: 107 rows. The survey filed 82 as Keep, and 75 of them
+  stayed kept; 7 were fixed (00-067, 01-033, 05-136, 06-085, 06-103, 10-046,
+  10-149). The other 32 were rows of other rules that were kept at fix time,
+  each with its reason in the Outcome cell. 75 + 32 = 107.
 - handed to another row: 1 row (06-175), fixed by 00-009's named
   `ChronicleWithDeckTop`.
 - struck: none.
@@ -90,10 +119,14 @@ the root to 2670.
 
 ### Mutations
 
-The Mutations table above holds 162 rows, one production or testkit rule broken
-at a time. 160 were caught, 2 survived.
+The Mutations table above holds 165 rows, one change at a time. 143 break
+production code. 17 break test code: testkit helpers, fakes and fixtures, and
+the suite-private stub in `ClayRattleSuite`. 5 are guard rows that add a test
+file or edit one test to trip a `BackendArchitectureSuite` guard (Task 40's two,
+and three from the final fixes). Task 40's rows name the guard titles as they
+were then; 061ad95a renamed both. 163 were caught, 2 survived.
 
-- Caught: 160. Three of those first survived and were caught after the task
+- Caught: 163. Three of those first survived and were caught after the task
   added the assertion that kills them (MinorActions in 10-2, OperationResolution
   in 03-1, TwinBrother in 05-3).
 - Survived: BanditPrince (05-2), whose catching assertion exposed a production
@@ -111,7 +144,8 @@ Open follow-ups for the user (post-plan chips): the spectator seat, the
 ### Brittleness
 
 Making `OathRules.wakeOptionOpen` always true fails 21 of 2670 root tests, no
-more than the 21 it failed after the start-state project. The mutant file was
+more than the 21 it failed after the start-state project. This was measured at
+c3849030; the final fixes changed test files only and the check was not re-run. The mutant file was
 restored and `git status --short src/main` printed nothing.
 
 ### Test totals
@@ -125,7 +159,8 @@ The "before" totals were measured, not recorded: no earlier note gives the
 count at the parent of the first Plan 2 commit (23e63216). A scratch worktree at
 that parent ran `./sbtw root/test frontend/test` (root 2551 passed, 0 failed;
 frontend 491 passed, 0 failed once `node_modules` was linked in). The "after"
-totals are from the gate at c3849030.
+totals are from the gate at c3849030, and the gate at 061ad95a gave the same
+2670 and 527.
 
 ## Baseline
 
@@ -446,7 +481,8 @@ the real class, so it needs no contract.
   against `BrowserPollClock`.
   Done in 651812a3: `FakePollClockSuite` and `BrowserPollClockSuite` run
   `PollClockContract`.
-- `FakeClient` in TableSessionSuite (12-044) is a spy that records calls and a
+- `RecordingClient` in TableSessionSuite (12-044; named `FakeClient` until
+  061ad95a) is a spy that records calls and a
   controllable stub (the test completes each promise); the real
   implementations are `HttpGameClient` and `TrustedHttpGameClient`
   (frontend/src/main/scala/oathdigital/frontend/GameClient.scala:123 and 192).
@@ -710,6 +746,9 @@ guard, one at a time, and records the result here.
 | 39 | frontend/src/test/scala/oathdigital/frontend/ScriptedTransport.scala:22: `request` stops recording | ServerModeSessionSuite: trusted player renders its fixed seat and never bootstraps switches or loads raw events (17 tests fail across ServerModeSessionSuite, ServerModeHostFormSuite and HttpGameClientSuite, e.g. HttpGameClientSuite: a 409 is a stale position, and the client does not retry the command) | caught |
 | 40 | src/test/scala/oathdigital/mutant/OversizedMutantSuite.scala: a new 900-line test file | BackendArchitectureSuite: all test Scala files stay bounded | caught |
 | 40 | src/test/scala/oathdigital/gameplay/powers/rest/InsomniaSuite.scala: an appended `DenizenId("93")` | BackendArchitectureSuite: tests name cards, not numeric ids, outside the wire and catalog suites | caught |
+| final | src/test/scala/oathdigital/gameplay/DummyNineHundred.scala: a new 900-line test file | BackendArchitectureSuite: every test Scala file stays at or below 800 lines | caught |
+| final | src/test/scala/oathdigital/serialization/WalkerDecisionWireSuite.scala:126: `CatalogNames.relic("Sticky Fire")` replaced by `RelicId("R08")` | BackendArchitectureSuite: tests name catalog cards, not their ids, outside the catalog suite | caught |
+| final | src/test/scala/oathdigital/gameplay/powers/whenplayed/DazzleSuite.scala:103: `CatalogNames.denizen("Errand Boy")` replaced by `DenizenId("93")` | BackendArchitectureSuite: tests name catalog cards, not their ids, outside the catalog suite | caught |
 
 ## Shared fixtures
 
@@ -1111,13 +1150,13 @@ guard, one at a time, and records the result here.
 | 03-024 | oathdigital/gameplay/OfferHostSuite.scala:78 | a transform at the host's window runs before the expansion | R8 | Expected Supply 4 has no stated origin: `low` starts at 1, the transform's gain adds 1 and the host's expansion adds 2. | Comment "1 start + 1 from the transform + 2 from the expansion". | fixed: "1 at the start, 1 from the transform and 2 from the expansion." | 9e60586d |
 | 03-025 | oathdigital/gameplay/OperationApplicationSuite.scala:21 | suite | R8 | The second player is `PlayerBoardState(2, 1, 0, 2, SupplyTrack.full)`, positional and unnamed (favor, faceup, facedown, warbands). Nothing in the tests names these. | Named arguments: `favor = 2, faceUpSecrets = 1, faceDownSecrets = 0, warbands = 2, supply = SupplyTrack.full`. | fixed: named arguments in `TestGameFixtures.redAndBlue` | 9e60586d |
 | 03-026 | oathdigital/gameplay/OperationApplicationSuite.scala:27 | suite | R1 | Outcomes read facts of TestGameFixtures (00-150) that no body states: the Order favor bank holds 5 ("favor bank contains 5 of requested favor", line 55), the supply track is full at 7 (SpendSupply 8 rejects), p1's pawn is at sites.head (the pawn tests). | A `ready` doc listing "5 favor per suit bank, supply 7, red's pawn at S1" and a comment on each test deriving its number from it. | fixed: a `ready` doc listing red's pawn, Supply and banks, and a comment on each test deriving its number | 9e60586d |
-| 03-027 | oathdigital/gameplay/OperationApplicationSuite.scala:27 | suite | Keep | `ready` seats a second player and lineage (no Table step seats a player), the tests set `worldDeck`/`edificeDeck` to plain-id cards in an order they check, and `pawnSite = None` (line 145) is a state no step reaches. The 22-line `ready` is copied into OperationExecutorSuite. | Keep the patches, with a comment on each; move the two-player `ready` to the testkit once, for both suites. | kept, with a comment on each deck and pawn patch; the two-player game moved to `TestGameFixtures.redAndBlue` for both suites | 9e60586d |
+| 03-027 | oathdigital/gameplay/OperationApplicationSuite.scala:27 | suite | Keep | `ready` seats a second player and lineage (no Table step seats a player), the tests set `worldDeck`/`edificeDeck` to plain-id cards in an order they check, and `pawnSite = None` (line 145) is a state no step reaches. The 22-line `ready` is copied into OperationExecutorSuite. | Keep the patches, with a comment on each; move the two-player `ready` to the testkit once, for both suites. | kept, with a comment on each deck and pawn patch; the two-player game moved to `TestGameFixtures.redAndBlue` for both suites; the final review showed `Table.worldDeckTop` builds the world-deck case, so 061ad95a uses it in OperationApplicationSuite and keeps the comments on the edifice-deck and pawn patches | 9e60586d, 061ad95a |
 | 03-028 | oathdigital/gameplay/OperationApplicationSuite.scala:30 | suite | R3 | The banner holder is set by `banners.copy(peoplesFavor = ...copy(holder = Some(playerId)))`; `Table.peoplesFavor` states it. | `Table.from(base).peoplesFavor(Some(playerId), 1).unchecked` before adding the second player. | fixed: `Table.from(..).peoplesFavor(Some(playerId), favor = 1)` inside `redAndBlue` | 9e60586d |
 | 03-029 | oathdigital/gameplay/OperationApplicationSuite.scala:180 | pipeline rejection matches the first shape reason byte-for-byte | R4 | `raw.execute(ready, operation).toOption.get` (1 line) fails with NoSuchElementException when the raw executor rejects. | `accepted(raw.execute(ready, operation))` failing with the OperationError. | fixed: `accepted(raw.execute(ready, operation))` | 9e60586d |
 | 03-030 | oathdigital/gameplay/OperationApplicationSuite.scala:214 | restriction registry is checked for each operation | R10 | `blocking` is an anonymous OperationRestriction that always answers one Impossible reason: a stub. | Doc line "Stub of OperationRestriction: refuses every operation as power-blocked". | fixed in 9a3f6678: `blocking` documented "Stub of OperationRestriction: refuses every operation as power-blocked" | 9a3f6678 |
 | 03-031 | oathdigital/gameplay/OperationExecutorSuite.scala:19 | suite | R8 | `bluePlayer` is built with `PlayerBoardState(2, 1, 0, 2, SupplyTrack.full)`, positional and unnamed. Tests assert numbers derived from it (blue favor 3, line 355; p1 warbands 2, line 370) and from the fixture. | Named arguments, and a comment on each derived number. | fixed: named arguments in `redAndBlue`, and a comment on each derived number | 9e60586d |
 | 03-032 | oathdigital/gameplay/OperationExecutorSuite.scala:25 | suite | R1 | Outcomes read facts of TestGameFixtures (00-150) that no body states: p1's board (1 favor, 1 faceup secret, 3 warbands; lines 83, 218, 309, 323, 336, 353, 370, 375), the favor bank of 5 per suit (6 on line 199 is 5 plus D2's 1 favor), D2 at S1 with 1 favor, relic R1 facedown at S2, a Bandit on every site. | A `ready` doc listing these facts, and a one-line derivation beside each of those assertions. | fixed: a `ready` doc listing red's board, D2, R1, the Bandits and the banks, and a derivation beside each of those assertions | 9e60586d |
-| 03-033 | oathdigital/gameplay/OperationExecutorSuite.scala:25 | suite | Keep | The same 22-line two-player `ready` as OperationApplicationSuite (see 03-027), and `worldDeck`/`edificeDeck` replaced wholesale by plain-id cards whose order is checked (lines 102, 133, 168, 222). | Keep, with a comment on each; the shared `ready` moves to the testkit (03-027). | kept, with "No Table step stacks plain-id cards in a deck" on each deck patch; the shared game is `redAndBlue` | 9e60586d |
+| 03-033 | oathdigital/gameplay/OperationExecutorSuite.scala:25 | suite | Keep | The same 22-line two-player `ready` as OperationApplicationSuite (see 03-027), and `worldDeck`/`edificeDeck` replaced wholesale by plain-id cards whose order is checked (lines 102, 133, 168, 222). | Keep, with a comment on each; the shared `ready` moves to the testkit (03-027). | kept, with "No Table step stacks plain-id cards in a deck" on each deck patch; the shared game is `redAndBlue`. That comment was false for the world deck: 061ad95a builds those two cases with `Table.worldDeckTop` and keeps the comment on the two edifice-deck patches, which no step builds | 9e60586d, 061ad95a |
 | 03-034 | oathdigital/gameplay/OperationExecutorSuite.scala:42 | suite | R4 | `.toOption.get` on 32 lines (including `.left.toOption.get`), `.asInstanceOf` on 3 lines (259 StoredSite, 477 and 485 CoreOperationRejected): a rejected or mistyped result dies without its value. | `accepted(result)` and `rejected(result)` accessors that fail with the actual value; a typed accessor for the Atlas entry. | fixed: `accepted` and `rejected` on all 32 lines, `as[AtlasEntry.StoredSite]` and `as[OathViolation.CoreOperationRejected]`; player reads through Look | 9e60586d |
 | 03-035 | oathdigital/gameplay/OperationExecutorSuite.scala:62 | policy receives the semantic root before primitive execution | R10 | `rejecting` is an anonymous OperationPolicy that records each operation in `seen` and then refuses: a spy of OperationPolicy. | Doc line "Spy of OperationPolicy: records each operation it is asked about, refuses all". | fixed in 9a3f6678: `rejecting` documented "Spy of OperationPolicy: records each operation it is asked about in seen, refuses all" | 9a3f6678 |
 | 03-036 | oathdigital/gameplay/OperationExecutorSuite.scala:155 | Play materializes IDs while unsupported Edifice materialization fails | R7 | The body also asserts that moving a site denizen with tokens to a hand fails as ConflictingDeltas (lines 177 to 183), which is neither Play nor Edifice. | Split that part into "a site card carrying tokens cannot move to a hand". | fixed: split into "a site card carrying tokens cannot move to a hand" | 9e60586d |
@@ -2306,7 +2345,7 @@ guard, one at a time, and records the result here.
 | 11-006 | BannerControlsSuite.scala:13 | render | R2 | `render` also clicks every button it finds (line 23) and returns what the clicks submitted; the name says only "render", so a reader of `render(Vector("beginChallenge"), canControl = false)` cannot see that a click happens. The same helper is copied in CampaignControlsSuite:13 and EconomyControlsSuite:13. | Rename to `renderAndClickEach`, or split into `render` and `clickAll`, shared by the three Controls suites. | fixed in 0a96388e: renamed `renderAndClickEach`; one shared `RenderedControls.renderAndClickEach` used by the Banner, Campaign and Economy suites | 0a96388e |
 | 11-007 | BannerControlsSuite.scala:27 | suite | R6 | `render` returns an unnamed pair (buttons, submitted); 3 reads in this file are by position (1 destructure at line 27, `._1` at lines 35 and 36). | `render` returns `RenderedControls(buttons, submitted)`; tests read `.buttons` and `.submitted`. | fixed in 0a96388e: `RenderedControls(buttons, submitted)`; tests read `.buttons` and `.submitted` | 0a96388e |
 | 11-008 | BoardSurfaceSuite.scala:47 | world (6 tests) | R1 | `world(ui, board = ...)` defaults to `Some(surface(confirm = true))`; 6 call sites (lines 89, 95, 114, 121, 126, 131) rely on it, and the one titled "with confirm, a site click drafts the pick" (line 112) never says confirm is on, while the "without confirm" tests (line 139) pass it. The card-click tests at 89 and 95 depend on it too (a site click stages only with confirm). | Make `board` a required argument and pass `Some(surface(confirm = true))` in each test. | fixed in 0a96388e: `world`'s `board` is a required argument; each test passes `Some(surface(confirm = true))` (or `confirm = false`, or `None`) | 0a96388e |
-| 11-009 | BoardSurfaceSuite.scala:63 | suite | R4 | DOM helpers are repeated: `one(root, selector)` asserting exactly one match is defined in BoardSurfaceSuite:63 and DistributePanelRenderSuite:34; `click` in BoardSurfaceSuite:71, CardInspectionOverlaySuite:23, DistributePanelRenderSuite:42 and GameLogOverlaySuite:28; `press` in BoardSurfaceSuite:75, CardInspectionOverlaySuite:18 and GameLogOverlaySuite:23; `all` in CardChoicePanelSuite:12, CardFaceSuite:10, CardInspectionOverlaySuite:12, DieFaceSuite:10 and DiscardPileSuite:8. | One frontend test object `Dom` (`all`, `one` failing with the selector and the match count, `click`, `press`) used by the 8 suites. | fixed in 0a96388e: new frontend test object `Dom` (`all`, `firstMatch`, `one`, `click` with `shift`, `press`) replaces the local copies in BoardSurface, CardFace, CardInspectionOverlay, DieFace, DiscardPile, DistributePanelRender and GameLogOverlay; CardChoicePanelSuite and the other area-12 copies not touched | 0a96388e |
+| 11-009 | BoardSurfaceSuite.scala:63 | suite | R4 | DOM helpers are repeated: `one(root, selector)` asserting exactly one match is defined in BoardSurfaceSuite:63 and DistributePanelRenderSuite:34; `click` in BoardSurfaceSuite:71, CardInspectionOverlaySuite:23, DistributePanelRenderSuite:42 and GameLogOverlaySuite:28; `press` in BoardSurfaceSuite:75, CardInspectionOverlaySuite:18 and GameLogOverlaySuite:23; `all` in CardChoicePanelSuite:12, CardFaceSuite:10, CardInspectionOverlaySuite:12, DieFaceSuite:10 and DiscardPileSuite:8. | One frontend test object `Dom` (`all`, `one` failing with the selector and the match count, `click`, `press`) used by the 8 suites. | fixed in 0a96388e: new frontend test object `Dom` (`all`, `firstMatch`, `one`, `click` with `shift`, `press`) replaces the local copies in BoardSurface, CardFace, CardInspectionOverlay, DieFace, DiscardPile, DistributePanelRender and GameLogOverlay; CardChoicePanelSuite and SiteBoxLayoutSuite were not touched and kept private copies of `all`, which 061ad95a (the final review's fix) replaced with `Dom.all`, so no local copy is left | 0a96388e, 061ad95a |
 | 11-010 | BoardSurfaceSuite.scala:63 | one | R2 | The name `one` means two things: in BoardSurfaceSuite:63 and DistributePanelRenderSuite:34 it asserts exactly one match and returns the element; in CardFaceSuite:13 and CardInspectionOverlaySuite:15 it returns the first match as an Option (and tolerates none). | Rename the Option version `firstMatch` and keep `one` for the exactly-one version, both in the shared `Dom` object (11-009). | fixed in 0a96388e: `Dom.one` asserts exactly one match and fails with the selector and the count; the Option version is `Dom.firstMatch` (CardFace, CardInspectionOverlay) | 0a96388e |
 | 11-011 | BoardSurfaceSuite.scala:82 | SelectingView | R10 | A hand class extending RecordingControls (an ActionControls spy, see 00-166) that also records `handleSelection`; its doc says "Records what the board-selection path chooses" but not the kind of double or the trait. | Doc as "Spy of ActionControls (through RecordingControls): also records handleSelection"; or add `chosen` to RecordingControls itself. | fixed in 651812a3: SelectingView is documented "Spy of ActionControls, through RecordingControls" that also records `handleSelection`; kept as a subclass, not folded into RecordingControls | 651812a3 |
 | 11-012 | BoardSurfaceSuite.scala:169 | a draft survives a refresh and dies with its decision or sequence | R7 | The body asserts two cases the title does not name: the draft dies when the query's options change (line 177) and a missing draft stays missing (line 182). | Retitle "a draft survives a refresh unchanged and dies when the sequence, the decision, its options or the parked decision go; no draft ever appears from nothing", or split the last two assertions into their own tests. | fixed in 0a96388e: retitled to name the five cases (survives unchanged; dies with sequence, decision id, options or parked decision; none appears from nothing) | 0a96388e |
@@ -2403,7 +2442,7 @@ guard, one at a time, and records the result here.
 | 12-041 | SnapshotPollingCoordinatorSuite.scala:45 | snapshotAdvances distinguishes unchanged, older, and changed snapshots | R7 | The body also asserts `recordSnapshotSuccess` is true and the connection becomes Connected (lines 52-53), about `ServerSessionCoordinator`, not the polling coordinator the suite is named for. | Move the test to a ServerSessionCoordinatorSuite, and split the connection assertion. | fixed in 671e7fa8: moved to the new ServerSessionCoordinatorSuite and split into "snapshotAdvances distinguishes unchanged, older, and changed snapshots" and "recording a snapshot success marks the connection Connected" (SnapshotPollingCoordinatorSuite 5 tests to 4; the new suite has 2) | 671e7fa8 |
 | 12-042 | SnapshotPollingCoordinatorSuite.scala:87 | suite | R10 | `FakePollClock` implements the production trait PollClock: a fake with a timer list and a manual `fireNext`. Its doc is absent. TableSessionSuite.scala:70 has a second fake of the same trait (`ManualClock`, one timer only). | Doc "Fake of PollClock: keeps every timer, fires on demand" and share one testkit class with TableSessionSuite. | fixed in 651812a3: SnapshotPollingCoordinatorSuite.FakePollClock and TableSessionSuite.ManualClock are one test-tree `FakePollClock`, documented "Fake of PollClock"; `PollClockContract` holds it and `BrowserPollClock` (real timers, a few ms) to "a task runs once when its time comes" and "a cancelled task never runs" | 651812a3 |
 | 12-043 | SuitGlyphSuite.scala:91 | a secret is a solid book and a defense die a shield, both even-odd | R8 | The expected path data ("M4 3h13a2 2 0 0 1 ..." and "M12 1.5 20.5 4.8") is opaque; the reader cannot see why those strings are a book and a shield. The body also asserts the burnt secret is even-odd, which the title does not name. | Assert the property (fill-rule evenodd, one subpath that nests an inner contour) or add a comment naming what each prefix draws. | fixed in 671e7fa8: comments name what each path prefix draws (the book's cover outline and spine notch, the shield outline from its top point) and the title names the burnt secret; the prefix assertions stay, no property assertion added | 671e7fa8 |
-| 12-044 | TableSessionSuite.scala:21 | suite | R10 | Three hand classes implement production traits: `FakeClient` (GameClient, a spy that records and a fake that answers through promises), `ManualClock` (PollClock, a fake), `RecordingNavigation` (Navigation, a spy). The docs say "Records every call" and "Holds the latest scheduled poll" but name neither trait nor kind. | Docs: "Spy and fake of GameClient", "Fake of PollClock (see 12-042)", "Spy of Navigation". | fixed in 651812a3: FakeClient is documented "Spy of GameClient" (records each call; the test completes the returned promises), RecordingNavigation "Spy of Navigation", ManualClock is the shared fake of PollClock (12-042); FakeClient keeps its name and is a spy plus controllable stub, not a fake, so it has no contract | 651812a3 |
+| 12-044 | TableSessionSuite.scala:21 | suite | R10 | Three hand classes implement production traits: `FakeClient` (GameClient, a spy that records and a fake that answers through promises), `ManualClock` (PollClock, a fake), `RecordingNavigation` (Navigation, a spy). The docs say "Records every call" and "Holds the latest scheduled poll" but name neither trait nor kind. | Docs: "Spy and fake of GameClient", "Fake of PollClock (see 12-042)", "Spy of Navigation". | fixed in 651812a3: the client is documented "Spy of GameClient" (records each call; the test completes the returned promises), RecordingNavigation "Spy of Navigation", ManualClock is the shared fake of PollClock (12-042); the client was still named FakeClient, which contradicted that, so 061ad95a renamed it RecordingClient (a spy plus controllable stub, not a fake, so it has no contract) | 651812a3, 061ad95a |
 | 12-045 | TableSessionSuite.scala:21 | suite | R6 | `FakeClient` records calls as 4 vectors of unnamed tuples (`loads`, `submits`, `previews`, `logs`) and `RecordingNavigation.shown` is a fifth; tests read them as `("g", "red", 0L)` and `2L -> BeginRest`. | Records `Load(gameId, player)`, `Submit(expectedSequence, command)`, `LogLoad(gameId, player, after)`, `Shown(gameId, player)`. | fixed in 671e7fa8: `Load`, `Submit`, `Preview`, `LogLoad` and `Shown` records replace the tuples in FakeClient and RecordingNavigation; their doc comments are left to the R10 row 12-044 | 671e7fa8 |
 | 12-046 | TableSessionSuite.scala:145 | a development session opens the queried game, displays it and polls | R8 | `assertEquals(fixture.clock.delays, Vector(5000))` has no stated origin (the session's default poll interval). | One-line why ("the session polls every 5000 ms") or read the constant from the session. | fixed in 671e7fa8: a comment says the session polls at the poller's visible interval, 5000 ms | 671e7fa8 |
 | 12-047 | TargetSelectionExitSuite.scala:23 | a target selection with no modifier stage offers Cancel alone; a target selection after a modifier stage also goes back to it | R2 | `panel(modifiers)` builds a travel flow at the Targets stage whose preview carries `modifiers`, with a board-target selection and the whole action panel around it; the name says nothing of the stage or of the travel. | Rename `targetSelectionPanelAfterPreview(modifiers)`, and put the stage (Targets) and the action (travel) in its doc. | fixed in 671e7fa8: `panel(modifiers)` is `targetSelectionPanelAfterPreview(modifiers)` with a doc naming the Targets stage and the travel action | 671e7fa8 |

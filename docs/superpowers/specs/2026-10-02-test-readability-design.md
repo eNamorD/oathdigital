@@ -206,13 +206,16 @@ numbers, before to after:
 
 - Every ledger row has an outcome: 1527 fixed, 107 kept, 1 handed to another
   row, none struck.
-- State patches 313 to 73, `@unchecked` 158 to 0, numeric card ids 84 to 8 (all
+- State patches 313 to 65, `@unchecked` 158 to 0, numeric card ids 84 to 8 (all
   in the catalog suite), test files over 800 lines 4 to 0.
-  Three state patches are neither the subject nor commented; the ledger lists
-  them.
+  Of the 65 patches, 21 are in `Table` and `TableSuite`; of the other 44, 30
+  have a comment beside them and 14 patch the field the code under test reads,
+  writes or clears. The final review found that the earlier "three patches
+  neither the subject nor commented" was wrong; the ledger's Result has the
+  account.
 - Four fakes have contract suites; none found a divergence, so no production
   code changed.
-- 162 mutations: 160 caught, 2 survived (BanditPrince, a spectator seat).
+- 165 mutations: 163 caught, 2 survived (BanditPrince, a spectator seat).
 - Brittleness re-check: 21 failures, at the limit.
 - Tests: root 2551 to 2670, frontend 491 to 527, all from recorded splits, new
   testkit tests, contract suites and guards.
