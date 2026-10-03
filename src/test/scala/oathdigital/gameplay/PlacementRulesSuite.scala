@@ -36,7 +36,7 @@ class PlacementRulesSuite extends munit.FunSuite:
 
   test("without a contributor the tree is the play under the default rules"):
     val tree = build(Table.start.hand(p1, card).ready, p1, card)
-    // The placement decision and the placement body.
+    // The placement decision and the Branch that acts on its answer.
     assertEquals(tree.children.size, 2)
     assert(tree.children.head.isInstanceOf[Decide])
 
