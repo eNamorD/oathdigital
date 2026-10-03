@@ -5,7 +5,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatacombsGame, Table}
 import oathdigital.testkit.Table.p1
 
 /** Selecting modifiers refuses a combination the player cannot pay, at
@@ -61,7 +61,7 @@ class SelectionPaymentsSuite extends munit.FunSuite:
     assert(muster(1, a, free).isRight)
 
   test("Catacombs states its secret as a selection payment"):
-    val fixture = CatacombsContributionSuite.reliclessSite(secrets = 1)
+    val fixture = CatacombsGame.reliclessSite(secrets = 1)
     val power = oathdigital.gameplay.powers.recover.CatacombsContribution
       .forCatalog(catalog)
     assertEquals(power.selectionPayments(fixture.ready, fixture.actor),
@@ -72,7 +72,7 @@ class SelectionPaymentsSuite extends munit.FunSuite:
       fixture.actor, Vector(power.id)).isRight)
 
   test("Catacombs with no faceup secret is refused at selection, not mid-action"):
-    val fixture = CatacombsContributionSuite.reliclessSite(secrets = 0)
+    val fixture = CatacombsGame.reliclessSite(secrets = 0)
     val power = oathdigital.gameplay.powers.recover.CatacombsContribution
       .forCatalog(catalog)
     val rules = new OathRules(catalog, walkerPowerCatalog = WalkerPowers(

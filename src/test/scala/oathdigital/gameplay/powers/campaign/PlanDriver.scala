@@ -49,7 +49,7 @@ object PlanDriver:
   export oathdigital.testkit.Outcomes.ready
 
   /** The parked decision, as this file's suites rebuild it: the same catalog
-    * and walker power catalog `CampaignFixture.rules(dice, powers = true)`
+    * and walker power catalog `CampaignFixture.rules(dice)`
     * builds `OathRules` with.
     */
   val parked = new ParkedDecisionAssertions(catalog, WalkerPowerCatalog.default(catalog))

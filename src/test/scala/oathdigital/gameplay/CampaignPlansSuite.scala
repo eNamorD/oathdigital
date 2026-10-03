@@ -2,10 +2,12 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignPlans, CampaignSetup}
-import oathdigital.gameplay.powers.campaign.{BattlePlans, BrassArmy, Outriders, PlanContext, TitleDefensePlan, Watchdog}
+import oathdigital.gameplay.powers.campaign.{BattlePlans, BrassArmy, Outriders,
+  PlanContext, TitleDefensePlan, Watchdog}
 import oathdigital.gameplay.powers.campaign.BattlePlan
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
+import oathdigital.testkit.CatalogNames
 
 /** What the ported plans offer, asked directly: where a plan's card must stand,
   * what it costs and what it does. Whether the user can pay, and how a plan is
@@ -28,11 +30,12 @@ class CampaignPlansSuite extends munit.FunSuite:
   private val outriders = Outriders
   private val brass = BrassArmy
   private val watchdog = Watchdog
-  private val outridersCard = cardWith("denizen.outriders")
-  private val brassCard = relicWith("relic.brass-army.campaign")
-  private val watchdogCard = cardWith("denizen.watchdog")
+  private val outridersCard = CatalogNames.denizen("Outriders")
+  private val brassCard = CatalogNames.relic("Brass Army")
+  private val watchdogCard = CatalogNames.denizen("Watchdog")
 
-  test("Outriders is an attacker's plan from any adviser of the attacker, in either orientation"):
+  test("Outriders is an attacker's plan from any adviser of the attacker, in " +
+      "either orientation"):
     val up = withAdviser(board(warbands = 5, supply = 7), outridersCard,
       Orientation.FaceUp)
     val down = withAdviser(board(warbands = 5, supply = 7), outridersCard,
@@ -45,11 +48,13 @@ class CampaignPlansSuite extends munit.FunSuite:
       assertEquals(CampaignPlans.refOf(offer.source),
         DecisionOptionRef.Denizen(outridersCard))
     }
-    assertEquals(outriders.sides, Set[CampaignPlanSide](CampaignPlanSide.Attacker))
+    assertEquals(outriders.sides,
+      Set[CampaignPlanSide](CampaignPlanSide.Attacker))
 
-  test("a plan is used only by the ruler of its source: a card at the origin does not count unless the attacker rules it"):
-    val b = withSiteCard(board(warbands = 5, supply = 7),
-      board(warbands = 5, supply = 7).origin, outridersCard)
+  test("a plan is used only by the ruler of its source: a card at the origin " +
+      "does not count unless the attacker rules it"):
+    val base = board(warbands = 5, supply = 7)
+    val b = withSiteCard(base, base.origin, outridersCard)
     assertEquals(outriders.plan(context(b, CampaignPlanSide.Attacker)), None)
     // The attacker rules a second site, and the card stands there.
     val two = board(extras = 1, warbands = 5, supply = 7)
@@ -61,42 +66,38 @@ class CampaignPlansSuite extends munit.FunSuite:
 
   test("a card held by another player is not offered"):
     val b = board(warbands = 5, supply = 7)
-    val elsewhere = b.copy(ready = withAdviser(b, outridersCard,
-      Orientation.FaceUp).ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => if p.player == b.actor then
-        p.copy(advisers = Vector.empty) else p.copy(advisers = Vector(
-        DenizenState(outridersCard, Orientation.FaceUp,
-          Tokens.empty)))))))
+    val elsewhere = withAdviserFor(b, b.rival, outridersCard,
+      Orientation.FaceUp)
     assertEquals(outriders.plan(context(elsewhere, CampaignPlanSide.Attacker)),
       None)
 
-  test("Brass Army costs a secret placed onto a faceup relic, occupied or not, and adds four attack dice"):
-    val offer = brass.plan(context(withSecrets(withRelic(board(warbands = 5, supply = 7), brassCard), 1),
+  test("Brass Army costs a secret placed onto a faceup relic, occupied or " +
+      "not, and adds four attack dice"):
+    val occupied = withRelic(board(warbands = 5, supply = 7), brassCard)
+    val offer = brass.plan(context(withSecrets(occupied, 1),
       CampaignPlanSide.Attacker)).get
-    assertEquals(offer.costs, Vector[CampaignPlanCost](CampaignPlanCost.Secret(1)))
+    assertEquals(offer.costs,
+      Vector[CampaignPlanCost](CampaignPlanCost.Secret(1)))
     assertEquals(offer.effects, Vector[CampaignPlanEffect](
       CampaignPlanEffect.AddAttackDice(4)))
     // Whether the attacker can pay is not the offer's business.
-    val occupied = withRelic(board(warbands = 5, supply = 7), brassCard)
     assert(brass.plan(context(withSecrets(occupied, 0),
       CampaignPlanSide.Attacker)).nonEmpty)
-    val holding = occupied.copy(ready = occupied.ready.updateCurrent(current =>
-      current.copy(players = current.players.map(p => p.copy(relics =
-        p.relics.map(r => r.copy(tokens = Tokens(1, 1))))))))
+    val holding = on(occupied)(_.tokens(brassCard, favor = 1, secrets = 1))
     assert(brass.plan(context(holding, CampaignPlanSide.Attacker)).nonEmpty)
     val bare = board(warbands = 5, supply = 7)
     assertEquals(brass.plan(context(bare, CampaignPlanSide.Attacker)), None)
 
   test("Brass Army needs the relic faceup"):
-    val b = withRelic(board(warbands = 5, supply = 7), brassCard)
-    val down = b.copy(ready = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p => p.copy(relics = p.relics.map(r =>
-        r.copy(orientation = Orientation.FaceDown)))))))
+    val b = board(warbands = 5, supply = 7)
+    val down = on(b)(_.relic(b.actor, brassCard, facedown = true))
     assertEquals(brass.plan(context(down, CampaignPlanSide.Attacker)), None)
 
-  test("Watchdog adds a defense die when a target is in the Cradle, for a ruler of its card"):
+  test("Watchdog adds a defense die when a target is in the Cradle, for a " +
+      "ruler of its card"):
     val base = board(warbands = 5, supply = 7)
-    assert(base.ready.game.current.map.regionOf(base.origin).contains(Region.Cradle),
+    assert(
+      base.ready.game.current.map.regionOf(base.origin).contains(Region.Cradle),
       "the fixture's origin must be in the Cradle")
     val bandits = withSiteCard(base, base.origin, watchdogCard)
     val offer = watchdog.plan(context(bandits, CampaignPlanSide.Defender)).get
@@ -110,13 +111,10 @@ class CampaignPlansSuite extends munit.FunSuite:
       CampaignPlanSide.Defender)
     assertEquals(watchdog.plan(raid), None)
 
-  test("a player defender uses Watchdog from an adviser, and a card at a site the attacker's enemy does not rule is not theirs"):
+  test("a player defender uses Watchdog from an adviser, and a card at a " +
+      "site the attacker's enemy does not rule is not theirs"):
     val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
-    val held = b.copy(ready = withAdviser(b, watchdogCard, Orientation.FaceUp)
-      .ready.updateCurrent(current => current.copy(players = current.players.map(
-        p => if p.player == b.rival then p.copy(advisers = Vector(DenizenState(
-          watchdogCard, Orientation.FaceUp, Tokens.empty)))
-        else p.copy(advisers = Vector.empty)))))
+    val held = withAdviserFor(b, b.rival, watchdogCard, Orientation.FaceUp)
     assertEquals(watchdog.plan(defending(held)).map(_.source),
       Some(CampaignPlanSource.Adviser(b.rival, watchdogCard)))
     val siteCard = withSiteCard(
@@ -124,16 +122,17 @@ class CampaignPlansSuite extends munit.FunSuite:
       b.origin, watchdogCard)
     assertEquals(watchdog.plan(defending(siteCard)).map(_.source),
       Some(CampaignPlanSource.SiteCard(b.origin, watchdogCard)))
-    // The card stands at a site the attacker's pawn is at but the defender does not rule.
+    // The card stands at a site the attacker's pawn is at but the defender does
+    // not rule.
     val unruled = withSiteCard(board(warbands = 5, supply = 7), b.origin,
       watchdogCard)
     assertEquals(watchdog.plan(defending(unruled)), None)
 
-  test("the title adds one defense die to an Oathkeeper and two to a Usurper, and only for a defender who holds it"):
+  test("the title adds one defense die to an Oathkeeper and two to a " +
+      "Usurper, and only for a defender who holds it"):
     val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
     def titled(side: TitleSide): Option[CampaignPlanOffer] =
-      val state = b.copy(ready = b.ready.updateCurrent(c => c.copy(title =
-        c.title.copy(side = side))))
+      val state = on(b)(_.oathkeeper(Some(b.rival), side))
       TitleDefensePlan.plan.plan(defending(state))
     assertEquals(titled(TitleSide.Oathkeeper).get.effects,
       Vector[CampaignPlanEffect](CampaignPlanEffect.AddDefenseDice(1)))
@@ -145,33 +144,36 @@ class CampaignPlansSuite extends munit.FunSuite:
       DecisionOptionRef.Button("title"))
     assertEquals(titled(TitleSide.Oathkeeper).get.label,
       "Oathkeeper title: add 1 defense die")
-    assertEquals(TitleDefensePlan.plan.plan(context(b, CampaignPlanSide.Attacker)),
-      None)
-    assertEquals(TitleDefensePlan.plan.plan(context(board(warbands = 5, supply = 7), CampaignPlanSide.Defender)),
-      None)
+    assertEquals(
+      TitleDefensePlan.plan.plan(context(b, CampaignPlanSide.Attacker)), None)
+    val untitled = board(warbands = 5, supply = 7)
+    assertEquals(TitleDefensePlan.plan.plan(context(untitled,
+      CampaignPlanSide.Defender)), None)
 
-  test("plans are listed with the title first, then advisers, relics, and cards at sites, then by key"):
-    val adviser = OfferedPlan(PowerId("test.a"), CampaignPlanOffer(
-      CampaignPlanSource.Adviser(PlayerId("p"), DenizenId("d")), "", Vector.empty,
-      Vector.empty))
-    val relic = OfferedPlan(PowerId("test.b"), CampaignPlanOffer(
-      CampaignPlanSource.Relic(PlayerId("p"), RelicId("r")), "", Vector.empty,
-      Vector.empty))
-    val site = OfferedPlan(PowerId("test.c"), CampaignPlanOffer(
-      CampaignPlanSource.SiteCard(SiteId("s"), DenizenId("d")), "", Vector.empty,
-      Vector.empty))
-    val edifice = OfferedPlan(PowerId("test.d"), CampaignPlanOffer(
-      CampaignPlanSource.SiteEdifice(SiteId("s"), EdificeId("e")), "",
-      Vector.empty, Vector.empty))
-    val title = OfferedPlan(PowerId("test.e"), CampaignPlanOffer(
-      CampaignPlanSource.Title(PlayerId("p")), "t", Vector.empty, Vector.empty))
-    assertEquals(CampaignPlans.sorted(Vector(site, edifice, relic, adviser, title))
-      .map(_.power.value), Vector("test.e", "test.a", "test.b", "test.c", "test.d"))
+  test("plans are listed with the title first, then advisers, relics, and " +
+      "cards at sites, then by key"):
+    /** A plan with no cost or effect, offered by `power` from `source`. */
+    def offered(power: String, source: CampaignPlanSource, label: String = "")
+        : OfferedPlan = OfferedPlan(PowerId(power),
+      CampaignPlanOffer(source, label, Vector.empty, Vector.empty))
+    val adviser = offered("test.a",
+      CampaignPlanSource.Adviser(PlayerId("p"), DenizenId("d")))
+    val relic = offered("test.b",
+      CampaignPlanSource.Relic(PlayerId("p"), RelicId("r")))
+    val site = offered("test.c",
+      CampaignPlanSource.SiteCard(SiteId("s"), DenizenId("d")))
+    val edifice = offered("test.d",
+      CampaignPlanSource.SiteEdifice(SiteId("s"), EdificeId("e")))
+    val title = offered("test.e", CampaignPlanSource.Title(PlayerId("p")), "t")
+    val sorted = CampaignPlans.sorted(Vector(site, edifice, relic, adviser,
+      title))
+    assertEquals(sorted.map(_.power.value),
+      Vector("test.e", "test.a", "test.b", "test.c", "test.d"))
 
   test("a card names its option and the title names it by button"):
     val card = OfferedPlan(PowerId("test.a"), CampaignPlanOffer(
-      CampaignPlanSource.SiteEdifice(SiteId("s"), EdificeId("e")), "", Vector.empty,
-      Vector.empty))
+      CampaignPlanSource.SiteEdifice(SiteId("s"), EdificeId("e")), "",
+      Vector.empty, Vector.empty))
     assertEquals(CampaignPlans.optionOf(card),
       DecisionOption.Edifice(DecisionOptionRef.Edifice(EdificeId("e"))))
     val title = OfferedPlan(PowerId("test.t"), CampaignPlanOffer(
@@ -189,24 +191,27 @@ class CampaignPlansSuite extends munit.FunSuite:
     assertEquals(CampaignPlans.badgeOf(Set.empty), None)
 
   test("the option a plan offers carries that badge"):
-    val offered = OfferedPlan(PowerId("relic.sticky-fire"),
-      CampaignPlanOffer(CampaignPlanSource.Relic(PlayerId("red"),
-        RelicId("relic:sticky-fire")), "Sticky Fire", Vector.empty,
-        Vector.empty, Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)))
-    assertEquals(CampaignPlans.optionOf(offered), DecisionOption.Badged(
-      DecisionOption.Relic(DecisionOptionRef.Relic(RelicId("relic:sticky-fire"))),
-      "Battle Plan"))
+    val offered = OfferedPlan(PowerId("relic.sticky-fire"), CampaignPlanOffer(
+      CampaignPlanSource.Relic(PlayerId("red"), RelicId("relic:sticky-fire")),
+      "Sticky Fire", Vector.empty, Vector.empty,
+      Set(CampaignPlanSide.Attacker, CampaignPlanSide.Defender)))
+    val relic = DecisionOptionRef.Relic(RelicId("relic:sticky-fire"))
+    assertEquals(CampaignPlans.optionOf(offered),
+      DecisionOption.Badged(DecisionOption.Relic(relic), "Battle Plan"))
 
-  test("the four ported plans register through one object, and are automatic whatever the catalog flag"):
+  test("the four ported plans register through one object, and are automatic " +
+      "whatever the catalog flag"):
     val plans = BattlePlans.forCatalog(catalog)
     assertEquals(plans.size, 4)
-    plans.foreach(plan => assertEquals(plan.resolution, PowerResolution.Automatic))
+    plans.foreach(plan =>
+      assertEquals(plan.resolution, PowerResolution.Automatic))
     assert(plans.forall(_.isInstanceOf[BattlePlan]))
     assertEquals(plans.map(_.id.value).toSet, Set("title.oathkeeper-defense",
       "denizen.outriders", "relic.brass-army.campaign", "denizen.watchdog"))
 
   test("a bandit's applied-plan marker reads back to the plan's source"):
-    Vector[DecisionOptionRef](DecisionOptionRef.Denizen(DenizenId("56")),
+    Vector[DecisionOptionRef](
+      DecisionOptionRef.Denizen(CatalogNames.denizen("Augury")),
       DecisionOptionRef.Edifice(EdificeId("edifice:homeland-arcane")),
       DecisionOptionRef.Relic(RelicId("relic:circlet")),
       DecisionOptionRef.Button("title")).foreach { ref =>

@@ -45,14 +45,11 @@ object CampaignFixture:
   def on(b: Board)(steps: Table => Table): Board =
     b.copy(ready = steps(Table.from(b.ready)).unchecked)
 
-  /** Battle plans are powers, so a Campaign runs with the walker power catalog
-    * unless a suite asks for none.
-    */
-  def rules(dice: WalkerDice = WalkerDice.unavailable,
-      powers: Boolean = true): OathRules =
-    val catalogued =
-      if powers then WalkerPowerCatalog.default(catalog) else WalkerPowers.empty
-    new OathRules(catalog, walkerPowerCatalog = catalogued, walkerDice = dice)
+  /** Battle plans are powers, so a Campaign runs with the walker power
+    * catalog. */
+  def rules(dice: WalkerDice = WalkerDice.unavailable): OathRules =
+    new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog), walkerDice = dice)
 
   /** Rules with exactly these walker powers, for a suite that tests the plan
     * window with plans of its own.

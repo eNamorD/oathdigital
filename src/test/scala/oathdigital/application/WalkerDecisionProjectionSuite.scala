@@ -1,8 +1,8 @@
 package oathdigital.application
 
 import oathdigital.model._
-import oathdigital.gameplay.{CatacombsContributionSuite, OathRules,
-  ProcedureWalkerSuite, WalkerDiceFixture}
+import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite, WalkerDiceFixture}
+import oathdigital.testkit.CatacombsGame
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.model.OathState.Ready
@@ -99,7 +99,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
 
   test("a parked Roll projects an owner-private roll decision and blocks " +
       "ordinary Act controls"):
-    val fixture = CatacombsContributionSuite.relicSite()
+    val fixture = CatacombsGame.relicSite()
     val powers = WalkerPowers(Vector(parkingRoll))
     val rules = new OathRules(catalog, walkerPowerCatalog = powers,
       walkerDice = WalkerDiceFixture.blanks)
@@ -288,12 +288,12 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
   test("the projector reports the decision the walker actually parked at " +
       "with Catacombs in effect, and would misreport it if it folded " +
       "without the power"):
-    val fixture = CatacombsContributionSuite.reliclessSite()
+    val fixture = CatacombsGame.reliclessSite(secrets = 2)
     val rules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
       walkerDice = WalkerDiceFixture.blanks)
     val started = rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-        fixture.actor, Vector(CatacombsContributionSuite.catacombsId)) match
+        fixture.actor, Vector(CatacombsGame.catacombsId)) match
       case Right(transition) => transition
       case other => fail(s"expected the Catacombs start to run, got $other")
     val Ready(ready) = started.state: @unchecked

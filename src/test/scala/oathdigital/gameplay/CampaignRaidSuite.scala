@@ -2,136 +2,161 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.actions.campaign.CampaignIds
+import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.ParkedDecisionAssertions
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
+  WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
+import oathdigital.testkit.{ActPowerHarness, Look, Outcomes}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class CampaignRaidSuite extends munit.FunSuite:
-  /** Every `rules(...)` call in this file keeps the `powers = true` default. */
+  /** Every `rules(...)` call in this file builds the walker power catalog. */
   private val parked = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog))
 
-  private def ready(state: OathState): ReadyGame = state match
-    case Ready(value) => value
-    case other => fail(s"expected a ready game, got $other")
-  private def player(state: OathState, id: PlayerId) =
-    ready(state).game.current.players.find(_.player == id).get
+  private def ready(state: OathState): ReadyGame = Outcomes.ready(state)
   private def favorInBanks(state: OathState): Int =
     ready(state).banks.favor.values.sum
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
 
-  private def walk(b: Board, relic: RelicId, attack: Int, sacrifice: Int = 0) =
-    val printed = 2 + catalog.relics.find(_.id.value == relic.value).get.defense + 3
+  /** Each step of a Raid on the rival's relic and People's Favor. */
+  private final case class RaidWalk(game: OathRules, started: OathTransition,
+      kind: OathTransition, targeted: OathTransition, forced: OathTransition,
+      sacrificed: OathTransition):
+    def events: Vector[OathEvent] =
+      Vector(started, kind, targeted, forced, sacrificed).flatMap(_.events)
+
+  /** Raids the rival with `attack` swords against blank defense dice,
+    * sacrificing `sacrifice`. */
+  private def walk(b: Board, relic: RelicId, attack: Int, sacrifice: Int = 0)
+      : RaidWalk =
+    // The printed defense: 2 dice for the pawn, the relic's own defense, and
+    // 3 for the banner.
+    val relicDefense =
+      catalog.relics.find(_.id.value == relic.value).get.defense
+    val printed = 2 + relicDefense + 3
     val sword = Vector.fill(attack)(AttackDieFace.OneSword)
     val game = rules(dice(sword, Vector.fill(printed)(DefenseDieFace.Blank)))
-    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor).toOption.get
-    val kind = game.resolveWalker(started.state, b.actor, CampaignIds.kind, raid).toOption.get
-    val targeted = game.resolveWalker(kind.state, b.actor, CampaignIds.targets,
-      ChooseManyAnswer(Vector(DecisionOptionRef.Relic(relic),
-        DecisionOptionRef.Banner(Banner.PeoplesFavor)))).toOption.get
-    val forced = game.resolveWalker(targeted.state, b.actor, CampaignIds.force,
-      ChooseAmountAnswer(attack)).toOption.get
-    val sacrificed = game.resolveWalker(forced.state, b.actor, CampaignIds.sacrifice,
-      ChooseAmountAnswer(sacrifice)).toOption.get
-    (game, started, kind, targeted, forced, sacrificed)
+    val started = accepted(game.startWalker(Ready(b.ready), ActionRef.Campaign,
+      b.actor))
+    val kind = accepted(game.resolveWalker(started.state, b.actor,
+      CampaignIds.kind, raid))
+    val targeted = accepted(game.resolveWalker(kind.state, b.actor,
+      CampaignIds.targets, ChooseManyAnswer(Vector(
+        DecisionOptionRef.Relic(relic),
+        DecisionOptionRef.Banner(Banner.PeoplesFavor)))))
+    val forced = accepted(game.resolveWalker(targeted.state, b.actor,
+      CampaignIds.force, ChooseAmountAnswer(attack)))
+    val sacrificed = accepted(game.resolveWalker(forced.state, b.actor,
+      CampaignIds.sacrifice, ChooseAmountAnswer(sacrifice)))
+    RaidWalk(game, started, kind, targeted, forced, sacrificed)
 
-  test("the Raid's defense is the pawn, the targeted relic and banner, plus the board force"):
+  test("the Raid's defense is the pawn, the targeted relic and banner, plus " +
+      "the board force"):
     val RaidBoard(b, relic) = raidBoard()
-    val (_, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
-    val result = ready(sacrificed.state).game.current.lastCampaignResult.get
+    val sacrificed = walk(b, relic, attack = 4).sacrificed
+    val current = ready(sacrificed.state).game.current
+    val result = present(current.lastCampaignResult, "a Campaign result")
     assertEquals(result.kind, CampaignKind.Raid)
     assertEquals(result.raidTargets, Vector[CampaignRaidTarget](
-      CampaignRaidTarget.Pawn(b.rival), CampaignRaidTarget.Relic(b.rival, relic),
+      CampaignRaidTarget.Pawn(b.rival),
+      CampaignRaidTarget.Relic(b.rival, relic),
       CampaignRaidTarget.Banner(b.rival, Banner.PeoplesFavor)))
+    // The rival's 3 board warbands; the blank dice score nothing.
     assertEquals(result.defenseScore, 3)
     assertEquals(result.attackerWins, true)
 
-  test("a Raid victory transfers in the printed order and then asks where the pawn goes"):
+  test("a Raid victory transfers in the printed order and then asks where " +
+      "the pawn goes"):
     val RaidBoard(b, relic) = raidBoard()
-    val (game, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
+    val walked = walk(b, relic, attack = 4)
+    val sacrificed = walked.sacrificed
     parked.assertParked(sacrificed.state, ActionRef.Campaign,
       CampaignIds.relocation, b.actor)
     val after = ready(sacrificed.state)
+    val rival = Look(sacrificed.state).player(b.rival)
     // The transfer has happened; the pawn has not moved yet.
-    assert(player(sacrificed.state, b.actor).relics.exists(_.id == relic))
+    assert(Look(sacrificed.state).player(b.actor).relics.exists(_.id == relic))
     assertEquals(BannerRules.holder(after.game.current, Banner.PeoplesFavor),
       Some(b.actor))
+    // The banner's 3 favor go back to the banks.
     assertEquals(after.game.current.banners.peoplesFavor.favor, 0)
-    assertEquals(favorInBanks(sacrificed.state) - favorInBanks(Ready(b.ready)), 3)
-    assertEquals(player(sacrificed.state, b.rival).advisers, Vector.empty)
-    assertEquals(player(sacrificed.state, b.rival).relics, Vector.empty)
+    assertEquals(favorInBanks(sacrificed.state),
+      favorInBanks(Ready(b.ready)) + 3)
+    assertEquals(rival.advisers, Vector.empty)
+    assertEquals(rival.relics, Vector.empty)
     assertEquals(after.game.current.setAsideRelics,
       Vector(RelicId("raid-facedown-relic")))
-    assertEquals(player(sacrificed.state, b.rival).board.favor, 3)
-    assertEquals(player(sacrificed.state, b.rival).board.warbands, 2)
-    assertEquals(player(sacrificed.state, b.rival).pawnSite, Some(b.origin))
+    // The rival burns half of their 5 favor, rounded down, and loses half of
+    // their 3 defending warbands, rounded down.
+    assertEquals(rival.board.favor, 5 - 5 / 2)
+    assertEquals(rival.board.warbands, 3 - 3 / 2)
+    assertEquals(rival.pawnSite, Some(b.origin))
     val destination = after.game.current.map.inPlay.find(_ != b.origin).get
     val options = after.game.current.map.inPlay.filterNot(_ == b.origin)
       .map(site => DecisionOption.Site(DecisionOptionRef.Site(site)))
-    val pending = after.game.current.walkerPending.get
-    val tree = oathdigital.gameplay.actions.campaign.CampaignProcedure.rebuild(
-      catalog, after, b.actor, Vector.empty).toOption.get
-    assertEquals(oathdigital.gameplay.walker.ProcedureWalker.openDecisions(after,
-      tree, pending, oathdigital.gameplay.walker.WalkerPowers.empty).head.query,
-      DecisionQuery.ChooseOne(options, Some("Move the defeated pawn to another site")))
-    val done = game.resolveWalker(sacrificed.state, b.actor, CampaignIds.relocation,
-      ChooseOneAnswer(DecisionOptionRef.Site(destination))).toOption.get
-    assertEquals(player(done.state, b.rival).pawnSite, Some(destination))
+    val pending = present(after.game.current.walkerPending,
+      "a parked walker decision")
+    val tree = accepted(CampaignProcedure.rebuild(catalog, after, b.actor,
+      Vector.empty))
+    val asked = present(ProcedureWalker.openDecisions(after, tree, pending,
+      WalkerPowers.empty).headOption, "the relocation decision")
+    assertEquals(asked.query, DecisionQuery.ChooseOne(options,
+      Some("Move the defeated pawn to another site")))
+    val moved = ChooseOneAnswer(DecisionOptionRef.Site(destination))
+    val done = accepted(walked.game.resolveWalker(sacrificed.state, b.actor,
+      CampaignIds.relocation, moved))
+    assertEquals(Look(done.state).player(b.rival).pawnSite, Some(destination))
     parked.assertResumed(done.state, Phase.Act, b.actor)
     assertEquals(ready(done.state).game.current.walkerPending, None)
 
   test("the pawn cannot be relocated to its own site"):
     val RaidBoard(b, relic) = raidBoard()
-    val (game, _, _, _, _, sacrificed) = walk(b, relic, attack = 4)
-    assertEquals(game.resolveWalker(sacrificed.state, b.actor,
+    val walked = walk(b, relic, attack = 4)
+    assertEquals(walked.game.resolveWalker(walked.sacrificed.state, b.actor,
       CampaignIds.relocation, ChooseOneAnswer(DecisionOptionRef.Site(b.origin)))
       .left.toOption, Some(OathViolation.InvalidEventOrder(
         "decision campaign.relocation does not offer the selected option")))
 
-  test("a Raid defeat transfers nothing, moves no pawn and kills half the survivors"):
+  test("a Raid defeat transfers nothing, moves no pawn and kills half the " +
+      "survivors"):
     val RaidBoard(b, relic) = raidBoard(defenderWarbands = 9)
-    val (_, _, _, _, _, done) = walk(b, relic, attack = 4)
+    val done = walk(b, relic, attack = 4).sacrificed
     parked.assertResumed(done.state, Phase.Act, b.actor)
-    assertEquals(player(done.state, b.actor).relics.exists(_.id == relic), false)
-    assertEquals(player(done.state, b.rival).pawnSite, Some(b.origin))
-    assertEquals(player(done.state, b.rival).board.warbands, 9)
-    assertEquals(player(done.state, b.actor).board.warbands, 2)
+    val actor = Look(done.state).player(b.actor)
+    val rival = Look(done.state).player(b.rival)
+    assertEquals(actor.relics.exists(_.id == relic), false)
+    assertEquals(rival.pawnSite, Some(b.origin))
+    assertEquals(rival.board.warbands, 9)
+    // p1 commits 4 warbands; half of the 4 survivors die.
+    assertEquals(actor.board.warbands, 4 - 4 / 2)
 
   test("several enemy pawns at the site ask which to Raid"):
-    val RaidBoard(b, relic) = raidBoard()
-    val third = b.ready.game.current.players.map(_.player)
-      .find(id => id != b.actor && id != b.rival)
-    assert(third.nonEmpty, "the fixture needs a third player")
-    val crowded = b.copy(ready = b.ready.updateCurrent(current => current.copy(
-      players = current.players.map(p =>
-        if third.contains(p.player) then p.copy(pawnSite = Some(b.origin)) else p))))
+    val RaidBoard(b, _) = raidBoard()
+    val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
     val game = rules()
-    val started = game.startWalker(Ready(crowded.ready), ActionRef.Campaign,
-      b.actor).toOption.get
-    val kind = game.resolveWalker(started.state, b.actor, CampaignIds.kind, raid)
-      .toOption.get
+    val started = accepted(game.startWalker(Ready(crowded.ready),
+      ActionRef.Campaign, b.actor))
+    val kind = accepted(game.resolveWalker(started.state, b.actor,
+      CampaignIds.kind, raid))
     parked.assertParked(kind.state, ActionRef.Campaign, CampaignIds.defender,
       b.actor)
-    val chosen = game.resolveWalker(kind.state, b.actor, CampaignIds.defender,
-      ChooseOneAnswer(DecisionOptionRef.Player(b.rival))).toOption.get
-    parked.assertParked(chosen.state, ActionRef.Campaign, CampaignIds.targets, b.actor)
+    val chosen = accepted(game.resolveWalker(kind.state, b.actor,
+      CampaignIds.defender, ChooseOneAnswer(DecisionOptionRef.Player(b.rival))))
+    parked.assertParked(chosen.state, ActionRef.Campaign, CampaignIds.targets,
+      b.actor)
 
   test("the Raid's recorded events replay to the same state as the live walk"):
     val RaidBoard(b, relic) = raidBoard()
-    val (game, started, kind, targeted, forced, sacrificed) =
-      walk(b, relic, attack = 4)
-    val destination = ready(sacrificed.state).game.current.map.inPlay
+    val walked = walk(b, relic, attack = 4)
+    val destination = ready(walked.sacrificed.state).game.current.map.inPlay
       .find(_ != b.origin).get
-    val done = game.resolveWalker(sacrificed.state, b.actor, CampaignIds.relocation,
-      ChooseOneAnswer(DecisionOptionRef.Site(destination))).toOption.get
-    val events = Vector(started, kind, targeted, forced, sacrificed, done)
-      .flatMap(_.events)
-    val replayed = events.foldLeft[Either[OathViolation, OathState]](
-      Right(Ready(b.ready))):
-      case (Right(state), event) => game.evolve(state, event)
-      case (failure, _) => failure
-    assertEquals(replayed, Right(done.state))
+    val done = accepted(walked.game.resolveWalker(walked.sacrificed.state,
+      b.actor, CampaignIds.relocation,
+      ChooseOneAnswer(DecisionOptionRef.Site(destination))))
+    assertEquals(ActPowerHarness.replayed(walked.game, b.ready,
+      walked.events ++ done.events), ready(done.state))

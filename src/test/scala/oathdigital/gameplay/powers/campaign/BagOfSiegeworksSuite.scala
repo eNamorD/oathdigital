@@ -25,53 +25,64 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
     case DiceKind.Defense =>
       Vector.tabulate(count)(index => pattern(index % pattern.size): DieFace))
 
-  /** The attacker holds the Bag and a secret; two further bandit sites can be
-    * targeted with the origin, so the defense rolls at least three dice. */
-  private def holder: Board = withSecrets(
+  /** The attacker holds the Bag, a faceup secret and 5 warbands; two further
+    * bandit sites can be targeted with the origin, so the defense rolls at
+    * least three dice. */
+  private def attackerWithBagAndSecret: Board = withSecrets(
     withRelic(board(extras = 2, warbands = 5, supply = 7), relic), 1)
 
-  private def conquest(b: Board, dice: WalkerDice): Run =
+  /** A Conquest of the origin and every extra site, committing all 5
+    * warbands. */
+  private def conquestOfAllTargets(b: Board, dice: WalkerDice): Run =
     commit(rules(dice), b, 5, targets = b.extras.map(DecisionOptionRef.Site(_)))
 
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     BagOfSiegeworks.id, Vector(BagOfSiegeworks.ignored), run.events)
 
-  test("a single shield scores nothing; two shields and doublers score as usual"):
+  test("a single shield scores nothing; two shields and doublers score as " +
+      "usual"):
     import DefenseDieFace._
     assertEquals(BagOfSiegeworks.score(Vector(Blank, OneShield, Doubler)), 0)
-    assertEquals(BagOfSiegeworks.score(Vector(TwoShields, OneShield, Doubler)), 4)
+    assertEquals(BagOfSiegeworks.score(Vector(TwoShields, OneShield, Doubler)),
+      4)
     assertEquals(BagOfSiegeworks.score(Vector(OneShield, OneShield)), 0)
 
   test("an attacker places a secret on the relic"):
-    val b = holder
-    val run = conquest(b, shields)
+    val b = attackerWithBagAndSecret
+    val run = conquestOfAllTargets(b, shields)
     assert(awaits(run, b.actor, CampaignIds.attackerPlan))
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assertEquals(Look(picked.state).player(b.actor).board.faceUpSecrets, 0)
+    assertEquals(Look(picked.state).tokensOn(relic), Tokens(0, 1))
 
   test("the defense is scored without its single shields, and it says so"):
-    val b = holder
-    val done = conquest(b, shields).pick(b.actor, CampaignIds.attackerPlan, ref)
+    val b = attackerWithBagAndSecret
+    val done = conquestOfAllTargets(b,
+      shields).pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishPlanWindows
     val result = ready(done.state).game.current.lastCampaignResult.get
     assert(result.defenseFaces.contains(DefenseDieFace.OneShield),
       result.defenseFaces)
+    // Two bandits at each of the three targets.
     val force = 2 * (1 + b.extras.size)
     assertEquals(result.defenseScore,
       BagOfSiegeworks.score(result.defenseFaces) + force)
-    assert(result.defenseScore < DefenseDieFace.score(result.defenseFaces) + force)
+    assert(
+      result.defenseScore < DefenseDieFace.score(result.defenseFaces) + force)
     assertEquals(lines(done), Vector(line))
 
   test("without a single shield rolled nothing is said"):
-    val b = holder
-    val done = conquest(b, winning).pick(b.actor, CampaignIds.attackerPlan, ref)
+    val b = attackerWithBagAndSecret
+    val done = conquestOfAllTargets(b,
+      winning).pick(b.actor, CampaignIds.attackerPlan, ref)
       .finishPlanWindows
     assertEquals(lines(done), Vector.empty)
 
   test("a Campaign that does not choose it scores the single shields"):
-    val b = holder
-    val done = conquest(b, shields).finishPlanWindows
+    val b = attackerWithBagAndSecret
+    val done = conquestOfAllTargets(b, shields).finishPlanWindows
     val result = ready(done.state).game.current.lastCampaignResult.get
+    // Two bandits at each of the three targets.
     assertEquals(result.defenseScore,
       DefenseDieFace.score(result.defenseFaces) + 2 * (1 + b.extras.size))
     assertEquals(lines(done), Vector.empty)

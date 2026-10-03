@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.testkit.{Outcomes, Table}
+import oathdigital.testkit.{CatacombsGame, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
@@ -319,7 +319,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
   test("drift check: Catacombs-modified Recover (advance -> resolve) " +
       "-- the first corpus entry where a power changed the tree"):
-    val fixture = CatacombsContributionSuite.reliclessSite()
+    val fixture = CatacombsGame.reliclessSite(secrets = 2)
     val finished = assertNoDrift(fixture.ready,
       Vector(StartWalk(Vector(highRoll)),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
