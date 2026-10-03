@@ -12,8 +12,7 @@ import oathdigital.testkit.Look
   * warbands if its user wins, or what their supply holds. */
 class FieldPromotionSuite extends munit.FunSuite:
   private val card = cardWith("denizen.field-promotion")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val honors = cardWith("denizen.battle-honors")
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
@@ -41,7 +40,7 @@ class FieldPromotionSuite extends munit.FunSuite:
     val run = commit(rules(winning), b, 4)
     val picked = run.pick(b.actor, CampaignIds.attackerPlan, ref)
     assertEquals(Look(picked.state).player(b.actor).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens },
+      case held: DenizenState if held.id == card => held.tokens },
       Some(Tokens(1, 0)))
     val done = picked.finishPlanWindows
     assertEquals(winner(done), Some(true))

@@ -137,9 +137,9 @@ class CircletOfCommandSuite extends munit.FunSuite:
   test("the Circlet's rule ignores an option that is not a banner or a relic"):
     val power = CircletOfCommand.forCatalog(catalog)
     val ready = Table.start.relic(p1, circlet).ready
-    val ctx = PowerCtx(ready, PowerFixture.actor, power.source,
+    val ctx = PowerCtx(ready, p1, power.source,
       PowerWindow.CampaignTargetSelection, Vector.empty,
-      Decide("x", PowerFixture.actor, DecisionQuery.ChooseOne(Vector.empty)))
+      Decide("x", p1, DecisionQuery.ChooseOne(Vector.empty)))
     val restriction = power.contributions(PowerWindow.CampaignTargetSelection)
       .head.asInstanceOf[oathdigital.gameplay.powerresolver.OptionRestriction]
     assertEquals(restriction.fn(ctx, DecisionOptionRef.Site(SiteId("s"))), None)

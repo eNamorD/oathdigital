@@ -13,8 +13,7 @@ import oathdigital.model.DecisionAnswer.ChooseOneAnswer
   * the warbands at the targets add their defense twice. */
 class GarrisonArmorySuite extends munit.FunSuite:
   private val card = cardWith("denizen.garrison-armory")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val bag = relicWith("relic.bag-of-siegeworks")
   private val bagRef: DecisionOptionRef = DecisionOptionRef.Relic(bag)
   private val provisions = cardWith("denizen.extra-provisions")
@@ -38,7 +37,7 @@ class GarrisonArmorySuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   private def result(run: Run): CampaignResult =
     ready(run.state).game.current.lastCampaignResult.get

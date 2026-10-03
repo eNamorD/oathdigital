@@ -11,14 +11,13 @@ import oathdigital.model._
   * Campaign. */
 class PledgeOfDefenseSuite extends munit.FunSuite:
   private val card = cardWith("denizen.pledge-of-defense")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val nomads = planless("Convoys", "Vow of Kinship")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
   private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(id))
+    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(PledgeOfDefense.id, Vector(PlanDiscard.discarded), run.events)

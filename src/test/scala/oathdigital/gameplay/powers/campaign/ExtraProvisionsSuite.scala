@@ -9,8 +9,7 @@ import oathdigital.testkit.Look
 /** Extra Provisions: a defender's plan, a favor placed for one defense die. */
 class ExtraProvisionsSuite extends munit.FunSuite:
   private val card = cardWith("denizen.extra-provisions")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   /** The other player defends the origin, holding Extra Provisions and
     * `favor` favor. */
@@ -22,7 +21,7 @@ class ExtraProvisionsSuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   test("a defender places a favor, off turn, for one defense die"):
     val b = defender(1)

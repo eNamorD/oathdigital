@@ -17,8 +17,7 @@ import oathdigital.testkit.Outcomes.assertWireRoundTrips
   */
 class WarningSignalsSuite extends munit.FunSuite:
   private val card = cardWith("denizen.warning-signals")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val decision = WarningSignals.decisionId
 
   /** The other player rules the origin and a second site, two warbands each,
@@ -28,12 +27,7 @@ class WarningSignalsSuite extends munit.FunSuite:
   private def defending: Board =
     val two = rivalRulesOriginAndHoldsOathkeeper(
       board(extras = 1, warbands = 5, supply = 7))
-    val extra = two.extras.head
-    val lineage = two.player(two.rival).lineage
-    val ruled = two.copy(ready = two.ready.updateCurrent(current =>
-      current.copy(map = current.map.copy(sites = current.map.sites.updated(
-        extra, current.map.sites(extra).copy(forces = SiteForces.Occupied(
-          ForceKind.Exile(lineage), 2)))))))
+    val ruled = on(two)(_.warbandsAt(two.extras.head, two.rival, 2))
     on(withAdviserFor(ruled, ruled.rival, card, Orientation.FaceUp))(
       _.boardWarbands(ruled.rival, 3))
 
@@ -119,14 +113,14 @@ class WarningSignalsSuite extends munit.FunSuite:
   test("it is discarded when the Campaign has resolved, won or lost"):
     val b = defending
     def discarded(state: OathState) = ready(state).game.current.commonCards
-      .regionalDiscards.values.exists(_.contains(id))
+      .regionalDiscards.values.exists(_.contains(card))
     val lost = chosen(
       b).answer(b.rival, decision, arrangement(b, 3, 2, 2)).finishPlanWindows
     assertEquals(ready(lost.state).game.current.lastCampaignResult.map(
       _.attackerWins), Some(false))
     assert(discarded(lost.state))
     assertEquals(Look(lost.state).player(b.rival).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held }, None)
+      case held: DenizenState if held.id == card => held }, None)
     val won = commit(rules(winning), b, 4).pick(b.rival, CampaignIds.defenderPlan,
       ref).answer(b.rival, decision, arrangement(b, 3, 2, 2)).finishPlanWindows
     assertEquals(ready(won.state).game.current.lastCampaignResult.map(
@@ -142,7 +136,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finishPlanWindows
     assert(ready(done.state).game.current.commonCards.regionalDiscards.values
-      .exists(_.contains(id)))
+      .exists(_.contains(card)))
 
   test("a defender with an empty board and one warband on each ruled site has nothing to move, so nothing is asked, and the card is still discarded"):
     val two = defending
@@ -155,7 +149,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     assertEquals(said(run.events), Vector.empty)
     val discards = ready(run.finishPlanWindows.state).game.current.commonCards
       .regionalDiscards
-    assert(discards.values.exists(_.contains(id)))
+    assert(discards.values.exists(_.contains(card)))
 
   test("a bandit defender never uses it, and the attacker's own copy is no defender's plan"):
     val two = board(extras = 1, warbands = 5, supply = 7)

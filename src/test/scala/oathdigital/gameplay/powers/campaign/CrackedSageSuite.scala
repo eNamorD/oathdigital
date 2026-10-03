@@ -11,16 +11,15 @@ import oathdigital.testkit.Look
   * adviser. */
 class CrackedSageSuite extends munit.FunSuite:
   private val card = cardWith("denizen.cracked-sage")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
-  private val arcane = planless("Golem Legions").head
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
+  private val arcane = planlessCard("Golem Legions")
 
   private def funded(b: Board, who: PlayerId): Board =
     on(b)(_.favor(who, 2).secrets(who, faceUp = 1))
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   /** The attacker holds the Sage; the defender, a player, holds an arcane
     * adviser on `enemy`'s face. */

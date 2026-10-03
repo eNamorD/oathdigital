@@ -11,15 +11,14 @@ import oathdigital.model._
   * the Campaign. */
 class GreatCrusadeSuite extends munit.FunSuite:
   private val card = cardWith("denizen.great-crusade")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val nomads = planless("Convoys", "Vow of Kinship", "Wild Mounts")
-  private val order = planless("Martial Culture").head
+  private val order = planlessCard("Martial Culture")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
   private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(id))
+    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(GreatCrusade.id, Vector(PlanDiscard.discarded), run.events)

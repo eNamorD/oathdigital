@@ -14,14 +14,13 @@ import oathdigital.testkit.Look
   */
 class MercenariesSuite extends munit.FunSuite:
   private val card = cardWith("denizen.mercenaries")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   private def funded(b: Board, who: PlayerId, favor: Int): Board =
     on(b)(_.favor(who, favor))
 
   private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(id))
+    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def attackerBoard: Board =
     val base = board(warbands = 5, supply = 7)
@@ -29,7 +28,7 @@ class MercenariesSuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   test("an attacker pays a favor onto the card and adds three attack dice"):
     val b = attackerBoard
@@ -71,7 +70,7 @@ class MercenariesSuite extends munit.FunSuite:
     val own = b.ready.game.current.map.regionOf(b.origin).get
     val done = commit(rules(losing), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
-    assert(pile(done.state, CardPlay.nextRegion(own)).contains(id))
+    assert(pile(done.state, CardPlay.nextRegion(own)).contains(card))
 
   test("a card at a site the attacker rules is discarded from the site, to the region after the site's own"):
     val base = board(warbands = 5, supply = 7)
@@ -86,8 +85,8 @@ class MercenariesSuite extends munit.FunSuite:
     assert(discarded(done.state))
     assertEquals(ready(done.state).game.current.map.sites(ruled).denizens,
       Vector.empty)
-    assert(pile(done.state, CardPlay.nextRegion(siteRegion)).contains(id))
-    assert(!pile(done.state, CardPlay.nextRegion(pawnRegion)).contains(id))
+    assert(pile(done.state, CardPlay.nextRegion(siteRegion)).contains(card))
+    assert(!pile(done.state, CardPlay.nextRegion(pawnRegion)).contains(card))
 
   test("an attacker with no favor to place is not offered Mercenaries"):
     val b = funded(attackerBoard, attackerBoard.actor, 0)

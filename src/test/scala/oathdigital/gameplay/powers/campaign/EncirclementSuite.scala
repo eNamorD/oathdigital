@@ -10,8 +10,7 @@ import oathdigital.testkit.Look
   * only while its user's force is strictly larger than the enemy's. */
 class EncirclementSuite extends munit.FunSuite:
   private val card = cardWith("denizen.encirclement")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val wrestlers = cardWith("denizen.wrestlers")
 
   /** The actor holds Encirclement and a favor. */
@@ -28,7 +27,7 @@ class EncirclementSuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   test("an attacker whose force is larger places a favor for two attack dice"):
     val b = attacker(board(warbands = 5, supply = 7))

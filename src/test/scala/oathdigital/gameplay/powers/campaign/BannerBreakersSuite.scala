@@ -10,8 +10,7 @@ import oathdigital.testkit.Look
   * offered only while the defender holds a banner. */
 class BannerBreakersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.banner-breakers")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   /** The actor holds Banner Breakers and 2 favor. Nobody holds a banner. */
   private def funded(b: Board): Board =
@@ -23,7 +22,7 @@ class BannerBreakersSuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   test("an attacker places a favor and burns one for three attack dice " +
       "against the Darkest Secret"):

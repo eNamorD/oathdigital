@@ -17,8 +17,8 @@ class MilitaryParadeSuite extends munit.FunSuite:
   private val honorsRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(honors)
   private val orders = planless("Martial Culture", "Code of Honor")
-  private val beast = planless("Errand Boy").head
-  private val arcane = planless("Golem Legions").head
+  private val beast = planlessCard("Errand Boy")
+  private val arcane = planlessCard("Golem Legions")
 
   private def favor(state: OathState, who: PlayerId): Int =
     Look(state).player(who).board.favor

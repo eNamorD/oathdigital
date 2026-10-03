@@ -11,14 +11,13 @@ import oathdigital.model._
   * Campaign. */
 class RivalKhanSuite extends munit.FunSuite:
   private val card = cardWith("denizen.rival-khan")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
-  private val nomad = planless("Convoys").head
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
+  private val nomad = planlessCard("Convoys")
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
   private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(id))
+    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(RivalKhan.id, Vector(PlanDiscard.discarded), run.events)
@@ -51,7 +50,7 @@ class RivalKhanSuite extends munit.FunSuite:
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
     val b = withAdviserFor(withAdviser(base, card, Orientation.FaceUp),
-      base.rival, planless("Golem Legions").head, Orientation.FaceUp)
+      base.rival, planlessCard("Golem Legions"), Orientation.FaceUp)
     assert(!commit(rules(losing), b, 3).offers(b.actor, b.actor,
       CampaignIds.attackerPlan, ref))
 

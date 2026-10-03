@@ -42,6 +42,10 @@ object PlanDriver:
       id
     }
 
+  /** One planless denizen, by name. */
+  def planlessCard(name: String)(using munit.Location): DenizenId =
+    planless(name).head
+
   export oathdigital.testkit.Outcomes.ready
 
   /** The parked decision, as this file's suites rebuild it: the same catalog

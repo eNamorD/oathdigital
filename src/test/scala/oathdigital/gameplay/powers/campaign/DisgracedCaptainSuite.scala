@@ -11,9 +11,8 @@ import oathdigital.testkit.Look
   * order card. */
 class DisgracedCaptainSuite extends munit.FunSuite:
   private val card = cardWith("denizen.disgraced-captain")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
-  private val order = planless("Martial Culture").head
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
+  private val order = planlessCard("Martial Culture")
 
   /** `who` holds Disgraced Captain and 2 favor. */
   private def holder(b: Board, who: PlayerId): Board =
@@ -21,7 +20,7 @@ class DisgracedCaptainSuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   test("an attacker places a favor and burns one for four attack dice " +
       "against a defender with an order adviser"):

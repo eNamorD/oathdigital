@@ -12,8 +12,7 @@ import oathdigital.model._
   * the Campaign. */
 class RainBootsSuite extends munit.FunSuite:
   private val card = cardWith("denizen.rain-boots")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val bag = relicWith("relic.bag-of-siegeworks")
   private val bagRef: DecisionOptionRef = DecisionOptionRef.Relic(bag)
   private val ignored = NoteText.Said("ignored", "Single shields ignored.",
@@ -33,7 +32,7 @@ class RainBootsSuite extends munit.FunSuite:
     ready(run.state).game.current.lastCampaignResult.get
 
   private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(id))
+    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] = NoteText.said(
     RainBoots.id, Vector(SingleShields.ignored, PlanDiscard.discarded),

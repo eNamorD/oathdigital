@@ -10,11 +10,10 @@ import oathdigital.model._
   * discarded after the Campaign whoever won. */
 class StormCallerSuite extends munit.FunSuite:
   private val card = cardWith("denizen.storm-caller")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(id))
+    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def defending: Board =
     val base = rivalRulesOriginAndHoldsOathkeeper(

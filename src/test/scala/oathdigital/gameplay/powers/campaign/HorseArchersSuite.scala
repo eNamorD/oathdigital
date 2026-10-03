@@ -10,13 +10,12 @@ import oathdigital.model._
   * card is discarded after the Campaign whoever won. */
 class HorseArchersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.horse-archers")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val line = NoteText.Said("discarded", "Discarded after the Campaign.",
     covers = false)
 
   private def discarded(state: OathState): Boolean = ready(state).game.current
-    .commonCards.regionalDiscards.values.exists(_.contains(id))
+    .commonCards.regionalDiscards.values.exists(_.contains(card))
 
   private def lines(run: Run): Vector[NoteText.Said] =
     NoteText.said(HorseArchers.id, Vector(PlanDiscard.discarded), run.events)

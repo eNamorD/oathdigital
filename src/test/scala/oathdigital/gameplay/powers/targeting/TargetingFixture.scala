@@ -19,6 +19,7 @@ object TargetingFixture:
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
   /** The Fortress edifice: Oaken Fortress intact, Rotting Fortress ruined. */
   val fortress: EdificeId = CatalogNames.edifice("Oaken Fortress")
+  /** The relic whose holder's banners and relics cannot be targeted. */
   val circlet: RelicId = CatalogNames.relic("Circlet of Command")
 
   def ready(transition: OathTransition)(using munit.Location): ReadyGame =

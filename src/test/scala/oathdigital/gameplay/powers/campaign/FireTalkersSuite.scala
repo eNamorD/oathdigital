@@ -10,8 +10,7 @@ import oathdigital.testkit.Look
   * offered only while its user holds the Darkest Secret. */
 class FireTalkersSuite extends munit.FunSuite:
   private val card = cardWith("denizen.fire-talkers")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
 
   private def withDarkestSecret(b: Board, who: PlayerId): Board =
     b.copy(ready = b.ready.updateCurrent(current => current.copy(banners =
@@ -20,7 +19,7 @@ class FireTalkersSuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   private def attacker: Board =
     val b = withSecrets(
@@ -45,8 +44,7 @@ class FireTalkersSuite extends munit.FunSuite:
     val armed = on(withAdviserFor(base, base.rival, card, Orientation.FaceUp))(
       _.secrets(base.rival, faceUp = 1))
     val b = withDarkestSecret(armed, base.rival)
-    val facedown = Look(
-      OathState.Ready(b.ready)).player(b.rival).board.faceDownSecrets
+    val facedown = b.player(b.rival).board.faceDownSecrets
     val picked = commit(rules(winning), b, 4)
       .pick(b.rival, CampaignIds.defenderPlan, ref)
     assert(picked.ops.contains(ModifyDicePool(CampaignIds.attackPool, -3)))

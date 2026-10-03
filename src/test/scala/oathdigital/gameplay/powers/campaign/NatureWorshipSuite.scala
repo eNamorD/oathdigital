@@ -10,8 +10,7 @@ import oathdigital.testkit.Look
   * faceup beast adviser its user has, itself included. */
 class NatureWorshipSuite extends munit.FunSuite:
   private val card = cardWith("denizen.nature-worship")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val beasts = planless("Errand Boy", "Small Friends")
 
   private def advised(b: Board, who: PlayerId,
@@ -40,7 +39,7 @@ class NatureWorshipSuite extends munit.FunSuite:
     val run = picked(b)
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, 2)))
     assert(Look(run.state).player(b.actor).advisers.exists {
-      case DenizenState(`id`, Orientation.FaceUp, _) => true
+      case DenizenState(`card`, Orientation.FaceUp, _) => true
       case _ => false })
 
   test("a facedown beast adviser has no suit and does not count"):

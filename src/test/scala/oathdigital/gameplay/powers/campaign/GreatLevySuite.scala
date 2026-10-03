@@ -13,8 +13,7 @@ import oathdigital.testkit.Look
   * skull, as with Outriders. */
 class GreatLevySuite extends munit.FunSuite:
   private val card = cardWith("denizen.the-great-levy")
-  private val id = card
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(id)
+  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val outriders = cardWith("denizen.outriders")
   private val outridersRef: DecisionOptionRef =
     DecisionOptionRef.Denizen(outriders)
@@ -34,7 +33,7 @@ class GreatLevySuite extends munit.FunSuite:
 
   private def adviserTokens(state: OathState, who: PlayerId): Option[Tokens] =
     Look(state).player(who).advisers.collectFirst {
-      case held: DenizenState if held.id == id => held.tokens }
+      case held: DenizenState if held.id == card => held.tokens }
 
   private def result(run: Run): CampaignResult =
     ready(run.state).game.current.lastCampaignResult.get
