@@ -4,12 +4,15 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.NoPlayableOption
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 
 class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
-  private val ds = DecisionOptionRef.Banner(Banner.DarkestSecret)
+  private val darkestSecretOption = DecisionOptionRef.Banner(
+    Banner.DarkestSecret)
+  private val chooseDarkestSecret =
+    DecisionAnswer.ChooseOneAnswer(darkestSecretOption)
 
   /** p1, in Act, holds Darkest Secret with one secret on it, and has 6
     * faceup and 4 facedown secrets and the start's 7 Supply. */
@@ -24,12 +27,12 @@ class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
     val started = start(holding.ready)
       .getOrElse(fail("a held banner must allow placing"))
     val banner = rules.resolveWalker(started.state, p1,
-      "place-banner-resource.banner", DecisionAnswer.ChooseOneAnswer(ds))
+      "place-banner-resource.banner", chooseDarkestSecret)
       .getOrElse(fail("the banner must be accepted"))
     val done = rules.resolveWalker(banner.state, p1,
       "place-banner-resource.amount", DecisionAnswer.ChooseAmountAnswer(2))
       .getOrElse(fail("the amount must be accepted"))
-    val Ready(after) = done.state: @unchecked
+    val after = Outcomes.ready(done.state)
     assertEquals(Look(after).faceUpSecrets(p1), 6 - 2)
     assertEquals(Look(after).faceDownSecrets(p1), 4)
     assertEquals(Look(after).supply(p1), 7)
@@ -39,7 +42,7 @@ class PlaceBannerResourceProcedureSuite extends munit.FunSuite:
   test("the amount ranges from one to the actor's relevant resources"):
     val started = start(holding.ready).getOrElse(fail("must start"))
     val banner = rules.resolveWalker(started.state, p1,
-      "place-banner-resource.banner", DecisionAnswer.ChooseOneAnswer(ds))
+      "place-banner-resource.banner", chooseDarkestSecret)
       .getOrElse(fail("banner"))
     Vector(0, 6 + 1).foreach(amount =>
       assert(rules.resolveWalker(banner.state, p1,

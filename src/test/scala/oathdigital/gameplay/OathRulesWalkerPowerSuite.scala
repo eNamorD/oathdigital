@@ -8,7 +8,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   WalkerStepRecorded}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{PowerStubs, Table}
 
 /** Task 3 wiring at the aggregate boundary: `OathRules` gathers restrictions
   * once per command, at command entry, and rejects the whole command before
@@ -27,19 +27,6 @@ import oathdigital.testkit.Table
   * every other walker suite exercises. The wiring under test is generic; the
   * tree only has to carry a hookable node.
   */
-object OathRulesWalkerPowerSuite:
-  /** A `PlayerSelected` power applicable at exactly one window and nowhere
-    * else -- so "which window did the call site consult?" is directly
-    * observable from whether the power is offered. Declared here rather than
-    * inside the suite class so it carries no outer reference.
-    */
-  final case class WindowScopedPower(id: PowerId, at: PowerWindow)
-      extends ContributingPower:
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
-    override def resolution: PowerResolution = PowerResolution.PlayerSelected
-    override def applicable(ctx: PowerCtx): Boolean = ctx.window == at
-
 class OathRulesWalkerPowerSuite extends munit.FunSuite:
   private val window: PowerWindow = PowerWindow.RecoverModifierSelection
 
@@ -359,7 +346,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
   // -------------------------------------------------------------------------
 
   private def windowScoped(id: PowerId, at: PowerWindow): ContributingPower =
-    OathRulesWalkerPowerSuite.WindowScopedPower(id, at)
+    PowerStubs.WindowScopedStub(id, at)
 
   /** A registry entry that differs from Recover's in nothing but its
     * `modifierWindow`. `build`/`rebuild` are never invoked on these paths --

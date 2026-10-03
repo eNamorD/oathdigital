@@ -2,13 +2,15 @@ package oathdigital.gameplay
 
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
+import oathdigital.catalog.PrintedPower
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Table, TestCards}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table, TestCards}
 import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Synthetic WAKE, ACTION and REST powers on a faceup adviser, injected
   * through `OathRules`, drive the generic phase power path end to end.
@@ -27,12 +29,13 @@ class PhasePowerSuite extends munit.FunSuite:
   private def use(power: PhasePower, state: OathState, by: PlayerId = p1) =
     rules(power).startWalker(state, ActionRef.UsePower(power.id), by,
       Vector.empty, Vector(source))
-  private def ready(state: OathState) = state.asInstanceOf[Ready].value
   /** `state`'s turn put back in Wake, its uses kept: a once-per-turn power
     * that was Wake's last option ended Wake. */
   private def rewoken(state: OathState): OathState =
-    Ready(ready(state).updateCurrent(current => current.copy(turn =
-      current.turn.copy(phase = Phase.Wake))))
+    Ready(Table.from(Outcomes.ready(state)).backInPhase(Phase.Wake).unchecked)
+  /** The power Magician's Code prints, which the test powers stand in for. */
+  private def printed: PrintedPower = present(catalog.denizen(card)
+    .flatMap(_.powers.find(_.id == powerId)), "Magician's Code's power")
 
   test("a WAKE power is usable only in Wake, once per source, and runs the " +
       "action boundary"):
@@ -44,24 +47,23 @@ class PhasePowerSuite extends munit.FunSuite:
     assertEquals(PhasePowerProcedure.usable(catalog, holding(Phase.Act), p1,
       powers, WalkerPowers.empty), Vector.empty)
 
-    val used = use(power, Ready(holding(Phase.Wake))).toOption.get
+    val used = accepted(use(power, Ready(holding(Phase.Wake))))
     val ref = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
     assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
     // It was Wake's only option, so Wake ended with it.
     walkerParked(power).assertResumed(used.state, Phase.Act, p1)
-    assert(ready(used.state).game.current.turn.usedPowers.contains(ref))
+    assert(Outcomes.ready(used.state)
+      .game.current.turn.usedPowers.contains(ref))
     val again = rewoken(used.state)
     assertEquals(use(power, again).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(ref)))
-    assertEquals(PhasePowerProcedure.usable(catalog, ready(again), p1,
+    assertEquals(PhasePowerProcedure.usable(catalog, Outcomes.ready(again), p1,
       powers, WalkerPowers.empty), Vector.empty)
 
   test("a use is scoped to its source card: the same power stays usable " +
       "from a second card"):
     // Errand Boy stands in as a second card printed with the same power.
     val second = CatalogNames.denizen("Errand Boy")
-    val printed = catalog.denizens.find(_.id.value == card.value).get
-      .powers.find(_.id == powerId).get
     val twice = catalog.copy(denizens = catalog.denizens.map(d =>
       if d.id.value == second.value then
         TestCards.denizenLike(d)(powers = d.powers :+ printed)
@@ -84,7 +86,7 @@ class PhasePowerSuite extends munit.FunSuite:
 
   test("an ACTION power returns its player to action selection"):
     val power = TestPower(powerId, PowerTiming.Act)
-    val used = use(power, Ready(holding(Phase.Act))).toOption.get
+    val used = accepted(use(power, Ready(holding(Phase.Act))))
     assert(used.events.exists(_.isInstanceOf[BanditsRefilled]))
     walkerParked(power).assertResumed(used.state, Phase.Act, p1)
 
@@ -115,14 +117,14 @@ class PhasePowerSuite extends munit.FunSuite:
   test("a usable REST power stops the Rest auto-skip, and using it still " +
       "leaves Finish Rest to the player"):
     val power = TestPower(powerId, PowerTiming.Rest)
-    val rested = rules(power).startWalker(Ready(holding(Phase.Act)),
-      PhaseTransitionRef.BeginRest, p1).toOption.get
+    val rested = accepted(rules(power).startWalker(Ready(holding(Phase.Act)),
+      PhaseTransitionRef.BeginRest, p1))
     walkerParked(power).assertResumed(rested.state, Phase.Rest, p1)
-    val used = use(power, rested.state).toOption.get
+    val used = accepted(use(power, rested.state))
     walkerParked(power).assertResumed(used.state, Phase.Rest, p1)
-    val finished = rules(power).startWalker(used.state,
-      PhaseTransitionRef.FinishRest, p1).toOption.get
-    val next = ready(finished.state).game.current.turn
+    val finished = accepted(rules(power).startWalker(used.state,
+      PhaseTransitionRef.FinishRest, p1))
+    val next = Outcomes.ready(finished.state).game.current.turn
     assertNotEquals(next.activePlayer, p1)
     assertEquals(next.usedPowers, Set.empty[PowerUseRef])
 
@@ -132,11 +134,11 @@ class PhasePowerSuite extends munit.FunSuite:
       player, DecisionQuery.ChooseOne(Vector(
         DecisionOption.Button(DecisionOptionRef.Button("go"), "Go"),
         DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop")))))
-    val parked = use(power, Ready(holding(Phase.Act))).toOption.get
+    val parked = accepted(use(power, Ready(holding(Phase.Act))))
     walkerParked(power).assertParked(parked.state, ActionRef.UsePower(powerId),
       choice, p1)
-    val done = rules(power).resolveWalker(parked.state, p1, choice,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("go"))).toOption.get
+    val done = accepted(rules(power).resolveWalker(parked.state, p1, choice,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("go"))))
     walkerParked(power).assertResumed(done.state, Phase.Act, p1)
     assertEquals((parked.events ++ done.events)
       .foldLeft[Either[OathViolation, OathState]](Right(Ready(holding(Phase.Act))))(
@@ -156,8 +158,8 @@ class PhasePowerSuite extends munit.FunSuite:
     assertEquals(PhasePowerProcedure.usable(catalog, funded, p1, powers, WalkerPowers.empty)
       .map(_.ref), Vector(source))
 
-    val used = use(power, Ready(funded)).toOption.get
-    val after = ready(used.state)
+    val used = accepted(use(power, Ready(funded)))
+    val after = Outcomes.ready(used.state)
     assertEquals(Look(after).tokensOn(card), Tokens(0, 1))
     assertEquals(after.game.current.turn.usedPowers, Set.empty[PowerUseRef])
     assertEquals(PhasePowerProcedure.usable(catalog, after, p1, powers, WalkerPowers.empty),
@@ -173,33 +175,32 @@ class PhasePowerSuite extends munit.FunSuite:
 
   test("a free ACTION power is unlimited and records no use"):
     val power = TestPower(powerId, PowerTiming.Act)
-    val first = use(power, Ready(holding(Phase.Act))).toOption.get
-    val second = use(power, first.state).toOption.get
-    assertEquals(ready(second.state).game.current.turn.usedPowers,
+    val first = accepted(use(power, Ready(holding(Phase.Act))))
+    val second = accepted(use(power, first.state))
+    assertEquals(Outcomes.ready(second.state).game.current.turn.usedPowers,
       Set.empty[PowerUseRef])
 
   test("a costed WAKE power pays and is still once per turn"):
     val power = TestPower(powerId, PowerTiming.Wake, cost = Cost(secret = 1))
-    val used = use(power, Ready(withSecrets(Phase.Wake, 2))).toOption.get
+    val used = accepted(use(power, Ready(withSecrets(Phase.Wake, 2))))
     assertEquals(Look(used.state).tokensOn(card), Tokens(0, 1))
     val recorded = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
-    assert(ready(used.state).game.current.turn.usedPowers.contains(recorded))
+    assert(Outcomes.ready(used.state)
+      .game.current.turn.usedPowers.contains(recorded))
     assertEquals(use(power, rewoken(used.state)).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(recorded)))
 
   test("an edifice at the pawn's site is a source, on either face"):
     // Hall of Debate is printed, for this test, with the test power's power.
     val id = CatalogNames.edifice("Hall of Debate")
-    val edifice = catalog.edifices.find(_.id.value == id.value).get
-    val printed = catalog.denizens.find(_.id.value == card.value).get.powers
-      .find(_.id == powerId).get
+    val edifice = present(catalog.edifice(id), "Hall of Debate")
     val powered = catalog.copy(edifices = catalog.edifices.map(e =>
       if e.id == edifice.id then TestCards.edificeLike(e)(
         intact = e.intact.powers :+ printed,
         ruined = e.ruined.powers :+ printed) else e))
     val power = TestPower(powerId, PowerTiming.Act)
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
-      val state = Table.start.edifice(id, side, at = Table.quietPawnSite(p1)).ready
+      val state = Table.start.edifice(id, side, at = "Ancient City").ready
       assertEquals(PhasePowerProcedure.usable(powered, state, p1,
         PhasePowers(Vector(power)), WalkerPowers.empty).map(p => p.source -> p.ref),
         Vector(PowerSourceRef.Card(id) -> DecisionOptionRef.Edifice(id)),
@@ -207,11 +208,12 @@ class PhasePowerSuite extends munit.FunSuite:
     }
 
   test("a banner is a source only for its holder"):
+    // The power the People's Favor prints on its Grand Council face.
     val bannerPower = PowerId("banner.peoples-favor.grand-council")
     val power = TestPower(bannerPower, PowerTiming.Act)
-    def state(holder: Option[PlayerId]) = holding(Phase.Act).updateCurrent(c =>
-      c.copy(banners = c.banners.copy(peoplesFavor = c.banners.peoplesFavor.copy(
-        active = PeoplesFavorFace.GrandCouncil, holder = holder))))
+    def state(holder: Option[PlayerId]) = Table.from(holding(Phase.Act))
+      .peoplesFavor(holder, favor = 1, face = PeoplesFavorFace.GrandCouncil)
+      .unchecked
     val powers = PhasePowers(Vector(power))
     assertEquals(PhasePowerProcedure.usable(catalog, state(Some(p1)), p1,
       powers, WalkerPowers.empty).map(p => p.source -> p.ref), Vector(
@@ -221,8 +223,10 @@ class PhasePowerSuite extends munit.FunSuite:
       Vector.empty)
 
   test("a held relic's power is usable only while the relic is faceup"):
-    val relicPower = TestPower(PowerId("relic.brass-horse"), PowerTiming.Act)
     val relic = CatalogNames.relic("Brass Horse")
+    val relicPower = TestPower(present(catalog.relic(relic)
+      .flatMap(_.powers.headOption).map(_.id), "Brass Horse's power"),
+      PowerTiming.Act)
     def holdingRelic(facedown: Boolean) = Table.start
       .relic(p1, relic, facedown = facedown).turn(p1, Phase.Act).ready
     val powers = PhasePowers(Vector(relicPower))

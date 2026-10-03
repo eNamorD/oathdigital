@@ -7,8 +7,9 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, DeclineDeal, ProposeTerms}
 import oathdigital.model.OathEvent.IgnoredRulesRecorded
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{CatalogNames, Journal, Look, Table}
+import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
+import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** Negotiation through the rules, as a client drives it: start, choose the
   * negotiators, then answer the deal in any order until it closes.
@@ -44,10 +45,6 @@ class NegotiationProcedureSuite extends munit.FunSuite:
   private def say(state: OathState, by: PlayerId, answer: DecisionAnswer) =
     rules.resolveWalker(state, by, dealId, answer)
 
-  private def ready(state: OathState): ReadyGame = state match
-    case Ready(value) => value
-    case other => fail(s"expected a ready game, got $other")
-
   private def gift(to: PlayerId, favor: Int, relics: Vector[RelicId] = Vector.empty) =
     ProposeTerms(NegotiationTerms(Vector(NegotiationTransfer(to, favor, relics))))
 
@@ -76,6 +73,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
       WalkerPowers.empty))
 
   test("no first-game gate: an Imperial player or an altered Foundation still negotiates"):
+    // No Table step reaches lineage roles or foundations.
     val ready = gathered.ready
     val lineage = ready.game.campaign.lineages(Look(ready).player(p2).lineage)
     val campaign = ready.game.campaign
@@ -98,7 +96,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
       .getOrElse(fail("the counterparty may accept first"))
     val done = say(theirs.state, p1, AcceptDeal)
       .getOrElse(fail("the last accept must settle"))
-    val after = ready(done.state)
+    val after = Outcomes.ready(done.state)
     assertEquals(Look(after).favor(p1), 2)
     assertEquals(Look(after).favor(p2), 8)
     assertEquals(after.game.current.players.map(_.board.favor).sum,
@@ -110,25 +108,27 @@ class NegotiationProcedureSuite extends munit.FunSuite:
 
   test("three players answer in any order and a changed term resets consent"):
     val deal = atDeal(gathered.ready, p2, p3)
-    val one = say(deal.state, p1, gift(p2, 1)).toOption.get
-    val two = say(one.state, p2, AcceptDeal).toOption.get
-    val three = say(two.state, p3, gift(p1, 2)).toOption.get
-    val open = ready(three.state).game.current.walkerPending.get
+    val one = accepted(say(deal.state, p1, gift(p2, 1)))
+    val two = accepted(say(one.state, p2, AcceptDeal))
+    val three = accepted(say(two.state, p3, gift(p1, 2)))
+    val open = present(Outcomes.ready(three.state).game.current.walkerPending,
+      "the open deal")
     val folded = NegotiationDeal.fold(Vector(p1, p2, p3), open.answered)
     assertEquals(folded.accepted, Set.empty[PlayerId])
-    val accepted = Vector(p3, p2, p1).foldLeft(three.state):
+    val closed = Vector(p3, p2, p1).foldLeft(three.state):
       (state, by) => say(state, by, AcceptDeal).getOrElse(fail(s"$by accepts"))
         .state
-    assertEquals(Look(accepted).favor(p1), 5 - 1 + 2)
-    assertEquals(ready(accepted).game.current.walkerPending, None)
+    // p1 started with 5, gave 1 to p2 and received 2 from p3.
+    assertEquals(Look(closed).favor(p1), 5 - 1 + 2)
+    assertEquals(Outcomes.ready(closed).game.current.walkerPending, None)
 
   test("a decline ends the action with nothing moved"):
     val before = gathered.ready
     val deal = atDeal(before, p2)
-    val proposed = say(deal.state, p1, gift(p2, 3)).toOption.get
+    val proposed = accepted(say(deal.state, p1, gift(p2, 3)))
     val declined = say(proposed.state, p2, DeclineDeal)
       .getOrElse(fail("any participant may decline"))
-    val after = ready(declined.state)
+    val after = Outcomes.ready(declined.state)
     assertEquals(after.game.current.players, before.game.current.players)
     assertEquals(after.game.current.walkerPending, None)
     parked.assertResumed(declined.state, Phase.Act, p1)
@@ -149,13 +149,11 @@ class NegotiationProcedureSuite extends munit.FunSuite:
 
   test("a settlement that cannot be met rejects the last accept and leaves the deal open"):
     val deal = atDeal(gathered.ready, p2)
-    val proposed = say(deal.state, p1, gift(p2, 3)).toOption.get
-    val theirs = say(proposed.state, p2, AcceptDeal).toOption.get
-    // p1 loses favor while the deal is open, which no Table step can do to a
-    // parked state.
-    val broke = Ready(ready(theirs.state).updateCurrent(current =>
-      current.copy(players = current.players.map(p => if p.player == p1 then
-        p.copy(board = p.board.copy(favor = 1)) else p))))
+    val proposed = accepted(say(deal.state, p1, gift(p2, 3)))
+    val theirs = accepted(say(proposed.state, p2, AcceptDeal))
+    // p1 drops to 1 favor while the deal is open.
+    val broke = Ready(Table.from(Outcomes.ready(theirs.state)).favor(p1, 1)
+      .unchecked)
     assertEquals(say(broke, p1, AcceptDeal).left.toOption,
       Some(OathViolation.InsufficientFavor(3, 1)))
     assert(say(theirs.state, p1, AcceptDeal).isRight)
@@ -170,7 +168,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val closed = Vector(p1, p2, p3).foldLeft(proposed.state):
       (state, by) => say(state, by, AcceptDeal).getOrElse(fail(s"$by accepts"))
         .state
-    val after = ready(closed)
+    val after = Outcomes.ready(closed)
     assert(after.knowledge.advisers(p2).contains(adviser))
     assert(after.knowledge.siteRelics(p2)(site).contains(siteRelic))
     assert(!after.knowledge.advisers.getOrElse(p3, Vector.empty)
@@ -184,34 +182,38 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     assert(declined.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]),
       "a decline must run the action boundary and its bandit refill")
     val proposed = say(deal.state, p1, gift(p2, 1)).getOrElse(fail("terms"))
-    val accepted = say(proposed.state, p2, AcceptDeal)
+    val theirAccept = say(proposed.state, p2, AcceptDeal)
       .getOrElse(fail("p2 accepts"))
-    val agreed = say(accepted.state, p1, AcceptDeal).getOrElse(fail("p1 accepts"))
+    val agreed = say(theirAccept.state, p1, AcceptDeal)
+      .getOrElse(fail("p1 accepts"))
     assert(agreed.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]),
       "an agreed deal must run the action boundary and its bandit refill")
-    assertEquals(ready(agreed.state).game.current.walkerPending, None)
+    assertEquals(Outcomes.ready(agreed.state).game.current.walkerPending, None)
 
   test("unsupported Negotiation rules are recorded as ignored, not blocking"):
     val powered = gathered.adviser(p1, "Council Arbiter").ready
     val started = start(powered).getOrElse(
       fail("an unsupported rule must not block"))
-    val recorded = started.events.head.asInstanceOf[IgnoredRulesRecorded]
+    val recorded = as[IgnoredRulesRecorded](started.events.head)
     assertEquals(recorded.action, ActionKind.Negotiation)
     assertEquals(recorded.diagnostics.head.handlerId, "denizen.council-arbiter")
     assert(choose(started.state, p1, p2).isRight)
 
   test("a completed Negotiation replays exactly from its journal"):
     val SetupResult(setupState, setupEvents) = setupThroughWake()
-    val Ready(original) = setupState: @unchecked
-    val actor = original.game.current.turn.activePlayer
-    val other = original.game.current.players.find(_.player != actor).get.player
-    val destination = Look(original).pawn(other)
-    val act = rules.startWalker(setupState, PhaseTransitionRef.EndWake, actor)
-      .toOption.get
-    val traveled = rules.startWalker(act.state, ActionRef.Travel, actor,
-      Vector.empty, Vector(DecisionOptionRef.Site(destination))).toOption.get
-    val adviser = Look(traveled.state).player(actor).advisers.head.id
-      .asInstanceOf[WorldCardId]
+    // p2, the first player, travels to p1's site and negotiates with p1.
+    val actor = firstPlayer
+    val other = p1
+    assertEquals(Look(setupState).active, actor)
+    val destination = Look(setupState).pawn(other)
+    val act = accepted(
+      rules.startWalker(setupState, PhaseTransitionRef.EndWake, actor))
+    val traveled = accepted(
+      rules.startWalker(act.state, ActionRef.Travel, actor, Vector.empty,
+        Vector(DecisionOptionRef.Site(destination))))
+    val adviser = present(Look(traveled.state).player(actor).advisers
+      .headOption.map(_.id).collect { case id: WorldCardId => id },
+      "a kept adviser")
     val started = rules.startWalker(traveled.state, ActionRef.Negotiation, actor)
       .getOrElse(fail("Negotiation must start"))
     val chosen =

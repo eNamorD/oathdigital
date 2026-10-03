@@ -2,11 +2,12 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.economy.{MusterProcedure, MusterSource}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.OathViolation._
-import oathdigital.testkit.{CatalogNames, Look, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.Unwrap.{accepted, present}
 
 class MusterProcedureSuite extends munit.FunSuite:
   import EconomyFixture.{AddAdviserSource, FreePayment}
@@ -15,32 +16,35 @@ class MusterProcedureSuite extends munit.FunSuite:
   private val magiciansCode = CatalogNames.denizen("Magician's Code")
   private val hallowedSpring = CatalogNames.edifice("Hallowed Spring")
 
-  /** p1 stands at Ancient City, which holds the token-free Alchemist
-    * (Arcane) and nothing else; p1 has 4 favor. */
-  private def atAlchemist: Table = Table.start
-    .denizen(alchemist, at = Table.quietPawnSite(p1))
-    .favor(p1, 4)
+  private val ancientCity = CatalogNames.site("Ancient City")
 
-  private def parked(ready: ReadyGame): (Operation, PendingTree) =
-    val tree = MusterProcedure.build(catalog, ready, p1)
-      .getOrElse(fail("a legal Muster must build"))
-    val outcome = ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty)
-      .getOrElse(fail("the Muster tree must walk to its source decision"))
-    (tree, outcome.asInstanceOf[WalkerOutcome.Parked].tree)
+  /** p1 stands at Ancient City, which holds the token-free Alchemist
+    * (Arcane) and nothing else; p1 has 4 favor, 7 Supply and 3 warbands on
+    * the board. */
+  private def atAlchemist: Table = Table.start
+    .denizen(alchemist, at = ancientCity)
+    .favor(p1, 4).supply(p1, 7).boardWarbands(p1, 3)
+
+  /** The Muster tree, and the walk parked on its source decision. */
+  private final case class ParkedMuster(tree: Operation, pending: PendingTree)
+
+  private def parked(ready: ReadyGame): ParkedMuster =
+    val tree = accepted(MusterProcedure.build(catalog, ready, p1))
+    ParkedMuster(tree, Outcomes.parked(
+      ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty)).tree)
 
   private def muster(ready: ReadyGame, ref: DecisionOptionRef): ReadyGame =
-    val (tree, pending) = parked(ready)
-    ProcedureWalker.resolve(ready, tree, pending, Answered(
-      MusterProcedure.decisionId, DecisionAnswer.ChooseOneAnswer(ref), p1),
-      WalkerPowers.empty)
-      .getOrElse(fail("the answer must be accepted"))
-      .asInstanceOf[WalkerOutcome.Finished].treeless
+    val walk = parked(ready)
+    val answer = Answered(MusterProcedure.decisionId,
+      DecisionAnswer.ChooseOneAnswer(ref), p1)
+    Outcomes.finished(ProcedureWalker.resolve(ready, walk.tree, walk.pending,
+      answer, WalkerPowers.empty)).treeless
 
   test("the tree parks on the token-free cards at the pawn site"):
     val ready = atAlchemist.ready
-    val (tree, pending) = parked(ready)
-    val decide = ProcedureWalker.parkedDecide(ready, tree, pending,
-      WalkerPowers.empty).getOrElse(fail("the walk must park on a decision"))
+    val walk = parked(ready)
+    val decide = present(ProcedureWalker.parkedDecide(ready, walk.tree,
+      walk.pending, WalkerPowers.empty), "the source decision")
     assertEquals(decide.decisionId, "muster.source")
     assertEquals(decide.query, DecisionQuery.ChooseOne(
       Vector(DecisionOption.Denizen(DecisionOptionRef.Denizen(alchemist))),
@@ -51,9 +55,9 @@ class MusterProcedureSuite extends munit.FunSuite:
     val ready = atAlchemist.adviser(p1, magiciansCode)   // Arcane, like Alchemist
       .ready
     val after = Look(muster(ready, DecisionOptionRef.Denizen(alchemist)))
-    assertEquals(after.favor(p1), 3)
-    assertEquals(after.supply(p1), 6)
-    assertEquals(after.boardWarbands(p1), 5)                  // 3 + 1 matching + 1
+    assertEquals(after.favor(p1), 4 - 1)
+    assertEquals(after.supply(p1), 7 - 1)
+    assertEquals(after.boardWarbands(p1), 3 + 1 + 1)       // 1 matching, plus 1
     assertEquals(after.tokensOn(alchemist), Tokens(1, 0))
 
   test("the gain shrinks to the warbands the supply still holds"):
@@ -61,13 +65,13 @@ class MusterProcedureSuite extends munit.FunSuite:
     val after = Look(muster(atAlchemist.boardWarbands(p1, 14).ready,
       DecisionOptionRef.Denizen(alchemist)))
     assertEquals(after.boardWarbands(p1), 14)
-    assertEquals(after.supply(p1), 6)
-    assertEquals(after.favor(p1), 3)
+    assertEquals(after.supply(p1), 7 - 1)
+    assertEquals(after.favor(p1), 4 - 1)
 
   test("an edifice of either side is a legal source and takes the favor"):
     Vector(EdificeSide.Ruined, EdificeSide.Intact).foreach { side =>
       val ready = Table.start.favor(p1, 4)
-        .edifice(hallowedSpring, side, at = Table.quietPawnSite(p1)).ready
+        .edifice(hallowedSpring, side, at = ancientCity).ready
       val options = MusterProcedure.startOptions(catalog, ready, p1,
         WalkerPowers.empty).map(_.option.ref)
       assertEquals(options, Vector(DecisionOptionRef.Edifice(hallowedSpring)),
@@ -96,12 +100,11 @@ class MusterProcedureSuite extends munit.FunSuite:
       WalkerPowers(Vector(FreePayment(PowerId("test.free-payment")))))
     assertEquals(previewed.map(_.option.ref),
       Vector(DecisionOptionRef.Denizen(alchemist)))
-    previewed.head.outcome match
-      case Right(outcome) =>
-        assertEquals(outcome.operations.collect { case SpendSupply(_, n, _) => n },
-          Vector(1))
-        assert(!outcome.operations.exists(_.isInstanceOf[PayCost]))
-      case Left(error) => fail(s"the free Muster must be playable: $error")
+    val outcome = accepted(previewed.head.outcome)
+    // The power waives the favor payment, not the Supply spend.
+    assertEquals(outcome.operations.collect { case SpendSupply(_, n, _) => n },
+      Vector(1))
+    assert(!outcome.operations.exists(_.isInstanceOf[PayCost]))
 
   test("resolve names why a reference is not a source"):
     assertEquals(MusterSource.resolve(catalog,
@@ -109,7 +112,7 @@ class MusterProcedureSuite extends munit.FunSuite:
       DecisionOptionRef.Denizen(alchemist)), Left(EconomyCardNotEmpty(alchemist)))
     assertEquals(MusterSource.resolve(catalog, atAlchemist.ready, p1,
       DecisionOptionRef.Denizen(magiciansCode)),
-      Left(EconomyCardUnavailable(Table.quietPawnSite(p1), magiciansCode)))
+      Left(EconomyCardUnavailable(ancientCity, magiciansCode)))
     assert(MusterSource.resolve(catalog, atAlchemist.ready, p1,
       DecisionOptionRef.Button("site")).isLeft)
 

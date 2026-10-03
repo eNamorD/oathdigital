@@ -4,6 +4,7 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Restriction, Transform}
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
+import oathdigital.testkit.PowerStubs
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.TestGameFixtures._
@@ -36,13 +37,6 @@ object ProcedureWalkerSuite:
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(hook -> Vector(Transform(fn)))
 
-  /** A `ContributingPower` with an arbitrary contribution map, for the cases
-    * that need one power speaking at two windows.
-    */
-  final case class TestPower(id: PowerId,
-      contributions: Map[PowerWindow, Vector[Contribution]])
-      extends ContributingPower:
-    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   /** A minimal `ContributingPower` contributing exactly one `Restriction` at
     * one window.
@@ -864,10 +858,10 @@ class ProcedureWalkerSuite extends munit.FunSuite:
     val keep: (PowerCtx, Vector[Operation]) => Vector[Operation] =
       (_, ops) => ops
     // `outer` speaks at BOTH windows, `inner` only at the leaf's.
-    val outer = ProcedureWalkerSuite.TestPower(outerId, Map(
+    val outer = PowerStubs.ContributingStub(outerId, Map(
       testWindow -> Vector(Transform(keep)),
       otherWindow -> Vector(Transform(keep))))
-    val inner = ProcedureWalkerSuite.TestPower(innerId, Map(
+    val inner = PowerStubs.ContributingStub(innerId, Map(
       otherWindow -> Vector(Transform(keep))))
     val powers = WalkerPowers(Vector(outer, inner))
     val hooked = decide.copy(window = Some(otherWindow))

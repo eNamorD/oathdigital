@@ -2,28 +2,28 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
-import oathdigital.testkit.Table
+import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.Table.{p1, p2}
+import oathdigital.testkit.Unwrap.accepted
 
 class PlayerSecretSummarySuite extends munit.FunSuite:
   import FirstGameSetupFixture._
-  private val base = Table.start.ready
-  private val actor = base.game.current.players.find(
-    _.player == base.game.current.turn.activePlayer).get
+  private val actor = p1
+  private val inactive = p2
+  // A card whose power these tests do not use, on p1's site or p2's board.
+  private val card = CatalogNames.denizen("Wrestlers")
+  private val relic = CatalogNames.relic("Sticky Fire")
 
+  /** p1 at Ancient City with `available` faceup and `facedown` facedown
+    * secrets and no adviser or relic. Ancient City holds Wrestlers with
+    * `siteCommitted` secrets on it, or nothing when that is 0. */
   private def withState(available: Int, facedown: Int,
-      siteCommitted: Int): ReadyGame =
-    val site = actor.pawnSite.get
-    val definition = catalog.denizens.head
-    base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p => if p.player == actor.player then
-        p.copy(board = p.board.copy(faceUpSecrets = available,
-          faceDownSecrets = facedown), advisers = Vector.empty, relics = Vector.empty)
-        else p),
-      map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(
-        site, base.game.current.map.sites(site).copy(denizens =
-          Option.when(siteCommitted > 0)(DenizenState(
-            DenizenId(definition.id.value), Orientation.FaceUp,
-            Tokens(0, siteCommitted))).toVector)))))
+      siteCommitted: Int): Table =
+    val table = Table.start.secrets(actor, faceUp = available,
+      faceDown = facedown)
+    if siteCommitted == 0 then table
+    else table.denizen(card, at = "Ancient City")
+      .tokens(card, secrets = siteCommitted)
 
   test("derived secret accounting reports available facedown committed and total"):
     val examples = Vector(
@@ -31,48 +31,37 @@ class PlayerSecretSummarySuite extends munit.FunSuite:
       withState(0, 0, 1) -> PlayerSecretSummary(0, 0, 1),
       withState(0, 1, 0) -> PlayerSecretSummary(0, 1, 0),
       withState(1, 0, 1) -> PlayerSecretSummary(1, 0, 1))
-    examples.foreach { case (ready, expected) =>
-      assertEquals(PlayerSecretSummary.derive(ready, actor.player).toOption.get,
+    examples.foreach { case (table, expected) =>
+      assertEquals(accepted(PlayerSecretSummary.derive(table.ready, actor)),
         expected)
     }
 
   test("valid inactive player has zero commitments and ignores ruled-site tokens"):
-    val ready = withState(0, 0, 1)
-    val inactive = ready.game.current.players.find(_.player != actor.player).get
-    val pawn = actor.pawnSite.get
-    val ruledByInactive = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
-        ready.game.current.map.sites.updated(pawn,
-          ready.game.current.map.sites(pawn).copy(forces = SiteForces.Occupied(
-            ForceKind.Exile(inactive.lineage), 1))))))
-    assertEquals(PlayerSecretSummary.derive(ruledByInactive,
-      inactive.player).toOption.get.committed, 0)
-    assertEquals(PlayerSecretSummary.derive(ruledByInactive,
-      actor.player).toOption.get.committed, 1)
+    // p2 rules Ancient City, where Wrestlers carries p1's committed secret.
+    val ruledByInactive = withState(0, 0, 1)
+      .warbandsAt("Ancient City", inactive, 1).ready
+    assertEquals(accepted(PlayerSecretSummary.derive(ruledByInactive,
+      inactive)).committed, 0)
+    assertEquals(accepted(PlayerSecretSummary.derive(ruledByInactive,
+      actor)).committed, 1)
 
   test("active total includes a committed secret on another player's adviser"):
-    val inactive = base.game.current.players.find(_.player != actor.player).get
-    val card = DenizenState(DenizenId(catalog.denizens.head.id.value),
-      Orientation.FaceUp, Tokens(0, 1))
-    val corrupt = base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p => if p.player == inactive.player then
-        p.copy(advisers = Vector(card)) else p)))
-    assertEquals(PlayerSecretSummary.derive(corrupt,
-      actor.player).toOption.get.committed, 1)
-    assertEquals(PlayerSecretSummary.derive(corrupt,
-      inactive.player).toOption.get.committed, 0)
+    val corrupt = Table.start.adviser(inactive, card)
+      .tokens(card, secrets = 1).ready
+    assertEquals(accepted(PlayerSecretSummary.derive(corrupt,
+      actor)).committed, 1)
+    assertEquals(accepted(PlayerSecretSummary.derive(corrupt,
+      inactive)).committed, 0)
 
   test("active total includes a committed secret on another player's relic"):
-    val inactive = base.game.current.players.find(_.player != actor.player).get
-    val relic = RelicState(RelicId(catalog.relics.head.id.value),
-      Orientation.FaceUp, Tokens(0, 2))
-    val corrupt = base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p => if p.player == inactive.player then
-        p.copy(relics = Vector(relic)) else p)))
-    assertEquals(PlayerSecretSummary.derive(corrupt,
-      actor.player).toOption.get.committed, 2)
-    assertEquals(PlayerSecretSummary.derive(corrupt,
-      inactive.player).toOption.get.committed, 0)
-    val projected = new oathdigital.application.GameProjector(catalog).projectPublic(
-      "cross-player-secrets", oathdigital.application.LoadedGame(OathState.Ready(corrupt), 9L))
-    assertEquals(projected.playerBoards.find(_.playerId == actor.player.value)
+    val corrupt = Table.start.relic(inactive, relic)
+      .tokens(relic, secrets = 2).ready
+    assertEquals(accepted(PlayerSecretSummary.derive(corrupt,
+      actor)).committed, 2)
+    assertEquals(accepted(PlayerSecretSummary.derive(corrupt,
+      inactive)).committed, 0)
+    val projected = new oathdigital.application.GameProjector(catalog)
+      .projectPublic("cross-player-secrets", oathdigital.application.LoadedGame(
+        OathState.Ready(corrupt), 9L))
+    assertEquals(projected.playerBoards.find(_.playerId == actor.value)
       .map(_.committedSecrets), Some(2))
