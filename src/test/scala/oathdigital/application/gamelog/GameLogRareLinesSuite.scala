@@ -79,7 +79,7 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       s"Moved 3 Imperial warbands to $at"))
 
   test("a vision discarded names its pile"):
-    // Vision of Sanctuary is the board's first Vision in the world deck.
+    // Vision of Sanctuary lies in the board's world deck.
     val vision = VisionRules.Sanctuary
     assert(ready.game.current.commonCards.worldDeck.contains(vision))
     val lines = posted(ActionRef.Travel, Discard.Vision(vision,
@@ -88,8 +88,8 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       lines)
 
   test("a won Raid tells what was taken, then what the defender lost"):
-    // The log reads the result's attacker, defender and winner; the scores
-    // only record the battle.
+    // The log reads the result's attacker, kind, defender and winner; the
+    // scores only record the battle.
     val result = CampaignResult(actor, CampaignKind.Raid,
       CampaignDefender.Player(other), targetSites = Vector.empty,
       raidTargets = Vector(CampaignRaidTarget.Pawn(other)), force = 2,
@@ -112,8 +112,8 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       "burned 1 favor and set aside a Relic"), lines)
 
   test("a defeated attacker's loss line has no subject and the bandits win"):
-    // The log reads the result's defender and winner; the scores only record
-    // the battle.
+    // The log reads the result's kind, defender and winner; the scores only
+    // record the battle.
     val result = CampaignResult(actor, CampaignKind.Conquest,
       CampaignDefender.Bandits, targetSites = Vector(site),
       raidTargets = Vector.empty, force = 3, attackFaces = Vector.empty,
@@ -144,14 +144,15 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       new WalkerDecisionProjector(catalog, presentation))
     def said(ref: DecisionOptionRef): String =
       choices.option(ref, ready, ready, None).map(_.text).mkString
-    // Threatening Roar, the board's top world-deck card, facedown to all.
+    // Threatening Roar, the board's top world-deck card (pinned by the
+    // first test here), unseen by all.
     val denizen = CatalogNames.denizen("Threatening Roar")
     assertEquals(said(DecisionOptionRef.Player(other)), playerLabel(other))
     assertEquals(said(DecisionOptionRef.Site(site)), presentation.siteLabel(site))
     assertEquals(said(DecisionOptionRef.Denizen(denizen)), "a Denizen")
     assertEquals(said(DecisionOptionRef.Relic(relic)), "a Relic")
-    // A slot reads as its index plus one. p2 holds no relic, and a missing
-    // relic slot reads as facedown; p2's Birdsong is facedown; adviser slot
+    // A slot reads as its index plus one. A relic slot always reads
+    // facedown, whatever p2 holds; p2's Birdsong is facedown; adviser slot
     // 10 is empty and names no face.
     assertEquals(said(DecisionOptionRef.RelicSlot(other, 0)),
       s"${playerLabel(other)}'s facedown relic (slot 1)")

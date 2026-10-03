@@ -3,7 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.operations.OperationExecutor
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes}
-import oathdigital.testkit.Table.{p2, p3}
+import oathdigital.testkit.Table.p3
 import oathdigital.testkit.Unwrap.accepted
 import LogScripts._
 
@@ -35,9 +35,9 @@ class GameLogEventSuite extends munit.FunSuite:
     val mine = formatAppended(script, Vector(event), Some(peeker), peeked).last
     assert(mine.spans.exists(_.isInstanceOf[LogSpan.Card]), mine.spans)
     assert(text(mine).startsWith("Peeked at "), text(mine))
-    // p2's pawn stands at Broken Peaks, so p2 sees its relics anyway; p3's
-    // does not.
-    assertEquals(Look(state).pawn(p2), site)
+    // p3's pawn stands at Buried Giant, not Broken Peaks, so p3 reads only
+    // that a relic was peeked at. (p2, at Broken Peaks, would read it anyway.)
+    assertEquals(Look(state).pawn(p3), CatalogNames.site("Buried Giant"))
     val theirs = formatAppended(script, Vector(event), Some(p3), peeked).last
     // The peeker is the active player, so the subject is left out.
     assertEquals(text(theirs), "Peeked at " +

@@ -68,15 +68,15 @@ object LogScripts:
     waking.after(GameCommand.EndWake(p1))
     Script("board", service, p1)
 
-  /** Setup to the first player's Wake, on the real start: the one script
-    * that replays Setup, so its log carries the setup lines. Pawns are spread
-    * one per site. */
+  /** Setup to the first player's Wake, on the real start: the script that
+    * replays Setup with every park answered by default, so its log carries
+    * the setup lines. Pawns are spread one per site. */
   def woken(using munit.Location): Script =
     wokenAnswering("woken", PartialFunction.empty)
 
   /** As `woken`, with every Reveal Cards answered by revealing every card it
     * offers. */
-  def revealedSetup(using munit.Location): Script =
+  def wokenRevealingAll(using munit.Location): Script =
     wokenAnswering("revealed", {
       case park if park.decisionId ==
           SetupProcedure.revealDecisionId(park.awaiting) =>
@@ -173,8 +173,6 @@ object LogScripts:
       case (step, index) => step.copy(event = step.event.copy(index = index.toLong))
     }
 
-  /** `format` over `withoutNotes`: the log of the script as a power that
-    * writes no note would leave it. */
   /** `script`'s log for `viewer` with `events` journaled after its last
     * step. Each appended step starts from the script's last state and ends
     * in `lastStateAfter` of it: unchanged unless a test gives the change the
@@ -190,6 +188,8 @@ object LogScripts:
         lastStateAfter(last))
     }, viewer)
 
+  /** `format` over `withoutNotes`: the log of the script as a power that
+    * writes no note would leave it. */
   def formatWithoutNotes(script: Script, viewer: Option[PlayerId])(using
       munit.Location): Vector[LogEntry] =
     formatter.format(withoutNotes(script.history.steps), viewer)
@@ -460,7 +460,8 @@ object LogScripts:
     Script("augury", service, p1)
 
   /** Gambling Hall at p1's site, used in Act by a player holding two favor.
-    * The steady dice total 8, and the richest bank is chosen so the gain is
+    * Gambling Hall rolls 4 defense dice and steadyDice makes each two
+    * shields, so they total 8, and the richest bank is chosen so the gain is
     * never empty. */
   def gamblingHall(using munit.Location): Script =
     val card = CatalogNames.denizen("Gambling Hall")

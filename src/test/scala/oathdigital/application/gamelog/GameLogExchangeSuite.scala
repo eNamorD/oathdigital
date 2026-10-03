@@ -3,7 +3,7 @@ package oathdigital.application.gamelog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.testkit.Table
-import oathdigital.testkit.Table.{p2, p3}
+import oathdigital.testkit.Table.{p1, p2, p3}
 import LogScripts._
 
 /** The negotiation scripts stand p2 with the actor, p1, at Ancient City:
@@ -63,6 +63,6 @@ class GameLogExchangeSuite extends munit.FunSuite:
     // Any ready state will do: a banner's name is the same on every board.
     val ready = Table.start.ready
     val words = new LogWords(catalog, presentation)
-    assertEquals(words.power(ready, Table.p1,
+    assertEquals(words.power(ready, p1,
       PowerId("banner.darkest-secret.wandering-flame.move"), None)
       .map(_.text).mkString, "Darkest Secret")

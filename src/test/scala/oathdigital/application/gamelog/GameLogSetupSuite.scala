@@ -38,9 +38,9 @@ class GameLogSetupSuite extends munit.FunSuite:
     }
 
   test("a card revealed in Reveal Cards is named to every viewer"):
-    val script = revealedSetup
-    val woken = Outcomes.ready(script.history.steps.last.after)
-    val revealed = woken.game.current.players.map(player =>
+    val script = wokenRevealingAll
+    val ready = Outcomes.ready(script.history.steps.last.after)
+    val revealed = ready.game.current.players.map(player =>
       player.advisers.count(_ match
         case d: DenizenState => d.orientation == Orientation.FaceUp
         case _ => false)).sum
