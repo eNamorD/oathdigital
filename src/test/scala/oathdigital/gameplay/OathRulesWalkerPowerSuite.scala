@@ -446,8 +446,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
 
     // Control: the identical tree under Recover, whose entry DOES declare a
     // roll decision id, parks and is handed that id's continuation.
-    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover, p1)
-      match
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
+        p1) match
       case Right(transition) => transition
       case other => fail(s"expected the Recover roll park to run, got $other")
     val startedReady = Outcomes.ready(started.state)
