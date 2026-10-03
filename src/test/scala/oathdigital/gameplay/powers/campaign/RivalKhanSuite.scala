@@ -31,7 +31,6 @@ class RivalKhanSuite extends munit.FunSuite:
       nomad, enemy)
 
   test("an attacker adds four attack dice, and it is discarded " +
-
       "after the Campaign"):
     val b = attacker(Orientation.FaceUp)
     val run = commit(rules(losing), b, 3)
@@ -57,7 +56,6 @@ class RivalKhanSuite extends munit.FunSuite:
       CampaignIds.attackerPlan, ref))
 
   test("a bandit defender applies it against a nomad adviser, and " +
-
       "it is discarded"):
     val base = board(warbands = 5, supply = 7)
     val b = withAdviser(withSiteCard(base, base.origin, card), nomad,

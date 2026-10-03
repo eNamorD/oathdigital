@@ -54,7 +54,6 @@ class WarningSignalsSuite extends munit.FunSuite:
     CampaignIds.defenderPlan, ref)
 
   test("choosing it asks the defender to arrange their board and " +
-
       "every ruled site"):
     val b = defending
     val run = chosen(b)
@@ -84,7 +83,6 @@ class WarningSignalsSuite extends munit.FunSuite:
     assertEquals(Look(moved.state).player(b.rival).board.warbands, 5)
 
   test("the defense is scored with the force the rearrangement left " +
-
       "at the target"):
     val b = defending
     val done = chosen(b).answer(b.rival, decision, arrangement(b, board = 0,
@@ -105,7 +103,6 @@ class WarningSignalsSuite extends munit.FunSuite:
       extra = 2)).isEmpty)
 
   test("the query names the board and each ruled site, with what " +
-
       "each holds now"):
     val b = defending
     val slots = chosen(b).query(b.actor) match
@@ -179,7 +176,6 @@ class WarningSignalsSuite extends munit.FunSuite:
       CampaignIds.sacrifice))
 
   test("the recorded moves replay to the same state, and survive " +
-
       "the journal wire"):
     val b = defending
     val g = rules(losing)

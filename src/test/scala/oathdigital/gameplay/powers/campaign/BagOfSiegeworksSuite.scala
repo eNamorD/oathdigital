@@ -41,7 +41,6 @@ class BagOfSiegeworksSuite extends munit.FunSuite:
     BagOfSiegeworks.id, Vector(BagOfSiegeworks.ignored), run.events)
 
   test("a single shield scores nothing; two shields and doublers " +
-
       "score as usual"):
     import DefenseDieFace._
     assertEquals(BagOfSiegeworks.score(Vector(Blank, OneShield, Doubler)), 0)

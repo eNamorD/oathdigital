@@ -52,7 +52,6 @@ class BattleHonorsSuite extends munit.FunSuite:
       op.isInstanceOf[ModifyDicePool]))
 
   test("a defender that wins gains two favor, and one that " +
-
       "loses gains nothing"):
     val b = defenderHoldingBattleHonors
     val won = commit(rules(losing), b, 4)

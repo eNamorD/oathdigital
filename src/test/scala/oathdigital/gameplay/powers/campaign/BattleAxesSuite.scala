@@ -26,7 +26,6 @@ class BattleAxesSuite extends munit.FunSuite:
     assert(!picked.since(run).exists(_.isInstanceOf[PayCost]))
 
   test("the user's own beast card and one at a site nobody " +
-
       "rules count nothing"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
@@ -48,7 +47,6 @@ class BattleAxesSuite extends munit.FunSuite:
       CampaignIds.attackerPlan, ref))
 
   test("a defender removes two attack dice when the attacker rules " +
-
       "a beast card"):
     val base = rivalRulesOriginAndHoldsOathkeeper(
       board(warbands = 5, supply = 7))
@@ -59,7 +57,6 @@ class BattleAxesSuite extends munit.FunSuite:
     assert(run.ops.contains(ModifyDicePool(CampaignIds.attackPool, -2)))
 
   test("a bandit defender applies it only when the attacker rules " +
-
       "a beast card"):
     val base = board(warbands = 5, supply = 7)
     val b = withSiteCard(base, base.origin, card)

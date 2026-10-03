@@ -79,7 +79,6 @@ class InsectSwarmSuite extends munit.FunSuite:
     assert(awaits(commit(rules(losing), b, 4), b.actor, CampaignIds.sacrifice))
 
   test("a plan whose own cost and the added favor cannot both be paid " +
-
       "is not offered"):
     val base = attackerHolds(1)
     // Extra Provisions places a favor of its own, so it needs two.
@@ -127,7 +126,6 @@ class InsectSwarmSuite extends munit.FunSuite:
       honors, Orientation.FaceUp))(_.favor(base.actor, attackerFavor))
 
   test("an attacker's plan costs one more favor, burnt from " +
-
       "the attacker's board"):
     val b = defenderHolds(1)
     val run = commit(rules(winning), b, 4)
