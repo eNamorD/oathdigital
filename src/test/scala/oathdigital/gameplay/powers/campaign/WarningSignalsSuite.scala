@@ -87,8 +87,7 @@ class WarningSignalsSuite extends munit.FunSuite:
     val b = defending
     val done = chosen(b).answer(b.rival, decision, arrangement(b, board = 0,
       origin = 4, extra = 3)).finishPlanWindows
-    assertEquals(done.result
-      .defenseScore, 4)
+    assertEquals(done.result.defenseScore, 4)
 
   test("a site must keep a warband, and the total must be kept"):
     val b = defending
@@ -141,8 +140,7 @@ class WarningSignalsSuite extends munit.FunSuite:
       CampaignIds.defenderPlan, ref)
     assert(awaits(run, b.actor, CampaignIds.sacrifice))
     val done = run.finishPlanWindows
-    assert(ready(done.state).game.current.commonCards.regionalDiscards.values
-      .exists(_.contains(card)))
+    assert(Look(done.state).inRegionalDiscard(card))
 
   test("a defender with an empty board and one warband on each ruled site " +
       "has nothing to move, so nothing is asked, and the card is still " +
@@ -155,9 +153,7 @@ class WarningSignalsSuite extends munit.FunSuite:
       CampaignIds.defenderPlan, ref)
     assert(!awaits(run, sparse.rival, decision))
     assertEquals(said(run.events), Vector.empty)
-    val discards = ready(run.finishPlanWindows.state).game.current.commonCards
-      .regionalDiscards
-    assert(discards.values.exists(_.contains(card)))
+    assert(Look(run.finishPlanWindows.state).inRegionalDiscard(card))
 
   test("a bandit defender never uses it, and the attacker's own copy is no " +
       "defender's plan"):

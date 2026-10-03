@@ -5,8 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Horse Archers: a free plan for three attack dice, added or removed, and the
   * card is discarded after the Campaign whoever won. */

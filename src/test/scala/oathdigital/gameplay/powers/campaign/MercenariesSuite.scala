@@ -47,15 +47,14 @@ class MercenariesSuite extends munit.FunSuite:
   test("an attacker that is defeated discards Mercenaries, and its favor " +
       "returns to the bank"):
     val b = attackerBoard
-    val before = b.ready.banks.favor.getOrElse(mercenariesSuit, 0)
+    val before = Look(b.ready).bankFavor(mercenariesSuit)
     val done = commit(rules(losing), b, 0)
       .pick(b.actor, CampaignIds.attackerPlan, ref).finishPlanWindows
     assertEquals(done.winner, Some(false))
     assert(!Look(done.state).player(b.actor).advisers.exists(_.id == card))
     assert(Look(done.state).inRegionalDiscard(card))
-    assertEquals(ready(done.state).banks.favor.getOrElse(mercenariesSuit, 0),
-      before + 1)
-    assertEquals(Look(done.state).player(b.actor).board.favor, 1)
+    assertEquals(Look(done.state).bankFavor(mercenariesSuit), before + 1)
+    assertEquals(Look(done.state).favor(b.actor), 1)
 
   private def pile(state: OathState, region: Region): Vector[WorldCardId] =
     ready(state).game.current.commonCards.regionalDiscards.getOrElse(region,

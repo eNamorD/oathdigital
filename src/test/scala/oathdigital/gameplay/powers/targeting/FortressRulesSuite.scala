@@ -13,8 +13,8 @@ import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as}
 
 class FortressRulesSuite extends munit.FunSuite:
-  import CampaignFixture._
-  import TargetingFixture._
+  import CampaignFixture.{Board, board, on, withEnemyAtOrigin}
+  import TargetingFixture.{challengeTable, fortress, optionsAt, start}
 
   private val powers = WalkerPowers.selected(
     WalkerPowerCatalog.default(catalog), Vector.empty)
@@ -83,8 +83,9 @@ class FortressRulesSuite extends munit.FunSuite:
       "facedown one, or one of another suit, does not"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
     val armed = on(b)(_.adviser(b.actor, "Errand Boy"))  // Beast
-    assert(
-      CampaignProcedure.startable(catalog, armed.ready, armed.actor, powers))
+    val startable =
+      CampaignProcedure.startable(catalog, armed.ready, armed.actor, powers)
+    assert(startable)
     assert(startOf(armed).isRight)
     val protectedRaid = Some(OathViolation.CampaignUnavailable(
       "a Fortress protects every player a Raid could target"))
@@ -181,7 +182,7 @@ class FortressRulesSuite extends munit.FunSuite:
     val crowded = on(b)(_.pawn(b.bystander, at = b.origin))
     assertEquals(hidden(rotting, accepted(startOf(crowded))),
       Vector(NoteText.Said("all-shielded",
-      s"No player at ${b.origin.value} can be targeted.", covers = false)))
+        s"No player at ${b.origin.value} can be targeted.", covers = false)))
 
   test("a banner a protected player holds is named by its holder"):
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.

@@ -5,8 +5,7 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignPlans}
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Pledge of Defense: a free defender's plan for one defense die per nomad
   * card its user rules, counting itself, and the card is discarded after the

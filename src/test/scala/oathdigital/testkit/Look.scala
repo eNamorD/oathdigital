@@ -14,8 +14,10 @@ final class Look private (ready: ReadyGame):
     .getOrElse(throw AssertionError(s"no player $p"))
   def supply(p: PlayerId): Int = player(p).board.supply.supply
   def favor(p: PlayerId): Int = player(p).board.favor
+
   /** The favor in `suit`'s bank. */
   def bankFavor(suit: Suit): Int = ready.banks.favor.getOrElse(suit, 0)
+
   /** Whether `card` lies in a regional discard pile. */
   def inRegionalDiscard(card: CardId): Boolean =
     current.commonCards.regionalDiscards.values.exists(_.contains(card))

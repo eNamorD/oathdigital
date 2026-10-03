@@ -80,25 +80,24 @@ class LostTongueSuite extends munit.FunSuite:
 
   test("its restriction refuses a Take of the holder's relic or banner by a " +
       "player who rules no nomad card, and nothing else"):
-    val relic = crackedHorn
-    val board = Table.start.adviser(p2, tongue).relic(p2, relic)
+    val board = Table.start.adviser(p2, tongue).relic(p2, crackedHorn)
       .peoplesFavor(Some(p2), favor = 2)
     val ready = board.ready
     val withNomad = board.adviser(p1, nomadCard).ready
     val facedown = Table.start.adviser(p2, tongue, facedown = true)
-      .relic(p2, relic).peoplesFavor(Some(p2), favor = 2).ready
+      .relic(p2, crackedHorn).peoplesFavor(Some(p2), favor = 2).ready
     def refused(state: ReadyGame, operation: CoreOperation): Boolean =
       power.operationRestrictions.exists(_.reason(state, operation).nonEmpty)
     val mine = Location.PlayArea(p1)
     val theirs = Location.PlayArea(p2)
-    val takeRelic = Take(Piece.Card(relic), p1, theirs, mine)
+    val takeRelic = Take(Piece.Card(crackedHorn), p1, theirs, mine)
     val takeBanner = Take(Piece.Banner(Banner.PeoplesFavor), p1, theirs, mine)
     assert(refused(ready, takeRelic))
     assert(refused(ready, takeBanner))
     assert(!refused(withNomad, takeRelic))
     assert(!refused(withNomad, takeBanner))
     assert(!refused(facedown, takeRelic))
-    assert(!refused(ready, Give(Piece.Card(relic), p2, theirs, mine)),
+    assert(!refused(ready, Give(Piece.Card(crackedHorn), p2, theirs, mine)),
       "a Give is not a Take")
     assert(!refused(ready, Take(Piece.Favor(1), p1,
       Location.OnBanner(Banner.PeoplesFavor), mine)),
@@ -178,8 +177,7 @@ class LostTongueSuite extends munit.FunSuite:
     * People's Favor; p1 holds a faceup nomad adviser when `nomad`. */
   private def challengeBanners(nomad: Boolean): Vector[DecisionOptionRef] =
     val table = challengeTable.adviser(p2, tongue)
-    val ready = if nomad then table.adviser(p1,
-      nomadCard).ready else table.ready
+    val ready = (if nomad then table.adviser(p1, nomadCard) else table).ready
     optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
       ActionRef.Challenge)
 

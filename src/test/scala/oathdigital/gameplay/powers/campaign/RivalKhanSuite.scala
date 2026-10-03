@@ -5,8 +5,7 @@ import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.model._
-import oathdigital.testkit.Look
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, Look}
 
 /** Rival Khan: a free plan for four attack dice, added or removed, offered
   * only when the enemy has a faceup nomad adviser, and discarded after the
